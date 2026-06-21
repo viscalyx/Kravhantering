@@ -77,6 +77,7 @@ FROM node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e4
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV KRAVHANTERING_DB_ADMIN_IMAGE=db-job
 
 WORKDIR /workspace
 
@@ -90,3 +91,26 @@ COPY --chown=node:node typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
 USER node
 ENTRYPOINT ["node", "scripts/db-sqlserver-admin.mjs"]
 CMD ["health"]
+
+FROM node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf AS demo-seed
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+ENV KRAVHANTERING_DB_ADMIN_IMAGE=demo-seed
+
+WORKDIR /workspace
+
+COPY --from=db-job-dependencies --chown=node:node /workspace/node_modules ./node_modules
+COPY --chown=node:node package.json package-lock.json ./
+COPY --chown=node:node scripts/db-sqlserver-admin.mjs ./scripts/db-sqlserver-admin.mjs
+COPY --chown=node:node typeorm/migrations ./typeorm/migrations
+COPY --chown=node:node typeorm/seed-required.mjs ./typeorm/seed-required.mjs
+COPY --chown=node:node typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
+COPY --chown=node:node typeorm/seed.mjs ./typeorm/seed.mjs
+COPY --chown=node:node typeorm/seed-dogfood.mjs ./typeorm/seed-dogfood.mjs
+COPY --chown=node:node typeorm/seed-dogfood-build.mjs ./typeorm/seed-dogfood-build.mjs
+COPY --chown=node:node typeorm/seed-archiving-retention-build.mjs ./typeorm/seed-archiving-retention-build.mjs
+
+USER node
+ENTRYPOINT ["node", "scripts/db-sqlserver-admin.mjs"]
+CMD ["seed:demo"]

@@ -13,6 +13,10 @@ import {
 
 let fixture: AuthorizationFixture
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 test.describe.configure({ mode: 'serial' })
 test.use({
   storageState: ROLE_STORAGE_STATE.areaOwner,
@@ -31,12 +35,14 @@ test('AUTH-10/AUTH-11: requirement area owners can manage their area and co-auth
   const updatedDescription = `Updated by area owner ${Date.now()}`
 
   try {
+    const areaPrefixPattern = escapeRegExp(fixture.areaPrefix)
+
     await page.goto('/sv/requirement-areas')
     await expect(
       page.getByRole('heading', { level: 1, name: 'Kravområden' }),
     ).toBeVisible()
 
-    const row = page.getByRole('row', { name: new RegExp(fixture.areaPrefix) })
+    const row = page.getByRole('row', { name: new RegExp(areaPrefixPattern) })
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: 'Redigera' }).click()
 
@@ -45,7 +51,6 @@ test('AUTH-10/AUTH-11: requirement area owners can manage their area and co-auth
     await expect(
       form.getByRole('textbox', { name: 'Kravområdesägare' }),
     ).toHaveValue(HSA.areaOwner)
-    await expect(form.getByText('Cora CoAuthor')).toBeVisible()
     await form
       .getByRole('textbox', { name: 'Beskrivning' })
       .fill(updatedDescription)
@@ -55,6 +60,23 @@ test('AUTH-10/AUTH-11: requirement area owners can manage their area and co-auth
 
     await page.reload()
     await expect(page.getByText(updatedDescription)).toBeVisible()
+
+    const updatedRow = page.getByRole('row', {
+      name: new RegExp(areaPrefixPattern),
+    })
+    await updatedRow
+      .getByRole('button', { name: 'Hantera medförfattare' })
+      .click()
+    const coAuthorsDialog = page.getByRole('dialog', {
+      name: 'Kravområdesmedförfattare',
+    })
+    await expect(coAuthorsDialog).toBeVisible()
+    await expect(coAuthorsDialog.getByText(HSA.areaCoauthor)).toBeVisible()
+    await expect(
+      coAuthorsDialog.getByRole('textbox', { name: 'Medförfattares HSA-id' }),
+    ).toBeVisible()
+    await coAuthorsDialog.getByRole('button', { name: 'Stäng' }).last().click()
+    await expect(coAuthorsDialog).toBeHidden()
 
     const updateResponse = await areaOwner.put(
       `/api/requirement-areas/${fixture.areaId}`,

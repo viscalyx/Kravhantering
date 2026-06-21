@@ -12,9 +12,15 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import DirtyStateButton from '@/components/DirtyStateButton'
+import { modalResizableTextareaRows4ClassName } from '@/components/modal-textarea-class'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
+
+const textareaClassName = `w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm dark:border-secondary-600 dark:bg-secondary-900 ${modalResizableTextareaRows4ClassName}`
 
 const useClientLayoutEffect =
   typeof window === 'undefined' ? useEffect : useLayoutEffect
@@ -41,25 +47,24 @@ export default function DeviationFormModal({
   const td = useTranslations('deviation')
   const tc = useTranslations('common')
   const [motivation, setMotivation] = useState('')
+  const [baselineSignature, setBaselineSignature] = useState(() =>
+    createDirtySnapshot({ motivation: '' }),
+  )
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
   const shouldReduceMotion = useReducedMotion()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
 
   // Reset fields when opening
   useClientLayoutEffect(() => {
     if (open) {
-      setMotivation(initialMotivation ?? '')
+      const nextMotivation = initialMotivation ?? ''
+      setMotivation(nextMotivation)
+      setBaselineSignature(createDirtySnapshot({ motivation: nextMotivation }))
       setOpenHelp(new Set())
     }
   }, [open, initialMotivation])
-
-  const { handleKeyDown } = useModalFocus({
-    modalRef,
-    initialFocusRef: textareaRef,
-    onClose,
-    open,
-  })
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -73,10 +78,32 @@ export default function DeviationFormModal({
     })
   }
 
+  const formDirty = baselineSignature !== createDirtySnapshot({ motivation })
+
+  const requestClose = useCallback(
+    async (anchorEl?: HTMLElement | null) => {
+      if (loading) return
+      if (formDirty && !(await confirmDiscardChanges(anchorEl))) return
+      onClose()
+    },
+    [confirmDiscardChanges, formDirty, loading, onClose],
+  )
+
+  const { handleKeyDown } = useModalFocus({
+    closeDisabled: loading,
+    modalRef,
+    initialFocusRef: textareaRef,
+    onClose: () => {
+      void requestClose()
+    },
+    open,
+  })
+
   const handleSubmit = useCallback(() => {
     if (!motivation.trim()) return
+    if (!formDirty) return
     onSubmit(motivation.trim())
-  }, [motivation, onSubmit])
+  }, [formDirty, motivation, onSubmit])
 
   if (typeof window === 'undefined') return null
 
@@ -84,23 +111,17 @@ export default function DeviationFormModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
           key="deviation-form-backdrop"
           {...fadeMotion(shouldReduceMotion)}
         >
-          {/* Backdrop */}
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
-          {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
           {/* Dialog */}
           <motion.div
             aria-labelledby="deviation-form-title"
             aria-modal="true"
-            className="relative z-50 w-full max-w-md rounded-xl bg-white dark:bg-secondary-900 shadow-2xl"
+            className="relative z-50 max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-xl bg-white shadow-2xl dark:bg-secondary-900"
             {...devMarker({
               name: 'dialog',
               priority: 420,
@@ -160,7 +181,7 @@ export default function DeviationFormModal({
                   {td('motivationHelp')}
                 </AnimatedHelpPanel>
                 <textarea
-                  className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm"
+                  className={textareaClassName}
                   id="deviation-motivation"
                   onChange={e => setMotivation(e.target.value)}
                   placeholder={td('motivationPlaceholder')}
@@ -174,13 +195,16 @@ export default function DeviationFormModal({
                 <button
                   className="btn-secondary text-sm px-4 py-2"
                   disabled={loading}
-                  onClick={onClose}
+                  onClick={event => {
+                    void requestClose(event.currentTarget)
+                  }}
                   type="button"
                 >
                   {tc('cancel')}
                 </button>
-                <button
+                <DirtyStateButton
                   className="btn-primary text-sm px-4 py-2"
+                  dirty={formDirty}
                   disabled={!motivation.trim() || loading}
                   onClick={handleSubmit}
                   type="button"
@@ -190,7 +214,7 @@ export default function DeviationFormModal({
                     : initialMotivation
                       ? tc('save')
                       : td('newDeviation')}
-                </button>
+                </DirtyStateButton>
               </div>
             </div>
           </motion.div>

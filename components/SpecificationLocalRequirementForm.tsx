@@ -4,10 +4,14 @@ import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import DirtyStateButton from '@/components/DirtyStateButton'
+import FormActionRow from '@/components/FormActionRow'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 
 export interface SpecificationLocalRequirementSubmitPayload {
   acceptanceCriteria: string | null
@@ -29,6 +33,7 @@ interface SpecificationLocalRequirementFormProps {
   >
   needsReferences: { id: number; text: string }[]
   onCancel: () => void
+  onDirtyChange?: (dirty: boolean) => void
   onSubmit: (
     payload: SpecificationLocalRequirementSubmitPayload,
   ) => Promise<void>
@@ -48,6 +53,10 @@ const EMPTY_FIELDS: RequirementFormFieldValues = {
   typeId: '',
   verificationMethod: '',
 }
+
+const SPECIFICATION_LOCAL_REQUIREMENT_DIRTY_OPTIONS = {
+  unorderedArrayPaths: ['normReferenceIds', 'requirementPackageIds'],
+} as const
 
 function toFieldValues(
   initial?: Partial<RequirementFormFieldValues & { needsReferenceId: string }>,
@@ -85,21 +94,62 @@ function toFieldValues(
   }
 }
 
+function toSubmitPayload(
+  fields: RequirementFormFieldValues,
+  needsReferenceId: string,
+): SpecificationLocalRequirementSubmitPayload {
+  return {
+    acceptanceCriteria: fields.acceptanceCriteria.trim() || null,
+    description: fields.description.trim(),
+    needsReferenceId: needsReferenceId ? Number(needsReferenceId) : null,
+    normReferenceIds: fields.normReferenceIds,
+    qualityCharacteristicId: fields.qualityCharacteristicId
+      ? Number(fields.qualityCharacteristicId)
+      : null,
+    requirementCategoryId: fields.categoryId ? Number(fields.categoryId) : null,
+    requirementTypeId: fields.typeId ? Number(fields.typeId) : null,
+    requiresTesting: fields.requiresTesting,
+    riskLevelId: fields.riskLevelId ? Number(fields.riskLevelId) : null,
+    requirementPackageIds: fields.requirementPackageIds,
+    verificationMethod: fields.requiresTesting
+      ? fields.verificationMethod.trim() || null
+      : null,
+  }
+}
+
+function createSubmitSignature(
+  fields: RequirementFormFieldValues,
+  needsReferenceId: string,
+) {
+  return createDirtySnapshot(
+    toSubmitPayload(fields, needsReferenceId),
+    SPECIFICATION_LOCAL_REQUIREMENT_DIRTY_OPTIONS,
+  )
+}
+
 export default function SpecificationLocalRequirementForm({
   initialValue,
   needsReferences,
   onCancel,
+  onDirtyChange,
   onSubmit,
   submitLabel,
 }: SpecificationLocalRequirementFormProps) {
   const tc = useTranslations('common')
   const tp = useTranslations('specification')
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
 
   const [fields, setFields] = useState<RequirementFormFieldValues>(() =>
     toFieldValues(initialValue),
   )
   const [needsReferenceId, setNeedsReferenceId] = useState(
     initialValue?.needsReferenceId ?? '',
+  )
+  const [baselineSignature, setBaselineSignature] = useState(() =>
+    createSubmitSignature(
+      toFieldValues(initialValue),
+      initialValue?.needsReferenceId ?? '',
+    ),
   )
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -111,36 +161,32 @@ export default function SpecificationLocalRequirementForm({
   )
 
   useEffect(() => {
-    setFields(toFieldValues(initialValue))
-    setNeedsReferenceId(initialValue?.needsReferenceId ?? '')
+    const nextFields = toFieldValues(initialValue)
+    const nextNeedsReferenceId = initialValue?.needsReferenceId ?? ''
+    setFields(nextFields)
+    setNeedsReferenceId(nextNeedsReferenceId)
+    setBaselineSignature(
+      createSubmitSignature(nextFields, nextNeedsReferenceId),
+    )
     setNeedsRefHelpOpen(false)
   }, [initialValue])
 
+  const formDirty =
+    baselineSignature !== createSubmitSignature(fields, needsReferenceId)
+
+  useEffect(() => {
+    onDirtyChange?.(formDirty)
+  }, [formDirty, onDirtyChange])
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (!formDirty) return
     setError(null)
     setIsSubmitting(true)
 
     try {
-      await onSubmit({
-        acceptanceCriteria: fields.acceptanceCriteria.trim() || null,
-        description: fields.description.trim(),
-        needsReferenceId: needsReferenceId ? Number(needsReferenceId) : null,
-        normReferenceIds: fields.normReferenceIds,
-        qualityCharacteristicId: fields.qualityCharacteristicId
-          ? Number(fields.qualityCharacteristicId)
-          : null,
-        requirementCategoryId: fields.categoryId
-          ? Number(fields.categoryId)
-          : null,
-        requirementTypeId: fields.typeId ? Number(fields.typeId) : null,
-        requiresTesting: fields.requiresTesting,
-        riskLevelId: fields.riskLevelId ? Number(fields.riskLevelId) : null,
-        requirementPackageIds: fields.requirementPackageIds,
-        verificationMethod: fields.requiresTesting
-          ? fields.verificationMethod.trim() || null
-          : null,
-      })
+      await onSubmit(toSubmitPayload(fields, needsReferenceId))
+      setBaselineSignature(createSubmitSignature(fields, needsReferenceId))
     } catch (submissionError) {
       setError(
         submissionError instanceof Error
@@ -150,6 +196,12 @@ export default function SpecificationLocalRequirementForm({
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleCancel = async (anchorEl?: HTMLElement | null) => {
+    if (isSubmitting) return
+    if (formDirty && !(await confirmDiscardChanges(anchorEl))) return
+    onCancel()
   }
 
   const needsReferenceField = (
@@ -211,19 +263,24 @@ export default function SpecificationLocalRequirementForm({
         </p>
       ) : null}
 
-      <div className="flex gap-3">
-        <button className="btn-primary" disabled={isSubmitting} type="submit">
+      <FormActionRow>
+        <DirtyStateButton
+          className="btn-primary"
+          dirty={formDirty}
+          disabled={isSubmitting}
+          type="submit"
+        >
           {isSubmitting ? tc('saving') : submitLabel}
-        </button>
+        </DirtyStateButton>
         <button
           className="min-h-11 rounded-xl border px-4 py-2.5 text-sm text-secondary-700 dark:text-secondary-300 transition-colors hover:bg-secondary-50 dark:hover:bg-secondary-800"
           disabled={isSubmitting}
-          onClick={onCancel}
+          onClick={event => void handleCancel(event.currentTarget)}
           type="button"
         >
           {tc('cancel')}
         </button>
-      </div>
+      </FormActionRow>
     </form>
   )
 }

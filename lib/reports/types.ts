@@ -85,10 +85,11 @@ export type ReportSection =
       lifecycleStatus: string | null
       businessNeedsReference: string | null
       locale: string
+      variant?: 'default' | 'minimal'
     }
   | {
       type: 'requirement-table'
-      columns: { key: string; label: string }[]
+      columns: { key: string; label: string; width?: string }[]
       rows: {
         cells: Record<string, string>
         statusColor?: string | null
@@ -139,5 +140,6 @@ export type ReportSection =
     }
 
 export interface ReportModel {
+  orientation?: 'portrait' | 'landscape'
   sections: ReportSection[]
 }

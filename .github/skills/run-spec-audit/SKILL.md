@@ -63,6 +63,7 @@ Read these specification documents first:
 13. `docs/developer-mode-overlay.md`
 14. `docs/reference-data-and-ai.md`
 15. `docs/sql-server-developer-workflow.md`
+16. `docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md`
 
 Then read the actual code in `app/`, `lib/`, `lib/typeorm/entities/`,
 `typeorm/`, and `tests/quality/functional.test.ts`.

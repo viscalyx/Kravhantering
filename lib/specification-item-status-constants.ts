@@ -5,16 +5,43 @@
 export const DEFAULT_SPECIFICATION_ITEM_STATUS_ID = 1
 
 /**
+ * Seed ID for the "In Progress" / "Pågående" specification-item status.
+ */
+export const IN_PROGRESS_SPECIFICATION_ITEM_STATUS_ID = 2
+
+/**
+ * Seed ID for the "Implemented" / "Implementerad" specification-item status.
+ */
+export const IMPLEMENTED_SPECIFICATION_ITEM_STATUS_ID = 3
+
+/**
+ * Seed ID for the "Verified" / "Verifierad" specification-item status.
+ */
+export const VERIFIED_SPECIFICATION_ITEM_STATUS_ID = 4
+
+/**
  * Seed ID for the "Deviated" / "Avviken" specification-item status.
  * Only selectable when the requirement application has an approved deviation.
  */
 export const DEVIATED_SPECIFICATION_ITEM_STATUS_ID = 5
 
 /**
+ * Seed ID for the "Not applicable" / "Ej tillämpbar" specification-item status.
+ */
+export const NOT_APPLICABLE_SPECIFICATION_ITEM_STATUS_ID = 6
+
+/**
  * Seed IDs for the fixed usage-status catalog.
  * These rows are editable, but the catalog itself is not extensible.
  */
-export const SYSTEM_SPECIFICATION_ITEM_STATUS_IDS = [1, 2, 3, 4, 5, 6] as const
+export const SYSTEM_SPECIFICATION_ITEM_STATUS_IDS = [
+  DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+  IN_PROGRESS_SPECIFICATION_ITEM_STATUS_ID,
+  IMPLEMENTED_SPECIFICATION_ITEM_STATUS_ID,
+  VERIFIED_SPECIFICATION_ITEM_STATUS_ID,
+  DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
+  NOT_APPLICABLE_SPECIFICATION_ITEM_STATUS_ID,
+] as const
 
 export type SystemSpecificationItemStatusId =
   (typeof SYSTEM_SPECIFICATION_ITEM_STATUS_IDS)[number]

@@ -7,8 +7,8 @@ This suite verifies that the requirement packages list supports name or
 description filtering, shows the no-results state for unmatched searches, clears
 the search back to the full list, and keeps the floating `Nytt kravpaket` create
 button anchored to the right side of the package list rather than to the search
-field. It also checks that package lead changes use the separate edit-modal
-flow.
+field. It also checks that package co-authors use the separate row-action modal
+and that package lead changes use the separate edit-modal flow.
 
 ## Overview Flowchart
 
@@ -29,8 +29,12 @@ flowchart TD
     L --> M[No-results state appears]
     M --> N[Clear search]
     N --> O[All package rows return]
-    O --> P[Open package edit modal]
-    P --> Q[Assert locked lead field and change-lead modal]
+    O --> P[Open create modal]
+    P --> Q[Assert signed-in user is the create lead]
+    Q --> R[Open co-author management modal]
+    R --> S[Assert seeded co-author and HSA field]
+    S --> T[Open package edit modal]
+    T --> U[Assert locked lead field and change-lead modal]
 ```
 
 ## Test Setup
@@ -38,6 +42,9 @@ flowchart TD
 - The suite runs the same scenario for mobile (`375x812`) and desktop
   (`1280x720`) viewports.
 - The standard Playwright global setup provides an authenticated admin session.
+- The spec fulfills the HSA person verification request for the lead-change
+  blur flow with a deterministic person, because the normal dev and prodlike CI
+  matrix starts SQL Server and Keycloak but not the optional HSA mock stack.
 - The desktop variant measures the floating create button and package-list
   surface to prevent regressions where the button follows the search field
   instead of the list.
@@ -70,11 +77,20 @@ action.
 1. Assert `Inga resultat hittades` appears and package rows are hidden.
 1. Click `Rensa sökning`.
 1. Assert the filter is empty and both package rows are visible again.
+1. Open `Nytt kravpaket` and assert the signed-in user is shown as
+   `Kravpaketsansvarig` without editable lead, linked-requirement, or co-author
+   management controls.
+1. Open row action `Hantera medförfattare` for `Mobil användning`.
+1. Assert the separate `Kravpaketsmedförfattare` modal shows the seeded
+   co-author and editable `Medförfattares HSA-id` verification field.
 1. Open `Mobil användning` for editing.
 1. Assert `Kravpaketsansvarigs HSA-id` is locked and has a
    `Byt kravpaketsansvarig` action.
 1. Open `Byt kravpaketsansvarig` and assert the current HSA-id field plus the
-   editable prefix and suffix controls for the new HSA-id are shown.
+   editable prefix and suffix controls for the new HSA-id are shown, without
+   separate locked name or email fields.
+1. Enter a valid replacement suffix, tab from the suffix field, and assert the
+   verified person summary appears without clicking the refresh action.
 1. Select the seeded package co-author HSA-id prefix, enter its suffix, and
    assert the conflict is shown.
 
@@ -106,6 +122,11 @@ sequenceDiagram
     U->>F: Click clear search
     F->>P: Reset filter
     Note over P: ✓ Full list returns
+    U->>P: Open create
+    Note over P: ✓ Signed-in user is shown as package lead
+    Note over P: ✓ Co-author management controls are absent before create
+    U->>P: Open co-author row action
+    Note over P: ✓ Separate co-author modal shows seeded co-author and HSA field
     U->>P: Open edit
     Note over P: ✓ Package lead field is locked
     U->>P: Open lead-change modal

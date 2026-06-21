@@ -64,7 +64,6 @@ test('AUTH-10/AUTH-11: requirement package leads can update packages but not arc
       `/api/requirement-packages/${fixture.packageId}`,
       {
         data: {
-          coAuthorHsaIds: [HSA.packageCoauthor],
           description: updatedDescription,
         },
       },
@@ -77,6 +76,18 @@ test('AUTH-10/AUTH-11: requirement package leads can update packages but not arc
       id: fixture.packageId,
       leadHsaId: HSA.packageLead,
     })
+
+    await expectOk(
+      await packageLead.put(
+        `/api/requirement-packages/${fixture.packageId}/co-authors`,
+        {
+          data: {
+            coAuthorHsaIds: [HSA.packageCoauthor],
+          },
+        },
+      ),
+      'package lead co-author update',
+    )
 
     await expectStatus(
       await packageLead.post(

@@ -17,6 +17,15 @@ function splitHsaId(hsaId: string): { prefix: string; suffix: string } {
   }
 }
 
+const deterministicPackageLeadVerification = {
+  displayName: 'Ada Admin',
+  email: 'ada.admin@example.test',
+  givenName: 'Ada',
+  hsaId: 'SE5560000001-admin1',
+  middleName: null,
+  surname: 'Admin',
+}
+
 async function fillEditableHsaId(
   scope: Locator,
   inputName: string,
@@ -36,6 +45,34 @@ for (const viewport of viewports) {
     test('filters the table by package name or description and clears the search', async ({
       page,
     }) => {
+      const hsaVerifyRequests: Record<string, unknown>[] = []
+      await page.route(
+        '**/api/requirement-responsibility-people/verify',
+        async route => {
+          const payload = route.request().postDataJSON() as Record<
+            string,
+            unknown
+          >
+          hsaVerifyRequests.push(payload)
+
+          if (
+            payload.hsaId === deterministicPackageLeadVerification.hsaId &&
+            payload.purpose === 'requirement_package_lead'
+          ) {
+            await route.fulfill({
+              body: JSON.stringify({
+                person: deterministicPackageLeadVerification,
+              }),
+              contentType: 'application/json',
+              status: 200,
+            })
+            return
+          }
+
+          await route.continue()
+        },
+      )
+
       await test.step('open the package stewardship list', async () => {
         await page.goto('/sv/requirements/stewardship?tab=packages')
 
@@ -122,15 +159,11 @@ for (const viewport of viewports) {
         const dialog = page.getByRole('dialog', { name: 'Nytt kravpaket' })
         await expect(dialog).toBeVisible()
         const nameInput = dialog.getByRole('textbox', { name: 'Namn' })
-        const coAuthorsHeading = dialog.getByRole('heading', {
-          name: 'Kravpaketsmedförfattare',
-        })
 
         const leadSummary = dialog.locator(
           'section[aria-labelledby="requirement-package-create-lead-title"]',
         )
         await expect(nameInput).toBeVisible()
-        await expect(coAuthorsHeading).toBeVisible()
         await expect(
           dialog.getByText(
             'Du blir kravpaketsansvarig när kravpaketet skapas.',
@@ -147,26 +180,43 @@ for (const viewport of viewports) {
         await expect(dialog.getByText(/Ada Admin/)).toBeVisible()
         await expect(dialog.getByText('SE5560000001-admin1')).toBeVisible()
         await expect(dialog.getByText('Kopplade krav')).toHaveCount(0)
+        await expect(
+          dialog.getByRole('button', { name: 'Lägg till medförfattare' }),
+        ).toHaveCount(0)
+        await expect(
+          dialog.getByRole('button', { name: 'Hantera medförfattare' }),
+        ).toHaveCount(0)
+        await expect(
+          dialog.getByRole('heading', { name: 'Kravpaketsansvarig' }),
+        ).toBeVisible()
+        await expect(leadSummary).toBeVisible()
 
-        const dialogBox = await dialog.boundingBox()
-        const leadBox = await leadSummary.boundingBox()
-        const coAuthorsBox = await coAuthorsHeading.boundingBox()
-        expect(dialogBox).not.toBeNull()
-        expect(leadBox).not.toBeNull()
-        expect(coAuthorsBox).not.toBeNull()
+        await dialog.getByRole('button', { name: 'Stäng' }).last().click()
+        await expect(dialog).toBeHidden()
+      })
 
-        if (viewport.name === 'desktop') {
-          expect(dialogBox?.width ?? 0).toBeGreaterThan(800)
-          expect(coAuthorsBox?.x ?? 0).toBeGreaterThan(
-            (leadBox?.x ?? 0) + (leadBox?.width ?? 0),
-          )
-        } else {
-          expect(coAuthorsBox?.y ?? 0).toBeGreaterThan(
-            (leadBox?.y ?? 0) + (leadBox?.height ?? 0),
-          )
-        }
+      await test.step('manage package co-authors through the row action', async () => {
+        const row = page.getByRole('row', { name: /Mobil användning/ })
+        await row.getByRole('button', { name: 'Hantera medförfattare' }).click()
 
-        await dialog.getByRole('button', { name: 'Stäng' }).click()
+        const dialog = page.getByRole('dialog', {
+          name: 'Kravpaketsmedförfattare',
+        })
+        await expect(dialog).toBeVisible()
+        await expect(
+          dialog.getByText(
+            'Lägg till HSA-id för personer som stödjer kravpaketsansvarig.',
+          ),
+        ).toBeVisible()
+        await expect(dialog.getByText('SE5560000001-pkgco1')).toBeVisible()
+        await expect(
+          dialog.getByRole('textbox', { name: 'Medförfattares HSA-id' }),
+        ).toBeVisible()
+        await expect(
+          dialog.getByRole('button', { name: 'Hämta' }),
+        ).toBeVisible()
+
+        await dialog.getByRole('button', { name: 'Stäng' }).last().click()
         await expect(dialog).toBeHidden()
       })
 
@@ -189,6 +239,23 @@ for (const viewport of viewports) {
           dialog.getByRole('button', { name: 'Byt kravpaketsansvarig' }),
         ).toBeVisible()
 
+        const linkedRequirementsButton = dialog.getByRole('button', {
+          name: /Visa kopplade krav/,
+        })
+        await expect(linkedRequirementsButton).toBeVisible()
+        await linkedRequirementsButton.click()
+
+        const linkedRequirementsDialog = page.getByRole('dialog', {
+          name: /Kopplade krav:/,
+        })
+        await expect(linkedRequirementsDialog).toBeVisible()
+        await linkedRequirementsDialog
+          .getByRole('button', { name: 'Stäng' })
+          .last()
+          .click()
+        await expect(linkedRequirementsDialog).toBeHidden()
+        await expect(dialog).toBeVisible()
+
         const currentLeadHsaId = await leadInput.inputValue()
         await dialog
           .getByRole('button', { name: 'Byt kravpaketsansvarig' })
@@ -210,6 +277,31 @@ for (const viewport of viewports) {
         await expect(
           changeDialog.getByRole('button', { name: 'Hämta' }),
         ).toBeVisible()
+        await expect(
+          changeDialog.getByRole('textbox', { name: 'Namn' }),
+        ).toHaveCount(0)
+        await expect(
+          changeDialog.getByRole('textbox', { name: 'E-post' }),
+        ).toHaveCount(0)
+        await expect(changeDialog.getByText('Inte hämtat')).toBeVisible()
+
+        await fillEditableHsaId(
+          changeDialog,
+          'Nya kravpaketsansvarigs HSA-id',
+          'SE5560000001-admin1',
+        )
+        await nextLeadInput.press('Tab')
+        await expect(
+          changeDialog.getByText('Ada Admin (ada.admin@example.test)'),
+        ).toBeVisible()
+        expect(hsaVerifyRequests).toContainEqual(
+          expect.objectContaining({
+            hsaId: deterministicPackageLeadVerification.hsaId,
+            mode: 'refresh',
+            purpose: 'requirement_package_lead',
+            scopeId: 1,
+          }),
+        )
 
         await fillEditableHsaId(
           changeDialog,

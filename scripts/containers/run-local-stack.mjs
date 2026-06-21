@@ -22,6 +22,7 @@ export const DEFAULT_TEST_SQLSERVER_HOST_PORT = '127.0.0.1:15433'
 export const DEFAULT_RELEASE_SMOKE_SQLSERVER_HOST_PORT = '127.0.0.1:15435'
 export const LOCAL_APP_IMAGE_NAME = 'localhost/kravhantering/app-runtime'
 export const LOCAL_DB_JOB_IMAGE_NAME = 'localhost/kravhantering/db-job'
+export const LOCAL_DEMO_SEED_IMAGE_NAME = 'localhost/kravhantering/demo-seed'
 export const LOCAL_HSA_DIRECTORY_MOCK_IMAGE_NAME =
   'localhost/kravhantering/hsa-directory-mock'
 export const LOCAL_HSA_PERSON_LOOKUP_ADAPTER_IMAGE_NAME =
@@ -29,6 +30,7 @@ export const LOCAL_HSA_PERSON_LOOKUP_ADAPTER_IMAGE_NAME =
 export const LOCAL_IMAGE_TAG = 'local'
 export const LOCAL_APP_IMAGE = `${LOCAL_APP_IMAGE_NAME}:${LOCAL_IMAGE_TAG}`
 export const LOCAL_DB_JOB_IMAGE = `${LOCAL_DB_JOB_IMAGE_NAME}:${LOCAL_IMAGE_TAG}`
+export const LOCAL_DEMO_SEED_IMAGE = `${LOCAL_DEMO_SEED_IMAGE_NAME}:${LOCAL_IMAGE_TAG}`
 export const LOCAL_HSA_DIRECTORY_MOCK_IMAGE = `${LOCAL_HSA_DIRECTORY_MOCK_IMAGE_NAME}:${LOCAL_IMAGE_TAG}`
 export const LOCAL_HSA_PERSON_LOOKUP_ADAPTER_IMAGE = `${LOCAL_HSA_PERSON_LOOKUP_ADAPTER_IMAGE_NAME}:${LOCAL_IMAGE_TAG}`
 export const RELEASE_SMOKE_HSA_PERSON_LOOKUP_URL =
@@ -146,7 +148,10 @@ function imageManifestDigestReference(image) {
 
 export function createLocalStackConfig(options = {}) {
   const mode = options.mode ?? 'test'
-  const env = options.skipBuild ? (options.env ?? process.env) : {}
+  const env =
+    options.skipBuild || options.releaseImagesFromLock
+      ? (options.env ?? process.env)
+      : {}
   const runId =
     options.runId ??
     `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -167,6 +172,25 @@ export function createLocalStackConfig(options = {}) {
     source: 'local-build',
     tag: LOCAL_IMAGE_TAG,
   })
+  const demoSeedImage = readEnvImageConfig(env, 'DEMO_SEED', {
+    image: LOCAL_DEMO_SEED_IMAGE_NAME,
+    source: 'local-build',
+    tag: LOCAL_IMAGE_TAG,
+  })
+  const explicitDemoSeedImageReference =
+    readNonEmpty(env.DEMO_SEED_MANIFEST_DIGEST_REF) ??
+    readNonEmpty(env.DEMO_SEED_IMAGE_REF)
+  const demoSeedImageReference =
+    explicitDemoSeedImageReference ?? imageReference(demoSeedImage)
+  if (
+    mode === 'release-smoke' &&
+    options.releaseImagesFromLock &&
+    !explicitDemoSeedImageReference
+  ) {
+    throw new Error(
+      'Release-smoke lock mode requires DEMO_SEED_MANIFEST_DIGEST_REF or DEMO_SEED_IMAGE_REF. Configure a demo-seed image reference before using --release-images-from-lock.',
+    )
+  }
   const hsaDirectoryMockImage = readEnvImageConfig(env, 'HSA_DIRECTORY_MOCK', {
     image: LOCAL_HSA_DIRECTORY_MOCK_IMAGE_NAME,
     source: 'local-build',
@@ -188,6 +212,8 @@ export function createLocalStackConfig(options = {}) {
     composeFile: options.composeFile ?? DEFAULT_COMPOSE_FILE,
     dbJobImage,
     dbJobImageReference: imageReference(dbJobImage),
+    demoSeedImage,
+    demoSeedImageReference,
     hsaDirectoryMockImage,
     hsaDirectoryMockImageReference: imageReference(hsaDirectoryMockImage),
     hsaIntegrationSupportLockFile:
@@ -776,6 +802,7 @@ function pullReleaseProjectImages(config, options = {}) {
   for (const imageRef of [
     config.appRuntimeImageReference,
     config.dbJobImageReference,
+    ...(config.mode === 'release-smoke' ? [config.demoSeedImageReference] : []),
   ]) {
     runCommand('podman', ['pull', imageRef], options)
   }
@@ -790,19 +817,6 @@ function pullReleaseTestSupportImages(config, options = {}) {
   ]) {
     runCommand('podman', ['pull', imageRef], options)
   }
-}
-
-function demoSeedMountArgs(options = {}) {
-  const cwd = options.cwd ?? process.cwd()
-  return [
-    'seed.mjs',
-    'seed-dogfood.mjs',
-    'seed-dogfood-build.mjs',
-    'seed-archiving-retention-build.mjs',
-  ].flatMap(filename => [
-    '--volume',
-    `${path.resolve(cwd, 'typeorm', filename)}:/workspace/typeorm/${filename}:ro`,
-  ])
 }
 
 function podmanLabelArgs(config, service) {
@@ -823,6 +837,10 @@ function runDatabaseJob(service, config, options = {}) {
     'db-seed-demo': 'seed:demo',
     'db-seed-required': 'seed:required',
   }
+  const jobImageReference =
+    service === 'db-seed-demo'
+      ? config.demoSeedImageReference
+      : config.dbJobImageReference
 
   runCommand(
     'podman',
@@ -837,8 +855,7 @@ function runDatabaseJob(service, config, options = {}) {
       '--network-alias',
       service,
       ...podmanLabelArgs(config, service),
-      ...(service === 'db-seed-demo' ? demoSeedMountArgs(options) : []),
-      config.dbJobImageReference,
+      jobImageReference,
       commands[service],
     ],
     options,
@@ -1067,6 +1084,7 @@ async function up(config, options = {}) {
     runCommand('npm', ['run', 'container:build:app-runtime'], options)
     runCommand('npm', ['run', 'container:build:db-job'], options)
     if (runtimeConfig.mode === 'release-smoke') {
+      runCommand('npm', ['run', 'container:build:demo-seed'], options)
       runCommand('npm', ['run', 'container:build:hsa-directory-mock'], options)
       runCommand(
         'npm',
@@ -1085,6 +1103,10 @@ async function up(config, options = {}) {
     )
     await loadDockerImageIntoPodman(runtimeConfig.dbJobImageReference, options)
     if (runtimeConfig.mode === 'release-smoke') {
+      await loadDockerImageIntoPodman(
+        runtimeConfig.demoSeedImageReference,
+        options,
+      )
       await loadDockerImageIntoPodman(
         runtimeConfig.hsaDirectoryMockImageReference,
         options,
@@ -1194,6 +1216,8 @@ async function up(config, options = {}) {
       runtimeConfig.sqlServerVolumeName,
       '--sqlserver-host-port',
       runtimeConfig.sqlServerHostPort,
+      '--demo-seed-image',
+      runtimeConfig.demoSeedImageReference,
       '--tls-dir',
       runtimeConfig.tlsDir,
     ],

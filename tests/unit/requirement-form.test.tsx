@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const pushMock = vi.fn()
 const backMock = vi.fn()
+const confirmDiscardChangesMock = vi.hoisted(() => vi.fn())
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
@@ -22,6 +23,10 @@ vi.mock('next-intl', () => ({
 
 vi.mock('@/i18n/routing', () => ({
   useRouter: () => ({ push: pushMock, back: backMock }),
+}))
+
+vi.mock('@/hooks/useDiscardChangesConfirmation', () => ({
+  useDiscardChangesConfirmation: () => confirmDiscardChangesMock,
 }))
 
 function okJson(body: unknown) {
@@ -74,6 +79,7 @@ describe('RequirementForm', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    confirmDiscardChangesMock.mockResolvedValue(true)
     localStorage.removeItem('requirement-save-destination')
     fetchMock.mockImplementation((url: string) => {
       if (typeof url === 'string' && url.includes('/api/requirement-areas'))
@@ -108,6 +114,49 @@ describe('RequirementForm', () => {
     expect(
       screen.getByRole('button', { name: /common\.save/i }),
     ).toBeInTheDocument()
+  })
+
+  it('keeps create save disabled until the form has a normalized change', async () => {
+    render(<RequirementForm mode="create" />)
+
+    const saveButton = await screen.findByRole('button', {
+      name: /common\.save/i,
+    })
+    expect(saveButton).toBeDisabled()
+    expect(saveButton).toHaveAttribute('title', 'common.noChangesToSave')
+
+    const desc = screen.getByRole('textbox', {
+      name: /requirement\.description/,
+    })
+    fireEvent.change(desc, { target: { value: 'My desc' } })
+    expect(saveButton).toBeEnabled()
+
+    fireEvent.change(desc, { target: { value: '   ' } })
+    expect(saveButton).toBeDisabled()
+  })
+
+  it('confirms before cancelling a dirty create form', async () => {
+    confirmDiscardChangesMock
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+    render(<RequirementForm mode="create" />)
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Unsaved requirement text' } },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
+
+    await waitFor(() => {
+      expect(confirmDiscardChangesMock).toHaveBeenCalledTimes(1)
+    })
+    expect(backMock).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
+
+    await waitFor(() => {
+      expect(backMock).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('renders edit mode form', async () => {
@@ -148,7 +197,30 @@ describe('RequirementForm', () => {
     const dialog = await screen.findByRole('dialog', {
       name: /requirement\.addNewNormReference/i,
     })
+    expect(dialog).toHaveClass('max-w-4xl')
     expect(dialog).toHaveTextContent('requirement.newNormReferenceWarning')
+    const nameInput = within(dialog).getByRole('textbox', {
+      name: /^normReference\.name/,
+    })
+    expect(nameInput.closest('div')?.parentElement).toHaveClass(
+      'grid',
+      'grid-cols-1',
+      'lg:grid-cols-2',
+    )
+    expect(
+      Array.from(dialog.querySelectorAll('input')).map(input => input.id),
+    ).toEqual([
+      'modal-nr-name',
+      'modal-nr-type',
+      'modal-nr-reference',
+      'modal-nr-version',
+      'modal-nr-issuer',
+      'modal-nr-uri',
+      'modal-nr-id',
+    ])
+    expect(dialog.querySelector('#modal-nr-id')?.closest('div')).toHaveClass(
+      'lg:col-span-2',
+    )
 
     fireEvent.click(within(dialog).getByText('common.cancel'))
 
@@ -245,6 +317,11 @@ describe('RequirementForm', () => {
       expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
     })
 
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Created description' } },
+    )
+
     const form = container.querySelector('form') as HTMLFormElement
     fireEvent.submit(form)
 
@@ -302,6 +379,11 @@ describe('RequirementForm', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
     })
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Changed existing' } },
+    )
 
     const form = container.querySelector('form') as HTMLFormElement
     fireEvent.submit(form)
@@ -434,6 +516,12 @@ describe('RequirementForm', () => {
       />,
     )
 
+    fireEvent.change(
+      await screen.findByRole('textbox', {
+        name: /requirement\.description/,
+      }),
+      { target: { value: 'Changed before conflict' } },
+    )
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
 
     await waitFor(() => {
@@ -498,6 +586,12 @@ describe('RequirementForm', () => {
       />,
     )
 
+    fireEvent.change(
+      await screen.findByRole('textbox', {
+        name: /requirement\.description/,
+      }),
+      { target: { value: 'Changed before reload conflict' } },
+    )
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
 
     const reload = await screen.findByRole('button', {

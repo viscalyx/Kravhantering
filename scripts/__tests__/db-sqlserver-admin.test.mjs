@@ -723,6 +723,41 @@ describe('db-sqlserver-admin.mjs', () => {
     )
   })
 
+  it('keeps demo data commands out of the production db-job image', async () => {
+    const error = vi.fn()
+    const log = vi.fn()
+    const dataSourceCtor = vi.fn()
+    const env = {
+      KRAVHANTERING_DB_ADMIN_IMAGE: 'db-job',
+      SQLSERVER_DATABASE_URL:
+        'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
+    }
+
+    await expect(
+      main(['seed:demo'], {
+        consoleObj: { error, log },
+        dataSourceCtor,
+        env,
+      }),
+    ).resolves.toBe(1)
+    await expect(
+      main(['demo:clear', '--confirm-clear-non-required-data'], {
+        consoleObj: { error, log },
+        dataSourceCtor,
+        env,
+      }),
+    ).resolves.toBe(1)
+
+    expect(error).toHaveBeenCalledWith(
+      'seed:demo is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migrate and seed:required in the production db-job image.',
+    )
+    expect(error).toHaveBeenCalledWith(
+      'demo:clear is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migrate and seed:required in the production db-job image.',
+    )
+    expect(log).not.toHaveBeenCalled()
+    expect(dataSourceCtor).not.toHaveBeenCalled()
+  })
+
   it('runs setup with required seed before demo seed', async () => {
     const events = []
     const error = vi.fn()

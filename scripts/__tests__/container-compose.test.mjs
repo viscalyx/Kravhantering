@@ -80,6 +80,9 @@ describe('container Compose generation', () => {
     expect(values.dbJobImage).toBe(
       'localhost/kravhantering/db-job:pr-12-99-deadbeef',
     )
+    expect(values.demoSeedImage).toBe(
+      'localhost/kravhantering/db-job:pr-12-99-deadbeef',
+    )
     expect(values.nginxImage).toBe(
       'docker.io/library/nginx@sha256:nginx-manifest',
     )
@@ -93,13 +96,19 @@ describe('container Compose generation', () => {
   })
 
   it('uses manifest digest references for project images in release mode', () => {
-    const values = buildComposeValues(stackLock(), { mode: 'release' })
+    const values = buildComposeValues(stackLock(), {
+      demoSeedImage: 'ghcr.io/viscalyx/kravhantering-demo-seed@sha256:demo',
+      mode: 'release',
+    })
 
     expect(values.appRuntimeImage).toBe(
       'localhost/kravhantering/app-runtime@sha256:app-manifest',
     )
     expect(values.dbJobImage).toBe(
       'localhost/kravhantering/db-job@sha256:dbjob-manifest',
+    )
+    expect(values.demoSeedImage).toBe(
+      'ghcr.io/viscalyx/kravhantering-demo-seed@sha256:demo',
     )
   })
 
@@ -110,6 +119,7 @@ describe('container Compose generation', () => {
     )
     const compose = generateCompose(template, stackLock(), {
       mode: 'release',
+      demoSeedImage: 'ghcr.io/viscalyx/kravhantering-demo-seed@sha256:demo',
       projectName: 'kravhantering-test-run',
       sqlServerHostPort: '127.0.0.1:15433',
       sqlServerVolumeName: 'kravhantering-test-sqlserver-data',
@@ -124,6 +134,9 @@ describe('container Compose generation', () => {
       'image: "localhost/kravhantering/db-job@sha256:dbjob-manifest"',
     )
     expect(compose).toContain(
+      'image: "ghcr.io/viscalyx/kravhantering-demo-seed@sha256:demo"',
+    )
+    expect(compose).toContain(
       'image: "docker.io/library/nginx@sha256:nginx-manifest"',
     )
     expect(compose).toContain('- ./containers/app/.env.app.local')
@@ -134,9 +147,7 @@ describe('container Compose generation', () => {
     expect(compose).toContain('name: "kravhantering-test-sqlserver-data"')
     expect(compose).toContain('db-bootstrap:')
     expect(compose).toContain('command: ["bootstrap"]')
-    expect(compose).toContain(
-      './typeorm/seed.mjs:/workspace/typeorm/seed.mjs:ro',
-    )
+    expect(compose).not.toContain('./typeorm/seed.mjs')
     expect(compose).not.toContain('{{')
     expect(compose).not.toContain('AUTH_SESSION_COOKIE_PASSWORD=')
     expect(compose).not.toContain('MSSQL_SA_PASSWORD=')

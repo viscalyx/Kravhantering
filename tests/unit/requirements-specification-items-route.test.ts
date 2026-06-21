@@ -196,8 +196,8 @@ describe('requirements-specifications/[id]/items route', () => {
     const { countDeviationsPerItemRef } = await import('@/lib/dal/deviations')
     vi.mocked(countDeviationsPerItemRef).mockResolvedValueOnce(
       new Map([
-        ['lib:31', { approved: 1, pending: 2, total: 3 }],
-        ['local:41', { approved: 0, pending: 1, total: 1 }],
+        ['lib:31', { approved: 1, pending: 2, rejected: 0, total: 3 }],
+        ['local:41', { approved: 0, pending: 1, rejected: 0, total: 1 }],
       ]),
     )
 

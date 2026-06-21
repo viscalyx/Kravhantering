@@ -12,6 +12,7 @@ import {
   boundedDbStringSchema,
   optionalBusinessTextSchema,
 } from '@/lib/http/validation'
+import { createRequestContext } from '@/lib/requirements/auth'
 import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 
 const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
@@ -28,10 +29,20 @@ const createAreaSchema = z
   })
   .strict()
 
-export async function GET() {
+export async function GET(request: Request) {
   const db = await getRequestSqlServerDataSource()
+  const context = await createRequestContext(request, 'rest')
   const areas = await listAreas(db)
-  return NextResponse.json({ areas })
+  const isAdmin = context.actor.roles.includes('Admin')
+  return NextResponse.json({
+    areas: areas.map(area => ({
+      ...area,
+      permissions: {
+        canManageAssignments:
+          isAdmin || context.actor.hsaId === area.ownerHsaId,
+      },
+    })),
+  })
 }
 
 export const POST = secureMutationRoute({

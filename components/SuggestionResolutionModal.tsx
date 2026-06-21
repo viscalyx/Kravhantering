@@ -6,9 +6,15 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import DirtyStateButton from '@/components/DirtyStateButton'
+import { modalResizableTextareaRows3ClassName } from '@/components/modal-textarea-class'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
+
+const textareaClassName = `w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500 dark:border-secondary-600 dark:bg-secondary-900 ${modalResizableTextareaRows3ClassName}`
 
 interface SuggestionResolutionModalProps {
   loading?: boolean
@@ -28,23 +34,23 @@ export default function SuggestionResolutionModal({
   const [resolution, setResolution] = useState<1 | 2>(1)
   const [motivation, setMotivation] = useState('')
   const [resolvedBy, setResolvedBy] = useState('')
+  const [baselineSignature, setBaselineSignature] = useState(() =>
+    createDirtySnapshot({ motivation: '', resolution: 1, resolvedBy: '' }),
+  )
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
   const shouldReduceMotion = useReducedMotion()
-
-  const { handleKeyDown } = useModalFocus({
-    modalRef,
-    initialFocusRef: textareaRef,
-    onClose,
-    open,
-  })
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
 
   useEffect(() => {
     if (open) {
       setResolution(1)
       setMotivation('')
       setResolvedBy('')
+      setBaselineSignature(
+        createDirtySnapshot({ motivation: '', resolution: 1, resolvedBy: '' }),
+      )
       setOpenHelp(new Set())
     }
   }, [open])
@@ -61,10 +67,34 @@ export default function SuggestionResolutionModal({
     })
   }
 
+  const formDirty =
+    baselineSignature !==
+    createDirtySnapshot({ motivation, resolution, resolvedBy })
+
+  const requestClose = useCallback(
+    async (anchorEl?: HTMLElement | null) => {
+      if (loading) return
+      if (formDirty && !(await confirmDiscardChanges(anchorEl))) return
+      onClose()
+    },
+    [confirmDiscardChanges, formDirty, loading, onClose],
+  )
+
+  const { handleKeyDown } = useModalFocus({
+    closeDisabled: loading,
+    modalRef,
+    initialFocusRef: textareaRef,
+    onClose: () => {
+      void requestClose()
+    },
+    open,
+  })
+
   const handleSubmit = useCallback(() => {
     if (!motivation.trim() || !resolvedBy.trim()) return
+    if (!formDirty) return
     onSubmit(resolution, motivation.trim(), resolvedBy.trim())
-  }, [resolution, motivation, resolvedBy, onSubmit])
+  }, [formDirty, resolution, motivation, resolvedBy, onSubmit])
 
   if (typeof window === 'undefined') return null
 
@@ -72,21 +102,16 @@ export default function SuggestionResolutionModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
           key="suggestion-resolution-backdrop"
           {...fadeMotion(shouldReduceMotion)}
         >
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
-          {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
           <motion.div
             aria-labelledby="suggestion-resolution-title"
             aria-modal="true"
-            className="relative z-50 w-full max-w-md rounded-xl bg-white dark:bg-secondary-900 shadow-2xl"
+            className="relative z-50 max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-xl bg-white shadow-2xl dark:bg-secondary-900"
             {...devMarker({
               name: 'dialog',
               priority: 420,
@@ -152,7 +177,7 @@ export default function SuggestionResolutionModal({
                   {tf('resolutionMotivationHelp')}
                 </AnimatedHelpPanel>
                 <textarea
-                  className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className={textareaClassName}
                   id="resolution-motivation"
                   onChange={e => setMotivation(e.target.value)}
                   placeholder={tf('resolutionMotivationPlaceholder')}
@@ -201,19 +226,22 @@ export default function SuggestionResolutionModal({
                 <button
                   className="btn-secondary text-sm px-4 py-2"
                   disabled={loading}
-                  onClick={onClose}
+                  onClick={event => {
+                    void requestClose(event.currentTarget)
+                  }}
                   type="button"
                 >
                   {tc('cancel')}
                 </button>
-                <button
+                <DirtyStateButton
                   className="btn-primary text-sm px-4 py-2"
+                  dirty={formDirty}
                   disabled={!motivation.trim() || !resolvedBy.trim() || loading}
                   onClick={handleSubmit}
                   type="button"
                 >
                   {loading ? tc('saving') : tf('recordResolution')}
-                </button>
+                </DirtyStateButton>
               </div>
             </div>
           </motion.div>

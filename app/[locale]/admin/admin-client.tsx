@@ -53,6 +53,7 @@ import ActionAuditLogView, {
   type ActionAuditLogLabels,
 } from '@/components/admin/ActionAuditLogView'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useDataSubjectExportDownload } from '@/components/privacy/useDataSubjectExportDownload'
 import { Link, useRouter } from '@/i18n/routing'
@@ -65,6 +66,7 @@ import type {
 import type { ActionAuditLogSearchParams } from '@/lib/audit/action-audit-query'
 import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { BUSINESS_TEXT_MAX_LENGTH } from '@/lib/http/validation-constants'
@@ -333,6 +335,18 @@ function createShippedColumnDefaults() {
   return normalizeRequirementListColumnDefaults(null)
 }
 
+function requirementColumnDefaultsSnapshot(
+  columns: RequirementListColumnDefault[],
+) {
+  return createDirtySnapshot({
+    columns: normalizeRequirementListColumnDefaults(columns).map(column => ({
+      columnId: column.columnId,
+      defaultVisible: column.defaultVisible,
+      sortOrder: column.sortOrder,
+    })),
+  })
+}
+
 type PrivacyAction = 'anonymize' | 'delete' | 'skip' | 'switch'
 type ArchivingRetentionAction = 'delete'
 type PrivacyHelpField =
@@ -518,11 +532,26 @@ function toHsaIdPrefixAdminItem(row: {
   }
 }
 
+function hsaIdPrefixSnapshot(prefixes: HsaIdPrefixAdminItem[]) {
+  return createDirtySnapshot({
+    prefixes: prefixes.map(item => ({
+      ...(item.id === undefined ? {} : { id: item.id }),
+      isDefault: item.isDefault,
+      isVisible: item.isVisible,
+      label: item.label.trim() || null,
+      prefix: item.prefix.trim(),
+    })),
+  })
+}
+
 function IdentitySettingsPanel() {
   const ta = useTranslations('admin')
   const tc = useTranslations('common')
   const [openIdentityHelp, setOpenIdentityHelp] = useState<string | null>(null)
   const [prefixes, setPrefixes] = useState<HsaIdPrefixAdminItem[]>([])
+  const [prefixesBaseline, setPrefixesBaseline] = useState(() =>
+    hsaIdPrefixSnapshot([]),
+  )
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [message, setMessage] = useState<string | null>(null)
   const panelRef = useRef<HTMLElement | null>(null)
@@ -530,6 +559,7 @@ function IdentitySettingsPanel() {
   const isSaving = saveState === 'saving'
   const loadErrorMessage = ta('identity.loadError')
   const visiblePrefixCount = prefixes.filter(item => item.isVisible).length
+  const prefixesDirty = prefixesBaseline !== hsaIdPrefixSnapshot(prefixes)
 
   const loadPrefixes = useCallback(async () => {
     setSaveState('saving')
@@ -551,7 +581,9 @@ function IdentitySettingsPanel() {
           prefix: string
         }>
       }
-      setPrefixes((payload.prefixes ?? []).map(toHsaIdPrefixAdminItem))
+      const nextPrefixes = (payload.prefixes ?? []).map(toHsaIdPrefixAdminItem)
+      setPrefixes(nextPrefixes)
+      setPrefixesBaseline(hsaIdPrefixSnapshot(nextPrefixes))
       setSaveState('idle')
     } catch {
       setSaveState('error')
@@ -732,6 +764,7 @@ function IdentitySettingsPanel() {
   }
 
   const savePrefixes = async () => {
+    if (!prefixesDirty) return
     const validationMessage = validatePrefixes()
     if (validationMessage) {
       setSaveState('error')
@@ -778,7 +811,9 @@ function IdentitySettingsPanel() {
         }>
       }
       if (requestToken !== saveTokenRef.current) return
-      setPrefixes((payload.prefixes ?? []).map(toHsaIdPrefixAdminItem))
+      const nextPrefixes = (payload.prefixes ?? []).map(toHsaIdPrefixAdminItem)
+      setPrefixes(nextPrefixes)
+      setPrefixesBaseline(hsaIdPrefixSnapshot(nextPrefixes))
       setSaveState('saved')
       setMessage(null)
     } catch {
@@ -838,15 +873,16 @@ function IdentitySettingsPanel() {
             <Plus aria-hidden="true" className="h-4 w-4" />
             {ta('identity.addPrefix')}
           </button>
-          <button
+          <DirtyStateButton
             className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+            dirty={prefixesDirty}
             disabled={isSaving}
             onClick={savePrefixes}
             type="button"
           >
             <Save aria-hidden="true" className="h-4 w-4" />
             {isSaving ? tc('loading') : tc('save')}
-          </button>
+          </DirtyStateButton>
         </div>
       </div>
 
@@ -3368,6 +3404,11 @@ export default function AdminClient({
   const [columnDefaults, setColumnDefaults] = useState<
     RequirementListColumnDefault[]
   >(() => normalizeRequirementListColumnDefaults(initialColumnDefaults))
+  const [columnDefaultsBaseline, setColumnDefaultsBaseline] = useState(() =>
+    requirementColumnDefaultsSnapshot(
+      normalizeRequirementListColumnDefaults(initialColumnDefaults),
+    ),
+  )
   const [columnSaveState, setColumnSaveState] = useState<SaveState>('idle')
   const columnSaveTokenRef = useRef(0)
   useHelpContent(
@@ -3388,6 +3429,8 @@ export default function AdminClient({
     [searchParams],
   )
   const isColumnSaving = columnSaveState === 'saving'
+  const columnDefaultsDirty =
+    columnDefaultsBaseline !== requirementColumnDefaultsSnapshot(columnDefaults)
 
   useEffect(() => {
     setActiveTab(
@@ -3460,6 +3503,7 @@ export default function AdminClient({
   }
 
   const saveColumns = async () => {
+    if (!columnDefaultsDirty) return
     const requestToken = columnSaveTokenRef.current + 1
     columnSaveTokenRef.current = requestToken
     setColumnSaveState('saving')
@@ -3491,6 +3535,7 @@ export default function AdminClient({
         data.columns ?? columnDefaults,
       )
       setColumnDefaults(nextColumns)
+      setColumnDefaultsBaseline(requirementColumnDefaultsSnapshot(nextColumns))
       setColumnSaveState('saved')
     } catch {
       if (requestToken === columnSaveTokenRef.current) {
@@ -3753,15 +3798,16 @@ export default function AdminClient({
                   <RotateCcw aria-hidden="true" className="h-4 w-4" />
                   {tc('resetToDefault')}
                 </button>
-                <button
+                <DirtyStateButton
                   className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60 sm:w-auto sm:min-w-11"
+                  dirty={columnDefaultsDirty}
                   disabled={isColumnSaving}
                   onClick={saveColumns}
                   type="button"
                 >
                   <Save aria-hidden="true" className="h-4 w-4" />
                   {isColumnSaving ? tc('loading') : tc('save')}
-                </button>
+                </DirtyStateButton>
               </div>
             </div>
 

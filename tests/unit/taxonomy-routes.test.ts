@@ -210,7 +210,7 @@ vi.mock('@/lib/dal/specification-governance-object-types', () => ({
 const mockUpdateReqArea = vi.fn()
 const mockDeleteReqArea = vi.fn()
 vi.mock('@/lib/dal/requirement-areas', () => ({
-  listAreas: async () => [{ id: 1 }],
+  listAreas: async () => [{ id: 1, ownerHsaId: 'SE5560000001-route' }],
   canAuthorAnyArea: (...a: unknown[]) =>
     requirementAreaPermissionState.canAuthorAnyArea(...a),
   canAuthorArea: (...a: unknown[]) =>
@@ -285,6 +285,14 @@ const mockCreateRequirementPackage = vi.fn(async (..._args: unknown[]) => ({
 const mockUpdateRequirementPackage = vi.fn()
 const mockDeleteRequirementPackage = vi.fn()
 const mockArchiveRequirementPackage = vi.fn()
+const mockListRequirementPackageCoAuthors = vi.fn<
+  (
+    ..._args: unknown[]
+  ) => Promise<
+    Array<{ displayName: string; email: string | null; hsaId: string }>
+  >
+>(async () => [])
+const mockReplaceRequirementPackageCoAuthors = vi.fn()
 const mockGetRequirementPackageById = vi.fn(
   async (
     ..._args: unknown[]
@@ -310,6 +318,8 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
   getLinkedRequirementsForPackage: async () => [],
   getRequirementPackageById: (...a: unknown[]) =>
     mockGetRequirementPackageById(...a),
+  listRequirementPackageCoAuthors: (...a: unknown[]) =>
+    mockListRequirementPackageCoAuthors(...a),
   getRequirementPackageUsage: async () => ({
     answerLinkCount: 0,
     libraryRequirementCount: 0,
@@ -321,6 +331,8 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
     mockDeleteRequirementPackage(...a),
   archiveRequirementPackage: (...a: unknown[]) =>
     mockArchiveRequirementPackage(...a),
+  replaceRequirementPackageCoAuthors: (...a: unknown[]) =>
+    mockReplaceRequirementPackageCoAuthors(...a),
 }))
 
 const mockListNormReferences = vi.fn(async (..._args: unknown[]) => [{ id: 1 }])
@@ -392,6 +404,10 @@ import {
 import { GET as getCats } from '@/app/api/requirement-categories/route'
 import { POST as archiveRequirementPackage } from '@/app/api/requirement-packages/[id]/archive/route'
 import {
+  GET as getRequirementPackageCoAuthors,
+  PUT as putRequirementPackageCoAuthors,
+} from '@/app/api/requirement-packages/[id]/co-authors/route'
+import {
   DELETE as deleteRequirementPackage,
   PUT as putRequirementPackage,
 } from '@/app/api/requirement-packages/[id]/route'
@@ -448,6 +464,15 @@ function jsonReq(method: string, body: Record<string, unknown>): NextRequest {
     body: JSON.stringify(body),
     headers: { 'Content-Type': 'application/json' },
   })
+}
+
+function specificationCreateBody(overrides: Record<string, unknown> = {}) {
+  return {
+    name: 'A',
+    specificationLifecycleStatusId: 4,
+    uniqueId: 'A',
+    ...overrides,
+  }
 }
 
 async function expectInvalidRequest(
@@ -1036,7 +1061,7 @@ describe('requirement-areas routes', () => {
   })
 
   it('GET returns areas', async () => {
-    const r = await getReqAreas()
+    const r = await getReqAreas(new Request('http://l/api/requirement-areas'))
     const j = (await r.json()) as { areas: { id: number }[] }
     expect(j.areas).toHaveLength(1)
   })
@@ -1235,7 +1260,7 @@ describe('requirement-specifications routes', () => {
     const r = await postPkg(
       new NextRequest('http://l', {
         method: 'POST',
-        body: '{"name":"A","uniqueId":"A"}',
+        body: JSON.stringify(specificationCreateBody()),
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -1247,6 +1272,7 @@ describe('requirement-specifications routes', () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
+        specificationLifecycleStatusId: 4,
         uniqueId: 'A',
       }),
     )
@@ -1270,10 +1296,13 @@ describe('requirement-specifications routes', () => {
   })
   it('POST accepts long existing-style specification slugs', async () => {
     const r = await postPkg(
-      jsonReq('POST', {
-        name: 'Playwright lifecycle',
-        uniqueId: 'PLAYWRIGHT-LIFECYCLE-2026',
-      }),
+      jsonReq(
+        'POST',
+        specificationCreateBody({
+          name: 'Playwright lifecycle',
+          uniqueId: 'PLAYWRIGHT-LIFECYCLE-2026',
+        }),
+      ),
     )
 
     expect(r.status).toBe(201)
@@ -1307,9 +1336,43 @@ describe('requirement-specifications routes', () => {
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })
   it.each([
-    ['missing name', { uniqueId: 'VALID-SLUG' }, 'name'],
-    ['empty name', { name: '', uniqueId: 'VALID-SLUG' }, 'name'],
-    ['empty uniqueId', { name: 'A', uniqueId: '' }, 'uniqueId'],
+    ['missing', { name: 'A', uniqueId: 'A' }],
+    [
+      'null',
+      {
+        name: 'A',
+        specificationLifecycleStatusId: null,
+        uniqueId: 'A',
+      },
+    ],
+  ])('POST rejects %s specification lifecycle status', async (_label, body) => {
+    const r = await postPkg(jsonReq('POST', body))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'specificationLifecycleStatusId')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreatePkg).not.toHaveBeenCalled()
+  })
+  it.each([
+    [
+      'missing name',
+      { specificationLifecycleStatusId: 4, uniqueId: 'VALID-SLUG' },
+      'name',
+    ],
+    [
+      'empty name',
+      {
+        name: '',
+        specificationLifecycleStatusId: 4,
+        uniqueId: 'VALID-SLUG',
+      },
+      'name',
+    ],
+    [
+      'empty uniqueId',
+      { name: 'A', specificationLifecycleStatusId: 4, uniqueId: '' },
+      'uniqueId',
+    ],
   ])('POST rejects %s', async (_label, body, path) => {
     const r = await postPkg(jsonReq('POST', body))
 
@@ -1328,7 +1391,9 @@ describe('requirement-specifications routes', () => {
     ['numeric only', '123'],
     ['oversize', 'A'.repeat(451)],
   ])('POST rejects invalid uniqueId: %s', async (_label, uniqueId) => {
-    const r = await postPkg(jsonReq('POST', { name: 'A', uniqueId }))
+    const r = await postPkg(
+      jsonReq('POST', specificationCreateBody({ uniqueId })),
+    )
 
     expect(r.status).toBe(400)
     await expectInvalidRequest(r, 'uniqueId')
@@ -1336,12 +1401,7 @@ describe('requirement-specifications routes', () => {
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })
   it('POST sets the specification lead from the authenticated actor', async () => {
-    const r = await postPkg(
-      jsonReq('POST', {
-        name: 'A',
-        uniqueId: 'A',
-      }),
-    )
+    const r = await postPkg(jsonReq('POST', specificationCreateBody()))
 
     expect(r.status).toBe(201)
     expect(mockCreatePkg).toHaveBeenCalledWith(
@@ -1356,11 +1416,12 @@ describe('requirement-specifications routes', () => {
   })
   it('POST accepts the authenticated actor as the specification lead HSA-id', async () => {
     const r = await postPkg(
-      jsonReq('POST', {
-        name: 'A',
-        uniqueId: 'A',
-        responsibleHsaId: 'SE5560000001-route',
-      }),
+      jsonReq(
+        'POST',
+        specificationCreateBody({
+          responsibleHsaId: 'SE5560000001-route',
+        }),
+      ),
     )
 
     expect(r.status).toBe(201)
@@ -1376,11 +1437,12 @@ describe('requirement-specifications routes', () => {
   })
   it('POST rejects a client-selected specification lead HSA-id', async () => {
     const r = await postPkg(
-      jsonReq('POST', {
-        name: 'A',
-        uniqueId: 'A',
-        responsibleHsaId: 'SE5560000001-ada1',
-      }),
+      jsonReq(
+        'POST',
+        specificationCreateBody({
+          responsibleHsaId: 'SE5560000001-ada1',
+        }),
+      ),
     )
 
     expect(r.status).toBe(400)
@@ -1394,11 +1456,12 @@ describe('requirement-specifications routes', () => {
   })
   it('POST rejects a client-selected specification lead display name', async () => {
     const r = await postPkg(
-      jsonReq('POST', {
-        name: 'A',
-        uniqueId: 'A',
-        responsibleDisplayName: 'Ada Lovelace',
-      }),
+      jsonReq(
+        'POST',
+        specificationCreateBody({
+          responsibleDisplayName: 'Ada Lovelace',
+        }),
+      ),
     )
 
     expect(r.status).toBe(400)
@@ -1416,6 +1479,17 @@ describe('requirement-specifications routes', () => {
 
     expect(r.status).toBe(400)
     await expectInvalidRequest(r, 'uniqueId')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockUpdatePkg).not.toHaveBeenCalled()
+  })
+  it('PUT rejects clearing specification lifecycle status', async () => {
+    const r = await putPkg(
+      jsonReq('PUT', { specificationLifecycleStatusId: null }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'specificationLifecycleStatusId')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockUpdatePkg).not.toHaveBeenCalled()
   })
@@ -1610,7 +1684,7 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"A","coAuthorHsaIds":["SE5560000001-coa1"]}',
+        body: '{"name":"A"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -1645,7 +1719,7 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"A","coAuthorHsaIds":["SE5560000001-coa1"]}',
+        body: '{"name":"A"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -1655,7 +1729,6 @@ describe('requirement-packages routes', () => {
     expect(mockCreateRequirementPackage).toHaveBeenCalledWith(
       routeState.transactionDb,
       expect.objectContaining({
-        coAuthorHsaIds: ['SE5560000001-coa1'],
         leadHsaId: 'SE5560000001-route',
         name: 'A',
       }),
@@ -1675,13 +1748,26 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"A","coAuthorHsaIds":["abc"]}',
+        body: '{"name":""}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
     expect(r.status).toBe(400)
     await expectInvalidRequest(r)
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
+  it('POST rejects package co-author fields in metadata payloads', async () => {
+    const r = await postRequirementPackage(
+      jsonReq('POST', {
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+        name: 'A',
+      }),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreateRequirementPackage).not.toHaveBeenCalled()
   })
   it('POST rejects client-supplied package lead fields', async () => {
     const r = await postRequirementPackage(
@@ -1762,6 +1848,116 @@ describe('requirement-packages routes', () => {
     await expectInvalidRequest(r)
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockUpdateRequirementPackage).not.toHaveBeenCalled()
+  })
+  it('PUT rejects package co-author fields in metadata payloads', async () => {
+    const r = await putRequirementPackage(
+      jsonReq('PUT', { coAuthorHsaIds: ['SE5560000001-coa1'] }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockUpdateRequirementPackage).not.toHaveBeenCalled()
+  })
+  it('GET co-authors returns package co-author assignments', async () => {
+    mockListRequirementPackageCoAuthors.mockResolvedValueOnce([
+      {
+        displayName: 'Co Author',
+        email: 'co.author@example.test',
+        hsaId: 'SE5560000001-coa1',
+      },
+    ])
+
+    const r = await getRequirementPackageCoAuthors(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    await expect(r.json()).resolves.toMatchObject({
+      coAuthors: [
+        {
+          displayName: 'Co Author',
+          email: 'co.author@example.test',
+          hsaId: 'SE5560000001-coa1',
+        },
+      ],
+    })
+    expect(mockListRequirementPackageCoAuthors).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+    )
+  })
+  it('PUT co-authors replaces package co-author assignments', async () => {
+    mockReplaceRequirementPackageCoAuthors.mockResolvedValue({
+      coAuthorHsaIds: ['SE5560000001-coa1'],
+      requirementPackageId: 1,
+    })
+    responsibilityPersonState.getRequirementResponsibilityPerson.mockResolvedValueOnce(
+      {
+        email: 'coa1@example.test',
+        givenName: 'Co',
+        hsaId: 'SE5560000001-coa1',
+        middleName: null,
+        surname: 'Author',
+      },
+    )
+
+    const r = await putRequirementPackageCoAuthors(
+      jsonReq('PUT', {
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+      }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockReplaceRequirementPackageCoAuthors).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+        coAuthorPeople: [
+          expect.objectContaining({ hsaId: 'SE5560000001-coa1' }),
+        ],
+      }),
+    )
+    expect(actionAuditState.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        action: 'requirement_package.co_authors.update',
+        targetId: 1,
+        targetKind: 'requirement_package',
+      }),
+    )
+  })
+  it('PUT co-authors rejects duplicate package co-author HSA-ids', async () => {
+    const r = await putRequirementPackageCoAuthors(
+      jsonReq('PUT', {
+        coAuthorHsaIds: ['SE5560000001-coa1', 'SE5560000001-coa1'],
+      }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'coAuthorHsaIds')
+    expect(mockReplaceRequirementPackageCoAuthors).not.toHaveBeenCalled()
+  })
+  it('PUT co-authors rejects oversized package co-author lists', async () => {
+    const r = await putRequirementPackageCoAuthors(
+      jsonReq('PUT', {
+        coAuthorHsaIds: Array.from(
+          { length: 201 },
+          (_value, index) => `SE5560000001-coa${index}`,
+        ),
+      }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'coAuthorHsaIds')
+    expect(mockReplaceRequirementPackageCoAuthors).not.toHaveBeenCalled()
   })
   it('PUT returns 403 without Admin before updating', async () => {
     authState.context.actor.roles = []

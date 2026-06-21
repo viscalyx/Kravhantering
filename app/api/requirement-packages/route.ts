@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
-import { isHsaId } from '@/lib/auth/hsa-id'
 import {
   countLinkedRequirementsByPackage,
   createRequirementPackage,
@@ -13,34 +12,20 @@ import {
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
-  ARRAY_INPUT_MAX_ITEMS,
   boundedDbStringSchema,
   optionalBusinessTextSchema,
   parseSearchParams,
   queryBooleanSchema,
 } from '@/lib/http/validation'
-import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
-import { validationError } from '@/lib/requirements/errors'
-import { requireRequirementPackageCreatePermission } from '@/lib/requirements/requirement-package-permissions'
 import {
-  resolveVerifiedRequirementResponsibilityPeople,
-  resolveVerifiedRequirementResponsibilityPerson,
-} from '@/lib/requirements/responsibility-person-verification'
-
-const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
-  message: 'Expected a valid HSA-id',
-})
-
-const coAuthorHsaIdsSchema = z
-  .array(hsaIdSchema)
-  .max(ARRAY_INPUT_MAX_ITEMS)
-  .refine(values => new Set(values).size === values.length, {
-    message: 'Expected unique HSA-id values',
-  })
+  createRequestContext,
+  requireHumanActorSnapshot,
+} from '@/lib/requirements/auth'
+import { requireRequirementPackageCreatePermission } from '@/lib/requirements/requirement-package-permissions'
+import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 
 const requirementPackageSchema = z
   .object({
-    coAuthorHsaIds: coAuthorHsaIdsSchema.optional().default([]),
     description: optionalBusinessTextSchema,
     name: boundedDbStringSchema,
   })
@@ -59,6 +44,9 @@ export async function GET(request: Request) {
   )
   if (!parsedQuery.ok) return parsedQuery.response
   const db = await getRequestSqlServerDataSource()
+  const context = await createRequestContext(request, 'rest')
+  const isAdmin = context.actor.roles.includes('Admin')
+  const actorHsaId = context.actor.hsaId?.trim() ?? null
   const [requirementPackages, counts] = await Promise.all([
     listRequirementPackages(db, {
       includeArchived: parsedQuery.data.includeArchived,
@@ -71,6 +59,9 @@ export async function GET(request: Request) {
       linkedRequirementCount: counts[s.id] ?? 0,
       owner: null,
       ownerId: null,
+      permissions: {
+        canManageAssignments: isAdmin || actorHsaId === s.leadHsaId,
+      },
     })),
   })
 }
@@ -84,26 +75,15 @@ export const POST = secureMutationRoute({
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
     const actor = requireHumanActorSnapshot(context)
-    if (body.coAuthorHsaIds.includes(actor.hsaId)) {
-      throw validationError('Package lead cannot also be package co-author', {
-        reason: 'package_lead_cannot_be_co_author',
-      })
-    }
     const leadPerson = await resolveVerifiedRequirementResponsibilityPerson(
       db,
       actor.hsaId,
-    )
-    const coAuthorPeople = await resolveVerifiedRequirementResponsibilityPeople(
-      db,
-      body.coAuthorHsaIds,
     )
     const requirementPackage = await db.transaction(async manager => {
       const createdRequirementPackage = await createRequirementPackage(
         manager,
         {
           ...body,
-          createdBy: actor,
-          coAuthorPeople,
           leadHsaId: actor.hsaId,
           leadPerson,
         },

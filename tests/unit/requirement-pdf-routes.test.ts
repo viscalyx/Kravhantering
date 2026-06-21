@@ -15,11 +15,13 @@ const routeState = vi.hoisted(() => ({
   buildCombinedReviewReport: vi.fn(),
   buildDeviationReviewReport: vi.fn(),
   buildReviewReport: vi.fn(),
+  buildSpecificationProfileReport: vi.fn(),
   collectDeviationForReport: vi.fn(),
   collectMultipleRequirementsForReport: vi.fn(),
   collectMultiplePublishedRequirementsForReport: vi.fn(),
   collectRequirementForReport: vi.fn(),
-  collectSpecificationItemsForReport: vi.fn(),
+  collectSpecificationOutputData: vi.fn(),
+  collectSuggestionsForReport: vi.fn(),
   context: {
     actor: {
       displayName: 'Report Tester',
@@ -34,6 +36,7 @@ const routeState = vi.hoisted(() => ({
     source: 'rest',
   },
   createRequirementsRestRuntime: vi.fn(),
+  getSpecificationBySlug: vi.fn(),
   getSpecificationItemById: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   authorization: {
@@ -58,12 +61,16 @@ vi.mock('@/lib/reports/data/server', () => ({
   collectMultiplePublishedRequirementsForReport:
     routeState.collectMultiplePublishedRequirementsForReport,
   collectRequirementForReport: routeState.collectRequirementForReport,
-  collectSpecificationItemsForReport:
-    routeState.collectSpecificationItemsForReport,
+  collectSuggestionsForReport: routeState.collectSuggestionsForReport,
   parseLibrarySpecificationItemId: routeState.parseLibrarySpecificationItemId,
 }))
 
+vi.mock('@/lib/reports/data/specification-output', () => ({
+  collectSpecificationOutputData: routeState.collectSpecificationOutputData,
+}))
+
 vi.mock('@/lib/dal/requirements-specifications', () => ({
+  getSpecificationBySlug: routeState.getSpecificationBySlug,
   getSpecificationItemById: routeState.getSpecificationItemById,
   parseSpecificationItemRef: routeState.parseSpecificationItemRef,
 }))
@@ -92,6 +99,10 @@ vi.mock('@/lib/reports/templates/deviation-review-template', () => ({
 
 vi.mock('@/lib/reports/templates/review-template', () => ({
   buildReviewReport: routeState.buildReviewReport,
+}))
+
+vi.mock('@/lib/reports/templates/specification-profile-template', () => ({
+  buildSpecificationProfileReport: routeState.buildSpecificationProfileReport,
 }))
 
 vi.mock('@/components/reports/pdf/report-response', () => ({
@@ -144,6 +155,7 @@ describe('requirement PDF routes', () => {
       requirement('REQ-1'),
       requirement('REQ-2'),
     ])
+    routeState.collectSuggestionsForReport.mockResolvedValue([])
     routeState.buildCombinedReviewReport.mockReturnValue({
       kind: 'combined-review',
     })
@@ -152,16 +164,23 @@ describe('requirement PDF routes', () => {
     })
     routeState.buildReviewReport.mockReturnValue({ kind: 'review' })
     routeState.buildListReport.mockReturnValue({ kind: 'list' })
-    routeState.collectSpecificationItemsForReport.mockResolvedValue({
-      requirements: [requirement('REQ-1')],
+    routeState.buildSpecificationProfileReport.mockReturnValue({
+      kind: 'specification-profile',
+    })
+    routeState.collectSpecificationOutputData.mockResolvedValue({
+      items: [],
       specification: {
         businessNeedsReference: null,
         governanceObjectType: null,
         implementationType: null,
         lifecycleStatus: null,
+        specificationLifecycleStatusId: 1,
         name: 'Specification',
         uniqueId: 'SPEC-1',
       },
+    })
+    routeState.getSpecificationBySlug.mockResolvedValue({
+      specificationLifecycleStatusId: 1,
     })
     routeState.getSpecificationItemById.mockResolvedValue({
       specificationId: 42,
@@ -315,6 +334,87 @@ describe('requirement PDF routes', () => {
     )
   })
 
+  it('returns localized PDF filenames for history, deviation, suggestion, and specification reports', async () => {
+    routeState.getSpecificationBySlug.mockResolvedValueOnce({
+      specificationLifecycleStatusId: 3,
+    })
+    routeState.collectSpecificationOutputData.mockResolvedValueOnce({
+      items: [],
+      specification: {
+        businessNeedsReference: null,
+        governanceObjectType: null,
+        implementationType: null,
+        lifecycleStatus: null,
+        specificationLifecycleStatusId: 3,
+        name: 'Införande',
+        uniqueId: 'SPEC-2',
+      },
+    })
+
+    const { GET: historyGET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/history/[id]/route'
+    )
+    const { GET: deviationGET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/deviation-review/[id]/route'
+    )
+    const { GET: suggestionGET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/suggestion-history/[id]/route'
+    )
+    const { GET: specificationGET } = await import(
+      '@/app/[locale]/specifications/[slug]/reports/pdf/[profile]/route'
+    )
+
+    await historyGET(
+      new NextRequest('http://localhost/sv/requirements/reports/pdf/history/1'),
+      { params: Promise.resolve({ id: '1', locale: 'sv' }) },
+    )
+    await deviationGET(
+      new NextRequest(
+        'http://localhost/sv/requirements/reports/pdf/deviation-review/1?item=lib:55',
+      ),
+      { params: Promise.resolve({ id: '1', locale: 'sv' }) },
+    )
+    await suggestionGET(
+      new NextRequest(
+        'http://localhost/sv/requirements/reports/pdf/suggestion-history/1',
+      ),
+      { params: Promise.resolve({ id: '1', locale: 'sv' }) },
+    )
+    await specificationGET(
+      new NextRequest(
+        'http://localhost/sv/specifications/SPEC-2/reports/pdf/progress',
+      ),
+      {
+        params: Promise.resolve({
+          locale: 'sv',
+          profile: 'progress',
+          slug: 'SPEC-2',
+        }),
+      },
+    )
+
+    expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
+      expect.anything(),
+      'sv',
+      'Historikrapport REQ-1.pdf',
+    )
+    expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
+      expect.anything(),
+      'sv',
+      'Granskningsrapport avsteg REQ-1.pdf',
+    )
+    expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
+      expect.anything(),
+      'sv',
+      'Ändringsförslagshistorik REQ-1.pdf',
+    )
+    expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
+      { kind: 'specification-profile' },
+      'sv',
+      'Genomföranderapport Införande SPEC-2.pdf',
+    )
+  })
+
   it('rejects list PDFs without ids before opening the database', async () => {
     const { GET } = await import(
       '@/app/[locale]/requirements/reports/pdf/list/route'
@@ -359,16 +459,22 @@ describe('requirement PDF routes', () => {
     expect(routeState.renderReportModelPdfResponse).not.toHaveBeenCalled()
   })
 
-  it('authorizes specification list PDFs before collecting report items', async () => {
+  it('authorizes specification profile PDFs before collecting report data', async () => {
     const { GET } = await import(
-      '@/app/[locale]/specifications/[slug]/reports/pdf/list/route'
+      '@/app/[locale]/specifications/[slug]/reports/pdf/[profile]/route'
     )
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/en/specifications/SPEC-1/reports/pdf/list?refs=lib:55',
+        'http://localhost/en/specifications/SPEC-1/reports/pdf/procurement',
       ),
-      { params: Promise.resolve({ locale: 'en', slug: 'SPEC-1' }) },
+      {
+        params: Promise.resolve({
+          locale: 'en',
+          profile: 'procurement',
+          slug: 'SPEC-1',
+        }),
+      },
     )
 
     expect(response.status).toBe(200)
@@ -376,10 +482,16 @@ describe('requirement PDF routes', () => {
       { kind: 'get_specification_items', specificationId: 42 },
       routeState.context,
     )
-    expect(routeState.collectSpecificationItemsForReport).toHaveBeenCalledWith(
+    expect(routeState.collectSpecificationOutputData).toHaveBeenCalledWith(
       { db: true },
       'SPEC-1',
-      ['lib:55'],
+    )
+    expect(routeState.buildSpecificationProfileReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        specification: expect.objectContaining({ uniqueId: 'SPEC-1' }),
+      }),
+      'procurement',
+      'en',
     )
   })
 

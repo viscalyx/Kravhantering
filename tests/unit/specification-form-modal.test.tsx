@@ -176,6 +176,27 @@ describe('SpecificationFormModal', () => {
     expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveAttribute('readonly')
+    expect(
+      screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
+    ).toBeRequired()
+    expect(
+      screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
+    ).toHaveValue('3')
+    const requiredFieldsHint = screen.getByText('common.requiredFieldsHint')
+    const actionRow = requiredFieldsHint.closest(
+      '[data-form-action-row="true"]',
+    )
+    expect(actionRow).toContainElement(requiredFieldsHint)
+    expect(actionRow).toContainElement(
+      screen.getByRole('button', { name: /common\.save/i }),
+    )
+    expect(actionRow).toContainElement(
+      screen.getByRole('button', { name: /common\.cancel/i }),
+    )
+    expect(screen.getByRole('button', { name: /common\.save/i })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /common\.save/i }),
+    ).toHaveAttribute('title', 'common.noChangesToSave')
     expect(screen.getByText('Ada Admin')).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
@@ -187,9 +208,9 @@ describe('SpecificationFormModal', () => {
       '[data-developer-mode-name="crud form"][data-developer-mode-context="requirements specification detail"]',
     )
     expect(form).toHaveAttribute('data-developer-mode-value', 'edit')
-    expect(form?.firstElementChild).toHaveClass('grid')
-    expect(form?.firstElementChild).toHaveClass('grid-cols-1')
-    expect(form?.firstElementChild).toHaveClass('lg:grid-cols-2')
+    const fieldGrid = form?.querySelector('.grid')
+    expect(fieldGrid).toHaveClass('grid-cols-1')
+    expect(fieldGrid).toHaveClass('lg:grid-cols-2')
   })
 
   it('keeps edit controls disabled when server permissions are missing', () => {
@@ -232,9 +253,9 @@ describe('SpecificationFormModal', () => {
     await waitFor(() => {
       expect(confirmMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          confirmText: 'common.discardChanges',
-          defaultCancel: true,
+          icon: 'caution',
           message: 'common.unsavedChangesConfirm',
+          variant: 'danger',
         }),
       )
     })
@@ -255,16 +276,6 @@ describe('SpecificationFormModal', () => {
       name: 'close button',
       trigger: () =>
         fireEvent.click(screen.getByRole('button', { name: /common\.close/i })),
-    },
-    {
-      name: 'backdrop',
-      trigger: () => {
-        const backdrop = document.body.querySelector(
-          '.absolute.inset-0',
-        ) as HTMLElement | null
-        expect(backdrop).not.toBeNull()
-        fireEvent.click(backdrop as HTMLElement)
-      },
     },
     {
       name: 'Escape',
@@ -292,13 +303,35 @@ describe('SpecificationFormModal', () => {
     await waitFor(() => {
       expect(confirmMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          confirmText: 'common.discardChanges',
-          defaultCancel: true,
+          icon: 'caution',
           message: 'common.unsavedChangesConfirm',
+          variant: 'danger',
         }),
       )
     })
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('does not close or confirm dirty form changes on backdrop click', () => {
+    const onClose = vi.fn()
+
+    renderEditModal({ onClose })
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Osparat namn' } },
+    )
+    const backdrop = document.body.querySelector(
+      '.absolute.inset-0',
+    ) as HTMLElement | null
+    expect(backdrop).not.toBeNull()
+    fireEvent.click(backdrop as HTMLElement)
+
+    expect(confirmMock).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+    ).toHaveValue('Osparat namn')
   })
 
   it('shows contextual help for specification fields', () => {
@@ -432,6 +465,35 @@ describe('SpecificationFormModal', () => {
     ).toBe(false)
   })
 
+  it('blocks create saves when lifecycle status is empty', () => {
+    renderCreateModal()
+
+    expect(
+      screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
+    ).toBeRequired()
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Specification without lifecycle status' } },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.uniqueId/ }),
+      { target: { value: 'SPEC-WITHOUT-LIFECYCLE' } },
+    )
+
+    fireEvent.submit(document.getElementById(SPECIFICATION_FORM_ID) as Element)
+
+    expect(
+      screen.getByText('specification.lifecycleStatusRequired'),
+    ).toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          url === '/api/requirements-specifications' &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      ),
+    ).toBe(false)
+  })
+
   it('fills the create responsible fields when the current user becomes available', async () => {
     const view = renderCreateModal({
       currentUser: null,
@@ -444,6 +506,11 @@ describe('SpecificationFormModal', () => {
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveValue('')
 
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Påbörjat kravunderlag' } },
+    )
+
     view.rerender(createModalElement({ currentUser }))
 
     await waitFor(() => {
@@ -453,6 +520,9 @@ describe('SpecificationFormModal', () => {
         }),
       ).toHaveValue(currentUser.hsaId)
     })
+    expect(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+    ).toHaveValue('Påbörjat kravunderlag')
     expect(
       screen.getByRole('button', { name: /common\.save/i }),
     ).not.toBeDisabled()
@@ -642,308 +712,6 @@ describe('SpecificationFormModal', () => {
     expect(
       JSON.parse((requestInit?.body as string) ?? '{}'),
     ).not.toHaveProperty('responsibleHsaId')
-  })
-
-  it('autosaves a verified specification co-author assignment', async () => {
-    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
-      if (url === '/api/auth/me') {
-        return Promise.resolve(
-          okJson({
-            authenticated: true,
-            hsaId: 'SE5560000001-ada1',
-            roles: ['Admin'],
-          }),
-        )
-      }
-      if (url === '/api/hsa-id-prefixes') {
-        return Promise.resolve(okJson(hsaIdPrefixPayload))
-      }
-      if (
-        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
-      ) {
-        if (opts?.method === 'PUT') {
-          return Promise.resolve(okJson({ ok: true }))
-        }
-        return Promise.resolve(okJson({ coAuthors: [] }))
-      }
-      if (url === '/api/requirement-responsibility-people/verify') {
-        return Promise.resolve(
-          okJson({
-            person: {
-              displayName: 'Cora CoAuthor',
-              email: 'cora.coauthor@example.test',
-              givenName: 'Cora',
-              hsaId: 'SE5560000001-coa1',
-              middleName: null,
-              surname: 'CoAuthor',
-            },
-          }),
-        )
-      }
-      return Promise.resolve(okJson({ ok: true }))
-    })
-
-    renderEditModal()
-
-    await waitFor(() => {
-      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
-    })
-    const coAuthorInput = screen.getByRole('textbox', {
-      name: /specification\.coAuthorHsaId/,
-    })
-    await waitFor(() => {
-      expect(coAuthorInput).toBeEnabled()
-    })
-    fireEvent.change(coAuthorInput, { target: { value: 'coa1' } })
-    let verifyButton: HTMLButtonElement | undefined
-    await waitFor(() => {
-      verifyButton = screen
-        .getAllByRole('button', { name: /common\.fetchHsaPerson/ })
-        .find(button => !(button as HTMLButtonElement).disabled) as
-        | HTMLButtonElement
-        | undefined
-      expect(verifyButton).toBeTruthy()
-    })
-    fireEvent.click(verifyButton as HTMLButtonElement)
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements-specifications/ETJANST-UPP-2026/co-authors',
-        expect.objectContaining({ method: 'PUT' }),
-      )
-    })
-    const verifyCall = fetchMock.mock.calls.find(
-      ([url]) => url === '/api/requirement-responsibility-people/verify',
-    ) as [string, RequestInit]
-    expect(JSON.parse((verifyCall[1].body as string) ?? '{}')).toMatchObject({
-      hsaId: 'SE5560000001-coa1',
-      purpose: 'requirements_specification_co_author',
-      scopeId: 7,
-    })
-    const putCall = fetchMock.mock.calls.find(
-      ([url, init]) =>
-        url ===
-          '/api/requirements-specifications/ETJANST-UPP-2026/co-authors' &&
-        (init as RequestInit | undefined)?.method === 'PUT',
-    ) as [string, RequestInit]
-    expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
-      coAuthorHsaIds: ['SE5560000001-coa1'],
-    })
-    expect(await screen.findByText('Cora CoAuthor')).toBeInTheDocument()
-  })
-
-  it('shows an error and keeps the specification co-author draft when assignment autosave fails', async () => {
-    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
-      if (url === '/api/auth/me') {
-        return Promise.resolve(
-          okJson({
-            authenticated: true,
-            hsaId: 'SE5560000001-ada1',
-            roles: ['Admin'],
-          }),
-        )
-      }
-      if (url === '/api/hsa-id-prefixes') {
-        return Promise.resolve(okJson(hsaIdPrefixPayload))
-      }
-      if (
-        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
-      ) {
-        if (opts?.method === 'PUT') {
-          return Promise.resolve(
-            errJson(
-              { error: 'Specification co-author autosave failed' },
-              409,
-              'Conflict',
-            ),
-          )
-        }
-        return Promise.resolve(okJson({ coAuthors: [] }))
-      }
-      if (url === '/api/requirement-responsibility-people/verify') {
-        return Promise.resolve(
-          okJson({
-            person: {
-              displayName: 'Cora CoAuthor',
-              email: 'cora.coauthor@example.test',
-              givenName: 'Cora',
-              hsaId: 'SE5560000001-coa1',
-              middleName: null,
-              surname: 'CoAuthor',
-            },
-          }),
-        )
-      }
-      return Promise.resolve(okJson({ ok: true }))
-    })
-
-    renderEditModal()
-
-    await waitFor(() => {
-      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
-    })
-    const coAuthorInput = screen.getByRole('textbox', {
-      name: /specification\.coAuthorHsaId/,
-    })
-    await waitFor(() => {
-      expect(coAuthorInput).toBeEnabled()
-    })
-    fireEvent.change(coAuthorInput, { target: { value: 'coa1' } })
-    let verifyButton: HTMLButtonElement | undefined
-    await waitFor(() => {
-      verifyButton = screen
-        .getAllByRole('button', { name: /common\.fetchHsaPerson/ })
-        .find(button => !(button as HTMLButtonElement).disabled) as
-        | HTMLButtonElement
-        | undefined
-      expect(verifyButton).toBeTruthy()
-    })
-    fireEvent.click(verifyButton as HTMLButtonElement)
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        'Specification co-author autosave failed',
-      )
-    })
-    expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
-    expect(coAuthorInput).toHaveValue('coa1')
-  })
-
-  it('confirms and autosaves specification co-author removal', async () => {
-    confirmMock.mockResolvedValue(true)
-    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
-      if (url === '/api/auth/me') {
-        return Promise.resolve(
-          okJson({
-            authenticated: true,
-            hsaId: 'SE5560000001-ada1',
-            roles: ['Admin'],
-          }),
-        )
-      }
-      if (url === '/api/hsa-id-prefixes') {
-        return Promise.resolve(okJson(hsaIdPrefixPayload))
-      }
-      if (
-        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
-      ) {
-        if (opts?.method === 'PUT') {
-          return Promise.resolve(okJson({ ok: true }))
-        }
-        return Promise.resolve(
-          okJson({
-            coAuthors: [
-              {
-                displayName: 'no-user',
-                email: 'cora.coauthor@example.test',
-                hsaId: 'SE5560000001-coa1',
-              },
-            ],
-          }),
-        )
-      }
-      return Promise.resolve(okJson({ ok: true }))
-    })
-
-    renderEditModal()
-
-    await waitFor(() => {
-      expect(screen.getByText('Anonymous')).toBeInTheDocument()
-    })
-    expect(screen.queryByText('no-user')).not.toBeInTheDocument()
-    fireEvent.click(
-      screen.getByRole('button', { name: /specification\.removeCoAuthor/ }),
-    )
-
-    await waitFor(() => {
-      expect(confirmMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'specification.removeCoAuthorConfirm',
-          variant: 'danger',
-        }),
-      )
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements-specifications/ETJANST-UPP-2026/co-authors',
-        expect.objectContaining({ method: 'PUT' }),
-      )
-    })
-    const putCall = fetchMock.mock.calls.find(
-      ([url, init]) =>
-        url ===
-          '/api/requirements-specifications/ETJANST-UPP-2026/co-authors' &&
-        (init as RequestInit | undefined)?.method === 'PUT',
-    ) as [string, RequestInit]
-    expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
-      coAuthorHsaIds: [],
-    })
-  })
-
-  it('shows an error and keeps the specification co-author when removal autosave fails', async () => {
-    confirmMock.mockResolvedValue(true)
-    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
-      if (url === '/api/auth/me') {
-        return Promise.resolve(
-          okJson({
-            authenticated: true,
-            hsaId: 'SE5560000001-ada1',
-            roles: ['Admin'],
-          }),
-        )
-      }
-      if (url === '/api/hsa-id-prefixes') {
-        return Promise.resolve(okJson(hsaIdPrefixPayload))
-      }
-      if (
-        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
-      ) {
-        if (opts?.method === 'PUT') {
-          return Promise.resolve(
-            errJson(
-              { error: 'Specification co-author removal failed' },
-              409,
-              'Conflict',
-            ),
-          )
-        }
-        return Promise.resolve(
-          okJson({
-            coAuthors: [
-              {
-                displayName: 'Cora CoAuthor',
-                email: 'cora.coauthor@example.test',
-                hsaId: 'SE5560000001-coa1',
-              },
-            ],
-          }),
-        )
-      }
-      return Promise.resolve(okJson({ ok: true }))
-    })
-
-    renderEditModal()
-
-    await waitFor(() => {
-      expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
-    })
-    fireEvent.click(
-      screen.getByRole('button', { name: /specification\.removeCoAuthor/ }),
-    )
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        'Specification co-author removal failed',
-      )
-    })
-    expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
-    const putCall = fetchMock.mock.calls.find(
-      ([url, init]) =>
-        url ===
-          '/api/requirements-specifications/ETJANST-UPP-2026/co-authors' &&
-        (init as RequestInit | undefined)?.method === 'PUT',
-    ) as [string, RequestInit]
-    expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
-      coAuthorHsaIds: [],
-    })
   })
 
   it('confirms unsaved edits and closes after non-admin responsible changes', async () => {

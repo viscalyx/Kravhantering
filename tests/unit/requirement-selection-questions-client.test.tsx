@@ -470,9 +470,11 @@ describe('RequirementSelectionQuestionsClient', () => {
       screen.queryByRole('spinbutton', { name: 'Sort order' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /Help text/ })).toHaveClass(
-      'max-h-[28vh]',
+      'min-h-24',
+      'max-h-[clamp(5rem,28dvh,16rem)]',
       'resize-y',
       'overflow-auto',
+      'overscroll-contain',
     )
   })
 
@@ -1092,6 +1094,9 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(screen.getByRole('textbox', { name: /^Text/ })).toHaveValue(
       'Second answer',
     )
+    fireEvent.change(screen.getByRole('textbox', { name: /^Text/ }), {
+      target: { value: 'Second answer updated' },
+    })
     expect(
       within(
         screen.getByRole('dialog', {
@@ -1190,8 +1195,6 @@ describe('RequirementSelectionQuestionsClient', () => {
       expect(confirmState.confirm).toHaveBeenCalledWith(
         expect.objectContaining({
           anchorEl: cancelButton,
-          confirmText: 'Discard changes',
-          defaultCancel: true,
           icon: 'caution',
           message: 'You have unsaved changes. Discard them?',
           variant: 'danger',

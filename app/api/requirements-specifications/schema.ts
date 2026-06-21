@@ -36,7 +36,7 @@ export const createSpecificationSchema = z
     specificationImplementationTypeId: positiveIntegerSchema
       .nullable()
       .optional(),
-    specificationLifecycleStatusId: positiveIntegerSchema.nullable().optional(),
+    specificationLifecycleStatusId: positiveIntegerSchema,
     specificationGovernanceObjectTypeId: positiveIntegerSchema
       .nullable()
       .optional(),
@@ -52,7 +52,7 @@ export const updateSpecificationSchema = z
     specificationImplementationTypeId: positiveIntegerSchema
       .nullable()
       .optional(),
-    specificationLifecycleStatusId: positiveIntegerSchema.nullable().optional(),
+    specificationLifecycleStatusId: positiveIntegerSchema.optional(),
     specificationGovernanceObjectTypeId: positiveIntegerSchema
       .nullable()
       .optional(),

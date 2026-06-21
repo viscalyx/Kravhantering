@@ -8,6 +8,12 @@ import type {
   SuggestionReportRow,
 } from '../data/fetch-requirement'
 import { requirementPackageName } from '../package-name'
+import {
+  formatReportTemplate,
+  getReportLabels,
+  localizeReportValue,
+  type ReportLabels,
+} from '../report-labels'
 import type {
   ReportModel,
   ReportSection,
@@ -21,15 +27,18 @@ const SUGGESTION_DISMISSED = 2
 function getStatusLabel(
   version: RequirementReportData['versions'][number],
   locale: string,
+  labels: ReportLabels,
 ): string {
   return (
-    (locale === 'sv' ? version.statusNameSv : version.statusNameEn) ?? 'Unknown'
+    localizeReportValue(locale, version.statusNameSv, version.statusNameEn) ||
+    labels.common.unknown
   )
 }
 
 function toVersionSummary(
   version: RequirementReportData['versions'][number],
   locale: string,
+  labels: ReportLabels,
 ): VersionSummaryData {
   return {
     versionNumber: version.versionNumber,
@@ -58,7 +67,7 @@ function toVersionSummary(
         }
       : null,
     status: {
-      label: getStatusLabel(version, locale),
+      label: getStatusLabel(version, locale, labels),
       color: version.statusColor,
       iconName: version.statusIconName,
     },
@@ -83,41 +92,41 @@ function toVersionSummary(
 
 function getSuggestionStatus(
   suggestion: SuggestionReportRow,
-  locale: string,
+  labels: ReportLabels,
 ): { label: string; color: string } {
   if (suggestion.resolution === SUGGESTION_RESOLVED) {
     return {
-      label: locale === 'sv' ? 'Åtgärdad' : 'Resolved',
+      label: labels.suggestions.resolved,
       color: '#22c55e',
     }
   }
   if (suggestion.resolution === SUGGESTION_DISMISSED) {
     return {
-      label: locale === 'sv' ? 'Avvisad' : 'Dismissed',
+      label: labels.suggestions.dismissed,
       color: '#ef4444',
     }
   }
   if (suggestion.isReviewRequested === 1) {
     return {
-      label: locale === 'sv' ? 'Granskning begärd' : 'Review Requested',
+      label: labels.suggestions.reviewRequested,
       color: '#eab308',
     }
   }
   return {
-    label: locale === 'sv' ? 'Utkast' : 'Draft',
+    label: labels.suggestions.draft,
     color: '#3b82f6',
   }
 }
 
 function toSuggestionItem(
   suggestion: SuggestionReportRow,
-  locale: string,
+  labels: ReportLabels,
 ): SuggestionReportItem {
   return {
     content: suggestion.content,
     createdBy: suggestion.createdBy,
     createdAt: suggestion.createdAt,
-    status: getSuggestionStatus(suggestion, locale),
+    status: getSuggestionStatus(suggestion, labels),
     resolutionMotivation: suggestion.resolutionMotivation,
     resolvedBy: suggestion.resolvedBy,
     resolvedAt: suggestion.resolvedAt,
@@ -137,6 +146,7 @@ export function buildSuggestionHistoryReport(
 ): ReportModel {
   const sections: ReportSection[] = []
   const now = new Date().toISOString()
+  const labels = getReportLabels(locale)
 
   const sortedVersions = [...requirement.versions].sort(
     (a, b) => b.versionNumber - a.versionNumber,
@@ -157,24 +167,22 @@ export function buildSuggestionHistoryReport(
 
   sections.push({
     type: 'header',
-    title:
-      locale === 'sv'
-        ? 'Ändringsförslagshistorik'
-        : 'Improvement Suggestion History',
+    title: labels.titles.suggestionHistory,
     requirementId: requirement.uniqueId,
     generatedAt: now,
   })
 
-  const emptyLabel =
-    locale === 'sv' ? 'Inga ändringsförslag' : 'No improvement suggestions'
+  const emptyLabel = labels.suggestions.empty
 
   for (const version of sortedVersions) {
     const isUnpublished = isRequirementPendingStatus(version.status)
 
     sections.push({
       type: 'version-summary',
-      version: toVersionSummary(version, locale),
-      label: `${locale === 'sv' ? 'Version' : 'Version'} ${version.versionNumber}`,
+      version: toVersionSummary(version, locale, labels),
+      label: formatReportTemplate(labels.common.version, {
+        version: version.versionNumber,
+      }),
       borderColor: getVersionBorderColor(version.status),
       isUnpublished,
     })
@@ -182,7 +190,7 @@ export function buildSuggestionHistoryReport(
     const versionSuggestions = suggestionsByVersionId.get(version.id) ?? []
     sections.push({
       type: 'suggestion-list',
-      items: versionSuggestions.map(s => toSuggestionItem(s, locale)),
+      items: versionSuggestions.map(s => toSuggestionItem(s, labels)),
       emptyLabel,
     })
   }
@@ -190,16 +198,13 @@ export function buildSuggestionHistoryReport(
   if (unlinkedSuggestions.length > 0) {
     sections.push({
       type: 'notice',
-      message:
-        locale === 'sv'
-          ? 'Följande ändringsförslag är inte kopplade till en specifik version'
-          : 'The following improvement suggestions are not linked to a specific version',
+      message: labels.notices.unlinkedSuggestions,
       severity: 'info',
     })
 
     sections.push({
       type: 'suggestion-list',
-      items: unlinkedSuggestions.map(s => toSuggestionItem(s, locale)),
+      items: unlinkedSuggestions.map(s => toSuggestionItem(s, labels)),
       emptyLabel,
     })
   }

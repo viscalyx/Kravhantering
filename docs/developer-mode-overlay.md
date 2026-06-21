@@ -96,6 +96,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Reference-data CRUD forms may use shared field help toggles; those
   triggers stay inside the existing `crud form` surface rather than
   adding separate developer-mode markers.
+- Norm-reference create dialogs may use a responsive two-column field
+  layout on desktop. The fields remain inside the existing shared
+  `dialog` and `normReferences > crud form` surfaces rather than adding
+  separate developer-mode markers.
 - Admin Center Dataskydd field help toggles stay inside the existing
   `tab panel: privacy` surface rather than adding separate developer-mode
   markers.
@@ -146,6 +150,19 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `crud-admin-visible-error` in the affected admin page context so
   scanner checks can distinguish the visible banner from row/form
   controls.
+- Shared CRUD admin panel edit and delete row actions render as icon-only
+  buttons while keeping the existing `table action: edit` and
+  `table action: delete` markers in each admin page context. Row-level
+  co-author assignment actions use `table action: manage co-authors` in the
+  relevant page context.
+- Requirement area create and edit actions use the shared modal `dialog`
+  surface. Creating opens `dialog: new requirement area`; editing opens
+  `dialog: edit requirement area`, with the existing `areas > crud form:
+  create` or `areas > crud form: edit` marker inside the dialog. Requirement
+  area co-authors open from the list row action
+  `areas > table action: manage co-authors` into
+  `dialog: manage requirement area co-authors`, where the add field sits above
+  a saved co-authors table.
 - App Router error recovery pages expose the `error boundary` context with
   `error recovery: locale`, `error recovery: root`, or
   `error recovery: global` on the visible fallback surface. Their retry
@@ -157,7 +174,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `floating action rail` as
   `specifications > floating pill: new specification`. Creating opens
   `dialog: new specification`; list row editing opens
-  `dialog: edit specification`.
+  `dialog: edit specification`. Specification co-authors open from the list
+  row action `specifications > table action: manage co-authors` into
+  `dialog: manage specification co-authors`, where the add field sits above a
+  saved co-authors table.
 - Requirements packages expose their create trigger in the fixed
   `floating action rail` as
   `requirementPackages > floating pill: new requirement package`. The new
@@ -165,15 +185,20 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   its inline responsibility banner renders as
   `requirementPackages > responsibility notice: create package lead`. Editing
   opens the same modal surface as `dialog: edit requirement package`.
+  The edit form's linked-requirements reader renders as
+  `requirementPackages > crud form action: linked requirements` and opens the
+  shared `dialog: linked requirements` read-only surface.
   The package-lead change action stays inside the edit `crud form`, and the
   follow-up modal uses the shared `dialog: change requirements package lead`
   surface rather than adding a separate curated marker.
   The package name-or-description search field renders as
   `requirementPackages > text field: name or description filter`. Package list
-  row actions render as icon-only buttons and keep their developer-mode markers
-  as
-  `requirementPackages > table action: edit`, `archive`, `reactivate`, and
-  `delete`.
+  row actions keep their developer-mode markers as
+  `requirementPackages > table action: linked requirements`,
+  `manage co-authors`, `edit`, `archive`, `reactivate`, and `delete`.
+  Requirement package co-authors open into
+  `dialog: manage requirement package co-authors`, where the add field sits
+  above a saved co-authors table.
 - Requirement selection questions expose their create trigger in the fixed
   `floating action rail` as
   `requirementSelectionQuestions > floating pill: new requirement selection question`.
@@ -216,8 +241,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   descriptions and lock hints, answer row reorder handles, and health badges
   render inside the existing `requirementSelectionQuestions` form/list surfaces.
 - Requirements specification list requirement-area labels render as compact,
-  non-interactive pills inside the existing `specifications > crud table`
-  surface; they do not add separate developer-mode marker names.
+  non-interactive pills inside a constrained column in the existing
+  `specifications > crud table` surface; they do not add separate developer-mode
+  marker names.
 - Requirements specification list responsible-person metadata renders inside the
   existing `specifications > crud table` surface, and the create/edit controls
   stay inside the modal `specifications > crud form` surface.
@@ -269,9 +295,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   print/deviation/detail action marker surfaces.
 - Those existing specification-local edit/delete `detail action` controls may
   render disabled when usage status is not Included or when a deviation is still
-  pending. The graduation action is disabled when usage status is not Included.
-  In either disabled state the controls are visually muted, but this
-  state change does not add any new developer-mode markers.
+  pending. The graduation action is available regardless of usage status when a
+  graduation target area is available. Disabled edit/delete state does not add
+  any new developer-mode markers.
 - Specification-local inline details now also use the same outer inset as the
   library inline detail surface; this is a layout-only alignment change
   and does not add any new developer-mode markers.
@@ -345,12 +371,11 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Admin CRUD empty-state rows use the current page context with `empty state`.
   When the table supports creation, the inline empty-state CTA uses
   `empty state create button` and opens the same create form as the page header.
-- Requirements specification list print pages expose `report state` markers
+- Requirements specification print pages expose `report state` markers
   with values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.
 - PDF downloads use the shared modal marker `dialog` with values
-  `Generating PDF` and `PDF download error`; specification list PDFs no longer
-  render an intermediate client-side PDF page.
+  `Generating PDF` and `PDF download error`.
 - AI Requirement Generator dialog uses the `ai-requirement-generator`
   context with `dialog: ai-requirement-generator` on the modal
   container, `dialog title` on the heading,

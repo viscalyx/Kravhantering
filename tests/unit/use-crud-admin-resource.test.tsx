@@ -8,6 +8,11 @@ vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({ confirm: confirmMock }),
 }))
 
+vi.mock('next-intl', () => ({
+  useTranslations: (namespace?: string) => (key: string) =>
+    namespace ? `${namespace}.${key}` : key,
+}))
+
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
@@ -111,6 +116,166 @@ describe('useCrudAdminResource', () => {
     await act(async () => {})
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('tracks create form dirty state from the normalized payload', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+    })
+
+    expect(result.current.formDirty).toBe(false)
+
+    act(() => {
+      result.current.setForm({ name: 'Created' })
+    })
+
+    expect(result.current.formDirty).toBe(true)
+
+    act(() => {
+      result.current.setForm({ name: '   ' })
+    })
+
+    expect(result.current.formDirty).toBe(false)
+  })
+
+  it('tracks edit form dirty state and reset to baseline', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ items: [{ id: 7, name: 'Editable' }] }),
+    )
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openEdit({ id: 7, name: 'Editable' })
+    })
+
+    expect(result.current.formDirty).toBe(false)
+
+    act(() => {
+      result.current.setForm({ name: 'Changed' })
+    })
+
+    expect(result.current.formDirty).toBe(true)
+
+    act(() => {
+      result.current.setForm({ name: '  Editable  ' })
+    })
+
+    expect(result.current.formDirty).toBe(false)
+  })
+
+  it('closes clean forms without confirming discard', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+    })
+
+    let didClose = false
+    await act(async () => {
+      didClose = await result.current.closeForm()
+    })
+
+    expect(didClose).toBe(true)
+    expect(confirmMock).not.toHaveBeenCalled()
+    expect(result.current.showForm).toBe(false)
+  })
+
+  it('keeps dirty forms open when discard is cancelled', async () => {
+    confirmMock.mockResolvedValueOnce(false)
+    fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+      result.current.setForm({ name: 'Unsaved' })
+    })
+
+    let didClose = true
+    await act(async () => {
+      didClose = await result.current.closeForm()
+    })
+
+    expect(didClose).toBe(false)
+    expect(confirmMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        icon: 'caution',
+        message: 'common.unsavedChangesConfirm',
+        variant: 'danger',
+      }),
+    )
+    expect(result.current.showForm).toBe(true)
+  })
+
+  it('closes dirty forms when discard is confirmed', async () => {
+    confirmMock.mockResolvedValueOnce(true)
+    fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+      result.current.setForm({ name: 'Unsaved' })
+    })
+
+    let didClose = false
+    await act(async () => {
+      didClose = await result.current.closeForm()
+    })
+
+    expect(didClose).toBe(true)
+    expect(result.current.showForm).toBe(false)
+  })
+
+  it('does not submit a clean open form', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+    })
+
+    let didSubmit = true
+    await act(async () => {
+      didSubmit = await result.current.submit()
+    })
+
+    expect(didSubmit).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('can mark the current dirty form as clean after an in-place save', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+      result.current.setForm({ name: 'Saved in place' })
+    })
+
+    expect(result.current.formDirty).toBe(true)
+
+    act(() => {
+      result.current.markFormClean()
+    })
+
+    expect(result.current.formDirty).toBe(false)
   })
 
   it('submits a create request and reloads the list', async () => {

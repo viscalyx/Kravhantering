@@ -1611,7 +1611,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List the requirement areas this actor may use as targets when copying an Included unique requirement into the library. Use requirements_list_specifications and requirements_get_specification_items to identify the source, pass the same specificationId or specificationSlug plus localRequirementId here, then use one returned areas[].id value as requirements_graduate_local_requirement requirementAreaId.',
+        'List the requirement areas this actor may use as targets when copying a unique requirement into the library, regardless of its usage status. Use requirements_list_specifications and requirements_get_specification_items to identify the source, pass the same specificationId or specificationSlug plus localRequirementId here, then use one returned areas[].id value as requirements_graduate_local_requirement requirementAreaId.',
       inputSchema: createGraduationTargetAreasSchema(),
       outputSchema: GraduationTargetAreasOutputSchema,
       title: 'List Graduation Target Requirement Areas',
@@ -1645,7 +1645,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'Copy an Included unique requirement into a chosen library requirement area as a new Draft library requirement. The source unique requirement remains unchanged in its specification, and deviations stay attached to the unique requirement. Use requirements_list_specifications and requirements_get_specification_items to identify the source, then call requirements_list_graduation_target_areas and use one returned areas[].id value as requirementAreaId.',
+        'Copy a unique requirement into a chosen library requirement area as a new Draft library requirement, regardless of its usage status. The source unique requirement remains unchanged in its specification, and deviations stay attached to the unique requirement. Use requirements_list_specifications and requirements_get_specification_items to identify the source, then call requirements_list_graduation_target_areas and use one returned areas[].id value as requirementAreaId.',
       inputSchema: createGraduateLocalRequirementSchema(),
       outputSchema: GraduateLocalRequirementOutputSchema,
       title: 'Graduate Local Requirement to Library',

@@ -3,8 +3,11 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useRef, useState } from 'react'
+import DirtyStateButton from '@/components/DirtyStateButton'
+import FormActionRow from '@/components/FormActionRow'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import IconPicker from '@/components/IconPicker'
+import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
@@ -149,9 +152,9 @@ export default function RiskLevelsClient() {
     void fetchLinkedRequirements(riskLevel.id)
   }
 
-  const closeForm = () => {
+  const closeForm = async (anchorEl?: HTMLElement | null) => {
+    if (!(await controller.closeForm(anchorEl))) return
     setLinkedRequirements([])
-    controller.closeForm()
   }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -212,7 +215,8 @@ export default function RiskLevelsClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="rl-name-sv"
                     >
-                      {t('name')} (SV) <span aria-hidden="true">*</span>
+                      {t('name')} (SV)
+                      <RequiredFieldMarker />
                     </label>
                     <input
                       className={inputClassName}
@@ -233,7 +237,8 @@ export default function RiskLevelsClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="rl-name-en"
                     >
-                      {t('name')} (EN) <span aria-hidden="true">*</span>
+                      {t('name')} (EN)
+                      <RequiredFieldMarker />
                     </label>
                     <input
                       className={inputClassName}
@@ -254,7 +259,8 @@ export default function RiskLevelsClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="rl-color"
                     >
-                      {t('color')} <span aria-hidden="true">*</span>
+                      {t('color')}
+                      <RequiredFieldMarker />
                     </label>
                     <div className="flex items-center gap-3">
                       <input
@@ -353,23 +359,24 @@ export default function RiskLevelsClient() {
                       {controller.formError}
                     </p>
                   )}
-                  <div className="flex gap-3">
-                    <button
+                  <FormActionRow>
+                    <DirtyStateButton
                       className="btn-primary"
+                      dirty={controller.formDirty}
                       disabled={controller.submitting}
                       type="submit"
                     >
                       {controller.submitting ? tc('saving') : tc('save')}
-                    </button>
+                    </DirtyStateButton>
                     <button
                       className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
                       disabled={controller.submitting}
-                      onClick={closeForm}
+                      onClick={event => void closeForm(event.currentTarget)}
                       type="button"
                     >
                       {tc('cancel')}
                     </button>
-                  </div>
+                  </FormActionRow>
                 </form>
 
                 {controller.editId && (

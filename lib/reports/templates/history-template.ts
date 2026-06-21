@@ -4,6 +4,12 @@ import {
 } from '@/lib/requirements/lifecycle'
 import type { RequirementReportData } from '../data/fetch-requirement'
 import { requirementPackageName } from '../package-name'
+import {
+  formatReportTemplate,
+  getReportLabels,
+  localizeReportValue,
+  type ReportLabels,
+} from '../report-labels'
 import type {
   ReportModel,
   ReportSection,
@@ -14,15 +20,18 @@ import type {
 function getStatusLabel(
   version: RequirementReportData['versions'][number],
   locale: string,
+  labels: ReportLabels,
 ): string {
   return (
-    (locale === 'sv' ? version.statusNameSv : version.statusNameEn) ?? 'Unknown'
+    localizeReportValue(locale, version.statusNameSv, version.statusNameEn) ||
+    labels.common.unknown
   )
 }
 
 function toVersionSummary(
   version: RequirementReportData['versions'][number],
   locale: string,
+  labels: ReportLabels,
 ): VersionSummaryData {
   return {
     versionNumber: version.versionNumber,
@@ -54,7 +63,7 @@ function toVersionSummary(
         }
       : null,
     status: {
-      label: getStatusLabel(version, locale),
+      label: getStatusLabel(version, locale, labels),
       color: version.statusColor,
       iconName: version.statusIconName,
     },
@@ -86,12 +95,13 @@ function toVersionSummary(
 function toTimelineEntry(
   version: RequirementReportData['versions'][number],
   locale: string,
+  labels: ReportLabels,
 ): TimelineEntryData {
   const desc = version.description
   return {
     versionNumber: version.versionNumber,
     status: {
-      label: getStatusLabel(version, locale),
+      label: getStatusLabel(version, locale, labels),
       color: version.statusColor,
       iconName: version.statusIconName,
     },
@@ -111,6 +121,7 @@ export function buildHistoryReport(
 ): ReportModel {
   const sections: ReportSection[] = []
   const now = new Date().toISOString()
+  const labels = getReportLabels(locale)
 
   const sortedVersions = [...requirement.versions].sort(
     (a, b) => b.versionNumber - a.versionNumber,
@@ -126,7 +137,7 @@ export function buildHistoryReport(
 
   sections.push({
     type: 'header',
-    title: locale === 'sv' ? 'Historikrapport' : 'History Report',
+    title: labels.titles.history,
     requirementId: requirement.uniqueId,
     generatedAt: now,
   })
@@ -134,22 +145,18 @@ export function buildHistoryReport(
   if (publishedVersion) {
     sections.push({
       type: 'version-summary',
-      version: toVersionSummary(publishedVersion, locale),
-      label:
-        locale === 'sv'
-          ? 'Nuvarande publicerad version'
-          : 'Current Published Version',
+      version: toVersionSummary(publishedVersion, locale, labels),
+      label: labels.common.currentPublishedVersion,
     })
   }
 
   for (const version of unpublishedVersions) {
     sections.push({
       type: 'version-summary',
-      version: toVersionSummary(version, locale),
-      label:
-        locale === 'sv'
-          ? `Opublicerad version (v${version.versionNumber})`
-          : `Unpublished Version (v${version.versionNumber})`,
+      version: toVersionSummary(version, locale, labels),
+      label: formatReportTemplate(labels.common.unpublishedVersion, {
+        version: version.versionNumber,
+      }),
       isUnpublished: true,
     })
   }
@@ -157,7 +164,7 @@ export function buildHistoryReport(
   for (const version of sortedVersions) {
     sections.push({
       type: 'timeline-entry',
-      entry: toTimelineEntry(version, locale),
+      entry: toTimelineEntry(version, locale, labels),
     })
   }
 

@@ -5,12 +5,13 @@
 
 This suite verifies that the requirements specifications list page renders correctly,
 that compact static requirement-area pills are present, that the create and edit
-workflows open modal dialogs, that the name filter narrows the visible
-specifications, that row actions render as icon-only buttons, that overflowing
-requirement-area pills can be expanded on demand, and that the clear-search
-action restores the full list. On desktop it additionally asserts that the
-floating create button is clamped to the visible right edge while aligned with
-the list.
+workflows open modal dialogs with required lifecycle-status controls, that the
+dialogs explain the required-field `*` marker, that the
+name filter narrows the visible specifications, that row actions render as
+icon-only buttons, that overflowing requirement-area pills can be expanded on
+demand, and that the clear-search action restores the full list. On desktop it
+additionally asserts that the floating create button is clamped to the visible
+right edge while aligned with the list.
 
 ## Overview Flowchart
 
@@ -21,12 +22,14 @@ flowchart TD
     B --> B1[Assert static requirement-area pill]
     B1 --> B2[Assert icon-only edit and delete actions]
     B2 --> B3[Open new specification dialog]
-    B3 --> B4[Open edit specification dialog]
-    B4 --> C{Desktop?}
+    B3 --> B4[Assert required marker hint and lifecycle status]
+    B4 --> B5[Open edit specification dialog]
+    B5 --> B6[Assert hint remains visible and lifecycle status remains required]
+    B6 --> C{Desktop?}
     C -- Yes --> D[Assert create button tracks viewport edge]
-    C -- No --> B5[Force narrow pill column and toggle overflow]
-    D --> B5
-    B5 --> E[Fill name filter]
+    C -- No --> B7[Force narrow pill column and toggle overflow]
+    D --> B7
+    B7 --> E[Fill name filter]
     E --> F[Assert filtered list]
     F --> G[Click clear search]
     G --> H[Assert full list restored]
@@ -46,9 +49,10 @@ sizes.
 Confirms that typing in the name filter hides non-matching specifications and that
 clicking the clear button restores all specifications. The same flow opens the
 create and edit dialogs and verifies that the responsible-person controls stay
-inside those modal forms. On desktop it also verifies that the "Nytt
-kravunderlag" button stays in the fixed floating rail at the visible viewport
-edge while aligned with the list.
+inside those modal forms, that the required-field hint is visible, and that the
+lifecycle-status select is required. On
+desktop it also verifies that the "Nytt kravunderlag" button stays in the fixed
+floating rail at the visible viewport edge while aligned with the list.
 
 ### Step-by-Step Flow
 
@@ -62,9 +66,11 @@ edge while aligned with the list.
 1. Assert the row edit/delete actions are icon-only buttons with accessible
    names.
 1. Open "Nytt kravunderlag" and assert the modal dialog shows a two-column
-   desktop-capable form with the signed-in user as `Kravunderlagsansvarig`.
+   desktop-capable form with the signed-in user as `Kravunderlagsansvarig` and
+   a required-field hint plus an empty, required lifecycle-status select.
 1. Open "Redigera" for `Upphandling av e-tjänstplattform` and assert the modal
-   dialog is prefilled.
+   dialog is prefilled, the required-field hint remains visible, and the
+   lifecycle-status select remains required.
 1. Open `Byt kravunderlagsansvarig` from the edit dialog and assert the separate
    change modal validates current and new HSA-id values through its editable
    prefix and suffix controls.
@@ -95,7 +101,7 @@ sequenceDiagram
     Note over P: ✓ Requirement-area pill is static and compact
     Note over P: ✓ Edit and delete actions are icon-only
     U->>P: Open create/edit specification dialogs
-    Note over P: ✓ Dialogs are visible and prefilled
+    Note over P: ✓ Dialogs show required-field hints and lifecycle status is required
     U->>P: Open change-responsible modal
     Note over P: ✓ Separate modal validates HSA-id prefix/suffix values
     U->>P: Toggle overflowing requirement-area pills

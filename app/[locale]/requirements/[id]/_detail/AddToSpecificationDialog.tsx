@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl'
 import type { KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import FormActionRow from '@/components/FormActionRow'
+import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import type { UseAddToSpecificationDialogResult } from './use-add-to-specification-dialog'
 
@@ -117,8 +119,8 @@ export default function AddToSpecificationDialog({
                       className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
                       htmlFor="atp-specification"
                     >
-                      {tp('selectSpecification')}{' '}
-                      <span aria-hidden="true">*</span>
+                      {tp('selectSpecification')}
+                      <RequiredFieldMarker />
                     </label>
                     {helpButton('atp-specification', tp('selectSpecification'))}
                   </div>
@@ -251,7 +253,7 @@ export default function AddToSpecificationDialog({
                     {state.addToSpecificationError}
                   </p>
                 )}
-                <div className="flex gap-3 pt-1">
+                <FormActionRow className="pt-1">
                   <button
                     className="btn-primary"
                     disabled={
@@ -271,7 +273,7 @@ export default function AddToSpecificationDialog({
                   >
                     {tc('cancel')}
                   </button>
-                </div>
+                </FormActionRow>
               </form>
             )}
           </motion.div>

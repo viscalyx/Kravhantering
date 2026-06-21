@@ -10,6 +10,8 @@ import {
   createReleasePlan,
   DB_JOB_DESCRIPTION,
   DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
+  DEMO_SEED_DESCRIPTION,
+  DEMO_SEED_PACKAGE,
   deploymentBundleArchiveName,
   ensureGitTag,
   extractUnreleasedOperatorUpgradeNotes,
@@ -94,6 +96,7 @@ describe('trusted container release helpers', () => {
     expect(plan).toMatchObject({
       appRuntimeImage: `ghcr.io/viscalyx/${APP_RUNTIME_PACKAGE}`,
       createGitHubRelease: true,
+      demoSeedImage: `ghcr.io/viscalyx/${DEMO_SEED_PACKAGE}`,
       hasRelevantChange: true,
       hsaDirectoryMockImage: `ghcr.io/viscalyx/${HSA_DIRECTORY_MOCK_PACKAGE}`,
       prerelease: true,
@@ -112,6 +115,9 @@ describe('trusted container release helpers', () => {
     expect(plan.hsaDirectoryMockTags[0]).toBe(
       `ghcr.io/viscalyx/${HSA_DIRECTORY_MOCK_PACKAGE}:1.2.0-preview.4`,
     )
+    expect(plan.demoSeedTags[0]).toBe(
+      `ghcr.io/viscalyx/${DEMO_SEED_PACKAGE}:1.2.0-preview.4`,
+    )
   })
 
   it('exports package descriptions for GHCR image metadata', () => {
@@ -125,16 +131,19 @@ describe('trusted container release helpers', () => {
 
     expect(values.APP_RUNTIME_DESCRIPTION).toBe(APP_RUNTIME_DESCRIPTION)
     expect(values.DB_JOB_DESCRIPTION).toBe(DB_JOB_DESCRIPTION)
+    expect(values.DEMO_SEED_DESCRIPTION).toBe(DEMO_SEED_DESCRIPTION)
     expect(values.HSA_DIRECTORY_MOCK_DESCRIPTION).toBe(
       HSA_DIRECTORY_MOCK_DESCRIPTION,
     )
     expect(values.APP_RUNTIME_DESCRIPTION.length).toBeLessThanOrEqual(512)
     expect(values.DB_JOB_DESCRIPTION.length).toBeLessThanOrEqual(512)
+    expect(values.DEMO_SEED_DESCRIPTION.length).toBeLessThanOrEqual(512)
     expect(values.HSA_DIRECTORY_MOCK_DESCRIPTION.length).toBeLessThanOrEqual(
       512,
     )
     expect(values.APP_RUNTIME_DESCRIPTION).not.toMatch(/\r|\n/u)
     expect(values.DB_JOB_DESCRIPTION).not.toMatch(/\r|\n/u)
+    expect(values.DEMO_SEED_DESCRIPTION).not.toMatch(/\r|\n/u)
     expect(values.HSA_DIRECTORY_MOCK_DESCRIPTION).not.toMatch(/\r|\n/u)
   })
 
@@ -161,6 +170,7 @@ describe('trusted container release helpers', () => {
       ...plan.tags,
       ...plan.appRuntimeTags,
       ...plan.dbJobTags,
+      ...plan.demoSeedTags,
       ...plan.hsaDirectoryMockTags,
     ]) {
       expect(tag).not.toContain('+')
@@ -594,6 +604,8 @@ describe('trusted container release helpers', () => {
       buildxMetadata('sha256:app-manifest', 'sha256:app-image'),
       buildxMetadata('sha256:dbjob-manifest', 'sha256:dbjob-image'),
       buildxMetadata('sha256:hsa-manifest', 'sha256:hsa-image'),
+      undefined,
+      buildxMetadata('sha256:demo-seed-manifest', 'sha256:demo-seed-image'),
     )
     const execFileSync = vi.fn((command, args) => {
       expect(command).toBe('gh')
@@ -612,6 +624,16 @@ describe('trusted container release helpers', () => {
         return JSON.stringify([
           {
             id: 222,
+            metadata: {
+              container: { tags: plan.tags },
+            },
+          },
+        ])
+      }
+      if (args[1].includes('kravhantering-demo-seed')) {
+        return JSON.stringify([
+          {
+            id: 444,
             metadata: {
               container: { tags: plan.tags },
             },
@@ -643,6 +665,9 @@ describe('trusted container release helpers', () => {
     expect(linkedMetadata.dbJob.tagUrls[metadata.dbJob.tags[2]]).toBe(
       'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=sha-1234567890abcdef1234567890abcdef12345678',
     )
+    expect(linkedMetadata.demoSeed.tagUrls[metadata.demoSeed.tags[0]]).toBe(
+      'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-demo-seed/444?tag=1.2.0-preview.4',
+    )
   })
 
   it('renders release notes with generated changes, GHCR refs and bundle links', () => {
@@ -659,6 +684,8 @@ describe('trusted container release helpers', () => {
         'sha256:hsa-directory-mock-manifest',
         'sha256:hsa-directory-mock-image',
       ),
+      undefined,
+      buildxMetadata('sha256:demo-seed-manifest', 'sha256:demo-seed-image'),
     )
 
     const linkedMetadata = {
@@ -683,6 +710,17 @@ describe('trusted container release helpers', () => {
             'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=main-1234567890ab',
           [metadata.dbJob.tags[2]]:
             'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=sha-1234567890abcdef1234567890abcdef12345678',
+        },
+      },
+      demoSeed: {
+        ...metadata.demoSeed,
+        tagUrls: {
+          [metadata.demoSeed.tags[0]]:
+            'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-demo-seed/444?tag=1.2.0-preview.4',
+          [metadata.demoSeed.tags[1]]:
+            'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-demo-seed/444?tag=main-1234567890ab',
+          [metadata.demoSeed.tags[2]]:
+            'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-demo-seed/444?tag=sha-1234567890abcdef1234567890abcdef12345678',
         },
       },
       testSupport: {
@@ -747,6 +785,17 @@ describe('trusted container release helpers', () => {
     expect(notes).toContain(
       '- [`ghcr.io/viscalyx/kravhantering-db-job:sha-1234567890abcdef1234567890abcdef12345678`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=sha-1234567890abcdef1234567890abcdef12345678)',
     )
+    expect(notes).toContain('## Demonstration Container Images')
+    expect(notes).toContain(
+      'These images are explicit opt-in support for disposable demonstration or test environments and are not part of the production runtime topology.',
+    )
+    expect(notes).toContain('### kravhantering-demo-seed')
+    expect(notes).toContain(
+      'Optional destructive demo seed image for disposable demonstration and test environments.',
+    )
+    expect(notes).toContain(
+      '- [`ghcr.io/viscalyx/kravhantering-demo-seed:1.2.0-preview.4`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-demo-seed/444?tag=1.2.0-preview.4)',
+    )
     expect(notes).toContain('## Test Support Container Images')
     expect(notes).toContain('### kravhantering-hsa-directory-mock')
     expect(notes).toContain(
@@ -756,7 +805,7 @@ describe('trusted container release helpers', () => {
       '- [`ghcr.io/viscalyx/kravhantering-hsa-directory-mock:1.2.0-preview.4`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-hsa-directory-mock/333?tag=1.2.0-preview.4)',
     )
     expect(notes.match(/Immutable manifest digest reference:/gu)).toHaveLength(
-      3,
+      4,
     )
     expect(notes).not.toContain('Manifest digest verification reference:')
     expect(notes).toContain(
@@ -768,10 +817,16 @@ describe('trusted container release helpers', () => {
     expect(notes).toContain(
       'ghcr.io/viscalyx/kravhantering-hsa-directory-mock@sha256:hsa-directory-mock-manifest',
     )
+    expect(notes).toContain(
+      'ghcr.io/viscalyx/kravhantering-demo-seed@sha256:demo-seed-manifest',
+    )
     expect(notes.indexOf('### kravhantering-app-runtime')).toBeLessThan(
       notes.indexOf('### kravhantering-db-job'),
     )
     expect(notes.indexOf('### kravhantering-db-job')).toBeLessThan(
+      notes.indexOf('## Demonstration Container Images'),
+    )
+    expect(notes.indexOf('## Demonstration Container Images')).toBeLessThan(
       notes.indexOf('## Test Support Container Images'),
     )
     expect(notes.indexOf('## Test Support Container Images')).toBeLessThan(
@@ -964,6 +1019,8 @@ describe('trusted container release helpers', () => {
         buildxMetadata('sha256:app-manifest', 'sha256:app-image'),
         buildxMetadata('sha256:dbjob-manifest', 'sha256:dbjob-image'),
         buildxMetadata('sha256:hsa-manifest', 'sha256:hsa-image'),
+        undefined,
+        buildxMetadata('sha256:demo-manifest', 'sha256:demo-image'),
       )
       const stackLock = {
         schemaVersion: 2,
@@ -1160,8 +1217,12 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain(
         'keycloak/demo-users.not-for-production.json',
       )
-      expect(result.files).toContain('demo-seed/seed.mjs')
-      expect(result.files).toContain('demo-seed/seed-dogfood.mjs')
+      expect(result.files).not.toContain('demo-seed/seed.mjs')
+      expect(result.files).not.toContain('demo-seed/seed-dogfood.mjs')
+      expect(result.files).not.toContain('demo-seed/seed-dogfood-build.mjs')
+      expect(result.files).not.toContain(
+        'demo-seed/seed-archiving-retention-build.mjs',
+      )
       expect(result.files).toContain('scripts/keycloak-demo-users.mjs')
       expect(result.files).toContain('sbom/hsa-directory-mock.spdx.json')
       expect(result.files).toContain('sbom/hsa-person-lookup-adapter.spdx.json')
@@ -1240,6 +1301,14 @@ describe('trusted container release helpers', () => {
         'utf8',
       )
       expect(releaseEnv).not.toContain('SQLSERVER_HOST_PORT')
+      expect(releaseEnv).not.toContain('DEMO_SEED_IMAGE_REF')
+      const bundledReleaseMetadata = JSON.parse(
+        fs.readFileSync(
+          path.join(result.bundleRoot, 'release-metadata.json'),
+          'utf8',
+        ),
+      )
+      expect(bundledReleaseMetadata.demoSeed).toBeUndefined()
       const demoUsers = JSON.parse(
         fs.readFileSync(
           path.join(
@@ -1350,33 +1419,39 @@ describe('trusted container release helpers', () => {
     )
     expect(workflow).toContain('Attest app-runtime provenance')
     expect(workflow).toContain('Attest db-job provenance')
+    expect(workflow).toContain('Attest demo seed provenance')
     expect(workflow).toContain('Attest HSA directory mock provenance')
     expect(workflow).toContain('Attest app-runtime SBOM')
     expect(workflow).toContain('Attest db-job SBOM')
+    expect(workflow).toContain('Attest demo seed SBOM')
     expect(workflow).toContain('Attest HSA directory mock SBOM')
     const usesReferences = workflow.match(/uses:/g) ?? []
     const shaPinnedUsesReferences =
       workflow.match(/uses:[^@]+@[0-9a-f]{40}/g) ?? []
     expect(shaPinnedUsesReferences).toHaveLength(usesReferences.length)
     expect(workflow.match(/uses: actions\/attest@[0-9a-f]{40}/g)).toHaveLength(
-      8,
+      10,
     )
     expect(workflow.match(/persist-credentials:\s*false/g)).not.toBeNull()
-    expect(workflow.match(/--provenance=false/g)).toHaveLength(4)
+    expect(workflow.match(/--provenance=false/g)).toHaveLength(5)
     const appRuntimeDescriptionEnv = '$' + '{APP_RUNTIME_DESCRIPTION}'
     const dbJobDescriptionEnv = '$' + '{DB_JOB_DESCRIPTION}'
+    const demoSeedDescriptionEnv = '$' + '{DEMO_SEED_DESCRIPTION}'
     const hsaDirectoryMockDescriptionEnv =
       '$' + '{HSA_DIRECTORY_MOCK_DESCRIPTION}'
     const hsaPersonLookupAdapterDescriptionEnv =
       '$' + '{HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION}'
     expect(
       workflow.match(/org\.opencontainers\.image\.description/g),
-    ).toHaveLength(8)
+    ).toHaveLength(10)
     expect(workflow).toContain(
       `--label "org.opencontainers.image.description=${appRuntimeDescriptionEnv}"`,
     )
     expect(workflow).toContain(
       `--label "org.opencontainers.image.description=${dbJobDescriptionEnv}"`,
+    )
+    expect(workflow).toContain(
+      `--label "org.opencontainers.image.description=${demoSeedDescriptionEnv}"`,
     )
     expect(workflow).toContain(
       `--label "org.opencontainers.image.description=${hsaDirectoryMockDescriptionEnv}"`,
@@ -1391,6 +1466,9 @@ describe('trusted container release helpers', () => {
       `--annotation "manifest:org.opencontainers.image.description=${dbJobDescriptionEnv}"`,
     )
     expect(workflow).toContain(
+      `--annotation "manifest:org.opencontainers.image.description=${demoSeedDescriptionEnv}"`,
+    )
+    expect(workflow).toContain(
       `--annotation "manifest:org.opencontainers.image.description=${hsaDirectoryMockDescriptionEnv}"`,
     )
     expect(workflow).toContain(
@@ -1403,12 +1481,18 @@ describe('trusted container release helpers', () => {
       'sbom-path: tmp/container-release-artifacts/sbom/db-job.spdx.json',
     )
     expect(workflow).toContain(
+      'sbom-path: tmp/container-release-artifacts/sbom/demo-seed.spdx.json',
+    )
+    expect(workflow).toContain(
       'sbom-path: tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json',
     )
     expect(workflow).toContain(
       'sbom-path: tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json',
     )
-    expect(workflow.match(/push-to-registry: false/g)).toHaveLength(8)
+    expect(workflow).toMatch(
+      /node scripts\/containers\/write-hashes\.mjs[\s\S]*tmp\/container-release-artifacts\/sbom\/demo-seed\.spdx\.json[\s\S]*tmp\/container-release-artifacts\/sbom\/hsa-person-lookup-adapter\.spdx\.json/u,
+    )
+    expect(workflow.match(/push-to-registry: false/g)).toHaveLength(10)
     expect(workflow).not.toContain('push-to-registry: true')
     expect(workflow).toContain('--release-images-from-lock')
     expect(workflow).toContain(
@@ -1423,10 +1507,14 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('container-release.mjs identities')
     expect(workflow).toContain('APP_RUNTIME_MANIFEST_DIGEST_REF')
     expect(workflow).toContain('DB_JOB_MANIFEST_DIGEST_REF')
+    expect(workflow).toContain('DEMO_SEED_MANIFEST_DIGEST_REF')
     expect(workflow).toContain('HSA_DIRECTORY_MOCK_MANIFEST_DIGEST_REF')
     expect(workflow).toContain('APP_RUNTIME_IMAGE_ID')
     expect(workflow).toContain('DB_JOB_IMAGE_ID')
     expect(workflow).toContain('HSA_DIRECTORY_MOCK_IMAGE_ID')
+    expect(workflow).toContain(
+      '--demo-seed-metadata tmp/container-release-artifacts/metadata/demo-seed-buildx.json',
+    )
     expect(workflow).toContain('container-test-support.lock.json')
     expect(workflow).not.toContain('APP_RUNTIME_DIGEST_REF')
     expect(workflow).not.toContain('DB_JOB_DIGEST_REF')

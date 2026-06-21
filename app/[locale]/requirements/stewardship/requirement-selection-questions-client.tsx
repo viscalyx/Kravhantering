@@ -23,14 +23,19 @@ import {
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
+import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import { modalResizableTextareaResizeClassName } from '@/components/modal-textarea-class'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import StatusBadge from '@/components/StatusBadge'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
@@ -206,7 +211,7 @@ function createEmptyVisibilityGroupForm(): VisibilityGroupForm {
 const inputClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
-const modalTextareaClassName = `${inputClassName} min-h-24 max-h-[28vh] resize-y overflow-auto overscroll-contain`
+const modalTextareaClassName = `${inputClassName} min-h-24 ${modalResizableTextareaResizeClassName}`
 
 const lockedInputClassName =
   ' disabled:cursor-not-allowed disabled:border-secondary-200 disabled:bg-secondary-100 disabled:text-secondary-500 disabled:opacity-100 dark:disabled:border-secondary-700 dark:disabled:bg-secondary-900/70 dark:disabled:text-secondary-500'
@@ -269,18 +274,64 @@ function filterMatchedRequirementsBySources(
   )
 }
 
-function answerFormFingerprint(form: AnswerForm) {
-  return JSON.stringify({
-    description: form.description,
-    isNoRequirementSelection: form.isNoRequirementSelection,
-    packageIds: [...new Set(form.packageIds.map(Number))].sort(
-      (left, right) => left - right,
-    ),
-    requirementIds: [...new Set(form.requirements.map(item => item.id))].sort(
-      (left, right) => left - right,
-    ),
-    sortOrder: form.sortOrder,
+function questionFormFingerprint(form: QuestionForm, mode: 'create' | 'edit') {
+  return createDirtySnapshot({
+    ...(mode === 'create'
+      ? { areaId: form.areaId ? Number(form.areaId) : null }
+      : {}),
+    helpText: form.helpText || undefined,
+    selectionType: form.selectionType,
     text: form.text,
+  })
+}
+
+function answerFormFingerprint(form: AnswerForm) {
+  return createDirtySnapshot(
+    {
+      description: form.description || undefined,
+      isNoRequirementSelection: form.isNoRequirementSelection,
+      packageIds: form.isNoRequirementSelection
+        ? []
+        : form.packageIds.map(Number),
+      requirementIds: form.isNoRequirementSelection
+        ? []
+        : form.requirements.map(item => item.id),
+      sortOrder: Number(form.sortOrder || 0),
+      text: form.text,
+    },
+    { unorderedArrayPaths: ['packageIds', 'requirementIds'] },
+  )
+}
+
+function visibilityGroupsFingerprint(groups: VisibilityGroupForm[]) {
+  return createDirtySnapshot({
+    groups: groups
+      .map(group => ({
+        conditions: group.conditions
+          .filter(
+            condition =>
+              condition.parentQuestionId && condition.answerIds.length > 0,
+          )
+          .map(condition => ({
+            answerIds: condition.answerIds
+              .map(Number)
+              .sort((left, right) => left - right),
+            parentQuestionId: Number(condition.parentQuestionId),
+          }))
+          .sort((left, right) => {
+            const parentDelta = left.parentQuestionId - right.parentQuestionId
+            if (parentDelta !== 0) return parentDelta
+            return JSON.stringify(left.answerIds).localeCompare(
+              JSON.stringify(right.answerIds),
+            )
+          }),
+      }))
+      .filter(group => group.conditions.length > 0)
+      .sort((left, right) =>
+        JSON.stringify(left.conditions).localeCompare(
+          JSON.stringify(right.conditions),
+        ),
+      ),
   })
 }
 
@@ -754,6 +805,7 @@ function CompactRequirementDetail({
 export default function RequirementSelectionQuestionsClient() {
   useHelpContent(REQUIREMENT_SELECTION_QUESTIONS_STEWARDSHIP_HELP)
   const { confirm } = useConfirmModal()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
   const locale = useLocale()
   const t = useTranslations('requirementSelectionQuestionsStewardship')
   const tc = useTranslations('common')
@@ -884,6 +936,9 @@ export default function RequirementSelectionQuestionsClient() {
   const [questions, setQuestions] = useState<RequirementSelectionQuestion[]>([])
   const [questionForm, setQuestionForm] =
     useState<QuestionForm>(initialQuestionForm)
+  const [questionFormBaseline, setQuestionFormBaseline] = useState(() =>
+    questionFormFingerprint(initialQuestionForm, 'create'),
+  )
   const [answerForm, setAnswerForm] = useState<AnswerForm>(initialAnswerForm)
   const [answerFormBaseline, setAnswerFormBaseline] =
     useState<AnswerForm>(initialAnswerForm)
@@ -915,6 +970,9 @@ export default function RequirementSelectionQuestionsClient() {
   const [visibilityGroupsForm, setVisibilityGroupsForm] = useState<
     VisibilityGroupForm[]
   >([])
+  const [visibilityGroupsBaseline, setVisibilityGroupsBaseline] = useState(() =>
+    visibilityGroupsFingerprint([]),
+  )
   const [packageSelectorOpen, setPackageSelectorOpen] = useState(false)
   const [packageSearch, setPackageSearch] = useState('')
   const [requirementSearch, setRequirementSearch] = useState('')
@@ -1158,11 +1216,26 @@ export default function RequirementSelectionQuestionsClient() {
         : answerForm.requirements.map(requirement => requirement.id),
     [answerForm.isNoRequirementSelection, answerForm.requirements],
   )
+  const isQuestionFormDirty = useMemo(
+    () =>
+      questionFormBaseline !==
+      questionFormFingerprint(
+        questionForm,
+        editingQuestionId == null ? 'create' : 'edit',
+      ),
+    [editingQuestionId, questionForm, questionFormBaseline],
+  )
   const isAnswerFormDirty = useMemo(
     () =>
       answerFormFingerprint(answerForm) !==
       answerFormFingerprint(answerFormBaseline),
     [answerForm, answerFormBaseline],
+  )
+  const isVisibilityGroupsDirty = useMemo(
+    () =>
+      visibilityGroupsBaseline !==
+      visibilityGroupsFingerprint(visibilityGroupsForm),
+    [visibilityGroupsBaseline, visibilityGroupsForm],
   )
 
   useEffect(() => {
@@ -1426,6 +1499,9 @@ export default function RequirementSelectionQuestionsClient() {
 
   const openQuestionForm = () => {
     setQuestionForm(initialQuestionForm)
+    setQuestionFormBaseline(
+      questionFormFingerprint(initialQuestionForm, 'create'),
+    )
     setEditingQuestionId(null)
     setError(null)
     setShowQuestionForm(true)
@@ -1433,12 +1509,14 @@ export default function RequirementSelectionQuestionsClient() {
 
   const openQuestionEditForm = (question: RequirementSelectionQuestion) => {
     expandQuestion(question.id)
-    setQuestionForm({
+    const nextQuestionForm = {
       areaId: String(question.areaId),
       helpText: question.helpText ?? '',
       selectionType: question.selectionType,
       text: question.text,
-    })
+    }
+    setQuestionForm(nextQuestionForm)
+    setQuestionFormBaseline(questionFormFingerprint(nextQuestionForm, 'edit'))
     setEditingQuestionId(question.id)
     setError(null)
     setShowQuestionForm(true)
@@ -1449,6 +1527,9 @@ export default function RequirementSelectionQuestionsClient() {
     setVisibilityPanelQuestionId(question.id)
     const nextForm = visibilityFormFromQuestion(question)
     setVisibilityGroupsForm(nextForm.length > 0 ? nextForm : [])
+    setVisibilityGroupsBaseline(
+      visibilityGroupsFingerprint(nextForm.length > 0 ? nextForm : []),
+    )
     setError(null)
   }
 
@@ -1460,14 +1541,19 @@ export default function RequirementSelectionQuestionsClient() {
     setHierarchyQuestionId(null)
   }
 
-  const closeVisibilityPanel = () => {
+  const closeVisibilityPanel = async (anchorEl?: HTMLElement | null) => {
     if (submitting) return
+    if (isVisibilityGroupsDirty && !(await confirmDiscardChanges(anchorEl))) {
+      return
+    }
     setVisibilityPanelQuestionId(null)
     setVisibilityGroupsForm([])
+    setVisibilityGroupsBaseline(visibilityGroupsFingerprint([]))
   }
 
   const saveVisibilityGroups = async () => {
     if (!visibilityPanelQuestion) return
+    if (!isVisibilityGroupsDirty) return
     setSubmitting(true)
     setError(null)
     try {
@@ -1496,7 +1582,7 @@ export default function RequirementSelectionQuestionsClient() {
         setError((await readResponseMessage(response)) ?? copy.error)
         return
       }
-      closeVisibilityPanel()
+      void closeVisibilityPanel()
       await reload()
     } catch {
       setError(copy.error)
@@ -1505,9 +1591,15 @@ export default function RequirementSelectionQuestionsClient() {
     }
   }
 
-  const closeQuestionForm = () => {
+  const closeQuestionForm = async (anchorEl?: HTMLElement | null) => {
     if (submitting) return
+    if (isQuestionFormDirty && !(await confirmDiscardChanges(anchorEl))) {
+      return
+    }
     setQuestionForm(initialQuestionForm)
+    setQuestionFormBaseline(
+      questionFormFingerprint(initialQuestionForm, 'create'),
+    )
     setEditingQuestionId(null)
     setShowQuestionForm(false)
   }
@@ -1549,23 +1641,16 @@ export default function RequirementSelectionQuestionsClient() {
     setShowAnswerForm(true)
   }
 
-  const requestCloseAnswerForm = (anchorEl?: HTMLElement | null) => {
+  const requestCloseAnswerForm = async (anchorEl?: HTMLElement | null) => {
     if (submitting) return
     if (!isAnswerFormDirty) {
       resetAnswerEditingState()
       return
     }
 
-    void confirm({
-      anchorEl,
-      confirmText: copy.discardChanges,
-      defaultCancel: true,
-      icon: 'caution',
-      message: copy.unsavedChangesConfirm,
-      variant: 'danger',
-    }).then(confirmed => {
-      if (confirmed) resetAnswerEditingState()
-    })
+    if (await confirmDiscardChanges(anchorEl)) {
+      resetAnswerEditingState()
+    }
   }
 
   const selectQuestion = useCallback(
@@ -1641,6 +1726,7 @@ export default function RequirementSelectionQuestionsClient() {
 
   const submitQuestion = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (!isQuestionFormDirty) return
     if (!questionForm.areaId) return
     const areaId = Number(questionForm.areaId)
     const nextSortOrder =
@@ -1674,6 +1760,9 @@ export default function RequirementSelectionQuestionsClient() {
       }
       const created = (await response.json()) as RequirementSelectionQuestion
       setQuestionForm(initialQuestionForm)
+      setQuestionFormBaseline(
+        questionFormFingerprint(initialQuestionForm, 'create'),
+      )
       expandQuestion(created.id)
       selectQuestion(created.id)
       setEditingQuestionId(null)
@@ -1689,6 +1778,7 @@ export default function RequirementSelectionQuestionsClient() {
   const createAnswer = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!selectedQuestion) return
+    if (!isAnswerFormDirty) return
     setSubmitting(true)
     setError(null)
     try {
@@ -2612,18 +2702,21 @@ export default function RequirementSelectionQuestionsClient() {
           <option value="multiple">{copy.multiple}</option>
         </select>
       </div>
-      <button
-        className="btn-primary inline-flex items-center gap-1.5"
-        disabled={submitting}
-        type="submit"
-      >
-        {editingQuestionId ? (
-          <Save aria-hidden="true" className="h-4 w-4" />
-        ) : (
-          <Plus aria-hidden="true" className="h-4 w-4" />
-        )}
-        {editingQuestionId ? copy.save : copy.create}
-      </button>
+      <FormActionRow>
+        <DirtyStateButton
+          className="btn-primary inline-flex items-center gap-1.5"
+          dirty={isQuestionFormDirty}
+          disabled={submitting}
+          type="submit"
+        >
+          {editingQuestionId ? (
+            <Save aria-hidden="true" className="h-4 w-4" />
+          ) : (
+            <Plus aria-hidden="true" className="h-4 w-4" />
+          )}
+          {editingQuestionId ? copy.save : copy.create}
+        </DirtyStateButton>
+      </FormActionRow>
     </form>
   )
 
@@ -2730,9 +2823,10 @@ export default function RequirementSelectionQuestionsClient() {
               value={answerForm.description}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
+          <FormActionRow actionsClassName="gap-2">
+            <DirtyStateButton
               className="btn-primary inline-flex items-center gap-1.5"
+              dirty={isAnswerFormDirty}
               disabled={submitting}
               type="submit"
             >
@@ -2742,16 +2836,18 @@ export default function RequirementSelectionQuestionsClient() {
                 <Plus aria-hidden="true" className="h-4 w-4" />
               )}
               {editingAnswerId ? copy.save : copy.addAnswer}
-            </button>
+            </DirtyStateButton>
             <button
               className="btn-secondary inline-flex items-center gap-1.5"
               disabled={submitting}
-              onClick={event => requestCloseAnswerForm(event.currentTarget)}
+              onClick={event =>
+                void requestCloseAnswerForm(event.currentTarget)
+              }
               type="button"
             >
               {copy.cancel}
             </button>
-          </div>
+          </FormActionRow>
         </div>
 
         <div
@@ -3476,7 +3572,9 @@ export default function RequirementSelectionQuestionsClient() {
           closeDisabled={submitting}
           developerModeValue="new requirement selection question"
           initialFocusRef={questionTextRef}
-          onClose={closeQuestionForm}
+          onClose={() => {
+            void closeQuestionForm()
+          }}
           open={showQuestionForm}
           title={editingQuestionId ? copy.editQuestion : copy.createQuestion}
           titleId="requirement-selection-question-create-title"
@@ -3492,7 +3590,9 @@ export default function RequirementSelectionQuestionsClient() {
           }
           initialFocusRef={answerTextRef}
           maxWidthClassName="max-w-7xl"
-          onClose={() => requestCloseAnswerForm()}
+          onClose={() => {
+            void requestCloseAnswerForm()
+          }}
           open={showAnswerForm}
           showHeader={false}
           title={
@@ -4625,7 +4725,11 @@ export default function RequirementSelectionQuestionsClient() {
                                       aria-label={copy.cancel}
                                       className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-900"
                                       disabled={submitting}
-                                      onClick={closeVisibilityPanel}
+                                      onClick={event =>
+                                        void closeVisibilityPanel(
+                                          event.currentTarget,
+                                        )
+                                      }
                                       type="button"
                                     >
                                       <X
@@ -5025,17 +5129,30 @@ export default function RequirementSelectionQuestionsClient() {
                                       {copy.addVisibilityGroup}
                                     </button>
                                   </div>
-                                  <div className="flex justify-end gap-2 border-t border-secondary-200 px-4 py-3 dark:border-secondary-800">
+                                  <FormActionRow
+                                    actionsClassName="gap-2"
+                                    className="border-t border-secondary-200 px-4 py-3 dark:border-secondary-800"
+                                    hint={
+                                      visibilityGroupsForm.length > 0
+                                        ? undefined
+                                        : null
+                                    }
+                                  >
                                     <button
                                       className="btn-secondary inline-flex items-center gap-1.5"
                                       disabled={submitting}
-                                      onClick={closeVisibilityPanel}
+                                      onClick={event =>
+                                        void closeVisibilityPanel(
+                                          event.currentTarget,
+                                        )
+                                      }
                                       type="button"
                                     >
                                       {copy.cancel}
                                     </button>
-                                    <button
+                                    <DirtyStateButton
                                       className="btn-primary inline-flex items-center gap-1.5"
+                                      dirty={isVisibilityGroupsDirty}
                                       disabled={submitting}
                                       onClick={saveVisibilityGroups}
                                       type="button"
@@ -5045,8 +5162,8 @@ export default function RequirementSelectionQuestionsClient() {
                                         className="h-4 w-4"
                                       />
                                       {copy.saveVisibility}
-                                    </button>
-                                  </div>
+                                    </DirtyStateButton>
+                                  </FormActionRow>
                                 </aside>
                               ) : null}
                             </div>

@@ -14,7 +14,7 @@ export interface RequirementsSpecificationEntity {
   responsiblePerson: RequirementResponsibilityPersonEntity
   specificationGovernanceObjectType: SpecificationGovernanceObjectTypeEntity | null
   specificationImplementationType: SpecificationImplementationTypeEntity | null
-  specificationLifecycleStatus: SpecificationLifecycleStatusEntity | null
+  specificationLifecycleStatus: SpecificationLifecycleStatusEntity
   uniqueId: string
   updatedAt: Date
 }
@@ -108,7 +108,7 @@ export const requirementsSpecificationEntity =
           foreignKeyConstraintName:
             'fk_requirements_specifications_specification_lifecycle_status_id',
         },
-        nullable: true,
+        nullable: false,
         onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },

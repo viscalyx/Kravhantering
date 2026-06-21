@@ -39,6 +39,7 @@ interface HsaIdPrefixOption {
 }
 
 interface HsaPersonVerifyFieldProps {
+  compactHsaIdLayout?: boolean
   disabled?: boolean
   emailLabel: string
   errorFallback: string
@@ -52,15 +53,18 @@ interface HsaPersonVerifyFieldProps {
   nameLabel: string
   onHsaIdChange: (value: string) => void
   onVerified?: (person: HsaPersonVerification) => void
+  personSummaryMode?: 'fields' | 'hidden' | 'text'
   purpose: HsaPersonVerificationPurpose
   readOnly?: boolean
   required?: boolean
   scopeId?: number
   showPersonSummaryAsText?: boolean
+  showUnavailablePersonSummary?: boolean
   unavailableText: string
 }
 
 export default function HsaPersonVerifyField({
+  compactHsaIdLayout = false,
   disabled = false,
   emailLabel,
   errorFallback,
@@ -75,10 +79,12 @@ export default function HsaPersonVerifyField({
   unavailableText,
   onHsaIdChange,
   onVerified,
+  personSummaryMode,
   purpose,
   readOnly = false,
   required = false,
   showPersonSummaryAsText = false,
+  showUnavailablePersonSummary = true,
   scopeId,
 }: HsaPersonVerifyFieldProps) {
   const tc = useTranslations('common')
@@ -125,8 +131,11 @@ export default function HsaPersonVerifyField({
   )
   const currentHsaIdRef = useRef(trimmedHsaId)
   const refreshButtonRef = useRef<HTMLButtonElement>(null)
+  const skipBlurVerifyForRefreshPointerRef = useRef(false)
   const activeVerification =
     verification?.hsaId === trimmedHsaId ? verification : null
+  const resolvedPersonSummaryMode =
+    personSummaryMode ?? (showPersonSummaryAsText ? 'text' : 'fields')
   const displayName =
     activeVerification?.displayName ??
     (initialDisplayName && trimmedHsaId ? initialDisplayName : '')
@@ -137,6 +146,9 @@ export default function HsaPersonVerifyField({
     displayName && email
       ? `${displayName} (${email})`
       : displayName || email || unavailableText
+  const shouldShowTextPersonSummary = Boolean(
+    displayName || email || showUnavailablePersonSummary,
+  )
 
   useEffect(() => {
     if (readOnly) return
@@ -239,8 +251,12 @@ export default function HsaPersonVerifyField({
       )
     }
 
+    const gridClassName = compactHsaIdLayout
+      ? 'grid gap-2 sm:grid-cols-[minmax(9rem,0.7fr)_minmax(8rem,1fr)]'
+      : 'grid gap-2 sm:grid-cols-[minmax(10rem,0.45fr)_minmax(0,1fr)]'
+
     return (
-      <div className="grid gap-2 sm:grid-cols-[minmax(10rem,0.45fr)_minmax(0,1fr)]">
+      <div className={gridClassName}>
         <select
           aria-label={tc('hsaPrefixLabel')}
           className={`${inputClassName} font-mono`}
@@ -280,8 +296,12 @@ export default function HsaPersonVerifyField({
           id={inputId}
           maxLength={maxSuffixLength}
           onBlur={event => {
-            if (event.relatedTarget === refreshButtonRef.current) return
-            void verifyPerson('reuse_local')
+            const skipBlurVerify =
+              event.relatedTarget === refreshButtonRef.current &&
+              skipBlurVerifyForRefreshPointerRef.current
+            skipBlurVerifyForRefreshPointerRef.current = false
+            if (skipBlurVerify) return
+            void verifyPerson('refresh')
           }}
           onChange={event => {
             setError(null)
@@ -308,6 +328,9 @@ export default function HsaPersonVerifyField({
           onClick={() => {
             void verifyPerson('refresh')
           }}
+          onPointerDown={() => {
+            skipBlurVerifyForRefreshPointerRef.current = true
+          }}
           ref={refreshButtonRef}
           title={loading ? fetchingLabel : fetchLabel}
           type="button"
@@ -323,11 +346,12 @@ export default function HsaPersonVerifyField({
           {prefixLoadError ?? tc('hsaPrefixMissing')}
         </p>
       ) : null}
-      {showPersonSummaryAsText ? (
+      {resolvedPersonSummaryMode === 'text' && shouldShowTextPersonSummary ? (
         <p className="mt-1 text-xs italic text-secondary-700 dark:text-secondary-300">
           {personSummary}
         </p>
-      ) : (
+      ) : null}
+      {resolvedPersonSummaryMode === 'fields' ? (
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="block text-xs font-medium text-secondary-600 dark:text-secondary-400">
             {nameLabel}
@@ -346,7 +370,7 @@ export default function HsaPersonVerifyField({
             />
           </label>
         </div>
-      )}
+      ) : null}
       {error && (
         <p className="rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">
           {error}

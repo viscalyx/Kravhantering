@@ -1,4 +1,8 @@
 import { requirementPackageName } from '@/lib/reports/package-name'
+import {
+  getReportLabels,
+  localizeReportValue,
+} from '@/lib/reports/report-labels'
 
 export interface DeviationReportDeviation {
   createdAt: string
@@ -133,8 +137,12 @@ export async function fetchDeviationForReport(
     throw new Error('No requirement version found')
   }
 
-  const statusLabel =
-    locale === 'sv' ? version.statusNameSv : version.statusNameEn
+  const labels = getReportLabels(locale)
+  const statusLabel = localizeReportValue(
+    locale,
+    version.statusNameSv,
+    version.statusNameEn,
+  )
 
   return {
     requirementUniqueId: requirement.uniqueId,
@@ -172,7 +180,7 @@ export async function fetchDeviationForReport(
           }
         : null,
       status: {
-        label: statusLabel ?? 'Unknown',
+        label: statusLabel || labels.common.unknown,
         color: version.statusColor,
         iconName: version.statusIconName,
       },

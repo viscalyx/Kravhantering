@@ -26,10 +26,12 @@ import {
 import { createPortal } from 'react-dom'
 import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
 import SpecificationRequirementSelectionPanel from '@/app/[locale]/specifications/[slug]/specification-requirement-selection-panel'
+import SpecificationRfiListPanel from '@/app/[locale]/specifications/[slug]/specification-rfi-list-panel'
 import SpecificationFormModal from '@/app/[locale]/specifications/specification-form-modal'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
@@ -38,13 +40,20 @@ import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
 } from '@/components/SpecificationLocalRequirementForm'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
-import { exportToCsv } from '@/lib/export-csv'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
+import {
+  canExportProcurementCsvForLifecycleStatus,
+  getSpecificationReportProfileForLifecycleStatus,
+  type SpecificationCsvProfile,
+  type SpecificationReportProfile,
+} from '@/lib/reports/specification-profiles'
 import {
   type AreaOption,
   buildRequirementListParams,
@@ -65,7 +74,6 @@ import type {
   SpecificationNeedsReference,
   SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
-import { createUtf8BomBlob } from '@/lib/text-export'
 
 const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
   sections: [
@@ -111,13 +119,19 @@ const DEFAULT_RIGHT_COLS: RequirementColumnId[] = [
   'description',
   'area',
 ]
-type SpecificationDetailLeftTab = 'items' | 'needs-references'
+type SpecificationDetailLeftTab = 'items' | 'needs-references' | 'rfi'
 
 interface NeedsReferenceFormState {
   description: string
   id: number | null
   text: string
 }
+
+const needsReferenceFormSignature = (form: NeedsReferenceFormState) =>
+  createDirtySnapshot({
+    description: form.description.trim() || null,
+    text: form.text.trim(),
+  })
 
 interface RequirementSelectionFilterToggleProps {
   checked: boolean
@@ -195,14 +209,6 @@ function readStoredCols(
   return fallback
 }
 
-function buildItemRefsQuery(rows: RequirementRow[]) {
-  const refs = rows
-    .map(row => row.itemRef)
-    .filter((value): value is string => typeof value === 'string')
-
-  return refs.map(ref => encodeURIComponent(ref)).join(',')
-}
-
 async function readJsonOrThrow<T>(response: Response, fallbackMessage: string) {
   if (!response.ok) {
     const details = await readResponseMessage(response)
@@ -234,10 +240,10 @@ export default function KravunderlagDetailClient({
   const t = useTranslations('specification')
   const tc = useTranslations('common')
   const td = useTranslations('deviation')
-  const tr = useTranslations('reports')
   const locale = useLocale()
   const router = useRouter()
   const { confirm } = useConfirmModal()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
   const searchParams = useSearchParams()
   const shouldReduceMotion = useReducedMotion()
   const preFilterAreaId = searchParams.get('areaId')
@@ -246,7 +252,9 @@ export default function KravunderlagDetailClient({
   const initialLeftTab: SpecificationDetailLeftTab =
     searchParams.get('leftTab') === 'needs-references'
       ? 'needs-references'
-      : 'items'
+      : searchParams.get('leftTab') === 'rfi'
+        ? 'rfi'
+        : 'items'
 
   const [spec, setSpec] = useState<SpecificationMeta | null>(initialData.spec)
   const [specificationItems, setSpecificationItems] = useState<
@@ -324,6 +332,8 @@ export default function KravunderlagDetailClient({
   const [showAddModal, setShowAddModal] = useState(false)
   const [showCreateLocalRequirementModal, setShowCreateLocalRequirementModal] =
     useState(false)
+  const [createLocalRequirementFormDirty, setCreateLocalRequirementFormDirty] =
+    useState(false)
   const [pendingAddIds, setPendingAddIds] = useState<number[]>([])
   const [addNeedsRefMode, setAddNeedsRefMode] = useState<
     'none' | 'existing' | 'new'
@@ -339,6 +349,9 @@ export default function KravunderlagDetailClient({
   >(null)
   const [needsReferenceForm, setNeedsReferenceForm] =
     useState<NeedsReferenceFormState | null>(null)
+  const [needsReferenceFormBaseline, setNeedsReferenceFormBaseline] = useState(
+    () => needsReferenceFormSignature({ description: '', id: null, text: '' }),
+  )
   const [needsReferenceSaving, setNeedsReferenceSaving] = useState(false)
   const [needsReferenceError, setNeedsReferenceError] = useState<string | null>(
     null,
@@ -572,16 +585,20 @@ export default function KravunderlagDetailClient({
     setShowAddModal(false)
   }, [addModalLoading])
 
-  const closeCreateLocalRequirementModal = useCallback(async () => {
-    const confirmed = await confirm({
-      message: tc('unsavedChangesConfirm'),
-      variant: 'danger',
-      icon: 'warning',
-    })
-    if (confirmed) {
+  const closeCreateLocalRequirementModal = useCallback(
+    async (anchorEl?: HTMLElement | null) => {
+      if (
+        createLocalRequirementFormDirty &&
+        !(await confirmDiscardChanges(anchorEl))
+      ) {
+        return false
+      }
+      setCreateLocalRequirementFormDirty(false)
       setShowCreateLocalRequirementModal(false)
-    }
-  }, [confirm, tc])
+      return true
+    },
+    [confirmDiscardChanges, createLocalRequirementFormDirty],
+  )
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -797,6 +814,7 @@ export default function KravunderlagDetailClient({
   }, [needsReferencesResource, rightSelectedIds])
 
   const handleOpenCreateLocalRequirementModal = useCallback(async () => {
+    setCreateLocalRequirementFormDirty(false)
     setShowCreateLocalRequirementModal(true)
 
     if (availableNeedsRefs.length > 0) {
@@ -881,14 +899,34 @@ export default function KravunderlagDetailClient({
         throw new Error(body?.error ?? tc('error'))
       }
 
+      setCreateLocalRequirementFormDirty(false)
       setShowCreateLocalRequirementModal(false)
       await fetchSpecificationItems({ throwOnError: true })
     },
     [fetchSpecificationItems, specificationSlug, tc],
   )
 
+  const needsReferenceFormDirty =
+    needsReferenceForm !== null &&
+    needsReferenceFormBaseline !==
+      needsReferenceFormSignature(needsReferenceForm)
+
+  const closeNeedsReferenceForm = useCallback(
+    async (anchorEl?: HTMLElement | null) => {
+      if (needsReferenceSaving) return false
+      if (needsReferenceFormDirty && !(await confirmDiscardChanges(anchorEl))) {
+        return false
+      }
+      setNeedsReferenceForm(null)
+      setNeedsReferenceError(null)
+      return true
+    },
+    [confirmDiscardChanges, needsReferenceFormDirty, needsReferenceSaving],
+  )
+
   const handleSaveNeedsReference = useCallback(async () => {
     if (!needsReferenceForm) return
+    if (!needsReferenceFormDirty) return
     setNeedsReferenceSaving(true)
     setNeedsReferenceError(null)
     try {
@@ -929,6 +967,7 @@ export default function KravunderlagDetailClient({
     fetchNeedsReferences,
     fetchSpecificationItems,
     needsReferenceForm,
+    needsReferenceFormDirty,
     specificationSlug,
     tc,
   ])
@@ -1397,70 +1436,91 @@ export default function KravunderlagDetailClient({
     return requirementPackages.filter(s => usedIds.has(s.id))
   }, [specificationItems, requirementPackages])
 
-  const handleExportCsv = useCallback(() => {
-    const headers = [
-      t('csvHeaders.uniqueId'),
-      t('csvHeaders.description'),
-      t('csvHeaders.area'),
-      t('csvHeaders.needsReference'),
-      t('csvHeaders.status'),
-      t('csvHeaders.category'),
-      t('csvHeaders.type'),
-      t('csvHeaders.qualityCharacteristic'),
-      t('csvHeaders.specificationItemStatus'),
-    ]
-    const csvRows = filteredSpecificationItems.map(r => ({
-      [headers[0]]: r.uniqueId,
-      [headers[1]]: r.version?.description ?? '',
-      [headers[2]]: r.area?.name ?? '',
-      [headers[3]]: (r as SpecificationListItem).needsReference ?? '',
-      [headers[4]]:
-        (locale === 'sv' ? r.version?.statusNameSv : r.version?.statusNameEn) ??
-        '',
-      [headers[5]]:
-        (locale === 'sv'
-          ? r.version?.categoryNameSv
-          : r.version?.categoryNameEn) ?? '',
-      [headers[6]]:
-        (locale === 'sv' ? r.version?.typeNameSv : r.version?.typeNameEn) ?? '',
-      [headers[7]]:
-        (locale === 'sv'
-          ? r.version?.qualityCharacteristicNameSv
-          : r.version?.qualityCharacteristicNameEn) ?? '',
-      [headers[8]]:
-        (locale === 'sv'
-          ? r.specificationItemStatusNameSv
-          : r.specificationItemStatusNameEn) ?? '',
-    }))
-    const csv = exportToCsv(headers, csvRows)
-    const blob = createUtf8BomBlob(csv, 'text/csv;charset=utf-8;')
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = t('downloadFilename')
-    a.click()
-    URL.revokeObjectURL(url)
-  }, [filteredSpecificationItems, locale, t])
+  const specificationReportProfile = useMemo(
+    () =>
+      getSpecificationReportProfileForLifecycleStatus(
+        spec?.specificationLifecycleStatusId,
+      ),
+    [spec?.specificationLifecycleStatusId],
+  )
+  const showProcurementCsv = canExportProcurementCsvForLifecycleStatus(
+    spec?.specificationLifecycleStatusId,
+  )
 
-  const handleDownloadPdf = useCallback(() => {
-    if (!spec) return
-    const refs = buildItemRefsQuery(filteredSpecificationItems)
-    if (!refs) return
-    const label = tr('listPdfFilenameLabel')
-    void pdfDownload.download({
-      fallbackFilename: `${label} ${spec.name} ${spec.uniqueId}.pdf`,
-      url: `/${locale}/specifications/${encodeURIComponent(
+  const reportProfileLabel = useCallback(
+    (profile: SpecificationReportProfile) => {
+      if (profile === 'procurement') return t('reportProfiles.procurement')
+      if (profile === 'management') return t('reportProfiles.management')
+      return t('reportProfiles.progress')
+    },
+    [t],
+  )
+
+  const exportProfileLabel = useCallback(
+    (profile: SpecificationCsvProfile) => {
+      if (profile === 'procurement') return t('exportProfiles.procurement')
+      return t('exportProfiles.full')
+    },
+    [t],
+  )
+
+  const handleExportCsv = useCallback(
+    async (profile: SpecificationCsvProfile) => {
+      if (!spec) return
+      try {
+        const response = await fetch(
+          `/api/requirements-specifications/${encodeURIComponent(
+            specificationSlug,
+          )}/exports?profile=${encodeURIComponent(
+            profile,
+          )}&locale=${encodeURIComponent(locale)}`,
+        )
+        if (!response.ok) {
+          const details = await readResponseMessage(response)
+          console.error(details || tc('error'))
+          return
+        }
+
+        const blob = await response.blob()
+        const label = exportProfileLabel(profile)
+        const fallbackFilename = `${label} ${spec.name} ${spec.uniqueId}.csv`
+        const url = URL.createObjectURL(blob)
+        try {
+          const a = document.createElement('a')
+          a.href = url
+          a.download = fallbackFilename
+          a.click()
+        } finally {
+          URL.revokeObjectURL(url)
+        }
+      } catch (error) {
+        console.error(error)
+      }
+    },
+    [exportProfileLabel, locale, spec, specificationSlug, tc],
+  )
+
+  const handleDownloadPdf = useCallback(
+    (profile: SpecificationReportProfile) => {
+      if (!spec) return
+      const label = reportProfileLabel(profile)
+      void pdfDownload.download({
+        fallbackFilename: `${label} ${spec.name} ${spec.uniqueId}.pdf`,
+        url: `/${locale}/specifications/${encodeURIComponent(
+          specificationSlug,
+        )}/reports/pdf/${profile}`,
+      })
+    },
+    [locale, pdfDownload, reportProfileLabel, specificationSlug, spec],
+  )
+
+  const openPrintReportHref = useCallback(
+    (profile: SpecificationReportProfile) =>
+      `/specifications/${encodeURIComponent(
         specificationSlug,
-      )}/reports/pdf/list?refs=${refs}`,
-    })
-  }, [
-    filteredSpecificationItems,
-    locale,
-    pdfDownload,
-    specificationSlug,
-    spec,
-    tr,
-  ])
+      )}/reports/print/${profile}`,
+    [specificationSlug],
+  )
 
   const specName = spec ? spec.name : '…'
   const permissions = spec?.permissions ?? {
@@ -1484,7 +1544,6 @@ export default function KravunderlagDetailClient({
           <div
             aria-modal="true"
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={closeAddModal}
             onKeyDown={e => {
               if (e.key === 'Escape') {
                 closeAddModal()
@@ -1494,7 +1553,6 @@ export default function KravunderlagDetailClient({
           >
             <div
               className="w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl p-6 space-y-4"
-              onClick={e => e.stopPropagation()}
               onKeyDown={e => {
                 e.stopPropagation()
                 if (e.key === 'Escape') {
@@ -1661,12 +1719,7 @@ export default function KravunderlagDetailClient({
             }}
             role="dialog"
           >
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
-            {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
-            <div
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => void closeCreateLocalRequirementModal()}
-            />
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div
               className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
               role="document"
@@ -1683,7 +1736,9 @@ export default function KravunderlagDetailClient({
                 <button
                   aria-label={tc('close')}
                   className="rounded-lg p-1.5 transition-colors hover:bg-secondary-100 dark:hover:bg-secondary-800"
-                  onClick={() => void closeCreateLocalRequirementModal()}
+                  onClick={event =>
+                    void closeCreateLocalRequirementModal(event.currentTarget)
+                  }
                   type="button"
                 >
                   <X aria-hidden="true" className="h-4 w-4" />
@@ -1692,7 +1747,11 @@ export default function KravunderlagDetailClient({
 
               <SpecificationLocalRequirementForm
                 needsReferences={availableNeedsRefs}
-                onCancel={() => void closeCreateLocalRequirementModal()}
+                onCancel={() => {
+                  setCreateLocalRequirementFormDirty(false)
+                  setShowCreateLocalRequirementModal(false)
+                }}
+                onDirtyChange={setCreateLocalRequirementFormDirty}
                 onSubmit={handleCreateLocalRequirement}
                 submitLabel={tc('save')}
               />
@@ -1713,22 +1772,13 @@ export default function KravunderlagDetailClient({
                 key="needs-reference-form-backdrop"
                 onKeyDown={event => {
                   if (event.key === 'Escape' && !needsReferenceSaving) {
-                    setNeedsReferenceForm(null)
+                    void closeNeedsReferenceForm()
                   }
                 }}
                 role="dialog"
                 {...fadeMotion(shouldReduceMotion)}
               >
-                {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
-                {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
-                <div
-                  className="absolute inset-0"
-                  onClick={() => {
-                    if (!needsReferenceSaving) {
-                      setNeedsReferenceForm(null)
-                    }
-                  }}
-                />
+                <div className="absolute inset-0" />
                 <motion.div
                   className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
                   role="document"
@@ -1749,7 +1799,9 @@ export default function KravunderlagDetailClient({
                       aria-label={tc('close')}
                       className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg transition-colors hover:bg-secondary-100 dark:hover:bg-secondary-800"
                       disabled={needsReferenceSaving}
-                      onClick={() => setNeedsReferenceForm(null)}
+                      onClick={event =>
+                        void closeNeedsReferenceForm(event.currentTarget)
+                      }
                       type="button"
                     >
                       <X aria-hidden="true" className="h-4 w-4" />
@@ -1831,8 +1883,9 @@ export default function KravunderlagDetailClient({
                       </p>
                     ) : null}
                     <div className="flex gap-3 pt-1">
-                      <button
+                      <DirtyStateButton
                         className="btn-primary"
+                        dirty={needsReferenceFormDirty}
                         disabled={
                           needsReferenceSaving ||
                           !needsReferenceForm.text.trim()
@@ -1841,11 +1894,13 @@ export default function KravunderlagDetailClient({
                         type="button"
                       >
                         {needsReferenceSaving ? tc('saving') : tc('save')}
-                      </button>
+                      </DirtyStateButton>
                       <button
                         className="min-h-11 rounded-xl border px-4 py-2.5 text-sm transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-secondary-800"
                         disabled={needsReferenceSaving}
-                        onClick={() => setNeedsReferenceForm(null)}
+                        onClick={event =>
+                          void closeNeedsReferenceForm(event.currentTarget)
+                        }
                         type="button"
                       >
                         {tc('cancel')}
@@ -1917,11 +1972,13 @@ export default function KravunderlagDetailClient({
   const openNeedsReferenceForm = () => {
     if (!canEditContent) return
     setNeedsReferenceError(null)
-    setNeedsReferenceForm({
+    const nextForm = {
       description: '',
       id: null,
       text: '',
-    })
+    }
+    setNeedsReferenceForm(nextForm)
+    setNeedsReferenceFormBaseline(needsReferenceFormSignature(nextForm))
   }
   const splitPanelTabsClassName =
     'inline-flex max-w-full shrink gap-1 overflow-x-auto rounded-full bg-secondary-100 p-1 shadow-inner dark:bg-secondary-950/80'
@@ -1956,6 +2013,15 @@ export default function KravunderlagDetailClient({
       >
         <span className="truncate">{t('needsReferences')}</span>
         <span className="text-xs opacity-80">{availableNeedsRefs.length}</span>
+      </button>
+      <button
+        aria-selected={leftTab === 'rfi'}
+        className={splitPanelTabClassName(leftTab === 'rfi')}
+        onClick={() => handleLeftTabChange('rfi')}
+        role="tab"
+        type="button"
+      >
+        <span className="truncate">{t('rfiList')}</span>
       </button>
     </div>
   )
@@ -2237,13 +2303,19 @@ export default function KravunderlagDetailClient({
                                           aria-label={t('editNeedsReference')}
                                           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-secondary-200 text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
                                           onClick={() => {
-                                            setNeedsReferenceError(null)
-                                            setNeedsReferenceForm({
+                                            const nextForm = {
                                               description:
                                                 ref.description ?? '',
                                               id: ref.id,
                                               text: ref.text,
-                                            })
+                                            }
+                                            setNeedsReferenceError(null)
+                                            setNeedsReferenceForm(nextForm)
+                                            setNeedsReferenceFormBaseline(
+                                              needsReferenceFormSignature(
+                                                nextForm,
+                                              ),
+                                            )
                                           }}
                                           type="button"
                                         >
@@ -2368,6 +2440,20 @@ export default function KravunderlagDetailClient({
                     </div>
                   )}
                 </div>
+              ) : leftTab === 'rfi' ? (
+                <div
+                  className={desktopSplitPanelCardClassName}
+                  data-specification-detail-list-panel="rfi"
+                >
+                  <div className={splitPanelHeaderClassName}>
+                    {renderLeftPanelTabs()}
+                  </div>
+                  <SpecificationRfiListPanel
+                    canEdit={canEditContent}
+                    specificationId={spec.id}
+                    specificationSlug={specificationSlug}
+                  />
+                </div>
               ) : specificationItems.length === 0 ? (
                 <div
                   className={desktopSplitPanelCardClassName}
@@ -2434,24 +2520,38 @@ export default function KravunderlagDetailClient({
                         : []),
                       {
                         ariaLabel: tc('print'),
+                        hidden: !specificationReportProfile,
                         icon: (
                           <Printer aria-hidden="true" className="h-4 w-4" />
                         ),
                         id: 'print',
-                        menuItems: [
-                          {
-                            href: `/specifications/${specificationSlug}/reports/print/list?refs=${buildItemRefsQuery(
-                              filteredSpecificationItems,
-                            )}`,
-                            id: 'print-list',
-                            label: t('printListReport'),
-                          },
-                          {
-                            id: 'pdf-list',
-                            label: t('downloadListReportPdf'),
-                            onClick: () => void handleDownloadPdf(),
-                          },
-                        ],
+                        menuItems: specificationReportProfile
+                          ? [
+                              {
+                                href: openPrintReportHref(
+                                  specificationReportProfile,
+                                ),
+                                id: `print-${specificationReportProfile}`,
+                                label: t('printProfileReport', {
+                                  report: reportProfileLabel(
+                                    specificationReportProfile,
+                                  ),
+                                }),
+                              },
+                              {
+                                id: `pdf-${specificationReportProfile}`,
+                                label: t('downloadProfileReportPdf', {
+                                  report: reportProfileLabel(
+                                    specificationReportProfile,
+                                  ),
+                                }),
+                                onClick: () =>
+                                  void handleDownloadPdf(
+                                    specificationReportProfile,
+                                  ),
+                              },
+                            ]
+                          : [],
                       },
                       {
                         ariaLabel: tc('export'),
@@ -2459,7 +2559,23 @@ export default function KravunderlagDetailClient({
                           <Download aria-hidden="true" className="h-4 w-4" />
                         ),
                         id: 'export',
-                        onClick: handleExportCsv,
+                        menuItems: [
+                          ...(showProcurementCsv
+                            ? [
+                                {
+                                  id: 'export-procurement',
+                                  label: exportProfileLabel('procurement'),
+                                  onClick: () =>
+                                    void handleExportCsv('procurement'),
+                                },
+                              ]
+                            : []),
+                          {
+                            id: 'export-full',
+                            label: exportProfileLabel('full'),
+                            onClick: () => void handleExportCsv('full'),
+                          },
+                        ],
                       },
                     ]}
                     getName={getName}
@@ -2499,6 +2615,18 @@ export default function KravunderlagDetailClient({
                             ])
                           }}
                           specificationSlug={specificationSlug}
+                          usageStatus={{
+                            specificationItemStatusColor:
+                              item.specificationItemStatusColor ?? null,
+                            specificationItemStatusIconName:
+                              item.specificationItemStatusIconName ?? null,
+                            specificationItemStatusId:
+                              item.specificationItemStatusId ?? null,
+                            specificationItemStatusNameEn:
+                              item.specificationItemStatusNameEn ?? null,
+                            specificationItemStatusNameSv:
+                              item.specificationItemStatusNameSv ?? null,
+                          }}
                         />
                       ) : item?.specificationItemId != null ? (
                         <RequirementDetailClient

@@ -136,7 +136,6 @@ interface SpecificationLocalRequirementGraduationRow {
   requiresTesting: boolean
   riskLevelId: number | null
   specificationId: number
-  specificationItemStatusId: number
   uniqueId: string
   verificationMethod: string | null
 }
@@ -843,7 +842,7 @@ export async function createSpecification(
     name: string
     specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null
-    specificationLifecycleStatusId?: number | null
+    specificationLifecycleStatusId: number
     businessNeedsReference?: string | null
     responsibleHsaId: string
     responsibleDisplayName?: string | null
@@ -887,7 +886,7 @@ export async function createSpecification(
         data.name,
         data.specificationGovernanceObjectTypeId ?? null,
         data.specificationImplementationTypeId ?? null,
-        data.specificationLifecycleStatusId ?? null,
+        data.specificationLifecycleStatusId,
         data.businessNeedsReference ?? null,
         responsibleHsaId,
         now,
@@ -937,7 +936,7 @@ async function updateSpecificationFields(
     name?: string
     specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null
-    specificationLifecycleStatusId?: number | null
+    specificationLifecycleStatusId?: number
     businessNeedsReference?: string | null
     responsibleHsaId?: string
     responsiblePerson?: RequirementResponsibilityPersonRecord | null
@@ -966,7 +965,7 @@ async function updateSpecificationFields(
   }
   if ('specificationLifecycleStatusId' in data) {
     setClauses.push(`specification_lifecycle_status_id = @${params.length}`)
-    params.push(data.specificationLifecycleStatusId ?? null)
+    params.push(data.specificationLifecycleStatusId)
   }
   if ('businessNeedsReference' in data) {
     setClauses.push(`business_needs_reference = @${params.length}`)
@@ -1022,7 +1021,7 @@ export async function updateSpecification(
     name?: string
     specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null
-    specificationLifecycleStatusId?: number | null
+    specificationLifecycleStatusId?: number
     businessNeedsReference?: string | null
     responsibleHsaId?: string
     responsibleDisplayName?: string | null
@@ -2275,7 +2274,6 @@ function mapGraduationSourceRow(
     requiresTesting: toBool(row.requiresTesting),
     riskLevelId: toNum(row.riskLevelId),
     specificationId: Number(row.specificationId),
-    specificationItemStatusId: Number(row.specificationItemStatusId),
     uniqueId: String(row.uniqueId ?? ''),
     verificationMethod: toStr(row.verificationMethod),
   }
@@ -2339,8 +2337,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
           local_requirement.quality_characteristic_id AS qualityCharacteristicId,
           local_requirement.risk_level_id AS riskLevelId,
           CAST(local_requirement.is_testing_required AS int) AS requiresTesting,
-          local_requirement.verification_method AS verificationMethod,
-          local_requirement.specification_item_status_id AS specificationItemStatusId
+          local_requirement.verification_method AS verificationMethod
         FROM specification_local_requirements local_requirement WITH (UPDLOCK, HOLDLOCK)
         WHERE local_requirement.id = @0
           AND local_requirement.specification_id = @1
@@ -2378,19 +2375,6 @@ export async function graduateSpecificationLocalRequirementToLibrary(
       normReferenceRows,
       requirementPackageRows,
     )
-
-    if (
-      source.specificationItemStatusId !== DEFAULT_SPECIFICATION_ITEM_STATUS_ID
-    ) {
-      throw conflictError(
-        'Only Included specification-local requirements can be graduated',
-        {
-          expectedSpecificationItemStatusId:
-            DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
-          specificationItemStatusId: source.specificationItemStatusId,
-        },
-      )
-    }
 
     const sequenceRows = (await manager.query(
       `

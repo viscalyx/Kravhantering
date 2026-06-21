@@ -24,6 +24,10 @@ import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import {
+  modalResizableTextareaRows3ClassName,
+  modalResizableTextareaRows4ClassName,
+} from '@/components/modal-textarea-class'
+import {
   type GeneratedRequirement,
   getDefaultInstruction,
   type TaxonomyData,
@@ -71,6 +75,11 @@ const richTags = {
   em: (chunks: ReactNode) => <em>{chunks}</em>,
   strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
 }
+
+const textareaBaseClassName =
+  'w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm text-secondary-900 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800 dark:text-secondary-100 dark:placeholder:text-secondary-500'
+const textareaRows3ClassName = `${textareaBaseClassName} ${modalResizableTextareaRows3ClassName}`
+const textareaRows4ClassName = `${textareaBaseClassName} ${modalResizableTextareaRows4ClassName}`
 
 // ---------------------------------------------------------------------------
 // Provider display names
@@ -1120,7 +1129,7 @@ export default function AiRequirementGenerator({
           <motion.div
             aria-labelledby="ai-requirement-dialog-title"
             aria-modal="true"
-            className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl bg-white shadow-2xl transition-[max-width] duration-300 motion-reduce:transition-none dark:bg-secondary-900 ${thinking || (rawResponse && phase === 'done') ? 'max-w-6xl' : 'max-w-3xl'}`}
+            className={`flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-xl bg-white shadow-2xl transition-[max-width] duration-300 motion-reduce:transition-none dark:bg-secondary-900 ${thinking || (rawResponse && phase === 'done') ? 'max-w-6xl' : 'max-w-3xl'}`}
             {...devMarker({
               name: 'dialog',
               priority: 420,
@@ -1233,7 +1242,7 @@ export default function AiRequirementGenerator({
                     </div>
                     {helpPanel('topicHelp', 'topic')}
                     <textarea
-                      className="w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm text-secondary-900 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800 dark:text-secondary-100 dark:placeholder:text-secondary-500"
+                      className={textareaRows3ClassName}
                       disabled={isBusy}
                       id="ai-topic"
                       onChange={e => setTopic(e.target.value)}
@@ -1845,7 +1854,7 @@ export default function AiRequirementGenerator({
                             </pre>
                           )}
                           <textarea
-                            className="w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm text-secondary-900 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800 dark:text-secondary-100 dark:placeholder:text-secondary-500"
+                            className={textareaRows4ClassName}
                             disabled={isBusy}
                             id="ai-instruction"
                             onChange={e => setCustomInstruction(e.target.value)}

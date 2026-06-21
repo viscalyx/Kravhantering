@@ -1170,7 +1170,7 @@ export async function countDeviationsPerItem(
 export async function countDeviationsPerItemRef(
   db: SqlServerDatabase,
   specificationId: number,
-): Promise<Map<string, { total: number; pending: number; approved: number }>> {
+): Promise<Map<string, DeviationCounts>> {
   const rows = (await db.query(
     `
       SELECT
@@ -1178,7 +1178,8 @@ export async function countDeviationsPerItemRef(
         CAST(0 AS int) AS isSpecificationLocal,
         COUNT(*) AS total,
         SUM(CASE WHEN deviation.decision IS NULL THEN 1 ELSE 0 END) AS pending,
-        SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved
+        SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
+        SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
       FROM deviations deviation
       INNER JOIN requirements_specification_items specification_item
         ON specification_item.id = deviation.specification_item_id
@@ -1192,20 +1193,18 @@ export async function countDeviationsPerItemRef(
         CAST(1 AS int) AS isSpecificationLocal,
         COUNT(*) AS total,
         SUM(CASE WHEN deviation.decision IS NULL THEN 1 ELSE 0 END) AS pending,
-        SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved
+        SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
+        SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
       FROM specification_local_requirement_deviations deviation
       INNER JOIN specification_local_requirements specification_local_requirement
         ON specification_local_requirement.id = deviation.specification_local_requirement_id
       WHERE specification_local_requirement.specification_id = @0
       GROUP BY deviation.specification_local_requirement_id
     `,
-    [specificationId, DEVIATION_APPROVED],
+    [specificationId, DEVIATION_APPROVED, DEVIATION_REJECTED],
   )) as Array<Record<string, unknown>>
 
-  const map = new Map<
-    string,
-    { total: number; pending: number; approved: number }
-  >()
+  const map = new Map<string, DeviationCounts>()
 
   for (const row of rows) {
     const key =
@@ -1216,6 +1215,7 @@ export async function countDeviationsPerItemRef(
       total: Number(row.total) || 0,
       pending: Number(row.pending) || 0,
       approved: Number(row.approved) || 0,
+      rejected: Number(row.rejected) || 0,
     })
   }
 

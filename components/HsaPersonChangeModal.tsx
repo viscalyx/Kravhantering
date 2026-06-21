@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
+import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import HsaPersonVerifyField, {
   type HsaPersonVerification,
@@ -185,6 +186,7 @@ export default function HsaPersonChangeModal({
             purpose={purpose}
             required
             scopeId={scopeId}
+            showPersonSummaryAsText
             unavailableText={unavailableText}
           />
         </div>
@@ -196,7 +198,7 @@ export default function HsaPersonChangeModal({
             {visibleError}
           </p>
         )}
-        <div className="flex justify-end gap-3">
+        <FormActionRow>
           <button
             className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:opacity-60 dark:text-secondary-300 dark:hover:bg-secondary-800"
             disabled={submitting}
@@ -215,7 +217,7 @@ export default function HsaPersonChangeModal({
           >
             {submitting ? submittingLabel : submitLabel}
           </button>
-        </div>
+        </FormActionRow>
       </div>
     </FormModal>
   )

@@ -191,8 +191,8 @@ requirements_query_catalog.items[].id -> requirementIds
 ### `requirements_list_graduation_target_areas`
 
 Lists requirement areas the actor may use as targets when graduating a specific
-Included specification-local requirement. The caller passes the same source
-fields used by `requirements_graduate_local_requirement`: `specificationId` or
+specification-local requirement. The caller passes the same source fields used
+by `requirements_graduate_local_requirement`: `specificationId` or
 `specificationSlug`, plus `localRequirementId`. The service enforces source
 specification authorship before confirming the local requirement exists, then
 returns only areas owned or co-authored by the actor. Clients should use one
@@ -200,12 +200,12 @@ returned `areas[].id` as `requirementAreaId` for graduation.
 
 ### `requirements_graduate_local_requirement`
 
-Copies an Included specification-local requirement into a target library
-requirement area as a new Draft library requirement. The workflow is copy-only:
-it does not replace, delete, or link the source specification-local row, and it
-does not move local deviations. The service enforces target requirement-area
-ownership or co-authorship and source specification authorship before calling the
-transactional DAL copy operation.
+Copies a specification-local requirement into a target library requirement area
+as a new Draft library requirement, regardless of its usage status. The workflow
+is copy-only: it does not replace, delete, or link the source
+specification-local row, and it does not move local deviations. The service
+enforces target requirement-area ownership or co-authorship and source
+specification authorship before calling the transactional DAL copy operation.
 
 ### `requirements_remove_from_specification`
 

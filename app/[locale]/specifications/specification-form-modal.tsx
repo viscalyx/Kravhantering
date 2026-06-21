@@ -1,10 +1,12 @@
 'use client'
 
-import { Plus, Trash2, UserRoundCog } from 'lucide-react'
+import { UserRoundCog } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
+import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import HsaPersonChangeModal, {
   type HsaPersonChangeSubmitResult,
@@ -12,6 +14,7 @@ import HsaPersonChangeModal, {
 import HsaPersonVerifyField, {
   type HsaPersonVerification,
 } from '@/components/HsaPersonVerifyField'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -69,20 +72,6 @@ interface ResponsibleChangeState {
   specificationId: number
 }
 
-interface SpecificationCoAuthorForm {
-  clientId: string
-  displayName: string | null
-  email: string | null
-  hsaId: string
-}
-
-interface SpecificationCoAuthorDraft {
-  displayName: string
-  email: string
-  hsaId: string
-  personVerification: HsaPersonVerification | null
-}
-
 interface SpecificationFormModalProps {
   currentUser?: SpecificationFormModalCurrentUser | null
   currentUserLoading?: boolean
@@ -100,15 +89,6 @@ interface SpecificationFormModalProps {
   open: boolean
   spec?: SpecificationFormModalSpec | null
   specificationSlug?: string
-}
-
-let coAuthorClientIdSequence = 0
-
-const createCoAuthorClientId = () => {
-  const randomId = globalThis.crypto?.randomUUID?.()
-  if (randomId) return randomId
-  coAuthorClientIdSequence += 1
-  return `specification-co-author-${coAuthorClientIdSequence}`
 }
 
 function readCurrentUser(
@@ -163,23 +143,6 @@ function blankFormState(): SpecificationFormState {
     specificationLifecycleStatusId: '',
     uniqueId: '',
   }
-}
-
-function blankCoAuthorDraft(): SpecificationCoAuthorDraft {
-  return {
-    displayName: '',
-    email: '',
-    hsaId: '',
-    personVerification: null,
-  }
-}
-
-function coAuthorLabel(
-  coAuthor: SpecificationCoAuthorForm,
-  locale: string,
-): string {
-  const value = coAuthor.displayName || coAuthor.email || coAuthor.hsaId
-  return formatActorDisplayNameForLocale(value, locale) ?? value
 }
 
 function buildCreateFormState(
@@ -268,6 +231,7 @@ export default function SpecificationFormModal({
   const tc = useTranslations('common')
   const locale = useLocale()
   const { confirm } = useConfirmModal()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
   const formResetKeyRef = useRef<string | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const [loadedCurrentUser, setLoadedCurrentUser] =
@@ -279,12 +243,6 @@ export default function SpecificationFormModal({
   const [form, setForm] = useState<SpecificationFormState>(() =>
     blankFormState(),
   )
-  const [coAuthors, setCoAuthors] = useState<SpecificationCoAuthorForm[]>([])
-  const [coAuthorDraft, setCoAuthorDraft] =
-    useState<SpecificationCoAuthorDraft>(() => blankCoAuthorDraft())
-  const [coAuthorsLoading, setCoAuthorsLoading] = useState(false)
-  const [coAuthorsSaving, setCoAuthorsSaving] = useState(false)
-  const [coAuthorsError, setCoAuthorsError] = useState<string | null>(null)
   const [initialSignature, setInitialSignature] = useState(() =>
     editableSignature(blankFormState()),
   )
@@ -316,16 +274,12 @@ export default function SpecificationFormModal({
   const createCurrentUserMessage = effectiveCurrentUserLoading
     ? t('currentUserLoading')
     : t('currentUserUnavailable')
-  const loadCoAuthorsFailedMessage = t('loadCoAuthorsFailed')
-  const saveCoAuthorsFailedMessage = t('saveCoAuthorsFailed')
   const canEditContent = isCreate || spec?.permissions?.canEditContent === true
   const canManageAssignments =
     isCreate || spec?.permissions?.canManageAssignments === true
   const formControlsDisabled = isSubmitting || createCurrentUserBlocked
   const metadataControlsDisabled =
     formControlsDisabled || (isEdit && !canEditContent)
-  const assignmentControlsDisabled =
-    isSubmitting || coAuthorsSaving || coAuthorsLoading || !canManageAssignments
   const formResetKey = isEdit
     ? `edit:${spec.id}:${spec.uniqueId}:${locale}`
     : `create:${effectiveCurrentUserHsaId}:${effectiveCurrentUserDisplayName}:${effectiveCurrentUserEmail}`
@@ -415,6 +369,13 @@ export default function SpecificationFormModal({
     if (formResetKeyRef.current === formResetKey) return
     if (mode === 'edit' && !spec) return
 
+    const previousFormResetKey = formResetKeyRef.current
+    if (mode === 'create' && previousFormResetKey?.startsWith('create:')) {
+      setForm(current => applyEffectiveCurrentUserResponsible(current))
+      formResetKeyRef.current = formResetKey
+      return
+    }
+
     const nextForm =
       mode === 'edit' && spec
         ? buildEditFormState(spec, locale)
@@ -425,74 +386,17 @@ export default function SpecificationFormModal({
     setIsSubmitting(false)
     setResponsibleChange(null)
     setSaveError(null)
-    setCoAuthors([])
-    setCoAuthorDraft(blankCoAuthorDraft())
-    setCoAuthorsError(null)
-    setCoAuthorsLoading(false)
-    setCoAuthorsSaving(false)
     setSlugEdited(mode === 'edit')
     setSlugError(null)
     formResetKeyRef.current = formResetKey
-  }, [effectiveCurrentUser, formResetKey, locale, mode, open, spec])
-
-  useEffect(() => {
-    if (!open || !isEdit || !editSpecificationSlug || !canManageAssignments) {
-      return
-    }
-
-    const controller = new AbortController()
-    setCoAuthorsLoading(true)
-    setCoAuthorsError(null)
-
-    async function loadCoAuthors() {
-      try {
-        const response = await apiFetch(
-          `/api/requirements-specifications/${editSpecificationSlug}/co-authors`,
-          { signal: controller.signal },
-        )
-        if (!response.ok) {
-          throw new Error(
-            (await readResponseMessage(response)) ?? loadCoAuthorsFailedMessage,
-          )
-        }
-        const body = (await response.json()) as {
-          coAuthors?: Array<{
-            displayName?: string | null
-            email?: string | null
-            hsaId: string
-          }>
-        }
-        setCoAuthors(
-          (body.coAuthors ?? []).map(coAuthor => ({
-            clientId: createCoAuthorClientId(),
-            displayName: coAuthor.displayName ?? null,
-            email: coAuthor.email ?? null,
-            hsaId: coAuthor.hsaId,
-          })),
-        )
-      } catch (error) {
-        if (controller.signal.aborted) return
-        setCoAuthorsError(
-          error instanceof Error ? error.message : loadCoAuthorsFailedMessage,
-        )
-      } finally {
-        if (!controller.signal.aborted) {
-          setCoAuthorsLoading(false)
-        }
-      }
-    }
-
-    void loadCoAuthors()
-
-    return () => {
-      controller.abort()
-    }
   }, [
-    canManageAssignments,
-    editSpecificationSlug,
-    isEdit,
-    loadCoAuthorsFailedMessage,
+    applyEffectiveCurrentUserResponsible,
+    effectiveCurrentUser,
+    formResetKey,
+    locale,
+    mode,
     open,
+    spec,
   ])
 
   useEffect(() => {
@@ -516,13 +420,7 @@ export default function SpecificationFormModal({
   const requestClose = async () => {
     if (isSubmitting) return
     if (hasUnsavedSpecificationEdits()) {
-      const confirmed = await confirm({
-        cancelText: tc('cancel'),
-        confirmText: tc('discardChanges'),
-        defaultCancel: true,
-        icon: 'warning',
-        message: tc('unsavedChangesConfirm'),
-      })
+      const confirmed = await confirmDiscardChanges()
       if (!confirmed) return
     }
     closeDirectly()
@@ -596,90 +494,18 @@ export default function SpecificationFormModal({
     }
   }
 
-  const saveCoAuthorAssignments = async (
-    nextCoAuthors: SpecificationCoAuthorForm[],
-  ): Promise<boolean> => {
-    if (!editSpecificationSlug || !canManageAssignments) return false
-    setCoAuthorsSaving(true)
-    setCoAuthorsError(null)
-    try {
-      const response = await apiFetch(
-        `/api/requirements-specifications/${editSpecificationSlug}/co-authors`,
-        {
-          body: JSON.stringify({
-            coAuthorHsaIds: nextCoAuthors.map(coAuthor => coAuthor.hsaId),
-          }),
-          headers: { 'Content-Type': 'application/json' },
-          method: 'PUT',
-        },
-      )
-      if (!response.ok) {
-        setCoAuthorsError(
-          (await readResponseMessage(response)) ?? saveCoAuthorsFailedMessage,
-        )
-        return false
-      }
-      setCoAuthors(nextCoAuthors)
-      return true
-    } catch (error) {
-      setCoAuthorsError(
-        error instanceof Error ? error.message : saveCoAuthorsFailedMessage,
-      )
-      return false
-    } finally {
-      setCoAuthorsSaving(false)
-    }
-  }
-
-  const addVerifiedCoAuthor = async (person: HsaPersonVerification) => {
-    if (coAuthors.some(coAuthor => coAuthor.hsaId === person.hsaId)) {
-      setCoAuthorDraft(blankCoAuthorDraft())
-      return
-    }
-
-    const nextCoAuthors = [
-      ...coAuthors,
-      {
-        clientId: createCoAuthorClientId(),
-        displayName: person.displayName,
-        email: person.email,
-        hsaId: person.hsaId,
-      },
-    ]
-    if (await saveCoAuthorAssignments(nextCoAuthors)) {
-      setCoAuthorDraft(blankCoAuthorDraft())
-    }
-  }
-
-  const removeCoAuthor = async (
-    coAuthor: SpecificationCoAuthorForm,
-    anchorEl?: HTMLElement,
-  ) => {
-    const confirmed = await confirm({
-      anchorEl,
-      confirmText: tc('delete'),
-      icon: 'caution',
-      message: t('removeCoAuthorConfirm', {
-        name: coAuthorLabel(coAuthor, locale),
-      }),
-      title: t('removeCoAuthor'),
-      variant: 'danger',
-    })
-    if (!confirmed) return
-
-    await saveCoAuthorAssignments(
-      coAuthors.filter(item => item.clientId !== coAuthor.clientId),
-    )
-  }
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (isSubmitting) return
     if (mode === 'edit' && !editSpecificationSlug) return
-    if (isEdit && !metadataDirty) return
+    if (!metadataDirty) return
     if (isEdit && !canEditContent) return
     if (createCurrentUserBlocked) {
       setSaveError(t('currentUserUnavailable'))
+      return
+    }
+    if (!form.specificationLifecycleStatusId) {
+      setSaveError(t('lifecycleStatusRequired'))
       return
     }
 
@@ -699,9 +525,9 @@ export default function SpecificationFormModal({
           form.specificationImplementationTypeId
             ? Number(form.specificationImplementationTypeId)
             : null,
-        specificationLifecycleStatusId: form.specificationLifecycleStatusId
-          ? Number(form.specificationLifecycleStatusId)
-          : null,
+        specificationLifecycleStatusId: Number(
+          form.specificationLifecycleStatusId,
+        ),
         businessNeedsReference: form.businessNeedsReference || null,
       }
       const requestBody =
@@ -1034,6 +860,7 @@ export default function SpecificationFormModal({
                   help={t('lifecycleStatusHelp')}
                   htmlFor="spec-lifecycle-status"
                   label={t('lifecycleStatus')}
+                  required
                 />
                 <select
                   className={selectClassName}
@@ -1045,9 +872,12 @@ export default function SpecificationFormModal({
                       specificationLifecycleStatusId: event.target.value,
                     }))
                   }
+                  required
                   value={form.specificationLifecycleStatusId}
                 >
-                  <option value="">—</option>
+                  <option disabled value="">
+                    —
+                  </option>
                   {lifecycleStatuses.map(status => (
                     <option key={status.id} value={status.id}>
                       {locale === 'sv' ? status.nameSv : status.nameEn}
@@ -1058,150 +888,13 @@ export default function SpecificationFormModal({
             </div>
           </div>
 
-          {isEdit && canManageAssignments ? (
-            <section className="space-y-3 rounded-xl border border-secondary-200 p-4 dark:border-secondary-700">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-secondary-800 dark:text-secondary-200">
-                    {t('coAuthors')}
-                  </h3>
-                  <p className="mt-1 text-sm text-secondary-500 dark:text-secondary-400">
-                    {t('coAuthorsHelp')}
-                  </p>
-                </div>
-                {coAuthorsSaving ? (
-                  <p
-                    className="text-sm text-secondary-500 dark:text-secondary-400"
-                    role="status"
-                  >
-                    {tc('saving')}
-                  </p>
-                ) : null}
-              </div>
-              {coAuthorsError ? (
-                <p
-                  className="text-sm text-red-600 dark:text-red-400"
-                  role="alert"
-                >
-                  {coAuthorsError}
-                </p>
-              ) : null}
-              {coAuthorsLoading ? (
-                <p
-                  className="text-sm text-secondary-500 dark:text-secondary-400"
-                  role="status"
-                >
-                  {tc('loading')}
-                </p>
-              ) : coAuthors.length === 0 ? (
-                <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-secondary-500 dark:text-secondary-400">
-                  {t('noCoAuthors')}
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {coAuthors.map(coAuthor => (
-                    <div
-                      className="flex items-center justify-between gap-3 rounded-xl border border-secondary-200 px-3 py-2 dark:border-secondary-700"
-                      key={coAuthor.clientId}
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-secondary-800 dark:text-secondary-100">
-                          {coAuthorLabel(coAuthor, locale)}
-                        </p>
-                        <p className="mt-0.5 truncate font-mono text-xs text-secondary-500 dark:text-secondary-400">
-                          {coAuthor.hsaId}
-                        </p>
-                      </div>
-                      <button
-                        aria-label={t('removeCoAuthor')}
-                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-red-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/30"
-                        disabled={assignmentControlsDisabled}
-                        onClick={event =>
-                          void removeCoAuthor(
-                            coAuthor,
-                            event.currentTarget as HTMLElement,
-                          )
-                        }
-                        title={t('removeCoAuthor')}
-                        type="button"
-                      >
-                        <Trash2
-                          aria-hidden="true"
-                          className="h-4 w-4"
-                          focusable={false}
-                        />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                <div>
-                  <FieldLabelWithHelp
-                    help={t('coAuthorHsaIdHelp')}
-                    htmlFor="spec-co-author-hsa-id"
-                    label={t('coAuthorHsaId')}
-                  />
-                  <HsaPersonVerifyField
-                    disabled={assignmentControlsDisabled}
-                    emailLabel={tc('hsaVerifyEmail')}
-                    errorFallback={tc('hsaVerifyError')}
-                    fetchingLabel={tc('fetchingHsaPerson')}
-                    fetchLabel={tc('fetchHsaPerson')}
-                    hsaId={coAuthorDraft.hsaId}
-                    initialDisplayName={coAuthorDraft.displayName}
-                    initialEmail={coAuthorDraft.email}
-                    inputClassName={inputClassName}
-                    inputId="spec-co-author-hsa-id"
-                    nameLabel={tc('hsaVerifyName')}
-                    onHsaIdChange={value =>
-                      setCoAuthorDraft(current => ({
-                        ...current,
-                        displayName:
-                          value.trim() === current.personVerification?.hsaId
-                            ? current.displayName
-                            : '',
-                        email:
-                          value.trim() === current.personVerification?.hsaId
-                            ? current.email
-                            : '',
-                        hsaId: value,
-                        personVerification:
-                          value.trim() === current.personVerification?.hsaId
-                            ? current.personVerification
-                            : null,
-                      }))
-                    }
-                    onVerified={person => {
-                      setCoAuthorDraft({
-                        displayName: person.displayName,
-                        email: person.email ?? '',
-                        hsaId: person.hsaId,
-                        personVerification: person,
-                      })
-                      void addVerifiedCoAuthor(person)
-                    }}
-                    purpose="requirements_specification_co_author"
-                    scopeId={spec?.id}
-                    showPersonSummaryAsText
-                    unavailableText={tc('hsaVerifyUnavailable')}
-                  />
-                </div>
-                <div className="hidden min-h-11 items-center gap-2 text-sm text-secondary-500 sm:flex">
-                  <Plus aria-hidden="true" className="h-4 w-4" />
-                  {t('addCoAuthor')}
-                </div>
-              </div>
-            </section>
-          ) : null}
-
           {saveError ? (
             <p className="text-sm text-red-600 dark:text-red-400" role="alert">
               {saveError}
             </p>
           ) : null}
 
-          <div className="flex justify-end gap-3">
+          <FormActionRow>
             <button
               className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:opacity-60"
               disabled={isSubmitting}
@@ -1212,14 +905,15 @@ export default function SpecificationFormModal({
             >
               {tc('cancel')}
             </button>
-            <button
+            <DirtyStateButton
               className="btn-primary"
-              disabled={metadataControlsDisabled || (isEdit && !metadataDirty)}
+              dirty={metadataDirty}
+              disabled={metadataControlsDisabled}
               type="submit"
             >
               {isSubmitting ? tc('saving') : tc('save')}
-            </button>
-          </div>
+            </DirtyStateButton>
+          </FormActionRow>
         </form>
       </FormModal>
 

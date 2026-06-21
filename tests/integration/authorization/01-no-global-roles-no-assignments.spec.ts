@@ -215,10 +215,10 @@ test('REQ-10/LIFE-11/SPEC-10/AUTH-10/AUTH-11: report PDFs enforce published and 
 
     await expectStatus(
       await noRoles.get(
-        `/sv/specifications/${fixture.specificationSlug}/reports/pdf/list?refs=lib:1`,
+        `/sv/specifications/${fixture.specificationSlug}/reports/pdf/procurement`,
       ),
       403,
-      'unassigned specification list PDF',
+      'unassigned specification profile PDF',
     )
   } finally {
     await noRoles.dispose()

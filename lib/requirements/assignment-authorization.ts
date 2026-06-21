@@ -53,6 +53,15 @@ export interface AssignmentLookup {
   resolveRequirementTarget(
     input: RequirementReference,
   ): Promise<RequirementTarget>
+  resolveRfiQuestionArea(
+    action: Extract<RequirementsAction, { kind: 'manage_rfi_question' }>,
+  ): Promise<number>
+  resolveRfiQuestionSuggestionArea(
+    action: Extract<
+      RequirementsAction,
+      { kind: 'manage_rfi_question_suggestion' }
+    >,
+  ): Promise<number>
   resolveSpecificationId(input: SpecificationReference): Promise<number>
   resolveSpecificationIdForLocalRequirement(
     localRequirementId?: number,
@@ -375,6 +384,59 @@ export class SqlAssignmentLookup implements AssignmentLookup {
     })
     return requirement.areaId
   }
+
+  async resolveRfiQuestionArea(
+    action: Extract<RequirementsAction, { kind: 'manage_rfi_question' }>,
+  ): Promise<number> {
+    if (action.areaId != null) return action.areaId
+    if (action.questionId == null) {
+      throw validationError('Missing RFI question target', {
+        reason: 'missing_rfi_question_target',
+      })
+    }
+    const db = await this.getDb()
+    const rows = (await db.query(
+      `
+        SELECT TOP (1) area_id AS areaId
+        FROM rfi_questions
+        WHERE id = @0
+      `,
+      [action.questionId],
+    )) as Array<Record<string, unknown>>
+    const areaId = firstNumber(rows, 'areaId')
+    if (areaId != null) return areaId
+    throw notFoundError('RFI question not found', {
+      questionId: action.questionId,
+    })
+  }
+
+  async resolveRfiQuestionSuggestionArea(
+    action: Extract<
+      RequirementsAction,
+      { kind: 'manage_rfi_question_suggestion' }
+    >,
+  ): Promise<number> {
+    if (action.areaId != null) return action.areaId
+    if (action.suggestionId == null) {
+      throw validationError('Missing RFI question suggestion target', {
+        reason: 'missing_rfi_question_suggestion_target',
+      })
+    }
+    const db = await this.getDb()
+    const rows = (await db.query(
+      `
+        SELECT TOP (1) area_id AS areaId
+        FROM rfi_question_suggestions
+        WHERE id = @0
+      `,
+      [action.suggestionId],
+    )) as Array<Record<string, unknown>>
+    const areaId = firstNumber(rows, 'areaId')
+    if (areaId != null) return areaId
+    throw notFoundError('RFI question suggestion not found', {
+      suggestionId: action.suggestionId,
+    })
+  }
 }
 
 export class AssignmentBasedAuthorizationService
@@ -449,6 +511,14 @@ export class AssignmentBasedAuthorizationService
         return this.assertCanListSuggestions(context, action)
       case 'manage_suggestion':
         return this.assertCanManageSuggestion(context, action)
+      case 'manage_rfi_question':
+        return this.assertCanManageRfiQuestion(context, action)
+      case 'manage_specification_rfi': {
+        const specificationId = await this.lookup.resolveSpecificationId(action)
+        return this.assertSpecificationAuthor(context, specificationId)
+      }
+      case 'manage_rfi_question_suggestion':
+        return this.assertCanManageRfiQuestionSuggestion(context, action)
       case 'generate_requirements':
         return this.assertCanUseAiProvider(context, action)
     }
@@ -600,6 +670,35 @@ export class AssignmentBasedAuthorizationService
     action: Extract<RequirementsAction, { kind: 'manage_suggestion' }>,
   ): Promise<void> {
     const areaId = await this.lookup.resolveSuggestionRequirementArea(action)
+    await this.assertAreaAuthor(context, areaId)
+  }
+
+  private async assertCanManageRfiQuestion(
+    context: RequestContext,
+    action: Extract<RequirementsAction, { kind: 'manage_rfi_question' }>,
+  ): Promise<void> {
+    const areaId = await this.lookup.resolveRfiQuestionArea(action)
+    await this.assertAreaAuthor(context, areaId)
+  }
+
+  private async assertCanManageRfiQuestionSuggestion(
+    context: RequestContext,
+    action: Extract<
+      RequirementsAction,
+      { kind: 'manage_rfi_question_suggestion' }
+    >,
+  ): Promise<void> {
+    if (action.operation === 'create') {
+      if (action.specificationId != null || action.specificationSlug) {
+        const specificationId = await this.lookup.resolveSpecificationId(action)
+        await this.assertSpecificationAuthor(context, specificationId)
+      }
+      if (action.areaId != null) {
+        await this.assertAreaAuthor(context, action.areaId)
+        return
+      }
+    }
+    const areaId = await this.lookup.resolveRfiQuestionSuggestionArea(action)
     await this.assertAreaAuthor(context, areaId)
   }
 

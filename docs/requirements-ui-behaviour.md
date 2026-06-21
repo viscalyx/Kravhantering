@@ -15,6 +15,38 @@ The behaviors below apply to the requirement list rendered by:
 - `components/RequirementsTable.tsx`
 - `lib/requirements/list-view.ts`
 
+## Form Required Fields
+
+- Create and edit forms show a short hint near the start explaining that fields
+  marked with `*` are required.
+- Required field labels use a visible red `*` marker. The marker is part of the
+  label text so the field name remains clear in assistive technology and tests.
+- The marker is a visual convention only; browser `required` attributes and
+  server-side route validation remain the enforcement points.
+
+## Form Submit Dirty State
+
+- Primary create/edit submit buttons, including labels such as `Spara`,
+  `Skapa`, `Lägg till svar`, and equivalent English labels, stay disabled until
+  the user changes something that affects the normalized API payload.
+- Programmatic defaults such as the signed-in actor, default colors, computed
+  sort order, and loaded edit data establish the clean baseline and do not count
+  as user changes.
+- If the user changes a value back to the normalized baseline, the primary
+  submit button becomes disabled again.
+- Required-field validation is unchanged: once a user has made a payload
+  change, the primary submit button can become enabled and browser or API
+  validation reports missing required values on submit.
+- When a submit button is disabled only because the form is clean, it exposes
+  the title `Inga ändringar att spara` in Swedish and `No changes to save` in
+  English.
+- Closing a dirty create/edit form through `Avbryt`/`Cancel`, the close `X`, or
+  Escape asks the user to confirm discarding unsaved changes with the shared
+  danger confirmation dialog. Rejecting the confirmation leaves the form open
+  with the entered values intact.
+- Clicking outside a modal form does not close it. Users must use the explicit
+  cancel or close controls.
+
 ## Route Compatibility
 
 - `/requirements/...` remains the existing browser path for the Requirements
@@ -385,13 +417,12 @@ down.
   visually muted so they no longer read as active actions.
 - The same specification-local action rail may show **Graduate to library** when
   the actor owns or co-authors at least one requirement area. The action is
-  disabled unless **Användningsstatus** is **Inkluderad**. Opening the action
-  shows a modal target requirement area picker over a dimmed background,
-  including the copy-only outcome text. Pressing the modal's **Graduate**
-  action copies the unique requirement into the selected library requirement
-  area as a new Draft library
-  requirement, navigates to that new requirement's created Draft version, and
-  leaves the source unique row and any local deviations unchanged.
+  available regardless of **Användningsstatus**. Opening the action shows a
+  modal target requirement area picker over a dimmed background, including the
+  copy-only outcome text. Pressing the modal's **Graduate** action copies the
+  unique requirement into the selected library requirement area as a new Draft
+  library requirement, navigates to that new requirement's created Draft
+  version, and leaves the source unique row and any local deviations unchanged.
 
 ## Print List Report Floating Pill
 
@@ -405,25 +436,36 @@ down.
 - The report shows Requirement ID, requirement text, requirement area, and
   status columns.
 
-## Specification Print List Report
+## Requirements Specification Create And Edit
 
-- The specification-detail print dropdown uses `?refs=` query params instead of
-  `?ids=`.
-- Each value is a specification-context item reference:
-  - `lib:<specificationItemId>` for a library requirement in the specification
-  - `local:<specificationLocalRequirementId>` for a unique requirement
-- This allows the report to include both library and unique requirements in one
-  specification list export.
-- Does not apply an application-level item-count cap to selected refs, though
-  very large selections still use a browser URL.
-- PDF uses the matching server route
-  `/[locale]/specifications/[slug]/reports/pdf/list?refs=...`.
-- Specification list reports include the current requirement-selection context
-  before the requirement table. Historical saved answers are shown as historical
-  context and do not affect filtering or progress. Each context row includes the
-  question, answer, active/historical status, latest change timestamp, and actor
-  display-name snapshot when available. The specification CSV export remains
-  row-only.
+- Creating or editing a requirements specification requires selecting
+  **Kravunderlagets livscykelstatus**. The create form starts with a disabled
+  blank placeholder so the user must choose the lifecycle status explicitly.
+  Edit forms keep the current value selected and do not allow clearing it.
+
+## Requirements Specification Reports And Exports
+
+- The specification-detail print dropdown is lifecycle-driven and shows at most
+  one report profile:
+  - `Kravbilaga för upphandling` for lifecycle status `Upphandling`
+  - `Genomföranderapport` for lifecycle status `Införande` or `Utveckling`
+  - `Förvaltningsrapport` for lifecycle status `Förvaltning`
+- Report routes always cover the whole specification. They do not accept row
+  selection query parameters.
+- Print routes use
+  `/[locale]/specifications/[slug]/reports/print/[profile]`.
+- PDF routes use
+  `/[locale]/specifications/[slug]/reports/pdf/[profile]`.
+- Both routes authorize read access to the specification before report data is
+  collected.
+- Report data uses the requirement version linked to each specification item,
+  so a report does not silently move to a newer requirement version after the
+  item was added.
+- The export dropdown always shows `Full CSV-export`.
+- The export dropdown also shows `Anbuds-CSV` only for lifecycle status
+  `Upphandling`.
+- Specification CSV exports are generated server-side from the whole
+  specification and remain row-only without metadata rows.
 
 ## Requirement Selection Question Stewardship
 

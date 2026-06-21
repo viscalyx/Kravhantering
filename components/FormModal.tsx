@@ -89,16 +89,11 @@ export default function FormModal({
           key={`${titleId}-backdrop`}
           {...fadeMotion(shouldReduceMotion)}
         >
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss pattern */}
-          {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={close}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <motion.div
             aria-labelledby={titleId}
             aria-modal="true"
-            className={`relative z-50 max-h-[calc(100vh-2rem)] w-full overflow-y-auto overscroll-contain rounded-2xl bg-white shadow-2xl dark:bg-secondary-900 ${maxWidthClassName}`}
+            className={`relative z-50 max-h-[calc(100dvh-2rem)] w-full overflow-y-auto overscroll-contain rounded-2xl bg-white shadow-2xl dark:bg-secondary-900 ${maxWidthClassName}`}
             {...devMarker({
               name: 'dialog',
               priority: 420,

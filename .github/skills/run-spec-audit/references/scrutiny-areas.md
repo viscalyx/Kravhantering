@@ -148,12 +148,30 @@ maintenance rule.
 
 ## 13. CSV Export
 
-- **Code:** `lib/export-csv.ts`.
+- **Code:** `lib/export-csv.ts`, `lib/reports/specification-csv.ts`,
+  and `lib/reports/specification-profiles.ts`.
 - **Spec:** `docs/reports.md`.
 - **Field contracts:** `references/integration-contracts.md` — verify
   exported fields align with the REST response schemas.
 - **Question:** Does export behavior match the documented CSV
   expectations for separators and escaping?
+
+## 13a. Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions
+
+- **Code:** `lib/reports/data/specification-output.ts`,
+  `lib/reports/templates/specification-profile-template.ts`,
+  `lib/reports/specification-csv.ts`,
+  `lib/reports/specification-profiles.ts`, and specification report/export
+  routes.
+- **Spec:** `docs/reports.md` and `docs/requirements-ui-behaviour.md`.
+- **Req tag:** `[Req: formal - docs/reports.md
+  "Requirements Specification Field Profiles"]`
+- **Question:** Do specification reports use linked requirement versions,
+  cover the whole specification, expose only lifecycle-matching report
+  profiles, keep full CSV export always available, and document each field
+  choice?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions"`
 
 ## 14. Coverage Target Alignment
 
@@ -245,10 +263,10 @@ maintenance rule.
 - **Spec:** issue #96 copy-only graduation workflow and
   `docs/requirements-ui-behaviour.md` specification-local action rail.
 - **Req tag:** `[Req: formal — issue #96 copy-only graduation workflow]`
-- **Question:** Does graduation copy an Included specification-local
-  requirement into a new Draft library requirement in the selected
-  target area while leaving the source local row, status, note, and
-  local deviations unchanged?
+- **Question:** Does graduation copy a specification-local requirement
+  regardless of usage status into a new Draft library requirement in the
+  selected target area while leaving the source local row, status, note,
+  and local deviations unchanged?
 - **Verify:** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 13: specification-local graduation is copy-only into a draft library requirement"`
 
@@ -374,3 +392,47 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   the authorization boundary?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 19: assignment RBAC denies hidden broad access"`
+
+## 28. Scenario 20: publishing a successor replaces requirement-package membership
+
+- **Code:** `lib/dal/requirements.ts` — successor publication;
+  `lib/dal/requirement-packages.ts` — package current-membership queries.
+- **Spec:**
+  `docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md`.
+- **Req tag:**
+  `[Req: formal — docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md]`
+- **Question:** Does publishing a successor atomically replace the predecessor
+  in requirement-package membership while package lists and counts ignore
+  unpublished draft package choices?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 20: publishing a successor replaces requirement-package membership"`
+
+## 29. Scenario 21: archiving without successor preserves package history but excludes practical use
+
+- **Code:** `lib/dal/requirements.ts` — archiving without successor;
+  `lib/dal/requirement-packages.ts` — package practical-use queries.
+- **Spec:**
+  `docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md`.
+- **Req tag:**
+  `[Req: formal — docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md]`
+- **Question:** Does archiving a packaged requirement without a successor keep
+  the historical package link while practical package lists and counts exclude
+  the archived version?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 21: archiving without successor preserves package history but excludes practical use"`
+
+## 30. Scenario 22: package filters keep archived history out of specifications but available in the library
+
+- **Code:** `lib/dal/requirement-selection-questions.ts` — specification
+  package matching; `lib/dal/requirements.ts` — requirement library package
+  filtering.
+- **Spec:**
+  `docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md`.
+- **Req tag:**
+  `[Req: formal — docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md]`
+- **Question:** Do requirement-specification package selections exclude
+  archived package links while the requirement library can still show archived
+  package-linked requirements when the user includes `Archived` in the status
+  filter?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 22: package filters keep archived history out of specifications but available in the library"`

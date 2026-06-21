@@ -340,8 +340,8 @@ AI-beslut, källa till sanning.
 
 **Terminologi**:
 De verksamhetsbegrepp och användargränssnittstermer som används för att
-beskriva kravhanteringen. I administrationen ska terminologi vara namnet på
-ytan där konfigurerbara ord hanteras.
+beskriva kravhanteringen. Terminologi förvaltas genom detta sammanhang,
+arkitekturbeslut och språkfiler.
 
 - `en`: Terminology
 
@@ -541,7 +541,7 @@ _Avoid_: Livscykelstatus, förvaltning.
 
 **Kravunderlagets livscykelstatus**:
 Status som beskriver var kravunderlaget befinner sig i processen, till exempel
-upphandling, utveckling/införande eller förvaltning.
+upphandling, införande, utveckling eller förvaltning.
 
 - `en`: Specification lifecycle status
 
@@ -549,11 +549,21 @@ _Avoid_: Kravversionsstatus, genomförandeform.
 
 **Kravpaket**:
 En återanvändbar gruppering av krav i kravbiblioteket för ett visst
-användningsområde, scenario eller leveransbehov.
+användningsområde, scenario eller leveransbehov. Ett kravpaket samlar krav,
+inte flera kravversioner av samma krav; när ett krav har ett nyare utkast är
+paketets krav fortfarande den publicerade kravversion som får användas. När en
+ny kravversion publiceras följer kravpaketets aktuella medlemskap den nya
+publicerade kravversionen och ersätter den arkiverade föregångaren i alla
+kravpaket där kravet används. När ett krav arkiveras utan efterträdare kan
+paketkopplingen finnas kvar som historik, men den arkiverade kravversionen
+ingår inte i praktiska kravpaketsurval där bara publicerade krav får användas.
+Kravbibliotekets kravpaketsfilter är däremot ett sökfilter över valda
+kravstatusar och kan visa arkiverade krav när användaren själv inkluderar
+arkiverad status.
 
 - `en`: Requirements package
 
-_Avoid_: Kravunderlag, referensdata.
+_Avoid_: Kravunderlag, referensdata, historik över kravversioner.
 
 **Kravpaketsansvarig**:
 Den person eller funktion som har huvudansvar för ett kravpakets syfte,
@@ -756,6 +766,48 @@ synlighetsvillkor.
 
 _Avoid_: Sorteringsordning, kravområdesgrupp, kravhierarki.
 
+**RFI-fråga**:
+En områdesägd fråga som används i en Request for Information inför
+kravarbete. RFI-frågan hjälper kravunderlagsansvariga att förstå vad som bör
+beaktas när krav väljs eller formuleras, men väljer inte krav automatiskt.
+
+- `en`: RFI question
+
+_Avoid_: Kravurvalsfråga, leverantörssvar, krav.
+
+**RFI-frågeversion**:
+En bestämd version av en RFI-frågas frågetext, hjälptext, önskade
+svarsformat och rådgivande länkar.
+
+- `en`: RFI question version
+
+_Avoid_: Kravversion, historikrad, kopia.
+
+**RFI-frågelista**:
+Kravunderlagets lista av RFI-frågor.
+
+- `en`: RFI question list
+
+_Avoid_: Kravurval, kravlista, leverantörssvar.
+
+**RFI-relevans**:
+Efter genomförd RFI markerar kravunderlagsansvarig om en inkluderad RFI-fråga
+är relevant eller inte relevant för fortsatt kravurval. Relevans är separat
+från scope, där scope anger om frågan över huvud taget ingår i RFI-listan.
+
+- `en`: RFI relevance
+
+_Avoid_: Kravstatus, kravurvalsfilter, leverantörssvar.
+
+**RFI-frågeförslag**:
+Ett förslag om ny eller ändrad RFI-fråga riktat till ett kravområde, ofta
+skapat från ett kravunderlag. Förslaget är separat från kravbundna
+förbättringsförslag.
+
+- `en`: RFI question suggestion
+
+_Avoid_: Förbättringsförslag, avsteg, kravunderlagskommentar.
+
 **Kravtillämpning**:
 Att en publicerad kravversion från kravbiblioteket används i ett visst
 kravunderlag. Kravtillämpningen bär det underlagsspecifika sammanhanget, inte
@@ -775,8 +827,10 @@ ska verifieras.
 _Avoid_: Normreferens.
 
 **Användningsstatus**:
-Det underlagsspecifika läget för en kravtillämpning i ett kravunderlag. Det
-beskriver hur kravet används eller följs upp i just det sammanhanget.
+Det underlagsspecifika livscykelläget för ett krav inom ett kravunderlag,
+oavsett om kravet är en kravtillämpning eller ett kravunderlagslokalt krav. Det
+beskriver till exempel om kravet är inkluderat, pågående, implementerat eller
+verifierat inom just den tillämpningen.
 
 - `en`: Usage status
 
@@ -798,7 +852,7 @@ inte till ett enskilt avsteg i ett kravunderlag.
 
 - `en`: Improvement suggestion
 
-_Avoid_: Avsteg, felanmälan.
+_Avoid_: Avsteg, felanmälan, RFI-frågeförslag.
 
 **Granskningsrapport**:
 Rapport som stödjer granskning och publiceringsbeslut för en eller flera
@@ -814,6 +868,30 @@ Rapport som stödjer granskning och beslut om avsteg i ett kravunderlag.
 - `en`: Deviation review report
 
 _Avoid_: Granskningsrapport när avsteg avses.
+
+**Kravbilaga för upphandling**:
+Rapport som sammanställer krav som ska ingå i ett upphandlingsunderlag.
+
+- `en`: Procurement requirements appendix
+
+_Avoid_: Kravlista när rapportens upphandlingssyfte avses.
+
+**Genomföranderapport**:
+Rapport som sammanställer kravstatus, risk och spårbarhet under införande eller
+utveckling.
+
+- `en`: Progress report
+
+_Avoid_: Progressrapport, uppföljningsrapport, statusrapport,
+förvaltningsrapport.
+
+**Förvaltningsrapport**:
+Rapport som sammanställer kvarvarande rest, användningsläge och avstegsläge för
+krav i förvaltning.
+
+- `en`: Management report
+
+_Avoid_: Genomföranderapport, avstegsrapport.
 
 **Historikrapport**:
 Rapport som visar ett kravs versioner, statusändringar och

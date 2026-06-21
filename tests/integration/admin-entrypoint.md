@@ -6,8 +6,8 @@
 This suite verifies the administration centre entrypoint: navigating from the
 requirements library, persisting column-order changes across page reloads,
 administering HSA-id-prefixes, preserving the selected taxonomy tab in browser
-history, admin-only tab permissions, touch-target accessibility on mobile, and
-locale-specific page loads.
+history, checking requirement-area icon actions, admin-only tab permissions,
+touch-target accessibility on mobile, and locale-specific page loads.
 
 ## Data Model
 
@@ -44,7 +44,8 @@ flowchart TD
     B -- browser back --> M[Open /en/admin]
     M --> N[Click Taxonomy]
     N --> O[Open /en/requirement-areas]
-    O --> P[Go back]
+    O --> O1[Assert row actions are icon-only]
+    O1 --> P[Go back]
     P --> Q[Assert /en/admin?tab=taxonomy]
     B -- mobile touch targets --> R[Open /sv/admin on mobile]
     R --> S[Assert all interactive elements ≥ 44×44px]
@@ -120,8 +121,9 @@ in the requirements library and survives a hard page reload.
 1. Navigate to `/sv/admin`.
 1. Read the current column order.
 1. Compute a target order that swaps `area` and `category`.
-1. Apply the target order via `setAdminColumnOrder`, and click "Spara".
-   Assert "Sparat" appears.
+1. Assert "Spara" is disabled before any column change.
+1. Apply the target order via `setAdminColumnOrder`, and click "Spara". Assert
+   "Sparat" appears.
 1. Navigate to `/sv/requirements`.
 1. Assert the column index of "Kategori" is before or after "Kravområde"
    consistent with the swapped order.
@@ -208,6 +210,8 @@ selected.
 1. Assert the URL is `/en/admin?tab=taxonomy`.
 1. Click the "Requirement areas" taxonomy card.
 1. Assert the URL is `/en/requirement-areas`.
+1. Assert the requirement-area list row actions expose accessible `Edit` and
+   `Delete` names while rendering as icon-only buttons.
 1. Use browser Back.
 1. Assert the URL is `/en/admin?tab=taxonomy`.
 1. Assert the Taxonomy tab has `aria-selected="true"` and the Requirement areas
@@ -226,6 +230,7 @@ sequenceDiagram
     Note over A: ✓ URL = /en/admin?tab=taxonomy
     U->>R: Click Requirement areas card
     Note over R: ✓ URL = /en/requirement-areas
+    Note over R: ✓ Edit/Delete actions are icon-only
     U->>A: Browser Back
     Note over A: ✓ URL = /en/admin?tab=taxonomy
     Note over A: ✓ Taxonomy tab selected

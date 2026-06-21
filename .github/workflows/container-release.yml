@@ -161,6 +161,29 @@ jobs:
             --push \
             .
 
+      - name: Build and publish demo seed image
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra tags <<< "${DEMO_SEED_TAGS_CSV}"
+          tag_args=()
+          for tag in "${tags[@]}"; do
+            tag_args+=(--tag "${tag}")
+          done
+          docker buildx build \
+            --file containers/app/Dockerfile \
+            --target demo-seed \
+            --platform linux/amd64 \
+            --metadata-file tmp/container-release-artifacts/metadata/demo-seed-buildx.json \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.description=${DEMO_SEED_DESCRIPTION}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.version=${RELEASE_VERSION}" \
+            --annotation "manifest:org.opencontainers.image.description=${DEMO_SEED_DESCRIPTION}" \
+            --provenance=false \
+            "${tag_args[@]}" \
+            --push \
+            .
+
       - name: Build and publish HSA directory mock image
         run: |
           set -euo pipefail
@@ -211,6 +234,7 @@ jobs:
             --plan tmp/container-release-artifacts/metadata/release-plan.json \
             --app-metadata tmp/container-release-artifacts/metadata/app-runtime-buildx.json \
             --db-job-metadata tmp/container-release-artifacts/metadata/db-job-buildx.json \
+            --demo-seed-metadata tmp/container-release-artifacts/metadata/demo-seed-buildx.json \
             --hsa-directory-mock-metadata tmp/container-release-artifacts/metadata/hsa-directory-mock-buildx.json \
             --hsa-person-lookup-adapter-metadata tmp/container-release-artifacts/metadata/hsa-person-lookup-adapter-buildx.json \
             --output tmp/container-release-artifacts/metadata/release-metadata.json \
@@ -276,6 +300,14 @@ jobs:
           output-file: tmp/container-release-artifacts/sbom/db-job.spdx.json
           upload-artifact: false
 
+      - name: Generate demo seed SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ env.DEMO_SEED_MANIFEST_DIGEST_REF }}
+          format: spdx-json
+          output-file: tmp/container-release-artifacts/sbom/demo-seed.spdx.json
+          upload-artifact: false
+
       - name: Generate HSA directory mock SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
@@ -304,6 +336,13 @@ jobs:
         with:
           subject-name: ${{ env.DB_JOB_IMAGE }}
           subject-digest: ${{ env.DB_JOB_MANIFEST_DIGEST }}
+          push-to-registry: false
+
+      - name: Attest demo seed provenance
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-name: ${{ env.DEMO_SEED_IMAGE }}
+          subject-digest: ${{ env.DEMO_SEED_MANIFEST_DIGEST }}
           push-to-registry: false
 
       - name: Attest HSA directory mock provenance
@@ -336,6 +375,14 @@ jobs:
           sbom-path: tmp/container-release-artifacts/sbom/db-job.spdx.json
           push-to-registry: false
 
+      - name: Attest demo seed SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-name: ${{ env.DEMO_SEED_IMAGE }}
+          subject-digest: ${{ env.DEMO_SEED_MANIFEST_DIGEST }}
+          sbom-path: tmp/container-release-artifacts/sbom/demo-seed.spdx.json
+          push-to-registry: false
+
       - name: Attest HSA directory mock SBOM
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
@@ -357,7 +404,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          for ref in "${APP_RUNTIME_MANIFEST_DIGEST_REF}" "${DB_JOB_MANIFEST_DIGEST_REF}" "${HSA_DIRECTORY_MOCK_MANIFEST_DIGEST_REF}" "${HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST_REF}"; do
+          for ref in "${APP_RUNTIME_MANIFEST_DIGEST_REF}" "${DB_JOB_MANIFEST_DIGEST_REF}" "${DEMO_SEED_MANIFEST_DIGEST_REF}" "${HSA_DIRECTORY_MOCK_MANIFEST_DIGEST_REF}" "${HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST_REF}"; do
             gh attestation verify "oci://${ref}" \
               --repo "${GITHUB_REPOSITORY}" \
               --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/container-release.yml"
@@ -433,6 +480,7 @@ jobs:
             tmp/container-release-artifacts/metadata/release-metadata.json \
             tmp/container-release-artifacts/sbom/app-runtime.spdx.json \
             tmp/container-release-artifacts/sbom/db-job.spdx.json \
+            tmp/container-release-artifacts/sbom/demo-seed.spdx.json \
             tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json \
             tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json || true
 
@@ -558,6 +606,7 @@ jobs:
             tmp/container-release-artifacts/metadata/release-metadata.json \
             tmp/container-release-artifacts/sbom/app-runtime.spdx.json \
             tmp/container-release-artifacts/sbom/db-job.spdx.json \
+            tmp/container-release-artifacts/sbom/demo-seed.spdx.json \
             tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json \
             tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json \
             tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz \

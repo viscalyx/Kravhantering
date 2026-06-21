@@ -35,7 +35,7 @@ recorded production incident.
 | `lib/dal/deviations.ts` and `lib/dal/improvement-suggestions.ts` | 88-92% | These modules hold the project's write-once decision history. Mutability after approval, rejection, resolution, or dismissal breaks traceability instead of throwing obvious errors. |
 | `lib/audit/action-audit.ts` and `app/api/admin/audit-events/route.ts` | 88-92% | The action log is fail-closed review evidence for mutations and denials. A regression here can make a valid business change untraceable or leak personal/free-text data into action-log details. |
 | `lib/requirements/list-view.ts` and requirements-table UI consumers | 82-88% | Admin defaults, visible-column persistence, filter clearing, and width clamps are fail-safe logic. Bad fallback behavior leaves the UI looking normal while applying stale filters. |
-| `lib/mcp/http.ts`, `lib/mcp/server.ts`, and `lib/export-csv.ts` | 80-85% | These are outward-facing contracts. Wrong method handling, malformed MCP fields, or CSV escaping defects break integrations and downstream reporting even when the app UI still works. |
+| `lib/mcp/http.ts`, `lib/mcp/server.ts`, `lib/export-csv.ts`, and `lib/reports/specification-*.ts` | 80-85% | These are outward-facing contracts. Wrong method handling, malformed MCP fields, CSV escaping defects, or lifecycle/report-profile drift break integrations and downstream reporting even when the app UI still works. |
 <!-- markdownlint-enable MD013 -->
 
 ## Coverage Theater Prevention
@@ -127,6 +127,141 @@ the caller's perspective.
 <!-- markdownlint-disable MD013 -->
 ```sh
 npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 3: publishing a successor auto-archives its predecessor at the same instant"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 20: publishing a successor replaces requirement-package membership
+
+**Requirement tag:**
+
+<!-- markdownlint-disable MD013 -->
+```text
+[Req: formal — docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md]
+```
+<!-- markdownlint-enable MD013 -->
+
+**What happened:** Kravpaket representerar aktuellt medlemskap för krav i
+kravbiblioteket, inte historik över tidigare kravversioner. Publicering av en
+efterträdare måste därför arkivera föregångaren och flytta
+kravpaketsmedlemskapet till den nya publicerade kravversionen i samma
+publiceringsflöde. Kravpaketets egna listor och räkningar måste samtidigt
+behandla bara publicerade kravversioner som aktuellt paketmedlemskap, så att
+ett utkast med ändrade paketval inte syns som paketets nuvarande innehåll.
+
+**The requirement:** När en ny kravversion publiceras ska den ersätta den
+tidigare publicerade kravversionen i alla kravpaket där kravet används.
+Kravpaketskopplingar ska inte ligga kvar som historik på den arkiverade
+föregångaren, och kravpaketets aktuella listor ska inte visa opublicerade
+utkast som paketmedlemmar.
+
+**Scenario 20 code coverage:** Publiceringens flytt av
+kravpaketsmedlemskap finns i `transitionStatus()` i
+`lib/dal/requirements.ts:1120-1141`, där föregångaren arkiveras och äldre
+paketkopplingar för samma krav tas bort. Kravpaketets aktuella list- och
+räkneytor filtrerar publicerade kravversioner i
+`lib/dal/requirement-packages.ts:252-312`. Den körbara kontrollen i
+`tests/quality/functional.test.ts:1093-1170` skapar en publicerad version i ett
+kravpaket, förbereder ett utkast med nytt paketval, verifierar att
+paketlistan fortfarande visar den publicerade versionen, publicerar utkastet
+och kontrollerar att bara den nya publicerade versionens paketkoppling finns
+kvar.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 20: publishing a successor replaces requirement-package membership"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 21: archiving without successor preserves package history but excludes practical use
+
+**Requirement tag:**
+
+<!-- markdownlint-disable MD013 -->
+```text
+[Req: formal — docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md]
+```
+<!-- markdownlint-enable MD013 -->
+
+**What happened:** Arkivering utan efterträdare är inte samma sak som att
+publicera en ersättande kravversion. I det fallet ska kravpaketskopplingen få
+ligga kvar som historik över att den arkiverade kravversionen har ingått i
+paketet. Samtidigt får praktisk kravpaketsanvändning, till exempel urval till
+kravunderlag, inte använda arkiverade kravversioner.
+
+**The requirement:** När en publicerad kravversion arkiveras utan efterträdare
+ska paketkopplingen bevaras för historik, men kravpaketets praktiska
+medlemskapslistor och urval ska exkludera den arkiverade versionen och bara
+behandla publicerade kravversioner som användbara paketmedlemmar.
+
+**Scenario 21 code coverage:** Arkiveringsflödet i
+`lib/dal/requirements.ts:801-920` markerar den publicerade kravversionen för
+arkivering och godkänner arkiveringen utan att radera kravpaketskopplingen när
+ingen ny publicerad efterträdare ersätter den. Kravpaketets praktiska list- och
+räkneytor i `lib/dal/requirement-packages.ts:252-312` filtrerar till
+publicerade kravversioner. Den körbara kontrollen i
+`tests/quality/functional.test.ts:1172-1213` arkiverar ett paketerat krav utan
+efterträdare, kontrollerar att paketkopplingen finns kvar på den arkiverade
+versionen och verifierar att kravpaketets praktiska lista inte returnerar
+kravet.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 21: archiving without successor preserves package history but excludes practical use"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 22: package filters keep archived history out of specifications but available in the library
+
+**Requirement tag:**
+
+<!-- markdownlint-disable MD013 -->
+```text
+[Req: formal — docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md]
+```
+<!-- markdownlint-enable MD013 -->
+
+**What happened:** Samma kravpaketskoppling kan behöva läsas i två olika
+sammanhang. Kravunderlag och kravurval använder kravpaket för att föra in
+användbara krav och måste därför bara se publicerade kravversioner. I
+kravbiblioteket är kravpaket däremot ett sökfilter över den statusmängd
+användaren har valt; om användaren uttryckligen filtrerar på arkiverade krav
+ska arkiverade krav med historisk paketkoppling kunna visas.
+
+**The requirement:** Kravunderlagets paketurval ska exkludera arkiverade
+kravversioner även när deras historiska paketkoppling finns kvar. Kravbibliotekets
+kravpaketsfilter ska inte i sig dölja arkiverade kravversioner; de visas när
+användaren inkluderar status `Arkiverad` i listans statusfilter.
+
+**Scenario 22 code coverage:** Kravunderlagets urval via
+`listRequirementSelectionMatchedRequirements()` i
+`lib/dal/requirement-selection-questions.ts:721-815` filtrerar paketträffar
+till publicerade kravversioner. Kravbibliotekets lista via `listRequirements()`
+i `lib/dal/requirements.ts:159-237` anropar SQL-byggaren där statusfiltret
+finns i `lib/dal/requirements-list-sql.mjs:92-95` och kravpaketsfiltret finns
+i `lib/dal/requirements-list-sql.mjs:135-142`. Den körbara kontrollen i
+`tests/quality/functional.test.ts:1215-1265` skapar ett publicerat och ett
+arkiverat krav i samma kravpaket, verifierar att kravunderlagets
+paketmatchning bara ger det publicerade kravet och att kravbibliotekets
+paketfilter kan visa det arkiverade kravet när status `Arkiverad` väljs.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 22: package filters keep archived history out of specifications but available in the library"
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -515,16 +650,18 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12f: storag
 
 **What happened:** `graduateSpecificationLocalRequirementToLibrary()` in
 `lib/dal/requirements-specifications.ts` locks the source
-specification-local row, requires Included usage status, creates a new
-library requirement and Draft version in the selected target requirement area, copies
+specification-local row, allows any usage status, creates a new library
+requirement and Draft version in the selected target requirement area, copies
 supported classification, verification, requirement-package and norm-reference
 joins, and leaves the original local row untouched. Without this fitness
 scenario, a later implementation could silently revert to the old replace/link
-idea and move or delete evidence from the source specification.
+idea, reintroduce a status gate, or move or delete evidence from the source
+specification.
 
-**The requirement:** Graduation must be copy-only. The source unique
-requirement, its usage status, note, and local deviations remain unchanged; the
-target library requirement is a new Draft in the chosen requirement area.
+**The requirement:** Graduation must be copy-only and independent of usage
+status. The source unique requirement, its usage status, note, and local
+deviations remain unchanged; the target library requirement is a new Draft in
+the chosen requirement area.
 
 **How to verify:**
 
@@ -754,6 +891,55 @@ specifications receive an empty list, unauthorized existing resources return
 <!-- markdownlint-disable MD013 -->
 ```sh
 npm exec -- vitest run tests/unit/requirements-assignment-authorization.test.ts
+```
+<!-- markdownlint-enable MD013 -->
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions
+
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal - docs/reports.md "Requirements Specification Field Profiles"]`
+
+**What happened:** Requirements specification reports and exports are now
+lifecycle-scoped outputs rather than row-selected list snapshots. They are
+used as procurement attachments, progress follow-up, management reports, and
+CSV analysis extracts. If report data follows the latest requirement version
+instead of the version linked to the specification item, a generated report can
+change without an explicit specification decision. If the menu exposes the
+wrong profile for a lifecycle status, external procurement artifacts can leak
+internal risk, need, or follow-up fields.
+
+**Covered code line ranges:** This scenario covers report generation,
+lifecycle-scoping, selected-version pinning, and profile matching in these
+implementation ranges:
+
+<!-- markdownlint-disable MD013 -->
+```text
+app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:1395-1479
+app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:2426-2508
+app/[locale]/specifications/[slug]/reports/print/[profile]/page.tsx:20-94
+app/[locale]/specifications/[slug]/reports/pdf/[profile]/route.ts:22-78
+app/api/requirements-specifications/[id]/report-output/route.ts:35-120
+app/api/requirements-specifications/[id]/exports/route.ts:37-160
+lib/reports/data/specification-output.ts:345-472
+lib/reports/templates/specification-profile-template.ts:28-263
+lib/reports/specification-csv.ts:28-132
+lib/reports/specification-profiles.ts:7-65
+```
+<!-- markdownlint-enable MD013 -->
+
+**The requirement:** Requirements specification reports must use the linked
+`requirement_version_id`, cover the whole specification sorted by `Krav-ID`,
+show only the report profile matching the specification lifecycle status, and
+keep `Full CSV-export` always available while limiting `Anbuds-CSV` to
+`Upphandling`. Field inclusions and exclusions must stay documented in
+`docs/reports.md`.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions"
 ```
 <!-- markdownlint-enable MD013 -->
 

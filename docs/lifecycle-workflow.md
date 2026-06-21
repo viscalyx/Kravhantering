@@ -43,6 +43,22 @@ published. This re-enters the workflow at Draft, going
 through Review and Published again before replacing the
 earlier version.
 
+If the requirement belongs to requirement packages, those
+packages continue to point at the existing Published version
+while the replacement is Draft or Review. When the replacement
+is published, the package membership moves to the new
+Published version and is removed from the archived
+predecessor. Requirement-package links are therefore current
+membership, not history markers for earlier versions.
+
+When a Published version is archived without a successor, its
+requirement-package link may remain as package history. Practical
+package usage, such as adding requirements to a requirements
+specification, still excludes archived versions and uses only
+Published requirements. Requirement-library package filtering is a
+search context instead: archived package-linked requirements can be
+shown there when the user includes Archived in the status filter.
+
 If an archived version is restored, it always starts at
 Draft regardless of the Published status it had prior to
 being archived, and must go through the full

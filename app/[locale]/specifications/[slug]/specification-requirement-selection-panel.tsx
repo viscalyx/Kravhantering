@@ -390,23 +390,25 @@ export default function SpecificationRequirementSelectionPanel({
 
   return (
     <div className="flex flex-col p-4">
-      <div className="mb-4">
-        <p className="text-sm text-secondary-600 dark:text-secondary-400">
-          {copy.progress}: {progress.answered}/{progress.total}
-        </p>
-        {progress.byArea.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {progress.byArea.map(([area, item]) => (
-              <span
-                className="rounded-md bg-secondary-100 px-2 py-1 text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
-                key={area}
-              >
-                {area}: {item.answered}/{item.total}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      {!loading && (
+        <div className="mb-4">
+          <p className="text-sm text-secondary-600 dark:text-secondary-400">
+            {copy.progress}: {progress.answered}/{progress.total}
+          </p>
+          {progress.byArea.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {progress.byArea.map(([area, item]) => (
+                <span
+                  className="rounded-md bg-secondary-100 px-2 py-1 text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
+                  key={area}
+                >
+                  {area}: {item.answered}/{item.total}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {error && (
         <p

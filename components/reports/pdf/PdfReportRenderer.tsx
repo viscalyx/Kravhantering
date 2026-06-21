@@ -15,6 +15,13 @@ import {
 } from '@react-pdf/renderer'
 import { getStatusIconNodes } from '@/lib/icons/status-icon-allowlist'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
+import {
+  formatReportBoolean,
+  getReportLabels,
+  getReportMessages,
+  localizeReportValue,
+  type ReportMessages,
+} from '@/lib/reports/report-labels'
 import type {
   DiffSegment,
   MetadataChange,
@@ -23,24 +30,19 @@ import type {
   SuggestionReportItem,
   TimelineEntryData,
 } from '@/lib/reports/types'
-import enMessages from '@/messages/en.json'
-import svMessages from '@/messages/sv.json'
 
-type SpecificationCoverLabelKey =
-  keyof typeof enMessages.reports.specificationCover
+type SpecificationCoverLabelKey = keyof ReportMessages['specificationCover']
 type ReportLabelKey = 'historicalSelectionAnswer'
 
 function getSpecificationCoverLabel(
   locale: string,
   key: SpecificationCoverLabelKey,
 ): string {
-  const messages = locale === 'sv' ? svMessages : enMessages
-  return messages.reports.specificationCover[key]
+  return getReportMessages(locale).specificationCover[key]
 }
 
 function getReportLabel(locale: string, key: ReportLabelKey): string {
-  const messages = locale === 'sv' ? svMessages : enMessages
-  return messages.reports[key]
+  return getReportMessages(locale)[key]
 }
 
 const styles = StyleSheet.create({
@@ -246,8 +248,13 @@ export default function PdfReportRenderer({
   return (
     <Document>
       {pages.map((pageSections, pageIndex) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: static report pages
-        <Page key={pageIndex} size="A4" style={styles.page}>
+        <Page
+          // biome-ignore lint/suspicious/noArrayIndexKey: static report pages
+          key={pageIndex}
+          orientation={model.orientation ?? 'portrait'}
+          size="A4"
+          style={styles.page}
+        >
           {pageSections.map((section, sectionIndex) => (
             <PdfSectionRenderer
               // biome-ignore lint/suspicious/noArrayIndexKey: static report sections
@@ -388,31 +395,41 @@ function PdfSpecificationCover({
             {section.uniqueId}
           </Text>
         </View>
-        <View style={styles.metadataItem}>
-          <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
-            {getSpecificationCoverLabel(section.locale, 'governanceObjectType')}
-          </Text>
-          <Text style={styles.fieldValue}>
-            {section.governanceObjectType ?? '—'}
-          </Text>
-        </View>
-        <View style={styles.metadataItem}>
-          <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
-            {getSpecificationCoverLabel(section.locale, 'implementationType')}
-          </Text>
-          <Text style={styles.fieldValue}>
-            {section.implementationType ?? '—'}
-          </Text>
-        </View>
-        <View style={styles.metadataItem}>
-          <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
-            {getSpecificationCoverLabel(section.locale, 'lifecycleStatus')}
-          </Text>
-          <Text style={styles.fieldValue}>
-            {section.lifecycleStatus ?? '—'}
-          </Text>
-        </View>
-        {section.businessNeedsReference && (
+        {section.variant !== 'minimal' && (
+          <>
+            <View style={styles.metadataItem}>
+              <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+                {getSpecificationCoverLabel(
+                  section.locale,
+                  'governanceObjectType',
+                )}
+              </Text>
+              <Text style={styles.fieldValue}>
+                {section.governanceObjectType ?? '—'}
+              </Text>
+            </View>
+            <View style={styles.metadataItem}>
+              <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+                {getSpecificationCoverLabel(
+                  section.locale,
+                  'implementationType',
+                )}
+              </Text>
+              <Text style={styles.fieldValue}>
+                {section.implementationType ?? '—'}
+              </Text>
+            </View>
+            <View style={styles.metadataItem}>
+              <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+                {getSpecificationCoverLabel(section.locale, 'lifecycleStatus')}
+              </Text>
+              <Text style={styles.fieldValue}>
+                {section.lifecycleStatus ?? '—'}
+              </Text>
+            </View>
+          </>
+        )}
+        {section.variant !== 'minimal' && section.businessNeedsReference && (
           <View style={{ width: '100%' }}>
             <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
               {getSpecificationCoverLabel(
@@ -485,14 +502,16 @@ function PdfVersionSummary({
 }) {
   const { version, label, isUnpublished, borderColor: customBorder } = section
   const borderColor = customBorder ?? (isUnpublished ? '#eab308' : '#22c55e')
+  const labels = getReportLabels(locale)
 
   const getName = (item: { nameSv: string; nameEn: string } | null) => {
     if (!item) return null
-    return locale === 'sv' ? item.nameSv : item.nameEn
+    return localizeReportValue(locale, item.nameSv, item.nameEn)
   }
   const requirementPackageNames = version.requirementPackages
     .map(requirementPackage => requirementPackage.name)
     .filter(name => name.length > 0)
+  const { createdBy: createdByLabel } = labels.columns
   const createdBy = formatActorDisplayNameForLocale(version.createdBy, locale)
 
   return (
@@ -516,16 +535,14 @@ function PdfVersionSummary({
       )}
       {version.description && (
         <View style={{ marginBottom: 6 }}>
-          <Text style={styles.fieldLabel}>
-            {locale === 'sv' ? 'Beskrivning' : 'Description'}
-          </Text>
+          <Text style={styles.fieldLabel}>{labels.columns.description}</Text>
           <Text style={styles.fieldValue}>{version.description}</Text>
         </View>
       )}
       {version.acceptanceCriteria && (
         <View style={{ marginBottom: 6 }}>
           <Text style={styles.fieldLabel}>
-            {locale === 'sv' ? 'Acceptanskriterier' : 'Acceptance Criteria'}
+            {labels.columns.acceptanceCriteria}
           </Text>
           <Text style={styles.fieldValue}>{version.acceptanceCriteria}</Text>
         </View>
@@ -533,55 +550,42 @@ function PdfVersionSummary({
       <View style={styles.metadataGrid}>
         {getName(version.category) && (
           <PdfMetadataItem
-            label={locale === 'sv' ? 'Kategori' : 'Category'}
+            label={labels.columns.category}
             value={getName(version.category)}
           />
         )}
         {getName(version.type) && (
           <PdfMetadataItem
-            label={locale === 'sv' ? 'Typ' : 'Type'}
+            label={labels.columns.type}
             value={getName(version.type)}
           />
         )}
         {getName(version.qualityCharacteristic) && (
           <PdfMetadataItem
-            label={
-              locale === 'sv' ? 'Kvalitetsegenskap' : 'Quality Characteristic'
-            }
+            label={labels.columns.qualityCharacteristic}
             value={getName(version.qualityCharacteristic)}
           />
         )}
         {getName(version.riskLevel) && (
           <PdfMetadataItem
             iconName={version.riskLevel?.iconName}
-            label={locale === 'sv' ? 'Risknivå' : 'Risk Level'}
+            label={labels.columns.riskLevel}
             value={getName(version.riskLevel)}
           />
         )}
         <PdfMetadataItem
-          label={locale === 'sv' ? 'Kräver testning' : 'Requires Testing'}
-          value={
-            version.requiresTesting
-              ? locale === 'sv'
-                ? 'Ja'
-                : 'Yes'
-              : locale === 'sv'
-                ? 'Nej'
-                : 'No'
-          }
+          label={labels.columns.requiresTesting}
+          value={formatReportBoolean(version.requiresTesting, labels)}
         />
         {createdBy && (
-          <PdfMetadataItem
-            label={locale === 'sv' ? 'Skapad av' : 'Created By'}
-            value={createdBy}
-          />
+          <PdfMetadataItem label={createdByLabel} value={createdBy} />
         )}
       </View>
       {version.normReferences.length > 0 && (
         <View style={{ marginTop: 4 }}>
           <Text style={{ fontSize: 8, color: '#6b7280' }}>
             <Text style={{ fontFamily: 'Helvetica-Bold', color: '#374151' }}>
-              {locale === 'sv' ? 'Referenser: ' : 'References: '}
+              {labels.columns.referencesValue}
             </Text>
             {version.normReferences.map(r => r.name).join(', ')}
           </Text>
@@ -591,7 +595,7 @@ function PdfVersionSummary({
         <View style={{ marginTop: 2 }}>
           <Text style={{ fontSize: 8, color: '#6b7280' }}>
             <Text style={{ fontFamily: 'Helvetica-Bold', color: '#374151' }}>
-              {locale === 'sv' ? 'Kravpaket: ' : 'Requirements packages: '}
+              {labels.columns.requirementPackagesValue}
             </Text>
             {requirementPackageNames.join(', ')}
           </Text>
@@ -750,6 +754,8 @@ function PdfRequirementTable({
     area: '20%',
     status: '16%',
   }
+  const columnWidth = (key: string, width: string | undefined) =>
+    width ?? colWidths[key] ?? '25%'
 
   return (
     <View style={styles.table}>
@@ -759,7 +765,7 @@ function PdfRequirementTable({
             key={col.key}
             style={[
               styles.tableHeaderCell,
-              { width: colWidths[col.key] ?? '25%' },
+              { width: columnWidth(col.key, col.width) },
             ]}
           >
             {col.label}
@@ -770,7 +776,10 @@ function PdfRequirementTable({
         // biome-ignore lint/suspicious/noArrayIndexKey: static report rows
         <View key={i} style={styles.tableRow}>
           {section.columns.map(col => (
-            <View key={col.key} style={{ width: colWidths[col.key] ?? '25%' }}>
+            <View
+              key={col.key}
+              style={{ width: columnWidth(col.key, col.width) }}
+            >
               {col.key === 'status' && row.statusColor ? (
                 <PdfBadge
                   color={row.statusColor}
@@ -947,10 +956,13 @@ function PdfDeviationSummary({
   section: Extract<ReportSection, { type: 'deviation-summary' }>
 }) {
   const locale = section.locale
+  const labels = getReportLabels(locale)
   const riskName = section.riskLevel
-    ? locale === 'sv'
-      ? section.riskLevel.nameSv
-      : section.riskLevel.nameEn
+    ? localizeReportValue(
+        locale,
+        section.riskLevel.nameSv,
+        section.riskLevel.nameEn,
+      )
     : null
   const createdBy = formatActorDisplayNameForLocale(section.createdBy, locale)
   return (
@@ -971,7 +983,7 @@ function PdfDeviationSummary({
           color: '#92400e',
         }}
       >
-        {locale === 'sv' ? 'Avvikelse' : 'Deviation'}
+        {labels.deviations.title}
       </Text>
       {riskName && (
         <View
@@ -983,7 +995,7 @@ function PdfDeviationSummary({
           }}
         >
           <Text style={{ fontSize: 9, color: '#6b7280' }}>
-            {locale === 'sv' ? 'Risknivå:' : 'Risk Level:'}
+            {labels.deviations.riskLevel}
           </Text>
           <PdfStatusIcon
             color={section.riskLevel?.color ?? '#6b7280'}
@@ -999,7 +1011,7 @@ function PdfDeviationSummary({
           marginBottom: 2,
         }}
       >
-        {locale === 'sv' ? 'Motivering:' : 'Motivation:'}
+        {labels.deviations.motivation}
       </Text>
       <Text style={{ fontSize: 10, lineHeight: 1.6, marginBottom: 8 }}>
         {section.motivation}
@@ -1011,9 +1023,7 @@ function PdfDeviationSummary({
         }}
       >
         <Text style={{ fontSize: 8, color: '#6b7280' }}>
-          {createdBy
-            ? `${locale === 'sv' ? 'Inlämnad av' : 'Submitted by'}: ${createdBy} · `
-            : ''}
+          {createdBy ? `${labels.deviations.submittedBy}: ${createdBy} · ` : ''}
           {new Date(section.createdAt).toLocaleDateString(locale)}
         </Text>
       </View>
@@ -1070,6 +1080,7 @@ function PdfSuggestionCard({
   const isResolved = item.resolvedAt !== null
   const createdBy = formatActorDisplayNameForLocale(item.createdBy, locale)
   const resolvedBy = formatActorDisplayNameForLocale(item.resolvedBy, locale)
+  const labels = getReportLabels(locale)
 
   return (
     <View
@@ -1117,7 +1128,7 @@ function PdfSuggestionCard({
               marginBottom: 2,
             }}
           >
-            {locale === 'sv' ? 'Motivering:' : 'Motivation:'}
+            {labels.deviations.motivation}
           </Text>
           <Text style={{ fontSize: 8, color: '#4b5563' }}>
             {item.resolutionMotivation}

@@ -96,8 +96,10 @@ Apply these rules to all schema objects.
 | 4 | `requirement_responsibility_people` uses HSA-id as the primary key instead of a single `id` | Kravansvarsperson is keyed by the durable HSA-id used by all live responsibility assignments. |
 | 4 | `requirement_package_co_authors` uses composite PK `(requirement_package_id, hsa_id)` instead of a single `id` | The live co-author assignment is naturally keyed by requirement package plus durable HSA-id; a surrogate `id` would not improve identity or lookup semantics. |
 | 4 | `requirement_selection_question_sequences` uses `area_id` as its PK instead of a single `id` | The sequence row is intentionally named after the requirement area it allocates codes for, making the one-row-per-area contract clear while leaving room for future schema changes. |
+| 4 | `rfi_question_sequences` uses `area_id` as its PK instead of a single `id` | The sequence row is intentionally scoped to the requirement area it allocates stable RFI question codes for. |
 | 4 | `specification_local_requirement_requirement_packages` uses composite PK `(specification_local_requirement_id, requirement_package_id)` instead of a single `id` | Same rationale as the version-based requirement-packages join table above. |
 | 4 | `specification_local_requirement_norm_references` uses composite PK `(specification_local_requirement_id, norm_reference_id)` instead of a single `id` | Same rationale as the version-based norm-references join table above. |
+| 4 | RFI join tables and `specification_rfi_question_items` use composite PKs | These rows are natural links between a question version and advisory target, or between a specification and an RFI question. A surrogate `id` would not improve identity. |
 | Localized columns | `norm_references.name`, `norm_references.type`, `norm_references.issuer` are single-language columns | Norm references are external legal/regulatory documents (e.g. laws, ISO standards) with proper names in their source language. Localizing them would be factually incorrect — "SFS 2018:218" and "Riksdagen" do not have per-locale translations. |
 | Versioning | `requirement_version_norm_references` stores only FK IDs, not snapshots of mutable `norm_references` fields (`name`, `type`, `reference`, `version`, `issuer`, `uri`, `is_archived`) | Norm references are shared external documents whose metadata should reflect the latest known state across all requirement versions. Snapshotting would create stale duplicates of external metadata that the system does not own. If point-in-time fidelity is needed in the future, a dedicated snapshot table can be added without breaking the current schema. |
 <!-- markdownlint-enable MD013 -->
@@ -1110,6 +1112,133 @@ also includes one historical saved answer with `is_historical = 1`.
 
 ---
 
+### `rfi_question_sequences`
+
+Tracks the next `{AREA}-RFI###` sequence per requirement area.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `area_id` | integer FK → `requirement_areas.id` (CASCADE DELETE), PK | Requirement area |
+| `next_sequence` | integer | Next sequence number to assign |
+<!-- markdownlint-enable MD013 -->
+
+### `rfi_questions`
+
+Stable RFI question identities owned by requirement areas. The row stores
+area, code, ordering and archive state; question content is versioned in
+`rfi_question_versions`.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Stable internal RFI question id |
+| `question_code` | text, unique | Stable `{AREA}-RFI###` code |
+| `area_id` | integer FK → `requirement_areas.id` | Owning requirement area |
+| `sort_order` | integer | Display order inside the area |
+| `is_archived` | integer | Soft archive flag |
+| `archived_at` | text (ISO 8601) | Archive timestamp |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+### `rfi_question_versions`
+
+Lightweight version history for RFI question content. Exactly one active
+version per RFI question is enforced by a filtered unique index. Unlocked
+specification RFI lists read the active version dynamically; locked lists
+point to exact version ids.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | RFI question version id |
+| `rfi_question_id` | integer FK → `rfi_questions.id` (CASCADE DELETE) | Parent RFI question |
+| `version_number` | integer | Version number within the RFI question |
+| `question_text` | text | User-facing RFI question |
+| `help_text` | text | Optional purpose/help text |
+| `expected_answer_format` | text | Optional expected answer format |
+| `is_active` | integer | Active-version flag |
+| `created_by_hsa_id` | text | Creator HSA-id snapshot |
+| `created_by_display_name` | text | Creator display-name snapshot |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+Advisory links from an RFI question version to existing selection questions,
+requirement packages or requirements are stored in
+`rfi_question_version_requirement_selection_questions`,
+`rfi_question_version_requirement_packages`, and
+`rfi_question_version_requirements`. These links do not select requirements
+automatically; they help authors interpret a relevant RFI result.
+
+### `specification_rfi_lists`
+
+One RFI list header per requirements specification. When `is_locked = 0`, the
+list is dynamic and reads active `rfi_question_versions`. When locked, the
+list is materialized in `specification_rfi_question_items` and can be exported
+or relevance-assessed.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE), PK | Owning specification |
+| `is_locked` | integer | `0` prepare mode, `1` locked mode |
+| `locked_at` | text (ISO 8601) | Lock timestamp |
+| `locked_by_hsa_id` | text | Actor HSA-id snapshot |
+| `locked_by_display_name` | text | Actor display-name snapshot |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+### `specification_rfi_question_items`
+
+Per-specification RFI list items. Scope (`is_included`) is editable only while
+the list is unlocked. Relevance is editable only after the list is locked.
+Refreshing a locked list keeps relevance only when the RFI question identity,
+version and included scope are unchanged.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE), PK part 1 | Owning specification |
+| `rfi_question_id` | integer FK → `rfi_questions.id`, PK part 2 | RFI question |
+| `rfi_question_version_id` | integer FK → `rfi_question_versions.id` | Version used by the list item |
+| `is_included` | integer | Scope flag |
+| `relevance` | text | `relevant`, `not_relevant`, or `NULL` |
+| `changed_at` | text (ISO 8601) | Last change timestamp |
+| `changed_by_hsa_id` | text | Actor HSA-id snapshot |
+| `changed_by_display_name` | text | Actor display-name snapshot |
+<!-- markdownlint-enable MD013 -->
+
+### `rfi_question_suggestions`
+
+Separate proposal track for new or changed RFI questions. Suggestions target a
+requirement area and may optionally point to an existing RFI question. A source
+specification reference is stored as a minimal snapshot so area authors can
+handle the suggestion without receiving full specification access.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Suggestion id |
+| `area_id` | integer FK → `requirement_areas.id` | Target requirement area |
+| `rfi_question_id` | integer FK → `rfi_questions.id` | Optional existing RFI question |
+| `specification_id` | integer FK → `requirements_specifications.id` | Optional source specification |
+| `source_specification_unique_id` | text | Minimal source snapshot |
+| `source_specification_name` | text | Minimal source snapshot |
+| `content` | text | Suggestion content |
+| `is_review_requested` | integer | Whether review has been requested |
+| `resolution` | integer | `1` resolved, `2` dismissed, or `NULL` |
+| `resolution_motivation` | text | Resolution reason |
+| `created_by_hsa_id` | text | Creator HSA-id snapshot |
+| `created_by_display_name` | text | Creator display-name snapshot |
+| `resolved_by_hsa_id` | text | Resolver HSA-id snapshot |
+| `resolved_by_display_name` | text | Resolver display-name snapshot |
+<!-- markdownlint-enable MD013 -->
+
+---
+
 ### `norm_references`
 
 External normative references such as laws, ISO standards,
@@ -1450,7 +1579,7 @@ specific procurement or project.
 | `local_requirement_next_sequence` | integer NOT NULL DEFAULT 1 | Next sequence number reserved for specification-local requirement IDs such as `KRAV0001` |
 | `specification_governance_object_type_id` | integer FK → `specification_governance_object_types.id` | Governance object type classification (nullable) |
 | `specification_implementation_type_id` | integer FK → `specification_implementation_types.id` | Implementation type classification (nullable) |
-| `specification_lifecycle_status_id` | integer FK → `specification_lifecycle_statuses.id` | Specification lifecycle status classification (nullable) |
+| `specification_lifecycle_status_id` | integer FK → `specification_lifecycle_statuses.id` | Specification lifecycle status classification |
 | `business_needs_reference` | text | Optional free-text reference to the underlying business need |
 | `responsible_hsa_id` | text FK → `requirement_responsibility_people.hsa_id` | HSA-id for the live specification lead |
 | `created_at` | text (ISO 8601) | Creation timestamp |
@@ -1826,6 +1955,15 @@ permission.
 ### `requirement_version_requirement_packages`
 
 Many-to-many link between requirement versions and requirement packages.
+For package stewardship this represents current membership for the requirement:
+while a replacement version is Draft or Review, package queries use the
+existing Published version; when the replacement is published, publication
+moves membership to the new Published version and removes it from the archived
+predecessor. If a Published version is archived without a successor, the link
+may remain for historical package membership, while practical package queries
+filter to Published versions. Requirement-library package filters may still
+match archived package-linked versions when the list status filter includes
+Archived.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |

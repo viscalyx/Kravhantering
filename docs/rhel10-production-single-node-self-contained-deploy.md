@@ -58,6 +58,12 @@ lookup adapter and the HSA directory mock from
 `container-test-support.lock.json`. That overlay is only for disposable demo or
 release-test environments and must not be used for production.
 
+The GitHub Release notes can also list `kravhantering-demo-seed` under
+Demonstration Container Images. That image is a separate opt-in image for
+destructive demo seeding in disposable environments. It is not part of
+`container-stack.lock.json`, `release.env.template`, or the production
+deployment bundle.
+
 The refs must use tag-style `image:tag` values that point at public upstream
 registries or an internal registry mirror. Each configured ref must resolve to
 the locked `imageId` in `container-stack.lock.json` when inspected with Podman.
@@ -86,6 +92,7 @@ verification.
 | `KONG_IMAGE_REF` | `KONG_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose a tag-style ref from `container-hsa-integration-support.lock.json` when using the demo overlay. |
 | `HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` | `HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the project-owned HSA lookup adapter image when using the demo overlay. |
 | `HSA_DIRECTORY_MOCK_IMAGE_REF` | `HSA_DIRECTORY_MOCK_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the project-owned HSA mock image when using the demo overlay. |
+| `DEMO_SEED_IMAGE_REF` | One-shot shell variable, not `release.env` | No production default | Test and development only; choose the optional `kravhantering-demo-seed` release tag or internal mirror only when running destructive demo seed in a disposable database. |
 | `KC_HOSTNAME` | `KC_HOSTNAME` in `keycloak.env` | `https://<APP_HOST>/auth` | Verify after choosing `APP_HOST`; plan only if Keycloak is deliberately exposed at another public URL. |
 | `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Compose network. It can change when the internal network is renamed, recreated or assigned another subnet. |
 | `MSSQL_SA_PASSWORD` | `MSSQL_SA_PASSWORD` in `sqlserver.env` and `DB_BOOTSTRAP_ADMIN_PASSWORD` in `db-job.env` | No default | Always generate a unique SQL Server `sa` password. Use the same value in both places and follow [Generate Unique Secrets](#generate-unique-secrets). |
@@ -592,6 +599,26 @@ bin/kravhantering-images.sh --topology single-node-demo \
   --test-lock-file container-test-support.lock.json \
   --env-file /etc/kravhantering/release.env \
   verify
+
+exit
+```
+
+### Optional Demo Seed Image Ref
+
+Use this only for a disposable test or development database that should be
+reset to the release's current demo fixtures. Do not add this value to
+`/etc/kravhantering/release.env`; keep it as an explicit shell variable for the
+one-shot destructive command.
+
+Pick the tag-style ref from the GitHub Release notes under Demonstration
+Container Images, or use the equivalent site-approved internal mirror tag:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+
+DEMO_SEED_IMAGE_REF=ghcr.io/viscalyx/kravhantering-demo-seed:replace-with-release-tag
+podman pull "$DEMO_SEED_IMAGE_REF"
 
 exit
 ```
@@ -1281,7 +1308,9 @@ Optional, test and development only: run `seed:demo` before the first full
 stack start when the database is disposable and should match the release's
 current demo fixtures. This command is destructive: it removes all non-required
 database rows before inserting bundled demo data. Skip it for production or any
-database that contains data to keep.
+database that contains data to keep. The optional demo seed image defaults to
+`seed:demo` and contains the demo seed modules; the production `db-job` image
+does not support demo-data commands.
 
 ```bash
 sudo -iu kravhantering
@@ -1291,26 +1320,20 @@ set -a
 set +a
 
 STACK_NETWORK=kravhantering-internal
-DEMO=$PWD/demo-seed
-TYPEORM=/workspace/typeorm
-DOG=seed-dogfood.mjs
-DOG_BUILD=seed-dogfood-build.mjs
-RET_BUILD=seed-archiving-retention-build.mjs
+DEMO_SEED_IMAGE_REF=ghcr.io/viscalyx/kravhantering-demo-seed:replace-with-release-tag
 
+podman pull "$DEMO_SEED_IMAGE_REF"
 podman run --rm --network "$STACK_NETWORK" \
   --env-file /etc/kravhantering/db-job.env \
-  --volume "$DEMO/seed.mjs:$TYPEORM/seed.mjs:ro" \
-  --volume "$DEMO/$DOG:$TYPEORM/$DOG:ro" \
-  --volume "$DEMO/$DOG_BUILD:$TYPEORM/$DOG_BUILD:ro" \
-  --volume "$DEMO/$RET_BUILD:$TYPEORM/$RET_BUILD:ro" \
-  "$DB_JOB_IMAGE_REF" seed:demo
+  "$DEMO_SEED_IMAGE_REF"
 
 exit
 ```
 
 The production `db-job` image still contains only migrations and required seed
-code; demo seed files are mounted from the release bundle only for this
-explicit command.
+code. Demo seed files are not included in the production deployment bundle; use
+the separate optional image only for this explicit disposable-environment
+command.
 
 Optional, release test and demo only: switch the app runtime to the internal
 Kong route and start the test support overlay with the single-node stack. The

@@ -319,6 +319,9 @@ kravområdesägare.
 1. Öppna kravområdet `AUTHZ-AREA-2026` eller skapa en isolerad testyta.
 1. Gör en liten tillåten ändring i kravområdets metadata eller skapa ett krav
    inom det ägda området.
+1. Öppna radåtgärden `Hantera medförfattare` och verifiera att
+   dialogen visar ett tilläggsfält överst, laddningsläge vid hämtning och en
+   sparad tabell med kravområdesmedförfattare.
 1. Ladda om sidan och kontrollera att ändringen finns kvar.
 1. Försök administrera global Admin-yta och ändra kravunderlagsansvarig.
 
@@ -353,9 +356,12 @@ tilldelningsstyrning och global Admin.
 **Steg:**
 
 1. Logga in som `petra.specresp`.
-1. Öppna `/sv/specifications/AUTHZ-SPEC-2026`.
-1. Ändra ett säkert metadatafält, till exempel verksamhetsbehovsreferens.
-1. Lägg till eller verifiera en medförfattare där UI tillåter det.
+1. Öppna `/sv/specifications` och filtrera fram `AUTHZ-SPEC-2026`.
+1. Öppna redigeringsåtgärden och ändra ett säkert metadatafält, till exempel
+   verksamhetsbehovsreferens.
+1. Stäng redigeringen och öppna radåtgärden `Hantera medförfattare`.
+1. Kontrollera att tilläggsfältet ligger över den sparade tabellen och lägg
+   till eller verifiera en kravunderlagsmedförfattare i dialogen.
 1. Försök utföra Admin-only-åtgärd eller dataskyddsförhandsgranskning.
 
 **Förväntat resultat:** Petra kan förvalta sitt kravunderlag och dess
@@ -374,7 +380,8 @@ inte delegera ansvar.
 1. Öppna `/sv/specifications/AUTHZ-SPEC-2026`.
 1. Gör en liten tillåten innehållsändring.
 1. Ladda om sidan och verifiera att ändringen finns kvar.
-1. Försök ändra medförfattare eller kravunderlagsansvarig.
+1. Öppna kravunderlagslistan och försök hitta radåtgärden för att hantera
+   medförfattare, och försök ändra kravunderlagsansvarig.
 
 **Förväntat resultat:** Signe kan ändra innehåll men inte ändra ansvar eller
 medförfattare.
@@ -391,6 +398,9 @@ utföra Admin-only-åtgärder.
 1. Logga in som `leo.pkglead`.
 1. Öppna `Kravbiblioteksförvaltning` och sök efter `AUTHZ kravpaket`.
 1. Redigera paketets beskrivning med en liten unik testtext.
+1. Öppna radåtgärden `Hantera medförfattare` och verifiera att paketets
+   kravpaketsmedförfattare visas i en sparad tabell och kan läggas till eller
+   tas bort i den separata dialogen.
 1. Ladda om sidan och verifiera att Leo fortfarande är kravpaketsansvarig.
 1. Försök arkivera paketet om UI visar åtgärden, annars kontrollera API.
 
@@ -409,7 +419,8 @@ inte ta över ansvar.
 1. Logga in som `paul.pkgcoauthor`.
 1. Öppna `AUTHZ kravpaket`.
 1. Gör en tillåten innehållsändring om UI tillåter det.
-1. Försök ändra kravpaketsansvarig eller medförfattare.
+1. Försök ändra kravpaketsansvarig eller öppna radåtgärden för att hantera
+   medförfattare.
 1. Kontrollera otillåten åtgärd med API om UI inte visar kontrollen.
 
 **Förväntat resultat:** Paul får bara de paketåtgärder som
@@ -577,8 +588,16 @@ med piltangenter och stäng med Escape.
 1. Skapa ett testpaket och kontrollera att formuläret visar ansvarsinformation
    samt inloggad användare som kravpaketsansvarig utan redigerbart
    ansvarsfält.
+1. Klicka antalet i kolumnen `Kopplade krav` och kontrollera att en
+   skrivskyddad dialog öppnas för kravpaketets kopplade krav.
 1. Filtrera, redigera och arkivera testpaketet.
-1. Byt kravpaketsansvarig med HSA-id och testa medförfattare.
+1. Öppna samma skrivskyddade dialog via knappen i redigeringsformuläret och
+   kontrollera att redigeringsformuläret ligger kvar när dialogen stängs.
+1. Byt kravpaketsansvarig med HSA-id, tabba från suffixfältet och kontrollera
+   att verifierat namn och e-post visas som text i bytesdialogen.
+1. Öppna radåtgärden `Hantera medförfattare` för testpaketet och kontrollera
+   att den separata dialogen har tilläggsfält överst, laddningsläge och en
+   sparad tabell för att lägga till och ta bort kravpaketsmedförfattare.
 1. Skapa en kravurvalsfråga, lägg till svar och ändra ordning.
 1. Kontrollera synlighetsvillkor, hierarkimodal och kravurvalsförhandsvisning.
 
@@ -598,16 +617,26 @@ visas och försök skapa.
 
 ### LIFE-01: skapa krav från UI
 
-**Steg:** Öppna `/sv/requirements/new`, välj kravområde, fyll kravtext och
-obligatoriska fält, spara.
+**Steg:** Öppna `/sv/requirements/new`, kontrollera att Spara är dimmad, välj
+kravområde, fyll kravtext och obligatoriska fält och kontrollera att Spara
+tänds. Klicka Avbryt, avbryt förkastandet och kontrollera att formuläret är
+kvar. Klicka Avbryt igen, bekräfta förkastandet och öppna formuläret på nytt
+för att spara ett krav.
 
-**Förväntat resultat:** Kravet skapas och öppnas i listan.
+**Förväntat resultat:** Obligatoriska fält är markerade med asterisk och en
+kort notis vid formulärets actionknappar förklarar markeringen. Spara är
+dimmad tills användaren har gjort en normaliserad formulärändring. Kravet
+skapas och öppnas i listan. Formulär med osparade ändringar stängs inte utan
+bekräftelse.
 
 ### LIFE-02: validera obligatoriska fält vid skapande
 
-**Steg:** Skicka formuläret utan obligatoriska fält.
+**Steg:** Kontrollera att ett helt oförändrat formulär inte kan skickas. Gör
+sedan en ofullständig ändring, till exempel fyll kravtext men lämna ett annat
+obligatoriskt fält tomt, och försök skicka.
 
-**Förväntat resultat:** Fältfel visas och inget krav skapas.
+**Förväntat resultat:** Obligatoriska fält är markerade med asterisk,
+fältfel visas och inget krav skapas.
 
 ### LIFE-03: skicka utkast till granskning
 
@@ -667,6 +696,34 @@ kontrollera rapportmenyn.
 Rapporter för historik, granskning, kombinerad granskning och förslagshistorik
 går bara att hämta när användaren har åtkomst till kravets historik.
 
+### LIFE-12: publicering ersätter kravpaketsmedlemskap
+
+**Steg:** Skapa eller välj ett publicerat krav som ingår i ett kravpaket.
+Skapa en ny utkastversion med ett annat kravpaketsval. Öppna
+kravpaketslistans dialog för kopplade krav innan publicering och kontrollera
+att bara den publicerade föregångaren visas. Skicka utkastet till granskning
+och publicera det. Öppna de berörda kravpaketens dialoger igen.
+
+**Förväntat resultat:** Före publicering visar kravpaketet fortfarande den
+publicerade föregångaren. Efter publicering visas den nya publicerade
+kravversionen i sitt valda kravpaket, och föregångaren ligger inte kvar som
+kopplat krav i det tidigare paketet.
+
+### LIFE-13: arkivering utan efterträdare bevarar pakethistorik
+
+**Steg:** Skapa eller välj ett publicerat krav som ingår i ett kravpaket.
+Arkivera kravet utan att först skapa en ny kravversion. Öppna kravpaketets
+dialog för kopplade krav och kontrollera praktisk användning, till exempel
+kravurval till kravunderlag om paketet används där. Öppna därefter
+kravbibliotekets kravlista, filtrera på samma kravpaket och välj status
+`Arkiverad`.
+
+**Förväntat resultat:** Den arkiverade kravversionens paketkoppling bevaras
+som historik, men kravpaketets praktiska listor och urval använder inte det
+arkiverade kravet som tillgängligt krav. Kravbibliotekets paketfilter kan
+däremot visa det arkiverade kravet när användaren själv har valt status
+`Arkiverad`.
+
 ## Samarbete i kravdetalj
 
 ### COL-01: lägg till krav i kravunderlag
@@ -723,15 +780,28 @@ paket och referenser visas.
 
 ### SPEC-02: skapa nytt kravunderlag
 
-**Steg:** Skapa kravunderlag med unikt ID och namn.
+**Steg:** Öppna skapa-dialogen och kontrollera att Spara är dimmad. Fyll unikt
+ID och namn, klicka utanför dialogen och kontrollera att den inte stängs.
+Klicka Avbryt och avbryt förkastandet. Lämna kravunderlagets livscykelstatus
+tom och försök spara. Välj därefter livscykelstatus och spara.
 
-**Förväntat resultat:** Kravunderlaget skapas och öppnas.
+**Förväntat resultat:** Spara är dimmad tills användaren har gjort en
+normaliserad metadataändring. Formuläret stoppar sparning utan
+livscykelstatus. Formulär med osparade ändringar kräver bekräftelse innan det
+stängs, och
+klick utanför dialogen stänger den inte. När livscykelstatus är vald skapas
+kravunderlaget och öppnas.
 
 ### SPEC-03: redigera kravunderlag från titelåtgärd
 
-**Steg:** Öppna detalj, använd titelns redigeringsåtgärd och spara ny text.
+**Steg:** Öppna detalj, använd titelns redigeringsåtgärd och kontrollera att
+Spara är dimmad innan ändring. Ändra text, klicka X och avbryt
+förkastandet. Spara ny text. Kontrollera att kravunderlagets livscykelstatus är
+obligatorisk och inte kan blankas.
 
-**Förväntat resultat:** Ändringen visas efter omladdning.
+**Förväntat resultat:** Spara tänds först efter metadataändringen. X visar
+bekräftelse innan formulär med osparade ändringar förkastas. Ändringen visas efter
+omladdning och livscykelstatusen finns kvar.
 
 ### SPEC-04: ta bort kravunderlag med bekräftelse
 
@@ -754,11 +824,15 @@ panel.
 
 **Förväntat resultat:** Kopplingen skapas och tas bort korrekt.
 
-### SPEC-07: skapa unikt krav i kravunderlag
+### SPEC-07: skapa och lyft unikt krav i kravunderlag
 
-**Steg:** Skapa ett nytt krav direkt från kravunderlaget.
+**Steg:** Skapa ett nytt krav direkt från kravunderlaget. Ändra
+användningsstatus till ett annat läge än `Inkluderad` och lyft sedan kravet
+till kravbiblioteket.
 
-**Förväntat resultat:** Kravet får unikt ID och kopplas till underlaget.
+**Förväntat resultat:** Kravet får unikt ID och kopplas till underlaget. Lyft
+skapar ett nytt utkast i kravbiblioteket oavsett användningsstatus, medan
+källkravet ligger kvar i kravunderlaget.
 
 ### SPEC-08: uppdatera användningsstatus
 
@@ -772,13 +846,47 @@ panel.
 
 **Förväntat resultat:** Referenser sparas och tas bort enligt användarens val.
 
-### SPEC-10: generera kravunderlagsrapport
+### SPEC-10: generera upphandlingsrapport och Anbuds-CSV
 
-**Steg:** Öppna rapportmenyn från kravunderlagslistan.
+**Steg:** Öppna ett kravunderlag med livscykelstatus `Upphandling`, öppna
+rapportmenyn och välj `Kravbilaga för upphandling`. Öppna exportmenyn och välj
+`Anbuds-CSV` samt `Full CSV-export`. Upprepa robusthetskontrollen med ett
+kravunderlag vars ID innehåller mellanslag eller snedstreck.
 
-**Förväntat resultat:** Rapporten genereras utan fel för användare med
-läsåtkomst till kravunderlaget och nekas innan data visas för användare utan
-läsåtkomst.
+**Förväntat resultat:** Rapporten genereras för hela kravunderlaget, sorterad
+på Krav-ID, och innehåller bara Krav-ID, Kravtext, Kvalitetsegenskap med
+ISO-kapitel och Normreferenser utan rå URI. `Anbuds-CSV` innehåller samma
+kravfält och en separat Norm-URI-kolumn. `Full CSV-export` finns också.
+Rapportlänken öppnas korrekt och CSV-exporten hanterar fel från servern eller
+webbläsaren utan att bryta sidan.
+
+### SPEC-10b: generera genomföranderapport för införande och utveckling
+
+**Steg:** Öppna kravunderlag med livscykelstatus `Införande` respektive
+`Utveckling`, öppna rapportmenyn och välj `Genomföranderapport`. Kontrollera även
+exportmenyn.
+
+**Förväntat resultat:** Rapporten genereras för hela kravunderlaget och
+innehåller intern uppföljningsmetadata, kravversion, kravområde, kategori, typ,
+kvalitetsegenskap, risknivå, kravversionsstatus, verifierbarhet,
+behovsreferens, användningsstatus och normreferenser. `Anbuds-CSV` visas inte.
+`Full CSV-export` visas.
+
+### SPEC-10c: generera förvaltningsrapport
+
+**Steg:** Öppna kravunderlag med livscykelstatus `Förvaltning`, öppna
+rapportmenyn och välj `Förvaltningsrapport`.
+
+**Förväntat resultat:** Rapporten återanvänder genomföranderapportens fält och
+visar dessutom avstegssignal och rest från införande. Avvikna krav flaggas via
+avstegssignalen, inte genom att räknas som implementerad rest.
+
+### SPEC-10d: kravunderlagsrapporter kräver läsbehörighet
+
+**Steg:** Försök öppna en kravunderlagsrapport eller CSV-export för ett
+kravunderlag där användaren saknar läsbehörighet.
+
+**Förväntat resultat:** Åtkomsten nekas innan rapport- eller exportdata visas.
 
 ### SPEC-11: återställ kolumnvyer för kravunderlag
 
@@ -790,7 +898,64 @@ läsåtkomst.
 
 **Steg:** Öppna kravunderlagets kravurvalsfrågor, välj svar och spara urval.
 
-**Förväntat resultat:** Urvalet sparas och kravlistan uppdateras.
+**Förväntat resultat:** Laddningstexten visas utan en tillfällig svarsräknare.
+När frågorna har laddats visas svarsräknaren, till exempel `Besvarade: 0/1`.
+Urvalet sparas och kravlistan uppdateras.
+
+### SPEC-13: förvalta RFI-fråga och visa dynamisk RFI-lista
+
+**Steg:** Öppna Kravbiblioteksförvaltning, välj fliken `RFI-frågor`, skapa en
+RFI-fråga i ett kravområde och öppna därefter ett kravunderlag. Välj fliken
+`RFI-frågelista`.
+
+**Förväntat resultat:** Den aktiva frågan visas grupperad under kravområdet i
+kravunderlagets RFI-lista utan att listan först behöver låsas.
+
+### SPEC-14: lås, relevansbedöm och exportera RFI-lista
+
+**Steg:** I kravunderlagets `RFI-frågelista`, välj bort en fråga, lås listan,
+markera en inkluderad fråga som relevant och exportera CSV och PDF.
+
+**Förväntat resultat:** Scope kan ändras före låsning men inte efter. Relevans
+kan bara sättas efter låsning. Exporterna innehåller exakta
+RFI-frågeversioner, scope och relevans.
+
+### SPEC-15: lås upp RFI-lista och hantera ändrad frågeversion
+
+**Steg:** Lås upp RFI-listan, ändra en RFI-fråga i förvaltningen så att en ny
+version skapas och lås listan igen.
+
+**Förväntat resultat:** Relevans behålls för oförändrade frågeversioner men
+rensas för den fråga vars version ändrats.
+
+### SPEC-16: skapa och hantera RFI-frågeförslag
+
+**Steg:** Skapa ett RFI-frågeförslag från kravunderlagets RFI-lista. Öppna
+Kravbiblioteksförvaltning, fliken `RFI-frågor`, välj berört kravområde och
+markera förslaget som hanterat eller avfärdat med motivering.
+
+**Förväntat resultat:** Förslaget visas bara med minimal kravunderlagskälla,
+inte med hela kravunderlaget. Hantering kräver beslutsmotivering och tar bort
+förslaget från öppna förslag.
+
+### SPEC-16a: RFI-frågeförslag kräver valt kravområde
+
+**Steg:** Öppna ett kravunderlag vars RFI-lista saknar kravområden för
+förslag. Skriv text i fältet för RFI-frågeförslag.
+
+**Förväntat resultat:** Skicka-knappen är fortsatt inaktiverad när inget
+kravområde är valt. Klick leder inte till en tyst no-op.
+
+### SPEC-16b: RFI-frågeförslag kontrollerar både kravunderlag och kravområde
+
+**Steg:** Logga in som kravunderlagsansvarig utan författarbehörighet i ett
+annat kravområde. Kör API-kontroll med `scripts/dev-curl.sh` för att skapa ett
+RFI-frågeförslag där kroppen innehåller både användarens kravunderlag och det
+otillåtna kravområdet.
+
+**Förväntat resultat:** API:t svarar 403. Förslag skapas bara när användaren
+har behörighet både till kravunderlaget och till kravområdet som ska ta emot
+förslaget.
 
 ## Avsteg
 
@@ -848,9 +1013,13 @@ session.
 
 ### ADMIN-02: taxonomi- och statussidor sparar ändringar
 
-**Steg:** Gör en liten ändring i testbar taxonomi eller status och spara.
+**Steg:** Öppna ett testbart taxonomi- eller statusformulär, kontrollera att
+Spara är dimmad innan ändring, gör en liten ändring, klicka Avbryt och avbryt
+förkastandet. Spara därefter ändringen.
 
-**Förväntat resultat:** Ändringen visas efter omladdning.
+**Förväntat resultat:** Spara tänds först efter ändringen. Formulär med
+osparade ändringar kräver bekräftelse innan det stängs. Ändringen visas efter
+omladdning.
 
 ### ADMIN-03: webbläsarens bakåtknapp återställer taxonomiflik
 
@@ -873,52 +1042,72 @@ placering och länkar.
 **Förväntat resultat:** Normbiblioteket finns i förvaltningsytan, inte som
 taxonomiflik i Admincenter.
 
-### ADMIN-06: åtgärdslogg filtrerar och exporterar CSV
+### ADMIN-06: ny normreferens använder responsiv formulärlayout
+
+**Steg:** Öppna Normbibliotek, klicka `Ny normreferens` och jämför layout på
+desktop respektive smal mobilbredd.
+
+**Förväntat resultat:** Desktop visar formuläret i två kolumner med
+Normreferens-ID sist och fullbrett. Mobil visar samma fält i en kolumn utan
+överlapp.
+
+### ADMIN-07: åtgärdslogg filtrerar och exporterar CSV
 
 **Steg:** Öppna åtgärdslogg, filtrera på aktör eller händelse och exportera.
 
 **Förväntat resultat:** Listan filtreras och CSV innehåller matchande rader.
 
-### ADMIN-07: åtkomstöversyn, beslut och export
+### ADMIN-08: åtkomstöversyn, beslut och export
 
 **Steg:** Öppna åtkomstöversyn, fatta ett testbeslut och exportera underlag.
 
 **Förväntat resultat:** Beslut sparas och exporten innehåller beslutet.
 
-### ADMIN-08: åtkomstöversyn avvisar för långa kommentarer
+### ADMIN-09: åtkomstöversyn avvisar för långa kommentarer
 
 **Steg:** Ange kommentar som överskrider maxlängd och försök spara.
 
 **Förväntat resultat:** Valideringsfel visas och beslutet sparas inte.
 
-### ADMIN-09: arkiveringsgallring kräver dataskyddsroll
+### ADMIN-10: arkiveringsgallring kräver dataskyddsroll
 
 **Steg:** Jämför `only.admin` och `ada.admin` på gallringsförhandsgranskning.
 
 **Förväntat resultat:** Only nekas; Ada kan förhandsgranska.
 
-### ADMIN-10: status- och riskikoner visas på kravytor
+### ADMIN-11: status- och riskikoner visas på kravytor
 
 **Steg:** Öppna kravlista, kravdetalj och rapport där status/risk visas.
 
 **Förväntat resultat:** Ikoner och etiketter renderas konsekvent.
 
-### ADMIN-11: arkiverad kravurvalsretention undantar sparad historik
+### ADMIN-12: arkiverad kravurvalsretention undantar sparad historik
 
 **Steg:** Kör gallringsförhandsgranskning för arkiverade kravurvalsdata.
 
 **Förväntat resultat:** Sparad historik undantas enligt retentionregeln.
 
-### ADMIN-12: byte av kravområdesägare använder HSA-id
+### ADMIN-13: byte av kravområdesägare använder HSA-id
 
-**Steg:** Ändra kravområdesägare via HSA-id, verifiera personuppslag och spara.
+**Steg:** Öppna kravområdeslistan och kontrollera att radåtgärderna för
+medförfattare, redigering och borttagning visas som ikonknappar. Öppna
+radåtgärden `Hantera medförfattare` och kontrollera att den separata dialogen
+kan läsa in, visa laddningsläge, lägga till och ta bort
+kravområdesmedförfattare i en sparad tabell. Öppna sedan ett kravområde för
+redigering. Kontrollera att formuläret öppnas i en modal, dra
+beskrivningsfältet nedåt så långt webbläsaren tillåter och försök sedan minska
+fältet under öppningshöjden. Ändra därefter kravområdesägare via HSA-id med
+verifierat personuppslag.
 
-**Förväntat resultat:** Ägarskapet sparas på HSA-id och visas med
-persondetaljer. Efter nästa lyckade ändring kan den inloggade aktörens egen
-levande personrad uppdateras från sessionen utan att inloggning eller sparande
-fördröjs.
+**Förväntat resultat:** Listan visar ikonbaserade knappar för Hantera
+medförfattare, Redigera och Ta bort. Medförfattare hanteras i en separat modal,
+inte i metadataformuläret. Beskrivningsfältet begränsas av fönstrets höjd så
+att Spara och Avbryt fortfarande är åtkomliga, och fältet kan inte minskas
+under öppningshöjden. Ägarskapet sparas på HSA-id och visas med persondetaljer.
+Efter nästa lyckade ändring kan den inloggade aktörens egen levande personrad
+uppdateras från sessionen utan att inloggning eller sparande fördröjs.
 
-### ADMIN-13: HSA-id-prefix administreras från Identitet
+### ADMIN-14: HSA-id-prefix administreras från Identitet
 
 **Steg:** Öppna fliken `Identitet`, lägg till eller ändra ett testprefix och
 kontrollera valideringen.

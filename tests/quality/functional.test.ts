@@ -33,6 +33,8 @@ import {
   SUGGESTION_DISMISSED,
   SUGGESTION_RESOLVED,
 } from '@/lib/dal/improvement-suggestions'
+import { getLinkedRequirementsForPackage } from '@/lib/dal/requirement-packages'
+import { listRequirementSelectionMatchedRequirements } from '@/lib/dal/requirement-selection-questions'
 import {
   approveArchiving,
   cancelArchiving,
@@ -92,8 +94,8 @@ import {
  * Scenario names here must match the QUALITY.md `vitest -t "Scenario N: ..."`
  * invocations verbatim so that spec-referenced commands keep working.
  *
- * Scenarios 10 and 15 are pure file-content checks and always run as part of
- * `npm run test`.
+ * Scenarios 10, 15, 18, 19, and 23 are pure file-content checks and always run
+ * as part of `npm run test`.
  *
  * Scenarios 1-9, 11-12, 14, 16, and 17 exercise lifecycle/audit/MCP invariants
  * that require a real SQL Server instance. The harness derives a connection URL automatically from
@@ -217,6 +219,41 @@ const specificationsRoutePath = join(
   'api',
   'requirements-specifications',
   'route.ts',
+)
+const reportsDocPath = join(repoRoot, 'docs', 'reports.md')
+const specificationDetailClientPath = join(
+  repoRoot,
+  'app',
+  '[locale]',
+  'specifications',
+  '[slug]',
+  'requirements-specification-detail-client.tsx',
+)
+const specificationOutputDataPath = join(
+  repoRoot,
+  'lib',
+  'reports',
+  'data',
+  'specification-output.ts',
+)
+const specificationProfileTemplatePath = join(
+  repoRoot,
+  'lib',
+  'reports',
+  'templates',
+  'specification-profile-template.ts',
+)
+const specificationCsvPath = join(
+  repoRoot,
+  'lib',
+  'reports',
+  'specification-csv.ts',
+)
+const specificationProfilesPath = join(
+  repoRoot,
+  'lib',
+  'reports',
+  'specification-profiles.ts',
 )
 
 function countRegisterToolCalls(source: string): number {
@@ -425,6 +462,56 @@ it('Scenario 19: assignment RBAC denies hidden broad access', () => {
   expect(preloadSource).toContain('specification_assignment_required')
   expect(routeSource).toContain('collectionPermissions')
   expect(routeSource).toContain('canCreateSpecification')
+})
+
+it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions', () => {
+  const reportsDoc = readFileSync(reportsDocPath, 'utf8')
+  const detailClientSource = readFileSync(specificationDetailClientPath, 'utf8')
+  const outputDataSource = readFileSync(specificationOutputDataPath, 'utf8')
+  const profileTemplateSource = readFileSync(
+    specificationProfileTemplatePath,
+    'utf8',
+  )
+  const csvSource = readFileSync(specificationCsvPath, 'utf8')
+  const profilesSource = readFileSync(specificationProfilesPath, 'utf8')
+
+  expect(outputDataSource).toContain(
+    'requirement_version.id = specification_item.requirement_version_id',
+  )
+  expect(profilesSource).toContain(
+    'SPECIFICATION_LIFECYCLE_STATUS_PROCUREMENT_ID',
+  )
+  expect(profilesSource).toContain(
+    'PROGRESS_REPORT_SPECIFICATION_LIFECYCLE_STATUS_IDS',
+  )
+  expect(profilesSource).toContain(
+    'SPECIFICATION_LIFECYCLE_STATUS_MANAGEMENT_ID',
+  )
+  expect(detailClientSource).toContain(
+    'getSpecificationReportProfileForLifecycleStatus',
+  )
+  expect(detailClientSource).toContain(
+    'canExportProcurementCsvForLifecycleStatus',
+  )
+  expect(detailClientSource).toContain('export-full')
+  expect(detailClientSource).not.toContain('refs=')
+
+  expect(profileTemplateSource).toContain(
+    "profile === 'procurement' ? 'minimal' : 'default'",
+  )
+  expect(profileTemplateSource).toContain("key: 'deviationSignal'")
+  expect(profileTemplateSource).toContain("key: 'residualFromImplementation'")
+  expect(csvSource).toContain('labels.normReferenceUri')
+  expect(csvSource).toContain('labels.improvementSuggestions')
+  expect(csvSource).toContain('buildProcurementCsv')
+  expect(csvSource).toContain('buildFullCsv')
+
+  expect(reportsDoc).toContain('Kravbilaga för upphandling')
+  expect(reportsDoc).toContain('Genomföranderapport')
+  expect(reportsDoc).toContain('Förvaltningsrapport')
+  expect(reportsDoc).toContain('Anbuds-CSV')
+  expect(reportsDoc).toContain('Full CSV-export')
+  expect(reportsDoc).toContain('requirement_version_id')
 })
 
 function resolveFunctionalTestsUrl(): string | null {
@@ -792,6 +879,7 @@ async function ensureResponsibilityPerson(
 
 async function createRequirementPackage(
   target: SqlServerDatabase,
+  overrides: { description?: string; name?: string } = {},
 ): Promise<{ id: number }> {
   const now = new Date()
   const leadHsaId = 'SE5560000001-johlju'
@@ -806,7 +894,12 @@ async function createRequirementPackage(
       )
        OUTPUT INSERTED.id AS id
        VALUES (@0, @1, @2, @3, @3)`,
-    ['Säkerhetspaket', 'Security package', leadHsaId, now],
+    [
+      overrides.name ?? 'Säkerhetspaket',
+      overrides.description ?? 'Security package',
+      leadHsaId,
+      now,
+    ],
   )) as Array<{ id: number }>
   return rows[0] as { id: number }
 }
@@ -847,6 +940,7 @@ async function createPublishedRequirement(
   target: SqlServerDatabase,
   areaId: number,
   description: string,
+  options: { requirementPackageIds?: number[] } = {},
 ): Promise<{
   requirementId: number
   revisionToken: string
@@ -856,6 +950,7 @@ async function createPublishedRequirement(
   const created = await createRequirement(target, {
     description,
     requirementAreaId: areaId,
+    requirementPackageIds: options.requirementPackageIds,
   })
   await transitionStatus(target, created.requirement.id, STATUS_REVIEW)
   const published = await transitionStatus(
@@ -995,6 +1090,180 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(archivedPredecessor?.status).toBe(STATUS_ARCHIVED)
   })
 
+  it('Scenario 20: publishing a successor replaces requirement-package membership', async () => {
+    const area = await createArea(appDb())
+    const originalPackage = await createRequirementPackage(appDb(), {
+      name: 'Original package',
+    })
+    const replacementPackage = await createRequirementPackage(appDb(), {
+      name: 'Replacement package',
+    })
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Packaged version one',
+      { requirementPackageIds: [originalPackage.id] },
+    )
+
+    const draft = await editRequirement(appDb(), published.requirementId, {
+      baseRevisionToken: published.revisionToken,
+      baseVersionId: published.publishedVersionId,
+      description: 'Packaged version two',
+      requirementPackageIds: [replacementPackage.id],
+    })
+
+    await expect(
+      getLinkedRequirementsForPackage(appDb(), originalPackage.id),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        statusId: STATUS_PUBLISHED,
+        versionNumber: 1,
+      }),
+    ])
+    await expect(
+      getLinkedRequirementsForPackage(appDb(), replacementPackage.id),
+    ).resolves.toEqual([])
+
+    await transitionStatus(appDb(), published.requirementId, STATUS_REVIEW)
+    const republished = await transitionStatus(
+      appDb(),
+      published.requirementId,
+      STATUS_PUBLISHED,
+    )
+
+    const packageRows = (await appDb().query(
+      `SELECT
+         version.version_number AS versionNumber,
+         version.requirement_status_id AS statusId,
+         link.requirement_package_id AS requirementPackageId
+       FROM requirement_version_requirement_packages AS link
+       INNER JOIN requirement_versions AS version
+         ON version.id = link.requirement_version_id
+       WHERE version.requirement_id = @0
+       ORDER BY version.version_number ASC, link.requirement_package_id ASC`,
+      [published.requirementId],
+    )) as Array<{
+      requirementPackageId: number
+      statusId: number
+      versionNumber: number
+    }>
+
+    expect(republished.id).toBe(draft.id)
+    expect(packageRows).toEqual([
+      {
+        requirementPackageId: replacementPackage.id,
+        statusId: STATUS_PUBLISHED,
+        versionNumber: 2,
+      },
+    ])
+    await expect(
+      getLinkedRequirementsForPackage(appDb(), originalPackage.id),
+    ).resolves.toEqual([])
+    await expect(
+      getLinkedRequirementsForPackage(appDb(), replacementPackage.id),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        statusId: STATUS_PUBLISHED,
+        versionNumber: 2,
+      }),
+    ])
+  })
+
+  it('Scenario 21: archiving without successor preserves package history but excludes practical use', async () => {
+    const area = await createArea(appDb())
+    const requirementPackage = await createRequirementPackage(appDb(), {
+      name: 'Historical package',
+    })
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Packaged version to archive',
+      { requirementPackageIds: [requirementPackage.id] },
+    )
+
+    await initiateArchiving(appDb(), published.requirementId)
+    await approveArchiving(appDb(), published.requirementId)
+
+    const packageRows = (await appDb().query(
+      `SELECT
+         version.version_number AS versionNumber,
+         version.requirement_status_id AS statusId,
+         link.requirement_package_id AS requirementPackageId
+       FROM requirement_version_requirement_packages AS link
+       INNER JOIN requirement_versions AS version
+         ON version.id = link.requirement_version_id
+       WHERE version.requirement_id = @0`,
+      [published.requirementId],
+    )) as Array<{
+      requirementPackageId: number
+      statusId: number
+      versionNumber: number
+    }>
+
+    expect(packageRows).toEqual([
+      {
+        requirementPackageId: requirementPackage.id,
+        statusId: STATUS_ARCHIVED,
+        versionNumber: 1,
+      },
+    ])
+    await expect(
+      getLinkedRequirementsForPackage(appDb(), requirementPackage.id),
+    ).resolves.toEqual([])
+  })
+
+  it('Scenario 22: package filters keep archived history out of specifications but available in the library', async () => {
+    const area = await createArea(appDb())
+    const requirementPackage = await createRequirementPackage(appDb(), {
+      name: 'Lifecycle package',
+    })
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Published package member',
+      { requirementPackageIds: [requirementPackage.id] },
+    )
+    const archived = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Archived package member',
+      { requirementPackageIds: [requirementPackage.id] },
+    )
+
+    await initiateArchiving(appDb(), archived.requirementId)
+    await approveArchiving(appDb(), archived.requirementId)
+
+    const specificationMatches =
+      await listRequirementSelectionMatchedRequirements(appDb(), {
+        packageIds: [requirementPackage.id],
+      })
+    expect(specificationMatches).toEqual([
+      expect.objectContaining({
+        id: published.requirementId,
+        sourcePackages: [
+          {
+            id: requirementPackage.id,
+            name: 'Lifecycle package',
+          },
+        ],
+        uniqueId: published.uniqueId,
+      }),
+    ])
+
+    const archivedLibraryRows = await listRequirements(appDb(), {
+      includeArchived: true,
+      requirementPackageIds: [requirementPackage.id],
+      statuses: [STATUS_ARCHIVED],
+    })
+    expect(archivedLibraryRows).toEqual([
+      expect.objectContaining({
+        description: 'Archived package member',
+        id: archived.requirementId,
+        status: STATUS_ARCHIVED,
+      }),
+    ])
+  })
+
   it('Scenario 4: review and archived versions are immutable until the state changes', async () => {
     const area = await createArea(appDb())
     const created = await createRequirement(appDb(), {
@@ -1076,6 +1345,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Scenario specification',
+      specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
       uniqueId: 'SCENARIO-SPECIFICATION',
     })
@@ -1164,6 +1434,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Status clearing specification',
+      specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
       uniqueId: 'STATUS-CLEARING-SPECIFICATION',
     })
@@ -1535,6 +1806,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     })
     const spec = await createSpecification(appDb(), {
       name: 'Scenario 17 specification',
+      specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
       uniqueId: 'SCENARIO-17-SPECIFICATION',
     })
@@ -1598,6 +1870,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     const normReference = await createNormReference(appDb())
     const spec = await createSpecification(appDb(), {
       name: 'Graduation specification',
+      specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
       uniqueId: 'GRADUATION-SPECIFICATION',
     })
@@ -1613,9 +1886,28 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         verificationMethod: 'Inspection',
       },
     )
+    const nonIncludedUsageStatusId = 99
     await appDb().query(
-      `UPDATE specification_local_requirements SET note = @0 WHERE id = @1`,
-      ['Keep source note', localItem.id],
+      `IF NOT EXISTS (SELECT 1 FROM specification_item_statuses WHERE id = @0)
+         BEGIN
+           SET IDENTITY_INSERT specification_item_statuses ON;
+           INSERT INTO specification_item_statuses (id, name_sv, name_en, color, sort_order)
+             VALUES (@0, @1, @2, @3, @4);
+           SET IDENTITY_INSERT specification_item_statuses OFF;
+         END`,
+      [
+        nonIncludedUsageStatusId,
+        'Pågående test',
+        'Ongoing test',
+        '#f59e0b',
+        99,
+      ],
+    )
+    await appDb().query(
+      `UPDATE specification_local_requirements
+       SET note = @0, specification_item_status_id = @1
+       WHERE id = @2`,
+      ['Keep source note', nonIncludedUsageStatusId, localItem.id],
     )
     await createDeviationForItemRef(appDb(), {
       itemRef: `local:${localItem.id}`,
@@ -1703,7 +1995,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(sourceRows).toEqual([
       {
         note: 'Keep source note',
-        specificationItemStatusId: DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+        specificationItemStatusId: nonIncludedUsageStatusId,
       },
     ])
     expect(targetRows).toEqual([
@@ -1735,6 +2027,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Link specification',
+      specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
       uniqueId: 'LINK-SPECIFICATION',
     })
@@ -1820,6 +2113,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Decision specification',
+      specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
       uniqueId: 'DECISION-SPECIFICATION',
     })

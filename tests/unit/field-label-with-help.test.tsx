@@ -25,8 +25,9 @@ describe('FieldLabelWithHelp', () => {
       screen.getByRole('textbox', { name: /Display name/ }),
     ).toBeInTheDocument()
     expect(screen.queryByText('Use the short public name.')).toBeNull()
-    const requiredMarker = document.querySelector('label .sr-only')
+    const requiredMarker = document.querySelector('label span')
     expect(requiredMarker).toHaveTextContent('*')
+    expect(requiredMarker).toHaveClass('text-red-600')
 
     const helpButton = screen.getByRole('button', {
       name: 'common.help: Display name',

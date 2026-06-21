@@ -7,10 +7,12 @@ import {
   type RequirementSelectionCleanupResult,
 } from '@/lib/dal/requirement-selection-questions'
 import type { SqlServerDatabase } from '@/lib/db'
+import { validationError } from '@/lib/requirements/errors'
 import {
   formatRequirementResponsibilityPersonName,
   type RequirementResponsibilityPersonRecord,
 } from '@/lib/requirements/responsibility-person'
+import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 import { toBoolean, toIsoString } from '@/lib/typeorm/value-mappers'
 
 interface RequirementPackageRow {
@@ -129,13 +131,17 @@ function uniqueHsaIds(hsaIds: string[] | undefined): string[] {
   return [...new Set((hsaIds ?? []).map(hsaId => hsaId.trim()).filter(Boolean))]
 }
 
+function normalizeHsaIdForComparison(hsaId: string): string {
+  return hsaId.trim().toLowerCase()
+}
+
 function canStartTransaction(
   db: QueryExecutor,
 ): db is QueryExecutor & Pick<SqlServerDatabase, 'transaction'> {
   return typeof (db as Partial<SqlServerDatabase>).transaction === 'function'
 }
 
-async function listRequirementPackageCoAuthors(
+async function listRequirementPackageCoAuthorsByPackage(
   db: QueryExecutor,
   requirementPackageIds: number[],
 ): Promise<Record<number, RequirementPackageCoAuthorRow[]>> {
@@ -177,6 +183,17 @@ async function listRequirementPackageCoAuthors(
   return coAuthorsByPackage
 }
 
+export async function listRequirementPackageCoAuthors(
+  db: SqlServerDatabase,
+  requirementPackageId: number,
+): Promise<RequirementPackageCoAuthorRow[]> {
+  const coAuthorsByPackage = await listRequirementPackageCoAuthorsByPackage(
+    db,
+    [requirementPackageId],
+  )
+  return coAuthorsByPackage[requirementPackageId] ?? []
+}
+
 async function getRequirementPackageRowById(
   db: QueryExecutor,
   id: number,
@@ -204,7 +221,10 @@ async function getRequirementPackageRowById(
   )
   const row = rows[0] ? mapRequirementPackageRow(rows[0]) : null
   if (!row) return null
-  const coAuthorsByPackage = await listRequirementPackageCoAuthors(db, [id])
+  const coAuthorsByPackage = await listRequirementPackageCoAuthorsByPackage(
+    db,
+    [id],
+  )
   return {
     ...row,
     coAuthors: coAuthorsByPackage[id] ?? [],
@@ -238,7 +258,7 @@ export async function listRequirementPackages(
     [options.includeArchived ? 1 : 0],
   )) as Record<string, unknown>[]
   const packages = rows.map(mapRequirementPackageRow)
-  const coAuthorsByPackage = await listRequirementPackageCoAuthors(
+  const coAuthorsByPackage = await listRequirementPackageCoAuthorsByPackage(
     db,
     packages.map(requirementPackage => requirementPackage.id),
   )
@@ -258,6 +278,7 @@ export async function countLinkedRequirementsByPackage(
     FROM requirement_version_requirement_packages AS links
     INNER JOIN requirement_versions AS versions
       ON links.requirement_version_id = versions.id
+    WHERE versions.requirement_status_id = ${STATUS_PUBLISHED}
     GROUP BY requirement_package_id
   `)
   const counts: Record<number, number> = {}
@@ -295,6 +316,7 @@ export async function getLinkedRequirementsForPackage(
       LEFT JOIN requirement_statuses
         ON requirement_versions.requirement_status_id = requirement_statuses.id
       WHERE links.requirement_package_id = @0
+        AND requirement_versions.requirement_status_id = ${STATUS_PUBLISHED}
       ORDER BY requirements.unique_id ASC
     `,
     [requirementPackageId],
@@ -328,6 +350,7 @@ export async function getRequirementPackageUsage(
           INNER JOIN requirement_versions AS versions
             ON links.requirement_version_id = versions.id
           WHERE links.requirement_package_id = @0
+            AND versions.requirement_status_id = ${STATUS_PUBLISHED}
         ) AS libraryRequirementCount,
         (
           SELECT COUNT(DISTINCT links.specification_local_requirement_id)
@@ -356,9 +379,6 @@ export async function getRequirementPackageUsage(
 export async function createRequirementPackage(
   db: SqlServerDatabase | QueryExecutor,
   data: {
-    coAuthorHsaIds?: string[]
-    coAuthorPeople?: RequirementResponsibilityPersonRecord[]
-    createdBy?: { displayName: string | null; hsaId: string | null }
     description?: string | null
     leadHsaId: string
     leadPerson?: RequirementResponsibilityPersonRecord
@@ -368,8 +388,6 @@ export async function createRequirementPackage(
 ): Promise<RequirementPackageRow> {
   const now = new Date()
   const leadPerson = data.leadPerson
-  const coAuthorHsaIds = uniqueHsaIds(data.coAuthorHsaIds)
-  const coAuthorPeople = data.coAuthorPeople ?? []
   const insertPackage = async (executor: QueryExecutor) => {
     const rows = await executor.query(
       `
@@ -395,13 +413,6 @@ export async function createRequirementPackage(
     )
     const inserted = rows[0] as Record<string, unknown>
     const requirementPackageId = inserted.id as number
-    await insertRequirementPackageCoAuthors(
-      executor,
-      requirementPackageId,
-      coAuthorHsaIds,
-      data.createdBy,
-      now,
-    )
     return (
       (await getRequirementPackageRowById(executor, requirementPackageId)) ??
       mapRequirementPackageRow({
@@ -413,20 +424,15 @@ export async function createRequirementPackage(
     )
   }
 
-  const shouldWriteResponsibilityPeople =
-    leadPerson || coAuthorPeople.length > 0 || coAuthorHsaIds.length > 0
   const createWithResponsibilityPeople = async (executor: QueryExecutor) => {
     if (leadPerson) {
       await upsertRequirementResponsibilityPerson(executor, leadPerson)
-    }
-    for (const coAuthorPerson of coAuthorPeople) {
-      await upsertRequirementResponsibilityPerson(executor, coAuthorPerson)
     }
     return insertPackage(executor)
   }
 
   if (
-    shouldWriteResponsibilityPeople &&
+    leadPerson &&
     !options.useExistingTransaction &&
     canStartTransaction(db)
   ) {
@@ -435,18 +441,13 @@ export async function createRequirementPackage(
     })
   }
 
-  return shouldWriteResponsibilityPeople
-    ? createWithResponsibilityPeople(db)
-    : insertPackage(db)
+  return leadPerson ? createWithResponsibilityPeople(db) : insertPackage(db)
 }
 
 export async function updateRequirementPackage(
   db: SqlServerDatabase,
   id: number,
   data: {
-    coAuthorHsaIds?: string[]
-    coAuthorPeople?: RequirementResponsibilityPersonRecord[]
-    changedBy?: { displayName: string | null; hsaId: string | null }
     description?: string | null
     leadHsaId?: string
     leadPerson?: RequirementResponsibilityPersonRecord
@@ -454,44 +455,44 @@ export async function updateRequirementPackage(
   },
 ): Promise<RequirementPackageRow | undefined> {
   const leadPerson = data.leadPerson
-  const coAuthorPeople = data.coAuthorPeople ?? []
-  if (
-    leadPerson ||
-    data.coAuthorHsaIds !== undefined ||
-    coAuthorPeople.length > 0
-  ) {
-    return db.transaction(async manager => {
+  if (data.leadHsaId !== undefined || leadPerson) {
+    return db.transaction('SERIALIZABLE', async manager => {
       const oldRows = (await manager.query(
         `
           SELECT lead_hsa_id AS leadHsaId
-          FROM requirement_packages
+          FROM requirement_packages WITH (UPDLOCK, HOLDLOCK)
           WHERE id = @0
         `,
         [id],
       )) as Array<{ leadHsaId: string }>
       if (oldRows.length === 0) return undefined
 
+      if (data.leadHsaId !== undefined) {
+        const coAuthorRows = (await manager.query(
+          `
+            SELECT TOP (1) requirement_package_id AS requirementPackageId
+            FROM requirement_package_co_authors WITH (UPDLOCK, HOLDLOCK)
+            WHERE requirement_package_id = @0
+              AND hsa_id = @1
+          `,
+          [id, data.leadHsaId.trim()],
+        )) as Array<{ requirementPackageId: number }>
+        if (coAuthorRows.length > 0) {
+          throw validationError(
+            'Package lead cannot also be package co-author',
+            { reason: 'package_lead_cannot_be_co_author' },
+          )
+        }
+      }
+
       if (leadPerson) {
         await upsertRequirementResponsibilityPerson(manager, leadPerson)
       }
-      for (const coAuthorPerson of coAuthorPeople) {
-        await upsertRequirementResponsibilityPerson(manager, coAuthorPerson)
-      }
-      const removedCoAuthorHsaIds =
-        data.coAuthorHsaIds === undefined
-          ? []
-          : await syncRequirementPackageCoAuthors(
-              manager,
-              id,
-              uniqueHsaIds(data.coAuthorHsaIds),
-              data.changedBy,
-            )
       const updated = await updateRequirementPackageFields(manager, id, data)
       await cleanupUnassignedRequirementResponsibilityPeople(manager, [
         ...(data.leadHsaId === undefined
           ? []
           : oldRows.map(row => row.leadHsaId)),
-        ...removedCoAuthorHsaIds,
       ])
       return updated
     })
@@ -504,9 +505,6 @@ async function updateRequirementPackageFields(
   db: QueryExecutor,
   id: number,
   data: {
-    coAuthorHsaIds?: string[]
-    coAuthorPeople?: RequirementResponsibilityPersonRecord[]
-    changedBy?: { displayName: string | null; hsaId: string | null }
     description?: string | null
     leadHsaId?: string
     leadPerson?: RequirementResponsibilityPersonRecord
@@ -622,6 +620,70 @@ async function syncRequirementPackageCoAuthors(
   )
 
   return removedIds
+}
+
+export async function replaceRequirementPackageCoAuthors(
+  db: SqlServerDatabase,
+  requirementPackageId: number,
+  data: {
+    changedBy?: { displayName: string | null; hsaId: string | null }
+    coAuthorHsaIds: string[]
+    coAuthorPeople?: RequirementResponsibilityPersonRecord[]
+  },
+): Promise<
+  { coAuthorHsaIds: string[]; requirementPackageId: number } | undefined
+> {
+  return db.transaction('SERIALIZABLE', async manager => {
+    const packageRows = (await manager.query(
+      `
+        SELECT lead_hsa_id AS leadHsaId
+        FROM requirement_packages WITH (UPDLOCK, HOLDLOCK)
+        WHERE id = @0
+      `,
+      [requirementPackageId],
+    )) as Array<{ leadHsaId: string }>
+    const requirementPackage = packageRows[0]
+    if (!requirementPackage) return undefined
+
+    const coAuthorHsaIds = uniqueHsaIds(data.coAuthorHsaIds)
+    const normalizedLeadHsaId = normalizeHsaIdForComparison(
+      requirementPackage.leadHsaId,
+    )
+    const normalizedCoAuthorHsaIds = coAuthorHsaIds.map(
+      normalizeHsaIdForComparison,
+    )
+    if (normalizedCoAuthorHsaIds.includes(normalizedLeadHsaId)) {
+      throw validationError('Package lead cannot also be package co-author', {
+        reason: 'package_lead_cannot_be_co_author',
+      })
+    }
+
+    const coAuthorHsaIdSet = new Set(normalizedCoAuthorHsaIds)
+    for (const coAuthorPerson of data.coAuthorPeople ?? []) {
+      if (
+        !coAuthorHsaIdSet.has(normalizeHsaIdForComparison(coAuthorPerson.hsaId))
+      ) {
+        throw validationError(
+          'Requirement package co-author person must match a co-author HSA-id',
+          { reason: 'co_author_person_hsa_id_mismatch' },
+        )
+      }
+      await upsertRequirementResponsibilityPerson(manager, coAuthorPerson)
+    }
+
+    const removedHsaIds = await syncRequirementPackageCoAuthors(
+      manager,
+      requirementPackageId,
+      coAuthorHsaIds,
+      data.changedBy,
+    )
+    await cleanupUnassignedRequirementResponsibilityPeople(
+      manager,
+      removedHsaIds,
+    )
+
+    return { coAuthorHsaIds, requirementPackageId }
+  })
 }
 
 async function setRequirementPackageArchived(

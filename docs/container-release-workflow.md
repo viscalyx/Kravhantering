@@ -6,10 +6,10 @@ tags such as `vX.Y.Z-preview.N` are created by the `main` run and are excluded
 from the tag trigger so the preview tag push does not start a second container
 release workflow.
 
-The workflow builds the production `app-runtime` and `db-job` images plus the
-HSA person lookup adapter and test-only `hsa-directory-mock` images, publishes
-them to GHCR, and records the production image identities in
-`container-stack.lock.json`. The
+The workflow builds the production `app-runtime` and `db-job` images, the
+optional `kravhantering-demo-seed` image, the HSA person lookup adapter and the
+test-only `hsa-directory-mock` image, then publishes them to GHCR. The
+production image identities are recorded in `container-stack.lock.json`. The
 `manifestDigest` is the registry manifest digest used for GitHub Artifact
 Attestations, SBOM subjects and GHCR release smoke tests. The `imageId` is the
 container image ID used by production operators to verify runtime equivalence
@@ -17,6 +17,8 @@ after tag-based pulls, internal-registry mirroring or disconnected image
 transport.
 The test support identities are recorded separately in
 `container-test-support.lock.json`.
+The optional demo seed image is recorded in release metadata and release notes,
+not in the production or test-support lock files.
 The release smoke test starts Podman Compose from verified GHCR manifest digest
 references, but production deployment and upgrade guides use tag-style runtime
 refs and verify them against locked image IDs.
@@ -137,6 +139,14 @@ When a release includes test support metadata, the generated notes also include
 `kravhantering-hsa-directory-mock` separately from the production runtime
 images so operators do not mistake it for a required production service.
 
+When a release includes demo seed metadata, the generated notes include
+`Demonstration Container Images`. That section lists
+`kravhantering-demo-seed` as an explicit opt-in image for disposable demo and
+test environments. The image defaults to `seed:demo` and also owns
+`demo:clear --confirm-clear-non-required-data`, so applying and clearing demo
+data use the same opt-in container boundary. It is not part of the production
+deployment bundle or the standard `release.env.template`.
+
 Release notes also include automatic change notes. Stable releases compare
 against the previous published stable GitHub Release. Preview releases compare
 against the previous published pre-release GitHub Release. When no previous
@@ -206,6 +216,9 @@ Each trusted run also writes runtime evidence:
 - `container-test-support.lock.json` lists the exact image name, tag,
   `manifestDigest`, `imageId`, source and role for the test-only HSA directory
   mock support image.
+- `release-metadata.json` records published project image identities, including
+  the optional `kravhantering-demo-seed` image. The production deployment
+  bundle writes a filtered copy that excludes that optional demo image.
 - `container-stack.compose.yml` is the generated Compose file that the smoke
   test started.
 - `hashes.sha256` contains checksums for saved runtime evidence.
@@ -219,7 +232,7 @@ The workflow uploads these artifact groups:
 - `container-release-runtime-*` for Compose, stack lock, status, build
   metadata and hashes.
 - `container-release-metadata-*` for GitVersion, release metadata, release
-  notes and SBOM files.
+  notes and SBOM files, including optional demonstration image SBOMs.
 - `container-release-playwright-*` for the release-smoke report,
   screenshots, traces and test results.
 - `container-release-deployment-*` for the production deployment bundle and

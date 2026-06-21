@@ -68,6 +68,35 @@ for (const viewport of viewports) {
       )
       await expect(splitPanel).toHaveAttribute('class', splitPanelClassesBefore)
       const editForm = editDialog.locator('form#requirement-specification-form')
+      const nameInput = editDialog.getByLabel('Namn *')
+      const saveButton = editForm.getByRole('button', { name: 'Spara' })
+      await expect(saveButton).toBeDisabled()
+      await expect(saveButton).toHaveAttribute(
+        'title',
+        'Inga ändringar att spara',
+      )
+      await nameInput.fill('Upphandling av e-tjänstplattform ändrad')
+      await expect(saveButton).toBeEnabled()
+      await page.mouse.click(2, 2)
+      await expect(editDialog).toBeVisible()
+      await expect(
+        page.getByRole('alertdialog', {
+          name: 'Du har osparade ändringar. Vill du förkasta dem?',
+        }),
+      ).toBeHidden()
+      await editDialog.getByRole('button', { name: 'Stäng' }).click()
+      const discardDialog = page.getByRole('alertdialog', {
+        name: 'Du har osparade ändringar. Vill du förkasta dem?',
+      })
+      await expect(discardDialog).toBeVisible()
+      await discardDialog.getByRole('button', { name: 'Avbryt' }).click()
+      await expect(discardDialog).toBeHidden()
+      await expect(editDialog).toBeVisible()
+      await expect(nameInput).toHaveValue(
+        'Upphandling av e-tjänstplattform ändrad',
+      )
+      await nameInput.fill('Upphandling av e-tjänstplattform')
+      await expect(saveButton).toBeDisabled()
       const responsibleInput = editForm.getByRole('textbox', {
         name: 'Kravunderlagsansvarigs HSA-id',
       })

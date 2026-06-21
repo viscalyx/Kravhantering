@@ -134,6 +134,13 @@ async function openCreateSpecificationForm() {
   fireEvent.click(createButton)
 }
 
+function selectLifecycleStatus(value = '1') {
+  fireEvent.change(
+    screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
+    { target: { value } },
+  )
+}
+
 describe('RequirementsSpecificationsClient', () => {
   afterEach(() => {
     cleanup()
@@ -601,6 +608,21 @@ describe('RequirementsSpecificationsClient', () => {
     const [deleteButton] = screen.getAllByRole('button', {
       name: /common\.delete/i,
     })
+    const manageCoAuthorsButton = screen.getByRole('button', {
+      name: /specification\.manageCoAuthors/i,
+    })
+
+    expect(manageCoAuthorsButton).toHaveAttribute(
+      'title',
+      'specification.manageCoAuthors',
+    )
+    expect(manageCoAuthorsButton.textContent?.trim()).toBe('')
+    expect(manageCoAuthorsButton).toHaveAccessibleName(
+      'specification.manageCoAuthors',
+    )
+    expect(manageCoAuthorsButton.className).toContain('h-11')
+    expect(manageCoAuthorsButton.className).toContain('w-11')
+    expect(manageCoAuthorsButton.querySelector('svg')).not.toBeNull()
 
     expect(editButton).toHaveAttribute('title', 'common.edit')
     expect(editButton.closest('td')?.className).toContain('align-top')
@@ -616,6 +638,58 @@ describe('RequirementsSpecificationsClient', () => {
     expect(deleteButton.className).toContain('h-11')
     expect(deleteButton.className).toContain('w-11')
     expect(deleteButton.querySelector('svg')).not.toBeNull()
+  })
+
+  it('opens the co-author management modal from the row action', async () => {
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications')
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      if (
+        url === '/api/requirements-specifications/KRAVUNDERLAG-SV/co-authors'
+      ) {
+        return Promise.resolve(okJson({ coAuthors: [] }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
+    })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.manageCoAuthors/i,
+      }),
+    )
+
+    const dialog = await screen.findByRole('dialog', {
+      name: /specification\.coAuthors/,
+    })
+    expect(dialog).toHaveAttribute(
+      'data-developer-mode-value',
+      'manage specification co-authors',
+    )
+    expect(
+      within(dialog).getByText('specification.noCoAuthors'),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: /specification\.coAuthorHsaId/,
+      }),
+    ).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/requirements-specifications/KRAVUNDERLAG-SV/co-authors',
+      expect.any(Object),
+    )
   })
 
   it('does not show spinner immediately while loading', () => {
@@ -667,7 +741,24 @@ describe('RequirementsSpecificationsClient', () => {
       '[data-developer-mode-name="crud form"][data-developer-mode-context="specifications"]',
     )
     expect(form).toHaveAttribute('data-developer-mode-value', 'create')
-    expect(form?.firstElementChild).toHaveClass('lg:grid-cols-2')
+    const requiredFieldsHint = screen.getByText('common.requiredFieldsHint')
+    const actionRow = requiredFieldsHint.closest(
+      '[data-form-action-row="true"]',
+    )
+    expect(actionRow).toContainElement(requiredFieldsHint)
+    expect(actionRow).toContainElement(
+      within(dialog).getByRole('button', { name: /common\.save/i }),
+    )
+    expect(actionRow).toContainElement(
+      within(dialog).getByRole('button', { name: /common\.cancel/i }),
+    )
+    expect(
+      within(dialog).getByRole('button', { name: /common\.save/i }),
+    ).toBeDisabled()
+    expect(
+      within(dialog).getByRole('button', { name: /common\.save/i }),
+    ).toHaveAttribute('title', 'common.noChangesToSave')
+    expect(form?.querySelector('.grid')).toHaveClass('lg:grid-cols-2')
     expect(
       screen.getByRole('textbox', { name: /specification\.name/ }),
     ).toBeInTheDocument()
@@ -677,6 +768,12 @@ describe('RequirementsSpecificationsClient', () => {
     expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveAttribute('readonly')
+    expect(
+      screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
+    ).toBeRequired()
+    expect(
+      screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
+    ).toHaveValue('')
   })
 
   it('disables create until the current user HSA-id is loaded', async () => {
@@ -763,13 +860,8 @@ describe('RequirementsSpecificationsClient', () => {
     )
     fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
 
-    await waitFor(() => {
-      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
-    })
-    await waitFor(() => {
-      expect(
-        screen.getByRole('textbox', { name: /specification\.coAuthorHsaId/ }),
-      ).toBeDisabled()
+    await screen.findByRole('dialog', {
+      name: /specification\.editSpecification/,
     })
     expect(
       screen.getByRole('button', {
@@ -818,6 +910,9 @@ describe('RequirementsSpecificationsClient', () => {
       screen.getByRole('combobox', {
         name: /specification\.implementationType/,
       }),
+      screen.getByRole('combobox', {
+        name: /specification\.lifecycleStatus/,
+      }),
       screen.getByRole('textbox', {
         name: /specification\.businessNeedsReference/,
       }),
@@ -847,6 +942,7 @@ describe('RequirementsSpecificationsClient', () => {
     expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveValue(sampleCurrentUser.hsaId)
+    selectLifecycleStatus()
 
     mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 2 }))
@@ -878,6 +974,9 @@ describe('RequirementsSpecificationsClient', () => {
     expect(
       JSON.parse(((postCall?.[1] as RequestInit)?.body as string) ?? '{}'),
     ).toHaveProperty('responsibleHsaId', sampleCurrentUser.hsaId)
+    expect(
+      JSON.parse(((postCall?.[1] as RequestInit)?.body as string) ?? '{}'),
+    ).toHaveProperty('specificationLifecycleStatusId', 1)
   })
 
   it('shows an inline save error for non-conflict failures', async () => {
@@ -893,6 +992,7 @@ describe('RequirementsSpecificationsClient', () => {
     })
     fireEvent.change(nameInput, { target: { value: 'Nytt kravunderlag' } })
     fireEvent.blur(nameInput)
+    selectLifecycleStatus()
 
     mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') {
@@ -938,6 +1038,7 @@ describe('RequirementsSpecificationsClient', () => {
     })
     fireEvent.change(nameInput, { target: { value: 'Nytt kravunderlag' } })
     fireEvent.blur(nameInput)
+    selectLifecycleStatus()
     const responsibleInput = screen.getByRole('textbox', {
       name: /specification\.responsibleHsaId/,
     })
@@ -979,6 +1080,9 @@ describe('RequirementsSpecificationsClient', () => {
     expect(
       JSON.parse(((postCall?.[1] as RequestInit)?.body as string) ?? '{}'),
     ).toHaveProperty('responsibleHsaId', sampleCurrentUser.hsaId)
+    expect(
+      JSON.parse(((postCall?.[1] as RequestInit)?.body as string) ?? '{}'),
+    ).toHaveProperty('specificationLifecycleStatusId', 1)
   })
 
   it('opens edit form with existing data', async () => {
@@ -990,14 +1094,6 @@ describe('RequirementsSpecificationsClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
-    await waitFor(() => {
-      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
-    })
-    await waitFor(() => {
-      expect(
-        screen.getByRole('textbox', { name: /specification\.coAuthorHsaId/ }),
-      ).toBeEnabled()
-    })
     const dialog = screen.getByRole('dialog', {
       name: /specification\.editSpecification/,
     })
@@ -1022,6 +1118,12 @@ describe('RequirementsSpecificationsClient', () => {
     expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveAttribute('readonly')
+    expect(
+      screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
+    ).toBeRequired()
+    expect(
+      screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
+    ).toHaveValue('1')
     expect(within(dialog).getByText('Ada Admin')).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
@@ -1029,8 +1131,10 @@ describe('RequirementsSpecificationsClient', () => {
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /common\.fetchHsaPerson/ }),
-    ).toBeDisabled()
+      within(dialog).queryByRole('textbox', {
+        name: /specification\.coAuthorHsaId/,
+      }),
+    ).toBeNull()
   })
 
   it('omits the responsible HSA-id from ordinary edit saves', async () => {
@@ -1317,6 +1421,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     fireEvent.change(nameInput, { target: { value: 'Kravunderlag sv' } })
     fireEvent.blur(nameInput)
+    selectLifecycleStatus()
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
     const slugError = await screen.findByRole('alert')
@@ -1398,6 +1503,7 @@ describe('RequirementsSpecificationsClient', () => {
     })
     fireEvent.change(nameInput, { target: { value: 'Nytt kravunderlag' } })
     fireEvent.blur(nameInput)
+    selectLifecycleStatus()
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
     const saveButton = screen.getByRole('button', { name: /common\.saving/i })

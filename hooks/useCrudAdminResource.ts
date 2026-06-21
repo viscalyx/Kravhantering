@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
+import {
+  createDirtySnapshot,
+  type DirtySnapshotOptions,
+} from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 
@@ -16,6 +21,7 @@ interface CrudAdminMutationErrorDetails {
 
 interface CrudAdminResourceOptions<TItem extends { id: CrudId }, TForm> {
   confirmDeleteMessage: string
+  dirtySnapshotOptions?: DirtySnapshotOptions
   endpoint: string
   errorMessage: string
   getCaughtErrorMessage?: (error: unknown) => string
@@ -40,15 +46,17 @@ export interface CrudAdminResourceController<
   TItem extends { id: CrudId },
   TForm,
 > {
-  closeForm: () => void
+  closeForm: (anchorEl?: HTMLElement | null) => Promise<boolean>
   deleteError: string | null
   deletingIds: Set<TItem['id']>
   editId: TItem['id'] | null
   form: TForm
+  formDirty: boolean
   formError: string | null
   items: TItem[]
   loadError: string | null
   loading: boolean
+  markFormClean: (nextForm?: TForm) => void
   openCreate: () => void
   openEdit: (item: TItem) => void
   reload: () => Promise<void>
@@ -89,6 +97,7 @@ function readSubmitAnchor(
 
 export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
   confirmDeleteMessage,
+  dirtySnapshotOptions,
   endpoint,
   errorMessage,
   getCaughtErrorMessage,
@@ -108,6 +117,7 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
   TForm
 > {
   const { confirm } = useConfirmModal()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
   const [items, setItems] = useState<TItem[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -118,6 +128,11 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deletingIds, setDeletingIds] = useState<Set<TItem['id']>>(new Set())
   const [form, setForm] = useState<TForm>(() => getInitialForm())
+  const [formBaselineSignature, setFormBaselineSignature] = useState(() =>
+    createDirtySnapshot((toCreatePayload ?? toPayload)(getInitialForm()), {
+      unorderedArrayPaths: dirtySnapshotOptions?.unorderedArrayPaths,
+    }),
+  )
   const submittingRef = useRef(false)
   const editIdRef = useRef<TItem['id'] | null>(null)
   const getCaughtErrorMessageRef = useRef(getCaughtErrorMessage)
@@ -135,6 +150,34 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
   const resolveItemEndpoint = useCallback(
     (id: TItem['id']) => itemEndpoint?.(id) ?? `${endpoint}/${id}`,
     [endpoint, itemEndpoint],
+  )
+
+  const payloadForMode = useCallback(
+    (nextForm: TForm, nextEditId: TItem['id'] | null) =>
+      nextEditId === null
+        ? (toCreatePayload ?? toPayload)(nextForm)
+        : (toUpdatePayload ?? toPayload)(nextForm),
+    [toCreatePayload, toPayload, toUpdatePayload],
+  )
+
+  const snapshotPayload = useCallback(
+    (payload: unknown) =>
+      createDirtySnapshot(payload, {
+        unorderedArrayPaths: dirtySnapshotOptions?.unorderedArrayPaths,
+      }),
+    [dirtySnapshotOptions?.unorderedArrayPaths],
+  )
+
+  const currentFormSignature = snapshotPayload(payloadForMode(form, editId))
+  const formDirty = showForm && formBaselineSignature !== currentFormSignature
+
+  const markFormClean = useCallback(
+    (nextForm: TForm = form) => {
+      setFormBaselineSignature(
+        snapshotPayload(payloadForMode(nextForm, editIdRef.current)),
+      )
+    },
+    [form, payloadForMode, snapshotPayload],
   )
 
   const reload = useCallback(async () => {
@@ -164,43 +207,56 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
     void reload()
   }, [reload])
 
-  const closeForm = useCallback(() => {
-    setShowForm(false)
-  }, [])
+  const closeForm = useCallback(
+    async (anchorEl?: HTMLElement | null) => {
+      if (formDirty && !(await confirmDiscardChanges(anchorEl))) {
+        return false
+      }
+      setShowForm(false)
+      return true
+    },
+    [confirmDiscardChanges, formDirty],
+  )
 
   const openCreate = useCallback(() => {
+    const nextForm = getInitialForm()
     setTrackedEditId(null)
-    setForm(getInitialForm())
+    setForm(nextForm)
+    setFormBaselineSignature(snapshotPayload(payloadForMode(nextForm, null)))
     setFormError(null)
     setDeleteError(null)
     setShowForm(true)
-  }, [getInitialForm, setTrackedEditId])
+  }, [getInitialForm, payloadForMode, setTrackedEditId, snapshotPayload])
 
   const openEdit = useCallback(
     (item: TItem) => {
+      const nextForm = toForm(item)
       setTrackedEditId(item.id)
-      setForm(toForm(item))
+      setForm(nextForm)
+      setFormBaselineSignature(
+        snapshotPayload(payloadForMode(nextForm, item.id)),
+      )
       setFormError(null)
       setDeleteError(null)
       setShowForm(true)
     },
-    [setTrackedEditId, toForm],
+    [payloadForMode, setTrackedEditId, snapshotPayload, toForm],
   )
 
   const submit = useCallback(
     async (event?: React.FormEvent<HTMLFormElement>) => {
       event?.preventDefault()
       if (submittingRef.current) return false
+      const activeEditId = editId
+      const payload = payloadForMode(form, activeEditId)
+      if (formBaselineSignature === snapshotPayload(payload) && showForm) {
+        return false
+      }
       const anchorEl = readSubmitAnchor(event)
       submittingRef.current = true
       setSubmitting(true)
       setFormError(null)
       try {
-        const activeEditId = editId
-        const payload =
-          activeEditId === null
-            ? (toCreatePayload ?? toPayload)(form)
-            : (toUpdatePayload ?? toPayload)(form)
         const response = await apiFetch(
           activeEditId === null ? endpoint : resolveItemEndpoint(activeEditId),
           {
@@ -218,6 +274,7 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
           }
           return false
         }
+        setFormBaselineSignature(snapshotPayload(payload))
         setShowForm(false)
         setTrackedEditId(null)
         setForm(getInitialForm())
@@ -245,15 +302,16 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
       endpoint,
       errorMessage,
       form,
+      formBaselineSignature,
       getCaughtErrorMessage,
       getInitialForm,
       onSubmitError,
+      payloadForMode,
       reload,
       resolveItemEndpoint,
       setTrackedEditId,
-      toPayload,
-      toCreatePayload,
-      toUpdatePayload,
+      showForm,
+      snapshotPayload,
     ],
   )
 
@@ -335,6 +393,7 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
     deletingIds,
     editId,
     form,
+    formDirty,
     formError,
     items,
     loading,
@@ -342,6 +401,7 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
     openCreate,
     openEdit,
     reload,
+    markFormClean,
     remove,
     setForm,
     showForm,

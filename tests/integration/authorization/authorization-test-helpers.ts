@@ -1,4 +1,5 @@
 // cSpell:words privacyofficer
+import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import {
   type APIRequestContext,
@@ -9,6 +10,7 @@ import {
 import type { DataSource } from 'typeorm'
 import { upsertRequirementResponsibilityPerson } from '@/lib/dal/requirement-responsibility-people'
 import type { RequirementResponsibilityPersonRecord } from '@/lib/requirements/responsibility-person'
+import { SPECIFICATION_LIFECYCLE_STATUS_MANAGEMENT_ID } from '@/lib/specifications/lifecycle-status-constants'
 import {
   createSqlServerDataSource,
   getSqlServerDatabaseUrl,
@@ -112,8 +114,8 @@ const MANUAL_CASE_LINKS = {
     'docs/manuella-testfall.md#auth-10-behorighetsmatris-for-ansvarstilldelningar',
   'AUTH-11':
     'docs/manuella-testfall.md#auth-11-playwrightfaser-for-behorighetsroller',
-  'ADMIN-12':
-    'docs/manuella-testfall.md#admin-12-byte-av-kravomradesagare-anvander-hsa-id',
+  'ADMIN-13':
+    'docs/manuella-testfall.md#admin-13-byte-av-kravomradesagare-anvander-hsa-id',
   'LIFE-11':
     'docs/manuella-testfall.md#life-11-detaljrapporter-finns-per-status',
   'REQ-10': 'docs/manuella-testfall.md#req-10-rapport-fran-kravlistan-fungerar',
@@ -382,7 +384,7 @@ async function verifyResponsibilityPerson(
 }
 
 function stamp(): string {
-  return Date.now().toString(36).toUpperCase()
+  return `${Date.now().toString(36)}${randomUUID().slice(0, 8)}`.toUpperCase()
 }
 
 export async function createAuthorizationFixture(
@@ -396,7 +398,7 @@ export async function createAuthorizationFixture(
     'specificationResponsible',
   )
   const uniqueStamp = stamp()
-  const areaPrefix = `AZ${uniqueStamp.slice(-4)}`
+  const areaPrefix = `AZ${uniqueStamp.slice(-8)}`
   const specificationSlug = `AUTHZ-${uniqueStamp}`
   const specificationName = `Behörighetsmatris ${uniqueStamp}`
   const packageName = `Behörighetspaket ${uniqueStamp}`
@@ -441,6 +443,8 @@ export async function createAuthorizationFixture(
           businessNeedsReference:
             'Playwright fixture for assignment authorization.',
           name: specificationName,
+          specificationLifecycleStatusId:
+            SPECIFICATION_LIFECYCLE_STATUS_MANAGEMENT_ID,
           uniqueId: specificationSlug,
         },
       },
@@ -482,7 +486,6 @@ export async function createAuthorizationFixture(
     })
     const packageResponse = await admin.post('/api/requirement-packages', {
       data: {
-        coAuthorHsaIds: [HSA.packageCoauthor],
         description: 'Playwright fixture for package authorization.',
         name: packageName,
       },
@@ -493,11 +496,21 @@ export async function createAuthorizationFixture(
     await expectOk(
       await admin.put(`/api/requirement-packages/${requirementPackage.id}`, {
         data: {
-          coAuthorHsaIds: [HSA.packageCoauthor],
           leadHsaId: HSA.packageLead,
         },
       }),
       'assign package lead fixture',
+    )
+    await expectOk(
+      await admin.put(
+        `/api/requirement-packages/${requirementPackage.id}/co-authors`,
+        {
+          data: {
+            coAuthorHsaIds: [HSA.packageCoauthor],
+          },
+        },
+      ),
+      'assign package co-author fixture',
     )
 
     return {

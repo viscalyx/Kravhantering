@@ -4,6 +4,7 @@ import {
   collectMultipleRequirementsForReport,
   ReportDataError,
 } from '@/lib/reports/data/server'
+import { getReportLabels } from '@/lib/reports/report-labels'
 import { buildCombinedReviewReport } from '@/lib/reports/templates/combined-review-template'
 import {
   authorizeRequirementReportRead,
@@ -41,10 +42,7 @@ export async function GET(
       runtime.db,
       ids,
     )
-    const label =
-      locale === 'sv'
-        ? 'Kombinerad granskningsrapport'
-        : 'Combined Review Report'
+    const label = getReportLabels(locale).filenames.combinedReview
     return renderReportModelPdfResponse(
       buildCombinedReviewReport(requirements, locale),
       locale,

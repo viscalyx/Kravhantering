@@ -20,6 +20,7 @@ jobs:
     env:
       APP_RUNTIME_IMAGE: localhost/kravhantering/app-runtime
       DB_JOB_IMAGE: localhost/kravhantering/db-job
+      DEMO_SEED_IMAGE: localhost/kravhantering/demo-seed
       HSA_DIRECTORY_MOCK_IMAGE: localhost/kravhantering/hsa-directory-mock
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
       PODMAN_COMPOSE_PROVIDER: podman-compose
@@ -147,6 +148,8 @@ jobs:
             echo "CONTAINER_STACK_RUN_ID=${GITHUB_RUN_ID}"
             echo "DB_JOB_SOURCE=pr-build"
             echo "DB_JOB_TAG=${image_tag}"
+            echo "DEMO_SEED_SOURCE=pr-build"
+            echo "DEMO_SEED_TAG=${image_tag}"
             echo "HSA_DIRECTORY_MOCK_SOURCE=pr-build"
             echo "HSA_DIRECTORY_MOCK_TAG=${image_tag}"
             echo "RELEASE_SMOKE_RUN_ID=${GITHUB_RUN_ID}"
@@ -179,6 +182,17 @@ jobs:
             --target db-job \
             --platform linux/amd64 \
             --tag "${DB_JOB_IMAGE}:${DB_JOB_TAG}" \
+            --load \
+            .
+
+      - name: Build demo seed image
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --file containers/app/Dockerfile \
+            --target demo-seed \
+            --platform linux/amd64 \
+            --tag "${DEMO_SEED_IMAGE}:${DEMO_SEED_TAG}" \
             --load \
             .
 

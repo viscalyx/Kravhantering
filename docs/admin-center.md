@@ -151,6 +151,8 @@ Admin center reset:
 
 - reverts the unsaved admin form state to the last successfully saved server
   state
+- keeps the primary save button disabled until the normalized admin form payload
+  differs from that saved state
 
 Requirements list reset:
 
@@ -446,10 +448,13 @@ with text-only labels until an admin selects one.
 ### Requirement Area Owner
 
 Each requirement area must have an assigned owner HSA-id. A new requirement area
-is created with an editable HSA-id field. When an existing requirement area is
-edited, the current HSA-id is shown as read-only; the icon button next to it
-opens the owner-change dialog where admins enter the replacement HSA-id and
-confirm with `Byt ägare`.
+is created in a modal with an editable HSA-id field. When an existing
+requirement area is edited, the modal contains metadata and the read-only
+current owner HSA-id. The icon button next to the owner opens the owner-change
+dialog where admins enter the replacement HSA-id and confirm with `Byt ägare`.
+Requirement area co-authors are managed separately from the list row with
+`Hantera medförfattare`, which opens a dedicated co-author dialog with the add
+field above the saved co-author table.
 
 - as HSA-id in the requirement area taxonomy table
 - as HSA-id under the requirement area dropdown in the requirement

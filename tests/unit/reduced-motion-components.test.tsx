@@ -26,6 +26,10 @@ vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
 }))
 
+vi.mock('@/hooks/useDiscardChangesConfirmation', () => ({
+  useDiscardChangesConfirmation: () => vi.fn(async () => true),
+}))
+
 const noop = () => {}
 
 const modalCases = [

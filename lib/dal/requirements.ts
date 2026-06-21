@@ -1129,6 +1129,15 @@ export async function transitionStatus(
           WHERE requirement_id = @1 AND requirement_status_id = ${STATUS_PUBLISHED}`,
           [now, requirementId],
         )
+        await tx.query(
+          `DELETE package_link
+          FROM requirement_version_requirement_packages AS package_link
+          INNER JOIN requirement_versions AS linked_version
+            ON linked_version.id = package_link.requirement_version_id
+          WHERE linked_version.requirement_id = @0
+            AND linked_version.id <> @1`,
+          [requirementId, current.id],
+        )
       }
       if (isRequirementArchivedStatus(newStatusId)) {
         sets.push('archived_at = @P_archived')

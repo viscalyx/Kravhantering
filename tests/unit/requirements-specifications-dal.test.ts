@@ -404,6 +404,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       createSpecification(db, {
         uniqueId: 'SPEC-012',
         name: 'Specification Twelve',
+        specificationLifecycleStatusId: 4,
         responsibleHsaId: ' ',
       }),
     ).rejects.toMatchObject({
@@ -1201,8 +1202,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     ).toBe(false)
   })
 
-  it('rejects graduation when the source local requirement is not Included', async () => {
-    const { db, query } = createSqlServerDb()
+  it('graduates a non-Included specification-local requirement as a draft library copy', async () => {
+    const { db, query, transaction } = createSqlServerDb()
     query
       .mockResolvedValueOnce([
         {
@@ -1215,28 +1216,61 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           requiresTesting: 0,
           riskLevelId: null,
           specificationId: 5,
-          specificationItemStatusId: 2,
           uniqueId: 'KRAV0001',
           verificationMethod: null,
         },
       ])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ prefix: 'SEC', sequenceNumber: 9 }])
+      .mockResolvedValueOnce([
+        {
+          id: 71,
+          requirementAreaId: 8,
+          sequenceNumber: 9,
+          uniqueId: 'SEC0009',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 701,
+          requirementId: 71,
+          statusId: 1,
+          versionNumber: 1,
+        },
+      ])
 
-    await expect(
-      graduateSpecificationLocalRequirementToLibrary(db, {
-        actorDisplayName: 'Ada Admin',
-        actorHsaId: 'SE5560000001-ada1',
+    const result = await graduateSpecificationLocalRequirementToLibrary(db, {
+      actorDisplayName: 'Ada Admin',
+      actorHsaId: 'SE5560000001-ada1',
+      specificationId: 5,
+      specificationLocalRequirementId: 41,
+      targetRequirementAreaId: 8,
+    })
+
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(result).toEqual({
+      requirement: {
+        id: 71,
+        requirementAreaId: 8,
+        sequenceNumber: 9,
+        uniqueId: 'SEC0009',
+      },
+      sourceLocalRequirement: {
+        id: 41,
         specificationId: 5,
-        specificationLocalRequirementId: 41,
-        targetRequirementAreaId: 8,
-      }),
-    ).rejects.toMatchObject({
-      code: 'conflict',
+        uniqueId: 'KRAV0001',
+      },
+      version: {
+        id: 701,
+        requirementId: 71,
+        statusId: 1,
+        versionNumber: 1,
+      },
     })
     expect(
       query.mock.calls.some(([sql]) =>
-        /INSERT INTO requirements|INSERT INTO requirement_versions|UPDATE requirement_areas/i.test(
+        /DELETE FROM specification_local_requirements|UPDATE specification_local_requirements/i.test(
           sql,
         ),
       ),

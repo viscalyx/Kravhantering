@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -42,6 +43,35 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 const encodedSpecificationSlug = encodeURIComponent('SPEC/with space')
 
+function baselineQuestion() {
+  return {
+    answers: [
+      {
+        alreadyAddedRequirementCount: 0,
+        description: null,
+        id: 101,
+        isActive: true,
+        isArchived: false,
+        isNoRequirementSelection: false,
+        matchingRequirementCount: 1,
+        text: 'Use baseline',
+      },
+    ],
+    areaName: 'Security',
+    id: 11,
+    isActive: true,
+    isArchived: false,
+    isVisible: true,
+    questionCode: 'SEC-KUF001',
+    savedAnswers: [],
+    selectedAnswerIds: [],
+    selectionType: 'single',
+    text: 'Which baseline applies?',
+    visibilityGroups: [],
+    visibilityState: 'visible',
+  }
+}
+
 describe('SpecificationRequirementSelectionPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -55,34 +85,7 @@ describe('SpecificationRequirementSelectionPanel', () => {
       ) {
         return Promise.resolve(
           okJson({
-            questions: [
-              {
-                answers: [
-                  {
-                    alreadyAddedRequirementCount: 0,
-                    description: null,
-                    id: 101,
-                    isActive: true,
-                    isArchived: false,
-                    isNoRequirementSelection: false,
-                    matchingRequirementCount: 1,
-                    text: 'Use baseline',
-                  },
-                ],
-                areaName: 'Security',
-                id: 11,
-                isActive: true,
-                isArchived: false,
-                isVisible: true,
-                questionCode: 'SEC-KUF001',
-                savedAnswers: [],
-                selectedAnswerIds: [],
-                selectionType: 'single',
-                text: 'Which baseline applies?',
-                visibilityGroups: [],
-                visibilityState: 'visible',
-              },
-            ],
+            questions: [baselineQuestion()],
           }),
         )
       }
@@ -100,6 +103,35 @@ describe('SpecificationRequirementSelectionPanel', () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllGlobals()
+  })
+
+  it('hides progress while requirement-selection questions are loading', async () => {
+    const onChanged = vi.fn()
+    let resolveFetch:
+      | ((response: { json: () => Promise<unknown>; ok: boolean }) => void)
+      | undefined
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise<{ json: () => Promise<unknown>; ok: boolean }>(resolve => {
+          resolveFetch = resolve
+        }),
+    )
+
+    render(
+      <SpecificationRequirementSelectionPanel
+        onChanged={onChanged}
+        specificationSlug="SPEC/with space"
+      />,
+    )
+
+    expect(screen.getByText('loading')).toBeInTheDocument()
+    expect(screen.queryByText('progress: 0/0')).not.toBeInTheDocument()
+
+    await act(async () => {
+      resolveFetch?.(okJson({ questions: [baselineQuestion()] }))
+    })
+
+    expect(await screen.findByText('progress: 0/1')).toBeInTheDocument()
   })
 
   it('encodes specification slugs as path segments for loading and saving answers', async () => {

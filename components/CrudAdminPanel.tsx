@@ -1,14 +1,20 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Plus } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { ReactNode } from 'react'
+import DirtyStateButton from '@/components/DirtyStateButton'
+import FormActionRow from '@/components/FormActionRow'
+import FormModal from '@/components/FormModal'
+import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
 import type { CrudAdminResourceController } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
 
 type CrudId = number | string
+type CrudAdminFormMode = 'create' | 'edit'
+type CrudAdminFormPresentation = 'inline' | 'modal'
 
 export interface CrudAdminColumn<TItem> {
   className?: string
@@ -25,7 +31,12 @@ interface CrudAdminPanelProps<TItem extends { id: CrudId }, TForm> {
   controller: CrudAdminResourceController<TItem, TForm>
   devContext: string
   emptyStateMessage?: ReactNode
+  formCloseDisabled?: boolean
+  formDialogDeveloperModeValue?: (mode: CrudAdminFormMode) => string
   formMaxWidthClassName?: string
+  formPresentation?: CrudAdminFormPresentation
+  formTitle?: (mode: CrudAdminFormMode) => string
+  formTitleId?: string
   renderFormFields: (props: {
     disabled: boolean
     editId: CrudId | null
@@ -33,12 +44,23 @@ interface CrudAdminPanelProps<TItem extends { id: CrudId }, TForm> {
     inputClassName: string
     isEditing: boolean
     setForm: React.Dispatch<React.SetStateAction<TForm>>
+    textareaClassName: string
+  }) => ReactNode
+  renderRowActions?: (props: {
+    disabled: boolean
+    item: TItem
+    rowActionButtonClassName: string
   }) => ReactNode
   title: ReactNode
 }
 
 const inputClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
+
+const modalTextareaClassName = `${inputClassName} ${modalResizableTextareaClassName}`
+
+const rowActionButtonClassName =
+  'inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
 
 export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   canDelete = () => true,
@@ -48,13 +70,91 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   controller,
   devContext,
   emptyStateMessage,
+  formCloseDisabled = false,
+  formDialogDeveloperModeValue,
   formMaxWidthClassName = 'max-w-lg',
+  formPresentation = 'inline',
+  formTitle,
+  formTitleId,
   renderFormFields,
+  renderRowActions,
   title,
 }: CrudAdminPanelProps<TItem, TForm>) {
   const common = useTranslations('common')
   const shouldReduceMotion = useReducedMotion()
   const visibleError = controller.deleteError ?? controller.loadError
+  const formMode: CrudAdminFormMode =
+    controller.editId === null ? 'create' : 'edit'
+  const defaultFormTitle =
+    formMode === 'create' ? common('create') : common('edit')
+  const resolvedFormTitle = formTitle?.(formMode) ?? defaultFormTitle
+  const resolvedFormTitleId =
+    formTitleId ??
+    `${devContext.replace(/[^A-Za-z0-9_-]+/g, '-')}-crud-form-title`
+  const closeDisabled = controller.submitting || formCloseDisabled
+
+  const renderCrudFormBody = (showHeading: boolean) => (
+    <>
+      {showHeading ? (
+        <h2 className="text-lg font-semibold">{resolvedFormTitle}</h2>
+      ) : null}
+      {renderFormFields({
+        disabled: controller.submitting,
+        editId: controller.editId,
+        form: controller.form,
+        inputClassName,
+        isEditing: controller.editId !== null,
+        setForm: controller.setForm,
+        textareaClassName:
+          formPresentation === 'modal'
+            ? modalTextareaClassName
+            : inputClassName,
+      })}
+      {controller.formError && (
+        <p
+          className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+          role="alert"
+        >
+          {controller.formError}
+        </p>
+      )}
+      <FormActionRow>
+        <DirtyStateButton
+          className="btn-primary"
+          dirty={controller.formDirty}
+          disabled={controller.submitting}
+          type="submit"
+        >
+          {controller.submitting ? common('saving') : common('save')}
+        </DirtyStateButton>
+        <button
+          className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200 disabled:opacity-60"
+          disabled={closeDisabled}
+          onClick={event => {
+            void controller.closeForm(event.currentTarget)
+          }}
+          type="button"
+        >
+          {common('cancel')}
+        </button>
+      </FormActionRow>
+    </>
+  )
+
+  const renderCrudForm = (className: string, showHeading: boolean) => (
+    <form
+      className={className}
+      {...devMarker({
+        context: devContext,
+        name: 'crud form',
+        priority: 340,
+        value: formMode,
+      })}
+      onSubmit={controller.submit}
+    >
+      {renderCrudFormBody(showHeading)}
+    </form>
+  )
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
@@ -95,58 +195,32 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
           </div>
         )}
 
-        <AnimatePresence>
-          {controller.showForm && (
-            <motion.form
-              className={`glass rounded-2xl p-6 mb-6 space-y-5 ${formMaxWidthClassName}`}
-              {...offsetPanelMotion(shouldReduceMotion)}
-              {...devMarker({
-                context: devContext,
-                name: 'crud form',
-                priority: 340,
-                value: controller.editId === null ? 'create' : 'edit',
-              })}
-              onSubmit={controller.submit}
-            >
-              <h2 className="text-lg font-semibold">
-                {controller.editId === null ? common('create') : common('edit')}
-              </h2>
-              {renderFormFields({
-                disabled: controller.submitting,
-                editId: controller.editId,
-                form: controller.form,
-                inputClassName,
-                isEditing: controller.editId !== null,
-                setForm: controller.setForm,
-              })}
-              {controller.formError && (
-                <p
-                  className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-                  role="alert"
-                >
-                  {controller.formError}
-                </p>
-              )}
-              <div className="flex gap-3">
-                <button
-                  className="btn-primary"
-                  disabled={controller.submitting}
-                  type="submit"
-                >
-                  {controller.submitting ? common('saving') : common('save')}
-                </button>
-                <button
-                  className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                  disabled={controller.submitting}
-                  onClick={controller.closeForm}
-                  type="button"
-                >
-                  {common('cancel')}
-                </button>
-              </div>
-            </motion.form>
-          )}
-        </AnimatePresence>
+        {formPresentation === 'modal' ? (
+          <FormModal
+            closeDisabled={closeDisabled}
+            developerModeValue={formDialogDeveloperModeValue?.(formMode)}
+            maxWidthClassName={formMaxWidthClassName}
+            onClose={() => {
+              void controller.closeForm()
+            }}
+            open={controller.showForm}
+            title={resolvedFormTitle}
+            titleId={resolvedFormTitleId}
+          >
+            {renderCrudForm('space-y-5', false)}
+          </FormModal>
+        ) : (
+          <AnimatePresence>
+            {controller.showForm && (
+              <motion.div {...offsetPanelMotion(shouldReduceMotion)}>
+                {renderCrudForm(
+                  `glass rounded-2xl p-6 mb-6 space-y-5 ${formMaxWidthClassName}`,
+                  true,
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
 
         {controller.loading ? (
           <p className="text-secondary-600 dark:text-secondary-400">
@@ -229,45 +303,62 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
                             </td>
                           ))}
                           <td className="py-3 px-4 text-right">
-                            <button
-                              className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
-                              {...devMarker({
-                                context: devContext,
-                                name: 'table action',
-                                value: 'edit',
+                            <div className="flex justify-end gap-1">
+                              {renderRowActions?.({
+                                disabled: rowActionDisabled,
+                                item,
+                                rowActionButtonClassName,
                               })}
-                              disabled={rowActionDisabled}
-                              onClick={() => controller.openEdit(item)}
-                              type="button"
-                            >
-                              {controller.submitting
-                                ? common('saving')
-                                : common('edit')}
-                            </button>
-                            {canDelete(item) && (
                               <button
-                                className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
+                                aria-label={common('edit')}
+                                className={`${rowActionButtonClassName} text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950/30`}
                                 {...devMarker({
                                   context: devContext,
                                   name: 'table action',
-                                  value: 'delete',
+                                  value: 'edit',
                                 })}
                                 disabled={rowActionDisabled}
-                                onClick={event => {
-                                  void controller.remove(
-                                    item.id,
-                                    event.currentTarget,
-                                  )
-                                }}
+                                onClick={() => controller.openEdit(item)}
+                                title={common('edit')}
                                 type="button"
                               >
-                                {controller.submitting
-                                  ? common('saving')
-                                  : isDeleting
-                                    ? common('deleting')
-                                    : common('delete')}
+                                <Pencil
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                  focusable={false}
+                                />
                               </button>
-                            )}
+                              {canDelete(item) && (
+                                <button
+                                  aria-label={common('delete')}
+                                  className={`${rowActionButtonClassName} text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30`}
+                                  {...devMarker({
+                                    context: devContext,
+                                    name: 'table action',
+                                    value: 'delete',
+                                  })}
+                                  disabled={rowActionDisabled}
+                                  onClick={event => {
+                                    void controller.remove(
+                                      item.id,
+                                      event.currentTarget,
+                                    )
+                                  }}
+                                  title={
+                                    isDeleting
+                                      ? common('deleting')
+                                      : common('delete')
+                                  }
+                                  type="button"
+                                >
+                                  <Trash2
+                                    aria-hidden="true"
+                                    className="h-4 w-4"
+                                    focusable={false}
+                                  />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )

@@ -32,9 +32,9 @@ identifiers.
 Run this section only for disposable test or development deployments where demo
 data was intentionally added.
 
-Clear SQL Server demo data with the `db-job` image. This deletes all
-non-required application rows, preserving only required system and lookup seed
-data:
+Clear SQL Server demo data with the optional `kravhantering-demo-seed` image
+from the release notes or your internal mirror. This deletes all non-required
+application rows, preserving only required system and lookup seed data:
 
 ```bash
 sudo -iu kravhantering
@@ -43,8 +43,12 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
+DEMO_SEED_IMAGE_REF=ghcr.io/viscalyx/kravhantering-demo-seed:replace-with-release-tag
+
+podman pull "$DEMO_SEED_IMAGE_REF"
+
 podman run --rm --env-file /etc/kravhantering/db-job.env \
-  "$DB_JOB_IMAGE_REF" demo:clear --confirm-clear-non-required-data
+  "$DEMO_SEED_IMAGE_REF" demo:clear --confirm-clear-non-required-data
 
 exit
 ```

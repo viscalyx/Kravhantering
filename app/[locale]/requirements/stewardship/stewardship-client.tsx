@@ -6,13 +6,17 @@ import { usePathname, useRouter } from '@/i18n/routing'
 import NormReferencesClient from '../../norm-references/norm-references-client'
 import RequirementPackagesClient from '../../requirement-packages/requirement-packages-client'
 import RequirementSelectionQuestionsClient from './requirement-selection-questions-client'
+import RfiQuestionsClient from './rfi-questions-client'
 
-type StewardshipTab = 'packages' | 'questions' | 'norms'
+type StewardshipTab = 'packages' | 'questions' | 'norms' | 'rfi'
 
 const STORAGE_KEY = 'requirements.stewardship.tab'
 
 function tabFromValue(value: string | null): StewardshipTab | null {
-  return value === 'questions' || value === 'packages' || value === 'norms'
+  return value === 'questions' ||
+    value === 'packages' ||
+    value === 'norms' ||
+    value === 'rfi'
     ? value
     : null
 }
@@ -62,5 +66,6 @@ export default function StewardshipClient() {
 
   if (activeTab === 'packages') return <RequirementPackagesClient />
   if (activeTab === 'questions') return <RequirementSelectionQuestionsClient />
+  if (activeTab === 'rfi') return <RfiQuestionsClient />
   return <NormReferencesClient />
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Granska informationssäkerhetskrav"
+  short_description: "Bedöm kravuppfyllnad mot kodbasen"
+  default_prompt: "Use $granska-informationssakerhetskrav to assess a provided security requirements source against this codebase and write a Markdown report."

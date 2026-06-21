@@ -1,0 +1,4 @@
+interface:
+  display_name: "Handoff"
+  short_description: "Create compact handoff docs for fresh agents"
+  default_prompt: "Use $handoff to create a concise handoff document for the next agent, with suggested skills and sensitive data redacted."

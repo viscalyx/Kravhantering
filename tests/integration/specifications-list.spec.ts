@@ -29,6 +29,37 @@ async function fillEditableHsaId(
   await scope.getByRole('textbox', { name: inputName }).fill(suffix)
 }
 
+async function expectRequiredFieldsHintInActionRow(
+  form: Locator,
+): Promise<void> {
+  const actionRow = form.locator(':scope > [data-form-action-row="true"]')
+  await expect(actionRow).toHaveCount(1)
+  await expect(
+    actionRow.getByText('Fält markerade med * är obligatoriska.', {
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(actionRow.getByRole('button', { name: 'Spara' })).toBeVisible()
+  await expect(actionRow.getByRole('button', { name: 'Avbryt' })).toBeVisible()
+
+  const childOrder = await form.evaluate(element => {
+    const children = Array.from(element.children)
+    return {
+      actionRowIndex: children.findIndex(
+        child =>
+          child instanceof HTMLElement &&
+          child.dataset.formActionRow === 'true',
+      ),
+      gridIndex: children.findIndex(
+        child =>
+          child instanceof HTMLElement && child.classList.contains('grid'),
+      ),
+    }
+  })
+  expect(childOrder.gridIndex).toBeGreaterThanOrEqual(0)
+  expect(childOrder.actionRowIndex).toBeGreaterThan(childOrder.gridIndex)
+}
+
 for (const viewport of viewports) {
   test.describe(`Requirements specifications list filter — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } })
@@ -69,16 +100,30 @@ for (const viewport of viewports) {
 
       if (viewport.name === 'desktop') {
         const tableSurface = page.getByRole('table')
+        const requirementAreasHeader = page.getByRole('columnheader', {
+          name: 'Kravområden',
+        })
 
         await expect(tableSurface).toHaveCount(1)
 
         const buttonBox = await createButton.boundingBox()
+        const deleteActionBox = await deleteAction.boundingBox()
+        const requirementAreasHeaderBox =
+          await requirementAreasHeader.boundingBox()
         const tableBox = await tableSurface.boundingBox()
         const viewportSize = page.viewportSize()
 
         expect(buttonBox).not.toBeNull()
+        expect(deleteActionBox).not.toBeNull()
+        expect(requirementAreasHeaderBox).not.toBeNull()
         expect(tableBox).not.toBeNull()
         expect(viewportSize).not.toBeNull()
+        expect(requirementAreasHeaderBox?.width ?? 0).toBeLessThanOrEqual(260)
+        expect(
+          (deleteActionBox?.x ?? 0) + (deleteActionBox?.width ?? 0),
+        ).toBeLessThanOrEqual(
+          (tableBox?.x ?? 0) + (tableBox?.width ?? viewport.width) + 1,
+        )
         expect(buttonBox?.x ?? 0).toBeGreaterThanOrEqual(
           (viewportSize?.width ?? viewport.width) -
             (buttonBox?.width ?? 0) -
@@ -111,7 +156,8 @@ for (const viewport of viewports) {
           'form#requirement-specification-form',
         )
         await expect(createForm).toBeVisible()
-        await expect(createForm.locator('> div').first()).toHaveClass(
+        await expectRequiredFieldsHintInActionRow(createForm)
+        await expect(createForm.locator(':scope > div.grid')).toHaveClass(
           /lg:grid-cols-2/,
         )
         await expect(
@@ -126,6 +172,12 @@ for (const viewport of viewports) {
           createForm.getByRole('button', { name: 'Hämta' }),
         ).toBeVisible()
         await expect(createForm.getByText(/Ada Admin/)).toBeVisible()
+        const createLifecycleStatus = createForm.getByRole('combobox', {
+          name: /Kravunderlagets livscykelstatus/,
+        })
+        await expect(createLifecycleStatus).toBeVisible()
+        await expect(createLifecycleStatus).toHaveJSProperty('required', true)
+        await expect(createLifecycleStatus).toHaveValue('')
 
         await createForm.getByRole('button', { name: 'Avbryt' }).click()
         await expect(createDialog).toBeHidden()
@@ -145,7 +197,8 @@ for (const viewport of viewports) {
           'form#requirement-specification-form',
         )
         await expect(editForm).toBeVisible()
-        await expect(editForm.locator('> div').first()).toHaveClass(
+        await expectRequiredFieldsHintInActionRow(editForm)
+        await expect(editForm.locator(':scope > div.grid')).toHaveClass(
           /lg:grid-cols-2/,
         )
         await expect(
@@ -156,6 +209,11 @@ for (const viewport of viewports) {
         })
         await expect(responsibleInput).toHaveAttribute('readonly', '')
         await expect(editForm.getByText('Emma Lindqvist')).toBeVisible()
+        const editLifecycleStatus = editForm.getByRole('combobox', {
+          name: /Kravunderlagets livscykelstatus/,
+        })
+        await expect(editLifecycleStatus).toHaveJSProperty('required', true)
+        await expect(editLifecycleStatus).toHaveValue('1')
 
         const currentResponsibleHsaId = await responsibleInput.inputValue()
         await editForm

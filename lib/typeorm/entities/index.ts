@@ -32,6 +32,13 @@ import { requirementVersionNormReferenceEntity } from '@/lib/typeorm/entities/re
 import { requirementVersionRequirementPackageEntity } from '@/lib/typeorm/entities/requirement-version-requirement-package'
 import { requirementsSpecificationEntity } from '@/lib/typeorm/entities/requirements-specification'
 import { requirementsSpecificationItemEntity } from '@/lib/typeorm/entities/requirements-specification-item'
+import { rfiQuestionEntity } from '@/lib/typeorm/entities/rfi-question'
+import { rfiQuestionSequenceEntity } from '@/lib/typeorm/entities/rfi-question-sequence'
+import { rfiQuestionSuggestionEntity } from '@/lib/typeorm/entities/rfi-question-suggestion'
+import { rfiQuestionVersionEntity } from '@/lib/typeorm/entities/rfi-question-version'
+import { rfiQuestionVersionRequirementEntity } from '@/lib/typeorm/entities/rfi-question-version-requirement'
+import { rfiQuestionVersionRequirementPackageEntity } from '@/lib/typeorm/entities/rfi-question-version-requirement-package'
+import { rfiQuestionVersionRequirementSelectionQuestionEntity } from '@/lib/typeorm/entities/rfi-question-version-requirement-selection-question'
 import { riskLevelEntity } from '@/lib/typeorm/entities/risk-level'
 import { specificationCoAuthorEntity } from '@/lib/typeorm/entities/specification-co-author'
 import { specificationGovernanceObjectTypeEntity } from '@/lib/typeorm/entities/specification-governance-object-type'
@@ -44,6 +51,8 @@ import { specificationLocalRequirementNormReferenceEntity } from '@/lib/typeorm/
 import { specificationLocalRequirementRequirementPackageEntity } from '@/lib/typeorm/entities/specification-local-requirement-requirement-package'
 import { specificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
 import { specificationRequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/specification-requirement-selection-answer'
+import { specificationRfiListEntity } from '@/lib/typeorm/entities/specification-rfi-list'
+import { specificationRfiQuestionItemEntity } from '@/lib/typeorm/entities/specification-rfi-question-item'
 
 export const sqlServerEntities = [
   actionAuditEventEntity,
@@ -77,6 +86,15 @@ export const sqlServerEntities = [
   requirementSelectionAnswerEntity,
   requirementSelectionAnswerPackageEntity,
   requirementSelectionAnswerRequirementEntity,
+  rfiQuestionSequenceEntity,
+  rfiQuestionEntity,
+  rfiQuestionVersionEntity,
+  rfiQuestionVersionRequirementSelectionQuestionEntity,
+  rfiQuestionVersionRequirementPackageEntity,
+  rfiQuestionVersionRequirementEntity,
+  specificationRfiListEntity,
+  specificationRfiQuestionItemEntity,
+  rfiQuestionSuggestionEntity,
   requirementCategoryEntity,
   requirementListColumnDefaultEntity,
   requirementsSpecificationEntity,
@@ -128,6 +146,13 @@ export type { RequirementVersionNormReferenceEntity } from '@/lib/typeorm/entiti
 export type { RequirementVersionRequirementPackageEntity } from '@/lib/typeorm/entities/requirement-version-requirement-package'
 export type { RequirementsSpecificationEntity } from '@/lib/typeorm/entities/requirements-specification'
 export type { RequirementsSpecificationItemEntity } from '@/lib/typeorm/entities/requirements-specification-item'
+export type { RfiQuestionEntity } from '@/lib/typeorm/entities/rfi-question'
+export type { RfiQuestionSequenceEntity } from '@/lib/typeorm/entities/rfi-question-sequence'
+export type { RfiQuestionSuggestionEntity } from '@/lib/typeorm/entities/rfi-question-suggestion'
+export type { RfiQuestionVersionEntity } from '@/lib/typeorm/entities/rfi-question-version'
+export type { RfiQuestionVersionRequirementEntity } from '@/lib/typeorm/entities/rfi-question-version-requirement'
+export type { RfiQuestionVersionRequirementPackageEntity } from '@/lib/typeorm/entities/rfi-question-version-requirement-package'
+export type { RfiQuestionVersionRequirementSelectionQuestionEntity } from '@/lib/typeorm/entities/rfi-question-version-requirement-selection-question'
 export type { RiskLevelEntity } from '@/lib/typeorm/entities/risk-level'
 export type { SpecificationCoAuthorEntity } from '@/lib/typeorm/entities/specification-co-author'
 export type { SpecificationGovernanceObjectTypeEntity } from '@/lib/typeorm/entities/specification-governance-object-type'
@@ -140,6 +165,8 @@ export type { SpecificationLocalRequirementNormReferenceEntity } from '@/lib/typ
 export type { SpecificationLocalRequirementRequirementPackageEntity } from '@/lib/typeorm/entities/specification-local-requirement-requirement-package'
 export type { SpecificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
 export type { SpecificationRequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/specification-requirement-selection-answer'
+export type { SpecificationRfiListEntity } from '@/lib/typeorm/entities/specification-rfi-list'
+export type { SpecificationRfiQuestionItemEntity } from '@/lib/typeorm/entities/specification-rfi-question-item'
 
 export {
   accessReviewItemEntity,
@@ -176,6 +203,13 @@ export {
   requirementVersionEntity,
   requirementVersionNormReferenceEntity,
   requirementVersionRequirementPackageEntity,
+  rfiQuestionEntity,
+  rfiQuestionSequenceEntity,
+  rfiQuestionSuggestionEntity,
+  rfiQuestionVersionEntity,
+  rfiQuestionVersionRequirementEntity,
+  rfiQuestionVersionRequirementPackageEntity,
+  rfiQuestionVersionRequirementSelectionQuestionEntity,
   riskLevelEntity,
   specificationCoAuthorEntity,
   specificationGovernanceObjectTypeEntity,
@@ -188,4 +222,6 @@ export {
   specificationLocalRequirementRequirementPackageEntity,
   specificationNeedsReferenceEntity,
   specificationRequirementSelectionAnswerEntity,
+  specificationRfiListEntity,
+  specificationRfiQuestionItemEntity,
 }

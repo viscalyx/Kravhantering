@@ -98,6 +98,10 @@ function request(
   })
 }
 
+function getRequest(url = 'http://localhost/api/requirement-areas') {
+  return new Request(url)
+}
+
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
 }
@@ -119,6 +123,19 @@ describe('requirement-areas route', () => {
 
   describe('GET', () => {
     it('returns areas with ownerHsaId', async () => {
+      mocks.createRequestContext.mockResolvedValueOnce({
+        actor: {
+          displayName: 'Anna Johansson',
+          hsaId: 'SE5560000001-annaj',
+          id: 'area-owner-sub',
+          isAuthenticated: true,
+          roles: [],
+          source: 'oidc',
+        },
+        correlationId: 'correlation-area',
+        requestId: 'request-area',
+        source: 'rest',
+      })
       mocks.listAreas.mockResolvedValue([
         {
           id: 1,
@@ -127,15 +144,28 @@ describe('requirement-areas route', () => {
           description: null,
           ownerHsaId: 'SE5560000001-annaj',
         },
+        {
+          id: 2,
+          prefix: 'OPS',
+          name: 'Operations',
+          description: null,
+          ownerHsaId: 'SE5560000001-other1',
+        },
       ])
 
-      const res = await GET()
+      const res = await GET(getRequest())
       const json = (await res.json()) as {
-        areas: { ownerHsaId: string }[]
+        areas: {
+          ownerHsaId: string
+          permissions: { canManageAssignments: boolean }
+        }[]
       }
 
-      expect(json.areas).toHaveLength(1)
+      expect(json.areas).toHaveLength(2)
       expect(json.areas[0].ownerHsaId).toBe('SE5560000001-annaj')
+      expect(json.areas[0].permissions.canManageAssignments).toBe(true)
+      expect(json.areas[1].permissions.canManageAssignments).toBe(false)
+      expect(mocks.canManageAreaCoAuthors).not.toHaveBeenCalled()
     })
   })
 

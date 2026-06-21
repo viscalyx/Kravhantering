@@ -685,11 +685,13 @@ describe('AdminClient', () => {
     const saveButton = await screen.findByRole('button', {
       name: 'common.save',
     })
-    expect(saveButton).toBeEnabled()
-    expect(screen.getByDisplayValue('SE5560000001')).toBeDisabled()
+    expect(await screen.findByDisplayValue('SE5560000001')).toBeDisabled()
+    expect(saveButton).toBeDisabled()
+    expect(saveButton).toHaveAttribute('title', 'common.noChangesToSave')
     fireEvent.change(screen.getByLabelText('admin.identity.label'), {
       target: { value: 'Demo' },
     })
+    expect(saveButton).toBeEnabled()
     fireEvent.click(saveButton)
 
     await waitFor(() => {
@@ -3507,6 +3509,9 @@ describe('AdminClient', () => {
     })
     const saveButton = screen.getByRole('button', { name: 'common.save' })
 
+    expect(saveButton).toBeDisabled()
+    fireEvent.click(moveUpButton)
+    expect(saveButton).toBeEnabled()
     fireEvent.click(saveButton)
 
     await waitFor(() => expect(saveButton).toBeDisabled())

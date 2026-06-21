@@ -13,12 +13,15 @@ import {
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useDeferredValue, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import FloatingActionRail from '@/components/FloatingActionRail'
+import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -130,6 +133,7 @@ export default function NormReferencesClient() {
   const tr = useTranslations('requirement')
   const locale = useLocale()
   const { confirm } = useConfirmModal()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
   const contentRef = useRef<HTMLDivElement>(null)
   const tableAnchorRef = useRef<HTMLDivElement>(null)
   const [nameFilter, setNameFilter] = useState('')
@@ -158,33 +162,11 @@ export default function NormReferencesClient() {
     toPayload,
   })
 
-  const isFormDirty = () => {
-    const editedNormReference = controller.editId
-      ? controller.items.find(
-          normReference => normReference.id === controller.editId,
-        )
-      : null
-    const initialForm = editedNormReference
-      ? toForm(editedNormReference)
-      : getInitialForm()
-
-    return Object.keys(initialForm).some(
-      key =>
-        controller.form[key as keyof NormReferenceForm] !==
-        initialForm[key as keyof NormReferenceForm],
-    )
-  }
-
   const guardUnsavedChanges = async (
     anchorEl?: HTMLElement | null,
   ): Promise<boolean> => {
-    if (controller.showForm && isFormDirty()) {
-      return confirm({
-        anchorEl: anchorEl ?? undefined,
-        icon: 'caution',
-        message: tc('unsavedChangesConfirm'),
-        variant: 'danger',
-      })
+    if (controller.showForm && controller.formDirty) {
+      return confirmDiscardChanges(anchorEl)
     }
     return true
   }
@@ -242,12 +224,11 @@ export default function NormReferencesClient() {
   }
 
   const closeForm = async (anchorEl?: HTMLElement | null) => {
-    if (!(await guardUnsavedChanges(anchorEl))) return
+    if (!(await controller.closeForm(anchorEl))) return
     linkedReqRequestId.current++
     setLinkedRequirements([])
     setLinkedRequirementsError(null)
     setLinkedRequirementsLoading(false)
-    controller.closeForm()
   }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -364,6 +345,7 @@ export default function NormReferencesClient() {
       <NormReferenceFormFields
         form={controller.form}
         idPrefix="norm-reference"
+        layout={controller.editId == null ? 'create' : 'stacked'}
         onSetField={setFormField}
       />
       {controller.formError && (
@@ -374,14 +356,15 @@ export default function NormReferencesClient() {
           {controller.formError}
         </p>
       )}
-      <div className="flex gap-3">
-        <button
+      <FormActionRow>
+        <DirtyStateButton
           className="btn-primary"
+          dirty={controller.formDirty}
           disabled={controller.submitting}
           type="submit"
         >
           {controller.submitting ? tc('saving') : tc('save')}
-        </button>
+        </DirtyStateButton>
         <button
           className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
           disabled={controller.submitting}
@@ -392,7 +375,7 @@ export default function NormReferencesClient() {
         >
           {tc('cancel')}
         </button>
-      </div>
+      </FormActionRow>
     </form>
   )
 
@@ -587,7 +570,7 @@ export default function NormReferencesClient() {
           developerModeValue={
             isEditing ? 'edit norm reference' : 'new norm reference'
           }
-          maxWidthClassName={isEditing ? 'max-w-5xl' : undefined}
+          maxWidthClassName={isEditing ? 'max-w-5xl' : 'max-w-4xl'}
           onClose={() => {
             void closeForm()
           }}

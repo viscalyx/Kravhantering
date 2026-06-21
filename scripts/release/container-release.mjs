@@ -15,6 +15,7 @@ import { stripOperatorUpgradeSourceMarkers } from './operator-upgrade-notes.mjs'
 
 export const APP_RUNTIME_PACKAGE = 'kravhantering-app-runtime'
 export const DB_JOB_PACKAGE = 'kravhantering-db-job'
+export const DEMO_SEED_PACKAGE = 'kravhantering-demo-seed'
 export const HSA_DIRECTORY_MOCK_PACKAGE = 'kravhantering-hsa-directory-mock'
 export const HSA_PERSON_LOOKUP_ADAPTER_PACKAGE =
   'kravhantering-hsa-person-lookup-adapter'
@@ -26,6 +27,8 @@ export const APP_RUNTIME_DESCRIPTION =
   'Runnable Next.js application image for the production web runtime.'
 export const DB_JOB_DESCRIPTION =
   'Database job image for SQL Server health checks, migrations and required seed operations.'
+export const DEMO_SEED_DESCRIPTION =
+  'Optional destructive demo seed image for disposable demonstration and test environments.'
 export const HSA_DIRECTORY_MOCK_DESCRIPTION =
   'Test-only HSA directory mock image for the single-node-demo release support topology.'
 export const HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION =
@@ -33,7 +36,7 @@ export const HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION =
 
 const USAGE = `Usage:
   node scripts/release/container-release.mjs plan --gitversion-json <path> --output <path> [--github-env <path>] [--changed-files <path>]
-  node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --db-job-metadata <path> [--hsa-directory-mock-metadata <path>] [--hsa-person-lookup-adapter-metadata <path>] --output <path> [--github-env <path>]
+  node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --db-job-metadata <path> [--hsa-directory-mock-metadata <path>] [--hsa-person-lookup-adapter-metadata <path>] [--demo-seed-metadata <path>] --output <path> [--github-env <path>]
   node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path> [--operator-notes <path>]
   node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--hsa-integration-support-lock <path>] [--test-support-lock <path>] [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
   node scripts/release/container-release.mjs ensure-tag --plan <path>`
@@ -126,19 +129,6 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
   {
     source: 'scripts/keycloak-demo-users.mjs',
     target: 'scripts/keycloak-demo-users.mjs',
-  },
-  { source: 'typeorm/seed.mjs', target: 'demo-seed/seed.mjs' },
-  {
-    source: 'typeorm/seed-dogfood.mjs',
-    target: 'demo-seed/seed-dogfood.mjs',
-  },
-  {
-    source: 'typeorm/seed-dogfood-build.mjs',
-    target: 'demo-seed/seed-dogfood-build.mjs',
-  },
-  {
-    source: 'typeorm/seed-archiving-retention-build.mjs',
-    target: 'demo-seed/seed-archiving-retention-build.mjs',
   },
 ]
 
@@ -351,6 +341,7 @@ export function createReleasePlan(input = {}) {
     isStableRelease || shouldCreatePreviewRelease ? `v${version}` : ''
   const appRuntimeImage = `ghcr.io/${owner}/${APP_RUNTIME_PACKAGE}`
   const dbJobImage = `ghcr.io/${owner}/${DB_JOB_PACKAGE}`
+  const demoSeedImage = `ghcr.io/${owner}/${DEMO_SEED_PACKAGE}`
   const hsaDirectoryMockImage = `ghcr.io/${owner}/${HSA_DIRECTORY_MOCK_PACKAGE}`
   const hsaPersonLookupAdapterImage = `ghcr.io/${owner}/${HSA_PERSON_LOOKUP_ADAPTER_PACKAGE}`
   const commitTags = [`main-${shortSha}`, `sha-${sha}`]
@@ -371,6 +362,9 @@ export function createReleasePlan(input = {}) {
     dbJobImage,
     dbJobPackage: DB_JOB_PACKAGE,
     dbJobTags: tags.map(tag => `${dbJobImage}:${tag}`),
+    demoSeedImage,
+    demoSeedPackage: DEMO_SEED_PACKAGE,
+    demoSeedTags: tags.map(tag => `${demoSeedImage}:${tag}`),
     eventName,
     hasRelevantChange,
     hsaDirectoryMockImage,
@@ -422,6 +416,12 @@ export function releasePlanEnv(plan) {
     DB_JOB_PRIMARY_TAG: plan.dbJobTags[0],
     DB_JOB_PRIMARY_TAG_NAME: plan.tags[0],
     DB_JOB_TAGS_CSV: csv(plan.dbJobTags),
+    DEMO_SEED_DESCRIPTION,
+    DEMO_SEED_IMAGE: plan.demoSeedImage,
+    DEMO_SEED_PACKAGE: plan.demoSeedPackage,
+    DEMO_SEED_PRIMARY_TAG: plan.demoSeedTags[0],
+    DEMO_SEED_PRIMARY_TAG_NAME: plan.tags[0],
+    DEMO_SEED_TAGS_CSV: csv(plan.demoSeedTags),
     HSA_DIRECTORY_MOCK_DESCRIPTION,
     HSA_DIRECTORY_MOCK_IMAGE: plan.hsaDirectoryMockImage,
     HSA_DIRECTORY_MOCK_PACKAGE: plan.hsaDirectoryMockPackage,
@@ -504,6 +504,7 @@ export function createReleaseMetadata(
   dbJobBuildxMetadata,
   hsaDirectoryMockBuildxMetadata,
   hsaPersonLookupAdapterBuildxMetadata,
+  demoSeedBuildxMetadata,
 ) {
   const testSupport = hsaDirectoryMockBuildxMetadata
     ? {
@@ -535,6 +536,15 @@ export function createReleaseMetadata(
       plan.dbJobTags,
       dbJobBuildxMetadata,
     ),
+    ...(demoSeedBuildxMetadata
+      ? {
+          demoSeed: createImageMetadata(
+            plan.demoSeedImage,
+            plan.demoSeedTags,
+            demoSeedBuildxMetadata,
+          ),
+        }
+      : {}),
     generatedAt: new Date().toISOString(),
     ...(hsaIntegrationSupport ? { hsaIntegrationSupport } : {}),
     releaseTagName: plan.releaseTagName,
@@ -567,7 +577,18 @@ export function releaseMetadataEnv(metadata) {
     values.HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST_REF =
       hsaPersonLookupAdapter.manifestRef
   }
+  const demoSeed = metadata.demoSeed
+  if (demoSeed) {
+    values.DEMO_SEED_IMAGE_ID = demoSeed.imageId
+    values.DEMO_SEED_MANIFEST_DIGEST = demoSeed.manifestDigest
+    values.DEMO_SEED_MANIFEST_DIGEST_REF = demoSeed.manifestRef
+  }
   return values
+}
+
+export function productionDeploymentMetadata(metadata) {
+  const { demoSeed: _demoSeed, ...productionMetadata } = metadata ?? {}
+  return productionMetadata
 }
 
 export function deploymentBundleBaseName(version) {
@@ -879,7 +900,6 @@ export function stageProductionDeploymentBundle(options = {}) {
       'container-hsa-integration-support.lock.json',
     ],
     [options.testSupportLockPath, 'container-test-support.lock.json'],
-    [options.metadataPath, 'release-metadata.json'],
     [options.buildJsonPath, 'public/build.json'],
     [options.hashesPath, 'hashes.sha256'],
   ]
@@ -906,6 +926,11 @@ export function stageProductionDeploymentBundle(options = {}) {
     if (!readNonEmpty(source)) continue
     copyOptionalFile(source, path.join(bundleRoot, target), { cwd, fsImpl })
   }
+  writeJsonFile(
+    path.join(bundleRoot, 'release-metadata.json'),
+    productionDeploymentMetadata(metadata),
+    fsImpl,
+  )
 
   const filesBeforeManifest = listFilesRecursive(bundleRoot, { fsImpl })
   const manifest = createDeploymentBundleManifest({
@@ -1058,6 +1083,7 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
   const rawTags = plan.tags ?? []
   const appRuntimePackage = plan.appRuntimePackage ?? APP_RUNTIME_PACKAGE
   const dbJobPackage = plan.dbJobPackage ?? DB_JOB_PACKAGE
+  const demoSeedPackage = plan.demoSeedPackage ?? DEMO_SEED_PACKAGE
   const hsaDirectoryMockPackage =
     plan.hsaDirectoryMockPackage ?? HSA_DIRECTORY_MOCK_PACKAGE
   const hsaPersonLookupAdapterPackage =
@@ -1074,6 +1100,10 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
     rawTags,
     options,
   )
+  const demoSeed = metadata.demoSeed
+  const demoSeedTagUrls = demoSeed
+    ? resolvePackageTagUrls(plan, demoSeedPackage, rawTags, options)
+    : {}
   const hsaDirectoryMock = metadata.testSupport?.hsaDirectoryMock
   const hsaDirectoryMockTagUrls = hsaDirectoryMock
     ? resolvePackageTagUrls(plan, hsaDirectoryMockPackage, rawTags, options)
@@ -1102,6 +1132,14 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
       ...metadata.dbJob,
       tagUrls: imageTagUrls(metadata.dbJob.tags, rawTags, dbJobTagUrls),
     },
+    ...(demoSeed
+      ? {
+          demoSeed: {
+            ...demoSeed,
+            tagUrls: imageTagUrls(demoSeed.tags, rawTags, demoSeedTagUrls),
+          },
+        }
+      : {}),
     ...(hsaDirectoryMock
       ? {
           testSupport: {
@@ -1133,6 +1171,24 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
         }
       : {}),
   }
+}
+
+function renderDemonstrationContainerImagesSection(plan, metadata) {
+  const demoSeed = metadata.demoSeed
+  if (!demoSeed) return []
+
+  return [
+    '',
+    '## Demonstration Container Images',
+    '',
+    'These images are explicit opt-in support for disposable demonstration or test environments and are not part of the production runtime topology.',
+    '',
+    ...renderContainerImageBlock(
+      plan.demoSeedPackage ?? DEMO_SEED_PACKAGE,
+      DEMO_SEED_DESCRIPTION,
+      demoSeed,
+    ),
+  ]
 }
 
 function isSameReleaseKind(plan, release) {
@@ -1360,6 +1416,7 @@ export function renderReleaseNotes(
       DB_JOB_DESCRIPTION,
       metadata.dbJob,
     ),
+    ...renderDemonstrationContainerImagesSection(plan, metadata),
     ...renderHsaIntegrationSupportContainerImagesSection(plan, metadata),
     ...renderTestSupportContainerImagesSection(plan, metadata),
     '',
@@ -1463,12 +1520,16 @@ export async function main(args, dependencies = {}) {
       ]
         ? readJsonFile(options['hsa-person-lookup-adapter-metadata'], fsImpl)
         : undefined
+      const demoSeedBuildxMetadata = options['demo-seed-metadata']
+        ? readJsonFile(options['demo-seed-metadata'], fsImpl)
+        : undefined
       const metadata = createReleaseMetadata(
         plan,
         readJsonFile(options['app-metadata'], fsImpl),
         readJsonFile(options['db-job-metadata'], fsImpl),
         hsaDirectoryMockBuildxMetadata,
         hsaPersonLookupAdapterBuildxMetadata,
+        demoSeedBuildxMetadata,
       )
       writeJsonFile(options.output, metadata, fsImpl)
       appendGithubEnv(

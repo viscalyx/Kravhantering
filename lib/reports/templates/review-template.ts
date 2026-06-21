@@ -6,6 +6,13 @@ import {
 } from '@/lib/requirements/lifecycle'
 import type { RequirementReportData } from '../data/fetch-requirement'
 import { requirementPackageName } from '../package-name'
+import {
+  formatReportBoolean,
+  formatReportTemplate,
+  getReportLabels,
+  localizeReportValue,
+  type ReportLabels,
+} from '../report-labels'
 import { diffText } from '../text-diff'
 import type {
   MetadataChange,
@@ -22,15 +29,17 @@ type LocalizedNameItem = {
 function getStatusLabel(
   version: RequirementReportData['versions'][number],
   locale: string,
+  labels: ReportLabels,
 ): string {
   return (
-    (locale === 'sv' ? version.statusNameSv : version.statusNameEn) ?? 'Unknown'
+    localizeReportValue(locale, version.statusNameSv, version.statusNameEn) ||
+    labels.common.unknown
   )
 }
 
 function getName(item: LocalizedNameItem, locale: string): string | null {
   if (!item) return null
-  return (locale === 'sv' ? item.nameSv : item.nameEn) ?? null
+  return localizeReportValue(locale, item.nameSv, item.nameEn) || null
 }
 
 function getRequirementPackageDisplayName(
@@ -65,6 +74,7 @@ function collectPackageIds(
 function toVersionSummary(
   version: RequirementReportData['versions'][number],
   locale: string,
+  labels: ReportLabels,
 ): VersionSummaryData {
   return {
     versionNumber: version.versionNumber,
@@ -96,7 +106,7 @@ function toVersionSummary(
         }
       : null,
     status: {
-      label: getStatusLabel(version, locale),
+      label: getStatusLabel(version, locale, labels),
       color: version.statusColor,
       iconName: version.statusIconName,
     },
@@ -125,6 +135,7 @@ function computeMetadataChanges(
   baseVersion: RequirementReportData['versions'][number],
   reviewVersion: RequirementReportData['versions'][number],
   locale: string,
+  labels: ReportLabels,
 ): MetadataChange[] {
   const changes: MetadataChange[] = []
 
@@ -132,7 +143,7 @@ function computeMetadataChanges(
   const newCat = getName(reviewVersion.category, locale)
   if (oldCat !== newCat) {
     changes.push({
-      field: locale === 'sv' ? 'Kategori' : 'Category',
+      field: labels.columns.category,
       oldValue: oldCat,
       newValue: newCat,
     })
@@ -142,7 +153,7 @@ function computeMetadataChanges(
   const newType = getName(reviewVersion.type, locale)
   if (oldType !== newType) {
     changes.push({
-      field: locale === 'sv' ? 'Typ' : 'Type',
+      field: labels.columns.type,
       oldValue: oldType,
       newValue: newType,
     })
@@ -152,7 +163,7 @@ function computeMetadataChanges(
   const newQc = getName(reviewVersion.qualityCharacteristic, locale)
   if (oldQc !== newQc) {
     changes.push({
-      field: locale === 'sv' ? 'Kvalitetsegenskap' : 'Quality Characteristic',
+      field: labels.columns.qualityCharacteristic,
       oldValue: oldQc,
       newValue: newQc,
     })
@@ -162,25 +173,23 @@ function computeMetadataChanges(
   const newRl = getName(reviewVersion.riskLevel, locale)
   if (oldRl !== newRl) {
     changes.push({
-      field: locale === 'sv' ? 'Risknivå' : 'Risk Level',
+      field: labels.columns.riskLevel,
       oldValue: oldRl,
       newValue: newRl,
     })
   }
 
   if (baseVersion.requiresTesting !== reviewVersion.requiresTesting) {
-    const yes = locale === 'sv' ? 'Ja' : 'Yes'
-    const no = locale === 'sv' ? 'Nej' : 'No'
     changes.push({
-      field: locale === 'sv' ? 'Kräver testning' : 'Requires Testing',
-      oldValue: baseVersion.requiresTesting ? yes : no,
-      newValue: reviewVersion.requiresTesting ? yes : no,
+      field: labels.columns.requiresTesting,
+      oldValue: formatReportBoolean(baseVersion.requiresTesting, labels),
+      newValue: formatReportBoolean(reviewVersion.requiresTesting, labels),
     })
   }
 
   if (baseVersion.verificationMethod !== reviewVersion.verificationMethod) {
     changes.push({
-      field: locale === 'sv' ? 'Verifieringsmetod' : 'Verification Method',
+      field: labels.columns.verificationMethod,
       oldValue: baseVersion.verificationMethod,
       newValue: reviewVersion.verificationMethod,
     })
@@ -192,7 +201,7 @@ function computeMetadataChanges(
   const newRequirementPackageIds = collectPackageIds(reviewVersion)
   if (oldRequirementPackageIds !== newRequirementPackageIds) {
     changes.push({
-      field: locale === 'sv' ? 'Kravpaket' : 'Requirements packages',
+      field: labels.columns.requirementPackages,
       oldValue: oldRequirementPackages || null,
       newValue: newRequirementPackages || null,
     })
@@ -208,7 +217,7 @@ function computeMetadataChanges(
     .join(', ')
   if (oldRefs !== newRefs) {
     changes.push({
-      field: locale === 'sv' ? 'Referenser' : 'References',
+      field: labels.columns.references,
       oldValue: oldRefs || null,
       newValue: newRefs || null,
     })
@@ -223,6 +232,7 @@ export function buildReviewReport(
 ): ReportModel {
   const sections: ReportSection[] = []
   const now = new Date().toISOString()
+  const labels = getReportLabels(locale)
 
   const sortedVersions = [...requirement.versions].sort(
     (a, b) => b.versionNumber - a.versionNumber,
@@ -245,22 +255,16 @@ export function buildReviewReport(
   sections.push({
     type: 'header',
     title: isArchivingReview
-      ? locale === 'sv'
-        ? 'Arkiveringsförfrågan'
-        : 'Archive Request'
-      : locale === 'sv'
-        ? 'Granskningsändringsrapport'
-        : 'Review Change Report',
+      ? labels.titles.archiveRequest
+      : labels.titles.reviewChangeReport,
     subtitle: isArchivingReview
-      ? locale === 'sv'
-        ? 'Kravet granskas för arkivering'
-        : 'Requirement is under review for archiving'
+      ? labels.subtitles.requirementUnderArchivingReview
       : undefined,
     requirementId: requirement.uniqueId,
     generatedAt: now,
     status: reviewVersion
       ? {
-          label: getStatusLabel(reviewVersion, locale),
+          label: getStatusLabel(reviewVersion, locale, labels),
           color: reviewVersion.statusColor,
           iconName: reviewVersion.statusIconName,
         }
@@ -270,10 +274,7 @@ export function buildReviewReport(
   if (!reviewVersion) {
     sections.push({
       type: 'notice',
-      message:
-        locale === 'sv'
-          ? 'Inget krav i granskningsstatus hittades.'
-          : 'No requirement in review status found.',
+      message: labels.notices.noRequirementInReviewStatus,
       severity: 'warning',
     })
     return { sections }
@@ -283,57 +284,48 @@ export function buildReviewReport(
     if (isArchivingReview) {
       sections.push({
         type: 'notice',
-        message:
-          locale === 'sv'
-            ? 'Detta krav granskas för arkivering. Innehållet är oförändrat jämfört med den publicerade versionen.'
-            : 'This requirement is under review for archiving. Content is unchanged from the published version.',
+        message: labels.notices.archivingReviewNoBase,
         severity: 'warning',
       })
     } else {
       sections.push({
         type: 'notice',
-        message:
-          locale === 'sv'
-            ? 'Ingen publicerad eller arkiverad version finns att jämföra med.'
-            : 'No published or archived version exists for comparison.',
+        message: labels.notices.noPublishedOrArchivedBase,
         severity: 'info',
       })
     }
     sections.push({
       type: 'version-summary',
-      version: toVersionSummary(reviewVersion, locale),
-      label:
-        locale === 'sv'
-          ? `Granskningsversion (v${reviewVersion.versionNumber})`
-          : `Review Version (v${reviewVersion.versionNumber})`,
+      version: toVersionSummary(reviewVersion, locale, labels),
+      label: formatReportTemplate(labels.common.reviewVersion, {
+        version: reviewVersion.versionNumber,
+      }),
     })
     return { sections }
   }
 
   const baseLabel = isRequirementPublishedStatus(baseVersion.status)
-    ? locale === 'sv'
-      ? 'Publicerad'
-      : 'Published'
-    : locale === 'sv'
-      ? 'Arkiverad'
-      : 'Archived'
+    ? labels.common.published
+    : labels.common.archived
 
   if (isArchivingReview) {
     sections.push({
       type: 'notice',
-      message:
-        locale === 'sv'
-          ? `Detta krav granskas för arkivering. Jämförelse: v${reviewVersion.versionNumber} mot ${baseLabel} v${baseVersion.versionNumber}.`
-          : `This requirement is under review for archiving. Comparison: v${reviewVersion.versionNumber} vs ${baseLabel} v${baseVersion.versionNumber}.`,
+      message: formatReportTemplate(labels.notices.archivingComparison, {
+        baseLabel,
+        baseVersion: baseVersion.versionNumber,
+        reviewVersion: reviewVersion.versionNumber,
+      }),
       severity: 'warning',
     })
   } else {
     sections.push({
       type: 'notice',
-      message:
-        locale === 'sv'
-          ? `Granskning v${reviewVersion.versionNumber} jämfört med ${baseLabel} v${baseVersion.versionNumber}`
-          : `Review v${reviewVersion.versionNumber} vs ${baseLabel} v${baseVersion.versionNumber}`,
+      message: formatReportTemplate(labels.notices.reviewComparison, {
+        baseLabel,
+        baseVersion: baseVersion.versionNumber,
+        reviewVersion: reviewVersion.versionNumber,
+      }),
       severity: 'info',
     })
   }
@@ -342,7 +334,7 @@ export function buildReviewReport(
   if (descDiff.length > 0) {
     sections.push({
       type: 'diff',
-      fieldLabel: locale === 'sv' ? 'Kravtext' : 'Requirement text',
+      fieldLabel: labels.columns.requirementText,
       segments: descDiff,
     })
   }
@@ -354,8 +346,7 @@ export function buildReviewReport(
   if (criteriaDiff.length > 0) {
     sections.push({
       type: 'diff',
-      fieldLabel:
-        locale === 'sv' ? 'Acceptanskriterier' : 'Acceptance Criteria',
+      fieldLabel: labels.columns.acceptanceCriteria,
       segments: criteriaDiff,
     })
   }
@@ -364,6 +355,7 @@ export function buildReviewReport(
     baseVersion,
     reviewVersion,
     locale,
+    labels,
   )
   if (metadataChanges.length > 0) {
     sections.push({

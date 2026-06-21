@@ -1,9 +1,9 @@
 'use client'
 
-import { Plus, Trash2, UserRoundCog } from 'lucide-react'
+import { UserRoundCog, UsersRound } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useEffect, useState } from 'react'
-import { useConfirmModal } from '@/components/ConfirmModal'
+import { useState } from 'react'
+import CoAuthorsManagementModal from '@/components/CoAuthorsManagementModal'
 import CrudAdminPanel, {
   type CrudAdminColumn,
 } from '@/components/CrudAdminPanel'
@@ -16,6 +16,7 @@ import HsaPersonVerifyField, {
   type HsaPersonVerification,
 } from '@/components/HsaPersonVerifyField'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
+import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 
@@ -43,6 +44,9 @@ interface Area {
   id: number
   name: string
   ownerHsaId: string
+  permissions?: {
+    canManageAssignments: boolean
+  }
   prefix: string
 }
 
@@ -57,29 +61,6 @@ interface AreaForm {
 interface OwnerChangeState {
   areaId: number
   currentOwnerHsaId: string
-}
-
-interface AreaCoAuthorForm {
-  clientId: string
-  displayName: string | null
-  email: string | null
-  hsaId: string
-}
-
-interface AreaCoAuthorDraft {
-  displayName: string
-  email: string
-  hsaId: string
-  personVerification: HsaPersonVerification | null
-}
-
-let areaCoAuthorClientIdSequence = 0
-
-const createAreaCoAuthorClientId = () => {
-  const randomId = globalThis.crypto?.randomUUID?.()
-  if (randomId) return randomId
-  areaCoAuthorClientIdSequence += 1
-  return `area-co-author-${areaCoAuthorClientIdSequence}`
 }
 
 const getInitialForm = (): AreaForm => ({
@@ -111,32 +92,14 @@ const toUpdatePayload = (form: AreaForm) => ({
   prefix: form.prefix,
 })
 
-const blankCoAuthorDraft = (): AreaCoAuthorDraft => ({
-  displayName: '',
-  email: '',
-  hsaId: '',
-  personVerification: null,
-})
-
-const coAuthorLabel = (coAuthor: AreaCoAuthorForm) =>
-  coAuthor.displayName || coAuthor.email || coAuthor.hsaId
-
 export default function RequirementAreasClient() {
   useHelpContent(REQUIREMENT_AREAS_HELP)
   const t = useTranslations('area')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
-  const { confirm } = useConfirmModal()
   const [ownerChange, setOwnerChange] = useState<OwnerChangeState | null>(null)
-  const [coAuthors, setCoAuthors] = useState<AreaCoAuthorForm[]>([])
-  const [coAuthorDraft, setCoAuthorDraft] =
-    useState<AreaCoAuthorDraft>(blankCoAuthorDraft)
-  const [coAuthorsLoading, setCoAuthorsLoading] = useState(false)
-  const [coAuthorsSaving, setCoAuthorsSaving] = useState(false)
-  const [coAuthorsError, setCoAuthorsError] = useState<string | null>(null)
-  const loadCoAuthorsFailedMessage = t('loadCoAuthorsFailed')
+  const [coAuthorsArea, setCoAuthorsArea] = useState<Area | null>(null)
   const ownerChangeErrorMessage = t('ownerChangeError')
-  const saveCoAuthorsFailedMessage = t('saveCoAuthorsFailed')
 
   const controller = useCrudAdminResource<Area, AreaForm>({
     confirmDeleteMessage: tc('confirm'),
@@ -191,139 +154,6 @@ export default function RequirementAreasClient() {
     }
   }
 
-  useEffect(() => {
-    if (!controller.showForm || typeof controller.editId !== 'number') {
-      setCoAuthors([])
-      setCoAuthorDraft(blankCoAuthorDraft())
-      setCoAuthorsError(null)
-      return
-    }
-
-    const controllerAbort = new AbortController()
-    setCoAuthorsLoading(true)
-    setCoAuthorsError(null)
-
-    async function loadCoAuthors() {
-      try {
-        const response = await apiFetch(
-          `/api/requirement-areas/${controller.editId}/co-authors`,
-          { signal: controllerAbort.signal },
-        )
-        if (!response.ok) {
-          throw new Error(
-            (await readResponseMessage(response)) ?? loadCoAuthorsFailedMessage,
-          )
-        }
-        const body = (await response.json()) as {
-          coAuthors?: Array<{
-            displayName?: string | null
-            email?: string | null
-            hsaId: string
-          }>
-        }
-        setCoAuthors(
-          (body.coAuthors ?? []).map(coAuthor => ({
-            clientId: createAreaCoAuthorClientId(),
-            displayName: coAuthor.displayName ?? null,
-            email: coAuthor.email ?? null,
-            hsaId: coAuthor.hsaId,
-          })),
-        )
-      } catch (error) {
-        if (controllerAbort.signal.aborted) return
-        setCoAuthorsError(
-          error instanceof Error ? error.message : loadCoAuthorsFailedMessage,
-        )
-      } finally {
-        if (!controllerAbort.signal.aborted) {
-          setCoAuthorsLoading(false)
-        }
-      }
-    }
-
-    void loadCoAuthors()
-
-    return () => {
-      controllerAbort.abort()
-    }
-  }, [controller.editId, controller.showForm, loadCoAuthorsFailedMessage])
-
-  const saveCoAuthorAssignments = async (
-    nextCoAuthors: AreaCoAuthorForm[],
-  ): Promise<boolean> => {
-    if (typeof controller.editId !== 'number') return false
-    setCoAuthorsSaving(true)
-    setCoAuthorsError(null)
-    try {
-      const response = await apiFetch(
-        `/api/requirement-areas/${controller.editId}/co-authors`,
-        {
-          body: JSON.stringify({
-            coAuthorHsaIds: nextCoAuthors.map(coAuthor => coAuthor.hsaId),
-          }),
-          headers: { 'Content-Type': 'application/json' },
-          method: 'PUT',
-        },
-      )
-      if (!response.ok) {
-        setCoAuthorsError(
-          (await readResponseMessage(response)) ?? saveCoAuthorsFailedMessage,
-        )
-        return false
-      }
-      setCoAuthors(nextCoAuthors)
-      return true
-    } catch (error) {
-      setCoAuthorsError(
-        error instanceof Error ? error.message : saveCoAuthorsFailedMessage,
-      )
-      return false
-    } finally {
-      setCoAuthorsSaving(false)
-    }
-  }
-
-  const addVerifiedCoAuthor = async (person: HsaPersonVerification) => {
-    if (coAuthors.some(coAuthor => coAuthor.hsaId === person.hsaId)) {
-      setCoAuthorDraft(blankCoAuthorDraft())
-      return
-    }
-
-    const nextCoAuthors = [
-      ...coAuthors,
-      {
-        clientId: createAreaCoAuthorClientId(),
-        displayName: person.displayName,
-        email: person.email,
-        hsaId: person.hsaId,
-      },
-    ]
-    if (await saveCoAuthorAssignments(nextCoAuthors)) {
-      setCoAuthorDraft(blankCoAuthorDraft())
-    }
-  }
-
-  const removeCoAuthor = async (
-    coAuthor: AreaCoAuthorForm,
-    anchorEl?: HTMLElement,
-  ) => {
-    const confirmed = await confirm({
-      anchorEl,
-      confirmText: tc('delete'),
-      icon: 'caution',
-      message: t('removeCoAuthorConfirm', {
-        name: coAuthorLabel(coAuthor),
-      }),
-      title: t('removeCoAuthor'),
-      variant: 'danger',
-    })
-    if (!confirmed) return
-
-    await saveCoAuthorAssignments(
-      coAuthors.filter(item => item.clientId !== coAuthor.clientId),
-    )
-  }
-
   const columns: CrudAdminColumn<Area>[] = [
     {
       className: 'py-3 px-4 font-mono font-medium',
@@ -341,7 +171,7 @@ export default function RequirementAreasClient() {
         'py-3 px-4 text-secondary-600 dark:text-secondary-400 truncate max-w-xs',
       header: t('description'),
       key: 'description',
-      render: area => area.description ?? '—',
+      render: area => area.description ?? '-',
     },
     {
       className: 'py-3 px-4 text-secondary-600 dark:text-secondary-400',
@@ -357,6 +187,13 @@ export default function RequirementAreasClient() {
       controller={controller}
       devContext="areas"
       emptyStateMessage={t('emptyState')}
+      formDialogDeveloperModeValue={mode =>
+        mode === 'create' ? 'new requirement area' : 'edit requirement area'
+      }
+      formMaxWidthClassName="max-w-2xl"
+      formPresentation="modal"
+      formTitle={mode => (mode === 'create' ? t('newArea') : t('editArea'))}
+      formTitleId="requirement-area-form-title"
       renderFormFields={({
         disabled,
         editId,
@@ -364,8 +201,9 @@ export default function RequirementAreasClient() {
         inputClassName,
         isEditing,
         setForm,
+        textareaClassName,
       }) => (
-        <>
+        <div className="space-y-5">
           <div>
             <FieldLabelWithHelp
               help={t('help.prefix')}
@@ -416,7 +254,7 @@ export default function RequirementAreasClient() {
               label={t('description')}
             />
             <textarea
-              className={inputClassName}
+              className={textareaClassName}
               disabled={disabled}
               id="area-desc"
               onChange={event =>
@@ -455,7 +293,11 @@ export default function RequirementAreasClient() {
                   title={t('changeOwner')}
                   type="button"
                 >
-                  <UserRoundCog aria-hidden="true" className="h-4 w-4" />
+                  <UserRoundCog
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                    focusable={false}
+                  />
                 </button>
               </div>
             ) : (
@@ -492,149 +334,34 @@ export default function RequirementAreasClient() {
               />
             )}
           </div>
-          {isEditing && typeof editId === 'number' ? (
-            <section className="space-y-3 rounded-xl border border-secondary-200 p-4 dark:border-secondary-700">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-secondary-800 dark:text-secondary-200">
-                    {t('coAuthors')}
-                  </h3>
-                  <p className="mt-1 text-sm text-secondary-500 dark:text-secondary-400">
-                    {t('coAuthorsHelp')}
-                  </p>
-                </div>
-                {coAuthorsSaving ? (
-                  <p
-                    className="text-sm text-secondary-500 dark:text-secondary-400"
-                    role="status"
-                  >
-                    {tc('saving')}
-                  </p>
-                ) : null}
-              </div>
-              {coAuthorsError ? (
-                <p
-                  className="text-sm text-red-600 dark:text-red-400"
-                  role="alert"
-                >
-                  {coAuthorsError}
-                </p>
-              ) : null}
-              {coAuthorsLoading ? (
-                <p
-                  className="text-sm text-secondary-500 dark:text-secondary-400"
-                  role="status"
-                >
-                  {tc('loading')}
-                </p>
-              ) : coAuthors.length === 0 ? (
-                <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-secondary-500 dark:text-secondary-400">
-                  {t('noCoAuthors')}
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {coAuthors.map(coAuthor => (
-                    <div
-                      className="flex items-center justify-between gap-3 rounded-xl border border-secondary-200 px-3 py-2 dark:border-secondary-700"
-                      key={coAuthor.clientId}
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-secondary-800 dark:text-secondary-100">
-                          {coAuthorLabel(coAuthor)}
-                        </p>
-                        <p className="mt-0.5 truncate font-mono text-xs text-secondary-500 dark:text-secondary-400">
-                          {coAuthor.hsaId}
-                        </p>
-                      </div>
-                      <button
-                        aria-label={t('removeCoAuthor')}
-                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-red-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/30"
-                        disabled={
-                          disabled || coAuthorsSaving || coAuthorsLoading
-                        }
-                        onClick={event =>
-                          void removeCoAuthor(
-                            coAuthor,
-                            event.currentTarget as HTMLElement,
-                          )
-                        }
-                        title={t('removeCoAuthor')}
-                        type="button"
-                      >
-                        <Trash2
-                          aria-hidden="true"
-                          className="h-4 w-4"
-                          focusable={false}
-                        />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                <div>
-                  <FieldLabelWithHelp
-                    help={t('coAuthorHsaIdHelp')}
-                    htmlFor="area-co-author-hsa-id"
-                    label={t('coAuthorHsaId')}
-                  />
-                  <HsaPersonVerifyField
-                    disabled={disabled || coAuthorsSaving || coAuthorsLoading}
-                    emailLabel={tc('hsaVerifyEmail')}
-                    errorFallback={tc('hsaVerifyError')}
-                    fetchingLabel={tc('fetchingHsaPerson')}
-                    fetchLabel={tc('fetchHsaPerson')}
-                    hsaId={coAuthorDraft.hsaId}
-                    initialDisplayName={coAuthorDraft.displayName}
-                    initialEmail={coAuthorDraft.email}
-                    inputClassName={inputClassName}
-                    inputId="area-co-author-hsa-id"
-                    nameLabel={tc('hsaVerifyName')}
-                    onHsaIdChange={value =>
-                      setCoAuthorDraft(current => ({
-                        ...current,
-                        displayName:
-                          value.trim() === current.personVerification?.hsaId
-                            ? current.displayName
-                            : '',
-                        email:
-                          value.trim() === current.personVerification?.hsaId
-                            ? current.email
-                            : '',
-                        hsaId: value,
-                        personVerification:
-                          value.trim() === current.personVerification?.hsaId
-                            ? current.personVerification
-                            : null,
-                      }))
-                    }
-                    onVerified={person => {
-                      setCoAuthorDraft({
-                        displayName: person.displayName,
-                        email: person.email ?? '',
-                        hsaId: person.hsaId,
-                        personVerification: person,
-                      })
-                      void addVerifiedCoAuthor(person)
-                    }}
-                    purpose="requirement_area_co_author"
-                    scopeId={editId}
-                    showPersonSummaryAsText
-                    unavailableText={tc('hsaVerifyUnavailable')}
-                  />
-                </div>
-                <div className="hidden min-h-11 items-center gap-2 text-sm text-secondary-500 sm:flex">
-                  <Plus aria-hidden="true" className="h-4 w-4" />
-                  {t('addCoAuthor')}
-                </div>
-              </div>
-            </section>
-          ) : null}
-        </>
+        </div>
       )}
+      renderRowActions={({ disabled, item, rowActionButtonClassName }) =>
+        item.permissions?.canManageAssignments ? (
+          <button
+            aria-label={t('manageCoAuthors')}
+            className={`${rowActionButtonClassName} text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800/70`}
+            {...devMarker({
+              context: 'areas',
+              name: 'table action',
+              value: 'manage co-authors',
+            })}
+            disabled={disabled}
+            onClick={() => setCoAuthorsArea(item)}
+            title={t('manageCoAuthors')}
+            type="button"
+          >
+            <UsersRound
+              aria-hidden="true"
+              className="h-4 w-4"
+              focusable={false}
+            />
+          </button>
+        ) : null
+      }
       title={tn('areas')}
     >
-      {ownerChange && (
+      {ownerChange ? (
         <HsaPersonChangeModal
           blockedError={t('ownerChangeCoAuthorConflict')}
           cancelLabel={tc('cancel')}
@@ -666,7 +393,33 @@ export default function RequirementAreasClient() {
           titleId="area-owner-change-title"
           unavailableText={tc('hsaVerifyUnavailable')}
         />
-      )}
+      ) : null}
+      {coAuthorsArea ? (
+        <CoAuthorsManagementModal
+          description={t('coAuthorsHelp')}
+          developerModeValue="manage requirement area co-authors"
+          endpoint={`/api/requirement-areas/${coAuthorsArea.id}/co-authors`}
+          hsaIdHelp={t('coAuthorHsaIdHelp')}
+          hsaIdLabel={t('coAuthorHsaId')}
+          loadErrorMessage={t('loadCoAuthorsFailed')}
+          loadingMessage={t('loadingCoAuthors')}
+          noCoAuthorsMessage={t('noCoAuthors')}
+          onChanged={async () => {
+            await controller.reload()
+          }}
+          onClose={() => setCoAuthorsArea(null)}
+          open
+          purpose="requirement_area_co_author"
+          removeConfirmMessage={name => t('removeCoAuthorConfirm', { name })}
+          removeLabel={t('removeCoAuthor')}
+          savedCoAuthorsHeading={t('savedCoAuthors')}
+          saveErrorMessage={t('saveCoAuthorsFailed')}
+          scopeId={coAuthorsArea.id}
+          title={t('coAuthors')}
+          titleId="area-co-authors-title"
+          verifiedDraftMessage={name => t('verifiedCoAuthorDraft', { name })}
+        />
+      ) : null}
     </CrudAdminPanel>
   )
 }

@@ -4,6 +4,7 @@ import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { type ReactNode, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 
 interface ComponentProps {
   help: ReactNode
@@ -27,7 +28,7 @@ export default function FieldLabelWithHelp({
       <div className="flex items-center gap-1.5 mb-1">
         <label className="text-sm font-medium" htmlFor={htmlFor}>
           {label}
-          {required ? <span className="sr-only"> *</span> : null}
+          {required ? <RequiredFieldMarker /> : null}
         </label>
         <button
           aria-controls={helpId}

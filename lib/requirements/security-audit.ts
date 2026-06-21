@@ -178,6 +178,29 @@ function actionAuditDetail(
         requirementId: action.requirementId,
         suggestionId: action.suggestionId,
       }
+    case 'manage_rfi_question':
+      return {
+        actionKind: action.kind,
+        areaId: action.areaId,
+        operation: action.operation,
+        questionId: action.questionId,
+      }
+    case 'manage_specification_rfi':
+      return {
+        actionKind: action.kind,
+        operation: action.operation,
+        specificationId: action.specificationId,
+        specificationSlug: action.specificationSlug,
+      }
+    case 'manage_rfi_question_suggestion':
+      return {
+        actionKind: action.kind,
+        areaId: action.areaId,
+        operation: action.operation,
+        specificationId: action.specificationId,
+        specificationSlug: action.specificationSlug,
+        suggestionId: action.suggestionId,
+      }
     case 'generate_requirements':
       return {
         actionKind: action.kind,
@@ -207,6 +230,12 @@ function actionNameForAuthorizationDenied(action: RequirementsAction): string {
       return `deviation.${action.operation}.denied`
     case 'manage_suggestion':
       return `improvement_suggestion.${action.operation}.denied`
+    case 'manage_rfi_question':
+      return `rfi_question.${action.operation}.denied`
+    case 'manage_specification_rfi':
+      return `specification_rfi_list.${action.operation}.denied`
+    case 'manage_rfi_question_suggestion':
+      return `rfi_question_suggestion.${action.operation}.denied`
     case 'generate_requirements':
       return 'ai_requirement.insert.denied'
     default:
@@ -270,6 +299,25 @@ function targetForAuthorizationDenied(action: RequirementsAction): {
       return {
         targetId: action.requirementId,
         targetKind: 'ImprovementSuggestion',
+      }
+    case 'manage_rfi_question':
+      return {
+        targetId: action.questionId ?? action.areaId,
+        targetKind: 'RfiQuestion',
+      }
+    case 'manage_specification_rfi':
+      return {
+        targetId: action.specificationId ?? action.specificationSlug,
+        targetKind: 'SpecificationRfiList',
+      }
+    case 'manage_rfi_question_suggestion':
+      return {
+        targetId:
+          action.suggestionId ??
+          action.specificationId ??
+          action.specificationSlug ??
+          action.areaId,
+        targetKind: 'RfiQuestionSuggestion',
       }
     case 'generate_requirements':
       return { targetKind: 'AIRequirementGeneration' }

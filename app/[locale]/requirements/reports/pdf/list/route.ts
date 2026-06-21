@@ -4,6 +4,7 @@ import {
   collectMultiplePublishedRequirementsForReport,
   ReportDataError,
 } from '@/lib/reports/data/server'
+import { getReportLabels } from '@/lib/reports/report-labels'
 import { buildListReport } from '@/lib/reports/templates/list-template'
 import {
   authorizeRequirementReportRead,
@@ -41,7 +42,7 @@ export async function GET(
       runtime.db,
       ids,
     )
-    const label = locale === 'sv' ? 'Kravlista' : 'Requirements List'
+    const label = getReportLabels(locale).filenames.list
     return renderReportModelPdfResponse(
       buildListReport(requirements, locale),
       locale,

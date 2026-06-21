@@ -6,6 +6,7 @@ import {
   parseLibrarySpecificationItemId,
   ReportDataError,
 } from '@/lib/reports/data/server'
+import { getReportLabels } from '@/lib/reports/report-labels'
 import { buildDeviationReviewReport } from '@/lib/reports/templates/deviation-review-template'
 import {
   authorizeSpecificationReportRead,
@@ -43,8 +44,7 @@ export async function GET(
       specificationItem.specificationId,
     )
     const data = await collectDeviationForReport(runtime.db, id, item, locale)
-    const label =
-      locale === 'sv' ? 'Granskningsrapport avsteg' : 'Deviation Review Report'
+    const label = getReportLabels(locale).filenames.deviationReview
     return renderReportModelPdfResponse(
       buildDeviationReviewReport(data, locale),
       locale,

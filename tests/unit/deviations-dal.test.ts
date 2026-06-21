@@ -202,6 +202,7 @@ describe('deviations DAL (SQL Server path)', () => {
         total: 2,
         pending: 1,
         approved: 1,
+        rejected: 0,
       },
       {
         itemId: 9,
@@ -209,6 +210,7 @@ describe('deviations DAL (SQL Server path)', () => {
         total: 1,
         pending: 1,
         approved: 0,
+        rejected: 0,
       },
     ])
 
@@ -216,12 +218,12 @@ describe('deviations DAL (SQL Server path)', () => {
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('UNION ALL'),
-      [1, 1],
+      [1, 1, 2],
     )
     expect(result).toEqual(
       new Map([
-        ['lib:4', { total: 2, pending: 1, approved: 1 }],
-        ['local:9', { total: 1, pending: 1, approved: 0 }],
+        ['lib:4', { total: 2, pending: 1, approved: 1, rejected: 0 }],
+        ['local:9', { total: 1, pending: 1, approved: 0, rejected: 0 }],
       ]),
     )
   })

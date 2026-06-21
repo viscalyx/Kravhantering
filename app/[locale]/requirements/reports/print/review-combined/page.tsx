@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import PrintReportRenderer from '@/components/reports/print/PrintReportRenderer'
 import { fetchMultipleRequirements } from '@/lib/reports/data/fetch-requirement'
@@ -11,6 +11,7 @@ import type { ReportModel } from '@/lib/reports/types'
 export default function PrintCombinedReviewReportPage() {
   const searchParams = useSearchParams()
   const locale = useLocale()
+  const t = useTranslations('reports')
   const [model, setModel] = useState<ReportModel | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -18,21 +19,21 @@ export default function PrintCombinedReviewReportPage() {
 
   const loadReport = useCallback(async () => {
     if (!ids) {
-      setError('No requirement IDs provided')
+      setError(t('noRequirementIds'))
       return
     }
     try {
       const idList = ids.split(',').filter(Boolean)
       if (idList.length === 0) {
-        setError('No requirement IDs provided')
+        setError(t('noRequirementIds'))
         return
       }
       const requirements = await fetchMultipleRequirements(idList, locale)
       setModel(buildCombinedReviewReport(requirements, locale))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load report')
+      setError(err instanceof Error ? err.message : t('failedToLoadReport'))
     }
-  }, [ids, locale])
+  }, [ids, locale, t])
 
   useEffect(() => {
     loadReport()
@@ -48,7 +49,7 @@ export default function PrintCombinedReviewReportPage() {
   if (error) {
     return (
       <div style={{ padding: '2rem', color: '#991b1b' }}>
-        <h1>Error</h1>
+        <h1>{t('errorTitle')}</h1>
         <p>{error}</p>
       </div>
     )
@@ -57,7 +58,7 @@ export default function PrintCombinedReviewReportPage() {
   if (!model) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
-        Loading report...
+        {t('loading')}
       </div>
     )
   }
