@@ -299,15 +299,17 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   const renderNavigationLink = (
     item: NavigationLinkDefinition,
     expanded: boolean,
+    surface: 'desktop' | 'mobile',
     onNavigate?: () => void,
   ) => {
     const label = t(item.labelKey)
+    const labelId = `global-navigation-${surface}-${item.id}-label`
     const isActive = item.isActive(pathname, activeStewardshipTab)
     const Icon = item.icon
     return (
       <Link
         aria-current={isActive ? 'page' : undefined}
-        aria-label={expanded ? undefined : label}
+        aria-labelledby={labelId}
         className={getNavigationLinkClassName(isActive, expanded)}
         href={item.href}
         key={item.id}
@@ -325,9 +327,12 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
         })}
       >
         <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
-        {expanded ? (
-          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-        ) : null}
+        <span
+          className={expanded ? 'min-w-0 flex-1 truncate text-left' : 'sr-only'}
+          id={labelId}
+        >
+          {label}
+        </span>
       </Link>
     )
   }
@@ -430,13 +435,23 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           label={t('work')}
         >
           {workNavItems.map(item =>
-            renderNavigationLink(item, expanded, close),
+            renderNavigationLink(
+              item,
+              expanded,
+              mobile ? 'mobile' : 'desktop',
+              close,
+            ),
           )}
         </NavigationSection>
         <NavigationSection expanded={expanded} label={t('stewardship')}>
           {renderRequirementAreasLink(expanded, close)}
           {stewardshipNavItems.map(item =>
-            renderNavigationLink(item, expanded, close),
+            renderNavigationLink(
+              item,
+              expanded,
+              mobile ? 'mobile' : 'desktop',
+              close,
+            ),
           )}
         </NavigationSection>
         <NavigationSection expanded={expanded} label={t('utilities')}>

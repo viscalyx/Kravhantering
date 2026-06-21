@@ -232,9 +232,13 @@ describe('Navigation', () => {
     expect(
       screen.getByRole('link', { name: 'nav.requirementSelectionQuestions' }),
     ).toHaveAttribute('href', '/requirements/stewardship?tab=questions')
-    expect(
-      screen.getByRole('link', { name: 'nav.rfiQuestions' }),
-    ).toHaveAttribute('href', '/requirements/stewardship?tab=rfi')
+    const rfiLink = screen.getByRole('link', { name: 'nav.rfiQuestions' })
+    expect(rfiLink).toHaveAttribute('href', '/requirements/stewardship?tab=rfi')
+    expect(rfiLink).not.toHaveAttribute('aria-label')
+    expect(rfiLink).toHaveAttribute(
+      'aria-labelledby',
+      'global-navigation-desktop-rfi-questions-label',
+    )
     expect(
       screen.getByRole('link', { name: 'nav.normLibrary' }),
     ).toHaveAttribute('href', '/requirements/stewardship?tab=norms')
