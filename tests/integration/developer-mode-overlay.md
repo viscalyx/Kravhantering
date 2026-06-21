@@ -105,13 +105,14 @@ the shortcut.
 ### Step-by-Step Flow: Navigation Persistence
 
 1. Navigate to `/sv/requirements` and wait for the first table row.
-2. Focus the "Inställningar" link and press `Control+Alt+Shift+H`.
+2. Focus the Krav-ID filter control and press `Control+Alt+Shift+H`.
 3. Assert the developer-mode badge is visible.
-4. Trigger navigation to `/sv/admin` via `evaluate()` (sticky header overlap).
-5. Assert the URL is `/sv/admin`.
-6. Assert the developer-mode badge is still visible.
-7. Hover over an element annotated with `data-developer-mode-name="edge tab"`.
-8. Assert the overlay chip appears on the admin page.
+4. On mobile, open the navigation menu so the settings link is available.
+5. Click the "Inställningar" link.
+6. Assert the URL is `/sv/admin`.
+7. Assert the developer-mode badge is still visible.
+8. Hover over an element annotated with `data-developer-mode-name="edge tab"`.
+9. Assert the overlay chip appears on the admin page.
 
 ### Sequence Diagram: Navigation Persistence
 
@@ -122,9 +123,12 @@ sequenceDiagram
     participant O as Overlay
 
     U->>P: Open /sv/requirements
-    U->>P: Focus settings link, Ctrl+Alt+Shift+H
+    U->>P: Focus Krav-ID filter, Ctrl+Alt+Shift+H
     Note over O: ✓ Badge visible
-    U->>P: Navigate to /sv/admin (via evaluate)
+    opt Mobile viewport
+        U->>P: Open navigation menu
+    end
+    U->>P: Click Inställningar
     Note over P: ✓ URL = /sv/admin
     Note over O: ✓ Badge still visible
     U->>O: Hover edge tab

@@ -62,14 +62,18 @@ for (const viewport of viewports) {
     }) => {
       await page.goto('/sv/requirements')
       await page.locator('tbody > tr').first().waitFor()
-      await page.getByRole('link', { name: 'Inställningar' }).focus()
+      await page.getByRole('button', { name: 'Filtrera efter Krav-ID' }).focus()
       await page.keyboard.press('Control+Alt+Shift+H')
 
       await expect(page.getByTestId('developer-mode-badge')).toBeVisible()
 
-      await page
-        .getByRole('link', { name: 'Inställningar' })
-        .evaluate(el => (el as HTMLElement).click())
+      if (viewport.name === 'mobile') {
+        await page.getByRole('button', { name: 'Öppna meny' }).click()
+      }
+
+      const settingsLink = page.getByRole('link', { name: 'Inställningar' })
+      await expect(settingsLink).toBeVisible()
+      await settingsLink.click()
       await expect(page).toHaveURL('/sv/admin')
 
       // Badge survives navigation.

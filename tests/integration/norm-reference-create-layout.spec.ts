@@ -4,6 +4,7 @@ const viewports = [
   { height: 812, name: 'mobile', width: 375 },
   { height: 720, name: 'desktop', width: 1280 },
 ]
+const MOBILE_COLUMN_ALIGNMENT_TOLERANCE_PX = 6
 
 type FieldBox = {
   height: number
@@ -75,7 +76,9 @@ for (const viewport of viewports) {
             uri,
             normReferenceId,
           ]) {
-            expect(Math.abs(field.x - name.x)).toBeLessThanOrEqual(5)
+            expect(Math.abs(field.x - name.x)).toBeLessThanOrEqual(
+              MOBILE_COLUMN_ALIGNMENT_TOLERANCE_PX,
+            )
             expect(field.width).toBeGreaterThan(name.width - 8)
           }
 

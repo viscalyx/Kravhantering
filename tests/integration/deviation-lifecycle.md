@@ -55,6 +55,8 @@ flowchart TD
   decision.
 - `openSpecificationFixtureRow()` navigates to the seeded specification and
   expands the row matching the fixture `uniqueId`.
+- `listDeviations()` reads the persisted state with Playwright's network-error
+  retry option for transient `ECONNRESET` on idempotent GET requests.
 - `expectLatestDeviationState()` waits for each persisted lifecycle change,
   then the test reopens the exact fixture row so mobile rerenders cannot leave
   assertions attached to a collapsed inline detail.
