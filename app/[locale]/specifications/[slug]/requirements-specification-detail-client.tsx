@@ -26,6 +26,7 @@ import {
 import { createPortal } from 'react-dom'
 import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
 import SpecificationRequirementSelectionPanel from '@/app/[locale]/specifications/[slug]/specification-requirement-selection-panel'
+import SpecificationRfiListPanel from '@/app/[locale]/specifications/[slug]/specification-rfi-list-panel'
 import SpecificationFormModal from '@/app/[locale]/specifications/specification-form-modal'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
@@ -118,7 +119,7 @@ const DEFAULT_RIGHT_COLS: RequirementColumnId[] = [
   'description',
   'area',
 ]
-type SpecificationDetailLeftTab = 'items' | 'needs-references'
+type SpecificationDetailLeftTab = 'items' | 'needs-references' | 'rfi'
 
 interface NeedsReferenceFormState {
   description: string
@@ -251,7 +252,9 @@ export default function KravunderlagDetailClient({
   const initialLeftTab: SpecificationDetailLeftTab =
     searchParams.get('leftTab') === 'needs-references'
       ? 'needs-references'
-      : 'items'
+      : searchParams.get('leftTab') === 'rfi'
+        ? 'rfi'
+        : 'items'
 
   const [spec, setSpec] = useState<SpecificationMeta | null>(initialData.spec)
   const [specificationItems, setSpecificationItems] = useState<
@@ -2011,6 +2014,15 @@ export default function KravunderlagDetailClient({
         <span className="truncate">{t('needsReferences')}</span>
         <span className="text-xs opacity-80">{availableNeedsRefs.length}</span>
       </button>
+      <button
+        aria-selected={leftTab === 'rfi'}
+        className={splitPanelTabClassName(leftTab === 'rfi')}
+        onClick={() => handleLeftTabChange('rfi')}
+        role="tab"
+        type="button"
+      >
+        <span className="truncate">{t('rfiList')}</span>
+      </button>
     </div>
   )
   const renderRightPanelTabs = () => (
@@ -2427,6 +2439,20 @@ export default function KravunderlagDetailClient({
                       </table>
                     </div>
                   )}
+                </div>
+              ) : leftTab === 'rfi' ? (
+                <div
+                  className={desktopSplitPanelCardClassName}
+                  data-specification-detail-list-panel="rfi"
+                >
+                  <div className={splitPanelHeaderClassName}>
+                    {renderLeftPanelTabs()}
+                  </div>
+                  <SpecificationRfiListPanel
+                    canEdit={canEditContent}
+                    specificationId={spec.id}
+                    specificationSlug={specificationSlug}
+                  />
                 </div>
               ) : specificationItems.length === 0 ? (
                 <div

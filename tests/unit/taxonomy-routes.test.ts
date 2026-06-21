@@ -1061,7 +1061,7 @@ describe('requirement-areas routes', () => {
   })
 
   it('GET returns areas', async () => {
-    const r = await getReqAreas()
+    const r = await getReqAreas(new Request('http://l/api/requirement-areas'))
     const j = (await r.json()) as { areas: { id: number }[] }
     expect(j.areas).toHaveLength(1)
   })

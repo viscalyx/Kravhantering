@@ -13,6 +13,10 @@ import {
 
 let fixture: AuthorizationFixture
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 test.describe.configure({ mode: 'serial' })
 test.use({
   storageState: ROLE_STORAGE_STATE.specificationResponsible,
@@ -54,8 +58,9 @@ test('AUTH-10/AUTH-11: specification responsible users can manage assignments', 
     await expect(page.getByText(updatedPurpose)).toBeVisible()
 
     await page.goto('/sv/specifications')
+    const specificationNamePattern = escapeRegExp(fixture.specificationName)
     const row = page.getByRole('row', {
-      name: new RegExp(fixture.specificationName),
+      name: new RegExp(specificationNamePattern),
     })
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: 'Hantera medförfattare' }).click()

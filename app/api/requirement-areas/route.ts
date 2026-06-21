@@ -29,9 +29,7 @@ const createAreaSchema = z
   })
   .strict()
 
-export async function GET(
-  request: Request = new Request('http://localhost/api/requirement-areas'),
-) {
+export async function GET(request: Request) {
   const db = await getRequestSqlServerDataSource()
   const context = await createRequestContext(request, 'rest')
   const areas = await listAreas(db)

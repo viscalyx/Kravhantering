@@ -98,6 +98,10 @@ function request(
   })
 }
 
+function getRequest(url = 'http://localhost/api/requirement-areas') {
+  return new Request(url)
+}
+
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
 }
@@ -149,7 +153,7 @@ describe('requirement-areas route', () => {
         },
       ])
 
-      const res = await GET()
+      const res = await GET(getRequest())
       const json = (await res.json()) as {
         areas: {
           ownerHsaId: string

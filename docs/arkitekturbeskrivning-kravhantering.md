@@ -17,6 +17,7 @@
   - [Versionshantering](#versionshantering)
   - [Aktörer och roller](#aktörer-och-roller)
   - [Kravunderlagshantering](#kravunderlagshantering)
+  - [RFI-stöd inför kravurval](#rfi-stöd-inför-kravurval)
   - [Avsteghantering](#avsteghantering)
   - [Förbättringsförslag](#förbättringsförslag)
   - [Rapportprocesser](#rapportprocesser)
@@ -343,6 +344,27 @@ eller en förvaltningsperiod. Processen omfattar:
 4. **Spåra avsteg** — Om ett krav inte kan uppfyllas
    helt kan ett avsteg registreras (se
    *Avsteghantering* nedan).
+
+### RFI-stöd inför kravurval
+
+RFI-stödet är ett förberedande spår till kravunderlag. Kravområdesägare och
+kravområdesmedförfattare förvaltar generiska RFI-frågor i frågebanken, medan
+kravunderlagsansvariga och kravunderlagsmedförfattare använder dem i ett
+konkret kravunderlags RFI-frågelista.
+
+RFI-frågelistan är dynamisk i läget **Förbered** och följer aktiva
+RFI-frågeversioner per kravområde. När listan låses materialiseras exakta
+RFI-frågeversioner så att CSV/PDF-export och efterföljande relevansbedömning
+kan återge samma underlag. Relevans är separat från scope: scope avgör om en
+fråga ingår i RFI:n, medan relevans sätts efter genomförd RFI för att markera
+vilka frågor som ska beaktas i fortsatt kravurval.
+
+RFI-frågor kan ha rådgivande länkar till kravurvalsfrågor, kravpaket eller
+bibliotekskrav, men dessa länkar väljer aldrig krav automatiskt. RFI-frågeförslag
+är ett separat förslagsspår riktat till kravområden och visar bara minimal
+källinformation om kravunderlaget för användare som saknar åtkomst till hela
+underlaget. V1 lagrar inte leverantörssvar, sekretessprövning eller
+leverantörsportaldata.
 
 ### Avsteghantering
 
@@ -909,6 +931,10 @@ erDiagram
     requirements_specifications ||--o{ specification_requirement_selection_answers : "sparar kravurvalssvar"
     specification_requirement_selection_answers }o--|| requirement_selection_questions : "historisk fråga"
     specification_requirement_selection_answers }o--|| requirement_selection_answers : "historiskt svar"
+    requirements_specifications ||--o{ specification_rfi_lists : "har RFI-frågelista"
+    specification_rfi_lists ||--o{ specification_rfi_question_items : "låser RFI-frågor"
+    specification_rfi_question_items }o--|| rfi_questions : "RFI-fråga"
+    specification_rfi_question_items }o--|| rfi_question_versions : "exakt version"
     requirements_specifications }o--o| specification_governance_object_types : "styrningsobjektstyp"
     requirements_specifications }o--o| specification_implementation_types : "genomförandeform"
     requirements_specifications }o--|| specification_lifecycle_statuses : "kravunderlagets livscykelstatus"
@@ -938,6 +964,9 @@ erDiagram
     archiving_retention_policies ||--o{ archiving_retention_runs : "loggar körningar"
     archiving_retention_policies ||--o{ archiving_retention_exceptions : "har undantag"
     requirements ||--o{ improvement_suggestions : "har förbättringsförslag"
+    requirement_areas ||--o{ rfi_questions : "äger RFI-frågor"
+    rfi_questions ||--o{ rfi_question_versions : "versioneras"
+    requirement_areas ||--o{ rfi_question_suggestions : "tar emot RFI-förslag"
     action_audit_events }o--o{ requirements : "kan peka på krav utan FK"
 ```
 
@@ -957,6 +986,11 @@ kravbibliotek kan användas i flera verksamhetssammanhang.
 `specification_needs_references` är kravunderlagslokala etiketter med valfri
 beskrivning och uppdateringstid; både bibliotekskrav och kravunderlagets unika
 krav pekar på dem inom samma kravunderlag.
+`rfi_questions` och `rfi_question_versions` håller en områdesägd frågebank för
+RFI-dialog. `specification_rfi_lists` anger om kravunderlagets RFI-lista är i
+Förbered eller Låst läge, och `specification_rfi_question_items` materialiserar
+scope och relevans för låsta listor. `rfi_question_suggestions` är separat från
+kravbundna förbättringsförslag och bär bara minimal kravunderlagskälla.
 Kravområden, kravunderlag och kravpaket lagrar bara HSA-id för levande
 kravansvarstilldelningar. Namnkomponenter och e-post för aktuell visning
 samlas i `requirement_responsibility_people`, så samma Kravansvarsperson inte

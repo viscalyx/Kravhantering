@@ -180,6 +180,26 @@ export type RequirementsAction =
       requirementId?: number
     }
   | {
+      areaId?: number
+      kind: 'manage_rfi_question'
+      operation: string
+      questionId?: number
+    }
+  | {
+      kind: 'manage_specification_rfi'
+      operation: string
+      specificationId?: number
+      specificationSlug?: string
+    }
+  | {
+      areaId?: number
+      kind: 'manage_rfi_question_suggestion'
+      operation: string
+      suggestionId?: number
+      specificationId?: number
+      specificationSlug?: string
+    }
+  | {
       kind: 'generate_requirements'
       scopeId?: number
       scopeType?: 'requirement_area' | 'specification'

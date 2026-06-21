@@ -766,6 +766,48 @@ synlighetsvillkor.
 
 _Avoid_: Sorteringsordning, kravområdesgrupp, kravhierarki.
 
+**RFI-fråga**:
+En områdesägd fråga som används i en Request for Information inför
+kravarbete. RFI-frågan hjälper kravunderlagsansvariga att förstå vad som bör
+beaktas när krav väljs eller formuleras, men väljer inte krav automatiskt.
+
+- `en`: RFI question
+
+_Avoid_: Kravurvalsfråga, leverantörssvar, krav.
+
+**RFI-frågeversion**:
+En bestämd version av en RFI-frågas frågetext, hjälptext, önskade
+svarsformat och rådgivande länkar.
+
+- `en`: RFI question version
+
+_Avoid_: Kravversion, historikrad, kopia.
+
+**RFI-frågelista**:
+Kravunderlagets lista av RFI-frågor.
+
+- `en`: RFI question list
+
+_Avoid_: Kravurval, kravlista, leverantörssvar.
+
+**RFI-relevans**:
+Efter genomförd RFI markerar kravunderlagsansvarig om en inkluderad RFI-fråga
+är relevant eller inte relevant för fortsatt kravurval. Relevans är separat
+från scope, där scope anger om frågan över huvud taget ingår i RFI-listan.
+
+- `en`: RFI relevance
+
+_Avoid_: Kravstatus, kravurvalsfilter, leverantörssvar.
+
+**RFI-frågeförslag**:
+Ett förslag om ny eller ändrad RFI-fråga riktat till ett kravområde, ofta
+skapat från ett kravunderlag. Förslaget är separat från kravbundna
+förbättringsförslag.
+
+- `en`: RFI question suggestion
+
+_Avoid_: Förbättringsförslag, avsteg, kravunderlagskommentar.
+
 **Kravtillämpning**:
 Att en publicerad kravversion från kravbiblioteket används i ett visst
 kravunderlag. Kravtillämpningen bär det underlagsspecifika sammanhanget, inte
@@ -810,7 +852,7 @@ inte till ett enskilt avsteg i ett kravunderlag.
 
 - `en`: Improvement suggestion
 
-_Avoid_: Avsteg, felanmälan.
+_Avoid_: Avsteg, felanmälan, RFI-frågeförslag.
 
 **Granskningsrapport**:
 Rapport som stödjer granskning och publiceringsbeslut för en eller flera

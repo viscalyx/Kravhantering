@@ -902,6 +902,42 @@ kravunderlag där användaren saknar läsbehörighet.
 När frågorna har laddats visas svarsräknaren, till exempel `Besvarade: 0/1`.
 Urvalet sparas och kravlistan uppdateras.
 
+### SPEC-13: förvalta RFI-fråga och visa dynamisk RFI-lista
+
+**Steg:** Öppna Kravbiblioteksförvaltning, välj fliken `RFI-frågor`, skapa en
+RFI-fråga i ett kravområde och öppna därefter ett kravunderlag. Välj fliken
+`RFI-frågelista`.
+
+**Förväntat resultat:** Den aktiva frågan visas grupperad under kravområdet i
+kravunderlagets RFI-lista utan att listan först behöver låsas.
+
+### SPEC-14: lås, relevansbedöm och exportera RFI-lista
+
+**Steg:** I kravunderlagets `RFI-frågelista`, välj bort en fråga, lås listan,
+markera en inkluderad fråga som relevant och exportera CSV och PDF.
+
+**Förväntat resultat:** Scope kan ändras före låsning men inte efter. Relevans
+kan bara sättas efter låsning. Exporterna innehåller exakta
+RFI-frågeversioner, scope och relevans.
+
+### SPEC-15: lås upp RFI-lista och hantera ändrad frågeversion
+
+**Steg:** Lås upp RFI-listan, ändra en RFI-fråga i förvaltningen så att en ny
+version skapas och lås listan igen.
+
+**Förväntat resultat:** Relevans behålls för oförändrade frågeversioner men
+rensas för den fråga vars version ändrats.
+
+### SPEC-16: skapa och hantera RFI-frågeförslag
+
+**Steg:** Skapa ett RFI-frågeförslag från kravunderlagets RFI-lista. Öppna
+Kravbiblioteksförvaltning, fliken `RFI-frågor`, välj berört kravområde och
+markera förslaget som hanterat eller avfärdat med motivering.
+
+**Förväntat resultat:** Förslaget visas bara med minimal kravunderlagskälla,
+inte med hela kravunderlaget. Hantering kräver beslutsmotivering och tar bort
+förslaget från öppna förslag.
+
 ## Avsteg
 
 ### DEV-01: skapa avstegsutkast

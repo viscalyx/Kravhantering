@@ -92,6 +92,12 @@ function makeLookup(
     resolveSpecificationIdForLocalRequirement: vi.fn(
       async () => options.specificationId ?? 42,
     ),
+    resolveRfiQuestionArea: vi.fn(
+      async () => options.suggestionAreaId ?? options.requirement?.areaId ?? 7,
+    ),
+    resolveRfiQuestionSuggestionArea: vi.fn(
+      async () => options.suggestionAreaId ?? options.requirement?.areaId ?? 7,
+    ),
     resolveSuggestionRequirementArea: vi.fn(
       async () => options.suggestionAreaId ?? options.requirement?.areaId ?? 7,
     ),

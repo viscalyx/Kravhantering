@@ -26,7 +26,7 @@ import { Link, usePathname, useRouter } from '@/i18n/routing'
 import type { BuildMetadata } from '@/lib/build-metadata'
 import { devMarker } from '@/lib/developer-mode-markers'
 
-type StewardshipTab = 'packages' | 'questions' | 'norms'
+type StewardshipTab = 'packages' | 'questions' | 'norms' | 'rfi'
 
 const STEWARDSHIP_STORAGE_KEY = 'requirements.stewardship.tab'
 
@@ -66,6 +66,11 @@ const stewardshipSubItems = [
     tab: 'questions',
   },
   {
+    icon: HelpCircle,
+    labelKey: 'rfiQuestions',
+    tab: 'rfi',
+  },
+  {
     icon: BookOpen,
     labelKey: 'normLibrary',
     tab: 'norms',
@@ -81,7 +86,10 @@ interface ComponentProps {
 }
 
 function stewardshipTabFromValue(value: string | null): StewardshipTab | null {
-  return value === 'packages' || value === 'questions' || value === 'norms'
+  return value === 'packages' ||
+    value === 'questions' ||
+    value === 'norms' ||
+    value === 'rfi'
     ? value
     : null
 }
