@@ -311,4 +311,88 @@ describe('RFI client UI states', () => {
 
     expect(button).toBeDisabled()
   })
+
+  it('shows the RFI-list lock toggle as an unlocked or locked state', async () => {
+    const unlockedList = {
+      isLocked: false,
+      items: [
+        {
+          areaId: 1,
+          areaName: 'Security',
+          expectedAnswerFormat: 'Free text',
+          helpText: null,
+          isIncluded: true,
+          isVersionStale: false,
+          questionCode: 'SEC-RFI001',
+          questionId: 11,
+          questionText: 'How do you handle logs?',
+          relevance: null,
+          versionNumber: 1,
+        },
+      ],
+      lockedAt: null,
+      lockedByDisplayName: null,
+      specificationId: 5,
+    }
+    const lockedList = {
+      ...unlockedList,
+      isLocked: true,
+      lockedAt: '2026-06-21T10:00:00.000Z',
+    }
+
+    fetchMock.mockImplementation(
+      (url: RequestInfo | URL, init?: RequestInit) => {
+        const href = String(url)
+        if (href === '/api/requirements-specifications/SPEC-1/rfi-list') {
+          return Promise.resolve(okJson({ list: unlockedList }))
+        }
+        if (
+          href === '/api/requirements-specifications/SPEC-1/rfi-list/lock' &&
+          init?.method === 'POST'
+        ) {
+          return Promise.resolve(okJson({ list: lockedList }))
+        }
+        throw new Error(`Unmocked fetch: ${href}`)
+      },
+    )
+    const { default: SpecificationRfiListPanel } = await import(
+      '@/app/[locale]/specifications/[slug]/specification-rfi-list-panel'
+    )
+
+    render(
+      <SpecificationRfiListPanel
+        canEdit
+        specificationId={5}
+        specificationSlug="SPEC-1"
+      />,
+    )
+
+    const unlockedButton = await screen.findByRole('button', {
+      name: 'specificationRfiList.unlocked',
+    })
+    const csvLink = screen.getByRole('link', { name: 'CSV' })
+    const pdfLink = screen.getByRole('link', { name: 'PDF' })
+    for (const exportLink of [csvLink, pdfLink]) {
+      expect(exportLink).toHaveClass('h-11', 'w-11', 'rounded-full')
+      expect(exportLink.querySelector('span')).toHaveClass('sr-only')
+    }
+    expect(csvLink.querySelector('svg')).toHaveClass('lucide-download')
+    expect(pdfLink.querySelector('svg')).toHaveClass('lucide-printer')
+
+    expect(unlockedButton).toHaveAttribute('aria-pressed', 'false')
+    expect(unlockedButton).toHaveAttribute('title', 'specificationRfiList.lock')
+    expect(unlockedButton.className).toContain('bg-primary-700')
+    expect(unlockedButton.querySelector('svg')).not.toBeNull()
+
+    await userEvent.click(unlockedButton)
+
+    const lockedButton = await screen.findByRole('button', {
+      name: 'specificationRfiList.locked',
+    })
+    expect(lockedButton).toHaveAttribute('aria-pressed', 'true')
+    expect(lockedButton).toHaveAttribute('title', 'specificationRfiList.unlock')
+    expect(lockedButton.className).toContain('bg-amber-800')
+    expect(lockedButton.className).toContain('dark:bg-amber-400')
+    expect(lockedButton.querySelector('svg')).not.toBeNull()
+  })
 })

@@ -924,8 +924,10 @@ kravunderlagets RFI-lista utan att listan först behöver låsas.
 **Steg:** I kravunderlagets `RFI-frågelista`, välj bort en fråga, lås listan,
 markera en inkluderad fråga som relevant och exportera CSV och PDF.
 
-**Förväntat resultat:** Scope kan ändras före låsning men inte efter. Relevans
-kan bara sättas efter låsning. Exporterna innehåller exakta
+**Förväntat resultat:** Före låsning visar låsknappen en upplåst ikon och
+texten `Upplåst`. Efter låsning visar den en låsikon, texten `Låst` och en
+tydligt avvikande låst färg. Scope kan ändras före låsning men inte efter.
+Relevans kan bara sättas efter låsning. Exporterna innehåller exakta
 RFI-frågeversioner, scope och relevans.
 
 ### SPEC-15: lås upp RFI-lista och hantera ändrad frågeversion

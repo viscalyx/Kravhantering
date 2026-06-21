@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, FileText, Lock, RotateCcw, Send } from 'lucide-react'
+import { Download, Lock, LockOpen, Printer, Send } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -209,6 +209,16 @@ export default function SpecificationRfiListPanel({
     )
   }
 
+  const lockStateButtonClassName = `inline-flex min-h-11 min-w-11 items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none dark:focus:ring-offset-secondary-950 ${
+    list.isLocked
+      ? 'bg-amber-800 text-white hover:bg-amber-900 focus:ring-amber-500/50 dark:bg-amber-400 dark:text-secondary-950 dark:hover:bg-amber-300 dark:focus:ring-amber-300/60'
+      : 'bg-primary-700 text-white hover:bg-primary-800 focus:ring-primary-400/50 dark:bg-primary-600 dark:hover:bg-primary-700'
+  }`
+  const exportPillClassName =
+    'inline-flex h-11 w-11 items-center justify-center rounded-full border border-secondary-200/80 bg-white/90 text-secondary-500 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-secondary-300 hover:text-secondary-700 hover:shadow-[0_14px_36px_-20px_rgba(15,23,42,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-secondary-700/80 dark:bg-secondary-900/80 dark:text-secondary-300 dark:hover:border-secondary-600 dark:hover:text-secondary-100 dark:focus-visible:ring-offset-secondary-950'
+  const lockStateLabel = list.isLocked ? t('locked') : t('unlocked')
+  const lockStateActionTitle = list.isLocked ? t('unlock') : t('lock')
+
   return (
     <div className="space-y-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -224,32 +234,38 @@ export default function SpecificationRfiListPanel({
         </div>
         <div className="flex flex-wrap gap-2">
           <a
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-secondary-300 px-3 py-1.5 text-sm font-medium text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+            aria-label="CSV"
+            className={exportPillClassName}
             href={`/api/requirements-specifications/${encodedSlug}/rfi-list/export?format=csv&locale=${locale}`}
+            title="CSV"
           >
             <Download aria-hidden="true" className="h-4 w-4" />
-            CSV
+            <span className="sr-only">CSV</span>
           </a>
           <a
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-secondary-300 px-3 py-1.5 text-sm font-medium text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+            aria-label="PDF"
+            className={exportPillClassName}
             href={`/api/requirements-specifications/${encodedSlug}/rfi-list/export?format=pdf&locale=${locale}`}
+            title="PDF"
           >
-            <FileText aria-hidden="true" className="h-4 w-4" />
-            PDF
+            <Printer aria-hidden="true" className="h-4 w-4" />
+            <span className="sr-only">PDF</span>
           </a>
           {canEdit ? (
             <button
-              className="btn-primary inline-flex min-h-10 items-center gap-2"
+              aria-pressed={list.isLocked}
+              className={lockStateButtonClassName}
               disabled={saving}
               onClick={() => void mutateList(list.isLocked ? 'unlock' : 'lock')}
+              title={lockStateActionTitle}
               type="button"
             >
               {list.isLocked ? (
-                <RotateCcw aria-hidden="true" className="h-4 w-4" />
-              ) : (
                 <Lock aria-hidden="true" className="h-4 w-4" />
+              ) : (
+                <LockOpen aria-hidden="true" className="h-4 w-4" />
               )}
-              {list.isLocked ? t('unlock') : t('lock')}
+              {lockStateLabel}
             </button>
           ) : null}
         </div>

@@ -812,8 +812,9 @@ _Avoid_: Kravstatus, kravurvalsfilter, leverantörssvar.
 
 **RFI-frågeförslag**:
 Ett förslag om ny eller ändrad RFI-fråga riktat till ett kravområde, ofta
-skapat från ett kravunderlag. Förslaget är separat från kravbundna
-förbättringsförslag.
+skapat från ett kravunderlag. Förslaget kan gälla en specifik befintlig
+RFI-fråga eller vara riktat till kravområdet utan specifik RFI-fråga.
+Förslaget är separat från kravbundna förbättringsförslag.
 
 - `en`: RFI question suggestion
 

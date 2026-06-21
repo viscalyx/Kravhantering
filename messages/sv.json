@@ -164,6 +164,7 @@
     "included": "Med i RFI",
     "loadError": "Det gick inte att läsa in RFI-frågelistan.",
     "lock": "Lås lista",
+    "locked": "Låst",
     "lockedAt": "Låst {date}",
     "lockedMode": "Låst för export och relevansbedömning",
     "noSpecificQuestion": "Ingen specifik fråga",
@@ -176,7 +177,8 @@
     "suggestionArea": "Kravområde",
     "suggestionContent": "Förslag",
     "suggestionQuestion": "Befintlig RFI-fråga",
-    "unlock": "Lås upp"
+    "unlock": "Lås upp",
+    "unlocked": "Upplåst"
   },
   "rfiQuestions": {
     "active": "Aktiv",

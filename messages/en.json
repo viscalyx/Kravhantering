@@ -164,6 +164,7 @@
     "included": "Included in RFI",
     "loadError": "Could not load the RFI question list.",
     "lock": "Lock list",
+    "locked": "Locked",
     "lockedAt": "Locked {date}",
     "lockedMode": "Locked for export and relevance assessment",
     "noSpecificQuestion": "No specific question",
@@ -176,7 +177,8 @@
     "suggestionArea": "Requirement area",
     "suggestionContent": "Suggestion",
     "suggestionQuestion": "Existing RFI question",
-    "unlock": "Unlock"
+    "unlock": "Unlock",
+    "unlocked": "Unlocked"
   },
   "rfiQuestions": {
     "active": "Active",
