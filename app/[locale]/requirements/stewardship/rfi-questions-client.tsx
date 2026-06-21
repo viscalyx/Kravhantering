@@ -103,7 +103,12 @@ export default function RfiQuestionsClient() {
   }, [t])
 
   const loadAreaData = useCallback(async () => {
-    if (!areaId) return
+    if (!areaId) {
+      setQuestions([])
+      setSuggestions([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     try {

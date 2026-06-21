@@ -12,24 +12,57 @@ import {
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { parseRouteParams } from '@/lib/http/validation'
+import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+import { authorize } from '@/lib/requirements/service-shared'
 import { rfiQuestionParamsSchema, rfiQuestionUpdateSchema } from '../_schemas'
 
 type Params = Promise<{ id: string }>
 type RfiQuestionParams = z.infer<typeof rfiQuestionParamsSchema>
 type RfiQuestionUpdateBody = z.infer<typeof rfiQuestionUpdateSchema>
 
+function errorResponse(error: unknown) {
+  const { body, status } = toHttpErrorPayload(error)
+  return NextResponse.json(body, { status })
+}
+
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, rfiQuestionParamsSchema)
   if (!parsedParams.ok) return parsedParams.response
-  const db = await getRequestSqlServerDataSource()
-  const question = await getRfiQuestion(db, parsedParams.data.id)
-  if (!question)
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json({ question })
+  const runtime = await createRequirementsRestRuntime(request)
+  try {
+    const question = await getRfiQuestion(runtime.db, parsedParams.data.id)
+    if (!question)
+      return applyResponseCorrelationHeaders(
+        NextResponse.json({ error: 'Not found' }, { status: 404 }),
+        runtime.context,
+      )
+
+    await authorize(
+      runtime.authorization,
+      {
+        areaId: question.areaId,
+        kind: 'manage_rfi_question',
+        operation: 'read',
+      },
+      runtime.context,
+    )
+
+    return applyResponseCorrelationHeaders(
+      NextResponse.json({ question }),
+      runtime.context,
+    )
+  } catch (error) {
+    return applyResponseCorrelationHeaders(
+      errorResponse(error),
+      runtime.context,
+    )
+  }
 }
 
 const questionPolicy = <TBody>(operation: string) =>

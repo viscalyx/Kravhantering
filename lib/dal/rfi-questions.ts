@@ -1066,19 +1066,35 @@ export async function updateSpecificationRfiQuestionItem(
     if (header.isLocked) {
       const itemRows = (await manager.query(
         `
-          SELECT TOP (1) rfi_question_version_id AS versionId
+          SELECT TOP (1)
+            is_included AS isIncluded,
+            rfi_question_version_id AS versionId
           FROM specification_rfi_question_items
           WHERE specification_id = @0
             AND rfi_question_id = @1
         `,
         [specificationId, questionId],
-      )) as Array<{ versionId: number }>
+      )) as Array<{ isIncluded: boolean | number; versionId: number }>
       if (!itemRows[0]) {
         throw validationError('RFI question is not part of the locked list', {
           questionId,
           reason: 'rfi_question_not_locked',
           specificationId,
         })
+      }
+      if (
+        data.relevance !== undefined &&
+        itemRows[0].isIncluded !== true &&
+        itemRows[0].isIncluded !== 1
+      ) {
+        throw validationError(
+          'Excluded RFI questions cannot have relevance updated in locked mode',
+          {
+            questionId,
+            reason: 'rfi_question_excluded_from_locked_list',
+            specificationId,
+          },
+        )
       }
     }
 

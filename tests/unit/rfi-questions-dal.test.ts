@@ -409,6 +409,46 @@ describe('RFI questions DAL', () => {
     ).toBe(false)
   })
 
+  it('does not allow relevance for an excluded question in a locked list', async () => {
+    const { db, managerQuery } = createTransactionalDb({
+      managerResponses: [
+        [],
+        [
+          {
+            isLocked: 1,
+            lockedAt: '2026-06-20T09:00:00.000Z',
+            lockedByDisplayName: actor.displayName,
+            lockedByHsaId: actor.hsaId,
+            specificationId: 4,
+          },
+        ],
+        [],
+        [{ isIncluded: 0, versionId: 34 }],
+      ],
+      queryResponses: [],
+    })
+
+    await expect(
+      updateSpecificationRfiQuestionItem(
+        db as unknown as Parameters<
+          typeof updateSpecificationRfiQuestionItem
+        >[0],
+        4,
+        12,
+        { relevance: 'not_relevant' },
+        actor,
+      ),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'rfi_question_excluded_from_locked_list' },
+    })
+    expect(
+      managerQuery.mock.calls.some(([sql]) =>
+        String(sql).includes('MERGE specification_rfi_question_items'),
+      ),
+    ).toBe(false)
+  })
+
   it('creates RFI question suggestions with a minimal specification source snapshot', async () => {
     const query = createQuery([
       [{ id: 2 }],

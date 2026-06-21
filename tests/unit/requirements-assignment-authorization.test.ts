@@ -589,6 +589,36 @@ describe('AssignmentBasedAuthorizationService', () => {
     })
   })
 
+  it('requires both specification and area authorship when creating an RFI question suggestion with both targets', async () => {
+    const { lookup, service } = makeService({
+      areaAuthor: false,
+      specAuthor: true,
+      specificationId: 42,
+    })
+
+    await expect(
+      service.assertAuthorized(
+        {
+          areaId: 7,
+          kind: 'manage_rfi_question_suggestion',
+          operation: 'create',
+          specificationId: 42,
+        },
+        makeContext([]),
+      ),
+    ).rejects.toMatchObject({
+      details: { reason: 'requirement_area_author_required' },
+    })
+    expect(lookup.isSpecificationAuthor).toHaveBeenCalledWith(
+      42,
+      'SE5560000001-user1',
+    )
+    expect(lookup.isRequirementAreaAuthor).toHaveBeenCalledWith(
+      7,
+      'SE5560000001-user1',
+    )
+  })
+
   it('authorizes AI generation by Admin, requirement-area scope, or specification scope', async () => {
     const admin = makeService()
     await expect(

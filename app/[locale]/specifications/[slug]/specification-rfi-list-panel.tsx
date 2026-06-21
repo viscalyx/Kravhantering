@@ -316,7 +316,7 @@ export default function SpecificationRfiListPanel({
           </label>
           <button
             className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-secondary-300 px-3 py-1.5 text-sm font-medium text-secondary-700 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-            disabled={saving || !suggestionContent.trim()}
+            disabled={saving || !suggestionAreaId || !suggestionContent.trim()}
             type="submit"
           >
             <Send aria-hidden="true" className="h-4 w-4" />

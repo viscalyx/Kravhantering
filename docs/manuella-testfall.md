@@ -938,6 +938,25 @@ markera förslaget som hanterat eller avfärdat med motivering.
 inte med hela kravunderlaget. Hantering kräver beslutsmotivering och tar bort
 förslaget från öppna förslag.
 
+### SPEC-16a: RFI-frågeförslag kräver valt kravområde
+
+**Steg:** Öppna ett kravunderlag vars RFI-lista saknar kravområden för
+förslag. Skriv text i fältet för RFI-frågeförslag.
+
+**Förväntat resultat:** Skicka-knappen är fortsatt inaktiverad när inget
+kravområde är valt. Klick leder inte till en tyst no-op.
+
+### SPEC-16b: RFI-frågeförslag kontrollerar både kravunderlag och kravområde
+
+**Steg:** Logga in som kravunderlagsansvarig utan författarbehörighet i ett
+annat kravområde. Kör API-kontroll med `scripts/dev-curl.sh` för att skapa ett
+RFI-frågeförslag där kroppen innehåller både användarens kravunderlag och det
+otillåtna kravområdet.
+
+**Förväntat resultat:** API:t svarar 403. Förslag skapas bara när användaren
+har behörighet både till kravunderlaget och till kravområdet som ska ta emot
+förslaget.
+
 ## Avsteg
 
 ### DEV-01: skapa avstegsutkast

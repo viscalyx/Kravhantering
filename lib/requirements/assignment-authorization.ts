@@ -692,7 +692,6 @@ export class AssignmentBasedAuthorizationService
       if (action.specificationId != null || action.specificationSlug) {
         const specificationId = await this.lookup.resolveSpecificationId(action)
         await this.assertSpecificationAuthor(context, specificationId)
-        return
       }
       if (action.areaId != null) {
         await this.assertAreaAuthor(context, action.areaId)
