@@ -1028,8 +1028,8 @@ Uppslagstabeller för krav och kravunderlag lagrar
 användarsynliga texter i separata kolumner per språk:
 `name_sv` och `name_en`. Applikationen väljer rätt
 kolumn baserat på aktivt locale vid frågetillfället.
-Kravpaket är ett undantag eftersom de numera är författat innehåll
-med ett språkneutralt `name` och `description`.
+Kravpaket är författat innehåll med ett språkneutralt
+`name` och `description`.
 Normreferenser är också språkneutrala eftersom de beskriver externa
 normkällor med egna officiella namn, beteckningar och utfärdare.
 
@@ -1199,8 +1199,7 @@ auktoriseringstjänsten.
 - **Gemensamt kantskydd** — inkommande förfrågningar
   får språkstyrning, CSP, inloggningskrav för
   webbsidor, `401` för otillåtna API-anrop och
-  rensning av äldre användarrelaterade headers när
-  autentisering är aktiv.
+  rensning av `x-user-id` och `x-user-roles`.
 
 ### Mållägesriktning för behörighetsstyrning
 
@@ -1487,10 +1486,9 @@ informationssäkerhetsåtgärder i nuvarande version:
 - **CSRF-skydd för cookie-baserade mutationer** —
   muterande anrop måste vara same-origin och bära
   `X-Requested-With: XMLHttpRequest`.
-- **Header-härdning** — applikationen rensar äldre
-  användarrelaterade headers vid kanten. Den tidigare
-  modellen där sådana headers kunde bära identitet är
-  avlägsnad.
+- **Header-härdning** — applikationens edge middleware
+  rensar `x-user-id` och `x-user-roles` och accepterar
+  inte identitet från inkommande headers.
 - **Avvisning av ogiltiga sessioner** — Trasiga eller
   manipulerade sessionscookies leder till att
   förfrågan behandlas som utloggad och loggas som

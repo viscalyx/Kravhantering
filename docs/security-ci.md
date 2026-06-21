@@ -493,13 +493,12 @@ The supported browser baseline is modern Chrome, Edge, Firefox, Safari, and
 current platform WebViews. IE and pre-CSP2 browser engines are unsupported, so
 CSP `frame-ancestors` is the clickjacking control.
 
-> **Filename note.** Next.js 16 renamed the entry-gate convention to
-> `proxy.ts`, but Next 16.2.4 emits the chunk for `proxy.ts` without
-> registering it in `.next/server/middleware-manifest.json`, so the
-> matcher never runs at runtime. Renaming the file back to
-> `middleware.ts` (the still-supported legacy name) populates the
-> manifest and restores execution. Revisit when a future Next release
-> fixes `proxy.ts` registration; the file content is identical.
+> **Filename note.** This app keeps the entry gate in `middleware.ts`.
+> Next 16.2.4 accepts the `proxy.ts` convention, but emits the chunk
+> without registering it in `.next/server/middleware-manifest.json`,
+> so the matcher does not run at runtime. `middleware.ts` is the
+> supported filename for this app until `proxy.ts` registration works in
+> the tested Next.js version; the file content is otherwise identical.
 
 Current static headers and rationale:
 

@@ -203,7 +203,7 @@ The behaviors below apply to the requirement list rendered by:
 - Column widths are persisted in `localStorage`.
 - The width storage key is versioned.
   When the resize model changes materially, bump the storage key version to
-  avoid reusing incompatible old width data.
+  keep incompatible persisted width data isolated.
 - On initial page load and hard refresh, the list stays in a card-level loading
   state until both the persisted width model is hydrated and the first rows
   request resolves.
@@ -413,7 +413,7 @@ down.
   **Användningsstatus** is **Inkluderad** and there is no pending deviation
   draft or review request. Otherwise the buttons stay disabled and expose a
   tooltip explaining why the action is blocked, while the controls are also
-  visually muted so they no longer read as active actions.
+  visually muted so they read as inactive actions.
 - The same specification-local action rail may show **Graduate to library** when
   the actor owns or co-authors at least one requirement area. The action is
   available regardless of **Användningsstatus**. Opening the action shows a
@@ -458,8 +458,8 @@ down.
 - Both routes authorize read access to the specification before report data is
   collected.
 - Report data uses the requirement version linked to each specification item,
-  so a report does not silently move to a newer requirement version after the
-  item was added.
+  so reports remain pinned to the linked version even when a newer requirement
+  version exists.
 - The export dropdown always shows `Full CSV-export`.
 - The export dropdown also shows `Anbuds-CSV` only for lifecycle status
   `Upphandling`.

@@ -11,10 +11,10 @@ the configured issuer (Keycloak in dev and the local-prod target — both
 point at the local Keycloak at `http://localhost:8080` — and the real
 OIDC provider in deployed environments). Identity is derived only from
 the verified iron-session cookie (browser flow) or a verified
-`Authorization: Bearer` JWT (MCP flow); the app no longer accepts
-`x-user-id` / `x-user-roles` request headers as a stand-in for a
-logged-in user, and `middleware.ts` strips both headers from every inbound
-request before any handler runs.
+`Authorization: Bearer` JWT (MCP flow). `x-user-id` and
+`x-user-roles` request headers are not identity sources, and
+`middleware.ts` strips both headers from every inbound request before
+any handler runs.
 
 If the dev server cannot reach the IdP, requests fail loudly instead of
 falling back to an unauthenticated mode. Bring up Keycloak first with
@@ -214,8 +214,9 @@ The compose file does not mount a Keycloak data volume, so recreation
 is non-destructive (the JSON is the source of truth). Wait ~30 s for
 Keycloak to finish booting before signing in.
 
-Existing application sessions still contain the old role claims. After a
-realm reset, log out and sign in again, or force-refresh helper cookies:
+Application sessions contain the role claims from the sign-in that created the
+cookie. After a realm reset, log out and sign in again, or force-refresh helper
+cookies:
 
 <!-- markdownlint-disable MD013 -->
 ```sh
