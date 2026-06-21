@@ -131,6 +131,13 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: [
+          {
+            key: 'X-Frame-Options',
+            // CSP frame-ancestors is the primary clickjacking control for
+            // page responses, but middleware intentionally skips dotted paths
+            // such as asset probes. Keep this static fallback on every route.
+            value: 'DENY',
+          },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           {
             key: 'Strict-Transport-Security',

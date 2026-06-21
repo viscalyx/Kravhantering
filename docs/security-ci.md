@@ -491,7 +491,10 @@ every route. CSP is intentionally **not** set there — it carries a
 per-request nonce and is set in [middleware.ts](../middleware.ts) instead.
 The supported browser baseline is modern Chrome, Edge, Firefox, Safari, and
 current platform WebViews. IE and pre-CSP2 browser engines are unsupported, so
-CSP `frame-ancestors` is the clickjacking control.
+CSP `frame-ancestors` is the primary clickjacking control for page responses.
+`X-Frame-Options` remains as a static fallback because the middleware matcher
+intentionally skips dotted paths such as asset probes, while static headers
+still apply to those responses.
 
 > **Filename note.** This app keeps the entry gate in `middleware.ts`.
 > Next 16.2.4 accepts the `proxy.ts` convention, but emits the chunk
@@ -502,6 +505,9 @@ CSP `frame-ancestors` is the clickjacking control.
 
 Current static headers and rationale:
 
+- `X-Frame-Options: DENY` — static clickjacking fallback for responses that
+  do not pass through middleware and therefore do not receive the nonce-based
+  CSP header.
 - `X-Content-Type-Options: nosniff` — disable MIME sniffing.
 - `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
   — applied in production; the prodlike CI runner serves over plain

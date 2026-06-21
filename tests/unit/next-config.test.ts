@@ -189,7 +189,7 @@ describe('next.config container output', () => {
 })
 
 describe('next.config static security headers', () => {
-  it('relies on CSP frame-ancestors instead of X-Frame-Options', async () => {
+  it('keeps X-Frame-Options as a static fallback while CSP stays nonce-based', async () => {
     const config = await loadNextConfig({
       BUILD_TARGET: 'prod',
       NODE_ENV: 'production',
@@ -197,7 +197,7 @@ describe('next.config static security headers', () => {
 
     const headerKeys = await getStaticHeaderKeys(config)
 
-    expect(headerKeys).not.toContain('X-Frame-Options')
+    expect(headerKeys).toContain('X-Frame-Options')
     expect(headerKeys).not.toContain('Content-Security-Policy')
   })
 })
