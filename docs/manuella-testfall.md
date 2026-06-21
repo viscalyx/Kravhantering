@@ -533,11 +533,12 @@ kolumnen igen.
 
 **Förväntat resultat:** Kolumnen ändrar bredd utan att tabellen blir oanvändbar.
 
-### REQ-08: sticky header och flytande verktyg är användbara
+### REQ-08: sticky tabellrubrik och flytande verktyg är användbara
 
 **Steg:** Scrolla kravbiblioteket och använd den flytande åtgärdsytan.
 
-**Förväntat resultat:** Header och åtgärder ligger kvar på ett läsbart sätt.
+**Förväntat resultat:** Tabellrubrik och åtgärder ligger kvar på ett läsbart
+sätt.
 
 ### REQ-09: innehållsordning i inline-detalj
 

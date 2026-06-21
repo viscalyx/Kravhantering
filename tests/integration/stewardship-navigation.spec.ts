@@ -12,9 +12,6 @@ test.describe('Stewardship navigation memory', () => {
         localStorage.removeItem('requirements.stewardship.tab'),
       )
 
-      await page
-        .getByRole('button', { name: 'Kravbiblioteksförvaltning' })
-        .click()
       await page.getByRole('link', { name: 'Kravurvalsfrågor' }).click()
 
       await expect(
@@ -37,7 +34,7 @@ test.describe('Stewardship navigation memory', () => {
       ).toBeVisible()
     })
 
-    await test.step('return through the stewardship parent without a package flash', async () => {
+    await test.step('return through the direct stewardship link without a package flash', async () => {
       await page.evaluate(() => {
         const win = window as typeof window & {
           __stewardshipHeadingLog?: string[]
@@ -59,14 +56,7 @@ test.describe('Stewardship navigation memory', () => {
         })
       })
 
-      await page
-        .getByRole('button', { name: 'Kravbiblioteksförvaltning' })
-        .click()
-      await expect(
-        page.locator(
-          '[data-developer-mode-name="transition mask"][data-developer-mode-value="stewardship"]',
-        ),
-      ).toHaveCount(0, { timeout: 2000 })
+      await page.getByRole('link', { name: 'Kravurvalsfrågor' }).click()
 
       await expect(page).toHaveURL(
         /\/sv\/requirements\/stewardship\?tab=questions/,
@@ -94,9 +84,6 @@ test.describe('Stewardship navigation memory', () => {
       localStorage.removeItem('requirements.stewardship.tab'),
     )
 
-    await page
-      .getByRole('button', { name: 'Kravbiblioteksförvaltning' })
-      .click()
     await page.getByRole('link', { name: 'Normbibliotek' }).click()
 
     await expect(page).toHaveURL(/\/sv\/requirements\/stewardship\?tab=norms/)

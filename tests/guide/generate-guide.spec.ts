@@ -643,12 +643,12 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await guideStep(page, 'Navigationsfält', async () => {
+    await guideStep(page, 'Sidnavigering', async () => {
       await snap(
         page,
         'navigering',
-        'Navigationsfält',
-        'Det övre navigationsfältet ger åtkomst till alla huvuddelar: **Kravbiblioteket**, **Kravbiblioteksförvaltning**, **Kravunderlag**, **Admininställningar** (kugghjulsikonen) samt language-väljare och tema (ljust/mörkt läge).',
+        'Sidnavigering',
+        'Sidnavigeringen ger åtkomst till huvuddelarna: **Kravbiblioteket**, **Kravunderlag**, verktygen i **Kravbiblioteksförvaltning**, **Admininställningar**, språkväljare och tema (ljust/mörkt läge).',
         { selector: 'nav[aria-label="Huvudnavigation"]' },
       )
     })

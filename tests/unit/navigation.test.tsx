@@ -1,6 +1,13 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Navigation from '@/components/Navigation'
+import { GLOBAL_NAVIGATION_LAYOUT_EVENT } from '@/lib/navigation-layout-events'
 
 const pathnameState = vi.hoisted(() => ({
   value: '/requirements',
@@ -10,9 +17,19 @@ const searchParamsState = vi.hoisted(() => ({
   value: new URLSearchParams(),
 }))
 
-const routerState = vi.hoisted(() => ({
-  push: vi.fn(),
-  replace: vi.fn(),
+const authState = vi.hoisted(() => ({
+  value: {
+    authenticated: true,
+    roles: [] as string[],
+  },
+}))
+
+const areasState = vi.hoisted(() => ({
+  value: {
+    areas: [] as Array<{
+      permissions?: { canManageAssignments?: boolean }
+    }>,
+  },
 }))
 
 const helpState = vi.hoisted(() => ({
@@ -22,6 +39,13 @@ const helpState = vi.hoisted(() => ({
     toggle: vi.fn(),
   },
 }))
+
+function okJson(value: unknown) {
+  return {
+    json: vi.fn(async () => value),
+    ok: true,
+  } as unknown as Response
+}
 
 vi.mock('next-intl', () => ({
   useTranslations:
@@ -44,11 +68,13 @@ vi.mock('@/i18n/routing', () => ({
     </a>
   ),
   usePathname: () => pathnameState.value,
-  useRouter: () => routerState,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
 
 vi.mock('@/components/LanguageSwitcher', () => ({
-  default: () => <div data-testid="language-switcher" />,
+  default: ({ expanded }: { expanded?: boolean }) => (
+    <div data-expanded={String(expanded)} data-testid="language-switcher" />
+  ),
 }))
 
 vi.mock('@/components/Logo', () => ({
@@ -56,12 +82,23 @@ vi.mock('@/components/Logo', () => ({
 }))
 
 vi.mock('@/components/ThemeToggle', () => ({
-  default: () => <div data-testid="theme-toggle" />,
+  default: ({ expanded }: { expanded?: boolean }) => (
+    <div data-expanded={String(expanded)} data-testid="theme-toggle" />
+  ),
 }))
 
 vi.mock('@/components/AuthMenu', () => ({
-  default: ({ variant }: { variant: 'desktop' | 'mobile' }) => (
-    <div data-testid={`auth-menu-${variant}`} />
+  default: ({
+    expanded,
+    variant,
+  }: {
+    expanded?: boolean
+    variant: 'desktop' | 'mobile' | 'rail'
+  }) => (
+    <div
+      data-expanded={String(expanded)}
+      data-testid={`auth-menu-${variant}`}
+    />
   ),
 }))
 
@@ -73,14 +110,31 @@ describe('Navigation', () => {
   beforeEach(() => {
     pathnameState.value = '/requirements'
     searchParamsState.value = new URLSearchParams()
-    routerState.push.mockClear()
-    routerState.replace.mockClear()
+    authState.value = { authenticated: true, roles: [] }
+    areasState.value = { areas: [] }
     localStorage.clear()
+    document.documentElement.style.removeProperty('--global-nav-width')
     helpState.value = {
       content: null,
       isOpen: false,
       toggle: vi.fn(),
     }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url =
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url
+        if (url.includes('/api/auth/me')) return okJson(authState.value)
+        if (url.includes('/api/requirement-areas')) {
+          return okJson(areasState.value)
+        }
+        throw new Error(`Unexpected fetch ${url}`)
+      }),
+    )
   })
 
   it('exposes build version on the app title tooltip', () => {
@@ -109,36 +163,60 @@ describe('Navigation', () => {
     expect(appTitle).toHaveAttribute('data-developer-mode-value', 'app title')
   })
 
-  it('shows global settings and opens default stewardship from desktop', () => {
+  it('starts collapsed and persists the expanded rail state', async () => {
+    const layoutListener = vi.fn()
+    window.addEventListener(GLOBAL_NAVIGATION_LAYOUT_EVENT, layoutListener)
+
+    render(<Navigation />)
+    layoutListener.mockClear()
+
+    const navigation = screen.getByRole('navigation', {
+      name: 'Huvudnavigation',
+    })
+    expect(navigation).toHaveStyle({ width: '4.5rem' })
+    expect(
+      screen.getByRole('button', { name: 'nav.expandRail' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('common.appName')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'nav.expandRail' }))
+
+    expect(navigation).toHaveStyle({ width: '18rem' })
+    expect(
+      screen.getByRole('button', { name: 'nav.collapseRail' }),
+    ).toBeInTheDocument()
+    expect(
+      localStorage.getItem('requirements.navigationRail.expanded.v1'),
+    ).toBe('expanded')
+    await waitFor(() => expect(layoutListener).toHaveBeenCalledOnce())
+    await waitFor(() =>
+      expect(
+        document.documentElement.style.getPropertyValue('--global-nav-width'),
+      ).toBe('18rem'),
+    )
+    expect(screen.getByText('common.appName')).toBeInTheDocument()
+    window.removeEventListener(GLOBAL_NAVIGATION_LAYOUT_EVENT, layoutListener)
+  })
+
+  it('does not render a duplicate collapsed divider below the rail header', () => {
     render(<Navigation />)
 
-    const settingsLink = screen.getByRole('link', { name: 'admin.settings' })
-    const stewardshipButton = screen.getByRole('button', {
+    const workSection = screen.getByRole('region', { name: 'nav.work' })
+    const stewardshipSection = screen.getByRole('region', {
       name: 'nav.stewardship',
     })
-    const stewardshipSurface = stewardshipButton.closest(
-      '[data-developer-mode-name="stewardship submenu"]',
-    )
 
-    expect(settingsLink).toHaveAttribute('href', '/admin')
-    expect(settingsLink.className).toContain('min-h-11')
-    expect(settingsLink.className).toContain('min-w-11')
-    expect(screen.queryByText('nav.taxonomy')).toBeNull()
-    expect(screen.queryByRole('link', { name: 'nav.areas' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'nav.catalog' })).toHaveAttribute(
-      'href',
-      '/requirements',
-    )
-    expect(stewardshipButton).toHaveAttribute('aria-expanded', 'false')
-    expect(stewardshipSurface).not.toHaveClass('stewardship-nav-stepped-shell')
-    expect(screen.queryByRole('link', { name: 'nav.stewardship' })).toBeNull()
-    fireEvent.click(stewardshipButton)
-    expect(routerState.push).toHaveBeenCalledWith(
-      '/requirements/stewardship?tab=packages',
-    )
-    expect(stewardshipButton).toHaveAttribute('aria-expanded', 'true')
-    expect(stewardshipSurface).toHaveClass('stewardship-nav-stepped-shell')
-    expect(stewardshipButton).toHaveClass('stewardship-nav-parent-shell')
+    expect(
+      within(workSection).queryByTestId('navigation-group-divider'),
+    ).toBeNull()
+    expect(
+      within(stewardshipSection).getByTestId('navigation-group-divider'),
+    ).toBeInTheDocument()
+  })
+
+  it('renders direct stewardship links and remembers the selected tab', () => {
+    render(<Navigation />)
+
     expect(
       screen.getByRole('link', { name: 'nav.requirementPackages' }),
     ).toHaveAttribute('href', '/requirements/stewardship?tab=packages')
@@ -146,217 +224,98 @@ describe('Navigation', () => {
       screen.getByRole('link', { name: 'nav.requirementSelectionQuestions' }),
     ).toHaveAttribute('href', '/requirements/stewardship?tab=questions')
     expect(
+      screen.getByRole('link', { name: 'nav.rfiQuestions' }),
+    ).toHaveAttribute('href', '/requirements/stewardship?tab=rfi')
+    expect(
       screen.getByRole('link', { name: 'nav.normLibrary' }),
     ).toHaveAttribute('href', '/requirements/stewardship?tab=norms')
-    expect(
-      screen.getByRole('link', { name: 'nav.specifications' }),
-    ).toHaveAttribute('href', '/specifications')
+    expect(screen.queryByRole('button', { name: 'nav.stewardship' })).toBeNull()
+
+    fireEvent.click(
+      screen.getByRole('link', {
+        name: 'nav.requirementSelectionQuestions',
+      }),
+    )
+
+    expect(localStorage.getItem('requirements.stewardship.tab')).toBe(
+      'questions',
+    )
   })
 
-  it('uses distinct navigation icons for the library, stewardship, and packages', () => {
+  it('marks the active flattened stewardship item', () => {
+    pathnameState.value = '/requirements/stewardship'
+    searchParamsState.value = new URLSearchParams('tab=rfi')
+
     render(<Navigation />)
 
-    const catalogLink = screen.getByRole('link', { name: 'nav.catalog' })
-    const stewardshipButton = screen.getByRole('button', {
-      name: 'nav.stewardship',
-    })
-
-    expect(catalogLink.querySelector('.lucide-library-big')).toBeInTheDocument()
     expect(
-      stewardshipButton.querySelector('.lucide-folder-cog'),
-    ).toBeInTheDocument()
-
-    fireEvent.click(stewardshipButton)
-
-    const packageLink = screen.getByRole('link', {
-      name: 'nav.requirementPackages',
-    })
-
-    expect(packageLink.querySelector('.lucide-package')).toBeInTheDocument()
+      screen.getByRole('link', { name: 'nav.rfiQuestions' }),
+    ).toHaveAttribute('aria-current', 'page')
     expect(
-      screen
-        .getByRole('link', { name: 'nav.normLibrary' })
-        .querySelector('.lucide-book-open'),
-    ).toBeInTheDocument()
+      screen.getByRole('link', { name: 'nav.requirementPackages' }),
+    ).not.toHaveAttribute('aria-current')
   })
 
-  it('opens the remembered stewardship tab from desktop', async () => {
-    vi.useFakeTimers()
-    localStorage.setItem('requirements.stewardship.tab', 'questions')
+  it('shows requirement areas for admins even when no areas exist', async () => {
+    authState.value = { authenticated: true, roles: ['Admin'] }
 
-    try {
-      const { rerender } = render(<Navigation />)
+    render(<Navigation />)
 
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'nav.stewardship',
-        }),
-      )
+    expect(
+      await screen.findByRole('link', { name: 'nav.areas' }),
+    ).toHaveAttribute('href', '/requirement-areas')
+  })
 
-      expect(routerState.push).toHaveBeenCalledWith(
-        '/requirements/stewardship?tab=questions',
-      )
-      expect(
-        screen.getByRole('link', { name: 'nav.requirementSelectionQuestions' })
-          .className,
-      ).toContain('bg-primary-50')
-      expect(
-        screen.getByRole('link', { name: 'nav.requirementPackages' }).className,
-      ).not.toContain('bg-primary-50')
-      expect(screen.queryByRole('status')).toBeNull()
-
-      await act(async () => {
-        vi.advanceTimersByTime(1999)
-      })
-      expect(screen.queryByRole('status')).toBeNull()
-
-      await act(async () => {
-        vi.advanceTimersByTime(1)
-      })
-      expect(screen.getByRole('status')).toHaveTextContent('common.loading')
-      expect(screen.getByRole('status').parentElement).toHaveAttribute(
-        'data-developer-mode-value',
-        'stewardship',
-      )
-
-      pathnameState.value = '/requirements/stewardship'
-      searchParamsState.value = new URLSearchParams('tab=questions')
-      await act(async () => {
-        rerender(<Navigation />)
-      })
-
-      expect(screen.queryByRole('status')).toBeNull()
-    } finally {
-      vi.useRealTimers()
+  it('shows requirement areas for area owners', async () => {
+    areasState.value = {
+      areas: [{ permissions: { canManageAssignments: true } }],
     }
-  })
 
-  it('closes desktop stewardship subnavigation when sibling primary links are selected', () => {
     render(<Navigation />)
 
-    const stewardshipButton = screen.getByRole('button', {
-      name: 'nav.stewardship',
-    })
-
-    fireEvent.click(stewardshipButton)
     expect(
-      screen.getByRole('link', { name: 'nav.requirementPackages' }),
-    ).toHaveAttribute('href', '/requirements/stewardship?tab=packages')
-
-    fireEvent.click(screen.getByRole('link', { name: 'nav.specifications' }))
-
-    expect(stewardshipButton).toHaveAttribute('aria-expanded', 'false')
-    expect(
-      screen.queryByRole('link', { name: 'nav.requirementPackages' }),
-    ).toBeNull()
-
-    fireEvent.click(stewardshipButton)
-    expect(
-      screen.getByRole('link', { name: 'nav.requirementPackages' }),
-    ).toHaveAttribute('href', '/requirements/stewardship?tab=packages')
-
-    fireEvent.click(screen.getByRole('link', { name: 'nav.catalog' }))
-
-    expect(stewardshipButton).toHaveAttribute('aria-expanded', 'false')
-    expect(
-      screen.queryByRole('link', { name: 'nav.requirementPackages' }),
-    ).toBeNull()
+      await screen.findByRole('link', { name: 'nav.areas' }),
+    ).toHaveAttribute('href', '/requirement-areas')
   })
 
-  it('keeps mobile navigation limited to the primary items', () => {
+  it('hides requirement areas for non-owner non-admin users', async () => {
+    areasState.value = {
+      areas: [{ permissions: { canManageAssignments: false } }],
+    }
+
+    render(<Navigation />)
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    expect(screen.queryByRole('link', { name: 'nav.areas' })).toBeNull()
+  })
+
+  it('opens the mobile drawer with expanded navigation items', () => {
     render(<Navigation />)
 
     fireEvent.click(screen.getByRole('button', { name: 'nav.openMenu' }))
 
+    const dialog = screen.getByRole('dialog', { name: 'nav.mainMenu' })
     expect(
-      screen
-        .getAllByRole('link', { name: 'nav.catalog' })
-        .map(link => link.getAttribute('href')),
-    ).toContain('/requirements')
+      within(dialog).getByRole('link', { name: 'nav.catalog' }),
+    ).toHaveAttribute('href', '/requirements')
     expect(
-      screen
-        .getAllByRole('link', { name: 'nav.specifications' })
-        .map(link => link.getAttribute('href')),
-    ).toContain('/specifications')
-    const stewardshipButtons = screen.getAllByRole('button', {
-      name: 'nav.stewardship',
-    })
-    fireEvent.click(stewardshipButtons[stewardshipButtons.length - 1])
-    expect(
-      screen
-        .getAllByRole('link', { name: 'nav.requirementPackages' })
-        .map(link => link.getAttribute('href')),
-    ).toContain('/requirements/stewardship?tab=packages')
-    expect(
-      screen
-        .getAllByRole('link', { name: 'nav.requirementSelectionQuestions' })
-        .map(link => link.getAttribute('href')),
-    ).toContain('/requirements/stewardship?tab=questions')
-    expect(
-      screen
-        .getAllByRole('link', { name: 'nav.normLibrary' })
-        .map(link => link.getAttribute('href')),
-    ).toContain('/requirements/stewardship?tab=norms')
-    expect(screen.queryByRole('link', { name: 'nav.stewardship' })).toBeNull()
-    expect(screen.queryByRole('link', { name: 'nav.areas' })).toBeNull()
-    expect(screen.queryByText('nav.referenceData')).toBeNull()
-  })
-
-  it('keeps stewardship subnavigation expanded on the stewardship route', () => {
-    pathnameState.value = '/requirements/stewardship'
-    searchParamsState.value = new URLSearchParams('tab=questions')
-
-    render(<Navigation />)
-
-    const stewardshipButton = screen.getByRole('button', {
-      name: 'nav.stewardship',
-    })
-    expect(stewardshipButton).toHaveAttribute('aria-expanded', 'true')
-    expect(
-      screen.getByRole('link', { name: 'nav.requirementSelectionQuestions' }),
-    ).toHaveAttribute('aria-current', 'page')
-
-    fireEvent.click(stewardshipButton)
-
-    expect(stewardshipButton).toHaveAttribute('aria-expanded', 'false')
-    expect(
-      screen.queryByRole('link', { name: 'nav.requirementSelectionQuestions' }),
-    ).toBeNull()
-  })
-
-  it.each([
-    ['packages', 'nav.requirementPackages'],
-    ['questions', 'nav.requirementSelectionQuestions'],
-    ['norms', 'nav.normLibrary'],
-  ])('uses the stepped shell and primary selected background for desktop stewardship %s navigation', (tab, label) => {
-    pathnameState.value = '/requirements/stewardship'
-    searchParamsState.value = new URLSearchParams(`tab=${tab}`)
-
-    render(<Navigation />)
-
-    const stewardshipButton = screen.getByRole('button', {
-      name: 'nav.stewardship',
-    })
-    const stewardshipTab = screen.getByRole('link', { name: label })
-    const stewardshipShell = stewardshipButton.closest(
-      '[data-developer-mode-name="stewardship submenu"]',
+      within(dialog).getByRole('link', { name: 'nav.specifications' }),
+    ).toHaveAttribute('href', '/specifications')
+    expect(within(dialog).getByTestId('language-switcher')).toHaveAttribute(
+      'data-expanded',
+      'true',
     )
-    const stewardshipSubmenu = stewardshipTab.closest(
-      '.stewardship-nav-submenu-shell',
-    )
+    expect(within(dialog).getByTestId('auth-menu-mobile')).toBeInTheDocument()
 
-    expect(stewardshipShell).toHaveClass('stewardship-nav-stepped-shell')
-    expect(stewardshipButton).toHaveClass('stewardship-nav-parent-shell')
-    expect(stewardshipSubmenu).toBeInTheDocument()
-    expect(stewardshipSubmenu?.className).not.toContain('shadow-inner')
-    expect(stewardshipButton.className).toContain('bg-primary-50')
-    expect(stewardshipButton.className).not.toContain('bg-white')
-    expect(stewardshipTab).toHaveAttribute('aria-current', 'page')
-    expect(stewardshipTab.className).toContain('bg-primary-50')
-    expect(stewardshipTab.className).not.toContain('bg-white')
+    const closeButtons = within(dialog).getAllByRole('button', {
+      name: 'nav.closeMenu',
+    })
+    fireEvent.click(closeButtons[closeButtons.length - 1])
+
+    expect(screen.queryByRole('dialog', { name: 'nav.mainMenu' })).toBeNull()
   })
 
-  it('renders the help toggle with focus styles and developer-mode metadata', () => {
+  it('renders utility actions in the rail', () => {
     const toggleHelp = vi.fn()
     helpState.value = {
       content: { sections: [], titleKey: 'help.navigation' },
@@ -367,13 +326,6 @@ describe('Navigation', () => {
     render(<Navigation />)
 
     const helpButton = screen.getByRole('button', { name: 'common.help' })
-
-    expect(helpButton.className).toContain('focus:outline-none')
-    expect(helpButton.className).toContain('focus-visible:ring-2')
-    expect(helpButton.className).toContain('focus-visible:ring-offset-2')
-    expect(helpButton.className).toContain(
-      'dark:focus-visible:ring-offset-secondary-950',
-    )
     expect(helpButton).toHaveAttribute(
       'data-developer-mode-context',
       'navigation',
@@ -383,6 +335,12 @@ describe('Navigation', () => {
       'data-developer-mode-value',
       'help toggle open',
     )
+    expect(
+      screen.getByRole('link', { name: 'admin.settings' }),
+    ).toHaveAttribute('href', '/admin')
+    expect(screen.getByTestId('language-switcher')).toBeInTheDocument()
+    expect(screen.getByTestId('theme-toggle')).toBeInTheDocument()
+    expect(screen.getByTestId('auth-menu-rail')).toBeInTheDocument()
 
     fireEvent.click(helpButton)
 

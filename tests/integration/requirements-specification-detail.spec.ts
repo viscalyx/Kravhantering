@@ -234,8 +234,15 @@ for (const viewport of viewports) {
         const beforeRightScrollTop = await rightPanel.evaluate(
           node => node.scrollTop,
         )
+        const desktopNavRailBox = await page
+          .locator('[data-global-navigation-rail="desktop"]')
+          .boundingBox()
         const rightPanelBox = await rightPanel.boundingBox()
 
+        expect(desktopNavRailBox).not.toBeNull()
+        if (!desktopNavRailBox) {
+          throw new Error('Desktop side navigation rail did not expose a box.')
+        }
         expect(rightPanelBox).not.toBeNull()
         if (!rightPanelBox) {
           throw new Error(
@@ -257,7 +264,9 @@ for (const viewport of viewports) {
             throw new Error('Items split panel did not expose a bounding box.')
           }
 
-          expect(leftPanelBox.x).toBeLessThanOrEqual(8)
+          expect(leftPanelBox.x).toBeGreaterThanOrEqual(
+            desktopNavRailBox.x + desktopNavRailBox.width - 1,
+          )
           expect(leftPanelBox.y + leftPanelBox.height).toBeLessThanOrEqual(
             activeViewportHeight,
           )

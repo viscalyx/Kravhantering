@@ -26,14 +26,13 @@ kan du söka, filtrera och hantera alla krav i systemet.
 
 ![Startsida — Kravbiblioteket](images/001-startsida.png)
 
-### Navigationsfält
+### Sidnavigering
 
-Det övre navigationsfältet ger åtkomst till alla huvuddelar:
-**Kravbiblioteket**, **Kravbiblioteksförvaltning**, **Kravunderlag**,
-**Admininställningar** (kugghjulsikonen) samt language-väljare och tema
-(ljust/mörkt läge).
+Sidnavigeringen ger åtkomst till huvuddelarna: **Kravbiblioteket**,
+**Kravunderlag**, verktygen i **Kravbiblioteksförvaltning**,
+**Admininställningar**, språkväljare och tema (ljust/mörkt läge).
 
-![Navigationsfält](images/002-navigering.png)
+![Sidnavigering](images/002-navigering.png)
 
 ### Språkväljare
 

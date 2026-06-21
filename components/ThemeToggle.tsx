@@ -6,7 +6,15 @@ import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
 
-export default function ThemeToggle() {
+interface ComponentProps {
+  expanded?: boolean
+  variant?: 'header' | 'rail'
+}
+
+export default function ThemeToggle({
+  expanded = false,
+  variant = 'header',
+}: ComponentProps) {
   const t = useTranslations('theme')
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -34,10 +42,16 @@ export default function ThemeToggle() {
         : t('auto')
   const buttonLabel = `${t('toggle')} (${label})`
 
+  const isRail = variant === 'rail'
+
   return (
     <button
       aria-label={buttonLabel}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
+      className={
+        isRail
+          ? 'inline-flex min-h-11 w-full min-w-11 items-center justify-center gap-3 rounded-xl px-3 py-2 text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950'
+          : 'inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950'
+      }
       {...devMarker({ name: 'button', value: developerLabel })}
       onClick={cycle}
       title={buttonLabel}
@@ -50,6 +64,11 @@ export default function ThemeToggle() {
       ) : (
         <Monitor aria-hidden="true" className="h-5 w-5" />
       )}
+      {isRail && expanded ? (
+        <span className="min-w-0 flex-1 truncate text-left text-sm font-medium">
+          {buttonLabel}
+        </span>
+      ) : null}
     </button>
   )
 }

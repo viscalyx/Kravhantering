@@ -119,14 +119,15 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   values `help toggle open` and `help toggle closed`.
 - The app title link in the navigation uses `navigation > link: app title`
   and carries the build-version tooltip when generated metadata is available.
-- The `Kravbiblioteksförvaltning` navigation disclosure uses
-  `navigation > stewardship disclosure: open|closed`, and its inline submenu
-  uses `navigation > stewardship submenu: inline row`. The separate decorative
-  desktop backgrounds behind the disclosure and submenu belong to that same
-  submenu surface and do not add separate markers.
-- The delayed stewardship route change spinner uses
-  `navigation > transition mask: stewardship` only when navigation takes longer
-  than two seconds.
+- The global side navigation uses `navigation > nav link: ...` for its primary
+  route entries. The values stay in English-style identifiers such as
+  `catalog`, `specifications`, `requirement-packages`,
+  `requirement-selection-questions`, `rfi-questions`, `norm-library`, and
+  `requirement-areas`.
+- The side navigation rail controls use `navigation > button: expand rail` and
+  `navigation > button: collapse rail`. The mobile drawer controls use
+  `navigation > button: open mobile drawer` and
+  `navigation > button: close mobile drawer`.
 - Auth account-detail rows keep their developer-mode values in English
   as `user info name`, `user info email`, `user info subject`, and
   `user info session expires` even when the visible labels are
