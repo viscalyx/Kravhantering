@@ -103,8 +103,11 @@ the raw HSA-id.
 
 ## API Contract Status
 
-This route is intentionally kept out of the OpenAPI/Schemathesis contract for
-now, aligned with the deferred privacy-route policy in
-[api-security.md](./api-security.md). It should be added only when the contract
-work includes privacy role-matrix checks, self-export behavior, no-store header
-assertions, HSA-id-only generated examples, and audit-redaction assertions.
+This route is covered by the OpenAPI/Schemathesis contract in
+[api-security.md](./api-security.md). The contract includes HSA-id-only
+generated examples for self-export and `PrivacyOfficer` cross-user export, and
+documents `Cache-Control: no-store` for JSON/PDF export responses and
+validation/authorization errors.
+
+Focused route tests continue to cover the privacy role matrix, self-export
+behavior, no-store response headers, and audit-redaction assertions.

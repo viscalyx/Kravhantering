@@ -12,6 +12,7 @@ tags:
   - name: auth
   - name: requirements
   - name: catalogs
+  - name: privacy
 security:
   - cookieSession: []
 paths:
@@ -30,6 +31,121 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/AnonymousSession'
                   - $ref: '#/components/schemas/AuthenticatedSession'
+
+  /api/privacy/erasure-preview:
+    post:
+      tags: [privacy]
+      operationId: previewPrivacyErasure
+      summary: Preview HSA-id based privacy erasure.
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/XRequestedWith'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrivacyErasurePreviewRequest'
+            examples:
+              seededTarget:
+                value:
+                  target: { hsaId: SE5560000001-kalle1 }
+              seededTargetWithReplacement:
+                value:
+                  replacement:
+                    displayName: Anna Maria Eriksson
+                    email: anna.maria.eriksson@example.test
+                    firstName: Anna Maria
+                    hsaId: SE5560000001-johlju
+                    lastName: Eriksson
+                  target: { hsaId: SE5560000001-kalle1 }
+      responses:
+        '200':
+          description: Privacy erasure preview.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivacyErasurePreviewResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/privacy/erasure-requests:
+    post:
+      tags: [privacy]
+      operationId: executePrivacyErasure
+      summary: Execute HSA-id based privacy erasure from a preview token.
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/XRequestedWith'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrivacyErasureRequest'
+            examples:
+              staleGeneratedPreview:
+                value:
+                  actions:
+                    requirement_versions.created_by: anonymize
+                  previewToken: generated-preview-token
+                  target: { hsaId: SE5560000001-kalle1 }
+      responses:
+        '201':
+          description: Privacy erasure execution result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivacyErasureResult'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/privacy/data-subject-export:
+    post:
+      tags: [privacy]
+      operationId: createDataSubjectExport
+      summary: Generate a data subject access export.
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/XRequestedWith'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataSubjectExportRequest'
+            examples:
+              selfJson:
+                value:
+                  delivery: json
+                  locale: sv
+              privacyOfficerPdf:
+                value:
+                  delivery: pdf
+                  locale: en
+                  target: { hsaId: SE5560000001-kalle1 }
+      responses:
+        '200':
+          description: Data subject access export.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataSubjectExportResponse'
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400': { $ref: '#/components/responses/NoStoreBadRequest' }
+        '401': { $ref: '#/components/responses/NoStoreUnauthorized' }
+        '403': { $ref: '#/components/responses/NoStoreForbidden' }
 
   /api/requirements:
     get:
@@ -605,6 +721,36 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NoStoreBadRequest:
+      description: Invalid request.
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum: [no-store]
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NoStoreUnauthorized:
+      description: Authentication required.
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum: [no-store]
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NoStoreForbidden:
+      description: Forbidden.
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum: [no-store]
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
 
   schemas:
     LooseObject:
@@ -641,6 +787,185 @@ components:
           maxItems: 10
           items: { type: string }
         expiresAt: { type: number, nullable: true }
+    HsaId:
+      type: string
+      minLength: 14
+      maxLength: 31
+      pattern: '^[A-Z]{2}[0-9]{10}-[A-Za-z0-9]+$'
+      example: SE5560000001-kalle1
+    PrivacyTarget:
+      type: object
+      required: [hsaId]
+      additionalProperties: false
+      properties:
+        hsaId: { $ref: '#/components/schemas/HsaId' }
+    PrivacyReplacement:
+      type: object
+      required: [displayName, hsaId]
+      additionalProperties: false
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 450 }
+        email: { type: string, format: email, maxLength: 450 }
+        firstName: { type: string, maxLength: 450 }
+        hsaId: { $ref: '#/components/schemas/HsaId' }
+        lastName: { type: string, maxLength: 450 }
+    PrivacyErasurePreviewRequest:
+      type: object
+      required: [target]
+      additionalProperties: false
+      properties:
+        replacement:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/PrivacyReplacement'
+        target: { $ref: '#/components/schemas/PrivacyTarget' }
+    PrivacyErasureRequest:
+      type: object
+      required: [previewToken, target]
+      additionalProperties: false
+      properties:
+        actions:
+          type: object
+          maxProperties: 100
+          additionalProperties:
+            type: string
+            enum: [anonymize, delete, skip, switch]
+        previewToken: { type: string, minLength: 1, maxLength: 450 }
+        replacement:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/PrivacyReplacement'
+        target: { $ref: '#/components/schemas/PrivacyTarget' }
+    PrivacyErasureAction:
+      type: string
+      enum: [anonymize, delete, skip, switch]
+    PrivacyErasureGroup:
+      type: object
+      required: [allowedActions, count, key, recommendedAction]
+      additionalProperties: true
+      properties:
+        affectedReferences:
+          type: array
+          maxItems: 1000
+          items: { type: string, maxLength: 450 }
+        allowedActions:
+          type: array
+          minItems: 1
+          maxItems: 4
+          items: { $ref: '#/components/schemas/PrivacyErasureAction' }
+        count: { type: integer, minimum: 1 }
+        currentDisplayValue:
+          type: string
+          nullable: true
+          maxLength: 450
+        key: { type: string, minLength: 1, maxLength: 120 }
+        recommendedAction:
+          $ref: '#/components/schemas/PrivacyErasureAction'
+    PrivacyErasurePreviewResponse:
+      type: object
+      required: [groups, previewToken, targetFingerprint, totalCount]
+      additionalProperties: false
+      properties:
+        groups:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/PrivacyErasureGroup' }
+        previewToken: { type: string, minLength: 1, maxLength: 64 }
+        targetFingerprint: { type: string, minLength: 1, maxLength: 64 }
+        totalCount: { type: integer, minimum: 0 }
+    PrivacyErasureActionCounts:
+      type: object
+      required: [anonymize, delete, skip, switch]
+      additionalProperties: false
+      properties:
+        anonymize: { type: integer, minimum: 0 }
+        delete: { type: integer, minimum: 0 }
+        skip: { type: integer, minimum: 0 }
+        switch: { type: integer, minimum: 0 }
+    PrivacyErasureResult:
+      type: object
+      required: [actions, groups, requestId, targetFingerprint, totalCount]
+      additionalProperties: false
+      properties:
+        actions: { $ref: '#/components/schemas/PrivacyErasureActionCounts' }
+        groups:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/PrivacyErasureGroup' }
+        requestId: { type: string, minLength: 1, maxLength: 120 }
+        targetFingerprint: { type: string, minLength: 1, maxLength: 64 }
+        totalCount: { type: integer, minimum: 0 }
+    DataSubjectExportRequest:
+      type: object
+      required: [delivery]
+      additionalProperties: false
+      properties:
+        delivery: { type: string, enum: [json, pdf] }
+        locale: { type: string, enum: [en, sv], default: sv }
+        target: { $ref: '#/components/schemas/PrivacyTarget' }
+    DataSubjectExportActor:
+      type: object
+      required: [displayName, hsaId, source]
+      additionalProperties: true
+      properties:
+        displayName: { type: string, minLength: 1 }
+        hsaId: { $ref: '#/components/schemas/HsaId' }
+        roles:
+          type: array
+          maxItems: 10
+          items: { type: string, maxLength: 80 }
+        source: { type: string, minLength: 1, maxLength: 80 }
+        sub: { type: string, maxLength: 450 }
+    DataSubjectExportSummary:
+      type: object
+      required: [itemCount, limitationCount, sourceCount]
+      additionalProperties: false
+      properties:
+        itemCount: { type: integer, minimum: 0 }
+        limitationCount: { type: integer, minimum: 0 }
+        sourceCount: { type: integer, minimum: 0 }
+    DataSubjectExportResponse:
+      type: object
+      required:
+        - generatedAt
+        - generatedBy
+        - limitations
+        - schemaVersion
+        - sources
+        - subject
+        - summary
+      additionalProperties: false
+      properties:
+        generatedAt: { type: string, format: date-time }
+        generatedBy:
+          $ref: '#/components/schemas/DataSubjectExportActor'
+        limitations:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: true
+        schemaVersion:
+          type: string
+          enum: [privacy-data-subject-export.v1]
+        sources:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: true
+        subject:
+          type: object
+          required: [hsaId, targetFingerprint]
+          additionalProperties: false
+          properties:
+            hsaId: { $ref: '#/components/schemas/HsaId' }
+            targetFingerprint:
+              type: string
+              minLength: 1
+              maxLength: 64
+        summary:
+          $ref: '#/components/schemas/DataSubjectExportSummary'
     RequirementListResponse:
       type: object
       required: [requirements]

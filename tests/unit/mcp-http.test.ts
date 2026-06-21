@@ -831,6 +831,38 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
+  it('sanitizes service unavailable errors as generic isError results', async () => {
+    const fakeService = createFakeService()
+    fakeService.getRequirement.mockRejectedValueOnce(
+      new RequirementsServiceError(
+        'service_unavailable',
+        'AI provider is unavailable',
+      ),
+    )
+    serviceState.getService.mockReturnValue(fakeService)
+
+    const { client, transport } = await createClient()
+    const result = await client.callTool({
+      arguments: {
+        uniqueId: 'INT0001',
+      },
+      name: 'requirements_get_requirement',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          text: 'Error: An internal error occurred',
+          type: 'text',
+        }),
+      ]),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
   it('keeps domain service errors readable as isError results', async () => {
     const fakeService = createFakeService()
     fakeService.manageRequirement.mockRejectedValueOnce(
