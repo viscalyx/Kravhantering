@@ -50,18 +50,18 @@ Read these specification documents first:
 
 1. `README.md`
 2. `tests/quality/QUALITY.md`
-3. `docs/lifecycle-workflow.md`
-4. `docs/version-lifecycle-dates.md`
-5. `docs/requirements-ui-behaviour.md`
-6. `docs/reports.md`
-7. `docs/admin-center.md`
-8. `docs/mcp-server-user-guide.md`
-9. `docs/mcp-server-contributor-guide.md`
-10. `docs/database-schema.md`
+3. `docs/governance/lifecycle-workflow.md`
+4. `docs/governance/version-lifecycle-dates.md`
+5. `docs/governance/requirements-ui-behaviour.md`
+6. `docs/governance/reports.md`
+7. `docs/governance/admin-center.md`
+8. `docs/integrations/mcp-server-user-guide.md`
+9. `docs/integrations/mcp-server-contributor-guide.md`
+10. `docs/development/database-schema.md`
 11. `AGENTS.md`
-12. `docs/developer-mode-overlay.md`
-13. `docs/reference-data-and-ai.md`
-14. `docs/sql-server-developer-workflow.md`
+12. `docs/development/developer-mode-overlay.md`
+13. `docs/governance/reference-data-and-ai.md`
+14. `docs/development/sql-server-developer-workflow.md`
 15. `docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md`
 
 Then read the actual code in `app/`, `lib/`, `lib/typeorm/entities/`,

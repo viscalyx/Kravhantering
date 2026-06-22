@@ -57,8 +57,8 @@ verify the release/smoke/test surfaces that consume it.
        `.devcontainer/elevated/docker-compose.yml`,
        `devfile.example.yaml`,
        `containers/production/env/release.env.template`,
-       `docs/auth-developer-workflow.md`,
-       `docs/openshift-devspaces.md`
+       `docs/development/auth-developer-workflow.md`,
+       `docs/development/openshift-devspaces.md`
    - Search broadly for the old tag, moving tags, image name, env var, and
      lock name:
 
