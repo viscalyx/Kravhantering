@@ -12,7 +12,7 @@
 #   integration tests and by the production reverse proxy.
 #
 # Re-evaluate this list whenever the workflow target changes.
-# See docs/security-ci.md for tuning guidance.
+# See docs/security-privacy/security-ci.md for tuning guidance.
 
 10035	IGNORE	Strict-Transport-Security only relevant on HTTPS production hosts.
 10038	IGNORE	CSP header tested at the edge proxy, not on localhost CI build.

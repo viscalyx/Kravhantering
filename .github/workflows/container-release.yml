@@ -627,12 +627,12 @@ jobs:
             --version "${RELEASE_TAG_NAME}" \
             --date "$(date -u +%F)"
 
-          if git diff --quiet -- "docs/operator-upgrade-notes.md"; then
+          if git diff --quiet -- "docs/operations/operator-upgrade-notes.md"; then
             echo "No stable operator upgrade notes archive changes to commit."
             exit 0
           fi
 
-          git add "docs/operator-upgrade-notes.md"
+          git add "docs/operations/operator-upgrade-notes.md"
           git commit -m "docs: archive operator upgrade notes for ${RELEASE_TAG_NAME}"
           git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push origin HEAD:main
