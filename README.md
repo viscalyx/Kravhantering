@@ -185,7 +185,7 @@ This project also includes an in-app MCP server for requirements management.
 | Status transitions | [Lifecycle workflow](docs/lifecycle-workflow.md) |
 | Version timestamps | [Version lifecycle dates](docs/version-lifecycle-dates.md) |
 | Data model | [Database schema](docs/database-schema.md) |
-| Architecture (SV) | [Arkitekturbeskrivning](docs/arkitekturbeskrivning-kravhantering.md) |
+| Information assets (SV) | [Informationsmängder](docs/informationsmangder-kravhantering.md) |
 | UI behaviour | [Requirements UI](docs/requirements-ui-behaviour.md) |
 | Reports | [Reports](docs/reports.md) |
 | Admin settings | [Admin center](docs/admin-center.md) |
