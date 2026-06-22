@@ -73,7 +73,8 @@ Kravområdesägaren ansvarar för att krav inom det egna kravområdet tas
 fram, hålls aktuella, skickas till granskning och vid behov initieras för
 arkiveringsgranskning. Slutliga gransknings- och arkiveringsbeslut
 kräver `Reviewer`. Rollen ansvarar också för att medförfattare används
-korrekt och att kravområdet inte lämnas utan ansvarig ägare.
+korrekt, att områdets RFI-frågor hålls användbara och att kravområdet inte
+lämnas utan ansvarig ägare.
 
 **Kompetenser och erfarenheter:**
 
@@ -89,6 +90,9 @@ korrekt och att kravområdet inte lämnas utan ansvarig ägare.
 
 - Skapa och redigera bibliotekskrav inom det egna kravområdet.
 - Skapa och underhålla kravurvalsfrågor inom det egna kravområdet.
+- Skapa, redigera, arkivera och återaktivera RFI-frågor inom det egna
+  kravområdet.
+- Hantera RFI-frågeförslag som avser det egna kravområdet.
 - Skicka krav från Utkast till Granskning.
 - Initiera arkiveringsgranskning för publicerade krav som inte längre ska
   gälla.
@@ -110,8 +114,8 @@ kravområdesägaren.
 Kravområdesmedförfattaren ansvarar för att bidra till kravens innehåll,
 kvalitet och uppdatering inom tilldelat kravområde. Uppdraget ska
 utföras i samverkan med kravområdesägaren. Medförfattaren får bidra i
-kravens livscykel men får inte ändra kravområdets metadata, byta ägare
-eller hantera kravområdets medförfattare.
+kravens livscykel och RFI-frågeförvaltning men får inte ändra kravområdets
+metadata, byta ägare eller hantera kravområdets medförfattare.
 
 **Kompetenser och erfarenheter:**
 
@@ -126,6 +130,9 @@ eller hantera kravområdets medförfattare.
 
 - Skapa och redigera kravutkast inom tilldelat kravområde.
 - Skapa och redigera kravurvalsfrågor inom tilldelat kravområde.
+- Skapa, redigera, arkivera och återaktivera RFI-frågor inom tilldelat
+  kravområde.
+- Hantera RFI-frågeförslag inom tilldelat kravområde.
 - Skicka krav från Utkast till Granskning.
 - Initiera arkiveringsgranskning när kravet bör tas ur bruk.
 - Återställa arkiverade krav till nytt utkast när det är motiverat.
@@ -223,10 +230,10 @@ förvaltningsfas.
 
 **Ansvar:**
 Den kravunderlagsansvarige ansvarar för kravunderlagets sammansättning,
-underlagslokala krav, avvikelser och tilldelade medförfattare. Uppdraget
-omfattar både praktisk hantering av underlagets innehåll och samordning av
-ändringar så att underlaget fortsätter stödja sitt avsedda
-användningsområde.
+underlagslokala krav, RFI-frågelista, avvikelser och tilldelade
+medförfattare. Uppdraget omfattar både praktisk hantering av underlagets
+innehåll och samordning av ändringar så att underlaget fortsätter stödja sitt
+avsedda användningsområde.
 
 **Kompetenser och erfarenheter:**
 
@@ -244,11 +251,15 @@ användningsområde.
 
 - Lägga till och ta bort publicerade bibliotekskrav i kravunderlaget.
 - Skapa och redigera underlagslokala krav.
+- Ändra RFI-frågelistans omfattning, låsa eller låsa upp listan och ange
+  RFI-relevans.
 - Hantera kravunderlagets medförfattare.
 - Skapa, redigera och följa upp avvikelser kopplade till underlaget.
 - Samordna ändringar med berörda kravområden.
 - Säkerställa att kravunderlaget är aktuellt inför användning eller
   förvaltning.
+- Skapa RFI-frågeförslag från kravunderlaget bara när personen också har
+  författarbehörighet i mottagande kravområde.
 - Vid behov överlämna ansvar i samband med livscykeländringar.
 
 ## Roll/Uppdrag: Kravunderlagsmedförfattare
@@ -268,6 +279,8 @@ spårbarhet, kvalitet och korrekt avvikelsehantering.
 Kravunderlagsmedförfattaren kan ändra kravunderlagets innehåll, men får
 inte delegera behörighet vidare, byta kravunderlagsansvarig eller hantera
 kravunderlagets medförfattare.
+RFI-frågeförslag från kravunderlaget kräver dessutom författarbehörighet i
+det mottagande kravområdet.
 
 **Kompetenser och erfarenheter:**
 
@@ -283,6 +296,8 @@ kravunderlagets medförfattare.
 
 - Redigera underlagslokala krav.
 - Föreslå och genomföra ändringar i kravunderlagets innehåll.
+- Ändra RFI-frågelistans omfattning, låsning och relevans inom tilldelat
+  kravunderlag.
 - Lägga till eller ta bort krav enligt tilldelad behörighet.
 - Skapa och redigera avvikelser kopplade till kravunderlaget.
 - Delta i genomgångar av kravunderlagets aktualitet och kvalitet.
@@ -326,7 +341,7 @@ varsamhet och loggas som högriskhändelser.
 - Avvisa krav till Utkast med motivering när de behöver omarbetas.
 - Godkänna eller avbryta arkiveringsgranskning.
 - Fatta granskningsbeslut om avvikelser där rollen har mandat.
-- Läsa kravunderlag brett för granskningsarbete.
+- Läsa kravunderlag och deras RFI-frågelistor brett för granskningsarbete.
 - Bidra med specialistbedömningar inom arkitektur- och kravfrågor.
 
 Granskare får inte i kraft av `Reviewer` använda privilegierade Admin
@@ -372,6 +387,7 @@ avstegsbeslut.
   grunddata.
 - Tilldela eller ändra kravunderlagsansvarig när verksamheten kräver det.
 - Administrera kravpaket, inklusive arkivering, återaktivering och borttag.
+- Administrera RFI-frågor och stödja behörighetsstyrda RFI-liståtgärder.
 - Hantera situationer där ett kravområde saknar ägare.
 - Utföra övergripande kontroller av behörighets- och tilldelningsdata.
 - Läsa åtgärdsloggen och stödja felsökning av åtkomstproblem.

@@ -3,6 +3,9 @@
 Den här sidan förklarar vilka roller som ger åtkomst till känsliga delar av
 Kravhantering. Den är skriven för personer som använder eller stödjer tjänsten.
 
+För en mer detaljerad katalog över roller och uppdrag, se
+[roller-inom-kravhantering.md](../reference/roller-inom-kravhantering.md).
+
 ## Roller
 
 Organisationen tilldelar globala IdP-roller till användarkontot. En roll avgör
@@ -30,8 +33,8 @@ som får ändra ett kravområde, kravpaket eller kravunderlag.
 <!-- markdownlint-disable MD013 -->
 | Uppdrag | Omfattning | Vad uppdraget styr |
 | --- | --- | --- |
-| Kravområdesägare | Ett kravområde | Huvudansvar för krav och kravurvalsfrågor inom området. |
-| Kravområdesmedförfattare | Ett kravområde | Författarstöd för krav och kravurvalsfrågor inom området. |
+| Kravområdesägare | Ett kravområde | Huvudansvar för krav, kravurvalsfrågor och RFI-frågor inom området. |
+| Kravområdesmedförfattare | Ett kravområde | Författarstöd för krav, kravurvalsfrågor och RFI-frågor inom området. |
 | Kravpaketsansvarig | Ett kravpaket | Huvudansvar för kravpaketets syfte, sammanhållning och relevans. |
 | Kravpaketsmedförfattare | Ett kravpaket | Tilldelat författarstöd som ingår i dataskydd och behörighetsöversyn. |
 | Kravunderlagsansvarig | Ett kravunderlag | Huvudansvar för kravunderlaget och dess kravunderlagslokala innehåll. |
@@ -91,14 +94,15 @@ medförfattare stoppar tjänsten ändringen.
 
 Kravområdesägare och kravområdesmedförfattare används som
 författarbehörighet inom kravområdet. Den behörigheten används bland annat när
-ett kravunderlagslokalt krav ska lyftas till kravbiblioteket och när en
-användare ska få skapa kravpaket.
+ett kravunderlagslokalt krav ska lyftas till kravbiblioteket, när en användare
+ska få skapa kravpaket och när RFI-frågor eller RFI-frågeförslag ska hanteras
+inom kravområdet.
 
-Kravområdesmedförfattare kan författa innehåll, men kan inte ändra
-kravområdets metadata, byta ägare eller hantera kravområdesmedförfattare.
-Kravområdets prefix kan bara ändras av `Admin` eller aktuell
-kravområdesägare så länge kravområdet saknar kravrader. När ett krav finns i
-området returnerar prefixändring `409 conflict`.
+Kravområdesmedförfattare kan författa innehåll, inklusive RFI-frågor, men kan
+inte ändra kravområdets metadata, byta ägare eller hantera
+kravområdesmedförfattare. Kravområdets prefix kan bara ändras av `Admin` eller
+aktuell kravområdesägare så länge kravområdet saknar kravrader. När ett krav
+finns i området returnerar prefixändring `409 conflict`.
 
 ## Kravpaket
 
@@ -132,8 +136,8 @@ skapandet.
 
 Kravunderlagsansvarig, kravunderlagsmedförfattare och `Admin` kan ändra
 kravunderlagets innehåll. Det omfattar metadata, behovsreferenser,
-kravurvalssvar, tillägg och borttag av publicerade bibliotekskrav,
-kravunderlagslokala krav och avsteg.
+kravurvalssvar, RFI-frågelistan, tillägg och borttag av publicerade
+bibliotekskrav, kravunderlagslokala krav och avsteg.
 
 En kravområdesägare eller kravområdesmedförfattare får inte automatiskt
 skrivbehörighet till ett kravunderlag bara för att kravunderlaget använder krav
@@ -177,6 +181,27 @@ läsbehörighet till varje kravunderlag där områdets krav används. Användnin
 visas genom rapporter, statistik eller tillämpningsspårbarhet utan att hela
 kravunderlagets sammanhang exponeras.
 
+## RFI-frågor och RFI-frågelistor
+
+RFI-frågor hör till kravområdet i kravbiblioteksförvaltningen. Att skapa,
+redigera, arkivera, återaktivera eller läsa en enskild RFI-frågas
+förvaltningsdetaljer kräver författarbehörighet i frågans kravområde, som
+kravområdesägare, kravområdesmedförfattare eller `Admin`.
+
+Ett kravunderlags RFI-frågelista hör däremot till kravunderlaget.
+Kravunderlagsansvarig, kravunderlagsmedförfattare och `Admin` kan ändra
+listans omfattning, låsa eller låsa upp listan och ange RFI-relevans enligt
+RFI-listans regler. Läsning och export av RFI-listan följer kravunderlagets
+läsbehörighet; en `Reviewer` kan därför läsa RFI-listor i granskningsarbete
+men får inte ändra dem enbart genom `Reviewer`-rollen.
+
+RFI-frågeförslag knyter ihop de två behörighetssammanhangen. Ett förslag som
+skapas från ett kravunderlag till ett kravområde kräver både skrivbehörighet i
+kravunderlaget och författarbehörighet i mottagande kravområde. Förslag som
+hanteras i kravbiblioteksförvaltningen kräver författarbehörighet i det
+kravområde som förslaget gäller. Kravpaketsansvar eller uppdrag som
+kravpaketsmedförfattare ger ingen egen RFI-behörighet.
+
 ## Kravbibliotek
 
 Inloggade användare kan läsa publicerade bibliotekskrav och publik taxonomi.
@@ -185,7 +210,7 @@ kravområdesägare, kravområdesmedförfattare, `Reviewer` eller `Admin` beroend
 på åtgärd och kravområde.
 
 Kravområdesägare, kravområdesmedförfattare och `Admin` kan författa
-kravområdets krav och kravurvalsfrågor. Beslut i gransknings- och
+kravområdets krav, kravurvalsfrågor och RFI-frågor. Beslut i gransknings- och
 arkiveringsflöden kräver däremot `Reviewer`; `Admin` räcker inte ensamt för
 sådana beslut. En `Reviewer` får besluta om sitt eget förslag eller avsteg,
 men tjänsten loggar detta som en högriskhändelse.
