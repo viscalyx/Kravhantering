@@ -27,6 +27,10 @@ import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 interface RequirementArea {
   id: number
   name: string
+  permissions?: {
+    canAuthor?: boolean
+    canManageAssignments?: boolean
+  }
   prefix: string
 }
 
@@ -364,6 +368,16 @@ export default function RfiQuestionsClient() {
     return areaMap
   }, [areas, questions])
 
+  const editableAreas = useMemo(
+    () => areas.filter(area => area.permissions?.canAuthor === true),
+    [areas],
+  )
+
+  const editableAreaIds = useMemo(
+    () => new Set(editableAreas.map(area => area.id)),
+    [editableAreas],
+  )
+
   const suggestionsByAreaTarget = useMemo(() => {
     const map = new Map<number, RfiSuggestion[]>()
     for (const suggestion of suggestions) {
@@ -542,9 +556,15 @@ export default function RfiQuestionsClient() {
   }
 
   const openQuestionForm = () => {
+    const filteredAreaId = Number(areaFilter)
+    const initialAreaId =
+      Number.isInteger(filteredAreaId) && editableAreaIds.has(filteredAreaId)
+        ? areaFilter
+        : String(editableAreas[0]?.id ?? '')
+    if (!initialAreaId) return
     setForm({
       ...emptyForm,
-      areaId: areaFilter || String(areas[0]?.id ?? ''),
+      areaId: initialAreaId,
     })
     setShowQuestionForm(true)
   }
@@ -987,7 +1007,7 @@ export default function RfiQuestionsClient() {
         />
         <select
           className={`${inputClassName} disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:disabled:bg-secondary-900/70 dark:disabled:text-secondary-500`}
-          disabled={form.id != null || areas.length === 0}
+          disabled={form.id != null || editableAreas.length === 0}
           id="rfi-question-area"
           onChange={event =>
             setForm(current => ({ ...current, areaId: event.target.value }))
@@ -995,7 +1015,7 @@ export default function RfiQuestionsClient() {
           title={form.id != null ? copy.areaLockedHint : undefined}
           value={form.areaId}
         >
-          {areas.map(area => (
+          {editableAreas.map(area => (
             <option key={area.id} value={area.id}>
               {area.prefix} {area.name}
             </option>
@@ -1099,7 +1119,7 @@ export default function RfiQuestionsClient() {
             {
               ariaLabel: copy.newQuestion,
               developerModeValue: 'new RFI question',
-              disabled: saving || areas.length === 0,
+              disabled: saving || editableAreas.length === 0,
               icon: <Plus aria-hidden="true" className="h-4 w-4" />,
               id: 'create',
               onClick: openQuestionForm,
@@ -1341,6 +1361,9 @@ export default function RfiQuestionsClient() {
                             kind: 'question',
                             question,
                           }
+                          const canManageQuestion = editableAreaIds.has(
+                            question.areaId,
+                          )
 
                           return (
                             <li
@@ -1405,70 +1428,74 @@ export default function RfiQuestionsClient() {
                                   </div>
                                 </button>
                                 <div className="flex shrink-0 items-start justify-end gap-1 px-4 py-4 pl-0">
-                                  <button
-                                    aria-label={`${copy.editQuestion}: ${question.questionCode}`}
-                                    className={`${rowActionButtonClassName} text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950/30`}
-                                    disabled={saving}
-                                    onClick={() => editQuestion(question)}
-                                    title={copy.editQuestion}
-                                    type="button"
-                                    {...devMarker({
-                                      context: 'rfiQuestions',
-                                      name: 'question action',
-                                      value: `${question.questionCode} edit`,
-                                    })}
-                                  >
-                                    <Pencil
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                      focusable={false}
-                                    />
-                                  </button>
-                                  <button
-                                    aria-label={`${
-                                      question.isArchived
-                                        ? copy.reactivate
-                                        : copy.archive
-                                    }: ${question.questionCode}`}
-                                    className={`${rowActionButtonClassName} text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800/70`}
-                                    disabled={saving}
-                                    onClick={event =>
-                                      void setArchived(
-                                        question,
-                                        !question.isArchived,
-                                        event.currentTarget,
-                                      )
-                                    }
-                                    title={
-                                      question.isArchived
-                                        ? copy.reactivate
-                                        : copy.archive
-                                    }
-                                    type="button"
-                                    {...devMarker({
-                                      context: 'rfiQuestions',
-                                      name: 'question action',
-                                      value: `${question.questionCode} ${
-                                        question.isArchived
-                                          ? 'reactivate'
-                                          : 'archive'
-                                      }`,
-                                    })}
-                                  >
-                                    {question.isArchived ? (
-                                      <RotateCcw
-                                        aria-hidden="true"
-                                        className="h-4 w-4"
-                                        focusable={false}
-                                      />
-                                    ) : (
-                                      <Archive
-                                        aria-hidden="true"
-                                        className="h-4 w-4"
-                                        focusable={false}
-                                      />
-                                    )}
-                                  </button>
+                                  {canManageQuestion ? (
+                                    <>
+                                      <button
+                                        aria-label={`${copy.editQuestion}: ${question.questionCode}`}
+                                        className={`${rowActionButtonClassName} text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950/30`}
+                                        disabled={saving}
+                                        onClick={() => editQuestion(question)}
+                                        title={copy.editQuestion}
+                                        type="button"
+                                        {...devMarker({
+                                          context: 'rfiQuestions',
+                                          name: 'question action',
+                                          value: `${question.questionCode} edit`,
+                                        })}
+                                      >
+                                        <Pencil
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                          focusable={false}
+                                        />
+                                      </button>
+                                      <button
+                                        aria-label={`${
+                                          question.isArchived
+                                            ? copy.reactivate
+                                            : copy.archive
+                                        }: ${question.questionCode}`}
+                                        className={`${rowActionButtonClassName} text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800/70`}
+                                        disabled={saving}
+                                        onClick={event =>
+                                          void setArchived(
+                                            question,
+                                            !question.isArchived,
+                                            event.currentTarget,
+                                          )
+                                        }
+                                        title={
+                                          question.isArchived
+                                            ? copy.reactivate
+                                            : copy.archive
+                                        }
+                                        type="button"
+                                        {...devMarker({
+                                          context: 'rfiQuestions',
+                                          name: 'question action',
+                                          value: `${question.questionCode} ${
+                                            question.isArchived
+                                              ? 'reactivate'
+                                              : 'archive'
+                                          }`,
+                                        })}
+                                      >
+                                        {question.isArchived ? (
+                                          <RotateCcw
+                                            aria-hidden="true"
+                                            className="h-4 w-4"
+                                            focusable={false}
+                                          />
+                                        ) : (
+                                          <Archive
+                                            aria-hidden="true"
+                                            className="h-4 w-4"
+                                            focusable={false}
+                                          />
+                                        )}
+                                      </button>
+                                    </>
+                                  ) : null}
                                   {renderSuggestionIndicator(
                                     questionTarget,
                                     questionTargetSuggestions,

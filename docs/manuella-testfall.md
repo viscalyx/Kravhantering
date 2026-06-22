@@ -619,6 +619,10 @@ med piltangenter och stäng med Escape.
 1. Skapa och redigera en RFI-fråga via den flytande skapa-knappen och
    radens högerjusterade redigeringsikon. Kontrollera att kravområdet väljs
    vid skapande men är låst vid redigering.
+1. Logga in som en kravområdesägare eller kravområdesmedförfattare med
+   uppdrag i ett av flera kravområden och kontrollera att `Ny RFI-fråga` bara
+   kan välja tilldelade kravområden samt att redigera, arkivera och
+   återaktivera bara visas på RFI-frågor i de kravområdena.
 1. Kontrollera att RFI-frågeförslag ligger kvar som ett separat arbetsflöde på
    sidan och inte påverkas av frågelistans sök- och statusfilter.
 

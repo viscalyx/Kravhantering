@@ -254,7 +254,8 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `rfiQuestions > requirement area heading: <prefix>`, and compact question
   rows render as `rfiQuestions > question disclosure: <question code>`. The
   row-level edit, archive, and reactivate icon buttons render as
-  `rfiQuestions > question action: <question code> edit|archive|reactivate`.
+  `rfiQuestions > question action: <question code> edit|archive|reactivate`
+  only when the actor can author RFI questions in the row's requirement area.
   RFI question suggestion indicators on area headers and question rows render
   as `rfiQuestions > suggestion indicator: area <prefix> untreated|handled` and
   `rfiQuestions > suggestion indicator: question <question code>

@@ -35,8 +35,18 @@ function okJson(body: unknown) {
 }
 
 const areas = [
-  { id: 1, name: 'Security', prefix: 'SEC' },
-  { id: 2, name: 'Operations', prefix: 'OPS' },
+  {
+    id: 1,
+    name: 'Security',
+    permissions: { canAuthor: true, canManageAssignments: true },
+    prefix: 'SEC',
+  },
+  {
+    id: 2,
+    name: 'Operations',
+    permissions: { canAuthor: true, canManageAssignments: false },
+    prefix: 'OPS',
+  },
 ]
 
 const rfiQuestions = [
@@ -507,6 +517,64 @@ describe('RFI client UI states', () => {
       helpText: null,
       questionText: 'Can you describe support coverage?',
     })
+  })
+
+  it('limits RFI question authoring controls to assigned requirement areas', async () => {
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const href = String(url)
+      if (href === '/api/requirement-areas') {
+        return Promise.resolve(
+          okJson({
+            areas: [
+              areas[0],
+              {
+                ...areas[1],
+                permissions: {
+                  canAuthor: false,
+                  canManageAssignments: false,
+                },
+              },
+            ],
+          }),
+        )
+      }
+      if (href === '/api/rfi-questions?includeArchived=true') {
+        return Promise.resolve(okJson({ questions: rfiQuestions }))
+      }
+      if (href === '/api/rfi-question-suggestions') {
+        return Promise.resolve(okJson({ suggestions: [] }))
+      }
+      throw new Error(`Unmocked fetch: ${href}`)
+    })
+
+    await renderRfiQuestionsClient()
+
+    expect(await screen.findByText('SEC-RFI001')).toBeInTheDocument()
+    expect(screen.getByText('OPS-RFI001')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'rfiQuestions.editQuestion: SEC-RFI001',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'rfiQuestions.reactivate: OPS-RFI001',
+      }),
+    ).not.toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'rfiQuestions.newQuestion' }),
+    )
+
+    const areaSelect = screen.getByRole('combobox', {
+      name: /rfiQuestions\.area/,
+    })
+    expect(
+      within(areaSelect).getByRole('option', { name: 'SEC Security' }),
+    ).toBeInTheDocument()
+    expect(
+      within(areaSelect).queryByRole('option', { name: 'OPS Operations' }),
+    ).not.toBeInTheDocument()
   })
 
   it('edits an RFI question without sending area or sort order changes', async () => {
