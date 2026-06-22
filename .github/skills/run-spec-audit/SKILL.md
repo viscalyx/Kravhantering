@@ -58,12 +58,11 @@ Read these specification documents first:
 8. `docs/mcp-server-user-guide.md`
 9. `docs/mcp-server-contributor-guide.md`
 10. `docs/database-schema.md`
-11. `docs/arkitekturbeskrivning-kravhantering.md`
-12. `AGENTS.md`
-13. `docs/developer-mode-overlay.md`
-14. `docs/reference-data-and-ai.md`
-15. `docs/sql-server-developer-workflow.md`
-16. `docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md`
+11. `AGENTS.md`
+12. `docs/developer-mode-overlay.md`
+13. `docs/reference-data-and-ai.md`
+14. `docs/sql-server-developer-workflow.md`
+15. `docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md`
 
 Then read the actual code in `app/`, `lib/`, `lib/typeorm/entities/`,
 `typeorm/`, and `tests/quality/functional.test.ts`.

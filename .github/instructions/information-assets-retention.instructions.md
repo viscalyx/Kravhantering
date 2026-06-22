@@ -1,5 +1,5 @@
 ---
-applyTo: "{docs/informationsmangder-kravhantering.md,docs/informationssakerhetskrav-atgarder-app.md,docs/admin-center.md,docs/database-schema.md,docs/arkitekturbeskrivning-kravhantering.md,lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,lib/archiving/**/*.ts,app/api/admin/archiving/**/*.ts,app/[locale]/admin/**/*.tsx,tests/unit/archiving-retention*.test.ts}"
+applyTo: "{docs/informationsmangder-kravhantering.md,docs/informationssakerhetskrav-atgarder-app.md,docs/admin-center.md,docs/database-schema.md,lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,lib/archiving/**/*.ts,app/api/admin/archiving/**/*.ts,app/[locale]/admin/**/*.tsx,tests/unit/archiving-retention*.test.ts}"
 ---
 
 # Information Assets Retention

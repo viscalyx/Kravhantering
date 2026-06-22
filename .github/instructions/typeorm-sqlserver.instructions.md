@@ -130,7 +130,6 @@ When SQL Server + TypeORM behavior changes, update the relevant docs:
 
 - `docs/sql-server-developer-workflow.md`
 - `docs/database-schema.md`
-- `docs/arkitekturbeskrivning-kravhantering.md`
 - any other `docs/*.md` or repo `**/*.md` files that describe the supported database workflow
 
 ## Required Verification

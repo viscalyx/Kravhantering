@@ -1,5 +1,5 @@
 ---
-applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,docs/database-schema.md,docs/arkitekturbeskrivning-kravhantering.md}"
+applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,docs/database-schema.md}"
 ---
 
 # Database Schema Changes
@@ -133,12 +133,10 @@ update **every** applicable section of `docs/database-schema.md`:
 7. **Database Naming Standard** — update rules or accepted exceptions
    when a new naming pattern is introduced.
 
-## Architecture Data Model
+## Canonical Data Model
 
-When tables or relationships are added, removed, or renamed, update the
-Mermaid `erDiagram` in the "Datamodell — kärnrelationer" section of
-`docs/arkitekturbeskrivning-kravhantering.md`. The ER diagram there must
-reflect the same entities and relationships as the schema.
+`docs/database-schema.md` is the sole canonical schema and ER diagram
+documentation. Do not maintain a second architecture ER diagram.
 
 ## Removal Cleanup
 
