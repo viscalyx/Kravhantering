@@ -31,7 +31,7 @@ metadata:
 # Secrets (MSSQL_SA_PASSWORD, KEYCLOAK_ADMIN_PASSWORD,
 # OPENROUTER_API_KEY, AUTH_*) must be supplied via Dev Spaces
 # user-namespace Secrets labeled/annotated for DevWorkspace injection.
-# See docs/openshift-devspaces.md for setup.
+# See docs/development/openshift-devspaces.md for setup.
 components:
   - name: tools
     container:
@@ -90,7 +90,7 @@ components:
         # The Keycloak sidecar publishes its issuer on the public Dev
         # Spaces route, not on localhost. AUTH_ISSUER and related vars
         # should be injected via a Dev Spaces Secret per workspace —
-        # see docs/openshift-devspaces.md.
+        # see docs/development/openshift-devspaces.md.
       volumeMounts:
         - name: node-modules
           path: /projects/kravhantering/node_modules

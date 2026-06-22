@@ -25,18 +25,18 @@
 - Never use plain `curl` against the running dev server. Every protected route returns `302 /api/auth/login`, so a bare `curl` only sees the redirect.
 - Use `scripts/dev-curl.sh` instead. It logs in once via the dev Keycloak realm (default user `ada.admin` / password `devpass`), caches the cookie jar under `.auth/<user>.cookies`, and runs `curl -b <jar>` with the args you pass.
 - Bare paths starting with `/` are resolved against `$DEV_LOGIN_BASE_URL` (default `http://localhost:3000`), so `scripts/dev-curl.sh -s /api/auth/me` works.
-- Switch user with `DEV_LOGIN_USER=rita.reviewer scripts/dev-curl.sh ...`. Switch host with `DEV_LOGIN_BASE_URL=...`. Force re-login with `node scripts/dev-login.mjs --force`. See `docs/auth-developer-workflow.md` for details.
+- Switch user with `DEV_LOGIN_USER=rita.reviewer scripts/dev-curl.sh ...`. Switch host with `DEV_LOGIN_BASE_URL=...`. Force re-login with `node scripts/dev-login.mjs --force`. See `docs/development/auth-developer-workflow.md` for details.
 
 
 ## General Rules
 
-- After changes, update relevant `docs/*.md` when behavior or workflows change.
+- After changes, update relevant `docs/**/*.md` when behavior or workflows change.
 - When user-facing functionality, workflows, roles/permissions, visible UI,
   reports, privacy/export, lifecycle, or admin behavior changes, add or update
-  the matching automated tests and `docs/manuella-testfall.md` manual cases.
+  the matching automated tests and `docs/governance/manuella-testfall.md` manual cases.
   If the change is internal-only and no manual case update is needed, state that
   in the final response.
-- Follow `docs/sql-server-developer-workflow.md` for database setup, migrations, seeding, and developer browse workflow expectations.
+- Follow `docs/development/sql-server-developer-workflow.md` for database setup, migrations, seeding, and developer browse workflow expectations.
 - For visible UI element, label, role, or layout surface changes, see `.github/instructions/developer-mode.instructions.md`.
 - Developer Mode is a desktop-only developer tool. Its overlay, chips, badge, and toast do **not** need to follow WCAG touch-target sizes, mobile responsiveness, or accessibility guidelines. Keep chips compact so they don't obscure the underlying UI.
 - When adding, renaming, or removing outward-facing lifecycle, specification-item status, MCP tool, report column, or admin-default behavior, update all three Fitness-Scenario siblings together: the heading/body in `tests/quality/QUALITY.md`, the matching `it(...)` case in `tests/quality/functional.test.ts`, and the matching scrutiny entry in `.github/skills/run-spec-audit/references/scrutiny-areas.md`. See `.github/instructions/quality-spec.instructions.md`.

@@ -12,7 +12,8 @@ const POLICY_ROW = {
   action: 'delete',
   ageDays: 730,
   createdAt: new Date('2024-01-01T00:00:00.000Z'),
-  decisionReference: 'docs/informationsmangder-kravhantering.md',
+  decisionReference:
+    'docs/security-privacy/informationsmangder-kravhantering.md#gallrings--och-arkiveringsmatris',
   id: 3,
   informationSet: 'Oanvänd taxonomi',
   isEnabled: 1,

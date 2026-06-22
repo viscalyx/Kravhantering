@@ -161,8 +161,18 @@ const adminHsaIdPrefixesRoutePath = join(
   'hsa-id-prefixes',
   'route.ts',
 )
-const adminCenterDocPath = join(repoRoot, 'docs', 'admin-center.md')
-const databaseSchemaDocPath = join(repoRoot, 'docs', 'database-schema.md')
+const adminCenterDocPath = join(
+  repoRoot,
+  'docs',
+  'governance',
+  'admin-center.md',
+)
+const databaseSchemaDocPath = join(
+  repoRoot,
+  'docs',
+  'reference',
+  'database-schema.md',
+)
 const hsaIdPrefixMigrationPath = join(
   repoRoot,
   'typeorm',
@@ -186,9 +196,15 @@ const requirementsServicePath = join(
 const contributorGuidePath = join(
   repoRoot,
   'docs',
+  'integrations',
   'mcp-server-contributor-guide.md',
 )
-const userGuidePath = join(repoRoot, 'docs', 'mcp-server-user-guide.md')
+const userGuidePath = join(
+  repoRoot,
+  'docs',
+  'integrations',
+  'mcp-server-user-guide.md',
+)
 const assignmentAuthorizationPath = join(
   repoRoot,
   'lib',
@@ -220,7 +236,7 @@ const specificationsRoutePath = join(
   'requirements-specifications',
   'route.ts',
 )
-const reportsDocPath = join(repoRoot, 'docs', 'reports.md')
+const reportsDocPath = join(repoRoot, 'docs', 'reference', 'reports.md')
 const specificationDetailClientPath = join(
   repoRoot,
   'app',
@@ -285,7 +301,7 @@ it('Scenario 10: MCP tool inventory matches documentation', () => {
   expect(registerToolCount).toBeGreaterThan(0)
   expect(
     contributorGuideToolCount,
-    'docs/mcp-server-contributor-guide.md must declare an "Exposed MCP tools: <n>" line',
+    'docs/integrations/mcp-server-contributor-guide.md must declare an "Exposed MCP tools: <n>" line',
   ).not.toBeNull()
 
   expect(

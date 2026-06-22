@@ -6,7 +6,7 @@ import {
 } from './operator-upgrade-gate.mjs'
 
 export const DEFAULT_OPERATOR_UPGRADE_NOTES_PATH =
-  'docs/operator-upgrade-notes.md'
+  'docs/operations/operator-upgrade-notes.md'
 export const OPERATOR_UPGRADE_SOURCE_PREFIX = 'operator-upgrade:source'
 
 const GITHUB_API_TIMEOUT_MS = 30_000

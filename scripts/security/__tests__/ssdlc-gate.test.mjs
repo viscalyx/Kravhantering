@@ -136,7 +136,7 @@ describe('SSDLC gate', () => {
     const firstPage = Array.from({ length: 100 }, (_, index) => ({
       filename: `app/file-${index}.ts`,
     }))
-    const secondPage = [{ filename: 'docs/security-ci.md' }]
+    const secondPage = [{ filename: 'docs/security-privacy/security-ci.md' }]
     const fetchImpl = vi.fn(async url => ({
       ok: true,
       status: 200,
@@ -160,7 +160,9 @@ describe('SSDLC gate', () => {
 
     expect(result.prBody).toBe(completePrBody)
     expect(result.changedFiles).toHaveLength(101)
-    expect(result.changedFiles.at(-1)).toBe('docs/security-ci.md')
+    expect(result.changedFiles.at(-1)).toBe(
+      'docs/security-privacy/security-ci.md',
+    )
     expect(fetchImpl).toHaveBeenCalledTimes(3)
   })
 
@@ -172,7 +174,7 @@ describe('SSDLC gate', () => {
         if (String(url).includes('/files?per_page=100&page=1')) {
           return [
             {
-              filename: 'docs/security-ci.md',
+              filename: 'docs/security-privacy/security-ci.md',
               previous_filename: 'lib/auth/session.ts',
             },
           ]
@@ -190,7 +192,7 @@ describe('SSDLC gate', () => {
     const result = evaluateSsdlcGate(input)
 
     expect(input.changedFiles).toEqual([
-      'docs/security-ci.md',
+      'docs/security-privacy/security-ci.md',
       'lib/auth/session.ts',
     ])
     expect(result.sensitiveGroups).toEqual(
@@ -200,7 +202,7 @@ describe('SSDLC gate', () => {
           id: 'authentication-authorization',
         }),
         expect.objectContaining({
-          files: ['docs/security-ci.md'],
+          files: ['docs/security-privacy/security-ci.md'],
           id: 'ci-release-security',
         }),
       ]),

@@ -6,7 +6,7 @@ description: 'Add or modify steps in the Playwright user-guide generator (tests/
 ## Updating the Guide Generator
 
 `tests/guide/generate-guide.spec.ts` is a single serial Playwright test that clicks
-through the app, takes screenshots, and writes `docs/guide/README.md`.
+through the app, takes screenshots, and writes `docs/user-guide/README.md`.
 Run with `npm run generate:guide`.
 
 ### Selectors — prefer stable locators

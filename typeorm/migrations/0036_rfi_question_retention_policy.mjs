@@ -28,7 +28,7 @@ const UP_STATEMENTS = [
         730,
         N'Arkiverade RFI-frågor och historiska RFI-frågeversioner utan RFI-listreferenser',
         1,
-        N'docs/informationsmangder-kravhantering.md#gallrings--och-arkiveringsmatris',
+        N'docs/security-privacy/informationsmangder-kravhantering.md#gallrings--och-arkiveringsmatris',
         NULL,
         SYSUTCDATETIME(),
         SYSUTCDATETIME()

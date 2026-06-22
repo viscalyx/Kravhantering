@@ -140,7 +140,7 @@ describe('GitHub Actions workflow security', () => {
       'node scripts/release/operator-upgrade-notes.mjs sync-pr --github-pr',
     )
     expect(workflow).toContain(
-      'git diff --quiet -- "docs/operator-upgrade-notes.md"',
+      'git diff --quiet -- "docs/operations/operator-upgrade-notes.md"',
     )
     expect(workflow).not.toMatch(/github\.event\.pull_request\.head/iu)
     expect(workflow).not.toMatch(/\bgithub\.head_ref\b/iu)

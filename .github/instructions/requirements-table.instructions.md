@@ -1,5 +1,5 @@
 ---
-applyTo: "{components/RequirementsTable.tsx,app/[locale]/requirements/**/*.tsx,lib/requirements/list-view.ts,tests/unit/requirements-table.test.tsx,tests/unit/requirement-list-view.test.ts,tests/unit/requirements-client.test.tsx,tests/integration/requirements-table-resize.spec.ts,tests/integration/requirements-table-resize.md,docs/requirements-ui-behaviour.md}"
+applyTo: "{components/RequirementsTable.tsx,app/[locale]/requirements/**/*.tsx,lib/requirements/list-view.ts,tests/unit/requirements-table.test.tsx,tests/unit/requirement-list-view.test.ts,tests/unit/requirements-client.test.tsx,tests/integration/requirements-table-resize.spec.ts,tests/integration/requirements-table-resize.md,docs/governance/requirements-ui-behaviour.md}"
 ---
 
 # Requirements Table
@@ -30,6 +30,6 @@ applyTo: "{components/RequirementsTable.tsx,app/[locale]/requirements/**/*.tsx,l
 
 ## Verification
 
-- If resize behavior changes, update `tests/unit/requirements-table.test.tsx`, `tests/integration/requirements-table-resize.spec.ts`, `tests/integration/requirements-table-resize.md`, and `docs/requirements-ui-behaviour.md`.
+- If resize behavior changes, update `tests/unit/requirements-table.test.tsx`, `tests/integration/requirements-table-resize.spec.ts`, `tests/integration/requirements-table-resize.md`, and `docs/governance/requirements-ui-behaviour.md`.
 - Resize tests must verify rendered width changes, not only callback payloads.
 - Cover both live preview during drag and the final committed state after release.

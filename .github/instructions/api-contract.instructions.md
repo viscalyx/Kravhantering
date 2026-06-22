@@ -1,5 +1,5 @@
 ---
-applyTo: "{app/api/**/*.ts,lib/http/validation.ts,openapi/**/*.yaml,docs/api-security.md,schemathesis.toml,.github/workflows/security-api.yml,scripts/security/**/*.mjs}"
+applyTo: "{app/api/**/*.ts,lib/http/validation.ts,openapi/**/*.yaml,docs/security-privacy/api-security.md,schemathesis.toml,.github/workflows/security-api.yml,scripts/security/**/*.mjs}"
 ---
 
 # API Contract And Schemathesis
@@ -13,7 +13,7 @@ applyTo: "{app/api/**/*.ts,lib/http/validation.ts,openapi/**/*.yaml,docs/api-sec
   they are safe for the disposable prodlike SQL Server database and their
   auth/CSRF behavior is understood.
 - If a route is intentionally outside Schemathesis scope, update
-  `docs/api-security.md` scope or deferred-work notes when the documented scope
+  `docs/security-privacy/api-security.md` scope or deferred-work notes when the documented scope
   would otherwise become stale.
 - Keep `/api/mcp` governed by MCP schema/tool-contract tests, not the REST
   OpenAPI contract.
@@ -40,8 +40,8 @@ applyTo: "{app/api/**/*.ts,lib/http/validation.ts,openapi/**/*.yaml,docs/api-sec
 - Run `npm run check` before declaring done when API code or the contract
   changes.
 - For changes to `openapi/requirements-api.yaml`, `schemathesis.toml`,
-  `docs/api-security.md`, or `.github/workflows/security-api.yml`, run the
-  local Schemathesis flow from `docs/api-security.md` when the prodlike SQL
+  `docs/security-privacy/api-security.md`, or `.github/workflows/security-api.yml`, run the
+  local Schemathesis flow from `docs/security-privacy/api-security.md` when the prodlike SQL
   Server and Keycloak stack is available.
 - If the local Schemathesis flow is not run, state that the `Security API`
   workflow is the verification gate.

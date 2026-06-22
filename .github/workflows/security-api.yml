@@ -1,7 +1,7 @@
 name: Security API
 
 # PR-level REST API contract and property testing against the localhost
-# prodlike app. See docs/api-security.md for the design and tuning guide.
+# prodlike app. See docs/security-privacy/api-security.md for the design and tuning guide.
 
 on:
   pull_request:

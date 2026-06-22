@@ -22,7 +22,7 @@ contains a web application for managing requirements
 ### English
 
 There is no English user guide, but the
-[Swedish guide](docs/guide/README.md) includes
+[Swedish guide](docs/user-guide/README.md) includes
 screenshots that may be helpful.
 
 The application supports the full requirements lifecycle:
@@ -96,7 +96,7 @@ graph TD
 ### Svenska
 
 Se även
-[Användarguide](docs/guide/README.md)
+[Användarguide](docs/user-guide/README.md)
 för steg-för-steg-instruktioner med skärmdumpar.
 
 Applikationen stödjer hela kravlivscykeln:
@@ -172,9 +172,9 @@ graph TD
 
 This project also includes an in-app MCP server for requirements management.
 
-- User guide: [docs/mcp-server-user-guide.md](docs/mcp-server-user-guide.md)
+- User guide: [docs/integrations/mcp-server-user-guide.md](docs/integrations/mcp-server-user-guide.md)
 - Contributor guide:
-  [docs/mcp-server-contributor-guide.md](docs/mcp-server-contributor-guide.md)
+  [docs/integrations/mcp-server-contributor-guide.md](docs/integrations/mcp-server-contributor-guide.md)
 
 ### Learn more
 
@@ -182,13 +182,13 @@ This project also includes an in-app MCP server for requirements management.
 
 | Topic | Document |
 | :-- | :-- |
-| Status transitions | [Lifecycle workflow](docs/lifecycle-workflow.md) |
-| Version timestamps | [Version lifecycle dates](docs/version-lifecycle-dates.md) |
-| Data model | [Database schema](docs/database-schema.md) |
-| Architecture (SV) | [Arkitekturbeskrivning](docs/arkitekturbeskrivning-kravhantering.md) |
-| UI behaviour | [Requirements UI](docs/requirements-ui-behaviour.md) |
-| Reports | [Reports](docs/reports.md) |
-| Admin settings | [Admin center](docs/admin-center.md) |
+| Status transitions | [Lifecycle workflow](docs/governance/lifecycle-workflow.md) |
+| Version timestamps | [Version lifecycle dates](docs/reference/version-lifecycle-dates.md) |
+| Data model | [Database schema](docs/reference/database-schema.md) |
+| Information assets (SV) | [Informationsmängder](docs/security-privacy/informationsmangder-kravhantering.md) |
+| UI behaviour | [Requirements UI](docs/governance/requirements-ui-behaviour.md) |
+| Reports | [Reports](docs/reference/reports.md) |
+| Admin settings | [Admin center](docs/governance/admin-center.md) |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -196,7 +196,7 @@ This project also includes an in-app MCP server for requirements management.
 
 The application uses **Microsoft SQL Server + TypeORM** as its sole database
 stack. See
-[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
+[docs/development/sql-server-developer-workflow.md](docs/development/sql-server-developer-workflow.md)
 for setup, migrations, seeding, and the developer browse workflow.
 
 - **Framework:** [Next.js](https://nextjs.org/) 16 (React 19)
@@ -237,14 +237,15 @@ Spaces](https://developers.redhat.com/products/openshift-dev-spaces/overview).
 Create a workspace from this Git URL in your Dev Spaces dashboard and the
 same SQL Server + Keycloak stack is provisioned as sidecar containers in a
 single pod. See
-[docs/openshift-devspaces.md](docs/openshift-devspaces.md) for required
-secrets, editor selection, and SCC requirements.
+[docs/development/openshift-devspaces.md][openshift-devspaces-doc]
+for required secrets, editor selection, and SCC requirements.
+
+[openshift-devspaces-doc]: docs/development/openshift-devspaces.md
 
 ### Local development without devcontainers
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full local setup, including
-Node.js prerequisites, environment files, and database commands. The
-condensed flow is:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor checklist and links
+to the detailed development workflows. The condensed local flow is:
 
 ```bash
 npm install
@@ -268,13 +269,15 @@ the built app on port `3001`.
 
 Each pull request to `main` runs an authenticated OWASP ZAP baseline
 scan against a disposable copy of the application. See
-[docs/security-ci.md](docs/security-ci.md) for the workflow design,
+[docs/security-privacy/security-ci.md][security-ci-doc] for the workflow design,
 failure policy, and tuning instructions.
+
+[security-ci-doc]: docs/security-privacy/security-ci.md
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup,
-database management, and coding guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor quick start,
+checklist, and links to detailed development workflows.
 
 ## License
 

@@ -1,5 +1,5 @@
 ---
-applyTo: "{app/api/**/route.ts,lib/http/secure-mutation-route.ts,tests/unit/secure-mutation-route*.test.ts,docs/api-security.md,docs/auth-how-it-works.md,docs/informationssakerhetskrav-atgarder-app.md}"
+applyTo: "{app/api/**/route.ts,lib/http/secure-mutation-route.ts,tests/unit/secure-mutation-route*.test.ts,docs/security-privacy/api-security.md,docs/security-privacy/auth-how-it-works.md}"
 ---
 
 # Secure Mutation Routes
@@ -15,7 +15,7 @@ applyTo: "{app/api/**/route.ts,lib/http/secure-mutation-route.ts,tests/unit/secu
   REST route.
 - Do not add another exception unless the user explicitly asks for a documented
   security exception. Update `tests/unit/secure-mutation-route-coverage.test.ts`
-  and `docs/api-security.md` in the same change.
+  and `docs/security-privacy/api-security.md` in the same change.
 
 ## Policies
 

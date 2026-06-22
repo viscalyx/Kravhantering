@@ -103,23 +103,25 @@ const AUTHORIZATION_RESPONSIBILITY_PEOPLE: Record<
 
 const MANUAL_CASE_LINKS = {
   'AUTH-03':
-    'docs/manuella-testfall.md#auth-03-anonym-api-begaran-ger-json-401',
+    'docs/governance/manuella-testfall.md#auth-03-anonym-api-begaran-ger-json-401',
   'AUTH-06':
-    'docs/manuella-testfall.md#auth-06-admin-utan-dataskyddsroll-kan-inte-anvanda-dataskyddsflikar',
+    'docs/governance/manuella-testfall.md#auth-06-admin-utan-dataskyddsroll-kan-inte-anvanda-dataskyddsflikar',
   'AUTH-07':
-    'docs/manuella-testfall.md#auth-07-dataskyddsansvarig-utan-adminbehorighet',
+    'docs/governance/manuella-testfall.md#auth-07-dataskyddsansvarig-utan-adminbehorighet',
   'AUTH-08':
-    'docs/manuella-testfall.md#auth-08-anvandare-utan-roll-nekas-privilegierat-arbete',
+    'docs/governance/manuella-testfall.md#auth-08-anvandare-utan-roll-nekas-privilegierat-arbete',
   'AUTH-10':
-    'docs/manuella-testfall.md#auth-10-behorighetsmatris-for-ansvarstilldelningar',
+    'docs/governance/manuella-testfall.md#auth-10-behorighetsmatris-for-ansvarstilldelningar',
   'AUTH-11':
-    'docs/manuella-testfall.md#auth-11-playwrightfaser-for-behorighetsroller',
+    'docs/governance/manuella-testfall.md#auth-11-playwrightfaser-for-behorighetsroller',
   'ADMIN-13':
-    'docs/manuella-testfall.md#admin-13-byte-av-kravomradesagare-anvander-hsa-id',
+    'docs/governance/manuella-testfall.md#admin-13-byte-av-kravomradesagare-anvander-hsa-id',
   'LIFE-11':
-    'docs/manuella-testfall.md#life-11-detaljrapporter-finns-per-status',
-  'REQ-10': 'docs/manuella-testfall.md#req-10-rapport-fran-kravlistan-fungerar',
-  'SPEC-10': 'docs/manuella-testfall.md#spec-10-generera-kravunderlagsrapport',
+    'docs/governance/manuella-testfall.md#life-11-detaljrapporter-finns-per-status',
+  'REQ-10':
+    'docs/governance/manuella-testfall.md#req-10-rapport-fran-kravlistan-fungerar',
+  'SPEC-10':
+    'docs/governance/manuella-testfall.md#spec-10-generera-kravunderlagsrapport',
 } as const
 
 export type ManualCaseId = keyof typeof MANUAL_CASE_LINKS

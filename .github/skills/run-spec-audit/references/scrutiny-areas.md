@@ -12,7 +12,7 @@ maintenance rule.
 - **Code:** `lib/requirements/service.ts` — detail-read logic.
 - **Spec:** Docs say default detail reads expose the latest published
   version only.
-- **Req tag:** `[Req: formal — docs/mcp-server-contributor-guide.md
+- **Req tag:** `[Req: formal — docs/integrations/mcp-server-contributor-guide.md
   "requirements_get_requirement"]`
 - **Question:** Does any path return draft, review, or archived
   content for `view: "detail"`?
@@ -22,8 +22,8 @@ maintenance rule.
 ## 2. Scenario 2: pending replacement blocks archiving
 
 - **Code:** `lib/dal/requirements.ts` — lifecycle transition functions.
-- **Spec:** `docs/lifecycle-workflow.md`.
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+- **Spec:** `docs/governance/lifecycle-workflow.md`.
+- **Req tag:** `[Req: formal — docs/governance/lifecycle-workflow.md
   "Initiate archiving"]`
 - **Question:** Does archive initiation fail while replacement draft or
   review work is pending?
@@ -33,8 +33,8 @@ maintenance rule.
 ## 3. Scenario 3: publishing a successor auto-archives its predecessor at the same instant
 
 - **Code:** `lib/dal/requirements.ts` — lifecycle transition functions.
-- **Spec:** `docs/lifecycle-workflow.md`.
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+- **Spec:** `docs/governance/lifecycle-workflow.md`.
+- **Req tag:** `[Req: formal — docs/governance/lifecycle-workflow.md
   "Review -> Published"]`
 - **Question:** Does publishing a successor atomically archive the
   predecessor so there is only one published version?
@@ -45,8 +45,8 @@ maintenance rule.
 
 - **Code:** `lib/dal/requirements.ts` — edit guards for review and
   archived versions.
-- **Spec:** `docs/lifecycle-workflow.md`.
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+- **Spec:** `docs/governance/lifecycle-workflow.md`.
+- **Req tag:** `[Req: formal — docs/governance/lifecycle-workflow.md
   "Published -> Draft : New version created"]`
 - **Question:** Can review or archived versions be edited in place?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
@@ -55,8 +55,8 @@ maintenance rule.
 ## 5. Scenario 5: archived requirements stay visible while a replacement draft exists
 
 - **Code:** `lib/dal/requirements.ts` — effective-status logic.
-- **Spec:** `docs/version-lifecycle-dates.md`.
-- **Req tag:** `[Req: formal — docs/version-lifecycle-dates.md
+- **Spec:** `docs/reference/version-lifecycle-dates.md`.
+- **Req tag:** `[Req: formal — docs/reference/version-lifecycle-dates.md
   "Effective Requirement Status"]`
 - **Question:** Does effective requirement status preserve archived visibility
   while a replacement draft or review exists?
@@ -67,8 +67,8 @@ maintenance rule.
 
 - **Code:** `lib/dal/requirements-specifications.ts` — specification-local
   requirement and deviation-gated status functions.
-- **Spec:** `docs/lifecycle-workflow.md`.
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+- **Spec:** `docs/governance/lifecycle-workflow.md`.
+- **Req tag:** `[Req: formal — docs/governance/lifecycle-workflow.md
   "Deviation Effect on Usage Status"]`
 - **Question:** Do library and specification-local items require an
   approved deviation before entering Deviated status?
@@ -79,7 +79,7 @@ maintenance rule.
 
 - **Code:** `lib/dal/requirements-specifications.ts` —
   needs-reference linking, cleanup, and register-management functions.
-- **Spec:** `docs/requirements-ui-behaviour.md`.
+- **Spec:** `docs/governance/requirements-ui-behaviour.md`.
 - **Req tag:** `[Req: inferred — from
   linkRequirementsToSpecificationAtomically() cleanup path]`
 - **Question:** Does add-to-specification cleanup remove newly created
@@ -91,8 +91,8 @@ maintenance rule.
 ## 8. Scenario 8: suggestion resolution is impossible without review
 
 - **Code:** `lib/dal/improvement-suggestions.ts` — resolution logic.
-- **Spec:** `docs/lifecycle-workflow.md`.
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+- **Spec:** `docs/governance/lifecycle-workflow.md`.
+- **Req tag:** `[Req: formal — docs/governance/lifecycle-workflow.md
   "Improvement Suggestion Lifecycle"]`
 - **Question:** Can suggestions be resolved or dismissed without
   review, or edited after a terminal decision?
@@ -103,8 +103,8 @@ maintenance rule.
 
 - **Code:** `lib/dal/deviations.ts` — atomic approval/rejection
   mutations, review-requested guards, edit/delete guards.
-- **Spec:** `docs/lifecycle-workflow.md` "Deviation Lifecycle".
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+- **Spec:** `docs/governance/lifecycle-workflow.md` "Deviation Lifecycle".
+- **Req tag:** `[Req: formal — docs/governance/lifecycle-workflow.md
   "Deviation Lifecycle"]`
 - **Question:** Can approvals or rejections be rewritten, deleted, or
   duplicated after the first decision, including under stale/concurrent
@@ -119,8 +119,8 @@ maintenance rule.
 - **Code:** `lib/dal/requirements.ts` and
   `lib/requirements/service.ts` — `baseVersionId`/`baseRevisionToken`
   optimistic edit preconditions.
-- **Spec:** `docs/lifecycle-workflow.md`.
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md "Draft"]`
+- **Spec:** `docs/governance/lifecycle-workflow.md`.
+- **Req tag:** `[Req: formal — docs/governance/lifecycle-workflow.md "Draft"]`
 - **Question:** Are stale draft edits rejected before content or joins are
   rewritten?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
@@ -129,8 +129,8 @@ maintenance rule.
 ## 11. List View Defensive Parsing
 
 - **Code:** `lib/requirements/list-view.ts`.
-- **Spec:** `docs/requirements-ui-behaviour.md` and
-  `docs/admin-center.md`.
+- **Spec:** `docs/governance/requirements-ui-behaviour.md` and
+  `docs/governance/admin-center.md`.
 - **Question:** Do malformed admin defaults, invalid visible-column
   JSON, hidden filters, or bad widths fail safely?
 
@@ -139,8 +139,8 @@ maintenance rule.
 - **Code:** `lib/mcp/http.ts`, `lib/mcp/server.ts`,
   `app/api/requirements/[id]/route.ts`,
   `app/api/specifications/[id]/items/[itemId]/route.ts`.
-- **Spec:** `docs/mcp-server-user-guide.md` and
-  `docs/mcp-server-contributor-guide.md`.
+- **Spec:** `docs/integrations/mcp-server-user-guide.md` and
+  `docs/integrations/mcp-server-contributor-guide.md`.
 - **Field contracts:** `references/integration-contracts.md` — use
   these tables as the expected-field ground truth.
 - **Question:** Do REST and MCP outputs, transport rules, and field
@@ -150,7 +150,7 @@ maintenance rule.
 
 - **Code:** `lib/export-csv.ts`, `lib/reports/specification-csv.ts`,
   and `lib/reports/specification-profiles.ts`.
-- **Spec:** `docs/reports.md`.
+- **Spec:** `docs/reference/reports.md`.
 - **Field contracts:** `references/integration-contracts.md` — verify
   exported fields align with the REST response schemas.
 - **Question:** Does export behavior match the documented CSV
@@ -163,8 +163,8 @@ maintenance rule.
   `lib/reports/specification-csv.ts`,
   `lib/reports/specification-profiles.ts`, and specification report/export
   routes.
-- **Spec:** `docs/reports.md` and `docs/requirements-ui-behaviour.md`.
-- **Req tag:** `[Req: formal - docs/reports.md
+- **Spec:** `docs/reference/reports.md` and `docs/governance/requirements-ui-behaviour.md`.
+- **Req tag:** `[Req: formal — docs/reference/reports.md
   "Requirements Specification Field Profiles"]`
 - **Question:** Do specification reports use linked requirement versions,
   cover the whole specification, expose only lifecycle-matching report
@@ -184,10 +184,10 @@ maintenance rule.
 ## 15. Scenario 10: MCP tool inventory matches documentation
 
 - **Code:** `lib/mcp/server.ts`.
-- **Spec:** `docs/mcp-server-contributor-guide.md` ("Server Contract",
-  `Exposed MCP tools` line) and `docs/mcp-server-user-guide.md`
+- **Spec:** `docs/integrations/mcp-server-contributor-guide.md` ("Server Contract",
+  `Exposed MCP tools` line) and `docs/integrations/mcp-server-user-guide.md`
   ("What The Server Exposes" tool list).
-- **Req tag:** `[Req: formal — docs/mcp-server-contributor-guide.md
+- **Req tag:** `[Req: formal — docs/integrations/mcp-server-contributor-guide.md
   "Server Contract"]`
 - **Question:** Does the number of `server.registerTool()` calls match
   the documented tool count in the contributor guide and the explicit
@@ -200,8 +200,8 @@ maintenance rule.
 - **Code:** `lib/dal/requirements.ts` — `initiateArchiving`
   (`SERIALIZABLE` transaction with `UPDLOCK, HOLDLOCK` precondition
   read and conditional `UPDATE` with row-count guard).
-- **Spec:** `docs/lifecycle-workflow.md` ("Two-Step Archiving").
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+- **Spec:** `docs/governance/lifecycle-workflow.md` ("Two-Step Archiving").
+- **Req tag:** `[Req: formal — docs/governance/lifecycle-workflow.md
   "Two-Step Archiving"]`
 - **Question:** Are concurrent `initiateArchiving` calls on the same
   requirement serialized so at most one succeeds and the loser fails
@@ -215,8 +215,8 @@ maintenance rule.
   (`SERIALIZABLE` transaction with `UPDLOCK, HOLDLOCK` precondition
   read, conditional `UPDATE` with row-count guard, strict-target
   filter on `archive_initiated_at IS NOT NULL`).
-- **Spec:** `docs/lifecycle-workflow.md` ("Two-Step Archiving").
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+- **Spec:** `docs/governance/lifecycle-workflow.md` ("Two-Step Archiving").
+- **Req tag:** `[Req: formal — docs/governance/lifecycle-workflow.md
   "Two-Step Archiving"]`
 - **Question:** Are concurrent `approveArchiving` calls on the same
   requirement serialized, and does the archived flag plus
@@ -230,8 +230,8 @@ maintenance rule.
 - **Code:** `lib/dal/requirements.ts` — `approveArchiving`,
   `cancelArchiving` (shared serialization guards, conditional
   `UPDATE` with row-count guard).
-- **Spec:** `docs/lifecycle-workflow.md` ("Two-Step Archiving").
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+- **Spec:** `docs/governance/lifecycle-workflow.md` ("Two-Step Archiving").
+- **Req tag:** `[Req: formal — docs/governance/lifecycle-workflow.md
   "Two-Step Archiving"]`
 - **Question:** When approve and cancel race for the same
   requirement, does exactly one win, the other fail with `conflict`,
@@ -244,8 +244,8 @@ maintenance rule.
 - **Code:** `lib/dal/requirements.ts` — `approveArchiving`,
   `cancelArchiving` (strict-target filter on
   `archive_initiated_at IS NOT NULL`).
-- **Spec:** `docs/lifecycle-workflow.md` ("Two-Step Archiving").
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+- **Spec:** `docs/governance/lifecycle-workflow.md` ("Two-Step Archiving").
+- **Req tag:** `[Req: formal — docs/governance/lifecycle-workflow.md
   "Two-Step Archiving"]`
 - **Question:** When a newer Draft or Review version exists for the
   same requirement (legacy state), do `approveArchiving` and
@@ -261,7 +261,7 @@ maintenance rule.
   `graduateSpecificationLocalRequirementToLibrary`; `lib/requirements/service-specifications.ts`
   graduation authorization and service wrapper.
 - **Spec:** issue #96 copy-only graduation workflow and
-  `docs/requirements-ui-behaviour.md` specification-local action rail.
+  `docs/governance/requirements-ui-behaviour.md` specification-local action rail.
 - **Req tag:** `[Req: formal — issue #96 copy-only graduation workflow]`
 - **Question:** Does graduation copy a specification-local requirement
   regardless of usage status into a new Draft library requirement in the
@@ -276,7 +276,7 @@ maintenance rule.
   `app/api/specifications/[id]/items/[itemId]/route.ts`,
   `lib/dal/requirements-specifications.ts`, and
   `typeorm/migrations/0015_require_specification_item_status.mjs`.
-- **Spec:** issue #147 and `docs/lifecycle-workflow.md`
+- **Spec:** issue #147 and `docs/governance/lifecycle-workflow.md`
   ("Usage Status").
 - **Req tag:** `[Req: formal — issue #147 prevent clearing usage status]`
 - **Question:** Do library requirement applications and specification-local
@@ -301,7 +301,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
 
 - **Code:** `lib/ai/openrouter-client.ts`,
   `lib/ai/requirement-prompt.ts`, `lib/ai/taxonomy.ts`.
-- **Spec:** `docs/reference-data-and-ai.md` §4.
+- **Spec:** `docs/governance/reference-data-and-ai.md` §4.
 - **Question:** Do timeout values match spec (120 s chat,
   10 s models, 5 s key info)? Does taxonomy validation
   filter/repair correctly (invalid `typeId` → delete, invalid
@@ -316,8 +316,8 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   `lib/dal/specification-implementation-types.ts`,
   `lib/dal/specification-lifecycle-statuses.ts`,
   `lib/dal/specification-responsibility-areas.ts`.
-- **Spec:** `docs/reference-data-and-ai.md` §1–3,
-  `docs/database-schema.md`.
+- **Spec:** `docs/governance/reference-data-and-ai.md` §1–3,
+  `docs/reference/database-schema.md`.
 - **Question:** Does norm-reference ID derivation follow the
   3-tier strategy? Does collision resolution work? Does
   lifecycle-status validation reject empty strings while other
@@ -333,9 +333,9 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   `app/api/catalog/specification-item-statuses/route.ts`,
   `app/api/risk-levels/route.ts`,
   `lib/requirements/service-requirements.ts`.
-- **Spec:** `docs/admin-center.md` "Reference Data",
-  `docs/database-schema.md`.
-- **Req tag:** `[Req: formal — docs/admin-center.md "Reference Data"]`
+- **Spec:** `docs/governance/admin-center.md` "Reference Data",
+  `docs/reference/database-schema.md`.
+- **Req tag:** `[Req: formal — docs/governance/admin-center.md "Reference Data"]`
 - **Question:** Are icon names accepted only through the shared allowlist
   generated from the installed Lucide icon catalog? Are `iconName` fields
   additive on REST/MCP/catalog output? Do print/PDF renderers use validated
@@ -349,8 +349,8 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
 - **Code:** `lib/mcp/server.ts` — requirements specification tool schemas
   and handlers; `lib/requirements/service-specifications.ts` — shared service
   workflow for listing, item lookup, graduation, add, and remove operations.
-- **Spec:** `docs/mcp-server-contributor-guide.md`,
-  `docs/mcp-server-user-guide.md`, and issue #166.
+- **Spec:** `docs/integrations/mcp-server-contributor-guide.md`,
+  `docs/integrations/mcp-server-user-guide.md`, and issue #166.
 - **Req tag:** `[Req: formal — issue #166 specification MCP tools]`
 - **Question:** Do the specification MCP tools reject ambiguous identifiers and
   malformed input before service delegation, pass locale/response format
@@ -365,9 +365,9 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   `typeorm/seed.mjs`, `lib/dal/ui-settings.ts`,
   `app/api/admin/hsa-id-prefixes/route.ts`, and
   `components/HsaPersonVerifyField.tsx`.
-- **Spec:** `docs/admin-center.md`, `docs/database-schema.md`, and
-  `docs/hsa-id.md`.
-- **Req tag:** `[Req: formal — docs/admin-center.md "Identity"]`
+- **Spec:** `docs/governance/admin-center.md`, `docs/reference/database-schema.md`, and
+  `docs/reference/hsa-id.md`.
+- **Req tag:** `[Req: formal — docs/governance/admin-center.md "Identity"]`
 - **Question:** Do HSA-id-prefixes remain optional UI guidance, with no required
   seed rows, one visible default when visible prefixes exist, delete/change
   protection for used prefixes, audited admin saves, and editable fields that
@@ -382,7 +382,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   `lib/specifications/preload.ts`, `lib/specifications/permissions.ts`, and
   `app/api/specifications/route.ts`.
 - **Spec:** `docs/adr/0012-uppdragsbaserad-rbac.md` and
-  `docs/behörigheter.md`.
+  `docs/governance/behörigheter.md`.
 - **Req tag:** `[Req: formal — docs/adr/0012-uppdragsbaserad-rbac.md]`
 - **Question:** Do requirement and specification actions resolve the target
   resource before authorization, list only assigned requirements

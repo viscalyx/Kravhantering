@@ -59,4 +59,4 @@ applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.t
 - Update `tests/unit/requirements-service.test.ts` and `tests/unit/mcp-http.test.ts` for service or MCP output changes.
 - Update `tests/integration/requirements-table-hydration.spec.ts` when default visible headers change.
 - Update `tests/integration/admin-entrypoint.spec.ts` when the admin settings flow changes.
-- Update `docs/requirements-ui-behaviour.md` when visible table, form, or inline detail behavior changes.
+- Update `docs/governance/requirements-ui-behaviour.md` when visible table, form, or inline detail behavior changes.

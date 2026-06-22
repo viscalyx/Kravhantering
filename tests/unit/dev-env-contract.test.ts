@@ -21,8 +21,8 @@ const hsaPersonLookupEnvVars = [
 ] as const
 
 const productionDeployDocs = [
-  'docs/rhel10-production-deploy.md',
-  'docs/rhel10-production-single-node-self-contained-deploy.md',
+  'docs/operations/rhel10-production-deploy.md',
+  'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
 ] as const
 
 function expectEnvVars(content: string, names: readonly string[]) {
@@ -103,17 +103,19 @@ describe('development environment contract', () => {
       const deployDoc = readWorkspaceFile(path)
 
       expect(deployDoc).toContain(
-        '[HSA person lookup integration](./hsa-person-lookup-integration.md)',
+        '[HSA person lookup integration](../integrations/hsa-person-lookup-integration.md)',
       )
       expectDocsMentionEnvVars(deployDoc, hsaPersonLookupEnvVars)
     }
   })
 
   it('documents upgrade-time HSA lookup auth handoff', () => {
-    const upgradeNotes = readWorkspaceFile('docs/operator-upgrade-notes.md')
+    const upgradeNotes = readWorkspaceFile(
+      'docs/operations/operator-upgrade-notes.md',
+    )
 
     expect(upgradeNotes).toContain(
-      '[HSA person lookup integration](./hsa-person-lookup-integration.md)',
+      '[HSA person lookup integration](../integrations/hsa-person-lookup-integration.md)',
     )
     expectDocsMentionEnvVars(upgradeNotes, hsaPersonLookupEnvVars)
     expect(upgradeNotes).toContain('mTLS')

@@ -1,7 +1,7 @@
 name: Security MCP
 
 # Repo-owned MCP seeded HTTP security gate against the localhost prodlike app.
-# See docs/mcp-seeded-dast.md for the design and tuning guide.
+# See docs/security-privacy/mcp-seeded-dast.md for the design and tuning guide.
 
 on:
   pull_request:

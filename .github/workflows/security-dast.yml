@@ -2,7 +2,7 @@ name: Security DAST
 
 # PR-level dynamic application security test using OWASP ZAP baseline
 # (passive scanning) and Nuclei against a localhost authenticated session.
-# See docs/security-ci.md for the full design and tuning guide.
+# See docs/security-privacy/security-ci.md for the full design and tuning guide.
 
 on:
   pull_request:

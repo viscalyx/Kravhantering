@@ -61,7 +61,7 @@ OpenRouter-körväg anropas. `Admin` får utelämna behörighetssammanhang. Om
 AI-assisterat författande senare behöver en separat behörighetsmodell ska den
 beslutas som en ny uttrycklig policy med egna skäl.
 
-Kravpaket och normreferenser följer `docs/behörigheter.md`. Kravpaketens
+Kravpaket och normreferenser följer `docs/governance/behörigheter.md`. Kravpaketens
 återaktivering kräver `Admin` för att stänga den tidigare generella
 inloggningsgränsen.
 

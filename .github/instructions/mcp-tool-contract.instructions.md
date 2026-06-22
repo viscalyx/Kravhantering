@@ -1,5 +1,5 @@
 ---
-applyTo: "{lib/mcp/**/*.ts,lib/requirements/**/*.ts,lib/dal/**/*.ts,app/api/**/*.ts,docs/mcp-server-*.md,tests/unit/mcp-http.test.ts}"
+applyTo: "{lib/mcp/**/*.ts,lib/requirements/**/*.ts,lib/dal/**/*.ts,app/api/**/*.ts,docs/integrations/mcp-server-*.md,tests/unit/mcp-http.test.ts}"
 ---
 
 # MCP Tool Contract Upkeep
@@ -14,7 +14,7 @@ applyTo: "{lib/mcp/**/*.ts,lib/requirements/**/*.ts,lib/dal/**/*.ts,app/api/**/*
   clients must echo, such as `requirements_get_requirement`
   `requirement.versions[0].id` to `requirement.baseVersionId`.
 - Do not rely on user docs alone to teach MCP clients how to call a tool.
-- Update `docs/mcp-server-user-guide.md`,
-  `docs/mcp-server-contributor-guide.md`, and `tests/unit/mcp-http.test.ts`.
+- Update `docs/integrations/mcp-server-user-guide.md`,
+  `docs/integrations/mcp-server-contributor-guide.md`, and `tests/unit/mcp-http.test.ts`.
 - For outward-facing MCP invariants, update the quality siblings described in
   `.github/instructions/quality-spec.instructions.md`.

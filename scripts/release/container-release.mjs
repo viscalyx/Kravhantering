@@ -21,7 +21,7 @@ export const HSA_PERSON_LOOKUP_ADAPTER_PACKAGE =
   'kravhantering-hsa-person-lookup-adapter'
 export const DEFAULT_RELEASE_OUTPUT_DIR = 'tmp/container-release-artifacts'
 export const DEFAULT_OPERATOR_UPGRADE_NOTES_PATH =
-  'docs/operator-upgrade-notes.md'
+  'docs/operations/operator-upgrade-notes.md'
 export const DEPLOYMENT_BUNDLE_SCHEMA_VERSION = 2
 export const APP_RUNTIME_DESCRIPTION =
   'Runnable Next.js application image for the production web runtime.'
@@ -56,15 +56,15 @@ const RELEVANT_PATH_PREFIXES = [
   'package.json',
   'public/',
   'docs/images/',
-  'docs/operator-upgrade-notes.md',
-  'docs/rhel10-production-deploy.md',
-  'docs/rhel10-production-disconnected.md',
-  'docs/rhel10-production-uninstall.md',
-  'docs/rhel10-production-upgrade.md',
-  'docs/rhel10-production-single-node-self-contained-deploy.md',
-  'docs/rhel10-production-single-node-self-contained-disconnected.md',
-  'docs/rhel10-production-single-node-self-contained-uninstall.md',
-  'docs/rhel10-production-single-node-self-contained-upgrade.md',
+  'docs/operations/operator-upgrade-notes.md',
+  'docs/operations/rhel10-production-deploy.md',
+  'docs/operations/rhel10-production-disconnected.md',
+  'docs/operations/rhel10-production-uninstall.md',
+  'docs/operations/rhel10-production-upgrade.md',
+  'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
+  'docs/operations/rhel10-production-single-node-self-contained-disconnected.md',
+  'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
+  'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
   'dev/keycloak/realm-kravhantering-dev.json',
   'scripts/build-metadata.js',
   'scripts/containers/',
@@ -83,36 +83,44 @@ const RELEVANT_PATH_PREFIXES = [
 
 export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
   {
-    source: 'docs/rhel10-production-deploy.md',
-    target: 'docs/rhel10-production-deploy.md',
+    source: 'docs/operations/rhel10-production-deploy.md',
+    target: 'docs/operations/rhel10-production-deploy.md',
   },
   {
-    source: 'docs/rhel10-production-disconnected.md',
-    target: 'docs/rhel10-production-disconnected.md',
+    source: 'docs/operations/rhel10-production-disconnected.md',
+    target: 'docs/operations/rhel10-production-disconnected.md',
   },
   {
-    source: 'docs/rhel10-production-upgrade.md',
-    target: 'docs/rhel10-production-upgrade.md',
+    source: 'docs/operations/rhel10-production-upgrade.md',
+    target: 'docs/operations/rhel10-production-upgrade.md',
   },
   {
-    source: 'docs/rhel10-production-uninstall.md',
-    target: 'docs/rhel10-production-uninstall.md',
+    source: 'docs/operations/rhel10-production-uninstall.md',
+    target: 'docs/operations/rhel10-production-uninstall.md',
   },
   {
-    source: 'docs/rhel10-production-single-node-self-contained-deploy.md',
-    target: 'docs/rhel10-production-single-node-self-contained-deploy.md',
+    source:
+      'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
+    target:
+      'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
   },
   {
-    source: 'docs/rhel10-production-single-node-self-contained-disconnected.md',
-    target: 'docs/rhel10-production-single-node-self-contained-disconnected.md',
+    source:
+      'docs/operations/rhel10-production-single-node-self-contained-disconnected.md',
+    target:
+      'docs/operations/rhel10-production-single-node-self-contained-disconnected.md',
   },
   {
-    source: 'docs/rhel10-production-single-node-self-contained-upgrade.md',
-    target: 'docs/rhel10-production-single-node-self-contained-upgrade.md',
+    source:
+      'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
+    target:
+      'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
   },
   {
-    source: 'docs/rhel10-production-single-node-self-contained-uninstall.md',
-    target: 'docs/rhel10-production-single-node-self-contained-uninstall.md',
+    source:
+      'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
+    target:
+      'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
   },
   { source: 'containers/production/compose', target: 'compose' },
   { source: 'containers/production/env', target: 'env' },
