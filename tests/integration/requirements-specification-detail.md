@@ -10,7 +10,8 @@ the page, while keeping the sticky title bar fixed at the top of each panel.
 The page also exposes a left-panel action for creating specification-local
 requirements that exist only inside the current requirements specification. The
 desktop flow also checks that the editable Usage status column offers the
-configured usage statuses.
+configured usage statuses and that the RFI question list exposes included-scope
+switches separately from export actions.
 
 ## Data Model
 
@@ -47,8 +48,12 @@ flowchart TD
     O --> P[Assert sticky title bar Y unchanged]
     B --> Q[Desktop: enable Usage status column]
     Q --> R[Verify configured status labels]
-    P --> S[Test passes]
-    R --> S
+    B --> S[Desktop: open RFI-frågelista]
+    S --> T[Toggle included-only filter]
+    T --> U[Verify export links and scope switches]
+    P --> V[Test passes]
+    R --> V
+    U --> V
 ```
 
 ## Test Setup
@@ -60,19 +65,21 @@ flowchart TD
   to 560 px after navigation to create overflow conditions.
 - The Usage status option test is desktop-only and clears `localStorage` before
   navigation so column visibility starts from the default state.
+- The RFI scope-control test is desktop-only and does not mutate persisted RFI
+  scope. It toggles only the transient included-only view filter.
 - Overflow is detected by comparing `scrollHeight` with `clientHeight + 50`.
   If neither panel overflows even after expanding a row, the scroll-sync
   assertion is skipped (see inline comment in the spec).
 
 ## opens the requirements specification edit dialog from the title action
 
-### Purpose
+### Purpose: RFI Scope Controls
 
 Verifies that clicking "Redigera kravunderlag" opens the edit dialog, pre-fills
 the specification name, keeps `Spara` disabled until normalized metadata
 changes, and leaves the detail split-panel layout unchanged.
 
-### Step-by-Step Flow
+### Step-by-Step Flow: RFI Scope Controls
 
 1. Navigate to `/sv/specifications/ETJANST-UPP-2026`.
 2. Assert the `h1` "Upphandling av e-tjänstplattform" heading is visible.
@@ -87,7 +94,7 @@ changes, and leaves the detail split-panel layout unchanged.
    still present.
 10. Revert `Namn` and assert `Spara` is disabled again.
 
-### Sequence Diagram
+### Sequence Diagram: RFI Scope Controls
 
 ```mermaid
 sequenceDiagram
@@ -102,6 +109,47 @@ sequenceDiagram
     Note over D: ✓ Dialog "Redigera kravunderlag" visible
     Note over D: ✓ Name input = "Upphandling av e-tjänstplattform"
     Note over P: ✓ Split-panel classes unchanged
+```
+
+## shows RFI scope switches and the included-only view filter
+
+### Purpose
+
+Verifies that the `RFI-frågelista` tab exposes the transient included-only icon
+filter button, CSV/PDF export links, and separate scope switches with
+`Ingår i RFI` tooltips for requirement areas and individual RFI questions.
+
+### Step-by-Step Flow
+
+1. Navigate to `/sv/specifications/ETJANST-UPP-2026`.
+2. Open the `RFI-frågelista` tab in the left panel.
+3. Assert the icon button with tooltip `Visa endast de som ingår i RFI` starts
+   off.
+4. Turn the button on and assert the tooltip changes to
+   `Visar endast de som ingår i RFI`.
+5. Turn the button off again so all RFI questions are visible.
+6. Assert the CSV and PDF export links still point at the RFI-list export route.
+7. Assert at least one requirement-area scope switch has an RFI inclusion
+   tooltip.
+8. Assert at least one question-level scope switch has an RFI inclusion tooltip.
+
+### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant P as Page
+    participant R as RFIList
+
+    U->>P: Open ETJANST-UPP-2026
+    U->>P: Click RFI-frågelista tab
+    P->>R: Render RFI list controls
+    Note over R: ✓ Included-only filter is off
+    U->>R: Toggle included-only filter on
+    Note over R: ✓ Filter label changes to active state
+    U->>R: Toggle included-only filter off
+    Note over R: ✓ Export links remain available
+    Note over R: ✓ Area and question scope switch tooltips are available
 ```
 
 <!-- markdownlint-disable MD013 -->

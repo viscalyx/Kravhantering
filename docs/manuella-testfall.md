@@ -16,6 +16,7 @@ vanlig `curl` inte använder samma lokala autentiseringsstöd.
 
 - [Konfigurerade användare](#konfigurerade-användare)
 - [Allmän förberedelse](#allmän-förberedelse)
+- [Navigering](#navigering)
 - [Autentisering och behörighet](#autentisering-och-behörighet)
   - [AUTH-01 till AUTH-11](#auth-01-logga-in-via-keycloak)
   - [AUTHZ-00 till AUTHZ-10](#authz-00-fas-0-testdata-och-identiteter)
@@ -75,6 +76,18 @@ Viktiga seedade ytor:
 - Seedat kravpaket för behörighet: `AUTHZ kravpaket`.
 
 Behörighetsmatrisen finns i [behörigheter.md](./behörigheter.md).
+
+## Navigering
+
+### NAV-01: global sidonavigering linjerar verktygsikoner
+
+**Steg:** Logga in som `ada.admin`, öppna `/sv/requirements` på desktop och
+expandera den globala sidonavigeringen.
+
+**Förväntat resultat:** Sidonavigeringen är kompakt utan att rubriken
+`Kravbiblioteksförvaltning` eller länketiketter bryts. Ikonerna för språkbyte,
+temaväxling och användarmeny har samma horisontella fotavtryck och linjerar med
+övriga ikoner i sidonavigeringen.
 
 ## Autentisering och behörighet
 
@@ -921,14 +934,20 @@ kravunderlagets RFI-lista utan att listan först behöver låsas.
 
 ### SPEC-14: lås, relevansbedöm och exportera RFI-lista
 
-**Steg:** I kravunderlagets `RFI-frågelista`, välj bort en fråga, lås listan,
-markera en inkluderad fråga som relevant och exportera CSV och PDF.
+**Steg:** I kravunderlagets `RFI-frågelista`, välj bort en fråga med frågans
+scope-reglage och kontrollera att reglagets tooltip växlar mellan
+`Ingår i RFI` och `Ingår inte i RFI`. Kontrollera att frågetexten dimmas och att
+kravområdet visar `Delvis`. Slå på kravområdets scope-reglage och kontrollera
+att alla frågor i området ingår igen. Välj bort en fråga på nytt, aktivera
+filterknappen med tooltip `Visa endast de som ingår i RFI`, lås listan, markera
+en inkluderad fråga som relevant och exportera CSV och PDF.
 
 **Förväntat resultat:** Kontrollen visar texten `Låst` och ett fast
 storlekssatt reglage. När reglaget är på är listan låst och reglaget har amber
-färg. Scope kan ändras före låsning men inte efter. Relevans kan bara sättas
-efter låsning. Exporterna innehåller exakta RFI-frågeversioner, scope och
-relevans.
+färg. `Ingår i RFI` kan ändras före låsning men inte efter. Filtret döljer
+frågor som inte ingår på sidan men påverkar inte exporterna. Relevans kan bara
+sättas efter låsning. Exporterna innehåller exakta RFI-frågeversioner,
+Ingår i RFI-markeringar och relevans.
 
 ### SPEC-15: lås upp RFI-lista och hantera ändrad frågeversion
 

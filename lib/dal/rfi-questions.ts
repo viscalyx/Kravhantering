@@ -1164,6 +1164,94 @@ export async function updateSpecificationRfiQuestionItem(
   return getSpecificationRfiList(db, specificationId)
 }
 
+export async function updateSpecificationRfiAreaScope(
+  db: SqlServerDatabase,
+  specificationId: number,
+  areaId: number,
+  isIncluded: boolean,
+  actor: ActorSnapshot,
+): Promise<SpecificationRfiListRow> {
+  await db.transaction(async manager => {
+    await ensureSpecificationRfiList(manager, specificationId)
+    const header = await getSpecificationRfiListHeader(manager, specificationId)
+    if (header.isLocked) {
+      throw validationError('Locked RFI lists cannot change scope', {
+        reason: 'rfi_list_locked',
+      })
+    }
+
+    const areaRows = (await manager.query(
+      `SELECT TOP (1) id FROM requirement_areas WHERE id = @0`,
+      [areaId],
+    )) as Array<{ id: number }>
+    if (!areaRows[0]) {
+      throw validationError('Requirement area not found', {
+        areaId,
+        reason: 'area_not_found',
+      })
+    }
+
+    await manager.query(
+      `
+        MERGE specification_rfi_question_items AS target
+        USING (
+          SELECT
+            @0 AS specification_id,
+            question.id AS rfi_question_id,
+            version_record.id AS rfi_question_version_id
+          FROM rfi_questions question
+          INNER JOIN rfi_question_versions version_record
+            ON version_record.rfi_question_id = question.id
+           AND version_record.is_active = 1
+          WHERE question.area_id = @1
+            AND question.is_archived = 0
+        ) AS source
+        ON target.specification_id = source.specification_id
+       AND target.rfi_question_id = source.rfi_question_id
+        WHEN MATCHED THEN
+          UPDATE SET
+            rfi_question_version_id = COALESCE(
+              target.rfi_question_version_id,
+              source.rfi_question_version_id
+            ),
+            is_included = @2,
+            changed_at = SYSUTCDATETIME(),
+            changed_by_hsa_id = @3,
+            changed_by_display_name = @4
+        WHEN NOT MATCHED THEN
+          INSERT (
+            specification_id,
+            rfi_question_id,
+            rfi_question_version_id,
+            is_included,
+            relevance,
+            changed_at,
+            changed_by_hsa_id,
+            changed_by_display_name
+          )
+          VALUES (
+            source.specification_id,
+            source.rfi_question_id,
+            source.rfi_question_version_id,
+            @2,
+            NULL,
+            SYSUTCDATETIME(),
+            @3,
+            @4
+          );
+      `,
+      [
+        specificationId,
+        areaId,
+        isIncluded ? 1 : 0,
+        actor.hsaId,
+        actor.displayName,
+      ],
+    )
+  })
+  return getSpecificationRfiList(db, specificationId)
+}
+
 export async function createRfiQuestionSuggestion(
   db: SqlServerDatabase,
   data: {

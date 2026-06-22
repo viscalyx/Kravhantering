@@ -128,6 +128,11 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `navigation > button: collapse rail`. The mobile drawer controls use
   `navigation > button: open mobile drawer` and
   `navigation > button: close mobile drawer`.
+- The expanded desktop side rail uses a compact width while keeping labels
+  visible; this does not change the marker contract.
+- Side navigation utility controls keep the same icon footprint as primary
+  navigation entries while reusing their existing language, theme, and auth
+  marker values.
 - Auth account-detail rows keep their developer-mode values in English
   as `user info name`, `user info email`, `user info subject`, and
   `user info session expires` even when the visible labels are
@@ -255,6 +260,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `rfiQuestions > suggestion indicator: question <question code>
   untreated|handled`; the treatment modal uses the shared
   `dialog: RFI question suggestions` surface.
+- Specification RFI question list controls expose `rfi list action:
+  included-only filter`, `rfi list area scope: <requirement area>`, and
+  `rfi list question scope: <RFI question code>` for the transient included-only
+  filter and the `Ingår i RFI` switches.
 - Requirements specification list requirement-area labels render as compact,
   non-interactive pills inside a constrained column in the existing
   `specifications > crud table` surface; they do not add separate developer-mode

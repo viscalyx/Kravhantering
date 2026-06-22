@@ -6,6 +6,7 @@ import {
   listRfiQuestionSuggestions,
   lockSpecificationRfiList,
   updateRfiQuestion,
+  updateSpecificationRfiAreaScope,
   updateSpecificationRfiQuestionItem,
 } from '@/lib/dal/rfi-questions'
 
@@ -358,6 +359,95 @@ describe('RFI questions DAL', () => {
         4,
         12,
         { isIncluded: false },
+        actor,
+      ),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'rfi_list_locked' },
+    })
+    expect(
+      managerQuery.mock.calls.some(([sql]) =>
+        String(sql).includes('MERGE specification_rfi_question_items'),
+      ),
+    ).toBe(false)
+  })
+
+  it('updates all RFI question scope in an area atomically', async () => {
+    const { db, managerQuery, transaction } = createTransactionalDb({
+      managerResponses: [
+        [],
+        [
+          {
+            isLocked: 0,
+            lockedAt: null,
+            lockedByDisplayName: null,
+            lockedByHsaId: null,
+            specificationId: 4,
+          },
+        ],
+        [{ id: 2 }],
+        [],
+      ],
+      queryResponses: [
+        [
+          {
+            isLocked: 0,
+            lockedAt: null,
+            lockedByDisplayName: null,
+            lockedByHsaId: null,
+            specificationId: 4,
+          },
+        ],
+        [],
+      ],
+    })
+
+    const result = await updateSpecificationRfiAreaScope(
+      db as unknown as Parameters<typeof updateSpecificationRfiAreaScope>[0],
+      4,
+      2,
+      false,
+      actor,
+    )
+
+    expect(transaction).toHaveBeenCalledWith(expect.any(Function))
+    const mergeCall = managerQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('MERGE specification_rfi_question_items'),
+    )
+    expect(String(mergeCall?.[0])).toContain('question.area_id = @1')
+    expect(String(mergeCall?.[0])).toContain('question.is_archived = 0')
+    expect(String(mergeCall?.[0])).toContain('is_included = @2')
+    expect(mergeCall?.[1]).toEqual([4, 2, 0, actor.hsaId, actor.displayName])
+    expect(result).toMatchObject({
+      isLocked: false,
+      items: [],
+      specificationId: 4,
+    })
+  })
+
+  it('rejects area scope edits after the specification RFI list is locked', async () => {
+    const { db, managerQuery } = createTransactionalDb({
+      managerResponses: [
+        [],
+        [
+          {
+            isLocked: 1,
+            lockedAt: '2026-06-20T09:00:00.000Z',
+            lockedByDisplayName: actor.displayName,
+            lockedByHsaId: actor.hsaId,
+            specificationId: 4,
+          },
+        ],
+      ],
+      queryResponses: [],
+    })
+
+    await expect(
+      updateSpecificationRfiAreaScope(
+        db as unknown as Parameters<typeof updateSpecificationRfiAreaScope>[0],
+        4,
+        2,
+        false,
         actor,
       ),
     ).rejects.toMatchObject({

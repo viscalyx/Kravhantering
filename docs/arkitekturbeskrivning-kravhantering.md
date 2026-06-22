@@ -355,9 +355,9 @@ konkret kravunderlags RFI-frågelista.
 RFI-frågelistan är dynamisk i läget **Förbered** och följer aktiva
 RFI-frågeversioner per kravområde. När listan låses materialiseras exakta
 RFI-frågeversioner så att CSV/PDF-export och efterföljande relevansbedömning
-kan återge samma underlag. Relevans är separat från scope: scope avgör om en
-fråga ingår i RFI:n, medan relevans sätts efter genomförd RFI för att markera
-vilka frågor som ska beaktas i fortsatt kravurval.
+kan återge samma underlag. Relevans är separat från **Ingår i RFI**:
+markeringen avgör om en fråga ingår i RFI:n, medan relevans sätts efter
+genomförd RFI för att markera vilka frågor som ska beaktas i fortsatt kravurval.
 
 RFI-frågor kan ha rådgivande länkar till kravurvalsfrågor, kravpaket eller
 bibliotekskrav, men dessa länkar väljer aldrig krav automatiskt. RFI-frågeförslag
@@ -989,8 +989,9 @@ krav pekar på dem inom samma kravunderlag.
 `rfi_questions` och `rfi_question_versions` håller en områdesägd frågebank för
 RFI-dialog. `specification_rfi_lists` anger om kravunderlagets RFI-lista är i
 Förbered eller Låst läge, och `specification_rfi_question_items` materialiserar
-scope och relevans för låsta listor. `rfi_question_suggestions` är separat från
-kravbundna förbättringsförslag och bär bara minimal kravunderlagskälla.
+Ingår i RFI-markeringar och relevans för låsta listor.
+`rfi_question_suggestions` är separat från kravbundna förbättringsförslag och
+bär bara minimal kravunderlagskälla.
 Kravområden, kravunderlag och kravpaket lagrar bara HSA-id för levande
 kravansvarstilldelningar. Namnkomponenter och e-post för aktuell visning
 samlas i `requirement_responsibility_people`, så samma Kravansvarsperson inte

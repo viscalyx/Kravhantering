@@ -801,10 +801,19 @@ Kravunderlagets lista av RFI-frågor.
 
 _Avoid_: Kravurval, kravlista, leverantörssvar.
 
+**Ingår i RFI**:
+Markering som anger att en RFI-fråga i ett kravunderlags RFI-frågelista ska
+ingå i RFI:n. Markeringen beskriver RFI-listans omfattning, inte frågans
+relevans efter genomförd RFI.
+
+- `en`: Included in RFI
+
+_Avoid_: Med i RFI, RFI-relevans.
+
 **RFI-relevans**:
 Efter genomförd RFI markerar kravunderlagsansvarig om en inkluderad RFI-fråga
 är relevant eller inte relevant för fortsatt kravurval. Relevans är separat
-från scope, där scope anger om frågan över huvud taget ingår i RFI-listan.
+från Ingår i RFI, som anger om frågan över huvud taget ingår i RFI-listan.
 
 - `en`: RFI relevance
 

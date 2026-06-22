@@ -66,6 +66,17 @@ describe('AuthMenu', () => {
     expect(signInLink.className).toContain('focus-visible:ring-2')
   })
 
+  it('uses the navigation icon footprint for the rail sign-in affordance', async () => {
+    fetchMock.mockResolvedValue({ ok: false })
+
+    render(<AuthMenu variant="rail" />)
+
+    const signInLink = await screen.findByRole('link', { name: 'signIn' })
+    const icon = signInLink.querySelector('svg')
+
+    expect(icon).toHaveClass('h-5', 'w-5')
+  })
+
   it('aborts the auth status request when unmounted', async () => {
     let signal: AbortSignal | undefined
     fetchMock.mockImplementation((_url: string, init?: RequestInit) => {

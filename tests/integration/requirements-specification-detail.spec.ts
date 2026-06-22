@@ -373,6 +373,66 @@ for (const viewport of viewports) {
         expect(optionLabels).not.toContain('—')
         expect(optionValues).not.toContain('')
       })
+
+      test('shows RFI scope switches and the included-only view filter', async ({
+        page,
+      }) => {
+        await gotoSpecificationDetail(page)
+
+        await test.step('open the RFI question list tab', async () => {
+          await page.getByRole('tab', { name: 'RFI-frågelista' }).click()
+          await expect(
+            page.getByRole('button', {
+              name: 'Visa endast de som ingår i RFI',
+            }),
+          ).toHaveAttribute('aria-pressed', 'false')
+        })
+
+        await test.step('toggle the transient included-only filter', async () => {
+          const filterButton = page.getByRole('button', {
+            name: 'Visa endast de som ingår i RFI',
+          })
+          await filterButton.click()
+          const activeFilterButton = page.getByRole('button', {
+            name: 'Visar endast de som ingår i RFI',
+          })
+          await expect(activeFilterButton).toHaveAttribute(
+            'aria-pressed',
+            'true',
+          )
+          await activeFilterButton.click()
+          await expect(
+            page.getByRole('button', {
+              name: 'Visa endast de som ingår i RFI',
+            }),
+          ).toHaveAttribute('aria-pressed', 'false')
+        })
+
+        await test.step('verify scope controls stay separate from export actions', async () => {
+          await expect(page.getByRole('link', { name: 'CSV' })).toHaveAttribute(
+            'href',
+            /\/rfi-list\/export\?format=csv/u,
+          )
+          await expect(page.getByRole('link', { name: 'PDF' })).toHaveAttribute(
+            'href',
+            /\/rfi-list\/export\?format=pdf/u,
+          )
+          await expect(
+            page
+              .getByRole('switch', {
+                name: /Ändra om kravområdet .+ ingår i RFI/u,
+              })
+              .first(),
+          ).toHaveAttribute('title', /Ingår i RFI|Ingår inte i RFI|Delvis/u)
+          await expect(
+            page
+              .getByRole('switch', {
+                name: /Ändra om .+-RFI\d+ ingår i RFI/u,
+              })
+              .first(),
+          ).toHaveAttribute('title', /Ingår i RFI|Ingår inte i RFI/u)
+        })
+      })
     }
   })
 }

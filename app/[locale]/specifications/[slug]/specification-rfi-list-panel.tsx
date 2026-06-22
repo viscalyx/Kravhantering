@@ -2,6 +2,7 @@
 
 import {
   Download,
+  ListFilter,
   MessageCircleReply,
   Printer,
   Send,
@@ -18,6 +19,7 @@ import {
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormModal from '@/components/FormModal'
+import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 
@@ -65,6 +67,10 @@ interface RfiAreaGroup {
   areaId: number
   areaName: string
   items: RfiListItem[]
+}
+
+interface VisibleRfiAreaGroup extends RfiAreaGroup {
+  visibleItems: RfiListItem[]
 }
 
 type SuggestionTarget =
@@ -126,6 +132,14 @@ function targetAreaName(target: SuggestionTarget) {
   return target.type === 'area' ? target.areaName : target.item.areaName
 }
 
+function areaScopeState(items: RfiListItem[]) {
+  const includedCount = items.filter(item => item.isIncluded).length
+  return {
+    allIncluded: includedCount === items.length && items.length > 0,
+    partiallyIncluded: includedCount > 0 && includedCount < items.length,
+  }
+}
+
 export default function SpecificationRfiListPanel({
   canEdit,
   specificationId,
@@ -147,6 +161,7 @@ export default function SpecificationRfiListPanel({
   const [viewSuggestionsTarget, setViewSuggestionsTarget] =
     useState<SuggestionTarget | null>(null)
   const [suggestionContent, setSuggestionContent] = useState('')
+  const [showIncludedOnly, setShowIncludedOnly] = useState(false)
 
   const loadSuggestions = useCallback(
     async (items: RfiListItem[]) => {
@@ -206,6 +221,18 @@ export default function SpecificationRfiListPanel({
   }, [reload])
 
   const groups = useMemo(() => groupedByArea(list?.items ?? []), [list])
+  const visibleGroups = useMemo<VisibleRfiAreaGroup[]>(
+    () =>
+      groups
+        .map(group => ({
+          ...group,
+          visibleItems: showIncludedOnly
+            ? group.items.filter(item => item.isIncluded)
+            : group.items,
+        }))
+        .filter(group => group.visibleItems.length > 0),
+    [groups, showIncludedOnly],
+  )
   const suggestionsForTarget = useCallback(
     (target: SuggestionTarget) =>
       suggestions.filter(suggestion =>
@@ -241,6 +268,26 @@ export default function SpecificationRfiListPanel({
       const response = await apiFetch(
         `/api/requirements-specifications/${encodedSlug}/rfi-list/items/${item.questionId}`,
         jsonRequest('PATCH', body),
+      )
+      if (!response.ok) {
+        throw new Error((await readResponseMessage(response)) ?? t('saveError'))
+      }
+      const data = (await response.json()) as { list?: RfiList }
+      if (data.list) setList(data.list)
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : t('saveError'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const updateAreaScope = async (group: RfiAreaGroup, isIncluded: boolean) => {
+    setSaving(true)
+    setError(null)
+    try {
+      const response = await apiFetch(
+        `/api/requirements-specifications/${encodedSlug}/rfi-list/areas/${group.areaId}`,
+        jsonRequest('PATCH', { isIncluded }),
       )
       if (!response.ok) {
         throw new Error((await readResponseMessage(response)) ?? t('saveError'))
@@ -394,6 +441,28 @@ export default function SpecificationRfiListPanel({
   const lockSwitchThumbClassName = `absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform dark:bg-secondary-50 ${
     list.isLocked ? 'translate-x-4' : 'translate-x-0.5'
   }`
+  const viewFilterSwitchLabel = showIncludedOnly
+    ? t('showingIncludedOnly')
+    : t('showIncludedOnly')
+  const viewFilterButtonClassName = `inline-flex h-11 w-11 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-secondary-950 ${
+    showIncludedOnly
+      ? 'border-primary-300 bg-primary-50 text-primary-800 hover:bg-primary-100 dark:border-primary-800 dark:bg-primary-950/50 dark:text-primary-200 dark:hover:bg-primary-900/60'
+      : 'border-secondary-300 text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800'
+  }`
+  const scopeSwitchButtonClassName =
+    'inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg px-1 py-1 text-sm font-medium text-secondary-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 dark:text-secondary-200 dark:focus-visible:ring-offset-secondary-950'
+  const scopeSwitchTrackClassName = (checked: boolean) =>
+    `relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+      checked
+        ? 'bg-primary-700 dark:bg-primary-500'
+        : 'bg-secondary-300 dark:bg-secondary-700'
+    }`
+  const scopeSwitchThumbClassName = (checked: boolean) =>
+    `absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform dark:bg-secondary-50 ${
+      checked ? 'translate-x-4' : 'translate-x-0.5'
+    }`
+  const partialScopeClassName =
+    'rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-200'
   const exportPillClassName =
     'inline-flex h-11 w-11 items-center justify-center rounded-full border border-secondary-200/80 bg-white/90 text-secondary-500 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-secondary-300 hover:text-secondary-700 hover:shadow-[0_14px_36px_-20px_rgba(15,23,42,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-secondary-700/80 dark:bg-secondary-900/80 dark:text-secondary-300 dark:hover:border-secondary-600 dark:hover:text-secondary-100 dark:focus-visible:ring-offset-secondary-950'
   const suggestionActionButtonClassName =
@@ -401,6 +470,15 @@ export default function SpecificationRfiListPanel({
   const suggestionCountButtonClassName =
     'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-primary-200 bg-primary-50 px-3 text-xs font-semibold text-primary-800 shadow-sm transition-all hover:-translate-y-px hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-primary-800 dark:bg-primary-950/50 dark:text-primary-200 dark:hover:bg-primary-900/60 dark:focus-visible:ring-offset-secondary-950'
   const lockStateActionTitle = list.isLocked ? t('unlock') : t('lock')
+  const scopeDisabledTitle = !canEdit
+    ? t('scopeReadOnlyTitle')
+    : list.isLocked
+      ? t('scopeLockedTitle')
+      : saving
+        ? tc('saving')
+        : undefined
+  const scopeStateTitle = (isIncluded: boolean) =>
+    isIncluded ? t('included') : t('notIncluded')
   const createTargetContext = createSuggestionTarget
     ? targetContextText(createSuggestionTarget)
     : ''
@@ -429,42 +507,60 @@ export default function SpecificationRfiListPanel({
               : t('dynamicHint')}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <a
-            aria-label="CSV"
-            className={exportPillClassName}
-            href={`/api/requirements-specifications/${encodedSlug}/rfi-list/export?format=csv&locale=${locale}`}
-            title="CSV"
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            aria-label={viewFilterSwitchLabel}
+            aria-pressed={showIncludedOnly}
+            className={viewFilterButtonClassName}
+            onClick={() => setShowIncludedOnly(current => !current)}
+            title={viewFilterSwitchLabel}
+            type="button"
+            {...devMarker({
+              name: 'rfi list action',
+              value: 'included-only filter',
+            })}
           >
-            <Download aria-hidden="true" className="h-4 w-4" />
-            <span className="sr-only">CSV</span>
-          </a>
-          <a
-            aria-label="PDF"
-            className={exportPillClassName}
-            href={`/api/requirements-specifications/${encodedSlug}/rfi-list/export?format=pdf&locale=${locale}`}
-            title="PDF"
-          >
-            <Printer aria-hidden="true" className="h-4 w-4" />
-            <span className="sr-only">PDF</span>
-          </a>
-          {canEdit ? (
-            <button
-              aria-checked={list.isLocked}
-              aria-label={t('lockedToggleAria')}
-              className={lockSwitchButtonClassName}
-              disabled={saving}
-              onClick={() => void mutateList(list.isLocked ? 'unlock' : 'lock')}
-              role="switch"
-              title={lockStateActionTitle}
-              type="button"
+            <ListFilter aria-hidden="true" className="h-4 w-4" />
+          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              aria-label="CSV"
+              className={exportPillClassName}
+              href={`/api/requirements-specifications/${encodedSlug}/rfi-list/export?format=csv&locale=${locale}`}
+              title="CSV"
             >
-              <span>{t('lockedToggleLabel')}</span>
-              <span className={lockSwitchTrackClassName}>
-                <span className={lockSwitchThumbClassName} />
-              </span>
-            </button>
-          ) : null}
+              <Download aria-hidden="true" className="h-4 w-4" />
+              <span className="sr-only">CSV</span>
+            </a>
+            <a
+              aria-label="PDF"
+              className={exportPillClassName}
+              href={`/api/requirements-specifications/${encodedSlug}/rfi-list/export?format=pdf&locale=${locale}`}
+              title="PDF"
+            >
+              <Printer aria-hidden="true" className="h-4 w-4" />
+              <span className="sr-only">PDF</span>
+            </a>
+            {canEdit ? (
+              <button
+                aria-checked={list.isLocked}
+                aria-label={t('lockedToggleAria')}
+                className={lockSwitchButtonClassName}
+                disabled={saving}
+                onClick={() =>
+                  void mutateList(list.isLocked ? 'unlock' : 'lock')
+                }
+                role="switch"
+                title={lockStateActionTitle}
+                type="button"
+              >
+                <span>{t('lockedToggleLabel')}</span>
+                <span className={lockSwitchTrackClassName}>
+                  <span className={lockSwitchThumbClassName} />
+                </span>
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -595,71 +691,131 @@ export default function SpecificationRfiListPanel({
         <p className="rounded-lg border border-secondary-200 px-4 py-6 text-center text-sm text-secondary-600 dark:border-secondary-800 dark:text-secondary-300">
           {t('empty')}
         </p>
+      ) : visibleGroups.length === 0 ? (
+        <p className="rounded-lg border border-secondary-200 px-4 py-6 text-center text-sm text-secondary-600 dark:border-secondary-800 dark:text-secondary-300">
+          {t('emptyIncludedFilter')}
+        </p>
       ) : (
         <div className="space-y-4">
-          {groups.map(group => {
+          {visibleGroups.map(group => {
             const areaTarget: SuggestionTarget = {
               areaId: group.areaId,
               areaName: group.areaName,
               type: 'area',
             }
             const areaSuggestionCount = suggestionsForTarget(areaTarget).length
+            const scopeState = areaScopeState(group.items)
+            const areaHeadingId = `rfi-area-${group.areaId}`
+            const scopeSwitchDisabled = !canEdit || list.isLocked || saving
+            const areaScopeTitle = scopeState.partiallyIncluded
+              ? t('partiallyIncluded')
+              : scopeStateTitle(scopeState.allIncluded)
 
             return (
               <section
+                aria-labelledby={areaHeadingId}
                 className="rounded-lg border border-secondary-200 dark:border-secondary-800"
                 key={group.areaId}
               >
                 <div className="flex flex-wrap items-center gap-2 border-b border-secondary-200 px-3 py-2 dark:border-secondary-800">
-                  <h3 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                  <h3
+                    className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
+                    id={areaHeadingId}
+                  >
                     {group.areaName}
                   </h3>
-                  {canEdit ? (
-                    <div className="ml-auto flex items-center gap-1">
-                      {areaSuggestionCount > 0 ? (
+                  <div className="ml-auto flex flex-wrap items-center gap-4">
+                    <button
+                      aria-checked={scopeState.allIncluded}
+                      aria-label={t('areaIncludedToggleAria', {
+                        area: group.areaName,
+                      })}
+                      className={scopeSwitchButtonClassName}
+                      disabled={scopeSwitchDisabled}
+                      onClick={() =>
+                        void updateAreaScope(group, !scopeState.allIncluded)
+                      }
+                      role="switch"
+                      title={
+                        scopeSwitchDisabled
+                          ? scopeDisabledTitle
+                          : areaScopeTitle
+                      }
+                      type="button"
+                      {...devMarker({
+                        name: 'rfi list area scope',
+                        value: group.areaName,
+                      })}
+                    >
+                      {scopeState.partiallyIncluded ? (
+                        <span className={partialScopeClassName}>
+                          {t('partial')}
+                        </span>
+                      ) : null}
+                      <span
+                        className={scopeSwitchTrackClassName(
+                          scopeState.allIncluded,
+                        )}
+                      >
+                        <span
+                          className={scopeSwitchThumbClassName(
+                            scopeState.allIncluded,
+                          )}
+                        />
+                      </span>
+                    </button>
+                    {canEdit ? (
+                      <div className="flex items-center gap-1">
+                        {areaSuggestionCount > 0 ? (
+                          <button
+                            aria-label={t('viewAreaSuggestions', {
+                              area: group.areaName,
+                              count: areaSuggestionCount,
+                            })}
+                            className={suggestionCountButtonClassName}
+                            onClick={() => setViewSuggestionsTarget(areaTarget)}
+                            title={t('viewSuggestionsTitle', {
+                              count: areaSuggestionCount,
+                            })}
+                            type="button"
+                          >
+                            {areaSuggestionCount}
+                          </button>
+                        ) : null}
                         <button
-                          aria-label={t('viewAreaSuggestions', {
+                          aria-label={t('createSuggestionForArea', {
                             area: group.areaName,
-                            count: areaSuggestionCount,
                           })}
-                          className={suggestionCountButtonClassName}
-                          onClick={() => setViewSuggestionsTarget(areaTarget)}
-                          title={t('viewSuggestionsTitle', {
-                            count: areaSuggestionCount,
+                          className={suggestionActionButtonClassName}
+                          disabled={saving}
+                          onClick={() => openCreateSuggestion(areaTarget)}
+                          title={t('createSuggestionForArea', {
+                            area: group.areaName,
                           })}
                           type="button"
                         >
-                          {areaSuggestionCount}
+                          <MessageCircleReply
+                            aria-hidden="true"
+                            className="h-4 w-4"
+                          />
                         </button>
-                      ) : null}
-                      <button
-                        aria-label={t('createSuggestionForArea', {
-                          area: group.areaName,
-                        })}
-                        className={suggestionActionButtonClassName}
-                        disabled={saving}
-                        onClick={() => openCreateSuggestion(areaTarget)}
-                        title={t('createSuggestionForArea', {
-                          area: group.areaName,
-                        })}
-                        type="button"
-                      >
-                        <MessageCircleReply
-                          aria-hidden="true"
-                          className="h-4 w-4"
-                        />
-                      </button>
-                    </div>
-                  ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="divide-y divide-secondary-200 dark:divide-secondary-800">
-                  {group.items.map(item => {
+                  {group.visibleItems.map(item => {
                     const questionTarget: SuggestionTarget = {
                       item,
                       type: 'question',
                     }
                     const questionSuggestionCount =
                       suggestionsForTarget(questionTarget).length
+                    const itemContentClassName = item.isIncluded
+                      ? ''
+                      : 'opacity-55'
+                    const itemScopeSwitchDisabled =
+                      !canEdit || list.isLocked || saving
 
                     return (
                       <article
@@ -667,90 +823,123 @@ export default function SpecificationRfiListPanel({
                         key={item.questionId}
                       >
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-mono text-xs font-semibold text-primary-700 dark:text-primary-300">
-                            {item.questionCode}
-                          </span>
-                          <span className="rounded-full bg-secondary-100 px-2 py-0.5 text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
-                            v{item.versionNumber}
-                          </span>
-                          {item.isVersionStale ? (
-                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                              {t('staleVersion')}
+                          <div
+                            className={`flex flex-wrap items-center gap-2 transition-opacity ${itemContentClassName}`}
+                          >
+                            <span className="font-mono text-xs font-semibold text-primary-700 dark:text-primary-300">
+                              {item.questionCode}
                             </span>
-                          ) : null}
-                          {canEdit ? (
-                            <div className="ml-auto flex items-center gap-1">
-                              {questionSuggestionCount > 0 ? (
+                            <span className="rounded-full bg-secondary-100 px-2 py-0.5 text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                              v{item.versionNumber}
+                            </span>
+                            {item.isVersionStale ? (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                                {t('staleVersion')}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="ml-auto flex flex-wrap items-center gap-4">
+                            <button
+                              aria-checked={item.isIncluded}
+                              aria-label={t('questionIncludedToggleAria', {
+                                code: item.questionCode,
+                              })}
+                              className={scopeSwitchButtonClassName}
+                              disabled={itemScopeSwitchDisabled}
+                              onClick={() =>
+                                void updateItem(item, {
+                                  isIncluded: !item.isIncluded,
+                                })
+                              }
+                              role="switch"
+                              title={
+                                itemScopeSwitchDisabled
+                                  ? scopeDisabledTitle
+                                  : scopeStateTitle(item.isIncluded)
+                              }
+                              type="button"
+                              {...devMarker({
+                                name: 'rfi list question scope',
+                                value: item.questionCode,
+                              })}
+                            >
+                              <span
+                                className={scopeSwitchTrackClassName(
+                                  item.isIncluded,
+                                )}
+                              >
+                                <span
+                                  className={scopeSwitchThumbClassName(
+                                    item.isIncluded,
+                                  )}
+                                />
+                              </span>
+                            </button>
+                            {canEdit ? (
+                              <div className="flex items-center gap-1">
+                                {questionSuggestionCount > 0 ? (
+                                  <button
+                                    aria-label={t('viewQuestionSuggestions', {
+                                      code: item.questionCode,
+                                      count: questionSuggestionCount,
+                                    })}
+                                    className={suggestionCountButtonClassName}
+                                    onClick={() =>
+                                      setViewSuggestionsTarget(questionTarget)
+                                    }
+                                    title={t('viewSuggestionsTitle', {
+                                      count: questionSuggestionCount,
+                                    })}
+                                    type="button"
+                                  >
+                                    {questionSuggestionCount}
+                                  </button>
+                                ) : null}
                                 <button
-                                  aria-label={t('viewQuestionSuggestions', {
+                                  aria-label={t('createSuggestionForQuestion', {
                                     code: item.questionCode,
-                                    count: questionSuggestionCount,
                                   })}
-                                  className={suggestionCountButtonClassName}
+                                  className={suggestionActionButtonClassName}
+                                  disabled={saving}
                                   onClick={() =>
-                                    setViewSuggestionsTarget(questionTarget)
+                                    openCreateSuggestion(questionTarget)
                                   }
-                                  title={t('viewSuggestionsTitle', {
-                                    count: questionSuggestionCount,
+                                  title={t('createSuggestionForQuestion', {
+                                    code: item.questionCode,
                                   })}
                                   type="button"
                                 >
-                                  {questionSuggestionCount}
+                                  <MessageCircleReply
+                                    aria-hidden="true"
+                                    className="h-4 w-4"
+                                  />
                                 </button>
-                              ) : null}
-                              <button
-                                aria-label={t('createSuggestionForQuestion', {
-                                  code: item.questionCode,
-                                })}
-                                className={suggestionActionButtonClassName}
-                                disabled={saving}
-                                onClick={() =>
-                                  openCreateSuggestion(questionTarget)
-                                }
-                                title={t('createSuggestionForQuestion', {
-                                  code: item.questionCode,
-                                })}
-                                type="button"
-                              >
-                                <MessageCircleReply
-                                  aria-hidden="true"
-                                  className="h-4 w-4"
-                                />
-                              </button>
-                            </div>
-                          ) : null}
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
-                        <p className="text-sm leading-6 text-secondary-900 dark:text-secondary-100">
+                        <p
+                          className={`text-sm leading-6 text-secondary-900 transition-opacity dark:text-secondary-100 ${itemContentClassName}`}
+                        >
                           {item.questionText}
                         </p>
                         {item.helpText ? (
-                          <p className="text-sm leading-6 text-secondary-600 dark:text-secondary-300">
+                          <p
+                            className={`text-sm leading-6 text-secondary-600 transition-opacity dark:text-secondary-300 ${itemContentClassName}`}
+                          >
                             {item.helpText}
                           </p>
                         ) : null}
                         {item.expectedAnswerFormat ? (
-                          <p className="text-xs text-secondary-500 dark:text-secondary-400">
+                          <p
+                            className={`text-xs text-secondary-500 transition-opacity dark:text-secondary-400 ${itemContentClassName}`}
+                          >
                             {t('expectedAnswerFormat')}:{' '}
                             {item.expectedAnswerFormat}
                           </p>
                         ) : null}
 
                         <div className="flex flex-wrap gap-3">
-                          <label className="inline-flex items-center gap-2 text-sm text-secondary-700 dark:text-secondary-200">
-                            <input
-                              checked={item.isIncluded}
-                              className="h-4 w-4 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
-                              disabled={!canEdit || list.isLocked || saving}
-                              onChange={event =>
-                                void updateItem(item, {
-                                  isIncluded: event.target.checked,
-                                })
-                              }
-                              type="checkbox"
-                            />
-                            {t('included')}
-                          </label>
-
                           {list.isLocked && item.isIncluded ? (
                             <fieldset className="flex flex-wrap items-center gap-3 text-sm text-secondary-700 dark:text-secondary-200">
                               <legend className="sr-only">

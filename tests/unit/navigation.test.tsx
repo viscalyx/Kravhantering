@@ -190,7 +190,7 @@ describe('Navigation', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'nav.expandRail' }))
 
-    expect(navigation).toHaveStyle({ width: '18rem' })
+    expect(navigation).toHaveStyle({ width: '16.5rem' })
     expect(
       screen.getByRole('button', { name: 'nav.collapseRail' }),
     ).toBeInTheDocument()
@@ -201,7 +201,7 @@ describe('Navigation', () => {
     await waitFor(() =>
       expect(
         document.documentElement.style.getPropertyValue('--global-nav-width'),
-      ).toBe('18rem'),
+      ).toBe('16.5rem'),
     )
     expect(screen.getByText('common.appName')).toBeInTheDocument()
     window.removeEventListener(GLOBAL_NAVIGATION_LAYOUT_EVENT, layoutListener)

@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
@@ -723,6 +729,181 @@ describe('RFI client UI states', () => {
     expect(
       screen.getByText('specificationRfiList.suggestionCreated'),
     ).toBeInTheDocument()
+  })
+
+  it('updates and filters RFI-list scope with area and question switches', async () => {
+    const initialList = {
+      isLocked: false,
+      items: [
+        {
+          areaId: 1,
+          areaName: 'Security',
+          expectedAnswerFormat: 'Free text',
+          helpText: 'Explain logging controls.',
+          isIncluded: true,
+          isVersionStale: false,
+          questionCode: 'SEC-RFI001',
+          questionId: 11,
+          questionText: 'How do you handle logs?',
+          relevance: null,
+          versionNumber: 1,
+        },
+        {
+          areaId: 1,
+          areaName: 'Security',
+          expectedAnswerFormat: 'Yes/no',
+          helpText: null,
+          isIncluded: false,
+          isVersionStale: false,
+          questionCode: 'SEC-RFI002',
+          questionId: 12,
+          questionText: 'How do you handle access reviews?',
+          relevance: null,
+          versionNumber: 1,
+        },
+        {
+          areaId: 2,
+          areaName: 'Operations',
+          expectedAnswerFormat: 'Yes/no',
+          helpText: null,
+          isIncluded: false,
+          isVersionStale: false,
+          questionCode: 'OPS-RFI001',
+          questionId: 22,
+          questionText: 'Do you offer support hours?',
+          relevance: null,
+          versionNumber: 1,
+        },
+      ],
+      lockedAt: null,
+      lockedByDisplayName: null,
+      specificationId: 5,
+    }
+    const updatedList = {
+      ...initialList,
+      items: initialList.items.map(item =>
+        item.areaId === 1 ? { ...item, isIncluded: true } : item,
+      ),
+    }
+
+    fetchMock.mockImplementation(
+      (url: RequestInfo | URL, init?: RequestInit) => {
+        const href = String(url)
+        if (href === '/api/requirements-specifications/SPEC-1/rfi-list') {
+          return Promise.resolve(okJson({ list: initialList }))
+        }
+        if (
+          href === '/api/rfi-question-suggestions?areaId=1&specificationId=5' ||
+          href === '/api/rfi-question-suggestions?areaId=2&specificationId=5'
+        ) {
+          return Promise.resolve(okJson({ suggestions: [] }))
+        }
+        if (
+          href === '/api/requirements-specifications/SPEC-1/rfi-list/areas/1' &&
+          init?.method === 'PATCH'
+        ) {
+          return Promise.resolve(okJson({ list: updatedList }))
+        }
+        throw new Error(`Unmocked fetch: ${href}`)
+      },
+    )
+    const { default: SpecificationRfiListPanel } = await import(
+      '@/app/[locale]/specifications/[slug]/specification-rfi-list-panel'
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <SpecificationRfiListPanel
+          canEdit
+          specificationId={5}
+          specificationSlug="SPEC-1"
+        />
+      </ConfirmModalProvider>,
+    )
+
+    const securitySection = await screen.findByRole('region', {
+      name: 'Security',
+    })
+    expect(
+      within(securitySection).getByText('specificationRfiList.partial'),
+    ).toBeInTheDocument()
+    const areaScopeSwitch = within(securitySection).getByRole('switch', {
+      name: 'specificationRfiList.areaIncludedToggleAria',
+    })
+    expect(areaScopeSwitch).toHaveAttribute(
+      'title',
+      'specificationRfiList.partiallyIncluded',
+    )
+    expect(
+      within(securitySection).getAllByRole('switch', {
+        name: 'specificationRfiList.questionIncludedToggleAria',
+      }),
+    ).toHaveLength(2)
+    const questionScopeSwitches = within(securitySection).getAllByRole(
+      'switch',
+      {
+        name: 'specificationRfiList.questionIncludedToggleAria',
+      },
+    )
+    expect(questionScopeSwitches[0]).toHaveAttribute(
+      'title',
+      'specificationRfiList.included',
+    )
+    expect(questionScopeSwitches[1]).toHaveAttribute(
+      'title',
+      'specificationRfiList.notIncluded',
+    )
+    expect(questionScopeSwitches[0]).not.toHaveTextContent(
+      'specificationRfiList.included',
+    )
+    expect(
+      within(securitySection).queryByRole('checkbox', {
+        name: 'specificationRfiList.included',
+      }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(securitySection).getByText('How do you handle access reviews?'),
+    ).toHaveClass('opacity-55')
+
+    await userEvent.click(areaScopeSwitch)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements-specifications/SPEC-1/rfi-list/areas/1',
+        expect.objectContaining({ method: 'PATCH' }),
+      )
+    })
+    const areaUpdateCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url) ===
+          '/api/requirements-specifications/SPEC-1/rfi-list/areas/1' &&
+        init?.method === 'PATCH',
+    )
+    expect(JSON.parse(String(areaUpdateCall?.[1]?.body))).toEqual({
+      isIncluded: true,
+    })
+    await waitFor(() => {
+      expect(
+        within(securitySection).getByRole('switch', {
+          name: 'specificationRfiList.areaIncludedToggleAria',
+        }),
+      ).toHaveAttribute('aria-checked', 'true')
+    })
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'specificationRfiList.showIncludedOnly',
+      }),
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'specificationRfiList.showingIncludedOnly',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      screen.queryByText('Do you offer support hours?'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/hidden/iu)).not.toBeInTheDocument()
   })
 
   it('shows the RFI-list lock toggle as an unlocked or locked state', async () => {

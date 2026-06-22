@@ -35,7 +35,7 @@ export type StewardshipTabParam =
 const NAV_RAIL_STORAGE_KEY = 'requirements.navigationRail.expanded.v1'
 const STEWARDSHIP_STORAGE_KEY = 'requirements.stewardship.tab'
 const NAV_RAIL_COLLAPSED_WIDTH = '4.5rem'
-const NAV_RAIL_EXPANDED_WIDTH = '18rem'
+const NAV_RAIL_EXPANDED_WIDTH = '16.5rem'
 
 const workNavItems = [
   {

@@ -595,6 +595,27 @@ down.
   matching published requirements. It asks stewardship to repair links but does
   not make the answer historical and does not convert it to `Utan kravurval`.
 
+## RFI Question List
+
+- RFI-list scope is shown with compact switches whose tooltips say
+  `Ingår i RFI` or `Ingår inte i RFI`. Question-level switches update one RFI
+  question, while the requirement-area switch updates all visible active RFI
+  questions in that requirement area as one server-side change.
+- A requirement-area switch is on only when every RFI question in the area is
+  included. If some, but not all, questions are included, the switch remains off
+  and shows the text `Delvis`; activating it includes all questions in the area.
+- RFI questions that are not included stay visible by default, but their question
+  code, version, question text, help text and expected answer format are dimmed.
+  The scope switch and RFI question suggestion actions remain fully legible.
+- The included-only icon button has the tooltip `Visa endast de som ingår i RFI`
+  when inactive and `Visar endast de som ingår i RFI` when active. It is
+  transient view state: it hides questions that are not included and hides
+  requirement-area sections that have no included questions, but it is not
+  persisted across a fresh visit and does not change CSV/PDF exports.
+- Scope switches are disabled when the RFI list is locked or the actor cannot
+  edit the specification RFI list. Relevance remains separate and is edited only
+  after the list is locked.
+
 ## Combined Review Report Floating Pill
 
 - Appears when at least one selected requirement has a version in Review status
