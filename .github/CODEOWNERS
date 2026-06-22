@@ -19,7 +19,7 @@ typeorm/migrations/** @viscalyx/security-reviewers
 .github/CODEOWNERS @viscalyx/security-reviewers
 .github/pull_request_template.md @viscalyx/security-reviewers
 SECURITY.md @viscalyx/security-reviewers
-docs/api-security.md @viscalyx/security-reviewers
-docs/audit-log.md @viscalyx/security-reviewers
-docs/mcp-security-test-plan.md @viscalyx/security-reviewers
-docs/security-ci.md @viscalyx/security-reviewers
+docs/security-privacy/api-security.md @viscalyx/security-reviewers
+docs/security-privacy/audit-log.md @viscalyx/security-reviewers
+docs/security-privacy/mcp-security-test-plan.md @viscalyx/security-reviewers
+docs/security-privacy/security-ci.md @viscalyx/security-reviewers
