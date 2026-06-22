@@ -100,6 +100,7 @@ export const rfiQuestionSuggestionCreateSchema = z
 export const rfiQuestionSuggestionQuerySchema = z
   .object({
     areaId: positiveIntegerStringSchema.optional(),
+    specificationId: positiveIntegerStringSchema.optional(),
   })
   .strict()
 

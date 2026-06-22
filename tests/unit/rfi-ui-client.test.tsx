@@ -64,7 +64,142 @@ const rfiQuestions = [
   },
 ]
 
-function mockRfiClientFetch() {
+const rfiSuggestions = [
+  {
+    areaId: 1,
+    areaName: 'Security',
+    content: 'Add an area-level question about cloud exit.',
+    createdAt: '2026-06-21T09:00:00.000Z',
+    createdByDisplayName: 'no-user',
+    createdByHsaId: null,
+    id: 101,
+    isReviewRequested: false,
+    questionCode: null,
+    resolution: null,
+    resolutionMotivation: null,
+    resolvedAt: null,
+    resolvedByDisplayName: null,
+    resolvedByHsaId: null,
+    reviewRequestedAt: null,
+    rfiQuestionId: null,
+    sourceSpecificationName: 'Integration platform procurement',
+    sourceSpecificationUniqueId: 'INTPLATT-UPP-2026',
+    specificationId: 5,
+    updatedAt: '2026-06-21T09:00:00.000Z',
+  },
+  {
+    areaId: 1,
+    areaName: 'Security',
+    content: 'Clarify log retention.',
+    createdAt: '2026-06-21T09:05:00.000Z',
+    createdByDisplayName: 'Sam Writer',
+    createdByHsaId: 'SE5560000001-sam',
+    id: 102,
+    isReviewRequested: false,
+    questionCode: 'SEC-RFI001',
+    resolution: null,
+    resolutionMotivation: null,
+    resolvedAt: null,
+    resolvedByDisplayName: null,
+    resolvedByHsaId: null,
+    reviewRequestedAt: null,
+    rfiQuestionId: 11,
+    sourceSpecificationName: 'Integration platform procurement',
+    sourceSpecificationUniqueId: 'INTPLATT-UPP-2026',
+    specificationId: 5,
+    updatedAt: '2026-06-21T09:05:00.000Z',
+  },
+  {
+    areaId: 1,
+    areaName: 'Security',
+    content: 'Review audit export wording.',
+    createdAt: '2026-06-21T09:10:00.000Z',
+    createdByDisplayName: 'Rita Reviewer',
+    createdByHsaId: 'SE5560000001-rita',
+    id: 103,
+    isReviewRequested: true,
+    questionCode: 'SEC-RFI001',
+    resolution: null,
+    resolutionMotivation: null,
+    resolvedAt: null,
+    resolvedByDisplayName: null,
+    resolvedByHsaId: null,
+    reviewRequestedAt: '2026-06-21T10:00:00.000Z',
+    rfiQuestionId: 11,
+    sourceSpecificationName: 'Integration platform procurement',
+    sourceSpecificationUniqueId: 'INTPLATT-UPP-2026',
+    specificationId: 5,
+    updatedAt: '2026-06-21T10:00:00.000Z',
+  },
+  {
+    areaId: 1,
+    areaName: 'Security',
+    content: 'Handled SIEM wording.',
+    createdAt: '2026-06-21T08:00:00.000Z',
+    createdByDisplayName: 'Ada Admin',
+    createdByHsaId: 'SE5560000001-ada',
+    id: 104,
+    isReviewRequested: true,
+    questionCode: 'SEC-RFI001',
+    resolution: 1,
+    resolutionMotivation: 'Question text was updated.',
+    resolvedAt: '2026-06-21T11:00:00.000Z',
+    resolvedByDisplayName: 'Rita Reviewer',
+    resolvedByHsaId: 'SE5560000001-rita',
+    reviewRequestedAt: '2026-06-21T09:00:00.000Z',
+    rfiQuestionId: 11,
+    sourceSpecificationName: 'Integration platform procurement',
+    sourceSpecificationUniqueId: 'INTPLATT-UPP-2026',
+    specificationId: 5,
+    updatedAt: '2026-06-21T11:00:00.000Z',
+  },
+  {
+    areaId: 2,
+    areaName: 'Operations',
+    content: 'Clarify support escalation for archived support question.',
+    createdAt: '2026-06-21T09:30:00.000Z',
+    createdByDisplayName: 'Olivia Operator',
+    createdByHsaId: 'SE5560000001-olivia',
+    id: 105,
+    isReviewRequested: true,
+    questionCode: 'OPS-RFI001',
+    resolution: null,
+    resolutionMotivation: null,
+    resolvedAt: null,
+    resolvedByDisplayName: null,
+    resolvedByHsaId: null,
+    reviewRequestedAt: '2026-06-21T10:30:00.000Z',
+    rfiQuestionId: 22,
+    sourceSpecificationName: 'Operations sourcing',
+    sourceSpecificationUniqueId: 'OPS-UPP-2026',
+    specificationId: 6,
+    updatedAt: '2026-06-21T10:30:00.000Z',
+  },
+  {
+    areaId: 2,
+    areaName: 'Operations',
+    content: 'Dismissed area suggestion about support calendar.',
+    createdAt: '2026-06-21T07:30:00.000Z',
+    createdByDisplayName: 'Olivia Operator',
+    createdByHsaId: 'SE5560000001-olivia',
+    id: 106,
+    isReviewRequested: true,
+    questionCode: null,
+    resolution: 2,
+    resolutionMotivation: 'Already covered by an existing question.',
+    resolvedAt: '2026-06-21T08:30:00.000Z',
+    resolvedByDisplayName: 'Rita Reviewer',
+    resolvedByHsaId: 'SE5560000001-rita',
+    reviewRequestedAt: '2026-06-21T08:00:00.000Z',
+    rfiQuestionId: null,
+    sourceSpecificationName: 'Operations sourcing',
+    sourceSpecificationUniqueId: 'OPS-UPP-2026',
+    specificationId: 6,
+    updatedAt: '2026-06-21T08:30:00.000Z',
+  },
+]
+
+function mockRfiClientFetch(suggestions: unknown[] = []) {
   fetchMock.mockImplementation((url: RequestInfo | URL, init?: RequestInit) => {
     const href = String(url)
     if (href === '/api/requirement-areas') {
@@ -74,13 +209,25 @@ function mockRfiClientFetch() {
       return Promise.resolve(okJson({ questions: rfiQuestions }))
     }
     if (href === '/api/rfi-question-suggestions') {
-      return Promise.resolve(okJson({ suggestions: [] }))
+      return Promise.resolve(okJson({ suggestions }))
     }
     if (href === '/api/rfi-questions' && init?.method === 'POST') {
       return Promise.resolve(okJson({ id: 33 }))
     }
     if (href === '/api/rfi-questions/11' && init?.method === 'PUT') {
       return Promise.resolve(okJson({ id: 11 }))
+    }
+    if (
+      href === '/api/rfi-question-suggestions/102/request-review' &&
+      init?.method === 'POST'
+    ) {
+      return Promise.resolve(okJson({ suggestion: rfiSuggestions[1] }))
+    }
+    if (
+      href === '/api/rfi-question-suggestions/103/resolution' &&
+      init?.method === 'POST'
+    ) {
+      return Promise.resolve(okJson({ suggestion: rfiSuggestions[2] }))
     }
     throw new Error(`Unmocked fetch: ${href}`)
   })
@@ -186,6 +333,139 @@ describe('RFI client UI states', () => {
     ).toBeInTheDocument()
   })
 
+  it('handles RFI question suggestions from their area and question indicators', async () => {
+    mockRfiClientFetch(rfiSuggestions)
+
+    await renderRfiQuestionsClient()
+
+    const areaWarningButton = await screen.findByRole('button', {
+      name: 'rfiQuestions.handleSuggestions: SEC Security',
+    })
+    expect(areaWarningButton.querySelector('svg')).toHaveClass(
+      'lucide-message-square-warning',
+    )
+    expect(areaWarningButton).toHaveTextContent('1')
+    expect(areaWarningButton).toHaveAttribute(
+      'data-developer-mode-context',
+      'rfiQuestions',
+    )
+    expect(areaWarningButton).toHaveAttribute(
+      'data-developer-mode-name',
+      'suggestion indicator',
+    )
+    expect(areaWarningButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'area SEC untreated',
+    )
+
+    await userEvent.click(areaWarningButton)
+    expect(
+      screen.getByText('Add an area-level question about cloud exit.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Anonymous/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'common.close' }))
+
+    const questionWarningButton = screen.getByRole('button', {
+      name: 'rfiQuestions.handleSuggestions: SEC-RFI001',
+    })
+    expect(questionWarningButton.querySelector('svg')).toHaveClass(
+      'lucide-message-square-warning',
+    )
+    expect(questionWarningButton).toHaveTextContent('2')
+
+    const handledAreaButton = screen.getByRole('button', {
+      name: 'rfiQuestions.viewHandledSuggestions: OPS Operations',
+    })
+    expect(handledAreaButton.querySelector('svg')).toHaveClass(
+      'lucide-message-square-check',
+    )
+    expect(handledAreaButton).not.toHaveTextContent('1')
+    expect(handledAreaButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'area OPS handled',
+    )
+
+    await userEvent.click(questionWarningButton)
+    expect(
+      screen.getByRole('dialog', {
+        name: 'rfiQuestions.handleSuggestions',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('rfiQuestions.newSuggestions')).toBeInTheDocument()
+    expect(
+      screen.getByText('rfiQuestions.reviewSuggestions'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Clarify log retention.')).toBeInTheDocument()
+    expect(screen.getByText('Review audit export wording.')).toBeInTheDocument()
+    expect(screen.getByText(/Sam Writer/)).toBeInTheDocument()
+    expect(screen.getByText(/Rita Reviewer/)).toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'rfiQuestions.requestReview' }),
+    )
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/rfi-question-suggestions/102/request-review',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+
+    const motivationInputs = screen.getAllByLabelText(
+      /rfiQuestions\.resolutionMotivation/,
+    )
+    await userEvent.type(motivationInputs[1], 'Handled after review.')
+    await userEvent.click(
+      screen.getAllByRole('button', {
+        name: 'rfiQuestions.markResolved',
+      })[1],
+    )
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/rfi-question-suggestions/103/resolution',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+    const resolveCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url) === '/api/rfi-question-suggestions/103/resolution' &&
+        init?.method === 'POST',
+    )
+    expect(JSON.parse(String(resolveCall?.[1]?.body))).toEqual({
+      resolution: 'resolved',
+      resolutionMotivation: 'Handled after review.',
+    })
+  })
+
+  it('filters to untreated suggestions and keeps archived questions visible', async () => {
+    mockRfiClientFetch(rfiSuggestions)
+
+    await renderRfiQuestionsClient()
+
+    expect(await screen.findByText('SEC-RFI001')).toBeInTheDocument()
+    expect(screen.getByText('OPS-RFI001')).toBeInTheDocument()
+
+    await userEvent.selectOptions(
+      screen.getByLabelText('rfiQuestions.allStatuses'),
+      'active',
+    )
+    expect(screen.queryByText('OPS-RFI001')).not.toBeInTheDocument()
+
+    await userEvent.selectOptions(
+      screen.getByLabelText('rfiQuestions.suggestionFilter'),
+      'unresolved',
+    )
+    expect(screen.getByText('SEC-RFI001')).toBeInTheDocument()
+    expect(screen.getByText('OPS-RFI001')).toBeInTheDocument()
+
+    await userEvent.clear(screen.getByLabelText('rfiQuestions.search'))
+    await userEvent.type(
+      screen.getByLabelText('rfiQuestions.search'),
+      'cloud exit',
+    )
+    expect(screen.getAllByText('Security').length).toBeGreaterThan(0)
+    expect(screen.queryByText('OPS-RFI001')).not.toBeInTheDocument()
+  })
+
   it('creates an RFI question from the modal without exposing sort order', async () => {
     mockRfiClientFetch()
 
@@ -272,44 +552,183 @@ describe('RFI client UI states', () => {
     })
   })
 
-  it('keeps RFI suggestion submit disabled when no suggestion area exists', async () => {
-    fetchMock.mockImplementation((url: RequestInfo | URL) => {
-      if (String(url) === '/api/requirements-specifications/SPEC-1/rfi-list') {
-        return Promise.resolve(
-          okJson({
-            list: {
-              isLocked: false,
-              items: [],
-              lockedAt: null,
-              lockedByDisplayName: null,
-              specificationId: 5,
-            },
-          }),
-        )
-      }
-      throw new Error(`Unmocked fetch: ${String(url)}`)
-    })
+  it('creates and reviews contextual RFI question suggestions from the list', async () => {
+    const rfiList = {
+      isLocked: false,
+      items: [
+        {
+          areaId: 1,
+          areaName: 'Security',
+          expectedAnswerFormat: 'Free text',
+          helpText: null,
+          isIncluded: true,
+          isVersionStale: false,
+          questionCode: 'SEC-RFI001',
+          questionId: 11,
+          questionText: 'How do you handle logs?',
+          relevance: null,
+          versionNumber: 1,
+        },
+      ],
+      lockedAt: null,
+      lockedByDisplayName: null,
+      specificationId: 5,
+    }
+    const initialSuggestions = [
+      {
+        areaId: 1,
+        content: 'Clarify log retention.',
+        id: 90,
+        isReviewRequested: false,
+        resolution: null,
+        rfiQuestionId: 11,
+        specificationId: 5,
+      },
+      {
+        areaId: 1,
+        content: 'Ask for exported audit reports.',
+        id: 91,
+        isReviewRequested: true,
+        resolution: null,
+        rfiQuestionId: 11,
+        specificationId: 5,
+      },
+      {
+        areaId: 1,
+        content: 'Handled SIEM wording.',
+        id: 92,
+        isReviewRequested: true,
+        resolution: 1,
+        rfiQuestionId: 11,
+        specificationId: 5,
+      },
+    ]
+    fetchMock.mockImplementation(
+      (url: RequestInfo | URL, init?: RequestInit) => {
+        const href = String(url)
+        if (href === '/api/requirements-specifications/SPEC-1/rfi-list') {
+          return Promise.resolve(okJson({ list: rfiList }))
+        }
+        if (
+          href === '/api/rfi-question-suggestions?areaId=1&specificationId=5'
+        ) {
+          return Promise.resolve(okJson({ suggestions: initialSuggestions }))
+        }
+        if (
+          href === '/api/rfi-question-suggestions' &&
+          init?.method === 'POST'
+        ) {
+          return Promise.resolve(
+            okJson({
+              suggestion: {
+                areaId: 1,
+                content: 'Add a question about log exports.',
+                id: 93,
+                isReviewRequested: false,
+                resolution: null,
+                rfiQuestionId: 11,
+                specificationId: 5,
+              },
+            }),
+          )
+        }
+        if (
+          href === '/api/rfi-question-suggestions/90' &&
+          init?.method === 'DELETE'
+        ) {
+          return Promise.resolve(okJson({ ok: true }))
+        }
+        throw new Error(`Unmocked fetch: ${href}`)
+      },
+    )
     const { default: SpecificationRfiListPanel } = await import(
       '@/app/[locale]/specifications/[slug]/specification-rfi-list-panel'
     )
 
     render(
-      <SpecificationRfiListPanel
-        canEdit
-        specificationId={5}
-        specificationSlug="SPEC-1"
-      />,
+      <ConfirmModalProvider>
+        <SpecificationRfiListPanel
+          canEdit
+          specificationId={5}
+          specificationSlug="SPEC-1"
+        />
+      </ConfirmModalProvider>,
     )
 
-    const button = await screen.findByRole('button', {
-      name: 'specificationRfiList.createSuggestion',
+    const createButton = await screen.findByRole('button', {
+      name: 'specificationRfiList.createSuggestionForQuestion',
     })
-    await userEvent.type(
-      screen.getByLabelText('specificationRfiList.suggestionContent'),
-      'Suggest a logging question',
+    expect(createButton.querySelector('svg')).toHaveClass(
+      'lucide-message-circle-reply',
     )
 
-    expect(button).toBeDisabled()
+    const viewButton = await screen.findByRole('button', {
+      name: 'specificationRfiList.viewQuestionSuggestions',
+    })
+    expect(viewButton).toHaveTextContent('3')
+    await userEvent.click(viewButton)
+    expect(screen.getByText('Clarify log retention.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Ask for exported audit reports.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Handled SIEM wording.')).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', {
+        name: 'specificationRfiList.deleteSuggestionAriaLabel',
+      }),
+    ).toHaveLength(1)
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'specificationRfiList.deleteSuggestionAriaLabel',
+      }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'common.delete' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/rfi-question-suggestions/90',
+        expect.objectContaining({ method: 'DELETE' }),
+      )
+    })
+    expect(screen.queryByText('Clarify log retention.')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'common.close' }))
+    await userEvent.click(createButton)
+    expect(
+      screen.getByText('specificationRfiList.suggestionRecipientHint'),
+    ).toBeInTheDocument()
+    await userEvent.type(
+      screen.getByRole('textbox', {
+        name: /specificationRfiList\.suggestionContent/,
+      }),
+      'Add a question about log exports.',
+    )
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'specificationRfiList.createSuggestion',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/rfi-question-suggestions',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+    const createCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url) === '/api/rfi-question-suggestions' &&
+        init?.method === 'POST',
+    )
+    expect(JSON.parse(String(createCall?.[1]?.body))).toEqual({
+      areaId: 1,
+      content: 'Add a question about log exports.',
+      rfiQuestionId: 11,
+      specificationId: 5,
+    })
+    expect(
+      screen.getByText('specificationRfiList.suggestionCreated'),
+    ).toBeInTheDocument()
   })
 
   it('shows the RFI-list lock toggle as an unlocked or locked state', async () => {
@@ -347,6 +766,11 @@ describe('RFI client UI states', () => {
           return Promise.resolve(okJson({ list: unlockedList }))
         }
         if (
+          href === '/api/rfi-question-suggestions?areaId=1&specificationId=5'
+        ) {
+          return Promise.resolve(okJson({ suggestions: [] }))
+        }
+        if (
           href === '/api/requirements-specifications/SPEC-1/rfi-list/lock' &&
           init?.method === 'POST'
         ) {
@@ -360,15 +784,17 @@ describe('RFI client UI states', () => {
     )
 
     render(
-      <SpecificationRfiListPanel
-        canEdit
-        specificationId={5}
-        specificationSlug="SPEC-1"
-      />,
+      <ConfirmModalProvider>
+        <SpecificationRfiListPanel
+          canEdit
+          specificationId={5}
+          specificationSlug="SPEC-1"
+        />
+      </ConfirmModalProvider>,
     )
 
-    const unlockedButton = await screen.findByRole('button', {
-      name: 'specificationRfiList.unlocked',
+    const unlockedButton = await screen.findByRole('switch', {
+      name: 'specificationRfiList.lockedToggleAria',
     })
     const csvLink = screen.getByRole('link', { name: 'CSV' })
     const pdfLink = screen.getByRole('link', { name: 'PDF' })
@@ -379,20 +805,32 @@ describe('RFI client UI states', () => {
     expect(csvLink.querySelector('svg')).toHaveClass('lucide-download')
     expect(pdfLink.querySelector('svg')).toHaveClass('lucide-printer')
 
-    expect(unlockedButton).toHaveAttribute('aria-pressed', 'false')
+    expect(unlockedButton).toHaveAttribute('aria-checked', 'false')
     expect(unlockedButton).toHaveAttribute('title', 'specificationRfiList.lock')
-    expect(unlockedButton.className).toContain('bg-primary-700')
-    expect(unlockedButton.querySelector('svg')).not.toBeNull()
+    expect(unlockedButton).toHaveTextContent(
+      'specificationRfiList.lockedToggleLabel',
+    )
+    expect(unlockedButton).not.toHaveTextContent('common.no')
+    expect(unlockedButton).not.toHaveTextContent('common.yes')
+    expect(unlockedButton.className).not.toContain('border-')
+    expect(unlockedButton.className).not.toContain('bg-')
+    expect(unlockedButton.querySelector('svg')).toBeNull()
+    const unlockedTrack = unlockedButton.querySelector('span:nth-child(2)')
+    expect(unlockedTrack).toHaveClass('h-5', 'w-9', 'bg-secondary-300')
 
     await userEvent.click(unlockedButton)
 
-    const lockedButton = await screen.findByRole('button', {
-      name: 'specificationRfiList.locked',
+    const lockedButton = await screen.findByRole('switch', {
+      name: 'specificationRfiList.lockedToggleAria',
     })
-    expect(lockedButton).toHaveAttribute('aria-pressed', 'true')
+    expect(lockedButton).toHaveAttribute('aria-checked', 'true')
     expect(lockedButton).toHaveAttribute('title', 'specificationRfiList.unlock')
-    expect(lockedButton.className).toContain('bg-amber-800')
-    expect(lockedButton.className).toContain('dark:bg-amber-400')
-    expect(lockedButton.querySelector('svg')).not.toBeNull()
+    expect(lockedButton).not.toHaveTextContent('common.no')
+    expect(lockedButton).not.toHaveTextContent('common.yes')
+    expect(lockedButton.className).not.toContain('border-')
+    expect(lockedButton.className).not.toContain('bg-')
+    expect(lockedButton.querySelector('svg')).toBeNull()
+    const lockedTrack = lockedButton.querySelector('span:nth-child(2)')
+    expect(lockedTrack).toHaveClass('h-5', 'w-9', 'bg-amber-700')
   })
 })

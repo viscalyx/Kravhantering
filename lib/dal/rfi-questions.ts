@@ -1,5 +1,9 @@
 import type { SqlServerDatabase } from '@/lib/db'
-import { validationError } from '@/lib/requirements/errors'
+import {
+  conflictError,
+  notFoundError,
+  validationError,
+} from '@/lib/requirements/errors'
 import { toBoolean, toIsoString } from '@/lib/typeorm/value-mappers'
 
 export type RfiRelevance = 'not_relevant' | 'relevant'
@@ -146,6 +150,12 @@ type RfiQuestionSuggestionDbRow = {
   sourceSpecificationUniqueId: string | null
   specificationId: number | null
   updatedAt: Date | string | null
+}
+
+type RfiQuestionSuggestionStateDbRow = {
+  id: number
+  isReviewRequested: boolean | number | string
+  resolution: number | null
 }
 
 function placeholders(values: readonly unknown[], offset = 0): string {
@@ -1263,7 +1273,11 @@ export async function getRfiQuestionSuggestion(
 
 export async function listRfiQuestionSuggestions(
   db: SqlServerDatabase,
-  options: { areaId?: number; suggestionId?: number } = {},
+  options: {
+    areaId?: number
+    specificationId?: number
+    suggestionId?: number
+  } = {},
 ): Promise<RfiQuestionSuggestionRow[]> {
   const params: unknown[] = []
   const conditions: string[] = []
@@ -1274,6 +1288,10 @@ export async function listRfiQuestionSuggestions(
   if (options.areaId != null) {
     params.push(options.areaId)
     conditions.push(`suggestion.area_id = @${params.length - 1}`)
+  }
+  if (options.specificationId != null) {
+    params.push(options.specificationId)
+    conditions.push(`suggestion.specification_id = @${params.length - 1}`)
   }
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const rows = (await db.query(
@@ -1310,6 +1328,41 @@ export async function listRfiQuestionSuggestions(
     params,
   )) as RfiQuestionSuggestionDbRow[]
   return rows.map(mapRfiQuestionSuggestionRow)
+}
+
+export async function deleteRfiQuestionSuggestion(
+  db: SqlServerDatabase,
+  suggestionId: number,
+): Promise<void> {
+  const rows = (await db.query(
+    `
+      SELECT TOP (1)
+        id,
+        is_review_requested AS isReviewRequested,
+        resolution
+      FROM rfi_question_suggestions
+      WHERE id = @0
+    `,
+    [suggestionId],
+  )) as RfiQuestionSuggestionStateDbRow[]
+  const existing = rows[0]
+  if (!existing) {
+    throw notFoundError(`RFI question suggestion ${suggestionId} not found`, {
+      suggestionId,
+    })
+  }
+  if (toBoolean(existing.isReviewRequested) || existing.resolution !== null) {
+    throw conflictError(
+      'Cannot delete an RFI question suggestion after review has started or a resolution has been recorded',
+      {
+        reason: 'rfi_question_suggestion_already_handled',
+        suggestionId,
+      },
+    )
+  }
+  await db.query(`DELETE FROM rfi_question_suggestions WHERE id = @0`, [
+    suggestionId,
+  ])
 }
 
 export async function requestRfiQuestionSuggestionReview(

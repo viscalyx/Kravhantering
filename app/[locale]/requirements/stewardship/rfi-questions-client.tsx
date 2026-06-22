@@ -4,6 +4,8 @@ import {
   Archive,
   CheckCircle2,
   ChevronRight,
+  MessageSquareCheck,
+  MessageSquareWarning,
   Pencil,
   Plus,
   RotateCcw,
@@ -11,7 +13,7 @@ import {
   Search,
   X,
 } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
@@ -20,6 +22,7 @@ import FormModal from '@/components/FormModal'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 
 interface RequirementArea {
   id: number
@@ -47,12 +50,22 @@ interface RfiSuggestion {
   areaName: string
   content: string
   createdAt: string
+  createdByDisplayName: string | null
+  createdByHsaId: string | null
   id: number
   isReviewRequested: boolean
   questionCode: string | null
   resolution: number | null
+  resolutionMotivation: string | null
+  resolvedAt: string | null
+  resolvedByDisplayName: string | null
+  resolvedByHsaId: string | null
+  reviewRequestedAt: string | null
+  rfiQuestionId: number | null
   sourceSpecificationName: string | null
   sourceSpecificationUniqueId: string | null
+  specificationId: number | null
+  updatedAt: string | null
 }
 
 interface FormState {
@@ -64,6 +77,18 @@ interface FormState {
 }
 
 type StatusFilter = '' | 'active' | 'archived'
+type SuggestionFilter = '' | 'unresolved'
+type SuggestionTarget =
+  | {
+      areaId: number
+      areaName: string
+      areaPrefix: string
+      kind: 'area'
+    }
+  | {
+      kind: 'question'
+      question: RfiQuestion
+    }
 
 const emptyForm: FormState = {
   areaId: '',
@@ -106,22 +131,36 @@ function questionStatusIcon(question: RfiQuestion) {
   )
 }
 
+function isUntreatedSuggestion(suggestion: RfiSuggestion) {
+  return suggestion.resolution == null
+}
+
+function firstLine(value: string) {
+  return value.split(/\r?\n/, 1)[0] ?? value
+}
+
 interface RfiCopy {
   active: string
   allAreas: string
   allStatuses: string
+  allSuggestionStates: string
   archive: string
   archived: string
   area: string
   areaHelp: string
   areaLockedHint: string
   confirmArchiveQuestion: string
+  createdAt: string
+  creatorLabel: string
   dismiss: string
+  dismissedResolution: string
   editQuestion: string
   emptyQuestions: string
   emptySuggestions: string
   expectedAnswerFormat: string
   expectedAnswerFormatHelp: string
+  handledSuggestions: string
+  handleSuggestions: string
   helpText: string
   helpTextHelp: string
   hideQuestionDetails: string
@@ -130,26 +169,37 @@ interface RfiCopy {
   loading: string
   markResolved: string
   newQuestion: string
+  newSuggestions: string
   noFilteredQuestions: string
   noSource: string
   questions: string
   questionText: string
   questionTextHelp: string
   reactivate: string
+  requestReview: string
   resolutionMotivation: string
   resolutionMotivationHelp: string
   resolutionRequired: string
+  resolvedAt: string
+  resolvedResolution: string
+  reviewSuggestions: string
   saveError: string
   saveQuestion: string
   saving: string
   search: string
   showQuestionDetails: string
+  source: string
   status: string
+  suggestionFilter: string
   suggestions: string
   title: string
+  unknownCreator: string
+  unresolvedSuggestions: string
+  viewHandledSuggestions: string
 }
 
 export default function RfiQuestionsClient() {
+  const locale = useLocale()
   const t = useTranslations('rfiQuestions')
   const tc = useTranslations('common')
   const { confirm } = useConfirmModal()
@@ -164,7 +214,10 @@ export default function RfiQuestionsClient() {
   )
   const [areaFilter, setAreaFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('')
+  const [suggestionFilter, setSuggestionFilter] = useState<SuggestionFilter>('')
   const [questionSearch, setQuestionSearch] = useState('')
+  const [suggestionTarget, setSuggestionTarget] =
+    useState<SuggestionTarget | null>(null)
   const [expandedQuestionIds, setExpandedQuestionIds] = useState<Set<number>>(
     () => new Set(),
   )
@@ -177,6 +230,7 @@ export default function RfiQuestionsClient() {
     () => ({
       active: t('active'),
       allAreas: t('allAreas'),
+      allSuggestionStates: t('allSuggestionStates'),
       allStatuses: t('allStatuses'),
       archive: t('archive'),
       archived: t('archived'),
@@ -184,12 +238,17 @@ export default function RfiQuestionsClient() {
       areaHelp: t('fieldHelp.area'),
       areaLockedHint: t('areaLockedHint'),
       confirmArchiveQuestion: t('confirmArchiveQuestion'),
+      createdAt: t('createdAt'),
+      creatorLabel: t('createdBy'),
       dismiss: t('dismiss'),
+      dismissedResolution: t('dismissedResolution'),
       editQuestion: t('editQuestion'),
       emptyQuestions: t('emptyQuestions'),
       emptySuggestions: t('emptySuggestions'),
       expectedAnswerFormat: t('expectedAnswerFormat'),
       expectedAnswerFormatHelp: t('fieldHelp.expectedAnswerFormat'),
+      handledSuggestions: t('handledSuggestions'),
+      handleSuggestions: t('handleSuggestions'),
       helpText: t('helpText'),
       helpTextHelp: t('fieldHelp.helpText'),
       hideQuestionDetails: t('hideQuestionDetails'),
@@ -198,23 +257,33 @@ export default function RfiQuestionsClient() {
       loadError: t('loadError'),
       markResolved: t('markResolved'),
       newQuestion: t('newQuestion'),
+      newSuggestions: t('newSuggestions'),
       noFilteredQuestions: t('noFilteredQuestions'),
       noSource: t('noSource'),
       questionText: t('questionText'),
       questionTextHelp: t('fieldHelp.questionText'),
       questions: t('questions'),
       reactivate: t('reactivate'),
+      requestReview: t('requestReview'),
+      resolvedAt: t('resolvedAt'),
+      resolvedResolution: t('resolvedResolution'),
       resolutionMotivation: t('resolutionMotivation'),
       resolutionMotivationHelp: t('fieldHelp.resolutionMotivation'),
       resolutionRequired: t('resolutionRequired'),
+      reviewSuggestions: t('reviewSuggestions'),
       saveError: t('saveError'),
       saveQuestion: t('saveQuestion'),
       saving: tc('saving'),
       search: t('search'),
+      source: t('source'),
       showQuestionDetails: t('showQuestionDetails'),
       status: t('status'),
+      suggestionFilter: t('suggestionFilter'),
       suggestions: t('suggestions'),
       title: t('title'),
+      unknownCreator: t('unknownCreator'),
+      unresolvedSuggestions: t('unresolvedSuggestions'),
+      viewHandledSuggestions: t('viewHandledSuggestions'),
     }),
     [t, tc],
   )
@@ -281,12 +350,72 @@ export default function RfiQuestionsClient() {
     [questions],
   )
 
-  const filteredQuestions = useMemo(() => {
-    const normalizedSearch = questionSearch.trim().toLocaleLowerCase()
-    return orderedQuestions.filter(question => {
-      if (areaFilter && String(question.areaId) !== areaFilter) return false
-      if (statusFilter === 'active' && question.isArchived) return false
-      if (statusFilter === 'archived' && !question.isArchived) return false
+  const areaById = useMemo(() => {
+    const areaMap = new Map<number, RequirementArea>()
+    for (const area of areas) areaMap.set(area.id, area)
+    for (const question of questions) {
+      if (areaMap.has(question.areaId)) continue
+      areaMap.set(question.areaId, {
+        id: question.areaId,
+        name: question.areaName,
+        prefix: question.areaPrefix,
+      })
+    }
+    return areaMap
+  }, [areas, questions])
+
+  const suggestionsByAreaTarget = useMemo(() => {
+    const map = new Map<number, RfiSuggestion[]>()
+    for (const suggestion of suggestions) {
+      if (suggestion.rfiQuestionId != null) continue
+      const existing = map.get(suggestion.areaId) ?? []
+      existing.push(suggestion)
+      map.set(suggestion.areaId, existing)
+    }
+    return map
+  }, [suggestions])
+
+  const suggestionsByQuestionId = useMemo(() => {
+    const map = new Map<number, RfiSuggestion[]>()
+    for (const suggestion of suggestions) {
+      if (suggestion.rfiQuestionId == null) continue
+      const existing = map.get(suggestion.rfiQuestionId) ?? []
+      existing.push(suggestion)
+      map.set(suggestion.rfiQuestionId, existing)
+    }
+    return map
+  }, [suggestions])
+
+  const untreatedAreaTargetIds = useMemo(() => {
+    const ids = new Set<number>()
+    for (const suggestion of suggestions) {
+      if (
+        suggestion.rfiQuestionId == null &&
+        isUntreatedSuggestion(suggestion)
+      ) {
+        ids.add(suggestion.areaId)
+      }
+    }
+    return ids
+  }, [suggestions])
+
+  const untreatedQuestionIds = useMemo(() => {
+    const ids = new Set<number>()
+    for (const suggestion of suggestions) {
+      if (
+        suggestion.rfiQuestionId != null &&
+        isUntreatedSuggestion(suggestion)
+      ) {
+        ids.add(suggestion.rfiQuestionId)
+      }
+    }
+    return ids
+  }, [suggestions])
+
+  const normalizedSearch = questionSearch.trim().toLocaleLowerCase()
+
+  const questionMatchesSearch = useCallback(
+    (question: RfiQuestion) => {
       if (!normalizedSearch) return true
       return [
         question.questionCode,
@@ -299,8 +428,57 @@ export default function RfiQuestionsClient() {
         .join(' ')
         .toLocaleLowerCase()
         .includes(normalizedSearch)
-    })
-  }, [areaFilter, orderedQuestions, questionSearch, statusFilter])
+    },
+    [normalizedSearch],
+  )
+
+  const areaTargetMatchesSearch = useCallback(
+    (areaId: number) => {
+      if (!normalizedSearch) return true
+      const area = areaById.get(areaId)
+      const areaSuggestions = suggestionsByAreaTarget.get(areaId) ?? []
+      return [
+        area?.name ?? '',
+        area?.prefix ?? '',
+        ...areaSuggestions.flatMap(suggestion => [
+          suggestion.areaName,
+          suggestion.content,
+          suggestion.sourceSpecificationName ?? '',
+          suggestion.sourceSpecificationUniqueId ?? '',
+          suggestion.createdByDisplayName ?? '',
+          suggestion.createdByHsaId ?? '',
+        ]),
+      ]
+        .join(' ')
+        .toLocaleLowerCase()
+        .includes(normalizedSearch)
+    },
+    [areaById, normalizedSearch, suggestionsByAreaTarget],
+  )
+
+  const filteredQuestions = useMemo(
+    () =>
+      orderedQuestions.filter(question => {
+        if (areaFilter && String(question.areaId) !== areaFilter) return false
+        if (suggestionFilter === 'unresolved') {
+          return (
+            untreatedQuestionIds.has(question.id) &&
+            questionMatchesSearch(question)
+          )
+        }
+        if (statusFilter === 'active' && question.isArchived) return false
+        if (statusFilter === 'archived' && !question.isArchived) return false
+        return questionMatchesSearch(question)
+      }),
+    [
+      areaFilter,
+      orderedQuestions,
+      questionMatchesSearch,
+      statusFilter,
+      suggestionFilter,
+      untreatedQuestionIds,
+    ],
+  )
 
   const groupedQuestions = useMemo(() => {
     const groups: Array<{
@@ -326,16 +504,37 @@ export default function RfiQuestionsClient() {
       group.questions.push(question)
     }
 
-    return groups
-  }, [filteredQuestions])
+    if (suggestionFilter === 'unresolved') {
+      for (const areaId of untreatedAreaTargetIds) {
+        if (areaFilter && String(areaId) !== areaFilter) continue
+        if (!areaTargetMatchesSearch(areaId)) continue
+        if (groupsByAreaId.has(areaId)) continue
+        const area = areaById.get(areaId)
+        const areaSuggestion = suggestionsByAreaTarget.get(areaId)?.[0]
+        const group = {
+          areaId,
+          areaName:
+            area?.name ?? areaSuggestion?.areaName ?? `#${String(areaId)}`,
+          areaPrefix: area?.prefix ?? '',
+          questions: [],
+        }
+        groupsByAreaId.set(areaId, group)
+        groups.push(group)
+      }
+    }
 
-  const openSuggestions = useMemo(
-    () =>
-      suggestions
-        .filter(suggestion => suggestion.resolution == null)
-        .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
-    [suggestions],
-  )
+    return groups.sort((left, right) =>
+      left.areaName.localeCompare(right.areaName),
+    )
+  }, [
+    areaById,
+    areaFilter,
+    areaTargetMatchesSearch,
+    filteredQuestions,
+    suggestionFilter,
+    suggestionsByAreaTarget,
+    untreatedAreaTargetIds,
+  ])
 
   const closeQuestionForm = () => {
     setShowQuestionForm(false)
@@ -372,6 +571,76 @@ export default function RfiQuestionsClient() {
       return next
     })
   }
+
+  const getTargetSuggestions = useCallback(
+    (target: SuggestionTarget) => {
+      const targetSuggestions =
+        target.kind === 'area'
+          ? (suggestionsByAreaTarget.get(target.areaId) ?? [])
+          : (suggestionsByQuestionId.get(target.question.id) ?? [])
+      return [...targetSuggestions].sort((left, right) =>
+        right.createdAt.localeCompare(left.createdAt),
+      )
+    },
+    [suggestionsByAreaTarget, suggestionsByQuestionId],
+  )
+
+  const targetSuggestions = useMemo(
+    () => (suggestionTarget ? getTargetSuggestions(suggestionTarget) : []),
+    [getTargetSuggestions, suggestionTarget],
+  )
+
+  const newSuggestions = useMemo(
+    () =>
+      targetSuggestions.filter(
+        suggestion =>
+          isUntreatedSuggestion(suggestion) && !suggestion.isReviewRequested,
+      ),
+    [targetSuggestions],
+  )
+
+  const reviewSuggestions = useMemo(
+    () =>
+      targetSuggestions.filter(
+        suggestion =>
+          isUntreatedSuggestion(suggestion) && suggestion.isReviewRequested,
+      ),
+    [targetSuggestions],
+  )
+
+  const handledSuggestions = useMemo(
+    () =>
+      targetSuggestions.filter(
+        suggestion => !isUntreatedSuggestion(suggestion),
+      ),
+    [targetSuggestions],
+  )
+
+  const dateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }),
+    [locale],
+  )
+
+  const formatDate = useCallback(
+    (value: string | null) => {
+      if (!value) return '-'
+      const date = new Date(value)
+      if (Number.isNaN(date.getTime())) return value
+      return dateFormatter.format(date)
+    },
+    [dateFormatter],
+  )
+
+  const targetLabel = useCallback((target: SuggestionTarget) => {
+    if (target.kind === 'area') {
+      return `${target.areaPrefix} ${target.areaName}`.trim()
+    }
+    return target.question.questionCode
+  }, [])
 
   const saveQuestion = async () => {
     const questionText = form.questionText.trim()
@@ -477,6 +746,228 @@ export default function RfiQuestionsClient() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const requestSuggestionReview = async (suggestion: RfiSuggestion) => {
+    setSaving(true)
+    setError(null)
+    try {
+      const response = await apiFetch(
+        `/api/rfi-question-suggestions/${suggestion.id}/request-review`,
+        { method: 'POST' },
+      )
+      if (!response.ok) {
+        throw new Error((await readResponseMessage(response)) ?? copy.saveError)
+      }
+      await loadData()
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : copy.saveError)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const getSourceText = (suggestion: RfiSuggestion) =>
+    suggestion.sourceSpecificationName
+      ? `${suggestion.sourceSpecificationName} (${suggestion.sourceSpecificationUniqueId ?? '-'})`
+      : copy.noSource
+
+  const getCreatorText = (suggestion: RfiSuggestion) => {
+    const name = formatActorDisplayNameForLocale(
+      suggestion.createdByDisplayName,
+      locale,
+    )?.trim()
+    const hsaId = suggestion.createdByHsaId?.trim()
+    return name || hsaId || copy.unknownCreator
+  }
+
+  const getResolutionLabel = (suggestion: RfiSuggestion) =>
+    suggestion.resolution === 2
+      ? copy.dismissedResolution
+      : copy.resolvedResolution
+
+  const renderSuggestionIndicator = (
+    target: SuggestionTarget,
+    targetSuggestionList: RfiSuggestion[],
+  ) => {
+    if (targetSuggestionList.length === 0) return null
+
+    const untreatedCount = targetSuggestionList.filter(
+      isUntreatedSuggestion,
+    ).length
+    const hasUntreated = untreatedCount > 0
+    const Icon = hasUntreated ? MessageSquareWarning : MessageSquareCheck
+    const label = hasUntreated
+      ? copy.handleSuggestions
+      : copy.viewHandledSuggestions
+    const targetText = targetLabel(target)
+    const markerValue =
+      target.kind === 'area'
+        ? `area ${target.areaPrefix || target.areaId} ${
+            hasUntreated ? 'untreated' : 'handled'
+          }`
+        : `question ${target.question.questionCode} ${
+            hasUntreated ? 'untreated' : 'handled'
+          }`
+
+    return (
+      <button
+        aria-label={`${label}: ${targetText}`}
+        className={`relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+          hasUntreated
+            ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-700/70 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-900/40'
+            : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800/70 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-900/40'
+        }`}
+        disabled={saving}
+        onClick={() => setSuggestionTarget(target)}
+        title={`${label}: ${targetText}`}
+        type="button"
+        {...devMarker({
+          context: 'rfiQuestions',
+          name: 'suggestion indicator',
+          value: markerValue,
+        })}
+      >
+        <Icon aria-hidden="true" className="h-5 w-5" />
+        {hasUntreated ? (
+          <span className="-right-1 -top-1 absolute inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-secondary-950 px-1 text-[11px] font-semibold leading-none text-white dark:bg-secondary-100 dark:text-secondary-950">
+            {untreatedCount}
+          </span>
+        ) : null}
+      </button>
+    )
+  }
+
+  const renderSuggestionCard = (
+    suggestion: RfiSuggestion,
+    variant: 'handled' | 'new' | 'review',
+  ) => {
+    const resolutionId = `rfi-suggestion-resolution-${suggestion.id}`
+    const creator = getCreatorText(suggestion)
+    const creatorHsaId = suggestion.createdByHsaId?.trim()
+    const creatorTitle =
+      suggestion.createdByDisplayName && creatorHsaId ? creatorHsaId : undefined
+
+    if (variant === 'handled') {
+      return (
+        <article
+          className="rounded-xl border border-secondary-200 bg-secondary-50/80 p-3 text-sm dark:border-secondary-800 dark:bg-secondary-900/70"
+          key={suggestion.id}
+        >
+          <div className="flex flex-wrap items-start gap-2">
+            <span className="inline-flex items-center rounded-md bg-white px-2 py-1 text-xs font-medium text-secondary-700 ring-1 ring-secondary-200 dark:bg-secondary-950 dark:text-secondary-200 dark:ring-secondary-800">
+              {getResolutionLabel(suggestion)}
+            </span>
+            <p className="min-w-0 flex-1 font-medium text-secondary-900 dark:text-secondary-100">
+              {firstLine(suggestion.content)}
+            </p>
+          </div>
+          <p className="mt-2 text-xs text-secondary-500 dark:text-secondary-400">
+            {copy.resolvedAt}: {formatDate(suggestion.resolvedAt)}
+            {suggestion.resolutionMotivation
+              ? ` - ${firstLine(suggestion.resolutionMotivation)}`
+              : ''}
+          </p>
+          <details className="mt-2">
+            <summary className="cursor-pointer text-xs font-medium text-primary-700 hover:text-primary-800 dark:text-primary-300 dark:hover:text-primary-200">
+              {copy.handledSuggestions}
+            </summary>
+            <div className="mt-2 space-y-2 text-xs leading-5 text-secondary-600 dark:text-secondary-300">
+              <p>{suggestion.content}</p>
+              <p>
+                {copy.source}: {getSourceText(suggestion)}
+              </p>
+              <p title={creatorTitle}>
+                {copy.creatorLabel}: {creator}
+              </p>
+              <p>
+                {copy.createdAt}: {formatDate(suggestion.createdAt)}
+              </p>
+              {suggestion.questionCode ? (
+                <p className="font-mono">{suggestion.questionCode}</p>
+              ) : null}
+            </div>
+          </details>
+        </article>
+      )
+    }
+
+    return (
+      <article
+        className="space-y-3 rounded-xl border border-secondary-200 bg-white p-3 text-sm shadow-sm dark:border-secondary-800 dark:bg-secondary-950"
+        key={suggestion.id}
+      >
+        <div>
+          <p className="leading-6 text-secondary-900 dark:text-secondary-100">
+            {suggestion.content}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-secondary-500 dark:text-secondary-400">
+            <span>
+              {copy.source}: {getSourceText(suggestion)}
+            </span>
+            <span title={creatorTitle}>
+              {copy.creatorLabel}: {creator}
+            </span>
+            <span>
+              {copy.createdAt}: {formatDate(suggestion.createdAt)}
+            </span>
+            {suggestion.questionCode ? (
+              <span className="font-mono">{suggestion.questionCode}</span>
+            ) : null}
+          </div>
+        </div>
+        <div>
+          <FieldLabelWithHelp
+            help={copy.resolutionMotivationHelp}
+            htmlFor={resolutionId}
+            label={copy.resolutionMotivation}
+            required
+          />
+          <input
+            className={inputClassName}
+            id={resolutionId}
+            onChange={event =>
+              setResolutionText(current => ({
+                ...current,
+                [suggestion.id]: event.target.value,
+              }))
+            }
+            value={resolutionText[suggestion.id] ?? ''}
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {variant === 'new' ? (
+            <button
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-900/40"
+              disabled={saving}
+              onClick={() => void requestSuggestionReview(suggestion)}
+              type="button"
+            >
+              <MessageSquareWarning aria-hidden="true" className="h-4 w-4" />
+              {copy.requestReview}
+            </button>
+          ) : null}
+          <button
+            className="btn-primary inline-flex min-h-10 items-center gap-2"
+            disabled={saving}
+            onClick={() => void resolveSuggestion(suggestion, 'resolved')}
+            type="button"
+          >
+            <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
+            {copy.markResolved}
+          </button>
+          <button
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-secondary-300 px-3 py-1.5 text-sm font-medium text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+            disabled={saving}
+            onClick={() => void resolveSuggestion(suggestion, 'dismissed')}
+            type="button"
+          >
+            <X aria-hidden="true" className="h-4 w-4" />
+            {copy.dismiss}
+          </button>
+        </div>
+      </article>
+    )
   }
 
   const questionFormContent = (
@@ -629,6 +1120,86 @@ export default function RfiQuestionsClient() {
         >
           {questionFormContent}
         </FormModal>
+        <FormModal
+          closeDisabled={saving}
+          developerModeValue="RFI question suggestions"
+          maxWidthClassName="max-w-3xl"
+          onClose={() => setSuggestionTarget(null)}
+          open={suggestionTarget != null}
+          title={copy.handleSuggestions}
+          titleId="rfi-question-suggestions-title"
+        >
+          {suggestionTarget ? (
+            <div className="space-y-5">
+              <div className="rounded-xl border border-secondary-200 bg-secondary-50 px-4 py-3 text-sm text-secondary-700 dark:border-secondary-800 dark:bg-secondary-950/70 dark:text-secondary-200">
+                {suggestionTarget.kind === 'area' ? (
+                  <p>
+                    {copy.area}: {targetLabel(suggestionTarget)}
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    <p className="font-mono text-xs">
+                      {suggestionTarget.question.questionCode}
+                    </p>
+                    <p>{suggestionTarget.question.questionText}</p>
+                  </div>
+                )}
+              </div>
+
+              {targetSuggestions.length === 0 ? (
+                <p className="text-sm text-secondary-600 dark:text-secondary-300">
+                  {copy.emptySuggestions}
+                </p>
+              ) : null}
+
+              {newSuggestions.length > 0 ? (
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                    {copy.newSuggestions}
+                  </h3>
+                  {newSuggestions.map(suggestion =>
+                    renderSuggestionCard(suggestion, 'new'),
+                  )}
+                </section>
+              ) : null}
+
+              {reviewSuggestions.length > 0 ? (
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                    {copy.reviewSuggestions}
+                  </h3>
+                  {reviewSuggestions.map(suggestion =>
+                    renderSuggestionCard(suggestion, 'review'),
+                  )}
+                </section>
+              ) : null}
+
+              {handledSuggestions.length > 0 ? (
+                newSuggestions.length > 0 || reviewSuggestions.length > 0 ? (
+                  <details className="rounded-xl border border-secondary-200 p-3 dark:border-secondary-800">
+                    <summary className="cursor-pointer text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                      {copy.handledSuggestions} ({handledSuggestions.length})
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      {handledSuggestions.map(suggestion =>
+                        renderSuggestionCard(suggestion, 'handled'),
+                      )}
+                    </div>
+                  </details>
+                ) : (
+                  <section className="space-y-3">
+                    <h3 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                      {copy.handledSuggestions}
+                    </h3>
+                    {handledSuggestions.map(suggestion =>
+                      renderSuggestionCard(suggestion, 'handled'),
+                    )}
+                  </section>
+                )
+              ) : null}
+            </div>
+          ) : null}
+        </FormModal>
 
         <div className="mb-6 flex flex-col gap-2">
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
@@ -648,7 +1219,7 @@ export default function RfiQuestionsClient() {
           </p>
         ) : null}
 
-        <div className="mb-5 grid gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 md:grid-cols-[minmax(0,1fr)_220px_180px]">
+        <div className="mb-5 grid gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 md:grid-cols-[minmax(0,1fr)_220px_180px_180px_190px]">
           <label className="relative block">
             <Search
               aria-hidden="true"
@@ -687,6 +1258,17 @@ export default function RfiQuestionsClient() {
             <option value="active">{copy.active}</option>
             <option value="archived">{copy.archived}</option>
           </select>
+          <select
+            aria-label={copy.suggestionFilter}
+            className={inputClassName}
+            onChange={event =>
+              setSuggestionFilter(event.target.value as SuggestionFilter)
+            }
+            value={suggestionFilter}
+          >
+            <option value="">{copy.allSuggestionStates}</option>
+            <option value="unresolved">{copy.unresolvedSuggestions}</option>
+          </select>
         </div>
 
         <div className="grid grid-cols-1 gap-6" ref={listAnchorRef}>
@@ -698,7 +1280,7 @@ export default function RfiQuestionsClient() {
               >
                 {copy.loading}
               </p>
-            ) : questions.length === 0 ? (
+            ) : questions.length === 0 && groupedQuestions.length === 0 ? (
               <div
                 className="rounded-2xl border bg-white/80 p-6 text-sm text-secondary-600 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 dark:text-secondary-300"
                 {...devMarker({
@@ -708,281 +1290,227 @@ export default function RfiQuestionsClient() {
               >
                 {copy.emptyQuestions}
               </div>
-            ) : filteredQuestions.length === 0 ? (
+            ) : groupedQuestions.length === 0 ? (
               <div className="rounded-2xl border bg-white/80 p-6 text-sm text-secondary-600 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 dark:text-secondary-300">
                 {copy.noFilteredQuestions}
               </div>
             ) : (
-              groupedQuestions.map(group => (
-                <section className="space-y-3" key={group.areaId}>
-                  <div
-                    className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-primary-200 bg-primary-50/95 px-3 py-2 shadow-[0_8px_18px_-14px_rgba(67,56,202,0.45)] backdrop-blur dark:border-primary-800/70 dark:bg-primary-950/80"
-                    {...devMarker({
-                      context: 'rfiQuestions',
-                      name: 'requirement area heading',
-                      value: group.areaPrefix,
-                    })}
-                  >
-                    <h2 className="text-sm font-semibold text-primary-950 dark:text-primary-50">
-                      {group.areaName}
-                    </h2>
-                    <span className="rounded-md border border-primary-200 bg-white/90 px-2 py-0.5 font-mono text-xs text-primary-800 dark:border-primary-700/70 dark:bg-secondary-950/80 dark:text-primary-100">
-                      {group.areaPrefix}
-                    </span>
-                  </div>
-                  <ul className="space-y-3">
-                    {group.questions.map(question => {
-                      const isExpanded = expandedQuestionIds.has(question.id)
-                      const detailsId = `rfi-question-details-${question.id}`
+              groupedQuestions.map(group => {
+                const areaTargetSuggestions =
+                  suggestionsByAreaTarget.get(group.areaId) ?? []
+                const areaTarget: SuggestionTarget = {
+                  areaId: group.areaId,
+                  areaName: group.areaName,
+                  areaPrefix: group.areaPrefix,
+                  kind: 'area',
+                }
 
-                      return (
-                        <li
-                          className={`overflow-hidden rounded-2xl border bg-white/80 shadow-sm transition-all duration-150 hover:bg-secondary-50 dark:border-secondary-800 dark:bg-secondary-900/60 dark:hover:bg-secondary-800/50 ${
-                            isExpanded ? 'ring-2 ring-primary-500' : ''
-                          }`}
-                          key={question.id}
-                        >
-                          <div className="flex items-stretch">
-                            <button
-                              aria-controls={detailsId}
-                              aria-expanded={isExpanded}
-                              className="block min-w-0 flex-1 px-4 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-400/60"
-                              onClick={() =>
-                                toggleQuestionExpansion(question.id)
-                              }
-                              type="button"
-                              {...devMarker({
-                                context: 'rfiQuestions',
-                                name: 'question disclosure',
-                                value: question.questionCode,
-                              })}
+                return (
+                  <section className="space-y-3" key={group.areaId}>
+                    <div
+                      className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-primary-200 bg-primary-50/95 px-3 py-2 shadow-[0_8px_18px_-14px_rgba(67,56,202,0.45)] backdrop-blur dark:border-primary-800/70 dark:bg-primary-950/80"
+                      {...devMarker({
+                        context: 'rfiQuestions',
+                        name: 'requirement area heading',
+                        value: group.areaPrefix,
+                      })}
+                    >
+                      <h2 className="text-sm font-semibold text-primary-950 dark:text-primary-50">
+                        {group.areaName}
+                      </h2>
+                      <span className="rounded-md border border-primary-200 bg-white/90 px-2 py-0.5 font-mono text-xs text-primary-800 dark:border-primary-700/70 dark:bg-secondary-950/80 dark:text-primary-100">
+                        {group.areaPrefix}
+                      </span>
+                      <div className="ml-auto">
+                        {renderSuggestionIndicator(
+                          areaTarget,
+                          areaTargetSuggestions,
+                        )}
+                      </div>
+                    </div>
+                    {group.questions.length > 0 ? (
+                      <ul className="space-y-3">
+                        {group.questions.map(question => {
+                          const isExpanded = expandedQuestionIds.has(
+                            question.id,
+                          )
+                          const detailsId = `rfi-question-details-${question.id}`
+                          const questionTargetSuggestions =
+                            suggestionsByQuestionId.get(question.id) ?? []
+                          const questionTarget: SuggestionTarget = {
+                            kind: 'question',
+                            question,
+                          }
+
+                          return (
+                            <li
+                              className={`overflow-hidden rounded-2xl border bg-white/80 shadow-sm transition-all duration-150 hover:bg-secondary-50 dark:border-secondary-800 dark:bg-secondary-900/60 dark:hover:bg-secondary-800/50 ${
+                                isExpanded ? 'ring-2 ring-primary-500' : ''
+                              }`}
+                              key={question.id}
                             >
-                              <div className="flex items-start gap-3">
-                                <ChevronRight
-                                  aria-hidden="true"
-                                  className={`mt-1 h-4 w-4 shrink-0 text-secondary-500 transition-transform dark:text-secondary-400 ${
-                                    isExpanded ? 'rotate-90' : ''
-                                  }`}
-                                />
-                                <span className="sr-only">
-                                  {isExpanded
-                                    ? copy.hideQuestionDetails
-                                    : copy.showQuestionDetails}
-                                </span>
-                                <span className="min-w-0 flex-1">
-                                  <span className="flex flex-wrap items-center gap-2">
-                                    <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
-                                      {question.questionCode}
-                                    </span>
-                                    <span className="text-xs text-secondary-500">
-                                      {question.areaName}
-                                    </span>
-                                    <span className="rounded-md bg-secondary-100 px-2 py-1 text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
-                                      v{question.versionNumber ?? '-'}
-                                    </span>
-                                    <span
-                                      className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${
-                                        question.isArchived
-                                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200'
-                                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
+                              <div className="flex items-stretch">
+                                <button
+                                  aria-controls={detailsId}
+                                  aria-expanded={isExpanded}
+                                  className="block min-w-0 flex-1 px-4 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-400/60"
+                                  onClick={() =>
+                                    toggleQuestionExpansion(question.id)
+                                  }
+                                  type="button"
+                                  {...devMarker({
+                                    context: 'rfiQuestions',
+                                    name: 'question disclosure',
+                                    value: question.questionCode,
+                                  })}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <ChevronRight
+                                      aria-hidden="true"
+                                      className={`mt-1 h-4 w-4 shrink-0 text-secondary-500 transition-transform dark:text-secondary-400 ${
+                                        isExpanded ? 'rotate-90' : ''
                                       }`}
-                                    >
-                                      {questionStatusIcon(question)}
-                                      {questionStatusLabel(question, copy)}
+                                    />
+                                    <span className="sr-only">
+                                      {isExpanded
+                                        ? copy.hideQuestionDetails
+                                        : copy.showQuestionDetails}
                                     </span>
-                                  </span>
-                                  <span className="mt-2 block font-medium text-secondary-950 dark:text-secondary-50">
-                                    {question.questionText}
-                                  </span>
-                                </span>
+                                    <span className="min-w-0 flex-1">
+                                      <span className="flex flex-wrap items-center gap-2">
+                                        <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                          {question.questionCode}
+                                        </span>
+                                        <span className="text-xs text-secondary-500">
+                                          {question.areaName}
+                                        </span>
+                                        <span className="rounded-md bg-secondary-100 px-2 py-1 text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                          v{question.versionNumber ?? '-'}
+                                        </span>
+                                        <span
+                                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${
+                                            question.isArchived
+                                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200'
+                                              : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
+                                          }`}
+                                        >
+                                          {questionStatusIcon(question)}
+                                          {questionStatusLabel(question, copy)}
+                                        </span>
+                                      </span>
+                                      <span className="mt-2 block font-medium text-secondary-950 dark:text-secondary-50">
+                                        {question.questionText}
+                                      </span>
+                                    </span>
+                                  </div>
+                                </button>
+                                <div className="flex shrink-0 items-start justify-end gap-1 px-4 py-4 pl-0">
+                                  <button
+                                    aria-label={`${copy.editQuestion}: ${question.questionCode}`}
+                                    className={`${rowActionButtonClassName} text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950/30`}
+                                    disabled={saving}
+                                    onClick={() => editQuestion(question)}
+                                    title={copy.editQuestion}
+                                    type="button"
+                                    {...devMarker({
+                                      context: 'rfiQuestions',
+                                      name: 'question action',
+                                      value: `${question.questionCode} edit`,
+                                    })}
+                                  >
+                                    <Pencil
+                                      aria-hidden="true"
+                                      className="h-4 w-4"
+                                      focusable={false}
+                                    />
+                                  </button>
+                                  <button
+                                    aria-label={`${
+                                      question.isArchived
+                                        ? copy.reactivate
+                                        : copy.archive
+                                    }: ${question.questionCode}`}
+                                    className={`${rowActionButtonClassName} text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800/70`}
+                                    disabled={saving}
+                                    onClick={event =>
+                                      void setArchived(
+                                        question,
+                                        !question.isArchived,
+                                        event.currentTarget,
+                                      )
+                                    }
+                                    title={
+                                      question.isArchived
+                                        ? copy.reactivate
+                                        : copy.archive
+                                    }
+                                    type="button"
+                                    {...devMarker({
+                                      context: 'rfiQuestions',
+                                      name: 'question action',
+                                      value: `${question.questionCode} ${
+                                        question.isArchived
+                                          ? 'reactivate'
+                                          : 'archive'
+                                      }`,
+                                    })}
+                                  >
+                                    {question.isArchived ? (
+                                      <RotateCcw
+                                        aria-hidden="true"
+                                        className="h-4 w-4"
+                                        focusable={false}
+                                      />
+                                    ) : (
+                                      <Archive
+                                        aria-hidden="true"
+                                        className="h-4 w-4"
+                                        focusable={false}
+                                      />
+                                    )}
+                                  </button>
+                                  {renderSuggestionIndicator(
+                                    questionTarget,
+                                    questionTargetSuggestions,
+                                  )}
+                                </div>
                               </div>
-                            </button>
-                            <div className="flex shrink-0 items-start justify-end gap-1 px-4 py-4 pl-0">
-                              <button
-                                aria-label={`${copy.editQuestion}: ${question.questionCode}`}
-                                className={`${rowActionButtonClassName} text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950/30`}
-                                disabled={saving}
-                                onClick={() => editQuestion(question)}
-                                title={copy.editQuestion}
-                                type="button"
-                                {...devMarker({
-                                  context: 'rfiQuestions',
-                                  name: 'question action',
-                                  value: `${question.questionCode} edit`,
-                                })}
-                              >
-                                <Pencil
-                                  aria-hidden="true"
-                                  className="h-4 w-4"
-                                  focusable={false}
-                                />
-                              </button>
-                              <button
-                                aria-label={`${
-                                  question.isArchived
-                                    ? copy.reactivate
-                                    : copy.archive
-                                }: ${question.questionCode}`}
-                                className={`${rowActionButtonClassName} text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800/70`}
-                                disabled={saving}
-                                onClick={event =>
-                                  void setArchived(
-                                    question,
-                                    !question.isArchived,
-                                    event.currentTarget,
-                                  )
-                                }
-                                title={
-                                  question.isArchived
-                                    ? copy.reactivate
-                                    : copy.archive
-                                }
-                                type="button"
-                                {...devMarker({
-                                  context: 'rfiQuestions',
-                                  name: 'question action',
-                                  value: `${question.questionCode} ${
-                                    question.isArchived
-                                      ? 'reactivate'
-                                      : 'archive'
-                                  }`,
-                                })}
-                              >
-                                {question.isArchived ? (
-                                  <RotateCcw
-                                    aria-hidden="true"
-                                    className="h-4 w-4"
-                                    focusable={false}
-                                  />
-                                ) : (
-                                  <Archive
-                                    aria-hidden="true"
-                                    className="h-4 w-4"
-                                    focusable={false}
-                                  />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                          {isExpanded ? (
-                            <div
-                              className="border-t border-secondary-200 p-4 dark:border-secondary-800"
-                              id={detailsId}
-                            >
-                              <dl className="grid gap-4 text-sm md:grid-cols-2">
-                                <div>
-                                  <dt className="font-medium text-secondary-900 dark:text-secondary-100">
-                                    {copy.helpText}
-                                  </dt>
-                                  <dd className="mt-1 leading-6 text-secondary-600 dark:text-secondary-300">
-                                    {question.helpText || '-'}
-                                  </dd>
+                              {isExpanded ? (
+                                <div
+                                  className="border-t border-secondary-200 p-4 dark:border-secondary-800"
+                                  id={detailsId}
+                                >
+                                  <dl className="grid gap-4 text-sm md:grid-cols-2">
+                                    <div>
+                                      <dt className="font-medium text-secondary-900 dark:text-secondary-100">
+                                        {copy.helpText}
+                                      </dt>
+                                      <dd className="mt-1 leading-6 text-secondary-600 dark:text-secondary-300">
+                                        {question.helpText || '-'}
+                                      </dd>
+                                    </div>
+                                    <div>
+                                      <dt className="font-medium text-secondary-900 dark:text-secondary-100">
+                                        {copy.expectedAnswerFormat}
+                                      </dt>
+                                      <dd className="mt-1 leading-6 text-secondary-600 dark:text-secondary-300">
+                                        {question.expectedAnswerFormat || '-'}
+                                      </dd>
+                                    </div>
+                                  </dl>
                                 </div>
-                                <div>
-                                  <dt className="font-medium text-secondary-900 dark:text-secondary-100">
-                                    {copy.expectedAnswerFormat}
-                                  </dt>
-                                  <dd className="mt-1 leading-6 text-secondary-600 dark:text-secondary-300">
-                                    {question.expectedAnswerFormat || '-'}
-                                  </dd>
-                                </div>
-                              </dl>
-                            </div>
-                          ) : null}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </section>
-              ))
+                              ) : null}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    ) : null}
+                  </section>
+                )
+              })
             )}
           </div>
         </div>
-
-        <section className="mt-8 rounded-2xl border bg-white/80 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60">
-          <div className="border-b border-secondary-200 px-4 py-3 dark:border-secondary-800">
-            <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-              {copy.suggestions}
-            </h2>
-          </div>
-          {openSuggestions.length === 0 ? (
-            <p className="p-6 text-sm text-secondary-600 dark:text-secondary-300">
-              {copy.emptySuggestions}
-            </p>
-          ) : (
-            <div className="divide-y divide-secondary-200 dark:divide-secondary-800">
-              {openSuggestions.map(suggestion => {
-                const resolutionId = `rfi-suggestion-resolution-${suggestion.id}`
-
-                return (
-                  <article className="space-y-3 px-4 py-4" key={suggestion.id}>
-                    <div>
-                      <p className="text-sm leading-6 text-secondary-900 dark:text-secondary-100">
-                        {suggestion.content}
-                      </p>
-                      <p className="mt-1 flex flex-wrap gap-2 text-xs text-secondary-500 dark:text-secondary-400">
-                        <span>
-                          {suggestion.sourceSpecificationName
-                            ? `${suggestion.sourceSpecificationName} (${suggestion.sourceSpecificationUniqueId})`
-                            : copy.noSource}
-                        </span>
-                        {suggestion.questionCode ? (
-                          <span className="font-mono">
-                            {suggestion.questionCode}
-                          </span>
-                        ) : null}
-                        <span>{suggestion.areaName}</span>
-                      </p>
-                    </div>
-                    <div>
-                      <FieldLabelWithHelp
-                        help={copy.resolutionMotivationHelp}
-                        htmlFor={resolutionId}
-                        label={copy.resolutionMotivation}
-                        required
-                      />
-                      <input
-                        className={inputClassName}
-                        id={resolutionId}
-                        onChange={event =>
-                          setResolutionText(current => ({
-                            ...current,
-                            [suggestion.id]: event.target.value,
-                          }))
-                        }
-                        value={resolutionText[suggestion.id] ?? ''}
-                      />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        className="btn-primary inline-flex min-h-10 items-center gap-2"
-                        disabled={saving}
-                        onClick={() =>
-                          void resolveSuggestion(suggestion, 'resolved')
-                        }
-                        type="button"
-                      >
-                        <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-                        {copy.markResolved}
-                      </button>
-                      <button
-                        className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-secondary-300 px-3 py-1.5 text-sm font-medium text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                        disabled={saving}
-                        onClick={() =>
-                          void resolveSuggestion(suggestion, 'dismissed')
-                        }
-                        type="button"
-                      >
-                        <X aria-hidden="true" className="h-4 w-4" />
-                        {copy.dismiss}
-                      </button>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-          )}
-        </section>
       </div>
     </main>
   )

@@ -250,6 +250,11 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   rows render as `rfiQuestions > question disclosure: <question code>`. The
   row-level edit, archive, and reactivate icon buttons render as
   `rfiQuestions > question action: <question code> edit|archive|reactivate`.
+  RFI question suggestion indicators on area headers and question rows render
+  as `rfiQuestions > suggestion indicator: area <prefix> untreated|handled` and
+  `rfiQuestions > suggestion indicator: question <question code>
+  untreated|handled`; the treatment modal uses the shared
+  `dialog: RFI question suggestions` surface.
 - Requirements specification list requirement-area labels render as compact,
   non-interactive pills inside a constrained column in the existing
   `specifications > crud table` surface; they do not add separate developer-mode

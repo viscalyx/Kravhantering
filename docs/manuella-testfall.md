@@ -924,11 +924,11 @@ kravunderlagets RFI-lista utan att listan först behöver låsas.
 **Steg:** I kravunderlagets `RFI-frågelista`, välj bort en fråga, lås listan,
 markera en inkluderad fråga som relevant och exportera CSV och PDF.
 
-**Förväntat resultat:** Före låsning visar låsknappen en upplåst ikon och
-texten `Upplåst`. Efter låsning visar den en låsikon, texten `Låst` och en
-tydligt avvikande låst färg. Scope kan ändras före låsning men inte efter.
-Relevans kan bara sättas efter låsning. Exporterna innehåller exakta
-RFI-frågeversioner, scope och relevans.
+**Förväntat resultat:** Kontrollen visar texten `Låst` och ett fast
+storlekssatt reglage. När reglaget är på är listan låst och reglaget har amber
+färg. Scope kan ändras före låsning men inte efter. Relevans kan bara sättas
+efter låsning. Exporterna innehåller exakta RFI-frågeversioner, scope och
+relevans.
 
 ### SPEC-15: lås upp RFI-lista och hantera ändrad frågeversion
 
@@ -940,21 +940,27 @@ rensas för den fråga vars version ändrats.
 
 ### SPEC-16: skapa och hantera RFI-frågeförslag
 
-**Steg:** Skapa ett RFI-frågeförslag från kravunderlagets RFI-lista. Öppna
-Kravbiblioteksförvaltning, fliken `RFI-frågor`, välj berört kravområde och
-markera förslaget som hanterat eller avfärdat med motivering.
+**Steg:** Öppna kravunderlaget `INTPLATT-UPP-2026` och fliken
+`RFI-frågelista`. Klicka på förslagsikonen på en RFI-fråga, kontrollera
+mottagarraden i modalen och skicka ett förslag. Klicka även på
+förslagsikonen i en kravområdesrubrik och kontrollera att modalen anger att
+förslaget gäller kravområdet utan specifik RFI-fråga.
 
-**Förväntat resultat:** Förslaget visas bara med minimal kravunderlagskälla,
-inte med hela kravunderlaget. Hantering kräver beslutsmotivering och tar bort
-förslaget från öppna förslag.
+**Förväntat resultat:** Förslagsikonerna är kontextbundna. Skapamodalen visar
+att förslaget skickas till kravområdesansvariga för berört kravområde. Efter
+skickat förslag visas en bekräftelse och förslagsräknaren uppdateras.
 
-### SPEC-16a: RFI-frågeförslag kräver valt kravområde
+### SPEC-16a: visa och ta bort RFI-frågeförslag från kravunderlaget
 
-**Steg:** Öppna ett kravunderlag vars RFI-lista saknar kravområden för
-förslag. Skriv text i fältet för RFI-frågeförslag.
+**Steg:** I kravunderlaget `INTPLATT-UPP-2026`, öppna förslagsräknaren på en
+RFI-fråga och i en kravområdesrubrik. Kontrollera seedade förslag med öppet,
+i granskning och hanterat/avfärdat läge. Ta bort ett öppet förslag från
+modalen.
 
-**Förväntat resultat:** Skicka-knappen är fortsatt inaktiverad när inget
-kravområde är valt. Klick leder inte till en tyst no-op.
+**Förväntat resultat:** Räknaren visar alla RFI-frågeförslag som skrivits från
+det aktuella kravunderlaget för den frågan eller det kravområdet. Modalen visar
+förslagstexten. Bara förslag som inte är i granskning och inte har resolution
+kan tas bort. Efter borttagning uppdateras modalen och räknaren.
 
 ### SPEC-16b: RFI-frågeförslag kontrollerar både kravunderlag och kravområde
 
@@ -966,6 +972,22 @@ otillåtna kravområdet.
 **Förväntat resultat:** API:t svarar 403. Förslag skapas bara när användaren
 har behörighet både till kravunderlaget och till kravområdet som ska ta emot
 förslaget.
+
+### SPEC-16c: behandla RFI-frågeförslag i kravbiblioteksförvaltning
+
+**Steg:** Öppna Kravbiblioteksförvaltning och fliken `RFI-frågor`. Kontrollera
+seedade RFI-frågeförslag på rubriker för kravområde och RFI-frågerader. Klicka på
+en amber `MessageSquareWarning`, begär granskning för ett nytt förslag och
+markera ett förslag som hanterat eller avfärdat med beslutsmotivering. Klicka
+även på en `MessageSquareCheck` där alla förslag är behandlade.
+
+**Förväntat resultat:** Obehandlade förslag visas på den nivå de gäller:
+kravområdesrubrik för områdesförslag och RFI-frågerad för frågespecifika
+förslag. Amber varningsikon visar antal obehandlade förslag. När alla förslag
+på nivån är behandlade visas en check-ikon utan räknare. Modalen visar `Nya`,
+`I granskning` och `Behandlade`, inklusive kravunderlagskälla och skapande
+person. Filtret `Förslag: Obehandlade` visar även arkiverade RFI-frågor med
+obehandlade förslag.
 
 ## Avsteg
 

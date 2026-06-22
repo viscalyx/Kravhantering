@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createRfiQuestion,
   createRfiQuestionSuggestion,
+  deleteRfiQuestionSuggestion,
+  listRfiQuestionSuggestions,
   lockSpecificationRfiList,
   updateRfiQuestion,
   updateSpecificationRfiQuestionItem,
@@ -512,5 +514,89 @@ describe('RFI questions DAL', () => {
       sourceSpecificationName: 'E-arkiv',
       sourceSpecificationUniqueId: 'SPEC-004',
     })
+  })
+
+  it('lists RFI question suggestions scoped to an area and specification', async () => {
+    const query = createQuery([
+      [
+        {
+          areaId: 2,
+          areaName: 'Informationssäkerhet',
+          content: 'Ny fråga om loggning',
+          createdAt: new Date('2026-06-20T09:00:00.000Z'),
+          createdByDisplayName: actor.displayName,
+          createdByHsaId: actor.hsaId,
+          id: 77,
+          isReviewRequested: 0,
+          questionCode: 'INF-RFI007',
+          resolution: null,
+          resolutionMotivation: null,
+          resolvedAt: null,
+          resolvedByDisplayName: null,
+          resolvedByHsaId: null,
+          reviewRequestedAt: null,
+          rfiQuestionId: 12,
+          sourceSpecificationName: 'E-arkiv',
+          sourceSpecificationUniqueId: 'SPEC-004',
+          specificationId: 4,
+          updatedAt: null,
+        },
+      ],
+    ])
+    const db = { query }
+
+    const result = await listRfiQuestionSuggestions(
+      db as unknown as Parameters<typeof listRfiQuestionSuggestions>[0],
+      { areaId: 2, specificationId: 4 },
+    )
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'WHERE suggestion.area_id = @0 AND suggestion.specification_id = @1',
+      ),
+      [2, 4],
+    )
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      content: 'Ny fråga om loggning',
+      specificationId: 4,
+    })
+  })
+
+  it('deletes only RFI question suggestions that have not entered review or resolution', async () => {
+    const query = createQuery([
+      [{ id: 77, isReviewRequested: 0, resolution: null }],
+      [],
+    ])
+    const db = { query }
+
+    await deleteRfiQuestionSuggestion(
+      db as unknown as Parameters<typeof deleteRfiQuestionSuggestion>[0],
+      77,
+    )
+
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      'DELETE FROM rfi_question_suggestions WHERE id = @0',
+      [77],
+    )
+  })
+
+  it('rejects deletion after RFI question suggestion review has started', async () => {
+    const query = createQuery([
+      [{ id: 77, isReviewRequested: 1, resolution: null }],
+    ])
+    const db = { query }
+
+    await expect(
+      deleteRfiQuestionSuggestion(
+        db as unknown as Parameters<typeof deleteRfiQuestionSuggestion>[0],
+        77,
+      ),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: { reason: 'rfi_question_suggestion_already_handled' },
+    })
+    expect(query).toHaveBeenCalledTimes(1)
   })
 })
