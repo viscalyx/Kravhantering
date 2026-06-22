@@ -33,7 +33,7 @@
 - After changes, update relevant `docs/*.md` when behavior or workflows change.
 - When user-facing functionality, workflows, roles/permissions, visible UI,
   reports, privacy/export, lifecycle, or admin behavior changes, add or update
-  the matching automated tests and `docs/development/manuella-testfall.md` manual cases.
+  the matching automated tests and `docs/governance/manuella-testfall.md` manual cases.
   If the change is internal-only and no manual case update is needed, state that
   in the final response.
 - Follow `docs/development/sql-server-developer-workflow.md` for database setup, migrations, seeding, and developer browse workflow expectations.
