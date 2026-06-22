@@ -117,6 +117,18 @@ jobs:
           mkdir -p .zap
           cp .github/zap/rules.roles.tsv .zap/rules.tsv
 
+      - name: Guard role-scan target
+        run: |
+          set -euo pipefail
+          case "${APP_BASE_URL}" in
+            http://localhost:3001)
+              ;;
+            *)
+              echo "::error::Refusing to run ZAP role scan against target: ${APP_BASE_URL}"
+              exit 1
+              ;;
+          esac
+
       - name: Run OWASP ZAP role baseline scan
         id: zap_role_scan
         continue-on-error: true

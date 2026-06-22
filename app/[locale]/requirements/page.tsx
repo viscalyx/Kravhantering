@@ -37,19 +37,29 @@ export default async function RequirementsPage() {
 
   try {
     const db = await getRequestSqlServerDataSource()
-    ;[initialColumnDefaults, aiGenerationAvailability] = await Promise.all([
-      getRequirementListColumnDefaults(db),
-      getAiGenerationAvailability(db),
-    ])
-  } catch (error) {
-    if (!isMissingSqlServerConfigurationError(error)) {
+
+    try {
+      initialColumnDefaults = await getRequirementListColumnDefaults(db)
+    } catch (error) {
       console.error(
         'Failed to load requirement column defaults for requirements page',
         formatUiSettingsLoadError(error),
       )
+    }
+
+    try {
+      aiGenerationAvailability = await getAiGenerationAvailability(db)
+    } catch (error) {
       console.error(
         'Failed to load AI generation availability for requirements page',
         formatAiSettingsLoadError(error),
+      )
+    }
+  } catch (error) {
+    if (!isMissingSqlServerConfigurationError(error)) {
+      console.error(
+        'Failed to load requirement page database settings',
+        formatUiSettingsLoadError(error),
       )
     } else {
       aiGenerationAvailability = {

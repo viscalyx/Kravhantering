@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { RequirementsServiceError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
   createAdminPrivilegedAuditContext: vi.fn(async () => ({
@@ -182,5 +183,28 @@ describe('admin AI settings route', () => {
       },
       expect.anything(),
     )
+  })
+
+  it('maps service errors from PUT saves to HTTP error responses', async () => {
+    routeState.updateAiGenerationSettings.mockRejectedValueOnce(
+      new RequirementsServiceError('validation', 'Invalid AI settings', {
+        httpStatus: 422,
+      }),
+    )
+
+    const response = await PUT(
+      new NextRequest('https://example.test/api/admin/ai-settings', {
+        body: JSON.stringify({ requirementGenerationEnabled: false }),
+        method: 'PUT',
+      }),
+    )
+    const body = (await response.json()) as { code?: string; error?: string }
+
+    expect(response.status).toBe(422)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(body).toEqual({
+      code: 'validation',
+      error: 'Invalid AI settings',
+    })
   })
 })

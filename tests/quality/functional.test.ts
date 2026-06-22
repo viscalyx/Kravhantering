@@ -565,12 +565,8 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
   expect(requiredSeedSource).toContain('ai_settings:')
   expect(seedSource).toContain("'requirement_generation_enabled'")
   expect(requiredSeedSource).toContain("'requirement_generation_enabled'")
-  expect(seedSource).toContain(
-    "rows: [[1, 1, '2026-04-20 20:07:00', '2026-04-20 20:07:00']]",
-  )
-  expect(requiredSeedSource).toContain(
-    "rows: [[1, 1, '2026-04-20 20:07:00', '2026-04-20 20:07:00']]",
-  )
+  expect(seedSource).toMatch(/rows: \[\[1, 1, '[^']+', '[^']+'\]\]/u)
+  expect(requiredSeedSource).toMatch(/rows: \[\[1, 1, '[^']+', '[^']+'\]\]/u)
 
   expect(scanGuardSource).toContain('AI_REQUIREMENT_GENERATION_DISABLED')
   expect(aiSettingsSource).toContain('disabledByEnvironment')

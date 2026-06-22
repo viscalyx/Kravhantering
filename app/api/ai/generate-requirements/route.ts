@@ -256,6 +256,7 @@ export const POST = secureMutationRoute({
             Connection: 'keep-alive',
             'Content-Type': 'text/event-stream',
           },
+          status: 503,
         }),
         context,
       )

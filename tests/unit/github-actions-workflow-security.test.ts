@@ -120,6 +120,35 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).not.toMatch(/\bnpm\s+(?:ci|install|run)\b/iu)
   })
 
+  it('keeps prodlike cleanup and DAST scan target guards fail-closed', () => {
+    const cleanupAction = readFileSync(
+      path.join(ACTIONS_DIR, 'prodlike-cleanup', 'action.yml'),
+      'utf8',
+    )
+    const apiDastWorkflow = readFileSync(
+      path.join(WORKFLOWS_DIR, 'security-dast-api.yml'),
+      'utf8',
+    )
+    const roleDastWorkflow = readFileSync(
+      path.join(WORKFLOWS_DIR, 'security-dast-roles.yml'),
+      'utf8',
+    )
+
+    expect(cleanupAction).toMatch(
+      /- name: Stop prodlike app\s+continue-on-error: true\s+shell: bash\s+run: bash scripts\/security\/prodlike-app\.sh stop/u,
+    )
+    expect(apiDastWorkflow).toContain(
+      "const contractPath = 'test-results/security-dast-api/openapi.json'",
+    )
+    expect(apiDastWorkflow).toContain(
+      'return resolved.origin === allowedOrigin',
+    )
+    expect(roleDastWorkflow).toContain('name: Guard role-scan target')
+    expect(roleDastWorkflow).toContain(
+      'Refusing to run ZAP role scan against target',
+    )
+  })
+
   it('keeps the fork-compatible operator upgrade gate on trusted base code', () => {
     const workflow = readFileSync(
       path.join(WORKFLOWS_DIR, 'operator-upgrade-gate.yml'),

@@ -80,6 +80,32 @@ jobs:
               exit 1
               ;;
           esac
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const appBaseUrl = process.env.APP_BASE_URL;
+          const allowedOrigin = new URL(appBaseUrl).origin;
+          const contractPath = 'test-results/security-dast-api/openapi.json';
+          const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
+          const servers = Array.isArray(contract.servers) ? contract.servers : [];
+          const unsafeServers = servers.flatMap((server, index) => {
+            if (!server || typeof server.url !== 'string') {
+              return [`servers[${index}] has no string url`];
+            }
+
+            const resolved = new URL(server.url, allowedOrigin);
+            return resolved.origin === allowedOrigin
+              ? []
+              : [`servers[${index}].url=${server.url}`];
+          });
+
+          if (unsafeServers.length > 0) {
+            console.error(
+              `::error::Refusing to run ZAP API scan with non-local OpenAPI servers: ${unsafeServers.join(', ')}`,
+            );
+            process.exit(1);
+          }
+          NODE
           mkdir -p .zap
           cp .github/zap/rules.api.tsv .zap/rules.tsv
 

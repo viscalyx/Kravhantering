@@ -23,6 +23,7 @@ runs:
   using: composite
   steps:
     - name: Stop prodlike app
+      continue-on-error: true
       shell: bash
       run: bash scripts/security/prodlike-app.sh stop "${{ inputs.results-dir }}"
 

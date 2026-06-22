@@ -179,9 +179,9 @@ erDiagram
 
     ai_settings {
         integer id PK
-        integer requirement_generation_enabled "boolean"
-        text created_at
-        text updated_at
+        bit requirement_generation_enabled
+        datetime2 created_at
+        datetime2 updated_at
     }
 
     hsa_id_prefixes {
@@ -1392,9 +1392,9 @@ Singleton Admin Center settings for AI-assisted requirement generation.
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key; constrained to singleton row `1` |
-| `requirement_generation_enabled` | boolean (integer) | Admin preference for AI requirement generation |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `requirement_generation_enabled` | bit | Admin preference for AI requirement generation |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Purpose:**

@@ -85,6 +85,11 @@ export const PUT = secureMutationRoute({
 
       return noStore(NextResponse.json(settings))
     } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return noStore(NextResponse.json(body, { status }))
+      }
+
       console.error(
         'Failed to save admin AI settings',
         formatAiSettingsLoadError(error),

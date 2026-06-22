@@ -208,6 +208,7 @@ describe('POST /api/ai/generate-requirements', () => {
       const response = await POST(makeRequest())
       const text = await response.text()
 
+      expect(response.status).toBe(503)
       expect(response.headers.get('Content-Type')).toContain(
         'text/event-stream',
       )
@@ -245,6 +246,7 @@ describe('POST /api/ai/generate-requirements', () => {
       const response = await POST(makeRequest())
       const text = await response.text()
 
+      expect(response.status).toBe(503)
       expect(response.headers.get('Content-Type')).toContain(
         'text/event-stream',
       )

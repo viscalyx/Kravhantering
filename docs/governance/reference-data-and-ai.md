@@ -130,7 +130,8 @@ AI-assisted requirement generation is available only when both controls allow
 it:
 
 - Admin Center `AI` has `Requirement generation` enabled.
-- `AI_REQUIREMENT_GENERATION_DISABLED` is not set to `1` or `true`.
+- `AI_REQUIREMENT_GENERATION_DISABLED` is not set to `1` or a
+  case-insensitive `true` value (`true`, `True`, or `TRUE`).
 
 The environment guard has higher precedence and is intended for security scans
 and deployment freeze windows. When either control disables generation, the
