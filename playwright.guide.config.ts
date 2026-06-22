@@ -14,8 +14,8 @@ const desktopChromium = {
  * Run with: npm run generate:guide
  *
  * Outputs:
- *   docs/guide/README.md   — generated markdown guide
- *   docs/guide/images/     — screenshots
+ *   docs/user-guide/README.md   — generated markdown guide
+ *   docs/user-guide/images/     — screenshots
  *
  * NOTE: This is a one-shot guide generator, not a repeatable test suite.
  * It requires the seeded SQL Server fixtures, mutates the database (creates
