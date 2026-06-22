@@ -60,23 +60,8 @@ jobs:
       - name: Setup local SQL Server database
         run: npm run db:setup
 
-      - name: Start local IdP service
+      - name: Reset and wait for local IdP service
         run: npm run idp:reset
-
-      - name: Wait for IdP to be ready
-        run: |
-          echo "Waiting for Keycloak to be ready..."
-          for i in $(seq 1 30); do
-            if curl -sf --max-time 5 "${AUTH_OIDC_ISSUER_URL}/.well-known/openid-configuration" > /dev/null 2>&1 &&
-               curl -sf --max-time 5 "${AUTH_OIDC_ISSUER_URL}/protocol/openid-connect/certs" > /dev/null 2>&1; then
-              echo "Keycloak is ready."
-              exit 0
-            fi
-            echo "Attempt $i/30 - discovery or JWKS not ready yet, retrying in 5s..."
-            sleep 5
-          done
-          echo "Keycloak discovery and JWKS did not become ready in time."
-          exit 1
 
       - name: Build prodlike app
         run: npm run build:local-prod

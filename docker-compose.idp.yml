@@ -6,7 +6,7 @@
 # are NOT persisted across container restarts.
 #
 # Usage:
-#   docker compose -f docker-compose.idp.yml up -d idp
+#   docker compose -f docker-compose.idp.yml up --wait idp
 #   docker compose -f docker-compose.idp.yml down
 #
 # This file is independent of docker-compose.sqlserver.yml; bring up only what
@@ -29,3 +29,15 @@ services:
       - "${KEYCLOAK_HOST_PORT:-8080}:8080"
     volumes:
       - ./dev/keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -ec '{ printf "GET /realms/kravhantering-dev/.well-known/openid-configuration HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3;
+          grep -m 1 " 200 " <&3 >/dev/null; } 3<>/dev/tcp/localhost/8080 &&
+          { printf "GET /realms/kravhantering-dev/protocol/openid-connect/certs HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3;
+          grep -m 1 " 200 " <&3 >/dev/null; } 3<>/dev/tcp/localhost/8080'
+      interval: 5s
+      retries: 30
+      start_period: 10s
+      timeout: 5s
