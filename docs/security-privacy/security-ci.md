@@ -143,7 +143,8 @@ runs if the configured target is not local.
    Node version pinned in [.nvmrc](../../.nvmrc).
 2. Brings up the same disposable stack the integration tests use:
    - SQL Server via `npm run db:up && npm run db:setup`.
-   - A local Keycloak realm via `npm run idp:up`.
+   - A local Keycloak realm via `npm run idp:up`, which waits for OIDC
+     discovery and JWKS before returning.
 3. Builds the production bundle with `npm run build:local-prod` and
    starts it with `next start --hostname 127.0.0.1 --port 3001` loaded
    from [.env.prodlike](../../.env.prodlike).

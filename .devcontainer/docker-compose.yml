@@ -59,6 +59,9 @@ services:
       HSA_PERSON_LOOKUP_URL: ${HSA_PERSON_LOOKUP_URL:-http://kong:8000/hsa/person-records/lookup}
       NODE_ENV: ${NODE_ENV:-development}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
+      DOTNET_CLI_TELEMETRY_OPTOUT: ${DOTNET_CLI_TELEMETRY_OPTOUT:-1}
+      DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE: ${DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE:-true}
+      DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK: ${DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK:-true}
     extra_hosts:
       # The release-smoke runner reaches nginx through Podman's published
       # 443 port on the devcontainer loopback address.
@@ -120,6 +123,18 @@ services:
       - "${KEYCLOAK_HOST_PORT:-8080}:8080"
     volumes:
       - ../dev/keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -ec '{ printf "GET /realms/kravhantering-dev/.well-known/openid-configuration HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3;
+          grep -m 1 " 200 " <&3 >/dev/null; } 3<>/dev/tcp/localhost/8080 &&
+          { printf "GET /realms/kravhantering-dev/protocol/openid-connect/certs HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3;
+          grep -m 1 " 200 " <&3 >/dev/null; } 3<>/dev/tcp/localhost/8080'
+      interval: 5s
+      retries: 30
+      start_period: 10s
+      timeout: 5s
 
   kong:
     image: docker.io/kong/kong-gateway:3.10.0.8-20260210-ubuntu@sha256:031e2abf5b973db9ce5d94ea30a46d4b29b3879088118e0b1c0ff66b8c814853

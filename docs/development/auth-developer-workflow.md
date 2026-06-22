@@ -70,10 +70,12 @@ runs on the host (e.g. via `npm run dev`) and reaches Keycloak through
 the published port `8080:8080`.
 
 ```sh
-npm run idp:up      # docker compose -f docker-compose.idp.yml up -d idp
+npm run idp:up      # starts Keycloak and waits for discovery + JWKS
 npm run idp:down    # stop and remove the container
 ```
 
+`npm run idp:up` returns only after the imported realm serves both OIDC
+discovery and JWKS, so local runs and CI use the same readiness contract.
 You're responsible for setting the `AUTH_*` env vars yourself — see
 "Local env vars" below.
 
@@ -82,9 +84,11 @@ You're responsible for setting the `AUTH_*` env vars yourself — see
 The devcontainer compose files (`.devcontainer/docker-compose.yml` and
 `.devcontainer/elevated/docker-compose.yml`) include the same Keycloak
 service inline as `idp`, so attaching to the devcontainer brings up
-Keycloak alongside SQL Server automatically. The `app` service has
+Keycloak alongside SQL Server automatically. The service has the same
+OIDC discovery and JWKS healthcheck as the standalone compose file, but
+the `app` service still uses
 `depends_on: idp { condition: service_started }` (not `service_healthy`)
-because Keycloak takes ~30s to boot — OIDC discovery happens lazily on
+because Keycloak takes ~30s to boot. OIDC discovery happens lazily on
 first sign-in, so the devcontainer attach is not blocked.
 
 Both port `3000` (Next.js) and port `8080` (Keycloak) are published to
@@ -213,8 +217,10 @@ npm run idp:reset:elevated
 Run this on macOS/Windows/Linux outside the devcontainer — the
 devcontainer itself does not have access to the host Docker daemon.
 The compose file does not mount a Keycloak data volume, so recreation
-is non-destructive (the JSON is the source of truth). Wait ~30 s for
-Keycloak to finish booting before signing in.
+is non-destructive (the JSON is the source of truth). The standalone
+`npm run idp:reset` command waits for Keycloak readiness before returning;
+devcontainer-specific recreate commands may still return before Keycloak
+is ready for sign-in.
 
 Application sessions contain the role claims from the sign-in that created the
 cookie. After a realm reset, log out and sign in again, or force-refresh helper
@@ -583,8 +589,10 @@ brings up a local Keycloak realm before running Playwright. The shared
 `test-server` matrix has both `dev` (`npm run test:integration`) and
 `prodlike` (`npm run test:integration:prodlike`) legs, and both legs use
 the same `npm run idp:up` start step and `npm run idp:down` cleanup step.
-The dedicated `test-prodlike-pruned` job also starts and stops Keycloak
-before running the prodlike suite against the pruned server.
+`npm run idp:up` waits for the realm OIDC discovery and JWKS endpoints
+before returning. The dedicated `test-prodlike-pruned` job also starts
+and stops Keycloak before running the prodlike suite against the pruned
+server.
 
 Because CI imports
 [`dev/keycloak/realm-kravhantering-dev.json`](../../dev/keycloak/realm-kravhantering-dev.json),
@@ -594,9 +602,10 @@ the local IdP after realm JSON changes before debugging failures.
 
 Before running integration tests locally outside a devcontainer, start
 Keycloak with `npm run idp:up`; stop it with `npm run idp:down` when
-finished. This applies to both the default dev Playwright config and the
-prodlike config. Devcontainer users get the same IdP from the compose stack,
-but still need the current realm imported.
+finished. The startup command blocks until Keycloak is ready for OIDC
+login and token validation. This applies to both the default dev Playwright
+config and the prodlike config. Devcontainer users get the same IdP from
+the compose stack, but still need the current realm imported.
 
 Unit tests stub the resolved actor at the request boundary via
 `attachVerifiedActor()` (see `lib/requirements/auth.ts`); no OIDC round
