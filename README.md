@@ -183,11 +183,11 @@ This project also includes an in-app MCP server for requirements management.
 | Topic | Document |
 | :-- | :-- |
 | Status transitions | [Lifecycle workflow](docs/governance/lifecycle-workflow.md) |
-| Version timestamps | [Version lifecycle dates](docs/governance/version-lifecycle-dates.md) |
-| Data model | [Database schema](docs/development/database-schema.md) |
+| Version timestamps | [Version lifecycle dates](docs/reference/version-lifecycle-dates.md) |
+| Data model | [Database schema](docs/reference/database-schema.md) |
 | Information assets (SV) | [Informationsmängder](docs/security-privacy/informationsmangder-kravhantering.md) |
 | UI behaviour | [Requirements UI](docs/governance/requirements-ui-behaviour.md) |
-| Reports | [Reports](docs/governance/reports.md) |
+| Reports | [Reports](docs/reference/reports.md) |
 | Admin settings | [Admin center](docs/governance/admin-center.md) |
 
 <!-- markdownlint-enable MD013 -->

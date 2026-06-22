@@ -55,8 +55,8 @@ maintenance rule.
 ## 5. Scenario 5: archived requirements stay visible while a replacement draft exists
 
 - **Code:** `lib/dal/requirements.ts` — effective-status logic.
-- **Spec:** `docs/governance/version-lifecycle-dates.md`.
-- **Req tag:** `[Req: formal — docs/governance/version-lifecycle-dates.md
+- **Spec:** `docs/reference/version-lifecycle-dates.md`.
+- **Req tag:** `[Req: formal — docs/reference/version-lifecycle-dates.md
   "Effective Requirement Status"]`
 - **Question:** Does effective requirement status preserve archived visibility
   while a replacement draft or review exists?
@@ -150,7 +150,7 @@ maintenance rule.
 
 - **Code:** `lib/export-csv.ts`, `lib/reports/specification-csv.ts`,
   and `lib/reports/specification-profiles.ts`.
-- **Spec:** `docs/governance/reports.md`.
+- **Spec:** `docs/reference/reports.md`.
 - **Field contracts:** `references/integration-contracts.md` — verify
   exported fields align with the REST response schemas.
 - **Question:** Does export behavior match the documented CSV
@@ -163,8 +163,8 @@ maintenance rule.
   `lib/reports/specification-csv.ts`,
   `lib/reports/specification-profiles.ts`, and specification report/export
   routes.
-- **Spec:** `docs/governance/reports.md` and `docs/governance/requirements-ui-behaviour.md`.
-- **Req tag:** `[Req: formal — docs/governance/reports.md
+- **Spec:** `docs/reference/reports.md` and `docs/governance/requirements-ui-behaviour.md`.
+- **Req tag:** `[Req: formal — docs/reference/reports.md
   "Requirements Specification Field Profiles"]`
 - **Question:** Do specification reports use linked requirement versions,
   cover the whole specification, expose only lifecycle-matching report
@@ -317,7 +317,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   `lib/dal/specification-lifecycle-statuses.ts`,
   `lib/dal/specification-responsibility-areas.ts`.
 - **Spec:** `docs/governance/reference-data-and-ai.md` §1–3,
-  `docs/development/database-schema.md`.
+  `docs/reference/database-schema.md`.
 - **Question:** Does norm-reference ID derivation follow the
   3-tier strategy? Does collision resolution work? Does
   lifecycle-status validation reject empty strings while other
@@ -334,7 +334,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   `app/api/risk-levels/route.ts`,
   `lib/requirements/service-requirements.ts`.
 - **Spec:** `docs/governance/admin-center.md` "Reference Data",
-  `docs/development/database-schema.md`.
+  `docs/reference/database-schema.md`.
 - **Req tag:** `[Req: formal — docs/governance/admin-center.md "Reference Data"]`
 - **Question:** Are icon names accepted only through the shared allowlist
   generated from the installed Lucide icon catalog? Are `iconName` fields
@@ -365,7 +365,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   `typeorm/seed.mjs`, `lib/dal/ui-settings.ts`,
   `app/api/admin/hsa-id-prefixes/route.ts`, and
   `components/HsaPersonVerifyField.tsx`.
-- **Spec:** `docs/governance/admin-center.md`, `docs/development/database-schema.md`, and
+- **Spec:** `docs/governance/admin-center.md`, `docs/reference/database-schema.md`, and
   `docs/reference/hsa-id.md`.
 - **Req tag:** `[Req: formal — docs/governance/admin-center.md "Identity"]`
 - **Question:** Do HSA-id-prefixes remain optional UI guidance, with no required

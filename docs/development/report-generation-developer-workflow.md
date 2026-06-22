@@ -3,7 +3,7 @@
 This document covers implementation architecture and contributor workflow for
 report generation. Product-facing report types, field profiles, CSV contracts,
 authorization behavior, filenames, and output semantics live in
-[reports.md](../governance/reports.md).
+[reports.md](../reference/reports.md).
 
 ## Architecture
 
@@ -108,7 +108,7 @@ download is triggered.
 3. In server PDF handlers, authorize the report scope before collecting data.
 4. Add menu items in the detail view or list view to open the report.
 5. Add translations to both `messages/en.json` and `messages/sv.json`.
-6. Update [reports.md](../governance/reports.md) when the change affects report
+6. Update [reports.md](../reference/reports.md) when the change affects report
    types, field profiles, CSV/export contracts, authorization, filenames, or
    output behavior.
 

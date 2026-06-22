@@ -129,7 +129,7 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/**/*.ts,lib/db.ts,scripts/db-admin.mjs,sc
 When SQL Server + TypeORM behavior changes, update the relevant docs:
 
 - `docs/development/sql-server-developer-workflow.md`
-- `docs/development/database-schema.md`
+- `docs/reference/database-schema.md`
 - any other `docs/*.md` or repo `**/*.md` files that describe the supported database workflow
 
 ## Required Verification

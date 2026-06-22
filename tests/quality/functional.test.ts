@@ -170,7 +170,7 @@ const adminCenterDocPath = join(
 const databaseSchemaDocPath = join(
   repoRoot,
   'docs',
-  'development',
+  'reference',
   'database-schema.md',
 )
 const hsaIdPrefixMigrationPath = join(
@@ -236,7 +236,7 @@ const specificationsRoutePath = join(
   'requirements-specifications',
   'route.ts',
 )
-const reportsDocPath = join(repoRoot, 'docs', 'governance', 'reports.md')
+const reportsDocPath = join(repoRoot, 'docs', 'reference', 'reports.md')
 const specificationDetailClientPath = join(
   repoRoot,
   'app',

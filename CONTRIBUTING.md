@@ -94,7 +94,7 @@ tests/            Unit and integration tests
 ## Key Development Docs
 
 - Database stack: [SQL Server workflow](docs/development/sql-server-developer-workflow.md)
-  and [database schema](docs/development/database-schema.md).
+  and [database schema](docs/reference/database-schema.md).
 - Auth and authenticated local HTTP calls:
   [auth developer workflow](docs/development/auth-developer-workflow.md).
 - Developer Mode markers:
@@ -130,7 +130,7 @@ The only database stack is Microsoft SQL Server + TypeORM. Schema lives in
 
 For commands, browse workflow, migrations, and seed policy, use
 [SQL Server workflow](docs/development/sql-server-developer-workflow.md). For
-schema details, use [database schema](docs/development/database-schema.md).
+schema details, use [database schema](docs/reference/database-schema.md).
 
 ## MCP Server
 

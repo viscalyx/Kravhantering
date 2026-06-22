@@ -10,7 +10,7 @@ The schema is defined by TypeORM entities under
 [`typeorm/seed.mjs`](../../typeorm/seed.mjs). Required seed data contains system
 and lookup rows; demo seed data contains optional examples and test fixtures.
 The developer setup, browse workflow, and CLI reference live in
-[sql-server-developer-workflow.md](./sql-server-developer-workflow.md).
+[sql-server-developer-workflow.md](../development/sql-server-developer-workflow.md).
 
 ---
 
@@ -1558,7 +1558,7 @@ archiving-in-progress version per requirement.
 **Effective requirement status (filtering):** When listing requirements
 the system computes a priority-based effective requirement status per
 requirement: Published > Archived > Review > Draft. See
-[version-lifecycle-dates.md](../governance/version-lifecycle-dates.md#effective-requirement-status-filtering)
+[version-lifecycle-dates.md](./version-lifecycle-dates.md#effective-requirement-status-filtering)
 for details. When an archived requirement gets a replacement
 Draft or Review version, `requirements.is_archived` stays
 `true` until that newer version is published.

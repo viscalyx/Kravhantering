@@ -142,8 +142,8 @@ override is presentation-only and lives in
 [`lib/requirements/status-label.ts`](../../lib/requirements/status-label.ts).
 See [UI status labels](#ui-status-labels) below.
 
-See `version-lifecycle-dates.md` for detailed timestamp
-rules.
+See [version-lifecycle-dates.md](../reference/version-lifecycle-dates.md) for
+detailed timestamp rules.
 
 ## UI status labels
 

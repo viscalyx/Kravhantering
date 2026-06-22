@@ -1,5 +1,5 @@
 ---
-applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,docs/development/database-schema.md}"
+applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,docs/reference/database-schema.md}"
 ---
 
 # Database Schema Changes
@@ -15,7 +15,7 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,doc
 
 ## Standard
 
-- Follow `docs/development/database-schema.md` for every schema change.
+- Follow `docs/reference/database-schema.md` for every schema change.
 - All identifiers are US English, lowercase ASCII `snake_case`. Tables: plural nouns. Columns: singular, no abbreviations.
 - PK: always `id` unless the table is a documented join-table exception. FK: `<referenced_table_singular>_id`.
 - Timestamps: `created_at`, `updated_at`, `deleted_at`, `published_at`, `archived_at`, `edited_at`.
@@ -26,7 +26,7 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,doc
 - `*_en` values use US English spelling (`behavior`, not `behaviour`; `analyzability`, not `analysability`).
 - Keep natural keys such as `key` and `column_id` as non-primary columns with unique indexes.
 - Data values may contain Swedish characters (UTF-8).
-- See `docs/development/database-schema.md` § Database Naming Standard for the full specification.
+- See `docs/reference/database-schema.md` § Database Naming Standard for the full specification.
 
 ## Versioning
 
@@ -71,9 +71,9 @@ ALTER TABLE [<table>]
 
 - Update the affected TypeORM entity, the new migration in
   `typeorm/migrations/`, `typeorm/seed.mjs`, the affected DAL/tests, and
-  `docs/development/database-schema.md` in the same change.
+  `docs/reference/database-schema.md` in the same change.
 - If a deviation is required, add it to `Accepted Exceptions` in
-  `docs/development/database-schema.md` in the same change.
+  `docs/reference/database-schema.md` in the same change.
 
 ## Operator Upgrade Notes
 
@@ -102,7 +102,7 @@ ALTER TABLE [<table>]
 - Add or update tests for preview, execution, exact HSA-id matching, duplicate
   name safety, no-replacement anonymization, and UI/i18n copy when the field is
   visible in Admin Privacy.
-- Update `docs/governance/admin-center.md`, `docs/development/database-schema.md`, and relevant auth
+- Update `docs/governance/admin-center.md`, `docs/reference/database-schema.md`, and relevant auth
   or API security docs so the privacy surface and limitations remain explicit.
 - Do not add database-backed privacy audit logs unless explicitly requested.
   The current privacy audit events are platform security-log events and are not
@@ -111,7 +111,7 @@ ALTER TABLE [<table>]
 ## Documentation Checklist
 
 When any database schema, migration, or seed change is made, review and
-update **every** applicable section of `docs/development/database-schema.md`:
+update **every** applicable section of `docs/reference/database-schema.md`:
 
 1. **Entity-Relationship Diagram** — add/remove/rename entities, columns,
    and relationship lines in the Mermaid `erDiagram`.
@@ -135,13 +135,13 @@ update **every** applicable section of `docs/development/database-schema.md`:
 
 ## Canonical Data Model
 
-`docs/development/database-schema.md` is the sole canonical schema and ER diagram
+`docs/reference/database-schema.md` is the sole canonical schema and ER diagram
 documentation. Do not maintain a second architecture ER diagram.
 
 ## Removal Cleanup
 
 When a table, column, index, or constraint is removed from the schema,
-remove **all** references to it from `docs/development/database-schema.md`:
+remove **all** references to it from `docs/reference/database-schema.md`:
 
 - The entity and its columns in the Mermaid `erDiagram`.
 - Relationship lines that reference the removed entity.
@@ -173,7 +173,7 @@ remove **all** references to it from `docs/development/database-schema.md`:
 
 ## Lifecycle Dates
 
-- When changing lifecycle date columns, status fields, or status seed values, update `docs/governance/version-lifecycle-dates.md`.
+- When changing lifecycle date columns, status fields, or status seed values, update `docs/reference/version-lifecycle-dates.md`.
 - `edited_at` is set only when user-initiated content fields change (e.g. description, acceptance criteria, category).
 - `edited_at` must not change on status transitions (`transitionStatus`, `initiateArchiving`, `approveArchiving`, `cancelArchiving`) or on system-controlled date changes (`published_at`, `archived_at`, `archive_initiated_at`).
 - Status transitions are in-place `UPDATE` operations on the existing version row — they must not create new version rows.

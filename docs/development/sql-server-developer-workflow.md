@@ -5,7 +5,7 @@ database stack: **Microsoft SQL Server + TypeORM**.
 
 See also:
 
-- [database-schema.md](./database-schema.md)
+- [database-schema.md](../reference/database-schema.md)
 
 ## Local SQL Server Container
 

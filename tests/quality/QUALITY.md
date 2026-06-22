@@ -304,7 +304,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 4: review a
 
 **Requirement tag:**
 <!-- markdownlint-disable-next-line MD013 -->
-`[Req: formal — docs/governance/version-lifecycle-dates.md "Effective Requirement Status"]`
+`[Req: formal — docs/reference/version-lifecycle-dates.md "Effective Requirement Status"]`
 
 **What happened:** The effective requirement status SQL in
 `lib/dal/requirements.ts:63-85` gives archived requirements higher priority
@@ -910,7 +910,7 @@ npm exec -- vitest run tests/unit/requirements-assignment-authorization.test.ts
 ### Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions
 
 <!-- markdownlint-disable-next-line MD013 -->
-**Requirement tag:** `[Req: formal — docs/governance/reports.md "Requirements Specification Field Profiles"]`
+**Requirement tag:** `[Req: formal — docs/reference/reports.md "Requirements Specification Field Profiles"]`
 
 **What happened:** Requirements specification reports and exports are now
 lifecycle-scoped outputs rather than row-selected list snapshots. They are
@@ -945,7 +945,7 @@ lib/reports/specification-profiles.ts:7-65
 show only the report profile matching the specification lifecycle status, and
 keep `Full CSV-export` always available while limiting `Anbuds-CSV` to
 `Upphandling`. Field inclusions and exclusions must stay documented in
-`docs/governance/reports.md`.
+`docs/reference/reports.md`.
 
 **How to verify:**
 
