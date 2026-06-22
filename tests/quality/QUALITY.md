@@ -906,6 +906,50 @@ npm exec -- vitest run tests/unit/requirements-assignment-authorization.test.ts
 ```
 <!-- markdownlint-enable MD013 -->
 
+### Scenario 24: Admin Center AI generation disablement is globally effective
+
+**Requirement tag:** `[Req: formal — docs/governance/admin-center.md "AI"]`
+
+**What happened:** AI requirement generation can now be disabled by an
+administrator without changing deployment configuration, while
+`AI_REQUIREMENT_GENERATION_DISABLED` remains a higher-precedence hard override
+for DAST scans and production operation. If the persisted setting were treated
+as only a UI preference, REST or MCP callers could still reach OpenRouter. If
+Admin Center could override the environment guard, security scans and
+operator-driven shutdowns would lose their fail-closed behavior.
+
+**The requirement:** The `ai_settings` table must be a singleton with a default
+enabled row so migrations preserve current behavior. Admin Center may save the
+global `requirementGenerationEnabled` preference through an Admin-only
+`adminMutationPolicy()` route and privileged audit event. Effective generation
+availability is false when either the admin preference is disabled or
+`AI_REQUIREMENT_GENERATION_DISABLED` is `1` or `true`; the environment guard
+has highest precedence. REST and MCP generation must check effective
+availability before taxonomy, model catalog, or chat-provider work. The
+requirements UI must keep the AI action visible but disabled with explanatory
+copy, and an already-open generator modal must also disable generation.
+
+**Scenario 24 code coverage:** Migration
+`typeorm/migrations/0037_ai_settings.mjs:1-25` creates and seeds the singleton
+table. Demo and required seed defaults are in `typeorm/seed.mjs:538-551` and
+`typeorm/seed-required.mjs:228-240`. Environment parsing is in
+`lib/ai/scan-guard.ts:1-10`; persisted availability and update/audit callback
+logic are in `lib/dal/ai-settings.ts:19-132`. The Admin API policy and audit
+surface are in `app/api/admin/ai-settings/route.ts:33-93`. REST and MCP
+generation gates are in `app/api/ai/generate-requirements/route.ts:229-284`
+and `lib/requirements/service.ts:791-816`. UI wiring is in
+`app/[locale]/admin/admin-client.tsx`, `app/[locale]/requirements/page.tsx`,
+`app/[locale]/requirements/requirements-client.tsx:230-290`, and
+`components/AiRequirementGenerator.tsx:232-251`.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 24: Admin Center AI generation disablement is globally effective"
+```
+<!-- markdownlint-enable MD013 -->
+
 <!-- markdownlint-disable-next-line MD013 -->
 ### Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions
 

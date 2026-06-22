@@ -94,8 +94,8 @@ import {
  * Scenario names here must match the QUALITY.md `vitest -t "Scenario N: ..."`
  * invocations verbatim so that spec-referenced commands keep working.
  *
- * Scenarios 10, 15, 18, 19, and 23 are pure file-content checks and always run
- * as part of `npm run test`.
+ * Scenarios 10, 15, 18, 19, 23, and 24 are pure file-content checks and always
+ * run as part of `npm run test`.
  *
  * Scenarios 1-9, 11-12, 14, 16, and 17 exercise lifecycle/audit/MCP invariants
  * that require a real SQL Server instance. The harness derives a connection URL automatically from
@@ -161,6 +161,22 @@ const adminHsaIdPrefixesRoutePath = join(
   'hsa-id-prefixes',
   'route.ts',
 )
+const adminAiSettingsRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'admin',
+  'ai-settings',
+  'route.ts',
+)
+const aiGenerateRequirementsRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'ai',
+  'generate-requirements',
+  'route.ts',
+)
 const adminCenterDocPath = join(
   repoRoot,
   'docs',
@@ -182,10 +198,50 @@ const hsaIdPrefixMigrationPath = join(
 const seedPath = join(repoRoot, 'typeorm', 'seed.mjs')
 const requiredSeedPath = join(repoRoot, 'typeorm', 'seed-required.mjs')
 const uiSettingsPath = join(repoRoot, 'lib', 'dal', 'ui-settings.ts')
+const aiSettingsPath = join(repoRoot, 'lib', 'dal', 'ai-settings.ts')
+const scanGuardPath = join(repoRoot, 'lib', 'ai', 'scan-guard.ts')
+const aiSettingsMigrationPath = join(
+  repoRoot,
+  'typeorm',
+  'migrations',
+  '0037_ai_settings.mjs',
+)
 const hsaPersonVerifyFieldPath = join(
   repoRoot,
   'components',
   'HsaPersonVerifyField.tsx',
+)
+const adminClientPath = join(
+  repoRoot,
+  'app',
+  '[locale]',
+  'admin',
+  'admin-client.tsx',
+)
+const requirementsPagePath = join(
+  repoRoot,
+  'app',
+  '[locale]',
+  'requirements',
+  'page.tsx',
+)
+const requirementsClientPath = join(
+  repoRoot,
+  'app',
+  '[locale]',
+  'requirements',
+  'requirements-client.tsx',
+)
+const aiRequirementGeneratorPath = join(
+  repoRoot,
+  'components',
+  'AiRequirementGenerator.tsx',
+)
+const requirementsServiceEntryPath = join(
+  repoRoot,
+  'lib',
+  'requirements',
+  'service.ts',
 )
 const requirementsServicePath = join(
   repoRoot,
@@ -478,6 +534,80 @@ it('Scenario 19: assignment RBAC denies hidden broad access', () => {
   expect(preloadSource).toContain('specification_assignment_required')
   expect(routeSource).toContain('collectionPermissions')
   expect(routeSource).toContain('canCreateSpecification')
+})
+
+it('Scenario 24: Admin Center AI generation disablement is globally effective', () => {
+  const migrationSource = readFileSync(aiSettingsMigrationPath, 'utf8')
+  const seedSource = readFileSync(seedPath, 'utf8')
+  const requiredSeedSource = readFileSync(requiredSeedPath, 'utf8')
+  const aiSettingsSource = readFileSync(aiSettingsPath, 'utf8')
+  const scanGuardSource = readFileSync(scanGuardPath, 'utf8')
+  const adminRouteSource = readFileSync(adminAiSettingsRoutePath, 'utf8')
+  const restRouteSource = readFileSync(aiGenerateRequirementsRoutePath, 'utf8')
+  const serviceSource = readFileSync(requirementsServiceEntryPath, 'utf8')
+  const adminClientSource = readFileSync(adminClientPath, 'utf8')
+  const requirementsPageSource = readFileSync(requirementsPagePath, 'utf8')
+  const requirementsClientSource = readFileSync(requirementsClientPath, 'utf8')
+  const generatorSource = readFileSync(aiRequirementGeneratorPath, 'utf8')
+  const adminCenterDoc = readFileSync(adminCenterDocPath, 'utf8')
+  const databaseSchemaDoc = readFileSync(databaseSchemaDocPath, 'utf8')
+
+  expect(migrationSource).toContain('CREATE TABLE [ai_settings]')
+  expect(migrationSource).toContain(
+    'CONSTRAINT [chk_ai_settings_id] CHECK ([id] = 1)',
+  )
+  expect(migrationSource).toContain(
+    '[requirement_generation_enabled] bit NOT NULL',
+  )
+  expect(migrationSource).toContain('INSERT INTO [ai_settings]')
+
+  expect(seedSource).toContain('ai_settings:')
+  expect(requiredSeedSource).toContain('ai_settings:')
+  expect(seedSource).toContain("'requirement_generation_enabled'")
+  expect(requiredSeedSource).toContain("'requirement_generation_enabled'")
+  expect(seedSource).toContain(
+    "rows: [[1, 1, '2026-04-20 20:07:00', '2026-04-20 20:07:00']]",
+  )
+  expect(requiredSeedSource).toContain(
+    "rows: [[1, 1, '2026-04-20 20:07:00', '2026-04-20 20:07:00']]",
+  )
+
+  expect(scanGuardSource).toContain('AI_REQUIREMENT_GENERATION_DISABLED')
+  expect(aiSettingsSource).toContain('disabledByEnvironment')
+  expect(aiSettingsSource).toContain('effectiveRequirementGenerationEnabled')
+  expect(aiSettingsSource).toContain('isAiRequirementGenerationDisabled')
+
+  expect(adminRouteSource).toContain('adminMutationPolicy()')
+  expect(adminRouteSource).toContain("resourceType: 'ai_settings'")
+  expect(adminRouteSource).toContain("operation: 'save'")
+  expect(adminRouteSource).toContain(
+    "changedFields: ['requirementGenerationEnabled']",
+  )
+
+  expect(restRouteSource).toContain('getAiGenerationAvailability')
+  expect(restRouteSource).toContain('AI_PROVIDER_UNAVAILABLE_MESSAGE')
+  expect(restRouteSource).toContain(
+    "recordStreamEvent(context, 'failure', 503)",
+  )
+  expect(serviceSource).toContain('getAiGenerationAvailability')
+  expect(serviceSource).toContain('serviceUnavailableError')
+  expect(serviceSource).toContain("reason: 'ai_generation_disabled'")
+
+  expect(adminClientSource).toContain("id: 'ai'")
+  expect(adminClientSource).toContain('/api/admin/ai-settings')
+  expect(adminClientSource).toContain('disabledByEnvironment')
+  expect(requirementsPageSource).toContain('getAiGenerationAvailability')
+  expect(requirementsClientSource).toContain('aiGenerationAvailability')
+  expect(requirementsClientSource).toContain('aiGenerateDisabledByAdmin')
+  expect(generatorSource).toContain('generationDisabledByAdmin')
+  expect(generatorSource).toContain('!isAiGenerationEnabled')
+
+  expect(adminCenterDoc).toContain(
+    'The `AI` tab manages the global preference for AI-assisted requirement',
+  )
+  expect(adminCenterDoc).toContain('AI_REQUIREMENT_GENERATION_DISABLED')
+  expect(databaseSchemaDoc).toContain('ai_settings')
+  expect(databaseSchemaDoc).toContain('requirement_generation_enabled')
 })
 
 it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions', () => {

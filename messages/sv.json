@@ -448,6 +448,8 @@
     "requirementPackage": "Kravpaket",
     "newRequirement": "Nytt krav",
     "aiGenerate": "AI-generera",
+    "aiGenerateDisabledByAdmin": "AI-kravgenerering är avstängd i Administrationscenter.",
+    "aiGenerateDisabledByEnvironment": "AI-kravgenerering är avstängd av driftkonfigurationen.",
     "editRequirement": "Redigera krav",
     "status": "Kravversionsstatus",
     "hasPendingVersionDraft": "Det arbetas på en ny version",
@@ -1301,6 +1303,25 @@
       "visible": "Synligt",
       "visibleRequired": "Minst ett HSA-id-prefix måste vara synligt."
     },
+    "ai": {
+      "title": "AI",
+      "description": "Styr om användare kan generera kravutkast med AI-stöd.",
+      "adminPreferenceDisabled": "Avstängt",
+      "adminPreferenceEnabled": "Påslaget",
+      "disabledTooltip": "Du behöver rollen Administratör.",
+      "effectiveDisabled": "Generering avstängd",
+      "effectiveEnabled": "Generering påslagen",
+      "effectiveStatus": "Effektiv status",
+      "environmentOverrideNotice": "Driftkonfigurationen stänger för närvarande av AI-kravgenerering. Du kan spara inställningen i Administrationscenter, men generering är fortsatt avstängd tills driftöverskrivningen tas bort.",
+      "fieldHelp": {
+        "requirementGenerationEnabled": "Stäng av AI-kravgenerering för alla användare. Inställningen påverkar knappen i kravbiblioteket, genereringsdialogen, REST-rutten för generering och MCP-verktyget för generering."
+      },
+      "loadError": "Kunde inte läsa AI-inställningar.",
+      "requirementGenerationDescription": "När detta är avstängt kan användare fortfarande se AI-kontrollerna, men inte starta ny kravgenerering.",
+      "requirementGenerationEnabled": "Kravgenerering",
+      "saveError": "Kunde inte spara AI-inställningar."
+    },
+    "aiDescription": "Styr tillgänglighet för AI-assisterad kravgenerering.",
     "identityDescription": "Hantera HSA-id-prefix för redigerbara ansvarsfält.",
     "taxonomy": "Taxonomi",
     "taxonomyDescription": "Öppna klassningssidor som används för filtrering, rapportering och AI-stöd.",
@@ -1940,6 +1961,10 @@
         "heading": "Identitetsinställningar",
         "body": "Hantera HSA-id-prefix som används av redigerbara HSA-id-fält. Prefixen är UI-stöd; servervalideringen accepterar fortsatt alla syntaktiskt giltiga HSA-id."
       },
+      "ai": {
+        "heading": "AI-generering",
+        "body": "Slå på eller av AI-assisterad kravgenerering för hela applikationen. Driftspärren har högre prioritet än denna inställning."
+      },
       "taxonomy": {
         "heading": "Taxonomi",
         "body": "Snabblänkar till klassningar som används för filtrering, rapportering och AI-stöd: kravområden, kategorier, typer, risknivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer."
@@ -1978,6 +2003,17 @@
       "defaultPrefix": {
         "heading": "Standardprefix",
         "body": "Standardprefixet är förvalt i nya tomma HSA-id-fält. Det måste vara synligt; väljer du ett dolt prefix som standard görs det synligt samtidigt."
+      }
+    },
+    "adminAi": {
+      "title": "AI",
+      "overview": {
+        "heading": "Syfte",
+        "body": "AI-fliken styr den globala inställningen i Administrationscenter för AI-assisterad kravgenerering."
+      },
+      "precedence": {
+        "heading": "Prioritet",
+        "body": "Driftvariabeln AI_REQUIREMENT_GENERATION_DISABLED har högre prioritet. När den är aktiv är generering avstängd även om den sparade inställningen i Administrationscenter är påslagen."
       }
     },
     "adminPrivacy": {
@@ -2224,6 +2260,8 @@
     "customInstructionLabel": "Anpassad instruktion",
     "customInstructionPlaceholder": "Skriv över standardinstruktionen för generering...",
     "generateButton": "Generera",
+    "generationDisabledByAdmin": "AI-kravgenerering är avstängd i Administrationscenter.",
+    "generationDisabledByEnvironment": "AI-kravgenerering är avstängd av driftkonfigurationen.",
     "cancelButton": "Avbryt",
     "thinkingPhase": "Analyserar krav…",
     "generatingPhase": "Genererar krav…",

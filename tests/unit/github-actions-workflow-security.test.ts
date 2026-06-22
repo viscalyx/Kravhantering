@@ -3,15 +3,37 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const WORKFLOWS_DIR = path.join(process.cwd(), '.github', 'workflows')
+const ACTIONS_DIR = path.join(process.cwd(), '.github', 'actions')
 const FULL_COMMIT_SHA = /^[a-f0-9]{40}$/iu
 const USES_LINE = /^\s*uses:\s*([^#\s]+)(?:\s+#\s*(.+))?\s*$/u
 const PERSIST_CREDENTIALS_FALSE_LINE =
   /^\s*persist-credentials:\s*['"]?false['"]?(?:\s+#.*)?$/iu
 
-function workflowFiles() {
-  return readdirSync(WORKFLOWS_DIR)
-    .filter(fileName => /\.(?:ya?ml)$/u.test(fileName))
-    .sort()
+function yamlFiles(
+  root: string,
+): Array<{ absolutePath: string; relativePath: string }> {
+  const files: Array<{ absolutePath: string; relativePath: string }> = []
+
+  function walk(dir: string) {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const absolutePath = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        walk(absolutePath)
+      } else if (/\.(?:ya?ml)$/u.test(entry.name)) {
+        files.push({
+          absolutePath,
+          relativePath: path.relative(process.cwd(), absolutePath),
+        })
+      }
+    }
+  }
+
+  walk(root)
+  return files.sort((a, b) => a.relativePath.localeCompare(b.relativePath))
+}
+
+function workflowAndActionFiles() {
+  return [...yamlFiles(WORKFLOWS_DIR), ...yamlFiles(ACTIONS_DIR)]
 }
 
 function isLocalOrContainerReference(reference: string) {
@@ -47,12 +69,8 @@ describe('GitHub Actions workflow security', () => {
   it('pins external actions and hardens checkout credentials', () => {
     const unpinnedReferences: string[] = []
 
-    for (const fileName of workflowFiles()) {
-      const relativePath = path.join('.github', 'workflows', fileName)
-      const lines = readFileSync(
-        path.join(WORKFLOWS_DIR, fileName),
-        'utf8',
-      ).split(/\r?\n/u)
+    for (const { absolutePath, relativePath } of workflowAndActionFiles()) {
+      const lines = readFileSync(absolutePath, 'utf8').split(/\r?\n/u)
 
       lines.forEach((line, index) => {
         if (line.trimStart().startsWith('#')) return

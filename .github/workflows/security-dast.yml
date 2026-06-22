@@ -44,100 +44,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Clean server and database state
-        run: npm run clean:all
-
-      - name: Prepare SQL Server env file
-        run: cp .env.sqlserver.ci .env.sqlserver
-
-      - name: Start local database service
-        run: npm run db:up
-
-      - name: Setup local SQL Server database
-        run: npm run db:setup
-
-      - name: Start local IdP service
-        run: npm run idp:up
-
-      - name: Wait for IdP to be ready
-        run: |
-          echo "Waiting for Keycloak to be ready..."
-          for i in $(seq 1 30); do
-            if curl -sf --max-time 5 http://localhost:8080/realms/kravhantering-dev/.well-known/openid-configuration > /dev/null 2>&1; then
-              echo "Keycloak is ready."
-              exit 0
-            fi
-            echo "Attempt $i/30 - not ready yet, retrying in 5s..."
-            sleep 5
-          done
-          echo "Keycloak did not become ready in time."
-          exit 1
-
-      - name: Build prodlike app
-        run: npm run build:local-prod
-
-      - name: Start prodlike app
-        run: bash scripts/security/prodlike-app.sh start test-results
-
-      - name: Wait for app health endpoint
-        run: |
-          set -euo pipefail
-          # GitHub-hosted ubuntu-latest runners include jq; fail clearly if
-          # that runner-image contract changes.
-          if ! command -v jq > /dev/null 2>&1; then
-            echo "::error::jq is required to validate /api/health JSON."
-            exit 1
-          fi
-
-          last_http_code="not requested"
-          last_payload=""
-          for i in $(seq 1 60); do
-            response="$(
-              curl -sS --max-time 5 -w '\n%{http_code}' \
-                "${APP_BASE_URL}/api/health" 2>/dev/null || true
-            )"
-            last_http_code="$(printf '%s' "$response" | tail -n 1)"
-            last_payload="$(printf '%s' "$response" | sed '$d')"
-
-            if [ "$last_http_code" = "200" ]; then
-              if printf '%s' "$last_payload" |
-                jq -e '.status == "ok"' > /dev/null 2>&1; then
-                echo "App is healthy."
-                exit 0
-              fi
-            fi
-            echo "Attempt $i/60 - /api/health not ready yet, retrying in 2s..."
-            sleep 2
-          done
-          echo "App did not become healthy in time."
-          echo "Last /api/health HTTP status: ${last_http_code}"
-          echo "Last /api/health payload:"
-          if [ -n "$last_payload" ]; then
-            printf '%s\n' "$last_payload"
-          else
-            echo "<empty>"
-          fi
-          echo "Last 200 lines of app.log:"
-          tail -n 200 test-results/app.log || true
-          exit 1
+      - name: Start prodlike stack
+        uses: ./.github/actions/prodlike-stack
+        with:
+          results-dir: test-results
 
       - name: Acquire authenticated session cookie
         id: session
-        run: |
-          set -euo pipefail
-          COOKIE="$(node scripts/security/get-session-cookie.mjs "${KEYCLOAK_USERNAME}")"
-          if [ -z "${COOKIE}" ]; then
-            echo "Empty cookie returned from helper" >&2
-            exit 1
-          fi
-          # Mask the cookie value in workflow logs.
-          echo "::add-mask::${COOKIE}"
-          # Make available to subsequent steps without ever echoing the value.
-          {
-            echo "cookie<<COOKIE_EOF"
-            echo "${COOKIE}"
-            echo "COOKIE_EOF"
-          } >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/prodlike-cookie
+        with:
+          username: ${{ env.KEYCLOAK_USERNAME }}
 
       - name: Stage ZAP rules file for the scenario
         run: |
@@ -551,14 +467,8 @@ jobs:
 
           exit "${failed}"
 
-      - name: Stop prodlike app
+      - name: Clean up prodlike stack
         if: always()
-        run: bash scripts/security/prodlike-app.sh stop test-results
-
-      - name: Stop IdP service
-        if: always()
-        run: npm run idp:down || true
-
-      - name: Stop database service
-        if: always()
-        run: npm run db:down || true
+        uses: ./.github/actions/prodlike-cleanup
+        with:
+          results-dir: test-results

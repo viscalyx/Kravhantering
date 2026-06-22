@@ -448,6 +448,8 @@
     "requirementPackage": "Requirements package",
     "newRequirement": "New requirement",
     "aiGenerate": "AI Generate",
+    "aiGenerateDisabledByAdmin": "AI requirement generation is disabled in Admin Center.",
+    "aiGenerateDisabledByEnvironment": "AI requirement generation is disabled by deployment configuration.",
     "editRequirement": "Edit requirement",
     "status": "Requirement version status",
     "hasPendingVersionDraft": "A new version is being worked on",
@@ -1301,6 +1303,25 @@
       "visible": "Visible",
       "visibleRequired": "At least one HSA-id prefix must be visible."
     },
+    "ai": {
+      "title": "AI",
+      "description": "Control whether users can generate draft requirements with AI assistance.",
+      "adminPreferenceDisabled": "Disabled",
+      "adminPreferenceEnabled": "Enabled",
+      "disabledTooltip": "You need the Administrator role.",
+      "effectiveDisabled": "Generation disabled",
+      "effectiveEnabled": "Generation enabled",
+      "effectiveStatus": "Effective status",
+      "environmentOverrideNotice": "Deployment configuration currently disables AI requirement generation. You can save the Admin Center preference, but generation stays disabled until the deployment override is removed.",
+      "fieldHelp": {
+        "requirementGenerationEnabled": "Turn off AI requirement generation for all users. The setting affects the requirements library button, the generator modal, the REST generation route, and the MCP generation tool."
+      },
+      "loadError": "Could not load AI settings.",
+      "requirementGenerationDescription": "When disabled, users can still view the AI controls but cannot start new requirement generation.",
+      "requirementGenerationEnabled": "Requirement generation",
+      "saveError": "Could not save AI settings."
+    },
+    "aiDescription": "Control AI-assisted requirement generation availability.",
     "identityDescription": "Manage HSA-id prefixes for editable responsibility fields.",
     "taxonomy": "Taxonomy",
     "taxonomyDescription": "Open classification pages used for filtering, reporting, and AI support.",
@@ -1940,6 +1961,10 @@
         "heading": "Identity settings",
         "body": "Manage HSA-id prefixes used by editable HSA-id fields. Prefixes are UI guidance only; server-side HSA-id validation still accepts every syntactically valid HSA-id."
       },
+      "ai": {
+        "heading": "AI generation",
+        "body": "Turn AI-assisted requirement generation on or off for the whole application. The deployment guard has higher precedence than this setting."
+      },
       "taxonomy": {
         "heading": "Taxonomy",
         "body": "Quick links to classifications used for filtering, reporting, and AI support: requirement areas, categories, types, risk levels, quality characteristics, governance object types, and implementation types."
@@ -1978,6 +2003,17 @@
       "defaultPrefix": {
         "heading": "Default prefix",
         "body": "The default prefix is preselected in new empty HSA-id fields. It must be visible; selecting a hidden prefix as default also makes it visible."
+      }
+    },
+    "adminAi": {
+      "title": "AI",
+      "overview": {
+        "heading": "Purpose",
+        "body": "The AI tab controls the global Admin Center preference for AI-assisted requirement generation."
+      },
+      "precedence": {
+        "heading": "Precedence",
+        "body": "The deployment variable AI_REQUIREMENT_GENERATION_DISABLED has higher precedence. When it is active, generation remains disabled even if the saved Admin Center preference is enabled."
       }
     },
     "adminPrivacy": {
@@ -2224,6 +2260,8 @@
     "customInstructionLabel": "Custom Instruction",
     "customInstructionPlaceholder": "Override the default generation instruction...",
     "generateButton": "Generate",
+    "generationDisabledByAdmin": "AI requirement generation is disabled in Admin Center.",
+    "generationDisabledByEnvironment": "AI requirement generation is disabled by deployment configuration.",
     "cancelButton": "Cancel",
     "thinkingPhase": "Analyzing requirements…",
     "generatingPhase": "Generating requirements…",

@@ -86,11 +86,17 @@ function modelResponse() {
 }
 
 async function renderOpenGenerator(overrides?: {
+  aiGenerationAvailability?: {
+    disabledByEnvironment: boolean
+    effectiveRequirementGenerationEnabled: boolean
+    requirementGenerationEnabled: boolean
+  }
   onClose?: () => void
   onCreated?: () => void
 }) {
   render(
     <AiRequirementGenerator
+      aiGenerationAvailability={overrides?.aiGenerationAvailability}
       areas={testAreas}
       onClose={overrides?.onClose ?? vi.fn()}
       onCreated={overrides?.onCreated ?? vi.fn()}
@@ -157,6 +163,34 @@ describe('AiRequirementGenerator', () => {
     expect(areaSelect).toBeInTheDocument()
     expect(screen.getByText('Security')).toBeInTheDocument()
     expect(screen.getByText('Performance')).toBeInTheDocument()
+  })
+
+  it('disables generation when Admin Center turns availability off', async () => {
+    const user = userEvent.setup()
+    await renderOpenGenerator({
+      aiGenerationAvailability: {
+        disabledByEnvironment: false,
+        effectiveRequirementGenerationEnabled: false,
+        requirementGenerationEnabled: false,
+      },
+    })
+
+    await user.type(screen.getByLabelText('topicLabel'), 'audit logging')
+    await user.selectOptions(screen.getByLabelText('areaLabel'), '1')
+
+    const generateButton = screen.getByRole('button', {
+      name: 'generateButton',
+    })
+    expect(generateButton).toBeDisabled()
+    expect(generateButton).toHaveAttribute('title', 'generationDisabledByAdmin')
+    expect(screen.getByText('generationDisabledByAdmin')).toBeInTheDocument()
+
+    await user.click(generateButton)
+
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      '/api/ai/generate-requirements',
+      expect.anything(),
+    )
   })
 
   it('disables generate button when topic or area is empty', async () => {

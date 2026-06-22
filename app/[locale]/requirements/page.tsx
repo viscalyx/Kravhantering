@@ -1,6 +1,15 @@
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import {
+  type AiRequirementGenerationAvailability,
+  DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
+} from '@/lib/ai/generation-availability'
+import {
+  formatAiSettingsLoadError,
+  getAiGenerationAvailability,
+  resolveAiGenerationAvailability,
+} from '@/lib/dal/ai-settings'
+import {
   formatUiSettingsLoadError,
   getRequirementListColumnDefaults,
 } from '@/lib/dal/ui-settings'
@@ -23,19 +32,39 @@ function isMissingSqlServerConfigurationError(error: unknown) {
 
 export default async function RequirementsPage() {
   let initialColumnDefaults = DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS
+  let aiGenerationAvailability: AiRequirementGenerationAvailability =
+    resolveAiGenerationAvailability()
 
   try {
-    initialColumnDefaults = await getRequirementListColumnDefaults(
-      await getRequestSqlServerDataSource(),
-    )
+    const db = await getRequestSqlServerDataSource()
+    ;[initialColumnDefaults, aiGenerationAvailability] = await Promise.all([
+      getRequirementListColumnDefaults(db),
+      getAiGenerationAvailability(db),
+    ])
   } catch (error) {
     if (!isMissingSqlServerConfigurationError(error)) {
       console.error(
         'Failed to load requirement column defaults for requirements page',
         formatUiSettingsLoadError(error),
       )
+      console.error(
+        'Failed to load AI generation availability for requirements page',
+        formatAiSettingsLoadError(error),
+      )
+    } else {
+      aiGenerationAvailability = {
+        ...DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
+        disabledByEnvironment: aiGenerationAvailability.disabledByEnvironment,
+        effectiveRequirementGenerationEnabled:
+          !aiGenerationAvailability.disabledByEnvironment,
+      }
     }
   }
 
-  return <RequirementsClient initialColumnDefaults={initialColumnDefaults} />
+  return (
+    <RequirementsClient
+      aiGenerationAvailability={aiGenerationAvailability}
+      initialColumnDefaults={initialColumnDefaults}
+    />
+  )
 }

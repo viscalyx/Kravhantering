@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
 import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
@@ -106,6 +106,10 @@ describe('POST /api/ai/generate-requirements', () => {
     })
   })
 
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it('logs successful generation capacity metrics', async () => {
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
@@ -192,6 +196,78 @@ describe('POST /api/ai/generate-requirements', () => {
     expect(body.error).toBe('Forbidden')
     expect(routeState.loadTaxonomy).not.toHaveBeenCalled()
     expect(routeState.generateChatStream).not.toHaveBeenCalled()
+  })
+
+  it('returns a sanitized unavailable event when security scans disable AI generation', async () => {
+    vi.stubEnv('AI_REQUIREMENT_GENERATION_DISABLED', '1')
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+      const text = await response.text()
+
+      expect(response.headers.get('Content-Type')).toContain(
+        'text/event-stream',
+      )
+      expect(text).toContain('event: error')
+      expect(text).toContain('"message":"AI provider is unavailable"')
+      expect(
+        routeState.resolveOpenRouterModelCapabilities,
+      ).not.toHaveBeenCalled()
+      expect(routeState.loadTaxonomy).not.toHaveBeenCalled()
+      expect(routeState.generateChatStream).not.toHaveBeenCalled()
+      expect(parseCapacityEvents(consoleErrorSpy)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            event: 'capacity.operation.failed',
+            operation: 'ai.generate-requirements',
+            outcome: 'failure',
+            status_code: 503,
+          }),
+        ]),
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('returns a sanitized unavailable event when Admin Center disables AI generation', async () => {
+    routeState.query.mockResolvedValueOnce([
+      { requirementGenerationEnabled: 0 },
+    ])
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+      const text = await response.text()
+
+      expect(response.headers.get('Content-Type')).toContain(
+        'text/event-stream',
+      )
+      expect(text).toContain('event: error')
+      expect(text).toContain('"message":"AI provider is unavailable"')
+      expect(routeState.loadTaxonomy).not.toHaveBeenCalled()
+      expect(
+        routeState.resolveOpenRouterModelCapabilities,
+      ).not.toHaveBeenCalled()
+      expect(routeState.generateChatStream).not.toHaveBeenCalled()
+      expect(parseCapacityEvents(consoleErrorSpy)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            event: 'capacity.operation.failed',
+            operation: 'ai.generate-requirements',
+            outcome: 'failure',
+            status_code: 503,
+          }),
+        ]),
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('streams sanitized provider errors only', async () => {

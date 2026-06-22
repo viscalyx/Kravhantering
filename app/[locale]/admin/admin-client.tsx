@@ -29,6 +29,7 @@ import {
   RotateCcw,
   Save,
   ShieldCheck,
+  Sparkles,
   Star,
   Tags,
   Trash2,
@@ -63,6 +64,10 @@ import type {
   AccessReviewRun,
   AccessReviewRunDetail,
 } from '@/lib/access-review/types'
+import {
+  type AiRequirementGenerationAvailability,
+  DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
+} from '@/lib/ai/generation-availability'
 import type { ActionAuditLogSearchParams } from '@/lib/audit/action-audit-query'
 import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -197,6 +202,22 @@ const ADMIN_IDENTITY_HELP: HelpContent = {
   titleKey: 'adminIdentity.title',
 }
 
+const ADMIN_AI_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'adminAi.overview.body',
+      headingKey: 'adminAi.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'adminAi.precedence.body',
+      headingKey: 'adminAi.precedence.heading',
+    },
+  ],
+  titleKey: 'adminAi.title',
+}
+
 const ADMIN_ACCESS_REVIEW_HELP: HelpContent = {
   sections: [
     {
@@ -226,6 +247,7 @@ const ADMIN_ACCESS_REVIEW_HELP: HelpContent = {
 type AdminTab =
   | 'accessReview'
   | 'actionAuditLog'
+  | 'ai'
   | 'archiving'
   | 'columns'
   | 'identity'
@@ -242,6 +264,7 @@ const EMPTY_USER_ROLES: string[] = []
 const adminTabs: { icon: LucideIcon; id: AdminTab }[] = [
   { icon: LayoutPanelTop, id: 'columns' },
   { icon: KeyRound, id: 'identity' },
+  { icon: Sparkles, id: 'ai' },
   { icon: Tags, id: 'taxonomy' },
   { icon: CircleDot, id: 'statusesAndWorkflows' },
   { icon: ClipboardCheck, id: 'accessReview' },
@@ -253,6 +276,7 @@ const adminTabs: { icon: LucideIcon; id: AdminTab }[] = [
 const ADMIN_TAB_DEVELOPER_MODE_VALUES: Record<AdminTab, string> = {
   accessReview: 'access review',
   actionAuditLog: 'action log',
+  ai: 'ai',
   archiving: 'archiving',
   columns: 'columns',
   identity: 'identity',
@@ -267,6 +291,7 @@ const DEFAULT_ADMIN_TAB: AdminTab = 'columns'
 const ADMIN_TAB_DISABLED_TOOLTIP_KEYS: Partial<Record<AdminTab, string>> = {
   accessReview: 'accessReview.disabledTooltip',
   actionAuditLog: 'auditLog.disabledTooltip',
+  ai: 'ai.disabledTooltip',
   archiving: 'archiving.disabledTooltip',
   identity: 'identity.disabledTooltip',
   privacy: 'privacy.disabledTooltip',
@@ -285,6 +310,10 @@ function canAccessAdminTab(tab: AdminTab, roles: string[]): boolean {
   }
 
   if (tab === 'identity') {
+    return isAdmin
+  }
+
+  if (tab === 'ai') {
     return isAdmin
   }
 
@@ -500,6 +529,228 @@ const ACCESS_REVIEW_DECISIONS: Exclude<AccessReviewDecision, 'pending'>[] = [
   'changed',
   'not_applicable',
 ]
+
+function aiSettingsSnapshot(settings: AiRequirementGenerationAvailability) {
+  return createDirtySnapshot({
+    requirementGenerationEnabled: settings.requirementGenerationEnabled,
+  })
+}
+
+function AiSettingsPanel() {
+  const ta = useTranslations('admin')
+  const tc = useTranslations('common')
+  const [settings, setSettings] = useState<AiRequirementGenerationAvailability>(
+    DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
+  )
+  const [settingsBaseline, setSettingsBaseline] = useState(() =>
+    aiSettingsSnapshot(DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY),
+  )
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [message, setMessage] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const saveTokenRef = useRef(0)
+  const isSaving = saveState === 'saving'
+  const isDirty = settingsBaseline !== aiSettingsSnapshot(settings)
+  const loadErrorMessage = ta('ai.loadError')
+  const saveErrorMessage = ta('ai.saveError')
+  const toggleId = 'admin-ai-requirement-generation-enabled'
+  const helpId = `${toggleId}-help`
+
+  const loadSettings = useCallback(async () => {
+    setIsLoading(true)
+    setMessage(null)
+    try {
+      const response = await apiFetch('/api/admin/ai-settings')
+      if (!response.ok) {
+        setSaveState('error')
+        setMessage((await readResponseMessage(response)) ?? loadErrorMessage)
+        return
+      }
+      const payload =
+        (await response.json()) as AiRequirementGenerationAvailability
+      setSettings(payload)
+      setSettingsBaseline(aiSettingsSnapshot(payload))
+      setSaveState('idle')
+    } catch {
+      setSaveState('error')
+      setMessage(loadErrorMessage)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [loadErrorMessage])
+
+  useEffect(() => {
+    void loadSettings()
+  }, [loadSettings])
+
+  const saveSettings = async () => {
+    if (!isDirty) return
+    const requestToken = saveTokenRef.current + 1
+    saveTokenRef.current = requestToken
+    setSaveState('saving')
+    setMessage(null)
+
+    try {
+      const response = await apiFetch('/api/admin/ai-settings', {
+        body: JSON.stringify({
+          requirementGenerationEnabled: settings.requirementGenerationEnabled,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PUT',
+      })
+      if (requestToken !== saveTokenRef.current) return
+
+      if (!response.ok) {
+        setSaveState('error')
+        setMessage((await readResponseMessage(response)) ?? saveErrorMessage)
+        return
+      }
+
+      const payload =
+        (await response.json()) as AiRequirementGenerationAvailability
+      if (requestToken !== saveTokenRef.current) return
+      setSettings(payload)
+      setSettingsBaseline(aiSettingsSnapshot(payload))
+      setSaveState('saved')
+    } catch {
+      if (requestToken === saveTokenRef.current) {
+        setSaveState('error')
+        setMessage(saveErrorMessage)
+      }
+    }
+  }
+
+  return (
+    <section
+      aria-labelledby="ai-tab"
+      className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+      {...devMarker({
+        context: 'admin center',
+        name: 'tab panel',
+        priority: 340,
+        value: 'ai',
+      })}
+      id="ai-panel"
+      role="tabpanel"
+    >
+      <div className="flex flex-col gap-4 border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
+            {ta('ai.title')}
+          </h2>
+          <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+            {ta('ai.description')}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {saveState === 'saved' ? (
+            <span
+              className="text-xs font-medium text-emerald-700 dark:text-emerald-300"
+              role="status"
+            >
+              {ta('saved')}
+            </span>
+          ) : null}
+          {saveState === 'error' && message ? (
+            <span
+              className="text-sm font-medium text-red-700 dark:text-red-400"
+              role="alert"
+            >
+              {message}
+            </span>
+          ) : null}
+          <DirtyStateButton
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+            dirty={isDirty}
+            disabled={isLoading || isSaving}
+            onClick={saveSettings}
+            type="button"
+          >
+            <Save aria-hidden="true" className="h-4 w-4" />
+            {isSaving ? tc('loading') : tc('save')}
+          </DirtyStateButton>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <label
+                  className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
+                  htmlFor={toggleId}
+                >
+                  {ta('ai.requirementGenerationEnabled')}
+                </label>
+                <button
+                  aria-controls={helpId}
+                  aria-expanded={isHelpOpen}
+                  aria-label={`${tc('help')}: ${ta('ai.requirementGenerationEnabled')}`}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                  onClick={() => setIsHelpOpen(open => !open)}
+                  type="button"
+                >
+                  <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <AnimatedHelpPanel id={helpId} isOpen={isHelpOpen}>
+                {ta('ai.fieldHelp.requirementGenerationEnabled')}
+              </AnimatedHelpPanel>
+              <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+                {ta('ai.requirementGenerationDescription')}
+              </p>
+            </div>
+            <label className="inline-flex min-h-11 items-center gap-3 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200">
+              <input
+                checked={settings.requirementGenerationEnabled}
+                disabled={isLoading || isSaving}
+                id={toggleId}
+                onChange={event => {
+                  setSettings(current => ({
+                    ...current,
+                    requirementGenerationEnabled: event.target.checked,
+                    effectiveRequirementGenerationEnabled:
+                      event.target.checked && !current.disabledByEnvironment,
+                  }))
+                  setSaveState('idle')
+                  setMessage(null)
+                }}
+                type="checkbox"
+              />
+              <span>
+                {settings.requirementGenerationEnabled
+                  ? ta('ai.adminPreferenceEnabled')
+                  : ta('ai.adminPreferenceDisabled')}
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-secondary-200/70 bg-white p-4 text-sm dark:border-secondary-700/60 dark:bg-secondary-900">
+          <div className="text-xs font-medium uppercase tracking-[0.14em] text-secondary-500 dark:text-secondary-400">
+            {ta('ai.effectiveStatus')}
+          </div>
+          <div className="mt-2 flex items-center gap-2 font-semibold text-secondary-950 dark:text-secondary-50">
+            <Sparkles aria-hidden="true" className="h-4 w-4" />
+            {settings.effectiveRequirementGenerationEnabled
+              ? ta('ai.effectiveEnabled')
+              : ta('ai.effectiveDisabled')}
+          </div>
+          {settings.disabledByEnvironment ? (
+            <p
+              className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100"
+              role="status"
+            >
+              {ta('ai.environmentOverrideNotice')}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  )
+}
 
 interface HsaIdPrefixAdminItem {
   clientId: string
@@ -3388,6 +3639,7 @@ export default function AdminClient({
   const router = useRouter()
   const searchParams = useSearchParams()
   const canUseAccessReview = canAccessAdminTab('accessReview', currentUserRoles)
+  const canUseAi = canAccessAdminTab('ai', currentUserRoles)
   const canUseArchiving = canAccessAdminTab('archiving', currentUserRoles)
   const canUseIdentity = canAccessAdminTab('identity', currentUserRoles)
   const canUsePrivacy = canAccessAdminTab('privacy', currentUserRoles)
@@ -3418,7 +3670,9 @@ export default function AdminClient({
         ? ADMIN_ACCESS_REVIEW_HELP
         : activeTab === 'identity'
           ? ADMIN_IDENTITY_HELP
-          : ADMIN_HELP,
+          : activeTab === 'ai'
+            ? ADMIN_AI_HELP
+            : ADMIN_HELP,
   )
   const orderedColumns = useMemo(
     () => getOrderedRequirementListColumns(columnDefaults),
@@ -3718,11 +3972,13 @@ export default function AdminClient({
                       ? ta('accessReview.title')
                       : tab.id === 'identity'
                         ? ta('identity.title')
-                        : tab.id === 'archiving'
-                          ? ta('archiving.title')
-                          : tab.id === 'actionAuditLog'
-                            ? ta('auditLog.title')
-                            : ta(tab.id)
+                        : tab.id === 'ai'
+                          ? ta('ai.title')
+                          : tab.id === 'archiving'
+                            ? ta('archiving.title')
+                            : tab.id === 'actionAuditLog'
+                              ? ta('auditLog.title')
+                              : ta(tab.id)
 
                 return (
                   <button
@@ -3881,6 +4137,8 @@ export default function AdminClient({
         {activeTab === 'identity' && canUseIdentity ? (
           <IdentitySettingsPanel />
         ) : null}
+
+        {activeTab === 'ai' && canUseAi ? <AiSettingsPanel /> : null}
 
         {activeTab === 'taxonomy' ? (
           <section

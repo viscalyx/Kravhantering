@@ -7,6 +7,7 @@ export const REQUIRED_SEED_TABLES = Object.freeze([
   'specification_lifecycle_statuses',
   'specification_governance_object_types',
   'requirement_categories',
+  'ai_settings',
   'requirement_list_column_defaults',
   'requirement_statuses',
   'requirement_status_transitions',
@@ -224,6 +225,16 @@ export const REQUIRED_SEED_DATA = {
       [2, 'IT-krav', 'IT requirement'],
       [3, 'Leverantörskrav', 'Supplier requirement'],
     ],
+  },
+  ai_settings: {
+    columns: [
+      'id',
+      'requirement_generation_enabled',
+      'created_at',
+      'updated_at',
+    ],
+    pk: ['id'],
+    rows: [[1, 1, '2026-04-20 20:07:00', '2026-04-20 20:07:00']],
   },
   requirement_list_column_defaults: {
     columns: [

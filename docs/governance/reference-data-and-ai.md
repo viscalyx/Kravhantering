@@ -124,6 +124,22 @@ Sources: `lib/ai/openrouter-client.ts`,
 Local OpenRouter setup and live-provider smoke guidance live in
 [ai-assisted-authoring-developer-workflow.md](../development/ai-assisted-authoring-developer-workflow.md).
 
+### Availability Controls
+
+AI-assisted requirement generation is available only when both controls allow
+it:
+
+- Admin Center `AI` has `Requirement generation` enabled.
+- `AI_REQUIREMENT_GENERATION_DISABLED` is not set to `1` or `true`.
+
+The environment guard has higher precedence and is intended for security scans
+and deployment freeze windows. When either control disables generation, the
+requirements-library action remains visible but disabled, an already-open
+generator dialog disables its Generate button, REST generation returns the
+sanitized provider-unavailable SSE error, and the MCP generation tool returns
+the existing `service_unavailable` error before taxonomy, model-catalog, or
+chat-completion work starts.
+
 ### OpenRouter Client Contracts
 
 **Timeout guarantees:**

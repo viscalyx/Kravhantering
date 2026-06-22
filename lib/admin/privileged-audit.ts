@@ -26,6 +26,7 @@ export type AdminPrivilegedActionOperation =
   | 'update'
 
 export type AdminPrivilegedResourceType =
+  | 'ai_settings'
   | 'hsa_id_prefix'
   | 'norm_reference'
   | 'owner'

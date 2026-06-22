@@ -173,6 +173,21 @@ maintenance rule.
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions"`
 
+## 13b. Scenario 24: Admin Center AI generation disablement is globally effective
+
+- **Code:** `lib/dal/ai-settings.ts`,
+  `app/api/admin/ai-settings/route.ts`,
+  `app/api/ai/generate-requirements/route.ts`,
+  `lib/requirements/service.ts`, Admin Center UI, and requirements UI.
+- **Spec:** `docs/governance/admin-center.md` and
+  `docs/governance/reference-data-and-ai.md`.
+- **Req tag:** `[Req: formal — docs/governance/admin-center.md "AI"]`
+- **Question:** Does the persisted Admin Center preference disable AI
+  generation across UI, REST, and MCP while preserving the environment guard as
+  the highest-precedence hard override?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 24: Admin Center AI generation disablement is globally effective"`
+
 ## 14. Coverage Target Alignment
 
 - **Source:** `tests/quality/QUALITY.md` — Coverage Targets table.

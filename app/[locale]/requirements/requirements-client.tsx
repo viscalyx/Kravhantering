@@ -9,6 +9,10 @@ import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import {
+  type AiRequirementGenerationAvailability,
+  DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
+} from '@/lib/ai/generation-availability'
+import {
   type AreaOption,
   buildRequirementListParams,
   clearRequirementFiltersForHiddenColumns,
@@ -226,8 +230,10 @@ function selectionMatchesRequirementRow(
 }
 
 export default function RequirementsClient({
+  aiGenerationAvailability = DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
   initialColumnDefaults,
 }: {
+  aiGenerationAvailability?: AiRequirementGenerationAvailability
   initialColumnDefaults?: RequirementListColumnDefault[]
 }) {
   useHelpContent(REQUIREMENTS_HELP)
@@ -273,6 +279,13 @@ export default function RequirementsClient({
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
   const [aiModalOpen, setAiModalOpen] = useState(false)
+  const isAiGenerationEnabled =
+    aiGenerationAvailability.effectiveRequirementGenerationEnabled
+  const aiGenerationDisabledTooltip = !isAiGenerationEnabled
+    ? aiGenerationAvailability.disabledByEnvironment
+      ? t('aiGenerateDisabledByEnvironment')
+      : t('aiGenerateDisabledByAdmin')
+    : undefined
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasLoadedColumnPreferences, setHasLoadedColumnPreferences] =
@@ -919,10 +932,14 @@ export default function RequirementsClient({
                     developerModeContext: 'requirements table',
                     developerModeValue: 'ai generate',
                     ariaLabel: t('aiGenerate'),
+                    disabled: !isAiGenerationEnabled,
                     icon: <Sparkles aria-hidden="true" className="h-4 w-4" />,
                     id: 'ai-generate',
-                    onClick: () => setAiModalOpen(true),
+                    onClick: () => {
+                      if (isAiGenerationEnabled) setAiModalOpen(true)
+                    },
                     position: 'beforeColumns',
+                    tooltip: aiGenerationDisabledTooltip ?? t('aiGenerate'),
                   },
                   {
                     developerModeContext: 'requirements table',
@@ -1054,6 +1071,7 @@ export default function RequirementsClient({
       </div>
       {pdfDownload.dialog}
       <AiRequirementGenerator
+        aiGenerationAvailability={aiGenerationAvailability}
         areas={areas}
         onClose={() => setAiModalOpen(false)}
         onCreated={() => {

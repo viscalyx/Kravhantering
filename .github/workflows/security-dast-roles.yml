@@ -1,0 +1,163 @@
+name: Security DAST Roles
+
+# Nightly role-matrix ZAP baseline scan against canonical local test users.
+# See docs/security-privacy/security-ci.md for the design and tuning guide.
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      roles:
+        description: Comma-separated usernames to scan, or "all".
+        required: false
+        default: all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  select-roles:
+    name: Select role matrix
+    runs-on: ubuntu-latest
+    outputs:
+      roles: ${{ steps.roles.outputs.roles }}
+    steps:
+      - name: Build role matrix
+        id: roles
+        env:
+          REQUESTED_ROLES: ${{ inputs.roles || 'all' }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const roles = [
+            ['ada.admin', 'ada-admin'],
+            ['only.admin', 'only-admin'],
+            ['disa.privacy', 'disa-privacy'],
+            ['rita.reviewer', 'rita-reviewer'],
+            ['olle.areaowner', 'olle-areaowner'],
+            ['cora.coauthor', 'cora-coauthor'],
+            ['petra.specresp', 'petra-specresp'],
+            ['signe.speccoauthor', 'signe-speccoauthor'],
+            ['leo.pkglead', 'leo-pkglead'],
+            ['paul.pkgcoauthor', 'paul-pkgcoauthor'],
+            ['noah.noroles', 'noah-noroles'],
+          ].map(([username, artifact]) => ({ artifact, username }));
+
+          const requested = (process.env.REQUESTED_ROLES || 'all').trim();
+          const selected = requested === 'all'
+            ? roles
+            : requested.split(',').map(value => value.trim()).filter(Boolean)
+                .map(username => {
+                  const role = roles.find(candidate => candidate.username === username);
+                  if (!role) {
+                    throw new Error(`Unknown role username: ${username}`);
+                  }
+                  return role;
+                });
+
+          if (selected.length === 0) {
+            throw new Error('At least one role username is required.');
+          }
+
+          require('fs').appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            `roles=${JSON.stringify(selected)}\n`,
+          );
+          NODE
+
+  zap-role-baseline:
+    name: ZAP role (${{ matrix.user.username }})
+    runs-on: ubuntu-latest
+    needs: select-roles
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        user: ${{ fromJson(needs.select-roles.outputs.roles) }}
+
+    env:
+      APP_BASE_URL: http://localhost:3001
+      AUTH_SESSION_COOKIE_NAME: kravhantering_session
+      KEYCLOAK_PASSWORD: devpass
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start prodlike stack
+        uses: ./.github/actions/prodlike-stack
+        with:
+          results-dir: test-results/security-dast-roles/app
+
+      - name: Acquire authenticated session cookie
+        id: session
+        uses: ./.github/actions/prodlike-cookie
+        with:
+          username: ${{ matrix.user.username }}
+
+      - name: Stage ZAP role rules
+        run: |
+          set -euo pipefail
+          mkdir -p .zap
+          cp .github/zap/rules.roles.tsv .zap/rules.tsv
+
+      - name: Run OWASP ZAP role baseline scan
+        id: zap_role_scan
+        continue-on-error: true
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: ${{ env.APP_BASE_URL }}/sv
+          rules_file_name: .zap/rules.tsv
+          allow_issue_writing: false
+          fail_action: true
+          artifact_name: zap-role-${{ matrix.user.artifact }}
+          cmd_options: >-
+            -j
+            -m 5
+            -T 10
+            -z "-config replacer.full_list(0).description=session-cookie
+                -config replacer.full_list(0).enabled=true
+                -config replacer.full_list(0).matchtype=REQ_HEADER
+                -config replacer.full_list(0).matchstr=Cookie
+                -config replacer.full_list(0).regex=false
+                -config replacer.full_list(0).replacement=${{ steps.session.outputs.cookie }}"
+
+      - name: Upload role app log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: role-app-log-${{ matrix.user.artifact }}
+          path: test-results/security-dast-roles/app/app.log
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Evaluate role scan outcome
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.zap_role_scan.outcome }}" = "failure" ]; then
+            echo "::error::OWASP ZAP role scan reported unsuppressed alerts for ${{ matrix.user.username }}."
+            exit 1
+          fi
+
+      - name: Clean up prodlike stack
+        if: always()
+        uses: ./.github/actions/prodlike-cleanup
+        with:
+          results-dir: test-results/security-dast-roles/app

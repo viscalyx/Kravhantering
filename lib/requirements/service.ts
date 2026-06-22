@@ -1,3 +1,4 @@
+import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import {
   countDeviationsBySpecification,
   createDeviation,
@@ -795,6 +796,15 @@ export function createRequirementsService(
             retryAfterSeconds: throttle.retryAfterSeconds,
           },
         )
+      }
+
+      const availability = await getAiGenerationAvailability(db).catch(
+        () => null,
+      )
+      if (!availability?.effectiveRequirementGenerationEnabled) {
+        throw serviceUnavailableError('AI provider is unavailable', {
+          reason: 'ai_generation_disabled',
+        })
       }
 
       return withLogging(

@@ -1,0 +1,138 @@
+name: Security DAST API
+
+# PR-level ZAP API scan against a filtered read-only OpenAPI contract.
+# See docs/security-privacy/security-dast-api.md for the design and tuning guide.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/actions/prodlike-*/action.yml'
+      - '.github/workflows/security-dast-api.yml'
+      - '.github/zap/rules.api.tsv'
+      - 'app/api/**'
+      - 'lib/dal/**'
+      - 'lib/mcp/**'
+      - 'lib/requirements/**'
+      - 'lib/typeorm/**'
+      - 'openapi/requirements-api.yaml'
+      - 'scripts/security/generate-zap-api-openapi.mjs'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  zap-api:
+    name: ZAP API
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      APP_BASE_URL: http://localhost:3001
+      AUTH_SESSION_COOKIE_NAME: kravhantering_session
+      KEYCLOAK_PASSWORD: devpass
+      KEYCLOAK_USERNAME: ada.admin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start prodlike stack
+        uses: ./.github/actions/prodlike-stack
+        with:
+          results-dir: test-results/security-dast-api/app
+
+      - name: Acquire authenticated session cookie
+        id: session
+        uses: ./.github/actions/prodlike-cookie
+        with:
+          username: ${{ env.KEYCLOAK_USERNAME }}
+
+      - name: Generate filtered OpenAPI contract
+        run: >
+          node scripts/security/generate-zap-api-openapi.mjs
+          --output test-results/security-dast-api/openapi.json
+
+      - name: Prepare ZAP API scan target
+        run: |
+          set -euo pipefail
+          case "${APP_BASE_URL}" in
+            http://localhost:3001)
+              ;;
+            *)
+              echo "::error::Refusing to run ZAP API scan against target: ${APP_BASE_URL}"
+              exit 1
+              ;;
+          esac
+          mkdir -p .zap
+          cp .github/zap/rules.api.tsv .zap/rules.tsv
+
+      - name: Run OWASP ZAP API scan
+        id: zap_api_scan
+        continue-on-error: true
+        uses: zaproxy/action-api-scan@5158fe4d9d8fcc75ea204db81317cce7f9e5453d # v0.10.0
+        with:
+          target: test-results/security-dast-api/openapi.json
+          format: openapi
+          rules_file_name: .zap/rules.tsv
+          allow_issue_writing: false
+          fail_action: true
+          artifact_name: zap-api-scan
+          cmd_options: >-
+            -a
+            -T 10
+            -z "-config replacer.full_list(0).description=session-cookie
+                -config replacer.full_list(0).enabled=true
+                -config replacer.full_list(0).matchtype=REQ_HEADER
+                -config replacer.full_list(0).matchstr=Cookie
+                -config replacer.full_list(0).regex=false
+                -config replacer.full_list(0).replacement=${{ steps.session.outputs.cookie }}"
+
+      - name: Upload ZAP API input contract
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: zap-api-openapi
+          path: test-results/security-dast-api/openapi.json
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload ZAP API app log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: zap-api-app-log
+          path: test-results/security-dast-api/app/app.log
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Evaluate ZAP API outcome
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.zap_api_scan.outcome }}" = "failure" ]; then
+            echo "::error::OWASP ZAP API scan reported unsuppressed alerts."
+            exit 1
+          fi
+
+      - name: Clean up prodlike stack
+        if: always()
+        uses: ./.github/actions/prodlike-cleanup
+        with:
+          results-dir: test-results/security-dast-api/app

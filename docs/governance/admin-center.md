@@ -2,9 +2,10 @@
 
 This document describes the contributor-facing admin center for default
 requirement-list columns, HSA-id prefix guidance, recurring access review,
-personal data erasure and data subject access export, archiving retention, and
-taxonomy/status entrypoints. The page also includes an action-log entrypoint
-for database-backed mutation and authorization-denial review.
+AI generation availability, personal data erasure and data subject access
+export, archiving retention, and taxonomy/status entrypoints. The page also
+includes an action-log entrypoint for database-backed mutation and
+authorization-denial review.
 
 For requirement-list interaction details such as resizing, sorting, and
 filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
@@ -25,10 +26,11 @@ Taxonomy and status links are grouped in the Admin Center.
 
 ## Tabs
 
-The admin center currently has eight tabs for core administration:
+The admin center currently has nine tabs for core administration:
 
 - `Columns`
 - `Identity`
+- `AI`
 - `Taxonomy`
 - `Statuses and workflows`
 - `Access review`
@@ -120,6 +122,34 @@ exactly one visible prefix must be default. An empty prefix list has no default.
 Demo seed data contains `SE5560000001` as the visible default prefix. Required
 seed data intentionally does not create any HSA-id-prefix rows, so a clean
 installation starts without organization-specific prefix policy.
+
+## AI
+
+The `AI` tab manages the global preference for AI-assisted requirement
+generation.
+
+The source of truth is:
+
+- table: `ai_settings`
+- DAL: `lib/dal/ai-settings.ts`
+- admin API: `GET/PUT /api/admin/ai-settings`
+- hard override: `AI_REQUIREMENT_GENERATION_DISABLED`
+
+Admin-managed AI settings include:
+
+- whether requirement generation is enabled as an administrator preference
+
+The effective setting is disabled when either the Admin Center preference is
+off or the deployment environment has `AI_REQUIREMENT_GENERATION_DISABLED=1` or
+`AI_REQUIREMENT_GENERATION_DISABLED=true`. The environment guard has higher
+precedence. Admins can still save the persisted preference while the
+environment guard is active, but generation remains disabled until the guard is
+removed.
+
+When effective generation is disabled, the requirements-library AI action stays
+visible but disabled with an explanatory tooltip. An already-open generator
+dialog disables its Generate button. The REST and MCP generation paths also
+fail before taxonomy, model-catalog, or provider calls.
 
 ## Precedence Rules
 

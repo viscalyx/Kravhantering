@@ -55,71 +55,16 @@ jobs:
       - name: Install Schemathesis
         run: python -m pip install "schemathesis==${SCHEMATHESIS_VERSION}"
 
-      - name: Clean server and database state
-        run: npm run clean:all
-
-      - name: Prepare SQL Server env file
-        run: cp .env.sqlserver.ci .env.sqlserver
-
-      - name: Start local database service
-        run: npm run db:up
-
-      - name: Setup local SQL Server database
-        run: npm run db:setup
-
-      - name: Start local IdP service
-        run: npm run idp:up
-
-      - name: Wait for IdP to be ready
-        run: |
-          echo "Waiting for Keycloak to be ready..."
-          for i in $(seq 1 30); do
-            if curl -sf --max-time 5 http://localhost:8080/realms/kravhantering-dev/.well-known/openid-configuration > /dev/null 2>&1; then
-              echo "Keycloak is ready."
-              exit 0
-            fi
-            echo "Attempt $i/30 - not ready yet, retrying in 5s..."
-            sleep 5
-          done
-          echo "Keycloak did not become ready in time."
-          exit 1
-
-      - name: Build prodlike app
-        run: npm run build:local-prod
-
-      - name: Start prodlike app
-        run: bash scripts/security/prodlike-app.sh start test-results/security-api
-
-      - name: Wait for app health endpoint
-        run: |
-          set -euo pipefail
-          for i in $(seq 1 60); do
-            if curl -sf --max-time 5 "${APP_BASE_URL}/api/health" > /dev/null 2>&1; then
-              echo "App is healthy."
-              exit 0
-            fi
-            echo "Attempt $i/60 - /api/health not ready yet, retrying in 2s..."
-            sleep 2
-          done
-          echo "App did not become healthy in time. Last 200 lines of app.log:"
-          tail -n 200 test-results/security-api/app.log || true
-          exit 1
+      - name: Start prodlike stack
+        uses: ./.github/actions/prodlike-stack
+        with:
+          results-dir: test-results/security-api
 
       - name: Acquire authenticated session cookie
         id: session
-        run: |
-          set -euo pipefail
-          COOKIE="$(node scripts/security/get-session-cookie.mjs "${KEYCLOAK_USERNAME}")"
-          if [ -z "${COOKIE}" ]; then
-            echo "Empty cookie returned from helper" >&2
-            exit 1
-          fi
-          echo "::add-mask::${COOKIE}"
-          {
-            echo "cookie<<COOKIE_EOF"
-            echo "${COOKIE}"
-            echo "COOKIE_EOF"
-          } >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/prodlike-cookie
+        with:
+          username: ${{ env.KEYCLOAK_USERNAME }}
 
       - name: Prepare Schemathesis output
         run: |
@@ -253,14 +198,8 @@ jobs:
             exit 1
           fi
 
-      - name: Stop prodlike app
+      - name: Clean up prodlike stack
         if: always()
-        run: bash scripts/security/prodlike-app.sh stop test-results/security-api
-
-      - name: Stop IdP service
-        if: always()
-        run: npm run idp:down || true
-
-      - name: Stop database service
-        if: always()
-        run: npm run db:down || true
+        uses: ./.github/actions/prodlike-cleanup
+        with:
+          results-dir: test-results/security-api

@@ -1,6 +1,7 @@
 import { accessReviewItemEntity } from '@/lib/typeorm/entities/access-review-item'
 import { accessReviewRunEntity } from '@/lib/typeorm/entities/access-review-run'
 import { actionAuditEventEntity } from '@/lib/typeorm/entities/action-audit-event'
+import { aiSettingEntity } from '@/lib/typeorm/entities/ai-setting'
 import { archivingRetentionExceptionEntity } from '@/lib/typeorm/entities/archiving-retention-exception'
 import { archivingRetentionPolicyEntity } from '@/lib/typeorm/entities/archiving-retention-policy'
 import { archivingRetentionRunEntity } from '@/lib/typeorm/entities/archiving-retention-run'
@@ -56,6 +57,7 @@ import { specificationRfiQuestionItemEntity } from '@/lib/typeorm/entities/speci
 
 export const sqlServerEntities = [
   actionAuditEventEntity,
+  aiSettingEntity,
   accessReviewRunEntity,
   accessReviewItemEntity,
   deviationEntity,
@@ -115,6 +117,7 @@ export const sqlServerEntities = [
 export type { AccessReviewItemEntity } from '@/lib/typeorm/entities/access-review-item'
 export type { AccessReviewRunEntity } from '@/lib/typeorm/entities/access-review-run'
 export type { ActionAuditEventEntity } from '@/lib/typeorm/entities/action-audit-event'
+export type { AiSettingEntity } from '@/lib/typeorm/entities/ai-setting'
 export type { ArchivingRetentionExceptionEntity } from '@/lib/typeorm/entities/archiving-retention-exception'
 export type { ArchivingRetentionPolicyEntity } from '@/lib/typeorm/entities/archiving-retention-policy'
 export type { ArchivingRetentionRunEntity } from '@/lib/typeorm/entities/archiving-retention-run'
@@ -172,6 +175,7 @@ export {
   accessReviewItemEntity,
   accessReviewRunEntity,
   actionAuditEventEntity,
+  aiSettingEntity,
   archivingRetentionExceptionEntity,
   archivingRetentionPolicyEntity,
   archivingRetentionRunEntity,

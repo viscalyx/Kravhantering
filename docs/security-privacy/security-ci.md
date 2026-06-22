@@ -121,10 +121,10 @@ scanning) are DAST expansion work. They are intentionally not part of the
 repository and supply-chain gate.
 
 The pull-request DAST workflow implements `#106` by adding Nuclei beside ZAP
-against the same localhost prodlike app. Issue `#119` remains later DAST
-expansion because it introduces API scanning, role matrices, full active scans,
-OpenAPI generation, workflow refactoring, throwaway realms, and runtime scan
-guards.
+against the same localhost prodlike app. Issue `#119` adds deeper ZAP coverage
+through API, role-matrix, and isolated full active scan workflows. The existing
+OpenAPI/Schemathesis contract remains authoritative; the ZAP API scan consumes
+a filtered read-only contract derived from that static source.
 
 ## Pull-request DAST workflow
 
@@ -321,6 +321,32 @@ log, and parsed medium/high/critical finding counts. When findings exist, the
 first entries are listed in the log and step summary; the full JSONL and
 Markdown output remains in the artifact.
 
+## Deeper ZAP Workflows
+
+Issue `#119` adds three ZAP workflows without replacing the PR web DAST gate.
+All targets remain localhost-only and all ZAP actions disable built-in issue
+writing. Scheduled findings fail the workflow and are triaged from artifacts;
+automatic issue creation is intentionally deferred until baselines are stable.
+
+<!-- markdownlint-disable MD013 -->
+| Workflow | Trigger | Auth users | Active? | Time budget | Main artifacts |
+| --- | --- | --- | --- | --- | --- |
+| [`security-dast-api.yml`](../../.github/workflows/security-dast-api.yml) | PR path filter + manual | `ada.admin` | ZAP API active mode against read-only OpenAPI operations | 30 min job / 10 min ZAP | `zap-api-scan`, `zap-api-openapi`, app log |
+| [`security-dast-roles.yml`](../../.github/workflows/security-dast-roles.yml) | Nightly 03:00 UTC + manual role input | Canonical local role users | No; ZAP baseline only | 30 min per role | one ZAP artifact and app log per user |
+| [`security-dast-full.yml`](../../.github/workflows/security-dast-full.yml) | Manual only while rules are triaged | `full.scan` plus unauthenticated pass | Yes; ZAP full active scan | 120 min job | authenticated/unauthenticated ZAP reports, app log, SQL Server backup |
+<!-- markdownlint-enable MD013 -->
+
+The shared local actions under
+[.github/actions](../../.github/actions) own prodlike stack setup, browser
+session-cookie acquisition, and cleanup. Keep external `uses:` references
+pinned in workflow files; local action references stay unpinned by design.
+
+The full-scan workflow generates a temporary Keycloak import under
+`test-results/security-dast-full/keycloak`, starts the app against
+`kravhantering-full-scan`, and sets `AI_REQUIREMENT_GENERATION_DISABLED=1` so
+REST and MCP AI-assisted authoring return the normal sanitized provider
+unavailable response before any OpenRouter catalog or chat call.
+
 ## REST API Schema And Schemathesis Workflow
 
 <!-- cSpell:ignore Schemathesis -->
@@ -361,13 +387,16 @@ seeded-corpus and workflow details do not drift between files.
 ## Shared prodlike app cleanup
 
 <!-- cSpell:ignore setsid pgid -->
-The DAST, REST API Schemathesis, and MCP seeded workflows use
+The DAST, REST API Schemathesis, MCP seeded, ZAP API, role-matrix, and full
+active scan workflows use
 [scripts/security/prodlike-app.sh](../../scripts/security/prodlike-app.sh) to
 start the prodlike Next.js server under `setsid` so the wrapper, `npx` shims,
 and `next start` Node process share a dedicated process group. Each
-`Stop prodlike app` step reads the workflow-local `app.pgid`, sends `TERM` to
-the process group, waits up to 10 seconds, then sends `KILL` if any process
-remains.
+shared cleanup action reads the workflow-local `app.pgid`, sends `TERM` to the
+process group, waits up to 10 seconds, then sends `KILL` if any process
+remains. The same cleanup action also tears down the local IdP and SQL Server
+services with workflow-specific overrides where the full scan uses a temporary
+realm import.
 
 The marker is a process-group ID, not a single child PID. Do not switch these
 workflows back to `app.pid` unless the startup and cleanup model changes.
@@ -423,15 +452,11 @@ Current static headers and rationale:
 ## Out of scope (for the PR workflow)
 
 - **Active scanning** (`zap-full-scan`, fuzzers, payload mutation).
-  These probe destructively and require an isolated, throwaway
-  environment.
-- **Deeper ZAP scanning from issue `#119`.** API scans, role matrices, full
-  active scans, OpenAPI generation, composite action refactors, and throwaway
-  realms are later DAST work.
-- **Authenticated coverage of every role.** Only the `Admin` realm
-  user is scanned; other roles (`Reviewer`, requirement area owner, specification
-  owner, etc.) are exercised by the Playwright integration tests but
-  not separately scanned. Adding them would multiply CI time.
+  These remain out of the PR web workflow. The full active scan has a separate
+  manual workflow with isolated database and Keycloak state.
+- **Authenticated coverage of every role in PRs.** Only the `Admin` realm user
+  is scanned by the PR web DAST workflow. Broader role coverage runs in the
+  scheduled role-matrix workflow.
 - **Infrastructure / host scanning.** Out of scope. If host or
   container vulnerability scanning is required, use a dedicated tool
   (e.g. Trivy, Grype) in a separate workflow rather than ZAP.
@@ -440,20 +465,13 @@ Current static headers and rationale:
   always `http://localhost:3001`. Live OpenRouter calls are intentionally
   outside security CI; mocked tests cover this repository's client contract.
 
-## Adding active or scheduled scanning later
+## Enabling full-scan scheduling later
 
-The recommended path when active scanning becomes worthwhile:
-
-1. Create a separate workflow triggered on `schedule` (e.g. nightly)
-   plus `workflow_dispatch`.
-2. Reuse the same bring-up steps (DB + IdP + prodlike server) so the
-   target is identical to PR scans.
-3. Swap `zaproxy/action-baseline` for `zaproxy/action-full-scan`.
-4. Add a sibling `rules.<scenario>.tsv` (e.g. `rules.nightly.tsv`)
-   that starts from `rules.prodlike.tsv` and tightens or relaxes
-   rules as the active scan requires.
-5. Optionally seed the spider with the OpenAPI spec for the public
-   API once one exists.
+Keep [`security-dast-full.yml`](../../.github/workflows/security-dast-full.yml)
+manual until at least three manual runs have been triaged. Then update the
+workflow with the weekly Sunday `04:00 UTC` schedule, tighten
+[.github/zap/rules.full.tsv](../../.github/zap/rules.full.tsv) where alerts are
+actionable, and document every suppression with an issue or rationale.
 
 ## Assumptions made
 
@@ -467,5 +485,8 @@ The recommended path when active scanning becomes worthwhile:
   default in [lib/auth/config.ts](../../lib/auth/config.ts)) is unchanged.
   If that default ever changes, update the workflow's `env:` block
   accordingly.
-- `zaproxy/action-baseline@v0.15.0` is pinned. Bumps should land in
-  their own PR and re-run the scan to compare report deltas.
+- ZAP actions are pinned to peeled release commits:
+  `action-baseline` `v0.15.0`,
+  `action-api-scan` `v0.10.0`, and
+  `action-full-scan` `v0.13.0`. Bumps should land in their own PR and re-run
+  the affected scans to compare report deltas.
