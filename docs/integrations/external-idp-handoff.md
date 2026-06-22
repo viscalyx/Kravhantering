@@ -8,7 +8,7 @@ attribute names for the site.
 The application auth contract is described in
 [auth-how-it-works.md](./auth-how-it-works.md). The production deployment
 steps that consume these values are described in
-[rhel10-production-deploy.md](./rhel10-production-deploy.md).
+[rhel10-production-deploy.md](../operations/rhel10-production-deploy.md).
 
 ## Table Of Contents
 

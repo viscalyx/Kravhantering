@@ -103,7 +103,7 @@ npm run devcontainer:hsa-mock:verify
 
 Mermaid-diagrammen för autentisering mellan app och Kong samt för
 Kong-adapter-HSA-flödet finns i
-[hsa-person-lookup-integration.md](./hsa-person-lookup-integration.md).
+[hsa-person-lookup-integration.md](../integrations/hsa-person-lookup-integration.md).
 
 `npm run dev` genererar även en statisk Swagger UI för REST-kontraktet och
 låter Next.js utvecklingsserver exponera den på samma ursprung som

@@ -91,7 +91,7 @@ mTLS or OAuth2 client credentials variables:
 `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`. Add
 `HSA_PERSON_LOOKUP_OAUTH_SCOPE` or `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` only
 when the token endpoint requires them. The canonical flow is described in
-[HSA person lookup integration](./hsa-person-lookup-integration.md).
+[HSA person lookup integration](../integrations/hsa-person-lookup-integration.md).
 
 ### After upgrading
 

@@ -10,7 +10,7 @@ shape used by the DAST workflow: SQL Server, Keycloak, and Next.js on
 ## Scope
 
 The static contract lives in
-[openapi/requirements-api.yaml](../openapi/requirements-api.yaml). It documents
+[openapi/requirements-api.yaml](../../openapi/requirements-api.yaml). It documents
 current JSON behavior for browser-backed app REST APIs in scope. The file is
 not served by the app and does not add a runtime `/openapi` route.
 
@@ -137,7 +137,7 @@ contracts remain the source of truth.
 ## Workflow
 
 Workflow file:
-[.github/workflows/security-api.yml](../.github/workflows/security-api.yml).
+[.github/workflows/security-api.yml](../../.github/workflows/security-api.yml).
 
 The workflow runs on pull requests to `main`, pushes to `main`, weekly
 schedule, and manual dispatch. It uses `pull_request`, never

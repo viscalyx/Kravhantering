@@ -3,9 +3,10 @@
 This document covers the server-side integration used to fetch person
 information for responsibility assignments. Browser sign-in, MCP Bearer-token
 authentication, and local Keycloak developer setup are documented separately in
-[auth-developer-workflow.md](./auth-developer-workflow.md). Authentication in
-this document means the HSA lookup transport authentication between the app,
-Kong or an integration platform, the adapter, and the HSA directory.
+[auth-developer-workflow.md](../development/auth-developer-workflow.md).
+Authentication in this document means the HSA lookup transport authentication
+between the app, Kong or an integration platform, the adapter, and the HSA
+directory.
 
 ## Scope
 
@@ -25,7 +26,7 @@ The devcontainer includes Kong Gateway as the internal `kong` service for
 API-management verification, an `hsa-person-lookup-adapter`, and an HSA
 directory mock as `hsa-directory-mock`. Kong runs DB-less with
 source-controlled configuration from
-[containers/kong/kong.yml](../containers/kong/kong.yml). Its proxy and Admin
+[containers/kong/kong.yml](../../containers/kong/kong.yml). Its proxy and Admin
 API are available only on the compose network at `kong:8000` and `kong:8001`;
 no Kong ports are forwarded to the host.
 
@@ -46,7 +47,7 @@ starts Kong, the adapter, and the HSA directory mock on the internal
 single-node network. That overlay supports release-smoke and disposable demo
 environments. It is not the required production HSA integration path.
 
-![HSA person lookup integration paths](./images/hsa-person-lookup_integration-paths.png)
+![HSA person lookup integration paths](../images/hsa-person-lookup_integration-paths.png)
 
 ## Runtime configuration
 
@@ -97,7 +98,7 @@ These diagrams start after the app verify route has decided that a live HSA
 lookup is needed. They do not replace the browser OIDC login diagrams in
 [auth-how-it-works.md](./auth-how-it-works.md).
 
-![HSA person lookup authentication and transport](./images/hsa-person-lookup_authentication-and-transport.png)
+![HSA person lookup authentication and transport](../images/hsa-person-lookup_authentication-and-transport.png)
 
 ### Application to Kong or integration platform
 
@@ -248,7 +249,7 @@ the route returns an error asking the editor to verify the HSA-id first.
 
 ## Related decisions
 
-- [ADR 0024: HSA-katalogmock som SOAP-upstream](./adr/0024-hsa-katalogmock-som-soap-upstream.md)
-- [ADR 0025: Kravansvarsperson för HSA-uppslag](./adr/0025-kravansvarsperson-for-hsa-uppslag.md)
-- [ADR 0029: HSA-personuppslag som REST-gräns mot integrationsplattform](./adr/0029-hsa-personuppslag-som-restgrans-mot-integrationsplattform.md)
-- [API security](./api-security.md)
+- [ADR 0024: HSA-katalogmock som SOAP-upstream](../adr/0024-hsa-katalogmock-som-soap-upstream.md)
+- [ADR 0025: Kravansvarsperson för HSA-uppslag](../adr/0025-kravansvarsperson-for-hsa-uppslag.md)
+- [ADR 0029: HSA-personuppslag som REST-gräns mot integrationsplattform](../adr/0029-hsa-personuppslag-som-restgrans-mot-integrationsplattform.md)
+- [API security](../security-privacy/api-security.md)

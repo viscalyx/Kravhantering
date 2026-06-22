@@ -260,7 +260,7 @@ in the conversation.
   unreachable. Restart it and verify the forwarded URL has not
   changed before using ChatGPT again.
 - For the available MCP tools and usage tips, see
-  [MCP Server User Guide](./mcp-server-user-guide.md).
+  [MCP Server User Guide](../integrations/mcp-server-user-guide.md).
 
 <!-- markdownlint-enable MD013 -->
 
@@ -320,8 +320,8 @@ workflows:
 
 - [GitHub Codespaces overview](https://docs.github.com/en/codespaces/overview)
 - [Dev Containers specification](https://containers.dev/)
-- [MCP Server User Guide](./mcp-server-user-guide.md) — MCP tools and client setup
-- [CONTRIBUTING.md](../CONTRIBUTING.md) — project contribution guidelines
-- [README.md](../README.md) — project overview and local quick-start
+- [MCP Server User Guide](../integrations/mcp-server-user-guide.md) — MCP tools and client setup
+- [CONTRIBUTING.md](../../CONTRIBUTING.md) — project contribution guidelines
+- [README.md](../../README.md) — project overview and local quick-start
 
 <!-- markdownlint-enable MD013 -->

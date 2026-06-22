@@ -10,9 +10,9 @@ It is intentionally not a replacement for the more detailed workflow docs:
 
 - For local Keycloak, integration-test CI dependency, test setup, and
   env-var reference, see
-  [auth-developer-workflow.md](./auth-developer-workflow.md).
+  [auth-developer-workflow.md](../development/auth-developer-workflow.md).
 - For application role and permission decisions, see
-  [behörigheter.md](./behörigheter.md).
+  [behörigheter.md](../governance/behörigheter.md).
 
 ## Reading guide
 
@@ -28,15 +28,15 @@ It is intentionally not a replacement for the more detailed workflow docs:
 
 ## Current auth architecture in the app
 
-- [`proxy.ts`](../proxy.ts) is the front door. Auth is always on, so it:
+- [`proxy.ts`](../../proxy.ts) is the front door. Auth is always on, so it:
   allows public paths, redirects unauthenticated browser page requests to
   `/api/auth/login`, returns `401` for unauthenticated API requests, and
   requires a Bearer header to be present for `/api/mcp`.
 - Browser sign-in uses two separate `iron-session` cookies:
   a short-lived login-state cookie from
-  [`lib/auth/login-state.ts`](../lib/auth/login-state.ts) and the main
+  [`lib/auth/login-state.ts`](../../lib/auth/login-state.ts) and the main
   encrypted session cookie from
-  [`lib/auth/session.ts`](../lib/auth/session.ts).
+  [`lib/auth/session.ts`](../../lib/auth/session.ts).
 - `/api/auth/login` and `/api/auth/callback` use
   [`openid-client`](https://github.com/panva/openid-client) for OIDC
   discovery, the authorization-code exchange, PKCE handling, and OIDC
@@ -46,8 +46,8 @@ It is intentionally not a replacement for the more detailed workflow docs:
 - `/api/auth/logout` destroys the local session and, when the discovered IdP
   advertises it, redirects through the IdP `end_session_endpoint`.
 - `/api/mcp` uses Bearer JWTs instead of the browser session cookie. Token
-  validation happens in [`lib/auth/mcp-token.ts`](../lib/auth/mcp-token.ts).
-- [`lib/auth/audit.ts`](../lib/auth/audit.ts) emits one JSON security event
+  validation happens in [`lib/auth/mcp-token.ts`](../../lib/auth/mcp-token.ts).
+- [`lib/auth/audit.ts`](../../lib/auth/audit.ts) emits one JSON security event
   per auth-relevant action.
 
 ### Browser login flow
@@ -108,7 +108,7 @@ sequenceDiagram
   not the inbound request URL. This keeps failed callback paths from exposing
   internal bind hosts such as `0.0.0.0:3000` when standalone Next.js runs
   behind nginx or another reverse proxy.
-- In [`app/api/auth/callback/route.ts`](../app/api/auth/callback/route.ts),
+- In [`app/api/auth/callback/route.ts`](../../app/api/auth/callback/route.ts),
   the callback URL is rebuilt from the configured public redirect URI before
   the code exchange. This avoids host/origin mismatches when Next.js is
   running behind a proxy or under a different bind address.
@@ -116,7 +116,7 @@ sequenceDiagram
   `sub`, `given_name`, `family_name`, and `employeeHsaId`. Missing or invalid
   claims fail the login.
 - Browser-role parsing uses `AUTH_OIDC_ROLES_CLAIM` from
-  [`lib/auth/config.ts`](../lib/auth/config.ts), defaulting to `roles`.
+  [`lib/auth/config.ts`](../../lib/auth/config.ts), defaulting to `roles`.
 - The stored session is intentionally small: `sub`, `hsaId`, name fields,
   verified email when available, roles, and `accessTokenExpiresAt`.
   The raw access token is not stored. The raw ID token is stored only when it
@@ -127,10 +127,10 @@ sequenceDiagram
 
 ### Session and logout flow
 
-- [`components/AuthMenu.tsx`](../components/AuthMenu.tsx) calls `/api/auth/me`
+- [`components/AuthMenu.tsx`](../../components/AuthMenu.tsx) calls `/api/auth/me`
   once on mount to render the signed-in user and aborts that request if the
   menu unmounts before the response settles.
-- [`components/AuthExpiryGuard.tsx`](../components/AuthExpiryGuard.tsx) also
+- [`components/AuthExpiryGuard.tsx`](../../components/AuthExpiryGuard.tsx) also
   calls `/api/auth/me` on mount. It warns signed-in users two minutes before
   `expiresAt`, lets them authenticate again immediately, and redirects through
   `/api/auth/login?returnTo=<current-path>` when the session expires.
@@ -194,7 +194,7 @@ sequenceDiagram
 
 - `proxy.ts` only checks that a Bearer token is present for `/api/mcp`.
   Cryptographic verification is done later in
-  [`lib/auth/mcp-token.ts`](../lib/auth/mcp-token.ts).
+  [`lib/auth/mcp-token.ts`](../../lib/auth/mcp-token.ts).
 - Missing-header and invalid-token failures use a JSON-RPC error body so MCP
   clients receive the same response shape at both auth gates.
 - `verifyMcpBearerToken()` uses OIDC discovery metadata to read the issuer's
@@ -219,7 +219,7 @@ sequenceDiagram
   inbound request before any handler runs so a caller cannot use them to
   impersonate a user.
 - Cookie-authenticated mutating requests go through the same-origin check in
-  [`lib/auth/csrf.ts`](../lib/auth/csrf.ts). They must present a same-origin
+  [`lib/auth/csrf.ts`](../../lib/auth/csrf.ts). They must present a same-origin
   `Origin` or `Referer` and `X-Requested-With: XMLHttpRequest`.
   `lib/auth/csrf.ts` and `proxy.ts` compare only the URL origin
   (scheme + host + port) of `AUTH_OIDC_REDIRECT_URI`; path and query values are
@@ -238,7 +238,7 @@ sequenceDiagram
   JWT verification and MCP tool schemas instead of the REST mutation wrapper.
 - Page responses get a per-request CSP nonce from `proxy.ts`.
 - Security audit events are emitted through
-  [`lib/auth/audit.ts`](../lib/auth/audit.ts). The current event set is:
+  [`lib/auth/audit.ts`](../../lib/auth/audit.ts). The current event set is:
   `auth.login.succeeded`, `auth.login.failed`, `auth.logout`,
   `auth.session.expired`, `auth.session.rejected`, `auth.token.rejected`,
   `auth.mcp.token.accepted`, `auth.roles.changed`,
@@ -273,7 +273,7 @@ sequenceDiagram
 ### Audit event stream
 
 - Auth audit events are emitted as one JSON object per line through
-  `console.info(...)` in [`lib/auth/audit.ts`](../lib/auth/audit.ts), tagged
+  `console.info(...)` in [`lib/auth/audit.ts`](../../lib/auth/audit.ts), tagged
   with `channel: "security-audit"`.
 - Each record contains:
   `ts`, `event`, `outcome`, `actor`, `request`, and optional `detail`.
@@ -372,9 +372,9 @@ flowchart LR
   is now a build-target constant that is `true` only for `dev` and `local-prod`.
   The `local-prod` target (booted via `npm run start:prodlike` on port
   `3001`) authenticates against a dedicated dev-only Keycloak client
-  (`kravhantering-prodlike`) wired up in [`.env.prodlike`](../.env.prodlike);
+  (`kravhantering-prodlike`) wired up in [`.env.prodlike`](../../.env.prodlike);
   see the
-  [Prodlike local client](./auth-developer-workflow.md#prodlike-local-client-kravhantering-prodlike)
+  [Prodlike local client](../development/auth-developer-workflow.md#prodlike-local-client-kravhantering-prodlike)
   section in the developer workflow for the full client/redirect/secret
   contract. These auth-related build-target constants (including the
   insecure-issuer allowance) are baked into the bundle when the build target is

@@ -10,7 +10,7 @@ For end-user setup and client examples, see
 [mcp-server-user-guide.md](./mcp-server-user-guide.md).
 
 For admin-managed default column settings, see
-[admin-center.md](./admin-center.md).
+[admin-center.md](../governance/admin-center.md).
 
 ## Server Contract
 
@@ -492,7 +492,7 @@ Manual verification should still include:
 
 The MCP server uses the same SQL Server + TypeORM stack as the rest of the
 app. See
-[sql-server-developer-workflow.md](./sql-server-developer-workflow.md)
+[sql-server-developer-workflow.md](../development/sql-server-developer-workflow.md)
 for the full setup.
 
 - Start the DB service with `npm run db:up` and prepare it with

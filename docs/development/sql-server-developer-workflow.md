@@ -33,7 +33,7 @@ Stop it with:
 npm run db:down
 ```
 
-The default Compose file is [docker-compose.sqlserver.yml](../docker-compose.sqlserver.yml).
+The default Compose file is [docker-compose.sqlserver.yml](../../docker-compose.sqlserver.yml).
 It exposes SQL Server on `127.0.0.1:1433` and persists data in a named Docker
 volume.
 

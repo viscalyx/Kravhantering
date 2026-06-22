@@ -5,9 +5,9 @@ This document describes the complete database schema for
 on Microsoft SQL Server using TypeORM.
 
 The schema is defined by TypeORM entities under
-[`lib/typeorm/entities/`](../lib/typeorm/entities/). Migrations live in
-[`typeorm/migrations/`](../typeorm/migrations/) and seed profiles in
-[`typeorm/seed.mjs`](../typeorm/seed.mjs). Required seed data contains system
+[`lib/typeorm/entities/`](../../lib/typeorm/entities). Migrations live in
+[`typeorm/migrations/`](../../typeorm/migrations) and seed profiles in
+[`typeorm/seed.mjs`](../../typeorm/seed.mjs). Required seed data contains system
 and lookup rows; demo seed data contains optional examples and test fixtures.
 The developer setup, browse workflow, and CLI reference live in
 [sql-server-developer-workflow.md](./sql-server-developer-workflow.md).
@@ -1523,13 +1523,13 @@ precondition.
 | `requirement_type_id` | integer FK → `requirement_types.id` | Functional / Non-functional (nullable) |
 | `quality_characteristic_id` | integer FK → `quality_characteristics.id` | ISO 25010 quality characteristic (nullable) |
 | `risk_level_id` | integer FK → `risk_levels.id` | Risk level classification (nullable) |
-| `requirement_status_id` | integer FK → `requirement_statuses.id` | Current requirement version status (1=Draft, 2=Review, 3=Published, 4=Archived). The UI may render a derived label — see [UI status labels](lifecycle-workflow.md#ui-status-labels). |
+| `requirement_status_id` | integer FK → `requirement_statuses.id` | Current requirement version status (1=Draft, 2=Review, 3=Published, 4=Archived). The UI may render a derived label — see [UI status labels](../governance/lifecycle-workflow.md#ui-status-labels). |
 | `is_testing_required` | boolean (integer, default false) | Whether the requirement must be verified by test |
 | `verification_method` | text | How to verify the requirement (nullable; only meaningful when `is_testing_required` is true) |
 | `created_at` | text (ISO 8601) | When this version was created |
 | `edited_at` | text (ISO 8601) | Last content edit timestamp (nullable) |
 | `published_at` | text (ISO 8601) | When status changed to Published (nullable) |
-| `archive_initiated_at` | text (ISO 8601) | When archiving was initiated — set when status moves from Published to Review for archiving (nullable). When set, the UI swaps the status badge label to "Arkiveringsgranskning" / "Archiving Review" — see [UI status labels](lifecycle-workflow.md#ui-status-labels). |
+| `archive_initiated_at` | text (ISO 8601) | When archiving was initiated — set when status moves from Published to Review for archiving (nullable). When set, the UI swaps the status badge label to "Arkiveringsgranskning" / "Archiving Review" — see [UI status labels](../governance/lifecycle-workflow.md#ui-status-labels). |
 | `archived_at` | text (ISO 8601) | When status changed to Archived (nullable) |
 | `status_updated_at` | text (ISO 8601) | When `requirement_status_id` last changed; used by Admin Archiving to identify stale Draft/Review/Archived versions without touching `edited_at` |
 | `has_specification_item_history` | boolean (integer, default false) | Durable marker set when the version has ever been linked to a requirement application |
@@ -1558,7 +1558,7 @@ archiving-in-progress version per requirement.
 **Effective requirement status (filtering):** When listing requirements
 the system computes a priority-based effective requirement status per
 requirement: Published > Archived > Review > Draft. See
-[version-lifecycle-dates.md](version-lifecycle-dates.md#effective-requirement-status-filtering)
+[version-lifecycle-dates.md](../governance/version-lifecycle-dates.md#effective-requirement-status-filtering)
 for details. When an archived requirement gets a replacement
 Draft or Review version, `requirements.is_archived` stays
 `true` until that newer version is published.

@@ -139,7 +139,7 @@ disambiguate it from publication review. The DB row is
 unchanged (`requirement_status_id` is still 2 and
 `requirement_statuses.name_sv` is still "Granskning"); the
 override is presentation-only and lives in
-[`lib/requirements/status-label.ts`](../lib/requirements/status-label.ts).
+[`lib/requirements/status-label.ts`](../../lib/requirements/status-label.ts).
 See [UI status labels](#ui-status-labels) below.
 
 See `version-lifecycle-dates.md` for detailed timestamp
@@ -153,9 +153,9 @@ from an effective requirement status combined with
 `requirement_versions.archive_initiated_at` (relevant for
 Review only). For the requirements list view the effective
 requirement status is computed server-side by the list SQL builder in
-[`lib/dal/requirements-list-sql.mjs`](../lib/dal/requirements-list-sql.mjs),
+[`lib/dal/requirements-list-sql.mjs`](../../lib/dal/requirements-list-sql.mjs),
 using the shared status constants from
-[`lib/requirements/status-constants.mjs`](../lib/requirements/status-constants.mjs).
+[`lib/requirements/status-constants.mjs`](../../lib/requirements/status-constants.mjs).
 The query consolidates each requirement's
 `requirement_versions.requirement_status_id` rows into a
 single effective requirement status; for the version history sidebar each row's
@@ -181,7 +181,7 @@ the DB row still stores `requirement_status_id = 2` and
 responses still return `status: 2`,
 `statusNameSv: 'Granskning'`, plus the raw
 `archiveInitiatedAt` field. The override happens in
-[`lib/requirements/status-label.ts`](../lib/requirements/status-label.ts)
+[`lib/requirements/status-label.ts`](../../lib/requirements/status-label.ts)
 (consumed by `RequirementsTable` and `VersionHistory`) and is
 mirrored by the `isArchiving` prop on `StatusStepper`, which
 re-labels the middle chevron in the archiving variant

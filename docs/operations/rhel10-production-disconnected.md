@@ -14,7 +14,7 @@ the downtime window for a disconnected planned upgrade with
 The connected export host prepares one app-node disconnected bundle per
 release. Use the same bundle on every disconnected app node for that release.
 
-![Disconnected Bundle Journey](images/disconnected-release-bundle-journey.png)
+![Disconnected Bundle Journey](../images/disconnected-release-bundle-journey.png)
 
 ## Connected Export Host
 

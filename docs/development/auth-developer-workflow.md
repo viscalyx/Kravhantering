@@ -2,7 +2,7 @@
 
 This document covers how authentication works in local development and in
 tests. For the runtime architecture, production target setup, and IdP
-contract, see [auth-how-it-works.md](./auth-how-it-works.md).
+contract, see [auth-how-it-works.md](../integrations/auth-how-it-works.md).
 
 ## Auth is mandatory in every build target
 
@@ -43,7 +43,7 @@ Keycloak publishes one port:
   console. Plain HTTP is fine because the `kravhantering-dev` realm
   sets `sslRequired: none`, and the `master` realm is patched to
   `sslRequired: NONE` on devcontainer start by
-  [.devcontainer/start-keycloak-forwarder.sh](../.devcontainer/start-keycloak-forwarder.sh)
+  [.devcontainer/start-keycloak-forwarder.sh](../../.devcontainer/start-keycloak-forwarder.sh)
   (Keycloak's default `sslRequired: external` would refuse HTTP from
   non-loopback clients — the socat hop makes Keycloak see the request
   coming from the app container's docker IP, not loopback). Dev only.
@@ -129,7 +129,7 @@ docker compose -f .devcontainer/docker-compose.yml up -d idp
 Keycloak gives the signed-in actor an `employeeHsaId` claim; it does not verify
 editable responsibility-assignment HSA-id values against HSA. That verification
 uses the server-side person lookup flow in
-[hsa-person-lookup-integration.md](./hsa-person-lookup-integration.md).
+[hsa-person-lookup-integration.md](../integrations/hsa-person-lookup-integration.md).
 
 In the devcontainer, the `app` service receives
 `HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup`. The app
@@ -244,7 +244,7 @@ port `3000`. This lets you validate the prod build target against the
 local Keycloak without needing a real OIDC provider.
 
 Source of truth:
-[`dev/keycloak/realm-kravhantering-dev.json`](../dev/keycloak/realm-kravhantering-dev.json)
+[`dev/keycloak/realm-kravhantering-dev.json`](../../dev/keycloak/realm-kravhantering-dev.json)
 (the `kravhantering-prodlike` entry under `clients`).
 
 <!-- markdownlint-disable MD013 -->
@@ -266,7 +266,7 @@ or add a matching per-developer Keycloak registration outside the committed
 realm.
 
 The values are loaded from
-[`.env.prodlike`](../.env.prodlike) by `npm run build:local-prod` and
+[`.env.prodlike`](../../.env.prodlike) by `npm run build:local-prod` and
 `npm run start:prodlike`:
 
 ```dotenv
@@ -279,7 +279,7 @@ AUTH_OIDC_API_AUDIENCE=kravhantering-app
 ```
 
 The matching build-target side lives in
-[`lib/runtime/build-target.local-prod.ts`](../lib/runtime/build-target.local-prod.ts).
+[`lib/runtime/build-target.local-prod.ts`](../../lib/runtime/build-target.local-prod.ts).
 Like the dev client, the seeded users above (and the `Reviewer`, `Admin`,
 `PrivacyOfficer` roles + `employeeHsaId` claim) work unchanged because both
 clients live in the same realm and share the same protocol mappers.
@@ -287,9 +287,9 @@ clients live in the same realm and share the same protocol mappers.
 ### Container stack realm (`kravhantering-test`)
 
 The production-like container stack has its own Keycloak realm file:
-[`containers/keycloak/realm-kravhantering-test.json`](../containers/keycloak/realm-kravhantering-test.json).
+[`containers/keycloak/realm-kravhantering-test.json`](../../containers/keycloak/realm-kravhantering-test.json).
 It is not generated from, or reused from,
-[`dev/keycloak/realm-kravhantering-dev.json`](../dev/keycloak/realm-kravhantering-dev.json).
+[`dev/keycloak/realm-kravhantering-dev.json`](../../dev/keycloak/realm-kravhantering-dev.json).
 
 The realm is intended for nginx-backed container smoke tests and local
 test runs. It targets this public issuer URL:
@@ -314,7 +314,7 @@ Keycloak itself should use `KC_HOSTNAME=https://kravhantering.test/auth` and
 `containers/nginx/`.
 
 The container stack helpers in
-[`containers/compose/README.md`](../containers/compose/README.md) generate the
+[`containers/compose/README.md`](../../containers/compose/README.md) generate the
 runtime Compose file and wait for this issuer through nginx:
 
 ```bash
@@ -415,7 +415,7 @@ Generate a fresh cookie password with `openssl rand -base64 48`.
 
 These values target the `dev` build target on port `3000`. For the
 `local-prod` build target on port `3001` (`npm run start:prodlike`),
-the values live in [`.env.prodlike`](../.env.prodlike) and point at
+the values live in [`.env.prodlike`](../../.env.prodlike) and point at
 the dedicated `kravhantering-prodlike` Keycloak client described in the
 [Prodlike local client](#prodlike-local-client-kravhantering-prodlike)
 section above.
@@ -423,7 +423,7 @@ section above.
 ## Environment variable reference
 
 All `AUTH_*` variables are read once at process start by
-[lib/auth/config.ts](../lib/auth/config.ts) and frozen in an `authConfig`
+[lib/auth/config.ts](../../lib/auth/config.ts) and frozen in an `authConfig`
 singleton — runtime mutation has no effect. Per environment they come from
 different sources:
 
@@ -433,8 +433,8 @@ different sources:
   generates a per-worker issuer + client and writes the matching values).
 - **OpenShift dev/test/prod**: split between a `kravhantering-auth` Secret
   (anything sensitive) and a ConfigMap (everything else). See
-  [auth-how-it-works.md](./auth-how-it-works.md) for the committed production
-  mapping.
+  [auth-how-it-works.md](../integrations/auth-how-it-works.md) for the committed
+  production mapping.
 
 ### OIDC client (deployed OIDC provider / Keycloak)
 
@@ -451,8 +451,8 @@ envs at the per-env OIDC issuer and client registration.
 | `AUTH_OIDC_REDIRECT_URI` | yes | `http://localhost:3000/api/auth/callback` | Full callback URL, scheme + host + path. Must be an absolute `http://` or `https://` URL and **must be pre-registered in the IdP**; mismatches surface as `redirect_uri_mismatch` from the configured OIDC provider. This URL's origin is also the canonical origin for CSRF checks; forwarded headers do not override it. Re-register on every OpenShift Route hostname change (blue/green cutover). |
 | `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` | yes | `http://localhost:3000/` | Where the IdP sends the browser after `end_session_endpoint`. Must be an absolute `http://` or `https://` URL and also pre-registered per env. |
 | `AUTH_OIDC_SCOPES` | no | `openid profile email` | Space-separated. `openid` is mandatory; `profile` carries `name` / `given_name` / `family_name`; `email` carries `email` / `email_verified`. Add custom scopes if your OIDC provider requires them to release the `roles` claim. |
-| `AUTH_OIDC_ROLES_CLAIM` | no | `roles` | Claim name the parser in [lib/auth/roles.ts](../lib/auth/roles.ts) reads as a JSON array of exact canonical role strings. Override only if the IdP cannot emit `roles` and the committed auth contract has been updated accordingly. |
-| `AUTH_OIDC_API_AUDIENCE` | no | falls back to `AUTH_OIDC_CLIENT_ID` | Audience expected on **access tokens** validated by the MCP path ([lib/auth/mcp-token.ts](../lib/auth/mcp-token.ts)). Set explicitly when the MCP client receives tokens scoped to a different `aud` than the web client. |
+| `AUTH_OIDC_ROLES_CLAIM` | no | `roles` | Claim name the parser in [lib/auth/roles.ts](../../lib/auth/roles.ts) reads as a JSON array of exact canonical role strings. Override only if the IdP cannot emit `roles` and the committed auth contract has been updated accordingly. |
+| `AUTH_OIDC_API_AUDIENCE` | no | falls back to `AUTH_OIDC_CLIENT_ID` | Audience expected on **access tokens** validated by the MCP path ([lib/auth/mcp-token.ts](../../lib/auth/mcp-token.ts)). Set explicitly when the MCP client receives tokens scoped to a different `aud` than the web client. |
 <!-- markdownlint-enable MD013 -->
 
 ### Session cookie (`iron-session`)
@@ -503,8 +503,8 @@ independent — the shortest one wins.
 <!-- markdownlint-disable MD013 -->
 | Knob | Where | Default | Meaning |
 | --- | --- | --- | --- |
-| `AUTH_SESSION_TTL_SECONDS` | env → [lib/auth/config.ts](../lib/auth/config.ts), [lib/auth/session.ts](../lib/auth/session.ts) | `28800` (8 h) | Absolute lifetime of the encrypted `iron-session` cookie. **Does not slide on activity.** If the cookie expires first, the next request hits `/api/auth/login` and is silently re-authenticated if the IdP SSO session is still alive; otherwise the user sees the IdP login page. |
-| `session.accessTokenExpiresAt` | written in [app/api/auth/callback/route.ts](../app/api/auth/callback/route.ts) | `tokens.expiresIn()` from the IdP, falling back to `AUTH_SESSION_TTL_SECONDS` | Active browser-session validity boundary. The client warns two minutes before this timestamp and redirects through `/api/auth/login` at expiry. The proxy also treats cookies past this timestamp as signed out. |
+| `AUTH_SESSION_TTL_SECONDS` | env → [lib/auth/config.ts](../../lib/auth/config.ts), [lib/auth/session.ts](../../lib/auth/session.ts) | `28800` (8 h) | Absolute lifetime of the encrypted `iron-session` cookie. **Does not slide on activity.** If the cookie expires first, the next request hits `/api/auth/login` and is silently re-authenticated if the IdP SSO session is still alive; otherwise the user sees the IdP login page. |
+| `session.accessTokenExpiresAt` | written in [app/api/auth/callback/route.ts](../../app/api/auth/callback/route.ts) | `tokens.expiresIn()` from the IdP, falling back to `AUTH_SESSION_TTL_SECONDS` | Active browser-session validity boundary. The client warns two minutes before this timestamp and redirects through `/api/auth/login` at expiry. The proxy also treats cookies past this timestamp as signed out. |
 <!-- markdownlint-enable MD013 -->
 
 The app does **not** implement an idle/inactivity timeout. There is no
@@ -514,7 +514,7 @@ per-user idle activity.
 
 **IdP side (Keycloak realm `kravhantering-dev`):**
 
-Defaults come from [dev/keycloak/realm-kravhantering-dev.json](../dev/keycloak/realm-kravhantering-dev.json).
+Defaults come from [dev/keycloak/realm-kravhantering-dev.json](../../dev/keycloak/realm-kravhantering-dev.json).
 Production values are set per environment by ops on the real IdP.
 
 <!-- markdownlint-disable MD013 -->
@@ -523,7 +523,7 @@ Production values are set per environment by ops on the real IdP.
 | `ssoSessionIdleTimeout` | `28800` (8 h) | **Idle** SSO session timeout. If the user is gone longer than this, the next silent re-auth via `/api/auth/login` requires a fresh password. |
 | `ssoSessionMaxLifespan` | `28800` (8 h) | **Absolute** SSO session lifetime. Hard cap regardless of activity; after this the user must sign in again. |
 | `accessTokenLifespan` (realm) | `1800` (30 min) | Access-token lifetime issued to the `kravhantering-app` web client. The app does **not** refresh access tokens client-side; it warns shortly before this timestamp and re-bounces through `/api/auth/login` at expiry. |
-| `access.token.lifespan` (`kravhantering-mcp` client) | `3600` (1 h) | Access-token lifetime for service-to-service MCP tokens. Validated by [lib/auth/mcp-token.ts](../lib/auth/mcp-token.ts). |
+| `access.token.lifespan` (`kravhantering-mcp` client) | `3600` (1 h) | Access-token lifetime for service-to-service MCP tokens. Validated by [lib/auth/mcp-token.ts](../../lib/auth/mcp-token.ts). |
 <!-- markdownlint-enable MD013 -->
 
 **How they interact:**
@@ -576,7 +576,7 @@ hands the id and secret over together per env.
 ### Integration-test CI dependency
 
 The GitHub Actions integration-test workflow in
-[`.github/workflows/integration-tests.yml`](../.github/workflows/integration-tests.yml)
+[`.github/workflows/integration-tests.yml`](../../.github/workflows/integration-tests.yml)
 brings up a local Keycloak realm before running Playwright. The shared
 `test-server` matrix has both `dev` (`npm run test:integration`) and
 `prodlike` (`npm run test:integration:prodlike`) legs, and both legs use
@@ -585,7 +585,7 @@ The dedicated `test-prodlike-pruned` job also starts and stops Keycloak
 before running the prodlike suite against the pruned server.
 
 Because CI imports
-[`dev/keycloak/realm-kravhantering-dev.json`](../dev/keycloak/realm-kravhantering-dev.json),
+[`dev/keycloak/realm-kravhantering-dev.json`](../../dev/keycloak/realm-kravhantering-dev.json),
 changes to local realm clients, users, roles, redirect URIs, protocol
 mappers, and claim names affect CI as well as local runs. Recreate or reset
 the local IdP after realm JSON changes before debugging failures.

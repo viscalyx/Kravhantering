@@ -695,7 +695,7 @@ for each requirement in the current locale.
   - `tests/unit/requirements-client.test.tsx`
 - If you change table labels, named table surfaces, floating pills, or the
   inline detail pane used by Developer Mode, also update:
-  - `docs/developer-mode-overlay.md`
+  - `docs/development/developer-mode-overlay.md`
   - `tests/unit/developer-mode.test.ts`
   - `tests/unit/developer-mode-provider.test.tsx`
   - `tests/unit/requirements-table.test.tsx`

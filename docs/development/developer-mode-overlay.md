@@ -33,7 +33,7 @@ the full contract.
 - Local development enables Developer Mode automatically.
 - Production builds (`NODE_ENV=production`, including prodlike builds) always
   alias both specifications to first-party noop stubs in
-  [`lib/runtime/`](../lib/runtime/) so neither the overlay runtime nor
+  [`lib/runtime/`](../../lib/runtime) so neither the overlay runtime nor
   any reference to the upstream specifications is shipped to clients.
   `ENABLE_DEVELOPER_MODE=true` is ignored in production and logs a build-time
   warning.
@@ -42,7 +42,7 @@ the full contract.
 - Tailwind v4 source detection ignores `node_modules`; the overlay's
   utility classes are opted back in by importing the published
   `@viscalyx/developer-mode-react/safelist.css` artifact from
-  [`app/globals.css`](../app/globals.css). See the upstream
+  [`app/globals.css`](../../app/globals.css). See the upstream
   [safelist guide][upstream-safelist] for how the artifact is generated.
   Because the import is resolved during `next build`, the package must
   be present at build time. The `@viscalyx/developer-mode-*` packages
@@ -50,9 +50,9 @@ the full contract.
   the build completes — `safelist.css` has no JavaScript surface and
   Tailwind inlines the needed utilities into the emitted CSS bundle.
   The dedicated `test-prodlike-pruned` job in
-  [`.github/workflows/integration-tests.yml`](../.github/workflows/integration-tests.yml)
+  [`.github/workflows/integration-tests.yml`](../../.github/workflows/integration-tests.yml)
   exercises this build → prune → start sequence using the
-  [`start:prodlike-pruned`](../package.json) script, which avoids the
+  [`start:prodlike-pruned`](../../package.json) script, which avoids the
   dev-only `dotenv-cli` / `cross-env` wrappers.
 For the full wiring rationale, two alias-swap strategies, and the
 drift-guard test pattern, see the upstream
@@ -60,14 +60,14 @@ drift-guard test pattern, see the upstream
 
 ## App contract
 
-- App code creates markers through [`lib/developer-mode-markers.ts`](../lib/developer-mode-markers.ts)
+- App code creates markers through [`lib/developer-mode-markers.ts`](../../lib/developer-mode-markers.ts)
   rather than calling the specification's `devMarker(...)` directly. This
   keeps a single host-side place for naming policy and any future no-op
   behavior. See the upstream [Marker API][upstream-core] for the field
   shapes (`name`, `context?`, `value?`, `priority?`) and the four
   emitted `data-developer-mode-*` attributes.
 - The provider is wrapped by
-  [`components/DeveloperModeProvider.tsx`](../components/DeveloperModeProvider.tsx),
+  [`components/DeveloperModeProvider.tsx`](../../components/DeveloperModeProvider.tsx),
   which supplies the English `badge`, `copied`, and `copyFailed` labels
   and a route-derived `navigationKey`.
 - Overlay labels stay English regardless of the active UI locale, even

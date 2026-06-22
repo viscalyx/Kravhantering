@@ -9,17 +9,17 @@ development requirements — and the two Kravunderlag that group them.
 
 The data lives in two pure ES modules:
 
-- [typeorm/seed-dogfood.mjs](../typeorm/seed-dogfood.mjs) — inventory: areas,
+- [typeorm/seed-dogfood.mjs](../../typeorm/seed-dogfood.mjs) — inventory: areas,
   person fixtures, norm references, requirement packages and the `DOGFOOD_KRAV`
   list.
-- [typeorm/seed-dogfood-build.mjs](../typeorm/seed-dogfood-build.mjs) — the
+- [typeorm/seed-dogfood-build.mjs](../../typeorm/seed-dogfood-build.mjs) — the
   builder `appendDogfoodSeed(SEED_DATA)` that mutates the base `SEED_DATA`
   shape (`{ table: { columns, rows } }`) in place. `seed.mjs` calls it once
   when the demo-capable module is imported, and `seedDemoDatabase()` selects
   the affected tables when `npm run db:seed:demo` runs.
 
 Unit coverage lives in
-[tests/unit/dogfood-seed.test.ts](../tests/unit/dogfood-seed.test.ts).
+[tests/unit/dogfood-seed.test.ts](../../tests/unit/dogfood-seed.test.ts).
 
 ## ID ranges
 

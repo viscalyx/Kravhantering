@@ -25,7 +25,7 @@ with
 or before the downtime window for a disconnected planned upgrade with
 [rhel10-production-single-node-self-contained-upgrade.md](./rhel10-production-single-node-self-contained-upgrade.md).
 
-![Disconnected Bundle Journey](images/disconnected-release-bundle-journey.png)
+![Disconnected Bundle Journey](../images/disconnected-release-bundle-journey.png)
 
 ## Connected Export Host
 

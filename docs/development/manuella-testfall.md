@@ -75,7 +75,7 @@ Viktiga seedade ytor:
 - Seedat kravområde för behörighet: `AUTHZ-AREA-2026` med prefix `AUTHZ`.
 - Seedat kravpaket för behörighet: `AUTHZ kravpaket`.
 
-Behörighetsmatrisen finns i [behörigheter.md](./behörigheter.md).
+Behörighetsmatrisen finns i [behörigheter.md](../governance/behörigheter.md).
 
 ## Navigering
 
@@ -250,7 +250,7 @@ logga in på nytt.
 
 **Steg:**
 
-1. Kontrollera varje global roll mot [behörigheter.md](./behörigheter.md).
+1. Kontrollera varje global roll mot [behörigheter.md](../governance/behörigheter.md).
 1. Kontrollera varje ansvarstilldelning mot sitt ägda objekt.
 1. För varje positiv åtgärd, gör en liten ändring och ladda om sidan.
 1. För varje negativ åtgärd, kontrollera både UI-denial och API-denial när

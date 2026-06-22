@@ -142,7 +142,7 @@ from the verified token attached at the HTTP edge.
 
 The MCP server is part of the Next.js app and uses the same SQL Server +
 TypeORM stack. For the full developer setup, see
-[sql-server-developer-workflow.md](./sql-server-developer-workflow.md).
+[sql-server-developer-workflow.md](../development/sql-server-developer-workflow.md).
 
 1. Install dependencies with `npm install`.
 2. Start the local SQL Server with `npm run db:up`.

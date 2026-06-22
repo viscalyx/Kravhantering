@@ -7,7 +7,7 @@ extending, and replicating the scan locally.
 ## SSDLC (Secure Software Development Life Cycle) gate workflow
 
 Workflow file:
-[.github/workflows/ssdlc-gate.yml](../.github/workflows/ssdlc-gate.yml).
+[.github/workflows/ssdlc-gate.yml](../../.github/workflows/ssdlc-gate.yml).
 
 Each pull request to `main` runs the repository-owned SSDLC gate before merge,
 including forked pull requests when repository settings allow fork workflows.
@@ -17,7 +17,7 @@ That keeps the gate script and workflow logic trusted while still reading the
 pull request body and changed file list from the GitHub API.
 
 The implementation lives in
-[scripts/security/ssdlc-gate.mjs](../scripts/security/ssdlc-gate.mjs) and can
+[scripts/security/ssdlc-gate.mjs](../../scripts/security/ssdlc-gate.mjs) and can
 be exercised locally with:
 
 ```bash
@@ -52,7 +52,7 @@ fetch the specific data through the GitHub API without executing it.
 ## Repository and supply-chain workflow
 
 Workflow file:
-[.github/workflows/security-repository.yml](../.github/workflows/security-repository.yml).
+[.github/workflows/security-repository.yml](../../.github/workflows/security-repository.yml).
 
 Each pull request to `main`, push to `main`, weekly scheduled run, and manual
 dispatch runs the repository-owned supply-chain gate. The workflow uses the
@@ -77,7 +77,7 @@ Protection owns the secret-detection surface.
 ### Repository workflow steps
 
 1. Checks out the PR and installs dependencies with `npm ci`, using the Node
-   version pinned in [.nvmrc](../.nvmrc).
+   version pinned in [.nvmrc](../../.nvmrc).
 2. Runs `npm audit --audit-level=high`.
 3. Runs Trivy filesystem vulnerability scanning for `HIGH` and `CRITICAL`
    findings across OS and library packages.
@@ -129,7 +129,7 @@ guards.
 ## Pull-request DAST workflow
 
 Workflow file:
-[.github/workflows/security-dast.yml](../.github/workflows/security-dast.yml).
+[.github/workflows/security-dast.yml](../../.github/workflows/security-dast.yml).
 
 Each pull request to `main` runs the existing authenticated **OWASP ZAP
 baseline** passive scan and a **Nuclei** template scan against a fresh,
@@ -140,22 +140,22 @@ runs if the configured target is not local.
 ### What the workflow does
 
 1. Checks out the PR and installs dependencies with `npm ci`, using the
-   Node version pinned in [.nvmrc](../.nvmrc).
+   Node version pinned in [.nvmrc](../../.nvmrc).
 2. Brings up the same disposable stack the integration tests use:
    - SQL Server via `npm run db:up && npm run db:setup`.
    - A local Keycloak realm via `npm run idp:up`.
 3. Builds the production bundle with `npm run build:local-prod` and
    starts it with `next start --hostname 127.0.0.1 --port 3001` loaded
-   from [.env.prodlike](../.env.prodlike).
-4. Polls the new [`GET /api/health`](../app/api/health/route.ts)
+   from [.env.prodlike](../../.env.prodlike).
+4. Polls the new [`GET /api/health`](../../app/api/health/route.ts)
    endpoint until the app is ready. The DAST gate treats the endpoint as
    healthy only when it returns HTTP `200` with JSON `{ "status": "ok" }`;
    any other status or payload keeps the retry loop running and is printed on
    terminal failure.
-5. Runs [scripts/security/get-session-cookie.mjs](../scripts/security/get-session-cookie.mjs)
+5. Runs [scripts/security/get-session-cookie.mjs](../../scripts/security/get-session-cookie.mjs)
    to drive a real OIDC login as the realm test user `ada.admin` and
    obtain the iron-session cookie. The flow mirrors
-   [tests/integration/global-setup.ts](../tests/integration/global-setup.ts).
+   [tests/integration/global-setup.ts](../../tests/integration/global-setup.ts).
    Before printing the cookie, the helper validates the final stdout line
    against a strict CI-safe `name=value` contract. Names may contain only ASCII
    letters, digits, `_`, and `-`; values may contain only ASCII letters,
@@ -176,7 +176,7 @@ runs if the configured target is not local.
    pins the Nuclei binary to `v3.8.0`, downloads the ProjectDiscovery
    community templates with `nuclei -update-templates -ni`, and runs
    repo-owned unauthenticated boundary templates from
-   [.github/nuclei/templates/unauth](../.github/nuclei/templates/unauth).
+   [.github/nuclei/templates/unauth](../../.github/nuclei/templates/unauth).
 8. Runs an authenticated Nuclei pass with the same masked session cookie used
    by ZAP against the installed community templates under
    `${HOME}/nuclei-templates`. Nuclei output omits raw request/response data
@@ -193,7 +193,7 @@ runs if the configured target is not local.
   panels, technology checks, and accidentally exposed files.
 
 The workflow extends
-[.github/workflows/security-dast.yml](../.github/workflows/security-dast.yml).
+[.github/workflows/security-dast.yml](../../.github/workflows/security-dast.yml).
 Do not add a second PR-time web DAST workflow unless the scan shape changes
 enough to require a separate lifecycle.
 
@@ -219,7 +219,7 @@ enough to require a separate lifecycle.
 `zap-baseline.py` does not have a built-in "fail on risk ≥ Medium"
 switch — alert handling is **per rule**, not per risk rating. The
 workflow therefore relies on per-rule actions in
-[.github/zap/rules.prodlike.tsv](../.github/zap/rules.prodlike.tsv):
+[.github/zap/rules.prodlike.tsv](../../.github/zap/rules.prodlike.tsv):
 
 - Default action for any rule that fires is `WARN`, which makes the
   baseline action exit non-zero and fail the PR.
@@ -256,7 +256,7 @@ findings after report artifacts are available.
 
 ### Tuning the rules
 
-Edit [.github/zap/rules.prodlike.tsv](../.github/zap/rules.prodlike.tsv)
+Edit [.github/zap/rules.prodlike.tsv](../../.github/zap/rules.prodlike.tsv)
 using the documented format:
 
 ```text
@@ -274,7 +274,7 @@ out to be local-CI artefacts (e.g. test-only cookies missing
 
 1. Adds the rule ID to `rules.prodlike.tsv` with `IGNORE` and a clear
    comment.
-2. Mentions in `docs/security-ci.md` why the suppression is safe.
+2. Mentions in `docs/security-privacy/security-ci.md` why the suppression is safe.
 
 ### Tuning Nuclei
 
@@ -326,7 +326,7 @@ Markdown output remains in the artifact.
 <!-- cSpell:ignore Schemathesis -->
 
 Workflow file:
-[.github/workflows/security-api.yml](../.github/workflows/security-api.yml).
+[.github/workflows/security-api.yml](../../.github/workflows/security-api.yml).
 
 The repo-owned OpenAPI contract and Schemathesis scan cover the authenticated
 requirements REST API. The scan runs only against `http://localhost:3001` after
@@ -334,7 +334,7 @@ starting the same disposable SQL Server, Keycloak, and prodlike Next.js stack
 used by the PR DAST workflow.
 
 The static contract lives in
-[openapi/requirements-api.yaml](../openapi/requirements-api.yaml). It is not
+[openapi/requirements-api.yaml](../../openapi/requirements-api.yaml). It is not
 served by the app and does not add a runtime `/openapi` route.
 
 ### API scan scope
@@ -398,13 +398,13 @@ content-type mismatches, response-schema mismatches, scanner execution errors,
 or schema configuration errors. Artifacts are uploaded before the final failure
 is emitted.
 
-See [docs/api-security.md](api-security.md) for local run instructions and path
-addition rules.
+See [docs/security-privacy/api-security.md](./api-security.md) for local run
+instructions and path addition rules.
 
 ## MCP Seeded HTTP Workflow
 
 Workflow file:
-[.github/workflows/security-mcp.yml](../.github/workflows/security-mcp.yml).
+[.github/workflows/security-mcp.yml](../../.github/workflows/security-mcp.yml).
 
 The MCP seeded-HTTP security gate starts the prodlike localhost stack, obtains
 a local Keycloak service-account token, and uses the MCP Streamable HTTP client
@@ -433,17 +433,17 @@ secrets.
 5. Polls `/api/health`.
 6. Fails before scanning unless the target is exactly
    `http://localhost:3001`.
-7. Runs [scripts/security/get-mcp-token.mjs](../scripts/security/get-mcp-token.mjs)
+7. Runs [scripts/security/get-mcp-token.mjs](../../scripts/security/get-mcp-token.mjs)
    to acquire the local `kravhantering-mcp` client-credentials token.
 8. Masks the token and runs
-   [tests/integration/mcp-seeded-scan.spec.ts](../tests/integration/mcp-seeded-scan.spec.ts).
+   [tests/integration/mcp-seeded-scan.spec.ts](../../tests/integration/mcp-seeded-scan.spec.ts).
 9. Prints `test-results/mcp-seeded/summary.md` to the job log and GitHub step
    summary when the scan writes one.
 10. Uploads MCP JSONL/summary artifacts and the application log before the
     final failure step.
 
 The seeded corpus lives under
-[tests/fixtures/mcp-requests](../tests/fixtures/mcp-requests). Cases resolve
+[tests/fixtures/mcp-requests](../../tests/fixtures/mcp-requests). Cases resolve
 IDs from the disposable seeded database at runtime so the fixture does not
 hard-code requirement, version, or specification IDs.
 
@@ -466,14 +466,14 @@ availability.
 Allowed expected negatives are limited to missing or invalid Bearer tokens,
 unknown tool, stale edit conflict, and sanitized AI-disabled error.
 
-See [docs/mcp-seeded-dast.md](mcp-seeded-dast.md) for local run instructions
-and corpus extension rules.
+See [docs/security-privacy/mcp-seeded-dast.md](./mcp-seeded-dast.md) for local
+run instructions and corpus extension rules.
 
 ## Shared prodlike app cleanup
 
 <!-- cSpell:ignore setsid pgid -->
 The DAST, REST API Schemathesis, and MCP seeded workflows use
-[scripts/security/prodlike-app.sh](../scripts/security/prodlike-app.sh) to
+[scripts/security/prodlike-app.sh](../../scripts/security/prodlike-app.sh) to
 start the prodlike Next.js server under `setsid` so the wrapper, `npx` shims,
 and `next start` Node process share a dedicated process group. Each
 `Stop prodlike app` step reads the workflow-local `app.pgid`, sends `TERM` to
@@ -486,9 +486,9 @@ workflows back to `app.pid` unless the startup and cleanup model changes.
 ## Static security headers
 
 Static (per-response, non-nonce) security headers are set in the
-`headers()` block of [next.config.ts](../next.config.ts) and apply to
+`headers()` block of [next.config.ts](../../next.config.ts) and apply to
 every route. CSP is intentionally **not** set there — it carries a
-per-request nonce and is set in [proxy.ts](../proxy.ts) instead.
+per-request nonce and is set in [proxy.ts](../../proxy.ts) instead.
 The supported browser baseline is modern Chrome, Edge, Firefox, Safari, and
 current platform WebViews. IE and pre-CSP2 browser engines are unsupported, so
 CSP `frame-ancestors` is the primary clickjacking control for page responses.
@@ -571,11 +571,11 @@ The recommended path when active scanning becomes worthwhile:
 - The CI runner is single-tenant and disposable, so localhost-only
   transport headers do not need to be hardened.
 - The Keycloak realm shipped under
-  [dev/keycloak/realm-kravhantering-dev.json](../dev/keycloak/realm-kravhantering-dev.json)
+  [dev/keycloak/realm-kravhantering-dev.json](../../dev/keycloak/realm-kravhantering-dev.json)
   is the only IdP target for PR scans; production credentials are
   never required.
 - The `kravhantering_session` cookie name (`AUTH_SESSION_COOKIE_NAME`
-  default in [lib/auth/config.ts](../lib/auth/config.ts)) is unchanged.
+  default in [lib/auth/config.ts](../../lib/auth/config.ts)) is unchanged.
   If that default ever changes, update the workflow's `env:` block
   accordingly.
 - `zaproxy/action-baseline@v0.15.0` is pinned. Bumps should land in

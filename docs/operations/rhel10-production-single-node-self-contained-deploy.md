@@ -31,7 +31,7 @@ To uninstall a first install of this topology, use
 >guide starts and tells you where to resume these regular deployment steps on
 >the disconnected host.
 
-![Kravhantering Infographic Single Node Access Flow](images/infographic-single-node-access-flow.png)
+![Kravhantering Infographic Single Node Access Flow](../images/infographic-single-node-access-flow.png)
 
 ## Release Inputs
 
@@ -130,7 +130,7 @@ verification.
 <!-- markdownlint-enable MD013 -->
 
 For the full HSA person lookup transport and authentication contract, see
-[HSA person lookup integration](./hsa-person-lookup-integration.md).
+[HSA person lookup integration](../integrations/hsa-person-lookup-integration.md).
 
 ### Generate Unique Secrets
 
@@ -833,7 +833,7 @@ and either `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL` or
 `HSA_PERSON_LOOKUP_OAUTH_SCOPE` or `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` only
 when the token endpoint requires them. Supplying both mTLS and OAuth2 enables
 mixed mode. The canonical flow is described in
-[HSA person lookup integration](./hsa-person-lookup-integration.md).
+[HSA person lookup integration](../integrations/hsa-person-lookup-integration.md).
 
 Leave `NEXT_PUBLIC_DEFAULT_MODEL`, `OPENROUTER_API_KEY` and
 `OPENROUTER_MGMT_API_KEY` empty unless AI requirement generation is approved

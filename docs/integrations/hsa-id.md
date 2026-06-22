@@ -15,7 +15,8 @@ HSA-id får inte vara längre än 31 tecken.
 <!-- markdownlint-disable-next-line MD013 -->
 Referens: <https://openehr.atlassian.net/wiki/spaces/SWE/pages/1922990156/HSA-identitet+och+Organisationsnummer>
 
-Se även källkodens validering i [lib/auth/hsa-id.ts](lib/auth/hsa-id.ts#L1-L20).
+Se även källkodens validering i
+[lib/auth/hsa-id.ts](../../lib/auth/hsa-id.ts#L1-L20).
 
 ## HSA-id-prefix
 

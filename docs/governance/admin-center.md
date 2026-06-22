@@ -484,4 +484,4 @@ If you change any of the following, update this document:
 - status, usage-status, or risk-level icon behavior
 
 If you add a new requirement column or property, also update
-[.github/instructions/add-requirement-column.instructions.md](../.github/instructions/add-requirement-column.instructions.md).
+[.github/instructions/add-requirement-column.instructions.md](../../.github/instructions/add-requirement-column.instructions.md).

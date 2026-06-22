@@ -28,7 +28,7 @@ To uninstall a first install of this topology, use
 >the disconnected app node.
 
 <!-- markdownlint-disable MD013 -->
-![Kravhantering Infographic Production Access and Service Flow](images/infographic-production-access-and-service-flow.png)
+![Kravhantering Infographic Production Access and Service Flow](../images/infographic-production-access-and-service-flow.png)
 <!-- markdownlint-enable MD013 -->
 
 ## Release Inputs
@@ -104,7 +104,7 @@ verification.
 <!-- markdownlint-enable MD013 -->
 
 For the full HSA person lookup transport and authentication contract, see
-[HSA person lookup integration](./hsa-person-lookup-integration.md).
+[HSA person lookup integration](../integrations/hsa-person-lookup-integration.md).
 
 ### Generate Unique Secrets
 
@@ -459,8 +459,9 @@ Register a confidential OIDC web client in the external IdP. The app requires:
 - optional MCP service client audience for `kravhantering-app`
 
 Use the bilingual
-[External IdP Handoff](./external-idp-handoff.md) guide as the checklist and
-request template when coordinating these values with IdP administrators.
+[External IdP Handoff](../integrations/external-idp-handoff.md) guide as the
+checklist and request template when coordinating these values with IdP
+administrators.
 
 Provision at least one initial application administrator in the IdP before the
 first sign-in. This is not an IdP platform administrator account; it is a
@@ -543,7 +544,7 @@ and either `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL` or
 `HSA_PERSON_LOOKUP_OAUTH_SCOPE` or `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` only
 when the token endpoint requires them. Supplying both mTLS and OAuth2 enables
 mixed mode. The canonical flow is described in
-[HSA person lookup integration](./hsa-person-lookup-integration.md).
+[HSA person lookup integration](../integrations/hsa-person-lookup-integration.md).
 
 Ownership for the optional MCP service-token client is split by responsibility:
 
