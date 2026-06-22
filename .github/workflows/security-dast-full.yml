@@ -1,0 +1,192 @@
+name: Security DAST Full
+
+# Manual full active ZAP scan against isolated localhost state.
+# See docs/security-privacy/security-dast-full.md for the design and runbook.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  zap-full:
+    name: ZAP full active
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    env:
+      APP_BASE_URL: http://localhost:3001
+      AUTH_OIDC_ISSUER_URL: http://localhost:8080/realms/kravhantering-full-scan
+      AUTH_SESSION_COOKIE_NAME: kravhantering_session
+      KEYCLOAK_PASSWORD: devpass
+      KEYCLOAK_USERNAME: full.scan
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create full-scan Keycloak realm
+        run: >
+          node scripts/security/create-full-scan-keycloak-realm.mjs
+          --output-dir test-results/security-dast-full/keycloak
+
+      - name: Start isolated prodlike stack
+        uses: ./.github/actions/prodlike-stack
+        with:
+          auth-issuer-url: ${{ env.AUTH_OIDC_ISSUER_URL }}
+          disable-ai-generation: 'true'
+          disable-openrouter: 'true'
+          idp-health-url: ${{ env.AUTH_OIDC_ISSUER_URL }}/.well-known/openid-configuration
+          idp-jwks-url: ${{ env.AUTH_OIDC_ISSUER_URL }}/protocol/openid-connect/certs
+          idp-start-command: >-
+            docker compose -f docker-compose.idp.yml
+            -f test-results/security-dast-full/keycloak/docker-compose.full-scan.yml
+            up -d --force-recreate idp
+          results-dir: test-results/security-dast-full/app
+
+      - name: Guard full-scan target
+        run: |
+          set -euo pipefail
+          case "${APP_BASE_URL}" in
+            http://localhost:3001)
+              ;;
+            *)
+              echo "::error::Refusing to run ZAP full scan against target: ${APP_BASE_URL}"
+              exit 1
+              ;;
+          esac
+
+      - name: Acquire authenticated session cookie
+        id: session
+        uses: ./.github/actions/prodlike-cookie
+        with:
+          username: ${{ env.KEYCLOAK_USERNAME }}
+
+      - name: Stage ZAP full-scan rules
+        run: |
+          set -euo pipefail
+          mkdir -p .zap
+          cp .github/zap/rules.full.tsv .zap/rules.tsv
+
+      - name: Run authenticated OWASP ZAP full scan
+        id: zap_full_auth
+        continue-on-error: true
+        uses: zaproxy/action-full-scan@3c58388149901b9a03b7718852c5ba889646c27c # v0.13.0
+        with:
+          target: ${{ env.APP_BASE_URL }}/sv
+          rules_file_name: .zap/rules.tsv
+          allow_issue_writing: false
+          fail_action: true
+          artifact_name: zap-full-authenticated
+          cmd_options: >-
+            -j
+            -m 10
+            -T 90
+            -z "-config replacer.full_list(0).description=session-cookie
+                -config replacer.full_list(0).enabled=true
+                -config replacer.full_list(0).matchtype=REQ_HEADER
+                -config replacer.full_list(0).matchstr=Cookie
+                -config replacer.full_list(0).regex=false
+                -config replacer.full_list(0).replacement=${{ steps.session.outputs.cookie }}"
+
+      - name: Run unauthenticated OWASP ZAP full scan
+        id: zap_full_unauth
+        continue-on-error: true
+        uses: zaproxy/action-full-scan@3c58388149901b9a03b7718852c5ba889646c27c # v0.13.0
+        with:
+          target: ${{ env.APP_BASE_URL }}/sv
+          rules_file_name: .zap/rules.tsv
+          allow_issue_writing: false
+          fail_action: true
+          artifact_name: zap-full-unauthenticated
+          cmd_options: >-
+            -j
+            -m 5
+            -T 45
+
+      - name: Capture SQL Server backup
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/security-dast-full/db
+          if [ ! -f .env.sqlserver ]; then
+            echo "::warning::.env.sqlserver was not created; skipping database backup."
+            exit 0
+          fi
+          set -a
+          . ./.env.sqlserver
+          set +a
+          container="$(docker compose --env-file .env.sqlserver -f docker-compose.sqlserver.yml ps -q db || true)"
+          if [ -z "${container}" ]; then
+            echo "::warning::SQL Server container not found; skipping database backup."
+            exit 0
+          fi
+          docker exec "${container}" mkdir -p /var/opt/mssql/backups
+          docker exec "${container}" /opt/mssql-tools18/bin/sqlcmd \
+            -S localhost \
+            -U sa \
+            -P "${MSSQL_SA_PASSWORD}" \
+            -C \
+            -Q "BACKUP DATABASE [${DB_NAME:-kravhantering}] TO DISK = N'/var/opt/mssql/backups/security-dast-full.bak' WITH INIT, COPY_ONLY"
+          docker cp \
+            "${container}:/var/opt/mssql/backups/security-dast-full.bak" \
+            test-results/security-dast-full/db/security-dast-full.bak
+
+      - name: Upload full-scan database backup
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: zap-full-db-backup
+          path: test-results/security-dast-full/db/**
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload full-scan app log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: zap-full-app-log
+          path: test-results/security-dast-full/app/app.log
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Evaluate full-scan outcomes
+        if: always()
+        run: |
+          set -euo pipefail
+          failed=0
+          if [ "${{ steps.zap_full_auth.outcome }}" = "failure" ]; then
+            echo "::error::Authenticated OWASP ZAP full scan reported unsuppressed alerts."
+            failed=1
+          fi
+          if [ "${{ steps.zap_full_unauth.outcome }}" = "failure" ]; then
+            echo "::error::Unauthenticated OWASP ZAP full scan reported unsuppressed alerts."
+            failed=1
+          fi
+          exit "${failed}"
+
+      - name: Clean up isolated prodlike stack
+        if: always()
+        uses: ./.github/actions/prodlike-cleanup
+        with:
+          idp-down-command: >-
+            docker compose -f docker-compose.idp.yml
+            -f test-results/security-dast-full/keycloak/docker-compose.full-scan.yml
+            down
+          results-dir: test-results/security-dast-full/app

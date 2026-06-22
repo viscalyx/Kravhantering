@@ -14,6 +14,7 @@ const TABLE_ORDER = [
   'requirement_areas',
   'requirement_area_co_authors',
   'requirement_categories',
+  'ai_settings',
   'requirement_list_column_defaults',
   'hsa_id_prefixes',
   'requirements_specifications',
@@ -534,6 +535,16 @@ const SEED_DATA = {
       [2, 'IT-krav', 'IT requirement'],
       [3, 'Leverantörskrav', 'Supplier requirement'],
     ],
+  },
+  ai_settings: {
+    columns: [
+      'id',
+      'requirement_generation_enabled',
+      'created_at',
+      'updated_at',
+    ],
+    pk: ['id'],
+    rows: [[1, 1, '2026-04-20 20:07:00', '2026-04-20 20:07:00']],
   },
   requirement_list_column_defaults: {
     columns: [

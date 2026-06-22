@@ -102,6 +102,7 @@ Apply these rules to all schema objects.
 | 4 | RFI join tables and `specification_rfi_question_items` use composite PKs | These rows are natural links between a question version and advisory target, or between a specification and an RFI question. A surrogate `id` would not improve identity. |
 | Localized columns | `norm_references.name`, `norm_references.type`, `norm_references.issuer` are single-language columns | Norm references are external legal/regulatory documents (e.g. laws, ISO standards) with proper names in their source language. Localizing them would be factually incorrect — "SFS 2018:218" and "Riksdagen" do not have per-locale translations. |
 | Versioning | `requirement_version_norm_references` stores only FK IDs, not snapshots of mutable `norm_references` fields (`name`, `type`, `reference`, `version`, `issuer`, `uri`, `is_archived`) | Norm references are shared external documents whose metadata should reflect the latest known state across all requirement versions. Snapshotting would create stale duplicates of external metadata that the system does not own. If point-in-time fidelity is needed in the future, a dedicated snapshot table can be added without breaking the current schema. |
+| Boolean columns | `ai_settings.requirement_generation_enabled` omits the `is_` prefix | The column names the positive feature preference exposed by Admin Center and the REST response field `requirementGenerationEnabled`; `is_requirement_generation_enabled` would read as state rather than administrator preference. |
 <!-- markdownlint-enable MD013 -->
 
 ---
@@ -174,6 +175,13 @@ erDiagram
         integer sort_order UK
         integer is_default_visible "boolean"
         text updated_at
+    }
+
+    ai_settings {
+        integer id PK
+        bit requirement_generation_enabled
+        datetime2 created_at
+        datetime2 updated_at
     }
 
     hsa_id_prefixes {
@@ -1376,6 +1384,33 @@ These tables store contributor- and admin-managed UI configuration.
 They are not business-domain reference data. They control organization-wide UI
 defaults used by the app.
 
+### `ai_settings`
+
+Singleton Admin Center settings for AI-assisted requirement generation.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key; constrained to singleton row `1` |
+| `requirement_generation_enabled` | bit | Admin preference for AI requirement generation |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Purpose:**
+
+- organization-wide Admin Center preference for AI requirement generation
+- persisted default used by the requirements UI, REST generation route, and MCP
+  generation tool
+- input to effective availability together with the deployment guard
+  `AI_REQUIREMENT_GENERATION_DISABLED`
+
+**Seed value:** Required and demo seed data create row `id = 1` with
+`requirement_generation_enabled = 1`, so migrated installations stay enabled by
+default.
+
+**Check constraint:** `chk_ai_settings_id` enforces the singleton row ID.
+
 ### `requirement_list_column_defaults`
 
 Organization-wide default layout for the requirements list.
@@ -2434,6 +2469,7 @@ graph LR
     end
 
     subgraph UI Settings
+        AIS[ai_settings]
         RLCD[requirement_list_column_defaults]
         HIP[hsa_id_prefixes]
     end

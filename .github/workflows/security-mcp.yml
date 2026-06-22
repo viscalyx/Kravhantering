@@ -48,43 +48,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Clean server and database state
-        run: npm run clean:all
-
-      - name: Prepare SQL Server env file
-        run: cp .env.sqlserver.ci .env.sqlserver
-
-      - name: Start local database service
-        run: npm run db:up
-
-      - name: Setup local SQL Server database
-        run: npm run db:setup
-
-      - name: Reset and wait for local IdP service
-        run: npm run idp:reset
-
-      - name: Build prodlike app
-        run: npm run build:local-prod
-
-      - name: Start prodlike app
-        run: |
-          OPENROUTER_API_KEY= OPENROUTER_MGMT_API_KEY= \
-            bash scripts/security/prodlike-app.sh start test-results/security-mcp
-
-      - name: Wait for app health endpoint
-        run: |
-          set -euo pipefail
-          for i in $(seq 1 60); do
-            if curl -sf --max-time 5 "${APP_BASE_URL}/api/health" > /dev/null 2>&1; then
-              echo "App is healthy."
-              exit 0
-            fi
-            echo "Attempt $i/60 - /api/health not ready yet, retrying in 2s..."
-            sleep 2
-          done
-          echo "App did not become healthy in time. Last 200 lines of app.log:"
-          tail -n 200 test-results/security-mcp/app.log || true
-          exit 1
+      - name: Start prodlike stack
+        uses: ./.github/actions/prodlike-stack
+        with:
+          disable-openrouter: 'true'
+          idp-health-url: ${{ env.AUTH_OIDC_ISSUER_URL }}/.well-known/openid-configuration
+          idp-jwks-url: ${{ env.AUTH_OIDC_ISSUER_URL }}/protocol/openid-connect/certs
+          idp-start-command: npm run idp:reset
+          results-dir: test-results/security-mcp
 
       - name: Guard MCP scan target
         run: |
@@ -172,14 +143,8 @@ jobs:
             exit 1
           fi
 
-      - name: Stop prodlike app
+      - name: Clean up prodlike stack
         if: always()
-        run: bash scripts/security/prodlike-app.sh stop test-results/security-mcp
-
-      - name: Stop IdP service
-        if: always()
-        run: npm run idp:down || true
-
-      - name: Stop database service
-        if: always()
-        run: npm run db:down || true
+        uses: ./.github/actions/prodlike-cleanup
+        with:
+          results-dir: test-results/security-mcp

@@ -1,0 +1,149 @@
+name: Prodlike stack
+description: Start the SQL Server, Keycloak, and prodlike Next.js stack.
+
+inputs:
+  app-base-url:
+    description: Base URL for the local prodlike app.
+    required: false
+    default: http://localhost:3001
+  auth-issuer-url:
+    description: Optional AUTH_OIDC_ISSUER_URL override for the app process.
+    required: false
+    default: ''
+  disable-ai-generation:
+    description: Set AI_REQUIREMENT_GENERATION_DISABLED=1 for the app process.
+    required: false
+    default: 'false'
+  disable-openrouter:
+    description: Clear OpenRouter API keys for the app process.
+    required: false
+    default: 'false'
+  idp-health-url:
+    description: Keycloak discovery URL used to wait for the IdP.
+    required: false
+    default: http://localhost:8080/realms/kravhantering-dev/.well-known/openid-configuration
+  idp-jwks-url:
+    description: Optional Keycloak JWKS URL that must also become reachable.
+    required: false
+    default: ''
+  idp-start-command:
+    description: Command that starts the local IdP service.
+    required: false
+    default: npm run idp:up
+  results-dir:
+    description: Directory where prodlike-app.sh writes app logs and pgid.
+    required: false
+    default: test-results
+
+outputs:
+  base-url:
+    description: Base URL for the started prodlike app.
+    value: ${{ steps.base-url.outputs.base-url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Record base URL
+      id: base-url
+      shell: bash
+      run: printf 'base-url=%s\n' '${{ inputs.app-base-url }}' >> "$GITHUB_OUTPUT"
+
+    - name: Clean server and database state
+      shell: bash
+      run: npm run clean:all
+
+    - name: Prepare SQL Server env file
+      shell: bash
+      run: cp .env.sqlserver.ci .env.sqlserver
+
+    - name: Start local database service
+      shell: bash
+      run: npm run db:up
+
+    - name: Setup local SQL Server database
+      shell: bash
+      run: npm run db:setup
+
+    - name: Start local IdP service
+      shell: bash
+      run: ${{ inputs.idp-start-command }}
+
+    - name: Wait for IdP to be ready
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "Waiting for Keycloak to be ready..."
+        for i in $(seq 1 30); do
+          if curl -sf --max-time 5 "${{ inputs.idp-health-url }}" > /dev/null 2>&1; then
+            if [ -z "${{ inputs.idp-jwks-url }}" ] ||
+               curl -sf --max-time 5 "${{ inputs.idp-jwks-url }}" > /dev/null 2>&1; then
+              echo "Keycloak is ready."
+              exit 0
+            fi
+          fi
+          echo "Attempt $i/30 - Keycloak not ready yet, retrying in 5s..."
+          sleep 5
+        done
+        echo "Keycloak did not become ready in time."
+        exit 1
+
+    - name: Build prodlike app
+      shell: bash
+      run: npm run build:local-prod
+
+    - name: Start prodlike app
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -n "${{ inputs.auth-issuer-url }}" ]; then
+          export AUTH_OIDC_ISSUER_URL="${{ inputs.auth-issuer-url }}"
+        fi
+        if [ "${{ inputs.disable-ai-generation }}" = "true" ]; then
+          export AI_REQUIREMENT_GENERATION_DISABLED=1
+        fi
+        if [ "${{ inputs.disable-openrouter }}" = "true" ]; then
+          export OPENROUTER_API_KEY=
+          export OPENROUTER_MGMT_API_KEY=
+        fi
+        bash scripts/security/prodlike-app.sh start "${{ inputs.results-dir }}"
+
+    - name: Wait for app health endpoint
+      shell: bash
+      run: |
+        set -euo pipefail
+        if ! command -v jq > /dev/null 2>&1; then
+          echo "::error::jq is required to validate /api/health JSON."
+          exit 1
+        fi
+
+        last_http_code="not requested"
+        last_payload=""
+        for i in $(seq 1 60); do
+          response="$(
+            curl -sS --max-time 5 -w '\n%{http_code}' \
+              "${{ inputs.app-base-url }}/api/health" 2>/dev/null || true
+          )"
+          last_http_code="$(printf '%s' "$response" | tail -n 1)"
+          last_payload="$(printf '%s' "$response" | sed '$d')"
+
+          if [ "$last_http_code" = "200" ]; then
+            if printf '%s' "$last_payload" |
+              jq -e '.status == "ok"' > /dev/null 2>&1; then
+              echo "App is healthy."
+              exit 0
+            fi
+          fi
+          echo "Attempt $i/60 - /api/health not ready yet, retrying in 2s..."
+          sleep 2
+        done
+        echo "App did not become healthy in time."
+        echo "Last /api/health HTTP status: ${last_http_code}"
+        echo "Last /api/health payload:"
+        if [ -n "$last_payload" ]; then
+          printf '%s\n' "$last_payload"
+        else
+          echo "<empty>"
+        fi
+        echo "Last 200 lines of app.log:"
+        tail -n 200 "${{ inputs.results-dir }}/app.log" || true
+        exit 1

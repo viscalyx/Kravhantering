@@ -32,6 +32,10 @@ const tableState = vi.hoisted(() => ({
   renderSpy: vi.fn(),
 }))
 
+const aiGeneratorState = vi.hoisted(() => ({
+  renderSpy: vi.fn(),
+}))
+
 const pdfDownloadState = vi.hoisted(() => ({
   clearError: vi.fn(),
   download: vi.fn(),
@@ -66,7 +70,10 @@ vi.mock('@/components/HelpPanel', () => ({
 }))
 
 vi.mock('@/components/AiRequirementGenerator', () => ({
-  default: () => null,
+  default: (props: Record<string, unknown>) => {
+    aiGeneratorState.renderSpy(props)
+    return props.open ? <div data-testid="ai-generator-modal" /> : null
+  },
 }))
 
 vi.mock('@/components/reports/pdf/useServerPdfDownload', () => ({
@@ -172,8 +179,10 @@ vi.mock('@/components/RequirementsTable', () => ({
               aria-label={action.ariaLabel}
               data-floating-action-id={action.id}
               data-floating-action-variant={action.variant ?? 'default'}
+              disabled={action.disabled}
               key={action.id}
-              onClick={action.onClick}
+              onClick={action.disabled ? undefined : action.onClick}
+              title={action.tooltip}
               type="button"
             >
               {action.id}
@@ -531,6 +540,7 @@ describe('RequirementsClient', () => {
     storageSetItem.mockReset()
     tableState.renderSpy.mockReset()
     tableState.detailChangeHandlers.clear()
+    aiGeneratorState.renderSpy.mockReset()
     pdfDownloadState.clearError.mockReset()
     pdfDownloadState.download.mockReset()
     pdfDownloadState.download.mockResolvedValue(undefined)
@@ -757,6 +767,47 @@ describe('RequirementsClient', () => {
       loading: false,
       rows: [expect.objectContaining({ uniqueId: 'INT0001' })],
       visibleColumns: ['uniqueId', 'description', 'area', 'status'],
+    })
+  })
+
+  it('disables AI generation when availability is disabled by Admin Center', async () => {
+    const aiGenerationAvailability = {
+      disabledByEnvironment: false,
+      effectiveRequirementGenerationEnabled: false,
+      requirementGenerationEnabled: false,
+    }
+    mockCommonFetches()
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <RequirementsClient
+        aiGenerationAvailability={aiGenerationAvailability}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('requirements-table')).toBeTruthy(),
+    )
+
+    const aiButton = screen.getByRole('button', { name: 'aiGenerate' })
+    expect(aiButton).toBeDisabled()
+    expect(aiButton).toHaveAttribute('title', 'aiGenerateDisabledByAdmin')
+    expect(latestFloatingActions()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          disabled: true,
+          id: 'ai-generate',
+          tooltip: 'aiGenerateDisabledByAdmin',
+        }),
+      ]),
+    )
+
+    fireEvent.click(aiButton)
+
+    expect(screen.queryByTestId('ai-generator-modal')).toBeNull()
+    expect(aiGeneratorState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      aiGenerationAvailability,
+      open: false,
     })
   })
 

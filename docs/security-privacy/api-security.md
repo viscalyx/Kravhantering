@@ -46,9 +46,9 @@ same `requirementUniqueId`.
 
 Deferred from this contract:
 
-- CSV export, MCP, AI routes, admin catalog mutations, specifications,
-  deviations, improvement suggestions, and Admin Center access-review routes
-  (`/api/admin/access-reviews/**`).
+- CSV export, MCP, AI routes, admin catalog/settings mutations,
+  specifications, deviations, improvement suggestions, and Admin Center
+  access-review routes (`/api/admin/access-reviews/**`).
 - Access-review routes remain outside the OpenAPI/Schemathesis contract for
   now. They use the same request-context and CSRF protections as other Admin
   Center mutations, but the useful assertions are role-matrix and
@@ -78,13 +78,17 @@ Deferred from this contract:
   v1 contract for the same reason. The read-only `GET /api/norm-references`
   catalog route stays in scope; create, update, archive, reactivate, and delete
   are covered by secure-route and focused route/UI tests.
+- Admin Center settings routes such as `GET/PUT /api/admin/ai-settings` and
+  `GET/PUT /api/admin/hsa-id-prefixes` remain outside the
+  OpenAPI/Schemathesis v1 contract. Their useful assertions are Admin-only
+  access, CSRF/same-origin enforcement for saves, privileged audit, effective
+  configuration precedence, and focused UI behavior.
 - HSA person verification remains outside the OpenAPI/Schemathesis v1
   contract. `POST /api/requirement-responsibility-people/verify` is a
   same-origin, CSRF-protected editing helper that is only useful with an
   authenticated session, assignment purpose, and, where applicable, scoped edit
   permission. The app does not expose a browser-usable general HSA search route.
-- ZAP API scan, role-matrix DAST, full active scans, and paid vendor scanners
-  that require service-specific CI secrets.
+- Paid vendor scanners that require service-specific CI secrets.
 
 The existing catalog `GET /api/requirement-packages` route stays in scope and
 documents its `includeArchived=true|false` query parameter because it is a
@@ -92,7 +96,10 @@ read-only browser catalog endpoint used by the stewardship UI.
 The catalog `GET /api/norm-references` route also stays in scope and documents
 `includeArchived`, `includeIds`, `linked`, and `statuses` query parameters.
 
-Those deferred items are later issue `#119` work.
+ZAP API scanning now uses a filtered read-only contract derived from this
+static source. Role-matrix and full active ZAP workflows run outside the
+Schemathesis contract because they exercise browser crawl and active DAST
+behavior rather than route-level schema conformance.
 
 ## Runtime Validation
 

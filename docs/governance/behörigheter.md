@@ -257,6 +257,9 @@ kreditinformation eller skickar en prompt till OpenRouter:
 behörighetssammanhang. Det finns ingen separat AI-behörighet i nuvarande
 modell. Om AI-assisterat författande senare behöver en separat
 behörighetsmodell ska den beslutas som en egen policy med egna skäl.
+En användare med `Admin` kan också stänga av AI-kravgenerering globalt i
+Admin Center. Driftspärren `AI_REQUIREMENT_GENERATION_DISABLED` har högre
+prioritet än den sparade Admin Center-inställningen.
 
 ## Normbibliotek
 
@@ -275,6 +278,7 @@ tydligt att funktionen finns och vilken roll som krävs.
 | --- | --- |
 | Kolumner | Användare som kan öppna Admin Center. |
 | Identitet | Användare med `Admin`. |
+| AI | Användare med `Admin`. |
 | Taxonomi | Användare som kan öppna Admin Center. |
 | Statusar och arbetsflöden | Användare som kan öppna Admin Center. |
 | Behörighetsöversyn | Användare med `Admin` eller `PrivacyOfficer`. |

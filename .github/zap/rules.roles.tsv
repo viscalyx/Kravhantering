@@ -1,18 +1,11 @@
-# OWASP ZAP baseline rule overrides for the PR DAST workflow.
+# OWASP ZAP role-matrix baseline rule overrides.
 #
 # Format: <ruleId>\t<action>\t<comment>
-#   action: IGNORE | WARN | FAIL | PASS | INFO
+#   action: IGNORE | WARN | FAIL | PASS | INFO
 #
-# Why these rules are suppressed:
-#   The scan target is http://localhost:3001 inside an ephemeral CI runner.
-#   Several ZAP rules check for transport-security and browser-isolation
-#   headers that only apply to publicly served HTTPS. Failing the PR on
-#   them would block every PR even when the production deployment is
-#   correctly configured. They are validated separately by the prodlike
-#   integration tests and by the production reverse proxy.
-#
-# Re-evaluate this list whenever the workflow target changes.
-# See docs/security-privacy/security-ci.md for tuning guidance.
+# This scenario runs the same passive baseline scan as the PR DAST workflow for
+# each canonical local test user. Keep this close to rules.prodlike.tsv unless
+# a role-specific signal is intentionally different.
 
 10035	IGNORE	Strict-Transport-Security only relevant on HTTPS production hosts.
 10106	IGNORE	HTTP Only Site only relevant on HTTPS production hosts; CI scans localhost over HTTP.
@@ -22,3 +15,4 @@
 10027	IGNORE	Information disclosure - suspicious comments: noisy in dev source maps.
 10049	INFO	Non-Storable Content: Cache-Control: no-store is intentional on auth-bearing pages (issue #114).
 10109	INFO	Modern Web Application: residual /en and /sv locale roots are inherent to the App Router (issue #108); /robots.txt and /sitemap.xml are now served by app/robots.ts and app/sitemap.ts.
+10202	WARN	Absence of Anti-CSRF Tokens is relevant in role-matrix scans because low-privilege pages must not expose unsafe mutation affordances.

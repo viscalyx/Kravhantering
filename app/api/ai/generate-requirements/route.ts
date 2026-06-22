@@ -12,6 +12,7 @@ import {
   validateGeneratedRequirementsWithMetadata,
 } from '@/lib/ai/requirement-prompt'
 import { loadTaxonomy } from '@/lib/ai/taxonomy'
+import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   AI_PROVIDER_UNAVAILABLE_MESSAGE,
@@ -181,25 +182,6 @@ export const POST = secureMutationRoute({
     }, 0)
 
     const db = authorizationDb ?? (await getRequestSqlServerDataSource())
-
-    const taxonomy = await loadTaxonomy(db, locale)
-    const systemPrompt = buildSystemPrompt(taxonomy, locale)
-    const userPrompt = buildUserPrompt(
-      body.topic,
-      body.customInstruction,
-      locale,
-    )
-
-    // Build user message content: text-only or multipart with images
-    let userContent: ContentPart[] | string = userPrompt
-    if (images.length > 0) {
-      const parts: ContentPart[] = [{ text: userPrompt, type: 'text' }]
-      for (const img of images) {
-        parts.push({ image_url: { url: img.dataUrl }, type: 'image_url' })
-      }
-      userContent = parts
-    }
-
     const streamStartedAt = Date.now()
     let recordedTerminalEvent = false
 
@@ -249,6 +231,63 @@ export const POST = secureMutationRoute({
           statusCode,
         })
       }
+    }
+
+    function createUnavailableStreamResponse() {
+      const stream = new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder()
+          controller.enqueue(
+            encoder.encode(
+              `event: error\ndata: ${JSON.stringify({
+                message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+              })}\n\n`,
+            ),
+          )
+          recordStreamEvent(context, 'failure', 503)
+          controller.close()
+        },
+      })
+
+      return applyResponseCorrelationHeaders(
+        new Response(stream, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            Connection: 'keep-alive',
+            'Content-Type': 'text/event-stream',
+          },
+          status: 503,
+        }),
+        context,
+      )
+    }
+
+    try {
+      const availability = await getAiGenerationAvailability(db)
+      if (!availability.effectiveRequirementGenerationEnabled) {
+        return createUnavailableStreamResponse()
+      }
+    } catch (error) {
+      logSanitizedError('AI requirement generation availability failed', error)
+      return createUnavailableStreamResponse()
+    }
+
+    const taxonomy = await loadTaxonomy(db, locale)
+    const systemPrompt = buildSystemPrompt(taxonomy, locale)
+    const userPrompt = buildUserPrompt(
+      body.topic,
+      body.customInstruction,
+      locale,
+    )
+
+    // Build user message content: text-only or multipart with images
+    let userContent: ContentPart[] | string = userPrompt
+    if (images.length > 0) {
+      const parts: ContentPart[] = [{ text: userPrompt, type: 'text' }]
+      for (const img of images) {
+        parts.push({ image_url: { url: img.dataUrl }, type: 'image_url' })
+      }
+      userContent = parts
     }
 
     const stream = new ReadableStream({

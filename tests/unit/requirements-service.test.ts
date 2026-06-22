@@ -290,10 +290,16 @@ describe('createRequirementsService', () => {
   let infoSpy: ReturnType<typeof vi.spyOn>
 
   function createTestRequirementsService() {
-    return createRequirementsService({} as never, {
-      authorization: { assertAuthorized: vi.fn(async () => {}) },
-      logger,
-    })
+    return createRequirementsService(
+      {
+        query: mocks.auditQuery,
+        transaction: mocks.auditTransaction,
+      } as never,
+      {
+        authorization: { assertAuthorized: vi.fn(async () => {}) },
+        logger,
+      },
+    )
   }
 
   beforeEach(() => {
@@ -485,6 +491,7 @@ describe('createRequirementsService', () => {
 
   afterEach(() => {
     infoSpy.mockRestore()
+    vi.unstubAllEnvs()
   })
 
   function emittedSecurityEvents(): Array<Record<string, unknown>> {
@@ -1367,6 +1374,64 @@ describe('createRequirementsService', () => {
     })
 
     expect(mocks.loadTaxonomy).not.toHaveBeenCalled()
+    expect(mocks.generateChat).not.toHaveBeenCalled()
+  })
+
+  it('does not call AI provider work when security scans disable MCP AI generation', async () => {
+    vi.stubEnv('AI_REQUIREMENT_GENERATION_DISABLED', '1')
+    const service = createTestRequirementsService()
+
+    await expect(
+      service.generateRequirements(
+        {
+          ...makeContext(),
+          source: 'mcp',
+          toolName: 'requirements_generate_requirements',
+        },
+        {
+          locale: 'sv',
+          topic: 'kapacitetshantering',
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: 'service_unavailable',
+      details: { reason: 'ai_generation_disabled' },
+      message: 'AI provider is unavailable',
+      status: 503,
+    })
+
+    expect(mocks.loadTaxonomy).not.toHaveBeenCalled()
+    expect(mocks.resolveOpenRouterModelCapabilities).not.toHaveBeenCalled()
+    expect(mocks.generateChat).not.toHaveBeenCalled()
+  })
+
+  it('does not call AI provider work when Admin Center disables MCP AI generation', async () => {
+    mocks.auditQuery.mockResolvedValueOnce([
+      { requirementGenerationEnabled: 0 },
+    ])
+    const service = createTestRequirementsService()
+
+    await expect(
+      service.generateRequirements(
+        {
+          ...makeContext(),
+          source: 'mcp',
+          toolName: 'requirements_generate_requirements',
+        },
+        {
+          locale: 'sv',
+          topic: 'kapacitetshantering',
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: 'service_unavailable',
+      details: { reason: 'ai_generation_disabled' },
+      message: 'AI provider is unavailable',
+      status: 503,
+    })
+
+    expect(mocks.loadTaxonomy).not.toHaveBeenCalled()
+    expect(mocks.resolveOpenRouterModelCapabilities).not.toHaveBeenCalled()
     expect(mocks.generateChat).not.toHaveBeenCalled()
   })
 

@@ -1,0 +1,38 @@
+name: Prodlike cleanup
+description: Stop the prodlike Next.js app, local IdP, and SQL Server services.
+
+inputs:
+  idp-down-command:
+    description: Command that stops the local IdP service.
+    required: false
+    default: npm run idp:down
+  results-dir:
+    description: Directory where prodlike-app.sh wrote app logs and pgid.
+    required: false
+    default: test-results
+  stop-database:
+    description: Whether to stop the local SQL Server service.
+    required: false
+    default: 'true'
+  stop-idp:
+    description: Whether to stop the local IdP service.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Stop prodlike app
+      continue-on-error: true
+      shell: bash
+      run: bash scripts/security/prodlike-app.sh stop "${{ inputs.results-dir }}"
+
+    - name: Stop IdP service
+      if: ${{ inputs.stop-idp == 'true' }}
+      shell: bash
+      run: ${{ inputs.idp-down-command }} || true
+
+    - name: Stop database service
+      if: ${{ inputs.stop-database == 'true' }}
+      shell: bash
+      run: npm run db:down || true

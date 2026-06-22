@@ -638,6 +638,19 @@ visas och försök skapa.
 
 **Förväntat resultat:** Resultat och skapa-knapp rensas när scope ändras.
 
+### REQ-16: Admin Center stänger av AI-kravgenerering
+
+**Steg:** Logga in som `Admin`, öppna `/sv/admin?tab=ai`, stäng av
+kravgenerering och spara. Öppna kravbiblioteket och kontrollera
+AI-knappen. Öppna därefter en redan öppen AI-dialog i en annan flik och
+försök generera.
+
+**Förväntat resultat:** Inställningen sparas, AI-knappen i kravbiblioteket är
+synlig men dimmad med förklarande text, dialogens Generera-knapp är dimmad och
+REST/MCP-generering returnerar otillgängligt utan leverantörsanrop. Om
+`AI_REQUIREMENT_GENERATION_DISABLED` är satt visar Admin Center att
+driftkonfigurationen har högre prioritet.
+
 ## Skapa krav och livscykel
 
 ### LIFE-01: skapa krav från UI

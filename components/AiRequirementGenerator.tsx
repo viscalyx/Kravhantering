@@ -28,6 +28,10 @@ import {
   modalResizableTextareaRows4ClassName,
 } from '@/components/modal-textarea-class'
 import {
+  type AiRequirementGenerationAvailability,
+  DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
+} from '@/lib/ai/generation-availability'
+import {
   type GeneratedRequirement,
   getDefaultInstruction,
   type TaxonomyData,
@@ -41,6 +45,7 @@ import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 // ---------------------------------------------------------------------------
 
 interface AiRequirementGeneratorProps {
+  aiGenerationAvailability?: AiRequirementGenerationAvailability
   areas: Array<{ id: number; name: string }>
   onClose: () => void
   onCreated: () => void
@@ -226,6 +231,7 @@ const DATA_POLICY_OPTIONS = [
 // ---------------------------------------------------------------------------
 
 export default function AiRequirementGenerator({
+  aiGenerationAvailability = DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
   areas,
   onClose,
   onCreated,
@@ -236,6 +242,13 @@ export default function AiRequirementGenerator({
   const locale = useLocale()
   const { confirm } = useConfirmModal()
   const shouldReduceMotion = useReducedMotion()
+  const isAiGenerationEnabled =
+    aiGenerationAvailability.effectiveRequirementGenerationEnabled
+  const aiGenerationDisabledMessage = !isAiGenerationEnabled
+    ? aiGenerationAvailability.disabledByEnvironment
+      ? t('generationDisabledByEnvironment')
+      : t('generationDisabledByAdmin')
+    : null
 
   // Input state
   const [topic, setTopic] = useState('')
@@ -665,7 +678,7 @@ export default function AiRequirementGenerator({
 
   // ── Generate ────────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
-    if (!topic.trim() || !areaId) return
+    if (!topic.trim() || !areaId || !isAiGenerationEnabled) return
 
     setPhase('thinking')
     setThinking('')
@@ -843,6 +856,7 @@ export default function AiRequirementGenerator({
       }
     }
   }, [
+    isAiGenerationEnabled,
     topic,
     areaId,
     model,
@@ -2263,6 +2277,14 @@ export default function AiRequirementGenerator({
                   </button>
                 )}
               </div>
+              {aiGenerationDisabledMessage ? (
+                <p
+                  className="text-center text-sm font-medium text-amber-800 sm:flex-1 sm:px-4 dark:text-amber-200"
+                  role="status"
+                >
+                  {aiGenerationDisabledMessage}
+                </p>
+              ) : null}
               <div className="flex w-full justify-center gap-2 sm:w-auto sm:justify-end">
                 {phase === 'done' && requirements.length > 0 && (
                   <button
@@ -2287,6 +2309,7 @@ export default function AiRequirementGenerator({
                   <button
                     className="min-h-11 w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50 sm:w-auto dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus-visible:ring-primary-400"
                     disabled={
+                      !isAiGenerationEnabled ||
                       !topic.trim() ||
                       !areaId ||
                       isBusy ||
@@ -2299,6 +2322,7 @@ export default function AiRequirementGenerator({
                       name: 'button',
                       value: 'generate',
                     })}
+                    title={aiGenerationDisabledMessage ?? undefined}
                     type="button"
                   >
                     <span className="flex items-center gap-2">

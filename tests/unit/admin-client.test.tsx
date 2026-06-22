@@ -630,6 +630,79 @@ describe('AdminClient', () => {
     )
   })
 
+  it('loads and saves AI settings from the AI tab', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=ai')
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        const method = init?.method ?? 'GET'
+        if (url === '/api/admin/ai-settings' && method === 'GET') {
+          return Promise.resolve(
+            okJson({
+              disabledByEnvironment: true,
+              effectiveRequirementGenerationEnabled: false,
+              requirementGenerationEnabled: true,
+            }),
+          )
+        }
+        if (url === '/api/admin/ai-settings' && method === 'PUT') {
+          return Promise.resolve(
+            okJson({
+              disabledByEnvironment: true,
+              effectiveRequirementGenerationEnabled: false,
+              requirementGenerationEnabled: false,
+            }),
+          )
+        }
+        return Promise.reject(new Error(`Unexpected fetch ${method} ${url}`))
+      },
+    )
+
+    render(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+      />,
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'admin.ai.title' }),
+    ).toBeVisible()
+    expect(screen.getByRole('tab', { name: 'admin.ai.title' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByText('admin.ai.environmentOverrideNotice')).toBeVisible()
+
+    const toggle = screen.getByLabelText(
+      'admin.ai.requirementGenerationEnabled',
+    )
+    const saveButton = screen.getByRole('button', { name: 'common.save' })
+    await waitFor(() => expect(toggle).toBeChecked())
+    expect(saveButton).toBeDisabled()
+
+    fireEvent.click(toggle)
+    expect(toggle).not.toBeChecked()
+    expect(saveButton).toBeEnabled()
+    fireEvent.click(saveButton)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/admin/ai-settings',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/admin/ai-settings' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    )
+    expect(
+      JSON.parse(((putCall?.[1] as RequestInit)?.body as string) ?? '{}'),
+    ).toEqual({ requirementGenerationEnabled: false })
+    await waitFor(() => expect(screen.getByText('admin.saved')).toBeVisible())
+  })
+
   it('loads and saves HSA-id prefixes from the identity tab', async () => {
     searchParamsMock.current = new URLSearchParams('tab=identity')
     fetchMock.mockImplementation(
@@ -808,6 +881,7 @@ describe('AdminClient', () => {
   it.each([
     ['tab=accessReview', 'admin.accessReview.title'],
     ['tab=actionAuditLog', 'admin.auditLog.title'],
+    ['tab=ai', 'admin.ai.title'],
   ])('falls back from unauthorized admin tab URL %s', (query, tabName) => {
     searchParamsMock.current = new URLSearchParams(query)
 
@@ -1826,6 +1900,7 @@ describe('AdminClient', () => {
 
     const disabledTabs = [
       ['admin.accessReview.title', 'admin.accessReview.disabledTooltip'],
+      ['admin.ai.title', 'admin.ai.disabledTooltip'],
       ['admin.archiving.title', 'admin.archiving.disabledTooltip'],
       ['admin.privacy.title', 'admin.privacy.disabledTooltip'],
       ['admin.auditLog.title', 'admin.auditLog.disabledTooltip'],
@@ -1872,12 +1947,17 @@ describe('AdminClient', () => {
     const actionAuditLogTab = screen.getByRole('tab', {
       name: 'admin.auditLog.title',
     })
+    const aiTab = screen.getByRole('tab', {
+      name: 'admin.ai.title',
+    })
 
     expect(actionAuditLogTab).toHaveAttribute('aria-disabled', 'true')
     expect(actionAuditLogTab).toHaveAttribute(
       'title',
       'admin.auditLog.disabledTooltip',
     )
+    expect(aiTab).toHaveAttribute('aria-disabled', 'true')
+    expect(aiTab).toHaveAttribute('title', 'admin.ai.disabledTooltip')
 
     fireEvent.click(accessReviewTab)
     expect(await screen.findByText('Kalle Svensson')).toBeVisible()

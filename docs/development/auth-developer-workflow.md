@@ -243,6 +243,19 @@ npm run test:integration -- tests/integration/admin-entrypoint.spec.ts
 ```
 <!-- markdownlint-enable MD013 -->
 
+### Full-scan temporary realm
+
+The full active ZAP workflow does not edit
+`dev/keycloak/realm-kravhantering-dev.json`. It generates a temporary realm
+import under `test-results/security-dast-full/keycloak` by running
+`scripts/security/create-full-scan-keycloak-realm.mjs`, then starts Keycloak
+with a compose override that imports `kravhantering-full-scan`.
+
+That realm contains a single throwaway browser user, `full.scan`, with the
+local `devpass` password and the roles needed for broad DAST coverage. The app
+is pointed at it only for the full-scan workflow through
+`AUTH_OIDC_ISSUER_URL=http://localhost:8080/realms/kravhantering-full-scan`.
+
 ### Prodlike local client (`kravhantering-prodlike`)
 
 The realm ships a second confidential web client dedicated to the

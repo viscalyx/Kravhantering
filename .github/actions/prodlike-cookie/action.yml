@@ -1,0 +1,38 @@
+name: Prodlike session cookie
+description: Acquire a local Keycloak browser session cookie for security scans.
+
+inputs:
+  app-base-url:
+    description: Base URL for the local prodlike app.
+    required: false
+    default: http://localhost:3001
+  username:
+    description: Local Keycloak username to authenticate.
+    required: true
+
+outputs:
+  cookie:
+    description: Validated session cookie in name=value form.
+    value: ${{ steps.session.outputs.cookie }}
+
+runs:
+  using: composite
+  steps:
+    - name: Acquire authenticated session cookie
+      id: session
+      shell: bash
+      env:
+        APP_BASE_URL: ${{ inputs.app-base-url }}
+      run: |
+        set -euo pipefail
+        COOKIE="$(node scripts/security/get-session-cookie.mjs "${{ inputs.username }}")"
+        if [ -z "${COOKIE}" ]; then
+          echo "Empty cookie returned from helper" >&2
+          exit 1
+        fi
+        echo "::add-mask::${COOKIE}"
+        {
+          echo "cookie<<COOKIE_EOF"
+          echo "${COOKIE}"
+          echo "COOKIE_EOF"
+        } >> "$GITHUB_OUTPUT"
