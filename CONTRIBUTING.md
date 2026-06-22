@@ -23,6 +23,31 @@ for setup, migrations, and the read-only browse workflow.
 Use [docs/auth-developer-workflow.md](docs/auth-developer-workflow.md)
 for local Keycloak setup and integration-test CI requirements.
 
+## Codex Worktrees
+
+The repository includes a Codex local environment in
+[`.codex/environments/environment.toml`](.codex/environments/environment.toml).
+When Codex starts a worktree, the setup script copies `.env.sqlserver` from the
+source checkout when present. If the source checkout does not have that local
+file, it creates one from `.env.sqlserver.example`.
+
+Codex worktree commands run through the dedicated Compose workflow in
+[`.codex/docker-compose.yml`](.codex/docker-compose.yml), so the host running
+the Codex app only needs Docker Compose. Node.js, npm, Playwright browser
+dependencies, dotenv-linter, and the other project command-line dependencies
+live in the Codex app container image from
+[`.codex/Dockerfile`](.codex/Dockerfile).
+
+Use the environment actions in the Codex app for the common local loops: start
+SQL Server and Keycloak, reset/migrate/seed the database, start the dev server,
+run unit tests, or run the full check suite.
+
+The Codex extension in VS Code uses the devcontainer environment instead. The
+devcontainers set `KRAV_DEVCONTAINER=1`, and agents should run `npm` commands
+directly there. The `.codex/compose.sh` wrapper is reserved for Codex App
+worktree automation and refuses to run from the devcontainer unless a Codex App
+environment action explicitly opts in.
+
 ## Available Scripts
 
 <!-- markdownlint-disable MD013 -->
