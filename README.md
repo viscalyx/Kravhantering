@@ -244,9 +244,8 @@ for required secrets, editor selection, and SCC requirements.
 
 ### Local development without devcontainers
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full local setup, including
-Node.js prerequisites, environment files, and database commands. The
-condensed flow is:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor checklist and links
+to the detailed development workflows. The condensed local flow is:
 
 ```bash
 npm install
@@ -277,8 +276,8 @@ failure policy, and tuning instructions.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup,
-database management, and coding guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor quick start,
+checklist, and links to detailed development workflows.
 
 ## License
 

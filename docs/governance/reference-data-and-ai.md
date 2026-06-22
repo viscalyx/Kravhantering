@@ -121,6 +121,33 @@ Sources: `lib/ai/openrouter-client.ts`,
 `lib/ai/openrouter-model-catalog.ts`, `lib/ai/requirement-prompt.ts`,
 `lib/ai/taxonomy.ts`
 
+### Local OpenRouter Setup
+
+AI-assisted requirement generation is disabled unless local OpenRouter
+credentials are present.
+
+1. Get an API key at <https://openrouter.ai/keys>.
+2. Add it to `.env.development.local`:
+
+   ```env
+   OPENROUTER_API_KEY=sk-or-v1-...
+   ```
+
+3. Optionally set `OPENROUTER_MGMT_API_KEY` when testing organization credit
+   display.
+4. Restart the dev server. The AI modal shows available models after the app can
+   read the configured key.
+
+Verify local setup against the app API:
+
+```bash
+scripts/dev-curl.sh -s /api/ai/models | jq '.models | length'
+scripts/dev-curl.sh -s /api/ai/credits | jq .
+```
+
+Do not commit real OpenRouter keys. Automated repository tests and security
+gates must not call live OpenRouter endpoints.
+
 ### OpenRouter Client Contracts
 
 **Timeout guarantees:**

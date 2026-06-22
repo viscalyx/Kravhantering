@@ -1,119 +1,78 @@
 # Contributing
 
-## Getting Started
+This file is the short entry point for contributors. Detailed setup and
+subsystem workflows live under `docs/development/`, `docs/integrations/`, and
+`docs/governance/`.
 
-This project uses a [Dev Container](https://containers.dev/) for a
-consistent development environment. Open the project in VS Code and
-use **Reopen in Container** to get started automatically.
+## Quick Start
 
-If VS Code prompts you to choose a configuration, use
-**Kravhantering Development** for the default container. If you need
-elevated container permissions (e.g. `SYS_ADMIN`, `seccomp=unconfined`)
-for VS Code agent sandboxing features, choose
-**Kravhantering Development (Elevated)** from
-[`.devcontainer/elevated/devcontainer.json`](.devcontainer/elevated/devcontainer.json).
+The default development environment is the VS Code Dev Container.
 
-If you prefer host-based development outside the dev container, install Node.js
-24.x, npm, and a Docker-compatible `docker compose` runtime. The default local
-workflow is `docker compose -f docker-compose.sqlserver.yml up -d`,
-`npm run db:setup`, then `npm run dev`.
+1. Open the repository in VS Code.
+2. Run **Dev Containers: Reopen in Container**.
+3. Use **Kravhantering Development** when VS Code asks for a configuration.
+4. Run `npm run dev`.
 
-Use [docs/development/sql-server-developer-workflow.md](docs/development/sql-server-developer-workflow.md)
-for setup, migrations, and the read-only browse workflow.
-Use [docs/development/auth-developer-workflow.md](docs/development/auth-developer-workflow.md)
-for local Keycloak setup and integration-test CI requirements.
+Use **Kravhantering Development (Elevated)** only when agent sandboxing needs
+extra container permissions such as `SYS_ADMIN` and `seccomp=unconfined`.
 
-## Available Scripts
-
-<!-- markdownlint-disable MD013 -->
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start Next.js development server |
-| `npm run dev:fresh` | Stop any running dev server, wipe `.next/`, and start `next dev` from a clean cache (use after pulling/branch-switching when route folders moved or when a route 404s despite the `page.tsx` existing) |
-| `npm run start:prodlike` | Rebuild and start the prod-like app on port 3001 (`NODE_ENV=production`) |
-| `npm run build` | Production build |
-| `npm run start` | Start the production server |
-| `npm run check` | Run all checks (TS, Python, dotenv, format, lint, tests) |
-| `npm run test` | Run unit tests with Vitest |
-| `npm run test:watch` | Run unit tests in watch mode |
-| `npm run test:coverage` | Run unit tests with coverage |
-| `npm run test:integration` | Run Playwright integration tests |
-| `npm run test:integration:prodlike` | Run Playwright against the built app |
-| `npm run lint` | Lint with Biome |
-| `npm run lint:fix` | Lint and auto-fix with Biome |
-| `npm run lint:py` | Type-check Python scripts with Pyright |
-| `npm run dotenv:check` | Check dotenv files with dotenv-linter |
-| `npm run dotenv:fix` | Auto-fix dotenv files with dotenv-linter |
-| `npm run format` | Format code with Biome |
-| `npm run spell` | Spell check with cspell |
-| `npm run lint:md` | Lint Markdown files |
-| `npm run fix` | Auto-fix formatting, linting, Markdown, and dotenv files |
-| `npm run type-check` | TypeScript type checking |
-<!-- markdownlint-enable MD013 -->
-
-`npm run build` and `npm run start:prodlike` require the configured
-`DATABASE_URL` to be available and initialized.
-
-## Local HTTPS development (devcontainer-only mkcert)
-
-This project is developed inside the VS Code Dev Container. The devcontainer
-includes `mkcert`; use it inside the container to create the HTTPS certs the
-app expects at `./certificates/localhost-key.pem` and
-`./certificates/localhost.pem`.
-
-1. `Reopen in Container` and open a shell inside the devcontainer.
-2. Generate certificates in the repository (writes to `./certificates`):
-
-<!-- markdownlint-disable MD013 -->
-```bash
-mkdir -p certificates
-mkcert -key-file ./certificates/localhost-key.pem -cert-file ./certificates/localhost.pem localhost 127.0.0.1 ::1
-```
-<!-- markdownlint-enable MD013 -->
-
->[!NOTE]
-> The repository's `.gitignore` already excludes `certificates` and `*.pem`.
-
-1. Start the HTTPS dev server inside the container:
-
-```bash
-npm run dev:https
-```
-
-> [!IMPORTANT]
-> This workflow is container-local and requires no host-side steps for the
->common devcontainer setups used by contributors. If your browser still
->warns about the certificate, you can export and import the container's CA
->root (`certificates/rootCA.pem`) into the host or browser trust store.
->If you prefer not to add certificates to any trust store, use `npm run dev`
->(HTTP) instead.
-
-## Stale `.next/` cache after route changes
-
-Turbopack's dev manifest is built from `.next/dev/` on first start. If you
-add, move, or rename a route folder under `app/` while the dev server is
-**off** (or while it's still cached from a previous `next build`), the
-new sibling routes may 404 even though the `page.tsx` exists on disk.
-The build manifest registers them, but Turbopack only re-scans the
-folders it already knew about.
-
-Symptoms:
-
-- `/sv/requirements/IDN0001` returns 200 but `/sv/requirements/IDN0001/4`
-  or `/sv/requirements/IDN0001/edit` returns 404.
-- `touch`-ing the affected `page.tsx` makes it work.
-
-Fix: start the dev server with a clean cache.
+Host-based development also works when Node.js 24, npm, and a Docker-compatible
+`docker compose` runtime are installed:
 
 ```sh
-npm run dev:fresh
+npm run db:up
+npm run db:setup
+npm run dev
 ```
 
-This is equivalent to `npm run kill:port && npm run clean && npm run dev`
-(stops any process on port 3000, removes `.next/` and `out/`, then runs
-`next dev`). Use it after a `git pull` or branch switch that reshuffles
-route folders. The plain `npm run dev` is preferred for the common case
-because it preserves Turbopack's incremental compile cache.
+Core setup docs:
+
+- [Dev Container workflow](docs/development/devcontainer-developer-workflow.md)
+- [SQL Server workflow](docs/development/sql-server-developer-workflow.md)
+- [Auth workflow](docs/development/auth-developer-workflow.md)
+- [Developer tools guide](docs/development/utvecklarguide.md)
+
+Alternative environments:
+
+- [GitHub Codespaces](docs/development/github-codespaces.md)
+- [OpenShift Dev Spaces](docs/development/openshift-devspaces.md)
+- [Remote SSH on RHEL 10](docs/development/remote-ssh-rhel10-development.md)
+
+## Contributor Checklist
+
+Before opening or updating a PR:
+
+- Run `npm run check` when feasible. If a narrower command is more appropriate,
+  state what you ran.
+- Add or update automated tests for changed behavior.
+- Update relevant `docs/**/*.md` when behavior, workflow, setup, or contracts
+  change.
+- For user-facing functionality, roles/permissions, reports, lifecycle, privacy,
+  admin behavior, or visible workflows, update
+  [manual test cases](docs/governance/manuella-testfall.md).
+- Keep secrets out of commits. Use `.env.*.local`, Dev Spaces Secrets, or the
+  organization's secret manager.
+- Follow the matching `.github/instructions/*.md` file for specialized areas
+  such as schema changes, translations, reports, Developer Mode, auth, and tests.
+
+## Common Commands
+
+<!-- markdownlint-disable MD013 -->
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the Next.js development server |
+| `npm run dev:fresh` | Restart development with a clean `.next/` cache after route-folder changes |
+| `npm run check` | Run the full local quality gate |
+| `npm run test` | Run unit tests |
+| `npm run test:integration` | Run Playwright integration tests |
+| `npm run test:integration:prodlike` | Run Playwright against the built prodlike app |
+| `npm run lint:fix` | Run Biome autofix |
+| `npm run fix` | Run formatting, lint, Markdown, dotenv, and spell fixers |
+| `npm run db:setup` | Reset, migrate, seed, and configure the local SQL Server database |
+<!-- markdownlint-enable MD013 -->
+
+Use [dependency workflow](docs/development/dependency-workflow.md) for
+`npm run purge:install` and package-install recovery details.
 
 ## Project Structure
 
@@ -132,165 +91,49 @@ docs/             Project documentation
 tests/            Unit and integration tests
 ```
 
-## Developer Mode / Developer Help
+## Key Development Docs
 
-The hidden Developer Mode overlay is a maintained developer-help surface for AI
-agents and humans who need stable UI names. If you change visible UI elements,
-labels, layout surfaces, or interaction patterns, update the relevant:
+- Database stack: [SQL Server workflow](docs/development/sql-server-developer-workflow.md)
+  and [database schema](docs/development/database-schema.md).
+- Auth and authenticated local HTTP calls:
+  [auth developer workflow](docs/development/auth-developer-workflow.md).
+- Developer Mode markers:
+  [Developer Mode overlay](docs/development/developer-mode-overlay.md).
+- MCP server:
+  [user guide](docs/integrations/mcp-server-user-guide.md) and
+  [contributor guide](docs/integrations/mcp-server-contributor-guide.md).
+- AI-assisted authoring and OpenRouter:
+  [reference data and AI](docs/governance/reference-data-and-ai.md).
+- Internationalization: translation strings live in [messages/](messages/), and
+  locale routes use `/sv/...` and `/en/...`.
 
-- `devMarker(...)` usage or scanner heuristics
-- [docs/development/developer-mode-overlay.md](docs/development/developer-mode-overlay.md)
-- unit and integration tests that cover the affected surface
-- repo instructions if the maintenance rule itself changes
+## Developer Mode
 
-The overlay runtime is provided by the upstream packages
-[`@viscalyx/developer-mode-core`][dm-core] and
-[`@viscalyx/developer-mode-react`][dm-react]. App code should use
-`devMarker(...)` from
-[`lib/developer-mode-markers.ts`](lib/developer-mode-markers.ts) instead of
-hardcoding `data-developer-mode-*` attributes directly. Local development
-enables the real Developer Mode runtime automatically. Production and prodlike
-builds alias both packages to first-party noop stubs in
-[`lib/runtime/`](lib/runtime/), so the overlay runtime and marker output are
-always excluded when `NODE_ENV=production`; `ENABLE_DEVELOPER_MODE=true` is
-ignored in that mode and logs a build-time warning. For local non-production
-experiments outside normal dev, `ENABLE_DEVELOPER_MODE=true` can opt in to the
-real runtime.
+Developer Mode gives visible UI surfaces stable English names for contributors,
+tests, and AI-assisted workflows. When changing visible UI surfaces, update the
+relevant `devMarker(...)` call sites or scanner heuristics and the tests that
+assert those surfaces.
 
-To enable Developer Mode in a browser, focus a non-editable part of the page and
-press `Command+Option+Shift+H` on macOS or `Ctrl+Alt+Shift+H` on Windows/Linux.
-See
-[docs/development/developer-mode-overlay.md][developer-mode-overlay-doc]
-for the contributor guide, naming rules, common marker names, and update
-checklist.
-
-[dm-core]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-core/README.md
-[dm-react]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-react/README.md
-[developer-mode-overlay-doc]: docs/development/developer-mode-overlay.md
-
-## Dependency Management
-
-### Purge Install
-
-The `npm run purge:install` script uses a **two-phase install**:
-
-1. Delete `node_modules`, clean cache, run `npm install`
-   (rebuilds the tree but may produce a corrupt lockfile)
-2. Delete `package-lock.json`, run `npm install` again
-   (regenerates a clean lockfile with `node_modules` present)
-
-<!-- cSpell:ignore EBADPLATFORM -->
-This works around an npm bug where platform-specific optional
-dependencies are written to the lockfile as `"extraneous"` instead
-of `"optional"` when `node_modules` is absent during resolution.
-A corrupt lockfile causes `npm ci` in CI to fail with `EBADPLATFORM`.
-
-Do **not** simplify `purge:install` into a single
-`rm -rf node_modules package-lock.json && npm install` — that
-reproduces the bug.
-
-## MCP Server
-
-The repository includes an MCP server for requirements management. Use these
-docs when working on it:
-
-- [docs/integrations/mcp-server-user-guide.md](docs/integrations/mcp-server-user-guide.md)
-- [docs/integrations/mcp-server-contributor-guide.md](docs/integrations/mcp-server-contributor-guide.md)
-
-MCP authentication is enforced for `/api/mcp`: clients must send
-`Authorization: Bearer <token>`.
-
-Authorization policy remains permissive until planned authorization lands.
-If you expose MCP outside local development, keep it on HTTPS and restrict
-platform or network access to approved MCP clients.
-
-## OpenRouter (AI Requirement Generation)
-
-The application uses **OpenRouter** as its AI backend for requirement
-generation. OpenRouter provides access to many reasoning models from
-multiple providers (Anthropic, Google, OpenAI, DeepSeek, Qwen, etc.)
-via a single API key.
-
-### Configuration
-
-| Variable                    | Default | Description                    |
-| --------------------------- | ------- | ------------------------------ |
-| `OPENROUTER_API_KEY`        | —       | OpenRouter API key             |
-| `OPENROUTER_MGMT_API_KEY`   | —       | Management key (org credits)   |
-| `NEXT_PUBLIC_DEFAULT_MODEL` | —       | Default model ID               |
-
-1. Get an API key at <https://openrouter.ai/keys>
-2. Add it to `.env.development.local`:
-
-   ```env
-   OPENROUTER_API_KEY=sk-or-v1-...
-   ```
-
-3. Restart the dev server — the AI modal will show available models.
-
-### Verifying the Setup
-
-```bash
-# List available models via the app's API
-curl -s http://localhost:3000/api/ai/models | jq '.models | length'
-
-# Check credit balance
-curl -s http://localhost:3000/api/ai/credits | jq .
-```
-
-## Internationalization
-
-The application supports **Swedish** (default) and **English**.
-Locale is determined by the URL prefix (`/sv/...` or `/en/...`).
-Translation strings are stored in [messages/](messages/).
+Update [Developer Mode overlay](docs/development/developer-mode-overlay.md) only
+when the naming policy, runtime wiring, common marker vocabulary, or contributor
+checklist changes.
 
 ## Database
 
-The database stack is **Microsoft SQL Server + TypeORM**.
+The only database stack is Microsoft SQL Server + TypeORM. Schema lives in
+`lib/typeorm/entities/`, migrations in `typeorm/migrations/`, and seed data in
+`typeorm/seed.mjs`.
 
-- Schema lives in TypeORM entities under `lib/typeorm/entities/`.
-- Migrations live in `typeorm/migrations/`.
-- Seed data lives in `typeorm/seed.mjs`.
-- The full developer setup, browse workflow, and CLI reference live in
-  [docs/development/sql-server-developer-workflow.md][sql-server-workflow-doc].
+For commands, browse workflow, migrations, and seed policy, use
+[SQL Server workflow](docs/development/sql-server-developer-workflow.md). For
+schema details, use [database schema](docs/development/database-schema.md).
 
-For the full schema reference, see
-[docs/development/database-schema.md](docs/development/database-schema.md). Status
-transitions are documented in
-[docs/governance/lifecycle-workflow.md][lifecycle-workflow-doc],
-and version lifecycle dates in
-[docs/governance/version-lifecycle-dates.md](docs/governance/version-lifecycle-dates.md).
+## MCP Server
 
-[sql-server-workflow-doc]: docs/development/sql-server-developer-workflow.md
-[lifecycle-workflow-doc]: docs/governance/lifecycle-workflow.md
+The repository includes an in-app MCP server for requirements management.
+Authentication is enforced for `/api/mcp`; clients must send
+`Authorization: Bearer <token>`.
 
-### Useful Commands
-
-Before using the host-side SQL Server scaffold, copy:
-
-```bash
-cp .env.sqlserver.example .env.sqlserver
-```
-
-Before rebuilding either devcontainer profile, copy:
-
-```bash
-cp .devcontainer/.env.example .devcontainer/.env
-```
-
-For the full `npm run db:*` command reference, see
-[docs/development/sql-server-developer-workflow.md](docs/development/sql-server-developer-workflow.md#sql-server-admin-commands).
-
-### Browsing the Local Database
-
-Use the SQLTools + MSSQL workflow described in
-[docs/development/sql-server-developer-workflow.md](docs/development/sql-server-developer-workflow.md).
-`npm run db:browse` prints a ready-to-paste read-only SQLTools connection block
-based on `DATABASE_READONLY_URL` or derived `DB_*` values.
-
-> [!Tip]
-> The default contributor path is:
->
-> 1. `npm run db:up`
-> 2. `npm run db:setup`
-> 3. `npm run dev`
+Use the MCP [user guide](docs/integrations/mcp-server-user-guide.md) and
+[contributor guide](docs/integrations/mcp-server-contributor-guide.md) when
+working on MCP behavior.
