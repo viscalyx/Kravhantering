@@ -87,19 +87,12 @@ Vanlig `curl` räcker inte för skyddade routes eftersom auth alltid är aktiv.
 
 ## HSA-id-uppslagsverktyg
 
-För lokala HSA-id-uppslag i devcontainer används `HSA_PERSON_LOOKUP_URL` mot
-Kong på `http://kong:8000/hsa/person-records/lookup`. Kong skickar vidare till
-`hsa-person-lookup-adapter`, som anropar SOAP-slutpunkten `GetHsaPerson` i
-HSA-katalogmocken med mTLS.
+För lokala HSA-id-uppslag i devcontainer används `HSA_PERSON_LOOKUP_URL`
+mot Kong, som skickar vidare till `hsa-person-lookup-adapter` och
+slutpunkten `GetHsaPerson` i HSA-katalogmocken.
 
-Använd följande kommandon när personuppslag eller Kong-routning behöver
-felsökas:
-
-```sh
-npm run devcontainer:kong:status
-npm run devcontainer:hsa-mock:status
-npm run devcontainer:hsa-mock:verify
-```
+Detaljerade felsökningskommandon för personuppslag och Kong-routning finns i
+[auth-developer-workflow.md][auth-hsa-lookup].
 
 Mermaid-diagrammen för autentisering mellan app och Kong samt för
 Kong-adapter-HSA-flödet finns i
@@ -112,6 +105,8 @@ applikationen:
 ```text
 http://localhost:3000/api-docs/hsa-person-lookup
 ```
+
+[auth-hsa-lookup]: ./auth-developer-workflow.md#local-hsa-id-lookup-support
 
 ## Test- och kvalitetsverktyg
 

@@ -198,15 +198,15 @@ gh codespace list
 gh codespace delete --codespace <name>
 ```
 
-## 8 — Connect the MCP server to ChatGPT (optional)
+## 8 — Expose the MCP endpoint for remote clients (optional)
 
 <!-- markdownlint-disable MD013 -->
 
 The dev server exposes an MCP endpoint at `/api/mcp`. Once the
 Codespace is running with a **public** forwarded port (see
-step 4), you can connect ChatGPT to it.
+step 4), external MCP clients can reach that endpoint.
 
-### Copy the Codespace URL
+### Build the remote endpoint URL
 
 1. Open the **Ports** tab in the Codespace editor.
 2. Copy the forwarded URL for port **3000**. It looks like
@@ -214,52 +214,17 @@ step 4), you can connect ChatGPT to it.
 3. Append `/api/mcp` to form the full endpoint, for example
    `https://<codespace-name>-3000.app.github.dev/api/mcp`.
 
-### Add the MCP server in ChatGPT
-
-1. Open [ChatGPT](https://chatgpt.com) in your browser (a
-   Plus, Team, or Enterprise plan is required for MCP
-   connectors).
-2. Click your profile icon in the top-right corner and
-   select **Settings**.
-3. In the left sidebar, click **Connectors** (under the
-   *Personalization* group).
-4. Click **Add connector** → **MCP Server**.
-5. Fill in the form:
-   - **Name:** `Kravhantering` (or any label you prefer)
-   - **URL:** paste the full Codespace MCP endpoint from
-     above, e.g.
-     `https://<codespace-name>-3000.app.github.dev/api/mcp`
-6. Click **Add** to save the connector.
-
-> **Visual reference:** OpenAI's documentation includes
-> screenshots of the connector setup — see
-> [Use remote MCP servers in ChatGPT](https://platform.openai.com/docs/guides/tools/mcp#use-remote-mcp-servers-in-chatgpt).
-
-### Use it in a chat
-
-1. Start a new ChatGPT conversation (or open an existing one).
-2. In the message composer, click the **tools** icon (wrench /
-   connector icon).
-3. Enable the **Kravhantering** connector or individual tools
-   from it.
-4. Ask a question, for example:
-   - `List all published requirements`
-   - `Show requirement INT0001`
-   - `List available requirement areas and categories`
-
-ChatGPT will call the MCP tools and display the results inline
-in the conversation.
-
 ### Important notes
 
 - The Codespace must be **running** and the dev server started
-  (`npm run dev`) for ChatGPT to reach the endpoint.
+  (`npm run dev`) for remote MCP clients to reach the endpoint.
 - The port must be set to **Public** (step 4). A private port
   returns authentication errors for external clients.
 - When you **stop** the Codespace, the MCP endpoint becomes
   unreachable. Restart it and verify the forwarded URL has not
-  changed before using ChatGPT again.
-- For the available MCP tools and usage tips, see
+  changed before using remote MCP clients again.
+- MCP requests must include the required Bearer token. For client
+  configuration, token setup, available tools, and usage examples, see
   [MCP Server User Guide](../integrations/mcp-server-user-guide.md).
 
 <!-- markdownlint-enable MD013 -->
@@ -306,9 +271,8 @@ workflows:
 
 - **`npm run db:setup` is idempotent** — safe to re-run at any
   time. It waits for, resets, migrates, and seeds the local SQL Server database.
-- **Port 3000 must be public** for external MCP clients
-  (ChatGPT, Copilot) to reach the endpoint. Private ports
-  return authentication errors.
+- **Port 3000 must be public** for remote MCP clients to reach the endpoint.
+  Private ports return authentication errors.
 - **MCP endpoint at `/api/mcp`** — available after the dev
   server starts (`npm run dev`).
 - **`npm run purge:install`** resets `node_modules` for a

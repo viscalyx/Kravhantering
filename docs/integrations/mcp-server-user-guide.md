@@ -160,6 +160,29 @@ TypeORM stack. For the full developer setup, see
 The server is implemented inside the Next.js app, so there is no separate MCP
 process to start.
 
+## Configure Remote MCP Clients
+
+Use the same Streamable HTTP endpoint shape for any MCP client that can send
+the required `Authorization: Bearer <token>` header:
+
+- Local development: `http://localhost:3000/api/mcp`
+- Deployed environments: `https://<public-origin>/api/mcp`
+- GitHub Codespaces:
+  `https://<codespace-name>-3000.app.github.dev/api/mcp`
+
+For Codespaces, port `3000` must be public and the dev server must be running.
+See [github-codespaces.md](../development/github-codespaces.md) for the
+Codespaces-specific forwarding workflow.
+
+For local development, obtain a dev MCP token with:
+
+```sh
+node scripts/security/get-mcp-token.mjs
+```
+
+Do not commit tokens to repository files. If a client cannot send the Bearer
+header, it cannot use the current protected MCP route.
+
 ## Configure Visual Studio Code
 
 Visual Studio Code supports MCP server configuration in `.vscode/mcp.json` for
