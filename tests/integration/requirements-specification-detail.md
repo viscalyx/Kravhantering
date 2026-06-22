@@ -73,13 +73,13 @@ flowchart TD
 
 ## opens the requirements specification edit dialog from the title action
 
-### Purpose: RFI Scope Controls
+### Purpose: Specification Edit Dialog
 
 Verifies that clicking "Redigera kravunderlag" opens the edit dialog, pre-fills
 the specification name, keeps `Spara` disabled until normalized metadata
 changes, and leaves the detail split-panel layout unchanged.
 
-### Step-by-Step Flow: RFI Scope Controls
+### Step-by-Step Flow: Specification Edit Dialog
 
 1. Navigate to `/sv/specifications/ETJANST-UPP-2026`.
 2. Assert the `h1` "Upphandling av e-tjänstplattform" heading is visible.
@@ -94,7 +94,7 @@ changes, and leaves the detail split-panel layout unchanged.
    still present.
 10. Revert `Namn` and assert `Spara` is disabled again.
 
-### Sequence Diagram: RFI Scope Controls
+### Sequence Diagram: Specification Edit Dialog
 
 ```mermaid
 sequenceDiagram

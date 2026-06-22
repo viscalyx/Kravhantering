@@ -309,7 +309,8 @@ export default function SpecificationRfiListPanel({
   }
 
   const createSuggestion = async () => {
-    if (!createSuggestionTarget || !suggestionContent.trim()) return
+    const trimmedSuggestionContent = suggestionContent.trim()
+    if (!createSuggestionTarget || !trimmedSuggestionContent) return
     const areaId =
       createSuggestionTarget.type === 'area'
         ? createSuggestionTarget.areaId
@@ -326,7 +327,7 @@ export default function SpecificationRfiListPanel({
         '/api/rfi-question-suggestions',
         jsonRequest('POST', {
           areaId,
-          content: suggestionContent,
+          content: trimmedSuggestionContent,
           rfiQuestionId,
           specificationId,
         }),

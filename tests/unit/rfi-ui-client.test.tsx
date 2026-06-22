@@ -769,7 +769,7 @@ describe('RFI client UI states', () => {
       screen.getByRole('textbox', {
         name: /specificationRfiList\.suggestionContent/,
       }),
-      'Add a question about log exports.',
+      '  Add a question about log exports.  ',
     )
     await userEvent.click(
       screen.getByRole('button', {
