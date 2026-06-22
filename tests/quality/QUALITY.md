@@ -61,7 +61,8 @@ The following do **not** count as meaningful coverage for this project:
 
 ### Scenario 1: published detail never leaks draft content
 
-**Requirement tag:** `[Req: formal — docs/mcp-server-contributor-guide.md "requirements_get_requirement"]`
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — docs/integrations/mcp-server-contributor-guide.md "requirements_get_requirement"]`
 
 **What happened:** The shared service deliberately selects the highest-numbered
 published version for `view: "detail"` in
@@ -86,7 +87,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 1: publishe
 
 ### Scenario 2: pending replacement blocks archiving
 
-**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Initiate archiving"]`
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — docs/governance/lifecycle-workflow.md "Initiate archiving"]`
 
 **What happened:** `initiateArchiving()` explicitly rejects archiving when a
 newer draft or review version exists in
@@ -110,7 +112,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 2: pending 
 <!-- markdownlint-disable-next-line MD013 -->
 ### Scenario 3: publishing a successor auto-archives its predecessor at the same instant
 
-**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Review -> Published"]`
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — docs/governance/lifecycle-workflow.md "Review -> Published"]`
 
 **What happened:** `transitionStatus()` sets `publishedAt` for the new version
 and auto-archives any older published version in the same path at
@@ -273,7 +276,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 22: package
 
 <!-- markdownlint-disable MD013 -->
 ```text
-[Req: formal — docs/lifecycle-workflow.md "Published -> Draft : New version created"]
+[Req: formal — docs/governance/lifecycle-workflow.md "Published -> Draft : New version created"]
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -300,7 +303,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 4: review a
 ### Scenario 5: archived requirements stay visible while a replacement draft exists
 
 **Requirement tag:**
-`[Req: formal — docs/version-lifecycle-dates.md "Effective Requirement Status"]`
+<!-- markdownlint-disable-next-line MD013 -->
+`[Req: formal — docs/governance/version-lifecycle-dates.md "Effective Requirement Status"]`
 
 **What happened:** The effective requirement status SQL in
 `lib/dal/requirements.ts:63-85` gives archived requirements higher priority
@@ -330,7 +334,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 5: archived
 
 <!-- markdownlint-disable MD013 -->
 ```text
-[Req: formal — docs/lifecycle-workflow.md "Deviation Effect on Usage Status"]
+[Req: formal — docs/governance/lifecycle-workflow.md "Deviation Effect on Usage Status"]
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -387,7 +391,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 7: needs-re
 ### Scenario 8: suggestion resolution is impossible without review
 
 **Requirement tag:**
-`[Req: formal — docs/lifecycle-workflow.md "Improvement Suggestion Lifecycle"]`
+`[Req: formal — docs/governance/lifecycle-workflow.md "Improvement Suggestion Lifecycle"]`
 
 **What happened:** `recordResolution()` requires
 `isReviewRequested === 1`, and `requestReview()` /
@@ -415,7 +419,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 8: suggesti
 **Requirement tag:**
 
 ```text
-[Req: formal — docs/lifecycle-workflow.md "Deviation Lifecycle"]
+[Req: formal — docs/governance/lifecycle-workflow.md "Deviation Lifecycle"]
 ```
 
 **What happened:** Both library and specification-local deviation mutations
@@ -443,7 +447,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 9: deviatio
 ### Scenario 10: MCP tool inventory matches documentation
 
 **Requirement tag:**
-`[Req: formal — docs/mcp-server-contributor-guide.md "Server Contract"]`
+`[Req: formal — docs/integrations/mcp-server-contributor-guide.md "Server Contract"]`
 
 **What happened:** The 2026-04-16 spec audit discovered that
 `lib/mcp/server.ts` registered 11 tools while both MCP guides still
@@ -467,7 +471,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 10: MCP too
 
 ### Scenario 11: stale draft edits are rejected before replacing latest content
 
-**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Draft"]`
+**Requirement tag:** `[Req: formal — docs/governance/lifecycle-workflow.md "Draft"]`
 
 **What happened:** Draft content is intentionally editable in place, but
 `editRequirement()` now requires the caller's `baseVersionId` and
@@ -496,7 +500,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 11: stale d
 <!-- markdownlint-disable-next-line MD013 -->
 ### Scenario 12a: concurrent initiateArchiving attempts are atomic and strictly targeted
 
-**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — docs/governance/lifecycle-workflow.md "Two-Step Archiving"]`
 
 **What happened:** `initiateArchiving()` in `lib/dal/requirements.ts` runs its
 precondition reads and writes inside a single `SERIALIZABLE` transaction with
@@ -524,7 +529,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12a: concur
 <!-- markdownlint-disable-next-line MD013 -->
 ### Scenario 12b: concurrent approveArchiving attempts are atomic and strictly targeted
 
-**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — docs/governance/lifecycle-workflow.md "Two-Step Archiving"]`
 
 **What happened:** `approveArchiving()` uses the same `SERIALIZABLE` +
 `UPDLOCK, HOLDLOCK` + conditional-update pattern and additionally targets
@@ -548,7 +554,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12b: concur
 <!-- markdownlint-disable-next-line MD013 -->
 ### Scenario 12c: concurrent approveArchiving vs cancelArchiving are atomic and strictly targeted
 
-**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — docs/governance/lifecycle-workflow.md "Two-Step Archiving"]`
 
 **What happened:** When `approveArchiving()` and `cancelArchiving()` race for
 the same requirement, the same serialization guards ensure exactly one
@@ -574,7 +581,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12c: concur
 <!-- markdownlint-disable-next-line MD013 -->
 ### Scenario 12d: strict-target behavior with manual state manipulation
 
-**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — docs/governance/lifecycle-workflow.md "Two-Step Archiving"]`
 
 **What happened:** `approveArchiving()` and `cancelArchiving()` filter on
 `archive_initiated_at IS NOT NULL`, so even if a newer Draft or Review version
@@ -602,7 +610,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12d: strict
 <!-- markdownlint-disable-next-line MD013 -->
 ### Scenario 12e: storage constraints reject duplicate archiving targets
 
-**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — docs/governance/lifecycle-workflow.md "Two-Step Archiving"]`
 
 **What happened:** A filtered unique index on `requirement_versions` prevents
 more than one row for the same requirement from having
@@ -624,7 +633,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12e: storag
 <!-- markdownlint-disable-next-line MD013 -->
 ### Scenario 12f: storage constraints reject duplicate Published versions
 
-**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — docs/governance/lifecycle-workflow.md "Two-Step Archiving"]`
 
 **What happened:** A filtered unique index on `requirement_versions` prevents
 more than one row for the same requirement from having
@@ -673,7 +683,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 13: specifi
 
 ### Scenario 14: action-log rows fail closed with the business transaction
 
-**Requirement tag:** `[Req: formal — docs/audit-log.md "Failure Mode"]`
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — docs/security-privacy/audit-log.md "Failure Mode"]`
 
 **What happened:** The application action log is now database-backed and
 fail-closed. If an implementation writes action-log rows after the business
@@ -682,10 +693,10 @@ review evidence. If details are not filtered, prompts or submitted free text
 can leak into audit metadata.
 
 **The requirement:** Mutating workflows that own a transaction must write the
-action-log row before the transaction resolves. Action-log write failure must roll
-back the logical mutation, and `details_json` must keep only bounded structured
-metadata. Validated `client_ip` values should persist as first-class audit
-metadata rather than being placed inside `details_json`.
+action-log row before the transaction resolves. Action-log write failure must
+roll back the logical mutation, and `details_json` must keep only bounded
+structured metadata. Validated `client_ip` values should persist as first-class
+audit metadata rather than being placed inside `details_json`.
 
 **How to verify:**
 
@@ -697,7 +708,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 14: action-
 
 ### Scenario 15: configurable status and risk icons use an allowlist and stay additive
 
-**Requirement tag:** `[Req: formal — docs/admin-center.md "Taxonomy And Statuses"]`
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — docs/governance/admin-center.md "Taxonomy And Statuses"]`
 
 **What happened:** Status and risk icons are admin-configurable presentation
 data. If unchecked icon strings reach the DAL, reports or client rendering can
@@ -824,7 +836,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 17: require
 
 ### Scenario 18: HSA-id prefixes stay UI guidance with a visible default rule
 
-**Requirement tag:** `[Req: formal — docs/admin-center.md "Identity"]`
+**Requirement tag:** `[Req: formal — docs/governance/admin-center.md "Identity"]`
 
 **What happened:** HSA-id-prefixes are admin-managed UI guidance, not HSA
 catalog data and not a server-side allowlist. If the prefix table became
@@ -898,7 +910,7 @@ npm exec -- vitest run tests/unit/requirements-assignment-authorization.test.ts
 ### Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions
 
 <!-- markdownlint-disable-next-line MD013 -->
-**Requirement tag:** `[Req: formal - docs/reports.md "Requirements Specification Field Profiles"]`
+**Requirement tag:** `[Req: formal - docs/governance/reports.md "Requirements Specification Field Profiles"]`
 
 **What happened:** Requirements specification reports and exports are now
 lifecycle-scoped outputs rather than row-selected list snapshots. They are
@@ -933,7 +945,7 @@ lib/reports/specification-profiles.ts:7-65
 show only the report profile matching the specification lifecycle status, and
 keep `Full CSV-export` always available while limiting `Anbuds-CSV` to
 `Upphandling`. Field inclusions and exclusions must stay documented in
-`docs/reports.md`.
+`docs/governance/reports.md`.
 
 **How to verify:**
 

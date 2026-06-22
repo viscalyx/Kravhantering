@@ -103,23 +103,25 @@ const AUTHORIZATION_RESPONSIBILITY_PEOPLE: Record<
 
 const MANUAL_CASE_LINKS = {
   'AUTH-03':
-    'docs/manuella-testfall.md#auth-03-anonym-api-begaran-ger-json-401',
+    'docs/development/manuella-testfall.md#auth-03-anonym-api-begaran-ger-json-401',
   'AUTH-06':
-    'docs/manuella-testfall.md#auth-06-admin-utan-dataskyddsroll-kan-inte-anvanda-dataskyddsflikar',
+    'docs/development/manuella-testfall.md#auth-06-admin-utan-dataskyddsroll-kan-inte-anvanda-dataskyddsflikar',
   'AUTH-07':
-    'docs/manuella-testfall.md#auth-07-dataskyddsansvarig-utan-adminbehorighet',
+    'docs/development/manuella-testfall.md#auth-07-dataskyddsansvarig-utan-adminbehorighet',
   'AUTH-08':
-    'docs/manuella-testfall.md#auth-08-anvandare-utan-roll-nekas-privilegierat-arbete',
+    'docs/development/manuella-testfall.md#auth-08-anvandare-utan-roll-nekas-privilegierat-arbete',
   'AUTH-10':
-    'docs/manuella-testfall.md#auth-10-behorighetsmatris-for-ansvarstilldelningar',
+    'docs/development/manuella-testfall.md#auth-10-behorighetsmatris-for-ansvarstilldelningar',
   'AUTH-11':
-    'docs/manuella-testfall.md#auth-11-playwrightfaser-for-behorighetsroller',
+    'docs/development/manuella-testfall.md#auth-11-playwrightfaser-for-behorighetsroller',
   'ADMIN-13':
-    'docs/manuella-testfall.md#admin-13-byte-av-kravomradesagare-anvander-hsa-id',
+    'docs/development/manuella-testfall.md#admin-13-byte-av-kravomradesagare-anvander-hsa-id',
   'LIFE-11':
-    'docs/manuella-testfall.md#life-11-detaljrapporter-finns-per-status',
-  'REQ-10': 'docs/manuella-testfall.md#req-10-rapport-fran-kravlistan-fungerar',
-  'SPEC-10': 'docs/manuella-testfall.md#spec-10-generera-kravunderlagsrapport',
+    'docs/development/manuella-testfall.md#life-11-detaljrapporter-finns-per-status',
+  'REQ-10':
+    'docs/development/manuella-testfall.md#req-10-rapport-fran-kravlistan-fungerar',
+  'SPEC-10':
+    'docs/development/manuella-testfall.md#spec-10-generera-kravunderlagsrapport',
 } as const
 
 export type ManualCaseId = keyof typeof MANUAL_CASE_LINKS

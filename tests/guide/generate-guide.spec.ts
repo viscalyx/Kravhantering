@@ -2,8 +2,8 @@
  * Kravhantering — automatisk guidegenerering
  *
  * Genererar en komplett användarguide med skärmdumpar och beskrivande text
- * på svenska. Skärmdumparna sparas i docs/guide/images/ och guiden skrivs
- * till docs/guide/README.md.
+ * på svenska. Skärmdumparna sparas i docs/user-guide/images/ och guiden skrivs
+ * till docs/user-guide/README.md.
  *
  * Kör med: npm run generate:guide
  *
@@ -50,8 +50,8 @@ const requirementPropertiesIntro = t('help.requirements.properties.body')
 
 // ─── Utdatasökvägar ────────────────────────────────────────────────────────
 
-const IMAGES_DIR = path.resolve('docs/guide/images')
-const README_PATH = path.resolve('docs/guide/README.md')
+const IMAGES_DIR = path.resolve('docs/user-guide/images')
+const README_PATH = path.resolve('docs/user-guide/README.md')
 
 // ─── Testdata ──────────────────────────────────────────────────────────────
 
@@ -168,7 +168,7 @@ function attachGuideDiagnostics(page: Page) {
 }
 
 function resetGuideImagesDir() {
-  const expectedImagesDir = path.resolve('docs/guide/images')
+  const expectedImagesDir = path.resolve('docs/user-guide/images')
   if (IMAGES_DIR !== expectedImagesDir) {
     throw new Error(
       `Refusing to clear unexpected guide images dir: ${IMAGES_DIR}`,
