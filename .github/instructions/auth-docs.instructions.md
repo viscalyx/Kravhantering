@@ -1,22 +1,22 @@
 ---
-applyTo: "{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib/auth/**/*.ts,lib/mcp/http.ts,lib/requirements/auth.ts,proxy.ts,tests/support/oidc-mock.ts,dev/keycloak/realm-kravhantering-dev.json,docs/auth-how-it-works.md,docs/auth-developer-workflow.md,docs/external-idp-handoff.md,docs/rhel10-production-deploy.md}"
+applyTo: "{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib/auth/**/*.ts,lib/mcp/http.ts,lib/requirements/auth.ts,proxy.ts,tests/support/oidc-mock.ts,dev/keycloak/realm-kravhantering-dev.json,docs/integrations/auth-how-it-works.md,docs/development/auth-developer-workflow.md,docs/integrations/external-idp-handoff.md,docs/operations/rhel10-production-deploy.md}"
 ---
 
 # Auth Docs
 
-- Update `docs/auth-how-it-works.md` whenever a change affects:
+- Update `docs/integrations/auth-how-it-works.md` whenever a change affects:
   - login, callback, logout, session, or `/api/auth/me` behaviour
   - proxy auth gating, session rejection, or header stripping
   - `/api/mcp` bearer-token authentication
   - required claims, role parsing, HSA-id validation, session-cookie contents,
     token validation, or security audit events
   - deployed hosting expectations or the OIDC provider contract described there
-- Update `docs/auth-developer-workflow.md` whenever a change affects:
+- Update `docs/development/auth-developer-workflow.md` whenever a change affects:
   - local Keycloak setup
   - auth env vars
   - mock IdP or local test workflow
   - local troubleshooting or smoke-test steps
-- Update `docs/external-idp-handoff.md` whenever an application change affects
+- Update `docs/integrations/external-idp-handoff.md` whenever an application change affects
   deploy-time IdP questions or configuration:
   - OIDC client registration, redirect URIs, logout URIs, scopes, audience,
     issuer, discovery, or environment split
@@ -25,9 +25,9 @@ applyTo: "{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib
   - MFA, assurance claims, token lifetimes, clock skew, token validation,
     sample-token expectations, TLS trust, initial app-admin provisioning, or
     optional MCP service-token clients
-- Keep `docs/rhel10-production-deploy.md` aligned when deployed IdP env vars,
+- Keep `docs/operations/rhel10-production-deploy.md` aligned when deployed IdP env vars,
   defaults, setup steps, or smoke checks change.
-- Keep Mermaid diagrams in `docs/auth-how-it-works.md` aligned with the
+- Keep Mermaid diagrams in `docs/integrations/auth-how-it-works.md` aligned with the
   implemented flow.
 - Keep deployed-provider wording generic unless the behaviour is explicitly
   local-Keycloak-specific.

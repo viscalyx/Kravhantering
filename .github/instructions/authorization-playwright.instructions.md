@@ -1,10 +1,10 @@
 ---
-applyTo: "{docs/manuella-testfall.md,tests/integration/authorization/**/*,tests/integration/global-setup.ts,tests/unit/playwright-global-setup.test.ts}"
+applyTo: "{docs/development/manuella-testfall.md,tests/integration/authorization/**/*,tests/integration/global-setup.ts,tests/unit/playwright-global-setup.test.ts}"
 ---
 
 # Authorization Playwright Tests
 
-- Keep `docs/manuella-testfall.md` and `tests/integration/authorization/**`
+- Keep `docs/development/manuella-testfall.md` and `tests/integration/authorization/**`
   synchronized for every authorization scenario.
 - Keep authorization Playwright coverage split by the ten documented phases:
   no-role/no-assignment baseline, six assignment-based permissions, `Admin`,

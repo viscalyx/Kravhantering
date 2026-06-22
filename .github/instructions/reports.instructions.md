@@ -65,6 +65,6 @@ applyTo: "{lib/reports/**/*,components/reports/**/*,app/[locale]/requirements/re
 
 ## After Changes
 
-- Update `docs/reports.md`
+- Update `docs/governance/reports.md`
 - Add translations to `messages/en.json` and `messages/sv.json`
 - Run `npm run check`
