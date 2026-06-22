@@ -344,7 +344,7 @@ podman compose \
 
 podman compose \
   -f docker-compose.idp.yml \
-  up -d idp
+  up --wait --wait-timeout 180 idp
 ```
 
 Do not run both Quadlet and Compose copies of the same service at the
@@ -365,7 +365,8 @@ to the same SQL Server database as the prod-like app. Use a separate
 database, volume, or checkout if you need to keep prod-like state intact.
 
 The npm scripts `db:up`, `db:down`, `idp:up`, and `idp:down` call
-`docker compose`. On this RHEL setup, prefer the direct
+`docker compose`. `idp:up` waits for Keycloak's OIDC discovery and JWKS
+endpoints before returning. On this RHEL setup, prefer the direct
 `podman compose` commands above unless `podman-docker` is installed and
 intentionally provides the `docker` shim.
 

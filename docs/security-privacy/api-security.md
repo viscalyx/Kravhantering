@@ -208,6 +208,9 @@ npm run idp:up
 npm run build:local-prod
 ```
 
+`npm run idp:up` waits for the local Keycloak realm's OIDC discovery and
+JWKS endpoints before returning.
+
 Start the app in another shell:
 
 ```bash

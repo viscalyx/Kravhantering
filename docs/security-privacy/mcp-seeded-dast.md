@@ -97,9 +97,9 @@ authorization checks without depending on assignment-specific seed rows.
 
 In GitHub Actions, the workflow sets
 `AUTH_OIDC_ISSUER_URL=http://127.0.0.1:8080/realms/kravhantering-dev` for this
-machine-to-machine scan and waits for both discovery and JWKS before starting
-the MCP corpus. Local browser-oriented prodlike runs can keep the default
-`localhost` issuer.
+machine-to-machine scan and relies on `npm run idp:reset` to wait for both
+discovery and JWKS before starting the MCP corpus. Local browser-oriented
+prodlike runs can keep the default `localhost` issuer.
 
 ## Artifacts
 

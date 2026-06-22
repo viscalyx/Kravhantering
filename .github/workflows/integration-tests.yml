@@ -64,22 +64,8 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Start local IdP service
+      - name: Start and wait for local IdP service
         run: npm run idp:up
-
-      - name: Wait for IdP to be ready
-        run: |
-          echo "Waiting for Keycloak to be ready..."
-          for i in $(seq 1 30); do
-            if curl -sf --max-time 5 http://localhost:8080/realms/kravhantering-dev/.well-known/openid-configuration > /dev/null 2>&1; then
-              echo "Keycloak is ready."
-              exit 0
-            fi
-            echo "Attempt $i/30 – not ready yet, retrying in 5s..."
-            sleep 5
-          done
-          echo "Keycloak did not become ready in time."
-          exit 1
 
       - name: Run Playwright tests against ${{ matrix.server }} server
         run: ${{ matrix.testCommand }}
@@ -145,22 +131,8 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Start local IdP service
+      - name: Start and wait for local IdP service
         run: npm run idp:up
-
-      - name: Wait for IdP to be ready
-        run: |
-          echo "Waiting for Keycloak to be ready..."
-          for i in $(seq 1 30); do
-            if curl -sf --max-time 5 http://localhost:8080/realms/kravhantering-dev/.well-known/openid-configuration > /dev/null 2>&1; then
-              echo "Keycloak is ready."
-              exit 0
-            fi
-            echo "Attempt $i/30 – not ready yet, retrying in 5s..."
-            sleep 5
-          done
-          echo "Keycloak did not become ready in time."
-          exit 1
 
       # Build with the full devDependency tree so Tailwind can resolve
       # `@import "@viscalyx/developer-mode-react/safelist.css"` from
