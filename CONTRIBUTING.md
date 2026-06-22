@@ -102,7 +102,11 @@ tests/            Unit and integration tests
 - MCP server:
   [user guide](docs/integrations/mcp-server-user-guide.md) and
   [contributor guide](docs/integrations/mcp-server-contributor-guide.md).
-- AI-assisted authoring and OpenRouter:
+- Report generation implementation:
+  [report generation workflow](docs/development/report-generation-developer-workflow.md).
+- AI-assisted authoring local setup and OpenRouter test policy:
+  [AI-assisted authoring workflow](docs/development/ai-assisted-authoring-developer-workflow.md).
+- AI-assisted authoring behavioral contracts:
   [reference data and AI](docs/governance/reference-data-and-ai.md).
 - Internationalization: translation strings live in [messages/](messages/), and
   locale routes use `/sv/...` and `/en/...`.

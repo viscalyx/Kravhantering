@@ -121,32 +121,8 @@ Sources: `lib/ai/openrouter-client.ts`,
 `lib/ai/openrouter-model-catalog.ts`, `lib/ai/requirement-prompt.ts`,
 `lib/ai/taxonomy.ts`
 
-### Local OpenRouter Setup
-
-AI-assisted requirement generation is disabled unless local OpenRouter
-credentials are present.
-
-1. Get an API key at <https://openrouter.ai/keys>.
-2. Add it to `.env.development.local`:
-
-   ```env
-   OPENROUTER_API_KEY=sk-or-v1-...
-   ```
-
-3. Optionally set `OPENROUTER_MGMT_API_KEY` when testing organization credit
-   display.
-4. Restart the dev server. The AI modal shows available models after the app can
-   read the configured key.
-
-Verify local setup against the app API:
-
-```bash
-scripts/dev-curl.sh -s /api/ai/models | jq '.models | length'
-scripts/dev-curl.sh -s /api/ai/credits | jq .
-```
-
-Do not commit real OpenRouter keys. Automated repository tests and security
-gates must not call live OpenRouter endpoints.
+Local OpenRouter setup and live-provider smoke guidance live in
+[ai-assisted-authoring-developer-workflow.md](../development/ai-assisted-authoring-developer-workflow.md).
 
 ### OpenRouter Client Contracts
 
@@ -179,25 +155,6 @@ resolved model supports `structured_outputs`, the request uses `json_schema`;
 otherwise it uses `json_object`. If the model catalog cannot be resolved, or
 the selected model is outside the eligible catalog, generation fails closed
 with the sanitized AI-provider-unavailable response.
-
-### OpenRouter Test Policy
-
-Automated repository tests and security gates do not call live OpenRouter
-endpoints. OpenRouter is an external service, and this project assumes the
-provider's published API works independently of the repository.
-
-The repo-owned responsibility is to verify the integration boundary:
-
-- request shape, model selection, response parsing, timeout handling, and error
-  handling with mocked network calls;
-- prompt and taxonomy generation behavior before a provider call is made;
-- disabled-provider behavior when OpenRouter credentials are absent;
-- sanitization so provider keys, prompts, SQL fragments, stack traces, and
-  other sensitive details are not written to scan artifacts.
-
-Do not add production OpenRouter keys or live provider calls to CI. A manual
-provider smoke test may be run outside CI when changing provider configuration
-or investigating an integration incident.
 
 ### Prompt Contracts
 

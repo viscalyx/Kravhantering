@@ -4,6 +4,9 @@ The report system generates requirement reports through two rendering engines:
 browser print HTML and server-side PDF rendering. Both engines share a template
 layer so report content changes apply to both.
 
+Implementation architecture and contributor workflow live in
+[report-generation-developer-workflow.md](../development/report-generation-developer-workflow.md).
+
 Version summaries include requirement package names when present. Blank or
 whitespace-only package names are ignored so report output does not show empty
 package entries.
@@ -245,42 +248,7 @@ CSV with the following conventions:
 Browser-created JSON evidence downloads use the same UTF-8 BOM download
 boundary. API JSON responses remain strict BOM-free JSON.
 
-## Architecture
-
-```text
-Shared Layer (engine-agnostic)
-  lib/reports/types.ts              Report model types
-  lib/reports/text-diff.ts          Word-level diff utility
-  lib/reports/data/                 Data fetching helpers
-  lib/reports/templates/            Template functions (data -> ReportModel)
-
-Browser Print Engine
-  components/reports/print/            PrintReportRenderer + CSS
-  app/[locale]/requirements/reports/print/     Route pages
-  app/[locale]/specifications/[slug]/reports/print/
-                                       Specification route pages
-
-Server PDF Engine
-  components/reports/pdf/              PdfReportRenderer
-  lib/pdf/server-response.tsx          React-PDF Node response helper
-  app/[locale]/requirements/reports/pdf/       Route handlers
-  app/[locale]/specifications/[slug]/reports/pdf/[profile]
-                                       Specification route handler
-  components/reports/pdf/useServerPdfDownload.tsx
-                                       Delayed client download UX
-```
-
-### Data Flow
-
-1. Route/page authorizes the requested report scope
-1. Route/page collects report data server-side
-1. Template function converts raw data into a `ReportModel` (array of typed
-   sections like header, diff, version-summary, timeline-entry, etc.)
-1. Engine-specific renderer consumes the `ReportModel` and produces output
-1. PDF routes return binary `application/pdf` responses with attachment
-   headers and `Cache-Control: no-store`
-
-### Authorization
+## Authorization
 
 Server PDF routes authorize before collecting report data. Requirement list
 PDFs are available to ordinary authenticated users, but collect only published
@@ -289,70 +257,6 @@ PDFs require history access for each requested requirement before any report
 data helper runs. Requirements specification profile PDFs authorize against the
 specification before collecting items and reject profiles that do not match the
 specification lifecycle status.
-
-Report builders and template functions stay pure. They receive already
-authorized report data and do not call the authorization service themselves.
-
-### Adding a New Report Type
-
-1. Create a template in `lib/reports/templates/` that returns a `ReportModel`
-2. Add route pages/handlers under both `app/.../reports/print/` and
-   `app/.../reports/pdf/`
-3. In server PDF handlers, authorize the report scope before collecting data
-4. Add menu items in the detail view or list view to open the report
-5. Add translations to both `messages/en.json` and `messages/sv.json`
-
-### Adding or Removing an Engine
-
-To remove: delete `components/reports/{engine}/` and
-`app/.../reports/{engine}/` routes, then remove the corresponding menu items.
-
-To add: create `components/reports/{engine}/` with a renderer that consumes
-`ReportModel`, add route pages under `app/.../reports/{engine}/`.
-
-## Route URL Patterns
-
-Print engine routes live under `.../reports/print/`, PDF engine routes
-under `.../reports/pdf/`.
-
-- **History**: `.../print/history/[id]` | `.../pdf/history/[id]`
-- **Review**: `.../print/review/[id]` | `.../pdf/review/[id]`
-- **List**: `.../print/list?ids=…` | `.../pdf/list?ids=…`
-- **Combined**: `.../print/review-combined?ids=…` |
-  `.../pdf/review-combined?ids=…`
-- **Suggestion History**:
-  `.../print/suggestion-history/[id]` |
-  `.../pdf/suggestion-history/[id]`
-
-All routes above are prefixed with `/[locale]/requirements/reports`.
-
-Requirements specification reports use a separate prefix
-`/[locale]/specifications/[slug]/reports`:
-
-- **Procurement requirements appendix**:
-  `.../print/procurement` | `.../pdf/procurement`
-- **Progress report**:
-  `.../print/progress` | `.../pdf/progress`
-- **Management report**:
-  `.../print/management` | `.../pdf/management`
-
-## Engines
-
-### Browser Print
-
-Opens a dedicated route in a new tab, renders the report as HTML/CSS, and
-triggers `window.print()`. The user saves as PDF via the browser's print
-dialog. Uses `@media print` CSS for page margins, page breaks, and hiding
-screen-only elements.
-
-### Server PDF
-
-Uses `@react-pdf/renderer` only from Node route handlers to render the shared
-report model to binary PDF. The browser never imports React-PDF, which keeps
-production CSP compatible with strict `script-src` values and avoids
-`unsafe-eval`/WebAssembly eval exceptions. The client download helper fetches
-the route as a blob, shows a temporary "Generating PDF..." modal after two
-seconds, and closes it as soon as the blob download is triggered.
 
 ## PDF Filenames
 
@@ -368,15 +272,6 @@ seconds, and closes it as soon as the blob download is triggered.
 - Suggestion History:
   `{localized label} {uniqueId}.pdf`
   (e.g., `Ändringsförslagshistorik ANV0022.pdf`)
-
-## Print Report Page Rendering
-
-- Print report routes are wrapped in a layout that forces light mode
-  rendering regardless of the app's dark mode setting.
-- The app navigation and footer are hidden on report pages, both on
-  screen and in print.
-- Styles are in `components/reports/print/print-styles.css` which is
-  imported by the reports layout.
 
 ## Archiving Reviews
 

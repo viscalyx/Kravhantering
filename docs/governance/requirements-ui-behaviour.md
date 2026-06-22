@@ -640,7 +640,8 @@ down.
   (the router adds it automatically); list view PDF downloads use the shared
   blob download helper.
 
-For report architecture details, see [reports.md](./reports.md).
+For report implementation details, see
+[report-generation-developer-workflow.md](../development/report-generation-developer-workflow.md).
 
 ## Improvement Suggestion Section
 

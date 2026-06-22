@@ -65,6 +65,9 @@ applyTo: "{lib/reports/**/*,components/reports/**/*,app/[locale]/requirements/re
 
 ## After Changes
 
-- Update `docs/governance/reports.md`
+- Update `docs/governance/reports.md` for report types, field profiles,
+  CSV/export contracts, authorization, filenames, and output behavior.
+- Update `docs/development/report-generation-developer-workflow.md` for
+  implementation architecture, route patterns, and engine workflow.
 - Add translations to `messages/en.json` and `messages/sv.json`
 - Run `npm run check`

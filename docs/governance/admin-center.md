@@ -3,8 +3,8 @@
 This document describes the contributor-facing admin center for default
 requirement-list columns, HSA-id prefix guidance, recurring access review,
 personal data erasure and data subject access export, archiving retention, and
-taxonomy/status entrypoints. Admin users also get an action-log entrypoint for
-database-backed mutation and authorization-denial review.
+taxonomy/status entrypoints. The page also includes an action-log entrypoint
+for database-backed mutation and authorization-denial review.
 
 For requirement-list interaction details such as resizing, sorting, and
 filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
@@ -37,18 +37,17 @@ The admin center currently has eight tabs for core administration:
 - `Action log`
 
 The `Action log` tab renders the action-log filters, table, pagination, and
-CSV export directly in the Admin Center for users with `Admin`.
-Users without the required role still see privileged tabs, but disabled tabs
-are dimmed, cannot be selected, and explain the missing role in a tooltip.
+CSV export directly in the Admin Center. Unavailable tabs are dimmed, cannot be
+selected, and explain the missing prerequisite in a tooltip.
 
 ## Action Log
 
-The action log is available at `/{locale}/admin/audit-log` for users with
-the `Admin` role, and also inline from the Admin Center `Action log` tab
-at `/{locale}/admin?tab=actionAuditLog`. It reads `action_audit_events`, shows
-the latest 50 events by default, supports filters for actor HSA-id, action,
-target, decision, and date range, plus client IP when a validated
-`X-Forwarded-For` value was available, and exports the filtered result as CSV.
+The action log is available at `/{locale}/admin/audit-log`, and also inline
+from the Admin Center `Action log` tab at
+`/{locale}/admin?tab=actionAuditLog`. It reads `action_audit_events`, shows the
+latest 50 events by default, supports filters for actor HSA-id, action, target,
+decision, and date range, plus client IP when a validated `X-Forwarded-For`
+value was available, and exports the filtered result as CSV.
 The CSV export follows the active locale for column headers and decision values,
 uses UTF-8 with BOM for Windows spreadsheet compatibility, and keeps action
 names, target kinds, request IDs and details JSON as stored evidence
@@ -83,9 +82,8 @@ Admin-managed column settings include:
 
 ## Identity
 
-The `Identity` tab is available for users with `Admin`. It manages
-HSA-id-prefix rows that are offered as UI guidance when users edit HSA-id
-assignments.
+The `Identity` tab manages HSA-id-prefix rows that are offered as UI guidance
+when users edit HSA-id assignments.
 
 The source of truth is:
 
@@ -161,31 +159,17 @@ Requirements list reset:
 
 ## Privacy
 
-The `Privacy` tab is available at `/{locale}/admin?tab=privacy` for users with
-`PrivacyOfficer`. It supports GDPR Article 17 erasure handling for actor
-identities and live assignments.
+The `Privacy` tab is available at `/{locale}/admin?tab=privacy`. It supports
+GDPR Article 17 erasure handling for actor identities and live assignments.
 After a successful preview it also supports data subject access export for the
-previewed HSA-id. JSON is the machine-readable authoritative payload, and PDF
-is a readable report of the same scope.
-
-Access is intentionally narrow:
-
-- canonical role: `PrivacyOfficer`
-- Swedish display label: `Dataskyddshandläggare`
-- the role may preview and execute privacy-erasure workflows
-- the role does not grant unrelated Admin powers
-
-Users without `PrivacyOfficer` still see the `Privacy` / `Dataskydd` tab in
-the Admin Center navigation, but it is dimmed, disabled, and carries a tooltip
-explaining that the role is required. The API routes remain the authoritative
+previewed HSA-id. JSON is the machine-readable authoritative payload, and PDF is
+a readable report of the same scope. The API routes remain the authoritative
 server-side guard, so manipulating the client cannot preview or execute erasure.
-In the dev realm, use `ada.admin` for combined admin + privacy testing and
-`only.admin` for Admin-only permission checks.
 
 The global Help button switches to Dataskydd-specific guidance while the
-Privacy tab is active. The guidance explains permissions, HSA-id matching,
-replacement handling, preview rows, action choices, execution status, audit
-logging, and limits. Each privacy form field also has inline help behind a
+Privacy tab is active. The guidance explains HSA-id matching, replacement
+handling, preview rows, action choices, execution status, audit logging, and
+limits. Each privacy form field also has inline help behind a
 question-mark icon so an operator can understand the expected input without
 leaving the workflow.
 
@@ -243,9 +227,7 @@ data in plain terms and does not show raw database fields, table names, schema
 keys, relation keys, or target fingerprints. Download filenames use a
 non-reversible target fingerprint and date, not the raw HSA-id. JSON downloads
 use UTF-8 with BOM for Windows text-tool compatibility, while API JSON responses
-remain BOM-free. The export route checks authorization server-side:
-the signed-in user may export their own HSA-id, while cross-user export requires
-`PrivacyOfficer`.
+remain BOM-free.
 
 Requirement-area ownership is direct HSA-id data on
 `requirement_areas.owner_hsa_id`, not a separate owner catalog. Preview rows for
@@ -293,15 +275,15 @@ presentation as the Admin Center export.
 
 ## Archiving
 
-The `Archiving` tab is available at `/{locale}/admin?tab=archiving` for users
-with `PrivacyOfficer`. Archive and retention work is separated from personal
-data erasure and data subject access export flows. Retention is also separate
-from the requirement lifecycle's functional `Archived` state.
+The `Archiving` tab is available at `/{locale}/admin?tab=archiving`. Archive
+and retention work is separated from personal data erasure and data subject
+access export flows. Retention is also separate from the requirement
+lifecycle's functional `Archived` state.
 
-A `PrivacyOfficer` can load documented retention policies, preview rows whose
-policy age and status criteria have passed, create row-level exceptions for
-legal hold or documented operational need, export archive evidence, and execute
-the accepted preview through `/api/admin/archiving/*`.
+The workflow loads documented retention policies, previews rows whose policy age
+and status criteria have passed, creates row-level exceptions for legal hold or
+documented operational need, exports archive evidence, and executes the accepted
+preview through `/api/admin/archiving/*`.
 
 V1 supports direct deletion after preview and confirmation for:
 
@@ -359,14 +341,13 @@ free-text payloads. Export responses and mutation responses use
 ## Access Review
 
 The `Access review` tab is available at
-`/{locale}/admin?tab=accessReview` for users with `Admin` or
-`PrivacyOfficer`. It supports the recurring authorization review required by
-the information security action plan. The feature inventories app-managed
-assignments, stores a point-in-time review run, assigns newly created runs to
-the signed-in actor from the verified IdP session, lets authorized handlers
-decide each item, cancel mistaken pending runs without deleting evidence, and
-export the review evidence as structured JSON or a PDF rendering of the same
-payload.
+`/{locale}/admin?tab=accessReview`. It supports the recurring authorization
+review required by the information security action plan. The feature
+inventories app-managed assignments, stores a point-in-time review run, assigns
+newly created runs to the signed-in actor from the verified IdP session, lets
+authorized handlers decide each item, cancel mistaken pending runs without
+deleting evidence, and export the review evidence as structured JSON or a PDF
+rendering of the same payload.
 
 The in-app scope is deliberately limited to permissions Kravhantering owns:
 
@@ -382,15 +363,6 @@ repository access, and externally provisioned MCP/client access are reviewed in
 the administration tools where those permissions are assigned. The access
 review run has an external evidence reference field so the in-app review can
 point to that external record.
-
-Access is role-aware:
-
-- `Admin` and `PrivacyOfficer` can create, list, decide, cancel, complete, and
-  export access review runs.
-- `Reviewer` alone does not grant access-review management, even when the
-  user's HSA-id appears as the stored reviewer snapshot on a run.
-- Other users receive a server-side authorization error even if they manipulate
-  the client.
 
 New runs default to an annual period and a due date 30 days after creation. Only
 one `draft` or `in_review` access review may exist at a time; the Admin Center
