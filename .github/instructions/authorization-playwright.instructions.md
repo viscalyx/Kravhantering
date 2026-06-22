@@ -1,5 +1,5 @@
 ---
-applyTo: "{docs/governance/manuella-testfall.md,tests/integration/authorization/**/*,tests/integration/global-setup.ts,tests/unit/playwright-global-setup.test.ts}"
+applyTo: "{docs/governance/manuella-testfall.md,tests/integration/authorization/**/*,!tests/integration/authorization/**/AGENTS.md,tests/integration/global-setup.ts,tests/unit/playwright-global-setup.test.ts}"
 ---
 
 # Authorization Playwright Tests

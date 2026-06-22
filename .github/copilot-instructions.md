@@ -30,7 +30,7 @@
 
 ## General Rules
 
-- After changes, update relevant `docs/*.md` when behavior or workflows change.
+- After changes, update relevant `docs/**/*.md` when behavior or workflows change.
 - When user-facing functionality, workflows, roles/permissions, visible UI,
   reports, privacy/export, lifecycle, or admin behavior changes, add or update
   the matching automated tests and `docs/governance/manuella-testfall.md` manual cases.

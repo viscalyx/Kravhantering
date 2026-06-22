@@ -882,7 +882,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 18: HSA-id 
 
 ### Scenario 19: assignment RBAC denies hidden broad access
 
-**Requirement tag:** `[Req: formal - docs/adr/0012-uppdragsbaserad-rbac.md]`
+**Requirement tag:** `[Req: formal — docs/adr/0012-uppdragsbaserad-rbac.md]`
 
 **What happened:** The old authorization boundary could fall back to broad
 allow-all behavior for requirement workflows. With assignment RBAC, decisions
@@ -910,7 +910,7 @@ npm exec -- vitest run tests/unit/requirements-assignment-authorization.test.ts
 ### Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions
 
 <!-- markdownlint-disable-next-line MD013 -->
-**Requirement tag:** `[Req: formal - docs/governance/reports.md "Requirements Specification Field Profiles"]`
+**Requirement tag:** `[Req: formal — docs/governance/reports.md "Requirements Specification Field Profiles"]`
 
 **What happened:** Requirements specification reports and exports are now
 lifecycle-scoped outputs rather than row-selected list snapshots. They are

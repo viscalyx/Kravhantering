@@ -164,7 +164,7 @@ maintenance rule.
   `lib/reports/specification-profiles.ts`, and specification report/export
   routes.
 - **Spec:** `docs/governance/reports.md` and `docs/governance/requirements-ui-behaviour.md`.
-- **Req tag:** `[Req: formal - docs/governance/reports.md
+- **Req tag:** `[Req: formal — docs/governance/reports.md
   "Requirements Specification Field Profiles"]`
 - **Question:** Do specification reports use linked requirement versions,
   cover the whole specification, expose only lifecycle-matching report
