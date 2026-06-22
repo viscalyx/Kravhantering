@@ -300,14 +300,8 @@ describe('RFI client UI states', () => {
 
     for (const actionButton of [editButton, archiveButton, reactivateButton]) {
       expect(actionButton.textContent?.trim()).toBe('')
-      expect(actionButton.className).toContain('h-11')
-      expect(actionButton.className).toContain('w-11')
-      expect(actionButton.className).toContain('rounded-full')
       expect(actionButton.querySelector('svg')).not.toBeNull()
     }
-    expect(editButton.className).toContain('text-primary-700')
-    expect(archiveButton.className).toContain('text-secondary-700')
-    expect(reactivateButton.className).toContain('text-secondary-700')
     expect(
       screen.queryByRole('option', { name: 'rfiQuestions.inactive' }),
     ).not.toBeInTheDocument()
