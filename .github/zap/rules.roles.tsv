@@ -8,6 +8,7 @@
 # a role-specific signal is intentionally different.
 
 10035	IGNORE	Strict-Transport-Security only relevant on HTTPS production hosts.
+10106	IGNORE	HTTP Only Site only relevant on HTTPS production hosts; CI scans localhost over HTTP.
 10038	IGNORE	CSP header tested at the edge proxy, not on localhost CI build.
 10063	IGNORE	Permissions-Policy header set by the production proxy.
 10096	IGNORE	Timestamp disclosure: noisy on Next.js bundle hashes.

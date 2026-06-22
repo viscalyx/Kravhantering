@@ -430,7 +430,7 @@ Current static headers and rationale:
 - `X-Content-Type-Options: nosniff` — disable MIME sniffing.
 - `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
   — applied in production; the prodlike CI runner serves over plain
-  HTTP and ZAP rule `10035` is suppressed accordingly.
+  HTTP and ZAP rules `10035` and `10106` are suppressed accordingly.
 - `Referrer-Policy: strict-origin-when-cross-origin` — minimal
   referrer leakage on outbound navigation.
 - `Cross-Origin-Opener-Policy: same-origin` — isolates the top-level

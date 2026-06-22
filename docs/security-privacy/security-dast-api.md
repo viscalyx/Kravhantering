@@ -34,6 +34,11 @@ cookie injected through the ZAP replacer add-on.
 The workflow uploads the ZAP reports, generated OpenAPI JSON, and app log. ZAP
 built-in issue writing stays disabled; findings are reviewed from artifacts.
 
+The API rules file keeps localhost-only transport warnings non-blocking. Rule
+`100001` is downgraded to artifact-only because active API probing can generate
+unknown page and API paths that return framework `404` responses outside the
+filtered OpenAPI contract.
+
 ## Adding Operations
 
 Add operations only when they are safe for active API probes against the

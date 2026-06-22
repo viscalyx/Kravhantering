@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 const WORKFLOWS_DIR = path.join(process.cwd(), '.github', 'workflows')
 const ACTIONS_DIR = path.join(process.cwd(), '.github', 'actions')
+const ZAP_DIR = path.join(process.cwd(), '.github', 'zap')
 const FULL_COMMIT_SHA = /^[a-f0-9]{40}$/iu
 const USES_LINE = /^\s*uses:\s*([^#\s]+)(?:\s+#\s*(.+))?\s*$/u
 const PERSIST_CREDENTIALS_FALSE_LINE =
@@ -42,6 +43,22 @@ function isLocalOrContainerReference(reference: string) {
     reference.startsWith('../') ||
     reference.startsWith('docker://')
   )
+}
+
+function readZapRules(fileName: string) {
+  const rules = new Map<string, string>()
+  const content = readFileSync(path.join(ZAP_DIR, fileName), 'utf8')
+
+  for (const line of content.split(/\r?\n/u)) {
+    if (!line.trim() || line.trimStart().startsWith('#')) continue
+
+    const [ruleId, action] = line.split('\t')
+    if (ruleId && action) {
+      rules.set(ruleId, action)
+    }
+  }
+
+  return rules
 }
 
 function disablesCheckoutCredentialPersistence(
@@ -147,6 +164,19 @@ describe('GitHub Actions workflow security', () => {
     expect(roleDastWorkflow).toContain(
       'Refusing to run ZAP role scan against target',
     )
+  })
+
+  it('keeps localhost-only ZAP warnings non-blocking', () => {
+    for (const fileName of [
+      'rules.api.tsv',
+      'rules.full.tsv',
+      'rules.prodlike.tsv',
+      'rules.roles.tsv',
+    ]) {
+      expect(readZapRules(fileName).get('10106')).toBe('IGNORE')
+    }
+
+    expect(readZapRules('rules.api.tsv').get('100001')).toBe('INFO')
   })
 
   it('keeps the fork-compatible operator upgrade gate on trusted base code', () => {
