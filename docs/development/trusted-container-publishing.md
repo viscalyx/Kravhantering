@@ -257,15 +257,20 @@ release-guide diagrams under `docs/images/`. Use `public/` only for content
 that the deployed Next.js application intentionally serves at runtime, because
 the app-runtime image copies that directory into the container.
 
-See [rhel10-production-deploy.md](./rhel10-production-deploy.md) for the
-enterprise app-node workflow with external SQL Server and external IdP. See
-[rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md)
+See
+[rhel10-production-deploy.md](../operations/rhel10-production-deploy.md) for
+the enterprise app-node workflow with external SQL Server and external IdP.
+See
+[rhel10-production-single-node-self-contained-deploy.md](../operations/rhel10-production-single-node-self-contained-deploy.md)
 for the self-contained single-node workflow with bundled SQL Server and
 Keycloak.
 The bundle also includes the matching topology-specific disconnected guides,
 upgrade guides and uninstall guides. The disconnected guides document how
 operators create a transferable bundle that contains the production deployment
 archive, its checksum, exported images, image refs and hashes.
+
+Operator verification of published release evidence is documented in
+[Release Artifact And Image Verification](../operations/release-artifact-and-image-verification.md).
 
 ## Public GHCR Packages
 
@@ -331,33 +336,3 @@ Do not add a registry-pushed `cosign sign` step to this flow unless the
 signatures are deliberately stored outside the runnable image packages. Cosign's
 default registry storage creates digest-derived signature tags that GHCR can
 display as recent package versions.
-
-## Verification
-
-Release notes contain the `Container Images` section and immutable manifest
-digest references. Use the semantic tags for normal pulls and the manifest
-digest references for verification. A user can verify a published app image
-with:
-
-<!-- markdownlint-disable MD013 -->
-```bash
-gh attestation verify \
-  oci://ghcr.io/<owner>/kravhantering-app-runtime@sha256:<digest> \
-  --repo <owner>/<repo> \
-  --signer-workflow <owner>/<repo>/.github/workflows/container-release.yml
-```
-<!-- markdownlint-enable MD013 -->
-
-Use the corresponding `db-job` manifest digest reference from the release notes
-to verify the `db-job` image. Production runtime verification is separate:
-after choosing site-specific tag-style image refs in `release.env`, pull those
-refs when the host can reach the registry, then run the bundled
-`bin/kravhantering-images.sh verify` command for the target topology to compare
-Podman image inspect `.Id` values with the locked `imageId` values. The
-test-only `single-node-demo` topology uses both `container-stack.lock.json` and
-`container-test-support.lock.json`; production topologies use only
-`container-stack.lock.json`. Third-party upstream tags can move after release,
-so production sites should prefer
-release-specific internal mirror tags and treat the lock file as the source of
-truth. For disconnected transport, export only after the source host has
-already pulled and verified the local refs.

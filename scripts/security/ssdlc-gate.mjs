@@ -89,7 +89,7 @@ export const SECURITY_SENSITIVE_PATH_RULES = [
       '.github/pull_request_template.md',
       'SECURITY.md',
       'docs/security-privacy/security-ci.md',
-      'docs/operations/container-release-workflow.md',
+      'docs/development/trusted-container-publishing.md',
       'scripts/security/**',
       'scripts/release/**',
       'scripts/containers/**',
