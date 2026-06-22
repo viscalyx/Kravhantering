@@ -128,6 +128,11 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `navigation > button: collapse rail`. The mobile drawer controls use
   `navigation > button: open mobile drawer` and
   `navigation > button: close mobile drawer`.
+- The expanded desktop side rail uses a compact width while keeping labels
+  visible; this does not change the marker contract.
+- Side navigation utility controls keep the same icon footprint as primary
+  navigation entries while reusing their existing language, theme, and auth
+  marker values.
 - Auth account-detail rows keep their developer-mode values in English
   as `user info name`, `user info email`, `user info subject`, and
   `user info session expires` even when the visible labels are
@@ -241,6 +246,25 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   Search, area/status filters, edit buttons, question-form requirement-area
   descriptions and lock hints, answer row reorder handles, and health badges
   render inside the existing `requirementSelectionQuestions` form/list surfaces.
+- RFI questions expose their create trigger in the fixed
+  `floating action rail` as
+  `rfiQuestions > floating pill: new RFI question`. The RFI question form opens
+  in the shared `dialog: new RFI question` or `dialog: edit RFI question`
+  surface. Requirement-area group headers render as
+  `rfiQuestions > requirement area heading: <prefix>`, and compact question
+  rows render as `rfiQuestions > question disclosure: <question code>`. The
+  row-level edit, archive, and reactivate icon buttons render as
+  `rfiQuestions > question action: <question code> edit|archive|reactivate`
+  only when the actor can author RFI questions in the row's requirement area.
+  RFI question suggestion indicators on area headers and question rows render
+  as `rfiQuestions > suggestion indicator: area <prefix> untreated|handled` and
+  `rfiQuestions > suggestion indicator: question <question code>
+  untreated|handled`; the treatment modal uses the shared
+  `dialog: RFI question suggestions` surface.
+- Specification RFI question list controls expose `rfi list action:
+  included-only filter`, `rfi list area scope: <requirement area>`, and
+  `rfi list question scope: <RFI question code>` for the transient included-only
+  filter and the `Ingår i RFI` switches.
 - Requirements specification list requirement-area labels render as compact,
   non-interactive pills inside a constrained column in the existing
   `specifications > crud table` surface; they do not add separate developer-mode

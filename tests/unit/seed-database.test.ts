@@ -461,6 +461,47 @@ describe('seed profiles', () => {
     )
   })
 
+  it('seeds demo RFI question suggestions across workflow states', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+
+    await seedDemoDatabase(executor)
+
+    const rfiQuestionSuggestions = rowById(
+      seedRowsFor(rows, 'rfi_question_suggestions'),
+    )
+
+    expect(rfiQuestionSuggestions.get(1)).toMatchObject({
+      is_review_requested: 0,
+      resolution: null,
+      rfi_question_id: 1,
+      specification_id: 1,
+    })
+    expect(rfiQuestionSuggestions.get(2)).toMatchObject({
+      is_review_requested: 0,
+      resolution: null,
+      rfi_question_id: null,
+      specification_id: 1,
+    })
+    expect(rfiQuestionSuggestions.get(3)).toMatchObject({
+      is_review_requested: 1,
+      resolution: null,
+      rfi_question_id: 2,
+      specification_id: 1,
+    })
+    expect(rfiQuestionSuggestions.get(4)).toMatchObject({
+      is_review_requested: 1,
+      resolution: 1,
+      rfi_question_id: 3,
+      specification_id: 1,
+    })
+    expect(rfiQuestionSuggestions.get(5)).toMatchObject({
+      is_review_requested: 1,
+      resolution: 2,
+      rfi_question_id: null,
+      specification_id: 1,
+    })
+  })
+
   it('seeds local responsibility people from live assignments and HSA mock details', async () => {
     const { executor, rows } = collectSeedInsertRows()
 

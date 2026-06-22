@@ -211,6 +211,7 @@ const mockUpdateReqArea = vi.fn()
 const mockDeleteReqArea = vi.fn()
 vi.mock('@/lib/dal/requirement-areas', () => ({
   listAreas: async () => [{ id: 1, ownerHsaId: 'SE5560000001-route' }],
+  listAreaIdsActorCanAuthor: async () => [1],
   canAuthorAnyArea: (...a: unknown[]) =>
     requirementAreaPermissionState.canAuthorAnyArea(...a),
   canAuthorArea: (...a: unknown[]) =>

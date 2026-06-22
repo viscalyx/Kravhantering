@@ -18,6 +18,7 @@ import {
 import { parseSearchParams } from '@/lib/http/validation'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
+import { unauthorizedError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { authorize } from '@/lib/requirements/service-shared'
@@ -40,27 +41,19 @@ export async function GET(request: NextRequest) {
     rfiQuestionSuggestionQuerySchema,
   )
   if (!parsedQuery.ok) return parsedQuery.response
-  if (parsedQuery.data.areaId == null) {
-    return NextResponse.json(
-      { error: 'areaId is required' },
-      { headers: { 'Cache-Control': 'no-store' }, status: 400 },
-    )
-  }
 
   const runtime = await createRequirementsRestRuntime(request)
   try {
-    await authorize(
-      runtime.authorization,
-      {
-        areaId: parsedQuery.data.areaId,
-        kind: 'manage_rfi_question_suggestion',
-        operation: 'list',
-      },
-      runtime.context,
-    )
-    const suggestions = await listRfiQuestionSuggestions(runtime.db, {
-      areaId: parsedQuery.data.areaId,
-    })
+    const suggestions =
+      parsedQuery.data.areaId == null
+        ? await listAuthorizedSuggestions(
+            runtime,
+            parsedQuery.data.specificationId,
+          )
+        : await listSuggestionsForArea(runtime, {
+            areaId: parsedQuery.data.areaId,
+            specificationId: parsedQuery.data.specificationId,
+          })
     return applyResponseCorrelationHeaders(
       NextResponse.json(
         { suggestions },
@@ -74,6 +67,64 @@ export async function GET(request: NextRequest) {
       runtime.context,
     )
   }
+}
+
+async function listSuggestionsForArea(
+  runtime: Awaited<ReturnType<typeof createRequirementsRestRuntime>>,
+  options: { areaId: number; specificationId?: number },
+) {
+  await authorize(
+    runtime.authorization,
+    {
+      areaId: options.areaId,
+      kind: 'manage_rfi_question_suggestion',
+      operation: 'list',
+    },
+    runtime.context,
+  )
+  return listRfiQuestionSuggestions(runtime.db, options)
+}
+
+async function listAuthorizedSuggestions(
+  runtime: Awaited<ReturnType<typeof createRequirementsRestRuntime>>,
+  specificationId?: number,
+) {
+  if (!runtime.context.actor.isAuthenticated) {
+    throw unauthorizedError()
+  }
+
+  const suggestions = await listRfiQuestionSuggestions(runtime.db, {
+    specificationId,
+  })
+  if (runtime.context.actor.roles.includes('Admin')) return suggestions
+
+  const authorizedAreaIds = new Set<number>()
+  const deniedAreaIds = new Set<number>()
+  for (const suggestion of suggestions) {
+    if (authorizedAreaIds.has(suggestion.areaId)) continue
+    if (deniedAreaIds.has(suggestion.areaId)) continue
+
+    try {
+      await authorize(
+        runtime.authorization,
+        {
+          areaId: suggestion.areaId,
+          kind: 'manage_rfi_question_suggestion',
+          operation: 'list',
+        },
+        runtime.context,
+      )
+      authorizedAreaIds.add(suggestion.areaId)
+    } catch (error) {
+      const { status } = toHttpErrorPayload(error)
+      if (status !== 403) throw error
+      deniedAreaIds.add(suggestion.areaId)
+    }
+  }
+
+  return suggestions.filter(suggestion =>
+    authorizedAreaIds.has(suggestion.areaId),
+  )
 }
 
 const createPolicy = {

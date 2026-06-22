@@ -2,8 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createRfiQuestion,
   createRfiQuestionSuggestion,
+  deleteRfiQuestionSuggestion,
+  listRfiQuestionSuggestions,
   lockSpecificationRfiList,
   updateRfiQuestion,
+  updateSpecificationRfiAreaScope,
   updateSpecificationRfiQuestionItem,
 } from '@/lib/dal/rfi-questions'
 
@@ -369,6 +372,95 @@ describe('RFI questions DAL', () => {
     ).toBe(false)
   })
 
+  it('updates all RFI question scope in an area atomically', async () => {
+    const { db, managerQuery, transaction } = createTransactionalDb({
+      managerResponses: [
+        [],
+        [
+          {
+            isLocked: 0,
+            lockedAt: null,
+            lockedByDisplayName: null,
+            lockedByHsaId: null,
+            specificationId: 4,
+          },
+        ],
+        [{ id: 2 }],
+        [],
+      ],
+      queryResponses: [
+        [
+          {
+            isLocked: 0,
+            lockedAt: null,
+            lockedByDisplayName: null,
+            lockedByHsaId: null,
+            specificationId: 4,
+          },
+        ],
+        [],
+      ],
+    })
+
+    const result = await updateSpecificationRfiAreaScope(
+      db as unknown as Parameters<typeof updateSpecificationRfiAreaScope>[0],
+      4,
+      2,
+      false,
+      actor,
+    )
+
+    expect(transaction).toHaveBeenCalledWith(expect.any(Function))
+    const mergeCall = managerQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('MERGE specification_rfi_question_items'),
+    )
+    expect(String(mergeCall?.[0])).toContain('question.area_id = @1')
+    expect(String(mergeCall?.[0])).toContain('question.is_archived = 0')
+    expect(String(mergeCall?.[0])).toContain('is_included = @2')
+    expect(mergeCall?.[1]).toEqual([4, 2, 0, actor.hsaId, actor.displayName])
+    expect(result).toMatchObject({
+      isLocked: false,
+      items: [],
+      specificationId: 4,
+    })
+  })
+
+  it('rejects area scope edits after the specification RFI list is locked', async () => {
+    const { db, managerQuery } = createTransactionalDb({
+      managerResponses: [
+        [],
+        [
+          {
+            isLocked: 1,
+            lockedAt: '2026-06-20T09:00:00.000Z',
+            lockedByDisplayName: actor.displayName,
+            lockedByHsaId: actor.hsaId,
+            specificationId: 4,
+          },
+        ],
+      ],
+      queryResponses: [],
+    })
+
+    await expect(
+      updateSpecificationRfiAreaScope(
+        db as unknown as Parameters<typeof updateSpecificationRfiAreaScope>[0],
+        4,
+        2,
+        false,
+        actor,
+      ),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'rfi_list_locked' },
+    })
+    expect(
+      managerQuery.mock.calls.some(([sql]) =>
+        String(sql).includes('MERGE specification_rfi_question_items'),
+      ),
+    ).toBe(false)
+  })
+
   it('does not allow relevance for a question outside the locked list', async () => {
     const { db, managerQuery } = createTransactionalDb({
       managerResponses: [
@@ -512,5 +604,89 @@ describe('RFI questions DAL', () => {
       sourceSpecificationName: 'E-arkiv',
       sourceSpecificationUniqueId: 'SPEC-004',
     })
+  })
+
+  it('lists RFI question suggestions scoped to an area and specification', async () => {
+    const query = createQuery([
+      [
+        {
+          areaId: 2,
+          areaName: 'Informationssäkerhet',
+          content: 'Ny fråga om loggning',
+          createdAt: new Date('2026-06-20T09:00:00.000Z'),
+          createdByDisplayName: actor.displayName,
+          createdByHsaId: actor.hsaId,
+          id: 77,
+          isReviewRequested: 0,
+          questionCode: 'INF-RFI007',
+          resolution: null,
+          resolutionMotivation: null,
+          resolvedAt: null,
+          resolvedByDisplayName: null,
+          resolvedByHsaId: null,
+          reviewRequestedAt: null,
+          rfiQuestionId: 12,
+          sourceSpecificationName: 'E-arkiv',
+          sourceSpecificationUniqueId: 'SPEC-004',
+          specificationId: 4,
+          updatedAt: null,
+        },
+      ],
+    ])
+    const db = { query }
+
+    const result = await listRfiQuestionSuggestions(
+      db as unknown as Parameters<typeof listRfiQuestionSuggestions>[0],
+      { areaId: 2, specificationId: 4 },
+    )
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'WHERE suggestion.area_id = @0 AND suggestion.specification_id = @1',
+      ),
+      [2, 4],
+    )
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      content: 'Ny fråga om loggning',
+      specificationId: 4,
+    })
+  })
+
+  it('deletes only RFI question suggestions that have not entered review or resolution', async () => {
+    const query = createQuery([
+      [{ id: 77, isReviewRequested: 0, resolution: null }],
+      [],
+    ])
+    const db = { query }
+
+    await deleteRfiQuestionSuggestion(
+      db as unknown as Parameters<typeof deleteRfiQuestionSuggestion>[0],
+      77,
+    )
+
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      'DELETE FROM rfi_question_suggestions WHERE id = @0',
+      [77],
+    )
+  })
+
+  it('rejects deletion after RFI question suggestion review has started', async () => {
+    const query = createQuery([
+      [{ id: 77, isReviewRequested: 1, resolution: null }],
+    ])
+    const db = { query }
+
+    await expect(
+      deleteRfiQuestionSuggestion(
+        db as unknown as Parameters<typeof deleteRfiQuestionSuggestion>[0],
+        77,
+      ),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: { reason: 'rfi_question_suggestion_already_handled' },
+    })
+    expect(query).toHaveBeenCalledTimes(1)
   })
 })

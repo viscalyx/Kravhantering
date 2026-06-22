@@ -16,6 +16,7 @@ vanlig `curl` inte använder samma lokala autentiseringsstöd.
 
 - [Konfigurerade användare](#konfigurerade-användare)
 - [Allmän förberedelse](#allmän-förberedelse)
+- [Navigering](#navigering)
 - [Autentisering och behörighet](#autentisering-och-behörighet)
   - [AUTH-01 till AUTH-11](#auth-01-logga-in-via-keycloak)
   - [AUTHZ-00 till AUTHZ-10](#authz-00-fas-0-testdata-och-identiteter)
@@ -75,6 +76,18 @@ Viktiga seedade ytor:
 - Seedat kravpaket för behörighet: `AUTHZ kravpaket`.
 
 Behörighetsmatrisen finns i [behörigheter.md](./behörigheter.md).
+
+## Navigering
+
+### NAV-01: global sidonavigering linjerar verktygsikoner
+
+**Steg:** Logga in som `ada.admin`, öppna `/sv/requirements` på desktop och
+expandera den globala sidonavigeringen.
+
+**Förväntat resultat:** Sidonavigeringen är kompakt utan att rubriken
+`Kravbiblioteksförvaltning` eller länketiketter bryts. Ikonerna för språkbyte,
+temaväxling och användarmeny har samma horisontella fotavtryck och linjerar med
+övriga ikoner i sidonavigeringen.
 
 ## Autentisering och behörighet
 
@@ -601,6 +614,17 @@ med piltangenter och stäng med Escape.
    sparad tabell för att lägga till och ta bort kravpaketsmedförfattare.
 1. Skapa en kravurvalsfråga, lägg till svar och ändra ordning.
 1. Kontrollera synlighetsvillkor, hierarkimodal och kravurvalsförhandsvisning.
+1. Öppna `RFI-frågor`, sök efter en fråga, filtrera på kravområde och status
+   samt kontrollera att frågorna visas grupperade per kravområde.
+1. Skapa och redigera en RFI-fråga via den flytande skapa-knappen och
+   radens högerjusterade redigeringsikon. Kontrollera att kravområdet väljs
+   vid skapande men är låst vid redigering.
+1. Logga in som en kravområdesägare eller kravområdesmedförfattare med
+   uppdrag i ett av flera kravområden och kontrollera att `Ny RFI-fråga` bara
+   kan välja tilldelade kravområden samt att redigera, arkivera och
+   återaktivera bara visas på RFI-frågor i de kravområdena.
+1. Kontrollera att RFI-frågeförslag ligger kvar som ett separat arbetsflöde på
+   sidan och inte påverkas av frågelistans sök- och statusfilter.
 
 **Förväntat resultat:** Förvaltningsytorna ligger utanför Admincenter, paket
 och frågor sparas korrekt, den som skapar kravpaketet blir
@@ -914,12 +938,20 @@ kravunderlagets RFI-lista utan att listan först behöver låsas.
 
 ### SPEC-14: lås, relevansbedöm och exportera RFI-lista
 
-**Steg:** I kravunderlagets `RFI-frågelista`, välj bort en fråga, lås listan,
-markera en inkluderad fråga som relevant och exportera CSV och PDF.
+**Steg:** I kravunderlagets `RFI-frågelista`, välj bort en fråga med frågans
+scope-reglage och kontrollera att reglagets tooltip växlar mellan
+`Ingår i RFI` och `Ingår inte i RFI`. Kontrollera att frågetexten dimmas och att
+kravområdet visar `Delvis`. Slå på kravområdets scope-reglage och kontrollera
+att alla frågor i området ingår igen. Välj bort en fråga på nytt, aktivera
+filterknappen med tooltip `Visa endast de som ingår i RFI`, lås listan, markera
+en inkluderad fråga som relevant och exportera CSV och PDF.
 
-**Förväntat resultat:** Scope kan ändras före låsning men inte efter. Relevans
-kan bara sättas efter låsning. Exporterna innehåller exakta
-RFI-frågeversioner, scope och relevans.
+**Förväntat resultat:** Kontrollen visar texten `Låst` och ett fast
+storlekssatt reglage. När reglaget är på är listan låst och reglaget har amber
+färg. `Ingår i RFI` kan ändras före låsning men inte efter. Filtret döljer
+frågor som inte ingår på sidan men påverkar inte exporterna. Relevans kan bara
+sättas efter låsning. Exporterna innehåller exakta RFI-frågeversioner,
+Ingår i RFI-markeringar och relevans.
 
 ### SPEC-15: lås upp RFI-lista och hantera ändrad frågeversion
 
@@ -931,21 +963,27 @@ rensas för den fråga vars version ändrats.
 
 ### SPEC-16: skapa och hantera RFI-frågeförslag
 
-**Steg:** Skapa ett RFI-frågeförslag från kravunderlagets RFI-lista. Öppna
-Kravbiblioteksförvaltning, fliken `RFI-frågor`, välj berört kravområde och
-markera förslaget som hanterat eller avfärdat med motivering.
+**Steg:** Öppna kravunderlaget `INTPLATT-UPP-2026` och fliken
+`RFI-frågelista`. Klicka på förslagsikonen på en RFI-fråga, kontrollera
+mottagarraden i modalen och skicka ett förslag. Klicka även på
+förslagsikonen i en kravområdesrubrik och kontrollera att modalen anger att
+förslaget gäller kravområdet utan specifik RFI-fråga.
 
-**Förväntat resultat:** Förslaget visas bara med minimal kravunderlagskälla,
-inte med hela kravunderlaget. Hantering kräver beslutsmotivering och tar bort
-förslaget från öppna förslag.
+**Förväntat resultat:** Förslagsikonerna är kontextbundna. Skapamodalen visar
+att förslaget skickas till kravområdesansvariga för berört kravområde. Efter
+skickat förslag visas en bekräftelse och förslagsräknaren uppdateras.
 
-### SPEC-16a: RFI-frågeförslag kräver valt kravområde
+### SPEC-16a: visa och ta bort RFI-frågeförslag från kravunderlaget
 
-**Steg:** Öppna ett kravunderlag vars RFI-lista saknar kravområden för
-förslag. Skriv text i fältet för RFI-frågeförslag.
+**Steg:** I kravunderlaget `INTPLATT-UPP-2026`, öppna förslagsräknaren på en
+RFI-fråga och i en kravområdesrubrik. Kontrollera seedade förslag med öppet,
+i granskning och hanterat/avfärdat läge. Ta bort ett öppet förslag från
+modalen.
 
-**Förväntat resultat:** Skicka-knappen är fortsatt inaktiverad när inget
-kravområde är valt. Klick leder inte till en tyst no-op.
+**Förväntat resultat:** Räknaren visar alla RFI-frågeförslag som skrivits från
+det aktuella kravunderlaget för den frågan eller det kravområdet. Modalen visar
+förslagstexten. Bara förslag som inte är i granskning och inte har resolution
+kan tas bort. Efter borttagning uppdateras modalen och räknaren.
 
 ### SPEC-16b: RFI-frågeförslag kontrollerar både kravunderlag och kravområde
 
@@ -957,6 +995,22 @@ otillåtna kravområdet.
 **Förväntat resultat:** API:t svarar 403. Förslag skapas bara när användaren
 har behörighet både till kravunderlaget och till kravområdet som ska ta emot
 förslaget.
+
+### SPEC-16c: behandla RFI-frågeförslag i kravbiblioteksförvaltning
+
+**Steg:** Öppna Kravbiblioteksförvaltning och fliken `RFI-frågor`. Kontrollera
+seedade RFI-frågeförslag på rubriker för kravområde och RFI-frågerader. Klicka på
+en amber `MessageSquareWarning`, begär granskning för ett nytt förslag och
+markera ett förslag som hanterat eller avfärdat med beslutsmotivering. Klicka
+även på en `MessageSquareCheck` där alla förslag är behandlade.
+
+**Förväntat resultat:** Obehandlade förslag visas på den nivå de gäller:
+kravområdesrubrik för områdesförslag och RFI-frågerad för frågespecifika
+förslag. Amber varningsikon visar antal obehandlade förslag. När alla förslag
+på nivån är behandlade visas en check-ikon utan räknare. Modalen visar `Nya`,
+`I granskning` och `Behandlade`, inklusive kravunderlagskälla och skapande
+person. Filtret `Förslag: Obehandlade` visar även arkiverade RFI-frågor med
+obehandlade förslag.
 
 ## Avsteg
 

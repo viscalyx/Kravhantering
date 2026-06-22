@@ -58,8 +58,21 @@ export const rfiListItemUpdateSchema = z
   })
   .strict()
 
+export const rfiListAreaUpdateSchema = z
+  .object({
+    isIncluded: z.boolean(),
+  })
+  .strict()
+
 export const specificationRfiListParamsSchema = z
   .object({
+    id: specificationIdOrSlugSchema,
+  })
+  .strict()
+
+export const specificationRfiListAreaParamsSchema = z
+  .object({
+    areaId: positiveIntegerStringSchema,
     id: specificationIdOrSlugSchema,
   })
   .strict()
@@ -100,6 +113,7 @@ export const rfiQuestionSuggestionCreateSchema = z
 export const rfiQuestionSuggestionQuerySchema = z
   .object({
     areaId: positiveIntegerStringSchema.optional(),
+    specificationId: positiveIntegerStringSchema.optional(),
   })
   .strict()
 

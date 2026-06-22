@@ -38,6 +38,7 @@ const mocks = vi.hoisted(() => {
     db,
     getAreaById: vi.fn(),
     getRequestSqlServerDataSource: vi.fn(() => db),
+    listAreaIdsActorCanAuthor: vi.fn(),
     listAreas: vi.fn(),
     createArea: vi.fn(),
     resolveVerifiedRequirementResponsibilityPerson: vi.fn(),
@@ -60,6 +61,7 @@ vi.mock('@/lib/db', () => ({
 }))
 vi.mock('@/lib/dal/requirement-areas', () => ({
   canManageAreaCoAuthors: mocks.canManageAreaCoAuthors,
+  listAreaIdsActorCanAuthor: mocks.listAreaIdsActorCanAuthor,
   listAreas: mocks.listAreas,
   createArea: mocks.createArea,
   getAreaById: mocks.getAreaById,
@@ -112,6 +114,7 @@ describe('requirement-areas route', () => {
     mocks.canManageAreaCoAuthors.mockResolvedValue(true)
     mocks.db.query.mockResolvedValue([])
     mocks.getAreaById.mockResolvedValue({ id: 1 })
+    mocks.listAreaIdsActorCanAuthor.mockResolvedValue([])
     mocks.resolveVerifiedRequirementResponsibilityPerson.mockResolvedValue({
       email: 'new@example.test',
       givenName: 'New',
@@ -122,7 +125,45 @@ describe('requirement-areas route', () => {
   })
 
   describe('GET', () => {
-    it('returns areas with ownerHsaId', async () => {
+    it('marks all areas as editable for admins', async () => {
+      mocks.listAreas.mockResolvedValue([
+        {
+          id: 1,
+          prefix: 'INT',
+          name: 'Integration',
+          description: null,
+          ownerHsaId: 'SE5560000001-annaj',
+        },
+        {
+          id: 2,
+          prefix: 'OPS',
+          name: 'Operations',
+          description: null,
+          ownerHsaId: 'SE5560000001-other1',
+        },
+      ])
+
+      const res = await GET(getRequest())
+      const json = (await res.json()) as {
+        areas: {
+          permissions: {
+            canAuthor: boolean
+            canManageAssignments: boolean
+          }
+        }[]
+      }
+
+      expect(json.areas.map(area => area.permissions.canAuthor)).toEqual([
+        true,
+        true,
+      ])
+      expect(
+        json.areas.map(area => area.permissions.canManageAssignments),
+      ).toEqual([true, true])
+      expect(mocks.listAreaIdsActorCanAuthor).not.toHaveBeenCalled()
+    })
+
+    it('returns owner, co-author, and unassigned author permissions', async () => {
       mocks.createRequestContext.mockResolvedValueOnce({
         actor: {
           displayName: 'Anna Johansson',
@@ -151,21 +192,40 @@ describe('requirement-areas route', () => {
           description: null,
           ownerHsaId: 'SE5560000001-other1',
         },
+        {
+          id: 3,
+          prefix: 'LEG',
+          name: 'Legal',
+          description: null,
+          ownerHsaId: 'SE5560000001-other2',
+        },
       ])
+      mocks.listAreaIdsActorCanAuthor.mockResolvedValue([1, 2])
 
       const res = await GET(getRequest())
       const json = (await res.json()) as {
         areas: {
           ownerHsaId: string
-          permissions: { canManageAssignments: boolean }
+          permissions: {
+            canAuthor: boolean
+            canManageAssignments: boolean
+          }
         }[]
       }
 
-      expect(json.areas).toHaveLength(2)
+      expect(json.areas).toHaveLength(3)
       expect(json.areas[0].ownerHsaId).toBe('SE5560000001-annaj')
       expect(json.areas[0].permissions.canManageAssignments).toBe(true)
+      expect(json.areas[0].permissions.canAuthor).toBe(true)
       expect(json.areas[1].permissions.canManageAssignments).toBe(false)
+      expect(json.areas[1].permissions.canAuthor).toBe(true)
+      expect(json.areas[2].permissions.canManageAssignments).toBe(false)
+      expect(json.areas[2].permissions.canAuthor).toBe(false)
       expect(mocks.canManageAreaCoAuthors).not.toHaveBeenCalled()
+      expect(mocks.listAreaIdsActorCanAuthor).toHaveBeenCalledWith(
+        mocks.db,
+        'SE5560000001-annaj',
+      )
     })
   })
 

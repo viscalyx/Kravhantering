@@ -257,7 +257,10 @@ export default function AuthMenu({
         href={`/api/auth/login?returnTo=${returnTo}`}
         {...devMarker({ name: 'link', value: 'sign in' })}
       >
-        <LogIn aria-hidden="true" className="h-4 w-4 shrink-0" />
+        <LogIn
+          aria-hidden="true"
+          className={isRail ? 'h-5 w-5 shrink-0' : 'h-4 w-4 shrink-0'}
+        />
         {isRail && !expanded ? null : (
           <span className={isRail ? 'min-w-0 flex-1 truncate text-left' : ''}>
             {t('signIn')}

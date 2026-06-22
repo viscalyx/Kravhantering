@@ -38,6 +38,16 @@ describe('LanguageSwitcher', () => {
     expect(btn).toBeInTheDocument()
   })
 
+  it('uses the same rail icon footprint as navigation links', () => {
+    render(<LanguageSwitcher expanded variant="rail" />)
+
+    const icon = screen
+      .getByRole('button', { name: 'switchTo' })
+      .querySelector('svg')
+
+    expect(icon).toHaveClass('h-5', 'w-5')
+  })
+
   it('calls router.replace on click with other locale and persists choice', () => {
     render(<LanguageSwitcher />)
     const btn = screen.getByRole('button', { name: 'switchTo' })
