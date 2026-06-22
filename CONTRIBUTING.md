@@ -161,8 +161,8 @@ To enable Developer Mode in a browser, focus a non-editable part of the page and
 press `Command+Option+Shift+H` on macOS or `Ctrl+Alt+Shift+H` on Windows/Linux.
 See
 [docs/development/developer-mode-overlay.md][developer-mode-overlay-doc]
-for the consumer-side spec, the canonical glossary, and the app-specific marker
-rules.
+for the contributor guide, naming rules, common marker names, and update
+checklist.
 
 [dm-core]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-core/README.md
 [dm-react]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-react/README.md

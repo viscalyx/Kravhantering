@@ -7,8 +7,11 @@ applyTo: '{app/**/*.tsx,components/**/*.tsx,docs/**/*.md,tests/unit/**/*.ts,test
 - Developer Mode is the maintained developer-help surface for visible UI elements.
 - If you change visible UI elements, labels, roles, or layout surfaces, update:
   - curated `devMarker(...)` calls or scanner heuristics
-  - `docs/development/developer-mode-overlay.md`
   - the relevant unit and integration tests
+- Update `docs/development/developer-mode-overlay.md` only when changing
+  Developer Mode naming policy, runtime wiring, common marker vocabulary, or the
+  contributor checklist. Do not append per-feature marker histories or one-off
+  layout decisions there; exact marker coverage lives in code and tests.
 - Keep Developer Mode labels in English even when the product UI is localized.
 - In app code, prefer `devMarker(...)` from `@/lib/developer-mode-markers`
   instead of hardcoding `data-developer-mode-*` attributes directly.
