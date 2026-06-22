@@ -35,8 +35,8 @@ export const SECURITY_SENSITIVE_PATH_RULES = [
     patterns: [
       'lib/audit/**',
       'lib/observability/**',
-      'docs/audit-log.md',
-      'docs/api-security.md',
+      'docs/security-privacy/audit-log.md',
+      'docs/security-privacy/api-security.md',
     ],
   },
   {
@@ -44,8 +44,8 @@ export const SECURITY_SENSITIVE_PATH_RULES = [
     label: 'personal-data or privacy surface',
     patterns: [
       'lib/privacy/**',
-      'docs/informationsmangder-kravhantering.md',
-      'docs/privacy-data-subject-access-export.md',
+      'docs/security-privacy/informationsmangder-kravhantering.md',
+      'docs/security-privacy/privacy-data-subject-access-export.md',
     ],
   },
   {
@@ -64,10 +64,10 @@ export const SECURITY_SENSITIVE_PATH_RULES = [
     patterns: [
       'lib/ai/**',
       'lib/mcp/**',
-      'docs/mcp-security-test-plan.md',
-      'docs/mcp-seeded-dast.md',
-      'docs/mcp-server-contributor-guide.md',
-      'docs/mcp-server-user-guide.md',
+      'docs/security-privacy/mcp-security-test-plan.md',
+      'docs/security-privacy/mcp-seeded-dast.md',
+      'docs/integrations/mcp-server-contributor-guide.md',
+      'docs/integrations/mcp-server-user-guide.md',
     ],
   },
   {
@@ -88,8 +88,8 @@ export const SECURITY_SENSITIVE_PATH_RULES = [
       '.github/CODEOWNERS',
       '.github/pull_request_template.md',
       'SECURITY.md',
-      'docs/security-ci.md',
-      'docs/container-release-workflow.md',
+      'docs/security-privacy/security-ci.md',
+      'docs/operations/container-release-workflow.md',
       'scripts/security/**',
       'scripts/release/**',
       'scripts/containers/**',

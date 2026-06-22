@@ -227,35 +227,41 @@ describe('trusted container release helpers', () => {
         'docs/images/infographic-production-access-and-service-flow.png',
       ),
     ).toBe(true)
-    expect(isReleaseRelevantPath('docs/rhel10-production-deploy.md')).toBe(true)
     expect(
-      isReleaseRelevantPath('docs/rhel10-production-disconnected.md'),
+      isReleaseRelevantPath('docs/operations/rhel10-production-deploy.md'),
     ).toBe(true)
-    expect(isReleaseRelevantPath('docs/rhel10-production-upgrade.md')).toBe(
-      true,
-    )
-    expect(isReleaseRelevantPath('docs/rhel10-production-uninstall.md')).toBe(
-      true,
-    )
-    expect(isReleaseRelevantPath('docs/operator-upgrade-notes.md')).toBe(true)
     expect(
       isReleaseRelevantPath(
-        'docs/rhel10-production-single-node-self-contained-deploy.md',
+        'docs/operations/rhel10-production-disconnected.md',
+      ),
+    ).toBe(true)
+    expect(
+      isReleaseRelevantPath('docs/operations/rhel10-production-upgrade.md'),
+    ).toBe(true)
+    expect(
+      isReleaseRelevantPath('docs/operations/rhel10-production-uninstall.md'),
+    ).toBe(true)
+    expect(
+      isReleaseRelevantPath('docs/operations/operator-upgrade-notes.md'),
+    ).toBe(true)
+    expect(
+      isReleaseRelevantPath(
+        'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
       ),
     ).toBe(true)
     expect(
       isReleaseRelevantPath(
-        'docs/rhel10-production-single-node-self-contained-disconnected.md',
+        'docs/operations/rhel10-production-single-node-self-contained-disconnected.md',
       ),
     ).toBe(true)
     expect(
       isReleaseRelevantPath(
-        'docs/rhel10-production-single-node-self-contained-upgrade.md',
+        'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
       ),
     ).toBe(true)
     expect(
       isReleaseRelevantPath(
-        'docs/rhel10-production-single-node-self-contained-uninstall.md',
+        'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
       ),
     ).toBe(true)
     expect(isReleaseRelevantPath('typeorm/seed-dogfood.mjs')).toBe(true)
@@ -299,14 +305,14 @@ describe('trusted container release helpers', () => {
   it('resolves local Markdown images for bundled deployment docs', () => {
     const assets = resolveBundledMarkdownAssets(
       {
-        source: 'docs/rhel10-production-deploy.md',
-        target: 'docs/rhel10-production-deploy.md',
+        source: 'docs/operations/rhel10-production-deploy.md',
+        target: 'docs/operations/rhel10-production-deploy.md',
       },
       [
-        '![Local](images/diagram.png)',
+        '![Local](../images/diagram.png)',
         '![Remote](https://example.test/diagram.png)',
         '![Absolute](/diagram.png)',
-        '![With title](images/diagram.png "Diagram")',
+        '![With title](../images/diagram.png "Diagram")',
       ].join('\n'),
     )
 
@@ -322,10 +328,10 @@ describe('trusted container release helpers', () => {
     expect(() =>
       resolveBundledMarkdownAssets(
         {
-          source: 'docs/rhel10-production-deploy.md',
-          target: 'docs/rhel10-production-deploy.md',
+          source: 'docs/operations/rhel10-production-deploy.md',
+          target: 'docs/operations/rhel10-production-deploy.md',
         },
-        '![Public](../public/diagram.png)',
+        '![Public](../../public/diagram.png)',
       ),
     ).toThrow('Move release documentation images under docs/')
   })
@@ -333,7 +339,7 @@ describe('trusted container release helpers', () => {
   it('treats bundled single-node upgrade docs as release-relevant', () => {
     const plan = createReleasePlan({
       changedFiles: [
-        'docs/rhel10-production-single-node-self-contained-upgrade.md',
+        'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
       ],
       env: env(),
       gitVersion,
@@ -860,7 +866,7 @@ describe('trusted container release helpers', () => {
 
   it('renders operator upgrade notes before container image evidence', () => {
     const plan = createReleasePlan({
-      changedFiles: ['docs/operator-upgrade-notes.md'],
+      changedFiles: ['docs/operations/operator-upgrade-notes.md'],
       env: env(),
       gitVersion,
     })
@@ -932,7 +938,7 @@ describe('trusted container release helpers', () => {
 
   it('keeps production TLS CA guidance readable for app-runtime', () => {
     const singleNodeGuide = readWorkspaceFile(
-      'docs/rhel10-production-single-node-self-contained-deploy.md',
+      'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
     )
 
     expect(singleNodeGuide).toMatch(
@@ -1165,21 +1171,29 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain('compose/app-node-tls.compose.yml')
       expect(result.files).toContain('compose/single-node.compose.yml')
       expect(result.files).toContain('compose/single-node-demo.compose.yml')
-      expect(result.files).toContain('docs/rhel10-production-deploy.md')
-      expect(result.files).toContain('docs/rhel10-production-disconnected.md')
-      expect(result.files).toContain('docs/rhel10-production-upgrade.md')
-      expect(result.files).toContain('docs/rhel10-production-uninstall.md')
       expect(result.files).toContain(
-        'docs/rhel10-production-single-node-self-contained-deploy.md',
+        'docs/operations/rhel10-production-deploy.md',
       )
       expect(result.files).toContain(
-        'docs/rhel10-production-single-node-self-contained-disconnected.md',
+        'docs/operations/rhel10-production-disconnected.md',
       )
       expect(result.files).toContain(
-        'docs/rhel10-production-single-node-self-contained-upgrade.md',
+        'docs/operations/rhel10-production-upgrade.md',
       )
       expect(result.files).toContain(
-        'docs/rhel10-production-single-node-self-contained-uninstall.md',
+        'docs/operations/rhel10-production-uninstall.md',
+      )
+      expect(result.files).toContain(
+        'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
+      )
+      expect(result.files).toContain(
+        'docs/operations/rhel10-production-single-node-self-contained-disconnected.md',
+      )
+      expect(result.files).toContain(
+        'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
+      )
+      expect(result.files).toContain(
+        'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
       )
       expect(result.files).toContain(
         'docs/images/infographic-production-access-and-service-flow.png',

@@ -11,7 +11,7 @@ import {
   syncPullRequestNotesFile,
 } from '../operator-upgrade-notes.mjs'
 
-const operatorNotesPath = 'docs/operator-upgrade-notes.md'
+const operatorNotesPath = 'docs/operations/operator-upgrade-notes.md'
 
 const baseNotes = `# Operator Upgrade Notes
 
