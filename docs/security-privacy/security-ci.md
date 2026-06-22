@@ -328,78 +328,16 @@ Markdown output remains in the artifact.
 Workflow file:
 [.github/workflows/security-api.yml](../../.github/workflows/security-api.yml).
 
-The repo-owned OpenAPI contract and Schemathesis scan cover the authenticated
-requirements REST API. The scan runs only against `http://localhost:3001` after
-starting the same disposable SQL Server, Keycloak, and prodlike Next.js stack
-used by the PR DAST workflow.
+The repo-owned OpenAPI contract and Schemathesis scan cover browser-backed JSON
+REST APIs that are safe to exercise against the disposable prodlike database.
+The workflow uses the same local SQL Server, Keycloak, and prodlike Next.js
+shape as the PR DAST workflow, and keeps the scan target restricted to
+`http://localhost:3001`.
 
-The static contract lives in
-[openapi/requirements-api.yaml](../../openapi/requirements-api.yaml). It is not
-served by the app and does not add a runtime `/openapi` route.
-
-### API scan scope
-
-Covered by this scan:
-
-- `/api/auth/me`
-- Requirement list, detail, create, edit, archive, version read,
-  delete-draft, restore, reactivate, and transition routes.
-- Read-only requirements library routes used by the requirements UI.
-
-The delete-draft success contract returns the same deletion-ledger payload for
-both outcomes: `deleted` is an ordered array with the
-`draftRequirementVersion` entry first. When the parent requirement row is also
-deleted, the array includes a second `requirement` entry for the same
-`requirementUniqueId`.
-
-Deferred from this scan:
-
-- CSV export, MCP, AI routes, admin catalog mutations, specifications,
-  deviations, and improvement suggestions.
-- ZAP API scan, role-matrix DAST, full active scans, and paid vendor scanners
-  that require service-specific CI secrets.
-
-Those deferred items are later issue `#119` work. The API contract and bounded
-property-test foundation do not close `#119`.
-
-### API workflow steps
-
-1. Installs Node dependencies with `npm ci`.
-2. Installs pinned `schemathesis==4.15.2` with Python.
-3. Starts SQL Server and runs `npm run db:setup`.
-4. Starts the local Keycloak realm.
-5. Builds and starts the prodlike app on `127.0.0.1:3001`.
-6. Polls `/api/health`.
-7. Acquires the local admin session cookie for `ada.admin`.
-8. Fails before scanning unless the target is exactly
-   `http://localhost:3001`.
-9. Runs Schemathesis with deterministic bounded settings, a local-only request
-   rate that fits inside the CI timeout budget, and browser REST auth/CSRF
-   headers.
-10. Prints the Schemathesis runtime in an `always()` step so scan-speed
-    regressions are visible even when the scanner fails.
-11. Uploads JUnit, NDJSON, stdout/stderr, timing files, and app logs with
-    `if: always()`.
-
-The mutating scan requests include the masked local session cookie,
-`Origin: http://localhost:3001`, and
-`X-Requested-With: XMLHttpRequest`. Schemathesis output sanitization stays
-enabled. HAR export is intentionally not used by this workflow.
-
-The root `schemathesis.toml` disables coverage probes for unexpected HTTP
-methods. Next.js constructs a web `Request` before the application proxy runs,
-and forbidden Fetch methods such as `TRACE` fail inside the framework before the
-app can return a controlled `405`.
-
-### API failure policy
-
-Schemathesis fails the workflow on server errors, undocumented status codes,
-content-type mismatches, response-schema mismatches, scanner execution errors,
-or schema configuration errors. Artifacts are uploaded before the final failure
-is emitted.
-
-See [docs/security-privacy/api-security.md](./api-security.md) for local run
-instructions and path addition rules.
+[api-security.md](./api-security.md) is the source of truth for the REST API
+scan scope, deferred paths, validation rules, workflow details, failure policy,
+local run instructions, and path addition rules. Keep this page as the CI
+overview so route-level scan details do not drift between files.
 
 ## MCP Seeded HTTP Workflow
 
@@ -410,64 +348,15 @@ The MCP seeded-HTTP security gate starts the prodlike localhost stack, obtains
 a local Keycloak service-account token, and uses the MCP Streamable HTTP client
 against `http://localhost:3001/api/mcp`.
 
-This is not a paid vendor DAST scan. HAR generation, role-matrix DAST, ZAP API
-scan, active scans, production targets, and production secrets remain out of
-scope for this workflow. The Nuclei template remains the unauthenticated
-`/api/mcp` exposure check, while the MCP unit/property tests remain the main
-protocol contract.
+This is a repo-owned authenticated transport gate for `/api/mcp`, not a paid
+vendor DAST scan or general crawler. The Nuclei template still owns the
+unauthenticated `/api/mcp` exposure check, while the MCP unit/property tests
+remain the fast protocol and authorization contract.
 
-The workflow deliberately does not call live OpenRouter endpoints. OpenRouter
-is an external service, so CI validates this repository's request construction,
-response handling, and disabled-provider safety path instead of depending on a
-paid provider's availability, account state, rate limits, or production-like
-secrets.
-
-### MCP workflow steps
-
-1. Installs Node dependencies with `npm ci`.
-2. Starts SQL Server and runs `npm run db:setup`.
-3. Starts the local Keycloak realm and waits for both OIDC discovery and JWKS
-   to answer on `http://127.0.0.1:8080`.
-4. Builds and starts the prodlike app on `127.0.0.1:3001` with OpenRouter
-   env vars blank.
-5. Polls `/api/health`.
-6. Fails before scanning unless the target is exactly
-   `http://localhost:3001`.
-7. Runs [scripts/security/get-mcp-token.mjs](../../scripts/security/get-mcp-token.mjs)
-   to acquire the local `kravhantering-mcp` client-credentials token.
-8. Masks the token and runs
-   [tests/integration/mcp-seeded-scan.spec.ts](../../tests/integration/mcp-seeded-scan.spec.ts).
-9. Prints `test-results/mcp-seeded/summary.md` to the job log and GitHub step
-   summary when the scan writes one.
-10. Uploads MCP JSONL/summary artifacts and the application log before the
-    final failure step.
-
-The seeded corpus lives under
-[tests/fixtures/mcp-requests](../../tests/fixtures/mcp-requests). Cases resolve
-IDs from the disposable seeded database at runtime so the fixture does not
-hard-code requirement, version, or specification IDs.
-
-The workflow keeps the scan target as `http://localhost:3001`, but uses
-`http://127.0.0.1:8080/realms/kravhantering-dev` for Keycloak token and JWKS
-traffic. That keeps the CI-only service-to-service issuer stable for Node's
-server-side JWKS fetch while preserving the localhost-only application target
-guard.
-
-### MCP failure policy
-
-The workflow fails on localhost guard failure, token acquisition failure,
-missing or extra MCP tools, unauthenticated 2xx responses, valid-token
-transport failures, unexpected 5xx responses, unexpected MCP errors for
-positive cases, unsafe mutation behavior, sensitive output, or AI-assisted
-authoring success while OpenRouter env vars are unset. The last check proves
-the scan is exercising the local disabled-provider path, not live provider
-availability.
-
-Allowed expected negatives are limited to missing or invalid Bearer tokens,
-unknown tool, stale edit conflict, and sanitized AI-disabled error.
-
-See [docs/security-privacy/mcp-seeded-dast.md](./mcp-seeded-dast.md) for local
-run instructions and corpus extension rules.
+[mcp-seeded-dast.md](./mcp-seeded-dast.md) is the source of truth for the MCP
+seeded gate scope, OpenRouter policy, local run instructions, artifacts, failure
+policy, and corpus extension rules. Keep this page as the CI overview so
+seeded-corpus and workflow details do not drift between files.
 
 ## Shared prodlike app cleanup
 

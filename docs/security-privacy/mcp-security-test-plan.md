@@ -8,8 +8,9 @@ only the documented tools, validates tool input with Zod, delegates
 authorization-sensitive work to the requirements service, and does not leak
 sensitive error details.
 
-This is a repo-owned unit and transport test layer. It must pass before later
-authenticated DAST phases scan `/api/mcp`.
+This is the fast repo-owned unit and transport test layer. It supports the
+seeded HTTP gate in [mcp-seeded-dast.md](./mcp-seeded-dast.md) and any later
+DAST expansion that scans `/api/mcp`.
 
 ## Automated Coverage
 
@@ -76,5 +77,7 @@ secrets for this smoke check.
 - Full RBAC policy coverage is handled by the shared service and focused RBAC
   tests. These transport tests prove MCP passes the verified actor context into
   that service boundary instead of trusting caller-supplied headers.
-- External DAST is deferred. Authenticated dynamic scanning of `/api/mcp`
-  belongs after this unit/transport hardening layer is green.
+- Additional external or active DAST remains out of scope. The seeded HTTP gate
+  covers repo-owned authenticated MCP transport checks; role-matrix scanning,
+  ZAP API scanning, active scanning, production targets, and production secrets
+  remain separate work.
