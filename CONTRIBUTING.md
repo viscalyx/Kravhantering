@@ -18,9 +18,9 @@ If you prefer host-based development outside the dev container, install Node.js
 workflow is `docker compose -f docker-compose.sqlserver.yml up -d`,
 `npm run db:setup`, then `npm run dev`.
 
-Use [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
+Use [docs/development/sql-server-developer-workflow.md](docs/development/sql-server-developer-workflow.md)
 for setup, migrations, and the read-only browse workflow.
-Use [docs/auth-developer-workflow.md](docs/auth-developer-workflow.md)
+Use [docs/development/auth-developer-workflow.md](docs/development/auth-developer-workflow.md)
 for local Keycloak setup and integration-test CI requirements.
 
 ## Available Scripts
@@ -139,7 +139,7 @@ agents and humans who need stable UI names. If you change visible UI elements,
 labels, layout surfaces, or interaction patterns, update the relevant:
 
 - `devMarker(...)` usage or scanner heuristics
-- [docs/developer-mode-overlay.md](docs/developer-mode-overlay.md)
+- [docs/development/developer-mode-overlay.md](docs/development/developer-mode-overlay.md)
 - unit and integration tests that cover the affected surface
 - repo instructions if the maintenance rule itself changes
 
@@ -159,11 +159,14 @@ real runtime.
 
 To enable Developer Mode in a browser, focus a non-editable part of the page and
 press `Command+Option+Shift+H` on macOS or `Ctrl+Alt+Shift+H` on Windows/Linux.
-See [docs/developer-mode-overlay.md](docs/developer-mode-overlay.md) for the
-consumer-side spec, the canonical glossary, and the app-specific marker rules.
+See
+[docs/development/developer-mode-overlay.md][developer-mode-overlay-doc]
+for the consumer-side spec, the canonical glossary, and the app-specific marker
+rules.
 
 [dm-core]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-core/README.md
 [dm-react]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-react/README.md
+[developer-mode-overlay-doc]: docs/development/developer-mode-overlay.md
 
 ## Dependency Management
 
@@ -191,8 +194,8 @@ reproduces the bug.
 The repository includes an MCP server for requirements management. Use these
 docs when working on it:
 
-- [docs/mcp-server-user-guide.md](docs/mcp-server-user-guide.md)
-- [docs/mcp-server-contributor-guide.md](docs/mcp-server-contributor-guide.md)
+- [docs/integrations/mcp-server-user-guide.md](docs/integrations/mcp-server-user-guide.md)
+- [docs/integrations/mcp-server-contributor-guide.md](docs/integrations/mcp-server-contributor-guide.md)
 
 MCP authentication is enforced for `/api/mcp`: clients must send
 `Authorization: Bearer <token>`.
@@ -249,14 +252,17 @@ The database stack is **Microsoft SQL Server + TypeORM**.
 - Migrations live in `typeorm/migrations/`.
 - Seed data lives in `typeorm/seed.mjs`.
 - The full developer setup, browse workflow, and CLI reference live in
-  [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md).
+  [docs/development/sql-server-developer-workflow.md][sql-server-workflow-doc].
 
 For the full schema reference, see
-[docs/database-schema.md](docs/database-schema.md). Status
+[docs/development/database-schema.md](docs/development/database-schema.md). Status
 transitions are documented in
-[docs/lifecycle-workflow.md](docs/lifecycle-workflow.md), and version
-lifecycle dates in
-[docs/version-lifecycle-dates.md](docs/version-lifecycle-dates.md).
+[docs/governance/lifecycle-workflow.md][lifecycle-workflow-doc],
+and version lifecycle dates in
+[docs/governance/version-lifecycle-dates.md](docs/governance/version-lifecycle-dates.md).
+
+[sql-server-workflow-doc]: docs/development/sql-server-developer-workflow.md
+[lifecycle-workflow-doc]: docs/governance/lifecycle-workflow.md
 
 ### Useful Commands
 
@@ -273,12 +279,12 @@ cp .devcontainer/.env.example .devcontainer/.env
 ```
 
 For the full `npm run db:*` command reference, see
-[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md#sql-server-admin-commands).
+[docs/development/sql-server-developer-workflow.md](docs/development/sql-server-developer-workflow.md#sql-server-admin-commands).
 
 ### Browsing the Local Database
 
 Use the SQLTools + MSSQL workflow described in
-[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md).
+[docs/development/sql-server-developer-workflow.md](docs/development/sql-server-developer-workflow.md).
 `npm run db:browse` prints a ready-to-paste read-only SQLTools connection block
 based on `DATABASE_READONLY_URL` or derived `DB_*` values.
 
