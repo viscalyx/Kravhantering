@@ -1,16 +1,17 @@
 ---
-applyTo: "{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib/auth/**/*.ts,lib/mcp/http.ts,lib/requirements/auth.ts,proxy.ts,tests/support/oidc-mock.ts,dev/keycloak/realm-kravhantering-dev.json,docs/integrations/auth-how-it-works.md,docs/development/auth-developer-workflow.md,docs/integrations/external-idp-handoff.md,docs/operations/rhel10-production-deploy.md}"
+applyTo: "{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib/auth/**/*.ts,lib/mcp/http.ts,lib/requirements/auth.ts,proxy.ts,tests/support/oidc-mock.ts,dev/keycloak/realm-kravhantering-dev.json,docs/security-privacy/auth-how-it-works.md,docs/integrations/oidc-identity-provider-integration.md,docs/development/auth-developer-workflow.md,docs/integrations/external-idp-handoff.md,docs/operations/rhel10-production-deploy.md}"
 ---
 
 # Auth Docs
 
-- Update `docs/integrations/auth-how-it-works.md` whenever a change affects:
+- Update `docs/security-privacy/auth-how-it-works.md` whenever a change affects:
   - login, callback, logout, session, or `/api/auth/me` behaviour
   - proxy auth gating, session rejection, or header stripping
   - `/api/mcp` bearer-token authentication
   - required claims, role parsing, HSA-id validation, session-cookie contents,
     token validation, or security audit events
-  - deployed hosting expectations or the OIDC provider contract described there
+- Update `docs/integrations/oidc-identity-provider-integration.md` whenever a
+  change affects deployed hosting expectations or the OIDC provider contract.
 - Update `docs/development/auth-developer-workflow.md` whenever a change affects:
   - local Keycloak setup
   - auth env vars
@@ -27,8 +28,8 @@ applyTo: "{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib
     optional MCP service-token clients
 - Keep `docs/operations/rhel10-production-deploy.md` aligned when deployed IdP env vars,
   defaults, setup steps, or smoke checks change.
-- Keep Mermaid diagrams in `docs/integrations/auth-how-it-works.md` aligned with the
-  implemented flow.
+- Keep Mermaid diagrams in `docs/security-privacy/auth-how-it-works.md` aligned
+  with the implemented flow.
 - Keep deployed-provider wording generic unless the behaviour is explicitly
   local-Keycloak-specific.
 - Do not leave auth behaviour changes documented only in work documents.

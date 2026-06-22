@@ -1,5 +1,5 @@
 ---
-applyTo: "{app/api/**/route.ts,lib/http/secure-mutation-route.ts,tests/unit/secure-mutation-route*.test.ts,docs/security-privacy/api-security.md,docs/integrations/auth-how-it-works.md}"
+applyTo: "{app/api/**/route.ts,lib/http/secure-mutation-route.ts,tests/unit/secure-mutation-route*.test.ts,docs/security-privacy/api-security.md,docs/security-privacy/auth-how-it-works.md}"
 ---
 
 # Secure Mutation Routes

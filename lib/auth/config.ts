@@ -5,8 +5,10 @@
  * Authentication is mandatory in every build target.
  * Boot fails closed when required OIDC env vars are missing.
  *
- * See `docs/integrations/auth-how-it-works.md` and `docs/development/auth-developer-workflow.md`
- * for the committed env-var contract and deployment expectations.
+ * See `docs/security-privacy/auth-how-it-works.md`,
+ * `docs/integrations/oidc-identity-provider-integration.md`, and
+ * `docs/development/auth-developer-workflow.md` for the committed env-var
+ * contract and deployment expectations.
  */
 
 function readString(name: string): string | undefined {

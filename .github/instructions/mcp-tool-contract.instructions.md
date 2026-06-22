@@ -1,5 +1,5 @@
 ---
-applyTo: "{lib/mcp/**/*.ts,lib/requirements/**/*.ts,lib/dal/**/*.ts,app/api/**/*.ts,docs/mcp-server-*.md,tests/unit/mcp-http.test.ts}"
+applyTo: "{lib/mcp/**/*.ts,lib/requirements/**/*.ts,lib/dal/**/*.ts,app/api/**/*.ts,docs/integrations/mcp-server-*.md,tests/unit/mcp-http.test.ts}"
 ---
 
 # MCP Tool Contract Upkeep

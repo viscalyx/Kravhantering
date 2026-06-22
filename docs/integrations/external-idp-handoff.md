@@ -5,9 +5,9 @@ external OIDC-compatible identity provider. It is vendor-neutral by design:
 fill in the provider name, environment names, host names and local catalog
 attribute names for the site.
 
-The application auth contract is described in
-[auth-how-it-works.md](./auth-how-it-works.md). The production deployment
-steps that consume these values are described in
+The application IdP contract is described in
+[oidc-identity-provider-integration.md](./oidc-identity-provider-integration.md).
+The production deployment steps that consume these values are described in
 [rhel10-production-deploy.md](../operations/rhel10-production-deploy.md).
 
 ## Table Of Contents

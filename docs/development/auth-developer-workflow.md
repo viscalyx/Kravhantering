@@ -1,8 +1,10 @@
 # Auth developer workflow
 
 This document covers how authentication works in local development and in
-tests. For the runtime architecture, production target setup, and IdP
-contract, see [auth-how-it-works.md](../integrations/auth-how-it-works.md).
+tests. For the runtime architecture, see
+[auth-how-it-works.md](../security-privacy/auth-how-it-works.md). For the
+production target setup and IdP contract, see
+[oidc-identity-provider-integration.md](../integrations/oidc-identity-provider-integration.md).
 
 ## Auth is mandatory in every build target
 
@@ -433,8 +435,8 @@ different sources:
   generates a per-worker issuer + client and writes the matching values).
 - **OpenShift dev/test/prod**: split between a `kravhantering-auth` Secret
   (anything sensitive) and a ConfigMap (everything else). See
-  [auth-how-it-works.md](../integrations/auth-how-it-works.md) for the committed
-  production mapping.
+  [oidc-identity-provider-integration.md](../integrations/oidc-identity-provider-integration.md)
+  for the committed production mapping.
 
 ### OIDC client (deployed OIDC provider / Keycloak)
 

@@ -366,7 +366,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   `app/api/admin/hsa-id-prefixes/route.ts`, and
   `components/HsaPersonVerifyField.tsx`.
 - **Spec:** `docs/governance/admin-center.md`, `docs/development/database-schema.md`, and
-  `docs/integrations/hsa-id.md`.
+  `docs/reference/hsa-id.md`.
 - **Req tag:** `[Req: formal — docs/governance/admin-center.md "Identity"]`
 - **Question:** Do HSA-id-prefixes remain optional UI guidance, with no required
   seed rows, one visible default when visible prefixes exist, delete/change
