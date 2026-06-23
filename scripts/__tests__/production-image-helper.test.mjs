@@ -22,12 +22,20 @@ function writeJson(filePath, value) {
 }
 
 function service(name, image, tag, manifestDigest, imageId) {
+  const roles = {
+    'app-runtime': 'application',
+    'db-job': 'database-job',
+    keycloak: 'identity-provider',
+    nginx: 'tls-proxy',
+    sqlserver: 'database',
+  }
+
   return {
     image,
     imageId,
     manifestDigest,
     name,
-    role: name,
+    role: roles[name] ?? name,
     source: `https://example.test/${name}`,
     tag,
   }
@@ -37,6 +45,10 @@ function writeLockFile(dir) {
   const lockPath = path.join(dir, 'container-stack.lock.json')
   writeJson(lockPath, {
     schemaVersion: 2,
+    releaseVersion: '1.2.3',
+    commitSha: 'deadbeef',
+    generatedAt: '2026-05-22T10:00:00.000Z',
+    generatedBy: 'scripts/containers/generate-stack-lock.mjs',
     services: [
       service(
         'app-runtime',

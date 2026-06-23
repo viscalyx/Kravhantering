@@ -88,6 +88,84 @@ describe('container stack helpers', () => {
     }
   }
 
+  function containerStackLock(overrides = {}) {
+    const service = (name, role, image, tag, manifestDigest, imageId) => ({
+      imageId,
+      image,
+      manifestDigest,
+      name,
+      role,
+      source:
+        name === 'app-runtime' || name === 'db-job' ? 'local-build' : 'test',
+      tag,
+    })
+
+    return {
+      schemaVersion: 2,
+      releaseVersion: '0.1.0-test',
+      commitSha: 'deadbeef',
+      generatedAt: '2026-05-22T10:00:00.000Z',
+      generatedBy: 'scripts/containers/generate-stack-lock.mjs',
+      services: [
+        {
+          ...service(
+            'app-runtime',
+            'application',
+            'localhost/kravhantering/app-runtime',
+            'local',
+            'sha256:local-manifest',
+            'sha256:local-image',
+          ),
+          ...overrides.appRuntime,
+        },
+        {
+          ...service(
+            'db-job',
+            'database-job',
+            'localhost/kravhantering/db-job',
+            'local',
+            'sha256:local-manifest',
+            'sha256:local-image',
+          ),
+          ...overrides.dbJob,
+        },
+        {
+          ...service(
+            'nginx',
+            'tls-proxy',
+            'docker.io/library/nginx',
+            '1.31.1-alpine',
+            'sha256:nginx',
+            'sha256:nginx-image',
+          ),
+          ...overrides.nginx,
+        },
+        {
+          ...service(
+            'sqlserver',
+            'database',
+            'mcr.microsoft.com/mssql/server',
+            '2025-CU5-ubuntu-24.04',
+            'sha256:sqlserver',
+            'sha256:sqlserver-image',
+          ),
+          ...overrides.sqlserver,
+        },
+        {
+          ...service(
+            'keycloak',
+            'identity-provider',
+            'quay.io/keycloak/keycloak',
+            '26.6.3-0',
+            'sha256:keycloak',
+            'sha256:keycloak-image',
+          ),
+          ...overrides.keycloak,
+        },
+      ],
+    }
+  }
+
   it('plans run-specific test and release-smoke stack names', () => {
     const testConfig = createLocalStackConfig({
       mode: 'test',
@@ -230,17 +308,22 @@ describe('container stack helpers', () => {
             return JSON.stringify(kongLock())
           }
           if (String(filePath).endsWith('custom-stack.lock.json')) {
-            return JSON.stringify({
-              schemaVersion: 2,
-              services: [
-                {
-                  imageId: 'sha256:nginx-image',
-                  image: 'docker.io/library/nginx',
-                  manifestDigest: 'sha256:nginx',
-                  name: 'nginx',
+            return JSON.stringify(
+              containerStackLock({
+                appRuntime: {
+                  manifestDigest: 'sha256:app-runtime-manifest-pr',
+                  imageId: 'sha256:app-runtime-pr',
+                  source: 'pr-build',
+                  tag: 'pr-7-99-deadbeef',
                 },
-              ],
-            })
+                dbJob: {
+                  manifestDigest: 'sha256:db-job-manifest-pr',
+                  imageId: 'sha256:db-job-pr',
+                  source: 'pr-build',
+                  tag: 'pr-7-99-deadbeef',
+                },
+              }),
+            )
           }
           return ''
         }),
@@ -566,7 +649,7 @@ describe('container stack helpers', () => {
       existsSync: () => true,
       readFileSync: filePath =>
         String(filePath).endsWith('lock.json')
-          ? JSON.stringify({ schemaVersion: 2, services: [] })
+          ? JSON.stringify(containerStackLock())
           : '- ./containers/nginx/nginx.conf:/etc/nginx/nginx.conf:ro',
     }
 
@@ -615,17 +698,7 @@ describe('container stack helpers', () => {
             return JSON.stringify(kongLock())
           }
           if (String(filePath).endsWith('container-stack.lock.json')) {
-            return JSON.stringify({
-              schemaVersion: 2,
-              services: [
-                {
-                  imageId: 'sha256:nginx-image',
-                  image: 'docker.io/library/nginx',
-                  manifestDigest: 'sha256:nginx',
-                  name: 'nginx',
-                },
-              ],
-            })
+            return JSON.stringify(containerStackLock())
           }
           return ''
         }),
@@ -712,17 +785,7 @@ describe('container stack helpers', () => {
             return JSON.stringify(kongLock())
           }
           if (String(filePath).endsWith('container-stack.lock.json')) {
-            return JSON.stringify({
-              schemaVersion: 2,
-              services: [
-                {
-                  imageId: 'sha256:nginx-image',
-                  image: 'docker.io/library/nginx',
-                  manifestDigest: 'sha256:nginx',
-                  name: 'nginx',
-                },
-              ],
-            })
+            return JSON.stringify(containerStackLock())
           }
           return ''
         }),
@@ -827,33 +890,24 @@ describe('container stack helpers', () => {
             return JSON.stringify(hsaIntegrationSupportLock())
           }
           if (String(filePath).endsWith('container-stack.lock.json')) {
-            return JSON.stringify({
-              schemaVersion: 2,
-              services: [
-                {
-                  imageId: 'sha256:app-runtime-image',
+            return JSON.stringify(
+              containerStackLock({
+                appRuntime: {
                   image: 'ghcr.io/viscalyx/kravhantering-app-runtime',
+                  imageId: 'sha256:app-runtime-image',
                   manifestDigest: 'sha256:app-runtime-release',
-                  name: 'app-runtime',
                   source: 'ghcr-release',
                   tag: '1.2.3',
                 },
-                {
-                  imageId: 'sha256:db-job-image',
+                dbJob: {
                   image: 'ghcr.io/viscalyx/kravhantering-db-job',
+                  imageId: 'sha256:db-job-image',
                   manifestDigest: 'sha256:db-job-release',
-                  name: 'db-job',
                   source: 'ghcr-release',
                   tag: '1.2.3',
                 },
-                {
-                  imageId: 'sha256:nginx-image',
-                  image: 'docker.io/library/nginx',
-                  manifestDigest: 'sha256:nginx',
-                  name: 'nginx',
-                },
-              ],
-            })
+              }),
+            )
           }
           return ''
         }),

@@ -31,6 +31,20 @@ Check that the generated lock still copies the vendor image locks exactly:
 npm run container:stack-lock:check
 ```
 
+`container:stack-lock:check` first validates the generated
+`container-stack.lock.json` against
+[`container-stack-lock.schema.json`](./container-stack-lock.schema.json), then
+verifies that the nginx, SQL Server and Keycloak entries exactly match their
+`containers/*/image.lock.json` files. The schema is strict: unknown top-level
+or service fields fail validation, `schemaVersion` is fixed to `2`, the
+production stack contains only `app-runtime`, `db-job`, nginx, SQL Server and
+Keycloak, and `manifestDigest` plus `imageId` values must be prefixed with
+`sha256:`.
+
+Generated stack locks intentionally do not include a top-level `$schema`
+property. The check command supplies the schema explicitly so the runtime
+artifact stays limited to release evidence and service identity data.
+
 Generate a PR-mode Compose file with local project image tags and
 manifest-locked vendor images:
 
