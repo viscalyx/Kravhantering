@@ -159,17 +159,19 @@ maintenance rule.
 ## 13a. Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions
 
 - **Code:** `lib/reports/data/specification-output.ts`,
+  `lib/reports/data/specification-traceability.ts`,
   `lib/reports/templates/specification-profile-template.ts`,
-  `lib/reports/specification-csv.ts`,
-  `lib/reports/specification-profiles.ts`, and specification report/export
-  routes.
+  `lib/reports/templates/specification-traceability-template.ts`,
+  `lib/reports/specification-csv.ts`, `lib/reports/specification-profiles.ts`,
+  and specification report/export routes.
 - **Spec:** `docs/reference/reports.md` and `docs/governance/requirements-ui-behaviour.md`.
 - **Req tag:** `[Req: formal — docs/reference/reports.md
   "Requirements Specification Field Profiles"]`
-- **Question:** Do specification reports use linked requirement versions,
-  cover the whole specification, expose only lifecycle-matching report
-  profiles, keep full CSV export always available, and document each field
-  choice?
+- **Question:** Do lifecycle profile reports use linked requirement versions,
+  cover the whole specification, expose only lifecycle-matching profiles, keep
+  full CSV export always available, and document each field choice? Does
+  `Tillämpningsspårbarhet` remain the explicit selected-ref report with 400 for
+  invalid refs and 404 for refs outside the requested kravunderlag?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions"`
 

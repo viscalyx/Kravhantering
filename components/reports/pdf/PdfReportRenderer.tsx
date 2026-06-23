@@ -311,6 +311,10 @@ function PdfSectionRenderer({
       return <PdfTimelineEntry locale={locale} section={section} />
     case 'requirement-table':
       return <PdfRequirementTable section={section} />
+    case 'traceability-summary':
+      return <PdfTraceabilitySummary section={section} />
+    case 'traceability-table':
+      return <PdfTraceabilityTable section={section} />
     case 'requirement-selection-context':
       return (
         <PdfRequirementSelectionContext locale={locale} section={section} />
@@ -793,6 +797,181 @@ function PdfRequirementTable({
           ))}
         </View>
       ))}
+    </View>
+  )
+}
+
+function PdfTraceabilitySummary({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'traceability-summary' }>
+}) {
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>
+        {section.title}
+      </Text>
+      <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
+        {section.metrics.map(metric => (
+          <View
+            key={metric.label}
+            style={{
+              borderColor: '#e2e8f0',
+              borderRadius: 4,
+              borderWidth: 1,
+              flex: 1,
+              padding: 6,
+            }}
+          >
+            <Text style={{ color: '#64748b', fontSize: 7 }}>
+              {metric.label}
+            </Text>
+            <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 15 }}>
+              {metric.value}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        {section.groups.map(group => (
+          <View key={group.heading} style={{ flex: 1 }}>
+            <Text
+              style={{
+                borderBottomColor: '#e2e8f0',
+                borderBottomWidth: 1,
+                color: '#334155',
+                fontFamily: 'Helvetica-Bold',
+                fontSize: 9,
+                marginBottom: 4,
+                paddingBottom: 3,
+              }}
+            >
+              {group.heading}
+            </Text>
+            {group.items.map(item => (
+              <View
+                key={item.label}
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  paddingVertical: 1,
+                }}
+              >
+                <Text style={{ color: '#475569', fontSize: 8 }}>
+                  {item.label}
+                </Text>
+                <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 8 }}>
+                  {item.value}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+    </View>
+  )
+}
+
+function PdfTraceabilityTable({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'traceability-table' }>
+}) {
+  return (
+    <View>
+      {section.rows.map(row => (
+        <View
+          key={`${row.origin}-${row.requirementId}`}
+          style={{
+            borderColor: '#e2e8f0',
+            borderRadius: 4,
+            borderWidth: 1,
+            marginBottom: 7,
+            padding: 7,
+          }}
+          wrap={false}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              marginBottom: 5,
+            }}
+          >
+            <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 10 }}>
+              {row.requirementId}
+            </Text>
+            <Text style={{ color: '#64748b', fontSize: 8 }}>{row.origin}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+            <PdfTraceabilityField
+              label={section.labels.version}
+              value={row.version}
+            />
+            <PdfTraceabilityField
+              label={section.labels.area}
+              value={row.area}
+            />
+            <PdfTraceabilityField
+              label={section.labels.needsReference}
+              value={row.needsReference}
+            />
+            <PdfTraceabilityField
+              label={section.labels.usageStatus}
+              value={row.usageStatus}
+            />
+            <PdfTraceabilityField
+              label={section.labels.statusChangedAt}
+              value={row.statusChangedAt}
+            />
+            <PdfTraceabilityField
+              label={section.labels.deviation}
+              value={row.deviation}
+            />
+            <PdfTraceabilityField
+              label={section.labels.riskLevel}
+              value={row.riskLevel}
+            />
+            <PdfTraceabilityField
+              label={section.labels.verification}
+              value={row.verification}
+            />
+            <PdfTraceabilityField
+              label={section.labels.note}
+              value={row.note}
+              wide
+            />
+          </View>
+        </View>
+      ))}
+    </View>
+  )
+}
+
+function PdfTraceabilityField({
+  label,
+  value,
+  wide = false,
+}: {
+  label: string
+  value: string
+  wide?: boolean
+}) {
+  return (
+    <View style={{ width: wide ? '100%' : '48%' }}>
+      <Text
+        style={{
+          color: '#64748b',
+          fontFamily: 'Helvetica-Bold',
+          fontSize: 7,
+          marginBottom: 1,
+        }}
+      >
+        {label}
+      </Text>
+      <Text style={{ color: value ? '#1e293b' : '#94a3b8', fontSize: 8 }}>
+        {value || '—'}
+      </Text>
     </View>
   )
 }

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { SpecificationOutputData } from '@/lib/reports/data/specification-output'
+import type { SpecificationTraceabilityData } from '@/lib/reports/data/specification-traceability'
 import { buildSpecificationCsv } from '@/lib/reports/specification-csv'
 import {
   canExportProcurementCsvForLifecycleStatus,
   getSpecificationReportProfileForLifecycleStatus,
 } from '@/lib/reports/specification-profiles'
 import { buildSpecificationProfileReport } from '@/lib/reports/templates/specification-profile-template'
+import { buildSpecificationTraceabilityReport } from '@/lib/reports/templates/specification-traceability-template'
 
 function outputData(): SpecificationOutputData {
   return {
@@ -73,6 +75,50 @@ function requirementTable(
   )
   expect(table?.type).toBe('requirement-table')
   return table?.type === 'requirement-table' ? table : null
+}
+
+function traceabilityData(): SpecificationTraceabilityData {
+  return {
+    specification: outputData().specification,
+    items: [
+      {
+        areaName: 'Security',
+        deviationCounts: { approved: 0, pending: 1, rejected: 0, total: 1 },
+        itemRef: 'lib:31',
+        kind: 'library',
+        needsReference: 'IAM-need',
+        note: 'Follow up at gate 2',
+        requiresTesting: true,
+        riskLevelNameEn: 'High',
+        riskLevelNameSv: 'Hög',
+        specificationItemStatusId: 2,
+        specificationItemStatusNameEn: 'In progress',
+        specificationItemStatusNameSv: 'Pågår',
+        statusUpdatedAt: '2026-06-03T00:00:00.000Z',
+        uniqueId: 'BEH0001',
+        verificationMethod: 'Review test evidence',
+        versionNumber: 4,
+      },
+      {
+        areaName: null,
+        deviationCounts: { approved: 1, pending: 0, rejected: 0, total: 1 },
+        itemRef: 'local:41',
+        kind: 'specificationLocal',
+        needsReference: null,
+        note: null,
+        requiresTesting: false,
+        riskLevelNameEn: null,
+        riskLevelNameSv: null,
+        specificationItemStatusId: 1,
+        specificationItemStatusNameEn: 'Not started',
+        specificationItemStatusNameSv: 'Ej startad',
+        statusUpdatedAt: null,
+        uniqueId: 'KRAV0001',
+        verificationMethod: null,
+        versionNumber: null,
+      },
+    ],
+  }
 }
 
 describe('specification report profiles', () => {
@@ -170,5 +216,115 @@ describe('specification report profiles', () => {
     )
     expect(fullCsv).toContain('2')
     expect(fullCsv).toContain('Väntande')
+  })
+
+  it('builds a traceability report from selected requirement applications', () => {
+    const model = buildSpecificationTraceabilityReport(traceabilityData(), 'sv')
+    const header = model.sections.find(section => section.type === 'header')
+    const summary = model.sections.find(
+      section => section.type === 'traceability-summary',
+    )
+    const table = model.sections.find(
+      section => section.type === 'traceability-table',
+    )
+
+    expect(model.orientation).toBe('portrait')
+    expect(header).toMatchObject({
+      subtitle: '2 kravtillämpningar',
+      title: 'Tillämpningsspårbarhet',
+    })
+    expect(summary?.type).toBe('traceability-summary')
+    if (summary?.type !== 'traceability-summary') {
+      throw new Error('Expected traceability summary section')
+    }
+    expect(summary.metrics).toEqual([
+      { label: 'Kravtillämpningar', value: '2' },
+      { label: 'Bibliotekskrav', value: '1' },
+      { label: 'Lokala krav', value: '1' },
+      { label: 'Saknade behovsreferenser', value: '1' },
+    ])
+    expect(summary.groups[0]?.items).toEqual([
+      { label: 'Ej startad', value: '1' },
+      { label: 'Pågår', value: '1' },
+    ])
+    expect(summary.groups[1]?.items).toEqual([
+      { label: 'Väntande', value: '1' },
+      { label: 'Godkänd', value: '1' },
+      { label: 'Avslagen', value: '0' },
+    ])
+
+    expect(table?.type).toBe('traceability-table')
+    if (table?.type !== 'traceability-table') {
+      throw new Error('Expected traceability table section')
+    }
+    expect(table.rows).toEqual([
+      expect.objectContaining({
+        area: 'Security',
+        deviation: 'Väntande: 1',
+        needsReference: 'IAM-need',
+        note: 'Follow up at gate 2',
+        origin: 'Bibliotekskrav',
+        requirementId: 'BEH0001',
+        riskLevel: 'Hög',
+        usageStatus: 'Pågår',
+        verification: 'Ja: Review test evidence',
+        version: '4',
+      }),
+      expect.objectContaining({
+        area: 'Unikt krav',
+        deviation: 'Godkänd: 1',
+        needsReference: '',
+        origin: 'Kravunderlagslokalt krav',
+        requirementId: 'KRAV0001',
+        verification: 'Nej',
+        version: '',
+      }),
+    ])
+  })
+
+  it('sorts traceability summary labels with the report locale', () => {
+    const data = traceabilityData()
+    const [firstItem, secondItem] = data.items
+    if (!firstItem || !secondItem) {
+      throw new Error('Expected two traceability items')
+    }
+
+    data.items = [
+      {
+        ...firstItem,
+        specificationItemStatusNameEn: 'Ä active',
+        specificationItemStatusNameSv: 'Ä aktiv',
+      },
+      {
+        ...secondItem,
+        specificationItemStatusNameEn: 'Zulu',
+        specificationItemStatusNameSv: 'Zulu',
+      },
+    ]
+
+    const englishSummary = buildSpecificationTraceabilityReport(
+      data,
+      'en',
+    ).sections.find(section => section.type === 'traceability-summary')
+    const swedishSummary = buildSpecificationTraceabilityReport(
+      data,
+      'sv',
+    ).sections.find(section => section.type === 'traceability-summary')
+
+    if (englishSummary?.type !== 'traceability-summary') {
+      throw new Error('Expected English traceability summary section')
+    }
+    if (swedishSummary?.type !== 'traceability-summary') {
+      throw new Error('Expected Swedish traceability summary section')
+    }
+
+    expect(englishSummary.groups[0]?.items.map(item => item.label)).toEqual([
+      'Ä active',
+      'Zulu',
+    ])
+    expect(swedishSummary.groups[0]?.items.map(item => item.label)).toEqual([
+      'Zulu',
+      'Ä aktiv',
+    ])
   })
 })

@@ -956,14 +956,16 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 24: Admin C
 <!-- markdownlint-disable-next-line MD013 -->
 **Requirement tag:** `[Req: formal — docs/reference/reports.md "Requirements Specification Field Profiles"]`
 
-**What happened:** Requirements specification reports and exports are now
-lifecycle-scoped outputs rather than row-selected list snapshots. They are
-used as procurement attachments, progress follow-up, management reports, and
-CSV analysis extracts. If report data follows the latest requirement version
-instead of the version linked to the specification item, a generated report can
-change without an explicit specification decision. If the menu exposes the
-wrong profile for a lifecycle status, external procurement artifacts can leak
-internal risk, need, or follow-up fields.
+**What happened:** Requirements specification profile reports and exports are
+lifecycle-scoped outputs rather than row-selected list snapshots. They are used
+as procurement attachments, progress follow-up, management reports, and CSV
+analysis extracts. `Tillämpningsspårbarhet` is the explicit exception: it is a
+filtered requirement-application report driven by `lib:` and `local:` item refs
+from the current kravunderlag list. If profile report data follows the latest
+requirement version instead of the version linked to the specification item, a
+generated report can change without an explicit specification decision. If the
+menu exposes the wrong profile for a lifecycle status, external procurement
+artifacts can leak internal risk, need, or follow-up fields.
 
 **Covered code line ranges:** This scenario covers report generation,
 lifecycle-scoping, selected-version pinning, and profile matching in these
@@ -975,20 +977,28 @@ app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:
 app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:2426-2508
 app/[locale]/specifications/[slug]/reports/print/[profile]/page.tsx:20-94
 app/[locale]/specifications/[slug]/reports/pdf/[profile]/route.ts:22-78
+app/[locale]/specifications/[slug]/reports/print/traceability/page.tsx:1-130
+app/[locale]/specifications/[slug]/reports/pdf/traceability/route.ts:1-85
 app/api/requirements-specifications/[id]/report-output/route.ts:35-120
+app/api/requirements-specifications/[id]/traceability-items/route.ts:1-120
 app/api/requirements-specifications/[id]/exports/route.ts:37-160
 lib/reports/data/specification-output.ts:345-472
+lib/reports/data/specification-traceability.ts:1-60
 lib/reports/templates/specification-profile-template.ts:28-263
+lib/reports/templates/specification-traceability-template.ts:1-230
 lib/reports/specification-csv.ts:28-132
 lib/reports/specification-profiles.ts:7-65
 ```
 <!-- markdownlint-enable MD013 -->
 
-**The requirement:** Requirements specification reports must use the linked
-`requirement_version_id`, cover the whole specification sorted by `Krav-ID`,
-show only the report profile matching the specification lifecycle status, and
-keep `Full CSV-export` always available while limiting `Anbuds-CSV` to
-`Upphandling`. Field inclusions and exclusions must stay documented in
+**The requirement:** Requirements specification profile reports must use the
+linked `requirement_version_id`, cover the whole specification sorted by
+`Krav-ID`, show only the report profile matching the specification lifecycle
+status, and keep `Full CSV-export` always available while limiting
+`Anbuds-CSV` to `Upphandling`. `Tillämpningsspårbarhet` must use explicit
+selected refs from the filtered kravunderlag list, enforce the shared report
+item cap, reject invalid refs with 400, and reject refs outside the requested
+specification with 404. Field inclusions and exclusions must stay documented in
 `docs/reference/reports.md`.
 
 **How to verify:**

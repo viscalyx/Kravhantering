@@ -87,7 +87,39 @@ Each profile has both a browser print route and a server PDF route. The
 specification detail menu shows only the profile that matches the lifecycle
 status.
 
-### 6. Improvement Suggestion History Report
+### 6. Requirement Application Traceability
+
+`Tillämpningsspårbarhet` / `Requirement application traceability` is available
+from the `Krav i underlaget` report menu for requirements specifications. It is
+not lifecycle-scoped and does not replace the profile reports. Instead, it uses
+the same filtered requirement applications currently shown in the specification
+detail list.
+
+- Includes both library requirement applications (`lib:{id}`) and
+  specification-local requirement applications (`local:{id}`)
+- Uses explicit item refs in `refs=lib:31,local:41`
+- Uses the current application data already stored on requirement applications:
+  needs reference, usage status, status date, deviations, risk, verifiability,
+  verification method, and note
+- Does not introduce a separate database model
+- Summary shows total requirement applications, library/local distribution,
+  usage status distribution, missing needs references, and deviations per
+  decision state
+- Detail rows show requirement ID, origin, version, area, needs reference,
+  usage status, status changed date, deviation state, risk, verification, and
+  note
+- The detail view shows traceability print and PDF actions only when the
+  filtered requirement application list contains at most 200 items. The
+  selected `refs` payload is capped at the same limit before the report routes
+  are called.
+
+Browser print loads data through
+`/api/requirements-specifications/{idOrSlug}/traceability-items?refs=...`.
+The API accepts only `lib:{id}` and `local:{id}` refs, applies the shared report
+array item cap, returns 400 for invalid or duplicate refs, and returns 404 when
+a syntactically valid ref does not belong to the requested specification.
+
+### 7. Improvement Suggestion History Report
 
 Lists all improvement suggestions grouped under each requirement
 version, sorted in descending version order.
@@ -200,6 +232,35 @@ Excluded fields:
   remaining work and deviation state, not replace deviation or improvement
   history reports.
 
+### Tillämpningsspårbarhet
+
+Cover: specification name, ID, governance object type, implementation type,
+lifecycle status, and specification purpose.
+
+Included fields:
+
+- `Krav-ID` identifies each requirement application in the filtered
+  kravunderlag list.
+- `Ursprung` distinguishes linked library requirements from
+  specification-local requirements.
+- `Version` shows the pinned library requirement version. Specification-local
+  requirements leave the field blank because they are owned directly by the
+  specification.
+- `Kravområde` shows library ownership. Specification-local requirements use
+  `Unikt krav`.
+- `Behovsreferens`, `Användningsstatus`, `Status ändrad`, and `Anteckning`
+  show how the requirement application is used in this specification.
+- `Avstegssignal` shows pending, approved, and rejected deviation counts.
+- `Risknivå`, `Verifierbar`, and verification method support follow-up and
+  test planning.
+
+Excluded fields:
+
+- Long requirement text, acceptance criteria, norm references, package
+  membership, and improvement suggestion history are excluded because this
+  report is an application traceability view, not a replacement for the profile
+  reports, CSV exports, or dedicated history reports.
+
 ### Full CSV-export
 
 Row-based CSV without metadata rows. Always available and intended for internal
@@ -256,7 +317,9 @@ requirement versions. History, review, combined review, and suggestion-history
 PDFs require history access for each requested requirement before any report
 data helper runs. Requirements specification profile PDFs authorize against the
 specification before collecting items and reject profiles that do not match the
-specification lifecycle status.
+specification lifecycle status. Requirements specification traceability PDF and
+API routes authorize against the specification before collecting item data and
+reject selected refs that do not belong to the requested specification.
 
 ## PDF Filenames
 
@@ -269,6 +332,9 @@ specification lifecycle status.
 - Requirements specification profile report:
   `{localized profile label} {specification name} {specification ID}.pdf`
   (e.g., `Genomföranderapport Tillgänglighet PKG001.pdf`)
+- Requirements specification traceability:
+  `{localized label} {specification name} {specification ID}.pdf`
+  (e.g., `Tillämpningsspårbarhet Tillgänglighet PKG001.pdf`)
 - Suggestion History:
   `{localized label} {uniqueId}.pdf`
   (e.g., `Ändringsförslagshistorik ANV0022.pdf`)

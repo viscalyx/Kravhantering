@@ -44,6 +44,25 @@ export interface SuggestionReportItem {
   status: { label: string; color: string }
 }
 
+export interface TraceabilitySummaryGroup {
+  heading: string
+  items: { label: string; value: string }[]
+}
+
+export interface TraceabilityReportRow {
+  area: string
+  deviation: string
+  needsReference: string
+  note: string
+  origin: string
+  requirementId: string
+  riskLevel: string
+  statusChangedAt: string
+  usageStatus: string
+  verification: string
+  version: string
+}
+
 export interface TimelineEntryData {
   archivedAt: string | null
   createdAt: string
@@ -95,6 +114,28 @@ export type ReportSection =
         statusColor?: string | null
         statusIconName?: string | null
       }[]
+    }
+  | {
+      type: 'traceability-summary'
+      groups: TraceabilitySummaryGroup[]
+      metrics: { label: string; value: string }[]
+      title: string
+    }
+  | {
+      type: 'traceability-table'
+      labels: {
+        area: string
+        deviation: string
+        needsReference: string
+        note: string
+        origin: string
+        riskLevel: string
+        statusChangedAt: string
+        usageStatus: string
+        verification: string
+        version: string
+      }
+      rows: TraceabilityReportRow[]
     }
   | {
       type: 'requirement-selection-context'

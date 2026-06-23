@@ -775,7 +775,8 @@
     "reportProfiles": {
       "procurement": "Procurement requirements appendix",
       "progress": "Progress report",
-      "management": "Management report"
+      "management": "Management report",
+      "traceability": "Requirement application traceability"
     },
     "exportProfiles": {
       "procurement": "Tender CSV",
@@ -929,7 +930,9 @@
         "requirementVersion": "Requirement (v{version})",
         "published": "Published",
         "archived": "Archived",
-        "uniqueRequirement": "Unique requirement"
+        "uniqueRequirement": "Unique requirement",
+        "libraryRequirement": "Library requirement",
+        "specificationLocalRequirement": "Specification-local requirement"
       },
       "filenames": {
         "list": "Requirements List",
@@ -937,7 +940,8 @@
         "combinedReview": "Combined Review Report",
         "history": "History Report",
         "deviationReview": "Deviation Review Report",
-        "suggestionHistory": "Improvement Suggestion History"
+        "suggestionHistory": "Improvement Suggestion History",
+        "traceability": "Requirement Application Traceability"
       },
       "titles": {
         "list": "Requirements List",
@@ -949,6 +953,7 @@
         "deviationReview": "Deviation Review Report",
         "history": "History Report",
         "suggestionHistory": "Improvement Suggestion History",
+        "traceability": "Requirement Application Traceability",
         "archiveRequest": "Archive Request",
         "reviewChangeReport": "Review Change Report"
       },
@@ -981,6 +986,7 @@
         "requirementPackagesValue": "Requirements packages: ",
         "requirementId": "Requirement ID",
         "requirementText": "Requirement text",
+        "origin": "Origin",
         "requirementArea": "Requirement area",
         "status": "Status",
         "verificationMethod": "Verification Method",
@@ -992,12 +998,15 @@
         "isoChapter": "ISO chapter",
         "managementReportTitle": "Management report",
         "needsReference": "Needs reference",
+        "note": "Note",
         "procurementCsvTitle": "Tender CSV",
         "procurementReportTitle": "Procurement requirements appendix",
         "progressReportTitle": "Progress report",
         "requirementPackage": "Requirement package",
         "requirementVersionStatus": "Requirement version status",
         "residualFromImplementation": "Residual from implementation",
+        "statusChangedAt": "Status changed",
+        "traceabilityReportTitle": "Requirement application traceability",
         "usageStatus": "Usage status",
         "verifiable": "Verifiable",
         "version": "Version"
@@ -1017,6 +1026,18 @@
         "pending": "Pending",
         "approved": "Approved",
         "rejected": "Rejected"
+      },
+      "traceability": {
+        "summaryTitle": "Summary",
+        "subtitle": "{count} requirement applications",
+        "totalApplications": "Requirement applications",
+        "libraryRequirements": "Library requirements",
+        "localRequirements": "Local requirements",
+        "missingNeedsReferences": "Missing needs references",
+        "statusDistribution": "Status distribution",
+        "deviationsByDecision": "Deviations by decision state",
+        "noDeviation": "No deviation",
+        "verification": "Verifiable / verification method"
       }
     },
     "specificationCover": {
