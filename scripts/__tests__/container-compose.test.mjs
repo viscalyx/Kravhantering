@@ -25,6 +25,10 @@ function service(name, role, image, tag, manifestDigest, imageId) {
 function stackLock() {
   return {
     schemaVersion: 2,
+    releaseVersion: '0.1.0-test',
+    commitSha: 'deadbeef',
+    generatedAt: '2026-05-22T10:00:00.000Z',
+    generatedBy: 'scripts/containers/generate-stack-lock.mjs',
     services: [
       service(
         'app-runtime',

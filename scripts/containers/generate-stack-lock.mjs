@@ -2,9 +2,12 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import Ajv from 'ajv'
 
 export const STACK_LOCK_SCHEMA_VERSION = 2
 export const DEFAULT_STACK_LOCK_PATH = 'container-stack.lock.json'
+export const DEFAULT_STACK_LOCK_SCHEMA_PATH =
+  'containers/compose/container-stack-lock.schema.json'
 export const GENERATED_BY = 'scripts/containers/generate-stack-lock.mjs'
 
 export const VENDOR_LOCKS = [
@@ -70,6 +73,56 @@ function writeTextFile(filePath, content, fsImpl = fs) {
   fsImpl.writeFileSync(filePath, content)
 }
 
+function stackLockSchemaPath() {
+  return path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    '..',
+    DEFAULT_STACK_LOCK_SCHEMA_PATH,
+  )
+}
+
+let stackLockSchemaValidator
+
+function stackLockSchemaValidate() {
+  if (!stackLockSchemaValidator) {
+    const schema = readJsonFile(stackLockSchemaPath())
+    const ajv = new Ajv({ allErrors: true, strict: true })
+    stackLockSchemaValidator = ajv.compile(schema)
+  }
+  return stackLockSchemaValidator
+}
+
+function schemaLocation(error) {
+  return error.instancePath || '/'
+}
+
+function schemaErrorMessage(error) {
+  const location = schemaLocation(error)
+
+  if (error.keyword === 'required') {
+    return `${location} must include required field "${error.params.missingProperty}"`
+  }
+
+  if (error.keyword === 'additionalProperties') {
+    return `${location} must not include unknown field "${error.params.additionalProperty}"`
+  }
+
+  if (error.keyword === 'pattern') {
+    return `${location} must match ${error.params.pattern}`
+  }
+
+  if (error.keyword === 'const') {
+    return `${location} must equal ${JSON.stringify(error.params.allowedValue)}`
+  }
+
+  return `${location} ${error.message}`
+}
+
+function formatStackLockSchemaErrors(errors = []) {
+  return errors.map(schemaErrorMessage).join('; ')
+}
+
 export function formatStackLockJson(stackLock) {
   return `${JSON.stringify(stackLock, null, 2)}\n`
 }
@@ -83,6 +136,13 @@ export function assertStackLockSchema(
       `${context} must use schemaVersion ${STACK_LOCK_SCHEMA_VERSION}.`,
     )
   }
+  const validate = stackLockSchemaValidate()
+  if (!validate(stackLock)) {
+    throw new Error(
+      `${context} does not match ${DEFAULT_STACK_LOCK_SCHEMA_PATH}: ${formatStackLockSchemaErrors(validate.errors)}`,
+    )
+  }
+  return true
 }
 
 export function normalizeServiceRecord(record, context) {

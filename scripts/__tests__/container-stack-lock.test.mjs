@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  assertStackLockSchema,
   checkVendorLocks,
   createStackLockFromCliOptions,
   formatStackLockJson,
@@ -26,6 +27,72 @@ function vendorLock(name, role, image, tag, manifestDigest, imageId) {
     manifestDigest,
     imageId,
     source: `https://example.test/${name}`,
+  }
+}
+
+function projectService(name, role, manifestDigest, imageId) {
+  return {
+    name,
+    role,
+    image: `localhost/kravhantering/${name}`,
+    tag: 'pr-1-run-deadbeef',
+    manifestDigest,
+    imageId,
+    source: 'local-build',
+  }
+}
+
+function validVendorLocks() {
+  return [
+    vendorLock(
+      'nginx',
+      'tls-proxy',
+      'docker.io/library/nginx',
+      '1.31.1-alpine',
+      'sha256:nginx-manifest',
+      'sha256:nginx-image',
+    ),
+    vendorLock(
+      'sqlserver',
+      'database',
+      'mcr.microsoft.com/mssql/server',
+      '2025-CU5-ubuntu-24.04',
+      'sha256:sqlserver-manifest',
+      'sha256:sqlserver-image',
+    ),
+    vendorLock(
+      'keycloak',
+      'identity-provider',
+      'quay.io/keycloak/keycloak',
+      '26.6.3-0',
+      'sha256:keycloak-manifest',
+      'sha256:keycloak-image',
+    ),
+  ]
+}
+
+function validStackLock(services = validVendorLocks()) {
+  return {
+    schemaVersion: 2,
+    releaseVersion: '0.1.0-test',
+    commitSha: 'deadbeef',
+    generatedAt: '2026-05-22T10:00:00.000Z',
+    generatedBy: 'scripts/containers/generate-stack-lock.mjs',
+    services: [
+      projectService(
+        'app-runtime',
+        'application',
+        'sha256:app-runtime-manifest',
+        'sha256:app-runtime-image',
+      ),
+      projectService(
+        'db-job',
+        'database-job',
+        'sha256:db-job-manifest',
+        'sha256:db-job-image',
+      ),
+      ...services,
+    ],
   }
 }
 
@@ -128,55 +195,74 @@ describe('container stack lock generation', () => {
       },
       ...readVendorLocks({ cwd }),
     ])
+    expect(stackLock).not.toHaveProperty('$schema')
+    expect(assertStackLockSchema(stackLock)).toBe(true)
     expect(formatStackLockJson(stackLock)).toMatch(/\n$/u)
   })
 
-  it('fails check mode when vendor entries are missing or edited', () => {
-    const vendorLocks = [
-      vendorLock(
-        'nginx',
-        'tls-proxy',
-        'docker.io/library/nginx',
-        '1.31.1-alpine',
-        'sha256:nginx-manifest',
-        'sha256:nginx-image',
-      ),
-    ]
-
+  it('validates stack locks against the standalone JSON Schema', () => {
     expect(() =>
-      checkVendorLocks({ schemaVersion: 1, services: [] }, vendorLocks),
+      assertStackLockSchema({ schemaVersion: 1, services: [] }),
     ).toThrow('must use schemaVersion 2')
     expect(() =>
-      checkVendorLocks({ schemaVersion: 2, services: [] }, vendorLocks),
-    ).toThrow('missing "nginx"')
+      assertStackLockSchema({ ...validStackLock(), extra: true }),
+    ).toThrow('must not include unknown field "extra"')
+    expect(() =>
+      assertStackLockSchema({
+        ...validStackLock(),
+        services: [
+          {
+            ...validStackLock().services[0],
+            extra: true,
+          },
+          ...validStackLock().services.slice(1),
+        ],
+      }),
+    ).toThrow('must not include unknown field "extra"')
+    expect(() =>
+      assertStackLockSchema({
+        ...validStackLock(),
+        services: [
+          {
+            ...validStackLock().services[0],
+            manifestDigest: 'app-runtime-manifest',
+          },
+          ...validStackLock().services.slice(1),
+        ],
+      }),
+    ).toThrow('/services/0/manifestDigest must match ^sha256:.+')
+    expect(() =>
+      assertStackLockSchema({
+        ...validStackLock(),
+        services: validStackLock().services.slice(0, 4),
+      }),
+    ).toThrow(
+      'does not match containers/compose/container-stack-lock.schema.json',
+    )
+  })
+
+  it('keeps vendor exact-match validation after schema validation', () => {
+    const vendorLocks = validVendorLocks()
+
+    expect(checkVendorLocks(validStackLock(vendorLocks), vendorLocks)).toBe(
+      true,
+    )
     expect(() =>
       checkVendorLocks(
         {
-          schemaVersion: 2,
+          ...validStackLock(vendorLocks),
           services: [
+            ...validStackLock(vendorLocks).services.slice(0, 2),
             {
               ...vendorLocks[0],
-              manifestDigest: 'different',
+              manifestDigest: 'sha256:different',
             },
+            ...validStackLock(vendorLocks).services.slice(3),
           ],
         },
         vendorLocks,
       ),
     ).toThrow('differs from image.lock.json at "manifestDigest"')
-    expect(() =>
-      checkVendorLocks(
-        {
-          schemaVersion: 2,
-          services: [
-            {
-              ...vendorLocks[0],
-              extra: true,
-            },
-          ],
-        },
-        vendorLocks,
-      ),
-    ).toThrow('fields that do not match')
   })
 
   it('writes and checks a stack lock through the CLI wrapper', async () => {

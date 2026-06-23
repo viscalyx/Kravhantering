@@ -1031,6 +1031,10 @@ describe('trusted container release helpers', () => {
       )
       const stackLock = {
         schemaVersion: 2,
+        releaseVersion: '1.2.3',
+        commitSha: 'deadbeef',
+        generatedAt: '2026-05-23T00:00:00.000Z',
+        generatedBy: 'scripts/containers/generate-stack-lock.mjs',
         services: [
           {
             imageId: 'sha256:app-image',

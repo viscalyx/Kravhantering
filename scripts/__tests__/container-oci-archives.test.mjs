@@ -17,12 +17,20 @@ function service(
   imageId,
   manifestDigest = `${imageId}-manifest`,
 ) {
+  const roles = {
+    'app-runtime': 'application',
+    'db-job': 'database-job',
+    keycloak: 'identity-provider',
+    nginx: 'tls-proxy',
+    sqlserver: 'database',
+  }
+
   return {
     imageId,
     image,
     manifestDigest,
     name,
-    role: name === 'db-job' ? 'database-job' : 'application',
+    role: roles[name],
     source: 'pr-build',
     tag,
   }
@@ -31,6 +39,10 @@ function service(
 function stackLock() {
   return {
     schemaVersion: 2,
+    releaseVersion: '0.1.0-test',
+    commitSha: 'deadbeef',
+    generatedAt: '2026-05-22T10:00:00.000Z',
+    generatedBy: 'scripts/containers/generate-stack-lock.mjs',
     services: [
       service(
         'app-runtime',
@@ -49,6 +61,18 @@ function stackLock() {
         'docker.io/library/nginx',
         '1.31.1-alpine',
         'sha256:nginx',
+      ),
+      service(
+        'sqlserver',
+        'mcr.microsoft.com/mssql/server',
+        '2025-CU5-ubuntu-24.04',
+        'sha256:sqlserver',
+      ),
+      service(
+        'keycloak',
+        'quay.io/keycloak/keycloak',
+        '26.6.3-0',
+        'sha256:keycloak',
       ),
     ],
   }
@@ -110,7 +134,7 @@ describe('container OCI archive helpers', () => {
     delete invalidStackLock.services[0].imageId
 
     expect(() => buildArchivePlans(invalidStackLock, 'tmp/oci')).toThrow(
-      'container-stack.lock.json service "app-runtime" is missing imageId.',
+      'must include required field "imageId"',
     )
   })
 

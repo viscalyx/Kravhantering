@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/viscalyx/Kravhantering/main/containers/compose/container-stack-lock.schema.json",
+  "title": "Kravhantering container stack lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "releaseVersion",
+    "commitSha",
+    "generatedAt",
+    "generatedBy",
+    "services"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 2
+    },
+    "releaseVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "commitSha": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generatedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generatedBy": {
+      "const": "scripts/containers/generate-stack-lock.mjs"
+    },
+    "services": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/definitions/service"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "$ref": "#/definitions/appRuntimeService"
+          }
+        },
+        {
+          "contains": {
+            "$ref": "#/definitions/dbJobService"
+          }
+        },
+        {
+          "contains": {
+            "$ref": "#/definitions/nginxService"
+          }
+        },
+        {
+          "contains": {
+            "$ref": "#/definitions/sqlserverService"
+          }
+        },
+        {
+          "contains": {
+            "$ref": "#/definitions/keycloakService"
+          }
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "sha256Value": {
+      "type": "string",
+      "pattern": "^sha256:.+"
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "role",
+        "image",
+        "tag",
+        "manifestDigest",
+        "imageId",
+        "source"
+      ],
+      "properties": {
+        "name": {
+          "enum": ["app-runtime", "db-job", "nginx", "sqlserver", "keycloak"]
+        },
+        "role": {
+          "enum": [
+            "application",
+            "database-job",
+            "tls-proxy",
+            "database",
+            "identity-provider"
+          ]
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manifestDigest": {
+          "$ref": "#/definitions/sha256Value"
+        },
+        "imageId": {
+          "$ref": "#/definitions/sha256Value"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "appRuntimeService": {
+      "type": "object",
+      "required": ["name", "role"],
+      "properties": {
+        "name": {
+          "const": "app-runtime"
+        },
+        "role": {
+          "const": "application"
+        }
+      }
+    },
+    "dbJobService": {
+      "type": "object",
+      "required": ["name", "role"],
+      "properties": {
+        "name": {
+          "const": "db-job"
+        },
+        "role": {
+          "const": "database-job"
+        }
+      }
+    },
+    "nginxService": {
+      "type": "object",
+      "required": ["name", "role"],
+      "properties": {
+        "name": {
+          "const": "nginx"
+        },
+        "role": {
+          "const": "tls-proxy"
+        }
+      }
+    },
+    "sqlserverService": {
+      "type": "object",
+      "required": ["name", "role"],
+      "properties": {
+        "name": {
+          "const": "sqlserver"
+        },
+        "role": {
+          "const": "database"
+        }
+      }
+    },
+    "keycloakService": {
+      "type": "object",
+      "required": ["name", "role"],
+      "properties": {
+        "name": {
+          "const": "keycloak"
+        },
+        "role": {
+          "const": "identity-provider"
+        }
+      }
+    }
+  }
+}
