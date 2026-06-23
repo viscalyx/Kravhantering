@@ -358,9 +358,13 @@ function searchParamsFromPath(path: string): URLSearchParams {
 
 function latestItemsTableProps() {
   const calls = requirementsTableMock.mock.calls.map(([props]) => props)
-  const itemsTable = calls.find(
-    props => props.floatingActionRailPlacement === 'inline-top',
-  )
+  const itemsTable = calls
+    .slice()
+    .reverse()
+    .find(
+      props =>
+        props.floatingActionRailPlacement === 'inline-top' && !props.onLoadMore,
+    )
   expect(itemsTable).toBeDefined()
   return itemsTable as NonNullable<typeof itemsTable>
 }
@@ -706,6 +710,11 @@ describe('RequirementsSpecificationDetailClient', () => {
         id: 'print-progress',
       }),
       expect.objectContaining({ id: 'pdf-progress' }),
+      expect.objectContaining({
+        href: '/specifications/ETJANST-UPP-2026/reports/print/traceability?refs=lib%3A31',
+        id: 'print-traceability',
+      }),
+      expect.objectContaining({ id: 'pdf-traceability' }),
     ])
     expect(exportAction?.menuItems?.map(item => item.id)).toEqual([
       'export-full',
@@ -733,7 +742,69 @@ describe('RequirementsSpecificationDetailClient', () => {
         id: 'print-progress',
       }),
       expect.objectContaining({ id: 'pdf-progress' }),
+      expect.objectContaining({
+        href: '/specifications/ETJANST%20UPP%2F2026/reports/print/traceability?refs=lib%3A31',
+        id: 'print-traceability',
+      }),
+      expect.objectContaining({ id: 'pdf-traceability' }),
     ])
+  })
+
+  it('builds traceability report refs from the filtered requirement applications', async () => {
+    const initialData = createInitialData()
+    initialData.specificationItems = [
+      {
+        ...initialSpecificationItem,
+        requirementPackageIds: [9],
+      },
+      {
+        ...initialSpecificationItem,
+        id: -41,
+        itemRef: 'local:41',
+        kind: 'specificationLocal',
+        requirementPackageIds: [],
+        specificationItemId: undefined,
+        specificationLocalRequirementId: 41,
+        uniqueId: 'KRAV0001',
+        version: {
+          ...initialSpecificationItem.version,
+          description: 'Local-only application.',
+          requiresTesting: false,
+          status: 2,
+          versionNumber: 1,
+        },
+      },
+    ]
+    initialData.requirementPackages = [
+      { id: 9, name: 'Security package' },
+    ] as RequirementPackageOption[]
+
+    renderRequirementsSpecificationDetailClient(initialData)
+    await waitForInitialAvailableRequirementsRefresh()
+
+    act(() => {
+      latestItemsTableProps().onFilterChange?.({ requirementPackageIds: [9] })
+    })
+
+    const itemsTable = latestItemsTableProps()
+    const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
+      hidden?: boolean
+      id: string
+      menuItems?: Array<{ href?: string; id: string }>
+    }>
+    const printAction = floatingActions.find(action => action.id === 'print')
+
+    expect(
+      itemsTable.rows.map((row: { itemRef?: string }) => row.itemRef),
+    ).toEqual(['lib:31'])
+    expect(printAction?.menuItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          href: '/specifications/ETJANST-UPP-2026/reports/print/traceability?refs=lib%3A31',
+          id: 'print-traceability',
+        }),
+      ]),
+    )
   })
 
   it('logs CSV export failures from discarded menu handlers', async () => {

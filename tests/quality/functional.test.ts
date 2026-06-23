@@ -308,12 +308,26 @@ const specificationOutputDataPath = join(
   'data',
   'specification-output.ts',
 )
+const specificationTraceabilityDataPath = join(
+  repoRoot,
+  'lib',
+  'reports',
+  'data',
+  'specification-traceability.ts',
+)
 const specificationProfileTemplatePath = join(
   repoRoot,
   'lib',
   'reports',
   'templates',
   'specification-profile-template.ts',
+)
+const specificationTraceabilityTemplatePath = join(
+  repoRoot,
+  'lib',
+  'reports',
+  'templates',
+  'specification-traceability-template.ts',
 )
 const specificationCsvPath = join(
   repoRoot,
@@ -326,6 +340,37 @@ const specificationProfilesPath = join(
   'lib',
   'reports',
   'specification-profiles.ts',
+)
+const specificationTraceabilityApiRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'requirements-specifications',
+  '[id]',
+  'traceability-items',
+  'route.ts',
+)
+const specificationTraceabilityPrintRoutePath = join(
+  repoRoot,
+  'app',
+  '[locale]',
+  'specifications',
+  '[slug]',
+  'reports',
+  'print',
+  'traceability',
+  'page.tsx',
+)
+const specificationTraceabilityPdfRoutePath = join(
+  repoRoot,
+  'app',
+  '[locale]',
+  'specifications',
+  '[slug]',
+  'reports',
+  'pdf',
+  'traceability',
+  'route.ts',
 )
 
 function countRegisterToolCalls(source: string): number {
@@ -610,12 +655,32 @@ it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selec
   const reportsDoc = readFileSync(reportsDocPath, 'utf8')
   const detailClientSource = readFileSync(specificationDetailClientPath, 'utf8')
   const outputDataSource = readFileSync(specificationOutputDataPath, 'utf8')
+  const traceabilityDataSource = readFileSync(
+    specificationTraceabilityDataPath,
+    'utf8',
+  )
   const profileTemplateSource = readFileSync(
     specificationProfileTemplatePath,
     'utf8',
   )
+  const traceabilityTemplateSource = readFileSync(
+    specificationTraceabilityTemplatePath,
+    'utf8',
+  )
   const csvSource = readFileSync(specificationCsvPath, 'utf8')
   const profilesSource = readFileSync(specificationProfilesPath, 'utf8')
+  const traceabilityApiRouteSource = readFileSync(
+    specificationTraceabilityApiRoutePath,
+    'utf8',
+  )
+  const traceabilityPrintRouteSource = readFileSync(
+    specificationTraceabilityPrintRoutePath,
+    'utf8',
+  )
+  const traceabilityPdfRouteSource = readFileSync(
+    specificationTraceabilityPdfRoutePath,
+    'utf8',
+  )
 
   expect(outputDataSource).toContain(
     'requirement_version.id = specification_item.requirement_version_id',
@@ -636,7 +701,8 @@ it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selec
     'canExportProcurementCsvForLifecycleStatus',
   )
   expect(detailClientSource).toContain('export-full')
-  expect(detailClientSource).not.toContain('refs=')
+  expect(detailClientSource).toContain('/reports/print/traceability?refs=')
+  expect(detailClientSource).toContain('/reports/pdf/traceability?refs=')
 
   expect(profileTemplateSource).toContain(
     "profile === 'procurement' ? 'minimal' : 'default'",
@@ -647,10 +713,27 @@ it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selec
   expect(csvSource).toContain('labels.improvementSuggestions')
   expect(csvSource).toContain('buildProcurementCsv')
   expect(csvSource).toContain('buildFullCsv')
+  expect(traceabilityDataSource).toContain('listSpecificationTraceabilityItems')
+  expect(traceabilityDataSource).toContain(
+    'One or more item refs were not found in this specification',
+  )
+  expect(traceabilityTemplateSource).toContain("type: 'traceability-summary'")
+  expect(traceabilityTemplateSource).toContain("type: 'traceability-table'")
+  expect(traceabilityApiRouteSource).toContain('ARRAY_INPUT_MAX_ITEMS')
+  expect(traceabilityApiRouteSource).toContain(
+    'Expected unique item references',
+  )
+  expect(traceabilityApiRouteSource).toContain('get_specification_items')
+  expect(traceabilityPrintRouteSource).toContain('/traceability-items?refs=')
+  expect(traceabilityPrintRouteSource).toContain('encodeURIComponent(refs)')
+  expect(traceabilityPdfRouteSource).toContain('parseSpecificationItemRef')
+  expect(traceabilityPdfRouteSource).toContain('ARRAY_INPUT_MAX_ITEMS')
 
   expect(reportsDoc).toContain('Kravbilaga för upphandling')
   expect(reportsDoc).toContain('Genomföranderapport')
   expect(reportsDoc).toContain('Förvaltningsrapport')
+  expect(reportsDoc).toContain('Tillämpningsspårbarhet')
+  expect(reportsDoc).toContain('traceability-items?refs=')
   expect(reportsDoc).toContain('Anbuds-CSV')
   expect(reportsDoc).toContain('Full CSV-export')
   expect(reportsDoc).toContain('requirement_version_id')

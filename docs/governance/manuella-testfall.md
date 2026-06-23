@@ -926,6 +926,20 @@ kravunderlag där användaren saknar läsbehörighet.
 
 **Förväntat resultat:** Åtkomsten nekas innan rapport- eller exportdata visas.
 
+### SPEC-10e: generera tillämpningsspårbarhet för filtrerade krav
+
+**Steg:** Öppna ett kravunderlag med minst ett bibliotekskrav och ett unikt
+krav. Filtrera listan `Krav i underlaget`, öppna rapportmenyn och välj
+`Tillämpningsspårbarhet`. Upprepa med PDF-alternativet.
+
+**Förväntat resultat:** Rapporten omfattar bara filtrerade kravtillämpningar.
+Sammanfattningen visar totalt antal kravtillämpningar, bibliotekskrav,
+kravunderlagslokala krav, användningsstatusfördelning, saknade
+behovsreferenser och avsteg per beslutsläge. Detaljraderna visar Krav-ID,
+ursprung, version, kravområde, behovsreferens, användningsstatus,
+statusändringsdatum, avsteg, risk, verifierbarhet/verifieringsmetod och
+anteckning.
+
 ### SPEC-11: återställ kolumnvyer för kravunderlag
 
 **Steg:** Ändra kolumner i kravunderlagslistan och återställ.

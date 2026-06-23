@@ -1361,6 +1361,23 @@ export default function KravunderlagDetailClient({
   // Filter left panel rows client-side (all items loaded at once)
   const filteredSpecificationItems = useMemo(() => {
     let rows = specificationItems
+    const normalizeSearch = (value: string | undefined) =>
+      value?.trim().toLocaleLowerCase(locale)
+    const uniqueIdSearch = normalizeSearch(leftFilters.uniqueIdSearch)
+    const descriptionSearch = normalizeSearch(leftFilters.descriptionSearch)
+
+    if (uniqueIdSearch) {
+      rows = rows.filter(r =>
+        r.uniqueId.toLocaleLowerCase(locale).includes(uniqueIdSearch),
+      )
+    }
+    if (descriptionSearch) {
+      rows = rows.filter(r =>
+        (r.version?.description ?? '')
+          .toLocaleLowerCase(locale)
+          .includes(descriptionSearch),
+      )
+    }
     if (leftFilters.areaIds && leftFilters.areaIds.length > 0) {
       const areaSet = new Set(leftFilters.areaIds)
       rows = rows.filter(
@@ -1403,6 +1420,29 @@ export default function KravunderlagDetailClient({
         )
       }
     }
+    if (leftFilters.statuses && leftFilters.statuses.length > 0) {
+      const statusSet = new Set(leftFilters.statuses)
+      rows = rows.filter(
+        r => r.version?.status != null && statusSet.has(r.version.status),
+      )
+    }
+    if (leftFilters.riskLevelIds && leftFilters.riskLevelIds.length > 0) {
+      const riskSet = new Set(leftFilters.riskLevelIds)
+      rows = rows.filter(
+        r =>
+          r.version?.riskLevelId != null && riskSet.has(r.version.riskLevelId),
+      )
+    }
+    if (leftFilters.requiresTesting && leftFilters.requiresTesting.length > 0) {
+      const requiresTestingSet = new Set(
+        leftFilters.requiresTesting.map(value => value === 'true'),
+      )
+      rows = rows.filter(
+        r =>
+          r.version != null &&
+          requiresTestingSet.has(r.version.requiresTesting),
+      )
+    }
     if (
       leftFilters.specificationItemStatusIds &&
       leftFilters.specificationItemStatusIds.length > 0
@@ -1415,7 +1455,15 @@ export default function KravunderlagDetailClient({
       )
     }
     return rows
-  }, [specificationItems, leftFilters, areas, leftNormReferenceOptions])
+  }, [specificationItems, leftFilters, areas, leftNormReferenceOptions, locale])
+  const traceabilityItemRefsParam = useMemo(
+    () =>
+      filteredSpecificationItems
+        .map(item => item.itemRef)
+        .filter((itemRef): itemRef is string => Boolean(itemRef))
+        .join(','),
+    [filteredSpecificationItems],
+  )
 
   const needsReferenceUsageById = useMemo(() => {
     const usage = new Map<number, SpecificationListItem[]>()
@@ -1514,12 +1562,42 @@ export default function KravunderlagDetailClient({
     [locale, pdfDownload, reportProfileLabel, specificationSlug, spec],
   )
 
+  const handleDownloadTraceabilityPdf = useCallback(() => {
+    if (!spec || !traceabilityItemRefsParam) return
+    const label = t('reportProfiles.traceability')
+    void pdfDownload.download({
+      fallbackFilename: `${label} ${spec.name} ${spec.uniqueId}.pdf`,
+      url: `/${locale}/specifications/${encodeURIComponent(
+        specificationSlug,
+      )}/reports/pdf/traceability?refs=${encodeURIComponent(
+        traceabilityItemRefsParam,
+      )}`,
+    })
+  }, [
+    locale,
+    pdfDownload,
+    specificationSlug,
+    spec,
+    t,
+    traceabilityItemRefsParam,
+  ])
+
   const openPrintReportHref = useCallback(
     (profile: SpecificationReportProfile) =>
       `/specifications/${encodeURIComponent(
         specificationSlug,
       )}/reports/print/${profile}`,
     [specificationSlug],
+  )
+
+  const openTraceabilityPrintReportHref = useCallback(
+    () =>
+      `/specifications/${encodeURIComponent(
+        specificationSlug,
+      )}/reports/print/traceability?refs=${encodeURIComponent(
+        traceabilityItemRefsParam,
+      )}`,
+    [specificationSlug, traceabilityItemRefsParam],
   )
 
   const specName = spec ? spec.name : '…'
@@ -2520,38 +2598,61 @@ export default function KravunderlagDetailClient({
                         : []),
                       {
                         ariaLabel: tc('print'),
-                        hidden: !specificationReportProfile,
+                        hidden:
+                          !specificationReportProfile &&
+                          !traceabilityItemRefsParam,
                         icon: (
                           <Printer aria-hidden="true" className="h-4 w-4" />
                         ),
                         id: 'print',
-                        menuItems: specificationReportProfile
-                          ? [
-                              {
-                                href: openPrintReportHref(
-                                  specificationReportProfile,
-                                ),
-                                id: `print-${specificationReportProfile}`,
-                                label: t('printProfileReport', {
-                                  report: reportProfileLabel(
+                        menuItems: [
+                          ...(specificationReportProfile
+                            ? [
+                                {
+                                  href: openPrintReportHref(
                                     specificationReportProfile,
                                   ),
-                                }),
-                              },
-                              {
-                                id: `pdf-${specificationReportProfile}`,
-                                label: t('downloadProfileReportPdf', {
-                                  report: reportProfileLabel(
-                                    specificationReportProfile,
-                                  ),
-                                }),
-                                onClick: () =>
-                                  void handleDownloadPdf(
-                                    specificationReportProfile,
-                                  ),
-                              },
-                            ]
-                          : [],
+                                  id: `print-${specificationReportProfile}`,
+                                  label: t('printProfileReport', {
+                                    report: reportProfileLabel(
+                                      specificationReportProfile,
+                                    ),
+                                  }),
+                                },
+                                {
+                                  id: `pdf-${specificationReportProfile}`,
+                                  label: t('downloadProfileReportPdf', {
+                                    report: reportProfileLabel(
+                                      specificationReportProfile,
+                                    ),
+                                  }),
+                                  onClick: () =>
+                                    void handleDownloadPdf(
+                                      specificationReportProfile,
+                                    ),
+                                },
+                              ]
+                            : []),
+                          ...(traceabilityItemRefsParam
+                            ? [
+                                {
+                                  href: openTraceabilityPrintReportHref(),
+                                  id: 'print-traceability',
+                                  label: t('printProfileReport', {
+                                    report: t('reportProfiles.traceability'),
+                                  }),
+                                },
+                                {
+                                  id: 'pdf-traceability',
+                                  label: t('downloadProfileReportPdf', {
+                                    report: t('reportProfiles.traceability'),
+                                  }),
+                                  onClick: () =>
+                                    void handleDownloadTraceabilityPdf(),
+                                },
+                              ]
+                            : []),
+                        ],
                       },
                       {
                         ariaLabel: tc('export'),

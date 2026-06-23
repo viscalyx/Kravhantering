@@ -79,6 +79,10 @@ function SectionRenderer({
       return <div className="print-page-break" />
     case 'requirement-table':
       return <RequirementTableSection section={section} />
+    case 'traceability-summary':
+      return <TraceabilitySummarySection section={section} />
+    case 'traceability-table':
+      return <TraceabilityTableSection section={section} />
     case 'requirement-selection-context':
       return (
         <RequirementSelectionContextSection locale={locale} section={section} />
@@ -883,6 +887,197 @@ function RequirementTableSection({
         ))}
       </tbody>
     </table>
+  )
+}
+
+function TraceabilitySummarySection({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'traceability-summary' }>
+}) {
+  return (
+    <section style={{ marginBottom: '1.5rem' }}>
+      <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 10 }}>
+        {section.title}
+      </h2>
+      <div
+        style={{
+          display: 'grid',
+          gap: '0.75rem',
+          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+          marginBottom: '1rem',
+        }}
+      >
+        {section.metrics.map(metric => (
+          <div
+            key={metric.label}
+            style={{
+              border: '1px solid #e2e8f0',
+              borderRadius: 8,
+              padding: '0.75rem',
+            }}
+          >
+            <div style={{ color: '#64748b', fontSize: '0.75rem' }}>
+              {metric.label}
+            </div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 700 }}>
+              {metric.value}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gap: '1rem',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+        }}
+      >
+        {section.groups.map(group => (
+          <div key={group.heading}>
+            <h3
+              style={{
+                borderBottom: '1px solid #e2e8f0',
+                color: '#334155',
+                fontSize: '0.9rem',
+                fontWeight: 700,
+                marginBottom: 6,
+                paddingBottom: 4,
+              }}
+            >
+              {group.heading}
+            </h3>
+            <dl style={{ margin: 0 }}>
+              {group.items.map(item => (
+                <div
+                  key={item.label}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: '1rem',
+                    padding: '0.2rem 0',
+                  }}
+                >
+                  <dt style={{ color: '#475569' }}>{item.label}</dt>
+                  <dd style={{ fontWeight: 700, margin: 0 }}>{item.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function TraceabilityTableSection({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'traceability-table' }>
+}) {
+  return (
+    <section>
+      {section.rows.map(row => (
+        <article
+          key={`${row.origin}-${row.requirementId}`}
+          style={{
+            breakInside: 'avoid',
+            border: '1px solid #e2e8f0',
+            borderRadius: 8,
+            marginBottom: '0.75rem',
+            padding: '0.85rem',
+          }}
+        >
+          <div
+            style={{
+              alignItems: 'baseline',
+              display: 'flex',
+              gap: '0.75rem',
+              justifyContent: 'space-between',
+              marginBottom: '0.65rem',
+            }}
+          >
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>
+              {row.requirementId}
+            </h3>
+            <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+              {row.origin}
+            </span>
+          </div>
+          <dl
+            style={{
+              display: 'grid',
+              gap: '0.45rem 1rem',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              margin: 0,
+            }}
+          >
+            <TraceabilityField
+              label={section.labels.version}
+              value={row.version}
+            />
+            <TraceabilityField label={section.labels.area} value={row.area} />
+            <TraceabilityField
+              label={section.labels.needsReference}
+              value={row.needsReference}
+            />
+            <TraceabilityField
+              label={section.labels.usageStatus}
+              value={row.usageStatus}
+            />
+            <TraceabilityField
+              label={section.labels.statusChangedAt}
+              value={row.statusChangedAt}
+            />
+            <TraceabilityField
+              label={section.labels.deviation}
+              value={row.deviation}
+            />
+            <TraceabilityField
+              label={section.labels.riskLevel}
+              value={row.riskLevel}
+            />
+            <TraceabilityField
+              label={section.labels.verification}
+              value={row.verification}
+            />
+            <TraceabilityField
+              label={section.labels.note}
+              value={row.note}
+              wide
+            />
+          </dl>
+        </article>
+      ))}
+    </section>
+  )
+}
+
+function TraceabilityField({
+  label,
+  value,
+  wide = false,
+}: {
+  label: string
+  value: string
+  wide?: boolean
+}) {
+  return (
+    <div style={wide ? { gridColumn: '1 / -1' } : undefined}>
+      <dt style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>
+        {label}
+      </dt>
+      <dd
+        style={{
+          color: value ? '#1e293b' : '#94a3b8',
+          fontSize: '0.82rem',
+          margin: 0,
+          whiteSpace: 'pre-wrap',
+        }}
+      >
+        {value || '—'}
+      </dd>
+    </div>
   )
 }
 

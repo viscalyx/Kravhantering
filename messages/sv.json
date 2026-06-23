@@ -775,7 +775,8 @@
     "reportProfiles": {
       "procurement": "Kravbilaga för upphandling",
       "progress": "Genomföranderapport",
-      "management": "Förvaltningsrapport"
+      "management": "Förvaltningsrapport",
+      "traceability": "Tillämpningsspårbarhet"
     },
     "exportProfiles": {
       "procurement": "Anbuds-CSV",
@@ -929,7 +930,9 @@
         "requirementVersion": "Krav (v{version})",
         "published": "Publicerad",
         "archived": "Arkiverad",
-        "uniqueRequirement": "Unikt krav"
+        "uniqueRequirement": "Unikt krav",
+        "libraryRequirement": "Bibliotekskrav",
+        "specificationLocalRequirement": "Kravunderlagslokalt krav"
       },
       "filenames": {
         "list": "Kravlista",
@@ -937,7 +940,8 @@
         "combinedReview": "Kombinerad granskningsrapport",
         "history": "Historikrapport",
         "deviationReview": "Granskningsrapport avsteg",
-        "suggestionHistory": "Ändringsförslagshistorik"
+        "suggestionHistory": "Ändringsförslagshistorik",
+        "traceability": "Tillämpningsspårbarhet"
       },
       "titles": {
         "list": "Kravlista",
@@ -949,6 +953,7 @@
         "deviationReview": "Granskningsrapport för avvikelse",
         "history": "Historikrapport",
         "suggestionHistory": "Ändringsförslagshistorik",
+        "traceability": "Tillämpningsspårbarhet",
         "archiveRequest": "Arkiveringsförfrågan",
         "reviewChangeReport": "Granskningsändringsrapport"
       },
@@ -981,6 +986,7 @@
         "requirementPackagesValue": "Kravpaket: ",
         "requirementId": "Krav-ID",
         "requirementText": "Kravtext",
+        "origin": "Ursprung",
         "requirementArea": "Kravområde",
         "status": "Status",
         "verificationMethod": "Verifieringsmetod",
@@ -992,12 +998,15 @@
         "isoChapter": "ISO-kapitel",
         "managementReportTitle": "Förvaltningsrapport",
         "needsReference": "Behovsreferens",
+        "note": "Anteckning",
         "procurementCsvTitle": "Anbuds-CSV",
         "procurementReportTitle": "Kravbilaga för upphandling",
         "progressReportTitle": "Genomföranderapport",
         "requirementPackage": "Kravpaket",
         "requirementVersionStatus": "Kravversionsstatus",
         "residualFromImplementation": "Rest från införande",
+        "statusChangedAt": "Status ändrad",
+        "traceabilityReportTitle": "Tillämpningsspårbarhet",
         "usageStatus": "Användningsstatus",
         "verifiable": "Verifierbar",
         "version": "Version"
@@ -1017,6 +1026,18 @@
         "pending": "Väntande",
         "approved": "Godkänd",
         "rejected": "Avslagen"
+      },
+      "traceability": {
+        "summaryTitle": "Sammanfattning",
+        "subtitle": "{count} kravtillämpningar",
+        "totalApplications": "Kravtillämpningar",
+        "libraryRequirements": "Bibliotekskrav",
+        "localRequirements": "Lokala krav",
+        "missingNeedsReferences": "Saknade behovsreferenser",
+        "statusDistribution": "Statusfördelning",
+        "deviationsByDecision": "Avsteg per beslutsläge",
+        "noDeviation": "Inget avsteg",
+        "verification": "Verifierbarhet / verifieringsmetod"
       }
     },
     "specificationCover": {

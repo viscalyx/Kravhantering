@@ -16,6 +16,7 @@ import {
   listSpecificationItems,
   listSpecificationNeedsReferences,
   listSpecifications,
+  listSpecificationTraceabilityItems,
   replaceSpecificationCoAuthors,
   unlinkRequirementsFromSpecification,
   updateSpecification,
@@ -1415,6 +1416,97 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         version: expect.objectContaining({
           riskLevelIconName: 'ShieldAlert',
         }),
+      }),
+    ])
+  })
+
+  it('lists traceability report items in requested ref order on the SQL Server path', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          areaName: 'Security',
+          deviationApproved: 1,
+          deviationPending: 1,
+          deviationRejected: 1,
+          deviationTotal: 3,
+          itemId: 31,
+          needsReference: 'IAM-42',
+          note: 'Library note',
+          requiresTesting: 1,
+          riskLevelNameEn: 'High',
+          riskLevelNameSv: 'Hög',
+          specificationItemStatusId: 2,
+          specificationItemStatusNameEn: 'In progress',
+          specificationItemStatusNameSv: 'Pågår',
+          statusUpdatedAt: new Date('2026-06-03T10:00:00.000Z'),
+          uniqueId: 'REQ-001',
+          verificationMethod: 'Review evidence',
+          versionNumber: 2,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          areaName: null,
+          deviationApproved: 0,
+          deviationPending: 0,
+          deviationRejected: 0,
+          deviationTotal: 0,
+          itemId: 41,
+          needsReference: null,
+          note: 'Local note',
+          requiresTesting: 0,
+          riskLevelNameEn: null,
+          riskLevelNameSv: null,
+          specificationItemStatusId: 1,
+          specificationItemStatusNameEn: 'Not started',
+          specificationItemStatusNameSv: 'Ej startad',
+          statusUpdatedAt: '2026-06-04T10:00:00.000Z',
+          uniqueId: 'KRAV0001',
+          verificationMethod: null,
+        },
+      ])
+
+    const result = await listSpecificationTraceabilityItems(db, 5, [
+      'local:41',
+      'lib:31',
+    ])
+
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining(
+        'FROM requirements_specification_items specification_item',
+      ),
+      [5, 1, 2, 31],
+    )
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining(
+        'FROM specification_local_requirements local_requirement',
+      ),
+      [5, 1, 2, 41],
+    )
+    expect(result).toEqual([
+      expect.objectContaining({
+        deviationCounts: { approved: 0, pending: 0, rejected: 0, total: 0 },
+        itemRef: 'local:41',
+        kind: 'specificationLocal',
+        note: 'Local note',
+        requiresTesting: false,
+        statusUpdatedAt: '2026-06-04T10:00:00.000Z',
+        uniqueId: 'KRAV0001',
+        versionNumber: null,
+      }),
+      expect.objectContaining({
+        deviationCounts: { approved: 1, pending: 1, rejected: 1, total: 3 },
+        itemRef: 'lib:31',
+        kind: 'library',
+        needsReference: 'IAM-42',
+        requiresTesting: true,
+        statusUpdatedAt: '2026-06-03T10:00:00.000Z',
+        uniqueId: 'REQ-001',
+        verificationMethod: 'Review evidence',
+        versionNumber: 2,
       }),
     ])
   })

@@ -68,11 +68,20 @@ Requirements specification reports use a separate prefix
   `.../print/progress` | `.../pdf/progress`
 - **Management report**:
   `.../print/management` | `.../pdf/management`
+- **Requirement application traceability**:
+  `.../print/traceability?refs=lib:31,local:41` |
+  `.../pdf/traceability?refs=lib:31,local:41`
 
 Detail view uses `window.open` with the locale prefix, for example
 `/${locale}/requirements/reports/...`. The list view floating pill uses
 `next-intl` `Link` without a locale prefix, for example
 `/requirements/reports/...`.
+
+The browser print traceability route fetches its row data from
+`/api/requirements-specifications/{idOrSlug}/traceability-items?refs=...`.
+That API accepts `lib:{id}` and `local:{id}` item refs, applies the shared
+array input cap, and rejects refs that are invalid or not part of the requested
+requirements specification.
 
 ## Engines
 

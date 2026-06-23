@@ -26,6 +26,7 @@ import {
 } from '@/lib/specification-item-status-constants'
 
 const DEVIATION_APPROVED = 1
+const DEVIATION_REJECTED = 2
 
 interface SqlExecutor {
   query: (sql: string, parameters?: unknown[]) => Promise<unknown>
@@ -40,6 +41,30 @@ interface RequirementsSpecificationLinkItem {
 
 export type SpecificationItemKind = 'library' | 'specificationLocal'
 export type SpecificationItemRef = `lib:${number}` | `local:${number}`
+
+export interface TraceabilityReportItem {
+  areaName: string | null
+  deviationCounts: {
+    approved: number
+    pending: number
+    rejected: number
+    total: number
+  }
+  itemRef: SpecificationItemRef
+  kind: SpecificationItemKind
+  needsReference: string | null
+  note: string | null
+  requiresTesting: boolean
+  riskLevelNameEn: string | null
+  riskLevelNameSv: string | null
+  specificationItemStatusId: number | null
+  specificationItemStatusNameEn: string | null
+  specificationItemStatusNameSv: string | null
+  statusUpdatedAt: string | null
+  uniqueId: string
+  verificationMethod: string | null
+  versionNumber: number | null
+}
 
 export interface SpecificationNeedsReferenceSummary {
   createdAt: string
@@ -261,6 +286,187 @@ export function parseSpecificationItemRef(
     id,
     kind: match[1] === 'local' ? 'specificationLocal' : 'library',
   }
+}
+
+function mapTraceabilityReportRow(
+  row: Row,
+  kind: SpecificationItemKind,
+): TraceabilityReportItem {
+  const itemId = Number(row.itemId)
+  return {
+    areaName: toStr(row.areaName),
+    deviationCounts: {
+      approved: Number(row.deviationApproved) || 0,
+      pending: Number(row.deviationPending) || 0,
+      rejected: Number(row.deviationRejected) || 0,
+      total: Number(row.deviationTotal) || 0,
+    },
+    itemRef:
+      kind === 'library'
+        ? createLibraryItemRef(itemId)
+        : createSpecificationLocalItemRef(itemId),
+    kind,
+    needsReference: toStr(row.needsReference),
+    note: toStr(row.note),
+    requiresTesting: toBool(row.requiresTesting),
+    riskLevelNameEn: toStr(row.riskLevelNameEn),
+    riskLevelNameSv: toStr(row.riskLevelNameSv),
+    specificationItemStatusId: toNum(row.specificationItemStatusId),
+    specificationItemStatusNameEn: toStr(row.specificationItemStatusNameEn),
+    specificationItemStatusNameSv: toStr(row.specificationItemStatusNameSv),
+    statusUpdatedAt: toIso(row.statusUpdatedAt),
+    uniqueId: String(row.uniqueId ?? ''),
+    verificationMethod: toStr(row.verificationMethod),
+    versionNumber:
+      kind === 'library' && row.versionNumber != null
+        ? Number(row.versionNumber)
+        : null,
+  }
+}
+
+export async function listSpecificationTraceabilityItems(
+  db: SqlExecutor,
+  specificationId: number,
+  itemRefs: SpecificationItemRef[],
+): Promise<TraceabilityReportItem[]> {
+  const libraryItemIds: number[] = []
+  const localRequirementIds: number[] = []
+
+  for (const itemRef of itemRefs) {
+    const parsed = parseSpecificationItemRef(itemRef)
+    if (!parsed) continue
+    if (parsed.kind === 'library') {
+      libraryItemIds.push(parsed.id)
+    } else {
+      localRequirementIds.push(parsed.id)
+    }
+  }
+
+  const itemsByRef = new Map<SpecificationItemRef, TraceabilityReportItem>()
+
+  if (libraryItemIds.length > 0) {
+    const rows = (await db.query(
+      `
+        SELECT
+          specification_item.id AS itemId,
+          requirement.unique_id AS uniqueId,
+          requirement_area.name AS areaName,
+          requirement_version.version_number AS versionNumber,
+          requirement_version.is_testing_required AS requiresTesting,
+          requirement_version.verification_method AS verificationMethod,
+          risk_level.name_en AS riskLevelNameEn,
+          risk_level.name_sv AS riskLevelNameSv,
+          needs_reference.text AS needsReference,
+          specification_item.specification_item_status_id AS specificationItemStatusId,
+          specification_item_status.name_en AS specificationItemStatusNameEn,
+          specification_item_status.name_sv AS specificationItemStatusNameSv,
+          specification_item.status_updated_at AS statusUpdatedAt,
+          specification_item.note AS note,
+          COALESCE(deviation_counts.total, 0) AS deviationTotal,
+          COALESCE(deviation_counts.pending, 0) AS deviationPending,
+          COALESCE(deviation_counts.approved, 0) AS deviationApproved,
+          COALESCE(deviation_counts.rejected, 0) AS deviationRejected
+        FROM requirements_specification_items specification_item
+        INNER JOIN requirements requirement
+          ON requirement.id = specification_item.requirement_id
+        INNER JOIN requirement_versions requirement_version
+          ON requirement_version.id = specification_item.requirement_version_id
+        LEFT JOIN requirement_areas requirement_area
+          ON requirement_area.id = requirement.requirement_area_id
+        LEFT JOIN risk_levels risk_level
+          ON risk_level.id = requirement_version.risk_level_id
+        LEFT JOIN specification_needs_references needs_reference
+          ON needs_reference.id = specification_item.needs_reference_id
+        LEFT JOIN specification_item_statuses specification_item_status
+          ON specification_item_status.id = specification_item.specification_item_status_id
+        LEFT JOIN (
+          SELECT
+            deviation.specification_item_id AS itemId,
+            COUNT(*) AS total,
+            SUM(CASE WHEN deviation.decision IS NULL THEN 1 ELSE 0 END) AS pending,
+            SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
+            SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
+          FROM deviations deviation
+          GROUP BY deviation.specification_item_id
+        ) deviation_counts
+          ON deviation_counts.itemId = specification_item.id
+        WHERE specification_item.requirements_specification_id = @0
+          AND specification_item.id IN (${buildInClause(3, libraryItemIds)})
+      `,
+      [
+        specificationId,
+        DEVIATION_APPROVED,
+        DEVIATION_REJECTED,
+        ...libraryItemIds,
+      ],
+    )) as Row[]
+
+    for (const row of rows) {
+      const item = mapTraceabilityReportRow(row, 'library')
+      itemsByRef.set(item.itemRef, item)
+    }
+  }
+
+  if (localRequirementIds.length > 0) {
+    const rows = (await db.query(
+      `
+        SELECT
+          local_requirement.id AS itemId,
+          local_requirement.unique_id AS uniqueId,
+          CAST(NULL AS nvarchar(450)) AS areaName,
+          local_requirement.is_testing_required AS requiresTesting,
+          local_requirement.verification_method AS verificationMethod,
+          risk_level.name_en AS riskLevelNameEn,
+          risk_level.name_sv AS riskLevelNameSv,
+          needs_reference.text AS needsReference,
+          local_requirement.specification_item_status_id AS specificationItemStatusId,
+          specification_item_status.name_en AS specificationItemStatusNameEn,
+          specification_item_status.name_sv AS specificationItemStatusNameSv,
+          local_requirement.status_updated_at AS statusUpdatedAt,
+          local_requirement.note AS note,
+          COALESCE(deviation_counts.total, 0) AS deviationTotal,
+          COALESCE(deviation_counts.pending, 0) AS deviationPending,
+          COALESCE(deviation_counts.approved, 0) AS deviationApproved,
+          COALESCE(deviation_counts.rejected, 0) AS deviationRejected
+        FROM specification_local_requirements local_requirement
+        LEFT JOIN risk_levels risk_level
+          ON risk_level.id = local_requirement.risk_level_id
+        LEFT JOIN specification_needs_references needs_reference
+          ON needs_reference.id = local_requirement.needs_reference_id
+        LEFT JOIN specification_item_statuses specification_item_status
+          ON specification_item_status.id = local_requirement.specification_item_status_id
+        LEFT JOIN (
+          SELECT
+            deviation.specification_local_requirement_id AS itemId,
+            COUNT(*) AS total,
+            SUM(CASE WHEN deviation.decision IS NULL THEN 1 ELSE 0 END) AS pending,
+            SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
+            SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
+          FROM specification_local_requirement_deviations deviation
+          GROUP BY deviation.specification_local_requirement_id
+        ) deviation_counts
+          ON deviation_counts.itemId = local_requirement.id
+        WHERE local_requirement.specification_id = @0
+          AND local_requirement.id IN (${buildInClause(3, localRequirementIds)})
+      `,
+      [
+        specificationId,
+        DEVIATION_APPROVED,
+        DEVIATION_REJECTED,
+        ...localRequirementIds,
+      ],
+    )) as Row[]
+
+    for (const row of rows) {
+      const item = mapTraceabilityReportRow(row, 'specificationLocal')
+      itemsByRef.set(item.itemRef, item)
+    }
+  }
+
+  return itemRefs.flatMap(itemRef => {
+    const item = itemsByRef.get(itemRef)
+    return item ? [item] : []
+  })
 }
 
 function createSpecificationLocalRowId(

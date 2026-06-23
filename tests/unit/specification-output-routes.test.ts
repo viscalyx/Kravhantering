@@ -5,6 +5,7 @@ const routeState = vi.hoisted(() => ({
   authorize: vi.fn(),
   buildSpecificationCsv: vi.fn(),
   buildSpecificationProfileReport: vi.fn(),
+  collectSpecificationTraceabilityData: vi.fn(),
   collectSpecificationOutputData: vi.fn(),
   createRequirementsRestRuntime: vi.fn(),
   getSpecificationById: vi.fn(),
@@ -26,6 +27,11 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
 
 vi.mock('@/lib/reports/data/specification-output', () => ({
   collectSpecificationOutputData: routeState.collectSpecificationOutputData,
+}))
+
+vi.mock('@/lib/reports/data/specification-traceability', () => ({
+  collectSpecificationTraceabilityData:
+    routeState.collectSpecificationTraceabilityData,
 }))
 
 vi.mock('@/lib/reports/specification-csv', () => ({
@@ -74,6 +80,10 @@ describe('specification output routes', () => {
     routeState.authorize.mockResolvedValue(undefined)
     routeState.getSpecificationBySlug.mockResolvedValue(specification())
     routeState.collectSpecificationOutputData.mockResolvedValue(outputData())
+    routeState.collectSpecificationTraceabilityData.mockResolvedValue({
+      items: [{ itemRef: 'lib:31', uniqueId: 'BEH0001' }],
+      specification: outputData().specification,
+    })
     routeState.buildSpecificationProfileReport.mockReturnValue({
       sections: [{ type: 'notice', message: 'ok', severity: 'info' }],
     })
@@ -155,5 +165,51 @@ describe('specification output routes', () => {
 
     expect(response.status).toBe(409)
     expect(routeState.collectSpecificationOutputData).not.toHaveBeenCalled()
+  })
+
+  it('returns traceability items after specification authorization', async () => {
+    const { GET } = await import(
+      '@/app/api/requirements-specifications/[id]/traceability-items/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/SPEC-1/traceability-items?refs=lib:31,local:41',
+      ),
+      { params: Promise.resolve({ id: 'SPEC-1' }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      items: [{ itemRef: 'lib:31', uniqueId: 'BEH0001' }],
+      specification: outputData().specification,
+    })
+    expect(routeState.authorize).toHaveBeenCalledWith(
+      expect.anything(),
+      { kind: 'get_specification_items', specificationId: 42 },
+      expect.anything(),
+    )
+    expect(
+      routeState.collectSpecificationTraceabilityData,
+    ).toHaveBeenCalledWith({ db: true }, 'SPEC-1', ['lib:31', 'local:41'])
+  })
+
+  it('rejects invalid traceability refs before creating the route runtime', async () => {
+    const { GET } = await import(
+      '@/app/api/requirements-specifications/[id]/traceability-items/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/SPEC-1/traceability-items?refs=lib:0',
+      ),
+      { params: Promise.resolve({ id: 'SPEC-1' }) },
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
+    expect(
+      routeState.collectSpecificationTraceabilityData,
+    ).not.toHaveBeenCalled()
   })
 })
