@@ -108,6 +108,10 @@ detail list.
 - Detail rows show requirement ID, origin, version, area, needs reference,
   usage status, status changed date, deviation state, risk, verification, and
   note
+- The detail view shows traceability print and PDF actions only when the
+  filtered requirement application list contains at most 200 items. The
+  selected `refs` payload is capped at the same limit before the report routes
+  are called.
 
 Browser print loads data through
 `/api/requirements-specifications/{idOrSlug}/traceability-items?refs=...`.

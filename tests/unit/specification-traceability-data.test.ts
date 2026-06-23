@@ -46,8 +46,8 @@ describe('collectSpecificationTraceabilityData', () => {
     dalState.getSpecificationBySlug.mockResolvedValue(specification())
     dalState.getSpecificationById.mockResolvedValue(specification())
     dalState.listSpecificationTraceabilityItems.mockResolvedValue([
-      { itemRef: 'local:41', uniqueId: 'KRAV0001' },
       { itemRef: 'lib:31', uniqueId: 'BEH0001' },
+      { itemRef: 'local:41', uniqueId: 'KRAV0001' },
     ])
   })
 
@@ -70,6 +70,29 @@ describe('collectSpecificationTraceabilityData', () => {
       'lib:31',
     ])
     expect(result.specification.uniqueId).toBe('SPEC-1')
+  })
+
+  it('uses a pre-resolved specification without resolving it again', async () => {
+    const db = createDb()
+    const resolvedSpecification = specification()
+    dalState.listSpecificationTraceabilityItems.mockResolvedValueOnce([
+      { itemRef: 'lib:31', uniqueId: 'BEH0001' },
+    ])
+
+    const result = await collectSpecificationTraceabilityData(
+      db,
+      resolvedSpecification,
+      ['lib:31'],
+    )
+
+    expect(dalState.getSpecificationById).not.toHaveBeenCalled()
+    expect(dalState.getSpecificationBySlug).not.toHaveBeenCalled()
+    expect(dalState.listSpecificationTraceabilityItems).toHaveBeenCalledWith(
+      db,
+      10,
+      ['lib:31'],
+    )
+    expect(result.specification).toBe(resolvedSpecification)
   })
 
   it('throws 404 when a requested item ref is not in the specification', async () => {

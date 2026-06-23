@@ -281,4 +281,50 @@ describe('specification report profiles', () => {
       }),
     ])
   })
+
+  it('sorts traceability summary labels with the report locale', () => {
+    const data = traceabilityData()
+    const [firstItem, secondItem] = data.items
+    if (!firstItem || !secondItem) {
+      throw new Error('Expected two traceability items')
+    }
+
+    data.items = [
+      {
+        ...firstItem,
+        specificationItemStatusNameEn: 'Ä active',
+        specificationItemStatusNameSv: 'Ä aktiv',
+      },
+      {
+        ...secondItem,
+        specificationItemStatusNameEn: 'Zulu',
+        specificationItemStatusNameSv: 'Zulu',
+      },
+    ]
+
+    const englishSummary = buildSpecificationTraceabilityReport(
+      data,
+      'en',
+    ).sections.find(section => section.type === 'traceability-summary')
+    const swedishSummary = buildSpecificationTraceabilityReport(
+      data,
+      'sv',
+    ).sections.find(section => section.type === 'traceability-summary')
+
+    if (englishSummary?.type !== 'traceability-summary') {
+      throw new Error('Expected English traceability summary section')
+    }
+    if (swedishSummary?.type !== 'traceability-summary') {
+      throw new Error('Expected Swedish traceability summary section')
+    }
+
+    expect(englishSummary.groups[0]?.items.map(item => item.label)).toEqual([
+      'Ä active',
+      'Zulu',
+    ])
+    expect(swedishSummary.groups[0]?.items.map(item => item.label)).toEqual([
+      'Zulu',
+      'Ä aktiv',
+    ])
+  })
 })

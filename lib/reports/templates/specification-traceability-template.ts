@@ -109,6 +109,7 @@ function formatDeviationCounts(
 function countByLabel(
   labels: string[],
   emptyLabel: string,
+  locale: string,
 ): { label: string; value: string }[] {
   const counts = new Map<string, number>()
   for (const label of labels) {
@@ -117,7 +118,7 @@ function countByLabel(
   }
 
   return Array.from(counts.entries())
-    .sort((left, right) => left[0].localeCompare(right[0], 'sv'))
+    .sort((left, right) => left[0].localeCompare(right[0], locale))
     .map(([label, count]) => ({ label, value: String(count) }))
 }
 
@@ -167,6 +168,7 @@ function buildSummarySection(
         items: countByLabel(
           data.items.map(item => formatUsageStatus(item, locale)),
           labels.common.unknown,
+          locale,
         ),
       },
       {

@@ -10,8 +10,17 @@ import { ReportDataError } from '@/lib/reports/data/server'
 
 export interface SpecificationTraceabilityData {
   items: TraceabilityReportItem[]
-  specification: NonNullable<Awaited<ReturnType<typeof getSpecificationBySlug>>>
+  specification: SpecificationTraceabilitySpecification
 }
+
+export type SpecificationTraceabilitySpecification = NonNullable<
+  Awaited<ReturnType<typeof getSpecificationBySlug>>
+>
+
+type SpecificationTraceabilitySource =
+  | SpecificationTraceabilitySpecification
+  | number
+  | string
 
 function decodeSegment(value: string | number): string {
   const raw = String(value)
@@ -43,22 +52,30 @@ async function resolveSpecification(
 
 export async function collectSpecificationTraceabilityData(
   db: SqlServerDatabase,
-  specificationIdOrSlug: string | number,
+  specificationInput: SpecificationTraceabilitySource,
   itemRefs: SpecificationItemRef[],
 ): Promise<SpecificationTraceabilityData> {
-  const specification = await resolveSpecification(db, specificationIdOrSlug)
+  const specification =
+    typeof specificationInput === 'object'
+      ? specificationInput
+      : await resolveSpecification(db, specificationInput)
   const items = await listSpecificationTraceabilityItems(
     db,
     specification.id,
     itemRefs,
   )
+  const itemsByRef = new Map(items.map(item => [item.itemRef, item]))
+  const orderedItems = itemRefs.flatMap(itemRef => {
+    const item = itemsByRef.get(itemRef)
+    return item ? [item] : []
+  })
 
-  if (items.length !== itemRefs.length) {
+  if (orderedItems.length !== itemRefs.length) {
     throw new ReportDataError(
       'One or more item refs were not found in this specification',
       404,
     )
   }
 
-  return { items, specification }
+  return { items: orderedItems, specification }
 }

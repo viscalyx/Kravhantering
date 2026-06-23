@@ -103,6 +103,7 @@ const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
 }
 
 const PAGE_SIZE = 200
+const TRACEABILITY_ITEM_REF_LIMIT = 200
 
 const LEFT_VISIBLE_COLS_KEY =
   'requirement-specifications.visibleColumns.left.v1'
@@ -1459,11 +1460,15 @@ export default function KravunderlagDetailClient({
   const traceabilityItemRefsParam = useMemo(
     () =>
       filteredSpecificationItems
+        .slice(0, TRACEABILITY_ITEM_REF_LIMIT)
         .map(item => item.itemRef)
         .filter((itemRef): itemRef is string => Boolean(itemRef))
         .join(','),
     [filteredSpecificationItems],
   )
+  const hasTraceabilityReportActions =
+    filteredSpecificationItems.length <= TRACEABILITY_ITEM_REF_LIMIT &&
+    traceabilityItemRefsParam.length > 0
 
   const needsReferenceUsageById = useMemo(() => {
     const usage = new Map<number, SpecificationListItem[]>()
@@ -1563,7 +1568,7 @@ export default function KravunderlagDetailClient({
   )
 
   const handleDownloadTraceabilityPdf = useCallback(() => {
-    if (!spec || !traceabilityItemRefsParam) return
+    if (!spec || !hasTraceabilityReportActions) return
     const label = t('reportProfiles.traceability')
     void pdfDownload.download({
       fallbackFilename: `${label} ${spec.name} ${spec.uniqueId}.pdf`,
@@ -1576,6 +1581,7 @@ export default function KravunderlagDetailClient({
   }, [
     locale,
     pdfDownload,
+    hasTraceabilityReportActions,
     specificationSlug,
     spec,
     t,
@@ -2600,7 +2606,7 @@ export default function KravunderlagDetailClient({
                         ariaLabel: tc('print'),
                         hidden:
                           !specificationReportProfile &&
-                          !traceabilityItemRefsParam,
+                          !hasTraceabilityReportActions,
                         icon: (
                           <Printer aria-hidden="true" className="h-4 w-4" />
                         ),
@@ -2633,7 +2639,7 @@ export default function KravunderlagDetailClient({
                                 },
                               ]
                             : []),
-                          ...(traceabilityItemRefsParam
+                          ...(hasTraceabilityReportActions
                             ? [
                                 {
                                   href: openTraceabilityPrintReportHref(),

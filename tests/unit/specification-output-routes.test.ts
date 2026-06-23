@@ -191,7 +191,10 @@ describe('specification output routes', () => {
     )
     expect(
       routeState.collectSpecificationTraceabilityData,
-    ).toHaveBeenCalledWith({ db: true }, 'SPEC-1', ['lib:31', 'local:41'])
+    ).toHaveBeenCalledWith({ db: true }, specification(), [
+      'lib:31',
+      'local:41',
+    ])
   })
 
   it('rejects invalid traceability refs before creating the route runtime', async () => {

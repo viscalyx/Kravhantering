@@ -807,6 +807,40 @@ describe('RequirementsSpecificationDetailClient', () => {
     )
   })
 
+  it('hides traceability report actions when filtered items exceed the report limit', async () => {
+    const initialData = createInitialData()
+    initialData.specificationItems = Array.from({ length: 201 }, (_, index) => {
+      const itemId = index + 1
+      return {
+        ...initialSpecificationItem,
+        id: 1000 + itemId,
+        itemRef: `lib:${itemId}`,
+        specificationItemId: itemId,
+        uniqueId: `BEH${String(itemId).padStart(4, '0')}`,
+      }
+    })
+
+    renderRequirementsSpecificationDetailClient(initialData)
+    await waitForInitialAvailableRequirementsRefresh()
+
+    const itemsTable = latestItemsTableProps()
+    const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
+      hidden?: boolean
+      id: string
+      menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
+    }>
+    const printAction = floatingActions.find(action => action.id === 'print')
+
+    expect(printAction?.hidden).toBe(false)
+    expect(printAction?.menuItems).toEqual([
+      expect.objectContaining({
+        href: '/specifications/ETJANST-UPP-2026/reports/print/progress',
+        id: 'print-progress',
+      }),
+      expect.objectContaining({ id: 'pdf-progress' }),
+    ])
+  })
+
   it('logs CSV export failures from discarded menu handlers', async () => {
     const csvError = new Error('network unavailable')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})

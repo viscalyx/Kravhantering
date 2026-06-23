@@ -111,7 +111,7 @@ export async function GET(
 
     const data = await collectSpecificationTraceabilityData(
       runtime.db,
-      id,
+      specification,
       itemRefs,
     )
     const response = NextResponse.json(data, {

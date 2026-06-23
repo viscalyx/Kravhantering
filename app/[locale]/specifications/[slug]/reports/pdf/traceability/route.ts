@@ -75,7 +75,7 @@ export async function GET(
 
     const data = await collectSpecificationTraceabilityData(
       runtime.db,
-      slug,
+      specification,
       itemRefs,
     )
     const label = getReportLabels(locale).filenames.traceability

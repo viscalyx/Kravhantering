@@ -82,6 +82,8 @@ The browser print traceability route fetches its row data from
 That API accepts `lib:{id}` and `local:{id}` item refs, applies the shared
 array input cap, and rejects refs that are invalid or not part of the requested
 requirements specification.
+The detail view must keep the traceability print and PDF menu actions hidden
+when the filtered requirement application list exceeds that cap.
 
 ## Engines
 
