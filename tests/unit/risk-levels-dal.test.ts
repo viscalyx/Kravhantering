@@ -5,6 +5,7 @@ import {
   updateRiskLevel,
 } from '@/lib/dal/risk-levels'
 import type { SqlServerDatabase } from '@/lib/db'
+import { createAppDataSource } from '@/lib/typeorm/data-source'
 import { riskLevelEntity } from '@/lib/typeorm/entities'
 
 function createSqlServerDb() {
@@ -21,6 +22,18 @@ function createSqlServerDb() {
     query,
   } as unknown as SqlServerDatabase
   return { db, repository, getRepository }
+}
+
+async function createRuntimeSqlServerDb(): Promise<SqlServerDatabase> {
+  const db = createAppDataSource({
+    url: 'mssql://app:secret@127.0.0.1:1/kravhantering?encrypt=false&trustServerCertificate=true',
+  })
+  // TypeORM validates invalid where values before opening a connection; building
+  // metadata is enough to exercise the real repository lookup path.
+  await (
+    db as unknown as { buildMetadatas: () => Promise<void> }
+  ).buildMetadatas()
+  return db
 }
 
 describe('risk-levels DAL', () => {
@@ -96,6 +109,21 @@ describe('risk-levels DAL', () => {
     })
 
     expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 99 } })
+  })
+
+  it.each([
+    ['null', null, /Null value encountered in property 'RiskLevel\.id'/],
+    [
+      'undefined',
+      undefined,
+      /Undefined value encountered in property 'RiskLevel\.id'/,
+    ],
+  ])('getRiskLevelById rejects %s ids through runtime TypeORM where validation', async (_label, id, expectedError) => {
+    const db = await createRuntimeSqlServerDb()
+
+    await expect(getRiskLevelById(db, id as unknown as number)).rejects.toThrow(
+      expectedError,
+    )
   })
 
   it('updateRiskLevel updates seeded risk levels', async () => {

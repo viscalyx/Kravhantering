@@ -623,6 +623,91 @@ describe('db-sqlserver-admin.mjs', () => {
     )
   })
 
+  it('commits and releases the QueryRunner transaction after clearing demo tables', async () => {
+    const events = []
+    const runner = {
+      commitTransaction: vi.fn(async () => {
+        events.push('commit')
+      }),
+      connect: vi.fn(async () => {
+        events.push('connect')
+      }),
+      query: vi.fn(async sql => {
+        events.push(sql)
+      }),
+      release: vi.fn(async () => {
+        events.push('release')
+      }),
+      rollbackTransaction: vi.fn(async () => {
+        events.push('rollback')
+      }),
+      startTransaction: vi.fn(async () => {
+        events.push('start')
+      }),
+    }
+    const createQueryRunner = vi.fn(() => runner)
+
+    await expect(
+      resetDemoSqlServerData(
+        { createQueryRunner },
+        { demoResetTables: ['requirements'] },
+      ),
+    ).resolves.toEqual({ tablesCleared: 1 })
+
+    expect(createQueryRunner).toHaveBeenCalledOnce()
+    expect(runner.rollbackTransaction).not.toHaveBeenCalled()
+    expect(events).toEqual([
+      'connect',
+      'start',
+      'DELETE FROM [requirements]',
+      expect.stringContaining("DBCC CHECKIDENT ('requirements'"),
+      'commit',
+      'release',
+    ])
+  })
+
+  it('rolls back and releases the QueryRunner transaction when demo clearing fails', async () => {
+    const events = []
+    const failure = new Error('delete failed')
+    const runner = {
+      commitTransaction: vi.fn(async () => {
+        events.push('commit')
+      }),
+      connect: vi.fn(async () => {
+        events.push('connect')
+      }),
+      query: vi.fn(async sql => {
+        events.push(sql)
+        throw failure
+      }),
+      release: vi.fn(async () => {
+        events.push('release')
+      }),
+      rollbackTransaction: vi.fn(async () => {
+        events.push('rollback')
+      }),
+      startTransaction: vi.fn(async () => {
+        events.push('start')
+      }),
+    }
+
+    await expect(
+      resetDemoSqlServerData(
+        { createQueryRunner: () => runner },
+        { demoResetTables: ['requirements'] },
+      ),
+    ).rejects.toThrow('delete failed')
+
+    expect(runner.commitTransaction).not.toHaveBeenCalled()
+    expect(events).toEqual([
+      'connect',
+      'start',
+      'DELETE FROM [requirements]',
+      'rollback',
+      'release',
+    ])
+  })
+
   it('clears non-required demo tables without loading demo seed files', async () => {
     const query = vi.fn(async () => undefined)
     const destroy = vi.fn(async () => undefined)

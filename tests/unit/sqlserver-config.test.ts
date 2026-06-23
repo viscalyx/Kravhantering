@@ -29,6 +29,7 @@ describe('SQL Server TypeORM config', () => {
         null: 'throw',
         undefined: 'throw',
       },
+      isolationLevel: 'READ COMMITTED',
       logging: false,
       options: {
         abortTransactionOnError: true,
@@ -48,6 +49,19 @@ describe('SQL Server TypeORM config', () => {
       type: 'mssql',
       url: 'mssql://app:secret@db.example:1433/kravhantering',
     })
+  })
+
+  it('does not set a pooled connection isolation override', () => {
+    const options = buildSqlServerDataSourceOptions({
+      env: env({
+        DATABASE_URL: 'mssql://app:secret@db.example:1433/kravhantering',
+      }),
+    })
+
+    expect(
+      (options as { options?: Record<string, unknown> }).options
+        ?.connectionIsolationLevel,
+    ).toBeUndefined()
   })
 
   it('allows runtime pool and timeout tuning through DB_* variables', () => {

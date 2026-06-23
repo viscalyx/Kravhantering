@@ -7,6 +7,7 @@ const DEFAULT_POOL_IDLE_TIMEOUT_MS = 30_000
 const DEFAULT_POOL_MAX = 10
 const DEFAULT_POOL_MIN = 1
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000
+const DEFAULT_TRANSACTION_ISOLATION_LEVEL = 'READ COMMITTED'
 
 export interface SqlServerRuntimeEnv extends NodeJS.ProcessEnv {
   DATABASE_READONLY_URL?: string
@@ -187,6 +188,7 @@ export function buildSqlServerDataSourceOptions(
   return {
     type: 'mssql',
     url,
+    isolationLevel: DEFAULT_TRANSACTION_ISOLATION_LEVEL,
     synchronize: false,
     logging,
     entities: options.entities ?? [],

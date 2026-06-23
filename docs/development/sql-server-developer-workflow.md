@@ -101,8 +101,21 @@ runtime DataSource keeps SQL Server behavior explicit:
 - SQL Server date/time values use UTC.
 - SQL Server transactions use `XACT_ABORT` through
   `abortTransactionOnError=true`.
+- TypeORM transactions default to `READ COMMITTED` through the DataSource-level
+  `isolationLevel`. DAL paths that need stronger ordering pass
+  `SERIALIZABLE` explicitly at the transaction call site.
 - Connection and request timeouts are explicit.
 - Connection pool sizing and idle/acquire timeouts are explicit.
+
+The runtime does not set SQL Server `options.connectionIsolationLevel` for
+out-of-transaction reads. SQL Server and the `tedious` driver already default
+new connections to `READ COMMITTED`, and TypeORM documents that connection
+isolation settings may not be reliably preserved across pooled connection reuse.
+A local pooled-reuse smoke test confirmed the warning for this runtime: after a
+`SERIALIZABLE` transaction commits or rolls back, the reused session can remain
+at `SERIALIZABLE` even when `connectionIsolationLevel` is configured as
+`READ COMMITTED`. Treat `connectionIsolationLevel` as a new-connection default,
+not as a checkout reset.
 
 Runtime pool defaults are conservative for a single app process:
 
