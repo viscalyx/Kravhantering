@@ -1839,7 +1839,7 @@ export default function KravunderlagDetailClient({
                 </div>
                 <button
                   aria-label={tc('close')}
-                  className="rounded-lg p-1.5 transition-colors hover:bg-secondary-100 dark:hover:bg-secondary-800"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-1.5 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-secondary-800"
                   onClick={event =>
                     void closeCreateLocalRequirementModal(event.currentTarget)
                   }

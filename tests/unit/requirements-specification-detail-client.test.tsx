@@ -1718,7 +1718,20 @@ describe('RequirementsSpecificationDetailClient', () => {
         }),
       ).toBeInTheDocument()
     })
-    expect(screen.queryByLabelText('requirement.area')).not.toBeInTheDocument()
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).queryByLabelText('requirement.area')).toBeNull()
+    expect(
+      within(dialog).queryByText('requirement.requirementPackage'),
+    ).toBeNull()
+
+    const normReferenceFieldset = within(dialog)
+      .getByText('requirement.normReferences')
+      .closest('fieldset')
+    const sidebarGrid = normReferenceFieldset?.parentElement
+    expect(sidebarGrid).toHaveClass('lg:w-full')
+    expect(sidebarGrid?.parentElement).toHaveClass(
+      'lg:grid-cols-[minmax(0,1fr)_minmax(20rem,22rem)]',
+    )
   })
 
   it('opens the needs references tab, persists the URL parameter, and shows usage details', async () => {

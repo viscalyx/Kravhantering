@@ -719,7 +719,8 @@ granskningen efter lyckad import och ett nytt utkast skapas i valt kravområde.
 **Steg:** Öppna `/sv/requirements/new`, kontrollera att Spara är dimmad, välj
 kravområde, fyll kravtext och obligatoriska fält och kontrollera att Spara
 tänds. Öppna hjälpikonen vid `Prioritet`, öppna den separata ikonknappen för
-prioritetsskalan, välj en prioritet och kontrollera den visade vägledningen.
+prioritetsskalan, välj en prioritet och kontrollera tooltipen på
+prioritetsfältet.
 Klicka Avbryt, avbryt förkastandet och kontrollera att formuläret är kvar.
 Klicka Avbryt igen, bekräfta förkastandet och öppna formuläret på nytt för att
 spara ett krav.
@@ -729,7 +730,8 @@ kort notis vid formulärets actionknappar förklarar markeringen. Spara är
 dimmad tills användaren har gjort en normaliserad formulärändring. Kravet
 skapas och öppnas i listan. Hjälpen för prioritet visar den korta
 förklaringen inline. Den separata skalikonen öppnar en modal med P-skalan,
-beskrivning och bedömningsgrunder. Vald prioritet visar samma detaljer i
+beskrivning och bedömningsgrunder. Vald prioritet visar beskrivning och
+bedömningsgrunder som tooltip på prioritetsfältet, inte som en permanent ruta i
 formuläret. Formulär med osparade ändringar stängs inte utan bekräftelse.
 
 ### LIFE-02: validera obligatoriska fält vid skapande
@@ -927,15 +929,21 @@ panel.
 
 **Förväntat resultat:** Kopplingen skapas och tas bort korrekt.
 
-### SPEC-07: skapa och lyft unikt krav i kravunderlag
+### SPEC-07: skapa, redigera och lyft unikt krav i kravunderlag
 
 **Steg:** Skapa ett nytt krav direkt från kravunderlaget. Ändra
-användningsstatus till ett annat läge än `Inkluderad` och lyft sedan kravet
-till kravbiblioteket.
+kravtexten via Redigera i det unika kravets inline-detalj och kontrollera att
+formuläret öppnas i modal med kravets ID i huvudet. Ändra text, klicka utanför
+modalen och kontrollera att den inte stängs. Klicka X och avbryt förkastandet.
+Kontrollera att normreferenserna ligger i en kompakt sidokolumn utan stor tom
+yta till höger. Spara ändringen. Ändra användningsstatus till ett annat läge än
+`Inkluderad` och lyft sedan kravet till kravbiblioteket.
 
 **Förväntat resultat:** Kravet får unikt ID och kopplas till underlaget. Lyft
 skapar ett nytt utkast i kravbiblioteket oavsett användningsstatus, medan
-källkravet ligger kvar i kravunderlaget.
+källkravet ligger kvar i kravunderlaget. Redigering sker i modal, kräver
+bekräftelse innan osparade ändringar förkastas och återgår efter sparning till
+samma expanderade rad med uppdaterad kravtext.
 
 ### SPEC-08: uppdatera användningsstatus
 

@@ -46,6 +46,10 @@ The behaviors below apply to the requirement list rendered by:
   with the entered values intact.
 - Clicking outside a modal form does not close it. Users must use the explicit
   cancel or close controls.
+- When a priority is selected, its description and assessment criteria are
+  shown as a tooltip on the priority selector instead of as a persistent block
+  inside the form. The separate priority-scale button still opens the full
+  priority-scale modal.
 
 ## Requirement Import
 
@@ -501,7 +505,9 @@ down.
 - Unique requirements are not assigned to a requirement area. The Requirement
   area column in the specification-items list therefore renders `-` for unique
   rows, and the create/edit form for a unique requirement does not show the
-  Requirement area field.
+  Requirement area field. The same form also omits requirement packages and uses
+  a compact norm-reference column so the modal does not reserve unused space for
+  hidden library-only associations.
 - Specification-local inline detail now follows the specification-item detail
   chrome more
   closely: deviation pills sit above the card, the right-side action rail
@@ -515,6 +521,14 @@ down.
   draft or review request. Otherwise the buttons stay disabled and expose a
   tooltip explaining why the action is blocked, while the controls are also
   visually muted so they read as inactive actions.
+- Clicking **Edit** for a unique requirement opens a modal form instead of
+  replacing the inline detail pane. The modal title is
+  **Edit unique requirement** and the unique requirement's
+  specification-scoped Krav-ID, such as `KRAV0001`, is shown directly under the
+  title. Closing a dirty edit modal through **Cancel**, the close button, or
+  Escape asks for confirmation before changes are discarded, while clicking
+  outside the modal does not close it. A successful save closes the modal,
+  refreshes the inline detail, and leaves the same row expanded.
 - The same specification-local action rail may show **Graduate to library** when
   the actor owns or co-authors at least one requirement area. The action is
   available regardless of **Användningsstatus**. Opening the action shows a

@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
@@ -8,12 +8,14 @@ const routerPushMock = vi.fn()
 const translations: Record<string, string> = {
   'common.cancel': 'Cancel',
   'common.createdAt': 'Created',
+  'common.close': 'Close',
   'common.delete': 'Delete',
   'common.edit': 'Edit',
   'common.error': 'Error',
   'common.no': 'No',
   'common.noneAvailable': 'None available',
   'common.save': 'Save',
+  'common.unsavedChangesConfirm': 'Discard unsaved changes?',
   'common.unexpectedError': 'Unexpected error',
   'common.updatedAt': 'Updated',
   'common.yes': 'Yes',
@@ -103,7 +105,13 @@ vi.mock('@/components/DeviationStepper', () => ({
 }))
 
 vi.mock('@/components/SpecificationLocalRequirementForm', () => ({
-  default: () => <div data-testid="specification-local-form" />,
+  default: (props: { onDirtyChange?: (dirty: boolean) => void }) => (
+    <div data-testid="specification-local-form">
+      <button onClick={() => props.onDirtyChange?.(true)} type="button">
+        Mark local form dirty
+      </button>
+    </div>
+  ),
 }))
 
 vi.mock('@/i18n/routing', () => ({
@@ -318,6 +326,84 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     ).toBeInTheDocument()
     expect(screen.queryByText('RequirementPackage')).not.toBeInTheDocument()
     expect(screen.queryByText('12')).not.toBeInTheDocument()
+  })
+
+  it('opens unique requirement editing in a modal without replacing the inline detail', async () => {
+    vi.mocked(fetch)
+      .mockImplementationOnce(() =>
+        okJson({
+          acceptanceCriteria: 'Specification local acceptance',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          description: 'Editable unique requirement',
+          id: 1,
+          itemRef: 'local:1',
+          needsReference: 'Need A',
+          needsReferenceId: 3,
+          normReferences: [],
+          specificationId: 8,
+          specificationItemStatusColor: '#16a34a',
+          specificationItemStatusId: 1,
+          specificationItemStatusNameEn: 'Included',
+          specificationItemStatusNameSv: 'Inkluderad',
+          qualityCharacteristic: null,
+          requirementArea: null,
+          requirementCategory: null,
+          requirementType: null,
+          requiresTesting: false,
+          priorityLevel: null,
+          requirementPackages: [],
+          uniqueId: 'KRAV0001',
+          updatedAt: '2026-04-02T00:00:00.000Z',
+          verificationMethod: null,
+        }),
+      )
+      .mockImplementationOnce(() => okJson({ deviations: [] }))
+      .mockImplementationOnce(() =>
+        okJson({ areas: [{ id: 2, name: 'Security', prefix: 'SEC' }] }),
+      )
+
+    render(
+      <SpecificationLocalRequirementDetailClient
+        localRequirementId={1}
+        needsReferences={[]}
+        specificationSlug="ETJANST-UPP-2026"
+      />,
+    )
+
+    expect(
+      await screen.findByText('Editable unique requirement'),
+    ).toBeInTheDocument()
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Edit unique requirement',
+    })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    expect(within(dialog).getByText('KRAV0001')).toBeInTheDocument()
+    expect(
+      within(dialog).getByTestId('specification-local-form'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Editable unique requirement')).toBeInTheDocument()
+
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'Mark local form dirty',
+      }),
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+
+    expect(confirmMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        icon: 'caution',
+        message: 'Discard unsaved changes?',
+        variant: 'danger',
+      }),
+    )
+    expect(
+      screen.getByRole('dialog', { name: 'Edit unique requirement' }),
+    ).toBeInTheDocument()
   })
 
   it('waits for graduation eligibility before showing the action rail', async () => {

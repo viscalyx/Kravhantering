@@ -190,9 +190,12 @@ export default function RequirementFormFields({
         '--requirement-association-height': `${associationPanelHeight}px`,
       } as CSSProperties)
     : undefined
+  const associationGridClassName = showRequirementPackages
+    ? 'lg:grid-cols-[minmax(0,1fr)_minmax(32rem,34rem)]'
+    : 'lg:grid-cols-[minmax(0,1fr)_minmax(20rem,22rem)]'
   const associationSidebarClassName = showRequirementPackages
-    ? 'grid min-h-0 gap-6 sm:grid-cols-2 lg:h-(--requirement-association-height) lg:max-h-(--requirement-association-height) lg:w-136 lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden'
-    : 'grid min-h-0 gap-6 lg:h-(--requirement-association-height) lg:max-h-(--requirement-association-height) lg:w-68 lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden'
+    ? 'grid min-h-0 gap-6 sm:grid-cols-2 lg:h-(--requirement-association-height) lg:max-h-(--requirement-association-height) lg:w-full lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden'
+    : 'grid min-h-0 gap-6 lg:h-(--requirement-association-height) lg:max-h-(--requirement-association-height) lg:w-full lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden'
 
   const handleChange = (
     key: keyof RequirementFormFieldValues,
@@ -261,6 +264,12 @@ export default function RequirementFormFields({
     : null
   const selectedPriorityAssessmentCriteria = selectedPriorityLevel
     ? getPriorityAssessmentCriteria(selectedPriorityLevel)
+    : null
+  const selectedPriorityTooltip = selectedPriorityLevel
+    ? [
+        `${t('priorityLevelDescriptionLabel')}: ${selectedPriorityDescription ?? '—'}`,
+        `${t('priorityLevelAssessmentCriteriaLabel')}: ${selectedPriorityAssessmentCriteria ?? '—'}`,
+      ].join('\n')
     : null
 
   const mainFields = (
@@ -438,39 +447,25 @@ export default function RequirementFormFields({
             </button>
           </div>
           {helpPanel('priorityLevelHelp', priorityLevelFieldId)}
-          <select
-            className={selectClassName}
-            id={priorityLevelFieldId}
-            onChange={e => handleChange('priorityLevelId', e.target.value)}
-            value={values.priorityLevelId}
+          <RequirementPackagePurposeTooltip
+            maxWidth={360}
+            purposeAndScope={selectedPriorityTooltip}
+            wrapperClassName="block w-full"
           >
-            <option value="">{t('priorityLevel')}...</option>
-            {priorityLevels.map(rl => (
-              <option key={rl.id} value={rl.id}>
-                {getPriorityName(rl)}
-              </option>
-            ))}
-          </select>
-          {selectedPriorityLevel ? (
-            <div className="mt-2 rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs leading-relaxed text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-200">
-              <dl className="space-y-1">
-                <div>
-                  <dt className="font-medium text-secondary-900 dark:text-secondary-100">
-                    {t('priorityLevelDescriptionLabel')}
-                  </dt>
-                  <dd>{selectedPriorityDescription}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-secondary-900 dark:text-secondary-100">
-                    {t('priorityLevelAssessmentCriteriaLabel')}
-                  </dt>
-                  <dd className="text-secondary-500 dark:text-secondary-400">
-                    {selectedPriorityAssessmentCriteria}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          ) : null}
+            <select
+              className={selectClassName}
+              id={priorityLevelFieldId}
+              onChange={e => handleChange('priorityLevelId', e.target.value)}
+              value={values.priorityLevelId}
+            >
+              <option value="">{t('priorityLevel')}...</option>
+              {priorityLevels.map(rl => (
+                <option key={rl.id} value={rl.id}>
+                  {getPriorityName(rl)}
+                </option>
+              ))}
+            </select>
+          </RequirementPackagePurposeTooltip>
           <FormModal
             maxWidthClassName="max-w-5xl"
             onClose={() => setShowPriorityScale(false)}
@@ -754,7 +749,9 @@ export default function RequirementFormFields({
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(32rem,34rem)]">
+      <div
+        className={`grid grid-cols-1 items-stretch gap-6 ${associationGridClassName}`}
+      >
         <div className="self-start space-y-5" ref={mainFieldsRef}>
           {mainFields}
         </div>

@@ -2,7 +2,7 @@
 
 import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FormActionRow from '@/components/FormActionRow'
@@ -55,6 +55,10 @@ const EMPTY_FIELDS: RequirementFormFieldValues = {
 
 const SPECIFICATION_LOCAL_REQUIREMENT_DIRTY_OPTIONS = {
   unorderedArrayPaths: ['normReferenceIds'],
+} as const
+
+const SPECIFICATION_LOCAL_REQUIREMENT_INITIAL_VALUE_OPTIONS = {
+  unorderedArrayPaths: ['fields.normReferenceIds'],
 } as const
 
 function toFieldValues(
@@ -124,6 +128,16 @@ function createSubmitSignature(
   )
 }
 
+function createInitialValueSignature(
+  fields: RequirementFormFieldValues,
+  needsReferenceId: string,
+) {
+  return createDirtySnapshot(
+    { fields, needsReferenceId },
+    SPECIFICATION_LOCAL_REQUIREMENT_INITIAL_VALUE_OPTIONS,
+  )
+}
+
 export default function SpecificationLocalRequirementForm({
   initialValue,
   needsReferences,
@@ -141,6 +155,12 @@ export default function SpecificationLocalRequirementForm({
   )
   const [needsReferenceId, setNeedsReferenceId] = useState(
     initialValue?.needsReferenceId ?? '',
+  )
+  const initialValueSignatureRef = useRef(
+    createInitialValueSignature(
+      toFieldValues(initialValue),
+      initialValue?.needsReferenceId ?? '',
+    ),
   )
   const [baselineSignature, setBaselineSignature] = useState(() =>
     createSubmitSignature(
@@ -160,13 +180,22 @@ export default function SpecificationLocalRequirementForm({
   useEffect(() => {
     const nextFields = toFieldValues(initialValue)
     const nextNeedsReferenceId = initialValue?.needsReferenceId ?? ''
+    const nextInitialValueSignature = createInitialValueSignature(
+      nextFields,
+      nextNeedsReferenceId,
+    )
+    if (initialValueSignatureRef.current === nextInitialValueSignature) {
+      return
+    }
+
+    initialValueSignatureRef.current = nextInitialValueSignature
     setFields(nextFields)
     setNeedsReferenceId(nextNeedsReferenceId)
     setBaselineSignature(
       createSubmitSignature(nextFields, nextNeedsReferenceId),
     )
     setNeedsRefHelpOpen(false)
-  }, [initialValue])
+  })
 
   const formDirty =
     baselineSignature !== createSubmitSignature(fields, needsReferenceId)

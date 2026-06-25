@@ -282,7 +282,7 @@ describe('RequirementForm', () => {
       expect(sidebarGrid?.parentElement).toHaveClass('items-stretch')
       expect(mainFields).toHaveClass('self-start')
       expect(sidebarGrid).toHaveClass('sm:grid-cols-2')
-      expect(sidebarGrid).toHaveClass('lg:w-136')
+      expect(sidebarGrid).toHaveClass('lg:w-full')
       expect(sidebarGrid).toHaveClass('lg:h-(--requirement-association-height)')
       expect(sidebarGrid).toHaveClass(
         'lg:max-h-(--requirement-association-height)',
@@ -676,7 +676,7 @@ describe('RequirementForm', () => {
     ).toBeInTheDocument()
   })
 
-  it('shows priority details inline and opens the priority scale modal', async () => {
+  it('shows selected priority details as a tooltip and opens the priority scale modal', async () => {
     render(
       <RequirementForm
         initialData={{ priorityLevelId: '2' }}
@@ -685,15 +685,19 @@ describe('RequirementForm', () => {
       />,
     )
 
-    await screen.findByText('Low priority description')
+    expect(
+      screen.queryByText('Low priority description'),
+    ).not.toBeInTheDocument()
+    await screen.findByRole('option', { name: 'P2 - Low' })
 
-    expect(
-      screen.getByText('requirement.priorityLevelDescriptionLabel'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('requirement.priorityLevelAssessmentCriteriaLabel'),
-    ).toBeInTheDocument()
-    expect(screen.getByText('Low assessment criteria')).toBeInTheDocument()
+    const prioritySelect = screen.getByRole('combobox', {
+      name: 'requirement.priorityLevel',
+    })
+    fireEvent.focus(prioritySelect)
+
+    const priorityTooltip = await screen.findByRole('tooltip')
+    expect(priorityTooltip).toHaveTextContent('Low priority description')
+    expect(priorityTooltip).toHaveTextContent('Low assessment criteria')
 
     fireEvent.click(
       screen.getByRole('button', {
