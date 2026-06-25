@@ -49,7 +49,6 @@ import { specificationLifecycleStatusEntity } from '@/lib/typeorm/entities/speci
 import { specificationLocalRequirementEntity } from '@/lib/typeorm/entities/specification-local-requirement'
 import { specificationLocalRequirementDeviationEntity } from '@/lib/typeorm/entities/specification-local-requirement-deviation'
 import { specificationLocalRequirementNormReferenceEntity } from '@/lib/typeorm/entities/specification-local-requirement-norm-reference'
-import { specificationLocalRequirementRequirementPackageEntity } from '@/lib/typeorm/entities/specification-local-requirement-requirement-package'
 import { specificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
 import { specificationRequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/specification-requirement-selection-answer'
 import { specificationRfiListEntity } from '@/lib/typeorm/entities/specification-rfi-list'
@@ -73,7 +72,6 @@ export const sqlServerEntities = [
   specificationLocalRequirementEntity,
   specificationLocalRequirementDeviationEntity,
   specificationLocalRequirementNormReferenceEntity,
-  specificationLocalRequirementRequirementPackageEntity,
   specificationNeedsReferenceEntity,
   specificationGovernanceObjectTypeEntity,
   qualityCharacteristicEntity,
@@ -165,7 +163,6 @@ export type { SpecificationLifecycleStatusEntity } from '@/lib/typeorm/entities/
 export type { SpecificationLocalRequirementEntity } from '@/lib/typeorm/entities/specification-local-requirement'
 export type { SpecificationLocalRequirementDeviationEntity } from '@/lib/typeorm/entities/specification-local-requirement-deviation'
 export type { SpecificationLocalRequirementNormReferenceEntity } from '@/lib/typeorm/entities/specification-local-requirement-norm-reference'
-export type { SpecificationLocalRequirementRequirementPackageEntity } from '@/lib/typeorm/entities/specification-local-requirement-requirement-package'
 export type { SpecificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
 export type { SpecificationRequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/specification-requirement-selection-answer'
 export type { SpecificationRfiListEntity } from '@/lib/typeorm/entities/specification-rfi-list'
@@ -223,7 +220,6 @@ export {
   specificationLocalRequirementDeviationEntity,
   specificationLocalRequirementEntity,
   specificationLocalRequirementNormReferenceEntity,
-  specificationLocalRequirementRequirementPackageEntity,
   specificationNeedsReferenceEntity,
   specificationRequirementSelectionAnswerEntity,
   specificationRfiListEntity,

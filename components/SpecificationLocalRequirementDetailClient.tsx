@@ -1014,19 +1014,6 @@ export default function SpecificationLocalRequirementDetailClient({
     title: reference.name,
   }))
 
-  const requirementPackages = requirement.requirementPackages.map(
-    requirementPackage => {
-      const label = requirementPackage.name ?? String(requirementPackage.id)
-      return {
-        id: `specification-local-requirementPackage-${requirementPackage.id}`,
-        label,
-        markerContext: buildDetailSectionContext('requirementPackages'),
-        markerValue: label,
-        purposeAndScope: requirementPackage.purposeAndScope,
-      }
-    },
-  )
-
   const hasPendingDeviation =
     deviationStep === 'draft' || deviationStep === 'review_requested'
   const canMutateLocalRequirement =
@@ -1098,9 +1085,6 @@ export default function SpecificationLocalRequirementDetailClient({
                 priorityLevelId: requirement.priorityLevel
                   ? String(requirement.priorityLevel.id)
                   : '',
-                requirementPackageIds: requirement.requirementPackages.map(
-                  requirementPackage => requirementPackage.id,
-                ),
                 verificationMethod: requirement.verificationMethod ?? '',
               }}
               needsReferences={needsReferences}
@@ -1146,8 +1130,9 @@ export default function SpecificationLocalRequirementDetailClient({
                       metadata={metadata}
                       references={references}
                       referencesLabel={t('normReferences')}
-                      requirementPackages={requirementPackages}
+                      requirementPackages={[]}
                       requirementPackagesLabel={t('requirementPackage')}
+                      showRequirementPackages={false}
                     />
                   </RequirementDetailCard>
 

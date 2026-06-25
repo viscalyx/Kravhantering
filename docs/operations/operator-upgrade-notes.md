@@ -20,6 +20,14 @@ requirement package has meaningful non-blank text before running
 `db-job migrate`; the migration fails instead of generating placeholder text
 for missing package purpose and scope.
 
+### Specification-local requirement package links are removed
+
+The migration drops `specification_local_requirement_requirement_packages`.
+Requirement packages now apply only to requirements-library requirements.
+Existing package links on specification-local requirements are deleted during
+upgrade; review downstream reports or integrations that read that table before
+running `db-job migrate`.
+
 ### Responsibility assignments must have valid HSA-id values before upgrade
 
 Confirm that every live requirement-area owner, requirement-area co-author,

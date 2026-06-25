@@ -38,7 +38,6 @@ interface RequirementPackageCoAuthorRow {
 interface RequirementPackageUsage {
   answerLinkCount: number
   libraryRequirementCount: number
-  localRequirementCount: number
 }
 
 interface RequirementPackageMutationResult {
@@ -353,11 +352,6 @@ export async function getRequirementPackageUsage(
             AND versions.requirement_status_id = ${STATUS_PUBLISHED}
         ) AS libraryRequirementCount,
         (
-          SELECT COUNT(DISTINCT links.specification_local_requirement_id)
-          FROM specification_local_requirement_requirement_packages AS links
-          WHERE links.requirement_package_id = @0
-        ) AS localRequirementCount,
-        (
           SELECT COUNT(DISTINCT links.answer_id)
           FROM requirement_selection_answer_packages AS links
           WHERE links.requirement_package_id = @0
@@ -367,12 +361,10 @@ export async function getRequirementPackageUsage(
   )) as Array<{
     answerLinkCount: number
     libraryRequirementCount: number
-    localRequirementCount: number
   }>
   return {
     answerLinkCount: Number(row?.answerLinkCount ?? 0),
     libraryRequirementCount: Number(row?.libraryRequirementCount ?? 0),
-    localRequirementCount: Number(row?.localRequirementCount ?? 0),
   }
 }
 
@@ -752,11 +744,6 @@ export async function deleteRequirementPackage(
           AND NOT EXISTS (
             SELECT 1
             FROM requirement_version_requirement_packages AS links
-            WHERE links.requirement_package_id = requirement_package.id
-          )
-          AND NOT EXISTS (
-            SELECT 1
-            FROM specification_local_requirement_requirement_packages AS links
             WHERE links.requirement_package_id = requirement_package.id
           )
       `,

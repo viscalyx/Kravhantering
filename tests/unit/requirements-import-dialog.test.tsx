@@ -471,6 +471,75 @@ describe('RequirementsImportDialog', () => {
     ).toBeTruthy()
   })
 
+  it('hides requirement package controls for specification-local imports', async () => {
+    mockReferenceDataFetch({
+      requirementPackages: [{ id: 3, name: 'Integration med andra system' }],
+    })
+    vi.mocked(apiFetch).mockResolvedValue({
+      json: async () => ({
+        previewToken: 'preview-token',
+        proposals: [],
+        rows: [
+          {
+            errors: [],
+            proposedNormReferenceKeys: [],
+            reviewRowId: 'row-0',
+            selected: true,
+            sourceIndex: 0,
+            values: {
+              acceptanceCriteria: null,
+              categoryId: null,
+              description: 'Lokalt krav',
+              needsReferenceId: null,
+              normReferenceIds: [],
+              qualityCharacteristicId: null,
+              requirementPackageIds: [3],
+              requiresTesting: false,
+              priorityLevelId: null,
+              typeId: null,
+              verificationMethod: null,
+            },
+            warnings: [],
+          },
+        ],
+        summary: { errorCount: 0, rowCount: 1, warningCount: 0 },
+      }),
+      ok: true,
+    } as Response)
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationSlug="spec"
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: {
+        value: JSON.stringify({
+          requirements: [{ description: 'Lokalt krav' }],
+          schemaVersion: 'requirement-import.v1',
+        }),
+      },
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Starta import' }),
+      ).toBeEnabled(),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Starta import' }))
+    await expandFirstImportRow()
+
+    expect(screen.queryByText('Kravpakets-ID:n')).not.toBeInTheDocument()
+    expect(screen.getByText('Normreferens-ID:n')).toBeInTheDocument()
+    expect(apiFetch).toHaveBeenCalledWith(
+      '/api/requirements-specifications/spec/local-requirements/import/preview',
+      expect.any(Object),
+    )
+  })
+
   it('groups quality characteristics by parent and clears them when type is emptied', async () => {
     mockReferenceDataFetch({
       types: [

@@ -94,5 +94,12 @@ describe('requirements import schema', () => {
       const: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
       description: 'Toppnivåfältet som versionerar hela kravimportfilen.',
     })
+    const requirements = properties.requirements as {
+      items: { properties: Record<string, unknown> }
+    }
+    expect(requirements.items.properties.requirementPackageIds).toMatchObject({
+      description:
+        'Kravpakets-ID:n används vid import till kravbiblioteket. Vid import till kravunderlagslokala krav ignoreras fältet.',
+    })
   })
 })

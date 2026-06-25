@@ -174,11 +174,6 @@ function emptySeed() {
       pk: ['specification_local_requirement_id', 'norm_reference_id'],
       rows: [],
     },
-    specification_local_requirement_requirement_packages: {
-      columns: ['specification_local_requirement_id', 'requirement_package_id'],
-      pk: ['specification_local_requirement_id', 'requirement_package_id'],
-      rows: [],
-    },
     requirements_specification_items: {
       columns: [
         'id',

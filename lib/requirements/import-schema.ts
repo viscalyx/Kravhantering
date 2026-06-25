@@ -218,7 +218,12 @@ export function buildRequirementsImportJsonSchema(
             },
             qualityCharacteristicName:
               nullableOptionalStringSchema(DB_STRING_MAX_LENGTH),
-            requirementPackageIds: positiveIntegerArrayJsonSchema,
+            requirementPackageIds: {
+              ...positiveIntegerArrayJsonSchema,
+              description: isSv
+                ? 'Kravpakets-ID:n används vid import till kravbiblioteket. Vid import till kravunderlagslokala krav ignoreras fältet.'
+                : 'Requirement package IDs are used when importing to the requirements library. When importing specification-local requirements, this field is ignored.',
+            },
             requirementPackageNames: stringArrayJsonSchema,
             requiresTesting: {
               anyOf: [{ type: 'boolean' }, { type: 'null' }],

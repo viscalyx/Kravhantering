@@ -770,7 +770,6 @@ const TRANSACTIONAL_TABLES = [
   'action_audit_events',
   'requirement_version_requirement_packages',
   'requirement_version_norm_references',
-  'specification_local_requirement_requirement_packages',
   'specification_local_requirement_norm_references',
   'specification_local_requirement_deviations',
   'deviations',
@@ -2096,7 +2095,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       name: 'Target library',
       prefix: 'TGT',
     })
-    const requirementPackage = await createRequirementPackage(appDb())
     const normReference = await createNormReference(appDb())
     const spec = await createSpecification(appDb(), {
       name: 'Graduation specification',
@@ -2111,7 +2109,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         acceptanceCriteria: 'Copied acceptance',
         description: 'Copied unique requirement',
         normReferenceIds: [normReference.id],
-        requirementPackageIds: [requirementPackage.id],
         requiresTesting: true,
         verificationMethod: 'Inspection',
       },
@@ -2241,9 +2238,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         verificationMethod: 'Inspection',
       }),
     ])
-    expect(targetPackageRows).toEqual([
-      { requirementPackageId: requirementPackage.id },
-    ])
+    expect(targetPackageRows).toEqual([])
     expect(targetNormRows).toEqual([{ normReferenceId: normReference.id }])
     expect(Number(deviationRows[0]?.count ?? 0)).toBe(1)
   })

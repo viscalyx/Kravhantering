@@ -21,7 +21,6 @@ export interface SpecificationLocalRequirementSubmitPayload {
   priorityLevelId: number | null
   qualityCharacteristicId: number | null
   requirementCategoryId: number | null
-  requirementPackageIds: number[]
   requirementTypeId: number | null
   requiresTesting: boolean
   verificationMethod: string | null
@@ -55,7 +54,7 @@ const EMPTY_FIELDS: RequirementFormFieldValues = {
 }
 
 const SPECIFICATION_LOCAL_REQUIREMENT_DIRTY_OPTIONS = {
-  unorderedArrayPaths: ['normReferenceIds', 'requirementPackageIds'],
+  unorderedArrayPaths: ['normReferenceIds'],
 } as const
 
 function toFieldValues(
@@ -88,9 +87,6 @@ function toFieldValues(
     ...(initial.normReferenceIds != null
       ? { normReferenceIds: initial.normReferenceIds }
       : {}),
-    ...(initial.requirementPackageIds != null
-      ? { requirementPackageIds: initial.requirementPackageIds }
-      : {}),
   }
 }
 
@@ -112,7 +108,6 @@ function toSubmitPayload(
     priorityLevelId: fields.priorityLevelId
       ? Number(fields.priorityLevelId)
       : null,
-    requirementPackageIds: fields.requirementPackageIds,
     verificationMethod: fields.requiresTesting
       ? fields.verificationMethod.trim() || null
       : null,
@@ -255,6 +250,7 @@ export default function SpecificationLocalRequirementForm({
         layout="sidebar"
         onChange={setFields}
         showArea={false}
+        showRequirementPackages={false}
         taxonomyOptions={taxonomyOptions}
         values={fields}
       />

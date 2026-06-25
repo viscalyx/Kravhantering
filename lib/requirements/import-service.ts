@@ -693,11 +693,10 @@ function previewRows(args: {
         nameMatches: qualityCharacteristicMatches,
         warnings,
       }),
-      requirementPackageIds: resolvePackageIds(
-        row,
-        args.referenceData,
-        warnings,
-      ),
+      requirementPackageIds:
+        args.mode === 'library'
+          ? resolvePackageIds(row, args.referenceData, warnings)
+          : [],
       requiresTesting,
       priorityLevelId: resolveScalarReference({
         field: 'priorityLevelId',
@@ -836,49 +835,57 @@ function receiptRowsForInputs(args: {
   const packageById = new Map(
     args.referenceData.requirementPackages.map(item => [item.id, item]),
   )
-  return args.inputs.map((input, index) => ({
-    acceptanceCriteria: compactText(input.acceptanceCriteria),
-    categoryId: input.categoryId ?? null,
-    categoryName: receiptName(
-      args.referenceData.categories,
-      input.categoryId,
-      args.locale,
-    ),
-    createdDatabaseId: args.created[index]?.id ?? 0,
-    createdVisibleId: args.created[index]?.uniqueId ?? '',
-    description: input.description.trim(),
-    importMode: args.mode,
-    needsReferenceId: input.needsReferenceId ?? null,
-    normReferences: input.normReferenceIds
-      .map(id => normReferenceById.get(id)?.normReferenceId)
-      .filter((value): value is string => Boolean(value)),
-    qualityCharacteristicId: input.qualityCharacteristicId ?? null,
-    qualityCharacteristicName: receiptName(
-      args.referenceData.qualityCharacteristics,
-      input.qualityCharacteristicId,
-      args.locale,
-    ),
-    requirementPackageIds: input.requirementPackageIds,
-    requirementPackageNames: input.requirementPackageIds
-      .map(id => packageById.get(id)?.name)
-      .filter((value): value is string => Boolean(value)),
-    requiresTesting: input.requiresTesting,
-    priorityLevelId: input.priorityLevelId ?? null,
-    priorityLevelName: receiptPriorityName(
-      args.referenceData.priorityLevels,
-      input.priorityLevelId,
-      args.locale,
-    ),
-    sourceIndex: input.sourceIndex,
-    targetAreaId: args.mode === 'library' ? args.destinationId : null,
-    targetSpecificationId:
-      args.mode === 'specification-local' ? args.destinationId : null,
-    typeId: input.typeId ?? null,
-    typeName: receiptName(args.referenceData.types, input.typeId, args.locale),
-    verificationMethod: input.requiresTesting
-      ? compactText(input.verificationMethod)
-      : null,
-  }))
+  return args.inputs.map((input, index) => {
+    const requirementPackageIds =
+      args.mode === 'library' ? input.requirementPackageIds : []
+    return {
+      acceptanceCriteria: compactText(input.acceptanceCriteria),
+      categoryId: input.categoryId ?? null,
+      categoryName: receiptName(
+        args.referenceData.categories,
+        input.categoryId,
+        args.locale,
+      ),
+      createdDatabaseId: args.created[index]?.id ?? 0,
+      createdVisibleId: args.created[index]?.uniqueId ?? '',
+      description: input.description.trim(),
+      importMode: args.mode,
+      needsReferenceId: input.needsReferenceId ?? null,
+      normReferences: input.normReferenceIds
+        .map(id => normReferenceById.get(id)?.normReferenceId)
+        .filter((value): value is string => Boolean(value)),
+      qualityCharacteristicId: input.qualityCharacteristicId ?? null,
+      qualityCharacteristicName: receiptName(
+        args.referenceData.qualityCharacteristics,
+        input.qualityCharacteristicId,
+        args.locale,
+      ),
+      requirementPackageIds,
+      requirementPackageNames: requirementPackageIds
+        .map(id => packageById.get(id)?.name)
+        .filter((value): value is string => Boolean(value)),
+      requiresTesting: input.requiresTesting,
+      priorityLevelId: input.priorityLevelId ?? null,
+      priorityLevelName: receiptPriorityName(
+        args.referenceData.priorityLevels,
+        input.priorityLevelId,
+        args.locale,
+      ),
+      sourceIndex: input.sourceIndex,
+      targetAreaId: args.mode === 'library' ? args.destinationId : null,
+      targetSpecificationId:
+        args.mode === 'specification-local' ? args.destinationId : null,
+      typeId: input.typeId ?? null,
+      typeName: receiptName(
+        args.referenceData.types,
+        input.typeId,
+        args.locale,
+      ),
+      verificationMethod: input.requiresTesting
+        ? compactText(input.verificationMethod)
+        : null,
+    }
+  })
 }
 
 function toRequirementMutationInput(
@@ -915,7 +922,6 @@ function toLocalRequirementMutationInput(
     normReferenceIds: row.normReferenceIds,
     qualityCharacteristicId: row.qualityCharacteristicId ?? null,
     requirementCategoryId: row.categoryId ?? null,
-    requirementPackageIds: row.requirementPackageIds,
     requirementTypeId: row.typeId ?? null,
     requiresTesting: row.requiresTesting,
     priorityLevelId: row.priorityLevelId ?? null,

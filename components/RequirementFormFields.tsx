@@ -52,6 +52,8 @@ export interface RequirementFormFieldsProps {
   onChange: (values: RequirementFormFieldValues) => void
   /** Hide area for contexts where requirements are not owned by a requirement area */
   showArea?: boolean
+  /** Hide requirement-package selection for contexts outside the requirements library */
+  showRequirementPackages?: boolean
   /** Taxonomy option arrays loaded by the form container via useTaxonomyOptions */
   taxonomyOptions: TaxonomyOptions
   values: RequirementFormFieldValues
@@ -81,6 +83,7 @@ export default function RequirementFormFields({
   normReferenceActions,
   onChange,
   showArea = true,
+  showRequirementPackages = true,
   taxonomyOptions,
   values,
 }: RequirementFormFieldsProps) {
@@ -187,6 +190,9 @@ export default function RequirementFormFields({
         '--requirement-association-height': `${associationPanelHeight}px`,
       } as CSSProperties)
     : undefined
+  const associationSidebarClassName = showRequirementPackages
+    ? 'grid min-h-0 gap-6 sm:grid-cols-2 lg:h-(--requirement-association-height) lg:max-h-(--requirement-association-height) lg:w-136 lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden'
+    : 'grid min-h-0 gap-6 lg:h-(--requirement-association-height) lg:max-h-(--requirement-association-height) lg:w-68 lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden'
 
   const handleChange = (
     key: keyof RequirementFormFieldValues,
@@ -552,45 +558,48 @@ export default function RequirementFormFields({
     </>
   )
 
-  const requirementPackagesFieldset = requirementPackages.length > 0 && (
-    <fieldset className={associationFieldsetClassName}>
-      <div className="flex items-center gap-1.5 mb-1">
-        <legend className="text-sm font-medium contents">
-          {t('requirementPackage')}
-        </legend>
-        {helpButton(fid('requirementPackage'), t('requirementPackage'))}
-      </div>
-      {helpPanel('requirementPackageHelp', fid('requirementPackage'))}
-      <div className={associationListClassName}>
-        {requirementPackages.map(s => (
-          <RequirementPackagePurposeTooltip
-            key={s.id}
-            maxWidth={320}
-            purposeAndScope={s.purposeAndScope}
-            wrapperClassName="flex min-w-0"
-          >
-            <label className="flex min-w-0 cursor-pointer items-center gap-2 text-sm">
-              <input
-                checked={values.requirementPackageIds.includes(s.id)}
-                className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                onChange={e => {
-                  const checked = e.target.checked
-                  onChange({
-                    ...values,
-                    requirementPackageIds: checked
-                      ? [...values.requirementPackageIds, s.id]
-                      : values.requirementPackageIds.filter(id => id !== s.id),
-                  })
-                }}
-                type="checkbox"
-              />
-              <span className="min-w-0 wrap-break-word">{s.name}</span>
-            </label>
-          </RequirementPackagePurposeTooltip>
-        ))}
-      </div>
-    </fieldset>
-  )
+  const requirementPackagesFieldset = showRequirementPackages &&
+    requirementPackages.length > 0 && (
+      <fieldset className={associationFieldsetClassName}>
+        <div className="flex items-center gap-1.5 mb-1">
+          <legend className="text-sm font-medium contents">
+            {t('requirementPackage')}
+          </legend>
+          {helpButton(fid('requirementPackage'), t('requirementPackage'))}
+        </div>
+        {helpPanel('requirementPackageHelp', fid('requirementPackage'))}
+        <div className={associationListClassName}>
+          {requirementPackages.map(s => (
+            <RequirementPackagePurposeTooltip
+              key={s.id}
+              maxWidth={320}
+              purposeAndScope={s.purposeAndScope}
+              wrapperClassName="flex min-w-0"
+            >
+              <label className="flex min-w-0 cursor-pointer items-center gap-2 text-sm">
+                <input
+                  checked={values.requirementPackageIds.includes(s.id)}
+                  className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                  onChange={e => {
+                    const checked = e.target.checked
+                    onChange({
+                      ...values,
+                      requirementPackageIds: checked
+                        ? [...values.requirementPackageIds, s.id]
+                        : values.requirementPackageIds.filter(
+                            id => id !== s.id,
+                          ),
+                    })
+                  }}
+                  type="checkbox"
+                />
+                <span className="min-w-0 wrap-break-word">{s.name}</span>
+              </label>
+            </RequirementPackagePurposeTooltip>
+          ))}
+        </div>
+      </fieldset>
+    )
 
   const normReferencesFieldset = (
     <fieldset className={associationFieldsetClassName}>
@@ -642,7 +651,11 @@ export default function RequirementFormFields({
     return (
       <div className="space-y-5">
         {mainFields}
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div
+          className={`grid gap-5 ${
+            showRequirementPackages ? 'lg:grid-cols-2' : ''
+          }`}
+        >
           {requirementPackagesFieldset && (
             <fieldset className="rounded-2xl border p-4">
               <legend className="px-1 text-sm font-medium">
@@ -746,7 +759,7 @@ export default function RequirementFormFields({
           {mainFields}
         </div>
         <div
-          className="grid min-h-0 gap-6 sm:grid-cols-2 lg:h-(--requirement-association-height) lg:max-h-(--requirement-association-height) lg:w-136 lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden"
+          className={associationSidebarClassName}
           style={associationSidebarStyle}
         >
           {requirementPackagesFieldset}

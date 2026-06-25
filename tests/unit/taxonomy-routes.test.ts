@@ -324,7 +324,6 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
   getRequirementPackageUsage: async () => ({
     answerLinkCount: 0,
     libraryRequirementCount: 0,
-    localRequirementCount: 0,
   }),
   updateRequirementPackage: (...a: unknown[]) =>
     mockUpdateRequirementPackage(...a),

@@ -374,9 +374,6 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
       WHERE pkg.id = @0
         AND NOT EXISTS (
           SELECT 1 FROM requirement_version_requirement_packages link WHERE link.requirement_package_id = pkg.id
-        )
-        AND NOT EXISTS (
-          SELECT 1 FROM specification_local_requirement_requirement_packages link WHERE link.requirement_package_id = pkg.id
         )`,
     fieldKey: 'taxonomy',
     objectKey: 'requirementPackages',
@@ -394,9 +391,6 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
         WHERE pkg.updated_at <= @0
           AND NOT EXISTS (
             SELECT 1 FROM requirement_version_requirement_packages link WHERE link.requirement_package_id = pkg.id
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM specification_local_requirement_requirement_packages link WHERE link.requirement_package_id = pkg.id
           )
       ) source
       WHERE ${ACTIVE_EXCEPTION_SQL}
@@ -1626,20 +1620,7 @@ async function exportSpecification(
         ORDER BY local_requirement.id ASC, norm_reference.norm_reference_id ASC`,
       [specificationId],
     ) as Promise<Row[]>,
-    db.query(
-      `SELECT
-          local_requirement.id AS localRequirementId,
-          pkg.id,
-          pkg.name,
-          pkg.purpose_and_scope AS purposeAndScope
-        FROM specification_local_requirements local_requirement
-        INNER JOIN specification_local_requirement_requirement_packages link
-          ON link.specification_local_requirement_id = local_requirement.id
-        INNER JOIN requirement_packages pkg ON pkg.id = link.requirement_package_id
-        WHERE local_requirement.specification_id = @0
-        ORDER BY local_requirement.id ASC, pkg.name ASC`,
-      [specificationId],
-    ) as Promise<Row[]>,
+    Promise.resolve([] as Row[]),
     db.query(
       `SELECT
           deviation.id,

@@ -3050,7 +3050,7 @@ export default function RequirementsTable({
             <span className="shrink-0 text-xs font-medium text-secondary-600 dark:text-secondary-400">
               {t('requirementPackage')}:
             </span>
-            <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto">
+            <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto overflow-y-hidden py-0.5">
               {requirementPackages.map(s => {
                 const active = (fv.requirementPackageIds ?? []).includes(s.id)
                 const purposeAndScope = requirementPackagePurposeAndScope(s)
@@ -3059,11 +3059,12 @@ export default function RequirementsTable({
                     key={s.id}
                     maxWidth={280}
                     purposeAndScope={purposeAndScope}
+                    wrapperClassName="inline-flex shrink-0"
                   >
                     <button
                       aria-label={requirementPackageName(s)}
                       aria-pressed={active}
-                      className={`min-h-11 min-w-11 shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                      className={`inline-flex min-h-11 min-w-11 max-w-48 shrink-0 items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                         active
                           ? 'bg-primary-600 text-white'
                           : 'bg-secondary-100 text-secondary-600 hover:bg-secondary-200 dark:bg-secondary-800 dark:text-secondary-400 dark:hover:bg-secondary-700'
@@ -3081,7 +3082,9 @@ export default function RequirementsTable({
                       }}
                       type="button"
                     >
-                      {requirementPackageName(s)}
+                      <span className="truncate">
+                        {requirementPackageName(s)}
+                      </span>
                     </button>
                   </RequirementPackagePurposeTooltip>
                 )

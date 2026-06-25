@@ -119,16 +119,19 @@ The behaviors below apply to the requirement list rendered by:
   before execute, and disable the create action while the proposal is resolved.
   If the normreferens was created from the proposal, the existing-normreferens
   link selector is also disabled because the proposal now has a concrete target.
-- Row-level `Kravpakets-ID:n` and `Normreferens-ID:n` values are edited as
+- Row-level `Kravpakets-ID:n` values are edited only for library imports.
+  Specification-local imports do not show or save requirement-package links;
+  imported `requirementPackageIds` are ignored in that mode.
+  Row-level `Normreferens-ID:n` values are edited for both import modes as
   individual numeric IDs in the krav tab after `Verifierbar` and
   `Verifieringsmetod`. Resolved IDs use compact read-only rows; on wider
   screens each resolved kravpakets-ID shows only the matching kravpaket name,
   and each resolved normreferens-ID shows `normreferens-ID - name`. Internal
   database IDs are not shown for resolved rows. Users remove a resolved row and
   select another item in the overview modal when the association is wrong. New
-  kravpaket and normreferens links are added through overview modals with
-  searchable checkbox lists instead of free ID entry. Unmatched imported IDs
-  remain editable and show a visible warning.
+  kravpaket links in library imports and normreferens links in both modes are
+  added through overview modals with searchable checkbox lists instead of free
+  ID entry. Unmatched imported IDs remain editable and show a visible warning.
 - Rows are selected by default. Execute is all-or-nothing for the selected rows.
   After a successful execute, the selected imported rows are removed from the
   review list, while unselected rows remain until the user closes the dialog.
@@ -479,8 +482,7 @@ down.
   `KRAV0001`; the specification context itself disambiguates them.
 - The specification-local inline detail pane now reuses the same core content-card
   layout as the requirements library inline detail view: description first,
-  acceptance criteria second, then the shared metadata grid, references, and
-  requirement packages.
+  acceptance criteria second, then the shared metadata grid and references.
 - When a library requirement is opened from the specification list `Krav i underlaget`,
   its inline detail metadata also includes the specification-specific fields
   **Behovsreferens** and **Användningsstatus** in the same properties grid.

@@ -97,7 +97,6 @@ Apply these rules to all schema objects.
 | 4 | `requirement_package_co_authors` uses composite PK `(requirement_package_id, hsa_id)` instead of a single `id` | The live co-author assignment is naturally keyed by requirement package plus durable HSA-id; a surrogate `id` would not improve identity or lookup semantics. |
 | 4 | `requirement_selection_question_sequences` uses `area_id` as its PK instead of a single `id` | The sequence row is intentionally named after the requirement area it allocates codes for, making the one-row-per-area contract clear while leaving room for future schema changes. |
 | 4 | `rfi_question_sequences` uses `area_id` as its PK instead of a single `id` | The sequence row is intentionally scoped to the requirement area it allocates stable RFI question codes for. |
-| 4 | `specification_local_requirement_requirement_packages` uses composite PK `(specification_local_requirement_id, requirement_package_id)` instead of a single `id` | Same rationale as the version-based requirement-packages join table above. |
 | 4 | `specification_local_requirement_norm_references` uses composite PK `(specification_local_requirement_id, norm_reference_id)` instead of a single `id` | Same rationale as the version-based norm-references join table above. |
 | 4 | RFI join tables and `specification_rfi_question_items` use composite PKs | These rows are natural links between a question version and advisory target, or between a specification and an RFI question. A surrogate `id` would not improve identity. |
 | Localized columns | `norm_references.name`, `norm_references.type`, `norm_references.issuer` are single-language columns | Norm references are external legal/regulatory documents (e.g. laws, ISO standards) with proper names in their source language. Localizing them would be factually incorrect — "SFS 2018:218" and "Riksdagen" do not have per-locale translations. |
@@ -424,11 +423,6 @@ erDiagram
         text updated_at
     }
 
-    specification_local_requirement_requirement_packages {
-        integer specification_local_requirement_id PK, FK
-        integer requirement_package_id PK, FK
-    }
-
     specification_local_requirement_norm_references {
         integer specification_local_requirement_id PK, FK
         integer norm_reference_id PK, FK
@@ -657,8 +651,6 @@ erDiagram
     requirement_types ||--o{ specification_local_requirements : "typed as"
     quality_characteristics ||--o{ specification_local_requirements : "sub-typed as"
     priority_levels ||--o{ specification_local_requirements : "priority"
-    specification_local_requirements ||--o{ specification_local_requirement_requirement_packages : "linked via"
-    requirement_packages ||--o{ specification_local_requirement_requirement_packages : "linked via"
     specification_local_requirements ||--o{ specification_local_requirement_norm_references : "linked via"
     norm_references ||--o{ specification_local_requirement_norm_references : "linked via"
     specification_local_requirements ||--o{ specification_local_requirement_deviations : "has deviations"
@@ -2065,31 +2057,6 @@ norm-reference-to-requirement queries.
 
 ---
 
-### `specification_local_requirement_requirement_packages`
-
-Many-to-many link between specification-local requirements and
-requirement packages.
-
-<!-- markdownlint-disable MD013 -->
-| Column | Type | Description |
-| -------- | ------ | ------------- |
-| `specification_local_requirement_id` | integer FK → `specification_local_requirements.id` | Composite PK part 1 (CASCADE DELETE) |
-| `requirement_package_id` | integer FK → `requirement_packages.id` | Composite PK part 2 |
-<!-- markdownlint-enable MD013 -->
-
-**Primary key:**
-`(specification_local_requirement_id, requirement_package_id)`.
-
-**Named foreign keys:**
-`fk_specification_local_requirement_requirement_packages_specification_local_requirement_id`
-(on delete CASCADE),
-`fk_specification_local_requirement_requirement_packages_requirement_package_id`.
-
-**Index:**
-`idx_specification_local_requirement_requirement_packages_requirement_package_id`.
-
----
-
 ### `specification_local_requirement_norm_references`
 
 Many-to-many link between specification-local requirements and
@@ -2343,7 +2310,6 @@ its purpose and the table/column(s) it covers.
 | `idx_specification_requirement_selection_answers_changed_by_hsa_id` | `specification_requirement_selection_answers` | `changed_by_hsa_id` | Speed up privacy erasure of saved-answer actors |
 | `idx_specification_requirement_selection_answers_answer_id` | `specification_requirement_selection_answers` | `answer_id` | Speed up saved-answer cleanup by answer |
 | `idx_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | Speed up lookups of requirement versions by norm reference |
-| `idx_specification_local_requirement_requirement_packages_requirement_package_id` | `specification_local_requirement_requirement_packages` | `requirement_package_id` | Speed up lookups of specification-local requirements by requirement package |
 | `idx_specification_local_requirement_norm_references_norm_reference_id` | `specification_local_requirement_norm_references` | `norm_reference_id` | Speed up lookups of specification-local requirements by norm reference |
 | `idx_deviations_specification_item_id` | `deviations` | `specification_item_id` | Speed up lookups of deviations by requirement application |
 | `idx_specification_local_requirement_deviations_specification_local_requirement_id` | `specification_local_requirement_deviations` | `specification_local_requirement_id` | Speed up lookups of deviations by specification-local requirement |
@@ -2422,8 +2388,6 @@ The following table lists every named FK constraint:
 | `fk_specification_local_requirement_deviations_specification_local_requirement_id` | `specification_local_requirement_deviations` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
 | `fk_specification_local_requirement_norm_references_specification_local_requirement_id` | `specification_local_requirement_norm_references` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
 | `fk_specification_local_requirement_norm_references_norm_reference_id` | `specification_local_requirement_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION | NO ACTION |
-| `fk_specification_local_requirement_requirement_packages_specification_local_requirement_id` | `specification_local_requirement_requirement_packages` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
-| `fk_specification_local_requirement_requirement_packages_requirement_package_id` | `specification_local_requirement_requirement_packages` | `requirement_package_id` | `requirement_packages.id` | NO ACTION | NO ACTION |
 | `fk_requirement_versions_requirement_id` | `requirement_versions` | `requirement_id` | `requirements.id` | NO ACTION | NO ACTION |
 | `fk_requirement_versions_requirement_status_id` | `requirement_versions` | `requirement_status_id` | `requirement_statuses.id` | NO ACTION | NO ACTION |
 | `fk_requirement_versions_requirement_type_id` | `requirement_versions` | `requirement_type_id` | `requirement_types.id` | NO ACTION | NO ACTION |
@@ -2519,7 +2483,6 @@ graph LR
         RSAP[requirement_selection_answer_packages]
         RSAR[requirement_selection_answer_requirements]
         RVNR[requirement_version_norm_references]
-        PLRPKG[specification_local_requirement_requirement_packages]
         PLRNR[specification_local_requirement_norm_references]
     end
 
@@ -2637,7 +2600,6 @@ graph LR
     D -- "idx_..._specification_item_id\n(specification_item_id)" --> RPI
     D -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> D
     D -- "idx_..._decided_by_hsa_id\n(decided_by_hsa_id)" --> D
-    PLRPKG -- "idx_..._requirement_package_id\n(requirement_package_id)" --> RPKG
     PLRNR -- "idx_..._norm_reference_id\n(norm_reference_id)" --> NR
     PLRD -- "idx_..._specification_local_requirement_id\n(specification_local_requirement_id)" --> PLR
     PLRD -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> PLRD
@@ -2678,8 +2640,6 @@ graph LR
     SCA -. "composite PK\n(specification_id,\nhsa_id)" .-> RP
     RVNR -. "composite PK\n(requirement_version_id,\nnorm_reference_id)" .-> RV
     RVNR -. "composite PK" .-> NR
-    PLRPKG -. "composite PK\n(specification_local_requirement_id,\nrequirement_package_id)" .-> PLR
-    PLRPKG -. "composite PK" .-> RPKG
     PLRNR -. "composite PK\n(specification_local_requirement_id,\nnorm_reference_id)" .-> PLR
     PLRNR -. "composite PK" .-> NR
     NR -- "uq_..._norm_reference_id\n(norm_reference_id)" --> NR

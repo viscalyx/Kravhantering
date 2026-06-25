@@ -8,6 +8,10 @@ import { listCategories } from '@/lib/dal/requirement-categories'
 import { listRequirementPackages } from '@/lib/dal/requirement-packages'
 import { listTypes } from '@/lib/dal/requirement-types'
 import {
+  createSpecificationLocalRequirementsBatch,
+  getSpecificationBySlug,
+} from '@/lib/dal/requirements-specifications'
+import {
   REQUIREMENTS_IMPORT_SCHEMA_VERSION,
   requirementsImportPayloadSchema,
 } from '@/lib/requirements/import-schema'
@@ -31,6 +35,12 @@ vi.mock('@/lib/dal/requirement-types', () => ({
 
 vi.mock('@/lib/dal/priority-levels', () => ({
   listPriorityLevels: vi.fn(),
+}))
+
+vi.mock('@/lib/dal/requirements-specifications', () => ({
+  createSpecificationLocalRequirementsBatch: vi.fn(),
+  getSpecificationById: vi.fn(),
+  getSpecificationBySlug: vi.fn(),
 }))
 
 function extractReferenceData(prompt: string) {
@@ -57,6 +67,12 @@ function extractReferenceData(prompt: string) {
         name: string
       }>
     }>
+    requirementPackages?: Array<{
+      id: number
+      leadDisplayName: string | null
+      name: string
+      purposeAndScope: string | null
+    }>
   }
 }
 
@@ -67,6 +83,8 @@ describe('requirements import service', () => {
     vi.mocked(listPriorityLevels).mockResolvedValue([])
     vi.mocked(listTypes).mockResolvedValue([])
     vi.mocked(listNormReferences).mockResolvedValue([])
+    vi.mocked(createSpecificationLocalRequirementsBatch).mockReset()
+    vi.mocked(getSpecificationBySlug).mockReset()
   })
 
   it('carries proposed norm reference form fields into preview', async () => {
@@ -252,6 +270,113 @@ describe('requirements import service', () => {
     expect(promptEn).toContain(
       'Set `requiresTesting` to `true` when the requirement should be verified; then provide `verificationMethod`',
     )
+  })
+
+  it('keeps requirement package guidance in the shared AI prompt', async () => {
+    vi.mocked(listRequirementPackages).mockResolvedValue([
+      {
+        coAuthors: [],
+        createdAt: '2026-06-01T00:00:00.000Z',
+        id: 3,
+        isArchived: false,
+        leadDisplayName: 'Paketansvarig',
+        leadEmail: null,
+        leadHsaId: 'SE5560000001-pkg1',
+        name: 'Integration med andra system',
+        purposeAndScope: 'Integrationskrav.',
+        updatedAt: '2026-06-01T00:00:00.000Z',
+      },
+    ])
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    const prompt = await workflow.buildImportAiPrompt('en')
+    const referenceData = extractReferenceData(prompt)
+
+    expect(prompt).toContain(
+      'Choose all relevant `requirementPackageIds`; omit the field or use `[]` when no package fits.',
+    )
+    expect(prompt).toContain(
+      'When importing specification-local requirements, this field is ignored.',
+    )
+    expect(referenceData.requirementPackages).toEqual([
+      {
+        id: 3,
+        leadDisplayName: 'Paketansvarig',
+        name: 'Integration med andra system',
+        purposeAndScope: 'Integrationskrav.',
+      },
+    ])
+  })
+
+  it('ignores requirement package ids for specification-local import execution', async () => {
+    vi.mocked(listRequirementPackages).mockResolvedValue([
+      {
+        coAuthors: [],
+        createdAt: '2026-06-01T00:00:00.000Z',
+        id: 3,
+        isArchived: false,
+        leadDisplayName: 'Paketansvarig',
+        leadEmail: null,
+        leadHsaId: 'SE5560000001-pkg1',
+        name: 'Integration med andra system',
+        purposeAndScope: 'Integrationskrav.',
+        updatedAt: '2026-06-01T00:00:00.000Z',
+      },
+    ])
+    vi.mocked(getSpecificationBySlug).mockResolvedValue({ id: 42 } as never)
+    vi.mocked(createSpecificationLocalRequirementsBatch).mockResolvedValue([
+      { id: 101, uniqueId: 'REQ0001' },
+    ] as never)
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+    const payload = requirementsImportPayloadSchema.parse({
+      requirements: [
+        {
+          description: 'Kravunderlagslokalt krav.',
+          requirementPackageIds: [3],
+        },
+      ],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+
+    const preview = await workflow.previewSpecificationLocalImport(
+      {} as never,
+      {
+        locale: 'sv',
+        payload,
+        specificationIdOrSlug: 'upphandling',
+      },
+    )
+    const row = preview.rows[0]
+    expect(row).toBeDefined()
+    if (!row) throw new Error('Expected preview row')
+    expect(row.values.requirementPackageIds).toEqual([])
+    const result = await workflow.executeSpecificationLocalImport({} as never, {
+      locale: 'sv',
+      previewToken: preview.previewToken,
+      rows: [
+        {
+          ...row.values,
+          requirementPackageIds: [3],
+          reviewRowId: row.reviewRowId,
+          sourceIndex: row.sourceIndex,
+        },
+      ],
+      specificationIdOrSlug: 'upphandling',
+    })
+
+    const mutationRows = vi.mocked(createSpecificationLocalRequirementsBatch)
+      .mock.calls[0]?.[2]
+    expect(mutationRows?.[0]).not.toHaveProperty('requirementPackageIds')
+    expect(result.createdRows[0]?.requirementPackageIds).toEqual([])
+    expect(result.createdRows[0]?.requirementPackageNames).toEqual([])
   })
 
   it('nests selectable quality characteristics under their allowed type in AI prompt reference data', async () => {

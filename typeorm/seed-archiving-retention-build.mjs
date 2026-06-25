@@ -507,7 +507,7 @@ function addRetentionSpecifications(seedData) {
 
   addRow(seedData, 'specification_local_requirements', {
     acceptance_criteria:
-      'RETENTION-SEED lokalt krav ingår med taxonomi, paket och normreferens i JSON-exporten.',
+      'RETENTION-SEED lokalt krav ingår med taxonomi och normreferens i JSON-exporten.',
     created_at: OLD_730_TS,
     description:
       'RETENTION-SEED lokalt krav för representativ kravunderlagsexport.',
@@ -531,11 +531,6 @@ function addRetentionSpecifications(seedData) {
 
   addRow(seedData, 'specification_local_requirement_norm_references', {
     norm_reference_id: RETENTION_SEED.normReference.used,
-    specification_local_requirement_id:
-      RETENTION_SEED.localRequirement.obsoleteSpecification,
-  })
-  addRow(seedData, 'specification_local_requirement_requirement_packages', {
-    requirement_package_id: RETENTION_SEED.requirementPackage.used,
     specification_local_requirement_id:
       RETENTION_SEED.localRequirement.obsoleteSpecification,
   })

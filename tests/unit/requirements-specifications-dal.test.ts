@@ -835,12 +835,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           uri: 'https://example.test/iso-27001',
         },
       ])
-      .mockResolvedValueOnce([
-        {
-          id: 13,
-          name: 'Inloggning',
-        },
-      ])
 
     const result = await getSpecificationLocalRequirementDetail(db, 5, 21)
 
@@ -895,9 +889,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         nameSv: 'Hög',
         sortOrder: 3,
       },
-      requirementPackages: [
-        { id: 13, name: 'Inloggning', purposeAndScope: null },
-      ],
+      requirementPackages: [],
       uniqueId: 'LOK-001',
       updatedAt: '2026-04-21T10:00:00.000Z',
       verificationMethod: 'Manual test',
@@ -908,10 +900,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     const { db, query, transaction } = createSqlServerDb()
     query
       .mockResolvedValueOnce([{ id: 11 }])
-      .mockResolvedValueOnce([{ id: 13 }])
       .mockResolvedValueOnce([{ nextSequence: 2 }])
       .mockResolvedValueOnce([{ id: 41 }])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
@@ -939,11 +929,9 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         },
       ])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         { id: 41, specificationId: 5, sequenceNumber: 1, uniqueId: 'LOK-001' },
       ])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
@@ -977,7 +965,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     const created = await createSpecificationLocalRequirement(db, 5, {
       description: 'Created local requirement',
       normReferenceIds: [11],
-      requirementPackageIds: [13],
     })
 
     const updated = await updateSpecificationLocalRequirement(db, 5, 41, {
@@ -1030,18 +1017,17 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     await expect(
       createSpecificationLocalRequirement(db, 5, {
         description: 'Created local requirement',
-        requirementPackageIds: [13],
+        normReferenceIds: [13],
       }),
     ).rejects.toMatchObject({
       code: 'validation',
-      message:
-        'requirementPackageIds references unknown requirement package id 13',
+      message: 'normReferenceIds references unknown norm reference id 13',
       status: 400,
     })
 
     expect(transaction).not.toHaveBeenCalled()
     expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
-      expect.stringContaining('FROM requirement_packages'),
+      expect.stringContaining('FROM norm_references'),
     ])
   })
 
@@ -1104,7 +1090,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         },
       ])
       .mockResolvedValueOnce([{ normReferenceId: 11 }])
-      .mockResolvedValueOnce([{ requirementPackageId: 13 }])
       .mockResolvedValueOnce([{ prefix: 'SEC', sequenceNumber: 9 }])
       .mockResolvedValueOnce([
         {
@@ -1122,7 +1107,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           versionNumber: 1,
         },
       ])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
 
     const result = await graduateSpecificationLocalRequirementToLibrary(db, {
@@ -1154,17 +1138,17 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       },
     })
     expect(query).toHaveBeenNthCalledWith(
-      4,
+      3,
       expect.stringContaining('UPDATE requirement_areas'),
       [8],
     )
     expect(query).toHaveBeenNthCalledWith(
-      5,
+      4,
       expect.stringContaining('INSERT INTO requirements'),
       ['SEC0009', 8, 9, expect.any(Date)],
     )
     expect(query).toHaveBeenNthCalledWith(
-      6,
+      5,
       expect.stringContaining('INSERT INTO requirement_versions'),
       [
         71,
@@ -1183,14 +1167,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       ],
     )
     expect(query).toHaveBeenNthCalledWith(
-      7,
-      expect.stringContaining(
-        'INSERT INTO requirement_version_requirement_packages',
-      ),
-      [701, 13],
-    )
-    expect(query).toHaveBeenNthCalledWith(
-      8,
+      6,
       expect.stringContaining(
         'INSERT INTO requirement_version_norm_references',
       ),
@@ -1223,7 +1200,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           verificationMethod: null,
         },
       ])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ prefix: 'SEC', sequenceNumber: 9 }])
       .mockResolvedValueOnce([
@@ -1377,7 +1353,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           priorityLevelNameEn: 'Medium',
           priorityLevelNameSv: 'Medel',
           priorityLevelSortOrder: 2,
-          requirementPackageIds: '9',
         },
       ])
 

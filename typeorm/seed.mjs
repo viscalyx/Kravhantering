@@ -47,7 +47,6 @@ const TABLE_ORDER = [
   'requirement_selection_answer_packages',
   'requirement_selection_answer_requirements',
   'specification_requirement_selection_answers',
-  'specification_local_requirement_requirement_packages',
   'requirement_version_requirement_packages',
   'rfi_question_sequences',
   'rfi_questions',
@@ -12364,15 +12363,6 @@ const SEED_DATA = {
     ],
     pk: ['specification_id', 'question_id', 'answer_id'],
     rows: [],
-  },
-  specification_local_requirement_requirement_packages: {
-    columns: ['specification_local_requirement_id', 'requirement_package_id'],
-    pk: ['specification_local_requirement_id', 'requirement_package_id'],
-    rows: [
-      [1, 1],
-      [1, 4],
-      [2, 5],
-    ],
   },
   requirement_version_requirement_packages: {
     columns: ['requirement_version_id', 'requirement_package_id'],

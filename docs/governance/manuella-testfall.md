@@ -687,7 +687,8 @@ obligatorisk verifieringsmetod är markerade med röd asterisk, och
 `Typ` visas direkt före `Kvalitetsegenskap`. Värden i `Kvalitetsegenskap`
 grupperas på samma sätt som i `Nytt krav`, och om `Typ` töms ska
 `Kvalitetsegenskap` tömmas, tonas ned och inaktiveras. `Verifierbar` samt
-`Verifieringsmetod` visas före kravpaket och normreferenser.
+`Verifieringsmetod` visas före kravpaket och normreferenser vid import till
+kravbiblioteket, och före normreferenser vid import till kravunderlag.
 Lösta metadata visas som redigerbara värden, olösta frivilliga värden visas som
 varningar och föreslagna normreferenser kan länkas till befintlig normreferens
 eller skapas i samma formulär som Normbiblioteket använder. I formuläret är
@@ -700,10 +701,12 @@ lösta föreslagna normreferensen är nedtonade och inaktiva. Om samma JSON
 importeras igen och förslaget saknar
 `normReferenceId` matchas förslagets `key` mot befintligt normreferens-ID,
 förslaget visas som löst och kraven får länken automatiskt.
-`Kravpakets-ID:n` visar matchande namn på kravpaket utan internt ID. Felaktiga
-lösta länkar tas bort och ersätts genom sökbara modaler med checkboxar, inte
-genom fri ID-inmatning. Olösta importerade ID:n kan fortfarande korrigeras
-direkt. Om dialogen stängs och öppnas igen är kravområde inte längre valt. Den
+`Kravpakets-ID:n` visas bara vid import till kravbiblioteket och visar då
+matchande namn på kravpaket utan internt ID. Felaktiga lösta länkar tas bort
+och ersätts genom sökbara modaler med checkboxar, inte genom fri ID-inmatning.
+Vid import till kravunderlag ignoreras importerade `requirementPackageIds`.
+Olösta importerade ID:n kan fortfarande korrigeras direkt. Om dialogen stängs
+och öppnas igen är kravområde inte längre valt. Den
 importerade valda raden försvinner från
 granskningen efter lyckad import och ett nytt utkast skapas i valt kravområde.
 
@@ -1117,10 +1120,10 @@ kravområde. Rader skapas som kravunderlagslokala krav i aktuellt kravunderlag.
 Verifierbara lokala krav utan verifieringsmetod blockeras tills värdet anges.
 Föreslagna normreferenser kan lösas till normreferens-ID:n innan import, och
 lösta normreferenser visas som kompakta icke-redigerbara ID-rader med
-`normreferens-ID - namn` utan internt ID. Kravpaket visas som kompakta
-icke-redigerbara rader med matchande namn utan internt ID. Nya länkar till
-kravpaket och normreferenser väljs i sökbara modaler med checkboxar, medan
-olösta importerade ID:n fortfarande kan korrigeras direkt.
+`normreferens-ID - namn` utan internt ID. Kravpaket visas inte och kan inte
+väljas för kravunderlagslokala krav. Nya länkar till normreferenser väljs i
+sökbara modaler med checkboxar, medan olösta importerade ID:n fortfarande kan
+korrigeras direkt.
 Efter lyckad import tas importerade valda rader bort från dialogen och
 kravunderlagets lista uppdateras först när dialogen stängs. Krav och föreslagna
 normreferenser visas i separata flikar, och `Importera valda` ligger kvar i

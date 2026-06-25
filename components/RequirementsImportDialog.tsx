@@ -2539,175 +2539,181 @@ export default function RequirementsImportDialog({
                                         }
                                       />
                                     </label>
-                                    <div>
-                                      <span className="mb-1 block text-sm font-medium">
-                                        {text.packageIds}
-                                      </span>
-                                      <div className="space-y-2">
-                                        {row.values.requirementPackageIds
-                                          .length > 0 ? (
-                                          <div className="space-y-2">
-                                            {row.values.requirementPackageIds.map(
-                                              (packageId, index) => {
-                                                const requirementPackage =
-                                                  taxonomy.requirementPackages.find(
-                                                    candidate =>
-                                                      candidate.id ===
-                                                      packageId,
-                                                  )
-                                                const inputId = `requirements-import-row-${row.sourceIndex}-package-${index}`
-                                                const draftKey = `${row.reviewRowId}:${packageId}`
-                                                const inputValue =
-                                                  packageEditDraftIds[
-                                                    draftKey
-                                                  ] ?? String(packageId)
+                                    {mode === 'library' ? (
+                                      <div>
+                                        <span className="mb-1 block text-sm font-medium">
+                                          {text.packageIds}
+                                        </span>
+                                        <div className="space-y-2">
+                                          {row.values.requirementPackageIds
+                                            .length > 0 ? (
+                                            <div className="space-y-2">
+                                              {row.values.requirementPackageIds.map(
+                                                (packageId, index) => {
+                                                  const requirementPackage =
+                                                    taxonomy.requirementPackages.find(
+                                                      candidate =>
+                                                        candidate.id ===
+                                                        packageId,
+                                                    )
+                                                  const inputId = `requirements-import-row-${row.sourceIndex}-package-${index}`
+                                                  const draftKey = `${row.reviewRowId}:${packageId}`
+                                                  const inputValue =
+                                                    packageEditDraftIds[
+                                                      draftKey
+                                                    ] ?? String(packageId)
 
-                                                return (
-                                                  <div
-                                                    className={
-                                                      requirementPackage
-                                                        ? resolvedAssociationRowClass
-                                                        : editableIdRowClass
-                                                    }
-                                                    key={`${row.reviewRowId}-package-${packageId}`}
-                                                  >
-                                                    {requirementPackage ? (
-                                                      <RequirementPackagePurposeTooltip
-                                                        maxWidth={320}
-                                                        purposeAndScope={
-                                                          requirementPackage.purposeAndScope
-                                                        }
-                                                      >
-                                                        <p
-                                                          className={
-                                                            resolvedAssociationLabelClass
-                                                          }
-                                                        >
-                                                          {
-                                                            requirementPackage.name
-                                                          }
-                                                        </p>
-                                                      </RequirementPackagePurposeTooltip>
-                                                    ) : (
-                                                      <>
-                                                        <label
-                                                          className="sr-only"
-                                                          htmlFor={inputId}
-                                                        >
-                                                          {text.packageIds}{' '}
-                                                          {index + 1}
-                                                        </label>
-                                                        <input
-                                                          className={inputClass}
-                                                          id={inputId}
-                                                          min={1}
-                                                          onBlur={event =>
-                                                            updatePackageId(
-                                                              row,
-                                                              index,
-                                                              event.target
-                                                                .value,
-                                                              draftKey,
-                                                            )
-                                                          }
-                                                          onChange={event =>
-                                                            setPackageEditDraftIds(
-                                                              current => ({
-                                                                ...current,
-                                                                [draftKey]:
-                                                                  event.target
-                                                                    .value,
-                                                              }),
-                                                            )
-                                                          }
-                                                          onKeyDown={event => {
-                                                            if (
-                                                              event.key !==
-                                                              'Enter'
-                                                            ) {
-                                                              return
-                                                            }
-                                                            event.preventDefault()
-                                                            updatePackageId(
-                                                              row,
-                                                              index,
-                                                              event
-                                                                .currentTarget
-                                                                .value,
-                                                              draftKey,
-                                                            )
-                                                          }}
-                                                          type="number"
-                                                          value={inputValue}
-                                                        />
-                                                      </>
-                                                    )}
-                                                    {requirementPackage ? null : (
-                                                      <p
-                                                        className={`${editableIdLabelClass} text-amber-800 dark:text-amber-200`}
-                                                      >
-                                                        {text.unknownPackageId}
-                                                      </p>
-                                                    )}
-                                                    <button
-                                                      aria-label={`${text.removePackageId} ${index + 1}`}
+                                                  return (
+                                                    <div
                                                       className={
                                                         requirementPackage
-                                                          ? resolvedAssociationRemoveButtonClass
-                                                          : editableIdRemoveButtonClass
+                                                          ? resolvedAssociationRowClass
+                                                          : editableIdRowClass
                                                       }
-                                                      onClick={() =>
-                                                        updateRowValue(
-                                                          row.reviewRowId,
-                                                          'requirementPackageIds',
-                                                          row.values.requirementPackageIds.filter(
-                                                            (
-                                                              _,
-                                                              candidateIndex,
-                                                            ) =>
-                                                              candidateIndex !==
-                                                              index,
-                                                          ),
-                                                        )
-                                                      }
-                                                      title={
-                                                        text.removePackageId
-                                                      }
-                                                      type="button"
+                                                      key={`${row.reviewRowId}-package-${packageId}`}
                                                     >
-                                                      <Trash2
-                                                        aria-hidden="true"
-                                                        className="h-4 w-4"
-                                                      />
-                                                    </button>
-                                                  </div>
-                                                )
-                                              },
-                                            )}
-                                          </div>
-                                        ) : (
-                                          <p className="rounded-lg border border-dashed border-secondary-300 px-3 py-2 text-sm text-secondary-500 dark:border-secondary-700 dark:text-secondary-400">
-                                            {text.noPackageIds}
-                                          </p>
-                                        )}
-                                        <button
-                                          className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-secondary-50 dark:border-secondary-700 dark:hover:bg-secondary-900"
-                                          onClick={() =>
-                                            openAssociationPicker(
-                                              'requirementPackages',
-                                              row,
-                                            )
-                                          }
-                                          type="button"
-                                        >
-                                          <Plus
-                                            aria-hidden="true"
-                                            className="h-4 w-4"
-                                          />
-                                          {text.packagePickerTitle}
-                                        </button>
+                                                      {requirementPackage ? (
+                                                        <RequirementPackagePurposeTooltip
+                                                          maxWidth={320}
+                                                          purposeAndScope={
+                                                            requirementPackage.purposeAndScope
+                                                          }
+                                                        >
+                                                          <p
+                                                            className={
+                                                              resolvedAssociationLabelClass
+                                                            }
+                                                          >
+                                                            {
+                                                              requirementPackage.name
+                                                            }
+                                                          </p>
+                                                        </RequirementPackagePurposeTooltip>
+                                                      ) : (
+                                                        <>
+                                                          <label
+                                                            className="sr-only"
+                                                            htmlFor={inputId}
+                                                          >
+                                                            {text.packageIds}{' '}
+                                                            {index + 1}
+                                                          </label>
+                                                          <input
+                                                            className={
+                                                              inputClass
+                                                            }
+                                                            id={inputId}
+                                                            min={1}
+                                                            onBlur={event =>
+                                                              updatePackageId(
+                                                                row,
+                                                                index,
+                                                                event.target
+                                                                  .value,
+                                                                draftKey,
+                                                              )
+                                                            }
+                                                            onChange={event =>
+                                                              setPackageEditDraftIds(
+                                                                current => ({
+                                                                  ...current,
+                                                                  [draftKey]:
+                                                                    event.target
+                                                                      .value,
+                                                                }),
+                                                              )
+                                                            }
+                                                            onKeyDown={event => {
+                                                              if (
+                                                                event.key !==
+                                                                'Enter'
+                                                              ) {
+                                                                return
+                                                              }
+                                                              event.preventDefault()
+                                                              updatePackageId(
+                                                                row,
+                                                                index,
+                                                                event
+                                                                  .currentTarget
+                                                                  .value,
+                                                                draftKey,
+                                                              )
+                                                            }}
+                                                            type="number"
+                                                            value={inputValue}
+                                                          />
+                                                        </>
+                                                      )}
+                                                      {requirementPackage ? null : (
+                                                        <p
+                                                          className={`${editableIdLabelClass} text-amber-800 dark:text-amber-200`}
+                                                        >
+                                                          {
+                                                            text.unknownPackageId
+                                                          }
+                                                        </p>
+                                                      )}
+                                                      <button
+                                                        aria-label={`${text.removePackageId} ${index + 1}`}
+                                                        className={
+                                                          requirementPackage
+                                                            ? resolvedAssociationRemoveButtonClass
+                                                            : editableIdRemoveButtonClass
+                                                        }
+                                                        onClick={() =>
+                                                          updateRowValue(
+                                                            row.reviewRowId,
+                                                            'requirementPackageIds',
+                                                            row.values.requirementPackageIds.filter(
+                                                              (
+                                                                _,
+                                                                candidateIndex,
+                                                              ) =>
+                                                                candidateIndex !==
+                                                                index,
+                                                            ),
+                                                          )
+                                                        }
+                                                        title={
+                                                          text.removePackageId
+                                                        }
+                                                        type="button"
+                                                      >
+                                                        <Trash2
+                                                          aria-hidden="true"
+                                                          className="h-4 w-4"
+                                                        />
+                                                      </button>
+                                                    </div>
+                                                  )
+                                                },
+                                              )}
+                                            </div>
+                                          ) : (
+                                            <p className="rounded-lg border border-dashed border-secondary-300 px-3 py-2 text-sm text-secondary-500 dark:border-secondary-700 dark:text-secondary-400">
+                                              {text.noPackageIds}
+                                            </p>
+                                          )}
+                                          <button
+                                            className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-secondary-50 dark:border-secondary-700 dark:hover:bg-secondary-900"
+                                            onClick={() =>
+                                              openAssociationPicker(
+                                                'requirementPackages',
+                                                row,
+                                              )
+                                            }
+                                            type="button"
+                                          >
+                                            <Plus
+                                              aria-hidden="true"
+                                              className="h-4 w-4"
+                                            />
+                                            {text.packagePickerTitle}
+                                          </button>
+                                        </div>
                                       </div>
-                                    </div>
+                                    ) : null}
                                     <div>
                                       <span className="mb-1 block text-sm font-medium">
                                         {text.normReferenceIds}

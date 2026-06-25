@@ -190,7 +190,6 @@ async function listNormReferencesByItemRef(
 async function listRequirementPackagesByItemRef(
   db: SqlServerDatabase,
   libraryItemIds: number[],
-  localRequirementIds: number[],
 ): Promise<Map<string, string[]>> {
   const packagesByItemRef = new Map<string, string[]>()
 
@@ -213,29 +212,6 @@ async function listRequirementPackagesByItemRef(
 
     for (const row of rows) {
       const itemRef = createLibraryItemRef(Number(row.itemId))
-      const existing = packagesByItemRef.get(itemRef) ?? []
-      existing.push(String(row.name ?? ''))
-      packagesByItemRef.set(itemRef, existing)
-    }
-  }
-
-  if (localRequirementIds.length > 0) {
-    const rows = (await db.query(
-      `
-        SELECT
-          local_requirement_package.specification_local_requirement_id AS itemId,
-          requirement_package.name AS name
-        FROM specification_local_requirement_requirement_packages local_requirement_package
-        INNER JOIN requirement_packages requirement_package
-          ON requirement_package.id = local_requirement_package.requirement_package_id
-        WHERE local_requirement_package.specification_local_requirement_id IN (${buildInClause(0, localRequirementIds)})
-        ORDER BY local_requirement_package.specification_local_requirement_id ASC, requirement_package.name ASC
-      `,
-      localRequirementIds,
-    )) as Row[]
-
-    for (const row of rows) {
-      const itemRef = createSpecificationLocalItemRef(Number(row.itemId))
       const existing = packagesByItemRef.get(itemRef) ?? []
       existing.push(String(row.name ?? ''))
       packagesByItemRef.set(itemRef, existing)
@@ -450,7 +426,7 @@ export async function collectSpecificationOutputData(
     deviationCountsByItemRef,
   ] = await Promise.all([
     listNormReferencesByItemRef(db, libraryItemIds, localRequirementIds),
-    listRequirementPackagesByItemRef(db, libraryItemIds, localRequirementIds),
+    listRequirementPackagesByItemRef(db, libraryItemIds),
     countSuggestionsByLibraryItemRef(db, libraryItemIds),
     countDeviationsPerItemRef(db, specification.id),
   ])

@@ -69,7 +69,6 @@ export const POST = secureMutationRoute({
           normReferenceIds: body.normReferenceIds,
           qualityCharacteristicId: body.qualityCharacteristicId ?? null,
           requirementCategoryId: body.requirementCategoryId ?? null,
-          requirementPackageIds: body.requirementPackageIds,
           requirementTypeId: body.requirementTypeId ?? null,
           requiresTesting: body.requiresTesting,
           priorityLevelId: body.priorityLevelId ?? null,

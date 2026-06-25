@@ -496,7 +496,8 @@ _Avoid_: Alla krav i kravbiblioteket när ingen kontrast behövs.
 Ett krav som bara finns i ett visst kravunderlag. Det är unikt för det
 kravunderlaget tills det eventuellt lyfts till kravbiblioteket. Det hör inte
 till ett kravområde; ansvaret ligger i kravunderlagets sammanhang hos
-kravunderlagsansvarig.
+kravunderlagsansvarig. Det kopplas inte till kravpaket, eftersom kravpaket är
+en gruppering av krav i kravbiblioteket.
 
 - `en`: Specification-local requirement
 
@@ -580,15 +581,16 @@ _Avoid_: Kravversionsstatus, genomförandeform.
 En återanvändbar gruppering av krav i kravbiblioteket för ett visst
 användningsområde, scenario eller leveransbehov. Ett kravpaket samlar krav,
 inte flera kravversioner av samma krav, och har ett syfte och en avgränsning
-som styr vilka krav som hör hemma i paketet. När ett krav har ett nyare utkast
-är paketets krav fortfarande den publicerade kravversion som får användas. När
-en ny kravversion publiceras följer kravpaketets aktuella medlemskap den nya
-publicerade kravversionen och ersätter den arkiverade föregångaren i alla
-kravpaket där kravet används. När ett krav arkiveras utan efterträdare kan
-paketkopplingen finnas kvar som historik, men den arkiverade kravversionen
-ingår inte i praktiska kravpaketsurval där bara publicerade krav får användas.
-Kravbibliotekets kravpaketsfilter är däremot ett sökfilter över valda
-kravstatusar och kan visa arkiverade krav när användaren själv inkluderar
+som styr vilka krav som hör hemma i paketet. Kravpaket gäller krav i
+kravbiblioteket, inte kravunderlagslokala krav. När ett krav har ett nyare
+utkast är paketets krav fortfarande den publicerade kravversion som får
+användas. När en ny kravversion publiceras följer kravpaketets aktuella
+medlemskap den nya publicerade kravversionen och ersätter den arkiverade
+föregångaren i alla kravpaket där kravet används. När ett krav arkiveras utan
+efterträdare kan paketkopplingen finnas kvar som historik, men den arkiverade
+kravversionen ingår inte i praktiska kravpaketsurval där bara publicerade krav
+får användas. Kravbibliotekets kravpaketsfilter är däremot ett sökfilter över
+valda kravstatusar och kan visa arkiverade krav när användaren själv inkluderar
 arkiverad status.
 
 - `en`: Requirements package

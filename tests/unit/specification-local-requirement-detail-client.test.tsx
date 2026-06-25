@@ -232,9 +232,9 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(screen.getByText('Requirement area')).toBeInTheDocument()
     expect(screen.queryByText('Integration')).not.toBeInTheDocument()
     expect(screen.getByText('Norm references')).toBeInTheDocument()
-    expect(screen.getByText('RequirementPackage')).toBeInTheDocument()
     expect(screen.getByText('ISO27001')).toBeInTheDocument()
-    expect(screen.getByText('Bestallning')).toBeInTheDocument()
+    expect(screen.queryByText('RequirementPackage')).not.toBeInTheDocument()
+    expect(screen.queryByText('Bestallning')).not.toBeInTheDocument()
     expect(screen.queryByText('KRAV0001')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Print' }),
@@ -266,7 +266,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(inlineInset).toHaveClass('py-4')
   })
 
-  it('falls back to the requirement package id when a chip name is missing', async () => {
+  it('does not render requirement packages from stale specification-local payloads', async () => {
     vi.mocked(fetch)
       .mockImplementationOnce(() =>
         okJson({
@@ -313,12 +313,11 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       />,
     )
 
-    const packageChip = await screen.findByText('12')
-    expect(packageChip).toBeInTheDocument()
-    expect(packageChip.closest('li')).toHaveAttribute(
-      'data-developer-mode-value',
-      '12',
-    )
+    expect(
+      await screen.findByText('Specification local description'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('RequirementPackage')).not.toBeInTheDocument()
+    expect(screen.queryByText('12')).not.toBeInTheDocument()
   })
 
   it('waits for graduation eligibility before showing the action rail', async () => {

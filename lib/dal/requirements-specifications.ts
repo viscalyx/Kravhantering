@@ -90,7 +90,6 @@ export interface SpecificationLocalRequirementMutationInput {
   priorityLevelId?: number | null
   qualityCharacteristicId?: number | null
   requirementCategoryId?: number | null
-  requirementPackageIds?: number[]
   requirementTypeId?: number | null
   requiresTesting?: boolean
   verificationMethod?: string | null
@@ -158,7 +157,6 @@ interface SpecificationLocalRequirementGraduationRow {
   priorityLevelId: number | null
   qualityCharacteristicId: number | null
   requirementCategoryId: number | null
-  requirementPackageIds: number[]
   requirementTypeId: number | null
   requiresTesting: boolean
   specificationId: number
@@ -1962,7 +1960,6 @@ async function normalizeSpecificationLocalRequirementInput(
     normReferenceIds: data.normReferenceIds,
     qualityCharacteristicId: data.qualityCharacteristicId,
     requirementCategoryId: data.requirementCategoryId,
-    requirementPackageIds: data.requirementPackageIds,
     requirementTypeId: data.requirementTypeId,
     priorityLevelId: data.priorityLevelId,
   })
@@ -1977,7 +1974,6 @@ async function normalizeSpecificationLocalRequirementInput(
     requirementTypeId: references.requirementTypeId,
     requiresTesting,
     priorityLevelId: references.priorityLevelId,
-    requirementPackageIds: references.requirementPackageIds,
     verificationMethod,
   }
 }
@@ -2063,7 +2059,6 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
 function mapSpecificationLocalRequirementDetailFlat(
   row: Row,
   normReferenceRows: Row[],
-  requirementPackageRows: Row[],
 ): SpecificationLocalRequirementDetail {
   const id = Number(row.id)
   const qualityCharacteristicId = toNum(row.qualityCharacteristicId)
@@ -2081,22 +2076,6 @@ function mapSpecificationLocalRequirementDetailFlat(
     .sort((left, right) =>
       left.normReferenceId.localeCompare(right.normReferenceId, 'sv'),
     )
-  const sortedRequirementPackages = [...requirementPackageRows]
-    .map(requirementPackage => ({
-      id: Number(requirementPackage.id),
-      name:
-        requirementPackage.name == null
-          ? null
-          : String(requirementPackage.name),
-      purposeAndScope:
-        requirementPackage.purposeAndScope == null
-          ? null
-          : String(requirementPackage.purposeAndScope),
-    }))
-    .sort((left, right) =>
-      (left.name ?? '').localeCompare(right.name ?? '', 'sv'),
-    )
-
   return {
     acceptanceCriteria: toStr(row.acceptanceCriteria),
     createdAt: toIso(row.createdAt) ?? '',
@@ -2157,7 +2136,7 @@ function mapSpecificationLocalRequirementDetailFlat(
             sortOrder: Number(row.priorityLevelSortOrder ?? 0),
           }
         : null,
-    requirementPackages: sortedRequirementPackages,
+    requirementPackages: [],
     uniqueId: String(row.uniqueId),
     updatedAt: toIso(row.updatedAt) ?? '',
     verificationMethod: toStr(row.verificationMethod),
@@ -2180,41 +2159,22 @@ export async function getSpecificationLocalRequirementDetail(
     return null
   }
 
-  const [normReferenceRows, requirementPackageRows] = await Promise.all([
-    db.query(
-      `
-        SELECT
-          norm_reference.id AS id,
-          norm_reference.name AS name,
-          norm_reference.norm_reference_id AS normReferenceId,
-          norm_reference.uri AS uri
-        FROM specification_local_requirement_norm_references link
-        INNER JOIN norm_references norm_reference
-          ON norm_reference.id = link.norm_reference_id
-        WHERE link.specification_local_requirement_id = @0
-      `,
-      [specificationLocalRequirementId],
-    ) as Promise<Row[]>,
-    db.query(
-      `
-        SELECT
-          requirement_package.id AS id,
-          requirement_package.name AS name,
-          requirement_package.purpose_and_scope AS purposeAndScope
-        FROM specification_local_requirement_requirement_packages link
-        INNER JOIN requirement_packages requirement_package
-          ON requirement_package.id = link.requirement_package_id
-        WHERE link.specification_local_requirement_id = @0
-      `,
-      [specificationLocalRequirementId],
-    ) as Promise<Row[]>,
-  ])
+  const normReferenceRows = (await db.query(
+    `
+      SELECT
+        norm_reference.id AS id,
+        norm_reference.name AS name,
+        norm_reference.norm_reference_id AS normReferenceId,
+        norm_reference.uri AS uri
+      FROM specification_local_requirement_norm_references link
+      INNER JOIN norm_references norm_reference
+        ON norm_reference.id = link.norm_reference_id
+      WHERE link.specification_local_requirement_id = @0
+    `,
+    [specificationLocalRequirementId],
+  )) as Row[]
 
-  return mapSpecificationLocalRequirementDetailFlat(
-    mainRow,
-    normReferenceRows,
-    requirementPackageRows,
-  )
+  return mapSpecificationLocalRequirementDetailFlat(mainRow, normReferenceRows)
 }
 
 async function insertSpecificationLocalRequirementJoins(
@@ -2222,26 +2182,10 @@ async function insertSpecificationLocalRequirementJoins(
   specificationLocalRequirementId: number,
   {
     normReferenceIds,
-    requirementPackageIds,
   }: {
     normReferenceIds: number[]
-    requirementPackageIds: number[]
   },
 ) {
-  if (requirementPackageIds.length > 0) {
-    const valuesSql = requirementPackageIds
-      .map((_, index) => `(@0, @${index + 1})`)
-      .join(', ')
-    await manager.query(
-      `
-        INSERT INTO specification_local_requirement_requirement_packages
-          (specification_local_requirement_id, requirement_package_id)
-        VALUES ${valuesSql}
-      `,
-      [specificationLocalRequirementId, ...requirementPackageIds],
-    )
-  }
-
   if (normReferenceIds.length > 0) {
     const valuesSql = normReferenceIds
       .map((_, index) => `(@0, @${index + 1})`)
@@ -2533,14 +2477,6 @@ export async function updateSpecificationLocalRequirement(
 
     await manager.query(
       `
-        DELETE FROM specification_local_requirement_requirement_packages
-        WHERE specification_local_requirement_id = @0
-      `,
-      [specificationLocalRequirementId],
-    )
-
-    await manager.query(
-      `
         DELETE FROM specification_local_requirement_norm_references
         WHERE specification_local_requirement_id = @0
       `,
@@ -2587,7 +2523,6 @@ export async function deleteSpecificationLocalRequirement(
 function mapGraduationSourceRow(
   row: Row,
   normReferenceRows: Row[],
-  requirementPackageRows: Row[],
 ): SpecificationLocalRequirementGraduationRow {
   return {
     acceptanceCriteria: toStr(row.acceptanceCriteria),
@@ -2598,9 +2533,6 @@ function mapGraduationSourceRow(
     ),
     qualityCharacteristicId: toNum(row.qualityCharacteristicId),
     requirementCategoryId: toNum(row.requirementCategoryId),
-    requirementPackageIds: requirementPackageRows.map(requirementPackage =>
-      Number(requirementPackage.requirementPackageId),
-    ),
     requirementTypeId: toNum(row.requirementTypeId),
     requiresTesting: toBool(row.requiresTesting),
     priorityLevelId: toNum(row.priorityLevelId),
@@ -2692,20 +2624,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
         `,
       [data.specificationLocalRequirementId],
     )) as Row[]
-    const requirementPackageRows = (await manager.query(
-      `
-          SELECT requirement_package_id AS requirementPackageId
-          FROM specification_local_requirement_requirement_packages
-          WHERE specification_local_requirement_id = @0
-        `,
-      [data.specificationLocalRequirementId],
-    )) as Row[]
-
-    const source = mapGraduationSourceRow(
-      sourceRow,
-      normReferenceRows,
-      requirementPackageRows,
-    )
+    const source = mapGraduationSourceRow(sourceRow, normReferenceRows)
 
     const sequenceRows = (await manager.query(
       `
@@ -2814,7 +2733,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
 
     await insertRequirementVersionJoins(manager, Number(versionRow.id), {
       normReferenceIds: source.normReferenceIds,
-      requirementPackageIds: source.requirementPackageIds,
+      requirementPackageIds: [],
     })
 
     return {
@@ -3119,7 +3038,6 @@ interface SpecificationLocalListFlatRow {
   qualityCharacteristicNameSv: string | null
   requirementCategoryNameEn: string | null
   requirementCategoryNameSv: string | null
-  requirementPackageIds: string | null
   requirementTypeNameEn: string | null
   requirementTypeNameSv: string | null
   requiresTesting: unknown
@@ -3158,7 +3076,7 @@ function mapSpecificationLocalRequirementListRow(
     specificationItemStatusNameSv: row.specificationItemStatusNameSv ?? null,
     specificationLocalRequirementId: Number(row.id),
     uniqueId: row.uniqueId,
-    requirementPackageIds: parseCsvNumberList(row.requirementPackageIds),
+    requirementPackageIds: [],
     version: {
       archiveInitiatedAt: null,
       categoryNameEn: row.requirementCategoryNameEn ?? null,
@@ -3297,12 +3215,7 @@ export async function listSpecificationItems(
           local_requirement.priority_level_id AS priorityLevelId,
           priority_level.name_en AS priorityLevelNameEn,
           priority_level.name_sv AS priorityLevelNameSv,
-          priority_level.sort_order AS priorityLevelSortOrder,
-          (
-            SELECT STRING_AGG(CAST(plrus.requirement_package_id AS varchar(20)), ',')
-            FROM specification_local_requirement_requirement_packages plrus
-            WHERE plrus.specification_local_requirement_id = local_requirement.id
-          ) AS requirementPackageIds
+          priority_level.sort_order AS priorityLevelSortOrder
         FROM specification_local_requirements local_requirement
         LEFT JOIN specification_needs_references needs_reference
           ON needs_reference.id = local_requirement.needs_reference_id
