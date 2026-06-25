@@ -122,9 +122,7 @@ export function useFloatingRailPosition({
         : true,
     }
     const nextShowScrollTopAction = hasMeasuredContainerRect
-      ? effectiveTableRect.top <
-          railTop - FLOATING_ACTION_RAIL_TABLE_TOP_OFFSET &&
-        effectiveTableRect.bottom > railTop
+      ? effectiveTableRect.top < 0 && effectiveTableRect.bottom > railTop
       : false
 
     setFloatingRailPosition(previous =>

@@ -1468,6 +1468,62 @@ describe('RequirementsTable', () => {
     ])
   })
 
+  it('hides the scroll-to-top pill while the table is still at its top', async () => {
+    const { container } = render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'newRequirement',
+            href: '/requirements/new',
+            icon: <span aria-hidden="true">+</span>,
+            id: 'create',
+            position: 'beforeColumns',
+            variant: 'primary',
+          },
+          {
+            ariaLabel: 'print',
+            icon: <span aria-hidden="true">P</span>,
+            id: 'print',
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    const scrollContainer = container.querySelector(
+      '[data-requirements-scroll-container="true"]',
+    ) as HTMLDivElement | null
+
+    expect(scrollContainer).toBeTruthy()
+    if (!scrollContainer) {
+      throw new Error('Expected the scroll container to be rendered.')
+    }
+
+    setElementRect(scrollContainer, {
+      bottom: 520,
+      left: 24,
+      right: 340,
+      top: 60,
+      width: 316,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    await waitFor(() => {
+      expect(getFloatingActionIds(container)).toEqual([
+        'create',
+        'columns',
+        'print',
+      ])
+    })
+    expect(
+      document.querySelector('[data-scroll-top-trigger="true"]'),
+    ).toBeNull()
+  })
+
   it('renders the scroll-to-top pill in a separate end group after vertical scroll', async () => {
     const { container } = render(
       <RequirementsTable
