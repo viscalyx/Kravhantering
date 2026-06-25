@@ -230,7 +230,7 @@ describe('requirements import service', () => {
       "Write free-text values, such as `description`, `acceptanceCriteria`, `verificationMethod`, and proposed norm references, in English unless the user's input explicitly requests another language.",
     )
     expect(promptSv).toContain(
-      'Skriv fria textvärden, till exempel `description`, `acceptanceCriteria`, `verificationMethod` och föreslagna normreferenser, på svenska om inte användarens indata uttryckligen anger ett annat språk.',
+      'Skriv fria textvärden, till exempel `description`, `acceptanceCriteria`, `verificationMethod` och föreslagna normreferenser på svenska om inte användarens indata uttryckligen anger ett annat språk.',
     )
     expect(promptEn).toContain(
       '- Choose `typeId` before `qualityCharacteristicId`:\n  - Use the functional type for required system behavior or capability',
