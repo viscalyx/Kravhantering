@@ -90,10 +90,10 @@ function getStaticCsvValue(
       return row.version?.requiresTesting
         ? REQUIREMENT_CSV_MESSAGES[locale].yes
         : REQUIREMENT_CSV_MESSAGES[locale].no
-    case 'riskLevel':
+    case 'priorityLevel':
       return isSv
-        ? (row.version?.riskLevelNameSv ?? '')
-        : (row.version?.riskLevelNameEn ?? '')
+        ? (row.version?.priorityLevelNameSv ?? '')
+        : (row.version?.priorityLevelNameEn ?? '')
     case 'status':
       return isSv
         ? (row.version?.statusNameSv ?? '')
@@ -143,7 +143,7 @@ const requirementsQuerySchema = z
       positiveIntegerStringSchema,
     ),
     requiresTesting: optionalQueryArraySchema(queryBooleanStringSchema),
-    riskLevelIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    priorityLevelIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     sortBy: z.enum(REQUIREMENT_SORT_FIELDS).optional(),
     sortDirection: z.enum(['asc', 'desc']).optional(),
     specificationItemStatusIds: optionalQueryArraySchema(
@@ -165,7 +165,7 @@ const requirementMutationSchema = z
     qualityCharacteristicId: optionalBodyIdSchema,
     requirementPackageIds: optionalBodyIdArraySchema,
     requiresTesting: z.boolean().optional().default(false),
-    riskLevelId: optionalBodyIdSchema,
+    priorityLevelId: optionalBodyIdSchema,
     typeId: optionalBodyIdSchema,
     verificationMethod: optionalBusinessTextSchema,
   })
@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
     qualityCharacteristicIds = [],
     requirementPackageIds = [],
     requiresTesting = [],
-    riskLevelIds = [],
+    priorityLevelIds = [],
     sortBy,
     sortDirection,
     statuses = [],
@@ -223,7 +223,8 @@ export async function GET(request: NextRequest) {
               : undefined,
           requiresTesting:
             requiresTesting.length > 0 ? requiresTesting : undefined,
-          riskLevelIds: riskLevelIds.length > 0 ? riskLevelIds : undefined,
+          priorityLevelIds:
+            priorityLevelIds.length > 0 ? priorityLevelIds : undefined,
           statuses: statuses.length > 0 ? statuses : undefined,
           typeIds: typeIds.length > 0 ? typeIds : undefined,
           uniqueIdSearch,
@@ -300,7 +301,7 @@ export const POST = secureMutationRoute<RequirementMutationBody>({
           verificationMethod: body.verificationMethod,
           requirementPackageIds: body.requirementPackageIds,
           qualityCharacteristicId: body.qualityCharacteristicId,
-          riskLevelId: body.riskLevelId,
+          priorityLevelId: body.priorityLevelId,
           typeId: body.typeId,
         },
       })

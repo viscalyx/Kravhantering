@@ -203,7 +203,7 @@ reference valid IDs in its output.
 - **Invalid `categoryId`** → set to `undefined` (repaired).
 - **Invalid `qualityCharacteristicId`** → set to `undefined`
   (repaired).
-- **Invalid `riskLevelId`** → set to `undefined` (repaired).
+- **Invalid `priorityLevelId`** → set to `undefined` (repaired).
 - **Invalid `requirementPackageIds` entries** → filtered from array.
 
 `typeId` is the only hard requirement because every
@@ -214,12 +214,150 @@ requirement must have a type.
 `loadTaxonomy()` in `lib/ai/taxonomy.ts`:
 
 - Runs 5 DAL queries in parallel via `Promise.all`:
-  categories, types, quality characteristics, risk levels,
+  categories, types, quality characteristics, priority levels,
   requirement packages.
 - Selects localized `nameEn` or `nameSv` for taxonomy tables based on the
   `locale` parameter. Requirement packages are authored as one-language content
   and use their stored `name` for both locales.
 - Quality characteristics include parent hierarchy: a `Map`
   by `id` resolves `parentName` from `parentId`.
-- All results are mapped to `{ id, name }` (plus
-  `parentName` for quality characteristics).
+- Priority levels include `id`, `code`, localized `name`, localized
+  `description`, and localized `assessmentCriteria`.
+- Other results are mapped to `{ id, name }` (plus `parentName` for quality
+  characteristics).
+
+## 5 — Requirement Import Schema and AI Reference Prompt
+
+Sources: `lib/requirements/import-schema.ts`,
+`lib/requirements/import-service.ts`, `app/api/requirements/import/schema`,
+`app/api/requirements/import/ai-prompt`.
+
+Requirement import publishes a strict shared JSON Schema whose top-level
+`schemaVersion` is `requirement-import.v1`. The version applies to the whole
+import file, including requirement candidates and support data such as
+`proposedNormReferences`. The same file format is used for kravbiblioteksimport
+and kravunderlagsimport; destination context is selected in the UI/API outside
+the file. Unknown fields are rejected, including destination fields such as
+`areaId`, `specificationId` and `needsReferenceId`.
+In the schema artifact this is represented as `properties.schemaVersion`,
+because JSON Schema describes top-level object fields under `properties`; the
+actual import JSON still places `schemaVersion` at the root.
+
+The authenticated schema endpoint returns only the raw schema. The authenticated
+AI prompt endpoint returns Markdown containing the schema plus current taxonomy
+and norm references so an AI system can produce valid JSON without guessing
+reference data. The schema and prompt are shared for library imports and
+specification-local imports; they include requirement-package reference data
+and the same `requirementPackageIds` field. `requirementPackageIds` and
+`requirementPackageNames` are used for library imports and ignored for
+specification-local imports. Specification-local preview surfaces that as a
+row-level information message, not a warning. The prompt artifact intentionally
+has no frontmatter and no examples. Its `types` reference data nests the
+selectable child `qualityCharacteristics` allowed for that type, such as
+functional `3.1.x` values under the functional type. Top-level grouping rows
+such as `3.1` are omitted. Taxonomy rows in the prompt are localized to the
+requested artifact language and expose a single `name` field instead of both
+`nameEn` and `nameSv`.
+The prompt includes concise field-selection rules for functional versus
+non-functional type choice, type-scoped quality characteristics, norm-reference
+links, priority, requirement packages and verification fields. It tells the AI
+to prefer ID fields from the reference data. Free-text values such as
+`description`, `acceptanceCriteria`, `verificationMethod` and proposed norm
+references use the requested application locale by default: Swedish for `sv`
+artifacts and English for `en` artifacts, unless the user's own input
+explicitly requests another language. JSON Schema still controls field names
+and data shape. It also includes a conflict rule: user input controls factual
+need, scope, requirement content and factual values; JSON Schema controls
+allowed fields, data types, required fields and result format; reference data
+controls requirement structure, classification, IDs and labels.
+For requirement packages, the AI instruction tells the model to compare the
+requirement need, requirement text and acceptance criteria with
+`requirementPackages[].purposeAndScope` and only choose packages where the
+requirement clearly belongs within the package purpose and scope. The schema
+still accepts name and code fallback fields so
+human-authored import files can be resolved when the values uniquely match
+active reference data.
+
+Preview resolves numeric IDs, priority codes and names against current
+reference data. Names can match either Swedish or English reference-data names
+but must match uniquely; otherwise the value is surfaced as a warning and
+omitted if the user proceeds. Existing norm references are linked through
+`normReferenceIds` values that match `normReferences[].normReferenceId`.
+`proposedNormReferences` can describe missing sources but execute never creates
+norm references automatically. During import review, a proposal referenced by
+`proposedNormReferenceKeys` can be linked to an existing normreferens or opened
+in the same normreferens form used by Normbiblioteket. When the user creates or
+links the normreferens, the affected rows receive the resolved
+`normReferenceIds` value before execute.
+
+### Human-Facing Import Examples
+
+These examples are documentation samples for users. They are intentionally not
+included in the schema artifact or AI prompt/reference artifact. Both
+kravbiblioteksimport and kravunderlagsimport use the same file format; the
+target kravområde or current kravunderlag is selected in the UI/API outside the
+JSON content.
+
+Minimal valid import JSON:
+
+```json
+{
+  "schemaVersion": "requirement-import.v1",
+  "requirements": [
+    {
+      "description": "Systemet ska logga säkerhetsrelevanta händelser."
+    }
+  ]
+}
+```
+
+Richer import JSON with optional metadata and proposed norm references:
+
+```json
+{
+  "schemaVersion": "requirement-import.v1",
+  "proposedNormReferences": [
+    {
+      "key": "gdpr-article-32",
+      "name": "GDPR artikel 32",
+      "type": "Förordning",
+      "reference": "Artikel 32",
+      "issuer": "Europeiska unionen",
+      "normReferenceId": "GDPR-ART-32",
+      "uri": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+    }
+  ],
+  "requirements": [
+    {
+      "description": "Systemet ska skydda personuppgifter mot obehörig åtkomst.",
+      "acceptanceCriteria": "Åtkomst kräver autentisering och behörighet.",
+      "categoryName": "Verksamhetskrav",
+      "typeName": "Icke-funktionellt",
+      "qualityCharacteristicName": "Interoperabilitet",
+      "priorityLevelCode": "P4",
+      "requirementPackageNames": ["Integration med andra system"],
+      "normReferenceIds": ["SFS 2018:218"],
+      "proposedNormReferenceKeys": ["gdpr-article-32"],
+      "requiresTesting": true,
+      "verificationMethod": "Verifieras med behörighetstest."
+    },
+    {
+      "description": "Systemet ska kunna exportera kravlistor i CSV-format.",
+      "categoryId": 1,
+      "typeId": 1,
+      "qualityCharacteristicId": 2,
+      "requirementPackageIds": [3],
+      "requiresTesting": false
+    }
+  ]
+}
+```
+
+The examples show both name-based and numeric reference-data fields. Numeric IDs
+are used when valid. Names are accepted only when they map uniquely to active
+reference data, and `qualityCharacteristicId` or `qualityCharacteristicName`
+must belong to the selected type. Optional unresolved metadata is shown as a
+warning in the import review and is omitted if the user continues. Proposed
+norm references include the fields needed by the normreferens form: `key`,
+`name`, `type`, `reference`, `issuer`, optional `normReferenceId`, optional
+`uri` and optional `version`.

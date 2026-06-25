@@ -848,10 +848,6 @@ describe('seed profiles', () => {
       rows,
       'requirement_version_norm_references',
     )
-    const localPackages = seedRowsFor(
-      rows,
-      'specification_local_requirement_requirement_packages',
-    )
     const localNorms = seedRowsFor(
       rows,
       'specification_local_requirement_norm_references',
@@ -995,12 +991,6 @@ describe('seed profiles', () => {
     ).toBe(true)
     expect(
       versionPackages.some(
-        row =>
-          row.requirement_package_id === RETENTION_SEED.requirementPackage.used,
-      ),
-    ).toBe(true)
-    expect(
-      localPackages.some(
         row =>
           row.requirement_package_id === RETENTION_SEED.requirementPackage.used,
       ),

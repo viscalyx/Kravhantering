@@ -2,7 +2,7 @@
 
 import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FormActionRow from '@/components/FormActionRow'
@@ -18,12 +18,11 @@ export interface SpecificationLocalRequirementSubmitPayload {
   description: string
   needsReferenceId: number | null
   normReferenceIds: number[]
+  priorityLevelId: number | null
   qualityCharacteristicId: number | null
   requirementCategoryId: number | null
-  requirementPackageIds: number[]
   requirementTypeId: number | null
   requiresTesting: boolean
-  riskLevelId: number | null
   verificationMethod: string | null
 }
 
@@ -48,14 +47,18 @@ const EMPTY_FIELDS: RequirementFormFieldValues = {
   normReferenceIds: [],
   qualityCharacteristicId: '',
   requiresTesting: false,
-  riskLevelId: '',
+  priorityLevelId: '',
   requirementPackageIds: [],
   typeId: '',
   verificationMethod: '',
 }
 
 const SPECIFICATION_LOCAL_REQUIREMENT_DIRTY_OPTIONS = {
-  unorderedArrayPaths: ['normReferenceIds', 'requirementPackageIds'],
+  unorderedArrayPaths: ['normReferenceIds'],
+} as const
+
+const SPECIFICATION_LOCAL_REQUIREMENT_INITIAL_VALUE_OPTIONS = {
+  unorderedArrayPaths: ['fields.normReferenceIds'],
 } as const
 
 function toFieldValues(
@@ -70,8 +73,8 @@ function toFieldValues(
     ...(initial.qualityCharacteristicId != null
       ? { qualityCharacteristicId: initial.qualityCharacteristicId }
       : {}),
-    ...(initial.riskLevelId != null
-      ? { riskLevelId: initial.riskLevelId }
+    ...(initial.priorityLevelId != null
+      ? { priorityLevelId: initial.priorityLevelId }
       : {}),
     ...(initial.description != null
       ? { description: initial.description }
@@ -87,9 +90,6 @@ function toFieldValues(
       : {}),
     ...(initial.normReferenceIds != null
       ? { normReferenceIds: initial.normReferenceIds }
-      : {}),
-    ...(initial.requirementPackageIds != null
-      ? { requirementPackageIds: initial.requirementPackageIds }
       : {}),
   }
 }
@@ -109,8 +109,9 @@ function toSubmitPayload(
     requirementCategoryId: fields.categoryId ? Number(fields.categoryId) : null,
     requirementTypeId: fields.typeId ? Number(fields.typeId) : null,
     requiresTesting: fields.requiresTesting,
-    riskLevelId: fields.riskLevelId ? Number(fields.riskLevelId) : null,
-    requirementPackageIds: fields.requirementPackageIds,
+    priorityLevelId: fields.priorityLevelId
+      ? Number(fields.priorityLevelId)
+      : null,
     verificationMethod: fields.requiresTesting
       ? fields.verificationMethod.trim() || null
       : null,
@@ -127,6 +128,16 @@ function createSubmitSignature(
   )
 }
 
+function createInitialValueSignature(
+  fields: RequirementFormFieldValues,
+  needsReferenceId: string,
+) {
+  return createDirtySnapshot(
+    { fields, needsReferenceId },
+    SPECIFICATION_LOCAL_REQUIREMENT_INITIAL_VALUE_OPTIONS,
+  )
+}
+
 export default function SpecificationLocalRequirementForm({
   initialValue,
   needsReferences,
@@ -139,21 +150,28 @@ export default function SpecificationLocalRequirementForm({
   const tp = useTranslations('specification')
   const confirmDiscardChanges = useDiscardChangesConfirmation()
 
-  const [fields, setFields] = useState<RequirementFormFieldValues>(() =>
-    toFieldValues(initialValue),
+  const initialFields = toFieldValues(initialValue)
+  const initialNeedsReferenceId = initialValue?.needsReferenceId ?? ''
+  const initialValueSignature = createInitialValueSignature(
+    initialFields,
+    initialNeedsReferenceId,
+  )
+  const initialValueRef = useRef(initialValue)
+  initialValueRef.current = initialValue
+
+  const [fields, setFields] = useState<RequirementFormFieldValues>(
+    () => initialFields,
   )
   const [needsReferenceId, setNeedsReferenceId] = useState(
-    initialValue?.needsReferenceId ?? '',
+    initialNeedsReferenceId,
   )
   const [baselineSignature, setBaselineSignature] = useState(() =>
-    createSubmitSignature(
-      toFieldValues(initialValue),
-      initialValue?.needsReferenceId ?? '',
-    ),
+    createSubmitSignature(initialFields, initialNeedsReferenceId),
   )
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [needsRefHelpOpen, setNeedsRefHelpOpen] = useState(false)
+  const appliedInitialValueSignatureRef = useRef(initialValueSignature)
 
   const taxonomyOptions = useTaxonomyOptions(
     fields.typeId,
@@ -161,15 +179,21 @@ export default function SpecificationLocalRequirementForm({
   )
 
   useEffect(() => {
-    const nextFields = toFieldValues(initialValue)
-    const nextNeedsReferenceId = initialValue?.needsReferenceId ?? ''
+    if (appliedInitialValueSignatureRef.current === initialValueSignature) {
+      return
+    }
+
+    appliedInitialValueSignatureRef.current = initialValueSignature
+    const nextInitialValue = initialValueRef.current
+    const nextFields = toFieldValues(nextInitialValue)
+    const nextNeedsReferenceId = nextInitialValue?.needsReferenceId ?? ''
     setFields(nextFields)
     setNeedsReferenceId(nextNeedsReferenceId)
     setBaselineSignature(
       createSubmitSignature(nextFields, nextNeedsReferenceId),
     )
     setNeedsRefHelpOpen(false)
-  }, [initialValue])
+  }, [initialValueSignature])
 
   const formDirty =
     baselineSignature !== createSubmitSignature(fields, needsReferenceId)
@@ -248,11 +272,12 @@ export default function SpecificationLocalRequirementForm({
     <form className="space-y-5" onSubmit={handleSubmit}>
       <RequirementFormFields
         areaRequired={false}
-        extraFieldsAfterRiskLevel={needsReferenceField}
+        extraFieldsAfterPriorityLevel={needsReferenceField}
         idPrefix="plr"
         layout="sidebar"
         onChange={setFields}
         showArea={false}
+        showRequirementPackages={false}
         taxonomyOptions={taxonomyOptions}
         values={fields}
       />

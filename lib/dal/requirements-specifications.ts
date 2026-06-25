@@ -28,8 +28,8 @@ import {
 const DEVIATION_APPROVED = 1
 const DEVIATION_REJECTED = 2
 
-interface SqlExecutor {
-  query: (sql: string, parameters?: unknown[]) => Promise<unknown>
+export interface SqlExecutor {
+  query: <T = unknown[]>(sql: string, parameters?: unknown[]) => Promise<T>
 }
 
 type Row = Record<string, unknown>
@@ -54,9 +54,9 @@ export interface TraceabilityReportItem {
   kind: SpecificationItemKind
   needsReference: string | null
   note: string | null
+  priorityLevelNameEn: string | null
+  priorityLevelNameSv: string | null
   requiresTesting: boolean
-  riskLevelNameEn: string | null
-  riskLevelNameSv: string | null
   specificationItemStatusId: number | null
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
@@ -82,17 +82,16 @@ interface SpecificationNeedsReferenceMutationInput {
   text: string
 }
 
-interface SpecificationLocalRequirementMutationInput {
+export interface SpecificationLocalRequirementMutationInput {
   acceptanceCriteria?: string | null
   description: string
   needsReferenceId?: number | null
   normReferenceIds?: number[]
+  priorityLevelId?: number | null
   qualityCharacteristicId?: number | null
   requirementCategoryId?: number | null
-  requirementPackageIds?: number[]
   requirementTypeId?: number | null
   requiresTesting?: boolean
-  riskLevelId?: number | null
   verificationMethod?: string | null
 }
 
@@ -112,16 +111,7 @@ export interface SpecificationLocalRequirementDetail {
     normReferenceId: string
     uri: string | null
   }[]
-  qualityCharacteristic: { id: number; nameEn: string; nameSv: string } | null
-  requirementArea: null
-  requirementCategory: { id: number; nameEn: string; nameSv: string } | null
-  requirementPackages: {
-    id: number
-    name: string | null
-  }[]
-  requirementType: { id: number; nameEn: string; nameSv: string } | null
-  requiresTesting: boolean
-  riskLevel: {
+  priorityLevel: {
     color: string
     iconName: string | null
     id: number
@@ -129,6 +119,16 @@ export interface SpecificationLocalRequirementDetail {
     nameSv: string
     sortOrder: number
   } | null
+  qualityCharacteristic: { id: number; nameEn: string; nameSv: string } | null
+  requirementArea: null
+  requirementCategory: { id: number; nameEn: string; nameSv: string } | null
+  requirementPackages: {
+    id: number
+    name: string | null
+    purposeAndScope: string | null
+  }[]
+  requirementType: { id: number; nameEn: string; nameSv: string } | null
+  requiresTesting: boolean
   specificationId: number
   specificationItemStatusColor: string | null
   specificationItemStatusDescriptionEn: string | null
@@ -144,9 +144,11 @@ export interface SpecificationLocalRequirementDetail {
 
 interface SpecificationLocalRequirementIdentity {
   id: number
+  requiresTesting: boolean
   sequenceNumber: number
   specificationId: number
   uniqueId: string
+  verificationMethod: string | null
 }
 
 interface SpecificationLocalRequirementGraduationRow {
@@ -154,12 +156,11 @@ interface SpecificationLocalRequirementGraduationRow {
   description: string
   id: number
   normReferenceIds: number[]
+  priorityLevelId: number | null
   qualityCharacteristicId: number | null
   requirementCategoryId: number | null
-  requirementPackageIds: number[]
   requirementTypeId: number | null
   requiresTesting: boolean
-  riskLevelId: number | null
   specificationId: number
   uniqueId: string
   verificationMethod: string | null
@@ -309,8 +310,8 @@ function mapTraceabilityReportRow(
     needsReference: toStr(row.needsReference),
     note: toStr(row.note),
     requiresTesting: toBool(row.requiresTesting),
-    riskLevelNameEn: toStr(row.riskLevelNameEn),
-    riskLevelNameSv: toStr(row.riskLevelNameSv),
+    priorityLevelNameEn: toStr(row.priorityLevelNameEn),
+    priorityLevelNameSv: toStr(row.priorityLevelNameSv),
     specificationItemStatusId: toNum(row.specificationItemStatusId),
     specificationItemStatusNameEn: toStr(row.specificationItemStatusNameEn),
     specificationItemStatusNameSv: toStr(row.specificationItemStatusNameSv),
@@ -354,8 +355,8 @@ export async function listSpecificationTraceabilityItems(
           requirement_version.version_number AS versionNumber,
           requirement_version.is_testing_required AS requiresTesting,
           requirement_version.verification_method AS verificationMethod,
-          risk_level.name_en AS riskLevelNameEn,
-          risk_level.name_sv AS riskLevelNameSv,
+          priority_level.name_en AS priorityLevelNameEn,
+          priority_level.name_sv AS priorityLevelNameSv,
           needs_reference.text AS needsReference,
           specification_item.specification_item_status_id AS specificationItemStatusId,
           specification_item_status.name_en AS specificationItemStatusNameEn,
@@ -373,8 +374,8 @@ export async function listSpecificationTraceabilityItems(
           ON requirement_version.id = specification_item.requirement_version_id
         LEFT JOIN requirement_areas requirement_area
           ON requirement_area.id = requirement.requirement_area_id
-        LEFT JOIN risk_levels risk_level
-          ON risk_level.id = requirement_version.risk_level_id
+        LEFT JOIN priority_levels priority_level
+          ON priority_level.id = requirement_version.priority_level_id
         LEFT JOIN specification_needs_references needs_reference
           ON needs_reference.id = specification_item.needs_reference_id
         LEFT JOIN specification_item_statuses specification_item_status
@@ -416,8 +417,8 @@ export async function listSpecificationTraceabilityItems(
           CAST(NULL AS nvarchar(450)) AS areaName,
           local_requirement.is_testing_required AS requiresTesting,
           local_requirement.verification_method AS verificationMethod,
-          risk_level.name_en AS riskLevelNameEn,
-          risk_level.name_sv AS riskLevelNameSv,
+          priority_level.name_en AS priorityLevelNameEn,
+          priority_level.name_sv AS priorityLevelNameSv,
           needs_reference.text AS needsReference,
           local_requirement.specification_item_status_id AS specificationItemStatusId,
           specification_item_status.name_en AS specificationItemStatusNameEn,
@@ -429,8 +430,8 @@ export async function listSpecificationTraceabilityItems(
           COALESCE(deviation_counts.approved, 0) AS deviationApproved,
           COALESCE(deviation_counts.rejected, 0) AS deviationRejected
         FROM specification_local_requirements local_requirement
-        LEFT JOIN risk_levels risk_level
-          ON risk_level.id = local_requirement.risk_level_id
+        LEFT JOIN priority_levels priority_level
+          ON priority_level.id = local_requirement.priority_level_id
         LEFT JOIN specification_needs_references needs_reference
           ON needs_reference.id = local_requirement.needs_reference_id
         LEFT JOIN specification_item_statuses specification_item_status
@@ -1961,9 +1962,8 @@ async function normalizeSpecificationLocalRequirementInput(
     normReferenceIds: data.normReferenceIds,
     qualityCharacteristicId: data.qualityCharacteristicId,
     requirementCategoryId: data.requirementCategoryId,
-    requirementPackageIds: data.requirementPackageIds,
     requirementTypeId: data.requirementTypeId,
-    riskLevelId: data.riskLevelId,
+    priorityLevelId: data.priorityLevelId,
   })
 
   return {
@@ -1975,8 +1975,7 @@ async function normalizeSpecificationLocalRequirementInput(
     requirementCategoryId: references.requirementCategoryId,
     requirementTypeId: references.requirementTypeId,
     requiresTesting,
-    riskLevelId: references.riskLevelId,
-    requirementPackageIds: references.requirementPackageIds,
+    priorityLevelId: references.priorityLevelId,
     verificationMethod,
   }
 }
@@ -1992,7 +1991,9 @@ async function getSpecificationLocalRequirementIdentity(
         local_requirement.id AS id,
         local_requirement.specification_id AS specificationId,
         local_requirement.sequence_number AS sequenceNumber,
-        local_requirement.unique_id AS uniqueId
+        local_requirement.unique_id AS uniqueId,
+        local_requirement.is_testing_required AS requiresTesting,
+        local_requirement.verification_method AS verificationMethod
       FROM specification_local_requirements local_requirement
       WHERE local_requirement.id = @0 AND local_requirement.specification_id = @1
     `,
@@ -2003,9 +2004,11 @@ async function getSpecificationLocalRequirementIdentity(
   if (!row) return null
   return {
     id: Number(row.id),
+    requiresTesting: toBool(row.requiresTesting),
     specificationId: Number(row.specificationId),
     sequenceNumber: Number(row.sequenceNumber),
     uniqueId: String(row.uniqueId),
+    verificationMethod: toStr(row.verificationMethod),
   }
 }
 
@@ -2038,12 +2041,12 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
     local_requirement.requirement_type_id AS requirementTypeId,
     requirement_type.name_en AS requirementTypeNameEn,
     requirement_type.name_sv AS requirementTypeNameSv,
-    local_requirement.risk_level_id AS riskLevelId,
-    risk_level.color AS riskLevelColor,
-    risk_level.icon_name AS riskLevelIconName,
-    risk_level.name_en AS riskLevelNameEn,
-    risk_level.name_sv AS riskLevelNameSv,
-    risk_level.sort_order AS riskLevelSortOrder
+    local_requirement.priority_level_id AS priorityLevelId,
+    priority_level.color AS priorityLevelColor,
+    priority_level.icon_name AS priorityLevelIconName,
+    priority_level.name_en AS priorityLevelNameEn,
+    priority_level.name_sv AS priorityLevelNameSv,
+    priority_level.sort_order AS priorityLevelSortOrder
   FROM specification_local_requirements local_requirement
   LEFT JOIN specification_needs_references needs_reference
     ON needs_reference.id = local_requirement.needs_reference_id
@@ -2055,20 +2058,19 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
     ON requirement_category.id = local_requirement.requirement_category_id
   LEFT JOIN requirement_types requirement_type
     ON requirement_type.id = local_requirement.requirement_type_id
-  LEFT JOIN risk_levels risk_level
-    ON risk_level.id = local_requirement.risk_level_id
+  LEFT JOIN priority_levels priority_level
+    ON priority_level.id = local_requirement.priority_level_id
 `
 
 function mapSpecificationLocalRequirementDetailFlat(
   row: Row,
   normReferenceRows: Row[],
-  requirementPackageRows: Row[],
 ): SpecificationLocalRequirementDetail {
   const id = Number(row.id)
   const qualityCharacteristicId = toNum(row.qualityCharacteristicId)
   const requirementCategoryId = toNum(row.requirementCategoryId)
   const requirementTypeId = toNum(row.requirementTypeId)
-  const riskLevelId = toNum(row.riskLevelId)
+  const priorityLevelId = toNum(row.priorityLevelId)
 
   const sortedNormReferences = [...normReferenceRows]
     .map(reference => ({
@@ -2080,18 +2082,6 @@ function mapSpecificationLocalRequirementDetailFlat(
     .sort((left, right) =>
       left.normReferenceId.localeCompare(right.normReferenceId, 'sv'),
     )
-  const sortedRequirementPackages = [...requirementPackageRows]
-    .map(requirementPackage => ({
-      id: Number(requirementPackage.id),
-      name:
-        requirementPackage.name == null
-          ? null
-          : String(requirementPackage.name),
-    }))
-    .sort((left, right) =>
-      (left.name ?? '').localeCompare(right.name ?? '', 'sv'),
-    )
-
   return {
     acceptanceCriteria: toStr(row.acceptanceCriteria),
     createdAt: toIso(row.createdAt) ?? '',
@@ -2141,18 +2131,18 @@ function mapSpecificationLocalRequirementDetailFlat(
           }
         : null,
     requiresTesting: toBool(row.requiresTesting),
-    riskLevel:
-      riskLevelId != null
+    priorityLevel:
+      priorityLevelId != null
         ? {
-            color: String(row.riskLevelColor ?? ''),
-            iconName: toStr(row.riskLevelIconName),
-            id: riskLevelId,
-            nameEn: String(row.riskLevelNameEn ?? ''),
-            nameSv: String(row.riskLevelNameSv ?? ''),
-            sortOrder: Number(row.riskLevelSortOrder ?? 0),
+            color: String(row.priorityLevelColor ?? ''),
+            iconName: toStr(row.priorityLevelIconName),
+            id: priorityLevelId,
+            nameEn: String(row.priorityLevelNameEn ?? ''),
+            nameSv: String(row.priorityLevelNameSv ?? ''),
+            sortOrder: Number(row.priorityLevelSortOrder ?? 0),
           }
         : null,
-    requirementPackages: sortedRequirementPackages,
+    requirementPackages: [],
     uniqueId: String(row.uniqueId),
     updatedAt: toIso(row.updatedAt) ?? '',
     verificationMethod: toStr(row.verificationMethod),
@@ -2175,40 +2165,22 @@ export async function getSpecificationLocalRequirementDetail(
     return null
   }
 
-  const [normReferenceRows, requirementPackageRows] = await Promise.all([
-    db.query(
-      `
-        SELECT
-          norm_reference.id AS id,
-          norm_reference.name AS name,
-          norm_reference.norm_reference_id AS normReferenceId,
-          norm_reference.uri AS uri
-        FROM specification_local_requirement_norm_references link
-        INNER JOIN norm_references norm_reference
-          ON norm_reference.id = link.norm_reference_id
-        WHERE link.specification_local_requirement_id = @0
-      `,
-      [specificationLocalRequirementId],
-    ) as Promise<Row[]>,
-    db.query(
-      `
-        SELECT
-          requirement_package.id AS id,
-          requirement_package.name AS name
-        FROM specification_local_requirement_requirement_packages link
-        INNER JOIN requirement_packages requirement_package
-          ON requirement_package.id = link.requirement_package_id
-        WHERE link.specification_local_requirement_id = @0
-      `,
-      [specificationLocalRequirementId],
-    ) as Promise<Row[]>,
-  ])
+  const normReferenceRows = (await db.query(
+    `
+      SELECT
+        norm_reference.id AS id,
+        norm_reference.name AS name,
+        norm_reference.norm_reference_id AS normReferenceId,
+        norm_reference.uri AS uri
+      FROM specification_local_requirement_norm_references link
+      INNER JOIN norm_references norm_reference
+        ON norm_reference.id = link.norm_reference_id
+      WHERE link.specification_local_requirement_id = @0
+    `,
+    [specificationLocalRequirementId],
+  )) as Row[]
 
-  return mapSpecificationLocalRequirementDetailFlat(
-    mainRow,
-    normReferenceRows,
-    requirementPackageRows,
-  )
+  return mapSpecificationLocalRequirementDetailFlat(mainRow, normReferenceRows)
 }
 
 async function insertSpecificationLocalRequirementJoins(
@@ -2216,26 +2188,10 @@ async function insertSpecificationLocalRequirementJoins(
   specificationLocalRequirementId: number,
   {
     normReferenceIds,
-    requirementPackageIds,
   }: {
     normReferenceIds: number[]
-    requirementPackageIds: number[]
   },
 ) {
-  if (requirementPackageIds.length > 0) {
-    const valuesSql = requirementPackageIds
-      .map((_, index) => `(@0, @${index + 1})`)
-      .join(', ')
-    await manager.query(
-      `
-        INSERT INTO specification_local_requirement_requirement_packages
-          (specification_local_requirement_id, requirement_package_id)
-        VALUES ${valuesSql}
-      `,
-      [specificationLocalRequirementId, ...requirementPackageIds],
-    )
-  }
-
   if (normReferenceIds.length > 0) {
     const valuesSql = normReferenceIds
       .map((_, index) => `(@0, @${index + 1})`)
@@ -2295,7 +2251,7 @@ export async function createSpecificationLocalRequirement(
           requirement_category_id,
           requirement_type_id,
           quality_characteristic_id,
-          risk_level_id,
+          priority_level_id,
           is_testing_required,
           verification_method,
           needs_reference_id,
@@ -2315,7 +2271,7 @@ export async function createSpecificationLocalRequirement(
         normalized.requirementCategoryId,
         normalized.requirementTypeId,
         normalized.qualityCharacteristicId,
-        normalized.riskLevelId,
+        normalized.priorityLevelId,
         normalized.requiresTesting ? 1 : 0,
         normalized.verificationMethod,
         normalized.needsReferenceId,
@@ -2351,6 +2307,125 @@ export async function createSpecificationLocalRequirement(
   return created
 }
 
+export interface CreateSpecificationLocalRequirementsBatchOptions {
+  batchAudit?: (executor: SqlExecutor, createdIds: number[]) => Promise<void>
+}
+
+export async function createSpecificationLocalRequirementsBatch(
+  db: SqlServerDatabase,
+  specificationId: number,
+  inputs: SpecificationLocalRequirementMutationInput[],
+  options: CreateSpecificationLocalRequirementsBatchOptions = {},
+): Promise<SpecificationLocalRequirementDetail[]> {
+  if (inputs.length === 0) return []
+
+  const createdIds: number[] = []
+
+  await db.transaction(async (manager: SqlExecutor) => {
+    for (const data of inputs) {
+      const normalized = await normalizeSpecificationLocalRequirementInput(
+        manager,
+        specificationId,
+        data,
+      )
+
+      const sequenceRows = (await manager.query(
+        `
+          UPDATE requirements_specifications
+          SET local_requirement_next_sequence = local_requirement_next_sequence + 1
+          OUTPUT INSERTED.local_requirement_next_sequence AS nextSequence
+          WHERE id = @0
+        `,
+        [specificationId],
+      )) as Array<{ nextSequence: number }>
+
+      const sequenceRow = sequenceRows[0]
+      if (!sequenceRow) {
+        throw notFoundError(
+          `Requirements specification ${specificationId} not found`,
+        )
+      }
+
+      const sequenceNumber = Math.max(1, Number(sequenceRow.nextSequence) - 1)
+      const uniqueId =
+        formatSpecificationLocalRequirementUniqueId(sequenceNumber)
+      const now = new Date()
+
+      const insertedRows = (await manager.query(
+        `
+          INSERT INTO specification_local_requirements (
+            specification_id,
+            unique_id,
+            sequence_number,
+            description,
+            acceptance_criteria,
+            requirement_category_id,
+            requirement_type_id,
+            quality_characteristic_id,
+            priority_level_id,
+            is_testing_required,
+            verification_method,
+            needs_reference_id,
+            specification_item_status_id,
+            created_at,
+            updated_at
+          )
+          OUTPUT INSERTED.id AS id
+          VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, @13, @13)
+        `,
+        [
+          specificationId,
+          uniqueId,
+          sequenceNumber,
+          normalized.description,
+          normalized.acceptanceCriteria,
+          normalized.requirementCategoryId,
+          normalized.requirementTypeId,
+          normalized.qualityCharacteristicId,
+          normalized.priorityLevelId,
+          normalized.requiresTesting ? 1 : 0,
+          normalized.verificationMethod,
+          normalized.needsReferenceId,
+          DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+          now,
+        ],
+      )) as Array<{ id: number }>
+
+      const insertedRow = insertedRows[0]
+      if (!insertedRow) {
+        throw new Error('Failed to insert specification-local requirement')
+      }
+
+      const createdId = Number(insertedRow.id)
+      await insertSpecificationLocalRequirementJoins(
+        manager,
+        createdId,
+        normalized,
+      )
+      createdIds.push(createdId)
+    }
+
+    await options.batchAudit?.(manager, createdIds)
+  })
+
+  const details: SpecificationLocalRequirementDetail[] = []
+  for (const createdId of createdIds) {
+    const created = await getSpecificationLocalRequirementDetail(
+      db,
+      specificationId,
+      createdId,
+    )
+    if (!created) {
+      throw notFoundError(
+        'Specification-local requirement was created but not found',
+      )
+    }
+    details.push(created)
+  }
+
+  return details
+}
+
 export async function updateSpecificationLocalRequirement(
   db: SqlServerDatabase,
   specificationId: number,
@@ -2369,7 +2444,16 @@ export async function updateSpecificationLocalRequirement(
   const normalized = await normalizeSpecificationLocalRequirementInput(
     db,
     specificationId,
-    data,
+    data.requiresTesting === undefined
+      ? {
+          ...data,
+          requiresTesting: existing.requiresTesting,
+          verificationMethod:
+            data.verificationMethod === undefined
+              ? existing.verificationMethod
+              : data.verificationMethod,
+        }
+      : data,
   )
   const updatedAt = new Date()
 
@@ -2385,7 +2469,7 @@ export async function updateSpecificationLocalRequirement(
           requirement_category_id = @4,
           requirement_type_id = @5,
           is_testing_required = @6,
-          risk_level_id = @7,
+          priority_level_id = @7,
           verification_method = @8,
           updated_at = @9
         WHERE id = @10 AND specification_id = @11
@@ -2398,20 +2482,12 @@ export async function updateSpecificationLocalRequirement(
         normalized.requirementCategoryId,
         normalized.requirementTypeId,
         normalized.requiresTesting ? 1 : 0,
-        normalized.riskLevelId,
+        normalized.priorityLevelId,
         normalized.verificationMethod,
         updatedAt,
         specificationLocalRequirementId,
         specificationId,
       ],
-    )
-
-    await manager.query(
-      `
-        DELETE FROM specification_local_requirement_requirement_packages
-        WHERE specification_local_requirement_id = @0
-      `,
-      [specificationLocalRequirementId],
     )
 
     await manager.query(
@@ -2462,7 +2538,6 @@ export async function deleteSpecificationLocalRequirement(
 function mapGraduationSourceRow(
   row: Row,
   normReferenceRows: Row[],
-  requirementPackageRows: Row[],
 ): SpecificationLocalRequirementGraduationRow {
   return {
     acceptanceCriteria: toStr(row.acceptanceCriteria),
@@ -2473,12 +2548,9 @@ function mapGraduationSourceRow(
     ),
     qualityCharacteristicId: toNum(row.qualityCharacteristicId),
     requirementCategoryId: toNum(row.requirementCategoryId),
-    requirementPackageIds: requirementPackageRows.map(requirementPackage =>
-      Number(requirementPackage.requirementPackageId),
-    ),
     requirementTypeId: toNum(row.requirementTypeId),
     requiresTesting: toBool(row.requiresTesting),
-    riskLevelId: toNum(row.riskLevelId),
+    priorityLevelId: toNum(row.priorityLevelId),
     specificationId: Number(row.specificationId),
     uniqueId: String(row.uniqueId ?? ''),
     verificationMethod: toStr(row.verificationMethod),
@@ -2541,7 +2613,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
           local_requirement.requirement_category_id AS requirementCategoryId,
           local_requirement.requirement_type_id AS requirementTypeId,
           local_requirement.quality_characteristic_id AS qualityCharacteristicId,
-          local_requirement.risk_level_id AS riskLevelId,
+          local_requirement.priority_level_id AS priorityLevelId,
           CAST(local_requirement.is_testing_required AS int) AS requiresTesting,
           local_requirement.verification_method AS verificationMethod
         FROM specification_local_requirements local_requirement WITH (UPDLOCK, HOLDLOCK)
@@ -2567,20 +2639,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
         `,
       [data.specificationLocalRequirementId],
     )) as Row[]
-    const requirementPackageRows = (await manager.query(
-      `
-          SELECT requirement_package_id AS requirementPackageId
-          FROM specification_local_requirement_requirement_packages
-          WHERE specification_local_requirement_id = @0
-        `,
-      [data.specificationLocalRequirementId],
-    )) as Row[]
-
-    const source = mapGraduationSourceRow(
-      sourceRow,
-      normReferenceRows,
-      requirementPackageRows,
-    )
+    const source = mapGraduationSourceRow(sourceRow, normReferenceRows)
 
     const sequenceRows = (await manager.query(
       `
@@ -2644,7 +2703,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
           requirement_category_id,
           requirement_type_id,
           quality_characteristic_id,
-          risk_level_id,
+          priority_level_id,
           requirement_status_id,
           is_testing_required,
           verification_method,
@@ -2672,7 +2731,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
         source.requirementCategoryId,
         source.requirementTypeId,
         source.qualityCharacteristicId,
-        source.riskLevelId,
+        source.priorityLevelId,
         STATUS_DRAFT,
         source.requiresTesting ? 1 : 0,
         verificationMethod,
@@ -2689,7 +2748,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
 
     await insertRequirementVersionJoins(manager, Number(versionRow.id), {
       normReferenceIds: source.normReferenceIds,
-      requirementPackageIds: source.requirementPackageIds,
+      requirementPackageIds: [],
     })
 
     return {
@@ -2896,17 +2955,17 @@ interface LibrarySpecificationItemFlatRow {
   needsReferenceId: number | null
   needsReferenceText: string | null
   normReferenceIds: string | null
+  priorityLevelColor: string | null
+  priorityLevelIconName: string | null
+  priorityLevelId: number | null
+  priorityLevelNameEn: string | null
+  priorityLevelNameSv: string | null
+  priorityLevelSortOrder: number | null
   qualityCharacteristicNameEn: string | null
   qualityCharacteristicNameSv: string | null
   requirementId: number
   requirementPackageIds: string | null
   requiresTesting: unknown
-  riskLevelColor: string | null
-  riskLevelIconName: string | null
-  riskLevelId: number | null
-  riskLevelNameEn: string | null
-  riskLevelNameSv: string | null
-  riskLevelSortOrder: number | null
   specificationItemId: number
   specificationItemStatusColor: string | null
   specificationItemStatusDescriptionEn: string | null
@@ -2960,12 +3019,12 @@ function mapLibrarySpecificationItemRow(
       qualityCharacteristicNameEn: row.qualityCharacteristicNameEn ?? null,
       qualityCharacteristicNameSv: row.qualityCharacteristicNameSv ?? null,
       requiresTesting: toBool(row.requiresTesting),
-      riskLevelColor: row.riskLevelColor ?? null,
-      riskLevelIconName: row.riskLevelIconName ?? null,
-      riskLevelId: row.riskLevelId ?? null,
-      riskLevelNameEn: row.riskLevelNameEn ?? null,
-      riskLevelNameSv: row.riskLevelNameSv ?? null,
-      riskLevelSortOrder: row.riskLevelSortOrder ?? null,
+      priorityLevelColor: row.priorityLevelColor ?? null,
+      priorityLevelIconName: row.priorityLevelIconName ?? null,
+      priorityLevelId: row.priorityLevelId ?? null,
+      priorityLevelNameEn: row.priorityLevelNameEn ?? null,
+      priorityLevelNameSv: row.priorityLevelNameSv ?? null,
+      priorityLevelSortOrder: row.priorityLevelSortOrder ?? null,
       status: Number(row.statusId),
       statusColor: row.statusColor ?? null,
       statusIconName: row.statusIconName ?? null,
@@ -2984,20 +3043,19 @@ interface SpecificationLocalListFlatRow {
   needsReferenceId: number | null
   needsReferenceText: string | null
   normReferenceIds: string | null
+  priorityLevelColor: string | null
+  priorityLevelIconName: string | null
+  priorityLevelId: number | null
+  priorityLevelNameEn: string | null
+  priorityLevelNameSv: string | null
+  priorityLevelSortOrder: number | null
   qualityCharacteristicNameEn: string | null
   qualityCharacteristicNameSv: string | null
   requirementCategoryNameEn: string | null
   requirementCategoryNameSv: string | null
-  requirementPackageIds: string | null
   requirementTypeNameEn: string | null
   requirementTypeNameSv: string | null
   requiresTesting: unknown
-  riskLevelColor: string | null
-  riskLevelIconName: string | null
-  riskLevelId: number | null
-  riskLevelNameEn: string | null
-  riskLevelNameSv: string | null
-  riskLevelSortOrder: number | null
   specificationItemStatusColor: string | null
   specificationItemStatusDescriptionEn: string | null
   specificationItemStatusDescriptionSv: string | null
@@ -3033,7 +3091,7 @@ function mapSpecificationLocalRequirementListRow(
     specificationItemStatusNameSv: row.specificationItemStatusNameSv ?? null,
     specificationLocalRequirementId: Number(row.id),
     uniqueId: row.uniqueId,
-    requirementPackageIds: parseCsvNumberList(row.requirementPackageIds),
+    requirementPackageIds: [],
     version: {
       archiveInitiatedAt: null,
       categoryNameEn: row.requirementCategoryNameEn ?? null,
@@ -3042,12 +3100,12 @@ function mapSpecificationLocalRequirementListRow(
       qualityCharacteristicNameEn: row.qualityCharacteristicNameEn ?? null,
       qualityCharacteristicNameSv: row.qualityCharacteristicNameSv ?? null,
       requiresTesting: toBool(row.requiresTesting),
-      riskLevelColor: row.riskLevelColor ?? null,
-      riskLevelIconName: row.riskLevelIconName ?? null,
-      riskLevelId: row.riskLevelId ?? null,
-      riskLevelNameEn: row.riskLevelNameEn ?? null,
-      riskLevelNameSv: row.riskLevelNameSv ?? null,
-      riskLevelSortOrder: row.riskLevelSortOrder ?? null,
+      priorityLevelColor: row.priorityLevelColor ?? null,
+      priorityLevelIconName: row.priorityLevelIconName ?? null,
+      priorityLevelId: row.priorityLevelId ?? null,
+      priorityLevelNameEn: row.priorityLevelNameEn ?? null,
+      priorityLevelNameSv: row.priorityLevelNameSv ?? null,
+      priorityLevelSortOrder: row.priorityLevelSortOrder ?? null,
       status: STATUS_PUBLISHED,
       statusColor: '#22c55e',
       statusIconName: 'CheckCircle2',
@@ -3093,12 +3151,12 @@ export async function listSpecificationItems(
           quality_characteristic.name_sv AS qualityCharacteristicNameSv,
           requirement.id AS requirementId,
           requirement_version.is_testing_required AS requiresTesting,
-          risk_level.color AS riskLevelColor,
-          risk_level.icon_name AS riskLevelIconName,
-          requirement_version.risk_level_id AS riskLevelId,
-          risk_level.name_en AS riskLevelNameEn,
-          risk_level.name_sv AS riskLevelNameSv,
-          risk_level.sort_order AS riskLevelSortOrder,
+          priority_level.color AS priorityLevelColor,
+          priority_level.icon_name AS priorityLevelIconName,
+          requirement_version.priority_level_id AS priorityLevelId,
+          priority_level.name_en AS priorityLevelNameEn,
+          priority_level.name_sv AS priorityLevelNameSv,
+          priority_level.sort_order AS priorityLevelSortOrder,
           requirement_status.color AS statusColor,
           requirement_status.icon_name AS statusIconName,
           requirement_version.requirement_status_id AS statusId,
@@ -3128,8 +3186,8 @@ export async function listSpecificationItems(
           ON requirement_type.id = requirement_version.requirement_type_id
         LEFT JOIN quality_characteristics quality_characteristic
           ON quality_characteristic.id = requirement_version.quality_characteristic_id
-        LEFT JOIN risk_levels risk_level
-          ON risk_level.id = requirement_version.risk_level_id
+        LEFT JOIN priority_levels priority_level
+          ON priority_level.id = requirement_version.priority_level_id
         LEFT JOIN specification_needs_references needs_reference
           ON needs_reference.id = specification_item.needs_reference_id
         LEFT JOIN specification_item_statuses specification_item_status
@@ -3167,17 +3225,12 @@ export async function listSpecificationItems(
           requirement_type.name_en AS requirementTypeNameEn,
           requirement_type.name_sv AS requirementTypeNameSv,
           local_requirement.is_testing_required AS requiresTesting,
-          risk_level.color AS riskLevelColor,
-          risk_level.icon_name AS riskLevelIconName,
-          local_requirement.risk_level_id AS riskLevelId,
-          risk_level.name_en AS riskLevelNameEn,
-          risk_level.name_sv AS riskLevelNameSv,
-          risk_level.sort_order AS riskLevelSortOrder,
-          (
-            SELECT STRING_AGG(CAST(plrus.requirement_package_id AS varchar(20)), ',')
-            FROM specification_local_requirement_requirement_packages plrus
-            WHERE plrus.specification_local_requirement_id = local_requirement.id
-          ) AS requirementPackageIds
+          priority_level.color AS priorityLevelColor,
+          priority_level.icon_name AS priorityLevelIconName,
+          local_requirement.priority_level_id AS priorityLevelId,
+          priority_level.name_en AS priorityLevelNameEn,
+          priority_level.name_sv AS priorityLevelNameSv,
+          priority_level.sort_order AS priorityLevelSortOrder
         FROM specification_local_requirements local_requirement
         LEFT JOIN specification_needs_references needs_reference
           ON needs_reference.id = local_requirement.needs_reference_id
@@ -3189,8 +3242,8 @@ export async function listSpecificationItems(
           ON requirement_category.id = local_requirement.requirement_category_id
         LEFT JOIN requirement_types requirement_type
           ON requirement_type.id = local_requirement.requirement_type_id
-        LEFT JOIN risk_levels risk_level
-          ON risk_level.id = local_requirement.risk_level_id
+        LEFT JOIN priority_levels priority_level
+          ON priority_level.id = local_requirement.priority_level_id
         WHERE local_requirement.specification_id = @0
         ORDER BY local_requirement.unique_id
       `,

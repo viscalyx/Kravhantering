@@ -819,12 +819,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           requirementTypeId: 9,
           requirementTypeNameEn: 'Business',
           requirementTypeNameSv: 'Verksamhet',
-          riskLevelId: 10,
-          riskLevelColor: '#dc2626',
-          riskLevelIconName: 'ShieldAlert',
-          riskLevelNameEn: 'High',
-          riskLevelNameSv: 'Hög',
-          riskLevelSortOrder: 3,
+          priorityLevelId: 10,
+          priorityLevelColor: '#dc2626',
+          priorityLevelIconName: 'ShieldAlert',
+          priorityLevelNameEn: 'High',
+          priorityLevelNameSv: 'Hög',
+          priorityLevelSortOrder: 3,
         },
       ])
       .mockResolvedValueOnce([
@@ -833,12 +833,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           name: 'ISO 27001',
           normReferenceId: 'ISO-27001',
           uri: 'https://example.test/iso-27001',
-        },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 13,
-          name: 'Inloggning',
         },
       ])
 
@@ -887,7 +881,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         nameSv: 'Verksamhet',
       },
       requiresTesting: true,
-      riskLevel: {
+      priorityLevel: {
         color: '#dc2626',
         iconName: 'ShieldAlert',
         id: 10,
@@ -895,7 +889,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         nameSv: 'Hög',
         sortOrder: 3,
       },
-      requirementPackages: [{ id: 13, name: 'Inloggning' }],
+      requirementPackages: [],
       uniqueId: 'LOK-001',
       updatedAt: '2026-04-21T10:00:00.000Z',
       verificationMethod: 'Manual test',
@@ -906,10 +900,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     const { db, query, transaction } = createSqlServerDb()
     query
       .mockResolvedValueOnce([{ id: 11 }])
-      .mockResolvedValueOnce([{ id: 13 }])
       .mockResolvedValueOnce([{ nextSequence: 2 }])
       .mockResolvedValueOnce([{ id: 41 }])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
@@ -933,15 +925,13 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           qualityCharacteristicId: null,
           requirementCategoryId: null,
           requirementTypeId: null,
-          riskLevelId: null,
+          priorityLevelId: null,
         },
       ])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         { id: 41, specificationId: 5, sequenceNumber: 1, uniqueId: 'LOK-001' },
       ])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
@@ -966,7 +956,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           qualityCharacteristicId: null,
           requirementCategoryId: null,
           requirementTypeId: null,
-          riskLevelId: null,
+          priorityLevelId: null,
         },
       ])
       .mockResolvedValueOnce([])
@@ -975,7 +965,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     const created = await createSpecificationLocalRequirement(db, 5, {
       description: 'Created local requirement',
       normReferenceIds: [11],
-      requirementPackageIds: [13],
     })
 
     const updated = await updateSpecificationLocalRequirement(db, 5, 41, {
@@ -1028,18 +1017,17 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     await expect(
       createSpecificationLocalRequirement(db, 5, {
         description: 'Created local requirement',
-        requirementPackageIds: [13],
+        normReferenceIds: [13],
       }),
     ).rejects.toMatchObject({
       code: 'validation',
-      message:
-        'requirementPackageIds references unknown requirement package id 13',
+      message: 'normReferenceIds references unknown norm reference id 13',
       status: 400,
     })
 
     expect(transaction).not.toHaveBeenCalled()
     expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
-      expect.stringContaining('FROM requirement_packages'),
+      expect.stringContaining('FROM norm_references'),
     ])
   })
 
@@ -1070,6 +1058,63 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     ])
   })
 
+  it('preserves specification-local testing fields when update omits them', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 41,
+          requiresTesting: 1,
+          sequenceNumber: 1,
+          specificationId: 5,
+          uniqueId: 'LOK-001',
+          verificationMethod: 'Checklist',
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 41,
+          specificationId: 5,
+          uniqueId: 'LOK-001',
+          description: 'Updated local requirement',
+          acceptanceCriteria: null,
+          requiresTesting: 1,
+          verificationMethod: 'Checklist',
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+          updatedAt: new Date('2026-04-21T10:00:00.000Z'),
+          needsReferenceId: null,
+          needsReference: null,
+          specificationItemStatusId: 1,
+          specificationItemStatusColor: '#22c55e',
+          specificationItemStatusDescriptionEn: 'Default',
+          specificationItemStatusDescriptionSv: 'Standard',
+          specificationItemStatusNameEn: 'Default',
+          specificationItemStatusNameSv: 'Standard',
+          qualityCharacteristicId: null,
+          requirementCategoryId: null,
+          requirementTypeId: null,
+          priorityLevelId: null,
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    const updated = await updateSpecificationLocalRequirement(db, 5, 41, {
+      description: 'Updated local requirement',
+    })
+
+    const updateCall = query.mock.calls.find(([sql]) =>
+      String(sql).includes('UPDATE specification_local_requirements'),
+    )
+    expect(updateCall?.[1]?.at(6)).toBe(1)
+    expect(updateCall?.[1]?.at(8)).toBe('Checklist')
+    expect(updated).toMatchObject({
+      requiresTesting: true,
+      verificationMethod: 'Checklist',
+    })
+  })
+
   it('deletes specification-local requirements on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([{ id: 41 }]).mockResolvedValueOnce([])
@@ -1094,7 +1139,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           requirementCategoryId: 3,
           requirementTypeId: 4,
           requiresTesting: 1,
-          riskLevelId: 2,
+          priorityLevelId: 2,
           specificationId: 5,
           specificationItemStatusId: 1,
           uniqueId: 'KRAV0001',
@@ -1102,7 +1147,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         },
       ])
       .mockResolvedValueOnce([{ normReferenceId: 11 }])
-      .mockResolvedValueOnce([{ requirementPackageId: 13 }])
       .mockResolvedValueOnce([{ prefix: 'SEC', sequenceNumber: 9 }])
       .mockResolvedValueOnce([
         {
@@ -1120,7 +1164,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           versionNumber: 1,
         },
       ])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
 
     const result = await graduateSpecificationLocalRequirementToLibrary(db, {
@@ -1152,17 +1195,17 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       },
     })
     expect(query).toHaveBeenNthCalledWith(
-      4,
+      3,
       expect.stringContaining('UPDATE requirement_areas'),
       [8],
     )
     expect(query).toHaveBeenNthCalledWith(
-      5,
+      4,
       expect.stringContaining('INSERT INTO requirements'),
       ['SEC0009', 8, 9, expect.any(Date)],
     )
     expect(query).toHaveBeenNthCalledWith(
-      6,
+      5,
       expect.stringContaining('INSERT INTO requirement_versions'),
       [
         71,
@@ -1181,14 +1224,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       ],
     )
     expect(query).toHaveBeenNthCalledWith(
-      7,
-      expect.stringContaining(
-        'INSERT INTO requirement_version_requirement_packages',
-      ),
-      [701, 13],
-    )
-    expect(query).toHaveBeenNthCalledWith(
-      8,
+      6,
       expect.stringContaining(
         'INSERT INTO requirement_version_norm_references',
       ),
@@ -1215,13 +1251,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           requirementCategoryId: null,
           requirementTypeId: null,
           requiresTesting: 0,
-          riskLevelId: null,
+          priorityLevelId: null,
           specificationId: 5,
           uniqueId: 'KRAV0001',
           verificationMethod: null,
         },
       ])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ prefix: 'SEC', sequenceNumber: 9 }])
       .mockResolvedValueOnce([
@@ -1330,12 +1365,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           qualityCharacteristicNameSv: 'Säkerhet',
           requirementId: 11,
           requiresTesting: 1,
-          riskLevelColor: '#dc2626',
-          riskLevelIconName: 'ShieldAlert',
-          riskLevelId: 4,
-          riskLevelNameEn: 'High',
-          riskLevelNameSv: 'Hög',
-          riskLevelSortOrder: 3,
+          priorityLevelColor: '#dc2626',
+          priorityLevelIconName: 'ShieldAlert',
+          priorityLevelId: 4,
+          priorityLevelNameEn: 'High',
+          priorityLevelNameSv: 'Hög',
+          priorityLevelSortOrder: 3,
           statusColor: '#22c55e',
           statusId: 3,
           statusNameEn: 'Published',
@@ -1369,13 +1404,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           requirementTypeNameEn: 'Business',
           requirementTypeNameSv: 'Verksamhet',
           requiresTesting: 0,
-          riskLevelColor: '#eab308',
-          riskLevelIconName: 'AlertTriangle',
-          riskLevelId: 2,
-          riskLevelNameEn: 'Medium',
-          riskLevelNameSv: 'Medel',
-          riskLevelSortOrder: 2,
-          requirementPackageIds: '9',
+          priorityLevelColor: '#eab308',
+          priorityLevelIconName: 'AlertTriangle',
+          priorityLevelId: 2,
+          priorityLevelNameEn: 'Medium',
+          priorityLevelNameSv: 'Medel',
+          priorityLevelSortOrder: 2,
         },
       ])
 
@@ -1404,7 +1438,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         specificationItemStatusIconName: 'Clock',
         uniqueId: 'KRAV0001',
         version: expect.objectContaining({
-          riskLevelIconName: 'AlertTriangle',
+          priorityLevelIconName: 'AlertTriangle',
         }),
       }),
       expect.objectContaining({
@@ -1414,7 +1448,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         specificationItemStatusIconName: 'Circle',
         uniqueId: 'REQ-001',
         version: expect.objectContaining({
-          riskLevelIconName: 'ShieldAlert',
+          priorityLevelIconName: 'ShieldAlert',
         }),
       }),
     ])
@@ -1434,8 +1468,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           needsReference: 'IAM-42',
           note: 'Library note',
           requiresTesting: 1,
-          riskLevelNameEn: 'High',
-          riskLevelNameSv: 'Hög',
+          priorityLevelNameEn: 'High',
+          priorityLevelNameSv: 'Hög',
           specificationItemStatusId: 2,
           specificationItemStatusNameEn: 'In progress',
           specificationItemStatusNameSv: 'Pågår',
@@ -1456,8 +1490,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           needsReference: null,
           note: 'Local note',
           requiresTesting: 0,
-          riskLevelNameEn: null,
-          riskLevelNameSv: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
           specificationItemStatusId: 1,
           specificationItemStatusNameEn: 'Not started',
           specificationItemStatusNameSv: 'Ej startad',

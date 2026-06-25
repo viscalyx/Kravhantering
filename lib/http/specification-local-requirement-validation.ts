@@ -23,12 +23,9 @@ export const specificationLocalRequirementSchema = z
       .default([]),
     qualityCharacteristicId: positiveIntegerSchema.nullable().optional(),
     requirementCategoryId: positiveIntegerSchema.nullable().optional(),
-    requirementPackageIds: uniquePositiveIntegerArrayFieldSchema
-      .optional()
-      .default([]),
     requirementTypeId: positiveIntegerSchema.nullable().optional(),
-    requiresTesting: z.boolean().optional().default(false),
-    riskLevelId: positiveIntegerSchema.nullable().optional(),
+    requiresTesting: z.boolean().optional(),
+    priorityLevelId: positiveIntegerSchema.nullable().optional(),
     verificationMethod: nullableBusinessTextSchema.optional(),
   })
   .strict()

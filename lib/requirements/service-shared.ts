@@ -27,7 +27,7 @@ export type ServiceMessageKey =
   | 'requirements.catalogTitles.qualityCharacteristics'
   | 'requirements.catalogTitles.requirementPackages'
   | 'requirements.catalogTitles.requirements'
-  | 'requirements.catalogTitles.riskLevels'
+  | 'requirements.catalogTitles.priorityLevels'
   | 'requirements.catalogTitles.statuses'
   | 'requirements.catalogTitles.transitions'
   | 'requirements.catalogTitles.types'

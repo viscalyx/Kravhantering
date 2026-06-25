@@ -75,7 +75,7 @@ change:
 - description
 - acceptance criteria
 - category, type, type category
-- risk level
+- priority
 - requirement packages
 - requires-testing
 

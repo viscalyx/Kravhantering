@@ -1054,15 +1054,11 @@ export function appendDogfoodSeed(SEED_DATA) {
     ])
   }
 
-  // ---- specification_local_requirements + their junctions -----------------------
+  // ---- specification_local_requirements + their norm-reference links ------------
   const locals = tableSection(SEED_DATA, 'specification_local_requirements')
   const localNorms = tableSection(
     SEED_DATA,
     'specification_local_requirement_norm_references',
-  )
-  const localPackages = tableSection(
-    SEED_DATA,
-    'specification_local_requirement_requirement_packages',
   )
   // Track per-specification local sequence
   const specLocalSeq = {}
@@ -1106,9 +1102,6 @@ export function appendDogfoodSeed(SEED_DATA) {
     ])
     for (const normId of k.norm) {
       localNorms.rows.push([localId, normId])
-    }
-    for (const packageId of k.pkg) {
-      localPackages.rows.push([localId, packageId])
     }
   }
 

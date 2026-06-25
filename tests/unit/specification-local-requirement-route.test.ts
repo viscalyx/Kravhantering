@@ -179,14 +179,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
     }
   })
 
-  it('maps validation errors when updating a specification-local requirement fails', async () => {
-    mocks.updateSpecificationLocalRequirement.mockRejectedValue(
-      new RequirementsServiceError(
-        'validation',
-        'requirementPackageIds references unknown requirement package id 13',
-      ),
-    )
-
+  it('rejects requirement package links when updating a specification-local requirement', async () => {
     const response = await PUT(
       new NextRequest(
         'http://localhost/api/requirements-specifications/spec/local-requirements/41',
@@ -203,20 +196,8 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
     )
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({
-      code: 'validation',
-      error:
-        'requirementPackageIds references unknown requirement package id 13',
-    })
-    expect(mocks.updateSpecificationLocalRequirement).toHaveBeenCalledWith(
-      mockDb,
-      5,
-      41,
-      expect.objectContaining({
-        description: 'Updated local requirement',
-        requirementPackageIds: [13],
-      }),
-    )
+    await expectInvalidRequest(response, '$')
+    expect(mocks.updateSpecificationLocalRequirement).not.toHaveBeenCalled()
   })
 
   it('creates a specification-local requirement using the authorized route DB', async () => {
@@ -266,10 +247,30 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
       expect.objectContaining({
         description: 'New local requirement',
         normReferenceIds: [],
-        requirementPackageIds: [],
         requiresTesting: true,
       }),
     )
+  })
+
+  it('rejects requirement package links when creating a specification-local requirement', async () => {
+    const response = await postLocalRequirement(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/spec/local-requirements',
+        {
+          body: JSON.stringify({
+            description: 'New local requirement',
+            requirementPackageIds: [13],
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      ),
+      { params: Promise.resolve({ id: 'spec' }) },
+    )
+
+    expect(response.status).toBe(400)
+    await expectInvalidRequest(response, '$')
+    expect(mocks.createSpecificationLocalRequirement).not.toHaveBeenCalled()
   })
 
   it('returns 400 when localRequirementId is not a positive integer', async () => {

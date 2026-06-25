@@ -570,11 +570,11 @@ function PdfVersionSummary({
             value={getName(version.qualityCharacteristic)}
           />
         )}
-        {getName(version.riskLevel) && (
+        {getName(version.priorityLevel) && (
           <PdfMetadataItem
-            iconName={version.riskLevel?.iconName}
-            label={labels.columns.riskLevel}
-            value={getName(version.riskLevel)}
+            iconName={version.priorityLevel?.iconName}
+            label={labels.columns.priorityLevel}
+            value={getName(version.priorityLevel)}
           />
         )}
         <PdfMetadataItem
@@ -929,8 +929,8 @@ function PdfTraceabilityTable({
               value={row.deviation}
             />
             <PdfTraceabilityField
-              label={section.labels.riskLevel}
-              value={row.riskLevel}
+              label={section.labels.priorityLevel}
+              value={row.priorityLevel}
             />
             <PdfTraceabilityField
               label={section.labels.verification}
@@ -1136,11 +1136,11 @@ function PdfDeviationSummary({
 }) {
   const locale = section.locale
   const labels = getReportLabels(locale)
-  const riskName = section.riskLevel
+  const priorityName = section.priorityLevel
     ? localizeReportValue(
         locale,
-        section.riskLevel.nameSv,
-        section.riskLevel.nameEn,
+        section.priorityLevel.nameSv,
+        section.priorityLevel.nameEn,
       )
     : null
   const createdBy = formatActorDisplayNameForLocale(section.createdBy, locale)
@@ -1164,7 +1164,7 @@ function PdfDeviationSummary({
       >
         {labels.deviations.title}
       </Text>
-      {riskName && (
+      {priorityName && (
         <View
           style={{
             alignItems: 'center',
@@ -1174,13 +1174,13 @@ function PdfDeviationSummary({
           }}
         >
           <Text style={{ fontSize: 9, color: '#6b7280' }}>
-            {labels.deviations.riskLevel}
+            {labels.deviations.priorityLevel}
           </Text>
           <PdfStatusIcon
-            color={section.riskLevel?.color ?? '#6b7280'}
-            name={section.riskLevel?.iconName}
+            color={section.priorityLevel?.color ?? '#6b7280'}
+            name={section.priorityLevel?.iconName}
           />
-          <Text style={{ fontSize: 9, color: '#6b7280' }}>{riskName}</Text>
+          <Text style={{ fontSize: 9, color: '#6b7280' }}>{priorityName}</Text>
         </View>
       )}
       <Text

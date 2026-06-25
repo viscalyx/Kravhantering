@@ -6,10 +6,10 @@ export interface FilterValues {
   descriptionSearch?: string
   needsReferenceIds?: number[]
   normReferenceIds?: number[]
+  priorityLevelIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementPackageIds?: number[]
   requiresTesting?: string[]
-  riskLevelIds?: number[]
   specificationItemStatusIds?: number[]
   statuses?: number[]
   typeIds?: number[]
@@ -23,14 +23,19 @@ export interface FilterOption {
 }
 
 export interface RequirementPackageOption {
-  description?: string | null
   id: number
   name: string
+  purposeAndScope?: string | null
 }
 
 export interface AreaOption {
   id: number
   name: string
+  permissions?: {
+    canAuthor?: boolean
+    canManageAssignments?: boolean
+  }
+  prefix?: string
 }
 
 export interface QualityCharacteristicOption {
@@ -49,7 +54,8 @@ export interface StatusOption {
   sortOrder?: number
 }
 
-export interface RiskLevelOption {
+export interface PriorityLevelOption {
+  code?: string
   color: string
   iconName?: string | null
   id: number
@@ -109,12 +115,12 @@ export interface RequirementRow {
     description: string | null
     requiresTesting: boolean
     revisionToken?: string
-    riskLevelId: number | null
-    riskLevelNameEn: string | null
-    riskLevelNameSv: string | null
-    riskLevelColor: string | null
-    riskLevelIconName?: string | null
-    riskLevelSortOrder: number | null
+    priorityLevelId: number | null
+    priorityLevelNameEn: string | null
+    priorityLevelNameSv: string | null
+    priorityLevelColor: string | null
+    priorityLevelIconName?: string | null
+    priorityLevelSortOrder: number | null
     status: number
     statusColor: string | null
     statusIconName?: string | null
@@ -148,7 +154,7 @@ export function hasActiveFilters(values: FilterValues): boolean {
     (values.typeIds && values.typeIds.length > 0) ||
     (values.qualityCharacteristicIds &&
       values.qualityCharacteristicIds.length > 0) ||
-    (values.riskLevelIds && values.riskLevelIds.length > 0) ||
+    (values.priorityLevelIds && values.priorityLevelIds.length > 0) ||
     (values.specificationItemStatusIds &&
       values.specificationItemStatusIds.length > 0) ||
     (values.needsReferenceIds && values.needsReferenceIds.length > 0) ||
@@ -167,7 +173,7 @@ export const REQUIREMENT_COLUMN_ORDER = [
   'category',
   'type',
   'qualityCharacteristic',
-  'riskLevel',
+  'priorityLevel',
   'status',
   'requiresTesting',
   'version',
@@ -187,7 +193,7 @@ export const REQUIREMENT_SORT_FIELDS = [
   'category',
   'type',
   'qualityCharacteristic',
-  'riskLevel',
+  'priorityLevel',
   'status',
   'version',
 ] as const
@@ -321,8 +327,8 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     canSort: true,
     defaultVisible: false,
     defaultWidthPx: 136,
-    id: 'riskLevel',
-    labelKey: 'riskLevel',
+    id: 'priorityLevel',
+    labelKey: 'priorityLevel',
     labelNamespace: 'requirement',
     maxWidthPx: 200,
     minWidthPx: 100,
@@ -678,7 +684,7 @@ export function clearRequirementFiltersForHiddenColumns(
   clearIfHidden('category', 'categoryIds')
   clearIfHidden('type', 'typeIds')
   clearIfHidden('qualityCharacteristic', 'qualityCharacteristicIds')
-  clearIfHidden('riskLevel', 'riskLevelIds')
+  clearIfHidden('priorityLevel', 'priorityLevelIds')
   clearIfHidden('specificationItemStatus', 'specificationItemStatusIds')
   clearIfHidden('status', 'statuses')
   clearIfHidden('requiresTesting', 'requiresTesting')
@@ -830,9 +836,9 @@ export function buildRequirementListParams({
       params.append('qualityCharacteristicIds', String(id))
     }
   }
-  if (filters.riskLevelIds) {
-    for (const id of filters.riskLevelIds) {
-      params.append('riskLevelIds', String(id))
+  if (filters.priorityLevelIds) {
+    for (const id of filters.priorityLevelIds) {
+      params.append('priorityLevelIds', String(id))
     }
   }
   if (filters.requiresTesting) {
@@ -1005,10 +1011,10 @@ export function compareRequirementRows(
         sort.direction,
       )
       break
-    case 'riskLevel':
+    case 'priorityLevel':
       result = compareNumber(
-        left.version?.riskLevelSortOrder,
-        right.version?.riskLevelSortOrder,
+        left.version?.priorityLevelSortOrder,
+        right.version?.priorityLevelSortOrder,
         sort.direction,
       )
       break

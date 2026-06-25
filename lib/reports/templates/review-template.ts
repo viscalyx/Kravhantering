@@ -97,12 +97,12 @@ function toVersionSummary(
           nameEn: version.qualityCharacteristic.nameEn,
         }
       : null,
-    riskLevel: version.riskLevel
+    priorityLevel: version.priorityLevel
       ? {
-          nameSv: version.riskLevel.nameSv,
-          nameEn: version.riskLevel.nameEn,
-          color: version.riskLevel.color,
-          iconName: version.riskLevel.iconName,
+          nameSv: version.priorityLevel.nameSv,
+          nameEn: version.priorityLevel.nameEn,
+          color: version.priorityLevel.color,
+          iconName: version.priorityLevel.iconName,
         }
       : null,
     status: {
@@ -169,11 +169,11 @@ function computeMetadataChanges(
     })
   }
 
-  const oldRl = getName(baseVersion.riskLevel, locale)
-  const newRl = getName(reviewVersion.riskLevel, locale)
+  const oldRl = getName(baseVersion.priorityLevel, locale)
+  const newRl = getName(reviewVersion.priorityLevel, locale)
   if (oldRl !== newRl) {
     changes.push({
-      field: labels.columns.riskLevel,
+      field: labels.columns.priorityLevel,
       oldValue: oldRl,
       newValue: newRl,
     })

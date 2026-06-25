@@ -30,7 +30,7 @@ describe('fetchDeviationForReport', () => {
                 id: 9,
                 qualityCharacteristic: null,
                 requiresTesting: false,
-                riskLevel: null,
+                priorityLevel: null,
                 status: 3,
                 statusColor: null,
                 statusIconName: null,

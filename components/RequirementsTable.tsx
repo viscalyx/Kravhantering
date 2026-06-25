@@ -41,6 +41,7 @@ import {
 import { useColumnState } from '@/components/_requirements-table/useColumnState'
 import { useFloatingRailPosition } from '@/components/_requirements-table/useFloatingRailPosition'
 import { useResizeHandles } from '@/components/_requirements-table/useResizeHandles'
+import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import StatusBadge from '@/components/StatusBadge'
 import StatusIcon from '@/components/StatusIcon'
 import { Link, useRouter } from '@/i18n/routing'
@@ -59,6 +60,7 @@ import {
   getRequirementColumnWidth,
   normalizeRequirementListColumnDefaults,
   orderRequirementVisibleColumns,
+  type PriorityLevelOption,
   type QualityCharacteristicOption,
   type RequirementColumnId,
   type RequirementColumnWidths,
@@ -67,7 +69,6 @@ import {
   type RequirementRow,
   type RequirementSortField,
   type RequirementSortState,
-  type RiskLevelOption,
   type SpecificationItemStatusOption,
   type StatusOption,
 } from '@/lib/requirements/list-view'
@@ -77,6 +78,7 @@ export interface RequirementsTableProps {
   areas?: AreaOption[]
   categories?: FilterOption[]
   columnDefaults?: RequirementListColumnDefault[]
+  columnPickerPlacement?: 'betweenActions' | 'end'
   columnWidths?: RequirementColumnWidths
   defaultVisibleColumns?: RequirementColumnId[]
   excludeColumns?: RequirementColumnId[]
@@ -109,10 +111,10 @@ export interface RequirementsTableProps {
   onSpecificationItemStatusChange?: (itemRef: string, statusId: number) => void
   onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
   pinnedIds?: Set<number>
+  priorityLevels?: PriorityLevelOption[]
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
   requirementPackages?: RequirementPackageOption[]
-  riskLevels?: RiskLevelOption[]
   rows: RequirementRow[]
   selectable?: boolean
   selectedIds?: Set<number>
@@ -1319,6 +1321,7 @@ export default function RequirementsTable({
   areas = [],
   categories = [],
   columnDefaults,
+  columnPickerPlacement = 'betweenActions',
   columnWidths = {},
   defaultVisibleColumns,
   excludeColumns,
@@ -1346,7 +1349,7 @@ export default function RequirementsTable({
   pinnedIds,
   specificationItemStatuses = [],
   renderExpanded,
-  riskLevels = [],
+  priorityLevels = [],
   rows,
   selectable = false,
   selectedIds,
@@ -1604,32 +1607,32 @@ export default function RequirementsTable({
     const s = statusOptions.find(s => s.id === id)
     return s ? getStatusName(s) : String(id)
   }
-  const riskLevelLabel = (id: number) => {
-    const rl = riskLevels.find(rl => rl.id === id)
-    return rl ? getName(rl) : String(id)
+  const formatPriorityLevelOptionLabel = (rl: PriorityLevelOption) =>
+    [rl.code, locale === 'sv' ? rl.nameSv : rl.nameEn]
+      .filter(Boolean)
+      .join(' - ')
+  const formatPriorityLevelLabel = (id: number) => {
+    const rl = priorityLevels.find(rl => rl.id === id)
+    return rl ? formatPriorityLevelOptionLabel(rl) : String(id)
   }
   const requirementPackageName = (
     requirementPackage: RequirementPackageOption,
   ) => requirementPackage.name.trim() || String(requirementPackage.id)
-  const requirementPackageDescription = (
+  const requirementPackagePurposeAndScope = (
     requirementPackage: RequirementPackageOption,
-  ) => requirementPackage.description?.trim() || undefined
-  const rowRequirementPackageLabels = (row: RequirementRow) => {
-    const rowPackages =
-      row.requirementPackages && row.requirementPackages.length > 0
-        ? row.requirementPackages
-        : (row.requirementPackageIds ?? []).map(
-            id =>
-              requirementPackages.find(
-                requirementPackage => requirementPackage.id === id,
-              ) ?? {
-                id,
-                name: String(id),
-              },
-          )
-
-    return rowPackages.map(requirementPackageName)
-  }
+  ) => requirementPackage.purposeAndScope?.trim() || undefined
+  const rowRequirementPackages = (row: RequirementRow) =>
+    row.requirementPackages && row.requirementPackages.length > 0
+      ? row.requirementPackages
+      : (row.requirementPackageIds ?? []).map(
+          id =>
+            requirementPackages.find(
+              requirementPackage => requirementPackage.id === id,
+            ) ?? {
+              id,
+              name: String(id),
+            },
+        )
   const specificationItemStatusLabel = (id: number) => {
     const s = specificationItemStatuses.find(s => s.id === id)
     return s ? getName(s) : String(id)
@@ -1939,20 +1942,20 @@ export default function RequirementsTable({
             value={fv.qualityCharacteristicIds ?? []}
           />
         )
-      case 'riskLevel':
+      case 'priorityLevel':
         return (
           <MultiSelectFilterPopover
-            activeCount={(fv.riskLevelIds ?? []).length}
+            activeCount={(fv.priorityLevelIds ?? []).length}
             developerModeValue={developerModeValue}
-            getLabel={option => riskLevelLabel(option.id)}
-            label={t('riskLevel')}
+            getLabel={option => formatPriorityLevelLabel(option.id)}
+            label={t('priorityLevel')}
             onChange={ids =>
               updateFilter({
-                riskLevelIds: ids.length > 0 ? ids : undefined,
+                priorityLevelIds: ids.length > 0 ? ids : undefined,
               })
             }
-            options={riskLevels}
-            value={fv.riskLevelIds ?? []}
+            options={priorityLevels}
+            value={fv.priorityLevelIds ?? []}
           />
         )
       case 'status':
@@ -2102,19 +2105,19 @@ export default function RequirementsTable({
             values={fv.qualityCharacteristicIds ?? []}
           />
         )
-      case 'riskLevel':
+      case 'priorityLevel':
         return (
           <FilterChips
             developerModeContext={developerModeContext}
-            getLabel={riskLevelLabel}
+            getLabel={formatPriorityLevelLabel}
             onRemove={id =>
               updateFilter({
-                riskLevelIds: (fv.riskLevelIds ?? []).filter(
+                priorityLevelIds: (fv.priorityLevelIds ?? []).filter(
                   value => value !== id,
                 ),
               })
             }
-            values={fv.riskLevelIds ?? []}
+            values={fv.priorityLevelIds ?? []}
           />
         )
       case 'status':
@@ -2290,20 +2293,31 @@ export default function RequirementsTable({
               : row.version?.qualityCharacteristicNameEn) ?? '—'}
           </td>
         )
-      case 'riskLevel': {
-        const riskLevelLabel =
+      case 'priorityLevel': {
+        const fallbackPriorityLevelLabel =
           (locale === 'sv'
-            ? row.version?.riskLevelNameSv
-            : row.version?.riskLevelNameEn) ?? null
+            ? row.version?.priorityLevelNameSv
+            : row.version?.priorityLevelNameEn) ?? null
+        const priorityLevelOption =
+          row.version?.priorityLevelId == null
+            ? null
+            : priorityLevels.find(
+                priorityLevel =>
+                  priorityLevel.id === row.version?.priorityLevelId,
+              )
+        const priorityLevelLabel =
+          priorityLevelOption != null
+            ? formatPriorityLevelOptionLabel(priorityLevelOption)
+            : fallbackPriorityLevelLabel
         return (
           <td
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
           >
-            {riskLevelLabel ? (
+            {priorityLevelLabel ? (
               <StatusBadge
-                color={row.version?.riskLevelColor ?? null}
-                iconName={row.version?.riskLevelIconName}
-                label={riskLevelLabel}
+                color={row.version?.priorityLevelColor ?? null}
+                iconName={row.version?.priorityLevelIconName}
+                label={priorityLevelLabel}
                 size="sm"
               />
             ) : (
@@ -2491,15 +2505,32 @@ export default function RequirementsTable({
           </td>
         )
       case 'requirementPackage': {
-        const labels = rowRequirementPackageLabels(row)
-        const label = labels.join(', ')
+        const rowPackages = rowRequirementPackages(row)
 
         return (
           <td
-            className={`py-2 px-2 truncate text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
-            title={label || undefined}
+            className={`py-2 px-2 text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
           >
-            {label || '—'}
+            {rowPackages.length > 0 ? (
+              <span className="flex min-w-0 flex-wrap gap-x-1 gap-y-0.5">
+                {rowPackages.map((requirementPackage, index) => (
+                  <RequirementPackagePurposeTooltip
+                    key={requirementPackage.id}
+                    maxWidth={280}
+                    purposeAndScope={requirementPackagePurposeAndScope(
+                      requirementPackage,
+                    )}
+                  >
+                    <span className="truncate">
+                      {requirementPackageName(requirementPackage)}
+                      {index < rowPackages.length - 1 ? ',' : ''}
+                    </span>
+                  </RequirementPackagePurposeTooltip>
+                ))}
+              </span>
+            ) : (
+              '—'
+            )}
           </td>
         )
       }
@@ -2597,10 +2628,11 @@ export default function RequirementsTable({
       {actionsBeforeColumns.map(action => (
         <FloatingActionPill action={action} key={action.id} />
       ))}
-      {columnsPopover}
+      {columnPickerPlacement === 'betweenActions' ? columnsPopover : null}
       {actionsAfterColumns.map(action => (
         <FloatingActionPill action={action} key={action.id} />
       ))}
+      {columnPickerPlacement === 'end' ? columnsPopover : null}
     </>
   )
   const scrollTopRailGroup =
@@ -3021,36 +3053,43 @@ export default function RequirementsTable({
             <span className="shrink-0 text-xs font-medium text-secondary-600 dark:text-secondary-400">
               {t('requirementPackage')}:
             </span>
-            <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto">
+            <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto overflow-y-hidden py-0.5">
               {requirementPackages.map(s => {
                 const active = (fv.requirementPackageIds ?? []).includes(s.id)
-                const description = requirementPackageDescription(s)
+                const purposeAndScope = requirementPackagePurposeAndScope(s)
                 return (
-                  <button
-                    aria-label={requirementPackageName(s)}
-                    aria-pressed={active}
-                    className={`min-h-11 min-w-11 shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-                      active
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400 hover:bg-secondary-200 dark:hover:bg-secondary-700'
-                    }`}
-                    data-requirement-package={s.id}
+                  <RequirementPackagePurposeTooltip
                     key={s.id}
-                    onClick={() => {
-                      const current = fv.requirementPackageIds ?? []
-                      const next = active
-                        ? current.filter(id => id !== s.id)
-                        : [...current, s.id]
-                      updateFilter({
-                        requirementPackageIds:
-                          next.length > 0 ? next : undefined,
-                      })
-                    }}
-                    title={description}
-                    type="button"
+                    maxWidth={280}
+                    purposeAndScope={purposeAndScope}
+                    wrapperClassName="inline-flex shrink-0"
                   >
-                    {requirementPackageName(s)}
-                  </button>
+                    <button
+                      aria-label={requirementPackageName(s)}
+                      aria-pressed={active}
+                      className={`inline-flex min-h-11 min-w-11 max-w-48 shrink-0 items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                        active
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-secondary-100 text-secondary-600 hover:bg-secondary-200 dark:bg-secondary-800 dark:text-secondary-400 dark:hover:bg-secondary-700'
+                      }`}
+                      data-requirement-package={s.id}
+                      onClick={() => {
+                        const current = fv.requirementPackageIds ?? []
+                        const next = active
+                          ? current.filter(id => id !== s.id)
+                          : [...current, s.id]
+                        updateFilter({
+                          requirementPackageIds:
+                            next.length > 0 ? next : undefined,
+                        })
+                      }}
+                      type="button"
+                    >
+                      <span className="truncate">
+                        {requirementPackageName(s)}
+                      </span>
+                    </button>
+                  </RequirementPackagePurposeTooltip>
                 )
               })}
             </div>

@@ -54,6 +54,7 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
 vi.mock('@/components/RequirementsTable', () => ({
   default: (props: {
     defaultVisibleColumns?: string[]
+    columnPickerPlacement?: string
     floatingActionRailPlacement?: string
     floatingActions?: {
       ariaLabel: string
@@ -69,6 +70,7 @@ vi.mock('@/components/RequirementsTable', () => ({
         onClick?: () => void
       }[]
       onClick?: () => void
+      position?: string
     }[]
     filterValues?: { requirementPackageIds?: number[] }
     hasMore?: boolean
@@ -248,11 +250,11 @@ const initialSpecificationItem = {
     qualityCharacteristicNameEn: null,
     qualityCharacteristicNameSv: null,
     requiresTesting: true,
-    riskLevelColor: null,
-    riskLevelId: null,
-    riskLevelNameEn: null,
-    riskLevelNameSv: null,
-    riskLevelSortOrder: null,
+    priorityLevelColor: null,
+    priorityLevelId: null,
+    priorityLevelNameEn: null,
+    priorityLevelNameSv: null,
+    priorityLevelSortOrder: null,
     status: 3,
     statusColor: '#22c55e',
     statusNameEn: 'Published',
@@ -275,11 +277,11 @@ const initialAvailableRequirement = {
     qualityCharacteristicNameEn: null,
     qualityCharacteristicNameSv: null,
     requiresTesting: true,
-    riskLevelColor: null,
-    riskLevelId: null,
-    riskLevelNameEn: null,
-    riskLevelNameSv: null,
-    riskLevelSortOrder: null,
+    priorityLevelColor: null,
+    priorityLevelId: null,
+    priorityLevelNameEn: null,
+    priorityLevelNameSv: null,
+    priorityLevelSortOrder: null,
     status: 3,
     statusColor: '#22c55e',
     statusNameEn: 'Published',
@@ -565,8 +567,8 @@ describe('RequirementsSpecificationDetailClient', () => {
           return Promise.resolve(okJson({ types: [] }))
         }
 
-        if (url === '/api/risk-levels') {
-          return Promise.resolve(okJson({ riskLevels: [] }))
+        if (url === '/api/priority-levels') {
+          return Promise.resolve(okJson({ priorityLevels: [] }))
         }
 
         if (url === '/api/requirement-packages') {
@@ -719,6 +721,28 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(exportAction?.menuItems?.map(item => item.id)).toEqual([
       'export-full',
     ])
+  })
+
+  it('orders kravunderlag table actions with import before export and columns last', async () => {
+    renderRequirementsSpecificationDetailClient()
+    await waitForInitialAvailableRequirementsRefresh()
+
+    const itemsTable = latestItemsTableProps()
+    const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
+      id: string
+      position?: string
+    }>
+
+    expect(itemsTable.columnPickerPlacement).toBe('end')
+    expect(floatingActions.map(action => action.id)).toEqual([
+      'create-local',
+      'print',
+      'import-local',
+      'export',
+    ])
+    expect(
+      floatingActions.map(action => action.position ?? 'afterColumns'),
+    ).toEqual(['beforeColumns', 'afterColumns', 'afterColumns', 'afterColumns'])
   })
 
   it('encodes profile print report href slugs as one route segment', async () => {
@@ -1718,7 +1742,20 @@ describe('RequirementsSpecificationDetailClient', () => {
         }),
       ).toBeInTheDocument()
     })
-    expect(screen.queryByLabelText('requirement.area')).not.toBeInTheDocument()
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).queryByLabelText('requirement.area')).toBeNull()
+    expect(
+      within(dialog).queryByText('requirement.requirementPackage'),
+    ).toBeNull()
+
+    const normReferenceFieldset = within(dialog)
+      .getByText('requirement.normReferences')
+      .closest('fieldset')
+    const sidebarGrid = normReferenceFieldset?.parentElement
+    expect(sidebarGrid).toHaveClass('lg:w-full')
+    expect(sidebarGrid?.parentElement).toHaveClass(
+      'lg:grid-cols-[minmax(0,1fr)_minmax(20rem,22rem)]',
+    )
   })
 
   it('opens the needs references tab, persists the URL parameter, and shows usage details', async () => {

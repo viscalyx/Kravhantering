@@ -346,9 +346,9 @@ describe('handleRequirementsMcpRequest', () => {
       const queryTool = getTool('requirements_query_catalog')
 
       expect(queryTool).toBeDefined()
-      expect(queryTool?.description).toContain('risk_levels')
+      expect(queryTool?.description).toContain('priority_levels')
       const queryInputSchemaText = JSON.stringify(queryTool?.inputSchema)
-      expect(queryInputSchemaText).toContain('risk_levels')
+      expect(queryInputSchemaText).toContain('priority_levels')
       expect(queryInputSchemaText).toContain('normReferenceIds')
       expect(queryInputSchemaText).toContain('requirementPackageIds')
       expect(queryInputSchemaText).toContain('sortBy')
@@ -667,8 +667,8 @@ describe('handleRequirementsMcpRequest', () => {
       arguments: {
         catalog: 'requirements',
         normReferenceIds: [4],
-        riskLevelIds: [2],
-        sortBy: 'riskLevel',
+        priorityLevelIds: [2],
+        sortBy: 'priorityLevel',
         sortDirection: 'desc',
         requirementPackageIds: [3],
       },
@@ -680,8 +680,8 @@ describe('handleRequirementsMcpRequest', () => {
       expect.anything(),
       expect.objectContaining({
         normReferenceIds: [4],
-        riskLevelIds: [2],
-        sortBy: 'riskLevel',
+        priorityLevelIds: [2],
+        sortBy: 'priorityLevel',
         sortDirection: 'desc',
         requirementPackageIds: [3],
       }),

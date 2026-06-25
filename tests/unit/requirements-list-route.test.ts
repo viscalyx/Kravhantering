@@ -113,7 +113,7 @@ describe('requirements route', () => {
           'Kategori',
           'Typ',
           'Kvalitetsegenskap',
-          'Risknivå',
+          'Prioritet',
           'Kravversionsstatus',
           'Verifierbar',
           'Version',

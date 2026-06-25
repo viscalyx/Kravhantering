@@ -85,7 +85,7 @@ function makeVersion(
     qualityCharacteristic: null,
     requiresTesting: true,
     revisionToken: '11111111-1111-4111-8111-111111111111',
-    riskLevel: null,
+    priorityLevel: null,
     status: 1,
     statusColor: '#3b82f6',
     statusNameEn: 'Draft',
@@ -156,10 +156,10 @@ describe('EditRequirementClient', () => {
             versionRequirementPackages: [
               {
                 requirementPackage: {
-                  description: null,
                   id: 7,
                   name: 'Normal drift',
                   ownerId: null,
+                  purposeAndScope: null,
                 },
               },
             ],

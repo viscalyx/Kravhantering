@@ -97,7 +97,7 @@
     "types": "Typer",
     "taxonomy": "Taxonomi",
     "qualityCharacteristics": "Kvalitetsegenskaper",
-    "riskLevels": "Risknivåer",
+    "priorityLevels": "Prioritetsskala",
     "governanceObjectTypes": "Styrningsobjektstyper",
     "implementationTypes": "Genomförandeformer",
     "lifecycleStatuses": "Kravunderlagets livscykelstatusar",
@@ -428,8 +428,13 @@
     "noNeedsRef": "Ingen behovsreferens",
     "type": "Typ",
     "qualityCharacteristic": "Kvalitetsegenskap",
-    "riskLevel": "Risknivå",
-    "riskLevelHelp": "<strong>Välj risknivå för detta krav.</strong>\nRisknivån anger den potentiella påverkan om kravet inte uppfylls.",
+    "priorityLevel": "Prioritet",
+    "priorityLevelHelp": "<strong>Välj prioritet för detta krav.</strong>\nPrioritet anger hur viktigt, angeläget eller kritiskt kravet är i förhållande till verksamhetens mål, nyttor, risker och intressenters behov.",
+    "priorityLevelScaleHeading": "Prioritetsskala",
+    "priorityLevelScaleAction": "Visa prioritetsskala",
+    "priorityLevelScaleEmpty": "Inga prioriteter är tillgängliga.",
+    "priorityLevelDescriptionLabel": "Beskrivning",
+    "priorityLevelAssessmentCriteriaLabel": "Bedömningsgrunder",
     "specificationItemStatus": "Användningsstatus",
     "requiresTesting": "Verifierbar",
     "requiresTestingOff": "Inte verifierbar",
@@ -447,6 +452,7 @@
     "reference": "Kravreferens",
     "requirementPackage": "Kravpaket",
     "newRequirement": "Nytt krav",
+    "importRequirements": "Importera krav",
     "aiGenerate": "AI-generera",
     "aiGenerateDisabledByAdmin": "AI-kravgenerering är avstängd i Administrationscenter.",
     "aiGenerateDisabledByEnvironment": "AI-kravgenerering är avstängd av driftkonfigurationen.",
@@ -711,6 +717,7 @@
     "backToSpecifications": "Tillbaka till kravunderlag",
     "downloadFilename": "kravunderlag.csv",
     "newLocalRequirement": "Nytt unikt krav",
+    "importLocalRequirements": "Importera unika krav",
     "editLocalRequirement": "Redigera unikt krav",
     "localRequirementNotFound": "Det unika kravet hittades inte i detta kravunderlag.",
     "localRequirementActionDisabledTooltip": "Det unika kravet kan bara redigeras eller tas bort när användningsstatus är Inkluderad och ingen avvikelse väntar.",
@@ -769,7 +776,7 @@
       "category": "Kategori",
       "type": "Typ",
       "qualityCharacteristic": "Kvalitetsegenskap",
-      "riskLevel": "Risknivå",
+      "priorityLevel": "Prioritet",
       "specificationItemStatus": "Användningsstatus"
     },
     "reportProfiles": {
@@ -843,7 +850,7 @@
     "createdByPlaceholder": "Begärande användare",
     "reviewFailed": "Kunde inte begära granskning.",
     "revertFailed": "Kunde inte återställa till utkast.",
-    "riskLevel": "Risknivå",
+    "priorityLevel": "Prioritet",
     "bulkDeviationPartialFail": "{count, plural, one {1 avstegsförfrågan misslyckades} other {# avstegsförfrågningar misslyckades}}"
   },
   "improvementSuggestion": {
@@ -976,8 +983,8 @@
         "category": "Kategori",
         "type": "Typ",
         "qualityCharacteristic": "Kvalitetsegenskap",
-        "riskLevel": "Risknivå",
-        "riskLevelValue": "Risknivå:",
+        "priorityLevel": "Prioritet",
+        "priorityLevelValue": "Prioritet:",
         "requiresTesting": "Kräver testning",
         "createdBy": "Skapad av",
         "references": "Referenser",
@@ -1020,7 +1027,7 @@
       },
       "deviations": {
         "title": "Avvikelse",
-        "riskLevel": "Risknivå:",
+        "priorityLevel": "Prioritet:",
         "motivation": "Motivering:",
         "submittedBy": "Inlämnad av",
         "pending": "Väntande",
@@ -1053,8 +1060,8 @@
       "category": "Kategori",
       "type": "Typ",
       "qualityCharacteristic": "Kvalitetsegenskap",
-      "riskLevel": "Risknivå",
-      "riskLevelValue": "Risknivå:",
+      "priorityLevel": "Prioritet",
+      "priorityLevelValue": "Prioritet:",
       "requiresTesting": "Kräver testning",
       "createdBy": "Skapad av",
       "references": "Referenser",
@@ -1082,12 +1089,8 @@
     "nameSvHelp": "Ange kravpaketets svenska namn.",
     "nameEnLabel": "Namn (engelska)",
     "nameEnHelp": "Ange kravpaketets engelska namn.",
-    "description": "Beskrivning",
-    "descriptionHelp": "Beskriv vid behov vilken gruppering kravpaketet avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
-    "descriptionSvLabel": "Beskrivning (svenska)",
-    "descriptionSvHelp": "Beskriv vid behov kravpaketet på svenska så att användare förstår vilken gruppering det avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
-    "descriptionEnLabel": "Beskrivning (engelska)",
-    "descriptionEnHelp": "Beskriv vid behov kravpaketet på engelska så att användare förstår vilken gruppering det avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
+    "purposeAndScope": "Syfte och avgränsning",
+    "purposeAndScopeHelp": "Ange vilket användningsområde, scenario eller leveransbehov kravpaketet stödjer, vad det håller samman och vilka slags krav som bör ingå. Ange också vad som inte ska ingå om gränsen kan missförstås. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "lead": "Kravpaketsansvarig",
     "leadDisplayName": "Kravpaketsansvarigs namn",
     "leadDisplayNameHelp": "Ange visningsnamnet för den person som ansvarar för kravpaketet.",
@@ -1137,7 +1140,7 @@
     "status": "Status",
     "emptyState": "Inga kravpaket ännu. Skapa ditt första kravpaket.",
     "filterByName": "Filtrera på namn eller beskrivning",
-    "filterByNamePlaceholder": "Sök namn eller beskrivning på kravpaket"
+    "filterByNamePlaceholder": "Sök namn eller syfte och avgränsning på kravpaket"
   },
   "requirementCategoryAdmin": {
     "description": "Anger vilket perspektiv ett krav klassificeras med. Listan är skrivskyddad.",
@@ -1639,7 +1642,7 @@
     "governanceObjectTypesDescription": "Hantera styrningsobjektstyper för kravunderlag.",
     "implementationTypesDescription": "Hantera genomförandeformer för kravunderlag.",
     "lifecycleStatusesDescription": "Hantera kravunderlagets livscykelstatusar.",
-    "riskLevelsDescription": "Hantera risknivåer som kan tilldelas krav.",
+    "priorityLevelsDescription": "Hantera prioritetsskalan som kan tilldelas krav.",
     "specificationItemStatusesDescription": "Hantera användningsstatusar för kravtillämpningar."
   },
   "requirements": {
@@ -1649,7 +1652,7 @@
       "categories": "Kategorier",
       "types": "Typer",
       "qualityCharacteristics": "Kvalitetsegenskaper",
-      "riskLevels": "Risknivåer",
+      "priorityLevels": "Prioritetsskala",
       "usageStatuses": "Användningsstatusar",
       "statuses": "Kravversionsstatusar",
       "requirementPackages": "Kravpaket",
@@ -1662,7 +1665,7 @@
       "category": "Kategori",
       "type": "Typ",
       "qualityCharacteristic": "Kvalitetsegenskap",
-      "riskLevel": "Risknivå",
+      "priorityLevel": "Prioritet",
       "status": "Kravversionsstatus",
       "requiresTesting": "Verifierbar",
       "version": "Version",
@@ -1676,7 +1679,7 @@
       "category": "Kategori",
       "type": "Typ",
       "qualityCharacteristic": "Kvalitetsegenskap",
-      "riskLevel": "Risknivå",
+      "priorityLevel": "Prioritet",
       "version": "Version",
       "references": "Referenser",
       "requirementPackage": "Kravpaket",
@@ -1759,9 +1762,9 @@
           "heading": "Kvalitetsegenskap",
           "body": "Följer standarden ISO/IEC 25010 och låter dig klassificera krav med egenskaper som Säkerhet, Prestandaeffektivitet eller Användbarhet. Icke-funktionella krav har tillgång till hela uppsättningen egenskaper, medan funktionella krav erbjuder en mindre delmängd. Det hjälper till att prioritera och gruppera relaterade krav under granskning och implementeringsplanering."
         },
-        "riskLevel": {
-          "heading": "Risknivå",
-          "body": "Markerar kravet som Låg, Medel eller Hög risk. Högre risknivåer signalerar att kravet behöver mer noggrann granskning, mer rigorös testning och tätare uppföljning under implementeringen. Risknivån spelar även en roll vid begäran om avsteg inom ett kravunderlag — ett avsteg för ett krav med hög risk medför större potentiell påverkan och kräver därför en striktare bedömning vid avstegsgranskningen."
+        "priorityLevel": {
+          "heading": "Prioritet",
+          "body": "Anger hur viktigt, angeläget eller kritiskt kravet är i förhållande till verksamhetens mål, nyttor, risker och intressenters behov. Högre prioritet signalerar att kravet bör granskas och följas upp noggrant."
         },
         "verifiable": {
           "heading": "Verifierbar",
@@ -1988,7 +1991,7 @@
       },
       "taxonomy": {
         "heading": "Taxonomi",
-        "body": "Snabblänkar till klassningar som används för filtrering, rapportering och AI-stöd: kravområden, kategorier, typer, risknivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer."
+        "body": "Snabblänkar till klassningar som används för filtrering, rapportering och AI-stöd: kravområden, kategorier, typer, prioritetsskala, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer."
       },
       "statusesAndWorkflows": {
         "heading": "Statusar och arbetsflöden",
@@ -2210,15 +2213,15 @@
         "body": "Lägg till nya egenskaper eller underegenskaper med Nytt-knappen. En underegenskap måste tilldelas en överordnad egenskap. Egenskaper som är kopplade till befintliga krav kan inte tas bort."
       }
     },
-    "riskLevels": {
-      "title": "Hjälp för risknivåer",
+    "priorityLevels": {
+      "title": "Hjälp för prioritetsskala",
       "overview": {
-        "heading": "Om risknivåer",
-        "body": "Risknivåer anger den potentiella påverkan om ett krav inte uppfylls. Varje nivå har ett namn, en färg och en sorteringsordning."
+        "heading": "Om prioritetsskalan",
+        "body": "Prioritetsskalan anger hur viktigt, angeläget eller kritiskt ett krav är i förhållande till verksamhetens mål, nyttor, risker och intressenters behov. Varje nivå har en låst P-kod, namn, beskrivning, bedömningsgrunder, färg, ikon och sorteringsordning."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Risknivåer är en fast systemuppsättning. Redigera befintliga nivåer för att ändra namn, färg, ikon eller sorteringsordning."
+        "body": "Prioritetsskalan är en fast systemuppsättning. Redigera befintliga nivåer för att ändra namn, beskrivning, bedömningsgrunder, färg, ikon eller sorteringsordning. P-koden kan inte ändras."
       }
     },
     "specificationItemStatuses": {
@@ -2233,15 +2236,21 @@
       }
     }
   },
-  "riskLevelAdmin": {
+  "priorityLevelAdmin": {
+    "editItem": "Redigera prioritet",
+    "code": "Kod",
+    "codeHelp": "Koden är systemstyrd och kan inte ändras.",
     "name": "Namn",
+    "designation": "Benämning",
+    "description": "Beskrivning",
+    "assessmentCriteria": "Bedömningsgrunder",
     "color": "Färg",
     "colorHex": "Färgkod (hex)",
     "icon": "Ikon",
     "sortOrder": "Sorteringsordning",
     "linkedRequirements": "Kopplade krav",
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
-    "emptyState": "Inga risknivåer är tillgängliga."
+    "emptyState": "Inga prioritetsnivåer är tillgängliga."
   },
   "specificationItemStatusAdmin": {
     "title": "Användningsstatusar",
@@ -2304,9 +2313,6 @@
     "selectRequirement": "Markera krav {index}",
     "functional": "Funktionellt",
     "nonFunctional": "Icke-funktionellt",
-    "riskHigh": "Hög risk",
-    "riskMedium": "Medel risk",
-    "riskLow": "Låg risk",
     "closeConfirm": "Du har osparade ändringar. Är du säker på att du vill stänga och förlora ditt arbete?",
     "showDefaultInstruction": "Visa standardinstruktion",
     "hideDefaultInstruction": "Dölj standardinstruktion",
@@ -2352,7 +2358,7 @@
     "areaHelp": "Välj vilket <strong>kravområde</strong> de genererade kraven ska placeras i. Det avgör var de visas i kravlistan.",
     "modelHelp": "Välj vilken <strong>AI-modell</strong> som ska användas. Större modeller ger resultat av högre kvalitet men tar längre tid.",
     "prompt": {
-      "defaultInstruction": "Generera 5-10 välstrukturerade systemkrav för det givna ämnet.\n\nVarje krav MÅSTE:\n- Ha en tydlig, testbar och entydig beskrivning (enligt ISO/IEC/IEEE 29148:2018 §5.2.5)\n- Använda formen \"Systemet ska...\" för funktionella krav\n- Använda \"Systemet ska kunna...\" eller kvalitetsattributspråk för icke-funktionella krav\n- Inkludera acceptanskriterier där det är tillämpligt\n- Referera till lämpliga kvalitetsegenskaper från ISO/IEC 25010:2023\n- Inkludera en motivering som förklarar varför kravet finns\n\nFör icke-funktionella krav, tillämpa kvalitetsmodellen ISO/IEC 25010:2023:\n- Mappa till den mest specifika kvalitetsunderegenskapen\n- Beakta prestandaeffektivitet, säkerhet, användbarhet, tillförlitlighet och underhållbarhet\n\nBedöm risknivå baserat på:\n- Påverkan på systemsäkerhet, informationssäkerhet eller kärnfunktionalitet (Hög)\n- Påverkan på användarupplevelse eller icke-kritiska funktioner (Medel)\n- Önskvärt eller kosmetiska krav (Låg)",
+      "defaultInstruction": "Generera 5-10 välstrukturerade systemkrav för det givna ämnet.\n\nVarje krav MÅSTE:\n- Ha en tydlig, testbar och entydig beskrivning (enligt ISO/IEC/IEEE 29148:2018 §5.2.5)\n- Använda formen \"Systemet ska...\" för funktionella krav\n- Använda \"Systemet ska kunna...\" eller kvalitetsattributspråk för icke-funktionella krav\n- Inkludera acceptanskriterier där det är tillämpligt\n- Referera till lämpliga kvalitetsegenskaper från ISO/IEC 25010:2023\n- Inkludera en motivering som förklarar varför kravet finns\n\nFör icke-funktionella krav, tillämpa kvalitetsmodellen ISO/IEC 25010:2023:\n- Mappa till den mest specifika kvalitetsunderegenskapen\n- Beakta prestandaeffektivitet, säkerhet, användbarhet, tillförlitlighet och underhållbarhet\n\nBedöm prioritet utifrån verksamhetens mål, nytta, angelägenhet, kritikalitet, risker och intressenters behov.\n- Använd prioritetsskalan i referensdatan.\n- Välj högre prioritet när kravet är avgörande för mål, lagkrav, säkerhet, kontinuitet eller central nytta.\n- Välj lägre prioritet när kravet är önskvärt, framtida eller har begränsad påverkan.",
       "userHeader": "Ämne / Systemkontext",
       "noRequirementPackagesAvailable": "Inga kravpaket tillgängliga",
       "system": {
@@ -2362,7 +2368,7 @@
           "types": "Kravtyper",
           "categories": "Kategorier",
           "qualityCharacteristics": "Kvalitetsegenskaper (ISO 25010:2023)",
-          "riskLevels": "Risknivåer",
+          "priorityLevels": "Prioritetsskala",
           "requirementPackages": "Kravpaket",
           "outputRules": "Outputregler"
         },
@@ -2372,7 +2378,7 @@
           "typeId krävs för varje krav",
           "qualityCharacteristicId rekommenderas för icke-funktionella krav",
           "categoryId bör sättas när kategorin är tydlig",
-          "riskLevelId bör alltid sättas",
+          "priorityLevelId bör alltid sättas",
           "requirementPackageIds måste vara [] eller bara innehålla ID:n från listan över kravpaket ovan",
           "requiresTesting måste vara true för funktionella krav och säkerhetskrav",
           "verificationMethod bör beskriva hur kravet verifieras när requiresTesting är true",
@@ -2389,7 +2395,7 @@
     "rawOutput": "Rådata från modell",
     "showDetails": "Visa detaljer",
     "hideDetails": "Dölj detaljer",
-    "detailRiskLevel": "Risknivå",
+    "detailPriorityLevel": "Prioritet",
     "detailType": "Kravtyp",
     "detailCategory": "Kategori",
     "detailQuality": "Kvalitetsegenskap",

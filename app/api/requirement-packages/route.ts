@@ -13,7 +13,7 @@ import {
 } from '@/lib/http/secure-mutation-route'
 import {
   boundedDbStringSchema,
-  optionalBusinessTextSchema,
+  businessTextSchema,
   parseSearchParams,
   queryBooleanSchema,
 } from '@/lib/http/validation'
@@ -26,8 +26,8 @@ import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requiremen
 
 const requirementPackageSchema = z
   .object({
-    description: optionalBusinessTextSchema,
     name: boundedDbStringSchema,
+    purposeAndScope: businessTextSchema,
   })
   .strict()
 

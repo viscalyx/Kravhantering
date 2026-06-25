@@ -410,7 +410,7 @@ utföra Admin-only-åtgärder.
 
 1. Logga in som `leo.pkglead`.
 1. Öppna `Kravbiblioteksförvaltning` och sök efter `AUTHZ kravpaket`.
-1. Redigera paketets beskrivning med en liten unik testtext.
+1. Redigera paketets syfte och avgränsning med en liten unik testtext.
 1. Öppna radåtgärden `Hantera medförfattare` och verifiera att paketets
    kravpaketsmedförfattare visas i en sparad tabell och kan läggas till eller
    tas bort i den separata dialogen.
@@ -651,21 +651,92 @@ REST/MCP-generering returnerar otillgängligt utan leverantörsanrop. Om
 `AI_REQUIREMENT_GENERATION_DISABLED` är satt visar Admin Center att
 driftkonfigurationen har högre prioritet.
 
+### REQ-17: importera krav till kravbiblioteket
+
+**Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements`, välj
+importknappen i den flytande åtgärdsytan. Kontrollera att schema och
+importinstruktion kan laddas ner och att hjälpraden förklarar att
+importinstruktionen bara är formatdelen och referensdata för import för AI-arbete.
+Ladda en JSON-fil genom att klicka på eller dra filen till importytan. Använd
+en fil med
+`schemaVersion`, minst ett krav med `description`, samt frivilliga metadata via
+både ID och namn. Inkludera även en `proposedNormReferences`-post och koppla en
+rad till den med `proposedNormReferenceKeys`. Försök först inkludera ett
+destinationsfält som `areaId`, ta sedan bort det och ladda granskningen. Skapa
+eller länka den föreslagna normreferensen, importera en vald rad och ladda ner
+CSV-kvittot.
+
+**Förväntat resultat:** JSON med destinationsfält stoppas före granskning.
+Kravområde måste väljas från användarens tilldelade områden och låses under
+dialogsessionen. Importknappen ligger direkt till vänster om exportknappen i
+den flytande åtgärdsytan, och kolumnväljaren ligger sist till höger.
+Innan granskningen laddas visas bara JSON-panelen i en innehållsanpassad
+dialog. Obligatoriska fält har röd asterisk och `Förhandsgranska krav` är
+inaktiv tills JSON följer schemat och kravområde är valt. När
+knappen är inaktiv visar dialogen en kort förklaring, till exempel saknat
+kravområde, saknad JSON, JSON-syntaxfel, fel `schemaVersion` eller schemafel. Efter
+laddning kollapsar JSON-panelen och granskningen delas upp i flikarna `Krav`
+och `Föreslagna normreferenser`. `Importera valda` ligger kvar i verktygsraden
+för fliken `Krav` när raderna med krav skrollas. Raderna med krav är
+kollapsade från start och visar radnummer, importväxel, kravtext som read-only
+text, ett eventuellt prioritetschip, fel- eller varningsräknare samt ta
+bort-ikon. Klick på kravtexten eller expandera-ikonen expanderar raden, `Visa
+mer` expanderar bara den långa kravtexten som read-only text, och `Expandera
+alla`/`Kollapsa alla` påverkar alla rader utan att ändra om de är valda för
+import. `Kollapsa alla` är inaktiv när alla rader redan är kollapsade, och
+`Expandera alla` är inaktiv när alla rader redan är expanderade. Kravtext och
+villkorligt
+obligatorisk verifieringsmetod är markerade med röd asterisk, och
+`Typ` visas direkt före `Kvalitetsegenskap`. Värden i `Kvalitetsegenskap`
+grupperas på samma sätt som i `Nytt krav`, och om `Typ` töms ska
+`Kvalitetsegenskap` tömmas, tonas ned och inaktiveras. `Verifierbar` samt
+`Verifieringsmetod` visas före kravpaket och normreferenser vid import till
+kravbiblioteket, och före normreferenser vid import till kravunderlag.
+Lösta metadata visas som redigerbara värden, olösta frivilliga värden visas som
+varningar och föreslagna normreferenser kan länkas till befintlig normreferens
+eller skapas i samma formulär som Normbiblioteket använder. I formuläret är
+`Normreferens-ID`
+ifyllt från förslaget och har hjälptext om att värdet kan ändras eller tömmas
+för automatisk ID-generering. När normreferensen har skapats visas den som en
+kompakt icke-redigerbar rad under `Normreferens-ID:n` med normreferens-ID och
+namn, och både skapa-knappen och länken till befintlig normreferens för den
+lösta föreslagna normreferensen är nedtonade och inaktiva. Om samma JSON
+importeras igen och förslaget saknar
+`normReferenceId` matchas förslagets `key` mot befintligt normreferens-ID,
+förslaget visas som löst och kraven får länken automatiskt.
+`Kravpakets-ID:n` visas bara vid import till kravbiblioteket och visar då
+matchande namn på kravpaket utan internt ID. Felaktiga lösta länkar tas bort
+och ersätts genom sökbara modaler med checkboxar, inte genom fri ID-inmatning.
+Vid import till kravunderlag ignoreras importerade `requirementPackageIds` och
+`requirementPackageNames`, och varje berörd kravrad visar en neutral
+informationsrad som inte räknas som varning.
+Olösta importerade ID:n kan fortfarande korrigeras direkt. Om dialogen stängs
+och öppnas igen är kravområde inte längre valt. Den
+importerade valda raden försvinner från
+granskningen efter lyckad import och ett nytt utkast skapas i valt kravområde.
+Om inga rader finns kvar efter import stängs dialogen utan förkasta-bekräftelse.
+
 ## Skapa krav och livscykel
 
 ### LIFE-01: skapa krav från UI
 
 **Steg:** Öppna `/sv/requirements/new`, kontrollera att Spara är dimmad, välj
 kravområde, fyll kravtext och obligatoriska fält och kontrollera att Spara
-tänds. Klicka Avbryt, avbryt förkastandet och kontrollera att formuläret är
-kvar. Klicka Avbryt igen, bekräfta förkastandet och öppna formuläret på nytt
-för att spara ett krav.
+tänds. Öppna hjälpikonen vid `Prioritet`, öppna den separata ikonknappen för
+prioritetsskalan, välj en prioritet och kontrollera tooltipen på
+prioritetsfältet.
+Klicka Avbryt, avbryt förkastandet och kontrollera att formuläret är kvar.
+Klicka Avbryt igen, bekräfta förkastandet och öppna formuläret på nytt för att
+spara ett krav.
 
 **Förväntat resultat:** Obligatoriska fält är markerade med asterisk och en
 kort notis vid formulärets actionknappar förklarar markeringen. Spara är
 dimmad tills användaren har gjort en normaliserad formulärändring. Kravet
-skapas och öppnas i listan. Formulär med osparade ändringar stängs inte utan
-bekräftelse.
+skapas och öppnas i listan. Hjälpen för prioritet visar den korta
+förklaringen inline. Den separata skalikonen öppnar en modal med P-skalan,
+beskrivning och bedömningsgrunder. Vald prioritet visar beskrivning och
+bedömningsgrunder som tooltip på prioritetsfältet, inte som en permanent ruta i
+formuläret. Formulär med osparade ändringar stängs inte utan bekräftelse.
 
 ### LIFE-02: validera obligatoriska fält vid skapande
 
@@ -862,15 +933,21 @@ panel.
 
 **Förväntat resultat:** Kopplingen skapas och tas bort korrekt.
 
-### SPEC-07: skapa och lyft unikt krav i kravunderlag
+### SPEC-07: skapa, redigera och lyft unikt krav i kravunderlag
 
 **Steg:** Skapa ett nytt krav direkt från kravunderlaget. Ändra
-användningsstatus till ett annat läge än `Inkluderad` och lyft sedan kravet
-till kravbiblioteket.
+kravtexten via Redigera i det unika kravets inline-detalj och kontrollera att
+formuläret öppnas i modal med kravets ID i huvudet. Ändra text, klicka utanför
+modalen och kontrollera att den inte stängs. Klicka X och avbryt förkastandet.
+Kontrollera att normreferenserna ligger i en kompakt sidokolumn utan stor tom
+yta till höger. Spara ändringen. Ändra användningsstatus till ett annat läge än
+`Inkluderad` och lyft sedan kravet till kravbiblioteket.
 
 **Förväntat resultat:** Kravet får unikt ID och kopplas till underlaget. Lyft
 skapar ett nytt utkast i kravbiblioteket oavsett användningsstatus, medan
-källkravet ligger kvar i kravunderlaget.
+källkravet ligger kvar i kravunderlaget. Redigering sker i modal, kräver
+bekräftelse innan osparade ändringar förkastas och återgår efter sparning till
+samma expanderade rad med uppdaterad kravtext.
 
 ### SPEC-08: uppdatera användningsstatus
 
@@ -1041,6 +1118,38 @@ på nivån är behandlade visas en check-ikon utan räknare. Modalen visar `Nya`
 `I granskning` och `Behandlade`, inklusive kravunderlagskälla och skapande
 person. Filtret `Förslag: Obehandlade` visar även arkiverade RFI-frågor med
 obehandlade förslag.
+
+### SPEC-17: importera unika krav till kravunderlag
+
+**Steg:** Logga in som `petra.specresp`, öppna ett kravunderlag där användaren
+är ansvarig, välj importknappen i `Krav i underlaget`, ladda en giltig
+`requirement-import.v1`-fil och komplettera `Behovsreferens` per rad i
+granskningsformuläret. Testa även en rad med `requiresTesting: true` utan
+verifieringsmetod och fyll sedan i metoden innan import. Inkludera en
+föreslagen normreferens och kontrollera att den kan länkas eller skapas innan
+raden importeras.
+
+**Förväntat resultat:** Importen kräver kravunderlagsbehörighet men inget
+kravområde. Rader skapas som kravunderlagslokala krav i aktuellt kravunderlag.
+Importknappen ligger direkt till vänster om exportknappen i verktygsraden för
+`Krav i underlaget`, och kolumnväljaren ligger sist till höger.
+Verifierbara lokala krav utan verifieringsmetod blockeras tills värdet anges.
+Föreslagna normreferenser kan lösas till normreferens-ID:n innan import, och
+lösta normreferenser visas som kompakta icke-redigerbara ID-rader med
+`normreferens-ID - namn` utan internt ID. Kravpaket visas inte och kan inte
+väljas för kravunderlagslokala krav. Om importfilen ändå innehåller
+`requirementPackageIds` eller `requirementPackageNames` visar varje berörd rad
+ett diskret informationsmeddelande om att kravpaketen inte används. Nya länkar
+till normreferenser väljs i sökbara modaler med checkboxar, medan olösta
+importerade ID:n fortfarande kan korrigeras direkt.
+Efter lyckad import tas importerade valda rader bort från dialogen och
+kravunderlagets lista uppdateras först när dialogen stängs. Krav och föreslagna
+normreferenser visas i separata flikar, och `Importera valda` ligger kvar i
+verktygsraden för fliken `Krav` när raderna med krav skrollas. Raderna med krav
+är kollapsade från start, kan expanderas individuellt eller med `Expandera
+alla`, och behåller expansionsläget för kvarvarande rader efter ny validering
+och lyckad import. Om inga rader finns kvar efter import stängs dialogen utan
+förkasta-bekräftelse.
 
 ## Avsteg
 

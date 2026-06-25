@@ -51,7 +51,7 @@ Source: `lib/requirements/types.ts`
 | `publishedAt` | `string \| null` | Publish timestamp |
 | `qualityCharacteristic` | `RequirementLocalizedEntity \| null` | Quality |
 | `requiresTesting` | `boolean` | Testing flag |
-| `riskLevel` | `RiskLevelSummary \| null` | Risk summary |
+| `priorityLevel` | `PriorityLevelSummary \| null` | Priority-level summary |
 | `status` | `number` | Lifecycle status id |
 | `statusColor` | `string \| null` | UI color |
 | `statusNameEn` | `string \| null` | English status |

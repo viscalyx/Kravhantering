@@ -28,7 +28,7 @@ function createVersion(versionNumber = 2): RequirementVersionDetail {
     qualityCharacteristic: null,
     requiresTesting: true,
     revisionToken: '11111111-1111-4111-8111-111111111111',
-    riskLevel: null,
+    priorityLevel: null,
     status: 1,
     statusColor: null,
     statusNameEn: 'Draft',
@@ -174,6 +174,17 @@ function createService() {
 
   const service = {
     addToSpecification,
+    buildImportAiPrompt: vi.fn(async () => ''),
+    executeLibraryImport: vi.fn(async () => ({
+      createdRows: [],
+      mode: 'library' as const,
+      summary: { createdCount: 0 },
+    })),
+    executeSpecificationLocalImport: vi.fn(async () => ({
+      createdRows: [],
+      mode: 'specification-local' as const,
+      summary: { createdCount: 0 },
+    })),
     generateRequirements,
     getRequirement,
     getSpecificationItems,
@@ -185,6 +196,20 @@ function createService() {
     manageDeviation: vi.fn(),
     manageRequirement,
     manageSuggestion,
+    previewLibraryImport: vi.fn(async () => ({
+      mode: 'library' as const,
+      previewToken: 'token',
+      proposals: [],
+      rows: [],
+      summary: { errorCount: 0, rowCount: 0, warningCount: 0 },
+    })),
+    previewSpecificationLocalImport: vi.fn(async () => ({
+      mode: 'specification-local' as const,
+      previewToken: 'token',
+      proposals: [],
+      rows: [],
+      summary: { errorCount: 0, rowCount: 0, warningCount: 0 },
+    })),
     queryCatalog,
     removeFromSpecification,
     transitionRequirement,

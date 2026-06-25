@@ -112,6 +112,7 @@ export interface RequirementSelectionCleanupResult {
 export interface RequirementSelectionMatchedRequirementSourcePackage {
   id: number
   name: string
+  purposeAndScope: string
 }
 
 export interface RequirementSelectionMatchedRequirementRow {
@@ -180,6 +181,7 @@ type MatchedRequirementSourceDbRow = {
   isDirect: boolean | number | string
   packageId: number | null
   packageName: string | null
+  packagePurposeAndScope: string | null
   uniqueId: string
 }
 
@@ -507,6 +509,7 @@ function mergeMatchedRequirementSourceRow(
     requirement.sourcePackages.push({
       id: row.packageId,
       name: row.packageName,
+      purposeAndScope: row.packagePurposeAndScope ?? '',
     })
   }
 
@@ -638,14 +641,16 @@ async function hydrateAnswerRequirementMatches(
         published.description AS description,
         source.isDirect AS isDirect,
         source.packageId AS packageId,
-        source.packageName AS packageName
+        source.packageName AS packageName,
+        source.packagePurposeAndScope AS packagePurposeAndScope
       FROM (
         SELECT
           answer_requirement.answer_id AS answerId,
           answer_requirement.requirement_id AS requirementId,
           CAST(1 AS bit) AS isDirect,
           CAST(NULL AS int) AS packageId,
-          CAST(NULL AS nvarchar(max)) AS packageName
+          CAST(NULL AS nvarchar(max)) AS packageName,
+          CAST(NULL AS nvarchar(max)) AS packagePurposeAndScope
         FROM requirement_selection_answer_requirements AS answer_requirement
         WHERE answer_requirement.answer_id IN (${firstAnswerPlaceholders})
           AND EXISTS (
@@ -662,7 +667,8 @@ async function hydrateAnswerRequirementMatches(
           version.requirement_id AS requirementId,
           CAST(0 AS bit) AS isDirect,
           requirement_package.id AS packageId,
-          requirement_package.name AS packageName
+          requirement_package.name AS packageName,
+          requirement_package.purpose_and_scope AS packagePurposeAndScope
         FROM requirement_selection_answer_packages AS answer_package
         INNER JOIN requirement_packages AS requirement_package
           ON requirement_package.id = answer_package.requirement_package_id
@@ -742,7 +748,8 @@ export async function listRequirementSelectionMatchedRequirements(
         explicit_requirement.id AS requirementId,
         CAST(1 AS bit) AS isDirect,
         CAST(NULL AS int) AS packageId,
-        CAST(NULL AS nvarchar(max)) AS packageName
+        CAST(NULL AS nvarchar(max)) AS packageName,
+        CAST(NULL AS nvarchar(max)) AS packagePurposeAndScope
       FROM requirements AS explicit_requirement
       WHERE explicit_requirement.id IN (${requirementPlaceholders})
         AND EXISTS (
@@ -764,7 +771,8 @@ export async function listRequirementSelectionMatchedRequirements(
         package_version.requirement_id AS requirementId,
         CAST(0 AS bit) AS isDirect,
         requirement_package.id AS packageId,
-        requirement_package.name AS packageName
+        requirement_package.name AS packageName,
+        requirement_package.purpose_and_scope AS packagePurposeAndScope
       FROM requirement_version_requirement_packages AS version_package
       INNER JOIN requirement_packages AS requirement_package
         ON requirement_package.id = version_package.requirement_package_id
@@ -786,7 +794,8 @@ export async function listRequirementSelectionMatchedRequirements(
         published.description AS description,
         source.isDirect AS isDirect,
         source.packageId AS packageId,
-        source.packageName AS packageName
+        source.packageName AS packageName,
+        source.packagePurposeAndScope AS packagePurposeAndScope
       FROM (
         ${sources.join('\n        UNION ALL\n')}
       ) AS source

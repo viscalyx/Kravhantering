@@ -16,15 +16,15 @@ export interface DeviationReportVersion {
   createdBy: string | null
   description: string | null
   normReferences: { name: string; reference: string; uri: string | null }[]
-  qualityCharacteristic: { nameEn: string; nameSv: string } | null
-  requirementPackages: { name: string }[]
-  requiresTesting: boolean
-  riskLevel: {
+  priorityLevel: {
     color: string | null
     iconName: string | null
     nameEn: string
     nameSv: string
   } | null
+  qualityCharacteristic: { nameEn: string; nameSv: string } | null
+  requirementPackages: { name: string }[]
+  requiresTesting: boolean
   status: { color: string | null; iconName: string | null; label: string }
   type: { nameEn: string; nameSv: string } | null
   verificationMethod: string | null
@@ -78,7 +78,7 @@ export async function fetchDeviationForReport(
         nameSv: string
       } | null
       requiresTesting: boolean
-      riskLevel: {
+      priorityLevel: {
         color: string | null
         iconName: string | null
         id: number
@@ -171,12 +171,12 @@ export async function fetchDeviationForReport(
             nameSv: version.qualityCharacteristic.nameSv,
           }
         : null,
-      riskLevel: version.riskLevel
+      priorityLevel: version.priorityLevel
         ? {
-            color: version.riskLevel.color,
-            iconName: version.riskLevel.iconName,
-            nameEn: version.riskLevel.nameEn,
-            nameSv: version.riskLevel.nameSv,
+            color: version.priorityLevel.color,
+            iconName: version.priorityLevel.iconName,
+            nameEn: version.priorityLevel.nameEn,
+            nameSv: version.priorityLevel.nameSv,
           }
         : null,
       status: {

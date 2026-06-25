@@ -66,8 +66,15 @@ function formatUsageStatus(
   )
 }
 
-function formatRiskLevel(item: TraceabilityReportItem, locale: string): string {
-  return localizeReportValue(locale, item.riskLevelNameSv, item.riskLevelNameEn)
+function formatPriorityLevel(
+  item: TraceabilityReportItem,
+  locale: string,
+): string {
+  return localizeReportValue(
+    locale,
+    item.priorityLevelNameSv,
+    item.priorityLevelNameEn,
+  )
 }
 
 function formatVerification(
@@ -205,7 +212,7 @@ function buildTableSection(
       needsReference: labels.columns.needsReference,
       note: labels.columns.note,
       origin: labels.columns.origin,
-      riskLevel: labels.columns.riskLevel,
+      priorityLevel: labels.columns.priorityLevel,
       statusChangedAt: labels.columns.statusChangedAt,
       usageStatus: labels.columns.usageStatus,
       verification: labels.traceability.verification,
@@ -218,7 +225,7 @@ function buildTableSection(
       note: item.note ?? '',
       origin: formatOrigin(item, locale),
       requirementId: item.uniqueId,
-      riskLevel: formatRiskLevel(item, locale),
+      priorityLevel: formatPriorityLevel(item, locale),
       statusChangedAt: formatDate(item.statusUpdatedAt, locale),
       usageStatus: formatUsageStatus(item, locale),
       verification: formatVerification(item, locale),

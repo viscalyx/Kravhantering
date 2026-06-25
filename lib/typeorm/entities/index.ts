@@ -9,6 +9,7 @@ import { deviationEntity } from '@/lib/typeorm/entities/deviation'
 import { hsaIdPrefixEntity } from '@/lib/typeorm/entities/hsa-id-prefix'
 import { improvementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 import { normReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
+import { priorityLevelEntity } from '@/lib/typeorm/entities/priority-level'
 import { qualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
 import { requirementEntity } from '@/lib/typeorm/entities/requirement'
 import { requirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
@@ -40,7 +41,6 @@ import { rfiQuestionVersionEntity } from '@/lib/typeorm/entities/rfi-question-ve
 import { rfiQuestionVersionRequirementEntity } from '@/lib/typeorm/entities/rfi-question-version-requirement'
 import { rfiQuestionVersionRequirementPackageEntity } from '@/lib/typeorm/entities/rfi-question-version-requirement-package'
 import { rfiQuestionVersionRequirementSelectionQuestionEntity } from '@/lib/typeorm/entities/rfi-question-version-requirement-selection-question'
-import { riskLevelEntity } from '@/lib/typeorm/entities/risk-level'
 import { specificationCoAuthorEntity } from '@/lib/typeorm/entities/specification-co-author'
 import { specificationGovernanceObjectTypeEntity } from '@/lib/typeorm/entities/specification-governance-object-type'
 import { specificationImplementationTypeEntity } from '@/lib/typeorm/entities/specification-implementation-type'
@@ -49,7 +49,6 @@ import { specificationLifecycleStatusEntity } from '@/lib/typeorm/entities/speci
 import { specificationLocalRequirementEntity } from '@/lib/typeorm/entities/specification-local-requirement'
 import { specificationLocalRequirementDeviationEntity } from '@/lib/typeorm/entities/specification-local-requirement-deviation'
 import { specificationLocalRequirementNormReferenceEntity } from '@/lib/typeorm/entities/specification-local-requirement-norm-reference'
-import { specificationLocalRequirementRequirementPackageEntity } from '@/lib/typeorm/entities/specification-local-requirement-requirement-package'
 import { specificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
 import { specificationRequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/specification-requirement-selection-answer'
 import { specificationRfiListEntity } from '@/lib/typeorm/entities/specification-rfi-list'
@@ -73,7 +72,6 @@ export const sqlServerEntities = [
   specificationLocalRequirementEntity,
   specificationLocalRequirementDeviationEntity,
   specificationLocalRequirementNormReferenceEntity,
-  specificationLocalRequirementRequirementPackageEntity,
   specificationNeedsReferenceEntity,
   specificationGovernanceObjectTypeEntity,
   qualityCharacteristicEntity,
@@ -107,7 +105,7 @@ export const sqlServerEntities = [
   requirementVersionEntity,
   requirementVersionNormReferenceEntity,
   requirementVersionRequirementPackageEntity,
-  riskLevelEntity,
+  priorityLevelEntity,
   specificationCoAuthorEntity,
   specificationRequirementSelectionAnswerEntity,
   requirementPackageEntity,
@@ -125,6 +123,7 @@ export type { DeviationEntity } from '@/lib/typeorm/entities/deviation'
 export type { HsaIdPrefixEntity } from '@/lib/typeorm/entities/hsa-id-prefix'
 export type { ImprovementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 export type { NormReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
+export type { PriorityLevelEntity } from '@/lib/typeorm/entities/priority-level'
 export type { QualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
 export type { RequirementEntity } from '@/lib/typeorm/entities/requirement'
 export type { RequirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
@@ -156,7 +155,6 @@ export type { RfiQuestionVersionEntity } from '@/lib/typeorm/entities/rfi-questi
 export type { RfiQuestionVersionRequirementEntity } from '@/lib/typeorm/entities/rfi-question-version-requirement'
 export type { RfiQuestionVersionRequirementPackageEntity } from '@/lib/typeorm/entities/rfi-question-version-requirement-package'
 export type { RfiQuestionVersionRequirementSelectionQuestionEntity } from '@/lib/typeorm/entities/rfi-question-version-requirement-selection-question'
-export type { RiskLevelEntity } from '@/lib/typeorm/entities/risk-level'
 export type { SpecificationCoAuthorEntity } from '@/lib/typeorm/entities/specification-co-author'
 export type { SpecificationGovernanceObjectTypeEntity } from '@/lib/typeorm/entities/specification-governance-object-type'
 export type { SpecificationImplementationTypeEntity } from '@/lib/typeorm/entities/specification-implementation-type'
@@ -165,7 +163,6 @@ export type { SpecificationLifecycleStatusEntity } from '@/lib/typeorm/entities/
 export type { SpecificationLocalRequirementEntity } from '@/lib/typeorm/entities/specification-local-requirement'
 export type { SpecificationLocalRequirementDeviationEntity } from '@/lib/typeorm/entities/specification-local-requirement-deviation'
 export type { SpecificationLocalRequirementNormReferenceEntity } from '@/lib/typeorm/entities/specification-local-requirement-norm-reference'
-export type { SpecificationLocalRequirementRequirementPackageEntity } from '@/lib/typeorm/entities/specification-local-requirement-requirement-package'
 export type { SpecificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
 export type { SpecificationRequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/specification-requirement-selection-answer'
 export type { SpecificationRfiListEntity } from '@/lib/typeorm/entities/specification-rfi-list'
@@ -183,6 +180,7 @@ export {
   hsaIdPrefixEntity,
   improvementSuggestionEntity,
   normReferenceEntity,
+  priorityLevelEntity,
   qualityCharacteristicEntity,
   requirementAreaCoAuthorEntity,
   requirementAreaEntity,
@@ -214,7 +212,6 @@ export {
   rfiQuestionVersionRequirementEntity,
   rfiQuestionVersionRequirementPackageEntity,
   rfiQuestionVersionRequirementSelectionQuestionEntity,
-  riskLevelEntity,
   specificationCoAuthorEntity,
   specificationGovernanceObjectTypeEntity,
   specificationImplementationTypeEntity,
@@ -223,7 +220,6 @@ export {
   specificationLocalRequirementDeviationEntity,
   specificationLocalRequirementEntity,
   specificationLocalRequirementNormReferenceEntity,
-  specificationLocalRequirementRequirementPackageEntity,
   specificationNeedsReferenceEntity,
   specificationRequirementSelectionAnswerEntity,
   specificationRfiListEntity,

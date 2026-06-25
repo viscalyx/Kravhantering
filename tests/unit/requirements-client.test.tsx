@@ -36,6 +36,10 @@ const aiGeneratorState = vi.hoisted(() => ({
   renderSpy: vi.fn(),
 }))
 
+const importDialogState = vi.hoisted(() => ({
+  renderSpy: vi.fn(),
+}))
+
 const pdfDownloadState = vi.hoisted(() => ({
   clearError: vi.fn(),
   download: vi.fn(),
@@ -76,6 +80,13 @@ vi.mock('@/components/AiRequirementGenerator', () => ({
   },
 }))
 
+vi.mock('@/components/RequirementsImportDialog', () => ({
+  default: (props: Record<string, unknown>) => {
+    importDialogState.renderSpy(props)
+    return props.open ? <div data-testid="requirements-import-dialog" /> : null
+  },
+}))
+
 vi.mock('@/components/reports/pdf/useServerPdfDownload', () => ({
   useServerPdfDownload: () => ({
     clearError: pdfDownloadState.clearError,
@@ -91,6 +102,7 @@ vi.mock('@/components/RequirementsTable', () => ({
     const {
       areas,
       categories,
+      columnPickerPlacement,
       columnWidths,
       expandedId,
       floatingActions,
@@ -116,6 +128,7 @@ vi.mock('@/components/RequirementsTable', () => ({
     tableState.renderSpy({
       areas: areas ?? [],
       categories: categories ?? [],
+      columnPickerPlacement,
       columnWidths: columnWidths ?? {},
       floatingActions: floatingActions ?? [],
       hasMore: hasMore ?? false,
@@ -300,7 +313,7 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
                   publishedAt: '2026-03-01T00:00:00Z',
                   requiresTesting: false,
                   revisionToken: '11111111-1111-4111-8111-000000000001',
-                  riskLevel: null,
+                  priorityLevel: null,
                   status: 2,
                   statusColor: '#eab308',
                   statusNameEn: 'Review',
@@ -372,10 +385,10 @@ function makeRequirementRow(
       statusNameSv: 'Publicerad',
       qualityCharacteristicNameEn: null,
       qualityCharacteristicNameSv: null,
-      riskLevelId: null,
-      riskLevelNameEn: null,
-      riskLevelNameSv: null,
-      riskLevelColor: null,
+      priorityLevelId: null,
+      priorityLevelNameEn: null,
+      priorityLevelNameSv: null,
+      priorityLevelColor: null,
       typeNameEn: 'Functional',
       typeNameSv: 'Funktionellt',
       versionNumber: 1,
@@ -430,7 +443,7 @@ function makeRequirementDetail(
         publishedAt: '2026-03-01T00:00:00Z',
         requiresTesting: false,
         revisionToken: `11111111-1111-4111-8111-${String(id).padStart(12, '0')}`,
-        riskLevel: null,
+        priorityLevel: null,
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
@@ -475,8 +488,8 @@ function mockMetadataFetch(url: string) {
       }),
     )
   }
-  if (url === '/api/risk-levels') {
-    return Promise.resolve(okJson({ riskLevels: [] }))
+  if (url === '/api/priority-levels') {
+    return Promise.resolve(okJson({ priorityLevels: [] }))
   }
   if (url === '/api/requirement-packages') {
     return Promise.resolve(okJson([]))
@@ -541,6 +554,7 @@ describe('RequirementsClient', () => {
     tableState.renderSpy.mockReset()
     tableState.detailChangeHandlers.clear()
     aiGeneratorState.renderSpy.mockReset()
+    importDialogState.renderSpy.mockReset()
     pdfDownloadState.clearError.mockReset()
     pdfDownloadState.download.mockReset()
     pdfDownloadState.download.mockResolvedValue(undefined)
@@ -637,8 +651,8 @@ describe('RequirementsClient', () => {
         },
         {
           kind: 'text',
-          bodyKey: 'requirements.properties.riskLevel.body',
-          headingKey: 'requirements.properties.riskLevel.heading',
+          bodyKey: 'requirements.properties.priorityLevel.body',
+          headingKey: 'requirements.properties.priorityLevel.heading',
           subheading: true,
         },
         {
@@ -878,8 +892,11 @@ describe('RequirementsClient', () => {
       ),
     )
     expect(screen.getByTestId('floating-actions-order').textContent).toBe(
-      'create:beforeColumns:primary,ai-generate:beforeColumns:default,print:afterColumns:default,export:afterColumns:default',
+      'create:beforeColumns:primary,ai-generate:beforeColumns:default,print:afterColumns:default,import:afterColumns:default,export:afterColumns:default',
     )
+    expect(tableState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      columnPickerPlacement: 'end',
+    })
     expect(screen.queryByText('newRequirement')).toBeNull()
     expect(
       screen.getByRole('link', { name: 'newRequirement' }),
@@ -896,6 +913,12 @@ describe('RequirementsClient', () => {
       screen.getByRole('button', { name: 'export' }).dataset
         .floatingActionVariant,
     ).toBe('default')
+    expect(
+      screen.getByRole('button', { name: 'importRequirements' }).dataset
+        .floatingActionVariant,
+    ).toBe('default')
+    fireEvent.click(screen.getByRole('button', { name: 'importRequirements' }))
+    expect(screen.getByTestId('requirements-import-dialog')).toBeTruthy()
     expect(screen.getByTestId('sort-state').textContent).toBe('uniqueId:asc')
     expect(screen.getByTestId('column-widths').textContent).toBe(
       '{"status":220}',
@@ -1015,6 +1038,14 @@ describe('RequirementsClient', () => {
         latestFloatingActions().some(action => action.id === 'review-report'),
       ).toBe(true),
     )
+    expect(latestFloatingActions().map(action => action.id)).toEqual([
+      'create',
+      'ai-generate',
+      'print',
+      'review-report',
+      'import',
+      'export',
+    ])
 
     const reviewReportAction = latestFloatingActions().find(
       action => action.id === 'review-report',

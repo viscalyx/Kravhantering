@@ -18,13 +18,13 @@ import { toBoolean, toIsoString } from '@/lib/typeorm/value-mappers'
 interface RequirementPackageRow {
   coAuthors: RequirementPackageCoAuthorRow[]
   createdAt: string
-  description: string | null
   id: number
   isArchived: boolean
   leadDisplayName: string
   leadEmail: string | null
   leadHsaId: string
   name: string
+  purposeAndScope: string
   updatedAt: string
 }
 
@@ -38,7 +38,6 @@ interface RequirementPackageCoAuthorRow {
 interface RequirementPackageUsage {
   answerLinkCount: number
   libraryRequirementCount: number
-  localRequirementCount: number
 }
 
 interface RequirementPackageMutationResult {
@@ -92,7 +91,6 @@ function mapRequirementPackageRow(
   return {
     coAuthors: [],
     createdAt: toIsoString(row.createdAt as Date | string),
-    description: row.description as string | null,
     id: row.id as number,
     isArchived: toBoolean(row.isArchived as boolean | number | string),
     leadDisplayName: leadGivenName
@@ -106,6 +104,7 @@ function mapRequirementPackageRow(
     leadEmail: (row.leadEmail as string | null | undefined) ?? null,
     leadHsaId,
     name: row.name as string,
+    purposeAndScope: row.purposeAndScope as string,
     updatedAt: toIsoString(row.updatedAt as Date | string),
   }
 }
@@ -203,7 +202,7 @@ async function getRequirementPackageRowById(
       SELECT
         requirementPackages.id AS id,
         requirementPackages.name AS name,
-        requirementPackages.description AS description,
+        requirementPackages.purpose_and_scope AS purposeAndScope,
         requirementPackages.lead_hsa_id AS leadHsaId,
         lead_person.given_name AS leadGivenName,
         lead_person.middle_name AS leadMiddleName,
@@ -240,7 +239,7 @@ export async function listRequirementPackages(
       SELECT
         requirementPackages.id AS id,
         requirementPackages.name AS name,
-        requirementPackages.description AS description,
+        requirementPackages.purpose_and_scope AS purposeAndScope,
         requirementPackages.lead_hsa_id AS leadHsaId,
         lead_person.given_name AS leadGivenName,
         lead_person.middle_name AS leadMiddleName,
@@ -353,11 +352,6 @@ export async function getRequirementPackageUsage(
             AND versions.requirement_status_id = ${STATUS_PUBLISHED}
         ) AS libraryRequirementCount,
         (
-          SELECT COUNT(DISTINCT links.specification_local_requirement_id)
-          FROM specification_local_requirement_requirement_packages AS links
-          WHERE links.requirement_package_id = @0
-        ) AS localRequirementCount,
-        (
           SELECT COUNT(DISTINCT links.answer_id)
           FROM requirement_selection_answer_packages AS links
           WHERE links.requirement_package_id = @0
@@ -367,22 +361,20 @@ export async function getRequirementPackageUsage(
   )) as Array<{
     answerLinkCount: number
     libraryRequirementCount: number
-    localRequirementCount: number
   }>
   return {
     answerLinkCount: Number(row?.answerLinkCount ?? 0),
     libraryRequirementCount: Number(row?.libraryRequirementCount ?? 0),
-    localRequirementCount: Number(row?.localRequirementCount ?? 0),
   }
 }
 
 export async function createRequirementPackage(
   db: SqlServerDatabase | QueryExecutor,
   data: {
-    description?: string | null
     leadHsaId: string
     leadPerson?: RequirementResponsibilityPersonRecord
     name: string
+    purposeAndScope: string
   },
   options: { useExistingTransaction?: boolean } = {},
 ): Promise<RequirementPackageRow> {
@@ -393,7 +385,7 @@ export async function createRequirementPackage(
       `
         INSERT INTO requirement_packages (
           name,
-          description,
+          purpose_and_scope,
           lead_hsa_id,
           is_archived,
           created_at,
@@ -402,14 +394,14 @@ export async function createRequirementPackage(
         OUTPUT
           inserted.id AS id,
           inserted.name AS name,
-          inserted.description AS description,
+          inserted.purpose_and_scope AS purposeAndScope,
           inserted.lead_hsa_id AS leadHsaId,
           inserted.is_archived AS isArchived,
           inserted.created_at AS createdAt,
           inserted.updated_at AS updatedAt
         VALUES (@0, @1, @2, 0, @3, @3)
       `,
-      [data.name, data.description ?? null, data.leadHsaId, now],
+      [data.name, data.purposeAndScope, data.leadHsaId, now],
     )
     const inserted = rows[0] as Record<string, unknown>
     const requirementPackageId = inserted.id as number
@@ -448,10 +440,10 @@ export async function updateRequirementPackage(
   db: SqlServerDatabase,
   id: number,
   data: {
-    description?: string | null
     leadHsaId?: string
     leadPerson?: RequirementResponsibilityPersonRecord
     name?: string
+    purposeAndScope?: string
   },
 ): Promise<RequirementPackageRow | undefined> {
   const leadPerson = data.leadPerson
@@ -505,10 +497,10 @@ async function updateRequirementPackageFields(
   db: QueryExecutor,
   id: number,
   data: {
-    description?: string | null
     leadHsaId?: string
     leadPerson?: RequirementResponsibilityPersonRecord
     name?: string
+    purposeAndScope?: string
   },
 ): Promise<RequirementPackageRow | undefined> {
   const sets: string[] = []
@@ -518,9 +510,9 @@ async function updateRequirementPackageFields(
     params.push(data.name)
     sets.push(`name = @${params.length - 1}`)
   }
-  if (data.description !== undefined) {
-    params.push(data.description)
-    sets.push(`description = @${params.length - 1}`)
+  if (data.purposeAndScope !== undefined) {
+    params.push(data.purposeAndScope)
+    sets.push(`purpose_and_scope = @${params.length - 1}`)
   }
   if (data.leadHsaId !== undefined) {
     params.push(data.leadHsaId)
@@ -752,11 +744,6 @@ export async function deleteRequirementPackage(
           AND NOT EXISTS (
             SELECT 1
             FROM requirement_version_requirement_packages AS links
-            WHERE links.requirement_package_id = requirement_package.id
-          )
-          AND NOT EXISTS (
-            SELECT 1
-            FROM specification_local_requirement_requirement_packages AS links
             WHERE links.requirement_package_id = requirement_package.id
           )
       `,

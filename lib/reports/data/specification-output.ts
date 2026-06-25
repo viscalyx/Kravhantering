@@ -30,13 +30,13 @@ export interface SpecificationOutputItem {
   kind: 'library' | 'specificationLocal'
   needsReference: string | null
   normReferences: SpecificationOutputNormReference[]
+  priorityLevelNameEn: string | null
+  priorityLevelNameSv: string | null
   qualityCharacteristicChapterId: string | null
   qualityCharacteristicNameEn: string | null
   qualityCharacteristicNameSv: string | null
   requirementPackageNames: string[]
   requiresTesting: boolean
-  riskLevelNameEn: string | null
-  riskLevelNameSv: string | null
   specificationItemStatusId: number | null
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
@@ -190,7 +190,6 @@ async function listNormReferencesByItemRef(
 async function listRequirementPackagesByItemRef(
   db: SqlServerDatabase,
   libraryItemIds: number[],
-  localRequirementIds: number[],
 ): Promise<Map<string, string[]>> {
   const packagesByItemRef = new Map<string, string[]>()
 
@@ -213,29 +212,6 @@ async function listRequirementPackagesByItemRef(
 
     for (const row of rows) {
       const itemRef = createLibraryItemRef(Number(row.itemId))
-      const existing = packagesByItemRef.get(itemRef) ?? []
-      existing.push(String(row.name ?? ''))
-      packagesByItemRef.set(itemRef, existing)
-    }
-  }
-
-  if (localRequirementIds.length > 0) {
-    const rows = (await db.query(
-      `
-        SELECT
-          local_requirement_package.specification_local_requirement_id AS itemId,
-          requirement_package.name AS name
-        FROM specification_local_requirement_requirement_packages local_requirement_package
-        INNER JOIN requirement_packages requirement_package
-          ON requirement_package.id = local_requirement_package.requirement_package_id
-        WHERE local_requirement_package.specification_local_requirement_id IN (${buildInClause(0, localRequirementIds)})
-        ORDER BY local_requirement_package.specification_local_requirement_id ASC, requirement_package.name ASC
-      `,
-      localRequirementIds,
-    )) as Row[]
-
-    for (const row of rows) {
-      const itemRef = createSpecificationLocalItemRef(Number(row.itemId))
       const existing = packagesByItemRef.get(itemRef) ?? []
       existing.push(String(row.name ?? ''))
       packagesByItemRef.set(itemRef, existing)
@@ -295,8 +271,8 @@ function mapLibraryItem(row: Row): SpecificationOutputItem {
     qualityCharacteristicNameSv: toStr(row.qualityCharacteristicNameSv),
     requirementPackageNames: [],
     requiresTesting: toBool(row.requiresTesting),
-    riskLevelNameEn: toStr(row.riskLevelNameEn),
-    riskLevelNameSv: toStr(row.riskLevelNameSv),
+    priorityLevelNameEn: toStr(row.priorityLevelNameEn),
+    priorityLevelNameSv: toStr(row.priorityLevelNameSv),
     specificationItemStatusId: toNum(row.specificationItemStatusId),
     specificationItemStatusNameEn: toStr(row.specificationItemStatusNameEn),
     specificationItemStatusNameSv: toStr(row.specificationItemStatusNameSv),
@@ -327,8 +303,8 @@ function mapLocalItem(row: Row): SpecificationOutputItem {
     qualityCharacteristicNameSv: toStr(row.qualityCharacteristicNameSv),
     requirementPackageNames: [],
     requiresTesting: toBool(row.requiresTesting),
-    riskLevelNameEn: toStr(row.riskLevelNameEn),
-    riskLevelNameSv: toStr(row.riskLevelNameSv),
+    priorityLevelNameEn: toStr(row.priorityLevelNameEn),
+    priorityLevelNameSv: toStr(row.priorityLevelNameSv),
     specificationItemStatusId: toNum(row.specificationItemStatusId),
     specificationItemStatusNameEn: toStr(row.specificationItemStatusNameEn),
     specificationItemStatusNameSv: toStr(row.specificationItemStatusNameSv),
@@ -366,8 +342,8 @@ export async function collectSpecificationOutputData(
           quality_characteristic.name_en AS qualityCharacteristicNameEn,
           quality_characteristic.name_sv AS qualityCharacteristicNameSv,
           quality_characteristic.chapter_id AS qualityCharacteristicChapterId,
-          risk_level.name_en AS riskLevelNameEn,
-          risk_level.name_sv AS riskLevelNameSv,
+          priority_level.name_en AS priorityLevelNameEn,
+          priority_level.name_sv AS priorityLevelNameSv,
           needs_reference.text AS needsReference,
           specification_item.specification_item_status_id AS specificationItemStatusId,
           specification_item_status.name_en AS specificationItemStatusNameEn,
@@ -387,8 +363,8 @@ export async function collectSpecificationOutputData(
           ON requirement_type.id = requirement_version.requirement_type_id
         LEFT JOIN quality_characteristics quality_characteristic
           ON quality_characteristic.id = requirement_version.quality_characteristic_id
-        LEFT JOIN risk_levels risk_level
-          ON risk_level.id = requirement_version.risk_level_id
+        LEFT JOIN priority_levels priority_level
+          ON priority_level.id = requirement_version.priority_level_id
         LEFT JOIN specification_needs_references needs_reference
           ON needs_reference.id = specification_item.needs_reference_id
         LEFT JOIN specification_item_statuses specification_item_status
@@ -412,8 +388,8 @@ export async function collectSpecificationOutputData(
           quality_characteristic.name_en AS qualityCharacteristicNameEn,
           quality_characteristic.name_sv AS qualityCharacteristicNameSv,
           quality_characteristic.chapter_id AS qualityCharacteristicChapterId,
-          risk_level.name_en AS riskLevelNameEn,
-          risk_level.name_sv AS riskLevelNameSv,
+          priority_level.name_en AS priorityLevelNameEn,
+          priority_level.name_sv AS priorityLevelNameSv,
           needs_reference.text AS needsReference,
           local_requirement.specification_item_status_id AS specificationItemStatusId,
           specification_item_status.name_en AS specificationItemStatusNameEn,
@@ -425,8 +401,8 @@ export async function collectSpecificationOutputData(
           ON requirement_type.id = local_requirement.requirement_type_id
         LEFT JOIN quality_characteristics quality_characteristic
           ON quality_characteristic.id = local_requirement.quality_characteristic_id
-        LEFT JOIN risk_levels risk_level
-          ON risk_level.id = local_requirement.risk_level_id
+        LEFT JOIN priority_levels priority_level
+          ON priority_level.id = local_requirement.priority_level_id
         LEFT JOIN specification_needs_references needs_reference
           ON needs_reference.id = local_requirement.needs_reference_id
         LEFT JOIN specification_item_statuses specification_item_status
@@ -450,7 +426,7 @@ export async function collectSpecificationOutputData(
     deviationCountsByItemRef,
   ] = await Promise.all([
     listNormReferencesByItemRef(db, libraryItemIds, localRequirementIds),
-    listRequirementPackagesByItemRef(db, libraryItemIds, localRequirementIds),
+    listRequirementPackagesByItemRef(db, libraryItemIds),
     countSuggestionsByLibraryItemRef(db, libraryItemIds),
     countDeviationsPerItemRef(db, specification.id),
   ])

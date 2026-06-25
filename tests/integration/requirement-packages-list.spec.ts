@@ -42,7 +42,7 @@ for (const viewport of viewports) {
   test.describe(`Requirement packages list filter — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
     test.use({ viewport: { height: viewport.height, width: viewport.width } })
 
-    test('filters the table by package name or description and clears the search', async ({
+    test('filters the table by package name or purpose and scope and clears the search', async ({
       page,
     }) => {
       const hsaVerifyRequests: Record<string, unknown>[] = []
@@ -131,7 +131,7 @@ for (const viewport of viewports) {
         await expect(ssoPackage).toHaveCount(0)
       })
 
-      await test.step('filter by a matching package description', async () => {
+      await test.step('filter by a matching package purpose and scope', async () => {
         await nameFilter.fill('gemensamma inloggning')
 
         await expect(mobilePackage).toHaveCount(0)

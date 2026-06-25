@@ -158,8 +158,8 @@ test.describe('Requirements table column picker', () => {
 
         await expect(columnsTrigger).toBeVisible()
         await expect(requirementPackageFilter).toBeVisible()
-        await expect(requirementPackageFilter).toHaveAttribute(
-          'title',
+        await requirementPackageFilter.hover()
+        await expect(page.getByRole('tooltip')).toContainText(
           'Krav som gäller när systemet används från mobiltelefon eller surfplatta.',
         )
         await expect(headerLabel).toBeVisible()

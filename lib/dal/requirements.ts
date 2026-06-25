@@ -42,13 +42,13 @@ export interface ListRequirementsOptions {
   locale?: 'en' | 'sv'
   normReferenceIds?: number[]
   offset?: number
+  priorityLevelIds?: number[]
   publishedOnly?: boolean
   publishedOrAreaIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementIds?: number[]
   requirementPackageIds?: number[]
   requiresTesting?: boolean[]
-  riskLevelIds?: number[]
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
@@ -77,6 +77,7 @@ function toNum(value: unknown): number | null {
 interface RequirementListPackage {
   id: number
   name: string
+  purposeAndScope: string
 }
 
 function parseRequirementPackagesJson(
@@ -104,6 +105,8 @@ function parseRequirementPackagesJson(
     requirementPackages.push({
       id,
       name: record.name == null ? '' : String(record.name),
+      purposeAndScope:
+        record.purposeAndScope == null ? '' : String(record.purposeAndScope),
     })
   }
 
@@ -205,16 +208,18 @@ export async function listRequirements(
       row.qualityCharacteristicNameEn == null
         ? null
         : String(row.qualityCharacteristicNameEn),
-    riskLevelId: toNum(row.riskLevelId),
-    riskLevelNameSv:
-      row.riskLevelNameSv == null ? null : String(row.riskLevelNameSv),
-    riskLevelNameEn:
-      row.riskLevelNameEn == null ? null : String(row.riskLevelNameEn),
-    riskLevelColor:
-      row.riskLevelColor == null ? null : String(row.riskLevelColor),
-    riskLevelIconName:
-      row.riskLevelIconName == null ? null : String(row.riskLevelIconName),
-    riskLevelSortOrder: toNum(row.riskLevelSortOrder),
+    priorityLevelId: toNum(row.priorityLevelId),
+    priorityLevelNameSv:
+      row.priorityLevelNameSv == null ? null : String(row.priorityLevelNameSv),
+    priorityLevelNameEn:
+      row.priorityLevelNameEn == null ? null : String(row.priorityLevelNameEn),
+    priorityLevelColor:
+      row.priorityLevelColor == null ? null : String(row.priorityLevelColor),
+    priorityLevelIconName:
+      row.priorityLevelIconName == null
+        ? null
+        : String(row.priorityLevelIconName),
+    priorityLevelSortOrder: toNum(row.priorityLevelSortOrder),
     maxVersion: Number(row.maxVersion),
     pendingVersionStatusColor:
       row.pendingVersionStatusColor == null
@@ -248,7 +253,7 @@ export async function countRequirements(
   return Number(rows[0]?.count ?? 0)
 }
 
-interface SqlServerTxExecutor {
+export interface SqlServerTxExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
 }
 
@@ -291,7 +296,7 @@ async function getNextVersionNumberSqlServer(
   return Number(rows[0]?.maxVersion ?? 0) + 1
 }
 
-interface RequirementMutationData {
+export interface RequirementMutationData {
   acceptanceCriteria?: string
   baseRevisionToken?: string | null
   baseVersionId?: number | null
@@ -299,13 +304,13 @@ interface RequirementMutationData {
   createdByHsaId?: string | null
   description: string
   normReferenceIds?: number[]
+  priorityLevelId?: number
   qualityCharacteristicId?: number
   requirementAreaId: number
   requirementCategoryId?: number
   requirementPackageIds?: number[]
   requirementTypeId?: number
   requiresTesting?: boolean
-  riskLevelId?: number
   verificationMethod?: string | null
 }
 
@@ -349,6 +354,7 @@ interface VersionInsertedRow {
   editedAt: string | null
   hasSpecificationItemHistory: boolean
   id: number
+  priorityLevelId: number | null
   publishedAt: string | null
   qualityCharacteristicId: number | null
   requirementCategoryId: number | null
@@ -356,7 +362,6 @@ interface VersionInsertedRow {
   requirementTypeId: number | null
   requiresTesting: boolean
   revisionToken: string
-  riskLevelId: number | null
   statusId: number
   statusUpdatedAt: string | null
   verificationMethod: string | null
@@ -367,7 +372,7 @@ interface RequirementMutationAuditOptions<TResult = undefined> {
   audit?: (executor: SqlServerTxExecutor, result: TResult) => Promise<void>
 }
 
-interface CreateRequirementResult {
+export interface CreateRequirementResult {
   requirement: RequirementInsertedRow
   version: VersionInsertedRow
 }
@@ -394,7 +399,7 @@ function mapVersion(row: Record<string, unknown>): VersionInsertedRow {
     requirementCategoryId: toNum(row.requirementCategoryId),
     requirementTypeId: toNum(row.requirementTypeId),
     qualityCharacteristicId: toNum(row.qualityCharacteristicId),
-    riskLevelId: toNum(row.riskLevelId),
+    priorityLevelId: toNum(row.priorityLevelId),
     statusId: Number(row.statusId),
     requiresTesting: toBool(row.requiresTesting),
     verificationMethod:
@@ -434,7 +439,7 @@ const VERSION_OUTPUT = `
     INSERTED.requirement_category_id AS requirementCategoryId,
     INSERTED.requirement_type_id AS requirementTypeId,
     INSERTED.quality_characteristic_id AS qualityCharacteristicId,
-    INSERTED.risk_level_id AS riskLevelId,
+    INSERTED.priority_level_id AS priorityLevelId,
     INSERTED.requirement_status_id AS statusId,
     CAST(INSERTED.is_testing_required AS int) AS requiresTesting,
     INSERTED.verification_method AS verificationMethod,
@@ -488,7 +493,7 @@ export async function createRequirement(
       `INSERT INTO requirement_versions (
         requirement_id, version_number, description, acceptance_criteria,
         requirement_category_id, requirement_type_id, quality_characteristic_id,
-        risk_level_id, requirement_status_id, is_testing_required,
+        priority_level_id, requirement_status_id, is_testing_required,
         verification_method, created_at, edited_at, published_at,
         archived_at, archive_initiated_at, created_by, created_by_hsa_id,
         status_updated_at, has_specification_item_history
@@ -502,7 +507,7 @@ export async function createRequirement(
         references.requirementCategoryId,
         references.requirementTypeId,
         references.qualityCharacteristicId,
-        references.riskLevelId,
+        references.priorityLevelId,
         STATUS_DRAFT,
         data.requiresTesting ? 1 : 0,
         verificationMethod,
@@ -527,6 +532,102 @@ export async function createRequirement(
   return { requirement, version }
 }
 
+export interface CreateRequirementsBatchOptions {
+  audit?: (
+    executor: SqlServerTxExecutor,
+    result: CreateRequirementResult,
+    index: number,
+  ) => Promise<void>
+  batchAudit?: (
+    executor: SqlServerTxExecutor,
+    results: CreateRequirementResult[],
+  ) => Promise<void>
+}
+
+export async function createRequirementsBatch(
+  db: SqlServerDatabase,
+  inputs: RequirementMutationData[],
+  options: CreateRequirementsBatchOptions = {},
+): Promise<CreateRequirementResult[]> {
+  if (inputs.length === 0) return []
+
+  const results: CreateRequirementResult[] = []
+
+  await db.transaction(async manager => {
+    const tx: SqlServerTxExecutor = {
+      query: (sql, params) => manager.query(sql, params),
+    }
+
+    for (const [index, data] of inputs.entries()) {
+      const references = await validateRequirementTaxonomyReferences(tx, data)
+      if (references.requirementAreaId == null) {
+        throw validationError('requirementAreaId must be a positive integer')
+      }
+      const now = new Date()
+      const verificationMethod = data.requiresTesting
+        ? (data.verificationMethod ?? null)
+        : null
+      const { sequenceNumber, uniqueId } = await reserveSequenceSqlServer(
+        tx,
+        references.requirementAreaId,
+      )
+      const reqRows = (await tx.query(
+        `INSERT INTO requirements (unique_id, requirement_area_id, sequence_number, is_archived, created_at)
+          ${REQUIREMENT_OUTPUT}
+          VALUES (@0, @1, @2, 0, @3)`,
+        [uniqueId, references.requirementAreaId, sequenceNumber, now],
+      )) as Array<Record<string, unknown>>
+      const requirement = mapRequirement(reqRows[0] ?? {})
+
+      const verRows = (await tx.query(
+        `INSERT INTO requirement_versions (
+          requirement_id, version_number, description, acceptance_criteria,
+          requirement_category_id, requirement_type_id, quality_characteristic_id,
+          priority_level_id, requirement_status_id, is_testing_required,
+          verification_method, created_at, edited_at, published_at,
+          archived_at, archive_initiated_at, created_by, created_by_hsa_id,
+          status_updated_at, has_specification_item_history
+        )
+          ${VERSION_OUTPUT}
+          VALUES (@0, 1, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, NULL, NULL, NULL, @12, @13, @14, 0)`,
+        [
+          requirement.id,
+          data.description,
+          data.acceptanceCriteria ?? null,
+          references.requirementCategoryId,
+          references.requirementTypeId,
+          references.qualityCharacteristicId,
+          references.priorityLevelId,
+          STATUS_DRAFT,
+          data.requiresTesting ? 1 : 0,
+          verificationMethod,
+          now,
+          now,
+          data.createdBy ?? null,
+          data.createdByHsaId ?? null,
+          now,
+        ],
+      )) as Array<Record<string, unknown>>
+      const version = mapVersion(verRows[0] ?? {})
+
+      await insertVersionJoinsSqlServer(
+        tx,
+        version.id,
+        references.requirementPackageIds,
+        references.normReferenceIds,
+      )
+
+      const result = { requirement, version }
+      results.push(result)
+      await options.audit?.(tx, result, index)
+    }
+
+    await options.batchAudit?.(tx, results)
+  })
+
+  return results
+}
+
 interface VersionLite {
   acceptanceCriteria: string | null
   archiveInitiatedAt: string | null
@@ -534,12 +635,12 @@ interface VersionLite {
   createdByHsaId: string | null
   description: string
   id: number
+  priorityLevelId: number | null
   qualityCharacteristicId: number | null
   requirementCategoryId: number | null
   requirementTypeId: number | null
   requiresTesting: boolean
   revisionToken: string
-  riskLevelId: number | null
   statusId: number
   verificationMethod: string | null
   versionNumber: number
@@ -563,7 +664,7 @@ async function getLatestVersionLite(
         requirement_category_id AS requirementCategoryId,
         requirement_type_id AS requirementTypeId,
         quality_characteristic_id AS qualityCharacteristicId,
-        risk_level_id AS riskLevelId,
+        priority_level_id AS priorityLevelId,
         CAST(is_testing_required AS int) AS requiresTesting,
         verification_method AS verificationMethod,
         created_by AS createdBy,
@@ -587,7 +688,7 @@ async function getLatestVersionLite(
     requirementCategoryId: toNum(row.requirementCategoryId),
     requirementTypeId: toNum(row.requirementTypeId),
     qualityCharacteristicId: toNum(row.qualityCharacteristicId),
-    riskLevelId: toNum(row.riskLevelId),
+    priorityLevelId: toNum(row.priorityLevelId),
     requiresTesting: toBool(row.requiresTesting),
     verificationMethod:
       row.verificationMethod == null ? null : String(row.verificationMethod),
@@ -701,7 +802,7 @@ export async function editRequirement(
               requirement_category_id = @2,
               requirement_type_id = @3,
               quality_characteristic_id = @4,
-              risk_level_id = @5,
+              priority_level_id = @5,
               is_testing_required = @6,
               verification_method = @7,
               edited_at = @8,
@@ -715,7 +816,7 @@ export async function editRequirement(
           references.requirementCategoryId,
           references.requirementTypeId,
           references.qualityCharacteristicId,
-          references.riskLevelId,
+          references.priorityLevelId,
           data.requiresTesting ? 1 : 0,
           verificationMethod,
           now,
@@ -758,7 +859,7 @@ export async function editRequirement(
         `INSERT INTO requirement_versions (
             requirement_id, version_number, description, acceptance_criteria,
             requirement_category_id, requirement_type_id, quality_characteristic_id,
-          risk_level_id, requirement_status_id, is_testing_required,
+          priority_level_id, requirement_status_id, is_testing_required,
           verification_method, created_at, edited_at, published_at,
           archived_at, archive_initiated_at, created_by, created_by_hsa_id,
           status_updated_at, has_specification_item_history
@@ -773,7 +874,7 @@ export async function editRequirement(
           references.requirementCategoryId,
           references.requirementTypeId,
           references.qualityCharacteristicId,
-          references.riskLevelId,
+          references.priorityLevelId,
           STATUS_DRAFT,
           data.requiresTesting ? 1 : 0,
           verificationMethod,
@@ -1241,7 +1342,7 @@ async function restoreVersionSqlServer(
         requirement_category_id AS requirementCategoryId,
         requirement_type_id AS requirementTypeId,
         quality_characteristic_id AS qualityCharacteristicId,
-        risk_level_id AS riskLevelId,
+        priority_level_id AS priorityLevelId,
         CAST(is_testing_required AS int) AS requiresTesting,
         verification_method AS verificationMethod,
         created_by AS createdBy,
@@ -1274,7 +1375,7 @@ async function restoreVersionSqlServer(
     `INSERT INTO requirement_versions (
         requirement_id, version_number, description, acceptance_criteria,
         requirement_category_id, requirement_type_id, quality_characteristic_id,
-        risk_level_id, requirement_status_id, is_testing_required,
+        priority_level_id, requirement_status_id, is_testing_required,
         verification_method, created_at, edited_at, published_at,
         archived_at, archive_initiated_at, created_by, created_by_hsa_id,
         status_updated_at, has_specification_item_history
@@ -1289,7 +1390,7 @@ async function restoreVersionSqlServer(
       toNum(old.requirementCategoryId),
       toNum(old.requirementTypeId),
       toNum(old.qualityCharacteristicId),
-      toNum(old.riskLevelId),
+      toNum(old.priorityLevelId),
       STATUS_DRAFT,
       toBool(old.requiresTesting) ? 1 : 0,
       old.verificationMethod,
@@ -1370,7 +1471,7 @@ export async function getVersionHistory(
         version.requirement_category_id AS requirementCategoryId,
         version.requirement_type_id AS requirementTypeId,
         version.quality_characteristic_id AS qualityCharacteristicId,
-        version.risk_level_id AS riskLevelId,
+        version.priority_level_id AS priorityLevelId,
         version.requirement_status_id AS statusId,
         CAST(version.is_testing_required AS int) AS requiresTesting,
         version.verification_method AS verificationMethod,
@@ -1451,7 +1552,7 @@ export async function getVersionHistory(
       requirementCategoryId: categoryId,
       requirementTypeId: typeId,
       qualityCharacteristicId: qcId,
-      riskLevelId: toNum(row.riskLevelId),
+      priorityLevelId: toNum(row.priorityLevelId),
       statusId: Number(row.statusId),
       requiresTesting: toBool(row.requiresTesting),
       verificationMethod:
@@ -1545,7 +1646,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         version.requirement_category_id AS requirementCategoryId,
         version.requirement_type_id AS requirementTypeId,
         version.quality_characteristic_id AS qualityCharacteristicId,
-        version.risk_level_id AS riskLevelId,
+        version.priority_level_id AS priorityLevelId,
         version.requirement_status_id AS statusId,
         CAST(version.is_testing_required AS int) AS requiresTesting,
         version.verification_method AS verificationMethod,
@@ -1566,12 +1667,12 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         quality_characteristic.name_sv AS qcNameSv,
         quality_characteristic.requirement_type_id AS qcRequirementTypeId,
         quality_characteristic.parent_id AS qcParentId,
-        risk_level.id AS rlId,
-        risk_level.name_en AS rlNameEn,
-        risk_level.name_sv AS rlNameSv,
-        risk_level.color AS rlColor,
-        risk_level.icon_name AS rlIconName,
-        risk_level.sort_order AS rlSortOrder,
+        priority_level.id AS rlId,
+        priority_level.name_en AS rlNameEn,
+        priority_level.name_sv AS rlNameSv,
+        priority_level.color AS rlColor,
+        priority_level.icon_name AS rlIconName,
+        priority_level.sort_order AS rlSortOrder,
         requirement_status.id AS statusRowId,
         requirement_status.name_en AS statusNameEn,
         requirement_status.name_sv AS statusNameSv,
@@ -1586,8 +1687,8 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         ON requirement_type.id = version.requirement_type_id
       LEFT JOIN quality_characteristics quality_characteristic
         ON quality_characteristic.id = version.quality_characteristic_id
-      LEFT JOIN risk_levels risk_level
-        ON risk_level.id = version.risk_level_id
+      LEFT JOIN priority_levels priority_level
+        ON priority_level.id = version.priority_level_id
       LEFT JOIN requirement_statuses requirement_status
         ON requirement_status.id = version.requirement_status_id
       WHERE version.requirement_id = @0
@@ -1627,7 +1728,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
             link.requirement_package_id AS requirementPackageId,
             requirementPackage.id AS packageId,
             requirementPackage.name AS packageName,
-            requirementPackage.description AS packageDescription,
+            requirementPackage.purpose_and_scope AS packagePurposeAndScope,
             NULL AS packageOwnerId,
             requirementPackage.created_at AS packageCreatedAt,
             requirementPackage.updated_at AS packageUpdatedAt
@@ -1681,7 +1782,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
       requirementCategoryId: categoryId,
       requirementTypeId: typeId,
       qualityCharacteristicId: qcId,
-      riskLevelId: rlId,
+      priorityLevelId: rlId,
       statusId: Number(row.statusId),
       requiresTesting: toBool(row.requiresTesting),
       verificationMethod:
@@ -1718,7 +1819,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
               requirementTypeId: toNum(row.qcRequirementTypeId),
               parentId: toNum(row.qcParentId),
             },
-      riskLevel:
+      priorityLevel:
         rlId == null
           ? null
           : {
@@ -1759,10 +1860,10 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         requirementPackage: {
           id: Number(link.packageId),
           name: link.packageName == null ? null : String(link.packageName),
-          description:
-            link.packageDescription == null
+          purposeAndScope:
+            link.packagePurposeAndScope == null
               ? null
-              : String(link.packageDescription),
+              : String(link.packagePurposeAndScope),
           ownerId: toNum(link.packageOwnerId),
           createdAt: toIso(link.packageCreatedAt) ?? '',
           updatedAt: toIso(link.packageUpdatedAt) ?? '',

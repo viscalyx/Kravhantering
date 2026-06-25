@@ -610,6 +610,7 @@ describe('requirement selection questions DAL', () => {
         isDirect: 1,
         packageId: null,
         packageName: null,
+        packagePurposeAndScope: null,
         uniqueId: 'REQ-101',
       },
     ])
@@ -653,6 +654,7 @@ describe('requirement selection questions DAL', () => {
         isDirect: 0,
         packageId: 7,
         packageName: 'Baseline',
+        packagePurposeAndScope: 'Baseline requirements.',
         uniqueId: 'REQ-202',
       },
     ])
@@ -666,7 +668,13 @@ describe('requirement selection questions DAL', () => {
         description: 'Packaged requirement',
         direct: false,
         id: 202,
-        sourcePackages: [{ id: 7, name: 'Baseline' }],
+        sourcePackages: [
+          {
+            id: 7,
+            name: 'Baseline',
+            purposeAndScope: 'Baseline requirements.',
+          },
+        ],
         uniqueId: 'REQ-202',
       },
     ])
@@ -693,6 +701,7 @@ describe('requirement selection questions DAL', () => {
         isDirect: 1,
         packageId: null,
         packageName: null,
+        packagePurposeAndScope: null,
         uniqueId: 'REQ-303',
       },
       {
@@ -701,6 +710,7 @@ describe('requirement selection questions DAL', () => {
         isDirect: 0,
         packageId: 9,
         packageName: 'Enhanced',
+        packagePurposeAndScope: 'Enhanced requirements.',
         uniqueId: 'REQ-303',
       },
     ])
@@ -715,7 +725,13 @@ describe('requirement selection questions DAL', () => {
         description: 'Mixed requirement',
         direct: true,
         id: 303,
-        sourcePackages: [{ id: 9, name: 'Enhanced' }],
+        sourcePackages: [
+          {
+            id: 9,
+            name: 'Enhanced',
+            purposeAndScope: 'Enhanced requirements.',
+          },
+        ],
         uniqueId: 'REQ-303',
       },
     ])

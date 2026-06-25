@@ -15,7 +15,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { expect, type Page, test } from '@playwright/test'
+import {
+  type BrowserContext,
+  expect,
+  type Locator,
+  type Page,
+  test,
+} from '@playwright/test'
 
 // ─── Lokalisering ──────────────────────────────────────────────────────────
 
@@ -65,9 +71,18 @@ const MOCK_SUGGESTION =
   'Överväg att lägga till biometrisk autentisering som ett tredje faktoralternativ i en framtida version.'
 const GUIDE_SPECIFICATION_SLUG = 'ETJANST-UPP-2026'
 const GUIDE_DEVIATION_REQUIREMENT_ID = 'BEH0002'
+const IMPORT_SAMPLE_PATH = '/tmp/krav5.txt'
+const STATUS_REVIEW_ID = 2
+const STATUS_PUBLISHED_ID = 3
 const SPECIFICATION_ITEMS_PANEL_SELECTOR =
   '[data-specification-detail-list-panel="items"]'
 const GUIDE_DEBUG = process.env.GUIDE_DEBUG !== '0'
+
+function loadImportSampleJson(): string | null {
+  if (!fs.existsSync(IMPORT_SAMPLE_PATH)) return null
+  const raw = fs.readFileSync(IMPORT_SAMPLE_PATH, 'utf-8')
+  return JSON.stringify(JSON.parse(raw), null, 2)
+}
 
 // ─── Typer ─────────────────────────────────────────────────────────────────
 
@@ -86,6 +101,7 @@ let currentSection = ''
 const entries: ScreenshotEntry[] = []
 const sectionIntros = new Map<string, string>()
 let guideRunCompleted = false
+let guideRunSkipped = false
 
 function setSectionIntro(text: string) {
   sectionIntros.set(currentSection, text)
@@ -242,6 +258,20 @@ async function guideGoto(
   }
 }
 
+function selectedRequirementUrl(uniqueId: string, statusId: number): string {
+  const params = new URLSearchParams()
+  params.set('selected', uniqueId)
+  params.append('statuses', String(statusId))
+  return `/sv/requirements?${params.toString()}`
+}
+
+function dialogWithHeading(page: Page, heading: string): Locator {
+  return page
+    .locator('[role="dialog"]')
+    .filter({ has: page.getByRole('heading', { name: heading }) })
+    .first()
+}
+
 async function warmGuideApi(page: Page, url: string): Promise<void> {
   const response = await page.request.get(url, {
     headers: { Accept: 'application/json' },
@@ -253,6 +283,72 @@ async function warmGuideApi(page: Page, url: string): Promise<void> {
       await response.text()
     ).slice(0, 500)}`,
   )
+}
+
+async function expectSuccessfulImportResponse(
+  responsePromise: Promise<import('@playwright/test').Response>,
+  action: string,
+) {
+  const response = await responsePromise
+  if (response.ok()) return
+
+  const body = await response.text()
+  throw new Error(
+    `${action} failed: HTTP ${response.status()} — ${body.slice(0, 300)}`,
+  )
+}
+
+async function loadImportPreview(
+  page: Page,
+  dialog: Locator,
+  endpointFragment: string,
+) {
+  const previewResponse = page.waitForResponse(
+    response =>
+      response.url().includes(endpointFragment) &&
+      response.request().method() === 'POST',
+    { timeout: 15_000 },
+  )
+  const previewButton = dialog.getByRole('button', {
+    name: 'Förhandsgranska krav',
+  })
+  await expect(previewButton).toBeEnabled({ timeout: 10_000 })
+  await previewButton.click()
+  await expectSuccessfulImportResponse(previewResponse, 'Import preview')
+  await expect(dialog.getByRole('tab', { name: /^Krav\b/ })).toBeVisible({
+    timeout: 10_000,
+  })
+}
+
+async function executeImportRows(
+  page: Page,
+  dialog: Locator,
+  endpointFragment: string,
+) {
+  const executeResponse = page.waitForResponse(
+    response =>
+      response.url().includes(endpointFragment) &&
+      response.request().method() === 'POST',
+    { timeout: 15_000 },
+  )
+  await dialog.getByRole('button', { name: 'Importera valda' }).click()
+  const warningDialog = page.getByRole('dialog', { name: 'varningar' })
+  const warningDialogVisible = await warningDialog
+    .waitFor({ state: 'visible', timeout: 1000 })
+    .then(() => true)
+    .catch(() => false)
+  if (warningDialogVisible) {
+    await warningDialog.getByRole('button', { name: 'Importera valda' }).click()
+  }
+  await expectSuccessfulImportResponse(executeResponse, 'Import execute')
+  await expect(dialog.getByText(/^Importerade rader:/)).toBeVisible({
+    timeout: 10_000,
+  })
+}
+
+async function closeImportDialog(dialog: Locator) {
+  await dialog.getByLabel('Stäng').click()
+  await expect(dialog).toBeHidden({ timeout: 10_000 })
 }
 
 /**
@@ -598,12 +694,16 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
   test.afterAll(() => {
     if (!guideRunCompleted) {
+      const skipReason = guideRunSkipped
+        ? `import sample fixture saknas: ${IMPORT_SAMPLE_PATH}`
+        : 'guide run did not complete'
       guideLog('write:readme:skip', {
         entries: entries.length,
-        reason: 'guide run did not complete',
+        reason: skipReason,
       })
+      const outcome = guideRunSkipped ? 'kördes inte' : 'slutfördes inte'
       process.stdout.write(
-        `\n✗ Guidegenerering slutfördes inte; ${README_PATH} uppdaterades inte. Delvisa skärmdumpar finns i ${IMAGES_DIR}\n`,
+        `\n✗ Guidegenerering ${outcome}; ${README_PATH} uppdaterades inte (${skipReason}). Delvisa skärmdumpar finns i ${IMAGES_DIR}\n`,
       )
       return
     }
@@ -618,9 +718,36 @@ test.describe('Kravhantering — Guidegenerering', () => {
     guideLog('write:readme:end', { path: README_PATH, entries: entries.length })
   })
 
-  test('Generera användarguide', async ({ page }) => {
+  test('Generera användarguide', async ({ baseURL, browser, page }) => {
+    const importSampleJson = loadImportSampleJson()
+    if (importSampleJson === null) {
+      guideRunSkipped = true
+      test.skip(true, `Import sample fixture missing: ${IMPORT_SAMPLE_PATH}`)
+      return
+    }
+
     attachGuideDiagnostics(page)
     guideLog('run:start', { url: compactUrl(page.url()) })
+    let reviewerContext: BrowserContext | null = null
+    let reviewerPage: Page | null = null
+    const guideBaseURL =
+      baseURL ?? process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000'
+    const getReviewerPage = async () => {
+      if (reviewerPage && !reviewerPage.isClosed()) return reviewerPage
+
+      reviewerContext = await browser.newContext({
+        baseURL: guideBaseURL,
+        deviceScaleFactor: 1,
+        hasTouch: false,
+        isMobile: false,
+        storageState: 'test-results/auth/reviewer.json',
+        viewport: { width: 1440, height: 1200 },
+      })
+      reviewerPage = await reviewerContext.newPage()
+      attachGuideDiagnostics(reviewerPage)
+      return reviewerPage
+    }
+
     // ── Sektion 1: Översikt och navigering ─────────────────────────────────
     currentSection = 'Översikt och navigering'
 
@@ -695,7 +822,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'kravbibliotek',
         'Kravbiblioteket — Översikt',
-        'Kravbiblioteket listar alla krav i en sorterbar och filtrerbar tabell. Varje rad visar nyckeluppgifter som ID, kravtext, kravområde, status och risknivå. Kolumnerna kan konfigureras efter behov.',
+        'Kravbiblioteket listar alla krav i en sorterbar och filtrerbar tabell. Varje rad visar nyckeluppgifter som ID, kravtext, kravområde, status och prioritet. Kolumnerna kan konfigureras efter behov.',
         { fullPage: false },
       )
       if ((await tableSearchInput.count()) > 0) {
@@ -717,7 +844,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'kravbibliotek-sok',
           'Sökning och filtrering',
-          'Skriv i sökrutan för att filtrera krav i realtid. Du kan även använda avancerade filter för att begränsa listan efter kravområde, status, risknivå, kravtyp och kvalitetsegenskaper.',
+          'Skriv i sökrutan för att filtrera krav i realtid. Du kan även använda avancerade filter för att begränsa listan efter kravområde, status, prioritet, kravtyp och kvalitetsegenskaper.',
         )
         await searchInput.clear()
         await page.waitForTimeout(400)
@@ -837,7 +964,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
               'category',
               'type',
               'qualityCharacteristic',
-              'riskLevel',
+              'priorityLevel',
               'verifiable',
               'verificationMethod',
               'requirementPackages',
@@ -962,7 +1089,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'nytt-krav-tomt',
         'Skapa krav — tomt formulär',
-        'Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, kravområde, kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser och kravpaket.',
+        'Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, kravområde, kategori, typ, prioritet, kvalitetsegenskaper, verifieringsmetod, normreferenser och kravpaket. När kravpaket visas i den interaktiva vyn kan du hovra över namnet för att läsa kravpaketets syfte och avgränsning.',
       )
     })
 
@@ -981,13 +1108,13 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await safeSelectFirst(page, 'areaId')
       await safeSelectFirst(page, 'categoryId')
       await safeSelectFirst(page, 'typeId')
-      await safeSelectFirst(page, 'riskLevelId')
+      await safeSelectFirst(page, 'priorityLevelId')
 
       await snap(
         page,
         'nytt-krav-ifyllt',
         'Skapa krav — ifyllt formulär',
-        'Fyll i kravtext och acceptanskriterier. Välj sedan kravområde, kategori, typ och risknivå i respektive rullgardinsmeny. Alla obligatoriska fält markeras med asterisk (*) och formuläret visar en kort notis om markeringen. Klicka på "Spara" när formuläret är komplett.',
+        'Fyll i kravtext och acceptanskriterier. Välj sedan kravområde, kategori, typ och prioritet i respektive rullgardinsmeny. Alla obligatoriska fält markeras med asterisk (*) och formuläret visar en kort notis om markeringen. Klicka på "Spara" när formuläret är komplett.',
       )
     })
 
@@ -1074,49 +1201,57 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
 
       const grTarget = createdRequirementUniqueId
-        ? `/sv/requirements?selected=${createdRequirementUniqueId}`
+        ? selectedRequirementUrl(createdRequirementUniqueId, STATUS_REVIEW_ID)
         : '/sv/requirements'
       await guideGoto(page, grTarget)
       await expect(
         page.locator('[data-expanded-detail-cell="true"]'),
       ).toBeVisible({ timeout: 10_000 })
-      // Wait for fetchTransitions effect to fire and populate the new buttons
+
+      const reviewer = await getReviewerPage()
+      await guideGoto(reviewer, grTarget)
       await expect(
-        page.getByRole('button', { name: 'Publicera ↗' }),
+        reviewer.locator('[data-expanded-detail-cell="true"]'),
+      ).toBeVisible({ timeout: 10_000 })
+      // Wait for fetchTransitions effect to fire and populate the reviewer
+      // decision buttons.
+      await expect(
+        reviewer.getByRole('button', { name: 'Publicera ↗' }),
       ).toBeVisible({ timeout: 15_000 })
 
-      await revealRequirementStatusStepper(page)
+      await revealRequirementStatusStepper(reviewer)
 
       await snap(
-        page,
+        reviewer,
         'overgang-granskning',
         'Status: Granskning',
-        'Kravet är nu i **Granskning**-status. Stegaren uppdateras för att reflektera detta. Knappen "Publicera ↗" visas för att godkänna och publicera kravet, och "← Utkast" för att återföra det till utkastläge om ändringar behövs.',
+        'Kravet är nu i **Granskning**-status. Stegaren uppdateras för att reflektera detta. En kravgranskare ser knappen "Publicera ↗" för att godkänna och publicera kravet, och "← Utkast" för att återföra det till utkastläge om ändringar behövs.',
         { fullPage: false },
       )
     })
 
     await guideStep(page, 'Övergång till Publicerad', async () => {
-      const publicera = page.getByRole('button', { name: 'Publicera ↗' })
+      const reviewer = await getReviewerPage()
+      const publicera = reviewer.getByRole('button', { name: 'Publicera ↗' })
       await expect(publicera).toBeVisible({ timeout: 10_000 })
 
       // The dialog overlays everything — no need for a filtered table behind it.
       // Apply filter + scroll only later, for the "Status: Publicerad" snap.
       await publicera.click()
-      const confirmBtn = page.getByRole('button', { name: 'Bekräfta' })
+      const confirmBtn = reviewer.getByRole('button', { name: 'Bekräfta' })
       await expect(confirmBtn).toBeVisible({ timeout: 5_000 })
       // Wait for the framer-motion enter animation (duration: 0.15s) to finish
-      await page.waitForTimeout(200)
+      await reviewer.waitForTimeout(200)
 
       await snap(
-        page,
+        reviewer,
         'overgang-publicera-bekrafta',
         'Publicera — bekräftelsedialog',
         'Innan kravet publiceras visas en bekräftelsedialog. Klicka på "Bekräfta" för att slutföra publiceringen, eller "Avbryt" för att avbryta.',
         { fullPage: false },
       )
 
-      const transitionResPromise = page.waitForResponse(
+      const transitionResPromise = reviewer.waitForResponse(
         response =>
           /\/api\/requirement-transitions\//.test(response.url()) &&
           response.request().method() === 'POST',
@@ -1130,31 +1265,37 @@ test.describe('Kravhantering — Guidegenerering', () => {
           `Transition to Publicerad failed: HTTP ${transitionRes.status()} — ${body.slice(0, 200)}`,
         )
       }
-      await expect(page.locator('[role="dialog"]')).toBeHidden({
+      await expect(reviewer.locator('[role="dialog"]')).toBeHidden({
         timeout: 5_000,
       })
 
       const pubTarget = createdRequirementUniqueId
-        ? `/sv/requirements?selected=${createdRequirementUniqueId}`
+        ? selectedRequirementUrl(
+            createdRequirementUniqueId,
+            STATUS_PUBLISHED_ID,
+          )
         : '/sv/requirements'
-      await guideGoto(page, pubTarget)
+      await guideGoto(reviewer, pubTarget)
       await expect(
-        page.locator('[data-expanded-detail-cell="true"]'),
+        reviewer.locator('[data-expanded-detail-cell="true"]'),
       ).toBeVisible({ timeout: 10_000 })
       // Wait for the Publicera button to be gone (confirms Published state)
       await expect(
-        page.getByRole('button', { name: 'Publicera ↗' }),
+        reviewer.getByRole('button', { name: 'Publicera ↗' }),
       ).toBeHidden({ timeout: 15_000 })
 
-      await revealRequirementStatusStepper(page)
+      await revealRequirementStatusStepper(reviewer)
 
       await snap(
-        page,
+        reviewer,
         'overgang-publicerad',
         'Status: Publicerad',
         'Kravet är nu **Publicerat** och utgör den aktiva, godkända versionen. Vid redigering av ett Publicerat krav skapas en ny Utkast-version medan den publicerade versionen förblir aktiv tills det nya utkastet genomgått granskningsprocessen.',
         { fullPage: false },
       )
+      await reviewerContext?.close()
+      reviewerContext = null
+      reviewerPage = null
     })
 
     // ── Sektion 5: Kravunderlag ──────────────────────────────────────────────
@@ -1522,7 +1663,183 @@ test.describe('Kravhantering — Guidegenerering', () => {
       })
     })
 
-    // ── Sektion 7: Förbättringsförslag ────────────────────────────────────
+    // ── Sektion 7: Import av krav ─────────────────────────────────────────
+    currentSection = 'Import av krav'
+    setSectionIntro(
+      'Importfunktionen använder JSON enligt `requirement-import.v1` och finns i två lägen: **kravbiblioteksimport** skapar nya utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt i ett kravunderlag. Importen laddar först en granskning där rader, metadata och föreslagna normreferenser kan kontrolleras innan något sparas.',
+    )
+
+    await guideStep(page, 'Kravbiblioteksimport — importfil', async () => {
+      await guideGoto(page, '/sv/requirements')
+      await expect(
+        page.locator('[data-sticky-table-header="true"]'),
+      ).toBeVisible({ timeout: 10_000 })
+
+      await page.getByRole('button', { name: 'Importera krav' }).first().click()
+      const dialog = dialogWithHeading(page, 'Importera krav')
+      await expect(dialog).toBeVisible({ timeout: 5_000 })
+      await dialog
+        .getByLabel(/Kravområde/)
+        .selectOption({ label: 'INT Integration' })
+      await dialog.getByLabel(/Import-JSON/).fill(importSampleJson)
+
+      await snap(
+        page,
+        'import-kravbibliotek-fil',
+        'Kravbiblioteksimport — välj mål och importfil',
+        `Klicka på **"Importera krav"** i kravbiblioteket, välj kravområde och klistra in eller välj en JSON-fil. Exemplet använder importfilen \`${IMPORT_SAMPLE_PATH}\`, som innehåller DICOM-krav och en föreslagen normreferens.`,
+        { fullPage: false },
+      )
+
+      await loadImportPreview(page, dialog, '/api/requirements/import/preview')
+      await snap(
+        page,
+        'import-kravbibliotek-granskning',
+        'Kravbiblioteksimport — granska krav',
+        'Efter förhandsgranskning visas varje kravrad som ett valt importutkast. Rader kan expanderas för att justera kravtext, acceptanskriterier, kategori, typ, kvalitetsegenskap, prioritet, normreferenser, kravpaket och verifieringsuppgifter innan importen körs.',
+        { fullPage: false },
+      )
+    })
+
+    await guideStep(page, 'Kravbiblioteksimport — normreferens', async () => {
+      const dialog = dialogWithHeading(page, 'Importera krav')
+      await dialog
+        .getByRole('tab', { name: /Föreslagna normreferenser/ })
+        .click()
+      await expect(dialog.getByText('DICOM-PS3.2').first()).toBeVisible({
+        timeout: 5_000,
+      })
+
+      await snap(
+        page,
+        'import-normforslag',
+        'Föreslagen normreferens',
+        'Importfilen kan innehålla **föreslagna normreferenser** för källor som ännu inte finns i normbiblioteket. Förslaget kopplas till de kravrader som hänvisar till samma nyckel, men sparas inte automatiskt.',
+        { fullPage: false },
+      )
+
+      await dialog.getByRole('button', { name: 'Skapa normreferens' }).click()
+      const normDialog = page.getByRole('dialog', {
+        name: 'Skapa ny normreferens',
+      })
+      await expect(normDialog).toBeVisible({ timeout: 5_000 })
+
+      await snap(
+        page,
+        'import-normreferens-skapa',
+        'Skapa normreferens från importförslag',
+        'Knappen **"Skapa normreferens"** öppnar samma formulär som normbiblioteket använder. Fälten fylls i från importförslaget, så användaren kan kontrollera och spara källan innan kraven importeras.',
+        { fullPage: false },
+      )
+
+      const createNormReferenceResponse = page.waitForResponse(
+        response =>
+          response.url().includes('/api/norm-references') &&
+          response.request().method() === 'POST',
+        { timeout: 15_000 },
+      )
+      await normDialog.getByRole('button', { name: 'Spara' }).click()
+      await expectSuccessfulImportResponse(
+        createNormReferenceResponse,
+        'Create norm reference',
+      )
+      await expect(normDialog).toBeHidden({ timeout: 10_000 })
+      await expect(dialog.getByText('Löst')).toBeVisible({ timeout: 10_000 })
+
+      await snap(
+        page,
+        'import-normreferens-lost',
+        'Normreferens löst',
+        'När normreferensen har skapats markeras förslaget som **Löst** och importens kravrader uppdateras så att den nya normreferensen följer med när raderna importeras.',
+        { fullPage: false },
+      )
+    })
+
+    await guideStep(page, 'Kravbiblioteksimport — importera', async () => {
+      const dialog = dialogWithHeading(page, 'Importera krav')
+      await dialog.getByRole('tab', { name: /^Krav\b/ }).click()
+      await executeImportRows(page, dialog, '/api/requirements/import/execute')
+
+      await snap(
+        page,
+        'import-kravbibliotek-kvitto',
+        'Kravbiblioteksimport — importerade rader',
+        'När **"Importera valda"** körs skapas valda rader som nya utkast i kravbiblioteket. Kvittonotisen visar hur många rader som skapades och CSV-kvittot kan laddas ned vid behov.',
+        { fullPage: false },
+      )
+
+      await closeImportDialog(dialog)
+    })
+
+    await guideStep(page, 'Kravunderlagsimport — importfil', async () => {
+      await guideGoto(page, `/sv/specifications/${GUIDE_SPECIFICATION_SLUG}`)
+      await expect(
+        page.getByText(/^Det gick inte att läsa in tillgängliga krav:/),
+      ).toBeHidden({ timeout: 10_000 })
+      await page
+        .getByRole('button', { name: 'Importera unika krav' })
+        .first()
+        .click()
+
+      const dialog = dialogWithHeading(page, 'Importera lokala krav')
+      await expect(dialog).toBeVisible({ timeout: 5_000 })
+      await dialog.getByLabel(/Import-JSON/).fill(importSampleJson)
+
+      await snap(
+        page,
+        'import-kravunderlag-fil',
+        'Kravunderlagsimport — importfil',
+        'I ett kravunderlag använder knappen **"Importera unika krav"** samma importfilformat, men målet är det aktuella kravunderlaget. Därför väljs inget kravområde i dialogen.',
+        { fullPage: false },
+      )
+
+      await loadImportPreview(
+        page,
+        dialog,
+        '/api/specification-local-requirements/import/preview',
+      )
+      await dialog
+        .getByRole('button', { name: 'Expandera rad #1', exact: true })
+        .click()
+      await expect(dialog.getByText('Kravpakets-ID:n')).toBeHidden()
+
+      await snap(
+        page,
+        'import-kravunderlag-granskning',
+        'Kravunderlagsimport — granska unika krav',
+        'Kravunderlagsimporten skapar **unika krav** som bara finns i detta kravunderlag. Kravpaket används inte för lokala krav, medan normreferenser, prioritet, verifierbarhet och behovsreferens kan granskas per rad.',
+        { fullPage: false },
+      )
+    })
+
+    await guideStep(page, 'Kravunderlagsimport — importera', async () => {
+      const dialog = dialogWithHeading(page, 'Importera lokala krav')
+      await executeImportRows(
+        page,
+        dialog,
+        '/api/specification-local-requirements/import/execute',
+      )
+
+      await snap(
+        page,
+        'import-kravunderlag-kvitto',
+        'Kravunderlagsimport — importerade unika krav',
+        'När importen körs skapas valda rader som kravunderlagslokala krav. Raderna tas bort från granskningen efter lyckad import, och kvittot visar hur många unika krav som skapades i kravunderlaget.',
+        { fullPage: false },
+      )
+
+      await closeImportDialog(dialog)
+      await page.waitForTimeout(500)
+      await snap(
+        page,
+        'import-kravunderlag-resultat',
+        'Importerade unika krav i kravunderlag',
+        'Efter att dialogen stängs uppdateras kravunderlaget. De importerade kraven hanteras som unika krav i underlaget och kan senare granskas, följas upp eller lyftas till kravbiblioteket vid behov.',
+        { fullPage: false },
+      )
+    })
+
+    // ── Sektion 8: Förbättringsförslag ────────────────────────────────────
     currentSection = 'Förbättringsförslag'
 
     await guideStep(
@@ -1652,7 +1969,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'admin-taxonomi',
         'Admin — Taxonomi',
-        'Fliken **Taxonomi** innehåller länkar till klassningar som används för filtrering, rapportering och AI-stöd: kravområden, kategorier, typer, risknivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer. Normreferenser hanteras i Normbibliotek under Kravbiblioteksförvaltning.',
+        'Fliken **Taxonomi** innehåller länkar till klassningar som används för filtrering, rapportering och AI-stöd: kravområden, kategorier, typer, prioritetsskala, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer. Normreferenser hanteras i Normbibliotek under Kravbiblioteksförvaltning.',
       )
     })
 
@@ -1667,7 +1984,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    // ── Sektion 9: Taxonomi och statusar ─────────────────────────────────
+    // ── Sektion 10: Taxonomi och statusar ────────────────────────────────
     currentSection = 'Taxonomi och statusar'
 
     await guideStep(page, 'Kravområden', async () => {
@@ -1700,13 +2017,13 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await guideStep(page, 'Risknivåer', async () => {
-      await guideGoto(page, '/sv/risk-levels')
+    await guideStep(page, 'Prioritetsskala', async () => {
+      await guideGoto(page, '/sv/priority-levels')
       await snap(
         page,
-        'risknivåer',
-        'Risknivåer',
-        'Risknivåer klassificerar kravets kritikalitet. Varje nivå kan tilldelas en färg för visuell identifiering i kravbiblioteket och detaljvyer. Färgkodningen gör det enkelt att snabbt bedöma ett kravs vikt.',
+        'prioritetsnivaer',
+        'Prioritetsskala',
+        'Prioritetsskalan klassificerar hur viktigt, angeläget eller kritiskt ett krav är. Varje nivå har en P-kod, ett namn, en beskrivning, bedömningsgrunder och en färg för visuell identifiering i kravbiblioteket och detaljvyer.',
       )
     })
 
@@ -1740,7 +2057,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    // ── Sektion 10: Rapporter ─────────────────────────────────────────────
+    // ── Sektion 11: Rapporter ─────────────────────────────────────────────
     currentSection = 'Rapporter'
     setSectionIntro(
       'Systemet erbjuder flera rapporttyper för granskning, spårbarhet och beslutsunderlag. Rapporter kan genereras som **utskriftsvänliga HTML-sidor** eller laddas ned som **PDF**. Nedan listas de tillgängliga rapporterna.',
@@ -1756,7 +2073,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
       textEntry(
         'Granskningsrapport',
-        'Jämför en version i **Granskning** med den senast publicerade eller arkiverade versionen. Rapporten visar ord-för-ord-skillnader i kravtext och acceptanskriterier samt förändringar i metadata (kategori, typ, kvalitetsegenskaper, risknivå, normreferenser, kravpaket m.m.). Om ingen publicerad/arkiverad version finns noteras detta.\n\n' +
+        'Jämför en version i **Granskning** med den senast publicerade eller arkiverade versionen. Rapporten visar ord-för-ord-skillnader i kravtext och acceptanskriterier samt förändringar i metadata (kategori, typ, kvalitetsegenskaper, prioritet, normreferenser, kravpaket m.m.). Om ingen publicerad/arkiverad version finns noteras detta.\n\n' +
           '**Åtkomst:** Rapportmenyn i kravdetaljvyn (visas enbart när kravet är i status *Granskning*).\n\n' +
           '**Rutt:** `/requirements/reports/print/review/[id]` (utskrift) · `/requirements/reports/pdf/review/[id]` (PDF)',
       )

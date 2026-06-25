@@ -21,7 +21,6 @@ export const DEMO_RESET_TABLES = Object.freeze([
   'rfi_questions',
   'rfi_question_sequences',
   'requirement_version_requirement_packages',
-  'specification_local_requirement_requirement_packages',
   'specification_requirement_selection_answers',
   'requirement_selection_answer_requirements',
   'requirement_selection_answer_packages',

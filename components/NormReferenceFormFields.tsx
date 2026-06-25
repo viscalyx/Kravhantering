@@ -22,6 +22,7 @@ interface NormReferenceFormFieldsProps {
   form: NormReferenceFormData
   idPrefix: string
   layout?: 'create' | 'stacked'
+  normReferenceIdHelperText?: ReactNode
   onSetField: (field: string, value: string) => void
 }
 
@@ -46,6 +47,7 @@ export default function NormReferenceFormFields({
   form,
   idPrefix,
   layout = 'stacked',
+  normReferenceIdHelperText,
   onSetField,
 }: NormReferenceFormFieldsProps) {
   const t = useTranslations('normReference')
@@ -97,12 +99,25 @@ export default function NormReferenceFormFields({
       </div>
       {helpPanel('normReferenceIdHelp', 'normReferenceId')}
       <input
+        aria-describedby={
+          normReferenceIdHelperText
+            ? `${idPrefix}-norm-reference-id-helper`
+            : undefined
+        }
         className={fieldClass}
         id={`${idPrefix}-id`}
         onChange={e => onSetField('normReferenceId', e.target.value)}
         placeholder={t('normReferenceIdPlaceholder')}
         value={form.normReferenceId}
       />
+      {normReferenceIdHelperText ? (
+        <p
+          className="mt-1 text-xs text-secondary-600 dark:text-secondary-300"
+          id={`${idPrefix}-norm-reference-id-helper`}
+        >
+          {normReferenceIdHelperText}
+        </p>
+      ) : null}
     </div>
   )
 

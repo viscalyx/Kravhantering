@@ -30,7 +30,7 @@ import {
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import {
   recordAuthorizationDenied,
-  recordHighRiskMutationSucceeded,
+  recordSensitiveMutationSucceeded,
 } from '@/lib/requirements/security-audit'
 import type {
   AddToSpecificationInput,
@@ -511,7 +511,7 @@ export function createSpecificationWorkflow({
             },
           )
 
-          await recordHighRiskMutationSucceeded(context, {
+          await recordSensitiveMutationSucceeded(context, {
             action: 'specification_local_requirement.graduated',
             locale,
             localRequirementId: input.localRequirementId,
@@ -593,7 +593,7 @@ export function createSpecificationWorkflow({
             )
           }
           if (addedCount > 0) {
-            await recordHighRiskMutationSucceeded(context, {
+            await recordSensitiveMutationSucceeded(context, {
               action: 'specification.requirements.added',
               addedCount,
               locale,
@@ -682,7 +682,7 @@ export function createSpecificationWorkflow({
             specificationId,
             input.requirementIds,
           )
-          await recordHighRiskMutationSucceeded(context, {
+          await recordSensitiveMutationSucceeded(context, {
             action: 'specification.requirements.removed',
             operation: 'remove_from_specification',
             removedCount,

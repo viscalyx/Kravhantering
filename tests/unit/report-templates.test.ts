@@ -20,7 +20,7 @@ function makeVersion(
     publishedAt: null,
     qualityCharacteristic: null,
     requiresTesting: false,
-    riskLevel: null,
+    priorityLevel: null,
     status: 3,
     statusColor: '#22c55e',
     statusNameEn: 'Published',

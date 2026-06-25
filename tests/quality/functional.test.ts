@@ -145,11 +145,11 @@ const specificationItemStatusesRoutePath = join(
   '[id]',
   'route.ts',
 )
-const riskLevelsRoutePath = join(
+const priorityLevelsRoutePath = join(
   repoRoot,
   'app',
   'api',
-  'risk-levels',
+  'priority-levels',
   '[id]',
   'route.ts',
 )
@@ -416,7 +416,7 @@ it('Scenario 10: MCP tool inventory matches documentation', () => {
   ).toBe(registerToolCount)
 })
 
-it('Scenario 15: configurable status and risk icons use an allowlist and stay additive', () => {
+it('Scenario 15: configurable status and priority icons use an allowlist and stay additive', () => {
   const allowlistSource = readFileSync(statusIconAllowlistPath, 'utf8')
   const schemaSource = readFileSync(statusIconSchemaPath, 'utf8')
   const migrationSource = readFileSync(statusIconMigrationPath, 'utf8')
@@ -428,7 +428,10 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
     specificationItemStatusesRoutePath,
     'utf8',
   )
-  const riskLevelsRouteSource = readFileSync(riskLevelsRoutePath, 'utf8')
+  const priorityLevelsRouteSource = readFileSync(
+    priorityLevelsRoutePath,
+    'utf8',
+  )
   const adminCenterDoc = readFileSync(adminCenterDocPath, 'utf8')
   const databaseSchemaDoc = readFileSync(databaseSchemaDocPath, 'utf8')
   const requirementsServiceSource = readFileSync(
@@ -436,6 +439,7 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
     'utf8',
   )
   const userGuideSource = readFileSync(userGuidePath, 'utf8')
+  const legacyPriorityTableName = ['risk', 'levels'].join('_')
 
   for (const iconName of [
     'AlertCircle',
@@ -476,7 +480,7 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
     'ALTER TABLE [specification_item_statuses] ADD [icon_name] nvarchar(64) NULL;',
   )
   expect(migrationSource).toContain(
-    'ALTER TABLE [risk_levels] ADD [icon_name] nvarchar(64) NULL;',
+    `ALTER TABLE [${legacyPriorityTableName}] ADD [icon_name] nvarchar(64) NULL;`,
   )
   expect(migrationSource).toContain(
     'ALTER TABLE [requirement_statuses] DROP COLUMN [icon_name];',
@@ -485,7 +489,7 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
   for (const routeSource of [
     requirementStatusesRouteSource,
     specificationItemStatusesRouteSource,
-    riskLevelsRouteSource,
+    priorityLevelsRouteSource,
   ]) {
     expect(routeSource).toContain('nullableOptionalStatusIconNameSchema')
     expect(routeSource).toContain(
@@ -498,7 +502,7 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
     'statusIconName: version.statusIconName',
   )
   expect(requirementsServiceSource).toContain(
-    'iconName: version.riskLevel.iconName',
+    'iconName: version.priorityLevel.iconName',
   )
   expect(requirementsServiceSource).toContain('specification_item_statuses')
   expect(userGuideSource).toContain('usage statuses')
@@ -766,7 +770,6 @@ const TRANSACTIONAL_TABLES = [
   'action_audit_events',
   'requirement_version_requirement_packages',
   'requirement_version_norm_references',
-  'specification_local_requirement_requirement_packages',
   'specification_local_requirement_norm_references',
   'specification_local_requirement_deviations',
   'deviations',
@@ -1104,7 +1107,7 @@ async function ensureResponsibilityPerson(
 
 async function createRequirementPackage(
   target: SqlServerDatabase,
-  overrides: { description?: string; name?: string } = {},
+  overrides: { name?: string; purposeAndScope?: string } = {},
 ): Promise<{ id: number }> {
   const now = new Date()
   const leadHsaId = 'SE5560000001-johlju'
@@ -1112,7 +1115,7 @@ async function createRequirementPackage(
   const rows = (await target.query(
     `INSERT INTO requirement_packages (
         name,
-        description,
+        purpose_and_scope,
         lead_hsa_id,
         created_at,
         updated_at
@@ -1121,7 +1124,7 @@ async function createRequirementPackage(
        VALUES (@0, @1, @2, @3, @3)`,
     [
       overrides.name ?? 'Säkerhetspaket',
-      overrides.description ?? 'Security package',
+      overrides.purposeAndScope ?? 'Security package purpose and scope.',
       leadHsaId,
       now,
     ],
@@ -1466,10 +1469,11 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       expect.objectContaining({
         id: published.requirementId,
         sourcePackages: [
-          {
+          expect.objectContaining({
             id: requirementPackage.id,
             name: 'Lifecycle package',
-          },
+            purposeAndScope: 'Security package purpose and scope.',
+          }),
         ],
         uniqueId: published.uniqueId,
       }),
@@ -2091,7 +2095,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       name: 'Target library',
       prefix: 'TGT',
     })
-    const requirementPackage = await createRequirementPackage(appDb())
     const normReference = await createNormReference(appDb())
     const spec = await createSpecification(appDb(), {
       name: 'Graduation specification',
@@ -2106,7 +2109,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         acceptanceCriteria: 'Copied acceptance',
         description: 'Copied unique requirement',
         normReferenceIds: [normReference.id],
-        requirementPackageIds: [requirementPackage.id],
         requiresTesting: true,
         verificationMethod: 'Inspection',
       },
@@ -2236,9 +2238,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         verificationMethod: 'Inspection',
       }),
     ])
-    expect(targetPackageRows).toEqual([
-      { requirementPackageId: requirementPackage.id },
-    ])
+    expect(targetPackageRows).toEqual([])
     expect(targetNormRows).toEqual([{ normReferenceId: normReference.id }])
     expect(Number(deviationRows[0]?.count ?? 0)).toBe(1)
   })

@@ -324,7 +324,6 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
   getRequirementPackageUsage: async () => ({
     answerLinkCount: 0,
     libraryRequirementCount: 0,
-    localRequirementCount: 0,
   }),
   updateRequirementPackage: (...a: unknown[]) =>
     mockUpdateRequirementPackage(...a),
@@ -1685,7 +1684,7 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"A"}',
+        body: '{"name":"A","purposeAndScope":"Purpose and scope"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -1698,7 +1697,7 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"A"}',
+        body: '{"name":"A","purposeAndScope":"Purpose and scope"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -1712,6 +1711,7 @@ describe('requirement-packages routes', () => {
       expect.objectContaining({
         leadHsaId: 'SE5560000001-route',
         name: 'A',
+        purposeAndScope: 'Purpose and scope',
       }),
       { useExistingTransaction: true },
     )
@@ -1720,7 +1720,7 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"A"}',
+        body: '{"name":"A","purposeAndScope":"Purpose and scope"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -1732,6 +1732,7 @@ describe('requirement-packages routes', () => {
       expect.objectContaining({
         leadHsaId: 'SE5560000001-route',
         name: 'A',
+        purposeAndScope: 'Purpose and scope',
       }),
       { useExistingTransaction: true },
     )
@@ -1762,6 +1763,7 @@ describe('requirement-packages routes', () => {
       jsonReq('POST', {
         coAuthorHsaIds: ['SE5560000001-coa1'],
         name: 'A',
+        purposeAndScope: 'Purpose and scope',
       }),
     )
 
@@ -1776,6 +1778,7 @@ describe('requirement-packages routes', () => {
         leadDisplayName: 'Client Lead',
         leadHsaId: 'SE5560000001-client1',
         name: 'A',
+        purposeAndScope: 'Purpose and scope',
       }),
     )
 
@@ -1788,7 +1791,9 @@ describe('requirement-packages routes', () => {
     authState.context.actor.roles = []
     requirementAreaPermissionState.canAuthorAnyArea.mockResolvedValueOnce(false)
 
-    const r = await postRequirementPackage(jsonReq('POST', { name: 'A' }))
+    const r = await postRequirementPackage(
+      jsonReq('POST', { name: 'A', purposeAndScope: 'Purpose and scope' }),
+    )
 
     expect(r.status).toBe(403)
     await expect(r.json()).resolves.toMatchObject({
@@ -1800,7 +1805,9 @@ describe('requirement-packages routes', () => {
   it('POST returns 403 when actor HSA-id is missing', async () => {
     Object.assign(authState.context.actor, { hsaId: null, roles: [] })
 
-    const r = await postRequirementPackage(jsonReq('POST', { name: 'A' }))
+    const r = await postRequirementPackage(
+      jsonReq('POST', { name: 'A', purposeAndScope: 'Purpose and scope' }),
+    )
 
     expect(r.status).toBe(403)
     await expect(r.json()).resolves.toMatchObject({
@@ -1816,6 +1823,21 @@ describe('requirement-packages routes', () => {
       makeParams('1'),
     )
     expect(((await r.json()) as { id: number }).id).toBe(1)
+  })
+  it('PUT allows clearing purpose and scope with an empty string', async () => {
+    mockUpdateRequirementPackage.mockResolvedValue({ id: 1 })
+
+    const r = await putRequirementPackage(
+      jsonReq('PUT', { purposeAndScope: '' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockUpdateRequirementPackage).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({ purposeAndScope: '' }),
+    )
   })
   it('PUT rejects changing the lead to an existing persisted co-author', async () => {
     mockGetRequirementPackageById.mockResolvedValueOnce({

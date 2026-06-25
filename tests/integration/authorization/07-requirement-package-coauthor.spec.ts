@@ -36,7 +36,9 @@ test('AUTH-10/AUTH-11: requirement package co-authors are exported but cannot ma
       page.getByRole('heading', { level: 1, name: 'Kravpaket' }),
     ).toBeVisible()
     await page
-      .getByRole('textbox', { name: 'Filtrera på namn eller beskrivning' })
+      .getByRole('textbox', {
+        name: 'Filtrera på namn eller beskrivning',
+      })
       .fill(fixture.packageName)
     const row = page.getByRole('row', { name: new RegExp(fixture.packageName) })
     await expect(row).toBeVisible()
@@ -46,7 +48,7 @@ test('AUTH-10/AUTH-11: requirement package co-authors are exported but cannot ma
     const dialog = page.getByRole('dialog', { name: 'Redigera kravpaket' })
     await expect(dialog).toBeVisible()
     await dialog
-      .getByRole('textbox', { name: 'Beskrivning' })
+      .getByRole('textbox', { name: 'Syfte och avgränsning' })
       .fill('Package co-author must not update metadata.')
     await dialog.getByRole('button', { name: 'Spara' }).click()
     await expect(dialog.getByRole('alert')).toContainText('Forbidden')
@@ -69,7 +71,9 @@ test('AUTH-10/AUTH-11: requirement package co-authors are exported but cannot ma
       await packageCoauthor.put(
         `/api/requirement-packages/${fixture.packageId}`,
         {
-          data: { description: 'Package co-author must not update metadata.' },
+          data: {
+            purposeAndScope: 'Package co-author must not update metadata.',
+          },
         },
       ),
       403,

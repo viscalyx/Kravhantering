@@ -42,7 +42,7 @@ function createVersion(versionNumber = 2): RequirementVersionDetail {
     qualityCharacteristic: null,
     requiresTesting: true,
     revisionToken: '11111111-1111-4111-8111-111111111111',
-    riskLevel: null,
+    priorityLevel: null,
     status: 1,
     statusColor: null,
     statusNameEn: 'Draft',
@@ -74,6 +74,17 @@ function createService() {
       message: 'Requirements skipped',
       skippedCount: 1,
       skippedIds: [99],
+    })),
+    buildImportAiPrompt: vi.fn(async () => ''),
+    executeLibraryImport: vi.fn(async () => ({
+      createdRows: [],
+      mode: 'library' as const,
+      summary: { createdCount: 0 },
+    })),
+    executeSpecificationLocalImport: vi.fn(async () => ({
+      createdRows: [],
+      mode: 'specification-local' as const,
+      summary: { createdCount: 0 },
     })),
     generateRequirements: vi.fn(async () => ({
       message: 'Generated requirements',
@@ -156,6 +167,20 @@ function createService() {
     manageSuggestion: vi.fn(async () => ({
       message: 'Suggestion updated',
       result: { id: 3 },
+    })),
+    previewLibraryImport: vi.fn(async () => ({
+      mode: 'library' as const,
+      previewToken: 'token',
+      proposals: [],
+      rows: [],
+      summary: { errorCount: 0, rowCount: 0, warningCount: 0 },
+    })),
+    previewSpecificationLocalImport: vi.fn(async () => ({
+      mode: 'specification-local' as const,
+      previewToken: 'token',
+      proposals: [],
+      rows: [],
+      summary: { errorCount: 0, rowCount: 0, warningCount: 0 },
     })),
     queryCatalog: vi.fn(async () => ({
       catalog: 'requirements' as const,

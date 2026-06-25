@@ -6,22 +6,22 @@ export interface RequirementReferenceExecutor {
 
 export interface RequirementTaxonomyReferenceInput {
   normReferenceIds?: number[] | null
+  priorityLevelId?: number | null
   qualityCharacteristicId?: number | null
   requirementAreaId?: number | null
   requirementCategoryId?: number | null
   requirementPackageIds?: number[] | null
   requirementTypeId?: number | null
-  riskLevelId?: number | null
 }
 
 export interface NormalizedRequirementTaxonomyReferences {
   normReferenceIds: number[]
+  priorityLevelId: number | null
   qualityCharacteristicId: number | null
   requirementAreaId: number | null
   requirementCategoryId: number | null
   requirementPackageIds: number[]
   requirementTypeId: number | null
-  riskLevelId: number | null
 }
 
 type ScalarReferenceField =
@@ -29,7 +29,7 @@ type ScalarReferenceField =
   | 'requirementAreaId'
   | 'requirementCategoryId'
   | 'requirementTypeId'
-  | 'riskLevelId'
+  | 'priorityLevelId'
 
 type ArrayReferenceField = 'normReferenceIds' | 'requirementPackageIds'
 
@@ -61,9 +61,9 @@ const SCALAR_REFERENCES: Array<ReferenceDescriptor<ScalarReferenceField>> = [
     table: 'quality_characteristics',
   },
   {
-    field: 'riskLevelId',
-    label: 'risk level',
-    table: 'risk_levels',
+    field: 'priorityLevelId',
+    label: 'priority level',
+    table: 'priority_levels',
   },
 ]
 
@@ -184,7 +184,10 @@ export async function validateRequirementTaxonomyReferences(
       'requirementTypeId',
       input.requirementTypeId,
     ),
-    riskLevelId: normalizeOptionalId('riskLevelId', input.riskLevelId),
+    priorityLevelId: normalizeOptionalId(
+      'priorityLevelId',
+      input.priorityLevelId,
+    ),
   }
 
   const scalarLookups = SCALAR_REFERENCES.map(async reference => {

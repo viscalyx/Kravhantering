@@ -50,6 +50,15 @@ describe('requirements-list-performance.mjs', () => {
       'Performance fixture generated duplicate Published requirement_versions rows.',
     )
     expect(seedSql).toContain('requirement_version_norm_references')
+    expect(seedSql).toContain('priority_level_id')
+    expect(seedSql).not.toContain('risk_level_id')
+    expect(
+      scenarios.find(scenario => scenario.name === 'classification-filters')
+        .options,
+    ).toMatchObject({
+      priorityLevelIds: [2, 3],
+      sortBy: 'priorityLevel',
+    })
     expect(buildPerformanceFixtureStatusSql()).toContain(
       'COUNT(*) AS requirementCount',
     )
@@ -59,6 +68,11 @@ describe('requirements-list-performance.mjs', () => {
     expect(buildReferencePreconditionSql()).toContain(
       "N'requirementPackageIds' AS optionKey",
     )
+    expect(buildReferencePreconditionSql()).toContain(
+      "N'priorityLevelIds' AS optionKey",
+    )
+    expect(buildReferencePreconditionSql()).toContain('FROM priority_levels')
+    expect(buildReferencePreconditionSql()).not.toContain('risk_levels')
   })
 
   it('parses SQL Server logical reads from STATISTICS IO messages', () => {

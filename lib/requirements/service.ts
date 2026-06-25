@@ -29,6 +29,15 @@ import {
   validationError,
 } from '@/lib/requirements/errors'
 import type {
+  ImportExecuteBody,
+  ImportRequirementsPayload,
+} from '@/lib/requirements/import-schema'
+import {
+  createRequirementsImportWorkflow,
+  type RequirementsImportExecuteResult,
+  type RequirementsImportPreview,
+} from '@/lib/requirements/import-service'
+import type {
   RequirementSortDirection,
   RequirementSortField,
 } from '@/lib/requirements/list-view'
@@ -36,7 +45,7 @@ import {
   createRequirementsLogger,
   type RequirementsLogger,
 } from '@/lib/requirements/logging'
-import { recordHighRiskMutationSucceeded } from '@/lib/requirements/security-audit'
+import { recordSensitiveMutationSucceeded } from '@/lib/requirements/security-audit'
 import { createRequirementWorkflow } from '@/lib/requirements/service-requirements'
 import {
   authorize,
@@ -73,7 +82,7 @@ export type CatalogKind =
   | 'categories'
   | 'types'
   | 'quality_characteristics'
-  | 'risk_levels'
+  | 'priority_levels'
   | 'specification_item_statuses'
   | 'statuses'
   | 'requirement_packages'
@@ -91,10 +100,10 @@ export interface RequirementMutationInput {
   createdBy?: string
   description?: string
   normReferenceIds?: number[]
+  priorityLevelId?: number
   qualityCharacteristicId?: number
   requirementPackageIds?: number[]
   requiresTesting?: boolean
-  riskLevelId?: number
   typeId?: number
   verificationMethod?: string | null
 }
@@ -114,11 +123,11 @@ export interface QueryCatalogInput {
   locale?: ResponseLocale
   normReferenceIds?: number[]
   offset?: number
+  priorityLevelIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementPackageIds?: number[]
   requiresTesting?: boolean[]
   responseFormat?: ResponseFormat
-  riskLevelIds?: number[]
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
@@ -353,6 +362,20 @@ export interface RequirementsService {
     input: AddToSpecificationInput,
   ): Promise<AddToSpecificationOutput>
 
+  buildImportAiPrompt(locale: ResponseLocale): Promise<string>
+
+  executeLibraryImport(
+    context: RequestContext,
+    input: ImportExecuteBody & { areaId: number },
+  ): Promise<RequirementsImportExecuteResult>
+
+  executeSpecificationLocalImport(
+    context: RequestContext,
+    input: Omit<ImportExecuteBody, 'areaId'> & {
+      specificationIdOrSlug: string
+    },
+  ): Promise<RequirementsImportExecuteResult>
+
   generateRequirements(
     context: RequestContext,
     input: GenerateRequirementsInput,
@@ -447,6 +470,22 @@ export interface RequirementsService {
       responseFormat?: ResponseFormat
     },
   ): Promise<ManageSuggestionOutput>
+  previewLibraryImport(
+    context: RequestContext,
+    input: {
+      areaId: number
+      locale: ResponseLocale
+      payload: ImportRequirementsPayload
+    },
+  ): Promise<RequirementsImportPreview>
+  previewSpecificationLocalImport(
+    context: RequestContext,
+    input: {
+      locale: ResponseLocale
+      payload: ImportRequirementsPayload
+      specificationIdOrSlug: string
+    },
+  ): Promise<RequirementsImportPreview>
   queryCatalog(
     context: RequestContext,
     input: QueryCatalogInput,
@@ -516,6 +555,7 @@ export function createRequirementsService(
   } = {},
 ): RequirementsService {
   return {
+    ...createRequirementsImportWorkflow({ authorization, db }),
     ...createRequirementWorkflow({ authorization, db, logger }),
 
     ...createSpecificationWorkflow({ authorization, db, logger }),
@@ -682,7 +722,7 @@ export function createRequirementsService(
               decidedBy: actor.displayName,
               decidedByHsaId: actor.hsaId,
             })
-            await recordHighRiskMutationSucceeded(context, {
+            await recordSensitiveMutationSucceeded(context, {
               action: 'deviation.decision.recorded',
               decision: input.decision,
               deviationId: input.deviationId,
@@ -712,7 +752,7 @@ export function createRequirementsService(
 
           // delete
           await deleteDeviation(db, input.deviationId)
-          await recordHighRiskMutationSucceeded(context, {
+          await recordSensitiveMutationSucceeded(context, {
             action: 'deviation.deleted',
             deviationId: input.deviationId,
             operation: input.operation,

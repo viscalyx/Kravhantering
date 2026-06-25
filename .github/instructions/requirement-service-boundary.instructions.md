@@ -23,7 +23,7 @@ applyTo: "{app/api/**/*.ts,lib/requirements/service*.ts,lib/mcp/server.ts}"
   behavior behind `RequirementsService` in the same change.
 - Keep HTTP parsing, response status/content type, and REST-only shaping in
   route handlers.
-- Keep authorization, logging, workflow validation, high-risk audit events,
+- Keep authorization, logging, workflow validation, sensitive audit events,
   and shared business decisions in `RequirementsService`.
 - Do not force streaming AI REST routes through `RequirementsService` unless
   the service supports streaming, images, and provider preferences.

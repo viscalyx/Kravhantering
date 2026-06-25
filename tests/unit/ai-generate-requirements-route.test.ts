@@ -88,7 +88,15 @@ describe('POST /api/ai/generate-requirements', () => {
       categories: [{ id: 2, name: 'Security' }],
       qualityCharacteristics: [{ id: 3, name: 'Confidentiality' }],
       requirementPackages: [{ id: 4, name: 'Core' }],
-      riskLevels: [{ id: 1, name: 'Low' }],
+      priorityLevels: [
+        {
+          assessmentCriteria: 'Limited importance',
+          code: 'P2',
+          description: 'Low priority',
+          id: 2,
+          name: 'Low',
+        },
+      ],
       types: [{ id: 1, name: 'Functional' }],
     })
     routeState.resolveOpenRouterModelCapabilities.mockResolvedValue({

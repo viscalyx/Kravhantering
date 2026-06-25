@@ -39,14 +39,14 @@ const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
 
 const updateRequirementPackageSchema = z
   .object({
-    description: optionalBusinessTextSchema,
     leadHsaId: hsaIdSchema.optional(),
     name: boundedDbStringSchema.optional(),
+    purposeAndScope: optionalBusinessTextSchema,
   })
   .strict()
   .refine(
     body =>
-      ['description', 'leadHsaId', 'name'].some(key =>
+      ['leadHsaId', 'name', 'purposeAndScope'].some(key =>
         Object.hasOwn(body, key),
       ),
     { message: 'At least one field must be provided for update' },

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 export interface RequirementDetailMetadataItem {
@@ -15,6 +16,7 @@ export interface RequirementDetailChipItem {
   markerContext?: string
   markerName?: string
   markerValue?: string
+  purposeAndScope?: string | null
   title?: string
 }
 
@@ -30,6 +32,7 @@ interface RequirementDetailSectionsProps {
   referencesLabel: string
   requirementPackages: RequirementDetailChipItem[]
   requirementPackagesLabel: string
+  showRequirementPackages?: boolean
 }
 
 function getMarkerProps(
@@ -60,6 +63,7 @@ export default function RequirementDetailSections({
   referencesLabel,
   requirementPackages,
   requirementPackagesLabel,
+  showRequirementPackages = true,
 }: RequirementDetailSectionsProps) {
   return (
     <>
@@ -163,41 +167,49 @@ export default function RequirementDetailSections({
         )}
       </div>
 
-      <div
-        {...getMarkerProps(
-          developerModeContext,
-          'detail section',
-          350,
-          'requirementPackages',
-        )}
-      >
-        <h3 className="mb-1 text-sm font-medium text-secondary-600 dark:text-secondary-400">
-          {requirementPackagesLabel}
-        </h3>
-        {requirementPackages.length > 0 ? (
-          <ul className="flex flex-wrap gap-2">
-            {requirementPackages.map(requirementPackage => (
-              <li
-                className="rounded-full bg-secondary-100 px-2.5 py-1 text-xs font-medium dark:bg-secondary-800"
-                key={requirementPackage.id}
-                {...getMarkerProps(
-                  requirementPackage.markerContext ?? developerModeContext,
-                  requirementPackage.markerName ?? 'requirement package chip',
-                  360,
-                  requirementPackage.markerValue ??
-                    String(requirementPackage.id),
-                )}
-              >
-                {requirementPackage.label}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-secondary-500 dark:text-secondary-400">
-            {emptyLabel}
-          </p>
-        )}
-      </div>
+      {showRequirementPackages ? (
+        <div
+          {...getMarkerProps(
+            developerModeContext,
+            'detail section',
+            350,
+            'requirementPackages',
+          )}
+        >
+          <h3 className="mb-1 text-sm font-medium text-secondary-600 dark:text-secondary-400">
+            {requirementPackagesLabel}
+          </h3>
+          {requirementPackages.length > 0 ? (
+            <ul className="flex flex-wrap gap-2">
+              {requirementPackages.map(requirementPackage => (
+                <li
+                  key={requirementPackage.id}
+                  {...getMarkerProps(
+                    requirementPackage.markerContext ?? developerModeContext,
+                    requirementPackage.markerName ?? 'requirement package chip',
+                    360,
+                    requirementPackage.markerValue ??
+                      String(requirementPackage.id),
+                  )}
+                >
+                  <RequirementPackagePurposeTooltip
+                    maxWidth={320}
+                    purposeAndScope={requirementPackage.purposeAndScope}
+                  >
+                    <span className="rounded-full bg-secondary-100 px-2.5 py-1 text-xs font-medium dark:bg-secondary-800">
+                      {requirementPackage.label}
+                    </span>
+                  </RequirementPackagePurposeTooltip>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-secondary-500 dark:text-secondary-400">
+              {emptyLabel}
+            </p>
+          )}
+        </div>
+      ) : null}
     </>
   )
 }

@@ -1,9 +1,9 @@
 import { EntitySchema } from 'typeorm'
+import type { PriorityLevelEntity } from '@/lib/typeorm/entities/priority-level'
 import type { QualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
 import type { RequirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 import type { RequirementTypeEntity } from '@/lib/typeorm/entities/requirement-type'
 import type { RequirementsSpecificationEntity } from '@/lib/typeorm/entities/requirements-specification'
-import type { RiskLevelEntity } from '@/lib/typeorm/entities/risk-level'
 import type { SpecificationItemStatusEntity } from '@/lib/typeorm/entities/specification-item-status'
 import type { SpecificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
 
@@ -15,10 +15,10 @@ export interface SpecificationLocalRequirementEntity {
   isTestingRequired: boolean
   needsReference: SpecificationNeedsReferenceEntity | null
   note: string | null
+  priorityLevel: PriorityLevelEntity | null
   qualityCharacteristic: QualityCharacteristicEntity | null
   requirementCategory: RequirementCategoryEntity | null
   requirementType: RequirementTypeEntity | null
-  riskLevel: RiskLevelEntity | null
   sequenceNumber: number
   specification: RequirementsSpecificationEntity
   specificationItemStatus: SpecificationItemStatusEntity
@@ -146,14 +146,14 @@ export const specificationLocalRequirementEntity =
         onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },
-      riskLevel: {
+      priorityLevel: {
         type: 'many-to-one',
-        target: 'RiskLevel',
+        target: 'PriorityLevel',
         joinColumn: {
-          name: 'risk_level_id',
+          name: 'priority_level_id',
           referencedColumnName: 'id',
           foreignKeyConstraintName:
-            'fk_specification_local_requirements_risk_level_id',
+            'fk_specification_local_requirements_priority_level_id',
         },
         nullable: true,
         onDelete: 'NO ACTION',

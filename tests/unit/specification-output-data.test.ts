@@ -74,12 +74,6 @@ function createDb() {
         return [{ itemId: 31, name: 'Base package' }]
       }
 
-      if (
-        sql.includes('specification_local_requirement_requirement_packages')
-      ) {
-        return [{ itemId: 41, name: 'Local package' }]
-      }
-
       if (sql.includes('improvement_suggestions')) {
         return [{ count: 3, itemId: 31 }]
       }
@@ -98,8 +92,8 @@ function createDb() {
             qualityCharacteristicNameEn: 'Security',
             qualityCharacteristicNameSv: 'Informationssäkerhet',
             requiresTesting: 1,
-            riskLevelNameEn: 'High',
-            riskLevelNameSv: 'Hög',
+            priorityLevelNameEn: 'High',
+            priorityLevelNameSv: 'Hög',
             specificationItemStatusId: 2,
             specificationItemStatusNameEn: 'In progress',
             specificationItemStatusNameSv: 'Pågår',
@@ -126,8 +120,8 @@ function createDb() {
             qualityCharacteristicNameEn: null,
             qualityCharacteristicNameSv: null,
             requiresTesting: 0,
-            riskLevelNameEn: null,
-            riskLevelNameSv: null,
+            priorityLevelNameEn: null,
+            priorityLevelNameSv: null,
             specificationItemStatusId: 1,
             specificationItemStatusNameEn: 'Included',
             specificationItemStatusNameSv: 'Inkluderad',
@@ -163,6 +157,9 @@ describe('collectSpecificationOutputData', () => {
     const result = await collectSpecificationOutputData(db, 'SPEC-1')
 
     expect(result.items.map(item => item.uniqueId)).toEqual(['A-1', 'B-2'])
+    expect(result.items[0]).toMatchObject({
+      requirementPackageNames: [],
+    })
     expect(result.items[1]).toMatchObject({
       deviationCounts: { approved: 1 },
       requirementPackageNames: ['Base package'],
@@ -182,5 +179,10 @@ describe('collectSpecificationOutputData', () => {
         ),
       ),
     ).toBe(true)
+    expect(
+      queries.some(query =>
+        query.includes('specification_local_requirement_requirement_packages'),
+      ),
+    ).toBe(false)
   })
 })

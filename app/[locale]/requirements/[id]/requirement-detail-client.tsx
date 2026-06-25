@@ -417,14 +417,14 @@ export default function RequirementDetailClient({
         : '—',
     },
     {
-      id: 'risk-level',
-      label: t('riskLevel'),
-      markerValue: 'risk level',
-      value: selectedVersion?.riskLevel ? (
+      id: 'priority-level',
+      label: t('priorityLevel'),
+      markerValue: 'priority level',
+      value: selectedVersion?.priorityLevel ? (
         <StatusBadge
-          color={selectedVersion.riskLevel.color}
-          iconName={selectedVersion.riskLevel.iconName}
-          label={localName(selectedVersion.riskLevel) ?? ''}
+          color={selectedVersion.priorityLevel.color}
+          iconName={selectedVersion.priorityLevel.iconName}
+          label={localName(selectedVersion.priorityLevel) ?? ''}
           size="sm"
         />
       ) : (
@@ -510,6 +510,7 @@ export default function RequirementDetailClient({
           label: requirementPackageLabel,
           markerContext: buildDetailSectionContext('requirementPackages'),
           markerValue: requirementPackageMarkerValue,
+          purposeAndScope: requirementPackage.purposeAndScope,
         }
       },
     ) ?? []
@@ -808,10 +809,10 @@ export default function RequirementDetailClient({
     )
   }
 
-  const riskLevelForDeviation = selectedVersion?.riskLevel
+  const priorityLevelForDeviation = selectedVersion?.priorityLevel
     ? {
-        color: selectedVersion.riskLevel.color,
-        name: localName(selectedVersion.riskLevel),
+        color: selectedVersion.priorityLevel.color,
+        name: localName(selectedVersion.priorityLevel),
       }
     : null
 
@@ -1024,8 +1025,8 @@ export default function RequirementDetailClient({
                 <SpecificationDeviationRail
                   detailContext={detailContext}
                   locale={locale}
+                  priorityLevel={priorityLevelForDeviation}
                   requirementId={requirementId}
-                  riskLevel={riskLevelForDeviation}
                   specificationItemId={specificationItemId}
                   specificationSlug={specificationSlug}
                   workflow={deviationWorkflow}

@@ -1,7 +1,7 @@
 <!-- AUTO-GENERERAD — redigera inte manuellt. Kör: npm run generate:guide -->
 # Kravhantering — Användarguide
 
-> Guiden genererades automatiskt av Playwright 2026-06-12.
+> Guiden genererades automatiskt av Playwright 2026-06-25.
 > Alla skärmdumpar visar det svenska gränssnittet.
 
 ## Innehållsförteckning
@@ -12,10 +12,11 @@
 4. [Kravdetaljer och statusövergångar](#kravdetaljer-och-statusövergångar)
 5. [Kravunderlag](#kravunderlag)
 6. [Avsteg](#avsteg)
-7. [Förbättringsförslag](#förbättringsförslag)
-8. [Administrationscenter](#administrationscenter)
-9. [Taxonomi och statusar](#taxonomi-och-statusar)
-10. [Rapporter](#rapporter)
+7. [Import av krav](#import-av-krav)
+8. [Förbättringsförslag](#förbättringsförslag)
+9. [Administrationscenter](#administrationscenter)
+10. [Taxonomi och statusar](#taxonomi-och-statusar)
+11. [Rapporter](#rapporter)
 
 ## Översikt och navigering
 
@@ -49,7 +50,7 @@ användaren själv väljer för varje krav.
 ### Kravbiblioteket — Översikt
 
 Kravbiblioteket listar alla krav i en sorterbar och filtrerbar tabell. Varje rad
-visar nyckeluppgifter som ID, kravtext, kravområde, status och risknivå.
+visar nyckeluppgifter som ID, kravtext, kravområde, status och prioritet.
 Kolumnerna kan konfigureras efter behov.
 
 ![Kravbiblioteket — Översikt](images/004-kravbibliotek.png)
@@ -107,7 +108,7 @@ följer en översikt av varje egenskap och hur den stödjer kravets livscykel.
 | **Kategori** | Klassificerar kravet som Verksamhet, IT eller Leverantör. Det underlättar filtrering i katalogen och gör det enklare att tilldela ansvar till rätt team eller intressentgrupp. |
 | **Typ** | Anger om kravet är Funktionellt eller Icke-funktionellt. Båda typerna låser upp fältet för kvalitetsegenskap, men icke-funktionella krav erbjuder ett bredare urval av egenskaper från standarden ISO/IEC 25010 medan funktionella krav har en mindre delmängd. |
 | **Kvalitetsegenskap** | Följer standarden ISO/IEC 25010 och låter dig klassificera krav med egenskaper som Säkerhet, Prestandaeffektivitet eller Användbarhet. Icke-funktionella krav har tillgång till hela uppsättningen egenskaper, medan funktionella krav erbjuder en mindre delmängd. Det hjälper till att prioritera och gruppera relaterade krav under granskning och implementeringsplanering. |
-| **Risknivå** | Markerar kravet som Låg, Medel eller Hög risk. Högre risknivåer signalerar att kravet behöver mer noggrann granskning, mer rigorös testning och tätare uppföljning under implementeringen. Risknivån spelar även en roll vid begäran om avsteg inom ett kravunderlag — ett avsteg för ett krav med hög risk medför större potentiell påverkan och kräver därför en striktare bedömning vid avstegsgranskningen. |
+| **Prioritet** | Anger hur viktigt, angeläget eller kritiskt kravet är i förhållande till verksamhetens mål, nyttor, risker och intressenters behov. Högre prioritet signalerar att kravet bör granskas och följas upp noggrant. |
 | **Verifierbar** | Anger om kravet kan testas. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravunderlag där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning. |
 | **Verifieringsmetod** | Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravunderlag där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang. |
 | **Kravpaket** | Samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning. Varje kravpaket har en ägare som ansvarar för kraven inom grupperingen. Kopplingen hjälper till att avgränsa kravunderlag och filtrera krav efter relevanta grupperingar. |
@@ -152,15 +153,16 @@ det tillfället. Användbara för revision och spårbarhet.
 
 Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret
 innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier,
-kravområde, kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod,
-normreferenser och kravpaket.
+kravområde, kategori, typ, prioritet, kvalitetsegenskaper, verifieringsmetod,
+normreferenser och kravpaket. När kravpaket visas i den interaktiva vyn kan du
+hovra över namnet för att läsa kravpaketets syfte och avgränsning.
 
 ![Skapa krav — tomt formulär](images/013-nytt-krav-tomt.png)
 
 ### Skapa krav — ifyllt formulär
 
 Fyll i kravtext och acceptanskriterier. Välj sedan kravområde, kategori, typ och
-risknivå i respektive rullgardinsmeny. Alla obligatoriska fält markeras med
+prioritet i respektive rullgardinsmeny. Alla obligatoriska fält markeras med
 asterisk (*) och formuläret visar en kort notis om markeringen. Klicka på
 "Spara" när formuläret är komplett.
 
@@ -195,8 +197,8 @@ kollegial granskning och godkännande.
 ### Status: Granskning
 
 Kravet är nu i **Granskning**-status. Stegaren uppdateras för att reflektera
-detta. Knappen "Publicera ↗" visas för att godkänna och publicera kravet, och "←
-Utkast" för att återföra det till utkastläge om ändringar behövs.
+detta. En kravgranskare ser knappen "Publicera ↗" för att godkänna och publicera
+kravet, och "← Utkast" för att återföra det till utkastläge om ändringar behövs.
 
 ![Status: Granskning](images/018-overgang-granskning.png)
 
@@ -239,9 +241,9 @@ Filtrera kravunderlag genom att skriva i sökrutan. Listan uppdateras i realtid.
 ### Skapa nytt kravunderlag
 
 Klicka på **"Nytt kravunderlag"** för att öppna dialogrutan för nytt
-kravunderlag. Ange ett namn och välj kravunderlagets livscykelstatus — ett
-unikt ID (slug) genereras automatiskt. Kravunderlag används för att samla krav
-som hör till ett specifikt projekt eller leverans.
+kravunderlag. Ange ett namn — ett unikt ID (slug) genereras automatiskt.
+Kravunderlag används för att samla krav som hör till ett specifikt projekt eller
+leverans.
 
 ![Skapa nytt kravunderlag](images/023-skapa-kravunderlag.png)
 
@@ -252,10 +254,10 @@ Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna
 panel** har tabbarna **Tillgängliga krav** och **Kravurvalsfrågor** i samma typ
 av sticky rubrik. I tabben för krav visas både bibliotekskrav och eventuella
 kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i
-rubriken byts när du växlar tabb: tabben för krav har kravtabellens verktyg, medan
-tabben för behovsreferenser har åtgärden för att skapa en ny referens. Knappen
-**"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Klicka på
-en rad för att se kravets fullständiga detaljer.
+rubriken byts när du växlar tabb: tabben för krav har kravtabellens verktyg,
+medan tabben för behovsreferenser har åtgärden för att skapa en ny referens.
+Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag.
+Klicka på en rad för att se kravets fullständiga detaljer.
 
 ![Kravunderlagsdetalj — delad vy](images/024-kravunderlagsdetalj.png)
 
@@ -282,9 +284,9 @@ referenser i tabellen.
 
 ### Redigera kravunderlag
 
-I dialogrutan kan du uppdatera underlagets namn, underlagssyfte,
-kravunderlagets obligatoriska livscykelstatus, genomförandeform och
-styrningsobjektstyp. Klicka på "Spara" för att tillämpa ändringarna.
+I dialogrutan kan du uppdatera underlagets namn, underlagssyfte, kravunderlagets
+livscykelstatus, genomförandeform och styrningsobjektstyp. Klicka på "Spara" för
+att tillämpa ändringarna.
 
 ![Redigera kravunderlag](images/027-redigera-kravunderlag.png)
 
@@ -344,9 +346,9 @@ beslut, eller **"← Utkast"** för att återföra det om komplettering behövs.
 
 ### Registrera beslut
 
-**Steg 6 — Registrera beslut.** Kravgranskaren anger en **beslutsmotivering**, vem
-som fattat beslutet och datum. Välj sedan **"Godkänn"** eller **"Avslå"** för
-att slutföra beslutet.
+**Steg 6 — Registrera beslut.** Kravgranskaren anger en **beslutsmotivering**,
+vem som fattat beslutet och datum. Välj sedan **"Godkänn"** eller **"Avslå"**
+för att slutföra beslutet.
 
 ![Registrera beslut](images/034-avsteg-beslut-formular.png)
 
@@ -360,6 +362,95 @@ laddas ned som PDF.
 
 ![Avsteg — granskningsrapport](images/035-avsteg-rapport-knapp.png)
 
+## Import av krav
+
+Importfunktionen använder JSON enligt `requirement-import.v1` och finns i två
+lägen: **kravbiblioteksimport** skapar nya utkast i kravbiblioteket, medan
+**kravunderlagsimport** skapar unika krav direkt i ett kravunderlag. Importen
+laddar först en granskning där rader, metadata och föreslagna normreferenser kan
+kontrolleras innan något sparas.
+
+### Kravbiblioteksimport — välj mål och importfil
+
+Klicka på **"Importera krav"** i kravbiblioteket, välj kravområde och klistra in
+eller välj en JSON-fil. Exemplet använder importfilen `/tmp/krav5.txt`, som
+innehåller DICOM-krav och en föreslagen normreferens.
+
+![Kravbiblioteksimport — välj mål och importfil](images/036-import-kravbibliotek-fil.png)
+
+### Kravbiblioteksimport — granska krav
+
+Efter förhandsgranskning visas varje kravrad som ett valt importutkast. Rader
+kan expanderas för att justera kravtext, acceptanskriterier, kategori, typ,
+kvalitetsegenskap, prioritet, normreferenser, kravpaket och
+verifieringsuppgifter innan importen körs.
+
+![Kravbiblioteksimport — granska krav](images/037-import-kravbibliotek-granskning.png)
+
+### Föreslagen normreferens
+
+Importfilen kan innehålla **föreslagna normreferenser** för källor som ännu inte
+finns i normbiblioteket. Förslaget kopplas till de kravrader som hänvisar till
+samma nyckel, men sparas inte automatiskt.
+
+![Föreslagen normreferens](images/038-import-normforslag.png)
+
+### Skapa normreferens från importförslag
+
+Knappen **"Skapa normreferens"** öppnar samma formulär som normbiblioteket
+använder. Fälten fylls i från importförslaget, så användaren kan kontrollera och
+spara källan innan kraven importeras.
+
+![Skapa normreferens från importförslag](images/039-import-normreferens-skapa.png)
+
+### Normreferens löst
+
+När normreferensen har skapats markeras förslaget som **Löst** och importens
+kravrader uppdateras så att den nya normreferensen följer med när raderna
+importeras.
+
+![Normreferens löst](images/040-import-normreferens-lost.png)
+
+### Kravbiblioteksimport — importerade rader
+
+När **"Importera valda"** körs skapas valda rader som nya utkast i
+kravbiblioteket. Kvittonotisen visar hur många rader som skapades och
+CSV-kvittot kan laddas ned vid behov.
+
+![Kravbiblioteksimport — importerade rader](images/041-import-kravbibliotek-kvitto.png)
+
+### Kravunderlagsimport — importfil
+
+I ett kravunderlag använder knappen **"Importera unika krav"** samma
+importfilformat, men målet är det aktuella kravunderlaget. Därför väljs inget
+kravområde i dialogen.
+
+![Kravunderlagsimport — importfil](images/042-import-kravunderlag-fil.png)
+
+### Kravunderlagsimport — granska unika krav
+
+Kravunderlagsimporten skapar **unika krav** som bara finns i detta kravunderlag.
+Kravpaket används inte för lokala krav, medan normreferenser, prioritet,
+verifierbarhet och behovsreferens kan granskas per rad.
+
+![Kravunderlagsimport — granska unika krav](images/043-import-kravunderlag-granskning.png)
+
+### Kravunderlagsimport — importerade unika krav
+
+När importen körs skapas valda rader som kravunderlagslokala krav. Raderna tas
+bort från granskningen efter lyckad import, och kvittot visar hur många unika
+krav som skapades i kravunderlaget.
+
+![Kravunderlagsimport — importerade unika krav](images/044-import-kravunderlag-kvitto.png)
+
+### Importerade unika krav i kravunderlag
+
+Efter att dialogen stängs uppdateras kravunderlaget. De importerade kraven
+hanteras som unika krav i underlaget och kan senare granskas, följas upp eller
+lyftas till kravbiblioteket vid behov.
+
+![Importerade unika krav i kravunderlag](images/045-import-kravunderlag-resultat.png)
+
 ## Förbättringsförslag
 
 ### Förbättringsförslag — tom sektion
@@ -369,7 +460,7 @@ kravunderlagsansvarig (upphandling, projekt, förvaltning) kan lämna ett försl
 på förbättring av kravet. Klicka på **"+ Registrera förslag"** för att öppna
 formuläret.
 
-![Förbättringsförslag — tom sektion](images/036-forslag-sektion-tom.png)
+![Förbättringsförslag — tom sektion](images/046-forslag-sektion-tom.png)
 
 ### Formulär för förbättringsförslag
 
@@ -377,14 +468,14 @@ Formuläret öppnas som en modal dialog. Ange förbättringsidén i textfältet 
 valfritt ditt namn i "Registrerat av". Klicka på **"Spara"** för att registrera
 förslaget.
 
-![Formulär för förbättringsförslag](images/037-forslagsformular-tomt.png)
+![Formulär för förbättringsförslag](images/047-forslagsformular-tomt.png)
 
 ### Förbättringsförslag ifyllt
 
 Förslagstexten beskriver en konkret förbättringsidé. Knappen **"Spara"**
 aktiveras när innehållsfältet har text.
 
-![Förbättringsförslag ifyllt](images/038-forslagsformular-ifyllt.png)
+![Förbättringsförslag ifyllt](images/048-forslagsformular-ifyllt.png)
 
 ### Förbättringsförslag registrerat
 
@@ -392,7 +483,7 @@ Det registrerade förslaget visas i sektionen med sin arbetsflödesstatus:
 **Utkast → Granskning begärd → Granskad**. Förslaget kan redigeras och skickas
 för granskning via knappen **"Granskning ↗"**.
 
-![Förbättringsförslag registrerat](images/039-forslag-registrerat.png)
+![Förbättringsförslag registrerat](images/049-forslag-registrerat.png)
 
 ### Flera förbättringsförslag
 
@@ -400,7 +491,7 @@ Ett krav kan ha flera förbättringsförslag från olika intressenter. Varje fö
 hanteras individuellt genom sitt eget arbetsflöde. Listan ger en samlad bild av
 alla inkomna synpunkter på kravet.
 
-![Flera förbättringsförslag](images/040-forslag-flera.png)
+![Flera förbättringsförslag](images/050-forslag-flera.png)
 
 ## Administrationscenter
 
@@ -410,16 +501,17 @@ Fliken **Kolumner** konfigurerar vilka kolumner som visas som standard i
 kravbiblioteket och deras ordning. Ändringar gäller för alla användare. Du kan
 också ange standardvyer för olika kontexter.
 
-![Admin — Kolumnhantering](images/041-admin-kolumner.png)
+![Admin — Kolumnhantering](images/051-admin-kolumner.png)
 
 ### Admin — Taxonomi
 
 Fliken **Taxonomi** innehåller länkar till klassningar som används för
 filtrering, rapportering och AI-stöd: kravområden, kategorier, typer,
-risknivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer.
-Normreferenser hanteras i Normbibliotek under Kravbiblioteksförvaltning.
+prioritetsskala, kvalitetsegenskaper, styrningsobjektstyper och
+genomförandeformer. Normreferenser hanteras i Normbibliotek under
+Kravbiblioteksförvaltning.
 
-![Admin — Taxonomi](images/042-admin-taxonomi.png)
+![Admin — Taxonomi](images/052-admin-taxonomi.png)
 
 ### Admin — Statusar och arbetsflöden
 
@@ -428,7 +520,7 @@ kravunderlagets livscykel och användningsstatusar i kravunderlag. Taxonomi och
 statusar hålls isär så att klassningar inte blandas ihop med livscykel- och
 användningslägen.
 
-![Admin — Statusar och arbetsflöden](images/043-admin-statusar-arbetsfloden.png)
+![Admin — Statusar och arbetsflöden](images/053-admin-statusar-arbetsfloden.png)
 
 ## Taxonomi och statusar
 
@@ -438,7 +530,7 @@ Kravområden organiserar krav efter organisatorisk domän. Varje kravområde har
 ägare, ett prefix som används i krav-ID (t.ex. "SÄK" ger ID:n som "SÄK0001") och
 en beskrivning.
 
-![Kravområden](images/044-kravomraden.png)
+![Kravområden](images/054-kravomraden.png)
 
 ### Kategorier
 
@@ -446,7 +538,7 @@ Kategorier klassificerar kravets perspektiv, till exempel verksamhetskrav,
 IT-krav och leverantörskrav. I administrationscentret visas kategorierna som en
 skrivskyddad taxonomilista.
 
-![Kategorier](images/045-kategorier.png)
+![Kategorier](images/055-kategorier.png)
 
 ### Kravversionsstatusar
 
@@ -455,15 +547,15 @@ systemstyrda kravversionsstatusarna (Utkast, Granskning, Publicerad, Arkiverad)
 kan inte tas bort eller byta namn — de utgör ryggraden i arbetsflödet. Övriga
 kravversionsstatusar kan anpassas.
 
-![Kravversionsstatusar](images/046-kravversionsstatusar.png)
+![Kravversionsstatusar](images/056-kravversionsstatusar.png)
 
-### Risknivåer
+### Prioritetsskala
 
-Risknivåer klassificerar kravets kritikalitet. Varje nivå kan tilldelas en färg
-för visuell identifiering i kravbiblioteket och detaljvyer. Färgkodningen gör
-det enkelt att snabbt bedöma ett kravs vikt.
+Prioritetsskalan klassificerar hur viktigt, angeläget eller kritiskt ett krav
+är. Varje nivå har en P-kod, ett namn, en beskrivning, bedömningsgrunder och en
+färg för visuell identifiering i kravbiblioteket och detaljvyer.
 
-![Risknivåer](images/047-risknivåer.png)
+![Prioritetsskala](images/057-prioritetsnivaer.png)
 
 ### Kravtyper
 
@@ -471,7 +563,7 @@ Kravtyper kategoriserar kravets karaktär (t.ex. funktionellt, icke-funktionellt
 säkerhetskrav). Typer används för filtrering, rapportering och för att
 säkerställa rätt kvalitetsegenskaper kopplas till kravet.
 
-![Kravtyper](images/048-kravtyper.png)
+![Kravtyper](images/058-kravtyper.png)
 
 ### Kvalitetsegenskaper
 
@@ -479,7 +571,7 @@ Kvalitetsegenskaper är ett hierarkiskt taxonomi som beskriver icke-funktionella
 krav (t.ex. tillgänglighet, prestanda, säkerhet). Egenskaperna kopplas till krav
 för att säkerställa täckning av kvalitetskraven.
 
-![Kvalitetsegenskaper](images/049-kvalitetsegenskaper.png)
+![Kvalitetsegenskaper](images/059-kvalitetsegenskaper.png)
 
 ### Normbibliotek
 
@@ -487,7 +579,7 @@ Normbiblioteket samlar normreferenser till externa standarder och regelverk
 (t.ex. ISO-standarder, GDPR). Krav kan referera till en eller flera
 normreferenser för att tydliggöra vilka regelverk de härstammar från.
 
-![Normbibliotek](images/050-normreferenser.png)
+![Normbibliotek](images/060-normreferenser.png)
 
 ## Rapporter
 
@@ -512,7 +604,7 @@ följd av opublicerade versioner markerade som utkast eller granskning.
 Jämför en version i **Granskning** med den senast publicerade eller arkiverade
 versionen. Rapporten visar ord-för-ord-skillnader i kravtext och
 acceptanskriterier samt förändringar i metadata (kategori, typ,
-kvalitetsegenskaper, risknivå, normreferenser, kravpaket m.m.). Om ingen
+kvalitetsegenskaper, prioritet, normreferenser, kravpaket m.m.). Om ingen
 publicerad/arkiverad version finns noteras detta.
 
 **Åtkomst:** Rapportmenyn i kravdetaljvyn (visas enbart när kravet är i status
@@ -564,8 +656,8 @@ tillgänglig).
 
 Skriver ut hela kravunderlaget med den rapportprofil som passar underlagets
 livscykelstatus. `Kravbilaga för upphandling` visas för upphandling,
-`Genomföranderapport` för införande och utveckling, och `Förvaltningsrapport` för
-förvaltning. Alla profiler sorterar kraven på Krav-ID och använder den
+`Genomföranderapport` för införande och utveckling, och `Förvaltningsrapport`
+för förvaltning. Alla profiler sorterar kraven på Krav-ID och använder den
 kravversion som är kopplad till kravunderlaget.
 
 **Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält när
@@ -592,7 +684,7 @@ Markera ett eller flera krav i kravbiblioteket för att aktivera rapportknappar 
 verktygsfältet. Du kan generera PDF-rapporter för granskningsunderlag,
 avstegsöversikter, ändringshistorik och mer.
 
-![Rapportgenerering från kravbiblioteket](images/058-rapporter-kravbibliotek.png)
+![Rapportgenerering från kravbiblioteket](images/068-rapporter-kravbibliotek.png)
 
 ### Rapporter från kravdetaljsidan
 
@@ -600,4 +692,4 @@ Från kravdetaljsidan kan du öppna rapportmenyn för att ladda ned eller skriva
 ut: **Ändringshistorik** (alla versioner), **Förbättringsförslagshistorik** och
 granskningsunderlag. Rapporterna är formaterade för utskrift och PDF-export.
 
-![Rapporter från kravdetaljsidan](images/059-rapporter-kravdetalj.png)
+![Rapporter från kravdetaljsidan](images/069-rapporter-kravdetalj.png)

@@ -148,6 +148,16 @@ function createRetentionDb(options?: {
           affected: options?.executeAffectedBySubjectId?.[subjectId] ?? 1,
         }
       }
+      if (sql.includes('requirement_version_requirement_packages link')) {
+        return [
+          {
+            description: 'Security package purpose and scope.',
+            id: 8,
+            name: 'Security package',
+            specificationItemId: 10,
+          },
+        ]
+      }
       if (
         sql.includes('FROM specification_needs_references') ||
         sql.includes('FROM specification_co_authors') ||
@@ -951,6 +961,14 @@ describe('archiving retention service', () => {
             responsibleDisplayName: null,
             responsibleHsaId: null,
           }),
+          libraryRequirementPackages: [
+            {
+              description: 'Security package purpose and scope.',
+              id: 8,
+              name: 'Security package',
+              specificationItemId: 10,
+            },
+          ],
         },
       ],
     })

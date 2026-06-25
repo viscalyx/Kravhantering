@@ -34,6 +34,7 @@ import HsaPersonChangeModal, {
 } from '@/components/HsaPersonChangeModal'
 import type { HsaPersonVerification } from '@/components/HsaPersonVerifyField'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
+import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
@@ -61,7 +62,6 @@ const REQUIREMENT_PACKAGES_HELP: HelpContent = {
 
 interface RequirementPackage {
   coAuthors?: RequirementPackageCoAuthor[]
-  description: string | null
   id: number
   isArchived: boolean
   leadDisplayName: string
@@ -72,6 +72,7 @@ interface RequirementPackage {
   permissions?: {
     canManageAssignments: boolean
   }
+  purposeAndScope: string
 }
 
 interface RequirementPackageCoAuthor {
@@ -81,12 +82,12 @@ interface RequirementPackageCoAuthor {
 }
 
 interface RequirementPackageForm {
-  description: string
   leadDisplayName: string
   leadEmail: string
   leadHsaId: string
   leadPersonVerification: HsaPersonVerification | null
   name: string
+  purposeAndScope: string
 }
 
 interface LinkedRequirement {
@@ -124,33 +125,33 @@ const DESCRIPTION_TRUNCATE = 80
 const REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT = 6
 
 const getInitialForm = (): RequirementPackageForm => ({
-  description: '',
   leadDisplayName: '',
   leadEmail: '',
   leadHsaId: '',
   leadPersonVerification: null,
   name: '',
+  purposeAndScope: '',
 })
 
 const toForm = (
   requirementPackage: RequirementPackage,
 ): RequirementPackageForm => ({
-  description: requirementPackage.description ?? '',
   leadDisplayName: requirementPackage.leadDisplayName,
   leadEmail: requirementPackage.leadEmail ?? '',
   leadHsaId: requirementPackage.leadHsaId,
   leadPersonVerification: null,
   name: requirementPackage.name,
+  purposeAndScope: requirementPackage.purposeAndScope,
 })
 
 const toCreatePayload = (form: RequirementPackageForm) => ({
-  description: form.description || undefined,
   name: form.name,
+  purposeAndScope: form.purposeAndScope,
 })
 
 const toUpdatePayload = (form: RequirementPackageForm) => ({
-  description: form.description || undefined,
   name: form.name,
+  purposeAndScope: form.purposeAndScope,
 })
 
 const toPayload = toUpdatePayload
@@ -573,7 +574,7 @@ export default function RequirementPackagesClient() {
     requirementPackage => {
       const searchableText = [
         requirementPackage.name,
-        requirementPackage.description ?? '',
+        requirementPackage.purposeAndScope,
       ]
         .join(' ')
         .toLocaleLowerCase(locale)
@@ -712,21 +713,23 @@ export default function RequirementPackagesClient() {
       </div>
       <div>
         <FieldLabelWithHelp
-          help={t('descriptionHelp')}
-          htmlFor="requirement-package-description"
-          label={t('description')}
+          help={t('purposeAndScopeHelp')}
+          htmlFor="requirement-package-purpose-and-scope"
+          label={t('purposeAndScope')}
+          required
         />
         <textarea
-          className={textareaClassName}
+          className={`${textareaClassName} min-h-36`}
           disabled={controller.submitting}
-          id="requirement-package-description"
+          id="requirement-package-purpose-and-scope"
           onChange={event =>
             controller.setForm(previousForm => ({
               ...previousForm,
-              description: event.target.value,
+              purposeAndScope: event.target.value,
             }))
           }
-          value={controller.form.description}
+          required
+          value={controller.form.purposeAndScope}
         />
       </div>
       {controller.editId == null
@@ -993,7 +996,7 @@ export default function RequirementPackagesClient() {
                       context: 'requirementPackages',
                       name: 'text field',
                       priority: 330,
-                      value: 'name or description filter',
+                      value: 'name or purpose and scope filter',
                     })}
                     id="requirement-package-name-filter"
                     onChange={event => setNameFilter(event.target.value)}
@@ -1177,7 +1180,9 @@ export default function RequirementPackagesClient() {
               <thead>
                 <tr className="border-b bg-secondary-50/80 text-left text-secondary-700 dark:bg-secondary-800/30 dark:text-secondary-300">
                   <th className="px-4 py-3 font-medium">{t('name')}</th>
-                  <th className="px-4 py-3 font-medium">{t('description')}</th>
+                  <th className="px-4 py-3 font-medium">
+                    {t('purposeAndScope')}
+                  </th>
                   <th className="px-4 py-3 font-medium">{t('lead')}</th>
                   <th className="px-4 py-3 font-medium">{t('status')}</th>
                   <th className="px-4 py-3 text-center font-medium">
@@ -1244,13 +1249,15 @@ export default function RequirementPackagesClient() {
                         key={requirementPackage.id}
                       >
                         <td className="px-4 py-3 font-medium">
-                          {requirementPackage.name}
+                          <RequirementPackagePurposeTooltip
+                            maxWidth={320}
+                            purposeAndScope={requirementPackage.purposeAndScope}
+                          >
+                            <span>{requirementPackage.name}</span>
+                          </RequirementPackagePurposeTooltip>
                         </td>
-                        <td
-                          className="w-md max-w-md whitespace-normal wrap-break-word px-4 py-3 align-top leading-6 text-secondary-600 dark:text-secondary-400"
-                          title={requirementPackage.description || '-'}
-                        >
-                          {requirementPackage.description || '-'}
+                        <td className="w-md max-w-md whitespace-normal wrap-break-word px-4 py-3 align-top leading-6 text-secondary-600 dark:text-secondary-400">
+                          {requirementPackage.purposeAndScope}
                         </td>
                         <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
                           <span className="block">

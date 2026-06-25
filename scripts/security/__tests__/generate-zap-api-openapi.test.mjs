@@ -4,6 +4,8 @@ import path from 'node:path'
 import yaml from 'js-yaml'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  DEFAULT_ALLOWED_OPERATIONS,
+  DEFAULT_SOURCE,
   filterOpenApiDocument,
   generateZapApiOpenApi,
 } from '../generate-zap-api-openapi.mjs'
@@ -125,5 +127,19 @@ describe('generateZapApiOpenApi', () => {
 
     expect(parsed).toEqual(generated)
     expect(Object.keys(parsed.paths)).toEqual(['/api/requirements'])
+  })
+
+  it('keeps the default ZAP allowlist aligned with the source OpenAPI contract', () => {
+    const dir = makeTempDir()
+    const output = path.join(dir, 'openapi.json')
+
+    const generated = generateZapApiOpenApi({ output })
+
+    expect(Object.keys(generated.paths)).toEqual(
+      DEFAULT_ALLOWED_OPERATIONS.map(operation => operation.path),
+    )
+    expect(generated.paths).toHaveProperty('/api/priority-levels')
+    expect(generated.paths).not.toHaveProperty('/api/risk-levels')
+    expect(fs.existsSync(DEFAULT_SOURCE)).toBe(true)
   })
 })

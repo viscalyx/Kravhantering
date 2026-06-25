@@ -146,7 +146,7 @@ metadata, byta ägare eller hantera kravområdets medförfattare.
 Att ge en namngiven person ansvar för ett kravpaket inom kravbibliotekets
 förvaltning. Kravpaketsansvarig är den person vars HSA-id och
 visningsnamn kopplas till kravpaketet och som ansvarar för att paketets
-syfte, namn, beskrivning och användning hålls tydliga över tid.
+namn, syfte, avgränsning och användning hålls tydliga över tid.
 
 **Ansvar:**
 Kravpaketsansvarig ansvarar för att kravpaketet är verksamhetsmässigt
@@ -165,7 +165,8 @@ livscykel och metadata.
   kravpaketet beskriver.
 - Erfarenhet av kravarbete, kravbiblioteksförvaltning eller
   tillämpningsstyrning.
-- Förmåga att formulera korta och tydliga paketnamn och beskrivningar.
+- Förmåga att formulera korta och tydliga paketnamn samt syfte och
+  avgränsning.
 - Förståelse för hur kravpaket används i kravurvalsfrågor och
   kravunderlag.
 - Kännedom om kravens livscykel och skillnaden mellan paketmetadata och
@@ -177,7 +178,7 @@ livscykel och metadata.
 
 - Skapa kravpaket när personen har författarbehörighet i minst ett
   kravområde.
-- Underhålla kravpaketets namn och beskrivning.
+- Underhålla kravpaketets namn samt syfte och avgränsning.
 - Hantera kravpaketets medförfattare enligt behörighetsreglerna.
 - Bedöma när ett kravpaket bör arkiveras eller återaktiveras och vid
   behov samordna med administratör.
@@ -195,7 +196,7 @@ som ingår i dataskyddsflöden och behörighetsöversyn.
 
 **Ansvar:**
 Medförfattaren för kravpaket ansvarar för att bidra med sakkunskap om
-paketets syfte, beskrivning och användning. Uppdraget ger inte i sig rätt
+paketets syfte, avgränsning och användning. Uppdraget ger inte i sig rätt
 att ändra kravpaketets metadata, byta kravpaketsansvarig, hantera
 medförfattare, arkivera, återaktivera eller ta bort kravpaketet.
 
@@ -204,14 +205,14 @@ medförfattare, arkivera, återaktivera eller ta bort kravpaketet.
 - God förståelse för den användningssituation som kravpaketet beskriver.
 - Relevant sakkunskap inom de kravområden eller kravunderlag där paketet
   används.
-- Förmåga att bidra till tydliga paketnamn och beskrivningar.
+- Förmåga att bidra till tydliga paketnamn samt syfte och avgränsning.
 - Förståelse för kravpaketets roll som urvalsgrund, inte som egen
   kravversion.
 - Förmåga att samverka med kravpaketsansvarig och kravområdesägare.
 
 **Exempel på arbetsuppgifter:**
 
-- Bidra med underlag till kravpaketets namn, beskrivning och relevans.
+- Bidra med underlag till kravpaketets namn, syfte, avgränsning och relevans.
 - Bidra med underlag till kravurvalsfrågor där kravpaketet används som
   urvalsgrund.
 - Delta i genomgångar av paketets användning.

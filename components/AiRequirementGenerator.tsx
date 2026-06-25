@@ -907,7 +907,7 @@ export default function AiRequirementGenerator({
             description: req.description,
             qualityCharacteristicId: req.qualityCharacteristicId,
             requiresTesting: req.requiresTesting,
-            riskLevelId: req.riskLevelId,
+            priorityLevelId: req.priorityLevelId,
             requirementPackageIds: req.requirementPackageIds,
             typeId: req.typeId,
             verificationMethod: req.verificationMethod,
@@ -2036,28 +2036,41 @@ export default function AiRequirementGenerator({
                                 )?.name,
                             )
                             .filter(Boolean)
-                        const riskName = req.riskLevelId
-                          ? (taxonomy?.riskLevels.find(
-                              r => r.id === req.riskLevelId,
-                            )?.name ??
-                            (req.riskLevelId === 3
-                              ? t('riskHigh')
-                              : req.riskLevelId === 2
-                                ? t('riskMedium')
-                                : t('riskLow')))
+                        const priorityLevel = req.priorityLevelId
+                          ? taxonomy?.priorityLevels.find(
+                              priority => priority.id === req.priorityLevelId,
+                            )
                           : undefined
-                        const riskColorClass =
-                          req.riskLevelId === 3
+                        const priorityName = priorityLevel
+                          ? `${priorityLevel.code} - ${priorityLevel.name}`
+                          : req.priorityLevelId
+                            ? `P${req.priorityLevelId}`
+                            : undefined
+                        const priorityCode =
+                          priorityLevel?.code ??
+                          (req.priorityLevelId
+                            ? `P${req.priorityLevelId}`
+                            : undefined)
+                        const priorityColorClass =
+                          priorityCode === 'P5'
                             ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                            : req.riskLevelId === 2
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                              : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                            : priorityCode === 'P4'
+                              ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                              : priorityCode === 'P3'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                : priorityCode === 'P2'
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                  : 'bg-secondary-100 text-secondary-700 dark:bg-secondary-700 dark:text-secondary-200'
                         const cardBorderClass = selected.has(i)
-                          ? req.riskLevelId === 3
+                          ? priorityCode === 'P5'
                             ? 'border-red-300 bg-red-50/30 dark:border-red-700 dark:bg-red-900/10'
-                            : req.riskLevelId === 2
-                              ? 'border-amber-300 bg-amber-50/30 dark:border-amber-700 dark:bg-amber-900/10'
-                              : 'border-primary-300 bg-primary-50/50 dark:border-primary-700 dark:bg-primary-900/20'
+                            : priorityCode === 'P4'
+                              ? 'border-orange-300 bg-orange-50/30 dark:border-orange-700 dark:bg-orange-900/10'
+                              : priorityCode === 'P3'
+                                ? 'border-amber-300 bg-amber-50/30 dark:border-amber-700 dark:bg-amber-900/10'
+                                : priorityCode === 'P2'
+                                  ? 'border-emerald-300 bg-emerald-50/30 dark:border-emerald-700 dark:bg-emerald-900/10'
+                                  : 'border-primary-300 bg-primary-50/50 dark:border-primary-700 dark:bg-primary-900/20'
                           : 'border-secondary-200 bg-white dark:border-secondary-700 dark:bg-secondary-800'
                         return (
                           <div
@@ -2084,11 +2097,11 @@ export default function AiRequirementGenerator({
                                       ? t('functional')
                                       : t('nonFunctional')}
                                   </span>
-                                  {req.riskLevelId && (
+                                  {priorityName && (
                                     <span
-                                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${riskColorClass}`}
+                                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${priorityColorClass}`}
                                     >
-                                      {riskName}
+                                      {priorityName}
                                     </span>
                                   )}
                                   {categoryName && (
@@ -2126,13 +2139,13 @@ export default function AiRequirementGenerator({
                                   <div className="mt-1 space-y-1 rounded-md bg-secondary-50 p-2 text-xs text-secondary-700 dark:bg-secondary-800/60 dark:text-secondary-300">
                                     <div>
                                       <span className="font-medium">
-                                        {t('detailRiskLevel')}:
+                                        {t('detailPriorityLevel')}:
                                       </span>{' '}
-                                      {riskName ? (
+                                      {priorityName ? (
                                         <span
-                                          className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-xs ${riskColorClass}`}
+                                          className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-xs ${priorityColorClass}`}
                                         >
-                                          {riskName}
+                                          {priorityName}
                                         </span>
                                       ) : (
                                         '–'

@@ -12,16 +12,16 @@ export interface VersionSummaryData {
   description: string | null
   editedAt: string | null
   normReferences: { name: string; reference: string; uri: string | null }[]
-  publishedAt: string | null
-  qualityCharacteristic: { nameSv: string; nameEn: string } | null
-  requirementPackages: { name: string }[]
-  requiresTesting: boolean
-  riskLevel: {
+  priorityLevel: {
     color?: string | null
     iconName?: string | null
     nameSv: string
     nameEn: string
   } | null
+  publishedAt: string | null
+  qualityCharacteristic: { nameSv: string; nameEn: string } | null
+  requirementPackages: { name: string }[]
+  requiresTesting: boolean
   status: { label: string; color: string | null; iconName?: string | null }
   type: { nameSv: string; nameEn: string } | null
   verificationMethod: string | null
@@ -55,8 +55,8 @@ export interface TraceabilityReportRow {
   needsReference: string
   note: string
   origin: string
+  priorityLevel: string
   requirementId: string
-  riskLevel: string
   statusChangedAt: string
   usageStatus: string
   verification: string
@@ -129,7 +129,7 @@ export type ReportSection =
         needsReference: string
         note: string
         origin: string
-        riskLevel: string
+        priorityLevel: string
         statusChangedAt: string
         usageStatus: string
         verification: string
@@ -165,7 +165,7 @@ export type ReportSection =
       createdAt: string
       specificationName: string | null
       specificationUniqueId: string | null
-      riskLevel: {
+      priorityLevel: {
         color?: string | null
         iconName?: string | null
         nameSv: string

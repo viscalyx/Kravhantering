@@ -199,10 +199,10 @@ type RequirementLocalizedEntityOverride = {
 
 type RequirementPackageOverride = {
   requirementPackage: {
-    description?: string | null
     id: number
     name: string | null
     ownerId?: number | null
+    purposeAndScope?: string | null
   }
 }
 
@@ -237,10 +237,10 @@ function toVersionRequirementPackages(
 ): RequirementVersionDetail['versionRequirementPackages'] {
   return (requirementPackages ?? []).map(({ requirementPackage }) => ({
     requirementPackage: {
-      description: requirementPackage.description ?? null,
       id: requirementPackage.id,
       name: requirementPackage.name,
       ownerId: requirementPackage.ownerId ?? null,
+      purposeAndScope: requirementPackage.purposeAndScope ?? null,
     },
   }))
 }
@@ -272,7 +272,7 @@ function makeVersion(
     requiresTesting: false,
     revisionToken: `11111111-1111-4111-8111-${String(versionNumber).padStart(12, '0')}`,
     qualityCharacteristic: toLocalizedEntity(qualityCharacteristic, 30),
-    riskLevel: null,
+    priorityLevel: null,
     status: 1,
     statusColor: '#3b82f6',
     statusNameEn: 'Draft',

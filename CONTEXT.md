@@ -135,7 +135,7 @@ _Avoid_: Kravhistorik, teknisk audit.
 
 **Tillämpningsstatistik**:
 Sammanställningar som visar hur krav används i kravunderlag, till exempel antal
-kravtillämpningar, mest använda krav, avsteg per kravområde eller risknivåer i
+kravtillämpningar, mest använda krav, avsteg per kravområde eller prioritet i
 kravunderlag.
 
 - `en`: Requirement application statistics
@@ -243,14 +243,14 @@ krav, särskilt icke-funktionella krav.
 
 _Avoid_: Icke-funktionellt krav.
 
-**Risknivå**:
-En bedömning av påverkan om kravet inte uppfylls. Påverkan tolkas utifrån
-kravets kategori, till exempel verksamhetspåverkan, leverantörspåverkan eller
-teknisk påverkan.
+**Prioritet**:
+En bedömning av hur viktigt, angeläget eller kritiskt ett krav är i förhållande
+till verksamhetens mål, nyttor, risker och intressenters behov. Prioritet anges
+med den fasta prioritetsskalan P1-P5.
 
-- `en`: Risk level
+- `en`: Priority
 
-_Avoid_: Fullständig riskanalys, sannolikhet.
+_Avoid_: Risknivå som fältnamn, fullständig riskanalys, sannolikhet.
 
 **Acceptanskriterium**:
 Ett objektivt villkor som måste vara uppfyllt för att en kravversion ska kunna
@@ -337,6 +337,35 @@ hanteras i ordinarie kravprocess.
 
 _Avoid_: AI-generering som huvudterm, AI-assistering, automatisk publicering,
 AI-beslut, källa till sanning.
+
+**Kravbiblioteksimport**:
+Ett stödflöde där flera kravtexter och eventuell metadata förbereds utanför
+applikationen och sedan förs in som krav i kravbibliotekets ordinarie
+kravprocess.
+
+- `en`: Requirements library import
+
+_Avoid_: Kravunderlagsimport, automatisk publicering, datamigrering när
+ordinarie användargranskning avses.
+
+**Kravunderlagsimport**:
+Ett stödflöde där flera kravtexter och eventuell metadata förbereds utanför
+applikationen och sedan förs in som kravunderlagslokala krav i ett
+kravunderlag.
+
+- `en`: Requirements specification import
+
+_Avoid_: Kravbiblioteksimport, kravtillämpning, import till kravområde.
+
+**Kravimportfil**:
+En JSON-fil som innehåller kravkandidater och eventuell stöddata för
+kravimport, till exempel föreslagna normreferenser. Kravimportfilen anger inte
+var kraven ska sparas; destinationen väljs i importflödet.
+
+- `en`: Requirement import file
+
+_Avoid_: Kravbiblioteksimport när filformatet avses, kravunderlagsimport när
+filformatet avses, datamigrering.
 
 **Terminologi**:
 De verksamhetsbegrepp och användargränssnittstermer som används för att
@@ -467,7 +496,8 @@ _Avoid_: Alla krav i kravbiblioteket när ingen kontrast behövs.
 Ett krav som bara finns i ett visst kravunderlag. Det är unikt för det
 kravunderlaget tills det eventuellt lyfts till kravbiblioteket. Det hör inte
 till ett kravområde; ansvaret ligger i kravunderlagets sammanhang hos
-kravunderlagsansvarig.
+kravunderlagsansvarig. Det kopplas inte till kravpaket, eftersom kravpaket är
+en gruppering av krav i kravbiblioteket.
 
 - `en`: Specification-local requirement
 
@@ -550,15 +580,17 @@ _Avoid_: Kravversionsstatus, genomförandeform.
 **Kravpaket**:
 En återanvändbar gruppering av krav i kravbiblioteket för ett visst
 användningsområde, scenario eller leveransbehov. Ett kravpaket samlar krav,
-inte flera kravversioner av samma krav; när ett krav har ett nyare utkast är
-paketets krav fortfarande den publicerade kravversion som får användas. När en
-ny kravversion publiceras följer kravpaketets aktuella medlemskap den nya
-publicerade kravversionen och ersätter den arkiverade föregångaren i alla
-kravpaket där kravet används. När ett krav arkiveras utan efterträdare kan
-paketkopplingen finnas kvar som historik, men den arkiverade kravversionen
-ingår inte i praktiska kravpaketsurval där bara publicerade krav får användas.
-Kravbibliotekets kravpaketsfilter är däremot ett sökfilter över valda
-kravstatusar och kan visa arkiverade krav när användaren själv inkluderar
+inte flera kravversioner av samma krav, och har ett syfte och en avgränsning
+som styr vilka krav som hör hemma i paketet. Kravpaket gäller krav i
+kravbiblioteket, inte kravunderlagslokala krav. När ett krav har ett nyare
+utkast är paketets krav fortfarande den publicerade kravversion som får
+användas. När en ny kravversion publiceras följer kravpaketets aktuella
+medlemskap den nya publicerade kravversionen och ersätter den arkiverade
+föregångaren i alla kravpaket där kravet används. När ett krav arkiveras utan
+efterträdare kan paketkopplingen finnas kvar som historik, men den arkiverade
+kravversionen ingår inte i praktiska kravpaketsurval där bara publicerade krav
+får användas. Kravbibliotekets kravpaketsfilter är däremot ett sökfilter över
+valda kravstatusar och kan visa arkiverade krav när användaren själv inkluderar
 arkiverad status.
 
 - `en`: Requirements package

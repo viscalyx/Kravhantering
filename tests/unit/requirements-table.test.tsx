@@ -138,11 +138,11 @@ describe('RequirementsTable', () => {
         categoryNameSv: 'Verksamhetskrav',
         description: 'Testkrav',
         requiresTesting: true,
-        riskLevelId: null,
-        riskLevelNameEn: null,
-        riskLevelNameSv: null,
-        riskLevelColor: null,
-        riskLevelSortOrder: null,
+        priorityLevelId: null,
+        priorityLevelNameEn: null,
+        priorityLevelNameSv: null,
+        priorityLevelColor: null,
+        priorityLevelSortOrder: null,
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
@@ -706,28 +706,41 @@ describe('RequirementsTable', () => {
     expect(screen.getByText('v2')).toBeTruthy()
   })
 
-  it('renders risk level label when column is visible and row has a risk level', () => {
+  it('renders priority label when column is visible and row has a priority', () => {
     const rows = [
       makeRow({
         version: {
           ...makeRow().version,
-          riskLevelId: 3,
-          riskLevelNameEn: 'High',
-          riskLevelNameSv: 'Hög',
-          riskLevelColor: '#ef4444',
-          riskLevelSortOrder: 3,
+          priorityLevelId: 3,
+          priorityLevelNameEn: 'Medium high',
+          priorityLevelNameSv: 'Medelhög',
+          priorityLevelColor: '#eab308',
+          priorityLevelSortOrder: 3,
         },
       }),
     ]
     render(
       <RequirementsTable
         locale="sv"
+        priorityLevels={[
+          {
+            code: 'P3',
+            color: '#eab308',
+            id: 3,
+            nameEn: 'Medium high',
+            nameSv: 'Medelhög',
+            sortOrder: 3,
+          },
+        ]}
         rows={rows}
-        visibleColumns={[...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS, 'riskLevel']}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'priorityLevel',
+        ]}
       />,
     )
 
-    expect(screen.getByText('Hög')).toBeTruthy()
+    expect(screen.getByText('P3 - Medelhög')).toBeTruthy()
   })
 
   it('renders read-only usage status icons as decorative badge content', () => {
@@ -1410,6 +1423,105 @@ describe('RequirementsTable', () => {
       screen.getByRole('button', { name: 'columns' }).dataset
         .floatingActionVariant,
     ).toBe('default')
+  })
+
+  it('can place the columns pill after trailing floating actions', () => {
+    const { container } = render(
+      <RequirementsTable
+        columnPickerPlacement="end"
+        floatingActions={[
+          {
+            ariaLabel: 'newRequirement',
+            href: '/requirements/new',
+            icon: <span aria-hidden="true">+</span>,
+            id: 'create',
+            position: 'beforeColumns',
+            variant: 'primary',
+          },
+          {
+            ariaLabel: 'print',
+            icon: <span aria-hidden="true">P</span>,
+            id: 'print',
+          },
+          {
+            ariaLabel: 'import',
+            icon: <span aria-hidden="true">I</span>,
+            id: 'import',
+          },
+          {
+            ariaLabel: 'export',
+            icon: <span aria-hidden="true">E</span>,
+            id: 'export',
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(getFloatingActionIds(container)).toEqual([
+      'create',
+      'print',
+      'import',
+      'export',
+      'columns',
+    ])
+  })
+
+  it('hides the scroll-to-top pill while the table is still at its top', async () => {
+    const { container } = render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'newRequirement',
+            href: '/requirements/new',
+            icon: <span aria-hidden="true">+</span>,
+            id: 'create',
+            position: 'beforeColumns',
+            variant: 'primary',
+          },
+          {
+            ariaLabel: 'print',
+            icon: <span aria-hidden="true">P</span>,
+            id: 'print',
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    const scrollContainer = container.querySelector(
+      '[data-requirements-scroll-container="true"]',
+    ) as HTMLDivElement | null
+
+    expect(scrollContainer).toBeTruthy()
+    if (!scrollContainer) {
+      throw new Error('Expected the scroll container to be rendered.')
+    }
+
+    setElementRect(scrollContainer, {
+      bottom: 520,
+      left: 24,
+      right: 340,
+      top: 60,
+      width: 316,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    await waitFor(() => {
+      expect(getFloatingActionIds(container)).toEqual([
+        'create',
+        'columns',
+        'print',
+      ])
+    })
+    expect(
+      document.querySelector('[data-scroll-top-trigger="true"]'),
+    ).toBeNull()
   })
 
   it('renders the scroll-to-top pill in a separate end group after vertical scroll', async () => {
@@ -2830,11 +2942,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
-          riskLevelId: null,
-          riskLevelNameEn: null,
-          riskLevelNameSv: null,
-          riskLevelColor: null,
-          riskLevelSortOrder: null,
+          priorityLevelId: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+          priorityLevelColor: null,
+          priorityLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 4,
@@ -2874,11 +2986,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
-          riskLevelId: null,
-          riskLevelNameEn: null,
-          riskLevelNameSv: null,
-          riskLevelColor: null,
-          riskLevelSortOrder: null,
+          priorityLevelId: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+          priorityLevelColor: null,
+          priorityLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 4,
@@ -2915,11 +3027,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
-          riskLevelId: null,
-          riskLevelNameEn: null,
-          riskLevelNameSv: null,
-          riskLevelColor: null,
-          riskLevelSortOrder: null,
+          priorityLevelId: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+          priorityLevelColor: null,
+          priorityLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 4,
@@ -3051,11 +3163,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
-          riskLevelId: null,
-          riskLevelNameEn: null,
-          riskLevelNameSv: null,
-          riskLevelColor: null,
-          riskLevelSortOrder: null,
+          priorityLevelId: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+          priorityLevelColor: null,
+          priorityLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 1,
@@ -3077,11 +3189,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
-          riskLevelId: null,
-          riskLevelNameEn: null,
-          riskLevelNameSv: null,
-          riskLevelColor: null,
-          riskLevelSortOrder: null,
+          priorityLevelId: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+          priorityLevelColor: null,
+          priorityLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 1,
@@ -3299,17 +3411,17 @@ describe('RequirementsTable', () => {
     })
   })
 
-  it('uses requirement package descriptions as filter pill tooltips', () => {
+  it('uses requirement package purpose and scope as filter pill tooltips', () => {
     const requirementPackages = [
       {
-        description: 'Krav för mobil användning.',
         id: 1,
         name: 'Mobil användning',
+        purposeAndScope: 'Krav för mobil användning.',
       },
       {
-        description: '   ',
         id: 2,
-        name: 'Tom beskrivning',
+        name: 'Tom avgränsning',
+        purposeAndScope: '   ',
       },
     ]
 
@@ -3323,12 +3435,22 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    expect(
+    fireEvent.mouseEnter(
       screen.getByRole('button', { name: 'Mobil användning' }),
-    ).toHaveAttribute('title', 'Krav för mobil användning.')
-    expect(
-      screen.getByRole('button', { name: 'Tom beskrivning' }),
-    ).not.toHaveAttribute('title')
+    )
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      'Krav för mobil användning.',
+    )
+
+    fireEvent.mouseLeave(
+      screen.getByRole('button', { name: 'Mobil användning' }),
+    )
+    fireEvent.mouseEnter(
+      screen.getByRole('button', { name: 'Tom avgränsning' }),
+    )
+
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 
   it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {
@@ -3456,7 +3578,7 @@ describe('RequirementsTable', () => {
           { id: 2, name: 'Dataplattform' },
         ],
       })
-      render(
+      const { container } = render(
         <RequirementsTable
           locale="sv"
           rows={[row]}
@@ -3464,9 +3586,10 @@ describe('RequirementsTable', () => {
         />,
       )
 
-      expect(
-        screen.getByText('Mobil anvandning, Dataplattform'),
-      ).toBeInTheDocument()
+      const cells = container.querySelectorAll('td')
+      const requirementPackageCell = cells[cells.length - 1]
+      expect(requirementPackageCell?.textContent).toContain('Mobil anvandning')
+      expect(requirementPackageCell?.textContent).toContain('Dataplattform')
     })
 
     it('renders dash when no requirement packages are linked', () => {

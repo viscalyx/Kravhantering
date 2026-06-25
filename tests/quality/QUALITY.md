@@ -706,28 +706,43 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 14: action-
 ```
 <!-- markdownlint-enable MD013 -->
 
-### Scenario 15: configurable status and risk icons use an allowlist and stay additive
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 15: configurable status and priority icons use an allowlist and stay additive
 
 <!-- markdownlint-disable-next-line MD013 -->
 **Requirement tag:** `[Req: formal — docs/governance/admin-center.md "Taxonomy And Statuses"]`
 
-**What happened:** Status and risk icons are admin-configurable presentation
+**What happened:** Status and priority icons are admin-configurable presentation
 data. If unchecked icon strings reach the DAL, reports or client rendering can
 receive arbitrary component names. If the API replaces old fields instead of
 adding `iconName`, MCP and REST clients can break.
 
-**The requirement:** Requirement version statuses, usage statuses, and risk
+**The requirement:** Requirement version statuses, usage statuses, and priority
 levels may carry nullable `icon_name` values only from the shared
 allowlist generated from the installed Lucide icon catalog. REST and MCP output
 must expose icon data as additive `iconName` fields while keeping existing
 names/colors, and the migration must not backfill customer rows outside clean
 seed data.
 
+**Coverage/code:**
+
+- Allowlist and icon-node loading:
+  `lib/icons/status-icon-allowlist.ts:21-94`.
+- Additive list/detail API output:
+  `lib/requirements/service-requirements.ts:140-160` and
+  `lib/requirements/service-requirements.ts:232-240`.
+- Renderer allowlist handling:
+  `lib/icons/status-icon-components.ts:1-14` and
+  `components/StatusBadge.tsx:23-49`.
+- Migration checks:
+  `typeorm/migrations/0014_status_and_risk_icons.mjs:1-10` and
+  `typeorm/migrations/0038_priority_levels.mjs:17-40`.
+
 **How to verify:**
 
 <!-- markdownlint-disable MD013 -->
 ```sh
-npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 15: configurable status and risk icons use an allowlist and stay additive"
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 15: configurable status and priority icons use an allowlist and stay additive"
 ```
 <!-- markdownlint-enable MD013 -->
 

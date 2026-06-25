@@ -954,11 +954,11 @@ describe('AdminClient', () => {
       panel.getByTestId('taxonomy-icon-qualityCharacteristics'),
     ).toBeTruthy()
 
-    expect(panel.getByTestId('taxonomy-card-riskLevels')).toHaveAttribute(
+    expect(panel.getByTestId('taxonomy-card-priorityLevels')).toHaveAttribute(
       'href',
-      '/risk-levels',
+      '/priority-levels',
     )
-    expect(panel.getByTestId('taxonomy-icon-riskLevels')).toBeTruthy()
+    expect(panel.getByTestId('taxonomy-icon-priorityLevels')).toBeTruthy()
 
     expect(
       panel.getByTestId('taxonomy-card-governanceObjectTypes'),
@@ -995,10 +995,13 @@ describe('AdminClient', () => {
         description: 'admin.implementationTypesDescription',
       },
       {
+        title: 'nav.priorityLevels',
+        description: 'admin.priorityLevelsDescription',
+      },
+      {
         title: 'nav.qualityCharacteristics',
         description: 'admin.qualityAttributesDescription',
       },
-      { title: 'nav.riskLevels', description: 'admin.riskLevelsDescription' },
       { title: 'nav.types', description: 'admin.typesDescription' },
     ])
   })

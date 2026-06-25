@@ -102,7 +102,7 @@ function emptySeed() {
         'archived_at',
         'created_by',
         'archive_initiated_at',
-        'risk_level_id',
+        'priority_level_id',
       ],
       pk: ['id'],
       rows: [],
@@ -156,7 +156,7 @@ function emptySeed() {
         'requirement_category_id',
         'requirement_type_id',
         'quality_characteristic_id',
-        'risk_level_id',
+        'priority_level_id',
         'is_testing_required',
         'verification_method',
         'needs_reference_id',
@@ -172,11 +172,6 @@ function emptySeed() {
     specification_local_requirement_norm_references: {
       columns: ['specification_local_requirement_id', 'norm_reference_id'],
       pk: ['specification_local_requirement_id', 'norm_reference_id'],
-      rows: [],
-    },
-    specification_local_requirement_requirement_packages: {
-      columns: ['specification_local_requirement_id', 'requirement_package_id'],
-      pk: ['specification_local_requirement_id', 'requirement_package_id'],
       rows: [],
     },
     requirements_specification_items: {

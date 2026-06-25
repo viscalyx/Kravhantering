@@ -1,11 +1,19 @@
 'use client'
 
-import { Download, FileText, Plus, Printer, Sparkles } from 'lucide-react'
+import {
+  Download,
+  FileText,
+  Plus,
+  Printer,
+  Sparkles,
+  Upload,
+} from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AiRequirementGenerator from '@/components/AiRequirementGenerator'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import RequirementsImportDialog from '@/components/RequirementsImportDialog'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import {
@@ -24,6 +32,7 @@ import {
   getDefaultVisibleRequirementColumns,
   getRequirementColumnWidthsStorageKey,
   normalizeRequirementListColumnDefaults,
+  type PriorityLevelOption,
   parseRequirementColumnWidths,
   parseRequirementVisibleColumns,
   type QualityCharacteristicOption,
@@ -34,7 +43,6 @@ import {
   type RequirementPackageOption,
   type RequirementRow,
   type RequirementSortState,
-  type RiskLevelOption,
   type StatusOption,
   serializeRequirementColumnWidths,
   serializeRequirementVisibleColumns,
@@ -104,8 +112,8 @@ const REQUIREMENTS_HELP: HelpContent = {
     },
     {
       kind: 'text',
-      bodyKey: 'requirements.properties.riskLevel.body',
-      headingKey: 'requirements.properties.riskLevel.heading',
+      bodyKey: 'requirements.properties.priorityLevel.body',
+      headingKey: 'requirements.properties.priorityLevel.heading',
       subheading: true,
     },
     {
@@ -208,12 +216,12 @@ function mapRequirementDetailToRow(
             version.qualityCharacteristic?.nameEn ?? null,
           qualityCharacteristicNameSv:
             version.qualityCharacteristic?.nameSv ?? null,
-          riskLevelId: version.riskLevel?.id ?? null,
-          riskLevelNameEn: version.riskLevel?.nameEn ?? null,
-          riskLevelNameSv: version.riskLevel?.nameSv ?? null,
-          riskLevelColor: version.riskLevel?.color ?? null,
-          riskLevelIconName: version.riskLevel?.iconName ?? null,
-          riskLevelSortOrder: version.riskLevel?.sortOrder ?? null,
+          priorityLevelId: version.priorityLevel?.id ?? null,
+          priorityLevelNameEn: version.priorityLevel?.nameEn ?? null,
+          priorityLevelNameSv: version.priorityLevel?.nameSv ?? null,
+          priorityLevelColor: version.priorityLevel?.color ?? null,
+          priorityLevelIconName: version.priorityLevel?.iconName ?? null,
+          priorityLevelSortOrder: version.priorityLevel?.sortOrder ?? null,
           typeNameEn: version.type?.nameEn ?? null,
           typeNameSv: version.type?.nameSv ?? null,
           versionNumber: version.versionNumber,
@@ -258,7 +266,9 @@ export default function RequirementsClient({
     QualityCharacteristicOption[]
   >([])
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
-  const [riskLevels, setRiskLevels] = useState<RiskLevelOption[]>([])
+  const [priorityLevels, setPriorityLevels] = useState<PriorityLevelOption[]>(
+    [],
+  )
   const [requirementPackages, setRequirementPackages] = useState<
     RequirementPackageOption[]
   >([])
@@ -279,6 +289,7 @@ export default function RequirementsClient({
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
   const [aiModalOpen, setAiModalOpen] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
   const isAiGenerationEnabled =
     aiGenerationAvailability.effectiveRequirementGenerationEnabled
   const aiGenerationDisabledTooltip = !isAiGenerationEnabled
@@ -647,7 +658,7 @@ export default function RequirementsClient({
         qualityCharacteristicsRes,
         statusesRes,
         requirementPackagesRes,
-        riskLevelsRes,
+        priorityLevelsRes,
       ] = await Promise.allSettled([
         fetch('/api/requirement-areas'),
         fetch('/api/requirement-categories'),
@@ -655,7 +666,7 @@ export default function RequirementsClient({
         fetch('/api/quality-characteristics'),
         fetch('/api/requirement-statuses'),
         fetch('/api/requirement-packages'),
-        fetch('/api/risk-levels'),
+        fetch('/api/priority-levels'),
       ])
 
       const areasData = await readFilterResponse<{ areas?: AreaOption[] }>(
@@ -698,11 +709,11 @@ export default function RequirementsClient({
           requirementPackagesData.requirementPackages ?? [],
         )
       }
-      const riskLevelsData = await readFilterResponse<{
-        riskLevels?: RiskLevelOption[]
-      }>(riskLevelsRes)
-      if (riskLevelsData) {
-        setRiskLevels(riskLevelsData.riskLevels ?? [])
+      const priorityLevelsData = await readFilterResponse<{
+        priorityLevels?: PriorityLevelOption[]
+      }>(priorityLevelsRes)
+      if (priorityLevelsData) {
+        setPriorityLevels(priorityLevelsData.priorityLevels ?? [])
       }
     }
 
@@ -913,6 +924,7 @@ export default function RequirementsClient({
                 areas={areas}
                 categories={categories}
                 columnDefaults={normalizedColumnDefaults}
+                columnPickerPlacement="end"
                 columnWidths={columnWidths}
                 excludeColumns={['needsReference', 'specificationItemStatus']}
                 expandedId={selectedId}
@@ -964,14 +976,6 @@ export default function RequirementsClient({
                       },
                     ],
                   },
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'export',
-                    ariaLabel: tc('export'),
-                    icon: <Download aria-hidden="true" className="h-4 w-4" />,
-                    id: 'export',
-                    onClick: handleExport,
-                  },
                   ...(selectedIds.size > 0 && anySelectedIsReview
                     ? [
                         {
@@ -1011,6 +1015,24 @@ export default function RequirementsClient({
                         },
                       ]
                     : []),
+                  {
+                    developerModeContext: 'requirements table',
+                    developerModeValue: 'import requirements',
+                    ariaLabel: t('importRequirements'),
+                    icon: <Upload aria-hidden="true" className="h-4 w-4" />,
+                    id: 'import',
+                    onClick: () => setImportDialogOpen(true),
+                    position: 'afterColumns',
+                    tooltip: t('importRequirements'),
+                  },
+                  {
+                    developerModeContext: 'requirements table',
+                    developerModeValue: 'export',
+                    ariaLabel: tc('export'),
+                    icon: <Download aria-hidden="true" className="h-4 w-4" />,
+                    id: 'export',
+                    onClick: handleExport,
+                  },
                 ]}
                 getName={getName}
                 getStatusName={getStatusName}
@@ -1041,6 +1063,7 @@ export default function RequirementsClient({
                 onSortChange={setSortState}
                 onVisibleColumnsChange={setVisibleColumns}
                 pinnedIds={pinnedIds}
+                priorityLevels={priorityLevels}
                 qualityCharacteristics={qualityCharacteristics}
                 renderExpanded={id => (
                   <RequirementDetailClient
@@ -1056,7 +1079,6 @@ export default function RequirementsClient({
                   />
                 )}
                 requirementPackages={requirementPackages}
-                riskLevels={riskLevels}
                 rows={displayRows}
                 selectable
                 selectedIds={selectedIds}
@@ -1078,6 +1100,17 @@ export default function RequirementsClient({
           fetchData()
         }}
         open={aiModalOpen}
+      />
+      <RequirementsImportDialog
+        areas={areas}
+        mode="library"
+        onClose={importSucceeded => {
+          setImportDialogOpen(false)
+          if (importSucceeded) {
+            void fetchData()
+          }
+        }}
+        open={importDialogOpen}
       />
     </>
   )

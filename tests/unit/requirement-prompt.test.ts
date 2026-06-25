@@ -30,10 +30,28 @@ const testTaxonomy: TaxonomyData = {
     { id: 10, name: 'Performance efficiency' },
     { id: 11, name: 'Time behaviour', parentName: 'Performance efficiency' },
   ],
-  riskLevels: [
-    { id: 1, name: 'Low' },
-    { id: 2, name: 'Medium' },
-    { id: 3, name: 'High' },
+  priorityLevels: [
+    {
+      assessmentCriteria: 'Minor importance',
+      code: 'P2',
+      description: 'Low priority',
+      id: 2,
+      name: 'Low',
+    },
+    {
+      assessmentCriteria: 'Clear importance',
+      code: 'P3',
+      description: 'Medium high priority',
+      id: 3,
+      name: 'Medium high',
+    },
+    {
+      assessmentCriteria: 'High importance',
+      code: 'P4',
+      description: 'High priority',
+      id: 4,
+      name: 'High',
+    },
   ],
   requirementPackages: [
     { id: 1, name: 'Normal operation' },
@@ -56,7 +74,7 @@ const REQUIRED_PROMPT_MESSAGE_PATHS = [
   ['ai', 'prompt', 'system', 'headings', 'types'],
   ['ai', 'prompt', 'system', 'headings', 'categories'],
   ['ai', 'prompt', 'system', 'headings', 'qualityCharacteristics'],
-  ['ai', 'prompt', 'system', 'headings', 'riskLevels'],
+  ['ai', 'prompt', 'system', 'headings', 'priorityLevels'],
   ['ai', 'prompt', 'system', 'headings', 'requirementPackages'],
   ['ai', 'prompt', 'system', 'headings', 'outputRules'],
 ] as const
@@ -71,7 +89,9 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('ID 1: Functional')
     expect(prompt).toContain('ID 2: Non-functional')
     expect(prompt).toContain('ID 1: Business')
-    expect(prompt).toContain('ID 3: High')
+    expect(prompt).toContain('ID 4: P4 - High')
+    expect(prompt).toContain('High priority')
+    expect(prompt).toContain('Assessment criteria: High importance')
     expect(prompt).toContain('ID 2: High load')
     expect(prompt).toContain(
       'ID 2: Functional suitability > Functional correctness',
@@ -98,7 +118,7 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt(testTaxonomy, 'sv')
     expect(prompt).toContain('Du är en expert på kravhantering')
     expect(prompt).toContain('Kravtyper')
-    expect(prompt).toContain('Risknivåer')
+    expect(prompt).toContain('Prioritetsskala')
     expect(prompt).toContain('Kravpaket')
     expect(prompt).toContain('ID 1: Functional')
   })
@@ -245,7 +265,7 @@ describe('validateGeneratedRequirements', () => {
     qualityCharacteristicId: 2,
     rationale: 'Security',
     requiresTesting: true,
-    riskLevelId: 3,
+    priorityLevelId: 4,
     requirementPackageIds: [1],
     typeId: 1,
   }
@@ -292,10 +312,13 @@ describe('validateGeneratedRequirements', () => {
     expect(result[0].requirementPackageIds).toEqual([1, 2])
   })
 
-  it('clears invalid riskLevelId', () => {
-    const withBadRisk = { ...validRequirement, riskLevelId: 5 }
-    const result = validateGeneratedRequirements([withBadRisk], testTaxonomy)
+  it('clears invalid priorityLevelId', () => {
+    const withBadPriority = { ...validRequirement, priorityLevelId: 5 }
+    const result = validateGeneratedRequirements(
+      [withBadPriority],
+      testTaxonomy,
+    )
     expect(result).toHaveLength(1)
-    expect(result[0].riskLevelId).toBeUndefined()
+    expect(result[0].priorityLevelId).toBeUndefined()
   })
 })

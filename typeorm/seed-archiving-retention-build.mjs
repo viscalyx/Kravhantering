@@ -180,7 +180,7 @@ function requirementVersionRow(values) {
     quality_characteristic_id: 1,
     requirement_category_id: 2,
     requirement_type_id: 1,
-    risk_level_id: 2,
+    priority_level_id: 2,
     verification_method: 'Seed fixture inspected through Admin > Arkivering.',
     version_number: 1,
     ...values,
@@ -246,11 +246,11 @@ function addRetentionTaxonomy(seedData) {
   ]) {
     addRow(seedData, 'requirement_packages', {
       created_at: pkg.updatedAt,
-      description: `${pkg.name} för deterministiska arkiveringstester.`,
       id: pkg.id,
       is_archived: 0,
       lead_hsa_id: 'SE5560000001-retentionlinked',
       name: pkg.name,
+      purpose_and_scope: `${pkg.name} för deterministiska arkiveringstester.`,
       updated_at: pkg.updatedAt,
     })
   }
@@ -507,7 +507,7 @@ function addRetentionSpecifications(seedData) {
 
   addRow(seedData, 'specification_local_requirements', {
     acceptance_criteria:
-      'RETENTION-SEED lokalt krav ingår med taxonomi, paket och normreferens i JSON-exporten.',
+      'RETENTION-SEED lokalt krav ingår med taxonomi och normreferens i JSON-exporten.',
     created_at: OLD_730_TS,
     description:
       'RETENTION-SEED lokalt krav för representativ kravunderlagsexport.',
@@ -519,7 +519,7 @@ function addRetentionSpecifications(seedData) {
     quality_characteristic_id: 1,
     requirement_category_id: 2,
     requirement_type_id: 1,
-    risk_level_id: 2,
+    priority_level_id: 2,
     sequence_number: 1,
     specification_id: RETENTION_SEED.specification.obsolete,
     specification_item_status_id: 1,
@@ -531,11 +531,6 @@ function addRetentionSpecifications(seedData) {
 
   addRow(seedData, 'specification_local_requirement_norm_references', {
     norm_reference_id: RETENTION_SEED.normReference.used,
-    specification_local_requirement_id:
-      RETENTION_SEED.localRequirement.obsoleteSpecification,
-  })
-  addRow(seedData, 'specification_local_requirement_requirement_packages', {
-    requirement_package_id: RETENTION_SEED.requirementPackage.used,
     specification_local_requirement_id:
       RETENTION_SEED.localRequirement.obsoleteSpecification,
   })

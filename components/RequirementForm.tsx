@@ -1,13 +1,13 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { AlertTriangle, ExternalLink, Plus, RotateCcw, X } from 'lucide-react'
+import { AlertTriangle, ExternalLink, Plus, RotateCcw } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FormActionRow from '@/components/FormActionRow'
-import NormReferenceFormFields from '@/components/NormReferenceFormFields'
+import NormReferenceModal from '@/components/NormReferenceModal'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
@@ -16,11 +16,7 @@ import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { useRouter } from '@/i18n/routing'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
-import {
-  dialogPanelMotion,
-  fadeMotion,
-  offsetPanelMotion,
-} from '@/lib/reduced-motion'
+import { offsetPanelMotion } from '@/lib/reduced-motion'
 
 interface RequirementFormProps {
   baseRevisionToken?: string | null
@@ -69,7 +65,7 @@ const EMPTY_FORM: RequirementFormFieldValues = {
   normReferenceIds: [],
   qualityCharacteristicId: '',
   requiresTesting: false,
-  riskLevelId: '',
+  priorityLevelId: '',
   requirementPackageIds: [],
   typeId: '',
   verificationMethod: '',
@@ -118,7 +114,9 @@ function toRequirementPayload(
     qualityCharacteristicId: form.qualityCharacteristicId
       ? Number(form.qualityCharacteristicId)
       : undefined,
-    riskLevelId: form.riskLevelId ? Number(form.riskLevelId) : undefined,
+    priorityLevelId: form.priorityLevelId
+      ? Number(form.priorityLevelId)
+      : undefined,
     description: form.description || undefined,
     baseRevisionToken:
       options.includeEditTokens && options.mode === 'edit'
@@ -562,192 +560,5 @@ export default function RequirementForm({
         </div>
       </div>
     </motion.form>
-  )
-}
-
-interface NormReferenceModalProps {
-  normRefError: string | null
-  normRefForm: {
-    issuer: string
-    name: string
-    normReferenceId: string
-    reference: string
-    type: string
-    uri: string
-    version: string
-  }
-  normRefFormDirty: boolean
-  normRefSubmitting: boolean
-  onCancel: () => void
-  onSave: () => void
-  onSetField: (field: string, value: string) => void
-}
-
-function NormReferenceModal({
-  normRefError,
-  normRefForm,
-  normRefFormDirty,
-  normRefSubmitting,
-  onCancel,
-  onSave,
-  onSetField,
-}: NormReferenceModalProps) {
-  const t = useTranslations('requirement')
-  const tc = useTranslations('common')
-  const overlayRef = useRef<HTMLDivElement>(null)
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
-  const previouslyFocused = useRef<Element | null>(null)
-  const shouldReduceMotion = useReducedMotion()
-  const confirmDiscardChanges = useDiscardChangesConfirmation()
-
-  const requestCancel = useCallback(
-    async (anchorEl?: HTMLElement | null) => {
-      if (normRefSubmitting) return
-      if (normRefFormDirty && !(await confirmDiscardChanges(anchorEl))) return
-      onCancel()
-    },
-    [confirmDiscardChanges, normRefFormDirty, normRefSubmitting, onCancel],
-  )
-
-  useEffect(() => {
-    previouslyFocused.current = document.activeElement
-    closeButtonRef.current?.focus()
-
-    return () => {
-      if (previouslyFocused.current instanceof HTMLElement) {
-        previouslyFocused.current.focus()
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-
-    const FOCUSABLE =
-      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !normRefSubmitting) {
-        void requestCancel()
-        return
-      }
-      if (e.key === 'Tab') {
-        const focusable = Array.from(
-          dialog.querySelectorAll<HTMLElement>(FOCUSABLE),
-        )
-        if (focusable.length === 0) return
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-        if (e.shiftKey) {
-          if (document.activeElement === first) {
-            e.preventDefault()
-            last.focus()
-          }
-        } else {
-          if (document.activeElement === last) {
-            e.preventDefault()
-            first.focus()
-          }
-        }
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [normRefSubmitting, requestCancel])
-
-  const hasRequiredNormReferenceFields =
-    normRefForm.name.trim() !== '' &&
-    normRefForm.type.trim() !== '' &&
-    normRefForm.reference.trim() !== '' &&
-    normRefForm.issuer.trim() !== ''
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      ref={overlayRef}
-    >
-      <motion.div
-        aria-hidden="true"
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        {...fadeMotion(shouldReduceMotion, { duration: 0.22 })}
-      />
-      <motion.div
-        aria-describedby="modal-desc-norm-ref"
-        aria-labelledby="modal-title-norm-ref"
-        aria-modal="true"
-        className="relative z-10 w-full max-w-4xl rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto"
-        ref={dialogRef}
-        role="dialog"
-        {...dialogPanelMotion(shouldReduceMotion, { duration: 0.22 })}
-      >
-        <div className="flex items-center justify-between">
-          <h2
-            className="text-base font-semibold text-secondary-900 dark:text-secondary-100"
-            id="modal-title-norm-ref"
-          >
-            {t('addNewNormReference')}
-          </h2>
-          <button
-            aria-label={tc('cancel')}
-            className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-lg text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 disabled:opacity-50 disabled:pointer-events-none"
-            disabled={normRefSubmitting}
-            onClick={event => void requestCancel(event.currentTarget)}
-            ref={closeButtonRef}
-            type="button"
-          >
-            <X aria-hidden="true" className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div
-          className="rounded-xl border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-3 py-2"
-          id="modal-desc-norm-ref"
-        >
-          <p className="text-xs text-amber-800 dark:text-amber-200">
-            {t('newNormReferenceWarning')}
-          </p>
-        </div>
-
-        {normRefError && (
-          <p className="text-xs text-red-600 dark:text-red-400" role="alert">
-            {normRefError}
-          </p>
-        )}
-
-        <div className="space-y-3">
-          <NormReferenceFormFields
-            form={normRefForm}
-            idPrefix="modal-nr"
-            layout="create"
-            onSetField={onSetField}
-          />
-        </div>
-
-        <FormActionRow className="pt-2">
-          <DirtyStateButton
-            className="btn-primary"
-            dirty={normRefFormDirty}
-            disabled={
-              normRefSubmitting ||
-              (normRefFormDirty && !hasRequiredNormReferenceFields)
-            }
-            onClick={onSave}
-            type="button"
-          >
-            {normRefSubmitting ? tc('saving') : tc('save')}
-          </DirtyStateButton>
-          <button
-            className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-600 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
-            disabled={normRefSubmitting}
-            onClick={event => void requestCancel(event.currentTarget)}
-            type="button"
-          >
-            {tc('cancel')}
-          </button>
-        </FormActionRow>
-      </motion.div>
-    </div>
   )
 }

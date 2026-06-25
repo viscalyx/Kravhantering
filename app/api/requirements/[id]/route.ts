@@ -63,7 +63,7 @@ const requirementEditSchema = z
     qualityCharacteristicId: optionalBodyIdSchema,
     requirementPackageIds: optionalBodyIdArraySchema,
     requiresTesting: z.boolean().optional().default(false),
-    riskLevelId: optionalBodyIdSchema,
+    priorityLevelId: optionalBodyIdSchema,
     typeId: optionalBodyIdSchema,
     verificationMethod: optionalBusinessTextSchema,
   })
@@ -259,7 +259,7 @@ export const PUT = secureMutationRoute({
           verificationMethod: body.verificationMethod,
           requirementPackageIds: body.requirementPackageIds,
           qualityCharacteristicId: body.qualityCharacteristicId,
-          riskLevelId: body.riskLevelId,
+          priorityLevelId: body.priorityLevelId,
           typeId: body.typeId,
         },
       })
