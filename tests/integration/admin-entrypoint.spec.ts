@@ -43,9 +43,11 @@ interface AdminHsaIdPrefixRow {
 async function requestOkWithRetry(
   requestName: string,
   sendRequest: () => Promise<APIResponse>,
-) {
-  let lastFailure = 'no response received'
-  let successfulResponse: APIResponse | null = null
+): Promise<APIResponse> {
+  const retryState: {
+    lastFailure: string
+    successfulResponse?: APIResponse
+  } = { lastFailure: 'no response received' }
 
   try {
     await expect
@@ -53,11 +55,11 @@ async function requestOkWithRetry(
         async () => {
           const response = await sendRequest()
           if (response.ok()) {
-            successfulResponse = response
+            retryState.successfulResponse = response
             return true
           }
 
-          lastFailure = `${response.status()}: ${await response.text()}`
+          retryState.lastFailure = `${response.status()}: ${await response.text()}`
           return false
         },
         {
@@ -67,14 +69,18 @@ async function requestOkWithRetry(
       )
       .toBe(true)
   } catch {
-    throw new Error(`${requestName} failed after retries: ${lastFailure}`)
+    throw new Error(
+      `${requestName} failed after retries: ${retryState.lastFailure}`,
+    )
   }
 
-  if (!successfulResponse) {
-    throw new Error(`${requestName} failed after retries: ${lastFailure}`)
+  if (!retryState.successfulResponse) {
+    throw new Error(
+      `${requestName} failed after retries: ${retryState.lastFailure}`,
+    )
   }
 
-  return successfulResponse
+  return retryState.successfulResponse
 }
 
 async function resetAdminSettings(request: APIRequestContext) {
