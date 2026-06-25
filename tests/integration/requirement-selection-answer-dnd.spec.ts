@@ -23,10 +23,12 @@ interface RequirementSelectionQuestionResponse {
   questionCode: string
 }
 
-async function expectRequestOk(
-  response: Awaited<ReturnType<APIRequestContext['put']>>,
-  context: string,
-) {
+type ResponseWithBody = Pick<
+  Awaited<ReturnType<APIRequestContext['put']>>,
+  'ok' | 'status' | 'statusText' | 'text'
+>
+
+async function expectRequestOk(response: ResponseWithBody, context: string) {
   if (response.ok()) return
   const body = await response.text()
   throw new Error(
@@ -250,7 +252,7 @@ test.describe('Requirement selection answer drag and drop', () => {
       await sourceRowHandle.dispatchEvent('dragend', { dataTransfer })
       const answerOrderResponses = await persistedAnswerOrder
       for (const response of answerOrderResponses) {
-        expect(response.ok()).toBeTruthy()
+        await expectRequestOk(response, 'Persist answer order')
       }
 
       await expect(answerRows.nth(0)).toContainText('Molndrift')
