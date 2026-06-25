@@ -9,13 +9,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsImportDialog from '@/components/RequirementsImportDialog'
 import { apiFetch } from '@/lib/http/api-fetch'
 
+const confirmMock = vi.hoisted(() => vi.fn())
+
 vi.mock('next-intl', () => ({
   useLocale: () => 'sv',
 }))
 
 vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({
-    confirm: vi.fn().mockResolvedValue(true),
+    confirm: confirmMock,
   }),
 }))
 
@@ -78,6 +80,8 @@ async function expandFirstImportRow() {
 
 describe('RequirementsImportDialog', () => {
   beforeEach(() => {
+    confirmMock.mockReset()
+    confirmMock.mockResolvedValue(true)
     mockReferenceDataFetch()
   })
 
@@ -202,6 +206,104 @@ describe('RequirementsImportDialog', () => {
     fireEvent.click(screen.getByLabelText('Stäng'))
 
     await waitFor(() => expect(areaSelect).toHaveValue(''))
+  })
+
+  it('closes without discard confirmation when all loaded rows were imported', async () => {
+    vi.mocked(apiFetch)
+      .mockResolvedValueOnce({
+        json: async () => ({
+          previewToken: 'preview-token',
+          proposals: [],
+          rows: [
+            {
+              errors: [],
+              proposedNormReferenceKeys: [],
+              reviewRowId: 'row-0',
+              selected: true,
+              sourceIndex: 0,
+              values: {
+                acceptanceCriteria: null,
+                categoryId: null,
+                description: 'Kravtext',
+                needsReferenceId: null,
+                normReferenceIds: [],
+                qualityCharacteristicId: null,
+                requirementPackageIds: [],
+                requiresTesting: false,
+                priorityLevelId: null,
+                typeId: null,
+                verificationMethod: null,
+              },
+              warnings: [],
+            },
+          ],
+          summary: { errorCount: 0, rowCount: 1, warningCount: 0 },
+        }),
+        ok: true,
+      } as Response)
+      .mockResolvedValueOnce({
+        json: async () => ({
+          createdRows: [
+            {
+              acceptanceCriteria: null,
+              categoryName: null,
+              createdDatabaseId: 101,
+              createdVisibleId: 'REQ-001',
+              description: 'Kravtext',
+              importMode: 'library',
+              needsReferenceId: null,
+              normReferences: [],
+              priorityLevelName: null,
+              qualityCharacteristicName: null,
+              requirementPackageNames: [],
+              requiresTesting: false,
+              sourceIndex: 0,
+              targetAreaId: 7,
+              targetSpecificationId: null,
+              typeName: null,
+              verificationMethod: null,
+            },
+          ],
+          summary: { createdCount: 1 },
+        }),
+        ok: true,
+      } as Response)
+    const onClose = vi.fn()
+    render(
+      <RequirementsImportDialog
+        areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
+        mode="library"
+        onClose={onClose}
+        open
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Kravområde/), {
+      target: { value: '7' },
+    })
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: {
+        value: JSON.stringify({
+          requirements: [{ description: 'Kravtext' }],
+          schemaVersion: 'requirement-import.v1',
+        }),
+      },
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Starta import' }),
+      ).toBeEnabled(),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Starta import' }))
+    await screen.findByText('Kravtext')
+    fireEvent.click(screen.getByRole('button', { name: 'Importera valda' }))
+    await screen.findByText('Inga rader är laddade.')
+
+    confirmMock.mockClear()
+    fireEvent.click(screen.getByLabelText('Stäng'))
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledWith(true))
+    expect(confirmMock).not.toHaveBeenCalled()
   })
 
   it('loads JSON text from a dropped file', async () => {

@@ -145,7 +145,9 @@ The behaviors below apply to the requirement list rendered by:
 - Re-loading JSON while rows are present asks for confirmation before replacing
   the current review edits. Closing the dialog discards remaining rows and
   clears the selected kravområde; if any execute succeeded, the parent list
-  refreshes when the dialog closes.
+  refreshes when the dialog closes. If all rows have been imported and no
+  review rows remain, closing the dialog does not ask the user to confirm
+  discarding changes.
 - Imports with 200 or more rows show a warning but are not blocked. There is no
   hard row-count limit.
 - The schema and AI reference prompt are downloadable from the import dialog.

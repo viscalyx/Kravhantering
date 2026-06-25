@@ -711,6 +711,7 @@ Olösta importerade ID:n kan fortfarande korrigeras direkt. Om dialogen stängs
 och öppnas igen är kravområde inte längre valt. Den
 importerade valda raden försvinner från
 granskningen efter lyckad import och ett nytt utkast skapas i valt kravområde.
+Om inga rader finns kvar efter import stängs dialogen utan förkasta-bekräftelse.
 
 ## Skapa krav och livscykel
 
@@ -1142,7 +1143,8 @@ normreferenser visas i separata flikar, och `Importera valda` ligger kvar i
 verktygsraden för fliken `Krav` när raderna med krav skrollas. Raderna med krav
 är kollapsade från start, kan expanderas individuellt eller med `Expandera
 alla`, och behåller expansionsläget för kvarvarande rader efter ny validering
-och lyckad import.
+och lyckad import. Om inga rader finns kvar efter import stängs dialogen utan
+förkasta-bekräftelse.
 
 ## Avsteg
 

@@ -1204,7 +1204,9 @@ export default function RequirementsImportDialog({
   }
 
   const closeDialog = async () => {
-    if (rows.length > 0 || rawJson.trim()) {
+    const hasRemainingImportEdits =
+      rows.length > 0 || (!hadSuccessfulImport && rawJson.trim())
+    if (hasRemainingImportEdits) {
       const ok = await confirm({
         confirmText: text.close,
         icon: 'caution',
