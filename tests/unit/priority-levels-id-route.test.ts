@@ -1,7 +1,11 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-type MinimalLinkedRequirement = { id: number; uniqueId: string }
+type MinimalLinkedRequirement = {
+  id: number
+  source: 'library' | 'specificationLocal'
+  uniqueId: string
+}
 
 const routeState = vi.hoisted(() => ({
   createAdminPrivilegedAuditContext: vi.fn(async () => ({
@@ -75,7 +79,7 @@ describe('priority-levels/[id] route', () => {
       sortOrder: 1,
     })
     routeState.getLinkedRequirements.mockResolvedValueOnce([
-      { id: 10, uniqueId: 'REQ-1' },
+      { id: 10, source: 'library', uniqueId: 'REQ-1' },
     ])
 
     const response = await route.GET(
@@ -98,7 +102,7 @@ describe('priority-levels/[id] route', () => {
         nameSv: 'Låg',
         sortOrder: 1,
       },
-      linkedRequirements: [{ id: 10, uniqueId: 'REQ-1' }],
+      linkedRequirements: [{ id: 10, source: 'library', uniqueId: 'REQ-1' }],
     })
   })
 

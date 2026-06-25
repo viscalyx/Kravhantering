@@ -62,6 +62,7 @@ interface PriorityLevelForm {
 interface LinkedRequirement {
   description: string | null
   id: number
+  source: 'library' | 'specificationLocal'
   statusColor: string | null
   statusIconName: string | null
   statusNameEn: string | null

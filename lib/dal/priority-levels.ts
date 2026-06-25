@@ -25,6 +25,7 @@ export interface PriorityLevelRow {
 interface LinkedRequirementRow {
   description: string | null
   id: number
+  source: 'library' | 'specificationLocal'
   statusColor: string | null
   statusIconName: string | null
   statusNameEn: string | null
@@ -119,32 +120,51 @@ export async function getLinkedRequirements(
         linked.uniqueId,
         linked.description,
         linked.versionNumber,
+        linked.source,
         linked.statusNameSv,
         linked.statusNameEn,
         linked.statusColor,
         linked.statusIconName
       FROM (
         SELECT
-          requirements.id AS id,
-          requirements.unique_id AS uniqueId,
-          requirement_versions.description AS description,
-          requirement_versions.version_number AS versionNumber,
-          requirement_statuses.name_sv AS statusNameSv,
-          requirement_statuses.name_en AS statusNameEn,
-          requirement_statuses.color AS statusColor,
-          requirement_statuses.icon_name AS statusIconName
-        FROM requirement_versions
-        INNER JOIN requirements
-          ON requirement_versions.requirement_id = requirements.id
-        LEFT JOIN requirement_statuses
-          ON requirement_versions.requirement_status_id = requirement_statuses.id
-        WHERE requirement_versions.priority_level_id = @0
+          ranked_requirements.id AS id,
+          ranked_requirements.uniqueId,
+          ranked_requirements.description,
+          ranked_requirements.versionNumber,
+          N'library' AS source,
+          ranked_requirements.statusNameSv,
+          ranked_requirements.statusNameEn,
+          ranked_requirements.statusColor,
+          ranked_requirements.statusIconName
+        FROM (
+          SELECT
+            requirements.id AS id,
+            requirements.unique_id AS uniqueId,
+            requirement_versions.description AS description,
+            requirement_versions.version_number AS versionNumber,
+            requirement_statuses.name_sv AS statusNameSv,
+            requirement_statuses.name_en AS statusNameEn,
+            requirement_statuses.color AS statusColor,
+            requirement_statuses.icon_name AS statusIconName,
+            ROW_NUMBER() OVER (
+              PARTITION BY requirement_versions.requirement_id
+              ORDER BY requirement_versions.version_number DESC, requirement_versions.id DESC
+            ) AS rowNumber
+          FROM requirement_versions
+          INNER JOIN requirements
+            ON requirement_versions.requirement_id = requirements.id
+          LEFT JOIN requirement_statuses
+            ON requirement_versions.requirement_status_id = requirement_statuses.id
+          WHERE requirement_versions.priority_level_id = @0
+        ) ranked_requirements
+        WHERE ranked_requirements.rowNumber = 1
         UNION
         SELECT
           local_requirement.id AS id,
           local_requirement.unique_id AS uniqueId,
           local_requirement.description AS description,
           1 AS versionNumber,
+          N'specificationLocal' AS source,
           specification_item_status.name_sv AS statusNameSv,
           specification_item_status.name_en AS statusNameEn,
           specification_item_status.color AS statusColor,

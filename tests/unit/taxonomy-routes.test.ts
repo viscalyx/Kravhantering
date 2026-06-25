@@ -1824,6 +1824,21 @@ describe('requirement-packages routes', () => {
     )
     expect(((await r.json()) as { id: number }).id).toBe(1)
   })
+  it('PUT allows clearing purpose and scope with an empty string', async () => {
+    mockUpdateRequirementPackage.mockResolvedValue({ id: 1 })
+
+    const r = await putRequirementPackage(
+      jsonReq('PUT', { purposeAndScope: '' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockUpdateRequirementPackage).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({ purposeAndScope: '' }),
+    )
+  })
   it('PUT rejects changing the lead to an existing persisted co-author', async () => {
     mockGetRequirementPackageById.mockResolvedValueOnce({
       coAuthors: [

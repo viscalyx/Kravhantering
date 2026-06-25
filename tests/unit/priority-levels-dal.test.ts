@@ -167,6 +167,7 @@ describe('priority-levels DAL', () => {
       {
         description: 'Library requirement',
         id: 10,
+        source: 'library',
         statusColor: '#22c55e',
         statusIconName: 'CheckCircle2',
         statusNameEn: 'Published',
@@ -177,6 +178,7 @@ describe('priority-levels DAL', () => {
       {
         description: 'Local requirement',
         id: 20,
+        source: 'specificationLocal',
         statusColor: '#3b82f6',
         statusIconName: 'Clock',
         statusNameEn: 'Included',
@@ -190,6 +192,7 @@ describe('priority-levels DAL', () => {
       {
         description: 'Library requirement',
         id: 10,
+        source: 'library',
         statusColor: '#22c55e',
         statusIconName: 'CheckCircle2',
         statusNameEn: 'Published',
@@ -200,6 +203,7 @@ describe('priority-levels DAL', () => {
       {
         description: 'Local requirement',
         id: 20,
+        source: 'specificationLocal',
         statusColor: '#3b82f6',
         statusIconName: 'Clock',
         statusNameEn: 'Included',
@@ -211,6 +215,10 @@ describe('priority-levels DAL', () => {
     expect(query.mock.calls[0]?.[1]).toEqual([4])
     const sql = String(query.mock.calls[0]?.[0])
     expect(sql).toContain('requirement_versions.priority_level_id = @0')
+    expect(sql).toContain('ROW_NUMBER() OVER')
+    expect(sql).toContain('PARTITION BY requirement_versions.requirement_id')
+    expect(sql).toContain("N'library' AS source")
+    expect(sql).toContain("N'specificationLocal' AS source")
     expect(sql).toContain('local_requirement.priority_level_id = @0')
     expect(sql).toContain('specification_local_requirements local_requirement')
   })

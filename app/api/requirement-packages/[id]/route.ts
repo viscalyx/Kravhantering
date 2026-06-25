@@ -18,8 +18,8 @@ import {
 } from '@/lib/http/secure-mutation-route'
 import {
   boundedDbStringSchema,
-  businessTextSchema,
   idParamSchema,
+  optionalBusinessTextSchema,
   parseRouteParams,
 } from '@/lib/http/validation'
 import { validationError } from '@/lib/requirements/errors'
@@ -41,7 +41,7 @@ const updateRequirementPackageSchema = z
   .object({
     leadHsaId: hsaIdSchema.optional(),
     name: boundedDbStringSchema.optional(),
-    purposeAndScope: businessTextSchema.optional(),
+    purposeAndScope: optionalBusinessTextSchema,
   })
   .strict()
   .refine(
