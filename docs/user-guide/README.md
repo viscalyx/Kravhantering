@@ -50,7 +50,7 @@ användaren själv väljer för varje krav.
 ### Kravbiblioteket — Översikt
 
 Kravbiblioteket listar alla krav i en sorterbar och filtrerbar tabell. Varje rad
-visar nyckeluppgifter som ID, kravtext, kravområde, status och risknivå.
+visar nyckeluppgifter som ID, kravtext, kravområde, status och prioritet.
 Kolumnerna kan konfigureras efter behov.
 
 ![Kravbiblioteket — Översikt](images/004-kravbibliotek.png)
@@ -153,7 +153,7 @@ det tillfället. Användbara för revision och spårbarhet.
 
 Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret
 innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier,
-kravområde, kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod,
+kravområde, kategori, typ, prioritet, kvalitetsegenskaper, verifieringsmetod,
 normreferenser och kravpaket. När kravpaket visas i den interaktiva vyn kan du
 hovra över namnet för att läsa kravpaketets syfte och avgränsning.
 
@@ -162,7 +162,7 @@ hovra över namnet för att läsa kravpaketets syfte och avgränsning.
 ### Skapa krav — ifyllt formulär
 
 Fyll i kravtext och acceptanskriterier. Välj sedan kravområde, kategori, typ och
-risknivå i respektive rullgardinsmeny. Alla obligatoriska fält markeras med
+prioritet i respektive rullgardinsmeny. Alla obligatoriska fält markeras med
 asterisk (*) och formuläret visar en kort notis om markeringen. Klicka på
 "Spara" när formuläret är komplett.
 
@@ -507,7 +507,7 @@ också ange standardvyer för olika kontexter.
 
 Fliken **Taxonomi** innehåller länkar till klassningar som används för
 filtrering, rapportering och AI-stöd: kravområden, kategorier, typer,
-prioritetsnivåer, kvalitetsegenskaper, styrningsobjektstyper och
+prioritetsskala, kvalitetsegenskaper, styrningsobjektstyper och
 genomförandeformer. Normreferenser hanteras i Normbibliotek under
 Kravbiblioteksförvaltning.
 
@@ -604,7 +604,7 @@ följd av opublicerade versioner markerade som utkast eller granskning.
 Jämför en version i **Granskning** med den senast publicerade eller arkiverade
 versionen. Rapporten visar ord-för-ord-skillnader i kravtext och
 acceptanskriterier samt förändringar i metadata (kategori, typ,
-kvalitetsegenskaper, risknivå, normreferenser, kravpaket m.m.). Om ingen
+kvalitetsegenskaper, prioritet, normreferenser, kravpaket m.m.). Om ingen
 publicerad/arkiverad version finns noteras detta.
 
 **Åtkomst:** Rapportmenyn i kravdetaljvyn (visas enbart när kravet är i status

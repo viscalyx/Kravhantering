@@ -78,12 +78,11 @@ const SPECIFICATION_ITEMS_PANEL_SELECTOR =
   '[data-specification-detail-list-panel="items"]'
 const GUIDE_DEBUG = process.env.GUIDE_DEBUG !== '0'
 
-function loadImportSampleJson(): string {
+function loadImportSampleJson(): string | null {
+  if (!fs.existsSync(IMPORT_SAMPLE_PATH)) return null
   const raw = fs.readFileSync(IMPORT_SAMPLE_PATH, 'utf-8')
   return JSON.stringify(JSON.parse(raw), null, 2)
 }
-
-const IMPORT_SAMPLE_JSON = loadImportSampleJson()
 
 // ─── Typer ─────────────────────────────────────────────────────────────────
 
@@ -102,6 +101,7 @@ let currentSection = ''
 const entries: ScreenshotEntry[] = []
 const sectionIntros = new Map<string, string>()
 let guideRunCompleted = false
+let guideRunSkipped = false
 
 function setSectionIntro(text: string) {
   sectionIntros.set(currentSection, text)
@@ -333,7 +333,11 @@ async function executeImportRows(
   )
   await dialog.getByRole('button', { name: 'Importera valda' }).click()
   const warningDialog = page.getByRole('dialog', { name: 'varningar' })
-  if (await warningDialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+  const warningDialogVisible = await warningDialog
+    .waitFor({ state: 'visible', timeout: 1000 })
+    .then(() => true)
+    .catch(() => false)
+  if (warningDialogVisible) {
     await warningDialog.getByRole('button', { name: 'Importera valda' }).click()
   }
   await expectSuccessfulImportResponse(executeResponse, 'Import execute')
@@ -690,12 +694,16 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
   test.afterAll(() => {
     if (!guideRunCompleted) {
+      const skipReason = guideRunSkipped
+        ? `import sample fixture saknas: ${IMPORT_SAMPLE_PATH}`
+        : 'guide run did not complete'
       guideLog('write:readme:skip', {
         entries: entries.length,
-        reason: 'guide run did not complete',
+        reason: skipReason,
       })
+      const outcome = guideRunSkipped ? 'kördes inte' : 'slutfördes inte'
       process.stdout.write(
-        `\n✗ Guidegenerering slutfördes inte; ${README_PATH} uppdaterades inte. Delvisa skärmdumpar finns i ${IMAGES_DIR}\n`,
+        `\n✗ Guidegenerering ${outcome}; ${README_PATH} uppdaterades inte (${skipReason}). Delvisa skärmdumpar finns i ${IMAGES_DIR}\n`,
       )
       return
     }
@@ -711,6 +719,13 @@ test.describe('Kravhantering — Guidegenerering', () => {
   })
 
   test('Generera användarguide', async ({ baseURL, browser, page }) => {
+    const importSampleJson = loadImportSampleJson()
+    if (importSampleJson === null) {
+      guideRunSkipped = true
+      test.skip(true, `Import sample fixture missing: ${IMPORT_SAMPLE_PATH}`)
+      return
+    }
+
     attachGuideDiagnostics(page)
     guideLog('run:start', { url: compactUrl(page.url()) })
     let reviewerContext: BrowserContext | null = null
@@ -807,7 +822,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'kravbibliotek',
         'Kravbiblioteket — Översikt',
-        'Kravbiblioteket listar alla krav i en sorterbar och filtrerbar tabell. Varje rad visar nyckeluppgifter som ID, kravtext, kravområde, status och risknivå. Kolumnerna kan konfigureras efter behov.',
+        'Kravbiblioteket listar alla krav i en sorterbar och filtrerbar tabell. Varje rad visar nyckeluppgifter som ID, kravtext, kravområde, status och prioritet. Kolumnerna kan konfigureras efter behov.',
         { fullPage: false },
       )
       if ((await tableSearchInput.count()) > 0) {
@@ -829,7 +844,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'kravbibliotek-sok',
           'Sökning och filtrering',
-          'Skriv i sökrutan för att filtrera krav i realtid. Du kan även använda avancerade filter för att begränsa listan efter kravområde, status, risknivå, kravtyp och kvalitetsegenskaper.',
+          'Skriv i sökrutan för att filtrera krav i realtid. Du kan även använda avancerade filter för att begränsa listan efter kravområde, status, prioritet, kravtyp och kvalitetsegenskaper.',
         )
         await searchInput.clear()
         await page.waitForTimeout(400)
@@ -1074,7 +1089,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'nytt-krav-tomt',
         'Skapa krav — tomt formulär',
-        'Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, kravområde, kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser och kravpaket. När kravpaket visas i den interaktiva vyn kan du hovra över namnet för att läsa kravpaketets syfte och avgränsning.',
+        'Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, kravområde, kategori, typ, prioritet, kvalitetsegenskaper, verifieringsmetod, normreferenser och kravpaket. När kravpaket visas i den interaktiva vyn kan du hovra över namnet för att läsa kravpaketets syfte och avgränsning.',
       )
     })
 
@@ -1099,7 +1114,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'nytt-krav-ifyllt',
         'Skapa krav — ifyllt formulär',
-        'Fyll i kravtext och acceptanskriterier. Välj sedan kravområde, kategori, typ och risknivå i respektive rullgardinsmeny. Alla obligatoriska fält markeras med asterisk (*) och formuläret visar en kort notis om markeringen. Klicka på "Spara" när formuläret är komplett.',
+        'Fyll i kravtext och acceptanskriterier. Välj sedan kravområde, kategori, typ och prioritet i respektive rullgardinsmeny. Alla obligatoriska fält markeras med asterisk (*) och formuläret visar en kort notis om markeringen. Klicka på "Spara" när formuläret är komplett.',
       )
     })
 
@@ -1666,7 +1681,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await dialog
         .getByLabel(/Kravområde/)
         .selectOption({ label: 'INT Integration' })
-      await dialog.getByLabel(/Import-JSON/).fill(IMPORT_SAMPLE_JSON)
+      await dialog.getByLabel(/Import-JSON/).fill(importSampleJson)
 
       await snap(
         page,
@@ -1768,7 +1783,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
       const dialog = dialogWithHeading(page, 'Importera lokala krav')
       await expect(dialog).toBeVisible({ timeout: 5_000 })
-      await dialog.getByLabel(/Import-JSON/).fill(IMPORT_SAMPLE_JSON)
+      await dialog.getByLabel(/Import-JSON/).fill(importSampleJson)
 
       await snap(
         page,
@@ -1954,7 +1969,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'admin-taxonomi',
         'Admin — Taxonomi',
-        'Fliken **Taxonomi** innehåller länkar till klassningar som används för filtrering, rapportering och AI-stöd: kravområden, kategorier, typer, prioritetsnivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer. Normreferenser hanteras i Normbibliotek under Kravbiblioteksförvaltning.',
+        'Fliken **Taxonomi** innehåller länkar till klassningar som används för filtrering, rapportering och AI-stöd: kravområden, kategorier, typer, prioritetsskala, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer. Normreferenser hanteras i Normbibliotek under Kravbiblioteksförvaltning.',
       )
     })
 
@@ -2058,7 +2073,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
       textEntry(
         'Granskningsrapport',
-        'Jämför en version i **Granskning** med den senast publicerade eller arkiverade versionen. Rapporten visar ord-för-ord-skillnader i kravtext och acceptanskriterier samt förändringar i metadata (kategori, typ, kvalitetsegenskaper, risknivå, normreferenser, kravpaket m.m.). Om ingen publicerad/arkiverad version finns noteras detta.\n\n' +
+        'Jämför en version i **Granskning** med den senast publicerade eller arkiverade versionen. Rapporten visar ord-för-ord-skillnader i kravtext och acceptanskriterier samt förändringar i metadata (kategori, typ, kvalitetsegenskaper, prioritet, normreferenser, kravpaket m.m.). Om ingen publicerad/arkiverad version finns noteras detta.\n\n' +
           '**Åtkomst:** Rapportmenyn i kravdetaljvyn (visas enbart när kravet är i status *Granskning*).\n\n' +
           '**Rutt:** `/requirements/reports/print/review/[id]` (utskrift) · `/requirements/reports/pdf/review/[id]` (PDF)',
       )

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  specificationActionTarget,
+  specificationImportExecuteBodySchema,
+  specificationImportPreviewBodySchema,
+} from '@/app/api/specification-local-requirements/import/_shared'
+import {
   buildRequirementsImportJsonSchema,
   importExecuteBodySchema,
   REQUIREMENTS_IMPORT_SCHEMA_VERSION,
@@ -83,6 +88,67 @@ describe('requirements import schema', () => {
         rows: [row],
       }).success,
     ).toBe(true)
+  })
+
+  it('accepts specification-local import preview bodies without area ids', () => {
+    const result = specificationImportPreviewBodySchema.safeParse({
+      locale: 'sv',
+      payload: {
+        requirements: [
+          { description: 'Systemet ska logga viktiga händelser.' },
+        ],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+      specificationIdOrSlug: 'UPPHANDLING-2026',
+    })
+
+    expect(result.success).toBe(true)
+    expect(
+      specificationImportPreviewBodySchema.safeParse({
+        areaId: 1,
+        locale: 'sv',
+        payload: {
+          requirements: [
+            { description: 'Systemet ska logga viktiga händelser.' },
+          ],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        },
+        specificationIdOrSlug: 'UPPHANDLING-2026',
+      }).success,
+    ).toBe(false)
+  })
+
+  it('accepts specification-local import execution bodies without area ids', () => {
+    const row = {
+      description: 'Systemet ska logga viktiga händelser.',
+      reviewRowId: 'row-0',
+      sourceIndex: 0,
+    }
+
+    expect(
+      specificationImportExecuteBodySchema.safeParse({
+        locale: 'sv',
+        previewToken: 'token',
+        rows: [row],
+        specificationIdOrSlug: 'UPPHANDLING-2026',
+      }).success,
+    ).toBe(true)
+    expect(
+      specificationImportExecuteBodySchema.safeParse({
+        areaId: 1,
+        locale: 'sv',
+        previewToken: 'token',
+        rows: [row],
+        specificationIdOrSlug: 'UPPHANDLING-2026',
+      }).success,
+    ).toBe(false)
+  })
+
+  it('maps specification action targets from numeric ids and slugs', () => {
+    expect(specificationActionTarget('42')).toEqual({ specificationId: 42 })
+    expect(specificationActionTarget('UPPHANDLING-2026')).toEqual({
+      specificationSlug: 'UPPHANDLING-2026',
+    })
   })
 
   it('emits a strict JSON Schema for the shared file format', () => {

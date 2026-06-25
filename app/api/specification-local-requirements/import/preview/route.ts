@@ -1,29 +1,16 @@
 import { NextResponse } from 'next/server'
-import type { z } from 'zod'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { specificationIdOrSlugSchema } from '@/lib/http/validation'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
-import { importPreviewBodySchema } from '@/lib/requirements/import-schema'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
-
-const bodySchema = importPreviewBodySchema
-  .omit({ areaId: true })
-  .extend({
-    specificationIdOrSlug: specificationIdOrSlugSchema,
-  })
-  .strict()
-
-type Body = z.infer<typeof bodySchema>
-
-function specificationActionTarget(specificationIdOrSlug: string) {
-  return /^\d+$/.test(specificationIdOrSlug)
-    ? { specificationId: Number(specificationIdOrSlug) }
-    : { specificationSlug: specificationIdOrSlug }
-}
+import {
+  type SpecificationImportPreviewBody as Body,
+  specificationImportPreviewBodySchema as bodySchema,
+  specificationActionTarget,
+} from '../_shared'
 
 export const POST = secureMutationRoute({
   bodySchema,
