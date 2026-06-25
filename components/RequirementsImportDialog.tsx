@@ -573,7 +573,7 @@ function RequirementSummaryText({
     <div className="min-w-0">
       <button
         aria-label={rowActionLabel}
-        className="block w-full rounded-md text-left focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+        className="block w-full rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50"
         onClick={onRowToggle}
         type="button"
       >
