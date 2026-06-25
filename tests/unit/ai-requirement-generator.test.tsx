@@ -696,4 +696,82 @@ describe('AiRequirementGenerator', () => {
       screen.queryByRole('button', { name: /createSelected/i }),
     ).not.toBeInTheDocument()
   })
+
+  it('styles generated priority badges from stable priority codes', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      if (typeof url === 'string' && url === '/api/ai/generate-requirements') {
+        const rawContent = JSON.stringify({
+          requirements: [
+            {
+              acceptanceCriteria: null,
+              categoryId: null,
+              description: 'Critical generated requirement',
+              qualityCharacteristicId: null,
+              rationale: 'The scope requires this control.',
+              requirementPackageIds: null,
+              requiresTesting: true,
+              priorityLevelId: 42,
+              typeId: 1,
+              verificationMethod: 'Inspection',
+            },
+          ],
+        })
+        const payload = {
+          rawContent,
+          stats: {
+            completionTokens: 12,
+            cost: 0,
+            promptTokens: 10,
+            reasoningTokens: 0,
+            totalTokens: 22,
+          },
+          taxonomy: {
+            categories: [],
+            qualityCharacteristics: [],
+            requirementPackages: [],
+            priorityLevels: [
+              {
+                assessmentCriteria: 'Critical for business continuity',
+                code: 'P5',
+                description: 'Very high priority',
+                id: 42,
+                name: 'Very high',
+              },
+            ],
+            types: [],
+          },
+          thinking: 'Prior thinking trace',
+        }
+        const body = new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              new TextEncoder().encode(
+                `event: done\ndata: ${JSON.stringify(payload)}\n\n`,
+              ),
+            )
+            controller.close()
+          },
+        })
+        return { body, ok: true }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Continuity')
+    await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '1')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    const priorityBadge = await screen.findByText('P5 - Very high')
+    expect(priorityBadge).toHaveClass('bg-red-100')
+    expect(priorityBadge.closest('.rounded-lg')).toHaveClass('border-red-300')
+  })
 })

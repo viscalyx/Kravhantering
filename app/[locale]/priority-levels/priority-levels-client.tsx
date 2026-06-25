@@ -107,7 +107,7 @@ const toPayload = (form: PriorityLevelForm) => ({
   descriptionEn: form.descriptionEn,
   color: form.color,
   iconName: form.iconName,
-  sortOrder: Number(form.sortOrder) || 0,
+  sortOrder: form.sortOrder.trim() === '' ? null : Number(form.sortOrder),
 })
 
 const inputClassName =
@@ -151,7 +151,6 @@ export default function PriorityLevelsClient() {
   const fetchLinkedRequirements = useCallback(
     async (priorityLevelId: number) => {
       const requestId = ++linkedReqRequestId.current
-      const previousLinkedRequirements = linkedRequirements
       setLinkedRequirementsLoading(true)
       try {
         const response = await apiFetch(
@@ -159,7 +158,7 @@ export default function PriorityLevelsClient() {
         )
         if (requestId !== linkedReqRequestId.current) return
         if (!response.ok) {
-          setLinkedRequirements(previousLinkedRequirements)
+          setLinkedRequirements([])
           return
         }
         const data = (await response.json()) as {
@@ -169,7 +168,7 @@ export default function PriorityLevelsClient() {
         setLinkedRequirements(data.linkedRequirements ?? [])
       } catch {
         if (requestId === linkedReqRequestId.current) {
-          setLinkedRequirements(previousLinkedRequirements)
+          setLinkedRequirements([])
         }
       } finally {
         if (requestId === linkedReqRequestId.current) {
@@ -177,7 +176,7 @@ export default function PriorityLevelsClient() {
         }
       }
     },
-    [linkedRequirements],
+    [],
   )
 
   const openEdit = (priorityLevel: PriorityLevel) => {

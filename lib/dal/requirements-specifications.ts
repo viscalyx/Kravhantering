@@ -144,9 +144,11 @@ export interface SpecificationLocalRequirementDetail {
 
 interface SpecificationLocalRequirementIdentity {
   id: number
+  requiresTesting: boolean
   sequenceNumber: number
   specificationId: number
   uniqueId: string
+  verificationMethod: string | null
 }
 
 interface SpecificationLocalRequirementGraduationRow {
@@ -1989,7 +1991,9 @@ async function getSpecificationLocalRequirementIdentity(
         local_requirement.id AS id,
         local_requirement.specification_id AS specificationId,
         local_requirement.sequence_number AS sequenceNumber,
-        local_requirement.unique_id AS uniqueId
+        local_requirement.unique_id AS uniqueId,
+        local_requirement.is_testing_required AS requiresTesting,
+        local_requirement.verification_method AS verificationMethod
       FROM specification_local_requirements local_requirement
       WHERE local_requirement.id = @0 AND local_requirement.specification_id = @1
     `,
@@ -2000,9 +2004,11 @@ async function getSpecificationLocalRequirementIdentity(
   if (!row) return null
   return {
     id: Number(row.id),
+    requiresTesting: toBool(row.requiresTesting),
     specificationId: Number(row.specificationId),
     sequenceNumber: Number(row.sequenceNumber),
     uniqueId: String(row.uniqueId),
+    verificationMethod: toStr(row.verificationMethod),
   }
 }
 
@@ -2438,7 +2444,16 @@ export async function updateSpecificationLocalRequirement(
   const normalized = await normalizeSpecificationLocalRequirementInput(
     db,
     specificationId,
-    data,
+    data.requiresTesting === undefined
+      ? {
+          ...data,
+          requiresTesting: existing.requiresTesting,
+          verificationMethod:
+            data.verificationMethod === undefined
+              ? existing.verificationMethod
+              : data.verificationMethod,
+        }
+      : data,
   )
   const updatedAt = new Date()
 

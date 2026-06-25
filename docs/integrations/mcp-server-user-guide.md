@@ -502,8 +502,11 @@ tool. For requirement lists, it supports:
 
 Lookup rows for statuses, priority levels, and usage statuses include
 `iconName` when an admin has configured an allowed icon. Requirement list and
-detail versions also include status and risk icon data while preserving the
-existing status and risk fields.
+detail versions also include status fields such as `statusIconName`,
+list-response priority-level fields such as `priorityLevelColor` and
+`priorityLevelIconName`, and the detail-response `priorityLevel` object with
+its additive `iconName`. These priority-level fields are separate from the
+unchanged status fields.
 
 ## Example Tasks
 

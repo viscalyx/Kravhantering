@@ -450,8 +450,8 @@ Requirement packages and the norm library are managed from
 since package leads and requirement-area stewards can work there without
 needing Admin Center access.
 
-The fixed system rows for requirement version statuses, usage statuses, and risk
-levels can also carry a nullable icon selected from the installed
+The fixed system rows for requirement version statuses, usage statuses, and
+priority levels can also carry a nullable icon selected from the installed
 Lucide icon catalog through the shared status-icon allowlist. The admin pages
 keep the label visible and use the icon only as a decorative cue in tables,
 badges, steppers, and reports. Existing rows without an icon continue to render
@@ -483,7 +483,7 @@ If you change any of the following, update this document:
 - privacy-erasure or data subject access export policy, actions, or role gating
 - admin entrypoint navigation
 - taxonomy and status/workflow navigation structure
-- status, usage-status, or risk-level icon behavior
+- status, usage-status, or priority-level icon behavior
 
 If you add a new requirement column or property, also update
 [.github/instructions/add-requirement-column.instructions.md](../../.github/instructions/add-requirement-column.instructions.md).

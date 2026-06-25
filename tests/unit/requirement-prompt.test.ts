@@ -90,6 +90,8 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('ID 2: Non-functional')
     expect(prompt).toContain('ID 1: Business')
     expect(prompt).toContain('ID 4: P4 - High')
+    expect(prompt).toContain('High priority')
+    expect(prompt).toContain('Assessment criteria: High importance')
     expect(prompt).toContain('ID 2: High load')
     expect(prompt).toContain(
       'ID 2: Functional suitability > Functional correctness',

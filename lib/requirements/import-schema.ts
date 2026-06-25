@@ -112,7 +112,7 @@ export const importReviewRowSchema = z
 
 export const importExecuteBodySchema = z
   .object({
-    areaId: positiveIntegerSchema.optional(),
+    areaId: positiveIntegerSchema,
     locale: importLocaleSchema,
     previewToken: z.string().trim().min(1).max(DB_STRING_MAX_LENGTH),
     rows: z.array(importReviewRowSchema).min(1),

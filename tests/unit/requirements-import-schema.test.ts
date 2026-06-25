@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildRequirementsImportJsonSchema,
+  importExecuteBodySchema,
   REQUIREMENTS_IMPORT_SCHEMA_VERSION,
   requirementsImportPayloadSchema,
 } from '@/lib/requirements/import-schema'
@@ -60,6 +61,28 @@ describe('requirements import schema', () => {
         'key',
       ])
     }
+  })
+
+  it('requires an area id for library import execution', () => {
+    const row = {
+      description: 'Systemet ska logga viktiga händelser.',
+      reviewRowId: 'row-0',
+      sourceIndex: 0,
+    }
+
+    expect(
+      importExecuteBodySchema.safeParse({
+        previewToken: 'token',
+        rows: [row],
+      }).success,
+    ).toBe(false)
+    expect(
+      importExecuteBodySchema.safeParse({
+        areaId: 1,
+        previewToken: 'token',
+        rows: [row],
+      }).success,
+    ).toBe(true)
   })
 
   it('emits a strict JSON Schema for the shared file format', () => {

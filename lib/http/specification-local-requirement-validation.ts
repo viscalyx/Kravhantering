@@ -24,7 +24,7 @@ export const specificationLocalRequirementSchema = z
     qualityCharacteristicId: positiveIntegerSchema.nullable().optional(),
     requirementCategoryId: positiveIntegerSchema.nullable().optional(),
     requirementTypeId: positiveIntegerSchema.nullable().optional(),
-    requiresTesting: z.boolean().optional().default(false),
+    requiresTesting: z.boolean().optional(),
     priorityLevelId: positiveIntegerSchema.nullable().optional(),
     verificationMethod: nullableBusinessTextSchema.optional(),
   })

@@ -79,11 +79,22 @@ export async function countLinkedRequirements(
 ): Promise<Record<number, number>> {
   const rows = await db.query(`
     SELECT
-      priority_level_id AS priorityLevelId,
-      COUNT(DISTINCT requirement_id) AS count
-    FROM requirement_versions
-    WHERE priority_level_id IS NOT NULL
-    GROUP BY priority_level_id
+      linked.priorityLevelId,
+      COUNT(*) AS count
+    FROM (
+      SELECT DISTINCT
+        priority_level_id AS priorityLevelId,
+        CONCAT(N'library:', requirement_id) AS itemKey
+      FROM requirement_versions
+      WHERE priority_level_id IS NOT NULL
+      UNION
+      SELECT DISTINCT
+        priority_level_id AS priorityLevelId,
+        CONCAT(N'local:', id) AS itemKey
+      FROM specification_local_requirements
+      WHERE priority_level_id IS NOT NULL
+    ) linked
+    GROUP BY linked.priorityLevelId
   `)
   const counts: Record<number, number> = {}
   for (const row of rows as Array<{
@@ -104,21 +115,46 @@ export async function getLinkedRequirements(
   return db.query(
     `
       SELECT
-        requirements.id AS id,
-        requirements.unique_id AS uniqueId,
-        requirement_versions.description AS description,
-        requirement_versions.version_number AS versionNumber,
-        requirement_statuses.name_sv AS statusNameSv,
-        requirement_statuses.name_en AS statusNameEn,
-        requirement_statuses.color AS statusColor,
-        requirement_statuses.icon_name AS statusIconName
-      FROM requirement_versions
-      INNER JOIN requirements
-        ON requirement_versions.requirement_id = requirements.id
-      LEFT JOIN requirement_statuses
-        ON requirement_versions.requirement_status_id = requirement_statuses.id
-      WHERE requirement_versions.priority_level_id = @0
-      ORDER BY requirements.unique_id ASC
+        linked.id,
+        linked.uniqueId,
+        linked.description,
+        linked.versionNumber,
+        linked.statusNameSv,
+        linked.statusNameEn,
+        linked.statusColor,
+        linked.statusIconName
+      FROM (
+        SELECT
+          requirements.id AS id,
+          requirements.unique_id AS uniqueId,
+          requirement_versions.description AS description,
+          requirement_versions.version_number AS versionNumber,
+          requirement_statuses.name_sv AS statusNameSv,
+          requirement_statuses.name_en AS statusNameEn,
+          requirement_statuses.color AS statusColor,
+          requirement_statuses.icon_name AS statusIconName
+        FROM requirement_versions
+        INNER JOIN requirements
+          ON requirement_versions.requirement_id = requirements.id
+        LEFT JOIN requirement_statuses
+          ON requirement_versions.requirement_status_id = requirement_statuses.id
+        WHERE requirement_versions.priority_level_id = @0
+        UNION
+        SELECT
+          local_requirement.id AS id,
+          local_requirement.unique_id AS uniqueId,
+          local_requirement.description AS description,
+          1 AS versionNumber,
+          specification_item_status.name_sv AS statusNameSv,
+          specification_item_status.name_en AS statusNameEn,
+          specification_item_status.color AS statusColor,
+          specification_item_status.icon_name AS statusIconName
+        FROM specification_local_requirements local_requirement
+        LEFT JOIN specification_item_statuses specification_item_status
+          ON local_requirement.specification_item_status_id = specification_item_status.id
+        WHERE local_requirement.priority_level_id = @0
+      ) linked
+      ORDER BY linked.uniqueId ASC
     `,
     [priorityLevelId],
   )

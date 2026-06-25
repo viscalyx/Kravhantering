@@ -133,7 +133,7 @@ export const PUT = secureMutationRoute<
           requirementTypeId: body.requirementTypeId ?? null,
           requiresTesting: body.requiresTesting,
           priorityLevelId: body.priorityLevelId ?? null,
-          verificationMethod: body.verificationMethod ?? null,
+          verificationMethod: body.verificationMethod,
         },
       )
 

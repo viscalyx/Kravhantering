@@ -371,7 +371,9 @@ export interface RequirementsService {
 
   executeSpecificationLocalImport(
     context: RequestContext,
-    input: ImportExecuteBody & { specificationIdOrSlug: string },
+    input: Omit<ImportExecuteBody, 'areaId'> & {
+      specificationIdOrSlug: string
+    },
   ): Promise<RequirementsImportExecuteResult>
 
   generateRequirements(

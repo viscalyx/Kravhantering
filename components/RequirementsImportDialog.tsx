@@ -768,19 +768,15 @@ export default function RequirementsImportDialog({
             : 'Requirement text is required before this row can be imported.',
       })
     }
-    if (
-      mode === 'specification-local' &&
-      values.requiresTesting &&
-      !values.verificationMethod?.trim()
-    ) {
+    if (values.requiresTesting && !values.verificationMethod?.trim()) {
       nextErrors.push({
         code: 'verification_method_required',
         field: 'verificationMethod',
         level: 'error',
         message:
           locale === 'sv'
-            ? 'Verifieringsmetod måste anges för verifierbara lokala krav.'
-            : 'Verification method is required for verifiable local requirements.',
+            ? 'Verifieringsmetod måste anges för verifierbara krav.'
+            : 'Verification method is required for verifiable requirements.',
       })
     }
     return nextErrors

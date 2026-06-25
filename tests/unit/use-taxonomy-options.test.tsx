@@ -38,7 +38,18 @@ const samplePackages = [
 const sampleNormRefs = [
   { id: 1, isArchived: false, name: 'NR-1', normReferenceId: 'NR001' },
 ]
-const samplePriorityLevels = [{ id: 1, nameSv: 'Låg', nameEn: 'Low' }]
+const samplePriorityLevels = [
+  {
+    assessmentCriteriaEn: 'Limited business importance',
+    assessmentCriteriaSv: 'Begränsad verksamhetsbetydelse',
+    code: 'P2',
+    descriptionEn: 'Low priority',
+    descriptionSv: 'Låg prioritet',
+    id: 1,
+    nameSv: 'Låg',
+    nameEn: 'Low',
+  },
+]
 const sampleQC = [
   { id: 10, nameSv: 'Qc sv', nameEn: 'Qc en', parentId: null },
   { id: 11, nameSv: 'Child sv', nameEn: 'Child en', parentId: 10 },

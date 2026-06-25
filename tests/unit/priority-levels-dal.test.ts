@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  countLinkedRequirements,
+  getLinkedRequirements,
   getPriorityLevelById,
   listPriorityLevels,
   updatePriorityLevel,
@@ -21,7 +23,7 @@ function createSqlServerDb() {
     getRepository,
     query,
   } as unknown as SqlServerDatabase
-  return { db, repository, getRepository }
+  return { db, repository, getRepository, query }
 }
 
 async function createRuntimeSqlServerDb(): Promise<SqlServerDatabase> {
@@ -139,6 +141,78 @@ describe('priority-levels DAL', () => {
     })
 
     expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 99 } })
+  })
+
+  it('countLinkedRequirements counts library and specification-local usage', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      { count: 2, priorityLevelId: 4 },
+      { count: 1, priorityLevelId: 5 },
+    ])
+
+    await expect(countLinkedRequirements(db)).resolves.toEqual({
+      4: 2,
+      5: 1,
+    })
+
+    const sql = String(query.mock.calls[0]?.[0])
+    expect(sql).toContain('requirement_versions')
+    expect(sql).toContain('specification_local_requirements')
+    expect(sql).toContain('priority_level_id AS priorityLevelId')
+  })
+
+  it('getLinkedRequirements returns linked library and local requirement rows', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        description: 'Library requirement',
+        id: 10,
+        statusColor: '#22c55e',
+        statusIconName: 'CheckCircle2',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        uniqueId: 'REQ-001',
+        versionNumber: 2,
+      },
+      {
+        description: 'Local requirement',
+        id: 20,
+        statusColor: '#3b82f6',
+        statusIconName: 'Clock',
+        statusNameEn: 'Included',
+        statusNameSv: 'Ingår',
+        uniqueId: 'KRAV0001',
+        versionNumber: 1,
+      },
+    ])
+
+    await expect(getLinkedRequirements(db, 4)).resolves.toEqual([
+      {
+        description: 'Library requirement',
+        id: 10,
+        statusColor: '#22c55e',
+        statusIconName: 'CheckCircle2',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        uniqueId: 'REQ-001',
+        versionNumber: 2,
+      },
+      {
+        description: 'Local requirement',
+        id: 20,
+        statusColor: '#3b82f6',
+        statusIconName: 'Clock',
+        statusNameEn: 'Included',
+        statusNameSv: 'Ingår',
+        uniqueId: 'KRAV0001',
+        versionNumber: 1,
+      },
+    ])
+    expect(query.mock.calls[0]?.[1]).toEqual([4])
+    const sql = String(query.mock.calls[0]?.[0])
+    expect(sql).toContain('requirement_versions.priority_level_id = @0')
+    expect(sql).toContain('local_requirement.priority_level_id = @0')
+    expect(sql).toContain('specification_local_requirements local_requirement')
   })
 
   it.each([

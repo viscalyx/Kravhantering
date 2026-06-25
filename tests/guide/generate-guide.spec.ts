@@ -1652,7 +1652,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'admin-taxonomi',
         'Admin — Taxonomi',
-        'Fliken **Taxonomi** innehåller länkar till klassningar som används för filtrering, rapportering och AI-stöd: kravområden, kategorier, typer, risknivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer. Normreferenser hanteras i Normbibliotek under Kravbiblioteksförvaltning.',
+        'Fliken **Taxonomi** innehåller länkar till klassningar som används för filtrering, rapportering och AI-stöd: kravområden, kategorier, typer, prioritetsnivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer. Normreferenser hanteras i Normbibliotek under Kravbiblioteksförvaltning.',
       )
     })
 
@@ -1704,7 +1704,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await guideGoto(page, '/sv/priority-levels')
       await snap(
         page,
-        'risknivåer',
+        'prioritetsnivaer',
         'Prioritetsskala',
         'Prioritetsskalan klassificerar hur viktigt, angeläget eller kritiskt ett krav är. Varje nivå har en P-kod, ett namn, en beskrivning, bedömningsgrunder och en färg för visuell identifiering i kravbiblioteket och detaljvyer.',
       )

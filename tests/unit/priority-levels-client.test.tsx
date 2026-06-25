@@ -191,7 +191,42 @@ describe('PriorityLevelsClient', () => {
     })
   })
 
-  it('keeps previously loaded linked requirements when a later linked fetch fails', async () => {
+  it('submits a blank sort order as invalid instead of coercing to zero', async () => {
+    render(<PriorityLevelsClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Low')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    fireEvent.change(screen.getByLabelText('priorityLevelAdmin.sortOrder'), {
+      target: { value: '' },
+    })
+
+    fetchMock.mockResolvedValueOnce(okResponse({ id: 1 }))
+    fetchMock.mockResolvedValueOnce(
+      okResponse({ priorityLevels: samplePriorityLevels }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/priority-levels/1',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/priority-levels/1' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    )
+    const body = JSON.parse(String((putCall?.[1] as RequestInit).body)) as {
+      sortOrder: number | null
+    }
+    expect(body.sortOrder).toBeNull()
+  })
+
+  it('clears linked requirements when a later linked fetch fails', async () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (url === '/api/priority-levels') {
         return okResponse({ priorityLevels: samplePriorityLevels })
@@ -243,8 +278,8 @@ describe('PriorityLevelsClient', () => {
     await waitFor(() => {
       expect(screen.queryByText('common.loading')).toBeNull()
     })
-    expect(screen.getByText('REQ-1')).toBeInTheDocument()
-    expect(screen.queryByText('common.noneAvailable')).toBeNull()
+    expect(screen.queryByText('REQ-1')).toBeNull()
+    expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
   })
 
   it('closes edit form on cancel', async () => {

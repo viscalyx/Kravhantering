@@ -4,7 +4,6 @@ import {
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { validationError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import {
   type ImportExecuteBody,
@@ -21,9 +20,6 @@ export const POST = secureMutationRoute({
   })),
   handler: async ({ body, context, request }) => {
     try {
-      if (!body.areaId) {
-        throw validationError('areaId is required for library import execute')
-      }
       const { service } = await createRequirementsRestRuntime(request, {
         context,
       })

@@ -100,8 +100,8 @@ export default function NormReferenceModal({
         first.focus()
       }
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    dialog.addEventListener('keydown', onKey)
+    return () => dialog.removeEventListener('keydown', onKey)
   }, [normRefSubmitting, requestCancel])
 
   const hasRequiredNormReferenceFields =

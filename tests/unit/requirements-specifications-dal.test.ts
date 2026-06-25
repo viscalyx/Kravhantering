@@ -1058,6 +1058,63 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     ])
   })
 
+  it('preserves specification-local testing fields when update omits them', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 41,
+          requiresTesting: 1,
+          sequenceNumber: 1,
+          specificationId: 5,
+          uniqueId: 'LOK-001',
+          verificationMethod: 'Checklist',
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 41,
+          specificationId: 5,
+          uniqueId: 'LOK-001',
+          description: 'Updated local requirement',
+          acceptanceCriteria: null,
+          requiresTesting: 1,
+          verificationMethod: 'Checklist',
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+          updatedAt: new Date('2026-04-21T10:00:00.000Z'),
+          needsReferenceId: null,
+          needsReference: null,
+          specificationItemStatusId: 1,
+          specificationItemStatusColor: '#22c55e',
+          specificationItemStatusDescriptionEn: 'Default',
+          specificationItemStatusDescriptionSv: 'Standard',
+          specificationItemStatusNameEn: 'Default',
+          specificationItemStatusNameSv: 'Standard',
+          qualityCharacteristicId: null,
+          requirementCategoryId: null,
+          requirementTypeId: null,
+          priorityLevelId: null,
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    const updated = await updateSpecificationLocalRequirement(db, 5, 41, {
+      description: 'Updated local requirement',
+    })
+
+    const updateCall = query.mock.calls.find(([sql]) =>
+      String(sql).includes('UPDATE specification_local_requirements'),
+    )
+    expect(updateCall?.[1]?.at(6)).toBe(1)
+    expect(updateCall?.[1]?.at(8)).toBe('Checklist')
+    expect(updated).toMatchObject({
+      requiresTesting: true,
+      verificationMethod: 'Checklist',
+    })
+  })
+
   it('deletes specification-local requirements on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([{ id: 41 }]).mockResolvedValueOnce([])

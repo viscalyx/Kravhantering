@@ -711,15 +711,11 @@ function previewRows(args: {
       verificationMethod: requiresTesting ? verificationMethod : null,
     }
 
-    if (
-      args.mode === 'specification-local' &&
-      values.requiresTesting &&
-      !values.verificationMethod
-    ) {
+    if (values.requiresTesting && !values.verificationMethod) {
       errors.push(
         error(
           'import_verification_method_required',
-          'Verification method is required when requiresTesting is true for specification-local requirements.',
+          'Verification method is required when requiresTesting is true.',
           { field: 'verificationMethod' },
         ),
       )
@@ -739,6 +735,87 @@ function previewRows(args: {
       warnings,
     }
   })
+}
+
+function validateExecuteRows(args: {
+  mode: RequirementsImportMode
+  referenceData: ImportReferenceData
+  rows: ImportReviewRowInput[]
+}) {
+  const categories = new Set(args.referenceData.categories.map(item => item.id))
+  const normReferences = new Set(
+    args.referenceData.normReferences.map(item => item.id),
+  )
+  const priorityLevels = new Set(
+    args.referenceData.priorityLevels.map(item => item.id),
+  )
+  const requirementPackages = new Set(
+    args.referenceData.requirementPackages.map(item => item.id),
+  )
+  const types = new Set(args.referenceData.types.map(item => item.id))
+  const qualityCharacteristics = new Map(
+    args.referenceData.qualityCharacteristics.map(item => [item.id, item]),
+  )
+
+  const assertScalar = (
+    field: string,
+    id: number | null | undefined,
+    knownIds: Set<number>,
+  ) => {
+    if (id != null && !knownIds.has(id)) {
+      throw validationError(
+        `${field} references unknown import reference id ${id}`,
+      )
+    }
+  }
+
+  const assertArray = (field: string, ids: number[], knownIds: Set<number>) => {
+    for (const id of ids) {
+      if (!knownIds.has(id)) {
+        throw validationError(
+          `${field} references unknown import reference id ${id}`,
+        )
+      }
+    }
+  }
+
+  for (const row of args.rows) {
+    assertScalar('categoryId', row.categoryId, categories)
+    assertScalar('priorityLevelId', row.priorityLevelId, priorityLevels)
+    assertScalar('typeId', row.typeId, types)
+    assertArray('normReferenceIds', row.normReferenceIds, normReferences)
+    if (args.mode === 'library') {
+      assertArray(
+        'requirementPackageIds',
+        row.requirementPackageIds,
+        requirementPackages,
+      )
+    }
+
+    const qualityCharacteristic =
+      row.qualityCharacteristicId == null
+        ? null
+        : qualityCharacteristics.get(row.qualityCharacteristicId)
+    if (row.qualityCharacteristicId != null && !qualityCharacteristic) {
+      throw validationError(
+        `qualityCharacteristicId references unknown import reference id ${row.qualityCharacteristicId}`,
+      )
+    }
+    if (
+      row.typeId != null &&
+      qualityCharacteristic &&
+      qualityCharacteristic.requirementTypeId !== row.typeId
+    ) {
+      throw validationError(
+        'qualityCharacteristicId must belong to the selected typeId',
+      )
+    }
+    if (row.requiresTesting && !compactText(row.verificationMethod)) {
+      throw validationError(
+        'verificationMethod is required when requiresTesting is true',
+      )
+    }
+  }
 }
 
 function previewFromReferenceData(args: {
@@ -1070,10 +1147,11 @@ export function createRequirementsImportWorkflow({
         })
       }
 
-      const actor = requireHumanActorSnapshot(context)
       const rows = [...input.rows].sort(
         (left, right) => left.sourceIndex - right.sourceIndex,
       )
+      validateExecuteRows({ mode: 'library', referenceData, rows })
+      const actor = requireHumanActorSnapshot(context)
       const created = await createRequirementsBatch(
         db,
         rows.map(row => toRequirementMutationInput(row, input.areaId, actor)),
@@ -1115,7 +1193,9 @@ export function createRequirementsImportWorkflow({
 
     async executeSpecificationLocalImport(
       context: RequestContext,
-      input: ImportExecuteBody & { specificationIdOrSlug: string },
+      input: Omit<ImportExecuteBody, 'areaId'> & {
+        specificationIdOrSlug: string
+      },
     ): Promise<RequirementsImportExecuteResult> {
       const specificationId = await resolveSpecificationId(
         db,
@@ -1144,6 +1224,11 @@ export function createRequirementsImportWorkflow({
       const rows = [...input.rows].sort(
         (left, right) => left.sourceIndex - right.sourceIndex,
       )
+      validateExecuteRows({
+        mode: 'specification-local',
+        referenceData,
+        rows,
+      })
       const created = await createSpecificationLocalRequirementsBatch(
         db,
         specificationId,

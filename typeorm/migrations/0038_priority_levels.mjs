@@ -34,6 +34,8 @@ const UP_STATEMENTS = [
 const DOWN_STATEMENTS = [
   "IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'fk_specification_local_requirements_priority_level_id') ALTER TABLE [specification_local_requirements] DROP CONSTRAINT [fk_specification_local_requirements_priority_level_id];",
   "IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'fk_requirement_versions_priority_level_id') ALTER TABLE [requirement_versions] DROP CONSTRAINT [fk_requirement_versions_priority_level_id];",
+  "IF COL_LENGTH(N'specification_local_requirements', N'priority_level_id') IS NOT NULL AND EXISTS (SELECT 1 FROM [specification_local_requirements] WHERE [priority_level_id] IN (1, 5)) THROW 51038, 'Cannot roll back priority levels while specification-local requirements use P1 or P5 values.', 1;",
+  "IF COL_LENGTH(N'requirement_versions', N'priority_level_id') IS NOT NULL AND EXISTS (SELECT 1 FROM [requirement_versions] WHERE [priority_level_id] IN (1, 5)) THROW 51038, 'Cannot roll back priority levels while requirement versions use P1 or P5 values.', 1;",
   "IF COL_LENGTH(N'specification_local_requirements', N'priority_level_id') IS NOT NULL UPDATE [specification_local_requirements] SET [priority_level_id] = CASE [priority_level_id] WHEN 2 THEN 1 WHEN 3 THEN 2 WHEN 4 THEN 3 ELSE NULL END WHERE [priority_level_id] IS NOT NULL;",
   "IF COL_LENGTH(N'requirement_versions', N'priority_level_id') IS NOT NULL UPDATE [requirement_versions] SET [priority_level_id] = CASE [priority_level_id] WHEN 2 THEN 1 WHEN 3 THEN 2 WHEN 4 THEN 3 ELSE NULL END WHERE [priority_level_id] IS NOT NULL;",
   "IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'uq_priority_levels_code' AND object_id = OBJECT_ID(N'priority_levels')) DROP INDEX [uq_priority_levels_code] ON [priority_levels];",

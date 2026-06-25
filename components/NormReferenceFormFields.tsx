@@ -99,6 +99,11 @@ export default function NormReferenceFormFields({
       </div>
       {helpPanel('normReferenceIdHelp', 'normReferenceId')}
       <input
+        aria-describedby={
+          normReferenceIdHelperText
+            ? `${idPrefix}-norm-reference-id-helper`
+            : undefined
+        }
         className={fieldClass}
         id={`${idPrefix}-id`}
         onChange={e => onSetField('normReferenceId', e.target.value)}
@@ -106,7 +111,10 @@ export default function NormReferenceFormFields({
         value={form.normReferenceId}
       />
       {normReferenceIdHelperText ? (
-        <p className="mt-1 text-xs text-secondary-600 dark:text-secondary-300">
+        <p
+          className="mt-1 text-xs text-secondary-600 dark:text-secondary-300"
+          id={`${idPrefix}-norm-reference-id-helper`}
+        >
           {normReferenceIdHelperText}
         </p>
       ) : null}

@@ -7,6 +7,7 @@ import { listPriorityLevels } from '@/lib/dal/priority-levels'
 import { listCategories } from '@/lib/dal/requirement-categories'
 import { listRequirementPackages } from '@/lib/dal/requirement-packages'
 import { listTypes } from '@/lib/dal/requirement-types'
+import { createRequirementsBatch } from '@/lib/dal/requirements'
 import {
   createSpecificationLocalRequirementsBatch,
   getSpecificationBySlug,
@@ -35,6 +36,10 @@ vi.mock('@/lib/dal/requirement-types', () => ({
 
 vi.mock('@/lib/dal/priority-levels', () => ({
   listPriorityLevels: vi.fn(),
+}))
+
+vi.mock('@/lib/dal/requirements', () => ({
+  createRequirementsBatch: vi.fn(),
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
@@ -83,6 +88,7 @@ describe('requirements import service', () => {
     vi.mocked(listPriorityLevels).mockResolvedValue([])
     vi.mocked(listTypes).mockResolvedValue([])
     vi.mocked(listNormReferences).mockResolvedValue([])
+    vi.mocked(createRequirementsBatch).mockReset()
     vi.mocked(createSpecificationLocalRequirementsBatch).mockReset()
     vi.mocked(getSpecificationBySlug).mockReset()
   })
@@ -377,6 +383,132 @@ describe('requirements import service', () => {
     expect(mutationRows?.[0]).not.toHaveProperty('requirementPackageIds')
     expect(result.createdRows[0]?.requirementPackageIds).toEqual([])
     expect(result.createdRows[0]?.requirementPackageNames).toEqual([])
+  })
+
+  it('rejects library execute rows whose quality characteristic no longer matches the selected type', async () => {
+    vi.mocked(listTypes).mockResolvedValue([
+      {
+        id: 1,
+        nameEn: 'Functional',
+        nameSv: 'Funktionellt',
+        qualityCharacteristics: [
+          {
+            chapterId: '3.1.1',
+            id: 11,
+            nameEn: 'Functional completeness',
+            nameSv: 'Funktionell fullständighet',
+            parentId: 10,
+            requirementTypeId: 1,
+          },
+        ],
+      },
+      {
+        id: 2,
+        nameEn: 'Non-functional',
+        nameSv: 'Icke-funktionellt',
+        qualityCharacteristics: [
+          {
+            chapterId: '3.2.1',
+            id: 21,
+            nameEn: 'Time behaviour',
+            nameSv: 'Tidsbeteende',
+            parentId: 20,
+            requirementTypeId: 2,
+          },
+        ],
+      },
+    ])
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+    const payload = requirementsImportPayloadSchema.parse({
+      requirements: [
+        {
+          description: 'Systemet ska stödja grundläggande inloggning.',
+          qualityCharacteristicId: 11,
+          requiresTesting: true,
+          typeId: 1,
+          verificationMethod: 'Test',
+        },
+      ],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+    const preview = await workflow.previewLibraryImport({} as never, {
+      areaId: 7,
+      locale: 'sv',
+      payload,
+    })
+    const row = preview.rows[0]
+    expect(row).toBeDefined()
+    if (!row) throw new Error('Expected preview row')
+
+    await expect(
+      workflow.executeLibraryImport({} as never, {
+        areaId: 7,
+        locale: 'sv',
+        previewToken: preview.previewToken,
+        rows: [
+          {
+            ...row.values,
+            reviewRowId: row.reviewRowId,
+            sourceIndex: row.sourceIndex,
+            typeId: 2,
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'qualityCharacteristicId must belong to the selected typeId',
+    })
+    expect(createRequirementsBatch).not.toHaveBeenCalled()
+  })
+
+  it('rejects library execute rows that require testing without verification method', async () => {
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+    const payload = requirementsImportPayloadSchema.parse({
+      requirements: [
+        {
+          description: 'Systemet ska logga viktiga händelser.',
+          requiresTesting: true,
+          verificationMethod: 'Inspection',
+        },
+      ],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+    const preview = await workflow.previewLibraryImport({} as never, {
+      areaId: 7,
+      locale: 'sv',
+      payload,
+    })
+    const row = preview.rows[0]
+    expect(row).toBeDefined()
+    if (!row) throw new Error('Expected preview row')
+
+    await expect(
+      workflow.executeLibraryImport({} as never, {
+        areaId: 7,
+        locale: 'sv',
+        previewToken: preview.previewToken,
+        rows: [
+          {
+            ...row.values,
+            reviewRowId: row.reviewRowId,
+            sourceIndex: row.sourceIndex,
+            verificationMethod: null,
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'verificationMethod is required when requiresTesting is true',
+    })
+    expect(createRequirementsBatch).not.toHaveBeenCalled()
   })
 
   it('nests selectable quality characteristics under their allowed type in AI prompt reference data', async () => {

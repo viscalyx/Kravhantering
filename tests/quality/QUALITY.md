@@ -724,6 +724,20 @@ must expose icon data as additive `iconName` fields while keeping existing
 names/colors, and the migration must not backfill customer rows outside clean
 seed data.
 
+**Coverage/code:**
+
+- Allowlist and icon-node loading:
+  `lib/icons/status-icon-allowlist.ts:21-94`.
+- Additive list/detail API output:
+  `lib/requirements/service-requirements.ts:140-160` and
+  `lib/requirements/service-requirements.ts:232-240`.
+- Renderer allowlist handling:
+  `lib/icons/status-icon-components.ts:1-14` and
+  `components/StatusBadge.tsx:23-49`.
+- Migration checks:
+  `typeorm/migrations/0014_status_and_risk_icons.mjs:1-10` and
+  `typeorm/migrations/0038_priority_levels.mjs:17-40`.
+
 **How to verify:**
 
 <!-- markdownlint-disable MD013 -->

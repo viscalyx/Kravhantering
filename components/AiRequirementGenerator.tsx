@@ -2046,24 +2046,29 @@ export default function AiRequirementGenerator({
                           : req.priorityLevelId
                             ? `P${req.priorityLevelId}`
                             : undefined
+                        const priorityCode =
+                          priorityLevel?.code ??
+                          (req.priorityLevelId
+                            ? `P${req.priorityLevelId}`
+                            : undefined)
                         const priorityColorClass =
-                          req.priorityLevelId === 5
+                          priorityCode === 'P5'
                             ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                            : req.priorityLevelId === 4
+                            : priorityCode === 'P4'
                               ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                              : req.priorityLevelId === 3
+                              : priorityCode === 'P3'
                                 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                                : req.priorityLevelId === 2
+                                : priorityCode === 'P2'
                                   ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                   : 'bg-secondary-100 text-secondary-700 dark:bg-secondary-700 dark:text-secondary-200'
                         const cardBorderClass = selected.has(i)
-                          ? req.priorityLevelId === 5
+                          ? priorityCode === 'P5'
                             ? 'border-red-300 bg-red-50/30 dark:border-red-700 dark:bg-red-900/10'
-                            : req.priorityLevelId === 4
+                            : priorityCode === 'P4'
                               ? 'border-orange-300 bg-orange-50/30 dark:border-orange-700 dark:bg-orange-900/10'
-                              : req.priorityLevelId === 3
+                              : priorityCode === 'P3'
                                 ? 'border-amber-300 bg-amber-50/30 dark:border-amber-700 dark:bg-amber-900/10'
-                                : req.priorityLevelId === 2
+                                : priorityCode === 'P2'
                                   ? 'border-emerald-300 bg-emerald-50/30 dark:border-emerald-700 dark:bg-emerald-900/10'
                                   : 'border-primary-300 bg-primary-50/50 dark:border-primary-700 dark:bg-primary-900/20'
                           : 'border-secondary-200 bg-white dark:border-secondary-700 dark:bg-secondary-800'
@@ -2092,7 +2097,7 @@ export default function AiRequirementGenerator({
                                       ? t('functional')
                                       : t('nonFunctional')}
                                   </span>
-                                  {req.priorityLevelId && (
+                                  {priorityName && (
                                     <span
                                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${priorityColorClass}`}
                                     >
