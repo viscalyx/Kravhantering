@@ -704,7 +704,9 @@ förslaget visas som löst och kraven får länken automatiskt.
 `Kravpakets-ID:n` visas bara vid import till kravbiblioteket och visar då
 matchande namn på kravpaket utan internt ID. Felaktiga lösta länkar tas bort
 och ersätts genom sökbara modaler med checkboxar, inte genom fri ID-inmatning.
-Vid import till kravunderlag ignoreras importerade `requirementPackageIds`.
+Vid import till kravunderlag ignoreras importerade `requirementPackageIds` och
+`requirementPackageNames`, och varje berörd kravrad visar en neutral
+informationsrad som inte räknas som varning.
 Olösta importerade ID:n kan fortfarande korrigeras direkt. Om dialogen stängs
 och öppnas igen är kravområde inte längre valt. Den
 importerade valda raden försvinner från
@@ -1121,9 +1123,11 @@ Verifierbara lokala krav utan verifieringsmetod blockeras tills värdet anges.
 Föreslagna normreferenser kan lösas till normreferens-ID:n innan import, och
 lösta normreferenser visas som kompakta icke-redigerbara ID-rader med
 `normreferens-ID - namn` utan internt ID. Kravpaket visas inte och kan inte
-väljas för kravunderlagslokala krav. Nya länkar till normreferenser väljs i
-sökbara modaler med checkboxar, medan olösta importerade ID:n fortfarande kan
-korrigeras direkt.
+väljas för kravunderlagslokala krav. Om importfilen ändå innehåller
+`requirementPackageIds` eller `requirementPackageNames` visar varje berörd rad
+ett diskret informationsmeddelande om att kravpaketen inte används. Nya länkar
+till normreferenser väljs i sökbara modaler med checkboxar, medan olösta
+importerade ID:n fortfarande kan korrigeras direkt.
 Efter lyckad import tas importerade valda rader bort från dialogen och
 kravunderlagets lista uppdateras först när dialogen stängs. Krav och föreslagna
 normreferenser visas i separata flikar, och `Importera valda` ligger kvar i

@@ -124,5 +124,11 @@ describe('requirements import schema', () => {
       description:
         'Kravpakets-ID:n används vid import till kravbiblioteket. Vid import till kravunderlagslokala krav ignoreras fältet.',
     })
+    expect(requirements.items.properties.requirementPackageNames).toMatchObject(
+      {
+        description:
+          'Namn på kravpaket används som reserv när ID saknas. Namn måste matcha exakt och unikt. Vid import till kravunderlagslokala krav ignoreras fältet.',
+      },
+    )
   })
 })

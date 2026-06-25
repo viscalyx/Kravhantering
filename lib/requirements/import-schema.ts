@@ -224,7 +224,12 @@ export function buildRequirementsImportJsonSchema(
                 ? 'Kravpakets-ID:n används vid import till kravbiblioteket. Vid import till kravunderlagslokala krav ignoreras fältet.'
                 : 'Requirement package IDs are used when importing to the requirements library. When importing specification-local requirements, this field is ignored.',
             },
-            requirementPackageNames: stringArrayJsonSchema,
+            requirementPackageNames: {
+              ...stringArrayJsonSchema,
+              description: isSv
+                ? 'Namn på kravpaket används som reserv när ID saknas. Namn måste matcha exakt och unikt. Vid import till kravunderlagslokala krav ignoreras fältet.'
+                : 'Requirement package names are a fallback when IDs are unavailable. Names must match exactly and uniquely. When importing specification-local requirements, this field is ignored.',
+            },
             requiresTesting: {
               anyOf: [{ type: 'boolean' }, { type: 'null' }],
             },

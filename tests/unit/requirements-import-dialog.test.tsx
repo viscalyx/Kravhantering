@@ -482,6 +482,15 @@ describe('RequirementsImportDialog', () => {
         rows: [
           {
             errors: [],
+            infos: [
+              {
+                code: 'import_requirement_packages_ignored_for_specification_local',
+                field: 'requirementPackageIds',
+                level: 'info',
+                message:
+                  'Requirement packages in the import file are not used for specification-local requirements.',
+              },
+            ],
             proposedNormReferenceKeys: [],
             reviewRowId: 'row-0',
             selected: true,
@@ -493,7 +502,7 @@ describe('RequirementsImportDialog', () => {
               needsReferenceId: null,
               normReferenceIds: [],
               qualityCharacteristicId: null,
-              requirementPackageIds: [3],
+              requirementPackageIds: [],
               requiresTesting: false,
               priorityLevelId: null,
               typeId: null,
@@ -534,6 +543,11 @@ describe('RequirementsImportDialog', () => {
 
     expect(screen.queryByText('Kravpakets-ID:n')).not.toBeInTheDocument()
     expect(screen.getByText('Normreferens-ID:n')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Kravpaket i importfilen används inte för kravunderlagslokala krav.',
+      ),
+    ).toBeInTheDocument()
     expect(apiFetch).toHaveBeenCalledWith(
       '/api/requirements-specifications/spec/local-requirements/import/preview',
       expect.any(Object),

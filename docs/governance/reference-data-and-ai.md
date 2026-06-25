@@ -248,19 +248,25 @@ AI prompt endpoint returns Markdown containing the schema plus current taxonomy
 and norm references so an AI system can produce valid JSON without guessing
 reference data. The schema and prompt are shared for library imports and
 specification-local imports; they include requirement-package reference data
-and the same `requirementPackageIds` field. `requirementPackageIds` is used for
-library imports and ignored for specification-local imports. The prompt artifact
-intentionally has no frontmatter and no examples. Its `types` reference data
-nests the selectable child `qualityCharacteristics` allowed for that type, such
-as functional `3.1.x` values under the functional type. Top-level grouping rows
+and the same `requirementPackageIds` field. `requirementPackageIds` and
+`requirementPackageNames` are used for library imports and ignored for
+specification-local imports. Specification-local preview surfaces that as a
+row-level information message, not a warning. The prompt artifact intentionally
+has no frontmatter and no examples. Its `types` reference data nests the
+selectable child `qualityCharacteristics` allowed for that type, such as
+functional `3.1.x` values under the functional type. Top-level grouping rows
 such as `3.1` are omitted. Taxonomy rows in the prompt are localized to the
 requested artifact language and expose a single `name` field instead of both
 `nameEn` and `nameSv`.
 The prompt includes concise field-selection rules for functional versus
 non-functional type choice, type-scoped quality characteristics, norm-reference
-links, priority and verification fields. It tells the AI to prefer ID fields
-from the reference data; the schema still accepts name and code fallback fields
-so human-authored import files can be resolved when the values uniquely match
+links, priority, requirement packages and verification fields. It tells the AI
+to prefer ID fields from the reference data. For requirement packages, the AI
+instruction tells the model to compare the requirement need, requirement text
+and acceptance criteria with `requirementPackages[].purposeAndScope` and only
+choose packages where the requirement clearly belongs within the package purpose
+and scope. The schema still accepts name and code fallback fields so
+human-authored import files can be resolved when the values uniquely match
 active reference data.
 
 Preview resolves numeric IDs, priority codes and names against current

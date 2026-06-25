@@ -87,9 +87,9 @@ The behaviors below apply to the requirement list rendered by:
   `Importera valda` action in a fixed toolbar above the scrollable krav rows.
 - Krav rows start collapsed after review loading. A collapsed row shows the row
   number, an accessible on/off import switch, a three-line read-only kravtext
-  summary, a remove action, any compact error/warning counts, and a discreet
-  localized priority chip when priority is present. Missing priority is omitted
-  from the collapsed header.
+  summary, a remove action, any compact error/warning/info counts, and a
+  discreet localized priority chip when priority is present. Missing priority
+  is omitted from the collapsed header.
 - Clicking the kravtext summary or the chevron expands the row and reveals the
   editable form below the same compact header. Long collapsed kravtext can be
   expanded read-only with `Visa mer` without opening the full edit form, and the
@@ -121,7 +121,10 @@ The behaviors below apply to the requirement list rendered by:
   link selector is also disabled because the proposal now has a concrete target.
 - Row-level `Kravpakets-ID:n` values are edited only for library imports.
   Specification-local imports do not show or save requirement-package links;
-  imported `requirementPackageIds` are ignored in that mode.
+  imported `requirementPackageIds` and `requirementPackageNames` are ignored in
+  that mode. Each affected krav row shows a neutral information message; this
+  is not counted as a warning and does not trigger the warning confirmation
+  before execute.
   Row-level `Normreferens-ID:n` values are edited for both import modes as
   individual numeric IDs in the krav tab after `Verifierbar` and
   `Verifieringsmetod`. Resolved IDs use compact read-only rows; on wider

@@ -48,13 +48,14 @@ interface ImportReferenceData {
 export interface ImportMessage {
   code: string
   field?: string
-  level: 'error' | 'warning'
+  level: 'error' | 'info' | 'warning'
   message: string
   originalValue?: string
 }
 
 export interface RequirementsImportPreviewRow {
   errors: ImportMessage[]
+  infos: ImportMessage[]
   proposedNormReferenceKeys: string[]
   reviewRowId: string
   selected: boolean
@@ -322,6 +323,14 @@ function warning(
   return { code, level: 'warning', message, ...options }
 }
 
+function info(
+  code: string,
+  message: string,
+  options: { field?: string; originalValue?: string } = {},
+): ImportMessage {
+  return { code, level: 'info', message, ...options }
+}
+
 function error(
   code: string,
   message: string,
@@ -487,6 +496,14 @@ function resolvePackageIds(
   return unique
 }
 
+function hasRequirementPackageInput(row: ImportRequirement): boolean {
+  return (
+    (row.requirementPackageIds?.length ?? 0) > 0 ||
+    (row.requirementPackageNames?.some(name => compactText(name) != null) ??
+      false)
+  )
+}
+
 function resolveNormReferenceIds(
   row: ImportRequirement,
   proposalsByKey: Map<string, RequirementsImportProposalPreview>,
@@ -631,6 +648,7 @@ function previewRows(args: {
   return args.payload.requirements.map((row, sourceIndex) => {
     const warnings: ImportMessage[] = []
     const errors: ImportMessage[] = []
+    const infos: ImportMessage[] = []
     const description = row.description.trim()
     const acceptanceCriteria = compactText(row.acceptanceCriteria)
     const explicitRequiresTesting = row.requiresTesting
@@ -665,6 +683,23 @@ function previewRows(args: {
         : matches.filter(item => item.requirementTypeId === typeId)
     }
 
+    const requirementPackageIds =
+      args.mode === 'library'
+        ? resolvePackageIds(row, args.referenceData, warnings)
+        : []
+    if (
+      args.mode === 'specification-local' &&
+      hasRequirementPackageInput(row)
+    ) {
+      infos.push(
+        info(
+          'import_requirement_packages_ignored_for_specification_local',
+          'Requirement packages in the import file are not used for specification-local requirements.',
+          { field: 'requirementPackageIds' },
+        ),
+      )
+    }
+
     const values = {
       acceptanceCriteria,
       categoryId: resolveScalarReference({
@@ -693,10 +728,7 @@ function previewRows(args: {
         nameMatches: qualityCharacteristicMatches,
         warnings,
       }),
-      requirementPackageIds:
-        args.mode === 'library'
-          ? resolvePackageIds(row, args.referenceData, warnings)
-          : [],
+      requirementPackageIds,
       requiresTesting,
       priorityLevelId: resolveScalarReference({
         field: 'priorityLevelId',
@@ -723,6 +755,7 @@ function previewRows(args: {
 
     return {
       errors,
+      infos,
       proposedNormReferenceKeys: [
         ...new Set(
           (row.proposedNormReferenceKeys ?? []).map(key => key.trim()),
@@ -1076,8 +1109,11 @@ export function createRequirementsImportWorkflow({
           ? '- Välj `priorityLevelId` från `priorityLevels[].id`; jämför kravet med `priorityLevels[].assessmentCriteria` och välj bästa matchning. Använd `description` som stöd för verksamhetsmål, nytta, angelägenhet, kritikalitet, risker och intressenters behov.'
           : '- Choose `priorityLevelId` from `priorityLevels[].id`; compare the requirement with `priorityLevels[].assessmentCriteria` and choose the best match. Use `description` as context for business goals, benefit, urgency, criticality, risks, and stakeholder needs.',
         isSv
-          ? '- Välj alla relevanta `requirementPackageIds`; utelämna fältet eller använd `[]` när inget paket passar.'
-          : '- Choose all relevant `requirementPackageIds`; omit the field or use `[]` when no package fits.',
+          ? '- Välj `requirementPackageIds` från referensdatan genom att jämföra kravets behov, kravtext och acceptanskriterier med `requirementPackages[].purposeAndScope`; välj bara paket där kravet tydligt hör hemma i paketets syfte och avgränsning.'
+          : "- Choose `requirementPackageIds` from the reference data by comparing the requirement's need, requirement text, and acceptance criteria with `requirementPackages[].purposeAndScope`; choose only packages where the requirement clearly belongs within the package purpose and scope.",
+        isSv
+          ? '- Utelämna `requirementPackageIds` eller använd `[]` när inget kravpaket passar tydligt; svaga ordmatchningar mot paketnamn räcker inte.'
+          : '- Omit `requirementPackageIds` or use `[]` when no requirement package clearly fits; weak keyword matches against package names are not enough.',
         isSv
           ? '- Sätt `requiresTesting` till `true` när kravet ska verifieras; ange då `verificationMethod`.'
           : '- Set `requiresTesting` to `true` when the requirement should be verified; then provide `verificationMethod`.',

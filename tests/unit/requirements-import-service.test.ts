@@ -303,7 +303,10 @@ describe('requirements import service', () => {
     const referenceData = extractReferenceData(prompt)
 
     expect(prompt).toContain(
-      'Choose all relevant `requirementPackageIds`; omit the field or use `[]` when no package fits.',
+      "Choose `requirementPackageIds` from the reference data by comparing the requirement's need, requirement text, and acceptance criteria with `requirementPackages[].purposeAndScope`",
+    )
+    expect(prompt).toContain(
+      'Omit `requirementPackageIds` or use `[]` when no requirement package clearly fits; weak keyword matches against package names are not enough.',
     )
     expect(prompt).toContain(
       'When importing specification-local requirements, this field is ignored.',
@@ -364,6 +367,14 @@ describe('requirements import service', () => {
     expect(row).toBeDefined()
     if (!row) throw new Error('Expected preview row')
     expect(row.values.requirementPackageIds).toEqual([])
+    expect(row.infos).toEqual([
+      expect.objectContaining({
+        code: 'import_requirement_packages_ignored_for_specification_local',
+        field: 'requirementPackageIds',
+        level: 'info',
+      }),
+    ])
+    expect(row.warnings).toEqual([])
     const result = await workflow.executeSpecificationLocalImport({} as never, {
       locale: 'sv',
       previewToken: preview.previewToken,

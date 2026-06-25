@@ -10,6 +10,7 @@ import {
   Download,
   FileInput,
   FileJson,
+  Info,
   Plus,
   Trash2,
   Upload,
@@ -94,13 +95,14 @@ interface NormReferenceOption {
 interface ImportMessage {
   code: string
   field?: string
-  level: 'error' | 'warning'
+  level: 'error' | 'info' | 'warning'
   message: string
   originalValue?: string
 }
 
 interface ImportPreviewRow {
   errors: ImportMessage[]
+  infos?: ImportMessage[]
   proposedNormReferenceKeys: string[]
   reviewRowId: string
   selected: boolean
@@ -224,11 +226,14 @@ const TEXT = {
       `${count} ${count === 1 ? 'error' : 'errors'}`,
     expandAll: 'Expand all',
     expandRow: 'Expand row',
+    infoCount: (count: number) => `${count} info`,
     invalidSchema:
       'The JSON does not match requirement-import.v1. Fix the import file before loading review.',
     importTitleLibrary: 'Import requirements',
     importTitleSpecification: 'Import local requirements',
     importReviewTabs: 'Import review',
+    ignoredRequirementPackagesInfo:
+      'Requirement packages in the import file are not used for specification-local requirements.',
     linkExistingNormReference: 'Link existing norm reference',
     loadReview: 'Start import',
     needsReference: 'Needs reference',
@@ -318,11 +323,14 @@ const TEXT = {
     errorCount: (count: number) => `${count} fel`,
     expandAll: 'Expandera alla',
     expandRow: 'Expandera rad',
+    infoCount: (count: number) => `${count} info`,
     invalidSchema:
       'JSON följer inte requirement-import.v1. Korrigera importfilen innan granskningen laddas.',
     importTitleLibrary: 'Importera krav',
     importTitleSpecification: 'Importera lokala krav',
     importReviewTabs: 'Importgranskning',
+    ignoredRequirementPackagesInfo:
+      'Kravpaket i importfilen används inte för kravunderlagslokala krav.',
     linkExistingNormReference: 'Länka befintlig normreferens',
     loadReview: 'Starta import',
     needsReference: 'Behovsreferens',
@@ -789,6 +797,7 @@ export default function RequirementsImportDialog({
         : row.values
     return {
       ...row,
+      infos: row.infos ?? [],
       values,
       errors: [
         ...row.errors.filter(error => !EDITABLE_ERROR_CODES.has(error.code)),
@@ -1575,7 +1584,10 @@ export default function RequirementsImportDialog({
   const formatMessage = (message: ImportMessage) =>
     message.code === 'import_proposed_norm_reference_unresolved'
       ? text.proposedNormReferenceUnresolved(text.proposedNormReferences)
-      : message.message
+      : message.code ===
+          'import_requirement_packages_ignored_for_specification_local'
+        ? text.ignoredRequirementPackagesInfo
+        : message.message
   const associationPickerRow = associationPicker
     ? rows.find(row => row.reviewRowId === associationPicker.reviewRowId)
     : null
@@ -1624,6 +1636,9 @@ export default function RequirementsImportDialog({
     [
       row.errors.length > 0 ? text.errorCount(row.errors.length) : null,
       row.warnings.length > 0 ? text.warningCount(row.warnings.length) : null,
+      (row.infos?.length ?? 0) > 0
+        ? text.infoCount(row.infos?.length ?? 0)
+        : null,
     ]
       .filter(Boolean)
       .join(', ')
@@ -2244,7 +2259,9 @@ export default function RequirementsImportDialog({
                                           className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${
                                             row.errors.length > 0
                                               ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-950/50'
-                                              : 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-950/50'
+                                              : row.warnings.length > 0
+                                                ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-950/50'
+                                                : 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200 dark:hover:bg-sky-950/50'
                                           }`}
                                           onClick={event => {
                                             event.stopPropagation()
@@ -2255,10 +2272,18 @@ export default function RequirementsImportDialog({
                                           }}
                                           type="button"
                                         >
-                                          <AlertTriangle
-                                            aria-hidden="true"
-                                            className="h-3.5 w-3.5"
-                                          />
+                                          {row.errors.length > 0 ||
+                                          row.warnings.length > 0 ? (
+                                            <AlertTriangle
+                                              aria-hidden="true"
+                                              className="h-3.5 w-3.5"
+                                            />
+                                          ) : (
+                                            <Info
+                                              aria-hidden="true"
+                                              className="h-3.5 w-3.5"
+                                            />
+                                          )}
                                           {rowMessageSummary}
                                         </button>
                                       ) : null}
@@ -2878,30 +2903,44 @@ export default function RequirementsImportDialog({
                                         </button>
                                       </div>
                                     </div>
-                                    {[...row.errors, ...row.warnings].length >
-                                    0 ? (
+                                    {[
+                                      ...row.errors,
+                                      ...row.warnings,
+                                      ...(row.infos ?? []),
+                                    ].length > 0 ? (
                                       <ul className="space-y-1 text-sm md:col-span-2">
-                                        {[...row.errors, ...row.warnings].map(
-                                          message => (
-                                            <li
-                                              className={
-                                                message.level === 'error'
-                                                  ? 'text-red-700 dark:text-red-300'
-                                                  : 'text-amber-800 dark:text-amber-200'
-                                              }
-                                              key={`${message.code}-${message.field ?? ''}-${message.originalValue ?? ''}`}
-                                            >
+                                        {[
+                                          ...row.errors,
+                                          ...row.warnings,
+                                          ...(row.infos ?? []),
+                                        ].map(message => (
+                                          <li
+                                            className={
+                                              message.level === 'error'
+                                                ? 'text-red-700 dark:text-red-300'
+                                                : message.level === 'warning'
+                                                  ? 'text-amber-800 dark:text-amber-200'
+                                                  : 'text-sky-700 dark:text-sky-200'
+                                            }
+                                            key={`${message.code}-${message.field ?? ''}-${message.originalValue ?? ''}`}
+                                          >
+                                            {message.level === 'info' ? (
+                                              <Info
+                                                aria-hidden="true"
+                                                className="mr-1 inline h-4 w-4"
+                                              />
+                                            ) : (
                                               <AlertTriangle
                                                 aria-hidden="true"
                                                 className="mr-1 inline h-4 w-4"
                                               />
-                                              {formatMessage(message)}
-                                              {message.originalValue
-                                                ? ` (${message.originalValue})`
-                                                : ''}
-                                            </li>
-                                          ),
-                                        )}
+                                            )}
+                                            {formatMessage(message)}
+                                            {message.originalValue
+                                              ? ` (${message.originalValue})`
+                                              : ''}
+                                          </li>
+                                        ))}
                                       </ul>
                                     ) : null}
                                   </div>
