@@ -148,8 +148,8 @@ shared tooltip.
 1. Open `/sv/requirements` for the current viewport variant.
 2. Expand the first inline detail pane to guarantee extra scroll height.
 3. Capture the initial column-picker trigger position.
-4. Assert that the first requirement-package chip filter carries the package
-   description in its `title`.
+4. Hover the first requirement-package chip filter and assert that the shared
+   tooltip exposes the package description.
 5. Scroll the page downward until the header row leaves the viewport.
 6. Assert that the scroll-to-top trigger appears.
 7. Assert that the column-picker trigger keeps the same vertical position.

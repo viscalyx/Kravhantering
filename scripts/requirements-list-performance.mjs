@@ -85,7 +85,11 @@ const PERFORMANCE_REFERENCE_REQUIREMENTS = [
     optionKey: 'qualityCharacteristicIds',
     tableName: 'quality_characteristics',
   },
-  { ids: [1, 2, 3], optionKey: 'riskLevelIds', tableName: 'risk_levels' },
+  {
+    ids: [1, 2, 3],
+    optionKey: 'priorityLevelIds',
+    tableName: 'priority_levels',
+  },
   {
     ids: integerRange(1, 6),
     optionKey: 'normReferenceIds',
@@ -132,8 +136,8 @@ export function createRequirementListPerformanceScenarios(
         offset: 0,
         qualityCharacteristicIds: [6, 8, 23],
         requiresTesting: [true],
-        riskLevelIds: [2, 3],
-        sortBy: 'riskLevel',
+        priorityLevelIds: [2, 3],
+        sortBy: 'priorityLevel',
         sortDirection: 'desc',
         statuses: [STATUS_PUBLISHED],
         typeIds: [1],
@@ -535,7 +539,7 @@ INSERT INTO requirement_versions (
   archived_at,
   created_by,
   archive_initiated_at,
-  risk_level_id
+  priority_level_id
 )
 SELECT
   v.version_id,

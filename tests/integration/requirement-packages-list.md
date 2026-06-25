@@ -70,7 +70,7 @@ create action.
 1. Assert both `Mobil användning` and `Single Sign-On` are present.
 1. On desktop, assert `Nytt kravpaket` is positioned at the right edge of the
    package list.
-1. Type `Mobil` into `Filtrera på namn eller syfte och avgränsning`.
+1. Type `Mobil` into `Filtrera på namn eller beskrivning`.
 1. Assert `Mobil användning` remains and `Single Sign-On` is hidden.
 1. Type `gemensamma inloggning`.
 1. Assert `Single Sign-On` remains and `Mobil användning` is hidden.

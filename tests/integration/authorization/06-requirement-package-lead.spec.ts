@@ -36,7 +36,7 @@ test('AUTH-10/AUTH-11: requirement package leads can update packages but not arc
       page.getByRole('heading', { level: 1, name: 'Kravpaket' }),
     ).toBeVisible()
     const filter = page.getByRole('textbox', {
-      name: 'Filtrera på namn eller syfte och avgränsning',
+      name: 'Filtrera på namn eller beskrivning',
     })
     await filter.fill(fixture.packageName)
     const row = page.getByRole('row', { name: new RegExp(fixture.packageName) })

@@ -1,5 +1,6 @@
 import {
   type APIRequestContext,
+  type APIResponse,
   expect,
   type Locator,
   type Page,
@@ -39,33 +40,56 @@ interface AdminHsaIdPrefixRow {
   prefix: string
 }
 
-async function assertOkResponse(
+async function requestOkWithRetry(
   requestName: string,
-  response: Awaited<ReturnType<APIRequestContext['put']>>,
+  sendRequest: () => Promise<APIResponse>,
 ) {
-  if (response.ok()) {
-    return
+  let lastFailure = 'no response received'
+  let successfulResponse: APIResponse | null = null
+
+  try {
+    await expect
+      .poll(
+        async () => {
+          const response = await sendRequest()
+          if (response.ok()) {
+            successfulResponse = response
+            return true
+          }
+
+          lastFailure = `${response.status()}: ${await response.text()}`
+          return false
+        },
+        {
+          intervals: [100, 250, 500, 1_000],
+          timeout: 5_000,
+        },
+      )
+      .toBe(true)
+  } catch {
+    throw new Error(`${requestName} failed after retries: ${lastFailure}`)
   }
 
-  throw new Error(
-    `${requestName} reset failed with ${response.status()}: ${await response.text()}`,
-  )
+  if (!successfulResponse) {
+    throw new Error(`${requestName} failed after retries: ${lastFailure}`)
+  }
+
+  return successfulResponse
 }
 
 async function resetAdminSettings(request: APIRequestContext) {
-  await assertOkResponse(
-    'requirement columns',
-    await request.put('/api/admin/requirement-columns', {
+  await requestOkWithRetry('requirement columns', () =>
+    request.put('/api/admin/requirement-columns', {
       data: {
         columns: DEFAULT_COLUMN_PAYLOAD,
       },
     }),
   )
 
-  const currentPrefixesResponse = await request.get(
-    '/api/admin/hsa-id-prefixes',
+  const currentPrefixesResponse = await requestOkWithRetry(
+    'HSA-id prefixes load',
+    () => request.get('/api/admin/hsa-id-prefixes'),
   )
-  await assertOkResponse('HSA-id prefixes load', currentPrefixesResponse)
   const currentPrefixes = (await currentPrefixesResponse.json()) as {
     prefixes?: AdminHsaIdPrefixRow[]
   }
@@ -83,9 +107,8 @@ async function resetAdminSettings(request: APIRequestContext) {
     row => row.prefix === DEFAULT_HSA_ID_PREFIX,
   )
 
-  await assertOkResponse(
-    'HSA-id prefixes',
-    await request.put('/api/admin/hsa-id-prefixes', {
+  await requestOkWithRetry('HSA-id prefixes', () =>
+    request.put('/api/admin/hsa-id-prefixes', {
       data: {
         prefixes: [
           {

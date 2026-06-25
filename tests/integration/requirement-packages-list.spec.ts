@@ -83,7 +83,7 @@ for (const viewport of viewports) {
       })
 
       const nameFilter = page.getByRole('textbox', {
-        name: 'Filtrera på namn eller syfte och avgränsning',
+        name: 'Filtrera på namn eller beskrivning',
       })
       const mobilePackage = page.getByRole('cell', {
         exact: true,

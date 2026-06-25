@@ -37,7 +37,7 @@ test('AUTH-10/AUTH-11: requirement package co-authors are exported but cannot ma
     ).toBeVisible()
     await page
       .getByRole('textbox', {
-        name: 'Filtrera på namn eller syfte och avgränsning',
+        name: 'Filtrera på namn eller beskrivning',
       })
       .fill(fixture.packageName)
     const row = page.getByRole('row', { name: new RegExp(fixture.packageName) })

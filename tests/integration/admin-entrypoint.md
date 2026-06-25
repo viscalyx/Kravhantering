@@ -62,10 +62,10 @@ flowchart TD
   `PUT` requests to `/api/admin/requirement-columns` and
   `/api/admin/hsa-id-prefixes` with default demo values.
 - Helper functions:
-  - `assertOkResponse` — throws with status and body text if a reset request
-    fails.
+  - `requestOkWithRetry` — retries idempotent setup/cleanup requests briefly
+    and throws with the final status and body text if they keep failing.
   - `resetAdminSettings` — calls the column and HSA-id-prefix PUT resets and
-    delegates to `assertOkResponse`.
+    delegates to `requestOkWithRetry`.
   - `getAdminColumnOrder` — reads the current drag-row order from
     `[data-testid^="admin-column-row-"]` elements.
   - `setAdminColumnOrder` — clicks "Flytta upp" buttons iteratively until the

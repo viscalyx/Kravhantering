@@ -23,11 +23,22 @@ interface RequirementSelectionQuestionResponse {
   questionCode: string
 }
 
+async function expectRequestOk(
+  response: Awaited<ReturnType<APIRequestContext['put']>>,
+  context: string,
+) {
+  if (response.ok()) return
+  const body = await response.text()
+  throw new Error(
+    `${context} failed with ${response.status()} ${response.statusText()}: ${body}`,
+  )
+}
+
 async function getRequirementSelectionQuestions(request: APIRequestContext) {
   const response = await request.get(
     '/api/requirement-selection-questions?includeArchived=true',
   )
-  expect(response.ok()).toBeTruthy()
+  await expectRequestOk(response, 'Load requirement-selection questions')
   const body = (await response.json()) as {
     questions?: RequirementSelectionQuestionResponse[]
   }
@@ -54,7 +65,10 @@ async function resetDriftQuestionOrder(request: APIRequestContext) {
       `/api/requirement-selection-questions/${questionId}`,
       { data: { sortOrder } },
     )
-    expect(response.ok()).toBeTruthy()
+    await expectRequestOk(
+      response,
+      `Reset sort order for question ${questionCode}`,
+    )
   }
 }
 
@@ -71,7 +85,7 @@ async function resetDriftAnswerOrder(request: APIRequestContext) {
       `/api/requirement-selection-questions/${question.id}/answers/${answerId}`,
       { data: { sortOrder } },
     )
-    expect(response.ok()).toBeTruthy()
+    await expectRequestOk(response, `Reset sort order for answer ${answerText}`)
   }
 }
 
@@ -168,6 +182,14 @@ test.describe('Requirement selection answer drag and drop', () => {
         page.getByRole('heading', { level: 1, name: 'Kravurvalsfrågor' }),
       ).toBeVisible()
       await resetDriftAnswerOrder(page.request)
+      const driftQuestion = await getDriftQuestion(page.request)
+      const answerIdsByText = new Map(
+        driftQuestion.answers.map(answer => [answer.text, answer.id] as const),
+      )
+      const firstAnswerId = answerIdsByText.get('Egen drift/on-premises')
+      const secondAnswerId = answerIdsByText.get('Molndrift')
+      expect(firstAnswerId).toBeTruthy()
+      expect(secondAnswerId).toBeTruthy()
       await page.reload()
       await expect(
         page.getByRole('heading', { level: 1, name: 'Kravurvalsfrågor' }),
@@ -204,8 +226,32 @@ test.describe('Requirement selection answer drag and drop', () => {
       })
       await sourceRow.dispatchEvent('dragstart', { dataTransfer })
       await targetRow.dispatchEvent('dragover', { dataTransfer })
+      const persistedAnswerOrder = Promise.all([
+        page.waitForResponse(
+          response =>
+            response.request().method() === 'PUT' &&
+            response
+              .url()
+              .includes(
+                `/api/requirement-selection-questions/${driftQuestion.id}/answers/${firstAnswerId}`,
+              ),
+        ),
+        page.waitForResponse(
+          response =>
+            response.request().method() === 'PUT' &&
+            response
+              .url()
+              .includes(
+                `/api/requirement-selection-questions/${driftQuestion.id}/answers/${secondAnswerId}`,
+              ),
+        ),
+      ])
       await targetRow.dispatchEvent('drop', { dataTransfer })
       await sourceRowHandle.dispatchEvent('dragend', { dataTransfer })
+      const answerOrderResponses = await persistedAnswerOrder
+      for (const response of answerOrderResponses) {
+        expect(response.ok()).toBeTruthy()
+      }
 
       await expect(answerRows.nth(0)).toContainText('Molndrift')
       await expect(answerRows.nth(1)).toContainText('Egen drift/on-premises')
