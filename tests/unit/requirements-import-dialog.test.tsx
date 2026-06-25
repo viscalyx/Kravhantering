@@ -666,8 +666,10 @@ describe('RequirementsImportDialog', () => {
       ),
     ).toBeInTheDocument()
     expect(apiFetch).toHaveBeenCalledWith(
-      '/api/requirements-specifications/spec/local-requirements/import/preview',
-      expect.any(Object),
+      '/api/specification-local-requirements/import/preview',
+      expect.objectContaining({
+        body: expect.stringContaining('"specificationIdOrSlug":"spec"'),
+      }),
     )
   })
 

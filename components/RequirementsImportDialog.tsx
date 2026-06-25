@@ -1252,12 +1252,13 @@ export default function RequirementsImportDialog({
     const response = await apiFetch(
       isLibrary
         ? '/api/requirements/import/preview'
-        : `/api/requirements-specifications/${encodeURIComponent(
-            specificationSlug ?? '',
-          )}/local-requirements/import/preview`,
+        : '/api/specification-local-requirements/import/preview',
       {
         body: JSON.stringify({
           ...(isLibrary ? { areaId: Number(selectedAreaId) } : {}),
+          ...(!isLibrary
+            ? { specificationIdOrSlug: specificationSlug ?? '' }
+            : {}),
           locale,
           payload,
         }),
@@ -1438,12 +1439,13 @@ export default function RequirementsImportDialog({
       const response = await apiFetch(
         isLibrary
           ? '/api/requirements/import/preview'
-          : `/api/requirements-specifications/${encodeURIComponent(
-              specificationSlug ?? '',
-            )}/local-requirements/import/preview`,
+          : '/api/specification-local-requirements/import/preview',
         {
           body: JSON.stringify({
             ...(isLibrary ? { areaId: Number(selectedAreaId) } : {}),
+            ...(!isLibrary
+              ? { specificationIdOrSlug: specificationSlug ?? '' }
+              : {}),
             locale,
             payload: schemaResult.data,
           }),
@@ -1495,12 +1497,13 @@ export default function RequirementsImportDialog({
       const response = await apiFetch(
         isLibrary
           ? '/api/requirements/import/execute'
-          : `/api/requirements-specifications/${encodeURIComponent(
-              specificationSlug ?? '',
-            )}/local-requirements/import/execute`,
+          : '/api/specification-local-requirements/import/execute',
         {
           body: JSON.stringify({
             ...(isLibrary ? { areaId: Number(selectedAreaId) } : {}),
+            ...(!isLibrary
+              ? { specificationIdOrSlug: specificationSlug ?? '' }
+              : {}),
             locale,
             previewToken,
             rows: selectedRows.map(row => ({
