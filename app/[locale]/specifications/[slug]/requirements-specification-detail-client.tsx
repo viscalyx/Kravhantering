@@ -2621,6 +2621,7 @@ export default function KravunderlagDetailClient({
                 >
                   <RequirementsTable
                     areas={areas}
+                    columnPickerPlacement="end"
                     defaultVisibleColumns={DEFAULT_LEFT_COLS}
                     expandedId={leftExpandedId}
                     filterValues={leftFilters}
@@ -2628,23 +2629,6 @@ export default function KravunderlagDetailClient({
                     floatingActions={[
                       ...(canEditContent
                         ? [
-                            {
-                              ariaLabel: t('importLocalRequirements'),
-                              developerModeContext:
-                                'requirements specification detail',
-                              developerModeValue: 'import local requirements',
-                              icon: (
-                                <Upload
-                                  aria-hidden="true"
-                                  className="h-4 w-4"
-                                />
-                              ),
-                              id: 'import-local',
-                              onClick: () =>
-                                setShowImportLocalRequirementsModal(true),
-                              position: 'beforeColumns' as const,
-                              tooltip: t('importLocalRequirements'),
-                            },
                             {
                               ariaLabel: t('newLocalRequirement'),
                               developerModeContext:
@@ -2719,6 +2703,27 @@ export default function KravunderlagDetailClient({
                             : []),
                         ],
                       },
+                      ...(canEditContent
+                        ? [
+                            {
+                              ariaLabel: t('importLocalRequirements'),
+                              developerModeContext:
+                                'requirements specification detail',
+                              developerModeValue: 'import local requirements',
+                              icon: (
+                                <Upload
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                              ),
+                              id: 'import-local',
+                              onClick: () =>
+                                setShowImportLocalRequirementsModal(true),
+                              position: 'afterColumns' as const,
+                              tooltip: t('importLocalRequirements'),
+                            },
+                          ]
+                        : []),
                       {
                         ariaLabel: tc('export'),
                         icon: (

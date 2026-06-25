@@ -667,9 +667,11 @@ CSV-kvittot.
 
 **Förväntat resultat:** JSON med destinationsfält stoppas före granskning.
 Kravområde måste väljas från användarens tilldelade områden och låses under
-dialogsessionen. Innan granskningen laddas visas bara JSON-panelen i en
-innehållsanpassad dialog. Obligatoriska fält har röd asterisk och `Starta
-import` är inaktiv tills JSON följer schemat och kravområde är valt. När
+dialogsessionen. Importknappen ligger direkt till vänster om exportknappen i
+den flytande åtgärdsytan, och kolumnväljaren ligger sist till höger.
+Innan granskningen laddas visas bara JSON-panelen i en innehållsanpassad
+dialog. Obligatoriska fält har röd asterisk och `Förhandsgranska krav` är
+inaktiv tills JSON följer schemat och kravområde är valt. När
 knappen är inaktiv visar dialogen en kort förklaring, till exempel saknat
 kravområde, saknad JSON, JSON-syntaxfel, fel `schemaVersion` eller schemafel. Efter
 laddning kollapsar JSON-panelen och granskningen delas upp i flikarna `Krav`
@@ -1128,6 +1130,8 @@ raden importeras.
 
 **Förväntat resultat:** Importen kräver kravunderlagsbehörighet men inget
 kravområde. Rader skapas som kravunderlagslokala krav i aktuellt kravunderlag.
+Importknappen ligger direkt till vänster om exportknappen i verktygsraden för
+`Krav i underlaget`, och kolumnväljaren ligger sist till höger.
 Verifierbara lokala krav utan verifieringsmetod blockeras tills värdet anges.
 Föreslagna normreferenser kan lösas till normreferens-ID:n innan import, och
 lösta normreferenser visas som kompakta icke-redigerbara ID-rader med

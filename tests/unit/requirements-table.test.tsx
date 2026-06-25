@@ -1425,6 +1425,49 @@ describe('RequirementsTable', () => {
     ).toBe('default')
   })
 
+  it('can place the columns pill after trailing floating actions', () => {
+    const { container } = render(
+      <RequirementsTable
+        columnPickerPlacement="end"
+        floatingActions={[
+          {
+            ariaLabel: 'newRequirement',
+            href: '/requirements/new',
+            icon: <span aria-hidden="true">+</span>,
+            id: 'create',
+            position: 'beforeColumns',
+            variant: 'primary',
+          },
+          {
+            ariaLabel: 'print',
+            icon: <span aria-hidden="true">P</span>,
+            id: 'print',
+          },
+          {
+            ariaLabel: 'import',
+            icon: <span aria-hidden="true">I</span>,
+            id: 'import',
+          },
+          {
+            ariaLabel: 'export',
+            icon: <span aria-hidden="true">E</span>,
+            id: 'export',
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(getFloatingActionIds(container)).toEqual([
+      'create',
+      'print',
+      'import',
+      'export',
+      'columns',
+    ])
+  })
+
   it('renders the scroll-to-top pill in a separate end group after vertical scroll', async () => {
     const { container } = render(
       <RequirementsTable

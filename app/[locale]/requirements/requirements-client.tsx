@@ -924,6 +924,7 @@ export default function RequirementsClient({
                 areas={areas}
                 categories={categories}
                 columnDefaults={normalizedColumnDefaults}
+                columnPickerPlacement="end"
                 columnWidths={columnWidths}
                 excludeColumns={['needsReference', 'specificationItemStatus']}
                 expandedId={selectedId}
@@ -954,16 +955,6 @@ export default function RequirementsClient({
                   },
                   {
                     developerModeContext: 'requirements table',
-                    developerModeValue: 'import requirements',
-                    ariaLabel: t('importRequirements'),
-                    icon: <Upload aria-hidden="true" className="h-4 w-4" />,
-                    id: 'import',
-                    onClick: () => setImportDialogOpen(true),
-                    position: 'beforeColumns',
-                    tooltip: t('importRequirements'),
-                  },
-                  {
-                    developerModeContext: 'requirements table',
                     developerModeValue: 'print',
                     ariaLabel: tc('print'),
                     icon: <Printer aria-hidden="true" className="h-4 w-4" />,
@@ -984,14 +975,6 @@ export default function RequirementsClient({
                           }),
                       },
                     ],
-                  },
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'export',
-                    ariaLabel: tc('export'),
-                    icon: <Download aria-hidden="true" className="h-4 w-4" />,
-                    id: 'export',
-                    onClick: handleExport,
                   },
                   ...(selectedIds.size > 0 && anySelectedIsReview
                     ? [
@@ -1032,6 +1015,24 @@ export default function RequirementsClient({
                         },
                       ]
                     : []),
+                  {
+                    developerModeContext: 'requirements table',
+                    developerModeValue: 'import requirements',
+                    ariaLabel: t('importRequirements'),
+                    icon: <Upload aria-hidden="true" className="h-4 w-4" />,
+                    id: 'import',
+                    onClick: () => setImportDialogOpen(true),
+                    position: 'afterColumns',
+                    tooltip: t('importRequirements'),
+                  },
+                  {
+                    developerModeContext: 'requirements table',
+                    developerModeValue: 'export',
+                    ariaLabel: tc('export'),
+                    icon: <Download aria-hidden="true" className="h-4 w-4" />,
+                    id: 'export',
+                    onClick: handleExport,
+                  },
                 ]}
                 getName={getName}
                 getStatusName={getStatusName}

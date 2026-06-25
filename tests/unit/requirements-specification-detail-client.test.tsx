@@ -54,6 +54,7 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
 vi.mock('@/components/RequirementsTable', () => ({
   default: (props: {
     defaultVisibleColumns?: string[]
+    columnPickerPlacement?: string
     floatingActionRailPlacement?: string
     floatingActions?: {
       ariaLabel: string
@@ -69,6 +70,7 @@ vi.mock('@/components/RequirementsTable', () => ({
         onClick?: () => void
       }[]
       onClick?: () => void
+      position?: string
     }[]
     filterValues?: { requirementPackageIds?: number[] }
     hasMore?: boolean
@@ -719,6 +721,28 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(exportAction?.menuItems?.map(item => item.id)).toEqual([
       'export-full',
     ])
+  })
+
+  it('orders kravunderlag table actions with import before export and columns last', async () => {
+    renderRequirementsSpecificationDetailClient()
+    await waitForInitialAvailableRequirementsRefresh()
+
+    const itemsTable = latestItemsTableProps()
+    const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
+      id: string
+      position?: string
+    }>
+
+    expect(itemsTable.columnPickerPlacement).toBe('end')
+    expect(floatingActions.map(action => action.id)).toEqual([
+      'create-local',
+      'print',
+      'import-local',
+      'export',
+    ])
+    expect(
+      floatingActions.map(action => action.position ?? 'afterColumns'),
+    ).toEqual(['beforeColumns', 'afterColumns', 'afterColumns', 'afterColumns'])
   })
 
   it('encodes profile print report href slugs as one route segment', async () => {

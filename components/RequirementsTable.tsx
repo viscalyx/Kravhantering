@@ -78,6 +78,7 @@ export interface RequirementsTableProps {
   areas?: AreaOption[]
   categories?: FilterOption[]
   columnDefaults?: RequirementListColumnDefault[]
+  columnPickerPlacement?: 'betweenActions' | 'end'
   columnWidths?: RequirementColumnWidths
   defaultVisibleColumns?: RequirementColumnId[]
   excludeColumns?: RequirementColumnId[]
@@ -1320,6 +1321,7 @@ export default function RequirementsTable({
   areas = [],
   categories = [],
   columnDefaults,
+  columnPickerPlacement = 'betweenActions',
   columnWidths = {},
   defaultVisibleColumns,
   excludeColumns,
@@ -2626,10 +2628,11 @@ export default function RequirementsTable({
       {actionsBeforeColumns.map(action => (
         <FloatingActionPill action={action} key={action.id} />
       ))}
-      {columnsPopover}
+      {columnPickerPlacement === 'betweenActions' ? columnsPopover : null}
       {actionsAfterColumns.map(action => (
         <FloatingActionPill action={action} key={action.id} />
       ))}
+      {columnPickerPlacement === 'end' ? columnsPopover : null}
     </>
   )
   const scrollTopRailGroup =

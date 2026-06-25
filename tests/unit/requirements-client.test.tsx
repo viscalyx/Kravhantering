@@ -102,6 +102,7 @@ vi.mock('@/components/RequirementsTable', () => ({
     const {
       areas,
       categories,
+      columnPickerPlacement,
       columnWidths,
       expandedId,
       floatingActions,
@@ -127,6 +128,7 @@ vi.mock('@/components/RequirementsTable', () => ({
     tableState.renderSpy({
       areas: areas ?? [],
       categories: categories ?? [],
+      columnPickerPlacement,
       columnWidths: columnWidths ?? {},
       floatingActions: floatingActions ?? [],
       hasMore: hasMore ?? false,
@@ -890,8 +892,11 @@ describe('RequirementsClient', () => {
       ),
     )
     expect(screen.getByTestId('floating-actions-order').textContent).toBe(
-      'create:beforeColumns:primary,ai-generate:beforeColumns:default,import:beforeColumns:default,print:afterColumns:default,export:afterColumns:default',
+      'create:beforeColumns:primary,ai-generate:beforeColumns:default,print:afterColumns:default,import:afterColumns:default,export:afterColumns:default',
     )
+    expect(tableState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      columnPickerPlacement: 'end',
+    })
     expect(screen.queryByText('newRequirement')).toBeNull()
     expect(
       screen.getByRole('link', { name: 'newRequirement' }),
@@ -1033,6 +1038,14 @@ describe('RequirementsClient', () => {
         latestFloatingActions().some(action => action.id === 'review-report'),
       ).toBe(true),
     )
+    expect(latestFloatingActions().map(action => action.id)).toEqual([
+      'create',
+      'ai-generate',
+      'print',
+      'review-report',
+      'import',
+      'export',
+    ])
 
     const reviewReportAction = latestFloatingActions().find(
       action => action.id === 'review-report',

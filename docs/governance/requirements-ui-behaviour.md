@@ -221,12 +221,15 @@ The behaviors below apply to the requirement list rendered by:
   positioning so the handoff between those two positions tracks scrolling
   smoothly.
 - The rail hides once the table has scrolled fully out of view.
-- The rail order is:
+- The default rail order is:
   - `beforeColumns` floating actions
   - the columns pill
   - trailing floating actions
-- Specification-detail split tables keep the same pill order but render the rail
-  inline in a sticky top bar above each table instead of as a fixed right rail.
+- Kravbiblioteket and specification-detail `Krav i underlaget` place the
+  columns pill last, after trailing actions, so import/export actions stay
+  adjacent and the column settings remain the rightmost table tool.
+- Specification-detail split tables render the rail inline in a sticky top bar
+  above each table instead of as a fixed right rail.
 
 ## Sticky Header
 
@@ -258,6 +261,8 @@ The behaviors below apply to the requirement list rendered by:
   `Krav i underlaget` shows requirement-list actions such as local creation,
   column settings, print, export, and selected-row bulk actions, while
   `Behovsreferenser` replaces them with the needs-reference creation action.
+- In `Krav i underlaget`, the inline rail orders import immediately before
+  export and keeps the column settings pill last.
 - `Behovsreferenser` is a specification-local register. It allows users to
   create and edit labels plus optional descriptions, delete only unused
   references, expand a row to inspect linked requirements, and intentionally
