@@ -18,7 +18,7 @@ export const DEFAULT_ALLOWED_OPERATIONS = Object.freeze([
   { method: 'get', path: '/api/requirement-statuses' },
   { method: 'get', path: '/api/requirement-packages' },
   { method: 'get', path: '/api/quality-characteristics' },
-  { method: 'get', path: '/api/risk-levels' },
+  { method: 'get', path: '/api/priority-levels' },
   { method: 'get', path: '/api/norm-references' },
 ])
 
