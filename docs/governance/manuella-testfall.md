@@ -655,9 +655,10 @@ driftkonfigurationen har högre prioritet.
 
 **Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements`, välj
 importknappen i den flytande åtgärdsytan. Kontrollera att schema och
-JSON-instruktion kan laddas ner och att hjälpraden förklarar att
-JSON-instruktionen bara är formatdelen för AI-arbete. Ladda en JSON-fil genom
-att klicka på eller dra filen till importytan. Använd en fil med
+importinstruktion kan laddas ner och att hjälpraden förklarar att
+importinstruktionen bara är formatdelen och referensdata för import för AI-arbete.
+Ladda en JSON-fil genom att klicka på eller dra filen till importytan. Använd
+en fil med
 `schemaVersion`, minst ett krav med `description`, samt frivilliga metadata via
 både ID och namn. Inkludera även en `proposedNormReferences`-post och koppla en
 rad till den med `proposedNormReferenceKeys`. Försök först inkludera ett

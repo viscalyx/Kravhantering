@@ -208,9 +208,9 @@ const TEXT = {
     confirmWarnings:
       'Selected rows contain warnings. Unresolved optional metadata will be omitted. Continue?',
     dropJsonFile: 'Drop a JSON file here, or click to browse.',
-    downloadAiPrompt: 'Download JSON instructions',
+    downloadAiPrompt: 'Download import instructions',
     downloadArtifactsHelp:
-      'Use the schema to validate the file. The JSON instructions are only the output-format part for AI work; combine them with your own prompt describing the requirements and text content to produce.',
+      'Use the schema to validate the file. The import instructions are only the output-format and import-reference part for AI work; combine them with your own prompt describing the requirements and text content to produce.',
     downloadCsv: 'Download CSV receipt',
     downloadSchema: 'Download schema',
     error: 'Something went wrong',
@@ -258,7 +258,7 @@ const TEXT = {
     proposalUsedByRows: 'Used by rows',
     proposedNormReferences: 'Proposed norm references',
     qualityCharacteristic: 'Quality characteristic',
-    promptFile: 'requirement-import-json-instructions.md',
+    promptFile: 'requirement-import-instructions.md',
     rawJson: 'Import JSON',
     rawJsonPlaceholder: 'Paste import JSON here.',
     remove: 'Remove from import',
@@ -307,9 +307,9 @@ const TEXT = {
     confirmWarnings:
       'Valda rader innehåller varningar. Olöst frivillig metadata utelämnas. Fortsätta?',
     dropJsonFile: 'Släpp en JSON-fil här, eller klicka för att välja fil.',
-    downloadAiPrompt: 'Ladda ner JSON-instruktion',
+    downloadAiPrompt: 'Ladda ner importinstruktion',
     downloadArtifactsHelp:
-      'Använd schemat för att validera filen. JSON-instruktionen är bara formatdelen för AI-arbete; kombinera den med en egen prompt som beskriver vilka krav och texter som ska tas fram.',
+      'Använd schemat för att validera filen. Importinstruktionen är bara formatdelen och referensdata för import för AI-arbete; kombinera den med en egen prompt som beskriver vilka krav och texter som ska tas fram.',
     downloadCsv: 'Ladda ner CSV-kvitto',
     downloadSchema: 'Ladda ner schema',
     error: 'Något gick fel',
@@ -356,7 +356,7 @@ const TEXT = {
     proposalUsedByRows: 'Används av rader',
     proposedNormReferences: 'Föreslagna normreferenser',
     qualityCharacteristic: 'Kvalitetsegenskap',
-    promptFile: 'kravimport-json-instruktion.md',
+    promptFile: 'kravimport-instruktion.md',
     rawJson: 'Import-JSON',
     rawJsonPlaceholder: 'Klistra in import-JSON här.',
     remove: 'Ta bort från import',

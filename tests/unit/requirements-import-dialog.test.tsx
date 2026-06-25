@@ -116,11 +116,16 @@ describe('RequirementsImportDialog', () => {
       'Klistra in import-JSON här.',
     )
     expect(
-      screen.getByRole('button', { name: 'Ladda ner JSON-instruktion' }),
+      screen.getByRole('button', { name: 'Ladda ner importinstruktion' }),
     ).toHaveAttribute('aria-describedby', 'requirements-import-download-help')
+    expect(
+      screen.queryByText('Ladda ner JSON-instruktion'),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('Ladda ner AI-prompt')).not.toBeInTheDocument()
     expect(
-      screen.getByText(/JSON-instruktionen är bara formatdelen för AI-arbete/),
+      screen.getByText(
+        /Importinstruktionen är bara formatdelen och referensdata för import för AI-arbete/,
+      ),
     ).toBeInTheDocument()
 
     fireEvent.change(jsonField, { target: { value: '{' } })
