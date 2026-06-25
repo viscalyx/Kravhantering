@@ -250,7 +250,7 @@ erDiagram
     requirement_packages {
         integer id PK
         text name
-        text description
+        text purpose_and_scope
         text lead_hsa_id FK
         integer is_archived
         text created_at
@@ -909,7 +909,7 @@ be linked to.
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
 | `name` | text | Authored package name |
-| `description` | text | Authored package description (nullable) |
+| `purpose_and_scope` | text | Mandatory purpose and scope that guides which requirements belong in the package |
 | `lead_hsa_id` | text FK → `requirement_responsibility_people.hsa_id` | Requirement-package lead HSA-id |
 | `is_archived` | integer | Soft archive flag |
 | `created_at` | text (ISO 8601) | Creation timestamp |

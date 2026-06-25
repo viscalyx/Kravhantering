@@ -187,8 +187,8 @@ The behaviors below apply to the requirement list rendered by:
 - `requiresTesting` is filterable, but not sortable.
 - `requirementPackage` is filterable through the requirement-package chip row
   even when the optional, non-sortable table column is hidden.
-- Requirement-package chip filters use the package description as a native
-  tooltip when a description exists.
+- Requirement-package chip filters show the package purpose and scope in the
+  shared requirement-package tooltip when purpose and scope text exists.
 
 ## Column Visibility
 
@@ -771,7 +771,10 @@ improvement suggestions for each requirement as a badge.
 
 The requirements list table has an optional `requirementPackage`
 column (hidden by default) that shows linked requirement package names
-for each requirement in the current locale.
+for each requirement in the current locale. In interactive web views, hovering
+or focusing a requirement package name shows the package purpose and scope as a
+tooltip; exports and print-style outputs keep the compact package names without
+the tooltip surface.
 
 ## Contributor Guardrails
 

@@ -257,19 +257,19 @@ export function formatRequirementDetail(
           const requirementPackage =
             versionRequirementPackage.requirementPackage as
               | (typeof versionRequirementPackage.requirementPackage & {
-                  description?: string | null
                   name?: string | null
+                  purposeAndScope?: string | null
                 })
               | null
               | undefined
           return {
             requirementPackage: {
-              description: requirementPackage?.description ?? null,
               id:
                 requirementPackage?.id ??
                 versionRequirementPackage.requirementPackageId,
               name: requirementPackage?.name ?? null,
               ownerId: null,
+              purposeAndScope: requirementPackage?.purposeAndScope ?? null,
             },
           }
         },

@@ -230,6 +230,7 @@ function referenceDataFingerprint(referenceData: ImportReferenceData): string {
     requirementPackages: referenceData.requirementPackages.map(item => ({
       id: item.id,
       name: item.name,
+      purposeAndScope: item.purposeAndScope,
       updatedAt: item.updatedAt,
     })),
     priorityLevels: referenceData.priorityLevels.map(item => ({
@@ -1023,10 +1024,10 @@ export function createRequirementsImportWorkflow({
             })),
             requirementPackages: referenceData.requirementPackages.map(
               item => ({
-                description: item.description,
                 id: item.id,
                 leadDisplayName: item.leadDisplayName,
                 name: item.name,
+                purposeAndScope: item.purposeAndScope,
               }),
             ),
             priorityLevels: importPromptPriorityLevels(referenceData, locale),

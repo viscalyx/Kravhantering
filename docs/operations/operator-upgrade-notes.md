@@ -12,6 +12,14 @@ target version.
 The migration backfills requirements specifications without lifecycle status to
 `Förvaltning` (`Management`, ID `4`) before making the column mandatory.
 
+### Requirement packages need purpose and scope before upgrade
+
+The migration renames `requirement_packages.description` to
+`purpose_and_scope` and makes the field mandatory. Confirm that every
+requirement package has meaningful non-blank text before running
+`db-job migrate`; the migration fails instead of generating placeholder text
+for missing package purpose and scope.
+
 ### Responsibility assignments must have valid HSA-id values before upgrade
 
 Confirm that every live requirement-area owner, requirement-area co-author,
@@ -46,6 +54,17 @@ only for operators who mirror or validate that demo/test topology.
 
 Correct legacy requirements specifications that lack lifecycle status before
 running `db-job migrate` if `Förvaltning` is not the intended value.
+
+Review requirement packages and complete the current description field for
+every package where it is missing or blank. The target version treats that text
+as the package purpose and scope, and uses it to guide which requirements
+belong in the package.
+
+```sql
+SELECT id, name
+FROM requirement_packages
+WHERE description IS NULL OR LTRIM(RTRIM(description)) = '';
+```
 
 Confirm that every live responsibility assignment has a valid HSA-id before
 running `db-job migrate`: requirement-area owners, requirement-area

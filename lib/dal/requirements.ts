@@ -77,6 +77,7 @@ function toNum(value: unknown): number | null {
 interface RequirementListPackage {
   id: number
   name: string
+  purposeAndScope: string
 }
 
 function parseRequirementPackagesJson(
@@ -104,6 +105,8 @@ function parseRequirementPackagesJson(
     requirementPackages.push({
       id,
       name: record.name == null ? '' : String(record.name),
+      purposeAndScope:
+        record.purposeAndScope == null ? '' : String(record.purposeAndScope),
     })
   }
 
@@ -1725,7 +1728,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
             link.requirement_package_id AS requirementPackageId,
             requirementPackage.id AS packageId,
             requirementPackage.name AS packageName,
-            requirementPackage.description AS packageDescription,
+            requirementPackage.purpose_and_scope AS packagePurposeAndScope,
             NULL AS packageOwnerId,
             requirementPackage.created_at AS packageCreatedAt,
             requirementPackage.updated_at AS packageUpdatedAt
@@ -1857,10 +1860,10 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         requirementPackage: {
           id: Number(link.packageId),
           name: link.packageName == null ? null : String(link.packageName),
-          description:
-            link.packageDescription == null
+          purposeAndScope:
+            link.packagePurposeAndScope == null
               ? null
-              : String(link.packageDescription),
+              : String(link.packagePurposeAndScope),
           ownerId: toNum(link.packageOwnerId),
           createdAt: toIso(link.packageCreatedAt) ?? '',
           updatedAt: toIso(link.packageUpdatedAt) ?? '',

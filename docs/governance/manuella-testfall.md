@@ -410,7 +410,7 @@ utföra Admin-only-åtgärder.
 
 1. Logga in som `leo.pkglead`.
 1. Öppna `Kravbiblioteksförvaltning` och sök efter `AUTHZ kravpaket`.
-1. Redigera paketets beskrivning med en liten unik testtext.
+1. Redigera paketets syfte och avgränsning med en liten unik testtext.
 1. Öppna radåtgärden `Hantera medförfattare` och verifiera att paketets
    kravpaketsmedförfattare visas i en sparad tabell och kan läggas till eller
    tas bort i den separata dialogen.

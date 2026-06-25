@@ -140,8 +140,8 @@ and scrolls back to the headers
 This test confirms that the floating rail does not drift vertically while the
 page scrolls and that the conditional up-arrow returns the list to the table
 top once the header row has disappeared. It also confirms that the
-requirement-package chip filter exposes the package description through the
-native title tooltip.
+requirement-package chip filter exposes package purpose and scope through the
+shared tooltip.
 
 ### Vertical Scroll Step-by-Step Flow
 

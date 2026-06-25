@@ -236,7 +236,7 @@ sequenceDiagram
   `auth.session.expired`, `auth.session.rejected`, `auth.token.rejected`,
   `auth.mcp.token.accepted`, `auth.roles.changed`,
   `auth.csrf.rejected`, `auth.authorization.denied`,
-  `requirements.high_risk_mutation.succeeded`,
+  `requirements.sensitive_mutation.succeeded`,
   `admin.privileged_action.succeeded`,
   `access_review.created`, `access_review.item_decided`,
   `access_review.cancelled`, `access_review.completed`,
@@ -281,7 +281,7 @@ sequenceDiagram
   tokens, secrets, authorization codes, PKCE verifiers, `state`, and `nonce`
   are not emitted. Redaction breadcrumbs use the same `security-audit` channel
   and carry `breadcrumb: "detail-key-redacted"` instead of an audit `event`.
-- Requirements authorization denials and high-risk business mutations use the
+- Requirements authorization denials and sensitive business mutations use the
   same stream. Their `detail` payloads carry stable identifiers, counts, and
   action names only; free-text requirement content, motivations, and suggestion
   text are not emitted.

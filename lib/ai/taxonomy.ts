@@ -48,6 +48,7 @@ export async function loadTaxonomy(
     requirementPackages: requirementPackages.map(s => ({
       id: s.id,
       name: s.name,
+      purposeAndScope: s.purposeAndScope,
     })),
     types: types.map(t => ({ id: t.id, name: t[nameKey] })),
   }

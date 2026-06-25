@@ -3312,17 +3312,17 @@ describe('RequirementsTable', () => {
     })
   })
 
-  it('uses requirement package descriptions as filter pill tooltips', () => {
+  it('uses requirement package purpose and scope as filter pill tooltips', () => {
     const requirementPackages = [
       {
-        description: 'Krav för mobil användning.',
         id: 1,
         name: 'Mobil användning',
+        purposeAndScope: 'Krav för mobil användning.',
       },
       {
-        description: '   ',
         id: 2,
-        name: 'Tom beskrivning',
+        name: 'Tom avgränsning',
+        purposeAndScope: '   ',
       },
     ]
 
@@ -3336,12 +3336,22 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    expect(
+    fireEvent.mouseEnter(
       screen.getByRole('button', { name: 'Mobil användning' }),
-    ).toHaveAttribute('title', 'Krav för mobil användning.')
-    expect(
-      screen.getByRole('button', { name: 'Tom beskrivning' }),
-    ).not.toHaveAttribute('title')
+    )
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      'Krav för mobil användning.',
+    )
+
+    fireEvent.mouseLeave(
+      screen.getByRole('button', { name: 'Mobil användning' }),
+    )
+    fireEvent.mouseEnter(
+      screen.getByRole('button', { name: 'Tom avgränsning' }),
+    )
+
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 
   it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {
@@ -3469,7 +3479,7 @@ describe('RequirementsTable', () => {
           { id: 2, name: 'Dataplattform' },
         ],
       })
-      render(
+      const { container } = render(
         <RequirementsTable
           locale="sv"
           rows={[row]}
@@ -3477,9 +3487,10 @@ describe('RequirementsTable', () => {
         />,
       )
 
-      expect(
-        screen.getByText('Mobil anvandning, Dataplattform'),
-      ).toBeInTheDocument()
+      const cells = container.querySelectorAll('td')
+      const requirementPackageCell = cells[cells.length - 1]
+      expect(requirementPackageCell?.textContent).toContain('Mobil anvandning')
+      expect(requirementPackageCell?.textContent).toContain('Dataplattform')
     })
 
     it('renders dash when no requirement packages are linked', () => {

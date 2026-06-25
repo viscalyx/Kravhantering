@@ -41,6 +41,7 @@ import {
 import { useColumnState } from '@/components/_requirements-table/useColumnState'
 import { useFloatingRailPosition } from '@/components/_requirements-table/useFloatingRailPosition'
 import { useResizeHandles } from '@/components/_requirements-table/useResizeHandles'
+import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import StatusBadge from '@/components/StatusBadge'
 import StatusIcon from '@/components/StatusIcon'
 import { Link, useRouter } from '@/i18n/routing'
@@ -1615,25 +1616,21 @@ export default function RequirementsTable({
   const requirementPackageName = (
     requirementPackage: RequirementPackageOption,
   ) => requirementPackage.name.trim() || String(requirementPackage.id)
-  const requirementPackageDescription = (
+  const requirementPackagePurposeAndScope = (
     requirementPackage: RequirementPackageOption,
-  ) => requirementPackage.description?.trim() || undefined
-  const rowRequirementPackageLabels = (row: RequirementRow) => {
-    const rowPackages =
-      row.requirementPackages && row.requirementPackages.length > 0
-        ? row.requirementPackages
-        : (row.requirementPackageIds ?? []).map(
-            id =>
-              requirementPackages.find(
-                requirementPackage => requirementPackage.id === id,
-              ) ?? {
-                id,
-                name: String(id),
-              },
-          )
-
-    return rowPackages.map(requirementPackageName)
-  }
+  ) => requirementPackage.purposeAndScope?.trim() || undefined
+  const rowRequirementPackages = (row: RequirementRow) =>
+    row.requirementPackages && row.requirementPackages.length > 0
+      ? row.requirementPackages
+      : (row.requirementPackageIds ?? []).map(
+          id =>
+            requirementPackages.find(
+              requirementPackage => requirementPackage.id === id,
+            ) ?? {
+              id,
+              name: String(id),
+            },
+        )
   const specificationItemStatusLabel = (id: number) => {
     const s = specificationItemStatuses.find(s => s.id === id)
     return s ? getName(s) : String(id)
@@ -2506,15 +2503,32 @@ export default function RequirementsTable({
           </td>
         )
       case 'requirementPackage': {
-        const labels = rowRequirementPackageLabels(row)
-        const label = labels.join(', ')
+        const rowPackages = rowRequirementPackages(row)
 
         return (
           <td
-            className={`py-2 px-2 truncate text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
-            title={label || undefined}
+            className={`py-2 px-2 text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
           >
-            {label || '—'}
+            {rowPackages.length > 0 ? (
+              <span className="flex min-w-0 flex-wrap gap-x-1 gap-y-0.5">
+                {rowPackages.map((requirementPackage, index) => (
+                  <RequirementPackagePurposeTooltip
+                    key={requirementPackage.id}
+                    maxWidth={280}
+                    purposeAndScope={requirementPackagePurposeAndScope(
+                      requirementPackage,
+                    )}
+                  >
+                    <span className="truncate">
+                      {requirementPackageName(requirementPackage)}
+                      {index < rowPackages.length - 1 ? ',' : ''}
+                    </span>
+                  </RequirementPackagePurposeTooltip>
+                ))}
+              </span>
+            ) : (
+              '—'
+            )}
           </td>
         )
       }
@@ -3039,33 +3053,37 @@ export default function RequirementsTable({
             <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto">
               {requirementPackages.map(s => {
                 const active = (fv.requirementPackageIds ?? []).includes(s.id)
-                const description = requirementPackageDescription(s)
+                const purposeAndScope = requirementPackagePurposeAndScope(s)
                 return (
-                  <button
-                    aria-label={requirementPackageName(s)}
-                    aria-pressed={active}
-                    className={`min-h-11 min-w-11 shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-                      active
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400 hover:bg-secondary-200 dark:hover:bg-secondary-700'
-                    }`}
-                    data-requirement-package={s.id}
+                  <RequirementPackagePurposeTooltip
                     key={s.id}
-                    onClick={() => {
-                      const current = fv.requirementPackageIds ?? []
-                      const next = active
-                        ? current.filter(id => id !== s.id)
-                        : [...current, s.id]
-                      updateFilter({
-                        requirementPackageIds:
-                          next.length > 0 ? next : undefined,
-                      })
-                    }}
-                    title={description}
-                    type="button"
+                    maxWidth={280}
+                    purposeAndScope={purposeAndScope}
                   >
-                    {requirementPackageName(s)}
-                  </button>
+                    <button
+                      aria-label={requirementPackageName(s)}
+                      aria-pressed={active}
+                      className={`min-h-11 min-w-11 shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                        active
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-secondary-100 text-secondary-600 hover:bg-secondary-200 dark:bg-secondary-800 dark:text-secondary-400 dark:hover:bg-secondary-700'
+                      }`}
+                      data-requirement-package={s.id}
+                      onClick={() => {
+                        const current = fv.requirementPackageIds ?? []
+                        const next = active
+                          ? current.filter(id => id !== s.id)
+                          : [...current, s.id]
+                        updateFilter({
+                          requirementPackageIds:
+                            next.length > 0 ? next : undefined,
+                        })
+                      }}
+                      type="button"
+                    >
+                      {requirementPackageName(s)}
+                    </button>
+                  </RequirementPackagePurposeTooltip>
                 )
               })}
             </div>

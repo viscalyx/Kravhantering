@@ -91,7 +91,7 @@ interface TestAnswer {
     description: string | null
     direct: boolean
     id: number
-    sourcePackages: Array<{ id: number; name: string }>
+    sourcePackages: Array<{ id: number; name: string; purposeAndScope: string }>
     uniqueId: string
   }>
   packageIds: number[]
@@ -123,8 +123,18 @@ const sampleArea = {
   name: 'Security',
   prefix: 'SEC',
 }
-const samplePackage = { id: 10, isArchived: false, name: 'Baseline' }
-const secondPackage = { id: 20, isArchived: false, name: 'Enhanced' }
+const samplePackage = {
+  id: 10,
+  isArchived: false,
+  name: 'Baseline',
+  purposeAndScope: 'Baseline security requirements.',
+}
+const secondPackage = {
+  id: 20,
+  isArchived: false,
+  name: 'Enhanced',
+  purposeAndScope: 'Enhanced security requirements.',
+}
 const sampleQuestion: TestQuestion = {
   answers: [],
   areaId: sampleArea.id,
@@ -154,7 +164,13 @@ const sampleAnswer: TestAnswer = {
       description: 'Use strong authentication',
       direct: true,
       id: 301,
-      sourcePackages: [{ id: samplePackage.id, name: samplePackage.name }],
+      sourcePackages: [
+        {
+          id: samplePackage.id,
+          name: samplePackage.name,
+          purposeAndScope: samplePackage.purposeAndScope,
+        },
+      ],
       uniqueId: 'SEC-001',
     },
   ],
@@ -1464,14 +1480,26 @@ describe('RequirementSelectionQuestionsClient', () => {
           description: 'Use strong authentication',
           direct: true,
           id: 301,
-          sourcePackages: [{ id: samplePackage.id, name: samplePackage.name }],
+          sourcePackages: [
+            {
+              id: samplePackage.id,
+              name: samplePackage.name,
+              purposeAndScope: samplePackage.purposeAndScope,
+            },
+          ],
           uniqueId: 'SEC-001',
         },
         {
           description: 'Require privileged access review',
           direct: false,
           id: 302,
-          sourcePackages: [{ id: secondPackage.id, name: secondPackage.name }],
+          sourcePackages: [
+            {
+              id: secondPackage.id,
+              name: secondPackage.name,
+              purposeAndScope: secondPackage.purposeAndScope,
+            },
+          ],
           uniqueId: 'SEC-002',
         },
         {

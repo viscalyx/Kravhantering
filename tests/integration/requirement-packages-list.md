@@ -3,12 +3,13 @@
 > Test flow documentation for
 > [`requirement-packages-list.spec.ts`](./requirement-packages-list.spec.ts)
 
-This suite verifies that the requirement packages list supports name or
-description filtering, shows the no-results state for unmatched searches, clears
-the search back to the full list, and keeps the floating `Nytt kravpaket` create
-button anchored to the right side of the package list rather than to the search
-field. It also checks that package co-authors use the separate row-action modal
-and that package lead changes use the separate edit-modal flow.
+This suite verifies that the requirement packages list supports filtering by
+name or purpose and scope, shows the no-results state for unmatched searches,
+clears the search back to the full list, and keeps the floating `Nytt
+kravpaket` create button anchored to the right side of the package list rather
+than to the search field. It also checks that package co-authors use the
+separate row-action modal and that package lead changes use the separate
+edit-modal flow.
 
 ## Overview Flowchart
 
@@ -23,8 +24,8 @@ flowchart TD
     F --> H[Filter by Mobil]
     G --> H
     H --> I[Only matching package name remains]
-    I --> J[Filter by description text]
-    J --> K[Only matching package description remains]
+    I --> J[Filter by purpose and scope text]
+    J --> K[Only matching package purpose and scope remains]
     K --> L[Filter by missing package text]
     L --> M[No-results state appears]
     M --> N[Clear search]
@@ -51,14 +52,14 @@ flowchart TD
 - No fixed waits are used; all assertions rely on Playwright auto-retrying
   locators or direct measurements after visible elements are present.
 
-## filters the table by package name or description and clears the search
+## filters the table by package name or purpose and scope and clears the search
 
 ### Purpose
 
 Confirms that users can narrow the requirement packages list by package name or
-description, recover from an empty result, and clear the filter. The desktop
-placement check protects the expected list-edge position of the floating create
-action.
+purpose and scope, recover from an empty result, and clear the filter. The
+desktop placement check protects the expected list-edge position of the floating
+create action.
 
 ### Step-by-Step Flow
 
@@ -69,7 +70,7 @@ action.
 1. Assert both `Mobil användning` and `Single Sign-On` are present.
 1. On desktop, assert `Nytt kravpaket` is positioned at the right edge of the
    package list.
-1. Type `Mobil` into `Filtrera på namn eller beskrivning`.
+1. Type `Mobil` into `Filtrera på namn eller syfte och avgränsning`.
 1. Assert `Mobil användning` remains and `Single Sign-On` is hidden.
 1. Type `gemensamma inloggning`.
 1. Assert `Single Sign-On` remains and `Mobil användning` is hidden.
@@ -113,7 +114,7 @@ sequenceDiagram
     Note over P: ✓ Matching row remains
     Note over P: ✓ Non-matching row is hidden
     U->>F: Fill "gemensamma inloggning"
-    F->>P: Apply package-description search
+    F->>P: Apply package-purpose-and-scope search
     Note over P: ✓ Matching row remains
     Note over P: ✓ Non-matching row is hidden
     U->>F: Fill missing package text
@@ -141,7 +142,7 @@ sequenceDiagram
 flowchart LR
     A[Filter text] --> B{Package name matches?}
     B -- Yes --> C[Show row]
-    B -- No --> D{Package description matches?}
+    B -- No --> D{Package purpose and scope matches?}
     D -- Yes --> C
     D -- No --> E[Hide row]
     E --> F{Any visible rows?}

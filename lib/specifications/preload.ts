@@ -264,9 +264,9 @@ export async function loadRequirementsSpecificationDetailInitialData({
     ),
     capture<RequirementPackageOption[]>('requirement packages', [], async () =>
       (await listRequirementPackages(db)).map(pkg => ({
-        description: pkg.description,
         id: pkg.id,
         name: pkg.name,
+        purposeAndScope: pkg.purposeAndScope,
       })),
     ),
     capture<SpecificationNeedsReference[]>(

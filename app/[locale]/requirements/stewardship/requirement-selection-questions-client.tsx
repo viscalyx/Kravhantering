@@ -32,6 +32,7 @@ import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { modalResizableTextareaResizeClassName } from '@/components/modal-textarea-class'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
+import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import StatusBadge from '@/components/StatusBadge'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -59,11 +60,13 @@ interface RequirementPackage {
   id: number
   isArchived: boolean
   name: string
+  purposeAndScope: string
 }
 
 interface MatchedRequirementSourcePackage {
   id: number
   name: string
+  purposeAndScope: string
 }
 
 interface MatchedRequirement {
@@ -772,6 +775,7 @@ function CompactRequirementDetail({
         label,
         markerContext: sectionContext,
         markerValue: label,
+        purposeAndScope: requirementPackage.purposeAndScope,
       }
     }) ?? []
 
@@ -2958,7 +2962,12 @@ export default function RequirementSelectionQuestionsClient() {
                                   }
                                   type="checkbox"
                                 />
-                                <span>{pkg.name}</span>
+                                <RequirementPackagePurposeTooltip
+                                  maxWidth={320}
+                                  purposeAndScope={pkg.purposeAndScope}
+                                >
+                                  <span>{pkg.name}</span>
+                                </RequirementPackagePurposeTooltip>
                               </label>
                             )
                           })
@@ -2979,7 +2988,12 @@ export default function RequirementSelectionQuestionsClient() {
                         className="inline-flex min-h-7 max-w-full items-center gap-1 rounded-full border border-secondary-200 bg-white px-2 text-xs text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
                         key={pkg.id}
                       >
-                        <span className="truncate">{pkg.name}</span>
+                        <RequirementPackagePurposeTooltip
+                          maxWidth={280}
+                          purposeAndScope={pkg.purposeAndScope}
+                        >
+                          <span className="truncate">{pkg.name}</span>
+                        </RequirementPackagePurposeTooltip>
                         <button
                           aria-label={`${copy.removePackage} ${pkg.name}`}
                           className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-secondary-300 dark:hover:bg-secondary-700 dark:hover:text-secondary-50"
@@ -3225,12 +3239,15 @@ export default function RequirementSelectionQuestionsClient() {
                                 </span>
                               ) : null}
                               {requirement.sourcePackages.map(pkg => (
-                                <span
-                                  className="inline-flex rounded-full border border-secondary-200 bg-white px-2 py-0.5 text-[0.68rem] font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
+                                <RequirementPackagePurposeTooltip
                                   key={pkg.id}
+                                  maxWidth={280}
+                                  purposeAndScope={pkg.purposeAndScope}
                                 >
-                                  {pkg.name}
-                                </span>
+                                  <span className="inline-flex rounded-full border border-secondary-200 bg-white px-2 py-0.5 text-[0.68rem] font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                    {pkg.name}
+                                  </span>
+                                </RequirementPackagePurposeTooltip>
                               ))}
                             </span>
                           </span>
@@ -4420,28 +4437,39 @@ export default function RequirementSelectionQuestionsClient() {
                                                                     filter,
                                                                   )
                                                                 return (
-                                                                  <button
-                                                                    aria-label={`${copy.filterRequirementsByPackage} ${pkg.name}`}
-                                                                    aria-pressed={
-                                                                      active
-                                                                    }
-                                                                    className={`${answerSourcePillClassName} ${
-                                                                      active
-                                                                        ? 'border-primary-600 bg-primary-100 text-primary-950 shadow-sm ring-1 ring-primary-300 dark:border-primary-300 dark:bg-primary-900/70 dark:text-primary-50 dark:ring-primary-700/70'
-                                                                        : 'border-secondary-200 bg-secondary-50 text-secondary-700 hover:border-secondary-300 hover:bg-secondary-100 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200 dark:hover:border-secondary-500 dark:hover:bg-secondary-700'
-                                                                    }`}
+                                                                  <RequirementPackagePurposeTooltip
                                                                     key={pkg.id}
-                                                                    onClick={() =>
-                                                                      toggleSourceFilter(
-                                                                        filter,
-                                                                      )
+                                                                    maxWidth={
+                                                                      280
                                                                     }
-                                                                    type="button"
+                                                                    purposeAndScope={
+                                                                      pkg.purposeAndScope
+                                                                    }
                                                                   >
-                                                                    <span className="truncate">
-                                                                      {pkg.name}
-                                                                    </span>
-                                                                  </button>
+                                                                    <button
+                                                                      aria-label={`${copy.filterRequirementsByPackage} ${pkg.name}`}
+                                                                      aria-pressed={
+                                                                        active
+                                                                      }
+                                                                      className={`${answerSourcePillClassName} ${
+                                                                        active
+                                                                          ? 'border-primary-600 bg-primary-100 text-primary-950 shadow-sm ring-1 ring-primary-300 dark:border-primary-300 dark:bg-primary-900/70 dark:text-primary-50 dark:ring-primary-700/70'
+                                                                          : 'border-secondary-200 bg-secondary-50 text-secondary-700 hover:border-secondary-300 hover:bg-secondary-100 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200 dark:hover:border-secondary-500 dark:hover:bg-secondary-700'
+                                                                      }`}
+                                                                      onClick={() =>
+                                                                        toggleSourceFilter(
+                                                                          filter,
+                                                                        )
+                                                                      }
+                                                                      type="button"
+                                                                    >
+                                                                      <span className="truncate">
+                                                                        {
+                                                                          pkg.name
+                                                                        }
+                                                                      </span>
+                                                                    </button>
+                                                                  </RequirementPackagePurposeTooltip>
                                                                 )
                                                               },
                                                             )}
@@ -4546,16 +4574,23 @@ export default function RequirementSelectionQuestionsClient() {
                                                                       ) : null}
                                                                       {requirement.sourcePackages.map(
                                                                         pkg => (
-                                                                          <span
-                                                                            className="inline-flex rounded-full border border-secondary-200 bg-white px-2 py-0.5 text-[0.68rem] font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
+                                                                          <RequirementPackagePurposeTooltip
                                                                             key={
                                                                               pkg.id
                                                                             }
-                                                                          >
-                                                                            {
-                                                                              pkg.name
+                                                                            maxWidth={
+                                                                              280
                                                                             }
-                                                                          </span>
+                                                                            purposeAndScope={
+                                                                              pkg.purposeAndScope
+                                                                            }
+                                                                          >
+                                                                            <span className="inline-flex rounded-full border border-secondary-200 bg-white px-2 py-0.5 text-[0.68rem] font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                                                              {
+                                                                                pkg.name
+                                                                              }
+                                                                            </span>
+                                                                          </RequirementPackagePurposeTooltip>
                                                                         ),
                                                                       )}
                                                                     </div>

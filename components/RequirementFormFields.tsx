@@ -15,6 +15,7 @@ import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import FormModal from '@/components/FormModal'
 import QualityCharacteristicSelectOptions from '@/components/QualityCharacteristicSelectOptions'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
+import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import type {
   NormReferenceOption,
   TaxonomyOption,
@@ -562,26 +563,30 @@ export default function RequirementFormFields({
       {helpPanel('requirementPackageHelp', fid('requirementPackage'))}
       <div className={associationListClassName}>
         {requirementPackages.map(s => (
-          <label
-            className="flex items-center gap-2 text-sm cursor-pointer"
+          <RequirementPackagePurposeTooltip
             key={s.id}
+            maxWidth={320}
+            purposeAndScope={s.purposeAndScope}
+            wrapperClassName="flex min-w-0"
           >
-            <input
-              checked={values.requirementPackageIds.includes(s.id)}
-              className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-              onChange={e => {
-                const checked = e.target.checked
-                onChange({
-                  ...values,
-                  requirementPackageIds: checked
-                    ? [...values.requirementPackageIds, s.id]
-                    : values.requirementPackageIds.filter(id => id !== s.id),
-                })
-              }}
-              type="checkbox"
-            />
-            {s.name}
-          </label>
+            <label className="flex min-w-0 cursor-pointer items-center gap-2 text-sm">
+              <input
+                checked={values.requirementPackageIds.includes(s.id)}
+                className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                onChange={e => {
+                  const checked = e.target.checked
+                  onChange({
+                    ...values,
+                    requirementPackageIds: checked
+                      ? [...values.requirementPackageIds, s.id]
+                      : values.requirementPackageIds.filter(id => id !== s.id),
+                  })
+                }}
+                type="checkbox"
+              />
+              <span className="min-w-0 wrap-break-word">{s.name}</span>
+            </label>
+          </RequirementPackagePurposeTooltip>
         ))}
       </div>
     </fieldset>
@@ -655,25 +660,32 @@ export default function RequirementFormFields({
               )}
               <div className="mt-2 space-y-2">
                 {requirementPackages.map(s => (
-                  <label className="flex items-center gap-2 text-sm" key={s.id}>
-                    <input
-                      checked={values.requirementPackageIds.includes(s.id)}
-                      className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                      onChange={e => {
-                        const checked = e.target.checked
-                        onChange({
-                          ...values,
-                          requirementPackageIds: checked
-                            ? [...values.requirementPackageIds, s.id]
-                            : values.requirementPackageIds.filter(
-                                id => id !== s.id,
-                              ),
-                        })
-                      }}
-                      type="checkbox"
-                    />
-                    {s.name}
-                  </label>
+                  <RequirementPackagePurposeTooltip
+                    key={s.id}
+                    maxWidth={360}
+                    purposeAndScope={s.purposeAndScope}
+                    wrapperClassName="flex min-w-0"
+                  >
+                    <label className="flex min-w-0 items-center gap-2 text-sm">
+                      <input
+                        checked={values.requirementPackageIds.includes(s.id)}
+                        className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                        onChange={e => {
+                          const checked = e.target.checked
+                          onChange({
+                            ...values,
+                            requirementPackageIds: checked
+                              ? [...values.requirementPackageIds, s.id]
+                              : values.requirementPackageIds.filter(
+                                  id => id !== s.id,
+                                ),
+                          })
+                        }}
+                        type="checkbox"
+                      />
+                      <span className="min-w-0 wrap-break-word">{s.name}</span>
+                    </label>
+                  </RequirementPackagePurposeTooltip>
                 ))}
               </div>
             </fieldset>

@@ -510,6 +510,7 @@ export default function RequirementDetailClient({
           label: requirementPackageLabel,
           markerContext: buildDetailSectionContext('requirementPackages'),
           markerValue: requirementPackageMarkerValue,
+          purposeAndScope: requirementPackage.purposeAndScope,
         }
       },
     ) ?? []

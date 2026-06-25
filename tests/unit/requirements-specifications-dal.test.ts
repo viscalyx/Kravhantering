@@ -895,7 +895,9 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         nameSv: 'Hög',
         sortOrder: 3,
       },
-      requirementPackages: [{ id: 13, name: 'Inloggning' }],
+      requirementPackages: [
+        { id: 13, name: 'Inloggning', purposeAndScope: null },
+      ],
       uniqueId: 'LOK-001',
       updatedAt: '2026-04-21T10:00:00.000Z',
       verificationMethod: 'Manual test',

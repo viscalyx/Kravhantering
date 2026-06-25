@@ -12144,7 +12144,7 @@ const SEED_DATA = {
     columns: [
       'id',
       'name',
-      'description',
+      'purpose_and_scope',
       'lead_hsa_id',
       'is_archived',
       'created_at',

@@ -32,12 +32,13 @@ import NormReferenceModal, {
 } from '@/components/NormReferenceModal'
 import QualityCharacteristicSelectOptions from '@/components/QualityCharacteristicSelectOptions'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
+import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import { downloadBlob } from '@/lib/browser-download'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import {
-  REQUIREMENTS_IMPORT_SCHEMA_VERSION,
   type ImportRequirementsPayload,
+  REQUIREMENTS_IMPORT_SCHEMA_VERSION,
   requirementsImportPayloadSchema,
 } from '@/lib/requirements/import-schema'
 import { createUtf8BomBlob } from '@/lib/text-export'
@@ -81,6 +82,7 @@ interface QualityCharacteristicOption extends TaxonomyOption {
 interface RequirementPackageOption {
   id: number
   name: string
+  purposeAndScope: string
 }
 
 interface NormReferenceOption {
@@ -1585,12 +1587,14 @@ export default function RequirementsImportDialog({
     associationPicker?.kind === 'requirementPackages'
       ? taxonomy.requirementPackages.map(option => ({
           id: option.id,
-          searchText: `${option.id} ${option.name}`,
+          purposeAndScope: option.purposeAndScope,
+          searchText: `${option.id} ${option.name} ${option.purposeAndScope}`,
           subtitle: null,
           title: option.name,
         }))
       : normReferences.map(option => ({
           id: option.id,
+          purposeAndScope: null,
           searchText: `${option.id} ${option.normReferenceId} ${option.name}`,
           subtitle: option.normReferenceId,
           title: option.name,
@@ -2215,8 +2219,8 @@ export default function RequirementsImportDialog({
                                     <RequirementSummaryText
                                       allowToggle={!isExpanded}
                                       collapseLabel={text.showLess}
-                                      expandLabel={text.showMore}
                                       expanded={!isExpanded && summaryExpanded}
+                                      expandLabel={text.showMore}
                                       onRowToggle={() =>
                                         toggleRowExpanded(row.reviewRowId)
                                       }
@@ -2568,15 +2572,22 @@ export default function RequirementsImportDialog({
                                                     key={`${row.reviewRowId}-package-${packageId}`}
                                                   >
                                                     {requirementPackage ? (
-                                                      <p
-                                                        className={
-                                                          resolvedAssociationLabelClass
+                                                      <RequirementPackagePurposeTooltip
+                                                        maxWidth={320}
+                                                        purposeAndScope={
+                                                          requirementPackage.purposeAndScope
                                                         }
                                                       >
-                                                        {
-                                                          requirementPackage.name
-                                                        }
-                                                      </p>
+                                                        <p
+                                                          className={
+                                                            resolvedAssociationLabelClass
+                                                          }
+                                                        >
+                                                          {
+                                                            requirementPackage.name
+                                                          }
+                                                        </p>
+                                                      </RequirementPackagePurposeTooltip>
                                                     ) : (
                                                       <>
                                                         <label
@@ -2999,9 +3010,14 @@ export default function RequirementsImportDialog({
                             type="checkbox"
                           />
                           <span className="min-w-0">
-                            <span className="block wrap-break-word font-medium">
-                              {option.title}
-                            </span>
+                            <RequirementPackagePurposeTooltip
+                              maxWidth={360}
+                              purposeAndScope={option.purposeAndScope}
+                            >
+                              <span className="block wrap-break-word font-medium">
+                                {option.title}
+                              </span>
+                            </RequirementPackagePurposeTooltip>
                             {option.subtitle ? (
                               <span className="block wrap-break-word text-xs text-secondary-600 dark:text-secondary-300">
                                 {option.subtitle}

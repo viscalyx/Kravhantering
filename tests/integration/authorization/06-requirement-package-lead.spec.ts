@@ -28,7 +28,7 @@ test('AUTH-10/AUTH-11: requirement package leads can update packages but not arc
 }, testInfo) => {
   referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
   const packageLead = await newRoleContext(testInfo, 'packageLead')
-  const updatedDescription = `Updated by package lead ${Date.now()}`
+  const updatedPurposeAndScope = `Updated by package lead ${Date.now()}`
 
   try {
     await page.goto('/sv/requirements/stewardship?tab=packages')
@@ -36,7 +36,7 @@ test('AUTH-10/AUTH-11: requirement package leads can update packages but not arc
       page.getByRole('heading', { level: 1, name: 'Kravpaket' }),
     ).toBeVisible()
     const filter = page.getByRole('textbox', {
-      name: 'Filtrera på namn eller beskrivning',
+      name: 'Filtrera på namn eller syfte och avgränsning',
     })
     await filter.fill(fixture.packageName)
     const row = page.getByRole('row', { name: new RegExp(fixture.packageName) })
@@ -51,20 +51,20 @@ test('AUTH-10/AUTH-11: requirement package leads can update packages but not arc
       }),
     ).toHaveValue(HSA.packageLead)
     await dialog
-      .getByRole('textbox', { name: 'Beskrivning' })
-      .fill(updatedDescription)
+      .getByRole('textbox', { name: 'Syfte och avgränsning' })
+      .fill(updatedPurposeAndScope)
     await dialog.getByRole('button', { name: 'Spara' }).click()
     await expect(dialog).toBeHidden()
-    await expect(page.getByText(updatedDescription)).toBeVisible()
+    await expect(page.getByText(updatedPurposeAndScope)).toBeVisible()
 
     await page.reload()
-    await expect(page.getByText(updatedDescription)).toBeVisible()
+    await expect(page.getByText(updatedPurposeAndScope)).toBeVisible()
 
     const updateResponse = await packageLead.put(
       `/api/requirement-packages/${fixture.packageId}`,
       {
         data: {
-          description: updatedDescription,
+          purposeAndScope: updatedPurposeAndScope,
         },
       },
     )

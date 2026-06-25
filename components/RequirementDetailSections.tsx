@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 export interface RequirementDetailMetadataItem {
@@ -15,6 +16,7 @@ export interface RequirementDetailChipItem {
   markerContext?: string
   markerName?: string
   markerValue?: string
+  purposeAndScope?: string | null
   title?: string
 }
 
@@ -178,7 +180,6 @@ export default function RequirementDetailSections({
           <ul className="flex flex-wrap gap-2">
             {requirementPackages.map(requirementPackage => (
               <li
-                className="rounded-full bg-secondary-100 px-2.5 py-1 text-xs font-medium dark:bg-secondary-800"
                 key={requirementPackage.id}
                 {...getMarkerProps(
                   requirementPackage.markerContext ?? developerModeContext,
@@ -188,7 +189,14 @@ export default function RequirementDetailSections({
                     String(requirementPackage.id),
                 )}
               >
-                {requirementPackage.label}
+                <RequirementPackagePurposeTooltip
+                  maxWidth={320}
+                  purposeAndScope={requirementPackage.purposeAndScope}
+                >
+                  <span className="rounded-full bg-secondary-100 px-2.5 py-1 text-xs font-medium dark:bg-secondary-800">
+                    {requirementPackage.label}
+                  </span>
+                </RequirementPackagePurposeTooltip>
               </li>
             ))}
           </ul>

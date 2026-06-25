@@ -488,8 +488,8 @@ export async function createAuthorizationFixture(
     })
     const packageResponse = await admin.post('/api/requirement-packages', {
       data: {
-        description: 'Playwright fixture for package authorization.',
         name: packageName,
+        purposeAndScope: 'Playwright fixture for package authorization.',
       },
     })
     await expectStatus(packageResponse, 201, 'create package fixture')

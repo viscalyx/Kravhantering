@@ -962,7 +962,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'nytt-krav-tomt',
         'Skapa krav — tomt formulär',
-        'Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, kravområde, kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser och kravpaket.',
+        'Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, kravområde, kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser och kravpaket. När kravpaket visas i den interaktiva vyn kan du hovra över namnet för att läsa kravpaketets syfte och avgränsning.',
       )
     })
 

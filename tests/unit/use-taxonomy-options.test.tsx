@@ -32,7 +32,9 @@ const sampleAreas = [
 ]
 const sampleCategories = [{ id: 1, nameSv: 'Kat', nameEn: 'Cat' }]
 const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
-const samplePackages = [{ id: 1, name: 'Package' }]
+const samplePackages = [
+  { id: 1, name: 'Package', purposeAndScope: 'Package selection guidance' },
+]
 const sampleNormRefs = [
   { id: 1, isArchived: false, name: 'NR-1', normReferenceId: 'NR001' },
 ]

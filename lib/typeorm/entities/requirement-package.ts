@@ -3,12 +3,12 @@ import type { RequirementResponsibilityPersonEntity } from '@/lib/typeorm/entiti
 
 export interface RequirementPackageEntity {
   createdAt: Date
-  description: string | null
   id: number
   isArchived: boolean
   lead: RequirementResponsibilityPersonEntity
   leadHsaId: string
   name: string
+  purposeAndScope: string
   updatedAt: Date
 }
 
@@ -24,11 +24,10 @@ export const requirementPackageEntity =
         generated: 'increment',
       },
       name: { name: 'name', type: 'nvarchar', length: 'MAX' },
-      description: {
-        name: 'description',
+      purposeAndScope: {
+        name: 'purpose_and_scope',
         type: 'nvarchar',
         length: 'MAX',
-        nullable: true,
       },
       leadHsaId: { name: 'lead_hsa_id', type: 'nvarchar', length: 31 },
       isArchived: { name: 'is_archived', type: 'bit', default: false },

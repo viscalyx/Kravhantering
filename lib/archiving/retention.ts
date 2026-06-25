@@ -1535,7 +1535,7 @@ async function exportSpecification(
           specification_item.id AS specificationItemId,
           pkg.id,
           pkg.name,
-          pkg.description
+          pkg.purpose_and_scope AS purposeAndScope
         FROM requirements_specification_items specification_item
         INNER JOIN requirement_version_requirement_packages link
           ON link.requirement_version_id = specification_item.requirement_version_id
@@ -1631,7 +1631,7 @@ async function exportSpecification(
           local_requirement.id AS localRequirementId,
           pkg.id,
           pkg.name,
-          pkg.description
+          pkg.purpose_and_scope AS purposeAndScope
         FROM specification_local_requirements local_requirement
         INNER JOIN specification_local_requirement_requirement_packages link
           ON link.specification_local_requirement_id = local_requirement.id

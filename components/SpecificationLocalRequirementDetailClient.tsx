@@ -50,6 +50,7 @@ interface SpecificationLocalRequirementDetail {
   requirementPackages: {
     id: number
     name: string | null
+    purposeAndScope: string | null
   }[]
   requirementType: { id: number; nameEn: string; nameSv: string } | null
   requiresTesting: boolean
@@ -1021,6 +1022,7 @@ export default function SpecificationLocalRequirementDetailClient({
         label,
         markerContext: buildDetailSectionContext('requirementPackages'),
         markerValue: label,
+        purposeAndScope: requirementPackage.purposeAndScope,
       }
     },
   )

@@ -110,7 +110,7 @@ följer en översikt av varje egenskap och hur den stödjer kravets livscykel.
 | **Prioritet** | Anger hur viktigt, angeläget eller kritiskt kravet är i förhållande till verksamhetens mål, nyttor, risker och intressenters behov. Prioritet anges med den fasta P1-P5-skalan och stödjer granskning, uppföljning och planering. |
 | **Verifierbar** | Anger om kravet kan testas. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravunderlag där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning. |
 | **Verifieringsmetod** | Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravunderlag där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang. |
-| **Kravpaket** | Samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning. Varje kravpaket har en ägare som ansvarar för kraven inom grupperingen. Kopplingen hjälper till att avgränsa kravunderlag och filtrera krav efter relevanta grupperingar. |
+| **Kravpaket** | Samlar krav utifrån ett gemensamt syfte och en tydlig avgränsning, till exempel mobil användning, datamigrering, integration med andra system eller katastrofåterställning. Kravpaketets syfte och avgränsning styr vilka krav som bör ingå och visas som stödtext när du hovrar över kravpaketets namn i den interaktiva vyn. Varje kravpaket har en kravpaketsansvarig som håller paketet begripligt och användbart som urvalsgrund. |
 | **Normreferenser** | Kopplar kravet till externa standarder, lagar eller föreskrifter. Dessa kopplingar stödjer efterlevnadsrevision och gör det möjligt att spåra varje krav tillbaka till sitt rättsliga eller normativa ursprung. |
 | **Kravversionsstatus** | Visar aktuell kravversionsstatus — Utkast, Granskning, Publicerad eller Arkiverad. Statusen hanteras automatiskt genom arbetsflödesåtgärder och styr vilka operationer som är tillgängliga. Se avsnitten Visuell processöversikt och Kravets process nedan för detaljer. |
 <!-- markdownlint-enable MD013 -->
@@ -153,7 +153,8 @@ det tillfället. Användbara för revision och spårbarhet.
 Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret
 innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier,
 kravområde, kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod,
-normreferenser och kravpaket.
+normreferenser och kravpaket. När kravpaket visas i den interaktiva vyn kan du
+hovra över namnet för att läsa kravpaketets syfte och avgränsning.
 
 ![Skapa krav — tomt formulär](images/013-nytt-krav-tomt.png)
 

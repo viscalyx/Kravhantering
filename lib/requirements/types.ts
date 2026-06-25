@@ -5,10 +5,10 @@ export interface RequirementLocalizedEntity {
 }
 
 export interface RequirementPackageSummary {
-  description?: string | null
   id: number
   name: string | null
   ownerId?: number | null
+  purposeAndScope?: string | null
 }
 
 export interface RequirementVersionRequirementPackage {

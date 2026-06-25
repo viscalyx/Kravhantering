@@ -65,6 +65,12 @@ Deferred from this contract:
   and focused unit/UI tests, but their useful assertions are state-machine,
   duplicate, cleanup, and filter-calculation behavior rather than broad fuzzing
   in this first contract slice.
+- Requirement import preview/execute routes and the authenticated import schema
+  and AI-prompt routes remain outside the OpenAPI/Schemathesis v1 contract.
+  They accept large user-authored JSON documents, use workflow-specific
+  stateless preview tokens, and are covered by strict schema/unit tests,
+  secure-route coverage, authorization policies, and manual workflow cases
+  rather than generated fuzzing in this contract slice.
 - Co-author assignment management routes for requirement areas, requirements
   specifications, and requirement packages remain outside the
   OpenAPI/Schemathesis v1 contract. They are same-origin editing helpers backed

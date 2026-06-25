@@ -89,6 +89,19 @@ function extractTableColumns(table: string): Set<string> {
       columns.add(colMatch[1])
     }
   }
+
+  // Migration 0039 renames the package description column to the current
+  // purpose/scope field. Keep this narrow so DOWN migration rename statements
+  // are not mistaken for the final schema state in the offline parser.
+  if (
+    table === 'requirement_packages' &&
+    migrationSource.includes(
+      "EXEC sp_rename N'requirement_packages.description', N'purpose_and_scope', N'COLUMN'",
+    )
+  ) {
+    columns.add('purpose_and_scope')
+  }
+
   return columns
 }
 

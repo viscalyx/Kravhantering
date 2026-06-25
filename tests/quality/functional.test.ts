@@ -1108,7 +1108,7 @@ async function ensureResponsibilityPerson(
 
 async function createRequirementPackage(
   target: SqlServerDatabase,
-  overrides: { description?: string; name?: string } = {},
+  overrides: { name?: string; purposeAndScope?: string } = {},
 ): Promise<{ id: number }> {
   const now = new Date()
   const leadHsaId = 'SE5560000001-johlju'
@@ -1116,7 +1116,7 @@ async function createRequirementPackage(
   const rows = (await target.query(
     `INSERT INTO requirement_packages (
         name,
-        description,
+        purpose_and_scope,
         lead_hsa_id,
         created_at,
         updated_at
@@ -1125,7 +1125,7 @@ async function createRequirementPackage(
        VALUES (@0, @1, @2, @3, @3)`,
     [
       overrides.name ?? 'Säkerhetspaket',
-      overrides.description ?? 'Security package',
+      overrides.purposeAndScope ?? 'Security package purpose and scope.',
       leadHsaId,
       now,
     ],
@@ -1470,10 +1470,11 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       expect.objectContaining({
         id: published.requirementId,
         sourcePackages: [
-          {
+          expect.objectContaining({
             id: requirementPackage.id,
             name: 'Lifecycle package',
-          },
+            purposeAndScope: 'Security package purpose and scope.',
+          }),
         ],
         uniqueId: published.uniqueId,
       }),

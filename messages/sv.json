@@ -1089,12 +1089,8 @@
     "nameSvHelp": "Ange kravpaketets svenska namn.",
     "nameEnLabel": "Namn (engelska)",
     "nameEnHelp": "Ange kravpaketets engelska namn.",
-    "description": "Beskrivning",
-    "descriptionHelp": "Beskriv vid behov vilken gruppering kravpaketet avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
-    "descriptionSvLabel": "Beskrivning (svenska)",
-    "descriptionSvHelp": "Beskriv vid behov kravpaketet på svenska så att användare förstår vilken gruppering det avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
-    "descriptionEnLabel": "Beskrivning (engelska)",
-    "descriptionEnHelp": "Beskriv vid behov kravpaketet på engelska så att användare förstår vilken gruppering det avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
+    "purposeAndScope": "Syfte och avgränsning",
+    "purposeAndScopeHelp": "Ange vilket användningsområde, scenario eller leveransbehov kravpaketet stödjer, vad det håller samman och vilka slags krav som bör ingå. Ange också vad som inte ska ingå om gränsen kan missförstås. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "lead": "Kravpaketsansvarig",
     "leadDisplayName": "Kravpaketsansvarigs namn",
     "leadDisplayNameHelp": "Ange visningsnamnet för den person som ansvarar för kravpaketet.",
@@ -1144,7 +1140,7 @@
     "status": "Status",
     "emptyState": "Inga kravpaket ännu. Skapa ditt första kravpaket.",
     "filterByName": "Filtrera på namn eller beskrivning",
-    "filterByNamePlaceholder": "Sök namn eller beskrivning på kravpaket"
+    "filterByNamePlaceholder": "Sök namn eller syfte och avgränsning på kravpaket"
   },
   "requirementCategoryAdmin": {
     "description": "Anger vilket perspektiv ett krav klassificeras med. Listan är skrivskyddad.",

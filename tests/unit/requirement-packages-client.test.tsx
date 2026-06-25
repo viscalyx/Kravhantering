@@ -69,7 +69,6 @@ const hsaIdPrefixPayload = {
 
 const sampleRequirementPackages = [
   {
-    description: 'Requirements for mobile access and responsive flows.',
     id: 1,
     isArchived: false,
     leadDisplayName: 'Anna Owner',
@@ -78,11 +77,11 @@ const sampleRequirementPackages = [
     linkedRequirementCount: 0,
     name: 'Mobile use',
     permissions: { canManageAssignments: true },
+    purposeAndScope: 'Requirements for mobile access and responsive flows.',
   },
 ]
 
 const additionalRequirementPackage = {
-  description: 'Requirements for shared API integrations.',
   id: 2,
   isArchived: false,
   leadDisplayName: 'Sara Owner',
@@ -91,10 +90,15 @@ const additionalRequirementPackage = {
   linkedRequirementCount: 3,
   name: 'API use',
   permissions: { canManageAssignments: true },
+  purposeAndScope: 'Requirements for shared API integrations.',
 }
 
 const requirementPackageNameInput = () =>
   screen.getByRole('textbox', { name: /requirementPackage\.name/ })
+const requirementPackagePurposeAndScopeInput = () =>
+  screen.getByRole('textbox', {
+    name: /requirementPackage\.purposeAndScope/,
+  })
 const requirementPackageLeadHsaIdInput = () =>
   screen.getByRole('textbox', { name: /requirementPackage\.leadHsaId/ })
 
@@ -220,14 +224,14 @@ describe('RequirementPackagesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
-    const descriptionCell = screen
+    const purposeAndScopeCell = screen
       .getByText('Requirements for mobile access and responsive flows.')
       .closest('td')
 
-    expect(descriptionCell).toBeInTheDocument()
-    expect(descriptionCell).toHaveClass('whitespace-normal')
-    expect(descriptionCell).toHaveClass('wrap-break-word')
-    expect(descriptionCell).not.toHaveClass('truncate')
+    expect(purposeAndScopeCell).toBeInTheDocument()
+    expect(purposeAndScopeCell).toHaveClass('whitespace-normal')
+    expect(purposeAndScopeCell).toHaveClass('wrap-break-word')
+    expect(purposeAndScopeCell).not.toHaveClass('truncate')
   })
 
   it('renders package row actions as compact icon buttons with tooltip text', async () => {
@@ -393,7 +397,7 @@ describe('RequirementPackagesClient', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/requirement-packages/1')
   })
 
-  it('filters requirement packages by name or description and clears the search', async () => {
+  it('filters requirement packages by name or purpose and scope and clears the search', async () => {
     fetchMock.mockImplementation(async (url: string) => {
       const urlString = requestUrl(url)
       if (urlString === '/api/auth/me') return okJson(currentAuthMe)
@@ -611,6 +615,9 @@ describe('RequirementPackagesClient', () => {
     fireEvent.change(requirementPackageNameInput(), {
       target: { value: 'Ny' },
     })
+    fireEvent.change(requirementPackagePurposeAndScopeInput(), {
+      target: { value: 'Purpose and scope for the new package.' },
+    })
 
     fetchMock.mockResolvedValueOnce(okJson({ id: 2 }))
     fetchMock.mockResolvedValueOnce(
@@ -625,6 +632,7 @@ describe('RequirementPackagesClient', () => {
         expect.objectContaining({
           body: JSON.stringify({
             name: 'Ny',
+            purposeAndScope: 'Purpose and scope for the new package.',
           }),
           method: 'POST',
         }),
@@ -709,8 +717,8 @@ describe('RequirementPackagesClient', () => {
     )
     expect((putCall?.[1] as RequestInit).body).toBe(
       JSON.stringify({
-        description: 'Requirements for mobile access and responsive flows.',
         name: 'Updated mobile use',
+        purposeAndScope: 'Requirements for mobile access and responsive flows.',
       }),
     )
   })

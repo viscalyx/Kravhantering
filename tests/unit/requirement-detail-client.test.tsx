@@ -199,10 +199,10 @@ type RequirementLocalizedEntityOverride = {
 
 type RequirementPackageOverride = {
   requirementPackage: {
-    description?: string | null
     id: number
     name: string | null
     ownerId?: number | null
+    purposeAndScope?: string | null
   }
 }
 
@@ -237,10 +237,10 @@ function toVersionRequirementPackages(
 ): RequirementVersionDetail['versionRequirementPackages'] {
   return (requirementPackages ?? []).map(({ requirementPackage }) => ({
     requirementPackage: {
-      description: requirementPackage.description ?? null,
       id: requirementPackage.id,
       name: requirementPackage.name,
       ownerId: requirementPackage.ownerId ?? null,
+      purposeAndScope: requirementPackage.purposeAndScope ?? null,
     },
   }))
 }

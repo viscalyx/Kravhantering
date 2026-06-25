@@ -126,6 +126,7 @@ export interface SpecificationLocalRequirementDetail {
   requirementPackages: {
     id: number
     name: string | null
+    purposeAndScope: string | null
   }[]
   requirementType: { id: number; nameEn: string; nameSv: string } | null
   requiresTesting: boolean
@@ -2087,6 +2088,10 @@ function mapSpecificationLocalRequirementDetailFlat(
         requirementPackage.name == null
           ? null
           : String(requirementPackage.name),
+      purposeAndScope:
+        requirementPackage.purposeAndScope == null
+          ? null
+          : String(requirementPackage.purposeAndScope),
     }))
     .sort((left, right) =>
       (left.name ?? '').localeCompare(right.name ?? '', 'sv'),
@@ -2194,7 +2199,8 @@ export async function getSpecificationLocalRequirementDetail(
       `
         SELECT
           requirement_package.id AS id,
-          requirement_package.name AS name
+          requirement_package.name AS name,
+          requirement_package.purpose_and_scope AS purposeAndScope
         FROM specification_local_requirement_requirement_packages link
         INNER JOIN requirement_packages requirement_package
           ON requirement_package.id = link.requirement_package_id

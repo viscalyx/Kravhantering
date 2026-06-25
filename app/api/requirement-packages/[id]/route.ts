@@ -18,8 +18,8 @@ import {
 } from '@/lib/http/secure-mutation-route'
 import {
   boundedDbStringSchema,
+  businessTextSchema,
   idParamSchema,
-  optionalBusinessTextSchema,
   parseRouteParams,
 } from '@/lib/http/validation'
 import { validationError } from '@/lib/requirements/errors'
@@ -39,14 +39,14 @@ const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
 
 const updateRequirementPackageSchema = z
   .object({
-    description: optionalBusinessTextSchema,
     leadHsaId: hsaIdSchema.optional(),
     name: boundedDbStringSchema.optional(),
+    purposeAndScope: businessTextSchema.optional(),
   })
   .strict()
   .refine(
     body =>
-      ['description', 'leadHsaId', 'name'].some(key =>
+      ['leadHsaId', 'name', 'purposeAndScope'].some(key =>
         Object.hasOwn(body, key),
       ),
     { message: 'At least one field must be provided for update' },

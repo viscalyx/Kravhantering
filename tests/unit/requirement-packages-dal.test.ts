@@ -11,13 +11,13 @@ function createSqlServerDb() {
   const query = vi.fn().mockResolvedValue([
     {
       createdAt: new Date('2026-05-02T08:00:00.000Z'),
-      description: 'Krav för mobil åtkomst och responsiva flöden.',
       id: 13,
       isArchived: false,
       leadDisplayName: 'Anna Johansson',
       leadEmail: 'anna.johansson@example.test',
       leadHsaId: 'SE5560000001-annaj',
       name: 'Mobil användning',
+      purposeAndScope: 'Krav för mobil åtkomst och responsiva flöden.',
       updatedAt: new Date('2026-05-02T08:00:00.000Z'),
     },
   ])
@@ -36,9 +36,9 @@ describe('requirement-packages DAL', () => {
     const { db, query } = createSqlServerDb()
 
     const result = await createRequirementPackage(db, {
-      description: 'Krav för mobil åtkomst och responsiva flöden.',
       leadHsaId: 'SE5560000001-annaj',
       name: 'Mobil användning',
+      purposeAndScope: 'Krav för mobil åtkomst och responsiva flöden.',
     })
 
     expect(query).toHaveBeenCalledWith(
@@ -123,7 +123,6 @@ describe('requirement-packages DAL', () => {
       .mockResolvedValueOnce([
         {
           createdAt: new Date('2026-05-02T08:00:00.000Z'),
-          description: 'Updated package',
           id: 13,
           isArchived: false,
           leadEmail: 'new.lead@example.test',
@@ -132,6 +131,7 @@ describe('requirement-packages DAL', () => {
           leadMiddleName: null,
           leadSurname: 'Lead',
           name: 'Updated package',
+          purposeAndScope: 'Updated package',
           updatedAt: new Date('2026-05-03T08:00:00.000Z'),
         },
       ])

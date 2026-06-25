@@ -1089,12 +1089,8 @@
     "nameSvHelp": "Enter the Swedish name for this requirements package.",
     "nameEnLabel": "Name (English)",
     "nameEnHelp": "Enter the English name for this requirements package.",
-    "description": "Description",
-    "descriptionHelp": "Optionally describe the grouping this requirements package represents. Do not enter names or other details that can identify a living person.",
-    "descriptionSvLabel": "Description (Swedish)",
-    "descriptionSvHelp": "Optionally describe the requirements package in Swedish so users understand the grouping it represents. Do not enter names or other details that can identify a living person.",
-    "descriptionEnLabel": "Description (English)",
-    "descriptionEnHelp": "Optionally describe the requirements package in English so users understand the grouping it represents. Do not enter names or other details that can identify a living person.",
+    "purposeAndScope": "Purpose and scope",
+    "purposeAndScopeHelp": "State the area of use, scenario, or delivery need this requirements package supports, what it keeps together, and which kinds of requirements should be included. Also state what should not be included when the boundary could be misunderstood. Do not enter names or other details that can identify a living person.",
     "lead": "Requirements package lead",
     "leadDisplayName": "Requirements package lead name",
     "leadDisplayNameHelp": "Enter the display name for the person responsible for this requirements package.",
@@ -1144,7 +1140,7 @@
     "status": "Status",
     "emptyState": "No requirements packages yet. Create your first requirements package.",
     "filterByName": "Filter by name or description",
-    "filterByNamePlaceholder": "Search requirements package name or description"
+    "filterByNamePlaceholder": "Search requirements package name or purpose and scope"
   },
   "requirementCategoryAdmin": {
     "description": "Indicates the perspective used to classify a requirement. The list is read-only.",

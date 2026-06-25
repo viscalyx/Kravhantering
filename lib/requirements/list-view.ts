@@ -23,9 +23,9 @@ export interface FilterOption {
 }
 
 export interface RequirementPackageOption {
-  description?: string | null
   id: number
   name: string
+  purposeAndScope?: string | null
 }
 
 export interface AreaOption {

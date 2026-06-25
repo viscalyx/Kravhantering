@@ -331,7 +331,7 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementPackageId: 200,
           packageId: 200,
           packageName: 'Citizen portal',
-          packageDescription: null,
+          packagePurposeAndScope: 'Citizen self-service requirements.',
           packageOwnerId: null,
           packageCreatedAt: new Date('2026-03-01T00:00:00.000Z'),
           packageUpdatedAt: new Date('2026-03-02T00:00:00.000Z'),
@@ -404,8 +404,8 @@ describe('requirements DAL (SQL Server path)', () => {
         requirementPackage: {
           id: 200,
           name: 'Citizen portal',
-          description: null,
           ownerId: null,
+          purposeAndScope: 'Citizen self-service requirements.',
           createdAt: '2026-03-01T00:00:00.000Z',
           updatedAt: '2026-03-02T00:00:00.000Z',
         },

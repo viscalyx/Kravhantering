@@ -32,6 +32,7 @@ export interface QualityCharacteristicOption {
 export interface RequirementPackageOption {
   id: number
   name: string
+  purposeAndScope: string
 }
 
 export interface NormReferenceOption {
