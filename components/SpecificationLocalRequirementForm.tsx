@@ -150,27 +150,28 @@ export default function SpecificationLocalRequirementForm({
   const tp = useTranslations('specification')
   const confirmDiscardChanges = useDiscardChangesConfirmation()
 
-  const [fields, setFields] = useState<RequirementFormFieldValues>(() =>
-    toFieldValues(initialValue),
+  const initialFields = toFieldValues(initialValue)
+  const initialNeedsReferenceId = initialValue?.needsReferenceId ?? ''
+  const initialValueSignature = createInitialValueSignature(
+    initialFields,
+    initialNeedsReferenceId,
+  )
+  const initialValueRef = useRef(initialValue)
+  initialValueRef.current = initialValue
+
+  const [fields, setFields] = useState<RequirementFormFieldValues>(
+    () => initialFields,
   )
   const [needsReferenceId, setNeedsReferenceId] = useState(
-    initialValue?.needsReferenceId ?? '',
-  )
-  const initialValueSignatureRef = useRef(
-    createInitialValueSignature(
-      toFieldValues(initialValue),
-      initialValue?.needsReferenceId ?? '',
-    ),
+    initialNeedsReferenceId,
   )
   const [baselineSignature, setBaselineSignature] = useState(() =>
-    createSubmitSignature(
-      toFieldValues(initialValue),
-      initialValue?.needsReferenceId ?? '',
-    ),
+    createSubmitSignature(initialFields, initialNeedsReferenceId),
   )
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [needsRefHelpOpen, setNeedsRefHelpOpen] = useState(false)
+  const appliedInitialValueSignatureRef = useRef(initialValueSignature)
 
   const taxonomyOptions = useTaxonomyOptions(
     fields.typeId,
@@ -178,24 +179,21 @@ export default function SpecificationLocalRequirementForm({
   )
 
   useEffect(() => {
-    const nextFields = toFieldValues(initialValue)
-    const nextNeedsReferenceId = initialValue?.needsReferenceId ?? ''
-    const nextInitialValueSignature = createInitialValueSignature(
-      nextFields,
-      nextNeedsReferenceId,
-    )
-    if (initialValueSignatureRef.current === nextInitialValueSignature) {
+    if (appliedInitialValueSignatureRef.current === initialValueSignature) {
       return
     }
 
-    initialValueSignatureRef.current = nextInitialValueSignature
+    appliedInitialValueSignatureRef.current = initialValueSignature
+    const nextInitialValue = initialValueRef.current
+    const nextFields = toFieldValues(nextInitialValue)
+    const nextNeedsReferenceId = nextInitialValue?.needsReferenceId ?? ''
     setFields(nextFields)
     setNeedsReferenceId(nextNeedsReferenceId)
     setBaselineSignature(
       createSubmitSignature(nextFields, nextNeedsReferenceId),
     )
     setNeedsRefHelpOpen(false)
-  })
+  }, [initialValueSignature])
 
   const formDirty =
     baselineSignature !== createSubmitSignature(fields, needsReferenceId)

@@ -59,6 +59,50 @@ function LocalRequirementFormWrapper() {
   )
 }
 
+function ChangingInitialValueWrapper() {
+  const [variant, setVariant] = useState<'initial' | 'replacement'>('initial')
+  const initialValues = {
+    initial: {
+      acceptanceCriteria: 'Original acceptance criteria',
+      description: 'Original requirement text',
+      needsReferenceId: '7',
+      normReferenceIds: [11],
+      priorityLevelId: '2',
+      requiresTesting: false,
+    },
+    replacement: {
+      acceptanceCriteria: 'Replacement acceptance criteria',
+      description: 'Replacement requirement text',
+      needsReferenceId: '8',
+      normReferenceIds: [12],
+      priorityLevelId: '3',
+      requiresTesting: false,
+    },
+  }
+  const initialValue = initialValues[variant]
+
+  return (
+    <>
+      <button onClick={() => setVariant('replacement')} type="button">
+        Load replacement
+      </button>
+      <SpecificationLocalRequirementForm
+        initialValue={{
+          ...initialValue,
+          normReferenceIds: [...initialValue.normReferenceIds],
+        }}
+        needsReferences={[
+          { id: 7, text: 'Need A' },
+          { id: 8, text: 'Need B' },
+        ]}
+        onCancel={() => undefined}
+        onSubmit={async () => undefined}
+        submitLabel="Save"
+      />
+    </>
+  )
+}
+
 describe('SpecificationLocalRequirementForm', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock)
@@ -124,5 +168,33 @@ describe('SpecificationLocalRequirementForm', () => {
       expect(screen.getByTestId('dirty-state')).toHaveTextContent('true')
     })
     expect(descriptionField).toHaveValue('Edited requirement text')
+  })
+
+  it('resets fields and closes needs-reference help when initial values change', async () => {
+    render(<ChangingInitialValueWrapper />)
+
+    const descriptionField = screen.getByRole('textbox', {
+      name: /requirement\.description/,
+    })
+    const needsReferenceField = screen.getByRole('combobox', {
+      name: /specification\.needsReference/,
+    })
+    const needsReferenceHelpButton = screen.getByRole('button', {
+      name: 'common.help: specification.needsReference',
+    })
+
+    fireEvent.change(descriptionField, {
+      target: { value: 'Edited requirement text' },
+    })
+    fireEvent.click(needsReferenceHelpButton)
+    expect(needsReferenceHelpButton).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load replacement' }))
+
+    await waitFor(() => {
+      expect(descriptionField).toHaveValue('Replacement requirement text')
+      expect(needsReferenceField).toHaveValue('8')
+      expect(needsReferenceHelpButton).toHaveAttribute('aria-expanded', 'false')
+    })
   })
 })
