@@ -78,7 +78,7 @@ The behaviors below apply to the requirement list rendered by:
   markers on target and JSON fields. The JSON can be pasted, selected through a
   clickable drop target, or dropped onto that target. The paste field uses
   placeholder text so the instruction is not inserted into the JSON value.
-  `Starta import` stays disabled until the JSON parses and passes
+  `Förhandsgranska krav` stays disabled until the JSON parses and passes
   `requirement-import.v1` schema validation and, for kravbiblioteksimport, a
   kravområde is selected. When the action is disabled, a short warning above
   the button explains the current blocker, such as missing kravområde, missing

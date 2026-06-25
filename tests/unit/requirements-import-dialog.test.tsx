@@ -89,7 +89,7 @@ describe('RequirementsImportDialog', () => {
     vi.restoreAllMocks()
   })
 
-  it('requires valid import JSON and kravområde before starting import', async () => {
+  it('requires valid import JSON and kravområde before previewing requirements', async () => {
     render(
       <RequirementsImportDialog
         areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
@@ -99,14 +99,16 @@ describe('RequirementsImportDialog', () => {
       />,
     )
 
-    const loadButton = screen.getByRole('button', { name: 'Starta import' })
+    const loadButton = screen.getByRole('button', {
+      name: 'Förhandsgranska krav',
+    })
     const jsonField = screen.getByLabelText(/Import-JSON/)
     const areaSelect = screen.getByLabelText(/Kravområde/)
 
     expect(loadButton).toBeDisabled()
     expect(
       screen.getByText(
-        'Välj kravområde och lägg till import-JSON för att starta importen.',
+        'Välj kravområde och lägg till import-JSON för att förhandsgranska kraven.',
       ),
     ).toBeInTheDocument()
     expect(jsonField).toHaveAttribute(
@@ -124,7 +126,7 @@ describe('RequirementsImportDialog', () => {
     fireEvent.change(jsonField, { target: { value: '{' } })
     expect(
       screen.getByText(
-        'Välj kravområde för att starta importen. JSON kan inte läsas. Kontrollera syntaxen innan importen startas.',
+        'Välj kravområde för att förhandsgranska kraven. JSON kan inte läsas. Kontrollera syntaxen innan kraven förhandsgranskas.',
       ),
     ).toBeInTheDocument()
 
@@ -132,7 +134,7 @@ describe('RequirementsImportDialog', () => {
     fireEvent.change(areaSelect, { target: { value: '7' } })
     expect(
       screen.getByText(
-        'Klistra in import-JSON eller välj en JSON-fil för att starta importen.',
+        'Klistra in import-JSON eller välj en JSON-fil för att förhandsgranska kraven.',
       ),
     ).toBeInTheDocument()
 
@@ -140,7 +142,7 @@ describe('RequirementsImportDialog', () => {
     expect(loadButton).toBeDisabled()
     expect(
       screen.getByText(
-        'JSON kan inte läsas. Kontrollera syntaxen innan importen startas.',
+        'JSON kan inte läsas. Kontrollera syntaxen innan kraven förhandsgranskas.',
       ),
     ).toBeInTheDocument()
 
@@ -176,7 +178,7 @@ describe('RequirementsImportDialog', () => {
     await waitFor(() => expect(loadButton).toBeEnabled())
     expect(
       screen.queryByText(
-        'Klistra in import-JSON eller välj en JSON-fil för att starta importen.',
+        'Klistra in import-JSON eller välj en JSON-fil för att förhandsgranska kraven.',
       ),
     ).not.toBeInTheDocument()
     expect(
@@ -291,10 +293,12 @@ describe('RequirementsImportDialog', () => {
     })
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'Starta import' }),
+        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
       ).toBeEnabled(),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Starta import' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
     await screen.findByText('Kravtext')
     fireEvent.click(screen.getByRole('button', { name: 'Importera valda' }))
     await screen.findByText('Inga rader är laddade.')
@@ -403,10 +407,12 @@ describe('RequirementsImportDialog', () => {
     })
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'Starta import' }),
+        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
       ).toBeEnabled(),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Starta import' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
 
     const rowSwitch = await screen.findByRole('switch', {
       name: 'Välj inte rad #1 för import',
@@ -511,10 +517,12 @@ describe('RequirementsImportDialog', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'Starta import' }),
+        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
       ).toBeEnabled(),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Starta import' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
 
     expect(
       await screen.findByRole('button', { name: 'Expandera rad #1' }),
@@ -637,10 +645,12 @@ describe('RequirementsImportDialog', () => {
     })
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'Starta import' }),
+        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
       ).toBeEnabled(),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Starta import' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
     await expandFirstImportRow()
 
     expect(screen.queryByText('Kravpakets-ID:n')).not.toBeInTheDocument()
@@ -736,10 +746,12 @@ describe('RequirementsImportDialog', () => {
     })
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'Starta import' }),
+        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
       ).toBeEnabled(),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Starta import' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
     await expandFirstImportRow()
 
     const typeSelect = await screen.findByLabelText('Typ')
@@ -834,10 +846,12 @@ describe('RequirementsImportDialog', () => {
     })
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'Starta import' }),
+        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
       ).toBeEnabled(),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Starta import' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
 
     await expandFirstImportRow()
     await screen.findByText('Integration med andra system')

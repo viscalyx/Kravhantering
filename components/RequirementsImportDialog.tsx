@@ -228,14 +228,14 @@ const TEXT = {
     expandRow: 'Expand row',
     infoCount: (count: number) => `${count} info`,
     invalidSchema:
-      'The JSON does not match requirement-import.v1. Fix the import file before loading review.',
+      'The JSON does not match requirement-import.v1. Fix the import file before previewing requirements.',
     importTitleLibrary: 'Import requirements',
     importTitleSpecification: 'Import local requirements',
     importReviewTabs: 'Import review',
     ignoredRequirementPackagesInfo:
       'Requirement packages in the import file are not used for specification-local requirements.',
     linkExistingNormReference: 'Link existing norm reference',
-    loadReview: 'Start import',
+    loadReview: 'Preview requirements',
     needsReference: 'Needs reference',
     noExistingNormReference: 'No linked norm reference',
     noNormReferenceIds: 'No norm reference IDs are selected.',
@@ -276,12 +276,13 @@ const TEXT = {
     showLess: 'Show less',
     showMore: 'Show more',
     startImportMissingJson:
-      'Paste import JSON or choose a JSON file to start the import.',
+      'Paste import JSON or choose a JSON file to preview requirements.',
     startImportMissingTargetAndJson:
-      'Select a requirement area and add import JSON to start the import.',
-    startImportMissingTarget: 'Select a requirement area to start the import.',
+      'Select a requirement area and add import JSON to preview requirements.',
+    startImportMissingTarget:
+      'Select a requirement area to preview requirements.',
     startImportInvalidJson:
-      'The JSON cannot be parsed. Check the syntax before starting the import.',
+      'The JSON cannot be parsed. Check the syntax before previewing requirements.',
     startImportInvalidSchema:
       'The JSON does not match the import schema. Check required fields and field names.',
     startImportWrongSchemaVersion: (schemaVersion: string) =>
@@ -332,7 +333,7 @@ const TEXT = {
     ignoredRequirementPackagesInfo:
       'Kravpaket i importfilen används inte för kravunderlagslokala krav.',
     linkExistingNormReference: 'Länka befintlig normreferens',
-    loadReview: 'Starta import',
+    loadReview: 'Förhandsgranska krav',
     needsReference: 'Behovsreferens',
     noExistingNormReference: 'Ingen länkad normreferens',
     noNormReferenceIds: 'Inga normreferens-ID:n är valda.',
@@ -373,12 +374,12 @@ const TEXT = {
     showLess: 'Visa mindre',
     showMore: 'Visa mer',
     startImportMissingJson:
-      'Klistra in import-JSON eller välj en JSON-fil för att starta importen.',
+      'Klistra in import-JSON eller välj en JSON-fil för att förhandsgranska kraven.',
     startImportMissingTargetAndJson:
-      'Välj kravområde och lägg till import-JSON för att starta importen.',
-    startImportMissingTarget: 'Välj kravområde för att starta importen.',
+      'Välj kravområde och lägg till import-JSON för att förhandsgranska kraven.',
+    startImportMissingTarget: 'Välj kravområde för att förhandsgranska kraven.',
     startImportInvalidJson:
-      'JSON kan inte läsas. Kontrollera syntaxen innan importen startas.',
+      'JSON kan inte läsas. Kontrollera syntaxen innan kraven förhandsgranskas.',
     startImportInvalidSchema:
       'JSON följer inte importschemat. Kontrollera obligatoriska fält och fältnamn.',
     startImportWrongSchemaVersion: (schemaVersion: string) =>
@@ -1430,7 +1431,7 @@ export default function RequirementsImportDialog({
         setErrorMessage(
           locale === 'sv'
             ? 'Välj kravområde innan granskning laddas.'
-            : 'Select a requirement area before loading review.',
+            : 'Select a requirement area before previewing requirements.',
         )
         return
       }
