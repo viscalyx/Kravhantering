@@ -30,7 +30,7 @@ export interface RequirementVersionNormReference {
   normReference: NormReferenceSummary
 }
 
-export interface RiskLevelSummary {
+export interface PriorityLevelSummary {
   color: string
   iconName?: string | null
   id: number
@@ -50,11 +50,11 @@ export interface RequirementVersionDetail {
   editedAt: string | null
   id: number
   ownerName: string | null
+  priorityLevel: PriorityLevelSummary | null
   publishedAt: string | null
   qualityCharacteristic: RequirementLocalizedEntity | null
   requiresTesting: boolean
   revisionToken: string
-  riskLevel: RiskLevelSummary | null
   status: number
   statusColor: string | null
   statusIconName?: string | null

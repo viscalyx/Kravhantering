@@ -28,7 +28,7 @@ export const specificationLocalRequirementSchema = z
       .default([]),
     requirementTypeId: positiveIntegerSchema.nullable().optional(),
     requiresTesting: z.boolean().optional().default(false),
-    riskLevelId: positiveIntegerSchema.nullable().optional(),
+    priorityLevelId: positiveIntegerSchema.nullable().optional(),
     verificationMethod: nullableBusinessTextSchema.optional(),
   })
   .strict()

@@ -3841,11 +3841,11 @@ export default function AdminClient({
       label: tn('qualityCharacteristics'),
     },
     {
-      description: ta('riskLevelsDescription'),
-      href: '/risk-levels',
+      description: ta('priorityLevelsDescription'),
+      href: '/priority-levels',
       icon: Gauge,
-      id: 'riskLevels',
-      label: tn('riskLevels'),
+      id: 'priorityLevels',
+      label: tn('priorityLevels'),
     },
     {
       description: ta('governanceObjectTypesDescription'),

@@ -18,7 +18,7 @@ import {
 } from '@/lib/requirements/auth'
 import { notFoundError, validationError } from '@/lib/requirements/errors'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
-import { recordHighRiskMutationSucceeded } from '@/lib/requirements/security-audit'
+import { recordSensitiveMutationSucceeded } from '@/lib/requirements/security-audit'
 import type { RequirementsService } from '@/lib/requirements/service'
 import {
   authorize,
@@ -246,7 +246,7 @@ export function createSuggestionWorkflow({
               resolvedBy: actor.displayName,
               resolvedByHsaId: actor.hsaId,
             })
-            await recordHighRiskMutationSucceeded(context, {
+            await recordSensitiveMutationSucceeded(context, {
               action: 'suggestion.resolution.recorded',
               operation: input.operation,
               resolution,
@@ -281,7 +281,7 @@ export function createSuggestionWorkflow({
 
           if (input.operation === 'delete') {
             await deleteSuggestion(db, input.suggestionId)
-            await recordHighRiskMutationSucceeded(context, {
+            await recordSensitiveMutationSucceeded(context, {
               action: 'suggestion.deleted',
               operation: input.operation,
               suggestionId: input.suggestionId,

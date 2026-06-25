@@ -12,10 +12,10 @@ export interface ListRequirementsOptions {
   locale?: 'en' | 'sv'
   normReferenceIds?: number[]
   offset?: number
+  priorityLevelIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementPackageIds?: number[]
   requiresTesting?: boolean[]
-  riskLevelIds?: number[]
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]

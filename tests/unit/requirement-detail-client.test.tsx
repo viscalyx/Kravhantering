@@ -272,7 +272,7 @@ function makeVersion(
     requiresTesting: false,
     revisionToken: `11111111-1111-4111-8111-${String(versionNumber).padStart(12, '0')}`,
     qualityCharacteristic: toLocalizedEntity(qualityCharacteristic, 30),
-    riskLevel: null,
+    priorityLevel: null,
     status: 1,
     statusColor: '#3b82f6',
     statusNameEn: 'Draft',

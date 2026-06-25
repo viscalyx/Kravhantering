@@ -24,7 +24,7 @@ agents can use it reliably.
 
 - `requirements_query_catalog`
   List or search requirements and fetch lookup catalogs such as areas,
-  categories, types, quality characteristics, risk levels, statuses,
+  categories, types, quality characteristics, priority levels, statuses,
   usage statuses, requirement packages, and transitions.
 - `requirements_get_requirement`
   Fetch the current requirement detail, a specific version, or full version
@@ -492,7 +492,7 @@ tool. For requirement lists, it supports:
 - `categoryIds`
 - `typeIds`
 - `qualityCharacteristicIds`
-- `riskLevelIds`
+- `priorityLevelIds`
 - `normReferenceIds`
 - `requirementPackageIds`
 - `statuses`
@@ -500,7 +500,7 @@ tool. For requirement lists, it supports:
 - `sortBy`
 - `sortDirection`
 
-Lookup rows for statuses, risk levels, and usage statuses include
+Lookup rows for statuses, priority levels, and usage statuses include
 `iconName` when an admin has configured an allowed icon. Requirement list and
 detail versions also include status and risk icon data while preserving the
 existing status and risk fields.

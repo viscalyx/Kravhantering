@@ -182,12 +182,12 @@ function mapDeviationVersion(
         name: requirementPackageName(vrp.requirementPackage),
       })),
     requiresTesting: version.requiresTesting,
-    riskLevel: version.riskLevel
+    priorityLevel: version.priorityLevel
       ? {
-          color: version.riskLevel.color ?? null,
-          iconName: version.riskLevel.iconName ?? null,
-          nameEn: version.riskLevel.nameEn,
-          nameSv: version.riskLevel.nameSv,
+          color: version.priorityLevel.color ?? null,
+          iconName: version.priorityLevel.iconName ?? null,
+          nameEn: version.priorityLevel.nameEn,
+          nameSv: version.priorityLevel.nameSv,
         }
       : null,
     status: {

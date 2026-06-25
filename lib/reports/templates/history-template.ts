@@ -54,12 +54,12 @@ function toVersionSummary(
           nameEn: version.qualityCharacteristic.nameEn,
         }
       : null,
-    riskLevel: version.riskLevel
+    priorityLevel: version.priorityLevel
       ? {
-          nameSv: version.riskLevel.nameSv,
-          nameEn: version.riskLevel.nameEn,
-          color: version.riskLevel.color,
-          iconName: version.riskLevel.iconName,
+          nameSv: version.priorityLevel.nameSv,
+          nameEn: version.priorityLevel.nameEn,
+          color: version.priorityLevel.color,
+          iconName: version.priorityLevel.iconName,
         }
       : null,
     status: {

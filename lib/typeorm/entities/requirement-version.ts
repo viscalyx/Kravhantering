@@ -1,10 +1,10 @@
 import { EntitySchema } from 'typeorm'
+import type { PriorityLevelEntity } from '@/lib/typeorm/entities/priority-level'
 import type { QualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
 import type { RequirementEntity } from '@/lib/typeorm/entities/requirement'
 import type { RequirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 import type { RequirementStatusEntity } from '@/lib/typeorm/entities/requirement-status'
 import type { RequirementTypeEntity } from '@/lib/typeorm/entities/requirement-type'
-import type { RiskLevelEntity } from '@/lib/typeorm/entities/risk-level'
 
 export interface RequirementVersionEntity {
   acceptanceCriteria: string | null
@@ -18,6 +18,7 @@ export interface RequirementVersionEntity {
   hasSpecificationItemHistory: boolean
   id: number
   isTestingRequired: boolean
+  priorityLevel: PriorityLevelEntity | null
   publishedAt: Date | null
   qualityCharacteristic: QualityCharacteristicEntity | null
   requirement: RequirementEntity
@@ -25,7 +26,6 @@ export interface RequirementVersionEntity {
   requirementStatus: RequirementStatusEntity
   requirementType: RequirementTypeEntity | null
   revisionToken: string
-  riskLevel: RiskLevelEntity | null
   statusUpdatedAt: Date | null
   verificationMethod: string | null
   versionNumber: number
@@ -203,13 +203,13 @@ export const requirementVersionEntity =
         onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },
-      riskLevel: {
+      priorityLevel: {
         type: 'many-to-one',
-        target: 'RiskLevel',
+        target: 'PriorityLevel',
         joinColumn: {
-          name: 'risk_level_id',
+          name: 'priority_level_id',
           referencedColumnName: 'id',
-          foreignKeyConstraintName: 'fk_requirement_versions_risk_level_id',
+          foreignKeyConstraintName: 'fk_requirement_versions_priority_level_id',
         },
         nullable: true,
         onDelete: 'NO ACTION',

@@ -47,6 +47,102 @@ The behaviors below apply to the requirement list rendered by:
 - Clicking outside a modal form does not close it. Users must use the explicit
   cancel or close controls.
 
+## Requirement Import
+
+- Requirement import uses one strict JSON file format,
+  `requirement-import.v1`, for both kravbiblioteksimport and
+  kravunderlagsimport. The top-level `schemaVersion` versions the whole import
+  file, including requirement candidates and support data such as proposed norm
+  references. Destination fields such as `areaId`, `specificationId` and
+  `needsReferenceId` are rejected by schema validation.
+- The import schema requires `schemaVersion` and non-empty `description` for
+  each requirement. Other currently persisted requirement fields are optional
+  in the file and become editable values in the review form.
+- Kravbiblioteksimport is started from the requirements library floating rail.
+  The user must choose one authorable kravområde before loading the review.
+  That choice is locked for the dialog session and imported rows become draft
+  requirements in the selected kravområde.
+- Kravunderlagsimport is started from the current kravunderlag, either from the
+  empty-list header or the `Krav i underlaget` action rail. Imported rows become
+  kravunderlagslokala krav in the current kravunderlag, and `Behovsreferens` is
+  assigned per row in the editable review form rather than from the file.
+- The review form loads only after the JSON passes schema validation. Numeric
+  IDs and uniquely matched names are resolved into editable IDs. Unresolved or
+  ambiguous optional metadata is shown as warnings and is omitted if the user
+  continues; selected blocking errors prevent execute.
+- Before review loading, the setup dialog is content-sized and shows required
+  markers on target and JSON fields. The JSON can be pasted, selected through a
+  clickable drop target, or dropped onto that target. The paste field uses
+  placeholder text so the instruction is not inserted into the JSON value.
+  `Starta import` stays disabled until the JSON parses and passes
+  `requirement-import.v1` schema validation and, for kravbiblioteksimport, a
+  kravområde is selected. When the action is disabled, a short warning above
+  the button explains the current blocker, such as missing kravområde, missing
+  JSON, parse errors, wrong `schemaVersion`, or schema validation errors.
+- Before the review is loaded, the dialog shows only the JSON setup panel. After
+  the user loads review, the setup panel collapses and the editable krav review
+  uses the dialog body.
+- The loaded review is split into `Krav` and `Föreslagna normreferenser` tabs.
+  The `Krav` tab keeps its selection summary, CSV receipt action and
+  `Importera valda` action in a fixed toolbar above the scrollable krav rows.
+- Krav rows start collapsed after review loading. A collapsed row shows the row
+  number, an accessible on/off import switch, a three-line read-only kravtext
+  summary, a remove action, any compact error/warning counts, and a discreet
+  localized priority chip when priority is present. Missing priority is omitted
+  from the collapsed header.
+- Clicking the kravtext summary or the chevron expands the row and reveals the
+  editable form below the same compact header. Long collapsed kravtext can be
+  expanded read-only with `Visa mer` without opening the full edit form, and the
+  row header updates immediately when the editable kravtext changes.
+- `Expandera alla` and `Kollapsa alla` in the krav toolbar control row edit
+  expansion for all rows, including deselected rows. Deselected rows are visually
+  dimmed in collapsed state but remain expandable and editable. `Expandera alla`
+  is disabled when all rows are already expanded, and `Kollapsa alla` is
+  disabled when all rows are already collapsed. Row expansion state is preserved
+  when switching tabs and after row revalidation; it resets only when the dialog
+  closes, a new JSON review is loaded, or imported rows are removed after a
+  successful execute.
+- In each krav row, `Typ` is placed immediately before `Kvalitetsegenskap`; on
+  wider screens the fields sit left-to-right as `Typ` then `Kvalitetsegenskap`.
+  `Kvalitetsegenskap` uses the same grouped option structure as `Nytt krav`.
+  When `Typ` is cleared, `Kvalitetsegenskap` is cleared, dimmed and disabled.
+- Proposed norm references from `proposedNormReferences` are shown in the
+  review form when rows reference them through `proposedNormReferenceKeys`.
+  The user can link each proposal to an existing normreferens or create a new
+  normreferens with the same form used by Normbiblioteket. When creating a
+  normreferens from a proposal, the normreferens-ID field is prefilled from the
+  proposal's `normReferenceId` or, if missing, its stable `key`; clearing the
+  field still lets the normal automatic ID generation run. When a later import
+  omits `normReferenceId`, the same stable `key` is used to match an existing
+  normreferens-ID so re-imported rows can resolve to the created normreferens.
+  Resolved proposals add the created or linked normreferens to the affected rows
+  before execute, and disable the create action while the proposal is resolved.
+  If the normreferens was created from the proposal, the existing-normreferens
+  link selector is also disabled because the proposal now has a concrete target.
+- Row-level `Kravpakets-ID:n` and `Normreferens-ID:n` values are edited as
+  individual numeric IDs in the krav tab after `Verifierbar` and
+  `Verifieringsmetod`. Resolved IDs use compact read-only rows; on wider
+  screens each resolved kravpakets-ID shows only the matching kravpaket name,
+  and each resolved normreferens-ID shows `normreferens-ID - name`. Internal
+  database IDs are not shown for resolved rows. Users remove a resolved row and
+  select another item in the overview modal when the association is wrong. New
+  kravpaket and normreferens links are added through overview modals with
+  searchable checkbox lists instead of free ID entry. Unmatched imported IDs
+  remain editable and show a visible warning.
+- Rows are selected by default. Execute is all-or-nothing for the selected rows.
+  After a successful execute, the selected imported rows are removed from the
+  review list, while unselected rows remain until the user closes the dialog.
+- Re-loading JSON while rows are present asks for confirmation before replacing
+  the current review edits. Closing the dialog discards remaining rows and
+  clears the selected kravområde; if any execute succeeded, the parent list
+  refreshes when the dialog closes.
+- Imports with 200 or more rows show a warning but are not blocked. There is no
+  hard row-count limit.
+- The schema and AI reference prompt are downloadable from the import dialog.
+  The AI prompt contains the full schema and current reference data, but no
+  examples. A successful execute can optionally be recorded by downloading the
+  client-generated CSV receipt shown in the dialog.
+
 ## Requirement Routes
 
 - `/requirements/...` is the application page path for the Requirements Library
@@ -87,7 +183,7 @@ The behaviors below apply to the requirement list rendered by:
 - Header filters are attached to the visible header cells only.
 - If a filtered header column is hidden, its filter is cleared immediately.
 - Status is filterable and sortable.
-- `riskLevel` is filterable and sortable.
+- `priorityLevel` is filterable and sortable.
 - `requiresTesting` is filterable, but not sortable.
 - `requirementPackage` is filterable through the requirement-package chip row
   even when the optional, non-sortable table column is hidden.

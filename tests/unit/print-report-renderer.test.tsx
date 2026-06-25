@@ -24,7 +24,7 @@ function makeVersion(
     qualityCharacteristic: null,
     requirementPackages: [],
     requiresTesting: false,
-    riskLevel: null,
+    priorityLevel: null,
     status: { color: null, label: 'Published' },
     type: null,
     verificationMethod: null,

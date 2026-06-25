@@ -1,4 +1,5 @@
 import { recordRequirementSelectionCleanupAudit } from '@/lib/audit/requirement-selection-cleanup-audit'
+import { listPriorityLevels } from '@/lib/dal/priority-levels'
 import { listAreas, type RequirementAreaRow } from '@/lib/dal/requirement-areas'
 import {
   listCategories,
@@ -34,7 +35,6 @@ import {
   restoreVersion,
   transitionStatus,
 } from '@/lib/dal/requirements'
-import { listRiskLevels } from '@/lib/dal/risk-levels'
 import { listSpecificationItemStatuses } from '@/lib/dal/specification-item-statuses'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
@@ -51,8 +51,8 @@ import {
 import { isRequirementPublishedStatus } from '@/lib/requirements/lifecycle'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import {
-  type HighRiskMutationAuditDetail,
-  recordHighRiskMutationSucceededWithExecutor,
+  recordSensitiveMutationSucceededWithExecutor,
+  type SensitiveMutationAuditDetail,
 } from '@/lib/requirements/security-audit'
 import type {
   CatalogKind,
@@ -91,7 +91,7 @@ const CATALOG_TITLE_KEYS: Record<CatalogKind, ServiceMessageKey> = {
   quality_characteristics: 'requirements.catalogTitles.qualityCharacteristics',
   requirement_packages: 'requirements.catalogTitles.requirementPackages',
   requirements: 'requirements.catalogTitles.requirements',
-  risk_levels: 'requirements.catalogTitles.riskLevels',
+  priority_levels: 'requirements.catalogTitles.priorityLevels',
   specification_item_statuses: 'requirements.catalogTitles.usageStatuses',
   statuses: 'requirements.catalogTitles.statuses',
   transitions: 'requirements.catalogTitles.transitions',
@@ -147,12 +147,12 @@ export function formatRequirementListItem(
       id: item.versionId,
       revisionToken: item.revisionToken,
       requiresTesting: item.requiresTesting,
-      riskLevelId: item.riskLevelId,
-      riskLevelNameEn: item.riskLevelNameEn,
-      riskLevelNameSv: item.riskLevelNameSv,
-      riskLevelColor: item.riskLevelColor,
-      riskLevelIconName: item.riskLevelIconName,
-      riskLevelSortOrder: item.riskLevelSortOrder ?? null,
+      priorityLevelId: item.priorityLevelId,
+      priorityLevelNameEn: item.priorityLevelNameEn,
+      priorityLevelNameSv: item.priorityLevelNameSv,
+      priorityLevelColor: item.priorityLevelColor,
+      priorityLevelIconName: item.priorityLevelIconName,
+      priorityLevelSortOrder: item.priorityLevelSortOrder ?? null,
       status: item.status,
       statusColor: item.statusColor,
       statusIconName: item.statusIconName,
@@ -229,14 +229,14 @@ export function formatRequirementDetail(
             nameSv: version.qualityCharacteristic.nameSv,
           }
         : null,
-      riskLevel: version.riskLevel
+      priorityLevel: version.priorityLevel
         ? {
-            id: version.riskLevel.id,
-            nameEn: version.riskLevel.nameEn,
-            nameSv: version.riskLevel.nameSv,
-            color: version.riskLevel.color,
-            iconName: version.riskLevel.iconName,
-            sortOrder: version.riskLevel.sortOrder,
+            id: version.priorityLevel.id,
+            nameEn: version.priorityLevel.nameEn,
+            nameSv: version.priorityLevel.nameSv,
+            color: version.priorityLevel.color,
+            iconName: version.priorityLevel.iconName,
+            sortOrder: version.priorityLevel.sortOrder,
           }
         : null,
       versionNormReferences: version.versionNormReferences.map(vnr => ({
@@ -349,10 +349,10 @@ async function getRequirementUniqueIdForAudit(
 
 async function recordRequirementMutationAudit(
   executor: RequirementAuditExecutor,
-  context: Parameters<typeof recordHighRiskMutationSucceededWithExecutor>[1],
-  detail: HighRiskMutationAuditDetail,
+  context: Parameters<typeof recordSensitiveMutationSucceededWithExecutor>[1],
+  detail: SensitiveMutationAuditDetail,
 ): Promise<void> {
-  await recordHighRiskMutationSucceededWithExecutor(executor, context, detail)
+  await recordSensitiveMutationSucceededWithExecutor(executor, context, detail)
 }
 
 function getLatestPublishedVersion(
@@ -419,7 +419,7 @@ export function createRequirementWorkflow({
               locale,
               offset,
               requiresTesting: input.requiresTesting,
-              riskLevelIds: input.riskLevelIds,
+              priorityLevelIds: input.priorityLevelIds,
               sortBy: input.sortBy,
               sortDirection: input.sortDirection,
               statuses: input.statuses,
@@ -530,16 +530,17 @@ export function createRequirementWorkflow({
             }
           }
 
-          if (catalog === 'risk_levels') {
-            const levels = await listRiskLevels(db)
+          if (catalog === 'priority_levels') {
+            const levels = await listPriorityLevels(db)
             return {
               catalog,
               items: levels,
               message: createServiceMessage(
-                getCatalogTitle('risk_levels', locale),
-                levels.map(level =>
-                  locale === 'sv' ? level.nameSv : level.nameEn,
-                ),
+                getCatalogTitle('priority_levels', locale),
+                levels.map(level => {
+                  const name = locale === 'sv' ? level.nameSv : level.nameEn
+                  return `${level.code} - ${name}`
+                }),
                 responseFormat,
               ),
               pagination: null,
@@ -814,7 +815,7 @@ export function createRequirementWorkflow({
                 qualityCharacteristicId: payload.qualityCharacteristicId,
                 requirementTypeId: payload.typeId,
                 requiresTesting: payload.requiresTesting,
-                riskLevelId: payload.riskLevelId,
+                priorityLevelId: payload.priorityLevelId,
                 verificationMethod: payload.verificationMethod,
                 requirementPackageIds: payload.requirementPackageIds,
               },
@@ -902,7 +903,7 @@ export function createRequirementWorkflow({
                   qualityCharacteristicId: payload.qualityCharacteristicId,
                   requirementTypeId: payload.typeId,
                   requiresTesting: payload.requiresTesting,
-                  riskLevelId: payload.riskLevelId,
+                  priorityLevelId: payload.priorityLevelId,
                   verificationMethod: payload.verificationMethod,
                   requirementPackageIds: payload.requirementPackageIds,
                 },

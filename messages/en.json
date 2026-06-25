@@ -97,7 +97,7 @@
     "types": "Types",
     "taxonomy": "Taxonomy",
     "qualityCharacteristics": "Quality characteristics",
-    "riskLevels": "Risk levels",
+    "priorityLevels": "Priority scale",
     "governanceObjectTypes": "Governance object types",
     "implementationTypes": "Implementation types",
     "lifecycleStatuses": "Specification lifecycle statuses",
@@ -428,8 +428,13 @@
     "noNeedsRef": "No needs reference",
     "type": "Type",
     "qualityCharacteristic": "Quality characteristic",
-    "riskLevel": "Risk level",
-    "riskLevelHelp": "<strong>Select the risk level for this requirement.</strong>\nThe risk level indicates the potential impact if the requirement is not met.",
+    "priorityLevel": "Priority",
+    "priorityLevelHelp": "<strong>Select the priority for this requirement.</strong>\nPriority indicates how important, urgent, or critical the requirement is in relation to business goals, benefits, risks, and stakeholder needs.",
+    "priorityLevelScaleHeading": "Priority scale",
+    "priorityLevelScaleAction": "Show priority scale",
+    "priorityLevelScaleEmpty": "No priorities are available.",
+    "priorityLevelDescriptionLabel": "Description",
+    "priorityLevelAssessmentCriteriaLabel": "Assessment criteria",
     "specificationItemStatus": "Usage status",
     "requiresTesting": "Verifiable",
     "requiresTestingOff": "Not verifiable",
@@ -447,6 +452,7 @@
     "reference": "Requirement reference",
     "requirementPackage": "Requirements package",
     "newRequirement": "New requirement",
+    "importRequirements": "Import requirements",
     "aiGenerate": "AI Generate",
     "aiGenerateDisabledByAdmin": "AI requirement generation is disabled in Admin Center.",
     "aiGenerateDisabledByEnvironment": "AI requirement generation is disabled by deployment configuration.",
@@ -711,6 +717,7 @@
     "backToSpecifications": "Back to specifications",
     "downloadFilename": "specification.csv",
     "newLocalRequirement": "New unique requirement",
+    "importLocalRequirements": "Import unique requirements",
     "editLocalRequirement": "Edit unique requirement",
     "localRequirementNotFound": "Unique requirement not found in this specification.",
     "localRequirementActionDisabledTooltip": "This unique requirement can only be edited or removed when Usage status is Included and no deviation is pending.",
@@ -769,7 +776,7 @@
       "category": "Category",
       "type": "Type",
       "qualityCharacteristic": "Quality characteristic",
-      "riskLevel": "Risk level",
+      "priorityLevel": "Priority",
       "specificationItemStatus": "Usage status"
     },
     "reportProfiles": {
@@ -843,7 +850,7 @@
     "createdByPlaceholder": "Requester",
     "reviewFailed": "Could not request review.",
     "revertFailed": "Could not revert to draft.",
-    "riskLevel": "Risk level",
+    "priorityLevel": "Priority",
     "bulkDeviationPartialFail": "{count, plural, one {1 deviation request failed} other {# deviation requests failed}}"
   },
   "improvementSuggestion": {
@@ -976,8 +983,8 @@
         "category": "Category",
         "type": "Type",
         "qualityCharacteristic": "Quality characteristic",
-        "riskLevel": "Risk level",
-        "riskLevelValue": "Risk level:",
+        "priorityLevel": "Priority",
+        "priorityLevelValue": "Priority:",
         "requiresTesting": "Requires Testing",
         "createdBy": "Created By",
         "references": "References",
@@ -1020,7 +1027,7 @@
       },
       "deviations": {
         "title": "Deviation",
-        "riskLevel": "Risk Level:",
+        "priorityLevel": "Priority:",
         "motivation": "Motivation:",
         "submittedBy": "Submitted by",
         "pending": "Pending",
@@ -1053,8 +1060,8 @@
       "category": "Category",
       "type": "Type",
       "qualityCharacteristic": "Quality Characteristic",
-      "riskLevel": "Risk Level",
-      "riskLevelValue": "Risk Level:",
+      "priorityLevel": "Priority",
+      "priorityLevelValue": "Priority:",
       "requiresTesting": "Requires Testing",
       "createdBy": "Created By",
       "references": "References",
@@ -1639,7 +1646,7 @@
     "governanceObjectTypesDescription": "Manage governance object types for requirements specifications.",
     "implementationTypesDescription": "Manage implementation types for requirements specifications.",
     "lifecycleStatusesDescription": "Manage specification lifecycle statuses.",
-    "riskLevelsDescription": "Manage risk levels that can be assigned to requirements.",
+    "priorityLevelsDescription": "Manage the priority scale that can be assigned to requirements.",
     "specificationItemStatusesDescription": "Manage usage statuses for requirement applications."
   },
   "requirements": {
@@ -1649,7 +1656,7 @@
       "categories": "Categories",
       "types": "Types",
       "qualityCharacteristics": "Quality characteristics",
-      "riskLevels": "Risk levels",
+      "priorityLevels": "Priority scale",
       "usageStatuses": "Usage statuses",
       "statuses": "Requirement version statuses",
       "requirementPackages": "Requirements packages",
@@ -1662,7 +1669,7 @@
       "category": "Category",
       "type": "Type",
       "qualityCharacteristic": "Quality characteristic",
-      "riskLevel": "Risk level",
+      "priorityLevel": "Priority",
       "status": "Requirement version status",
       "requiresTesting": "Verifiable",
       "version": "Version",
@@ -1676,7 +1683,7 @@
       "category": "Category",
       "type": "Type",
       "qualityCharacteristic": "Quality characteristic",
-      "riskLevel": "Risk level",
+      "priorityLevel": "Priority",
       "version": "Version",
       "references": "References",
       "requirementPackage": "Requirement packages",
@@ -1759,9 +1766,9 @@
           "heading": "Quality characteristic",
           "body": "Follows the ISO/IEC 25010 standard and lets you classify requirements by qualities such as Security, Performance efficiency, or Usability. Non-functional requirements have access to the full set of characteristics, while functional requirements offer a smaller subset. This helps prioritize and group related requirements during review and implementation planning."
         },
-        "riskLevel": {
-          "heading": "Risk level",
-          "body": "Marks the requirement as Low, Medium, or High risk. Higher risk levels signal that the requirement needs more thorough review, more rigorous testing, and closer follow-up during implementation. The risk level also plays a role when a deviation is requested within a requirements specification — a deviation for a high-risk requirement carries greater potential impact and therefore demands stricter scrutiny during the deviation review."
+        "priorityLevel": {
+          "heading": "Priority",
+          "body": "Indicates how important, urgent, or critical the requirement is in relation to business goals, benefits, risks, and stakeholder needs. Higher priority signals that the requirement should be reviewed and followed up carefully."
         },
         "verifiable": {
           "heading": "Verifiable",
@@ -1988,7 +1995,7 @@
       },
       "taxonomy": {
         "heading": "Taxonomy",
-        "body": "Quick links to classifications used for filtering, reporting, and AI support: requirement areas, categories, types, risk levels, quality characteristics, governance object types, and implementation types."
+        "body": "Quick links to classifications used for filtering, reporting, and AI support: requirement areas, categories, types, priority scale, quality characteristics, governance object types, and implementation types."
       },
       "statusesAndWorkflows": {
         "heading": "Statuses and workflows",
@@ -2210,15 +2217,15 @@
         "body": "Add new characteristics or sub-characteristics using the New button. A sub-characteristic must be assigned to a parent. Characteristics linked to existing requirements cannot be deleted."
       }
     },
-    "riskLevels": {
-      "title": "Risk Levels Help",
+    "priorityLevels": {
+      "title": "Priority Scale Help",
       "overview": {
-        "heading": "About risk levels",
-        "body": "Risk levels indicate the potential impact if a requirement is not met. Each level has a name, color, and sort order."
+        "heading": "About the priority scale",
+        "body": "The priority scale indicates how important, urgent, or critical a requirement is in relation to business goals, benefits, risks, and stakeholder needs. Each level has a locked P-code, name, description, assessment criteria, color, icon, and sort order."
       },
       "manage": {
         "heading": "Managing",
-        "body": "Risk levels are a fixed system set. Edit existing levels to change name, color, icon, or sort order."
+        "body": "The priority scale is a fixed system set. Edit existing levels to change name, description, assessment criteria, color, icon, or sort order. The P-code cannot be changed."
       }
     },
     "specificationItemStatuses": {
@@ -2233,15 +2240,21 @@
       }
     }
   },
-  "riskLevelAdmin": {
+  "priorityLevelAdmin": {
+    "editItem": "Edit priority",
+    "code": "Code",
+    "codeHelp": "The code is system-controlled and cannot be changed.",
     "name": "Name",
+    "designation": "Name",
+    "description": "Description",
+    "assessmentCriteria": "Assessment criteria",
     "color": "Color",
     "colorHex": "Color hex code",
     "icon": "Icon",
     "sortOrder": "Sort order",
     "linkedRequirements": "Linked requirements",
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
-    "emptyState": "No risk levels are available."
+    "emptyState": "No priority levels are available."
   },
   "specificationItemStatusAdmin": {
     "title": "Usage statuses",
@@ -2304,9 +2317,6 @@
     "selectRequirement": "Select requirement {index}",
     "functional": "Functional",
     "nonFunctional": "Non-functional",
-    "riskHigh": "High risk",
-    "riskMedium": "Medium risk",
-    "riskLow": "Low risk",
     "closeConfirm": "You have unsaved work. Are you sure you want to close and lose your progress?",
     "showDefaultInstruction": "Show default instruction",
     "hideDefaultInstruction": "Hide default instruction",
@@ -2352,7 +2362,7 @@
     "areaHelp": "Choose which <strong>requirement area</strong> the generated requirements will be placed in. This determines where they appear in the requirements list.",
     "modelHelp": "Select the <strong>AI model</strong> to use. Larger models produce higher-quality results but take longer to generate.",
     "prompt": {
-      "defaultInstruction": "Generate 5-10 well-structured system requirements for the given topic.\n\nEach requirement MUST:\n- Have a clear, testable, unambiguous description (per ISO/IEC/IEEE 29148:2018 §5.2.5)\n- Use \"The system shall...\" form for functional requirements\n- Use \"The system shall be able to...\" or quality-attribute language for non-functional requirements\n- Include acceptance criteria where applicable\n- Reference appropriate quality characteristics from ISO/IEC 25010:2023\n- Include a rationale explaining why the requirement exists\n\nFor non-functional requirements, apply the ISO/IEC 25010:2023 quality model:\n- Map each to the most specific quality sub-characteristic\n- Consider performance efficiency, security, usability, reliability, and maintainability\n\nAssess risk level based on:\n- Impact on system safety, security, or core functionality (High)\n- Impact on user experience or non-critical features (Medium)\n- Nice-to-have or cosmetic requirements (Low)",
+      "defaultInstruction": "Generate 5-10 well-structured system requirements for the given topic.\n\nEach requirement MUST:\n- Have a clear, testable, unambiguous description (per ISO/IEC/IEEE 29148:2018 §5.2.5)\n- Use \"The system shall...\" form for functional requirements\n- Use \"The system shall be able to...\" or quality-attribute language for non-functional requirements\n- Include acceptance criteria where applicable\n- Reference appropriate quality characteristics from ISO/IEC 25010:2023\n- Include a rationale explaining why the requirement exists\n\nFor non-functional requirements, apply the ISO/IEC 25010:2023 quality model:\n- Map each to the most specific quality sub-characteristic\n- Consider performance efficiency, security, usability, reliability, and maintainability\n\nAssess priority based on business goals, benefit, urgency, criticality, risks, and stakeholder needs.\n- Use the priority scale in the reference data.\n- Choose higher priority when the requirement is decisive for goals, legal requirements, security, continuity, or central benefit.\n- Choose lower priority when the requirement is desirable, future-oriented, or has limited impact.",
       "userHeader": "Topic / System Context",
       "noRequirementPackagesAvailable": "No requirement package available",
       "system": {
@@ -2362,7 +2372,7 @@
           "types": "Requirement Types",
           "categories": "Categories",
           "qualityCharacteristics": "Quality Characteristics (ISO 25010:2023)",
-          "riskLevels": "Risk Levels",
+          "priorityLevels": "Priority scale",
           "requirementPackages": "Requirements packages",
           "outputRules": "Output Rules"
         },
@@ -2372,7 +2382,7 @@
           "typeId is required for every requirement",
           "qualityCharacteristicId is recommended for non-functional requirements",
           "categoryId should be set when the category is clear",
-          "riskLevelId should always be set",
+          "priorityLevelId should always be set",
           "requirementPackageIds must be [] or only contain IDs from the requirements packages list above",
           "requiresTesting must be true for functional requirements and security requirements",
           "verificationMethod should describe how to verify the requirement when requiresTesting is true",
@@ -2388,7 +2398,7 @@
     "rawOutput": "Raw Output",
     "showDetails": "Show details",
     "hideDetails": "Hide details",
-    "detailRiskLevel": "Risk level",
+    "detailPriorityLevel": "Priority",
     "detailType": "Requirement type",
     "detailCategory": "Category",
     "detailQuality": "Quality characteristic",

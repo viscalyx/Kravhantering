@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server'
-import { countLinkedRequirements, listRiskLevels } from '@/lib/dal/risk-levels'
+import {
+  countLinkedRequirements,
+  listPriorityLevels,
+} from '@/lib/dal/priority-levels'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 
 export async function GET() {
   const db = await getRequestSqlServerDataSource()
-  const [riskLevels, counts] = await Promise.all([
-    listRiskLevels(db),
+  const [priorityLevels, counts] = await Promise.all([
+    listPriorityLevels(db),
     countLinkedRequirements(db),
   ])
   return NextResponse.json({
-    riskLevels: riskLevels.map(r => ({
+    priorityLevels: priorityLevels.map(r => ({
       ...r,
       linkedRequirementCount: counts[r.id] ?? 0,
     })),

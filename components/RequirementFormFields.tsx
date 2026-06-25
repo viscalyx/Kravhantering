@@ -1,20 +1,22 @@
 'use client'
 
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, ListChecks } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   type CSSProperties,
   type ReactNode,
+  type Ref,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import FormModal from '@/components/FormModal'
+import QualityCharacteristicSelectOptions from '@/components/QualityCharacteristicSelectOptions'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import type {
   NormReferenceOption,
-  QualityCharacteristicOption,
   TaxonomyOption,
   TaxonomyOptions,
 } from '@/hooks/useTaxonomyOptions'
@@ -25,10 +27,10 @@ export interface RequirementFormFieldValues {
   categoryId: string
   description: string
   normReferenceIds: number[]
+  priorityLevelId: string
   qualityCharacteristicId: string
   requirementPackageIds: number[]
   requiresTesting: boolean
-  riskLevelId: string
   typeId: string
   verificationMethod: string
 }
@@ -38,8 +40,8 @@ export interface RequirementFormFieldsProps {
   additionalNormReferences?: NormReferenceOption[]
   /** When true, area is required. Default: true */
   areaRequired?: boolean
-  /** Extra fields rendered after risk level (e.g. needsReferenceId) */
-  extraFieldsAfterRiskLevel?: ReactNode
+  /** Extra fields rendered after priority (e.g. needsReferenceId) */
+  extraFieldsAfterPriorityLevel?: ReactNode
   /** Unique prefix for field ids to avoid collisions when multiple forms exist */
   idPrefix?: string
   /** Layout for requirementPackages/norm-references: 'sidebar' renders in right column, 'bottom' renders below */
@@ -72,7 +74,7 @@ const associationListClassName =
 export default function RequirementFormFields({
   additionalNormReferences,
   areaRequired = true,
-  extraFieldsAfterRiskLevel,
+  extraFieldsAfterPriorityLevel,
   idPrefix = '',
   layout = 'sidebar',
   normReferenceActions,
@@ -92,15 +94,23 @@ export default function RequirementFormFields({
     normReferences,
     qualityCharacteristics,
     requirementPackages,
-    riskLevels,
+    priorityLevels,
     types,
   } = taxonomyOptions
 
   const getOptionName = (o: TaxonomyOption) =>
     locale === 'sv' ? o.nameSv : o.nameEn
+  const getPriorityName = (o: (typeof priorityLevels)[number]) =>
+    `${o.code} - ${getOptionName(o)}`
+  const getPriorityDescription = (o: (typeof priorityLevels)[number]) =>
+    locale === 'sv' ? o.descriptionSv : o.descriptionEn
+  const getPriorityAssessmentCriteria = (o: (typeof priorityLevels)[number]) =>
+    locale === 'sv' ? o.assessmentCriteriaSv : o.assessmentCriteriaEn
 
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
+  const [showPriorityScale, setShowPriorityScale] = useState(false)
   const mainFieldsRef = useRef<HTMLDivElement>(null)
+  const priorityScaleButtonRef = useRef<HTMLButtonElement>(null)
   const [associationPanelHeight, setAssociationPanelHeight] = useState<
     number | null
   >(null)
@@ -205,13 +215,18 @@ export default function RequirementFormFields({
 
   const fid = (name: string) => (idPrefix ? `${idPrefix}-${name}` : name)
 
-  const helpButton = (field: string, label: string) => (
+  const helpButton = (
+    field: string,
+    label: string,
+    buttonRef?: Ref<HTMLButtonElement>,
+  ) => (
     <button
       aria-controls={`help-${field}`}
       aria-expanded={openHelp.has(field)}
       aria-label={`${tc('help')}: ${label}`}
       className="min-h-11 min-w-11 inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
       onClick={() => toggleHelp(field)}
+      ref={buttonRef}
       type="button"
     >
       <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
@@ -224,12 +239,21 @@ export default function RequirementFormFields({
     </AnimatedHelpPanel>
   )
 
-  const topLevelCategories = qualityCharacteristics.filter(c => !c.parentId)
-  const childCategories = qualityCharacteristics.filter(c => c.parentId)
-  const getQcName = (c: QualityCharacteristicOption) =>
-    locale === 'sv' ? c.nameSv : c.nameEn
+  const priorityLevelFieldId = fid('priorityLevelId')
+
   const selectedAreaOwnerName = values.areaId
     ? areas.find(a => String(a.id) === values.areaId)?.ownerHsaId
+    : null
+  const selectedPriorityLevel = values.priorityLevelId
+    ? priorityLevels.find(
+        priorityLevel => String(priorityLevel.id) === values.priorityLevelId,
+      )
+    : null
+  const selectedPriorityDescription = selectedPriorityLevel
+    ? getPriorityDescription(selectedPriorityLevel)
+    : null
+  const selectedPriorityAssessmentCriteria = selectedPriorityLevel
+    ? getPriorityAssessmentCriteria(selectedPriorityLevel)
     : null
 
   const mainFields = (
@@ -354,72 +378,138 @@ export default function RequirementFormFields({
         </div>
       </div>
 
-      {qualityCharacteristics.length > 0 && (
-        <div>
-          <div className="flex items-center gap-1.5 mb-1">
-            <label
-              className="text-sm font-medium"
-              htmlFor={fid('qualityCharacteristicId')}
-            >
-              {t('qualityCharacteristic')}
-            </label>
-            {helpButton(
-              fid('qualityCharacteristicId'),
-              t('qualityCharacteristic'),
-            )}
-          </div>
-          {helpPanel(
-            'qualityCharacteristicHelp',
-            fid('qualityCharacteristicId'),
-          )}
-          <select
-            className={selectClassName}
-            id={fid('qualityCharacteristicId')}
-            onChange={e =>
-              handleChange('qualityCharacteristicId', e.target.value)
-            }
-            value={values.qualityCharacteristicId}
+      <div className={!values.typeId ? 'opacity-60' : undefined}>
+        <div className="flex items-center gap-1.5 mb-1">
+          <label
+            className="text-sm font-medium"
+            htmlFor={fid('qualityCharacteristicId')}
           >
-            <option value="">{t('qualityCharacteristic')}...</option>
-            {topLevelCategories.map(tc => (
-              <optgroup key={tc.id} label={getQcName(tc)}>
-                {childCategories
-                  .filter(c => c.parentId === tc.id)
-                  .map(c => (
-                    <option key={c.id} value={c.id}>
-                      {getQcName(c)}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
+            {t('qualityCharacteristic')}
+          </label>
+          {helpButton(
+            fid('qualityCharacteristicId'),
+            t('qualityCharacteristic'),
+          )}
         </div>
-      )}
+        {helpPanel('qualityCharacteristicHelp', fid('qualityCharacteristicId'))}
+        <select
+          className={`${selectClassName} disabled:cursor-not-allowed disabled:opacity-70`}
+          disabled={!values.typeId}
+          id={fid('qualityCharacteristicId')}
+          onChange={e =>
+            handleChange('qualityCharacteristicId', e.target.value)
+          }
+          value={values.qualityCharacteristicId}
+        >
+          <option value="">{t('qualityCharacteristic')}...</option>
+          <QualityCharacteristicSelectOptions
+            locale={locale}
+            options={qualityCharacteristics}
+          />
+        </select>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <div className="flex items-center gap-1.5 mb-1">
-            <label className="text-sm font-medium" htmlFor={fid('riskLevelId')}>
-              {t('riskLevel')}
+            <label
+              className="text-sm font-medium"
+              htmlFor={fid('priorityLevelId')}
+            >
+              {t('priorityLevel')}
             </label>
-            {helpButton(fid('riskLevelId'), t('riskLevel'))}
+            {helpButton(priorityLevelFieldId, t('priorityLevel'))}
+            <button
+              aria-label={t('priorityLevelScaleAction')}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+              onClick={() => setShowPriorityScale(true)}
+              ref={priorityScaleButtonRef}
+              title={t('priorityLevelScaleAction')}
+              type="button"
+            >
+              <ListChecks aria-hidden="true" className="h-3.5 w-3.5" />
+            </button>
           </div>
-          {helpPanel('riskLevelHelp', fid('riskLevelId'))}
+          {helpPanel('priorityLevelHelp', priorityLevelFieldId)}
           <select
             className={selectClassName}
-            id={fid('riskLevelId')}
-            onChange={e => handleChange('riskLevelId', e.target.value)}
-            value={values.riskLevelId}
+            id={priorityLevelFieldId}
+            onChange={e => handleChange('priorityLevelId', e.target.value)}
+            value={values.priorityLevelId}
           >
-            <option value="">{t('riskLevel')}...</option>
-            {riskLevels.map(rl => (
+            <option value="">{t('priorityLevel')}...</option>
+            {priorityLevels.map(rl => (
               <option key={rl.id} value={rl.id}>
-                {getOptionName(rl)}
+                {getPriorityName(rl)}
               </option>
             ))}
           </select>
+          {selectedPriorityLevel ? (
+            <div className="mt-2 rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs leading-relaxed text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-200">
+              <dl className="space-y-1">
+                <div>
+                  <dt className="font-medium text-secondary-900 dark:text-secondary-100">
+                    {t('priorityLevelDescriptionLabel')}
+                  </dt>
+                  <dd>{selectedPriorityDescription}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-secondary-900 dark:text-secondary-100">
+                    {t('priorityLevelAssessmentCriteriaLabel')}
+                  </dt>
+                  <dd className="text-secondary-500 dark:text-secondary-400">
+                    {selectedPriorityAssessmentCriteria}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          ) : null}
+          <FormModal
+            maxWidthClassName="max-w-5xl"
+            onClose={() => setShowPriorityScale(false)}
+            open={showPriorityScale}
+            title={t('priorityLevelScaleHeading')}
+            titleId={`${priorityLevelFieldId}-scale-title`}
+          >
+            {priorityLevels.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {priorityLevels.map(priorityLevel => (
+                  <article
+                    className="rounded-xl border border-secondary-200 bg-secondary-50/70 p-4 dark:border-secondary-700 dark:bg-secondary-800/50"
+                    key={priorityLevel.id}
+                  >
+                    <h3 className="text-base font-semibold text-secondary-950 dark:text-secondary-50">
+                      {getPriorityName(priorityLevel)}
+                    </h3>
+                    <dl className="mt-3 space-y-3 text-sm leading-relaxed text-secondary-700 dark:text-secondary-200">
+                      <div>
+                        <dt className="font-medium text-secondary-950 dark:text-secondary-50">
+                          {t('priorityLevelDescriptionLabel')}
+                        </dt>
+                        <dd className="mt-1">
+                          {getPriorityDescription(priorityLevel)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-secondary-950 dark:text-secondary-50">
+                          {t('priorityLevelAssessmentCriteriaLabel')}
+                        </dt>
+                        <dd className="mt-1">
+                          {getPriorityAssessmentCriteria(priorityLevel)}
+                        </dd>
+                      </div>
+                    </dl>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-secondary-600 dark:text-secondary-300">
+                {t('priorityLevelScaleEmpty')}
+              </p>
+            )}
+          </FormModal>
         </div>
-        {extraFieldsAfterRiskLevel}
+        {extraFieldsAfterPriorityLevel}
       </div>
 
       <div className="flex items-center gap-2 text-sm">
@@ -640,7 +730,7 @@ export default function RequirementFormFields({
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(32rem,34rem)]">
-        <div className="space-y-5" ref={mainFieldsRef}>
+        <div className="self-start space-y-5" ref={mainFieldsRef}>
           {mainFields}
         </div>
         <div

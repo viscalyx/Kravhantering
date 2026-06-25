@@ -19,7 +19,7 @@ describe('requirement list SQL builders', () => {
       qualityCharacteristicIds: [6],
       requirementPackageIds: [8],
       requiresTesting: [true, false],
-      riskLevelIds: [3],
+      priorityLevelIds: [3],
       sortBy: 'status',
       sortDirection: 'desc',
       statuses: [STATUS_PUBLISHED],
@@ -61,7 +61,7 @@ describe('requirement list SQL builders', () => {
     expect(query.sqlText).toContain('version.requirement_category_id IN (@5)')
     expect(query.sqlText).toContain('version.requirement_type_id IN (@6)')
     expect(query.sqlText).toContain('version.quality_characteristic_id IN (@7)')
-    expect(query.sqlText).toContain('version.risk_level_id IN (@8)')
+    expect(query.sqlText).toContain('version.priority_level_id IN (@8)')
     expect(query.sqlText).toContain(
       'CAST(version.is_testing_required AS int) IN (@9, @10)',
     )
@@ -102,7 +102,7 @@ describe('requirement list SQL builders', () => {
     expect(query.sqlText).not.toContain('LEFT JOIN requirement_categories')
     expect(query.sqlText).not.toContain('LEFT JOIN requirement_types')
     expect(query.sqlText).not.toContain('LEFT JOIN quality_characteristics')
-    expect(query.sqlText).not.toContain('LEFT JOIN risk_levels')
+    expect(query.sqlText).not.toContain('LEFT JOIN priority_levels')
   })
 
   it('omits the active-only filter when archived rows are explicitly included', () => {

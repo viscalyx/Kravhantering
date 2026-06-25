@@ -50,8 +50,8 @@ function outputData(): SpecificationOutputData {
         qualityCharacteristicNameSv: 'Informationssäkerhet',
         requirementPackageNames: ['Base package'],
         requiresTesting: true,
-        riskLevelNameEn: 'High',
-        riskLevelNameSv: 'Hög',
+        priorityLevelNameEn: 'High',
+        priorityLevelNameSv: 'Hög',
         specificationItemStatusId: 2,
         specificationItemStatusNameEn: 'In progress',
         specificationItemStatusNameSv: 'Pågår',
@@ -89,8 +89,8 @@ function traceabilityData(): SpecificationTraceabilityData {
         needsReference: 'IAM-need',
         note: 'Follow up at gate 2',
         requiresTesting: true,
-        riskLevelNameEn: 'High',
-        riskLevelNameSv: 'Hög',
+        priorityLevelNameEn: 'High',
+        priorityLevelNameSv: 'Hög',
         specificationItemStatusId: 2,
         specificationItemStatusNameEn: 'In progress',
         specificationItemStatusNameSv: 'Pågår',
@@ -107,8 +107,8 @@ function traceabilityData(): SpecificationTraceabilityData {
         needsReference: null,
         note: null,
         requiresTesting: false,
-        riskLevelNameEn: null,
-        riskLevelNameSv: null,
+        priorityLevelNameEn: null,
+        priorityLevelNameSv: null,
         specificationItemStatusId: 1,
         specificationItemStatusNameEn: 'Not started',
         specificationItemStatusNameSv: 'Ej startad',
@@ -212,7 +212,7 @@ describe('specification report profiles', () => {
 
     const fullCsv = buildSpecificationCsv(outputData(), 'full', 'sv')
     expect(fullCsv.split('\r\n')[0]).toBe(
-      'Krav-ID;Kravtext;Kravområde;Kategori;Typ;Kvalitetsegenskap;Risknivå;Kravversionsstatus;Verifierbar;Version;Behovsreferens;Användningsstatus;Normreferenser;Kravpaket;Förbättringsförslag;ISO-kapitel;Norm-URI;Avstegssignal',
+      'Krav-ID;Kravtext;Kravområde;Kategori;Typ;Kvalitetsegenskap;Prioritet;Kravversionsstatus;Verifierbar;Version;Behovsreferens;Användningsstatus;Normreferenser;Kravpaket;Förbättringsförslag;ISO-kapitel;Norm-URI;Avstegssignal',
     )
     expect(fullCsv).toContain('2')
     expect(fullCsv).toContain('Väntande')
@@ -265,7 +265,7 @@ describe('specification report profiles', () => {
         note: 'Follow up at gate 2',
         origin: 'Bibliotekskrav',
         requirementId: 'BEH0001',
-        riskLevel: 'Hög',
+        priorityLevel: 'Hög',
         usageStatus: 'Pågår',
         verification: 'Ja: Review test evidence',
         version: '4',

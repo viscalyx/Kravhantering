@@ -837,7 +837,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
               'category',
               'type',
               'qualityCharacteristic',
-              'riskLevel',
+              'priorityLevel',
               'verifiable',
               'verificationMethod',
               'requirementPackages',
@@ -981,7 +981,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await safeSelectFirst(page, 'areaId')
       await safeSelectFirst(page, 'categoryId')
       await safeSelectFirst(page, 'typeId')
-      await safeSelectFirst(page, 'riskLevelId')
+      await safeSelectFirst(page, 'priorityLevelId')
 
       await snap(
         page,
@@ -1700,13 +1700,13 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await guideStep(page, 'Risknivåer', async () => {
-      await guideGoto(page, '/sv/risk-levels')
+    await guideStep(page, 'Prioritetsskala', async () => {
+      await guideGoto(page, '/sv/priority-levels')
       await snap(
         page,
         'risknivåer',
-        'Risknivåer',
-        'Risknivåer klassificerar kravets kritikalitet. Varje nivå kan tilldelas en färg för visuell identifiering i kravbiblioteket och detaljvyer. Färgkodningen gör det enkelt att snabbt bedöma ett kravs vikt.',
+        'Prioritetsskala',
+        'Prioritetsskalan klassificerar hur viktigt, angeläget eller kritiskt ett krav är. Varje nivå har en P-kod, ett namn, en beskrivning, bedömningsgrunder och en färg för visuell identifiering i kravbiblioteket och detaljvyer.',
       )
     })
 

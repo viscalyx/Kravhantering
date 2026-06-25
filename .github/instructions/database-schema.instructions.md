@@ -72,6 +72,23 @@ ALTER TABLE [<table>]
 - Update the affected TypeORM entity, the new migration in
   `typeorm/migrations/`, `typeorm/seed.mjs`, the affected DAL/tests, and
   `docs/reference/database-schema.md` in the same change.
+- Review and update JSON Schema artifacts for database-backed payloads in the
+  same change. When a database field is represented in the requirement import
+  JSON Schema, update that schema and its artifact-generation/tests whenever
+  the field's persistence shape, semantics, requiredness, or length limits
+  change.
+- Current database-backed JSON Schema artifacts:
+  - Requirement import schema source:
+    `lib/requirements/import-schema.ts` (`buildRequirementsImportJsonSchema`,
+    Zod request schemas, and `requirement-import.v1` field contract).
+  - Served schema artifact:
+    `app/api/requirements/import/schema/route.ts`
+    (`GET /api/requirements/import/schema`).
+  - AI prompt/reference artifact using the same schema:
+    `app/api/requirements/import/ai-prompt/route.ts` and
+    `lib/requirements/import-service.ts`.
+  - Schema tests:
+    `tests/unit/requirements-import-schema.test.ts`.
 - If a deviation is required, add it to `Accepted Exceptions` in
   `docs/reference/database-schema.md` in the same change.
 
@@ -132,6 +149,12 @@ update **every** applicable section of `docs/reference/database-schema.md`:
    prose when status or transition rows change.
 7. **Database Naming Standard** — update rules or accepted exceptions
    when a new naming pattern is introduced.
+8. **JSON Schema artifacts** — review database-backed JSON Schema artifacts.
+   Update `lib/requirements/import-schema.ts`,
+   `app/api/requirements/import/schema/route.ts` if response behavior changes,
+   the AI prompt/reference artifact path if schema rendering changes, and
+   `tests/unit/requirements-import-schema.test.ts` when represented fields
+   change.
 
 ## Canonical Data Model
 

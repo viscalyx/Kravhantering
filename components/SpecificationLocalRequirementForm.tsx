@@ -18,12 +18,12 @@ export interface SpecificationLocalRequirementSubmitPayload {
   description: string
   needsReferenceId: number | null
   normReferenceIds: number[]
+  priorityLevelId: number | null
   qualityCharacteristicId: number | null
   requirementCategoryId: number | null
   requirementPackageIds: number[]
   requirementTypeId: number | null
   requiresTesting: boolean
-  riskLevelId: number | null
   verificationMethod: string | null
 }
 
@@ -48,7 +48,7 @@ const EMPTY_FIELDS: RequirementFormFieldValues = {
   normReferenceIds: [],
   qualityCharacteristicId: '',
   requiresTesting: false,
-  riskLevelId: '',
+  priorityLevelId: '',
   requirementPackageIds: [],
   typeId: '',
   verificationMethod: '',
@@ -70,8 +70,8 @@ function toFieldValues(
     ...(initial.qualityCharacteristicId != null
       ? { qualityCharacteristicId: initial.qualityCharacteristicId }
       : {}),
-    ...(initial.riskLevelId != null
-      ? { riskLevelId: initial.riskLevelId }
+    ...(initial.priorityLevelId != null
+      ? { priorityLevelId: initial.priorityLevelId }
       : {}),
     ...(initial.description != null
       ? { description: initial.description }
@@ -109,7 +109,9 @@ function toSubmitPayload(
     requirementCategoryId: fields.categoryId ? Number(fields.categoryId) : null,
     requirementTypeId: fields.typeId ? Number(fields.typeId) : null,
     requiresTesting: fields.requiresTesting,
-    riskLevelId: fields.riskLevelId ? Number(fields.riskLevelId) : null,
+    priorityLevelId: fields.priorityLevelId
+      ? Number(fields.priorityLevelId)
+      : null,
     requirementPackageIds: fields.requirementPackageIds,
     verificationMethod: fields.requiresTesting
       ? fields.verificationMethod.trim() || null
@@ -248,7 +250,7 @@ export default function SpecificationLocalRequirementForm({
     <form className="space-y-5" onSubmit={handleSubmit}>
       <RequirementFormFields
         areaRequired={false}
-        extraFieldsAfterRiskLevel={needsReferenceField}
+        extraFieldsAfterPriorityLevel={needsReferenceField}
         idPrefix="plr"
         layout="sidebar"
         onChange={setFields}

@@ -220,7 +220,7 @@ paths:
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
-        - name: riskLevelIds
+        - name: priorityLevelIds
           in: query
           schema:
             type: array
@@ -517,10 +517,10 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
-  /api/risk-levels:
+  /api/priority-levels:
     get:
       tags: [catalogs]
-      operationId: listRiskLevels
+      operationId: listPriorityLevels
       responses:
         '200': { $ref: '#/components/responses/JsonObject' }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -656,7 +656,7 @@ components:
           - category
           - type
           - qualityCharacteristic
-          - riskLevel
+          - priorityLevel
           - status
           - version
     SortDirection:
@@ -1153,7 +1153,7 @@ components:
           maxItems: 100
           items: { type: integer, minimum: 1 }
         requiresTesting: { type: boolean }
-        riskLevelId: { type: integer, minimum: 1, nullable: true }
+        priorityLevelId: { type: integer, minimum: 1, nullable: true }
         typeId: { type: integer, minimum: 1, nullable: true }
         verificationMethod: { type: string, maxLength: 4000 }
     RequirementEditMutation:
@@ -1185,6 +1185,6 @@ components:
           maxItems: 100
           items: { type: integer, minimum: 1 }
         requiresTesting: { type: boolean }
-        riskLevelId: { type: integer, minimum: 1, nullable: true }
+        priorityLevelId: { type: integer, minimum: 1, nullable: true }
         typeId: { type: integer, minimum: 1, nullable: true }
         verificationMethod: { type: string, maxLength: 4000 }

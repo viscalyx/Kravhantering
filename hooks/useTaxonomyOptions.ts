@@ -8,6 +8,14 @@ export interface TaxonomyOption {
   nameSv: string
 }
 
+export interface PriorityLevelOption extends TaxonomyOption {
+  assessmentCriteriaEn: string
+  assessmentCriteriaSv: string
+  code: string
+  descriptionEn: string
+  descriptionSv: string
+}
+
 export interface AreaOption {
   id: number
   name: string
@@ -38,9 +46,9 @@ export interface TaxonomyOptions {
   categories: TaxonomyOption[]
   loading: boolean
   normReferences: NormReferenceOption[]
+  priorityLevels: PriorityLevelOption[]
   qualityCharacteristics: QualityCharacteristicOption[]
   requirementPackages: RequirementPackageOption[]
-  riskLevels: TaxonomyOption[]
   types: TaxonomyOption[]
 }
 
@@ -65,7 +73,9 @@ export function useTaxonomyOptions(
   const [qualityCharacteristics, setQualityCharacteristics] = useState<
     QualityCharacteristicOption[]
   >([])
-  const [riskLevels, setRiskLevels] = useState<TaxonomyOption[]>([])
+  const [priorityLevels, setPriorityLevels] = useState<PriorityLevelOption[]>(
+    [],
+  )
   const [requirementPackages, setRequirementPackages] = useState<
     RequirementPackageOption[]
   >([])
@@ -83,7 +93,7 @@ export function useTaxonomyOptions(
         fetch('/api/requirement-types'),
         fetch('/api/requirement-packages'),
         fetch(buildNormReferencesUrl(selectedNormReferenceIds)),
-        fetch('/api/risk-levels'),
+        fetch('/api/priority-levels'),
       ])
       const [
         areasResult,
@@ -91,7 +101,7 @@ export function useTaxonomyOptions(
         typesResult,
         requirementPackagesResult,
         normRefsResult,
-        riskLevelsResult,
+        priorityLevelsResult,
       ] = results
       if (areasResult.status === 'fulfilled' && areasResult.value.ok)
         setAreas(
@@ -131,13 +141,16 @@ export function useTaxonomyOptions(
           ).normReferences ?? [],
         )
       }
-      if (riskLevelsResult.status === 'fulfilled' && riskLevelsResult.value.ok)
-        setRiskLevels(
+      if (
+        priorityLevelsResult.status === 'fulfilled' &&
+        priorityLevelsResult.value.ok
+      )
+        setPriorityLevels(
           (
-            (await riskLevelsResult.value.json()) as {
-              riskLevels?: TaxonomyOption[]
+            (await priorityLevelsResult.value.json()) as {
+              priorityLevels?: PriorityLevelOption[]
             }
-          ).riskLevels ?? [],
+          ).priorityLevels ?? [],
         )
     } finally {
       setLoading(false)
@@ -190,7 +203,7 @@ export function useTaxonomyOptions(
     normReferences,
     qualityCharacteristics,
     requirementPackages,
-    riskLevels,
+    priorityLevels,
     types,
   }
 }

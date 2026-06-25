@@ -31,7 +31,7 @@ interface DeviationFormModalProps {
   onClose: () => void
   onSubmit: (motivation: string) => void
   open: boolean
-  riskLevel?: { color: string | null; name: string | null } | null
+  priorityLevel?: { color: string | null; name: string | null } | null
   title?: string
 }
 
@@ -41,7 +41,7 @@ export default function DeviationFormModal({
   onClose,
   onSubmit,
   open,
-  riskLevel,
+  priorityLevel,
   title,
 }: DeviationFormModalProps) {
   const td = useTranslations('deviation')
@@ -142,16 +142,16 @@ export default function DeviationFormModal({
 
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-secondary-500 dark:text-secondary-400">
-                  {td('riskLevel')}:
+                  {td('priorityLevel')}:
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-secondary-200 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800 px-2.5 py-0.5 text-xs font-medium text-secondary-700 dark:text-secondary-300">
-                  {riskLevel?.color && (
+                  {priorityLevel?.color && (
                     <span
                       className="inline-block w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: riskLevel.color }}
+                      style={{ backgroundColor: priorityLevel.color }}
                     />
                   )}
-                  {riskLevel?.name ?? '—'}
+                  {priorityLevel?.name ?? '—'}
                 </span>
               </div>
 

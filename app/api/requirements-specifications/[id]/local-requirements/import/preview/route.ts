@@ -1,0 +1,54 @@
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { logSanitizedError } from '@/lib/http/safe-errors'
+import {
+  requirementsMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import { specificationIdOrSlugSchema } from '@/lib/http/validation'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { importPreviewBodySchema } from '@/lib/requirements/import-schema'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+
+const paramsSchema = z
+  .object({
+    id: specificationIdOrSlugSchema,
+  })
+  .strict()
+const bodySchema = importPreviewBodySchema.omit({ areaId: true })
+
+type Body = z.infer<typeof bodySchema>
+type Params = z.infer<typeof paramsSchema>
+
+export const POST = secureMutationRoute({
+  bodySchema,
+  paramsSchema,
+  policy: requirementsMutationPolicy<Body, Params>(({ params }) => ({
+    kind: 'manage_specification_local_requirement',
+    operation: 'create',
+    specificationId: /^\d+$/.test(params.id) ? Number(params.id) : undefined,
+    specificationSlug: /^\d+$/.test(params.id) ? undefined : params.id,
+  })),
+  handler: async ({ body, context, params, request }) => {
+    try {
+      const { service } = await createRequirementsRestRuntime(request, {
+        context,
+      })
+      const preview = await service.previewSpecificationLocalImport(context, {
+        locale: body.locale,
+        payload: body.payload,
+        specificationIdOrSlug: params.id,
+      })
+      return NextResponse.json(preview, {
+        headers: { 'Cache-Control': 'no-store' },
+      })
+    } catch (error) {
+      logSanitizedError(
+        '[API] Failed to preview specification-local requirements import',
+        error,
+      )
+      const { body: errorBody, status } = toHttpErrorPayload(error)
+      return NextResponse.json(errorBody, { status })
+    }
+  },
+})

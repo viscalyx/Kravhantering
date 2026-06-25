@@ -35,7 +35,7 @@ export type AdminPrivilegedResourceType =
   | 'requirement_columns'
   | 'requirement_package'
   | 'requirement_status'
-  | 'risk_level'
+  | 'priority_level'
   | 'specification_implementation_type'
   | 'specification_item_status'
   | 'specification_lifecycle_status'

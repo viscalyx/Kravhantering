@@ -6,7 +6,7 @@ REST routes och MCP tools är likvärdiga gränssnitt över en gemensam
 `RequirementsService` när deras arbetsflöden överlappar. Transport parsing,
 response status, content type och gränssnittsspecifik response shaping ligger
 kvar i route handlers och MCP tool handlers, medan auktorisering, loggning,
-workflow validation, high-risk audit events och gemensamma verksamhetsbeslut
+workflow validation, sensitive audit events och gemensamma verksamhetsbeslut
 ligger i tjänsten.
 
 REST-only routes för referensdata, taxonomi och CRUD i Admin Center får ligga

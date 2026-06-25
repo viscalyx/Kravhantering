@@ -195,7 +195,7 @@ function sampleRequirementDetail() {
         qualityCharacteristic: null,
         requiresTesting: false,
         revisionToken: 'revision-token',
-        riskLevel: null,
+        priorityLevel: null,
         status: 3,
         statusColor: '#22c55e',
         statusIconName: 'CheckCircle2',

@@ -154,10 +154,15 @@ erDiagram
         integer is_system "boolean"
     }
 
-    risk_levels {
+    priority_levels {
         integer id PK
+        text code UK
         text name_sv UK
         text name_en UK
+        text description_sv
+        text description_en
+        text assessment_criteria_sv
+        text assessment_criteria_en
         integer sort_order
         text color
         text icon_name
@@ -213,7 +218,7 @@ erDiagram
         integer requirement_category_id FK
         integer requirement_type_id FK
         integer quality_characteristic_id FK
-        integer risk_level_id FK
+        integer priority_level_id FK
         integer requirement_status_id FK
         integer is_testing_required "boolean"
         text verification_method
@@ -408,7 +413,7 @@ erDiagram
         integer requirement_category_id FK
         integer requirement_type_id FK
         integer quality_characteristic_id FK
-        integer risk_level_id FK
+        integer priority_level_id FK
         integer is_testing_required
         text verification_method
         integer needs_reference_id FK
@@ -610,7 +615,7 @@ erDiagram
     requirement_versions }o--o| requirement_categories : "categorized as"
     requirement_versions }o--o| requirement_types : "typed as"
     requirement_versions }o--o| quality_characteristics : "sub-typed as"
-    requirement_versions }o--o| risk_levels : "risk level"
+    requirement_versions }o--o| priority_levels : "priority"
     requirement_versions ||--o{ requirement_version_requirement_packages : "linked via"
     requirement_packages ||--o{ requirement_version_requirement_packages : "linked via"
     requirement_packages ||--o{ requirement_package_co_authors : "has co-authors"
@@ -651,7 +656,7 @@ erDiagram
     requirement_categories ||--o{ specification_local_requirements : "categorized as"
     requirement_types ||--o{ specification_local_requirements : "typed as"
     quality_characteristics ||--o{ specification_local_requirements : "sub-typed as"
-    risk_levels ||--o{ specification_local_requirements : "risk level"
+    priority_levels ||--o{ specification_local_requirements : "priority"
     specification_local_requirements ||--o{ specification_local_requirement_requirement_packages : "linked via"
     requirement_packages ||--o{ specification_local_requirement_requirement_packages : "linked via"
     specification_local_requirements ||--o{ specification_local_requirement_norm_references : "linked via"
@@ -689,7 +694,7 @@ erDiagram
 ## Lookup / Taxonomy Tables
 
 These tables store app-owned reference data. Taxonomy tables cover
-classifications such as categories, types and risk levels, while status tables
+classifications such as categories, types and priority levels, while status tables
 cover requirement version statuses, usage statuses and lifecycle statuses. All
 user-facing text columns are localized with `_sv` (Swedish) and `_en`
 suffixes.
@@ -824,26 +829,35 @@ The schema also allows `Granskning` → `Utkast`
 
 ---
 
-### `risk_levels`
+### `priority_levels`
 
-Classifies the risk associated with a requirement.
+Defines the fixed P1-P5 priority scale used to classify how important, urgent
+or critical a requirement is in relation to business goals, benefits, risks and
+stakeholder needs.
 
 | Column | Type | Description |
 | ------------ | --------------- | ----------------------------- |
 | `id` | integer PK | Auto-increment primary key |
+| `code` | text, unique | System-controlled priority code (`P1`-`P5`) |
 | `name_sv` | text, unique | Swedish display name |
 | `name_en` | text, unique | English display name |
+| `description_sv` | text | Swedish priority description |
+| `description_en` | text | English priority description |
+| `assessment_criteria_sv` | text | Swedish guidance for selecting the level |
+| `assessment_criteria_en` | text | English guidance for selecting the level |
 | `sort_order` | integer | Display ordering |
 | `color` | text | Hex color code for UI badges |
 | `icon_name` | text | Allowed lucide icon name (nullable) |
 
 **Seed values:**
 
-| id | Swedish | English | Color | Icon |
-| ---- | ------- | ------- | ------------------- | ------ |
-| 1 | Låg | Low | `#22c55e` (green) | `ArrowDownLeft` |
-| 2 | Medel | Medium | `#eab308` (yellow) | `AlertCircle` |
-| 3 | Hög | High | `#ef4444` (red) | `AlertTriangle` |
+| id | Code | Swedish | English | Sort | Color | Icon |
+| ---- | ---- | ------- | ------- | ---- | ------------------- | ------ |
+| 1 | P1 | Mycket låg | Very low | 5 | `#6b7280` (gray) | `Circle` |
+| 2 | P2 | Låg | Low | 4 | `#22c55e` (green) | `ArrowDownLeft` |
+| 3 | P3 | Medelhög | Medium high | 3 | `#eab308` (yellow) | `CircleDot` |
+| 4 | P4 | Hög | High | 2 | `#f97316` (orange) | `AlertCircle` |
+| 5 | P5 | Mycket hög | Very high | 1 | `#ef4444` (red) | `AlertTriangle` |
 
 ---
 
@@ -1557,7 +1571,7 @@ precondition.
 | `requirement_category_id` | integer FK → `requirement_categories.id` | Business / IT / Supplier classification (nullable) |
 | `requirement_type_id` | integer FK → `requirement_types.id` | Functional / Non-functional (nullable) |
 | `quality_characteristic_id` | integer FK → `quality_characteristics.id` | ISO 25010 quality characteristic (nullable) |
-| `risk_level_id` | integer FK → `risk_levels.id` | Risk level classification (nullable) |
+| `priority_level_id` | integer FK → `priority_levels.id` | Priority classification (nullable) |
 | `requirement_status_id` | integer FK → `requirement_statuses.id` | Current requirement version status (1=Draft, 2=Review, 3=Published, 4=Archived). The UI may render a derived label — see [UI status labels](../governance/lifecycle-workflow.md#ui-status-labels). |
 | `is_testing_required` | boolean (integer, default false) | Whether the requirement must be verified by test |
 | `verification_method` | text | How to verify the requirement (nullable; only meaningful when `is_testing_required` is true) |
@@ -1678,7 +1692,7 @@ version/review/publication lifecycle.
 | `requirement_category_id` | integer FK → `requirement_categories.id` | Category classification (nullable) |
 | `requirement_type_id` | integer FK → `requirement_types.id` | Type classification (nullable) |
 | `quality_characteristic_id` | integer FK → `quality_characteristics.id` | Quality-characteristic classification (nullable) |
-| `risk_level_id` | integer FK → `risk_levels.id` | Risk level (nullable) |
+| `priority_level_id` | integer FK → `priority_levels.id` | Priority classification (nullable) |
 | `is_testing_required` | integer NOT NULL DEFAULT 0 | Whether the requirement is marked as verifiable |
 | `verification_method` | text | Verification method |
 | `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional specification-scoped needs reference |
@@ -2249,8 +2263,9 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_types_name_en` | `requirement_types` | `name_en` | Prevents duplicate English type names |
 | `uq_requirement_statuses_name_sv` | `requirement_statuses` | `name_sv` | Prevents duplicate Swedish requirement version status names |
 | `uq_requirement_statuses_name_en` | `requirement_statuses` | `name_en` | Prevents duplicate English requirement version status names |
-| `uq_risk_levels_name_sv` | `risk_levels` | `name_sv` | Prevents duplicate Swedish risk level names |
-| `uq_risk_levels_name_en` | `risk_levels` | `name_en` | Prevents duplicate English risk level names |
+| `uq_priority_levels_code` | `priority_levels` | `code` | Prevents duplicate priority codes |
+| `uq_priority_levels_name_sv` | `priority_levels` | `name_sv` | Prevents duplicate Swedish priority level names |
+| `uq_priority_levels_name_en` | `priority_levels` | `name_en` | Prevents duplicate English priority level names |
 | `uq_requirement_status_transitions_from_to` | `requirement_status_transitions` | `(from_requirement_status_id, to_requirement_status_id)` | Prevents duplicate transition rules |
 | `uq_requirement_list_column_defaults_column_id` | `requirement_list_column_defaults` | `column_id` | Ensures each requirement-list column has one org-managed default row |
 | `uq_requirement_list_column_defaults_sort_order` | `requirement_list_column_defaults` | `sort_order` | Ensures each default list position is assigned to exactly one column |
@@ -2402,7 +2417,7 @@ The following table lists every named FK constraint:
 | `fk_specification_local_requirements_requirement_category_id` | `specification_local_requirements` | `requirement_category_id` | `requirement_categories.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirements_requirement_type_id` | `specification_local_requirements` | `requirement_type_id` | `requirement_types.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirements_quality_characteristic_id` | `specification_local_requirements` | `quality_characteristic_id` | `quality_characteristics.id` | NO ACTION | NO ACTION |
-| `fk_specification_local_requirements_risk_level_id` | `specification_local_requirements` | `risk_level_id` | `risk_levels.id` | NO ACTION | NO ACTION |
+| `fk_specification_local_requirements_priority_level_id` | `specification_local_requirements` | `priority_level_id` | `priority_levels.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirements_specification_item_status_id` | `specification_local_requirements` | `specification_item_status_id` | `specification_item_statuses.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirement_deviations_specification_local_requirement_id` | `specification_local_requirement_deviations` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
 | `fk_specification_local_requirement_norm_references_specification_local_requirement_id` | `specification_local_requirement_norm_references` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
@@ -2414,7 +2429,7 @@ The following table lists every named FK constraint:
 | `fk_requirement_versions_requirement_type_id` | `requirement_versions` | `requirement_type_id` | `requirement_types.id` | NO ACTION | NO ACTION |
 | `fk_requirement_versions_requirement_category_id` | `requirement_versions` | `requirement_category_id` | `requirement_categories.id` | NO ACTION | NO ACTION |
 | `fk_requirement_versions_quality_characteristic_id` | `requirement_versions` | `quality_characteristic_id` | `quality_characteristics.id` | NO ACTION | NO ACTION |
-| `fk_requirement_versions_risk_level_id` | `requirement_versions` | `risk_level_id` | `risk_levels.id` | NO ACTION | NO ACTION |
+| `fk_requirement_versions_priority_level_id` | `requirement_versions` | `priority_level_id` | `priority_levels.id` | NO ACTION | NO ACTION |
 | `fk_requirement_version_norm_references_requirement_version_id` | `requirement_version_norm_references` | `requirement_version_id` | `requirement_versions.id` | CASCADE | NO ACTION |
 | `fk_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION | NO ACTION |
 | `fk_requirement_version_requirement_packages_requirement_version_id` | `requirement_version_requirement_packages` | `requirement_version_id` | `requirement_versions.id` | NO ACTION | NO ACTION |
@@ -2464,7 +2479,7 @@ graph LR
         RSA[requirement_selection_answers]
         RSQVG[requirement_selection_question_visibility_groups]
         RSQVC[requirement_selection_question_visibility_conditions]
-        RL[risk_levels]
+        RL[priority_levels]
         NR[norm_references]
     end
 

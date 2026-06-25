@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
-  countLinkedRequirements: vi.fn(async () => ({ 1: 2 })),
+  countLinkedRequirements: vi.fn(async () => ({ 2: 2 })),
   getRequestSqlServerDataSource: vi.fn(() => ({})),
-  listRiskLevels: vi.fn(async () => [
+  listPriorityLevels: vi.fn(async () => [
     {
+      assessmentCriteriaEn: 'Low assessment',
+      assessmentCriteriaSv: 'Låg bedömning',
+      code: 'P2',
       color: '#22c55e',
+      descriptionEn: 'Low priority',
+      descriptionSv: 'Låg prioritet',
       iconName: 'ArrowDownLeft',
-      id: 1,
+      id: 2,
       nameEn: 'Low',
       nameSv: 'Låg',
       sortOrder: 1,
@@ -19,28 +24,33 @@ vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
 
-vi.mock('@/lib/dal/risk-levels', () => ({
+vi.mock('@/lib/dal/priority-levels', () => ({
   countLinkedRequirements: routeState.countLinkedRequirements,
-  listRiskLevels: routeState.listRiskLevels,
+  listPriorityLevels: routeState.listPriorityLevels,
 }))
 
-import * as route from '@/app/api/risk-levels/route'
+import * as route from '@/app/api/priority-levels/route'
 
-describe('risk-levels route', () => {
+describe('priority-levels route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('GET returns fixed risk levels with linked requirement counts', async () => {
+  it('GET returns fixed priority levels with linked requirement counts', async () => {
     const response = await route.GET()
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
-      riskLevels: [
+      priorityLevels: [
         {
+          assessmentCriteriaEn: 'Low assessment',
+          assessmentCriteriaSv: 'Låg bedömning',
+          code: 'P2',
           color: '#22c55e',
+          descriptionEn: 'Low priority',
+          descriptionSv: 'Låg prioritet',
           iconName: 'ArrowDownLeft',
-          id: 1,
+          id: 2,
           linkedRequirementCount: 2,
           nameEn: 'Low',
           nameSv: 'Låg',

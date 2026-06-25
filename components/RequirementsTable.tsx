@@ -59,6 +59,7 @@ import {
   getRequirementColumnWidth,
   normalizeRequirementListColumnDefaults,
   orderRequirementVisibleColumns,
+  type PriorityLevelOption,
   type QualityCharacteristicOption,
   type RequirementColumnId,
   type RequirementColumnWidths,
@@ -67,7 +68,6 @@ import {
   type RequirementRow,
   type RequirementSortField,
   type RequirementSortState,
-  type RiskLevelOption,
   type SpecificationItemStatusOption,
   type StatusOption,
 } from '@/lib/requirements/list-view'
@@ -109,10 +109,10 @@ export interface RequirementsTableProps {
   onSpecificationItemStatusChange?: (itemRef: string, statusId: number) => void
   onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
   pinnedIds?: Set<number>
+  priorityLevels?: PriorityLevelOption[]
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
   requirementPackages?: RequirementPackageOption[]
-  riskLevels?: RiskLevelOption[]
   rows: RequirementRow[]
   selectable?: boolean
   selectedIds?: Set<number>
@@ -1346,7 +1346,7 @@ export default function RequirementsTable({
   pinnedIds,
   specificationItemStatuses = [],
   renderExpanded,
-  riskLevels = [],
+  priorityLevels = [],
   rows,
   selectable = false,
   selectedIds,
@@ -1604,9 +1604,13 @@ export default function RequirementsTable({
     const s = statusOptions.find(s => s.id === id)
     return s ? getStatusName(s) : String(id)
   }
-  const riskLevelLabel = (id: number) => {
-    const rl = riskLevels.find(rl => rl.id === id)
-    return rl ? getName(rl) : String(id)
+  const formatPriorityLevelOptionLabel = (rl: PriorityLevelOption) =>
+    [rl.code, locale === 'sv' ? rl.nameSv : rl.nameEn]
+      .filter(Boolean)
+      .join(' - ')
+  const formatPriorityLevelLabel = (id: number) => {
+    const rl = priorityLevels.find(rl => rl.id === id)
+    return rl ? formatPriorityLevelOptionLabel(rl) : String(id)
   }
   const requirementPackageName = (
     requirementPackage: RequirementPackageOption,
@@ -1939,20 +1943,20 @@ export default function RequirementsTable({
             value={fv.qualityCharacteristicIds ?? []}
           />
         )
-      case 'riskLevel':
+      case 'priorityLevel':
         return (
           <MultiSelectFilterPopover
-            activeCount={(fv.riskLevelIds ?? []).length}
+            activeCount={(fv.priorityLevelIds ?? []).length}
             developerModeValue={developerModeValue}
-            getLabel={option => riskLevelLabel(option.id)}
-            label={t('riskLevel')}
+            getLabel={option => formatPriorityLevelLabel(option.id)}
+            label={t('priorityLevel')}
             onChange={ids =>
               updateFilter({
-                riskLevelIds: ids.length > 0 ? ids : undefined,
+                priorityLevelIds: ids.length > 0 ? ids : undefined,
               })
             }
-            options={riskLevels}
-            value={fv.riskLevelIds ?? []}
+            options={priorityLevels}
+            value={fv.priorityLevelIds ?? []}
           />
         )
       case 'status':
@@ -2102,19 +2106,19 @@ export default function RequirementsTable({
             values={fv.qualityCharacteristicIds ?? []}
           />
         )
-      case 'riskLevel':
+      case 'priorityLevel':
         return (
           <FilterChips
             developerModeContext={developerModeContext}
-            getLabel={riskLevelLabel}
+            getLabel={formatPriorityLevelLabel}
             onRemove={id =>
               updateFilter({
-                riskLevelIds: (fv.riskLevelIds ?? []).filter(
+                priorityLevelIds: (fv.priorityLevelIds ?? []).filter(
                   value => value !== id,
                 ),
               })
             }
-            values={fv.riskLevelIds ?? []}
+            values={fv.priorityLevelIds ?? []}
           />
         )
       case 'status':
@@ -2290,20 +2294,31 @@ export default function RequirementsTable({
               : row.version?.qualityCharacteristicNameEn) ?? '—'}
           </td>
         )
-      case 'riskLevel': {
-        const riskLevelLabel =
+      case 'priorityLevel': {
+        const fallbackPriorityLevelLabel =
           (locale === 'sv'
-            ? row.version?.riskLevelNameSv
-            : row.version?.riskLevelNameEn) ?? null
+            ? row.version?.priorityLevelNameSv
+            : row.version?.priorityLevelNameEn) ?? null
+        const priorityLevelOption =
+          row.version?.priorityLevelId == null
+            ? null
+            : priorityLevels.find(
+                priorityLevel =>
+                  priorityLevel.id === row.version?.priorityLevelId,
+              )
+        const priorityLevelLabel =
+          priorityLevelOption != null
+            ? formatPriorityLevelOptionLabel(priorityLevelOption)
+            : fallbackPriorityLevelLabel
         return (
           <td
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
           >
-            {riskLevelLabel ? (
+            {priorityLevelLabel ? (
               <StatusBadge
-                color={row.version?.riskLevelColor ?? null}
-                iconName={row.version?.riskLevelIconName}
-                label={riskLevelLabel}
+                color={row.version?.priorityLevelColor ?? null}
+                iconName={row.version?.priorityLevelIconName}
+                label={priorityLevelLabel}
                 size="sm"
               />
             ) : (

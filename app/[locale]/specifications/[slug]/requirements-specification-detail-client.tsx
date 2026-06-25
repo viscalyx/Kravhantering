@@ -10,6 +10,7 @@ import {
   Plus,
   Printer,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
@@ -33,6 +34,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import RequirementsImportDialog from '@/components/RequirementsImportDialog'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
@@ -333,6 +335,10 @@ export default function KravunderlagDetailClient({
   const [showAddModal, setShowAddModal] = useState(false)
   const [showCreateLocalRequirementModal, setShowCreateLocalRequirementModal] =
     useState(false)
+  const [
+    showImportLocalRequirementsModal,
+    setShowImportLocalRequirementsModal,
+  ] = useState(false)
   const [createLocalRequirementFormDirty, setCreateLocalRequirementFormDirty] =
     useState(false)
   const [pendingAddIds, setPendingAddIds] = useState<number[]>([])
@@ -907,6 +913,16 @@ export default function KravunderlagDetailClient({
     [fetchSpecificationItems, specificationSlug, tc],
   )
 
+  const handleImportLocalRequirementsClose = useCallback(
+    async (importSucceeded: boolean) => {
+      setShowImportLocalRequirementsModal(false)
+      if (importSucceeded) {
+        await Promise.all([fetchSpecificationItems(), fetchNeedsReferences()])
+      }
+    },
+    [fetchNeedsReferences, fetchSpecificationItems],
+  )
+
   const needsReferenceFormDirty =
     needsReferenceForm !== null &&
     needsReferenceFormBaseline !==
@@ -1427,11 +1443,15 @@ export default function KravunderlagDetailClient({
         r => r.version?.status != null && statusSet.has(r.version.status),
       )
     }
-    if (leftFilters.riskLevelIds && leftFilters.riskLevelIds.length > 0) {
-      const riskSet = new Set(leftFilters.riskLevelIds)
+    if (
+      leftFilters.priorityLevelIds &&
+      leftFilters.priorityLevelIds.length > 0
+    ) {
+      const prioritySet = new Set(leftFilters.priorityLevelIds)
       rows = rows.filter(
         r =>
-          r.version?.riskLevelId != null && riskSet.has(r.version.riskLevelId),
+          r.version?.priorityLevelId != null &&
+          prioritySet.has(r.version.priorityLevelId),
       )
     }
     if (leftFilters.requiresTesting && leftFilters.requiresTesting.length > 0) {
@@ -2546,26 +2566,48 @@ export default function KravunderlagDetailClient({
                   <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
                     {canEditContent ? (
-                      <button
-                        aria-label={t('newLocalRequirement')}
-                        className={leftPanelActionPillClassName}
-                        {...devMarker({
-                          context: 'requirements specification detail',
-                          name: 'table action',
-                          priority: 350,
-                          value: 'create local requirement',
-                        })}
-                        onClick={() =>
-                          void handleOpenCreateLocalRequirementModal()
-                        }
-                        title={t('newLocalRequirement')}
-                        type="button"
-                      >
-                        <Plus aria-hidden="true" className="h-4 w-4" />
-                        <span className="sr-only">
-                          {t('newLocalRequirement')}
-                        </span>
-                      </button>
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          aria-label={t('newLocalRequirement')}
+                          className={leftPanelActionPillClassName}
+                          {...devMarker({
+                            context: 'requirements specification detail',
+                            name: 'table action',
+                            priority: 350,
+                            value: 'create local requirement',
+                          })}
+                          onClick={() =>
+                            void handleOpenCreateLocalRequirementModal()
+                          }
+                          title={t('newLocalRequirement')}
+                          type="button"
+                        >
+                          <Plus aria-hidden="true" className="h-4 w-4" />
+                          <span className="sr-only">
+                            {t('newLocalRequirement')}
+                          </span>
+                        </button>
+                        <button
+                          aria-label={t('importLocalRequirements')}
+                          className={leftPanelActionPillClassName}
+                          {...devMarker({
+                            context: 'requirements specification detail',
+                            name: 'table action',
+                            priority: 350,
+                            value: 'import local requirements',
+                          })}
+                          onClick={() =>
+                            setShowImportLocalRequirementsModal(true)
+                          }
+                          title={t('importLocalRequirements')}
+                          type="button"
+                        >
+                          <Upload aria-hidden="true" className="h-4 w-4" />
+                          <span className="sr-only">
+                            {t('importLocalRequirements')}
+                          </span>
+                        </button>
+                      </div>
                     ) : null}
                   </div>
                   <div className="p-8 text-center text-sm text-secondary-500 dark:text-secondary-400">
@@ -2586,6 +2628,23 @@ export default function KravunderlagDetailClient({
                     floatingActions={[
                       ...(canEditContent
                         ? [
+                            {
+                              ariaLabel: t('importLocalRequirements'),
+                              developerModeContext:
+                                'requirements specification detail',
+                              developerModeValue: 'import local requirements',
+                              icon: (
+                                <Upload
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                              ),
+                              id: 'import-local',
+                              onClick: () =>
+                                setShowImportLocalRequirementsModal(true),
+                              position: 'beforeColumns' as const,
+                              tooltip: t('importLocalRequirements'),
+                            },
                             {
                               ariaLabel: t('newLocalRequirement'),
                               developerModeContext:
@@ -3029,6 +3088,15 @@ export default function KravunderlagDetailClient({
       />
       {addModal}
       {createLocalRequirementModal}
+      <RequirementsImportDialog
+        mode="specification-local"
+        needsReferences={availableNeedsRefs}
+        onClose={importSucceeded => {
+          void handleImportLocalRequirementsClose(importSucceeded)
+        }}
+        open={showImportLocalRequirementsModal}
+        specificationSlug={specificationSlug}
+      />
       {needsReferenceFormModal}
       {pdfDownload.dialog}
     </>

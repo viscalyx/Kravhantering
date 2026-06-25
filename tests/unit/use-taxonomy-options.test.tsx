@@ -36,7 +36,7 @@ const samplePackages = [{ id: 1, name: 'Package' }]
 const sampleNormRefs = [
   { id: 1, isArchived: false, name: 'NR-1', normReferenceId: 'NR001' },
 ]
-const sampleRiskLevels = [{ id: 1, nameSv: 'Låg', nameEn: 'Low' }]
+const samplePriorityLevels = [{ id: 1, nameSv: 'Låg', nameEn: 'Low' }]
 const sampleQC = [
   { id: 10, nameSv: 'Qc sv', nameEn: 'Qc en', parentId: null },
   { id: 11, nameSv: 'Child sv', nameEn: 'Child en', parentId: 10 },
@@ -54,8 +54,8 @@ function setupFetchMock() {
       return Promise.resolve(okJson({ requirementPackages: samplePackages }))
     if (url.includes('/api/norm-references'))
       return Promise.resolve(okJson({ normReferences: sampleNormRefs }))
-    if (url.includes('/api/risk-levels'))
-      return Promise.resolve(okJson({ riskLevels: sampleRiskLevels }))
+    if (url.includes('/api/priority-levels'))
+      return Promise.resolve(okJson({ priorityLevels: samplePriorityLevels }))
     if (url.includes('/api/quality-characteristics'))
       return Promise.resolve(okJson({ qualityCharacteristics: sampleQC }))
     return Promise.resolve(okJson({}))
@@ -81,7 +81,7 @@ describe('useTaxonomyOptions', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/requirement-types')
     expect(fetchMock).toHaveBeenCalledWith('/api/requirement-packages')
     expect(fetchMock).toHaveBeenCalledWith('/api/norm-references')
-    expect(fetchMock).toHaveBeenCalledWith('/api/risk-levels')
+    expect(fetchMock).toHaveBeenCalledWith('/api/priority-levels')
   })
 
   it('includes selected norm reference IDs when loading taxonomy options', async () => {
@@ -112,7 +112,7 @@ describe('useTaxonomyOptions', () => {
     expect(result.current.types).toEqual(sampleTypes)
     expect(result.current.requirementPackages).toEqual(samplePackages)
     expect(result.current.normReferences).toEqual(sampleNormRefs)
-    expect(result.current.riskLevels).toEqual(sampleRiskLevels)
+    expect(result.current.priorityLevels).toEqual(samplePriorityLevels)
   })
 
   it('fetches quality characteristics when typeId is provided', async () => {
@@ -207,8 +207,8 @@ describe('useTaxonomyOptions', () => {
         return Promise.resolve(okJson({ requirementPackages: samplePackages }))
       if (url.includes('/api/norm-references'))
         return Promise.resolve(okJson({ normReferences: sampleNormRefs }))
-      if (url.includes('/api/risk-levels'))
-        return Promise.resolve(okJson({ riskLevels: sampleRiskLevels }))
+      if (url.includes('/api/priority-levels'))
+        return Promise.resolve(okJson({ priorityLevels: samplePriorityLevels }))
       return Promise.resolve(okJson({}))
     })
 
@@ -266,8 +266,8 @@ describe('useTaxonomyOptions', () => {
         return Promise.resolve(okJson({ requirementPackages: samplePackages }))
       if (url.includes('/api/norm-references'))
         return Promise.resolve(okJson({ normReferences: sampleNormRefs }))
-      if (url.includes('/api/risk-levels'))
-        return Promise.resolve(okJson({ riskLevels: sampleRiskLevels }))
+      if (url.includes('/api/priority-levels'))
+        return Promise.resolve(okJson({ priorityLevels: samplePriorityLevels }))
       return Promise.resolve(okJson({}))
     })
 
@@ -301,8 +301,8 @@ describe('useTaxonomyOptions', () => {
         return Promise.resolve(okJson({ requirementPackages: samplePackages }))
       if (url.includes('/api/norm-references'))
         return Promise.resolve(okJson({ normReferences: sampleNormRefs }))
-      if (url.includes('/api/risk-levels'))
-        return Promise.resolve(okJson({ riskLevels: sampleRiskLevels }))
+      if (url.includes('/api/priority-levels'))
+        return Promise.resolve(okJson({ priorityLevels: samplePriorityLevels }))
       return Promise.resolve(okJson({}))
     })
 
@@ -321,7 +321,7 @@ describe('useTaxonomyOptions', () => {
     // Others succeeded
     expect(result.current.requirementPackages).toEqual(samplePackages)
     expect(result.current.normReferences).toEqual(sampleNormRefs)
-    expect(result.current.riskLevels).toEqual(sampleRiskLevels)
+    expect(result.current.priorityLevels).toEqual(samplePriorityLevels)
   })
 
   it('starts with loading true and transitions to false', async () => {

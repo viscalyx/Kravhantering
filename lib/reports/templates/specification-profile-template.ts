@@ -91,7 +91,7 @@ function progressColumns(locale: string): RequirementTableColumn[] {
       label: labels.qualityCharacteristic,
       width: '10%',
     },
-    { key: 'riskLevel', label: labels.riskLevel, width: '6%' },
+    { key: 'priorityLevel', label: labels.priorityLevel, width: '6%' },
     {
       key: 'requirementVersionStatus',
       label: labels.requirementVersionStatus,
@@ -118,7 +118,7 @@ function managementColumns(locale: string): RequirementTableColumn[] {
       label: labels.qualityCharacteristic,
       width: '9%',
     },
-    { key: 'riskLevel', label: labels.riskLevel, width: '5%' },
+    { key: 'priorityLevel', label: labels.priorityLevel, width: '5%' },
     {
       key: 'requirementVersionStatus',
       label: labels.requirementVersionStatus,
@@ -177,10 +177,10 @@ function buildProgressRow(
         item.statusNameSv,
         item.statusNameEn,
       ),
-      riskLevel: localizeReportValue(
+      priorityLevel: localizeReportValue(
         locale,
-        item.riskLevelNameSv,
-        item.riskLevelNameEn,
+        item.priorityLevelNameSv,
+        item.priorityLevelNameEn,
       ),
       type: localizeReportValue(locale, item.typeNameSv, item.typeNameEn),
       uniqueId: item.uniqueId,

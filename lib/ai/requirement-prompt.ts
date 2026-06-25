@@ -16,11 +16,11 @@ export interface GeneratedRequirement {
   acceptanceCriteria?: string
   categoryId?: number
   description: string
+  priorityLevelId?: number
   qualityCharacteristicId?: number
   rationale: string
   requirementPackageIds?: number[]
   requiresTesting: boolean
-  riskLevelId?: number
   typeId: number
   verificationMethod?: string
 }
@@ -34,13 +34,19 @@ export interface GenerationResult {
 
 export interface TaxonomyData {
   categories: Array<{ id: number; name: string }>
+  priorityLevels: Array<{
+    assessmentCriteria: string
+    code: string
+    description: string
+    id: number
+    name: string
+  }>
   qualityCharacteristics: Array<{
     id: number
     name: string
     parentName?: string
   }>
   requirementPackages: Array<{ id: number; name: string }>
-  riskLevels: Array<{ id: number; name: string }>
   types: Array<{ id: number; name: string }>
 }
 
@@ -59,7 +65,7 @@ export const REQUIREMENT_FORMAT_SCHEMA: Record<string, unknown> = {
           qualityCharacteristicId: { type: ['integer', 'null'] },
           rationale: { type: 'string' },
           requiresTesting: { type: 'boolean' },
-          riskLevelId: { type: ['integer', 'null'] },
+          priorityLevelId: { type: ['integer', 'null'] },
           requirementPackageIds: {
             items: { type: 'integer' },
             type: ['array', 'null'],
@@ -74,7 +80,7 @@ export const REQUIREMENT_FORMAT_SCHEMA: Record<string, unknown> = {
           'qualityCharacteristicId',
           'rationale',
           'requiresTesting',
-          'riskLevelId',
+          'priorityLevelId',
           'requirementPackageIds',
           'typeId',
           'verificationMethod',
@@ -193,7 +199,7 @@ const SYSTEM_PROMPT_HEADING_KEYS = [
   'types',
   'categories',
   'qualityCharacteristics',
-  'riskLevels',
+  'priorityLevels',
   'requirementPackages',
   'outputRules',
 ] as const
@@ -271,8 +277,13 @@ export function buildSystemPrompt(
   const catList = taxonomy.categories
     .map(c => `  - ID ${c.id}: ${c.name}`)
     .join('\n')
-  const riskList = taxonomy.riskLevels
-    .map(r => `  - ID ${r.id}: ${r.name}`)
+  const assessmentLabel =
+    locale === 'sv' ? 'Bedömningsgrunder' : 'Assessment criteria'
+  const priorityList = taxonomy.priorityLevels
+    .map(
+      priority =>
+        `  - ID ${priority.id}: ${priority.code} - ${priority.name}. ${priority.description} ${assessmentLabel}: ${priority.assessmentCriteria}`,
+    )
     .join('\n')
   const requirementPackageList =
     taxonomy.requirementPackages.length > 0
@@ -313,8 +324,8 @@ ${catList}
 ## ${headings.qualityCharacteristics}
 ${qcList}
 
-## ${headings.riskLevels}
-${riskList}
+## ${headings.priorityLevels}
+${priorityList}
 
 ## ${headings.requirementPackages}
 ${requirementPackageList}
@@ -359,7 +370,7 @@ export function validateGeneratedRequirementsWithMetadata(
   const validTypeIds = new Set(taxonomy.types.map(t => t.id))
   const validCatIds = new Set(taxonomy.categories.map(c => c.id))
   const validQcIds = new Set(taxonomy.qualityCharacteristics.map(qc => qc.id))
-  const validRiskIds = new Set(taxonomy.riskLevels.map(r => r.id))
+  const validPriorityIds = new Set(taxonomy.priorityLevels.map(r => r.id))
   const validRequirementPackageIds = new Set(
     taxonomy.requirementPackages.map(s => s.id),
   )
@@ -380,9 +391,9 @@ export function validateGeneratedRequirementsWithMetadata(
         r.qualityCharacteristicId && validQcIds.has(r.qualityCharacteristicId)
           ? r.qualityCharacteristicId
           : undefined,
-      riskLevelId:
-        r.riskLevelId && validRiskIds.has(r.riskLevelId)
-          ? r.riskLevelId
+      priorityLevelId:
+        r.priorityLevelId && validPriorityIds.has(r.priorityLevelId)
+          ? r.priorityLevelId
           : undefined,
       requirementPackageIds: r.requirementPackageIds?.filter(id =>
         validRequirementPackageIds.has(id),

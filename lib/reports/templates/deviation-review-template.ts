@@ -40,7 +40,7 @@ export function buildDeviationReviewReport(
     category: v.category,
     type: v.type,
     qualityCharacteristic: v.qualityCharacteristic,
-    riskLevel: v.riskLevel,
+    priorityLevel: v.priorityLevel,
     status: v.status,
     createdBy: v.createdBy,
     createdAt: '',
@@ -70,7 +70,7 @@ export function buildDeviationReviewReport(
     createdAt: data.deviation.createdAt,
     specificationName: data.specificationName,
     specificationUniqueId: data.specificationUniqueId,
-    riskLevel: v.riskLevel,
+    priorityLevel: v.priorityLevel,
     locale,
   })
 

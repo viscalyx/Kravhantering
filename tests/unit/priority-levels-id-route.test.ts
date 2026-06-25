@@ -15,20 +15,20 @@ const routeState = vi.hoisted(() => ({
     },
     request: {
       method: 'PUT',
-      path: '/api/risk-levels/1',
-      requestId: 'request-risk',
+      path: '/api/priority-levels/1',
+      requestId: 'request-priority',
     },
-    correlationId: 'correlation-risk',
-    requestId: 'request-risk',
+    correlationId: 'correlation-priority',
+    requestId: 'request-priority',
     source: 'rest',
   })),
   getLinkedRequirements: vi.fn(
     async (): Promise<MinimalLinkedRequirement[]> => [],
   ),
   getRequestSqlServerDataSource: vi.fn(() => ({})),
-  getRiskLevelById: vi.fn(),
+  getPriorityLevelById: vi.fn(),
   recordAdminPrivilegedActionSucceeded: vi.fn(),
-  updateRiskLevel: vi.fn(),
+  updatePriorityLevel: vi.fn(),
 }))
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
@@ -42,29 +42,34 @@ vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
 
-vi.mock('@/lib/dal/risk-levels', () => ({
+vi.mock('@/lib/dal/priority-levels', () => ({
   getLinkedRequirements: routeState.getLinkedRequirements,
-  getRiskLevelById: routeState.getRiskLevelById,
-  updateRiskLevel: routeState.updateRiskLevel,
+  getPriorityLevelById: routeState.getPriorityLevelById,
+  updatePriorityLevel: routeState.updatePriorityLevel,
 }))
 
-import * as route from '@/app/api/risk-levels/[id]/route'
+import * as route from '@/app/api/priority-levels/[id]/route'
 import { conflictError } from '@/lib/requirements/errors'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
 }
 
-describe('risk-levels/[id] route', () => {
+describe('priority-levels/[id] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('GET returns risk level detail with linked requirements', async () => {
-    routeState.getRiskLevelById.mockResolvedValueOnce({
+  it('GET returns priority level detail with linked requirements', async () => {
+    routeState.getPriorityLevelById.mockResolvedValueOnce({
+      assessmentCriteriaEn: 'Low assessment',
+      assessmentCriteriaSv: 'Låg bedömning',
+      code: 'P2',
       color: '#22c55e',
+      descriptionEn: 'Low priority',
+      descriptionSv: 'Låg prioritet',
       iconName: 'ArrowDownLeft',
-      id: 1,
+      id: 2,
       nameEn: 'Low',
       nameSv: 'Låg',
       sortOrder: 1,
@@ -74,16 +79,21 @@ describe('risk-levels/[id] route', () => {
     ])
 
     const response = await route.GET(
-      new NextRequest('https://example.test/api/risk-levels/1'),
+      new NextRequest('https://example.test/api/priority-levels/1'),
       makeParams('1'),
     )
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
-      riskLevel: {
+      priorityLevel: {
+        assessmentCriteriaEn: 'Low assessment',
+        assessmentCriteriaSv: 'Låg bedömning',
+        code: 'P2',
         color: '#22c55e',
+        descriptionEn: 'Low priority',
+        descriptionSv: 'Låg prioritet',
         iconName: 'ArrowDownLeft',
-        id: 1,
+        id: 2,
         nameEn: 'Low',
         nameSv: 'Låg',
         sortOrder: 1,
@@ -94,7 +104,7 @@ describe('risk-levels/[id] route', () => {
 
   it('PUT rejects non-allowed icon names before opening the DB', async () => {
     const response = await route.PUT(
-      new NextRequest('https://example.test/api/risk-levels/1', {
+      new NextRequest('https://example.test/api/priority-levels/1', {
         body: JSON.stringify({ iconName: 'MadeUpIcon' }),
         headers: { 'Content-Type': 'application/json' },
         method: 'PUT',
@@ -112,25 +122,29 @@ describe('risk-levels/[id] route', () => {
       expect.arrayContaining([expect.objectContaining({ path: 'iconName' })]),
     )
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
-    expect(routeState.updateRiskLevel).not.toHaveBeenCalled()
+    expect(routeState.updatePriorityLevel).not.toHaveBeenCalled()
     expect(
       routeState.recordAdminPrivilegedActionSucceeded,
     ).not.toHaveBeenCalled()
   })
 
-  it('PUT updates a system risk level', async () => {
+  it('PUT updates a system priority level', async () => {
     const payload = {
+      assessmentCriteriaEn: 'Low assessment',
+      assessmentCriteriaSv: 'Låg bedömning',
       color: '#22c55e',
+      descriptionEn: 'Low priority',
+      descriptionSv: 'Låg prioritet',
       iconName: 'ArrowDownLeft',
       nameEn: 'Low',
       nameSv: 'Låg',
       sortOrder: 1,
     }
-    const updatedRiskLevel = { id: 1, ...payload }
-    routeState.updateRiskLevel.mockResolvedValueOnce(updatedRiskLevel)
+    const updatedPriorityLevel = { id: 1, ...payload }
+    routeState.updatePriorityLevel.mockResolvedValueOnce(updatedPriorityLevel)
 
     const response = await route.PUT(
-      new NextRequest('https://example.test/api/risk-levels/1', {
+      new NextRequest('https://example.test/api/priority-levels/1', {
         body: JSON.stringify(payload),
         headers: { 'Content-Type': 'application/json' },
         method: 'PUT',
@@ -139,8 +153,8 @@ describe('risk-levels/[id] route', () => {
     )
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual(updatedRiskLevel)
-    expect(routeState.updateRiskLevel).toHaveBeenCalledWith(
+    await expect(response.json()).resolves.toEqual(updatedPriorityLevel)
+    expect(routeState.updatePriorityLevel).toHaveBeenCalledWith(
       expect.anything(),
       1,
       payload,
@@ -148,23 +162,33 @@ describe('risk-levels/[id] route', () => {
     expect(
       routeState.recordAdminPrivilegedActionSucceeded,
     ).toHaveBeenCalledWith(
-      expect.objectContaining({ requestId: 'request-risk' }),
+      expect.objectContaining({ requestId: 'request-priority' }),
       {
-        changedFields: ['color', 'iconName', 'nameEn', 'nameSv', 'sortOrder'],
+        changedFields: [
+          'assessmentCriteriaEn',
+          'assessmentCriteriaSv',
+          'color',
+          'descriptionEn',
+          'descriptionSv',
+          'iconName',
+          'nameEn',
+          'nameSv',
+          'sortOrder',
+        ],
         operation: 'update',
         resourceId: 1,
-        resourceType: 'risk_level',
+        resourceType: 'priority_level',
       },
     )
   })
 
-  it('PUT preserves non-system risk level policy errors before auditing', async () => {
-    routeState.updateRiskLevel.mockRejectedValueOnce(
-      conflictError('Only system risk levels can be edited'),
+  it('PUT preserves non-system priority level policy errors before auditing', async () => {
+    routeState.updatePriorityLevel.mockRejectedValueOnce(
+      conflictError('Only system priority levels can be edited'),
     )
 
     const response = await route.PUT(
-      new NextRequest('https://example.test/api/risk-levels/99', {
+      new NextRequest('https://example.test/api/priority-levels/99', {
         body: JSON.stringify({ nameEn: 'Custom' }),
         headers: { 'Content-Type': 'application/json' },
         method: 'PUT',
@@ -175,7 +199,7 @@ describe('risk-levels/[id] route', () => {
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toEqual({
       code: 'conflict',
-      error: 'Only system risk levels can be edited',
+      error: 'Only system priority levels can be edited',
     })
     expect(
       routeState.recordAdminPrivilegedActionSucceeded,

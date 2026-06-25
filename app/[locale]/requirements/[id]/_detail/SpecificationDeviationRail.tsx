@@ -10,8 +10,8 @@ import type { UseDeviationWorkflowResult } from './use-deviation-workflow'
 interface SpecificationDeviationRailProps {
   detailContext?: string
   locale: string
+  priorityLevel: { color: string; name: string | null } | null
   requirementId: number | string
-  riskLevel: { color: string; name: string | null } | null
   specificationItemId: number
   specificationSlug: string
   workflow: UseDeviationWorkflowResult
@@ -23,7 +23,7 @@ export default function SpecificationDeviationRail({
   specificationItemId,
   specificationSlug,
   requirementId,
-  riskLevel,
+  priorityLevel,
   workflow,
 }: SpecificationDeviationRailProps) {
   const td = useTranslations('deviation')
@@ -110,7 +110,7 @@ export default function SpecificationDeviationRail({
         onClose={workflow.closeDialog}
         onSubmit={workflow.handleCreateDeviation}
         open={workflow.showDeviationForm}
-        riskLevel={riskLevel}
+        priorityLevel={priorityLevel}
       />
       <DeviationFormModal
         initialMotivation={workflow.latestDeviation?.motivation ?? ''}
@@ -118,7 +118,7 @@ export default function SpecificationDeviationRail({
         onClose={workflow.closeDialog}
         onSubmit={workflow.handleEditDeviation}
         open={workflow.showEditDeviationForm}
-        riskLevel={riskLevel}
+        priorityLevel={priorityLevel}
         title={td('editDeviation')}
       />
       <DeviationDecisionModal

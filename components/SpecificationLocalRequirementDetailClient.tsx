@@ -37,6 +37,13 @@ interface SpecificationLocalRequirementDetail {
     normReferenceId: string
     uri: string | null
   }[]
+  priorityLevel: {
+    color: string
+    iconName: string | null
+    id: number
+    nameEn: string
+    nameSv: string
+  } | null
   qualityCharacteristic: { id: number; nameEn: string; nameSv: string } | null
   requirementArea: null
   requirementCategory: { id: number; nameEn: string; nameSv: string } | null
@@ -46,13 +53,6 @@ interface SpecificationLocalRequirementDetail {
   }[]
   requirementType: { id: number; nameEn: string; nameSv: string } | null
   requiresTesting: boolean
-  riskLevel: {
-    color: string
-    iconName: string | null
-    id: number
-    nameEn: string
-    nameSv: string
-  } | null
   specificationId: number
   specificationItemStatusColor: string | null
   specificationItemStatusIconName: string | null
@@ -896,7 +896,7 @@ export default function SpecificationLocalRequirementDetailClient({
     )
   }
 
-  const riskLevelLabel = localName(requirement.riskLevel)?.trim()
+  const priorityLevelLabel = localName(requirement.priorityLevel)?.trim()
 
   const metadata = [
     {
@@ -924,15 +924,15 @@ export default function SpecificationLocalRequirementDetailClient({
       value: localName(requirement.qualityCharacteristic) ?? '—',
     },
     {
-      id: 'risk-level',
-      label: t('riskLevel'),
-      markerValue: 'risk level',
+      id: 'priority-level',
+      label: t('priorityLevel'),
+      markerValue: 'priority level',
       value:
-        requirement.riskLevel && riskLevelLabel ? (
+        requirement.priorityLevel && priorityLevelLabel ? (
           <StatusBadge
-            color={requirement.riskLevel.color}
-            iconName={requirement.riskLevel.iconName}
-            label={riskLevelLabel}
+            color={requirement.priorityLevel.color}
+            iconName={requirement.priorityLevel.iconName}
+            label={priorityLevelLabel}
             size="sm"
           />
         ) : (
@@ -1093,8 +1093,8 @@ export default function SpecificationLocalRequirementDetailClient({
                   ? String(requirement.requirementType.id)
                   : '',
                 requiresTesting: requirement.requiresTesting,
-                riskLevelId: requirement.riskLevel
-                  ? String(requirement.riskLevel.id)
+                priorityLevelId: requirement.priorityLevel
+                  ? String(requirement.priorityLevel.id)
                   : '',
                 requirementPackageIds: requirement.requirementPackages.map(
                   requirementPackage => requirementPackage.id,

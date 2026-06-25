@@ -10,6 +10,13 @@ export interface RequirementReportVersion {
   description: string | null
   editedAt: string | null
   id: number
+  priorityLevel: {
+    color?: string | null
+    iconName?: string | null
+    id: number
+    nameEn: string
+    nameSv: string
+  } | null
   publishedAt: string | null
   qualityCharacteristic: {
     id: number
@@ -17,13 +24,6 @@ export interface RequirementReportVersion {
     nameSv: string
   } | null
   requiresTesting: boolean
-  riskLevel: {
-    color?: string | null
-    iconName?: string | null
-    id: number
-    nameEn: string
-    nameSv: string
-  } | null
   status: number
   statusColor: string | null
   statusIconName?: string | null

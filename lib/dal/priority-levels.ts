@@ -1,12 +1,20 @@
 import type { SqlServerDatabase } from '@/lib/db'
 import { conflictError, notFoundError } from '@/lib/requirements/errors'
-import { type RiskLevelEntity, riskLevelEntity } from '@/lib/typeorm/entities'
+import {
+  type PriorityLevelEntity,
+  priorityLevelEntity,
+} from '@/lib/typeorm/entities'
 
-const SYSTEM_RISK_LEVEL_IDS = [1, 2, 3] as const
-type SystemRiskLevelId = (typeof SYSTEM_RISK_LEVEL_IDS)[number]
+const SYSTEM_PRIORITY_LEVEL_IDS = [1, 2, 3, 4, 5] as const
+type SystemPriorityLevelId = (typeof SYSTEM_PRIORITY_LEVEL_IDS)[number]
 
-export interface RiskLevelRow {
+export interface PriorityLevelRow {
+  assessmentCriteriaEn: string
+  assessmentCriteriaSv: string
+  code: string
   color: string
+  descriptionEn: string
+  descriptionSv: string
   iconName: string | null
   id: number
   nameEn: string
@@ -27,9 +35,14 @@ interface LinkedRequirementRow {
 
 export type { LinkedRequirementRow }
 
-function map(row: RiskLevelEntity): RiskLevelRow {
+function map(row: PriorityLevelEntity): PriorityLevelRow {
   return {
+    assessmentCriteriaEn: row.assessmentCriteriaEn,
+    assessmentCriteriaSv: row.assessmentCriteriaSv,
+    code: row.code,
     color: row.color,
+    descriptionEn: row.descriptionEn,
+    descriptionSv: row.descriptionSv,
     iconName: row.iconName ?? null,
     id: row.id,
     nameEn: row.nameEn,
@@ -38,24 +51,26 @@ function map(row: RiskLevelEntity): RiskLevelRow {
   }
 }
 
-function isSystemRiskLevelId(id: number): id is SystemRiskLevelId {
-  return SYSTEM_RISK_LEVEL_IDS.includes(id as SystemRiskLevelId)
+function isSystemPriorityLevelId(id: number): id is SystemPriorityLevelId {
+  return SYSTEM_PRIORITY_LEVEL_IDS.includes(id as SystemPriorityLevelId)
 }
 
-export async function listRiskLevels(
+export async function listPriorityLevels(
   db: SqlServerDatabase,
-): Promise<RiskLevelRow[]> {
+): Promise<PriorityLevelRow[]> {
   const rows = await db
-    .getRepository(riskLevelEntity)
+    .getRepository(priorityLevelEntity)
     .find({ order: { sortOrder: 'ASC' } })
   return rows.map(map)
 }
 
-export async function getRiskLevelById(
+export async function getPriorityLevelById(
   db: SqlServerDatabase,
   id: number,
-): Promise<RiskLevelRow | null> {
-  const row = await db.getRepository(riskLevelEntity).findOne({ where: { id } })
+): Promise<PriorityLevelRow | null> {
+  const row = await db
+    .getRepository(priorityLevelEntity)
+    .findOne({ where: { id } })
   return row ? map(row) : null
 }
 
@@ -64,19 +79,19 @@ export async function countLinkedRequirements(
 ): Promise<Record<number, number>> {
   const rows = await db.query(`
     SELECT
-      risk_level_id AS riskLevelId,
+      priority_level_id AS priorityLevelId,
       COUNT(DISTINCT requirement_id) AS count
     FROM requirement_versions
-    WHERE risk_level_id IS NOT NULL
-    GROUP BY risk_level_id
+    WHERE priority_level_id IS NOT NULL
+    GROUP BY priority_level_id
   `)
   const counts: Record<number, number> = {}
   for (const row of rows as Array<{
     count: number
-    riskLevelId: number | null
+    priorityLevelId: number | null
   }>) {
-    if (row.riskLevelId != null) {
-      counts[row.riskLevelId] = row.count
+    if (row.priorityLevelId != null) {
+      counts[row.priorityLevelId] = row.count
     }
   }
   return counts
@@ -84,7 +99,7 @@ export async function countLinkedRequirements(
 
 export async function getLinkedRequirements(
   db: SqlServerDatabase,
-  riskLevelId: number,
+  priorityLevelId: number,
 ): Promise<LinkedRequirementRow[]> {
   return db.query(
     `
@@ -102,38 +117,50 @@ export async function getLinkedRequirements(
         ON requirement_versions.requirement_id = requirements.id
       LEFT JOIN requirement_statuses
         ON requirement_versions.requirement_status_id = requirement_statuses.id
-      WHERE requirement_versions.risk_level_id = @0
+      WHERE requirement_versions.priority_level_id = @0
       ORDER BY requirements.unique_id ASC
     `,
-    [riskLevelId],
+    [priorityLevelId],
   )
 }
 
-export async function updateRiskLevel(
+export async function updatePriorityLevel(
   db: SqlServerDatabase,
   id: number,
   data: {
-    nameSv?: string
-    nameEn?: string
+    assessmentCriteriaEn?: string
+    assessmentCriteriaSv?: string
     color?: string
+    descriptionEn?: string
+    descriptionSv?: string
     iconName?: string | null
+    nameEn?: string
+    nameSv?: string
     sortOrder?: number
   },
-): Promise<RiskLevelRow | undefined> {
-  if (!isSystemRiskLevelId(id)) {
-    throw conflictError('Only system risk levels can be edited')
+): Promise<PriorityLevelRow | undefined> {
+  if (!isSystemPriorityLevelId(id)) {
+    throw conflictError('Only system priority levels can be edited')
   }
-  const repository = db.getRepository(riskLevelEntity)
-  const patch: Partial<RiskLevelEntity> = {}
-  if (data.nameSv !== undefined) patch.nameSv = data.nameSv
-  if (data.nameEn !== undefined) patch.nameEn = data.nameEn
+  const repository = db.getRepository(priorityLevelEntity)
+  const patch: Partial<PriorityLevelEntity> = {}
+  if (data.assessmentCriteriaEn !== undefined) {
+    patch.assessmentCriteriaEn = data.assessmentCriteriaEn
+  }
+  if (data.assessmentCriteriaSv !== undefined) {
+    patch.assessmentCriteriaSv = data.assessmentCriteriaSv
+  }
   if (data.color !== undefined) patch.color = data.color
+  if (data.descriptionEn !== undefined) patch.descriptionEn = data.descriptionEn
+  if (data.descriptionSv !== undefined) patch.descriptionSv = data.descriptionSv
   if (data.iconName !== undefined) patch.iconName = data.iconName
+  if (data.nameEn !== undefined) patch.nameEn = data.nameEn
+  if (data.nameSv !== undefined) patch.nameSv = data.nameSv
   if (data.sortOrder !== undefined) patch.sortOrder = data.sortOrder
   if (Object.keys(patch).length > 0) {
     await repository.update(id, patch)
   }
   const row = await repository.findOne({ where: { id } })
-  if (!row) throw notFoundError('Risk level not found')
+  if (!row) throw notFoundError('Priority level not found')
   return row ? map(row) : undefined
 }

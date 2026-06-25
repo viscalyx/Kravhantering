@@ -248,11 +248,11 @@ const initialSpecificationItem = {
     qualityCharacteristicNameEn: null,
     qualityCharacteristicNameSv: null,
     requiresTesting: true,
-    riskLevelColor: null,
-    riskLevelId: null,
-    riskLevelNameEn: null,
-    riskLevelNameSv: null,
-    riskLevelSortOrder: null,
+    priorityLevelColor: null,
+    priorityLevelId: null,
+    priorityLevelNameEn: null,
+    priorityLevelNameSv: null,
+    priorityLevelSortOrder: null,
     status: 3,
     statusColor: '#22c55e',
     statusNameEn: 'Published',
@@ -275,11 +275,11 @@ const initialAvailableRequirement = {
     qualityCharacteristicNameEn: null,
     qualityCharacteristicNameSv: null,
     requiresTesting: true,
-    riskLevelColor: null,
-    riskLevelId: null,
-    riskLevelNameEn: null,
-    riskLevelNameSv: null,
-    riskLevelSortOrder: null,
+    priorityLevelColor: null,
+    priorityLevelId: null,
+    priorityLevelNameEn: null,
+    priorityLevelNameSv: null,
+    priorityLevelSortOrder: null,
     status: 3,
     statusColor: '#22c55e',
     statusNameEn: 'Published',
@@ -565,8 +565,8 @@ describe('RequirementsSpecificationDetailClient', () => {
           return Promise.resolve(okJson({ types: [] }))
         }
 
-        if (url === '/api/risk-levels') {
-          return Promise.resolve(okJson({ riskLevels: [] }))
+        if (url === '/api/priority-levels') {
+          return Promise.resolve(okJson({ priorityLevels: [] }))
         }
 
         if (url === '/api/requirement-packages') {

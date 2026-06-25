@@ -28,7 +28,7 @@ describe('validateRequirementTaxonomyReferences', () => {
       requirementCategoryId: 2,
       requirementPackageIds: [21, 22, 21],
       requirementTypeId: 3,
-      riskLevelId: 5,
+      priorityLevelId: 5,
     })
 
     expect(result).toEqual({
@@ -38,7 +38,7 @@ describe('validateRequirementTaxonomyReferences', () => {
       requirementCategoryId: 2,
       requirementPackageIds: [21, 22],
       requirementTypeId: 3,
-      riskLevelId: 5,
+      priorityLevelId: 5,
     })
     expect(query).toHaveBeenCalledTimes(7)
     expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
@@ -46,7 +46,7 @@ describe('validateRequirementTaxonomyReferences', () => {
       expect.stringContaining('FROM requirement_categories'),
       expect.stringContaining('FROM requirement_types'),
       expect.stringContaining('FROM quality_characteristics'),
-      expect.stringContaining('FROM risk_levels'),
+      expect.stringContaining('FROM priority_levels'),
       expect.stringContaining('FROM norm_references'),
       expect.stringContaining('FROM requirement_packages'),
     ])
@@ -70,7 +70,7 @@ describe('validateRequirementTaxonomyReferences', () => {
       requirementCategoryId: null,
       requirementPackageIds: [],
       requirementTypeId: null,
-      riskLevelId: null,
+      priorityLevelId: null,
     })
     expect(query).not.toHaveBeenCalled()
   })
@@ -101,10 +101,10 @@ describe('validateRequirementTaxonomyReferences', () => {
       'qualityCharacteristicId references unknown quality characteristic id 99',
     ],
     [
-      'riskLevelId',
-      { riskLevelId: 99 },
-      ['risk_levels:99'],
-      'riskLevelId references unknown risk level id 99',
+      'priorityLevelId',
+      { priorityLevelId: 99 },
+      ['priority_levels:99'],
+      'priorityLevelId references unknown priority level id 99',
     ],
     [
       'normReferenceIds',

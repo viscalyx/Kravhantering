@@ -138,11 +138,11 @@ describe('RequirementsTable', () => {
         categoryNameSv: 'Verksamhetskrav',
         description: 'Testkrav',
         requiresTesting: true,
-        riskLevelId: null,
-        riskLevelNameEn: null,
-        riskLevelNameSv: null,
-        riskLevelColor: null,
-        riskLevelSortOrder: null,
+        priorityLevelId: null,
+        priorityLevelNameEn: null,
+        priorityLevelNameSv: null,
+        priorityLevelColor: null,
+        priorityLevelSortOrder: null,
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
@@ -706,28 +706,41 @@ describe('RequirementsTable', () => {
     expect(screen.getByText('v2')).toBeTruthy()
   })
 
-  it('renders risk level label when column is visible and row has a risk level', () => {
+  it('renders priority label when column is visible and row has a priority', () => {
     const rows = [
       makeRow({
         version: {
           ...makeRow().version,
-          riskLevelId: 3,
-          riskLevelNameEn: 'High',
-          riskLevelNameSv: 'Hög',
-          riskLevelColor: '#ef4444',
-          riskLevelSortOrder: 3,
+          priorityLevelId: 3,
+          priorityLevelNameEn: 'Medium high',
+          priorityLevelNameSv: 'Medelhög',
+          priorityLevelColor: '#eab308',
+          priorityLevelSortOrder: 3,
         },
       }),
     ]
     render(
       <RequirementsTable
         locale="sv"
+        priorityLevels={[
+          {
+            code: 'P3',
+            color: '#eab308',
+            id: 3,
+            nameEn: 'Medium high',
+            nameSv: 'Medelhög',
+            sortOrder: 3,
+          },
+        ]}
         rows={rows}
-        visibleColumns={[...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS, 'riskLevel']}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'priorityLevel',
+        ]}
       />,
     )
 
-    expect(screen.getByText('Hög')).toBeTruthy()
+    expect(screen.getByText('P3 - Medelhög')).toBeTruthy()
   })
 
   it('renders read-only usage status icons as decorative badge content', () => {
@@ -2830,11 +2843,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
-          riskLevelId: null,
-          riskLevelNameEn: null,
-          riskLevelNameSv: null,
-          riskLevelColor: null,
-          riskLevelSortOrder: null,
+          priorityLevelId: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+          priorityLevelColor: null,
+          priorityLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 4,
@@ -2874,11 +2887,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
-          riskLevelId: null,
-          riskLevelNameEn: null,
-          riskLevelNameSv: null,
-          riskLevelColor: null,
-          riskLevelSortOrder: null,
+          priorityLevelId: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+          priorityLevelColor: null,
+          priorityLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 4,
@@ -2915,11 +2928,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
-          riskLevelId: null,
-          riskLevelNameEn: null,
-          riskLevelNameSv: null,
-          riskLevelColor: null,
-          riskLevelSortOrder: null,
+          priorityLevelId: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+          priorityLevelColor: null,
+          priorityLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 4,
@@ -3051,11 +3064,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
-          riskLevelId: null,
-          riskLevelNameEn: null,
-          riskLevelNameSv: null,
-          riskLevelColor: null,
-          riskLevelSortOrder: null,
+          priorityLevelId: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+          priorityLevelColor: null,
+          priorityLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 1,
@@ -3077,11 +3090,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
-          riskLevelId: null,
-          riskLevelNameEn: null,
-          riskLevelNameSv: null,
-          riskLevelColor: null,
-          riskLevelSortOrder: null,
+          priorityLevelId: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+          priorityLevelColor: null,
+          priorityLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 1,

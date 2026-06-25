@@ -457,11 +457,11 @@ function VersionDetails({
             value={getName(version.qualityCharacteristic)}
           />
         )}
-        {getName(version.riskLevel) && (
+        {getName(version.priorityLevel) && (
           <MetadataItem
-            iconName={version.riskLevel?.iconName}
-            label={t('riskLevel')}
-            value={getName(version.riskLevel)}
+            iconName={version.priorityLevel?.iconName}
+            label={t('priorityLevel')}
+            value={getName(version.priorityLevel)}
           />
         )}
         <MetadataItem
@@ -1034,8 +1034,8 @@ function TraceabilityTableSection({
               value={row.deviation}
             />
             <TraceabilityField
-              label={section.labels.riskLevel}
-              value={row.riskLevel}
+              label={section.labels.priorityLevel}
+              value={row.priorityLevel}
             />
             <TraceabilityField
               label={section.labels.verification}
@@ -1137,8 +1137,8 @@ function DeviationSummarySection({
 }) {
   const locale = section.locale
   const t = useTranslations('reports.printLabels')
-  const riskName = section.riskLevel
-    ? localizedName(section.riskLevel, locale)
+  const priorityName = section.priorityLevel
+    ? localizedName(section.priorityLevel, locale)
     : null
   const createdBy = formatActorDisplayNameForLocale(section.createdBy, locale)
   return (
@@ -1161,7 +1161,7 @@ function DeviationSummarySection({
       >
         {t('deviation')}
       </h3>
-      {riskName && (
+      {priorityName && (
         <div style={{ marginBottom: '0.75rem' }}>
           <span
             style={{
@@ -1170,10 +1170,11 @@ function DeviationSummarySection({
               color: '#6b7280',
             }}
           >
-            {t('riskLevelValue')}
+            {t('priorityLevelValue')}
           </span>{' '}
           <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
-            <ReportStatusIcon name={section.riskLevel?.iconName} /> {riskName}
+            <ReportStatusIcon name={section.priorityLevel?.iconName} />{' '}
+            {priorityName}
           </span>
         </div>
       )}

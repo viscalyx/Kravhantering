@@ -58,7 +58,7 @@ function buildFullCsv(data: SpecificationOutputData, locale: string): string {
     labels.category,
     labels.type,
     labels.qualityCharacteristic,
-    labels.riskLevel,
+    labels.priorityLevel,
     labels.requirementVersionStatus,
     labels.verifiable,
     labels.version,
@@ -96,10 +96,10 @@ function buildFullCsv(data: SpecificationOutputData, locale: string): string {
       item.statusNameSv,
       item.statusNameEn,
     ),
-    [labels.riskLevel]: localizeReportValue(
+    [labels.priorityLevel]: localizeReportValue(
       locale,
-      item.riskLevelNameSv,
-      item.riskLevelNameEn,
+      item.priorityLevelNameSv,
+      item.priorityLevelNameEn,
     ),
     [labels.type]: localizeReportValue(
       locale,

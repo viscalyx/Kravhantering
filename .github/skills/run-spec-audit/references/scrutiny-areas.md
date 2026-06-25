@@ -342,13 +342,13 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   (`nameSv` for taxonomy, `normReferenceId` for norm
   references, `lastName`/`firstName` for owners)?
 
-## 24. Scenario 15: configurable status and risk icons use an allowlist and stay additive
+## 24. Scenario 15: configurable status and priority icons use an allowlist and stay additive
 
 - **Code:** `lib/icons/status-icon-allowlist.ts`,
   `lib/icons/status-icon-schema.ts`, `lib/icons/status-icon-components.ts`,
   `app/api/requirement-statuses/route.ts`,
   `app/api/catalog/specification-item-statuses/route.ts`,
-  `app/api/risk-levels/route.ts`,
+  `app/api/priority-levels/route.ts`,
   `lib/requirements/service-requirements.ts`.
 - **Spec:** `docs/governance/admin-center.md` "Reference Data",
   `docs/reference/database-schema.md`.
@@ -359,7 +359,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   Lucide icon components or loaded SVG node data instead of unchecked component
   names? Does the migration add nullable columns without backfilling live rows?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
-  -t "Scenario 15: configurable status and risk icons use an allowlist and stay additive"`
+  -t "Scenario 15: configurable status and priority icons use an allowlist and stay additive"`
 
 ## 25. Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes
 

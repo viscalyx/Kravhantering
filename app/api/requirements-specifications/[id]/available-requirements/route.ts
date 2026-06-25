@@ -51,7 +51,7 @@ const querySchema = z
       positiveIntegerStringSchema,
     ),
     requiresTesting: optionalQueryArraySchema(queryBooleanStringSchema),
-    riskLevelIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    priorityLevelIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     sortBy: z.enum(REQUIREMENT_SORT_FIELDS).optional(),
     sortDirection: z.enum(['asc', 'desc']).optional(),
     typeIds: optionalQueryArraySchema(positiveIntegerStringSchema),
@@ -135,7 +135,7 @@ export async function GET(
       qualityCharacteristicIds = [],
       requirementPackageIds = [],
       requiresTesting = [],
-      riskLevelIds = [],
+      priorityLevelIds = [],
       sortBy,
       sortDirection,
       typeIds = [],
@@ -162,7 +162,8 @@ export async function GET(
               : undefined,
           requiresTesting:
             requiresTesting.length > 0 ? requiresTesting : undefined,
-          riskLevelIds: riskLevelIds.length > 0 ? riskLevelIds : undefined,
+          priorityLevelIds:
+            priorityLevelIds.length > 0 ? priorityLevelIds : undefined,
           statuses: [STATUS_PUBLISHED],
           typeIds: typeIds.length > 0 ? typeIds : undefined,
           uniqueIdSearch,

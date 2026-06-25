@@ -1750,7 +1750,7 @@ describe('createRequirementsService', () => {
           specificationSlug: 'IAM-SPECIFICATION',
           targetRequirementAreaId: 2,
         }),
-        event: 'requirements.high_risk_mutation.succeeded',
+        event: 'requirements.sensitive_mutation.succeeded',
       }),
     ])
   })
@@ -1798,7 +1798,7 @@ describe('createRequirementsService', () => {
     expect(emittedSecurityEvents()).toEqual([])
   })
 
-  it('emits security audit events for high-risk requirement mutations', async () => {
+  it('emits security audit events for sensitive requirement mutations', async () => {
     const service = createTestRequirementsService()
 
     await service.manageRequirement(makeContext(), {
@@ -1816,7 +1816,7 @@ describe('createRequirementsService', () => {
           requirementId: 1,
           requirementUniqueId: 'INT0001',
         }),
-        event: 'requirements.high_risk_mutation.succeeded',
+        event: 'requirements.sensitive_mutation.succeeded',
         outcome: 'success',
         request: expect.objectContaining({ requestId: 'req-1' }),
       }),
@@ -1859,7 +1859,7 @@ describe('createRequirementsService', () => {
           requirementId: 1,
           requirementUniqueId: 'SEC-0001',
         }),
-        event: 'requirements.high_risk_mutation.succeeded',
+        event: 'requirements.sensitive_mutation.succeeded',
         outcome: 'success',
       }),
     ])
@@ -1890,7 +1890,7 @@ describe('createRequirementsService', () => {
           specificationId: 7,
           specificationSlug: 'IAM-SPECIFICATION',
         }),
-        event: 'requirements.high_risk_mutation.succeeded',
+        event: 'requirements.sensitive_mutation.succeeded',
       }),
     ])
   })
@@ -1921,7 +1921,7 @@ describe('createRequirementsService', () => {
           specificationId: 7,
           specificationSlug: 'IAM-SPECIFICATION',
         }),
-        event: 'requirements.high_risk_mutation.succeeded',
+        event: 'requirements.sensitive_mutation.succeeded',
       }),
     ])
   })
@@ -1950,7 +1950,7 @@ describe('createRequirementsService', () => {
           deviationId: 9,
           operation: 'record_decision',
         }),
-        event: 'requirements.high_risk_mutation.succeeded',
+        event: 'requirements.sensitive_mutation.succeeded',
       }),
     ])
   })
@@ -1978,7 +1978,7 @@ describe('createRequirementsService', () => {
           resolution: 1,
           suggestionId: 12,
         }),
-        event: 'requirements.high_risk_mutation.succeeded',
+        event: 'requirements.sensitive_mutation.succeeded',
       }),
     ])
   })

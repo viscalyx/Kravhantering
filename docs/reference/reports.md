@@ -152,7 +152,7 @@ Excluded fields:
 
 - `Kravområde`, `Kategori`, and `Typ` are internal library classification and
   ownership aids; they do not state supplier obligations.
-- `Risknivå`, `Behovsreferens`, `Kravversionsstatus`, `Version`,
+- `Prioritet`, `Behovsreferens`, `Kravversionsstatus`, `Version`,
   `Verifierbar`, and `Användningsstatus` are internal steering, traceability, or
   follow-up fields.
 - `Kravpaket` and `Förbättringsförslag` are library stewardship data, not part
@@ -174,7 +174,7 @@ Included fields:
 
 Excluded fields:
 
-- The same internal steering, risk, need, status, package, and improvement
+- The same internal steering, priority, need, status, package, and improvement
   fields excluded from the procurement appendix are excluded from the tender
   CSV.
 - Metadata rows are excluded so the file can be imported as a plain tabular
@@ -191,7 +191,7 @@ Included fields:
   being followed up.
 - `Kravområde` shows ownership; specification-local requirements use
   `Unikt krav`.
-- `Kategori`, `Typ`, `Kvalitetsegenskap` with ISO chapter, and `Risknivå`
+- `Kategori`, `Typ`, `Kvalitetsegenskap` with ISO chapter, and `Prioritet`
   support internal prioritization and analysis.
 - `Kravversionsstatus` shows the library lifecycle state of the linked
   requirement version.
@@ -216,7 +216,7 @@ signals.
 Included fields:
 
 - All Genomföranderapport fields remain because management needs the same
-  requirement identity, ownership, status, risk, usage, and traceability view.
+  requirement identity, ownership, status, priority, usage, and traceability view.
 - `Avstegssignal` shows whether a requirement has a pending, approved, or
   rejected deviation, without exposing deviation motivation text.
 - `Rest från införande` marks rows whose usage status is not `Implementerad`,
@@ -251,7 +251,7 @@ Included fields:
 - `Behovsreferens`, `Användningsstatus`, `Status ändrad`, and `Anteckning`
   show how the requirement application is used in this specification.
 - `Avstegssignal` shows pending, approved, and rejected deviation counts.
-- `Risknivå`, `Verifierbar`, and verification method support follow-up and
+- `Prioritet`, `Verifierbar`, and verification method support follow-up and
   test planning.
 
 Excluded fields:
@@ -269,7 +269,7 @@ analysis and traceability.
 Included fields:
 
 - `Krav-ID`, `Kravtext`, `Kravområde`, `Kategori`, `Typ`,
-  `Kvalitetsegenskap`, `Risknivå`, `Kravversionsstatus`, `Verifierbar`,
+  `Kvalitetsegenskap`, `Prioritet`, `Kravversionsstatus`, `Verifierbar`,
   `Version`, `Behovsreferens`, `Användningsstatus`, `Normreferenser`,
   `Kravpaket`, and `Förbättringsförslag` preserve the current configurable
   column set for internal analysis.

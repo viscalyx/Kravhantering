@@ -429,7 +429,7 @@ routes for:
 - requirement areas (including owner assignment)
 - categories
 - types
-- risk levels
+- priority scale
 - quality characteristics
 - governance object types
 - implementation types

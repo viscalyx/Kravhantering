@@ -1492,10 +1492,10 @@ async function exportSpecification(
           quality_characteristic.id AS qualityCharacteristicId,
           quality_characteristic.name_sv AS qualityCharacteristicNameSv,
           quality_characteristic.name_en AS qualityCharacteristicNameEn,
-          risk_level.id AS riskLevelId,
-          risk_level.name_sv AS riskLevelNameSv,
-          risk_level.name_en AS riskLevelNameEn,
-          risk_level.color AS riskLevelColor
+          priority_level.id AS priorityLevelId,
+          priority_level.name_sv AS priorityLevelNameSv,
+          priority_level.name_en AS priorityLevelNameEn,
+          priority_level.color AS priorityLevelColor
         FROM requirements_specification_items specification_item
         INNER JOIN requirements requirement ON requirement.id = specification_item.requirement_id
         INNER JOIN requirement_versions version ON version.id = specification_item.requirement_version_id
@@ -1506,7 +1506,7 @@ async function exportSpecification(
         LEFT JOIN requirement_categories category ON category.id = version.requirement_category_id
         LEFT JOIN requirement_types requirement_type ON requirement_type.id = version.requirement_type_id
         LEFT JOIN quality_characteristics quality_characteristic ON quality_characteristic.id = version.quality_characteristic_id
-        LEFT JOIN risk_levels risk_level ON risk_level.id = version.risk_level_id
+        LEFT JOIN priority_levels priority_level ON priority_level.id = version.priority_level_id
         WHERE specification_item.requirements_specification_id = @0
         ORDER BY requirement.unique_id ASC`,
       [specificationId],
@@ -1592,17 +1592,17 @@ async function exportSpecification(
           quality_characteristic.id AS qualityCharacteristicId,
           quality_characteristic.name_sv AS qualityCharacteristicNameSv,
           quality_characteristic.name_en AS qualityCharacteristicNameEn,
-          risk_level.id AS riskLevelId,
-          risk_level.name_sv AS riskLevelNameSv,
-          risk_level.name_en AS riskLevelNameEn,
-          risk_level.color AS riskLevelColor
+          priority_level.id AS priorityLevelId,
+          priority_level.name_sv AS priorityLevelNameSv,
+          priority_level.name_en AS priorityLevelNameEn,
+          priority_level.color AS priorityLevelColor
         FROM specification_local_requirements local_requirement
         LEFT JOIN specification_needs_references needs_reference ON needs_reference.id = local_requirement.needs_reference_id
         LEFT JOIN specification_item_statuses specification_item_status ON specification_item_status.id = local_requirement.specification_item_status_id
         LEFT JOIN requirement_categories category ON category.id = local_requirement.requirement_category_id
         LEFT JOIN requirement_types requirement_type ON requirement_type.id = local_requirement.requirement_type_id
         LEFT JOIN quality_characteristics quality_characteristic ON quality_characteristic.id = local_requirement.quality_characteristic_id
-        LEFT JOIN risk_levels risk_level ON risk_level.id = local_requirement.risk_level_id
+        LEFT JOIN priority_levels priority_level ON priority_level.id = local_requirement.priority_level_id
         WHERE local_requirement.specification_id = @0
         ORDER BY local_requirement.unique_id ASC`,
       [specificationId],

@@ -107,7 +107,7 @@ följer en översikt av varje egenskap och hur den stödjer kravets livscykel.
 | **Kategori** | Klassificerar kravet som Verksamhet, IT eller Leverantör. Det underlättar filtrering i katalogen och gör det enklare att tilldela ansvar till rätt team eller intressentgrupp. |
 | **Typ** | Anger om kravet är Funktionellt eller Icke-funktionellt. Båda typerna låser upp fältet för kvalitetsegenskap, men icke-funktionella krav erbjuder ett bredare urval av egenskaper från standarden ISO/IEC 25010 medan funktionella krav har en mindre delmängd. |
 | **Kvalitetsegenskap** | Följer standarden ISO/IEC 25010 och låter dig klassificera krav med egenskaper som Säkerhet, Prestandaeffektivitet eller Användbarhet. Icke-funktionella krav har tillgång till hela uppsättningen egenskaper, medan funktionella krav erbjuder en mindre delmängd. Det hjälper till att prioritera och gruppera relaterade krav under granskning och implementeringsplanering. |
-| **Risknivå** | Markerar kravet som Låg, Medel eller Hög risk. Högre risknivåer signalerar att kravet behöver mer noggrann granskning, mer rigorös testning och tätare uppföljning under implementeringen. Risknivån spelar även en roll vid begäran om avsteg inom ett kravunderlag — ett avsteg för ett krav med hög risk medför större potentiell påverkan och kräver därför en striktare bedömning vid avstegsgranskningen. |
+| **Prioritet** | Anger hur viktigt, angeläget eller kritiskt kravet är i förhållande till verksamhetens mål, nyttor, risker och intressenters behov. Prioritet anges med den fasta P1-P5-skalan och stödjer granskning, uppföljning och planering. |
 | **Verifierbar** | Anger om kravet kan testas. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravunderlag där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning. |
 | **Verifieringsmetod** | Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravunderlag där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang. |
 | **Kravpaket** | Samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning. Varje kravpaket har en ägare som ansvarar för kraven inom grupperingen. Kopplingen hjälper till att avgränsa kravunderlag och filtrera krav efter relevanta grupperingar. |
@@ -457,13 +457,13 @@ kravversionsstatusar kan anpassas.
 
 ![Kravversionsstatusar](images/046-kravversionsstatusar.png)
 
-### Risknivåer
+### Prioritetsskala
 
-Risknivåer klassificerar kravets kritikalitet. Varje nivå kan tilldelas en färg
-för visuell identifiering i kravbiblioteket och detaljvyer. Färgkodningen gör
-det enkelt att snabbt bedöma ett kravs vikt.
+Prioritetsskalan klassificerar hur viktigt, angeläget eller kritiskt ett krav
+är. Varje nivå har en P-kod, ett namn, en beskrivning, bedömningsgrunder och en
+färg för visuell identifiering i kravbiblioteket och detaljvyer.
 
-![Risknivåer](images/047-risknivåer.png)
+![Prioritetsskala](images/047-risknivåer.png)
 
 ### Kravtyper
 

@@ -145,11 +145,11 @@ const specificationItemStatusesRoutePath = join(
   '[id]',
   'route.ts',
 )
-const riskLevelsRoutePath = join(
+const priorityLevelsRoutePath = join(
   repoRoot,
   'app',
   'api',
-  'risk-levels',
+  'priority-levels',
   '[id]',
   'route.ts',
 )
@@ -416,7 +416,7 @@ it('Scenario 10: MCP tool inventory matches documentation', () => {
   ).toBe(registerToolCount)
 })
 
-it('Scenario 15: configurable status and risk icons use an allowlist and stay additive', () => {
+it('Scenario 15: configurable status and priority icons use an allowlist and stay additive', () => {
   const allowlistSource = readFileSync(statusIconAllowlistPath, 'utf8')
   const schemaSource = readFileSync(statusIconSchemaPath, 'utf8')
   const migrationSource = readFileSync(statusIconMigrationPath, 'utf8')
@@ -428,7 +428,10 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
     specificationItemStatusesRoutePath,
     'utf8',
   )
-  const riskLevelsRouteSource = readFileSync(riskLevelsRoutePath, 'utf8')
+  const priorityLevelsRouteSource = readFileSync(
+    priorityLevelsRoutePath,
+    'utf8',
+  )
   const adminCenterDoc = readFileSync(adminCenterDocPath, 'utf8')
   const databaseSchemaDoc = readFileSync(databaseSchemaDocPath, 'utf8')
   const requirementsServiceSource = readFileSync(
@@ -436,6 +439,7 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
     'utf8',
   )
   const userGuideSource = readFileSync(userGuidePath, 'utf8')
+  const legacyPriorityTableName = ['risk', 'levels'].join('_')
 
   for (const iconName of [
     'AlertCircle',
@@ -476,7 +480,7 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
     'ALTER TABLE [specification_item_statuses] ADD [icon_name] nvarchar(64) NULL;',
   )
   expect(migrationSource).toContain(
-    'ALTER TABLE [risk_levels] ADD [icon_name] nvarchar(64) NULL;',
+    `ALTER TABLE [${legacyPriorityTableName}] ADD [icon_name] nvarchar(64) NULL;`,
   )
   expect(migrationSource).toContain(
     'ALTER TABLE [requirement_statuses] DROP COLUMN [icon_name];',
@@ -485,7 +489,7 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
   for (const routeSource of [
     requirementStatusesRouteSource,
     specificationItemStatusesRouteSource,
-    riskLevelsRouteSource,
+    priorityLevelsRouteSource,
   ]) {
     expect(routeSource).toContain('nullableOptionalStatusIconNameSchema')
     expect(routeSource).toContain(
@@ -498,7 +502,7 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
     'statusIconName: version.statusIconName',
   )
   expect(requirementsServiceSource).toContain(
-    'iconName: version.riskLevel.iconName',
+    'iconName: version.priorityLevel.iconName',
   )
   expect(requirementsServiceSource).toContain('specification_item_statuses')
   expect(userGuideSource).toContain('usage statuses')

@@ -685,7 +685,7 @@ discovery URL above and exchange a code manually.
 Security events (`auth.login.succeeded`, `auth.login.failed`, `auth.logout`,
 `auth.session.rejected`, `auth.token.rejected`, `auth.mcp.token.accepted`,
 `auth.roles.changed`, `auth.csrf.rejected`, `auth.authorization.denied`, and
-`requirements.high_risk_mutation.succeeded`) are emitted as single-line JSON
+`requirements.sensitive_mutation.succeeded`) are emitted as single-line JSON
 to `console.info` and tagged with `"channel":"security-audit"`. To watch them
 locally:
 

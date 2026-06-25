@@ -22,7 +22,7 @@ type SecurityAuditDetailInput = Record<
   SecurityEventDetailValue | null | undefined
 >
 
-export interface HighRiskMutationAuditDetail {
+export interface SensitiveMutationAuditDetail {
   action: string
   addedCount?: number
   decision?: number
@@ -326,7 +326,9 @@ function targetForAuthorizationDenied(action: RequirementsAction): {
   }
 }
 
-function normalizeHighRiskAction(detail: HighRiskMutationAuditDetail): string {
+function normalizeSensitiveMutationAction(
+  detail: SensitiveMutationAuditDetail,
+): string {
   const { action } = detail
   if (action === 'deviation.decision.recorded') return 'deviation.decision'
   if (action === 'suggestion.resolution.recorded') {
@@ -340,7 +342,7 @@ function normalizeHighRiskAction(detail: HighRiskMutationAuditDetail): string {
   return action
 }
 
-function targetForHighRiskMutation(detail: HighRiskMutationAuditDetail): {
+function targetForSensitiveMutation(detail: SensitiveMutationAuditDetail): {
   targetId?: number | string | null
   targetKind: string
   targetUniqueId?: string | null
@@ -429,27 +431,27 @@ export async function recordAuthorizationDenied(
   })
 }
 
-export async function recordHighRiskMutationSucceeded(
+export async function recordSensitiveMutationSucceeded(
   context: RequestContext,
-  detail: HighRiskMutationAuditDetail,
+  detail: SensitiveMutationAuditDetail,
 ): Promise<void> {
   const db = await getRequestSqlServerDataSource()
-  await recordHighRiskMutationSucceededWithExecutor(db, context, detail)
+  await recordSensitiveMutationSucceededWithExecutor(db, context, detail)
 }
 
-export async function recordHighRiskMutationSucceededWithExecutor(
+export async function recordSensitiveMutationSucceededWithExecutor(
   executor: QueryExecutor,
   context: RequestContext,
-  detail: HighRiskMutationAuditDetail,
+  detail: SensitiveMutationAuditDetail,
 ): Promise<void> {
   await recordAllowedActionAuditEvent(executor, context, {
-    action: normalizeHighRiskAction(detail),
+    action: normalizeSensitiveMutationAction(detail),
     details: compactDetail({
       ...detail,
       requestSource: context.source,
       toolName: context.toolName,
     }),
-    ...targetForHighRiskMutation(detail),
+    ...targetForSensitiveMutation(detail),
   })
   recordSecurityEvent({
     actor: securityActorFromContext(context.actor),
@@ -458,11 +460,11 @@ export async function recordHighRiskMutationSucceededWithExecutor(
       requestSource: context.source,
       toolName: context.toolName,
     }),
-    event: 'requirements.high_risk_mutation.succeeded',
+    event: 'requirements.sensitive_mutation.succeeded',
     outcome: 'success',
     request: securityRequestFromContext(
       context,
-      '/requirements/high-risk-mutation',
+      '/requirements/sensitive-mutation',
     ),
   })
 }

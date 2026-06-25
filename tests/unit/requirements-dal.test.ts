@@ -275,7 +275,7 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementCategoryId: 4,
           requirementTypeId: 5,
           qualityCharacteristicId: 6,
-          riskLevelId: 1,
+          priorityLevelId: 1,
           statusId: 3,
           requiresTesting: 1,
           verificationMethod: 'inspection',
@@ -371,7 +371,7 @@ describe('requirements DAL (SQL Server path)', () => {
       nameEn: 'Functional',
       nameSv: 'Funktionell',
     })
-    expect(version?.riskLevel).toEqual({
+    expect(version?.priorityLevel).toEqual({
       id: 1,
       nameEn: 'High',
       nameSv: 'Hög',
@@ -635,7 +635,7 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementTypeId: null,
           requiresTesting: 0,
           revisionToken: '22222222-2222-4222-8222-222222222222',
-          riskLevelId: null,
+          priorityLevelId: null,
           statusId: 1,
           verificationMethod: null,
           versionNumber: 2,
@@ -675,7 +675,7 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementId: 7,
           requirementTypeId: null,
           requiresTesting: 0,
-          riskLevelId: null,
+          priorityLevelId: null,
           verificationMethod: null,
         },
       ])
@@ -700,7 +700,7 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementTypeId: null,
           requiresTesting: 0,
           revisionToken: '33333333-3333-4333-8333-333333333333',
-          riskLevelId: null,
+          priorityLevelId: null,
           statusId: 1,
           verificationMethod: null,
           versionNumber: 3,
@@ -732,7 +732,7 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementId: 7,
           requirementTypeId: null,
           requiresTesting: 0,
-          riskLevelId: null,
+          priorityLevelId: null,
           verificationMethod: null,
         },
       ])
@@ -757,7 +757,7 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementTypeId: null,
           requiresTesting: 0,
           revisionToken: '33333333-3333-4333-8333-333333333333',
-          riskLevelId: null,
+          priorityLevelId: null,
           statusId: 1,
           verificationMethod: null,
           versionNumber: 3,

@@ -92,7 +92,7 @@ Combines:
 - requirement listing
 - free-text search
 - lookup tables for areas, categories, types, quality characteristics,
-  risk levels, statuses, usage statuses, requirement packages, and transitions
+  priority levels, statuses, usage statuses, requirement packages, and transitions
 
 Requirement search supports pagination, sorting, archive inclusion, taxonomy
 filters, status/testing filters, norm-reference filters, and requirement-package

@@ -18,7 +18,7 @@ const translations: Record<string, Record<string, string>> = {
     motivationPlaceholder: 'Beskriv avsteget',
     newDeviation: 'Registrera avsteg',
     requestDeviation: 'Begär ett avsteg',
-    riskLevel: 'Risknivå',
+    priorityLevel: 'Prioritet',
   },
 }
 

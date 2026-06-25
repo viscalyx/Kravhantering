@@ -38,7 +38,7 @@ function makeVersion(
     qualityCharacteristic: { id: 4, nameSv: 'TC', nameEn: 'TypeCat' },
     requiresTesting: true,
     revisionToken: '11111111-1111-4111-8111-111111111111',
-    riskLevel: null,
+    priorityLevel: null,
     status: 2,
     statusColor: '#eab308',
     statusNameEn: 'Review',

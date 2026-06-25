@@ -69,6 +69,28 @@ const sampleAreas = [
 ]
 const sampleCategories = [{ id: 1, nameSv: 'Kat', nameEn: 'Cat' }]
 const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
+const samplePriorityLevels = [
+  {
+    assessmentCriteriaEn: 'Low assessment criteria',
+    assessmentCriteriaSv: 'Låga bedömningsgrunder',
+    code: 'P2',
+    descriptionEn: 'Low priority description',
+    descriptionSv: 'Låg prioritetsbeskrivning',
+    id: 2,
+    nameEn: 'Low',
+    nameSv: 'Låg',
+  },
+  {
+    assessmentCriteriaEn: 'High assessment criteria',
+    assessmentCriteriaSv: 'Höga bedömningsgrunder',
+    code: 'P4',
+    descriptionEn: 'High priority description',
+    descriptionSv: 'Hög prioritetsbeskrivning',
+    id: 4,
+    nameEn: 'High',
+    nameSv: 'Hög',
+  },
+]
 const sampleRequirementPackages = [{ id: 1, name: 'Package Alpha' }]
 const sampleNormReferences = [
   { id: 1, name: 'Norm Alpha', normReferenceId: 'NR-1' },
@@ -96,6 +118,8 @@ describe('RequirementForm', () => {
         return Promise.resolve(okJson({ qualityCharacteristics: [] }))
       if (typeof url === 'string' && url.includes('/api/requirement-types'))
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (typeof url === 'string' && url.includes('/api/priority-levels'))
+        return Promise.resolve(okJson({ priorityLevels: samplePriorityLevels }))
       if (typeof url === 'string' && url.includes('/api/requirement-packages'))
         return Promise.resolve(
           okJson({ requirementPackages: sampleRequirementPackages }),
@@ -253,8 +277,10 @@ describe('RequirementForm', () => {
       expect(normReferenceFieldset).toBeInTheDocument()
 
       const sidebarGrid = requirementPackageFieldset?.parentElement
+      const mainFields = sidebarGrid?.previousElementSibling
       expect(sidebarGrid).toBe(normReferenceFieldset?.parentElement)
       expect(sidebarGrid?.parentElement).toHaveClass('items-stretch')
+      expect(mainFields).toHaveClass('self-start')
       expect(sidebarGrid).toHaveClass('sm:grid-cols-2')
       expect(sidebarGrid).toHaveClass('lg:w-136')
       expect(sidebarGrid).toHaveClass('lg:h-(--requirement-association-height)')
@@ -648,6 +674,68 @@ describe('RequirementForm', () => {
     expect(
       screen.getByRole('combobox', { name: /requirement\.type/ }),
     ).toBeInTheDocument()
+  })
+
+  it('shows priority details inline and opens the priority scale modal', async () => {
+    render(
+      <RequirementForm
+        initialData={{ priorityLevelId: '2' }}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+
+    await screen.findByText('Low priority description')
+
+    expect(
+      screen.getByText('requirement.priorityLevelDescriptionLabel'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('requirement.priorityLevelAssessmentCriteriaLabel'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Low assessment criteria')).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'common.help: requirement.priorityLevel',
+      }),
+    )
+    expect(
+      screen.getByText('requirement.priorityLevelHelp'),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'requirement.priorityLevelScaleAction',
+      }),
+    )
+    const helpPanel = await screen.findByRole('dialog', {
+      name: 'requirement.priorityLevelScaleHeading',
+    })
+    expect(helpPanel).toBeInTheDocument()
+    expect(
+      within(helpPanel as HTMLElement).getByText(
+        'requirement.priorityLevelScaleHeading',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(helpPanel as HTMLElement).getByText('P2 - Low'),
+    ).toBeInTheDocument()
+    expect(
+      within(helpPanel as HTMLElement).getByText('Low priority description'),
+    ).toBeInTheDocument()
+    expect(
+      within(helpPanel as HTMLElement).getByText('Low assessment criteria'),
+    ).toBeInTheDocument()
+
+    fireEvent.keyDown(helpPanel, { key: 'Escape' })
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', {
+          name: 'requirement.priorityLevelScaleHeading',
+        }),
+      ).not.toBeInTheDocument()
+    })
   })
 
   it('fetches quality characteristics when typeId is set', async () => {

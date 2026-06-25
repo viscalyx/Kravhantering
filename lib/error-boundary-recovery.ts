@@ -36,7 +36,7 @@ const ADMIN_RECOVERY_PREFIXES = [
   '/requirement-packages',
   '/requirement-statuses',
   '/quality-characteristics',
-  '/risk-levels',
+  '/priority-levels',
   '/specifications/governance-object-types',
   '/specifications/implementation-types',
   '/specifications/lifecycle-statuses',

@@ -72,7 +72,7 @@ const QueryCatalogOutputSchema = z
         'categories',
         'types',
         'quality_characteristics',
-        'risk_levels',
+        'priority_levels',
         'specification_item_statuses',
         'statuses',
         'requirement_packages',
@@ -247,7 +247,7 @@ const GeneratedRequirementOutputSchema = z
     qualityCharacteristicId: z.number().optional(),
     rationale: z.string(),
     requiresTesting: z.boolean(),
-    riskLevelId: z.number().optional(),
+    priorityLevelId: z.number().optional(),
     requirementPackageIds: z.array(z.number()).optional(),
     typeId: z.number(),
     verificationMethod: z.string().nullable().optional(),
@@ -510,7 +510,7 @@ function renderRequirementHtml(
     `          <section class="panel"><h2>${escapeHtml(detailLabel('category'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.category?.nameSv : selectedVersion?.category?.nameEn) ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(detailLabel('type'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.type?.nameSv : selectedVersion?.type?.nameEn) ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(detailLabel('qualityCharacteristic'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.qualityCharacteristic?.nameSv : selectedVersion?.qualityCharacteristic?.nameEn) ?? '—'))}</p></section>`,
-    `          <section class="panel"><h2>${escapeHtml(detailLabel('riskLevel'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.riskLevel?.nameSv : selectedVersion?.riskLevel?.nameEn) ?? '—'))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(detailLabel('priorityLevel'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.priorityLevel?.nameSv : selectedVersion?.priorityLevel?.nameEn) ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(detailLabel('version'))}</h2><p>${escapeHtml(String(selectedVersion?.versionNumber ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(getMessageString(localizedMessages, ['requirement', 'specificationCount']))}</h2><p>${escapeHtml(String(detail.specificationCount ?? 0))}</p></section>`,
     '        </div>',
@@ -542,7 +542,7 @@ function createQueryCatalogSchema() {
           'categories',
           'types',
           'quality_characteristics',
-          'risk_levels',
+          'priority_levels',
           'specification_item_statuses',
           'statuses',
           'requirement_packages',
@@ -604,10 +604,12 @@ function createQueryCatalogSchema() {
           'Filter by testing requirement. Applies only to catalog "requirements".',
         ),
       responseFormat: ResponseFormatSchema,
-      riskLevelIds: z
+      priorityLevelIds: z
         .array(z.number().int().positive())
         .optional()
-        .describe('Risk level IDs. Applies only to catalog "requirements".'),
+        .describe(
+          'Priority level IDs. Applies only to catalog "requirements".',
+        ),
       sortBy: z
         .enum([
           'uniqueId',
@@ -616,7 +618,7 @@ function createQueryCatalogSchema() {
           'category',
           'type',
           'qualityCharacteristic',
-          'riskLevel',
+          'priorityLevel',
           'status',
           'version',
         ])
@@ -783,12 +785,12 @@ const RequirementMutationSchema = z
       .positive()
       .optional()
       .describe('Quality characteristic ID.'),
-    riskLevelId: z
+    priorityLevelId: z
       .number()
       .int()
       .positive()
       .optional()
-      .describe('Risk level ID.'),
+      .describe('Priority level ID.'),
     typeId: z
       .number()
       .int()
@@ -816,7 +818,7 @@ function createManageRequirementSchema() {
           'Operation to perform. Create has no existing requirement ID; all other operations require id or uniqueId.',
         ),
       requirement: RequirementMutationSchema.optional().describe(
-        'Requirement fields for create/edit. For create, pass at least requirement.areaId and requirement.description; optional fields include acceptanceCriteria, typeId, categoryId, qualityCharacteristicId, riskLevelId, requiresTesting, verificationMethod, requirementPackageIds, normReferenceIds, and createdBy. For edit, first call requirements_get_requirement with view: "history" and copy requirement.versions[0].id to baseVersionId plus requirement.versions[0].revisionToken to baseRevisionToken.',
+        'Requirement fields for create/edit. For create, pass at least requirement.areaId and requirement.description; optional fields include acceptanceCriteria, typeId, categoryId, qualityCharacteristicId, priorityLevelId, requiresTesting, verificationMethod, requirementPackageIds, normReferenceIds, and createdBy. For edit, first call requirements_get_requirement with view: "history" and copy requirement.versions[0].id to baseVersionId plus requirement.versions[0].revisionToken to baseRevisionToken.',
       ),
       responseFormat: ResponseFormatSchema,
       uniqueId: z
@@ -1039,7 +1041,7 @@ function toCatalogInput(
     sortDirection: input.sortDirection,
     statuses: input.statuses,
     qualityCharacteristicIds: input.qualityCharacteristicIds,
-    riskLevelIds: input.riskLevelIds,
+    priorityLevelIds: input.priorityLevelIds,
     typeId: input.typeId,
     typeIds: input.typeIds,
     uniqueIdSearch: input.uniqueIdSearch,
@@ -1261,7 +1263,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List/search paginated requirements in the requirements library or fetch lookup catalogs: areas, categories, types, quality_characteristics, risk_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Requirement filters, sorting, limit, and offset apply only when catalog is "requirements".',
+        'List/search paginated requirements in the requirements library or fetch lookup catalogs: areas, categories, types, quality_characteristics, priority_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Requirement filters, sorting, limit, and offset apply only when catalog is "requirements".',
       inputSchema: createQueryCatalogSchema(),
       outputSchema: QueryCatalogOutputSchema,
       title: 'Query Requirements Library',

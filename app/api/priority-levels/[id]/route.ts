@@ -3,9 +3,9 @@ import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   getLinkedRequirements,
-  getRiskLevelById,
-  updateRiskLevel,
-} from '@/lib/dal/risk-levels'
+  getPriorityLevelById,
+  updatePriorityLevel,
+} from '@/lib/dal/priority-levels'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   adminMutationPolicy,
@@ -23,9 +23,13 @@ export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
 
-const updateRiskLevelSchema = z
+const updatePriorityLevelSchema = z
   .object({
+    assessmentCriteriaEn: boundedDbStringSchema.optional(),
+    assessmentCriteriaSv: boundedDbStringSchema.optional(),
     color: boundedDbStringSchema.optional(),
+    descriptionEn: boundedDbStringSchema.optional(),
+    descriptionSv: boundedDbStringSchema.optional(),
     iconName: nullableOptionalStatusIconNameSchema,
     nameEn: boundedDbStringSchema.optional(),
     nameSv: boundedDbStringSchema.optional(),
@@ -41,30 +45,30 @@ export async function GET(
   if (!parsedParams.ok) return parsedParams.response
   const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
-  const riskLevel = await getRiskLevelById(db, id)
-  if (!riskLevel) {
+  const priorityLevel = await getPriorityLevelById(db, id)
+  if (!priorityLevel) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
   const linkedRequirements = await getLinkedRequirements(db, id)
-  return NextResponse.json({ riskLevel, linkedRequirements })
+  return NextResponse.json({ priorityLevel, linkedRequirements })
 }
 
 export const PUT = secureMutationRoute({
-  bodySchema: updateRiskLevelSchema,
+  bodySchema: updatePriorityLevelSchema,
   paramsSchema: idParamSchema,
   policy: adminMutationPolicy(),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const riskLevel = await updateRiskLevel(db, params.id, body)
-    if (!riskLevel) {
+    const priorityLevel = await updatePriorityLevel(db, params.id, body)
+    if (!priorityLevel) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     await recordAdminPrivilegedActionSucceeded(context, {
       changedFields: Object.keys(body),
       operation: 'update',
       resourceId: params.id,
-      resourceType: 'risk_level',
+      resourceType: 'priority_level',
     })
-    return NextResponse.json(riskLevel)
+    return NextResponse.json(priorityLevel)
   },
 })
