@@ -227,6 +227,12 @@ describe('requirements import service', () => {
     expect(promptEn).toContain('Do not use U+2013 EN DASH in JSON values')
     expect(promptSv).toContain('Använd inte U+2013 EN DASH i JSON-värden')
     expect(promptEn).toContain(
+      "Write free-text values, such as `description`, `acceptanceCriteria`, `verificationMethod`, and proposed norm references, in English unless the user's input explicitly requests another language.",
+    )
+    expect(promptSv).toContain(
+      'Skriv fria textvärden, till exempel `description`, `acceptanceCriteria`, `verificationMethod` och föreslagna normreferenser, på svenska om inte användarens indata uttryckligen anger ett annat språk.',
+    )
+    expect(promptEn).toContain(
       '- Choose `typeId` before `qualityCharacteristicId`:\n  - Use the functional type for required system behavior or capability',
     )
     expect(promptSv).toContain(
@@ -247,6 +253,30 @@ describe('requirements import service', () => {
     expect(promptEn).toContain(
       'Use ID fields from the reference data: `categoryId`, `typeId`, `qualityCharacteristicId`, `priorityLevelId`, and `requirementPackageIds`',
     )
+    expect(promptEn).toContain('## Conflicts')
+    expect(promptSv).toContain('## Konflikter')
+    expect(promptEn).toContain(
+      "Follow the user's input for factual need, scope, requirement content, and factual values.",
+    )
+    expect(promptSv).toContain(
+      'Följ användarens indata för sakligt behov, omfattning, kravinnehåll och sakvärden.',
+    )
+    expect(promptEn).toContain(
+      'Follow JSON Schema for allowed fields, data types, required fields, and result format.',
+    )
+    expect(promptSv).toContain(
+      'Följ JSON Schema för tillåtna fält, datatyper, obligatoriska fält och resultatformat.',
+    )
+    expect(promptEn).toContain(
+      'Follow reference data for requirement structure, classification, IDs, and labels.',
+    )
+    expect(promptSv).toContain(
+      'Följ referensdata för kravstruktur, klassificering, ID:n och benämningar.',
+    )
+    expect(promptEn).not.toContain(
+      'Use reference data for all taxonomy fields.',
+    )
+    expect(promptSv).not.toContain('Använd referensdata för alla taxonomifält.')
     expect(promptEn).toContain(
       'Choose `priorityLevelId` from `priorityLevels[].id`; compare the requirement with `priorityLevels[].assessmentCriteria` and choose the best match',
     )

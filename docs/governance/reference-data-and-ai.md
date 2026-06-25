@@ -261,11 +261,20 @@ requested artifact language and expose a single `name` field instead of both
 The prompt includes concise field-selection rules for functional versus
 non-functional type choice, type-scoped quality characteristics, norm-reference
 links, priority, requirement packages and verification fields. It tells the AI
-to prefer ID fields from the reference data. For requirement packages, the AI
-instruction tells the model to compare the requirement need, requirement text
-and acceptance criteria with `requirementPackages[].purposeAndScope` and only
-choose packages where the requirement clearly belongs within the package purpose
-and scope. The schema still accepts name and code fallback fields so
+to prefer ID fields from the reference data. Free-text values such as
+`description`, `acceptanceCriteria`, `verificationMethod` and proposed norm
+references use the requested application locale by default: Swedish for `sv`
+artifacts and English for `en` artifacts, unless the user's own input
+explicitly requests another language. JSON Schema still controls field names
+and data shape. It also includes a conflict rule: user input controls factual
+need, scope, requirement content and factual values; JSON Schema controls
+allowed fields, data types, required fields and result format; reference data
+controls requirement structure, classification, IDs and labels.
+For requirement packages, the AI instruction tells the model to compare the
+requirement need, requirement text and acceptance criteria with
+`requirementPackages[].purposeAndScope` and only choose packages where the
+requirement clearly belongs within the package purpose and scope. The schema
+still accepts name and code fallback fields so
 human-authored import files can be resolved when the values uniquely match
 active reference data.
 

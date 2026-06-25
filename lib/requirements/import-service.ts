@@ -1067,11 +1067,23 @@ export function createRequirementsImportWorkflow({
           ? '- Använd inte U+2013 EN DASH i JSON-värden; använd vanligt bindestreck (-) i stället.'
           : '- Do not use U+2013 EN DASH in JSON values; use a plain hyphen (-) instead.',
         isSv
-          ? '- Använd referensdata för alla taxonomifält.'
-          : '- Use reference data for all taxonomy fields.',
+          ? '- Skriv fria textvärden, till exempel `description`, `acceptanceCriteria`, `verificationMethod` och föreslagna normreferenser på svenska om inte användarens indata uttryckligen anger ett annat språk.'
+          : "- Write free-text values, such as `description`, `acceptanceCriteria`, `verificationMethod`, and proposed norm references, in English unless the user's input explicitly requests another language.",
         isSv
           ? '- Utelämna frivilliga fält eller sätt dem till `null` när värdet är osäkert.'
           : '- Omit optional fields or set them to `null` when the value is uncertain.',
+        '',
+        isSv ? '## Konflikter' : '## Conflicts',
+        '',
+        isSv
+          ? '- Följ användarens indata för sakligt behov, omfattning, kravinnehåll och sakvärden.'
+          : "- Follow the user's input for factual need, scope, requirement content, and factual values.",
+        isSv
+          ? '- Följ JSON Schema för tillåtna fält, datatyper, obligatoriska fält och resultatformat.'
+          : '- Follow JSON Schema for allowed fields, data types, required fields, and result format.',
+        isSv
+          ? '- Följ referensdata för kravstruktur, klassificering, ID:n och benämningar.'
+          : '- Follow reference data for requirement structure, classification, IDs, and labels.',
         '',
         isSv ? '## Fältval' : '## Field Selection',
         '',
