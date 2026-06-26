@@ -306,7 +306,12 @@ export function buildRequirementImportRepairPrompt({
   const formattedErrors =
     errors.length > 0
       ? errors.map(error => `- ${error}`).join('\n')
-      : '- JSON did not validate against the import contract.'
+      : `- ${getPromptMessage(locale, [
+          'ai',
+          'prompt',
+          'repair',
+          'defaultValidationError',
+        ])}`
 
   return `${intro}
 

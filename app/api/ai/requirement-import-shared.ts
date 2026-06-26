@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { ContentPart } from '@/lib/ai/openrouter-client'
 import {
   DEFAULT_REQUIREMENT_CANDIDATE_COUNT,
+  getPromptMessage,
   MAX_REQUIREMENT_CANDIDATE_COUNT,
   MIN_REQUIREMENT_CANDIDATE_COUNT,
 } from '@/lib/ai/requirement-prompt'
@@ -49,7 +50,7 @@ export const imageDataUrlSchema = z.string().superRefine((dataUrl, context) => {
   ) {
     context.addIssue({
       code: 'custom',
-      message: 'Unsupported image type. Use PNG, JPEG, GIF or WebP.',
+      message: getPromptMessage('en', ['ai', 'imageSchemaErrorType']),
     })
     return
   }
@@ -59,7 +60,7 @@ export const imageDataUrlSchema = z.string().superRefine((dataUrl, context) => {
   if (approxBytes > MAX_AI_IMAGE_BYTES) {
     context.addIssue({
       code: 'custom',
-      message: 'Image exceeds the 10 MB size limit',
+      message: getPromptMessage('en', ['ai', 'imageSchemaErrorSize']),
     })
   }
 })
@@ -80,8 +81,7 @@ export function isValidRequirementImportScope(body: {
 }
 
 export const requirementImportScopeValidation = {
-  message:
-    'library mode requires areaId and specification-local mode requires specificationId',
+  message: getPromptMessage('en', ['ai', 'invalidRequirementImportScope']),
   path: ['mode'],
 }
 

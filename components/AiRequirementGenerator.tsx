@@ -259,78 +259,6 @@ const PROVIDER_NAMES: Record<string, string> = {
   qwen: 'Qwen',
 }
 
-const TEXT = {
-  en: {
-    aiInstruction: 'AI instruction',
-    analysisTab: 'AI analysis',
-    allSelected: 'All selected',
-    candidateCount: 'Number of requirement candidates',
-    candidateCountHelp:
-      'Choose how many candidates the model should try to create. The result is still reviewed before import.',
-    candidates: 'Requirement candidates',
-    continueToImport: 'Preview requirements in import',
-    downloadImportInstruction: 'Download import instruction',
-    downloadSchema: 'Download JSON schema',
-    importContract: 'Import instruction and schema',
-    importContractHelp:
-      'This is the same import instruction and JSON schema used by the ordinary import flow. User prompts cannot override it.',
-    noCandidates: 'No requirement candidates are loaded.',
-    noAnalysis: 'No AI analysis is loaded.',
-    noProposals: 'No proposed norm references are loaded.',
-    noRawResult: 'No raw result is loaded.',
-    proposalCount: (count: number) =>
-      `${count} proposed norm ${count === 1 ? 'reference' : 'references'}`,
-    proposals: 'Proposed norm references',
-    rawResultTab: 'Raw result',
-    repair: 'Repair JSON',
-    repairPrompt: 'Suggested repair prompt',
-    repairPromptLead:
-      'Send the invalid JSON and validation errors to the selected model and ask it to preserve the content while fixing the import format.',
-    removeImage: 'Remove image',
-    repairing: 'Repairing…',
-    selectedCandidates: (count: number) =>
-      `${count} selected ${count === 1 ? 'candidate' : 'candidates'}`,
-    selectedProposals: (count: number) =>
-      `${count} selected ${count === 1 ? 'proposal' : 'proposals'}`,
-    validationErrors: 'The generated JSON cannot be imported yet.',
-    warnings: 'warnings',
-  },
-  sv: {
-    aiInstruction: 'AI-instruktion',
-    analysisTab: 'AI-analys',
-    allSelected: 'Alla valda',
-    candidateCount: 'Antal kravkandidater',
-    candidateCountHelp:
-      'Välj hur många kandidater modellen ska försöka skapa. Resultatet granskas fortfarande innan import.',
-    candidates: 'Kravkandidater',
-    continueToImport: 'Förhandsgranska krav i import',
-    downloadImportInstruction: 'Ladda ner importinstruktion',
-    downloadSchema: 'Ladda ner JSON-schema',
-    importContract: 'Importinstruktion och schema',
-    importContractHelp:
-      'Det här är samma importinstruktion och JSON-schema som används av det vanliga importflödet. Användarens prompt kan inte skriva över det.',
-    noCandidates: 'Inga kravkandidater är laddade.',
-    noAnalysis: 'Ingen AI-analys är laddad.',
-    noProposals: 'Inga föreslagna normreferenser är laddade.',
-    noRawResult: 'Inget råresultat är laddat.',
-    proposalCount: (count: number) =>
-      `${count} föreslagna normreferens${count === 1 ? '' : 'er'}`,
-    proposals: 'Föreslagna normreferenser',
-    rawResultTab: 'Råresultat',
-    repair: 'Reparera JSON',
-    repairPrompt: 'Föreslagen reparationsprompt',
-    repairPromptLead:
-      'Skicka ogiltig JSON och valideringsfel till vald modell och be den bevara innehållet men rätta importformatet.',
-    removeImage: 'Ta bort bild',
-    repairing: 'Reparerar…',
-    selectedCandidates: (count: number) =>
-      `${count} valda kravkandidat${count === 1 ? '' : 'er'}`,
-    selectedProposals: (count: number) => `${count} valda förslag`,
-    validationErrors: 'Genererad JSON kan inte importeras ännu.',
-    warnings: 'varningar',
-  },
-} as const
-
 const richTags = {
   em: (chunks: ReactNode) => <em>{chunks}</em>,
   strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
@@ -587,7 +515,6 @@ export default function AiRequirementGenerator({
   const t = useTranslations('ai')
   const tc = useTranslations('common')
   const locale = useLocale() === 'sv' ? 'sv' : 'en'
-  const text = TEXT[locale]
   const { confirm } = useConfirmModal()
   const shouldReduceMotion = useReducedMotion()
 
@@ -744,13 +671,13 @@ export default function AiRequirementGenerator({
   const repairPromptText = useMemo(() => {
     if (!rawResponse || schemaIssues.length === 0) return ''
     return [
-      text.repairPromptLead,
+      t('repairPromptLead'),
       '',
       schemaIssues.map(issue => `- ${issueText(issue)}`).join('\n'),
       '',
       rawResponse,
     ].join('\n')
-  }, [rawResponse, schemaIssues, text])
+  }, [rawResponse, schemaIssues, t])
 
   const updateModelMenuPosition = useCallback(() => {
     const button = modelButtonRef.current
@@ -1097,7 +1024,7 @@ export default function AiRequirementGenerator({
       })
       if (!response.ok) {
         throw new Error(
-          (await readResponseMessage(response)) ?? 'Preview failed',
+          (await readResponseMessage(response)) ?? t('previewFailed'),
         )
       }
       const preview = (await response.json()) as PreviewResponse
@@ -1116,7 +1043,7 @@ export default function AiRequirementGenerator({
       )
       setPreviewTab(preview.rows.length > 0 ? 'requirements' : 'normReferences')
     },
-    [locale, mode, specificationId, specificationSlug, targetAreaId],
+    [locale, mode, specificationId, specificationSlug, t, targetAreaId],
   )
 
   const handleToggleFilter = useCallback((filter: string) => {
@@ -1159,18 +1086,18 @@ export default function AiRequirementGenerator({
       setImageError(null)
       const remainingSlots = MAX_IMAGES - images.length
       if (remainingSlots <= 0) {
-        setImageError(`Max ${MAX_IMAGES} images`)
+        setImageError(t('imageErrorCount', { max: MAX_IMAGES }))
         return
       }
       const selectedFiles = Array.from(files).slice(0, remainingSlots)
       const nextImages: AttachedImage[] = []
       for (const file of selectedFiles) {
         if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-          setImageError('Use PNG, JPEG, GIF or WebP.')
+          setImageError(t('imageErrorType', { name: file.name }))
           continue
         }
         if (file.size > MAX_IMAGE_BYTES) {
-          setImageError('Image exceeds the 10 MB size limit.')
+          setImageError(t('imageErrorSize', { name: file.name }))
           continue
         }
         const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -1188,7 +1115,7 @@ export default function AiRequirementGenerator({
       setImages(current => [...current, ...nextImages].slice(0, MAX_IMAGES))
       if (fileInputRef.current) fileInputRef.current.value = ''
     },
-    [images.length],
+    [images.length, t],
   )
 
   const resetGeneratedResult = useCallback(() => {
@@ -1211,7 +1138,7 @@ export default function AiRequirementGenerator({
       return
     }
     if (mode === 'specification-local' && !specificationId) {
-      setError('Missing specification context.')
+      setError(t('missingSpecificationContext'))
       return
     }
 
@@ -1285,7 +1212,7 @@ export default function AiRequirementGenerator({
             setRawResponse(String(payload.rawContent ?? ''))
             setThinking(String(payload.thinking ?? ''))
             setStats((payload.stats as GenerationStats | undefined) ?? null)
-            setError(String(payload.message ?? text.validationErrors))
+            setError(String(payload.message ?? t('validationErrors')))
             setPhase('error')
           } else if (parsed.event === 'error') {
             throw new Error(String(payload.message ?? t('createError')))
@@ -1318,7 +1245,6 @@ export default function AiRequirementGenerator({
     specificationId,
     t,
     targetAreaId,
-    text.validationErrors,
   ])
 
   const handleRepair = useCallback(async () => {
@@ -1358,7 +1284,7 @@ export default function AiRequirementGenerator({
       }
       if (!response.ok || !body.payload) {
         setSchemaIssues(body.issues ?? schemaIssues)
-        throw new Error(body.error ?? text.validationErrors)
+        throw new Error(body.error ?? t('validationErrors'))
       }
       setRawResponse(body.rawContent ?? JSON.stringify(body.payload))
       setThinking(body.thinking ?? '')
@@ -1370,7 +1296,7 @@ export default function AiRequirementGenerator({
       setError(
         repairError instanceof Error
           ? repairError.message
-          : text.validationErrors,
+          : t('validationErrors'),
       )
       setPhase('error')
     } finally {
@@ -1388,7 +1314,7 @@ export default function AiRequirementGenerator({
     schemaIssues,
     specificationId,
     targetAreaId,
-    text.validationErrors,
+    t,
   ])
 
   const handleClose = useCallback(async () => {
@@ -1771,7 +1697,7 @@ export default function AiRequirementGenerator({
                           >
                             {image.name}
                             <button
-                              aria-label={text.removeImage}
+                              aria-label={t('imageRemove')}
                               onClick={() =>
                                 setImages(current =>
                                   current.filter(item => item.id !== image.id),
@@ -1847,12 +1773,12 @@ export default function AiRequirementGenerator({
                         className="text-sm font-medium text-secondary-800 dark:text-secondary-100"
                         htmlFor="ai-candidate-count"
                       >
-                        {text.candidateCount}
+                        {t('candidateCount')}
                       </label>
                       <button
                         aria-controls="ai-candidate-count-help"
                         aria-expanded={candidateCountHelpOpen}
-                        aria-label={text.candidateCountHelp}
+                        aria-label={t('candidateCountHelp')}
                         className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
                         onClick={() => setCandidateCountHelpOpen(open => !open)}
                         type="button"
@@ -1864,7 +1790,7 @@ export default function AiRequirementGenerator({
                       id="ai-candidate-count-help"
                       isOpen={candidateCountHelpOpen}
                     >
-                      {text.candidateCountHelp}
+                      {t('candidateCountHelp')}
                     </AnimatedHelpPanel>
                     <input
                       className="min-h-11 w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm text-secondary-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-secondary-600 dark:bg-secondary-800 dark:text-secondary-100"
@@ -2157,7 +2083,7 @@ export default function AiRequirementGenerator({
                         onClick={() => setShowAiInstruction(open => !open)}
                         type="button"
                       >
-                        {text.aiInstruction}
+                        {t('aiInstruction')}
                         {showAiInstruction ? (
                           <ChevronDown aria-hidden className="h-4 w-4" />
                         ) : (
@@ -2180,7 +2106,7 @@ export default function AiRequirementGenerator({
                         }}
                         type="button"
                       >
-                        {text.importContract}
+                        {t('importContract')}
                         {showImportContract ? (
                           <ChevronDown aria-hidden className="h-4 w-4" />
                         ) : (
@@ -2191,7 +2117,7 @@ export default function AiRequirementGenerator({
                         <div className="space-y-2">
                           <p className="flex items-start gap-2 text-xs text-secondary-600 dark:text-secondary-300">
                             <Info aria-hidden className="mt-0.5 h-4 w-4" />
-                            {text.importContractHelp}
+                            {t('importContractHelp')}
                           </p>
                           <div className="flex flex-wrap gap-2">
                             <button
@@ -2209,7 +2135,7 @@ export default function AiRequirementGenerator({
                               type="button"
                             >
                               <Download aria-hidden className="h-4 w-4" />
-                              {text.downloadImportInstruction}
+                              {t('downloadImportInstruction')}
                             </button>
                             <button
                               className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-secondary-300 px-3 text-sm text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
@@ -2226,7 +2152,7 @@ export default function AiRequirementGenerator({
                               type="button"
                             >
                               <Download aria-hidden className="h-4 w-4" />
-                              {text.downloadSchema}
+                              {t('downloadSchema')}
                             </button>
                           </div>
                           <pre className="max-h-72 overflow-auto rounded-lg bg-secondary-950 p-3 text-xs text-secondary-50 whitespace-pre-wrap">
@@ -2293,7 +2219,7 @@ export default function AiRequirementGenerator({
                       <AlertTriangle aria-hidden className="mt-0.5 h-5 w-5" />
                       <div>
                         <p className="font-medium">
-                          {error ?? text.validationErrors}
+                          {error ?? t('validationErrors')}
                         </p>
                         {schemaIssues.length > 0 ? (
                           <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -2310,7 +2236,7 @@ export default function AiRequirementGenerator({
                   {repairPromptText ? (
                     <div className="rounded-lg border border-secondary-200 p-4 dark:border-secondary-800">
                       <h3 className="text-sm font-semibold text-secondary-900 dark:text-secondary-50">
-                        {text.repairPrompt}
+                        {t('repairPrompt')}
                       </h3>
                       <textarea
                         className={`${textareaRows4ClassName} mt-2 font-mono text-xs`}
@@ -2331,14 +2257,14 @@ export default function AiRequirementGenerator({
                         ) : (
                           <RefreshCw aria-hidden className="h-4 w-4" />
                         )}
-                        {repairing ? text.repairing : text.repair}
+                        {repairing ? t('repairing') : t('repair')}
                       </button>
                     </div>
                   ) : null}
                   {rawResponse ? (
                     <details className="rounded-lg border border-secondary-200 p-4 dark:border-secondary-800">
                       <summary className="cursor-pointer text-sm font-medium text-secondary-800 dark:text-secondary-100">
-                        {text.rawResultTab}
+                        {t('rawResultTab')}
                       </summary>
                       <pre className="mt-3 max-h-80 overflow-auto rounded-lg bg-secondary-950 p-3 font-mono text-xs text-secondary-50 whitespace-pre-wrap">
                         {formattedRawResponse}
@@ -2354,7 +2280,7 @@ export default function AiRequirementGenerator({
                     <div>
                       <p className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-300">
                         <CheckCircle2 aria-hidden className="h-4 w-4" />
-                        {text.selectedCandidates(selectedRowCount)}
+                        {t('selectedCandidates', { count: selectedRowCount })}
                       </p>
                       {stats ? (
                         <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
@@ -2411,7 +2337,7 @@ export default function AiRequirementGenerator({
                       onClick={() => setPreviewTab('requirements')}
                       type="button"
                     >
-                      {text.candidates}
+                      {t('candidates')}
                     </button>
                     <button
                       aria-current={
@@ -2425,7 +2351,7 @@ export default function AiRequirementGenerator({
                       onClick={() => setPreviewTab('normReferences')}
                       type="button"
                     >
-                      {text.proposals} ({previewProposals.length})
+                      {t('proposals')} ({previewProposals.length})
                     </button>
                     <button
                       aria-current={
@@ -2439,7 +2365,7 @@ export default function AiRequirementGenerator({
                       onClick={() => setPreviewTab('analysis')}
                       type="button"
                     >
-                      {text.analysisTab}
+                      {t('analysisTab')}
                     </button>
                     <button
                       aria-current={
@@ -2453,7 +2379,7 @@ export default function AiRequirementGenerator({
                       onClick={() => setPreviewTab('rawResult')}
                       type="button"
                     >
-                      {text.rawResultTab}
+                      {t('rawResultTab')}
                     </button>
                   </div>
 
@@ -2461,7 +2387,7 @@ export default function AiRequirementGenerator({
                     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
                       {previewRows.length === 0 ? (
                         <p className="rounded-lg border border-secondary-200 p-4 text-sm text-secondary-600 dark:border-secondary-800 dark:text-secondary-300">
-                          {text.noCandidates}
+                          {t('noCandidates')}
                         </p>
                       ) : (
                         previewRows.map((row, index) => {
@@ -2585,9 +2511,10 @@ export default function AiRequirementGenerator({
                                   ) : null}
                                   {row.proposedNormReferenceKeys.length > 0 ? (
                                     <p className="mt-2 text-xs text-secondary-500 dark:text-secondary-400">
-                                      {text.proposalCount(
-                                        row.proposedNormReferenceKeys.length,
-                                      )}
+                                      {t('proposalCount', {
+                                        count:
+                                          row.proposedNormReferenceKeys.length,
+                                      })}
                                     </p>
                                   ) : null}
                                 </div>
@@ -2602,11 +2529,13 @@ export default function AiRequirementGenerator({
                   {previewTab === 'normReferences' ? (
                     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
                       <p className="text-xs text-secondary-500 dark:text-secondary-400">
-                        {text.selectedProposals(selectedProposalCount)}
+                        {t('selectedProposals', {
+                          count: selectedProposalCount,
+                        })}
                       </p>
                       {previewProposals.length === 0 ? (
                         <p className="rounded-lg border border-secondary-200 p-4 text-sm text-secondary-600 dark:border-secondary-800 dark:text-secondary-300">
-                          {text.noProposals}
+                          {t('noProposals')}
                         </p>
                       ) : (
                         previewProposals.map(proposal => {
@@ -2622,7 +2551,7 @@ export default function AiRequirementGenerator({
                             >
                               <div className="flex items-start gap-3">
                                 <input
-                                  aria-label={`${proposal.name} ${text.proposals}`}
+                                  aria-label={`${proposal.name} ${t('proposals')}`}
                                   checked={selected}
                                   className="mt-1 h-5 w-5"
                                   onChange={() =>
@@ -2662,13 +2591,13 @@ export default function AiRequirementGenerator({
 
                   {previewTab === 'analysis' ? (
                     <pre className="min-h-0 flex-1 overflow-auto rounded-lg bg-secondary-950 p-4 font-mono text-xs leading-6 text-secondary-50 whitespace-pre-wrap">
-                      {thinking || text.noAnalysis}
+                      {thinking || t('noAnalysis')}
                     </pre>
                   ) : null}
 
                   {previewTab === 'rawResult' ? (
                     <pre className="min-h-0 flex-1 overflow-auto rounded-lg bg-secondary-950 p-4 font-mono text-xs leading-6 text-secondary-50 whitespace-pre-wrap">
-                      {formattedRawResponse || text.noRawResult}
+                      {formattedRawResponse || t('noRawResult')}
                     </pre>
                   ) : null}
                 </div>
@@ -2693,7 +2622,7 @@ export default function AiRequirementGenerator({
                   type="button"
                 >
                   <CheckCircle2 aria-hidden className="h-4 w-4" />
-                  {text.continueToImport}
+                  {t('continueToImport')}
                 </button>
               ) : (
                 <button

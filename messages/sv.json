@@ -2361,6 +2361,38 @@
     "modelPriceLabel": "Vald modells pris",
     "modelSearchLabel": "Sök modeller",
     "modelSearchPlaceholder": "Sök modell",
+    "aiInstruction": "AI-instruktion",
+    "analysisTab": "AI-analys",
+    "candidateCount": "Antal kravkandidater",
+    "candidateCountHelp": "Välj hur många kandidater modellen ska försöka skapa. Resultatet granskas fortfarande innan import.",
+    "candidates": "Kravkandidater",
+    "continueToImport": "Förhandsgranska krav i import",
+    "downloadImportInstruction": "Ladda ner importinstruktion",
+    "downloadSchema": "Ladda ner JSON-schema",
+    "importContract": "Importinstruktion och schema",
+    "importContractHelp": "Det här är samma importinstruktion och JSON-schema som används av det vanliga importflödet. Användarens prompt kan inte skriva över det.",
+    "noCandidates": "Inga kravkandidater är laddade.",
+    "noAnalysis": "Ingen AI-analys är laddad.",
+    "noProposals": "Inga föreslagna normreferenser är laddade.",
+    "noRawResult": "Inget råresultat är laddat.",
+    "proposalCount": "{count, plural, one {# föreslagen normreferens} other {# föreslagna normreferenser}}",
+    "proposals": "Föreslagna normreferenser",
+    "rawResultTab": "Råresultat",
+    "repair": "Reparera JSON",
+    "repairPrompt": "Föreslagen reparationsprompt",
+    "repairPromptLead": "Skicka ogiltig JSON och valideringsfel till vald modell och be den bevara innehållet men rätta importformatet.",
+    "repairing": "Reparerar…",
+    "selectedCandidates": "{count, plural, one {# vald kravkandidat} other {# valda kravkandidater}}",
+    "selectedProposals": "{count, plural, one {# valt förslag} other {# valda förslag}}",
+    "validationErrors": "Genererad JSON kan inte importeras ännu.",
+    "previewFailed": "Förhandsgranskningen misslyckades",
+    "missingSpecificationContext": "Kravunderlag saknas.",
+    "invalidGeneratedJson": "Modellens svar var inte giltig JSON.",
+    "generatedJsonSchemaMismatch": "Genererad JSON matchade inte importens schema.",
+    "repairedJsonSchemaMismatch": "Reparerad JSON matchade inte importens schema.",
+    "imageSchemaErrorType": "Bildtypen stöds inte. Använd PNG, JPEG, GIF eller WebP.",
+    "imageSchemaErrorSize": "Bilden överskrider gränsen på 10 MB.",
+    "invalidRequirementImportScope": "Biblioteksläge kräver areaId och kravunderlagslokalt läge kräver specificationId.",
     "prompt": {
       "defaultInstruction": "Skapa kravkandidater som kan importeras genom applikationens kravimportflöde.\n\nVarje kandidat bör:\n- Ha en tydlig, testbar och entydig kravtext.\n- Använda kravformulering som passar funktionella och icke-funktionella krav.\n- Inkludera acceptanskriterier när de gör verifieringen tydligare.\n- Sätta requiresTesting och verificationMethod när kravet ska verifieras.\n- Använda kategorier, kravtyper, kvalitetsegenskaper, prioritet, kravpaket och normreferenser endast genom fält som stöds av importinstruktionen.\n- Föredra exakta namn när stabila ID:n är okända.\n- Hålla varje kandidat fokuserad på en skyldighet.\n\nFör icke-funktionella krav, beakta ISO/IEC 25010:2023 där det är relevant, inklusive prestandaeffektivitet, säkerhet, användbarhet, tillförlitlighet, underhållbarhet, kompatibilitet, portabilitet och funktionell lämplighet.",
       "userHeader": "Behov och sammanhang",
@@ -2380,7 +2412,8 @@
           "Lägg inte till nya krav om det inte krävs för att reparera en trasig liststruktur."
         ],
         "errorHeading": "Valideringsfel",
-        "jsonHeading": "Trasig JSON"
+        "jsonHeading": "Trasig JSON",
+        "defaultValidationError": "JSON validerade inte mot importkontraktet."
       }
     },
     "errors": {
@@ -2421,5 +2454,11 @@
     "imageErrorSize": "{name} överskrider gränsen på 10 MB.",
     "imageErrorCount": "Du kan bifoga upp till {max} bilder.",
     "imageErrorRead": "Kunde inte läsa en eller flera bildfiler. Försök igen."
+  },
+  "requirementsImportDialog": {
+    "importTitleWithDestination": "{title} för {destination}",
+    "loadingInitialImport": "Förbereder importgranskning...",
+    "descriptionRequired": "Kravtext måste anges innan raden kan importeras.",
+    "verificationMethodRequired": "Verifieringsmetod måste anges för verifierbara krav."
   }
 }

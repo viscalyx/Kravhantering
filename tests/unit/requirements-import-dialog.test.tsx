@@ -10,9 +10,26 @@ import RequirementsImportDialog from '@/components/RequirementsImportDialog'
 import { apiFetch } from '@/lib/http/api-fetch'
 
 const confirmMock = vi.hoisted(() => vi.fn())
+const importDialogTranslate = vi.hoisted(() => {
+  const messages: Record<string, string> = {
+    descriptionRequired: 'Kravtext måste anges innan raden kan importeras.',
+    importTitleWithDestination: '{title} för {destination}',
+    loadingInitialImport: 'Förbereder importgranskning...',
+    verificationMethodRequired:
+      'Verifieringsmetod måste anges för verifierbara krav.',
+  }
+  return (key: string, params?: Record<string, string>) => {
+    const template = messages[key] ?? key
+    return Object.entries(params ?? {}).reduce(
+      (result, [name, value]) => result.replaceAll(`{${name}}`, value),
+      template,
+    )
+  }
+})
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'sv',
+  useTranslations: () => importDialogTranslate,
 }))
 
 vi.mock('@/components/ConfirmModal', () => ({

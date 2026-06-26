@@ -17,7 +17,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   type ChangeEvent,
   type CSSProperties,
@@ -245,13 +245,10 @@ const TEXT = {
       'The JSON does not match requirement-import.v1. Fix the import file before previewing requirements.',
     importTitleLibrary: 'Import requirements',
     importTitleSpecification: 'Import local requirements',
-    importTitleWithDestination: (title: string, destination: string) =>
-      `${title} for ${destination}`,
     importReviewTabs: 'Import review',
     ignoredRequirementPackagesInfo:
       'Requirement packages in the import file are not used for specification-local requirements.',
     linkExistingNormReference: 'Link existing norm reference',
-    loadingInitialImport: 'Preparing import review...',
     loadReview: 'Preview requirements',
     needsReference: 'Needs reference',
     noExistingNormReference: 'No linked norm reference',
@@ -346,13 +343,10 @@ const TEXT = {
       'JSON följer inte requirement-import.v1. Korrigera importfilen innan granskningen laddas.',
     importTitleLibrary: 'Importera krav',
     importTitleSpecification: 'Importera lokala krav',
-    importTitleWithDestination: (title: string, destination: string) =>
-      `${title} för ${destination}`,
     importReviewTabs: 'Importgranskning',
     ignoredRequirementPackagesInfo:
       'Kravpaket i importfilen används inte för kravunderlagslokala krav.',
     linkExistingNormReference: 'Länka befintlig normreferens',
-    loadingInitialImport: 'Förbereder importgranskning...',
     loadReview: 'Förhandsgranska krav',
     needsReference: 'Behovsreferens',
     noExistingNormReference: 'Ingen länkad normreferens',
@@ -644,6 +638,7 @@ export default function RequirementsImportDialog({
 }: RequirementsImportDialogProps) {
   const locale = useLocale() === 'sv' ? 'sv' : 'en'
   const text = TEXT[locale]
+  const importText = useTranslations('requirementsImportDialog')
   const { confirm } = useConfirmModal()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [rawJson, setRawJson] = useState('')
@@ -800,10 +795,7 @@ export default function RequirementsImportDialog({
           code: 'description_required',
           field: 'description',
           level: 'error',
-          message:
-            locale === 'sv'
-              ? 'Kravtext måste anges innan raden kan importeras.'
-              : 'Requirement text is required before this row can be imported.',
+          message: importText('descriptionRequired'),
         })
       }
       if (values.requiresTesting && !values.verificationMethod?.trim()) {
@@ -811,15 +803,12 @@ export default function RequirementsImportDialog({
           code: 'verification_method_required',
           field: 'verificationMethod',
           level: 'error',
-          message:
-            locale === 'sv'
-              ? 'Verifieringsmetod måste anges för verifierbara krav.'
-              : 'Verification method is required for verifiable requirements.',
+          message: importText('verificationMethodRequired'),
         })
       }
       return nextErrors
     },
-    [locale],
+    [importText],
   )
 
   const revalidateEditableRow = useCallback(
@@ -1709,7 +1698,10 @@ export default function RequirementsImportDialog({
   const titleDestination =
     mode === 'library' ? selectedAreaName : destinationName?.trim() || null
   const title = titleDestination
-    ? text.importTitleWithDestination(text.importTitleLibrary, titleDestination)
+    ? importText('importTitleWithDestination', {
+        destination: titleDestination,
+        title: text.importTitleLibrary,
+      })
     : titleBase
   const hasLoadedReview = previewToken !== null
   const isPreparingInitialImport = Boolean(
@@ -1826,7 +1818,7 @@ export default function RequirementsImportDialog({
                   className="h-8 w-8 animate-spin text-primary-600"
                 />
                 <p className="text-sm font-medium text-secondary-700 dark:text-secondary-200">
-                  {text.loadingInitialImport}
+                  {importText('loadingInitialImport')}
                 </p>
               </div>
             ) : null}

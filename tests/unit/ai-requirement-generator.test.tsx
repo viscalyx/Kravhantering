@@ -11,13 +11,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const translate = Object.assign(
   (key: string, params?: Record<string, unknown>) => {
+    const messages: Record<string, string> = {
+      analysisTab: 'AI analysis',
+      candidateCount: 'Number of requirement candidates',
+      rawResultTab: 'Raw result',
+    }
+    const template = messages[key] ?? key
     if (params) {
       return Object.entries(params).reduce(
         (s, [k, v]) => s.replace(`{${k}}`, String(v)),
-        key,
+        template,
       )
     }
-    return key
+    return template
   },
   {
     rich: (key: string) => key,

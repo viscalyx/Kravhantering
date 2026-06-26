@@ -9,6 +9,7 @@ import {
   buildRequirementImportSystemPrompt,
   buildRequirementImportUserPrompt,
   formatSchemaIssues,
+  getPromptMessage,
   parseJsonObject,
 } from '@/lib/ai/requirement-prompt'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
@@ -129,7 +130,10 @@ function createStreamRecorder(
   }
 }
 
-function parseAndValidatePayload(rawContent: string): {
+function parseAndValidatePayload(
+  rawContent: string,
+  locale: 'en' | 'sv',
+): {
   issues?: ReturnType<typeof formatSchemaIssues>
   payload?: ImportRequirementsPayload
 } {
@@ -141,7 +145,7 @@ function parseAndValidatePayload(rawContent: string): {
       issues: [
         {
           code: 'invalid_json',
-          message: 'Model output was not valid JSON.',
+          message: getPromptMessage(locale, ['ai', 'invalidGeneratedJson']),
           path: '$',
         },
       ],
@@ -256,7 +260,10 @@ export const POST = secureMutationRoute({
                 send('generating', { chunk: event.chunk })
                 break
               case 'done': {
-                const validation = parseAndValidatePayload(event.rawContent)
+                const validation = parseAndValidatePayload(
+                  event.rawContent,
+                  body.locale,
+                )
                 if (!validation.payload) {
                   logSanitizedError(
                     'AI requirement import output validation failed',
@@ -271,8 +278,10 @@ export const POST = secureMutationRoute({
                   )
                   send('validation_error', {
                     issues: validation.issues ?? [],
-                    message:
-                      'Generated JSON did not match the requirement import schema.',
+                    message: getPromptMessage(body.locale, [
+                      'ai',
+                      'generatedJsonSchemaMismatch',
+                    ]),
                     model: resolvedModel,
                     rawContent: event.rawContent,
                     stats: event.stats,

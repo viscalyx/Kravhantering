@@ -6,6 +6,7 @@ import {
   buildRequirementImportResponseFormatSchema,
   buildRequirementImportSystemPrompt,
   formatSchemaIssues,
+  getPromptMessage,
 } from '@/lib/ai/requirement-prompt'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -180,8 +181,10 @@ export const POST = secureMutationRoute({
         return applyResponseCorrelationHeaders(
           Response.json(
             {
-              error:
-                'Repaired JSON did not match the requirement import schema.',
+              error: getPromptMessage(body.locale, [
+                'ai',
+                'repairedJsonSchemaMismatch',
+              ]),
               issues,
             },
             { status: 422 },
