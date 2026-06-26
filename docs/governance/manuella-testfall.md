@@ -82,12 +82,16 @@ Behörighetsmatrisen finns i [behörigheter.md](./behörigheter.md).
 ### NAV-01: global sidonavigering linjerar verktygsikoner
 
 **Steg:** Logga in som `ada.admin`, öppna `/sv/requirements` på desktop och
-expandera den globala sidonavigeringen.
+expandera den globala sidonavigeringen. Minska därefter webbläsarbredden och
+öppna samt stäng sidolådan.
 
 **Förväntat resultat:** Sidonavigeringen är kompakt utan att rubriken
 `Kravbiblioteksförvaltning` eller länketiketter bryts. Ikonerna för språkbyte,
 temaväxling och användarmeny har samma horisontella fotavtryck och linjerar med
-övriga ikoner i sidonavigeringen.
+övriga ikoner i sidonavigeringen. Knappen för att öppna eller expandera
+navigeringen visar `panel-left-open`, och knappen för att stänga eller fälla
+ihop navigeringen visar `panel-left-close` på samma övre vänstra placering som
+öppningsknappen.
 
 ## Autentisering och behörighet
 

@@ -47,6 +47,10 @@ function okJson(value: unknown) {
   } as unknown as Response
 }
 
+function expectButtonIcon(button: HTMLElement, iconClassName: string) {
+  expect(button.querySelector('svg')).toHaveClass(iconClassName)
+}
+
 vi.mock('next-intl', () => ({
   useTranslations:
     (namespace?: string) =>
@@ -183,17 +187,23 @@ describe('Navigation', () => {
       name: 'nav.mainNavigation',
     })
     expect(navigation).toHaveStyle({ width: '4.5rem' })
-    expect(
-      screen.getByRole('button', { name: 'nav.expandRail' }),
-    ).toBeInTheDocument()
+    const expandRailButton = screen.getByRole('button', {
+      name: 'nav.expandRail',
+    })
+    expect(expandRailButton).toBeInTheDocument()
+    expect(expandRailButton).toHaveClass('w-12')
+    expectButtonIcon(expandRailButton, 'lucide-panel-left-open')
     expect(screen.queryByText('common.appName')).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'nav.expandRail' }))
+    fireEvent.click(expandRailButton)
 
     expect(navigation).toHaveStyle({ width: '16.5rem' })
-    expect(
-      screen.getByRole('button', { name: 'nav.collapseRail' }),
-    ).toBeInTheDocument()
+    const collapseRailButton = screen.getByRole('button', {
+      name: 'nav.collapseRail',
+    })
+    expect(collapseRailButton).toBeInTheDocument()
+    expect(collapseRailButton).toHaveClass('w-12')
+    expectButtonIcon(collapseRailButton, 'lucide-panel-left-close')
     expect(
       localStorage.getItem('requirements.navigationRail.expanded.v1'),
     ).toBe('expanded')
@@ -304,7 +314,10 @@ describe('Navigation', () => {
   it('opens the mobile drawer with expanded navigation items', () => {
     render(<Navigation />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'nav.openMenu' }))
+    const openButton = screen.getByRole('button', { name: 'nav.openMenu' })
+    expectButtonIcon(openButton, 'lucide-panel-left-open')
+
+    fireEvent.click(openButton)
 
     const dialog = screen.getByRole('dialog', { name: 'nav.mainMenu' })
     expect(
@@ -322,7 +335,10 @@ describe('Navigation', () => {
     const closeButtons = within(dialog).getAllByRole('button', {
       name: 'nav.closeMenu',
     })
-    fireEvent.click(closeButtons[closeButtons.length - 1])
+    const closeButton = closeButtons[closeButtons.length - 1]
+    expectButtonIcon(closeButton, 'lucide-panel-left-close')
+    expect(closeButton).toHaveAttribute('class', openButton.className)
+    fireEvent.click(closeButton)
 
     expect(screen.queryByRole('dialog', { name: 'nav.mainMenu' })).toBeNull()
   })
@@ -339,21 +355,17 @@ describe('Navigation', () => {
       name: 'nav.closeMenu',
     })
     const closeButton = closeButtons[closeButtons.length - 1]
-    const firstLink = within(dialog).getByRole('link', {
-      name: 'common.appName',
-    })
     const lastLink = within(dialog).getByRole('link', {
       name: 'admin.settings',
     })
 
     await waitFor(() => expect(closeButton).toHaveFocus())
 
-    firstLink.focus()
     fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
     expect(lastLink).toHaveFocus()
 
     fireEvent.keyDown(dialog, { key: 'Tab' })
-    expect(firstLink).toHaveFocus()
+    expect(closeButton).toHaveFocus()
 
     fireEvent.keyDown(dialog, { key: 'Escape' })
 
