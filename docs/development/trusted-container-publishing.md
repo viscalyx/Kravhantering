@@ -21,7 +21,9 @@ The optional demo seed image is recorded in release metadata and release notes,
 not in the production or test-support lock files.
 The release smoke test starts Podman Compose from verified GHCR manifest digest
 references, but production deployment and upgrade guides use tag-style runtime
-refs and verify them against locked image IDs.
+refs by default and verify them against locked image IDs. The production helper
+also accepts tag-and-digest refs when a site explicitly chooses pull-time digest
+pinning.
 
 The Buildx publish steps disable BuildKit's default registry provenance
 attestations with `--provenance=false`. The workflow publishes provenance and
@@ -240,9 +242,10 @@ The workflow uploads these artifact groups:
 
 The production deployment bundle includes `bin/kravhantering-images.sh`, a
 Bash and jq helper for explicit operator verification. It can verify configured
-tag-style `release.env` image refs against locked image IDs, export already
-present verified local images into a transport bundle, and load and tag that
-bundle on a disconnected host.
+tag-style `release.env` image refs against locked image IDs, optionally verify
+tag-and-digest refs against locked manifest digests, export already present
+verified local images into a transport bundle, and load and tag that bundle on
+a disconnected host.
 The bundled nginx Compose files mount `api-docs/` and serve the HSA-person
 lookup Swagger UI at `/api-docs/hsa-person-lookup/` on the same public origin
 as the application.

@@ -64,13 +64,15 @@ destructive demo seeding in disposable environments. It is not part of
 `container-stack.lock.json`, `release.env.template`, or the production
 deployment bundle.
 
-The refs must use tag-style `image:tag` values that point at public upstream
+Use tag-style `image:tag` values by default, pointing at public upstream
 registries or an internal registry mirror. Each configured ref must resolve to
 the locked `imageId` in `container-stack.lock.json` when inspected with Podman.
 For third-party images, prefer release-specific internal mirror tags instead
-of moving public tags such as `stable-alpine` or `2025-latest`. The lock file,
-not the tag text, is the source of truth; `bin/kravhantering-images.sh verify`
-fails if a tag now resolves to another image ID.
+of moving public tags such as `stable-alpine` or `2025-latest`. The helper also
+accepts `image:tag@sha256:digest` when a site explicitly requires pull-time
+digest pinning. The lock file, not the tag text, is the source of truth;
+`bin/kravhantering-images.sh verify` fails if a ref now resolves to another
+image ID.
 
 ## Configuration BoM (Bill of Materials)
 
@@ -419,8 +421,8 @@ sudo chcon -R -t container_file_t \
 ## Image References
 
 Set image references in `/etc/kravhantering/release.env` to the site's
-approved runtime refs. Production runtime refs must use tag-style `image:tag`
-values. Prefer release-specific internal mirror tags for third-party images.
+approved runtime refs. Use tag-style `image:tag` values by default. Prefer
+release-specific internal mirror tags for third-party images.
 
 Choose exactly one image-reference method before running commands in this
 section:
@@ -431,6 +433,9 @@ section:
   the registry host while keeping the locked tags.
 - For an internal mirror with a custom repository layout, set the five
   `*_IMAGE_REF` values manually to site-approved tag refs.
+
+The helper also accepts `image:tag@sha256:digest` refs when a site explicitly
+requires pull-time digest pinning.
 
 Do not run the connected-staging block for a production site that must pull
 third-party images from an internal mirror.

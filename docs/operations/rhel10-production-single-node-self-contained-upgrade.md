@@ -56,9 +56,11 @@ configuration change.
 
    Ensure the site has approved tag-style image refs for every single-node
    image named in the target release lock. Each configured ref must resolve to
-   the locked `imageId`. The optional `kravhantering-demo-seed` image can be
-   listed separately in the GitHub Release notes, but it is not part of
-   `container-stack.lock.json`, `release.env` or the production upgrade path.
+   the locked `imageId`. The helper also accepts `image:tag@sha256:digest` refs
+   when a site explicitly requires pull-time digest pinning. The optional
+   `kravhantering-demo-seed` image can be listed separately in the GitHub
+   Release notes, but it is not part of `container-stack.lock.json`,
+   `release.env` or the production upgrade path.
 
 2. Confirm a tested SQL Server backup, volume snapshot or restore point.
    Complete the site-approved restore procedure before the window begins and
@@ -114,11 +116,10 @@ configuration change.
    ```
 
 7. Update `/etc/kravhantering/release.env` image refs and verify image IDs.
-   Production runtime refs must use tag-style `image:tag` values. Prefer
-   release-specific internal mirror tags for third-party images so moving
-   public tags cannot drift after release. For connected staging only, derive
-   the public upstream refs from the target release lock and verify them
-   immediately:
+   Use tag-style `image:tag` values by default. Prefer release-specific
+   internal mirror tags for third-party images so moving public tags cannot
+   drift after release. For connected staging only, derive the public upstream
+   refs from the target release lock and verify them immediately:
 
    ```bash
    update_ref() {

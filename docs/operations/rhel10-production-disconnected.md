@@ -67,7 +67,9 @@ cp "$OFFLINE_WORK/env/release.env.template" "$OFFLINE_ROOT/release.env"
 
 Set image refs in the staging `release.env` before pulling images. Choose
 exactly one of alternatives A, B or C, depending on the repository layout the
-connected export host can pull from.
+connected export host can pull from. Keep tag refs for disconnected import
+unless the target Podman hosts can resolve loaded `image:tag@sha256:digest`
+refs locally without registry access.
 
 #### Alternative A: Public Upstream Refs
 

@@ -59,7 +59,8 @@ place.
 
    Ensure the site has approved tag-style image refs for every app-node image
    named in the target release lock. Each configured ref must resolve to the
-   locked `imageId`.
+   locked `imageId`. The helper also accepts `image:tag@sha256:digest` refs
+   when a site explicitly requires pull-time digest pinning.
 
 2. Confirm a tested SQL Server backup or restore point.
    Complete the DBA-approved restore procedure before the window begins and
@@ -122,11 +123,10 @@ place.
 
 7. Update `/etc/kravhantering/release.env` image refs and verify image IDs on
    every app node.
-   Production runtime refs must use tag-style `image:tag` values. Prefer
-   release-specific internal mirror tags for third-party images so moving
-   public tags cannot drift after release. For connected staging only, derive
-   the public upstream refs from the target release lock and verify them
-   immediately:
+   Use tag-style `image:tag` values by default. Prefer release-specific
+   internal mirror tags for third-party images so moving public tags cannot
+   drift after release. For connected staging only, derive the public upstream
+   refs from the target release lock and verify them immediately:
 
    ```bash
    update_ref() {

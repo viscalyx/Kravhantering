@@ -136,12 +136,75 @@ locked_image_id() {
   normalize_sha256 "$(locked_service_field "$service" imageId)"
 }
 
+locked_manifest_digest() {
+  local service="$1"
+  normalize_sha256 "$(locked_service_field "$service" manifestDigest)"
+}
+
 locked_manifest_ref() {
   local service="$1"
-  local image digest
+  local image tag digest
   image="$(locked_service_field "$service" image)"
-  digest="$(locked_service_field "$service" manifestDigest)"
-  printf '%s@%s\n' "$image" "$(normalize_sha256 "$digest")"
+  tag="$(locked_service_field "$service" tag)"
+  digest="$(locked_manifest_digest "$service")"
+  printf '%s:%s@%s\n' "$image" "$tag" "$digest"
+}
+
+image_ref_without_digest() {
+  local image_ref="$1"
+  case "$image_ref" in
+    *@sha256:*) printf '%s\n' "${image_ref%@sha256:*}" ;;
+    *) printf '%s\n' "$image_ref" ;;
+  esac
+}
+
+image_ref_manifest_digest() {
+  local image_ref="$1"
+  if [[ "$image_ref" == *@sha256:* ]]; then
+    normalize_sha256 "${image_ref##*@sha256:}"
+  fi
+}
+
+image_ref_has_tag() {
+  local image_ref tag_candidate
+  image_ref="$(image_ref_without_digest "$1")"
+  tag_candidate="${image_ref##*/}"
+  [[ "$tag_candidate" == *:* ]]
+}
+
+require_runtime_ref() {
+  local service="$1"
+  local image_ref="$2"
+  if [[ "$image_ref" == *@* && "$image_ref" != *@sha256:* ]]; then
+    fail "$service uses unsupported digest ref $image_ref; use image:tag or image:tag@sha256:digest."
+  fi
+  if ! image_ref_has_tag "$image_ref"; then
+    fail "$service uses $image_ref; production runtime refs must use image:tag or image:tag@sha256:digest values."
+  fi
+}
+
+normalize_inspected_digest() {
+  local digest="$1"
+  [[ -n "$digest" && "$digest" != "<none>" && "$digest" != "<no value>" ]] ||
+    return 1
+  if [[ "$digest" == *@* ]]; then
+    digest="${digest##*@}"
+  fi
+  normalize_sha256 "$digest"
+}
+
+actual_manifest_digest() {
+  local image_ref="$1"
+  local digest normalized
+  for format in '{{.Digest}}' '{{index .RepoDigests 0}}'; do
+    if digest="$(podman image inspect "$image_ref" --format "$format" 2>/dev/null)"; then
+      if normalized="$(normalize_inspected_digest "$digest")"; then
+        printf '%s\n' "$normalized"
+        return 0
+      fi
+    fi
+  done
+  return 1
 }
 
 actual_image_id() {
@@ -154,9 +217,22 @@ actual_image_id() {
 
 verify_service() {
   local service="$1"
-  local image_ref expected actual env_prefix locked_ref
+  local image_ref expected actual env_prefix locked_ref expected_digest ref_digest inspected_digest
   image_ref="$(image_ref_for_service "$service")"
-  require_tag_ref "$service" "$image_ref"
+  require_runtime_ref "$service" "$image_ref"
+  expected_digest="$(locked_manifest_digest "$service")"
+  ref_digest="$(image_ref_manifest_digest "$image_ref")"
+  if [[ -n "$ref_digest" && "$ref_digest" != "$expected_digest" ]]; then
+    env_prefix="$(service_env_prefix "$service")"
+    locked_ref="$(locked_manifest_ref "$service")"
+    fail "$service manifest digest $ref_digest does not match locked $expected_digest for $image_ref. Set ${env_prefix}_IMAGE_REF to the locked ref $locked_ref or to a site mirror tag that resolves to the locked image ID."
+  fi
+  if [[ -n "$ref_digest" ]]; then
+    inspected_digest="$(actual_manifest_digest "$image_ref" || true)"
+    if [[ -n "$inspected_digest" && "$inspected_digest" != "$expected_digest" ]]; then
+      fail "$service inspected manifest digest $inspected_digest does not match locked $expected_digest for $image_ref."
+    fi
+  fi
   expected="$(locked_image_id "$service")"
   actual="$(actual_image_id "$image_ref")"
   if [[ "$actual" != "$expected" ]]; then
@@ -171,14 +247,6 @@ verify_images() {
   for service in "${SERVICES[@]}"; do
     verify_service "$service"
   done
-}
-
-require_tag_ref() {
-  local service="$1"
-  local image_ref="$2"
-  if [[ "$image_ref" == *@sha256:* ]]; then
-    fail "$service uses digest ref $image_ref; production runtime refs must use tag-style image:tag values."
-  fi
 }
 
 write_transport_manifest() {
@@ -265,15 +333,16 @@ load_images() {
   (cd "$work_dir" && sha256sum -c hashes.sha256)
 
   for service in "${SERVICES[@]}"; do
-    local image_ref image_id archive
+    local image_ref image_id archive local_tag_ref
     image_ref="$(image_ref_for_service "$service")"
-    require_tag_ref "$service" "$image_ref"
+    require_runtime_ref "$service" "$image_ref"
+    local_tag_ref="$(image_ref_without_digest "$image_ref")"
     image_id="$(locked_image_id "$service")"
     archive="$work_dir/images/${service}.oci.tar.gz"
     [[ -f "$archive" ]] || fail "Bundle is missing $archive."
     podman load --input "$archive"
     podman image inspect "$image_id" >/dev/null
-    podman tag "$image_id" "$image_ref"
+    podman tag "$image_id" "$local_tag_ref"
   done
 
   verify_images

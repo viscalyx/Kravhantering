@@ -43,10 +43,13 @@ to verify the `db-job` image.
 ## Verify Runtime Image IDs
 
 Production runtime verification is separate from attestation verification. After
-choosing site-specific tag-style image refs in `release.env`, pull those refs
-when the host can reach the registry. Then run the bundled
+choosing site-specific tag-style image refs in `release.env` by default, pull
+those refs when the host can reach the registry. Then run the bundled
 `bin/kravhantering-images.sh verify` command for the target topology to compare
 Podman image inspect `.Id` values with the locked `imageId` values.
+
+The helper also accepts `image:tag@sha256:digest` refs when a site explicitly
+requires pull-time digest pinning.
 
 Production topologies use `container-stack.lock.json`. The test-only
 `single-node-demo` topology uses both `container-stack.lock.json` and
