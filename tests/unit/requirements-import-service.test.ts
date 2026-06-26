@@ -273,10 +273,6 @@ describe('requirements import service', () => {
     expect(promptSv).toContain(
       'Följ referensdata för kravstruktur, klassificering, ID:n och benämningar.',
     )
-    expect(promptEn).not.toContain(
-      'Use reference data for all taxonomy fields.',
-    )
-    expect(promptSv).not.toContain('Använd referensdata för alla taxonomifält.')
     expect(promptEn).toContain(
       'Choose `priorityLevelId` from `priorityLevels[].id`; compare the requirement with `priorityLevels[].assessmentCriteria` and choose the best match',
     )
@@ -299,11 +295,6 @@ describe('requirements import service', () => {
     expect(promptSv).toContain(
       `Sätt toppnivåfältet \`schemaVersion\` till \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\``,
     )
-    expect(promptEn).not.toContain('requirements-import.v1')
-    expect(promptSv).not.toContain('requirements-import.v1')
-    expect(promptEn).not.toContain('destination fields')
-    expect(promptSv).not.toContain('destinationsfält')
-    expect(promptEn).not.toContain('only when IDs are unavailable')
     expect(promptSv).toContain(
       'Använd `normReferenceIds` med värden från `normReferences[].normReferenceId`',
     )

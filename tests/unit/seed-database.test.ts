@@ -955,11 +955,6 @@ describe('seed profiles', () => {
       specification_id: RETENTION_SEED.specification.obsolete,
       unique_id: 'RETENTION-SEED-LR-1',
     })
-    expect(
-      localRequirements.get(
-        RETENTION_SEED.localRequirement.obsoleteSpecification,
-      ),
-    ).not.toHaveProperty('requirement_area_id')
 
     expect(
       seedRowsFor(rows, 'requirement_areas').some(

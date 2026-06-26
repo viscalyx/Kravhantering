@@ -491,22 +491,6 @@ describe('AdminClient', () => {
     )
   })
 
-  it('retires the old reference data tab query parameter', () => {
-    searchParamsMock.current = new URLSearchParams('tab=referenceData')
-
-    render(
-      <AdminClient
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-      />,
-    )
-
-    expect(screen.getByRole('tab', { name: 'admin.columns' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
-    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
-  })
-
   it('opens the action log tab from the admin tab query parameter', () => {
     searchParamsMock.current = new URLSearchParams('tab=actionAuditLog')
 

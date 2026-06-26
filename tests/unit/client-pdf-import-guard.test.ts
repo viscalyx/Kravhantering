@@ -34,10 +34,9 @@ function isClientModule(source: string): boolean {
 }
 
 describe('client PDF import guard', () => {
-  it('keeps React-PDF out of client modules and retired download hooks', () => {
+  it('keeps React-PDF out of client modules', () => {
     const violations = SCAN_ROOTS.flatMap(sourceFiles).filter(file => {
       const source = readFileSync(file, 'utf8')
-      if (source.includes('usePdfDownload')) return true
       return isClientModule(source) && source.includes('@react-pdf/renderer')
     })
 

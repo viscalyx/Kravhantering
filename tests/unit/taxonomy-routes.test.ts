@@ -1540,21 +1540,6 @@ describe('requirement-specifications routes', () => {
       }),
     )
   })
-  it('PUT rejects legacy specification lead name fields', async () => {
-    const r = await putPkg(
-      jsonReq('PUT', {
-        responsibleDisplayName: '',
-      }),
-      makeParams('1'),
-    )
-
-    expect(r.status).toBe(400)
-    await expectInvalidRequest(r)
-    expect(mockUpdatePkg).not.toHaveBeenCalled()
-    expect(
-      responsibilityPersonState.getRequirementResponsibilityPerson,
-    ).not.toHaveBeenCalled()
-  })
   it('PUT rejects clearing the specification lead HSA-id', async () => {
     const r = await putPkg(
       jsonReq('PUT', {

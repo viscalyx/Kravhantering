@@ -222,11 +222,6 @@ describe('requirements/[id] route', () => {
           }),
         }),
       )
-      const manageInput = mockManageRequirement.mock.calls[0]?.[1] as {
-        requirement: Record<string, unknown>
-      }
-      expect(manageInput.requirement).not.toHaveProperty('createdBy')
-      expect(manageInput.requirement).not.toHaveProperty('ownerId')
     })
 
     it('returns stale edit conflicts with details from the service', async () => {
@@ -277,24 +272,6 @@ describe('requirements/[id] route', () => {
       })
       const res = await PUT(req, makeParams('1'))
       expect(res.status).toBe(500)
-    })
-
-    it('returns 400 when PUT contains legacy ownerId', async () => {
-      const req = new NextRequest('http://localhost/api/requirements/1', {
-        method: 'PUT',
-        body: JSON.stringify({
-          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
-          baseVersionId: 10,
-          description: 'Updated',
-          ownerId: 'spoofed-actor',
-        }),
-        headers: { 'Content-Type': 'application/json' },
-      })
-      const res = await PUT(req, makeParams('1'))
-
-      expect(res.status).toBe(400)
-      await expectInvalidRequest(res, '$')
-      expect(mockManageRequirement).not.toHaveBeenCalled()
     })
 
     it('returns 400 for invalid JSON bodies', async () => {

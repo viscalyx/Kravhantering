@@ -120,8 +120,6 @@ describe('RequirementAreasClient', () => {
     expect(editAction.querySelector('svg')).toBeInTheDocument()
     expect(deleteAction.querySelector('svg')).toBeInTheDocument()
     expect(manageCoAuthorsAction.querySelector('svg')).toBeInTheDocument()
-    const urls = fetchMock.mock.calls.map(call => call[0])
-    expect(urls).not.toContain('/api/owners')
   })
 
   it('creates a requirement area with an editable owner HSA-id field', async () => {

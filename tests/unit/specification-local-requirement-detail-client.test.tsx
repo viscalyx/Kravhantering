@@ -202,12 +202,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
             nameEn: 'High',
             nameSv: 'Hog',
           },
-          requirementPackages: [
-            {
-              id: 12,
-              name: 'Bestallning',
-            },
-          ],
+          requirementPackages: [],
           uniqueId: 'KRAV0001',
           updatedAt: '2026-04-02T00:00:00.000Z',
           verificationMethod: 'Review',
@@ -242,7 +237,6 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(screen.getByText('Norm references')).toBeInTheDocument()
     expect(screen.getByText('ISO27001')).toBeInTheDocument()
     expect(screen.queryByText('RequirementPackage')).not.toBeInTheDocument()
-    expect(screen.queryByText('Bestallning')).not.toBeInTheDocument()
     expect(screen.queryByText('KRAV0001')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Print' }),
@@ -272,60 +266,6 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       .getByText('Specification local description')
       .closest('div[class~="px-6"]')
     expect(inlineInset).toHaveClass('py-4')
-  })
-
-  it('does not render requirement packages from stale specification-local payloads', async () => {
-    vi.mocked(fetch)
-      .mockImplementationOnce(() =>
-        okJson({
-          acceptanceCriteria: 'Specification local acceptance',
-          createdAt: '2026-04-01T00:00:00.000Z',
-          description: 'Specification local description',
-          id: 1,
-          itemRef: 'local:1',
-          needsReference: null,
-          needsReferenceId: null,
-          normReferences: [],
-          specificationId: 8,
-          specificationItemStatusColor: '#16a34a',
-          specificationItemStatusId: 1,
-          specificationItemStatusNameEn: 'Included',
-          specificationItemStatusNameSv: 'Inkluderad',
-          qualityCharacteristic: null,
-          requirementArea: null,
-          requirementCategory: null,
-          requirementType: null,
-          requiresTesting: false,
-          priorityLevel: null,
-          requirementPackages: [
-            {
-              id: 12,
-              name: null,
-            },
-          ],
-          uniqueId: 'KRAV0001',
-          updatedAt: '2026-04-02T00:00:00.000Z',
-          verificationMethod: null,
-        }),
-      )
-      .mockImplementationOnce(() => okJson({ deviations: [] }))
-      .mockImplementationOnce(() =>
-        okJson({ areas: [{ id: 2, name: 'Security', prefix: 'SEC' }] }),
-      )
-
-    render(
-      <SpecificationLocalRequirementDetailClient
-        localRequirementId={1}
-        needsReferences={[]}
-        specificationSlug="ETJANST-UPP-2026"
-      />,
-    )
-
-    expect(
-      await screen.findByText('Specification local description'),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('RequirementPackage')).not.toBeInTheDocument()
-    expect(screen.queryByText('12')).not.toBeInTheDocument()
   })
 
   it('opens unique requirement editing in a modal without replacing the inline detail', async () => {

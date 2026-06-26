@@ -27,7 +27,7 @@ describe('parseRolesClaim', () => {
     ])
   })
 
-  it('drops legacy Author/Steward role values', () => {
+  it('drops non-canonical Author/Steward role claims', () => {
     expect(parseRolesClaim(['Author', 'Steward', 'Admin'])).toEqual(['Admin'])
   })
 

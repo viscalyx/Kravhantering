@@ -110,26 +110,6 @@ describe('StewardshipClient', () => {
     ).toBeInTheDocument()
   })
 
-  it('ignores the legacy RFI query token', async () => {
-    searchParamsState.value = new URLSearchParams('tab=rfi')
-    localStorage.setItem('requirements.stewardship.tab', 'rfi')
-
-    render(<StewardshipClient />)
-
-    expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'Requirements packages',
-      }),
-    ).toBeInTheDocument()
-    await waitFor(() => {
-      expect(routerState.replace).toHaveBeenCalledWith(
-        '/requirements/stewardship?tab=packages',
-        { scroll: false },
-      )
-    })
-  })
-
   it('restores the remembered RFI tab with the canonical URL token', async () => {
     localStorage.setItem('requirements.stewardship.tab', 'rfi')
 

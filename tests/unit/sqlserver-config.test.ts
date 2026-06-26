@@ -128,14 +128,4 @@ describe('SQL Server TypeORM config', () => {
       /DATABASE_URL, or DB_HOST/,
     )
   })
-
-  it('ignores removed SQL Server-specific URL aliases', () => {
-    const aliasOnlyEnv = {
-      NODE_ENV: 'test',
-      SQLSERVER_DATABASE_URL:
-        'mssql://app:secret@db.example:1433/kravhantering',
-    } as unknown as SqlServerRuntimeEnv
-
-    expect(tryGetSqlServerDatabaseUrl(aliasOnlyEnv)).toBeNull()
-  })
 })

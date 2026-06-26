@@ -587,9 +587,9 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12c: concur
 **What happened:** `approveArchiving()` and `cancelArchiving()` filter on
 `archive_initiated_at IS NOT NULL`, so even if a newer Draft or Review version
 exists for the same requirement (a state that the public API now rejects in
-`initiateArchiving()`, but which can exist in legacy data), only the version
-that was put into archiving review is touched. The newer Draft or Review
-version is never silently flipped to Archived or Published.
+`initiateArchiving()`, but which can exist after manual data changes), only
+the version that was put into archiving review is touched. The newer Draft or
+Review version is never silently flipped to Archived or Published.
 
 **The requirement:** Approve and cancel target strictly the version with
 `archive_initiated_at` set; a newer Draft or Review version on the same
@@ -617,7 +617,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12d: strict
 more than one row for the same requirement from having
 `archive_initiated_at IS NOT NULL`.
 
-**The requirement:** Even direct SQL or legacy data manipulation cannot create
+**The requirement:** Even direct SQL or manual data manipulation cannot create
 two archiving-in-progress targets for one requirement.
 
 **How to verify:**
@@ -640,7 +640,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12e: storag
 more than one row for the same requirement from having
 `requirement_status_id = Published`.
 
-**The requirement:** Even direct SQL or legacy data manipulation cannot create
+**The requirement:** Even direct SQL or manual data manipulation cannot create
 two Published targets for one requirement.
 
 **How to verify:**
@@ -664,9 +664,8 @@ specification-local row, allows any usage status, creates a new library
 requirement and Draft version in the selected target requirement area, copies
 supported classification, verification, requirement-package and norm-reference
 joins, and leaves the original local row untouched. Without this fitness
-scenario, a later implementation could silently revert to the old replace/link
-idea, reintroduce a status gate, or move or delete evidence from the source
-specification.
+scenario, an implementation could silently replace or relink the source,
+add a status gate, or move or delete evidence from the source specification.
 
 **The requirement:** Graduation must be copy-only and independent of usage
 status. The source unique requirement, its usage status, note, and local

@@ -108,7 +108,7 @@ describe('deviations DAL (SQL Server path)', () => {
 
     const result = await createDeviation(db, {
       specificationItemId: 3,
-      motivation: '  Legacy exception  ',
+      motivation: '  Handled exception  ',
       createdBy: 'tester',
       createdByHsaId: 'SE5560000001-tester1',
     })
@@ -119,7 +119,7 @@ describe('deviations DAL (SQL Server path)', () => {
       expect.stringContaining('INSERT INTO deviations'),
       [
         3,
-        'Legacy exception',
+        'Handled exception',
         'tester',
         'SE5560000001-tester1',
         expect.any(Date),

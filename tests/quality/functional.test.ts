@@ -433,7 +433,7 @@ it('Scenario 15: configurable status and priority icons use an allowlist and sta
     'utf8',
   )
   const userGuideSource = readFileSync(userGuidePath, 'utf8')
-  const legacyPriorityTableName = ['risk', 'levels'].join('_')
+  const priorityLevelTableName = ['risk', 'levels'].join('_')
 
   for (const iconName of [
     'AlertCircle',
@@ -474,7 +474,7 @@ it('Scenario 15: configurable status and priority icons use an allowlist and sta
     'ALTER TABLE [specification_item_statuses] ADD [icon_name] nvarchar(64) NULL;',
   )
   expect(migrationSource).toContain(
-    `ALTER TABLE [${legacyPriorityTableName}] ADD [icon_name] nvarchar(64) NULL;`,
+    `ALTER TABLE [${priorityLevelTableName}] ADD [icon_name] nvarchar(64) NULL;`,
   )
   expect(migrationSource).toContain(
     'ALTER TABLE [requirement_statuses] DROP COLUMN [icon_name];',
@@ -2577,8 +2577,8 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       description: 'Successor draft (must never be archived)',
     })
 
-    // Manually flip V1 to Review with archive_initiated_at set, simulating a
-    // legacy/inconsistent state. The public API would now reject this via
+    // Manually flip V1 to Review with archive_initiated_at set, simulating an
+    // inconsistent state. The public API would now reject this via
     // initiateArchiving's "no newer Draft/Review" guard, so we bypass it.
     const initiatedAt = new Date()
     await appDb().query(
