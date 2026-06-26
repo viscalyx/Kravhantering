@@ -62,10 +62,14 @@ export async function GET(request: Request, { params }: { params: Params }) {
   }
 
   const actorIsAdmin = isAdmin(context.actor.roles)
-  const [canAuthor, canManageAssignments] = await Promise.all([
-    canAuthorArea(db, id, context.actor.hsaId, actorIsAdmin),
-    canManageAreaCoAuthors(db, id, context.actor.hsaId, actorIsAdmin),
-  ])
+  const canAuthor = await canAuthorArea(
+    db,
+    id,
+    context.actor.hsaId,
+    actorIsAdmin,
+  )
+  const canManageAssignments =
+    actorIsAdmin || context.actor.hsaId === area.ownerHsaId
 
   return NextResponse.json({
     area: {

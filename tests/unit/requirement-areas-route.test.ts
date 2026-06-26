@@ -139,7 +139,7 @@ describe('requirement-areas route', () => {
         description: 'Integration requirements',
         id: 4,
         name: 'Integration',
-        ownerHsaId: 'SE5560000001-admin1',
+        ownerHsaId: 'SE5560000001-owner1',
         prefix: 'INT',
       })
 
@@ -154,7 +154,7 @@ describe('requirement-areas route', () => {
           description: 'Integration requirements',
           id: 4,
           name: 'Integration',
-          ownerHsaId: 'SE5560000001-admin1',
+          ownerHsaId: 'SE5560000001-owner1',
           permissions: {
             canAuthor: true,
             canManageAssignments: true,
@@ -169,12 +169,53 @@ describe('requirement-areas route', () => {
         'SE5560000001-admin1',
         true,
       )
-      expect(mocks.canManageAreaCoAuthors).toHaveBeenCalledWith(
+      expect(mocks.canManageAreaCoAuthors).not.toHaveBeenCalled()
+    })
+
+    it('derives detail assignment management from the loaded owner', async () => {
+      mocks.createRequestContext.mockResolvedValueOnce({
+        actor: {
+          displayName: 'Co Author',
+          hsaId: 'SE5560000001-coauthor1',
+          id: 'co-author-sub',
+          isAuthenticated: true,
+          roles: [],
+          source: 'oidc',
+        },
+        correlationId: 'correlation-area',
+        requestId: 'request-area',
+        source: 'rest',
+      })
+      mocks.getAreaById.mockResolvedValueOnce({
+        description: 'Integration requirements',
+        id: 4,
+        name: 'Integration',
+        ownerHsaId: 'SE5560000001-owner1',
+        prefix: 'INT',
+      })
+      mocks.canAuthorArea.mockResolvedValueOnce(true)
+
+      const res = await GET_BY_ID(
+        getRequest('http://localhost/api/requirement-areas/4'),
+        makeParams('4'),
+      )
+
+      expect(res.status).toBe(200)
+      await expect(res.json()).resolves.toMatchObject({
+        area: {
+          permissions: {
+            canAuthor: true,
+            canManageAssignments: false,
+          },
+        },
+      })
+      expect(mocks.canAuthorArea).toHaveBeenCalledWith(
         mocks.db,
         4,
-        'SE5560000001-admin1',
-        true,
+        'SE5560000001-coauthor1',
+        false,
       )
+      expect(mocks.canManageAreaCoAuthors).not.toHaveBeenCalled()
     })
 
     it('returns 404 for a probed missing requirement area id', async () => {

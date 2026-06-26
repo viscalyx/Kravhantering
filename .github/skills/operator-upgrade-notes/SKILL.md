@@ -1,8 +1,8 @@
 ---
 name: operator-upgrade-notes
 description: >-
-  Review a local branch diff against main for pull request Operator Upgrade
-  Impact. Use when Codex must decide whether a PR needs operator upgrade notes,
+  Review a local branch diff against main for pull request operator upgrade
+  impact. Use when Codex must decide whether a PR needs operator upgrade notes,
   detect breaking or removed behavior, deployment/configuration/data migration
   impacts, or draft standalone high-level operator notes for the PR template.
 ---

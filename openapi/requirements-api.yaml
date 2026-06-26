@@ -469,7 +469,12 @@ paths:
       tags: [catalogs]
       operationId: getRequirementArea
       responses:
-        '200': { $ref: '#/components/responses/JsonObject' }
+        '200':
+          description: Requirement area detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementAreaDetailResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -813,6 +818,47 @@ components:
       maxLength: 31
       pattern: '^[A-Z]{2}[0-9]{10}-[A-Za-z0-9]+$'
       example: SE5560000001-kalle1
+    RequirementAreaPermissions:
+      type: object
+      required: [canAuthor, canManageAssignments]
+      additionalProperties: false
+      properties:
+        canAuthor: { type: boolean }
+        canManageAssignments: { type: boolean }
+    RequirementAreaDetail:
+      type: object
+      required:
+        - createdAt
+        - description
+        - id
+        - name
+        - nextSequence
+        - ownerHsaId
+        - permissions
+        - prefix
+        - updatedAt
+      additionalProperties: false
+      properties:
+        createdAt: { type: string, format: date-time }
+        description:
+          type: string
+          nullable: true
+          maxLength: 10000
+        id: { type: integer, minimum: 1 }
+        name: { type: string, minLength: 1, maxLength: 450 }
+        nextSequence: { type: integer, minimum: 1 }
+        ownerHsaId: { $ref: '#/components/schemas/HsaId' }
+        permissions:
+          $ref: '#/components/schemas/RequirementAreaPermissions'
+        prefix: { type: string, minLength: 1, maxLength: 450 }
+        updatedAt: { type: string, format: date-time }
+    RequirementAreaDetailResponse:
+      type: object
+      required: [area]
+      additionalProperties: false
+      properties:
+        area:
+          $ref: '#/components/schemas/RequirementAreaDetail'
     PrivacyTarget:
       type: object
       required: [hsaId]
