@@ -839,10 +839,11 @@ Leave `NEXT_PUBLIC_DEFAULT_MODEL`, `OPENROUTER_API_KEY` and
 `OPENROUTER_MGMT_API_KEY` empty unless AI requirement generation is approved
 for the environment. To enable AI, set `OPENROUTER_API_KEY` to the approved
 OpenRouter API key. `NEXT_PUBLIC_DEFAULT_MODEL` is optional; leave it empty if
-the deployment should not preselect a site default model. The UI will use a
-saved favorite or the first available model, and backend calls that receive no
-model fall back to the built-in default. Set `OPENROUTER_MGMT_API_KEY` only if
-the app should display organization credit information.
+the deployment should not preselect a site default model. The UI will use the
+cheapest available saved favorite first, then this site default if it is
+available, and otherwise the first available model. Backend calls that receive
+no model fall back to the built-in default. Set `OPENROUTER_MGMT_API_KEY` only
+if the app should display organization credit information.
 `NEXT_PUBLIC_DEFAULT_MODEL` is public client configuration; do not put secrets
 in it.
 

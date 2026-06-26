@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { conflictError, forbiddenError } from '@/lib/requirements/errors'
-import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 
 const mocks = vi.hoisted(() => ({
   approveArchiving: vi.fn(),
@@ -25,7 +24,6 @@ const mocks = vi.hoisted(() => ({
   getSpecificationLocalRequirementDetail: vi.fn(),
   getVersionHistory: vi.fn(),
   graduateSpecificationLocalRequirementToLibrary: vi.fn(),
-  generateChat: vi.fn(),
   listAreas: vi.fn(),
   listAreasActorCanAuthor: vi.fn(),
   listCategories: vi.fn(),
@@ -47,12 +45,10 @@ const mocks = vi.hoisted(() => ({
   listSuggestionsForRequirement: vi.fn(),
   listQualityCharacteristics: vi.fn(),
   listTypes: vi.fn(),
-  loadTaxonomy: vi.fn(),
   reactivateRequirement: vi.fn(),
   recordDecision: vi.fn(),
   recordResolution: vi.fn(),
   requestReview: vi.fn(),
-  resolveOpenRouterModelCapabilities: vi.fn(),
   revertToDraft: vi.fn(),
   restoreVersion: vi.fn(),
   transitionStatus: vi.fn(),
@@ -65,25 +61,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: mocks.getRequestSqlServerDataSource,
-}))
-
-vi.mock('@/lib/ai/openrouter-client', () => ({
-  generateChat: mocks.generateChat,
-}))
-
-vi.mock('@/lib/ai/openrouter-model-catalog', () => ({
-  resolveOpenRouterModelCapabilities: mocks.resolveOpenRouterModelCapabilities,
-}))
-
-vi.mock('@/lib/ai/requirement-prompt', () => ({
-  REQUIREMENT_FORMAT_SCHEMA: { type: 'object' },
-  buildSystemPrompt: () => 'system prompt',
-  buildUserPrompt: () => 'user prompt',
-  validateGeneratedRequirements: (requirements: unknown[]) => requirements,
-}))
-
-vi.mock('@/lib/ai/taxonomy', () => ({
-  loadTaxonomy: mocks.loadTaxonomy,
 }))
 
 vi.mock('@/lib/dal/requirement-areas', () => ({
@@ -329,31 +306,6 @@ describe('createRequirementsService', () => {
     mocks.getRequirementById.mockResolvedValue(makeRequirementRecord())
     mocks.getRequirementByUniqueId.mockResolvedValue(makeRequirementRecord())
     mocks.getVersionHistory.mockResolvedValue([])
-    mocks.loadTaxonomy.mockResolvedValue({})
-    mocks.generateChat.mockResolvedValue({
-      content: { requirements: [] },
-      stats: {
-        completionTokens: 7,
-        cost: 0.02,
-        promptTokens: 3,
-        reasoningTokens: 0,
-        totalTokens: 10,
-      },
-      thinking: '',
-    })
-    mocks.resolveOpenRouterModelCapabilities.mockResolvedValue({
-      contextLength: 200000,
-      id: 'anthropic/claude-sonnet-4',
-      name: 'Claude Sonnet 4',
-      pricing: { completion: '0', prompt: '0', reasoning: '0' },
-      provider: 'anthropic',
-      supportedParameters: [
-        'reasoning',
-        'stream',
-        'response_format',
-        'structured_outputs',
-      ],
-    })
     mocks.getAreaById.mockResolvedValue({
       id: 1,
       name: 'Integration',
@@ -1293,173 +1245,6 @@ describe('createRequirementsService', () => {
         source: 'rest',
       }),
     )
-  })
-
-  it('emits capacity metrics for MCP AI generation', async () => {
-    const service = createTestRequirementsService()
-
-    const result = await service.generateRequirements(
-      {
-        ...makeContext(),
-        correlationId: 'corr-mcp',
-        requestId: 'req-mcp',
-        source: 'mcp',
-        toolName: 'requirements_generate_requirements',
-      },
-      {
-        locale: 'sv',
-        topic: 'kapacitetshantering',
-      },
-    )
-
-    expect(result.stats.totalTokens).toBe(10)
-    expect(mocks.resolveOpenRouterModelCapabilities).toHaveBeenCalledWith(
-      'anthropic/claude-sonnet-4',
-    )
-    expect(mocks.generateChat).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: 'anthropic/claude-sonnet-4',
-        supportedParameters: [
-          'reasoning',
-          'stream',
-          'response_format',
-          'structured_outputs',
-        ],
-      }),
-    )
-    expect(parseCapacityEvents(infoSpy)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          correlation_id: 'corr-mcp',
-          cost: 0.02,
-          event: 'capacity.operation.completed',
-          operation: 'requirements.generate_requirements',
-          request_id: 'req-mcp',
-          source: 'mcp',
-          token_count: 10,
-          tool_name: 'requirements_generate_requirements',
-        }),
-      ]),
-    )
-  })
-
-  it('does not call AI provider work when MCP generation authorization is denied', async () => {
-    const authorization = {
-      assertAuthorized: vi.fn(async () => {
-        throw forbiddenError('AI generation requires one authorized scope', {
-          reason: 'ai_scope_required',
-        })
-      }),
-    }
-    const service = createRequirementsService({} as never, {
-      authorization,
-      logger,
-    })
-
-    await expect(
-      service.generateRequirements(
-        {
-          ...makeContext(),
-          source: 'mcp',
-          toolName: 'requirements_generate_requirements',
-        },
-        {
-          locale: 'sv',
-          topic: 'kapacitetshantering',
-        },
-      ),
-    ).rejects.toMatchObject({
-      code: 'forbidden',
-      details: { reason: 'ai_scope_required' },
-    })
-
-    expect(mocks.loadTaxonomy).not.toHaveBeenCalled()
-    expect(mocks.generateChat).not.toHaveBeenCalled()
-  })
-
-  it('does not call AI provider work when security scans disable MCP AI generation', async () => {
-    vi.stubEnv('AI_REQUIREMENT_GENERATION_DISABLED', '1')
-    const service = createTestRequirementsService()
-
-    await expect(
-      service.generateRequirements(
-        {
-          ...makeContext(),
-          source: 'mcp',
-          toolName: 'requirements_generate_requirements',
-        },
-        {
-          locale: 'sv',
-          topic: 'kapacitetshantering',
-        },
-      ),
-    ).rejects.toMatchObject({
-      code: 'service_unavailable',
-      details: { reason: 'ai_generation_disabled' },
-      message: 'AI provider is unavailable',
-      status: 503,
-    })
-
-    expect(mocks.loadTaxonomy).not.toHaveBeenCalled()
-    expect(mocks.resolveOpenRouterModelCapabilities).not.toHaveBeenCalled()
-    expect(mocks.generateChat).not.toHaveBeenCalled()
-  })
-
-  it('does not call AI provider work when Admin Center disables MCP AI generation', async () => {
-    mocks.auditQuery.mockResolvedValueOnce([
-      { requirementGenerationEnabled: 0 },
-    ])
-    const service = createTestRequirementsService()
-
-    await expect(
-      service.generateRequirements(
-        {
-          ...makeContext(),
-          source: 'mcp',
-          toolName: 'requirements_generate_requirements',
-        },
-        {
-          locale: 'sv',
-          topic: 'kapacitetshantering',
-        },
-      ),
-    ).rejects.toMatchObject({
-      code: 'service_unavailable',
-      details: { reason: 'ai_generation_disabled' },
-      message: 'AI provider is unavailable',
-      status: 503,
-    })
-
-    expect(mocks.loadTaxonomy).not.toHaveBeenCalled()
-    expect(mocks.resolveOpenRouterModelCapabilities).not.toHaveBeenCalled()
-    expect(mocks.generateChat).not.toHaveBeenCalled()
-  })
-
-  it('fails MCP AI generation before chat completion when model capabilities cannot be resolved', async () => {
-    const service = createTestRequirementsService()
-    mocks.resolveOpenRouterModelCapabilities.mockRejectedValueOnce(
-      new Error('OpenRouter model lookup failed with sk-or-v1-secret'),
-    )
-
-    await expect(
-      service.generateRequirements(
-        {
-          ...makeContext(),
-          source: 'mcp',
-          toolName: 'requirements_generate_requirements',
-        },
-        {
-          locale: 'sv',
-          topic: 'kapacitetshantering',
-        },
-      ),
-    ).rejects.toMatchObject({
-      code: 'service_unavailable',
-      message: 'AI provider is unavailable',
-      status: 503,
-    })
-
-    expect(mocks.generateChat).not.toHaveBeenCalled()
   })
 
   it('rejects specification workflows without a specification reference', async () => {

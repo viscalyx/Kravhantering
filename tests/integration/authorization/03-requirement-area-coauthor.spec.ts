@@ -91,11 +91,6 @@ test('AUTH-10/AUTH-11: requirement area co-authors cannot delegate area access',
     )
 
     await expectStatus(
-      await areaCoauthor.get('/api/ai/models'),
-      403,
-      'area co-author AI models without required scope',
-    )
-    await expectStatus(
       await areaCoauthor.put(`/api/requirement-areas/${fixture.areaId}`, {
         data: {
           description: 'Area co-author must not manage area metadata.',

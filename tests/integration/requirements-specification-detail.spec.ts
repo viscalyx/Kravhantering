@@ -44,13 +44,14 @@ for (const viewport of viewports) {
           name: 'Upphandling av e-tjänstplattform',
         }),
       ).toBeVisible()
-      await expect(
-        page.getByRole('button', { name: 'Nytt unikt krav' }),
-      ).toBeVisible()
-
       const splitPanel = page.locator(
         '[data-specification-detail-split-panel="true"]',
       )
+      await expect(splitPanel).toBeVisible()
+      await expect(
+        page.getByRole('button', { name: 'Lägg till unika krav' }),
+      ).toBeVisible()
+
       const splitPanelClassesBefore = await splitPanel.getAttribute('class')
       expect(splitPanelClassesBefore).not.toBeNull()
       if (splitPanelClassesBefore === null) {

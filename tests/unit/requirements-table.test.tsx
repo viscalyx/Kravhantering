@@ -1757,6 +1757,51 @@ describe('RequirementsTable', () => {
     })
   })
 
+  it('renders disabled floating menu links as inert items', async () => {
+    render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'manage',
+            icon: <span aria-hidden="true">M</span>,
+            id: 'manage',
+            menuItems: [
+              {
+                description: 'Unavailable admin settings',
+                disabled: true,
+                href: '/sv/admin',
+                id: 'admin',
+                label: 'Admin',
+              },
+            ],
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'manage' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('link', { name: /Admin/ })).toBeNull()
+    })
+
+    const disabledItem = screen
+      .getByText('Admin')
+      .closest('[aria-disabled="true"]') as HTMLElement | null
+
+    expect(disabledItem).toBeTruthy()
+    expect(disabledItem?.className).toContain('cursor-not-allowed')
+    expect(disabledItem?.className).toContain('opacity-50')
+
+    fireEvent.click(disabledItem as HTMLElement)
+
+    expect(
+      document.querySelector('[data-floating-action-menu="manage"]'),
+    ).toBeTruthy()
+  })
+
   it('focuses action-only floating menu items when the menu opens', async () => {
     const onExport = vi.fn()
 

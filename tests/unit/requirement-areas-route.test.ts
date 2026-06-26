@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => {
       requestId: 'request-area',
       source: 'rest',
     })),
+    canAuthorArea: vi.fn(),
     canManageAreaCoAuthors: vi.fn(),
     db,
     getAreaById: vi.fn(),
@@ -60,6 +61,7 @@ vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: mocks.getRequestSqlServerDataSource,
 }))
 vi.mock('@/lib/dal/requirement-areas', () => ({
+  canAuthorArea: mocks.canAuthorArea,
   canManageAreaCoAuthors: mocks.canManageAreaCoAuthors,
   listAreaIdsActorCanAuthor: mocks.listAreaIdsActorCanAuthor,
   listAreas: mocks.listAreas,
@@ -81,7 +83,7 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
   }
 })
 
-import { PUT } from '@/app/api/requirement-areas/[id]/route'
+import { GET as GET_BY_ID, PUT } from '@/app/api/requirement-areas/[id]/route'
 import { GET, POST } from '@/app/api/requirement-areas/route'
 
 function request(
@@ -111,9 +113,16 @@ function makeParams(id: string) {
 describe('requirement-areas route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.canAuthorArea.mockResolvedValue(true)
     mocks.canManageAreaCoAuthors.mockResolvedValue(true)
     mocks.db.query.mockResolvedValue([])
-    mocks.getAreaById.mockResolvedValue({ id: 1 })
+    mocks.getAreaById.mockResolvedValue({
+      description: null,
+      id: 1,
+      name: 'Integration',
+      ownerHsaId: 'SE5560000001-admin1',
+      prefix: 'INT',
+    })
     mocks.listAreaIdsActorCanAuthor.mockResolvedValue([])
     mocks.resolveVerifiedRequirementResponsibilityPerson.mockResolvedValue({
       email: 'new@example.test',
@@ -121,6 +130,117 @@ describe('requirement-areas route', () => {
       hsaId: 'NO5560000001-new1',
       middleName: null,
       surname: 'Owner',
+    })
+  })
+
+  describe('GET by id', () => {
+    it('returns a requirement area detail with actor permissions', async () => {
+      mocks.getAreaById.mockResolvedValueOnce({
+        description: 'Integration requirements',
+        id: 4,
+        name: 'Integration',
+        ownerHsaId: 'SE5560000001-owner1',
+        prefix: 'INT',
+      })
+
+      const res = await GET_BY_ID(
+        getRequest('http://localhost/api/requirement-areas/4'),
+        makeParams('4'),
+      )
+
+      expect(res.status).toBe(200)
+      await expect(res.json()).resolves.toEqual({
+        area: {
+          description: 'Integration requirements',
+          id: 4,
+          name: 'Integration',
+          ownerHsaId: 'SE5560000001-owner1',
+          permissions: {
+            canAuthor: true,
+            canManageAssignments: true,
+          },
+          prefix: 'INT',
+        },
+      })
+      expect(mocks.getAreaById).toHaveBeenCalledWith(mocks.db, 4)
+      expect(mocks.canAuthorArea).toHaveBeenCalledWith(
+        mocks.db,
+        4,
+        'SE5560000001-admin1',
+        true,
+      )
+      expect(mocks.canManageAreaCoAuthors).not.toHaveBeenCalled()
+    })
+
+    it('derives detail assignment management from the loaded owner', async () => {
+      mocks.createRequestContext.mockResolvedValueOnce({
+        actor: {
+          displayName: 'Co Author',
+          hsaId: 'SE5560000001-coauthor1',
+          id: 'co-author-sub',
+          isAuthenticated: true,
+          roles: [],
+          source: 'oidc',
+        },
+        correlationId: 'correlation-area',
+        requestId: 'request-area',
+        source: 'rest',
+      })
+      mocks.getAreaById.mockResolvedValueOnce({
+        description: 'Integration requirements',
+        id: 4,
+        name: 'Integration',
+        ownerHsaId: 'SE5560000001-owner1',
+        prefix: 'INT',
+      })
+      mocks.canAuthorArea.mockResolvedValueOnce(true)
+
+      const res = await GET_BY_ID(
+        getRequest('http://localhost/api/requirement-areas/4'),
+        makeParams('4'),
+      )
+
+      expect(res.status).toBe(200)
+      await expect(res.json()).resolves.toMatchObject({
+        area: {
+          permissions: {
+            canAuthor: true,
+            canManageAssignments: false,
+          },
+        },
+      })
+      expect(mocks.canAuthorArea).toHaveBeenCalledWith(
+        mocks.db,
+        4,
+        'SE5560000001-coauthor1',
+        false,
+      )
+      expect(mocks.canManageAreaCoAuthors).not.toHaveBeenCalled()
+    })
+
+    it('returns 404 for a probed missing requirement area id', async () => {
+      mocks.getAreaById.mockResolvedValueOnce(null)
+
+      const res = await GET_BY_ID(
+        getRequest('http://localhost/api/requirement-areas/4'),
+        makeParams('4'),
+      )
+
+      expect(res.status).toBe(404)
+      await expect(res.json()).resolves.toEqual({ error: 'Not found' })
+      expect(mocks.canAuthorArea).not.toHaveBeenCalled()
+      expect(mocks.canManageAreaCoAuthors).not.toHaveBeenCalled()
+    })
+
+    it('rejects invalid requirement area ids before opening the DB', async () => {
+      const res = await GET_BY_ID(
+        getRequest('http://localhost/api/requirement-areas/not-an-id'),
+        makeParams('not-an-id'),
+      )
+
+      expect(res.status).toBe(400)
+      expect(mocks.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+      expect(mocks.getAreaById).not.toHaveBeenCalled()
     })
   })
 

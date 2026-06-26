@@ -9,6 +9,7 @@ import {
   Pencil,
   Plus,
   Printer,
+  Sparkles,
   Trash2,
   Upload,
   X,
@@ -29,12 +30,15 @@ import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requiremen
 import SpecificationRequirementSelectionPanel from '@/app/[locale]/specifications/[slug]/specification-requirement-selection-panel'
 import SpecificationRfiListPanel from '@/app/[locale]/specifications/[slug]/specification-rfi-list-panel'
 import SpecificationFormModal from '@/app/[locale]/specifications/specification-form-modal'
+import AiRequirementGenerator from '@/components/AiRequirementGenerator'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
-import RequirementsImportDialog from '@/components/RequirementsImportDialog'
+import RequirementsImportDialog, {
+  type InitialRequirementsImport,
+} from '@/components/RequirementsImportDialog'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
@@ -339,6 +343,15 @@ export default function KravunderlagDetailClient({
     showImportLocalRequirementsModal,
     setShowImportLocalRequirementsModal,
   ] = useState(false)
+  const [showAiLocalRequirementsModal, setShowAiLocalRequirementsModal] =
+    useState(false)
+  const [
+    aiLocalRequirementsInitialImport,
+    setAiLocalRequirementsInitialImport,
+  ] = useState<InitialRequirementsImport | null>(null)
+  const [localRequirementActionsOpen, setLocalRequirementActionsOpen] =
+    useState(false)
+  const localRequirementActionsRef = useRef<HTMLDivElement | null>(null)
   const [createLocalRequirementFormDirty, setCreateLocalRequirementFormDirty] =
     useState(false)
   const [pendingAddIds, setPendingAddIds] = useState<number[]>([])
@@ -584,6 +597,31 @@ export default function KravunderlagDetailClient({
   useEffect(() => {
     availableRequirementsKeyRef.current = availableRequirementsParams
   }, [availableRequirementsParams])
+
+  useEffect(() => {
+    if (!localRequirementActionsOpen) return
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (localRequirementActionsRef.current?.contains(target)) return
+      setLocalRequirementActionsOpen(false)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setLocalRequirementActionsOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [localRequirementActionsOpen])
 
   const closeAddModal = useCallback(() => {
     if (addModalLoading) return
@@ -1637,6 +1675,25 @@ export default function KravunderlagDetailClient({
   const canMutateSpecification =
     permissions.canEditContent === true ||
     permissions.canManageAssignments === true
+  const canOpenAiLocalRequirements =
+    canEditContent &&
+    permissions.canUseAi === true &&
+    initialData.aiGenerationAvailability.effectiveRequirementGenerationEnabled
+  const aiLocalRequirementsDisabledTooltip = !initialData
+    .aiGenerationAvailability.effectiveRequirementGenerationEnabled
+    ? initialData.aiGenerationAvailability.disabledByEnvironment
+      ? t('aiGenerateDisabledByEnvironment')
+      : t('aiGenerateDisabledByAdmin')
+    : undefined
+
+  const handleOpenAiLocalRequirements = useCallback(() => {
+    if (!canOpenAiLocalRequirements) return
+    setShowAiLocalRequirementsModal(true)
+  }, [canOpenAiLocalRequirements])
+
+  const handleOpenImportLocalRequirements = useCallback(() => {
+    setShowImportLocalRequirementsModal(true)
+  }, [])
 
   const localName = (obj: { nameSv: string; nameEn: string } | null) =>
     obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
@@ -2092,6 +2149,107 @@ export default function KravunderlagDetailClient({
         ? 'border-white bg-white text-secondary-900 shadow-sm dark:border-primary-500 dark:bg-primary-600 dark:text-white'
         : 'border-transparent text-secondary-700 hover:bg-white/70 hover:text-secondary-900 dark:text-secondary-300 dark:hover:bg-secondary-800/70 dark:hover:text-secondary-100'
     }`
+  const renderLocalRequirementActionFlyout = () => (
+    <div className="relative shrink-0" ref={localRequirementActionsRef}>
+      <button
+        aria-controls={
+          localRequirementActionsOpen
+            ? 'local-requirement-actions-menu'
+            : undefined
+        }
+        aria-expanded={localRequirementActionsOpen}
+        aria-haspopup="menu"
+        aria-label={t('localRequirementActions')}
+        className={leftPanelActionPillClassName}
+        {...devMarker({
+          context: 'requirements specification detail',
+          name: 'table action',
+          priority: 350,
+          value: 'local requirement actions',
+        })}
+        onClick={() => setLocalRequirementActionsOpen(open => !open)}
+        title={t('localRequirementActions')}
+        type="button"
+      >
+        <Plus aria-hidden="true" className="h-4 w-4" />
+        <span className="sr-only">{t('localRequirementActions')}</span>
+      </button>
+      {localRequirementActionsOpen ? (
+        <div
+          className="absolute right-0 z-30 mt-2 w-72 rounded-2xl border border-secondary-200/80 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-secondary-700/70 dark:bg-secondary-900/95"
+          id="local-requirement-actions-menu"
+          role="menu"
+          {...devMarker({
+            context:
+              'requirements specification detail > local requirement actions',
+            name: 'floating pill menu',
+            priority: 350,
+            value: 'local requirement actions',
+          })}
+        >
+          <button
+            className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-secondary-900 transition-colors hover:bg-secondary-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-100 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
+            onClick={() => {
+              setLocalRequirementActionsOpen(false)
+              void handleOpenCreateLocalRequirementModal()
+            }}
+            role="menuitem"
+            type="button"
+            {...devMarker({
+              context:
+                'requirements specification detail > local requirement actions',
+              name: 'table action',
+              priority: 350,
+              value: 'create local requirement',
+            })}
+          >
+            <Plus aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {t('newLocalRequirement')}
+          </button>
+          <button
+            className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-secondary-900 transition-colors hover:bg-secondary-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent dark:text-secondary-100 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
+            disabled={!canOpenAiLocalRequirements}
+            onClick={() => {
+              setLocalRequirementActionsOpen(false)
+              handleOpenAiLocalRequirements()
+            }}
+            role="menuitem"
+            title={aiLocalRequirementsDisabledTooltip ?? t('aiGenerate')}
+            type="button"
+            {...devMarker({
+              context:
+                'requirements specification detail > local requirement actions',
+              name: 'table action',
+              priority: 350,
+              value: 'ai assist local requirements',
+            })}
+          >
+            <Sparkles aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {t('aiGenerate')}
+          </button>
+          <button
+            className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-secondary-900 transition-colors hover:bg-secondary-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-100 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
+            onClick={() => {
+              setLocalRequirementActionsOpen(false)
+              handleOpenImportLocalRequirements()
+            }}
+            role="menuitem"
+            type="button"
+            {...devMarker({
+              context:
+                'requirements specification detail > local requirement actions',
+              name: 'table action',
+              priority: 350,
+              value: 'import local requirements',
+            })}
+          >
+            <Upload aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {t('importLocalRequirements')}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
   const renderLeftPanelTabs = () => (
     <div
       aria-label={t('leftPanelTabs')}
@@ -2565,50 +2723,9 @@ export default function KravunderlagDetailClient({
                 >
                   <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
-                    {canEditContent ? (
-                      <div className="flex shrink-0 gap-2">
-                        <button
-                          aria-label={t('newLocalRequirement')}
-                          className={leftPanelActionPillClassName}
-                          {...devMarker({
-                            context: 'requirements specification detail',
-                            name: 'table action',
-                            priority: 350,
-                            value: 'create local requirement',
-                          })}
-                          onClick={() =>
-                            void handleOpenCreateLocalRequirementModal()
-                          }
-                          title={t('newLocalRequirement')}
-                          type="button"
-                        >
-                          <Plus aria-hidden="true" className="h-4 w-4" />
-                          <span className="sr-only">
-                            {t('newLocalRequirement')}
-                          </span>
-                        </button>
-                        <button
-                          aria-label={t('importLocalRequirements')}
-                          className={leftPanelActionPillClassName}
-                          {...devMarker({
-                            context: 'requirements specification detail',
-                            name: 'table action',
-                            priority: 350,
-                            value: 'import local requirements',
-                          })}
-                          onClick={() =>
-                            setShowImportLocalRequirementsModal(true)
-                          }
-                          title={t('importLocalRequirements')}
-                          type="button"
-                        >
-                          <Upload aria-hidden="true" className="h-4 w-4" />
-                          <span className="sr-only">
-                            {t('importLocalRequirements')}
-                          </span>
-                        </button>
-                      </div>
-                    ) : null}
+                    {canEditContent
+                      ? renderLocalRequirementActionFlyout()
+                      : null}
                   </div>
                   <div className="p-8 text-center text-sm text-secondary-500 dark:text-secondary-400">
                     {t('noItems')}
@@ -2630,17 +2747,55 @@ export default function KravunderlagDetailClient({
                       ...(canEditContent
                         ? [
                             {
-                              ariaLabel: t('newLocalRequirement'),
+                              ariaLabel: t('localRequirementActions'),
                               developerModeContext:
                                 'requirements specification detail',
-                              developerModeValue: 'create local requirement',
+                              developerModeValue: 'local requirement actions',
                               icon: (
                                 <Plus aria-hidden="true" className="h-4 w-4" />
                               ),
-                              id: 'create-local',
-                              onClick: () =>
-                                void handleOpenCreateLocalRequirementModal(),
+                              id: 'local-requirement-actions',
+                              menuItems: [
+                                {
+                                  id: 'create-local',
+                                  icon: (
+                                    <Plus
+                                      aria-hidden="true"
+                                      className="h-4 w-4"
+                                    />
+                                  ),
+                                  label: t('newLocalRequirement'),
+                                  onClick: () =>
+                                    void handleOpenCreateLocalRequirementModal(),
+                                },
+                                {
+                                  description:
+                                    aiLocalRequirementsDisabledTooltip,
+                                  disabled: !canOpenAiLocalRequirements,
+                                  id: 'ai-assist-local',
+                                  icon: (
+                                    <Sparkles
+                                      aria-hidden="true"
+                                      className="h-4 w-4"
+                                    />
+                                  ),
+                                  label: t('aiGenerate'),
+                                  onClick: handleOpenAiLocalRequirements,
+                                },
+                                {
+                                  id: 'import-local',
+                                  icon: (
+                                    <Upload
+                                      aria-hidden="true"
+                                      className="h-4 w-4"
+                                    />
+                                  ),
+                                  label: t('importLocalRequirements'),
+                                  onClick: handleOpenImportLocalRequirements,
+                                },
+                              ],
                               position: 'beforeColumns' as const,
+                              tooltip: t('localRequirementActions'),
                               variant: 'primary' as const,
                             },
                           ]
@@ -2703,27 +2858,6 @@ export default function KravunderlagDetailClient({
                             : []),
                         ],
                       },
-                      ...(canEditContent
-                        ? [
-                            {
-                              ariaLabel: t('importLocalRequirements'),
-                              developerModeContext:
-                                'requirements specification detail',
-                              developerModeValue: 'import local requirements',
-                              icon: (
-                                <Upload
-                                  aria-hidden="true"
-                                  className="h-4 w-4"
-                                />
-                              ),
-                              id: 'import-local',
-                              onClick: () =>
-                                setShowImportLocalRequirementsModal(true),
-                              position: 'afterColumns' as const,
-                              tooltip: t('importLocalRequirements'),
-                            },
-                          ]
-                        : []),
                       {
                         ariaLabel: tc('export'),
                         icon: (
@@ -3093,10 +3227,30 @@ export default function KravunderlagDetailClient({
       />
       {addModal}
       {createLocalRequirementModal}
+      <AiRequirementGenerator
+        aiGenerationAvailability={initialData.aiGenerationAvailability}
+        mode="specification-local"
+        onClose={() => setShowAiLocalRequirementsModal(false)}
+        onImportPreview={(payload, options) => {
+          setAiLocalRequirementsInitialImport({
+            key: `ai-local-${Date.now()}`,
+            payload,
+            preview: options.preview,
+          })
+          setShowAiLocalRequirementsModal(false)
+          setShowImportLocalRequirementsModal(true)
+        }}
+        open={showAiLocalRequirementsModal}
+        specificationId={spec.id}
+        specificationSlug={specificationSlug}
+      />
       <RequirementsImportDialog
+        destinationName={spec.name}
+        initialImport={aiLocalRequirementsInitialImport}
         mode="specification-local"
         needsReferences={availableNeedsRefs}
         onClose={importSucceeded => {
+          setAiLocalRequirementsInitialImport(null)
           void handleImportLocalRequirementsClose(importSucceeded)
         }}
         open={showImportLocalRequirementsModal}

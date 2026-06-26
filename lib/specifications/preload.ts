@@ -1,3 +1,5 @@
+import { DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY } from '@/lib/ai/generation-availability'
+import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import { countDeviationsPerItemRef } from '@/lib/dal/deviations'
 import {
   countLinkedRequirements,
@@ -154,6 +156,7 @@ function emptyDetailInitialData(
   > = {},
 ): RequirementsSpecificationDetailInitialData {
   return {
+    aiGenerationAvailability: DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
     areas: [],
     availableNeedsRefs: [],
     availableRequirements: { hasMore: false, rows: [] },
@@ -247,6 +250,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
   }
 
   const [
+    aiGenerationAvailability,
     areas,
     requirementPackages,
     needsRefs,
@@ -259,6 +263,11 @@ export async function loadRequirementsSpecificationDetailInitialData({
     leftNormReferenceOptions,
     rightNormReferenceOptions,
   ] = await Promise.all([
+    capture(
+      'AI requirement generation availability',
+      DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
+      () => getAiGenerationAvailability(db),
+    ),
     capture<AreaOption[]>('requirement areas', [], async () =>
       (await listAreas(db)).map(area => ({ id: area.id, name: area.name })),
     ),
@@ -309,6 +318,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
   ])
 
   return {
+    aiGenerationAvailability: aiGenerationAvailability.value,
     areas: areas.value,
     availableNeedsRefs: needsRefs.value,
     availableRequirements: availableRequirements.value,
@@ -325,6 +335,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
       availableRequirements.error,
       leftNormReferenceOptions.error,
       rightNormReferenceOptions.error,
+      aiGenerationAvailability.error,
     ].filter((error): error is SpecificationPreloadError => !!error),
     leftNormReferenceOptions: leftNormReferenceOptions.value,
     requirementPackages: requirementPackages.value,

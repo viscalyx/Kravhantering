@@ -6,6 +6,7 @@ import {
 } from '@/lib/admin/privileged-audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import {
+  canAuthorArea,
   canManageAreaCoAuthors,
   deleteArea,
   getAreaById,
@@ -21,11 +22,15 @@ import {
   boundedDbStringSchema,
   idParamSchema,
   optionalBusinessTextSchema,
+  parseRouteParams,
 } from '@/lib/http/validation'
+import { createRequestContext } from '@/lib/requirements/auth'
 import { forbiddenError } from '@/lib/requirements/errors'
 import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
+
+type Params = Promise<{ id: string }>
 
 const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
   message:
@@ -43,6 +48,38 @@ const updateAreaSchema = z
 
 function isAdmin(roles: readonly string[]): boolean {
   return roles.includes('Admin')
+}
+
+export async function GET(request: Request, { params }: { params: Params }) {
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
+  const db = await getRequestSqlServerDataSource()
+  const context = await createRequestContext(request, 'rest')
+  const area = await getAreaById(db, id)
+  if (!area) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  const actorIsAdmin = isAdmin(context.actor.roles)
+  const canAuthor = await canAuthorArea(
+    db,
+    id,
+    context.actor.hsaId,
+    actorIsAdmin,
+  )
+  const canManageAssignments =
+    actorIsAdmin || context.actor.hsaId === area.ownerHsaId
+
+  return NextResponse.json({
+    area: {
+      ...area,
+      permissions: {
+        canAuthor,
+        canManageAssignments,
+      },
+    },
+  })
 }
 
 export const PUT = secureMutationRoute({

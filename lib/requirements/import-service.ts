@@ -25,7 +25,6 @@ import {
 } from '@/lib/requirements/auth'
 import { conflictError, validationError } from '@/lib/requirements/errors'
 import {
-  buildRequirementsImportJsonSchema,
   type ImportExecuteBody,
   type ImportRequirement,
   type ImportRequirementsPayload,
@@ -56,6 +55,12 @@ export interface ImportMessage {
 export interface RequirementsImportPreviewRow {
   errors: ImportMessage[]
   infos: ImportMessage[]
+  labels: {
+    category: string | null
+    priorityLevel: string | null
+    qualityCharacteristic: string | null
+    type: string | null
+  }
   proposedNormReferenceKeys: string[]
   reviewRowId: string
   selected: boolean
@@ -633,6 +638,7 @@ function previewProposals(
 }
 
 function previewRows(args: {
+  locale: 'en' | 'sv'
   mode: RequirementsImportMode
   payload: ImportRequirementsPayload
   proposals: RequirementsImportProposalPreview[]
@@ -742,6 +748,24 @@ function previewRows(args: {
       typeId,
       verificationMethod: requiresTesting ? verificationMethod : null,
     }
+    const labels = {
+      category: receiptName(
+        args.referenceData.categories,
+        values.categoryId,
+        args.locale,
+      ),
+      priorityLevel: receiptPriorityName(
+        args.referenceData.priorityLevels,
+        values.priorityLevelId,
+        args.locale,
+      ),
+      qualityCharacteristic: receiptName(
+        args.referenceData.qualityCharacteristics,
+        values.qualityCharacteristicId,
+        args.locale,
+      ),
+      type: receiptName(args.referenceData.types, values.typeId, args.locale),
+    }
 
     if (values.requiresTesting && !values.verificationMethod) {
       errors.push(
@@ -756,6 +780,7 @@ function previewRows(args: {
     return {
       errors,
       infos,
+      labels,
       proposedNormReferenceKeys: [
         ...new Set(
           (row.proposedNormReferenceKeys ?? []).map(key => key.trim()),
@@ -853,12 +878,14 @@ function validateExecuteRows(args: {
 
 function previewFromReferenceData(args: {
   destinationId: number
+  locale: 'en' | 'sv'
   mode: RequirementsImportMode
   payload: ImportRequirementsPayload
   referenceData: ImportReferenceData
 }): RequirementsImportPreview {
   const proposals = previewProposals(args.payload, args.referenceData)
   const rows = previewRows({
+    locale: args.locale,
     mode: args.mode,
     payload: args.payload,
     proposals,
@@ -1048,7 +1075,6 @@ export function createRequirementsImportWorkflow({
   return {
     async buildImportAiPrompt(locale: 'en' | 'sv') {
       const referenceData = await loadImportReferenceData(db)
-      const schema = buildRequirementsImportJsonSchema(locale)
       const isSv = locale === 'sv'
       return [
         isSv
@@ -1058,11 +1084,11 @@ export function createRequirementsImportWorkflow({
         isSv ? '## Regler' : '## Rules',
         '',
         isSv
-          ? '- Returnera endast ett JSON-objekt som följer JSON Schema nedan.'
-          : '- Return only a JSON object that follows the JSON Schema below.',
+          ? '- Returnera endast ett JSON-objekt som följer det separata JSON Schema som skickas som tvingande svarsformat.'
+          : '- Return only a JSON object that follows the separate JSON Schema sent as the mandatory response format.',
         isSv
-          ? '- Sätt toppnivåfältet `schemaVersion` till `requirement-import.v1`.'
-          : '- Set the top-level `schemaVersion` field to `requirement-import.v1`.',
+          ? `- Sätt toppnivåfältet \`schemaVersion\` till \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\`.`
+          : `- Set the top-level \`schemaVersion\` field to \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\`.`,
         isSv
           ? '- Använd inte U+2013 EN DASH i JSON-värden; använd vanligt bindestreck (-) i stället.'
           : '- Do not use U+2013 EN DASH in JSON values; use a plain hyphen (-) instead.',
@@ -1127,17 +1153,14 @@ export function createRequirementsImportWorkflow({
           ? '- Utelämna `requirementPackageIds` eller använd `[]` när inget kravpaket passar tydligt; svaga ordmatchningar mot paketnamn räcker inte.'
           : '- Omit `requirementPackageIds` or use `[]` when no requirement package clearly fits; weak keyword matches against package names are not enough.',
         isSv
+          ? '- Vid import av kravunderlagslokala krav ignoreras `requirementPackageIds`.'
+          : '- When importing specification-local requirements, `requirementPackageIds` is ignored.',
+        isSv
           ? '- Sätt `requiresTesting` till `true` när kravet ska verifieras; ange då `verificationMethod`.'
           : '- Set `requiresTesting` to `true` when the requirement should be verified; then provide `verificationMethod`.',
         isSv
           ? '- Använd `verificationMethod` för verifieringssätt, inte för godkännandekriterier.'
           : '- Use `verificationMethod` for the verification method, not acceptance criteria.',
-        '',
-        '## JSON Schema',
-        '',
-        '```json',
-        JSON.stringify(schema, null, 2),
-        '```',
         '',
         '## Reference Data',
         '',
@@ -1345,6 +1368,7 @@ export function createRequirementsImportWorkflow({
       const referenceData = await loadImportReferenceData(db)
       return previewFromReferenceData({
         destinationId: input.areaId,
+        locale: input.locale,
         mode: 'library',
         payload: input.payload,
         referenceData,
@@ -1374,6 +1398,7 @@ export function createRequirementsImportWorkflow({
       const referenceData = await loadImportReferenceData(db)
       return previewFromReferenceData({
         destinationId: specificationId,
+        locale: input.locale,
         mode: 'specification-local',
         payload: input.payload,
         referenceData,

@@ -462,7 +462,18 @@ function makeRequirementDetail(
 
 function mockMetadataFetch(url: string) {
   if (url === '/api/requirement-areas') {
-    return Promise.resolve(okJson({ areas: [] }))
+    return Promise.resolve(
+      okJson({
+        areas: [
+          {
+            id: 1,
+            name: 'Integration',
+            permissions: { canAuthor: true },
+            prefix: 'INT',
+          },
+        ],
+      }),
+    )
   }
   if (url === '/api/requirement-categories') {
     return Promise.resolve(okJson({ categories: [] }))
@@ -821,6 +832,66 @@ describe('RequirementsClient', () => {
     expect(screen.queryByTestId('ai-generator-modal')).toBeNull()
     expect(aiGeneratorState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
       aiGenerationAvailability,
+      open: false,
+    })
+  })
+
+  it('does not open AI generation when no requirement area is authorable', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return okJson({
+          pagination: { hasMore: false },
+          requirements: [makeRequirementRow(1)],
+        })
+      }
+      if (url === '/api/requirement-areas') {
+        return okJson({
+          areas: [
+            {
+              id: 1,
+              name: 'Integration',
+              permissions: { canAuthor: false },
+              prefix: 'INT',
+            },
+          ],
+        })
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) return metadataResponse
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('requirements-table')).toBeTruthy(),
+    )
+
+    const aiButton = screen.getByRole('button', { name: 'aiGenerate' })
+    expect(aiButton).toBeDisabled()
+    expect(aiButton).toHaveAttribute(
+      'title',
+      'aiGenerateDisabledNoAuthorableArea',
+    )
+    expect(latestFloatingActions()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          disabled: true,
+          id: 'ai-generate',
+          tooltip: 'aiGenerateDisabledNoAuthorableArea',
+        }),
+      ]),
+    )
+
+    fireEvent.click(aiButton)
+
+    expect(screen.queryByTestId('ai-generator-modal')).toBeNull()
+    expect(aiGeneratorState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
       open: false,
     })
   })

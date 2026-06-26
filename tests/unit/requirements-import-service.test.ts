@@ -284,16 +284,20 @@ describe('requirements import service', () => {
       'Välj `priorityLevelId` från `priorityLevels[].id`; jämför kravet med `priorityLevels[].assessmentCriteria` och välj bästa matchning',
     )
     expect(promptEn).toContain(
-      'Return only a JSON object that follows the JSON Schema below',
+      'Return only a JSON object that follows the separate JSON Schema sent as the mandatory response format',
     )
     expect(promptSv).toContain(
-      'Returnera endast ett JSON-objekt som följer JSON Schema nedan',
+      'Returnera endast ett JSON-objekt som följer det separata JSON Schema som skickas som tvingande svarsformat',
     )
+    expect(promptEn).not.toContain('## JSON Schema')
+    expect(promptSv).not.toContain('## JSON Schema')
+    expect(promptEn).not.toContain('"$schema"')
+    expect(promptSv).not.toContain('"$schema"')
     expect(promptEn).toContain(
-      'Set the top-level `schemaVersion` field to `requirement-import.v1`',
+      `Set the top-level \`schemaVersion\` field to \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\``,
     )
     expect(promptSv).toContain(
-      'Sätt toppnivåfältet `schemaVersion` till `requirement-import.v1`',
+      `Sätt toppnivåfältet \`schemaVersion\` till \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\``,
     )
     expect(promptEn).not.toContain('requirements-import.v1')
     expect(promptSv).not.toContain('requirements-import.v1')
@@ -339,7 +343,7 @@ describe('requirements import service', () => {
       'Omit `requirementPackageIds` or use `[]` when no requirement package clearly fits; weak keyword matches against package names are not enough.',
     )
     expect(prompt).toContain(
-      'When importing specification-local requirements, this field is ignored.',
+      'When importing specification-local requirements, `requirementPackageIds` is ignored.',
     )
     expect(referenceData.requirementPackages).toEqual([
       {
@@ -712,5 +716,73 @@ describe('requirements import service', () => {
     ])
     expect(referenceDataText).not.toContain('nameEn')
     expect(referenceDataText).not.toContain('nameSv')
+  })
+
+  it('returns localized taxonomy labels in preview rows', async () => {
+    vi.mocked(listCategories).mockResolvedValue([
+      { id: 3, nameEn: 'Supplier requirement', nameSv: 'Leverantörskrav' },
+    ])
+    vi.mocked(listPriorityLevels).mockResolvedValue([
+      {
+        assessmentCriteriaEn: 'High importance',
+        assessmentCriteriaSv: 'Stor betydelse',
+        code: 'P4',
+        color: '#f97316',
+        descriptionEn: 'High priority',
+        descriptionSv: 'Hög prioritet',
+        iconName: 'AlertCircle',
+        id: 4,
+        nameEn: 'High',
+        nameSv: 'Hög',
+        sortOrder: 2,
+      },
+    ])
+    vi.mocked(listTypes).mockResolvedValue([
+      {
+        id: 2,
+        nameEn: 'Non-functional',
+        nameSv: 'Icke-funktionellt',
+        qualityCharacteristics: [
+          {
+            chapterId: '3.2.1',
+            id: 21,
+            nameEn: 'Time behaviour',
+            nameSv: 'Tidsbeteende',
+            parentId: null,
+            requirementTypeId: 2,
+          },
+        ],
+      },
+    ])
+    const payload = requirementsImportPayloadSchema.parse({
+      requirements: [
+        {
+          categoryId: 3,
+          description: 'Svarstiden ska vara kort.',
+          priorityLevelId: 4,
+          qualityCharacteristicId: 21,
+          typeId: 2,
+        },
+      ],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    const preview = await workflow.previewLibraryImport({} as never, {
+      areaId: 7,
+      locale: 'sv',
+      payload,
+    })
+
+    expect(preview.rows[0]?.labels).toEqual({
+      category: 'Leverantörskrav',
+      priorityLevel: 'P4 - Hög',
+      qualityCharacteristic: 'Tidsbeteende',
+      type: 'Icke-funktionellt',
+    })
   })
 })

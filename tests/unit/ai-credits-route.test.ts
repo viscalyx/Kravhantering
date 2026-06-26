@@ -1,7 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET } from '@/app/api/ai/credits/route'
+import * as actionAudit from '@/lib/audit/action-audit'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
-import { attachVerifiedActor } from '@/lib/requirements/auth'
+import * as requirementsAuth from '@/lib/requirements/auth'
+
+const createDefaultAuthorizationServiceSpy = vi.spyOn(
+  requirementsAuth,
+  'createDefaultAuthorizationService',
+)
+const recordDeniedActionAuditEventSpy = vi.spyOn(
+  actionAudit,
+  'recordDeniedActionAuditEvent',
+)
 
 const dbState = vi.hoisted(() => ({
   getRequestSqlServerDataSource: vi.fn(),
@@ -17,22 +27,34 @@ vi.mock('@/lib/ai/openrouter-client', () => ({
   getKeyInfo: vi.fn(),
 }))
 
-function makeRequest(roles: string[] = ['Admin']): Request {
-  const request = new Request('http://localhost:3000/api/ai/credits', {
+function makeRequest(
+  roles: string[] = ['Admin'],
+  isAuthenticated = true,
+  url = 'http://localhost:3000/api/ai/credits',
+): Request {
+  const request = new Request(url, {
     headers: {
       'x-correlation-id': 'workflow-credits',
       'x-request-id': 'request-credits',
     },
   })
-  attachVerifiedActor(request, {
+  requirementsAuth.attachVerifiedActor(request, {
     displayName: 'AI User',
-    hsaId: 'SE5560000001-ai1',
-    id: 'ai-user',
-    isAuthenticated: true,
+    hsaId: isAuthenticated ? 'SE5560000001-ai1' : null,
+    id: isAuthenticated ? 'ai-user' : null,
+    isAuthenticated,
     roles,
-    source: 'oidc',
+    source: isAuthenticated ? 'oidc' : 'anonymous',
   })
   return request
+}
+
+function expectNoAuthorizationSideEffects() {
+  expect(createDefaultAuthorizationServiceSpy).not.toHaveBeenCalled()
+  expect(recordDeniedActionAuditEventSpy).not.toHaveBeenCalled()
+  expect(dbState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  expect(dbState.query).not.toHaveBeenCalled()
+  expect(dbState.transaction).not.toHaveBeenCalled()
 }
 
 describe('GET /api/ai/credits', () => {
@@ -69,17 +91,71 @@ describe('GET /api/ai/credits', () => {
       limit: 50,
       totalCredits: 10,
     })
+    expectNoAuthorizationSideEffects()
   })
 
-  it('denies credit lookup before calling OpenRouter when AI generation is unauthorized', async () => {
+  it('allows credit lookup for authenticated actors without an AI generation scope', async () => {
     const { getKeyInfo } = await import('@/lib/ai/openrouter-client')
+    vi.mocked(getKeyInfo).mockResolvedValueOnce({
+      isFreeTier: false,
+      limit: 50,
+      limitRemaining: 37,
+      managementKeyMissing: false,
+      totalCredits: 10,
+      usage: 13,
+      usageDaily: 2,
+    })
 
     const response = await GET(makeRequest([]))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      limit: 50,
+      totalCredits: 10,
+    })
+    expect(getKeyInfo).toHaveBeenCalled()
+    expectNoAuthorizationSideEffects()
+  })
+
+  it('ignores legacy AI generation scope parameters for authenticated credit lookup', async () => {
+    const { getKeyInfo } = await import('@/lib/ai/openrouter-client')
+    vi.mocked(getKeyInfo).mockResolvedValueOnce({
+      isFreeTier: false,
+      limit: 50,
+      limitRemaining: 37,
+      managementKeyMissing: false,
+      totalCredits: 10,
+      usage: 13,
+      usageDaily: 2,
+    })
+
+    const response = await GET(
+      makeRequest(
+        [],
+        true,
+        'http://localhost:3000/api/ai/credits?scopeType=specification&scopeId=42',
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      limit: 50,
+      totalCredits: 10,
+    })
+    expect(getKeyInfo).toHaveBeenCalled()
+    expectNoAuthorizationSideEffects()
+  })
+
+  it('denies anonymous credit lookup before calling OpenRouter', async () => {
+    const { getKeyInfo } = await import('@/lib/ai/openrouter-client')
+
+    const response = await GET(makeRequest([], false))
     const body = (await response.json()) as { error: string }
 
-    expect(response.status).toBe(403)
-    expect(body.error).toBe('Forbidden')
+    expect(response.status).toBe(401)
+    expect(body.error).toBe('Authentication is required')
     expect(getKeyInfo).not.toHaveBeenCalled()
+    expectNoAuthorizationSideEffects()
   })
 
   it('returns sanitized provider errors', async () => {

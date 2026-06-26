@@ -21,7 +21,7 @@ For admin-managed default column settings, see
 - Primary public identifier: `uniqueId`
 - Read response formats: `markdown`, `json`
 - Supported locales: `en`, `sv`
-- Exposed MCP tools: 13
+- Exposed MCP tools: 12
 - Exposed MCP resources:
   - `requirements://requirement/{uniqueId}`
   - `ui://requirements/requirement-detail/{uniqueId}`
@@ -36,7 +36,7 @@ For admin-managed default column settings, see
   Creates a fresh `WebStandardStreamableHTTPServerTransport` for each request
   and connects the server instance.
 - `lib/mcp/server.ts`
-  Registers the thirteen tools, the JSON resource, and the HTML UI resource.
+  Registers the twelve tools, the JSON resource, and the HTML UI resource.
 - `lib/dal/ui-settings.ts`
   Loads default column settings.
 - `messages/en.json` and `messages/sv.json`
@@ -81,9 +81,9 @@ keeps lifecycle behavior aligned between REST and MCP.
 
 ## Tool Design
 
-The MCP surface is split into four areas: individual requirements (four
-tools), requirements specifications (six tools), improvement suggestions (two
-tools), and AI-assisted authoring (one tool).
+The MCP surface is split into three areas: individual requirements (four
+tools), requirements specifications (six tools), and improvement suggestions
+(two tools).
 
 ### `requirements_query_catalog`
 
@@ -243,19 +243,6 @@ Creates, edits, deletes, transitions, or resolves an improvement suggestion.
   `resolutionMotivation`, `resolvedBy`, `locale`, `responseFormat`
 - **Output:** confirmation message and updated suggestion data
 - **Grouping:** improvement suggestions
-
-### `requirements_generate_requirements`
-
-Generates system requirements using AI (OpenRouter) based on a topic.
-Returns generated requirements with a thinking trace. The caller must
-call `requirements_manage_requirement` with `operation: "create"` for
-each generated requirement.
-
-- **Inputs:** `topic` (required), `areaId` (optional), `locale`
-  (`en` | `sv`), `model` (optional eligible OpenRouter model ID from the
-  server model catalog), `customInstruction` (optional)
-- **Output:** generated requirements list with thinking trace
-- **Grouping:** AI-assisted authoring
 
 ## Resource Design
 
@@ -480,7 +467,7 @@ Useful commands:
 Manual verification should still include:
 
 - connecting an MCP client to `/api/mcp` with a non-production Bearer token
-- checking that all thirteen tools appear
+- checking that all twelve tools appear
 - checking that the JSON resource resolves
 - checking that the requirement view app renders in a client with MCP Apps
   support

@@ -20,6 +20,7 @@ import {
   expect,
   type Locator,
   type Page,
+  type Route,
   test,
 } from '@playwright/test'
 
@@ -69,7 +70,75 @@ const MOCK_DEVIATION =
   'Tredjeparts­integration stödjer inte MFA för tillfället. Åtgärdas genom IP-begränsning tills leverantören tillhandahåller stöd.'
 const MOCK_SUGGESTION =
   'Överväg att lägga till biometrisk autentisering som ett tredje faktoralternativ i en framtida version.'
+const AI_GUIDE_AREA_NAME = 'Betygshantering'
+const AI_GUIDE_AREA_PREFIX = 'BET'
+const AI_GUIDE_AREA_OWNER_HSA_ID = 'SE5560000001-annaj'
+const AI_GUIDE_AREA_DESCRIPTION =
+  'Krav för registrering, ändring, fastställande och spårbar hantering av elevers betyg.'
+const AI_GUIDE_MODEL_NAME = 'GPT-5.4 Mini'
+const AI_GUIDE_NORM_KEY = 'EDU-GRADE-TRACE-2026'
+const AI_GUIDE_NORM_NAME = 'Riktlinje för spårbar betygshantering'
+const AI_GUIDE_NEED =
+  'Behöver krav för Elevbedömning Pro, ett system där lärare registrerar, ändrar och fastställer elevers betyg. Systemet ska stödja behörighetsstyrning, spårbar ändringshistorik, tydlig återkoppling till lärare och skydd av elevuppgifter. Skapa både funktionella och icke-funktionella krav.'
+const AI_GUIDE_REQUIREMENT_ONE_INITIAL =
+  'Systemet ska låta behöriga lärare registrera och fastställa betyg för en elev i en kurs.'
+const AI_GUIDE_REQUIREMENT_ONE_EDITED =
+  'Systemet ska låta behöriga lärare registrera, ändra och fastställa betyg för en elev i en kurs, och kräva att kurs, elev och betygsvärde väljs innan betyget sparas.'
+const AI_GUIDE_REQUIREMENT_TWO =
+  'Systemet ska logga varje ändring av ett registrerat betyg med användare, tidpunkt, gammalt värde, nytt värde och angiven ändringsorsak.'
+const AI_GUIDE_REQUIREMENT_THREE =
+  'Systemet ska skydda elevuppgifter genom rollbaserad åtkomst och visa felmeddelanden utan att exponera känsliga personuppgifter.'
+const AI_GUIDE_PAYLOAD = {
+  proposedNormReferences: [
+    {
+      issuer: 'Fiktiva Utbildningsförvaltningen',
+      key: AI_GUIDE_NORM_KEY,
+      name: AI_GUIDE_NORM_NAME,
+      normReferenceId: AI_GUIDE_NORM_KEY,
+      reference: AI_GUIDE_NORM_KEY,
+      type: 'Riktlinje',
+      uri: null,
+      version: '2026',
+    },
+  ],
+  requirements: [
+    {
+      acceptanceCriteria:
+        'Registrering ska kräva att kurs, elev och betygsvärde väljs. Fastställt betyg ska visas i elevens betygsöversikt för behöriga användare.',
+      categoryName: 'IT-krav',
+      description: AI_GUIDE_REQUIREMENT_ONE_INITIAL,
+      priorityLevelCode: 'P4',
+      requiresTesting: true,
+      typeName: 'Funktionellt',
+      verificationMethod: 'Funktionstest',
+    },
+    {
+      acceptanceCriteria:
+        'Varje ändring ska skapa en spårbar loggpost med aktör, tidpunkt, tidigare betyg, nytt betyg och ändringsorsak. Loggposten ska kunna granskas i efterhand.',
+      categoryName: 'IT-krav',
+      description: AI_GUIDE_REQUIREMENT_TWO,
+      priorityLevelCode: 'P5',
+      proposedNormReferenceKeys: [AI_GUIDE_NORM_KEY],
+      requiresTesting: true,
+      typeName: 'Funktionellt',
+      verificationMethod: 'Behörighets- och loggtest',
+    },
+    {
+      acceptanceCriteria:
+        'Obehöriga användare ska nekas åtkomst till elevuppgifter och felmeddelanden får inte visa personnummer, elev-id eller andra känsliga uppgifter.',
+      categoryName: 'IT-krav',
+      description: AI_GUIDE_REQUIREMENT_THREE,
+      priorityLevelCode: 'P4',
+      requiresTesting: true,
+      typeName: 'Icke-funktionellt',
+      verificationMethod: 'Säkerhetstest',
+    },
+  ],
+  schemaVersion: 'requirement-import.v1',
+}
 const GUIDE_SPECIFICATION_SLUG = 'ETJANST-UPP-2026'
+const GUIDE_SPECIFICATION_NAME = 'Upphandling av e-tjänstplattform'
+const GUIDE_SPECIFICATION_IMPORT_TITLE = `Importera krav för ${GUIDE_SPECIFICATION_NAME}`
 const GUIDE_DEVIATION_REQUIREMENT_ID = 'BEH0002'
 const IMPORT_SAMPLE_PATH = '/tmp/krav5.txt'
 const STATUS_REVIEW_ID = 2
@@ -92,6 +161,16 @@ interface ScreenshotEntry {
   heading: string
   section: string
   seq: number
+}
+
+interface GuideImportReceiptRow {
+  createdVisibleId: string
+}
+
+interface GuideRequirementArea {
+  id: number
+  name: string
+  prefix: string
 }
 
 // ─── Tillstånd (modul-nivå, delas av beforeAll/afterAll/test) ─────────────
@@ -298,6 +377,184 @@ async function expectSuccessfulImportResponse(
   )
 }
 
+function guideJsonResponse(body: unknown) {
+  return {
+    body: JSON.stringify(body),
+    contentType: 'application/json',
+  }
+}
+
+async function fulfillGuideJson(route: Route, body: unknown) {
+  await route.fulfill(guideJsonResponse(body))
+}
+
+async function browserJsonMutation<TResponse>(
+  page: Page,
+  url: string,
+  data: unknown,
+): Promise<{
+  body: TResponse | null
+  ok: boolean
+  status: number
+  text: string
+}> {
+  return page.evaluate(
+    async ({ mutationBody, mutationUrl }) => {
+      const response = await fetch(mutationUrl, {
+        body: JSON.stringify(mutationBody),
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        method: 'POST',
+      })
+      const text = await response.text()
+      let body: unknown = null
+      try {
+        body = text ? JSON.parse(text) : null
+      } catch {
+        body = null
+      }
+      return {
+        body,
+        ok: response.ok,
+        status: response.status,
+        text,
+      }
+    },
+    { mutationBody: data, mutationUrl: url },
+  ) as Promise<{
+    body: TResponse | null
+    ok: boolean
+    status: number
+    text: string
+  }>
+}
+
+async function installAiGuideMocks(page: Page): Promise<() => Promise<void>> {
+  const modelsPattern = '**/api/ai/models?*'
+  const creditsPattern = '**/api/ai/credits'
+  const generatePattern = '**/api/ai/generate-requirement-import'
+  const modelsHandler = async (route: Route) => {
+    await fulfillGuideJson(route, {
+      models: [
+        {
+          contextLength: 200000,
+          id: 'openai/gpt-5.4-mini',
+          name: AI_GUIDE_MODEL_NAME,
+          pricing: {
+            completion: '0.0000045',
+            prompt: '0.00000075',
+            reasoning: '0.0000045',
+          },
+          provider: 'openai',
+          supportedParameters: ['reasoning', 'stream', 'response_format'],
+        },
+      ],
+    })
+  }
+  const creditsHandler = async (route: Route) => {
+    await fulfillGuideJson(route, {
+      isFreeTier: false,
+      limit: 50,
+      limitRemaining: 49,
+      managementKeyMissing: false,
+      totalCredits: 50,
+      usage: 1,
+      usageDaily: 1,
+    })
+  }
+  const generateHandler = async (route: Route) => {
+    const body = {
+      payload: AI_GUIDE_PAYLOAD,
+      rawContent: JSON.stringify(AI_GUIDE_PAYLOAD),
+      stats: {
+        completionTokens: 620,
+        cost: 0.0068,
+        promptTokens: 1180,
+        reasoningTokens: 410,
+        totalTokens: 2210,
+      },
+      thinking:
+        'Jag delar upp behovet i betygsregistrering, spårbar ändringshistorik och skydd av elevuppgifter. Först behövs ett funktionellt krav som beskriver lärarens huvudflöde: välja kurs, elev och betygsvärde samt fastställa betyget. Därefter behövs ett spårbarhetskrav eftersom ändringar av betyg är känsliga och måste kunna granskas i efterhand.\n\nDen fiktiva riktlinjen EDU-GRADE-TRACE-2026 föreslås som normreferens för ändringsloggning och spårbarhet. Jag lägger den som föreslagen normreferens, inte som befintlig normreferens, eftersom den inte finns i normbiblioteket ännu.\n\nSlutligen behövs ett icke-funktionellt krav för skydd av elevuppgifter. Det ska handla om rollbaserad åtkomst och säkra felmeddelanden så att känsliga elevuppgifter inte exponeras av misstag.',
+    }
+    await route.fulfill({
+      body: `event: done\ndata: ${JSON.stringify(body)}\n\n`,
+      contentType: 'text/event-stream',
+    })
+  }
+
+  await page.route(modelsPattern, modelsHandler)
+  await page.route(creditsPattern, creditsHandler)
+  await page.route(generatePattern, generateHandler)
+
+  return async () => {
+    await page.unroute(modelsPattern, modelsHandler)
+    await page.unroute(creditsPattern, creditsHandler)
+    await page.unroute(generatePattern, generateHandler)
+  }
+}
+
+async function ensureAiGuideRequirementArea(
+  page: Page,
+): Promise<GuideRequirementArea> {
+  const response = await page.request.get('/api/requirement-areas')
+  if (!response.ok()) {
+    throw new Error(
+      `Could not list requirement areas for guide: HTTP ${response.status()} ${(await response.text()).slice(0, 300)}`,
+    )
+  }
+
+  const body = (await response.json()) as { areas?: GuideRequirementArea[] }
+  const existing = body.areas?.find(
+    area => area.prefix === AI_GUIDE_AREA_PREFIX,
+  )
+  if (existing) {
+    if (existing.name !== AI_GUIDE_AREA_NAME) {
+      throw new Error(
+        `Guide requirement area prefix ${AI_GUIDE_AREA_PREFIX} already exists with name "${existing.name}", expected "${AI_GUIDE_AREA_NAME}".`,
+      )
+    }
+    return existing
+  }
+
+  const verifyResponse = await browserJsonMutation<unknown>(
+    page,
+    '/api/requirement-responsibility-people/verify',
+    {
+      hsaId: AI_GUIDE_AREA_OWNER_HSA_ID,
+      mode: 'reuse_local',
+      purpose: 'requirement_area_owner',
+    },
+  )
+  if (!verifyResponse.ok) {
+    throw new Error(
+      `Could not verify guide requirement area owner: HTTP ${verifyResponse.status} ${verifyResponse.text.slice(0, 300)}`,
+    )
+  }
+
+  const createResponse = await browserJsonMutation<GuideRequirementArea>(
+    page,
+    '/api/requirement-areas',
+    {
+      description: AI_GUIDE_AREA_DESCRIPTION,
+      name: AI_GUIDE_AREA_NAME,
+      ownerHsaId: AI_GUIDE_AREA_OWNER_HSA_ID,
+      prefix: AI_GUIDE_AREA_PREFIX,
+    },
+  )
+  if (!createResponse.ok) {
+    throw new Error(
+      `Could not create guide requirement area: HTTP ${createResponse.status} ${createResponse.text.slice(0, 300)}`,
+    )
+  }
+  if (!createResponse.body) {
+    throw new Error('Could not create guide requirement area: empty response.')
+  }
+  return createResponse.body
+}
+
 async function loadImportPreview(
   page: Page,
   dialog: Locator,
@@ -324,7 +581,7 @@ async function executeImportRows(
   page: Page,
   dialog: Locator,
   endpointFragment: string,
-) {
+): Promise<GuideImportReceiptRow[]> {
   const executeResponse = page.waitForResponse(
     response =>
       response.url().includes(endpointFragment) &&
@@ -340,10 +597,20 @@ async function executeImportRows(
   if (warningDialogVisible) {
     await warningDialog.getByRole('button', { name: 'Importera valda' }).click()
   }
-  await expectSuccessfulImportResponse(executeResponse, 'Import execute')
+  const response = await executeResponse
+  if (!response.ok()) {
+    const body = await response.text()
+    throw new Error(
+      `Import execute failed: HTTP ${response.status()} — ${body.slice(0, 300)}`,
+    )
+  }
+  const body = (await response.json()) as {
+    createdRows?: GuideImportReceiptRow[]
+  }
   await expect(dialog.getByText(/^Importerade rader:/)).toBeVisible({
     timeout: 10_000,
   })
+  return body.createdRows ?? []
 }
 
 async function closeImportDialog(dialog: Locator) {
@@ -1666,8 +1933,351 @@ test.describe('Kravhantering — Guidegenerering', () => {
     // ── Sektion 7: Import av krav ─────────────────────────────────────────
     currentSection = 'Import av krav'
     setSectionIntro(
-      'Importfunktionen använder JSON enligt `requirement-import.v1` och finns i två lägen: **kravbiblioteksimport** skapar nya utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt i ett kravunderlag. Importen laddar först en granskning där rader, metadata och föreslagna normreferenser kan kontrolleras innan något sparas.',
+      'Importfunktionen använder JSON enligt `requirement-import.v1`. **AI-assisterat författande** använder samma importkontrakt och samma redigerbara importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt i ett kravunderlag. Importen laddar först en granskning där rader, metadata och föreslagna normreferenser kan kontrolleras innan något sparas.',
     )
+
+    let cleanupAiMocks: (() => Promise<void>) | null = null
+    let aiGuideCreatedRows: GuideImportReceiptRow[] = []
+
+    await guideStep(page, 'AI-assisterat författande — öppna', async () => {
+      cleanupAiMocks = await installAiGuideMocks(page)
+      const area = await ensureAiGuideRequirementArea(page)
+
+      await guideGoto(page, '/sv/requirements')
+      await expect(
+        page.locator('[data-sticky-table-header="true"]'),
+      ).toBeVisible({ timeout: 10_000 })
+
+      await page.getByRole('button', { name: 'AI-assistera' }).first().click()
+      const aiDialog = page.getByRole('dialog', {
+        name: 'AI-assisterat författande',
+      })
+      await expect(aiDialog).toBeVisible({ timeout: 5_000 })
+      await aiDialog
+        .getByRole('textbox', { name: 'Behov och sammanhang' })
+        .fill(AI_GUIDE_NEED)
+      await aiDialog
+        .getByLabel('Kravområde', { exact: true })
+        .selectOption(String(area.id))
+      await expect(aiDialog.getByText(AI_GUIDE_MODEL_NAME)).toBeVisible({
+        timeout: 10_000,
+      })
+
+      await snap(
+        page,
+        'ai-oppna',
+        'AI-assisterat författande — behov och modell',
+        `Öppna **"AI-assisterat författande"** från kravbiblioteket. Ange ett konkret behov, till exempel "${AI_GUIDE_NEED}", välj kravområdet **${AI_GUIDE_AREA_NAME}** och använd en modell från en större leverantör. Guiden mockar AI-svaret men använder applikationens riktiga importförhandsgranskning.`,
+        { fullPage: false },
+      )
+    })
+
+    await guideStep(
+      page,
+      'AI-assisterat författande — kravkandidater',
+      async () => {
+        const aiDialog = page.getByRole('dialog', {
+          name: 'AI-assisterat författande',
+        })
+        const createCandidatesButton = aiDialog.getByRole('button', {
+          name: 'Skapa kravkandidater',
+        })
+        await expect(createCandidatesButton).toBeEnabled({ timeout: 10_000 })
+        await createCandidatesButton.click()
+        await expect(
+          aiDialog.getByText(AI_GUIDE_REQUIREMENT_ONE_INITIAL),
+        ).toBeVisible({ timeout: 15_000 })
+        await expect(aiDialog.getByText(AI_GUIDE_REQUIREMENT_TWO)).toBeVisible({
+          timeout: 10_000,
+        })
+
+        await snap(
+          page,
+          'ai-kravkandidater',
+          'AI-assisterat författande — kravkandidater',
+          'Kravkandidaterna visas först i AI-dialogen. Användaren kan markera bort en kandidat, justera prompten och skapa nya kandidater innan resultatet skickas vidare till importgranskningen.',
+          { fullPage: false },
+        )
+      },
+    )
+
+    await guideStep(
+      page,
+      'AI-assisterat författande — föreslagna normreferenser',
+      async () => {
+        const aiDialog = page.getByRole('dialog', {
+          name: 'AI-assisterat författande',
+        })
+        await aiDialog
+          .getByRole('button', { name: /Föreslagna normreferenser/ })
+          .click()
+        await expect(aiDialog.getByText(AI_GUIDE_NORM_NAME)).toBeVisible({
+          timeout: 5_000,
+        })
+
+        await snap(
+          page,
+          'ai-normforslag',
+          'AI-assisterat författande — föreslagna normreferenser',
+          `AI-resultatet kan innehålla föreslagna normreferenser som ännu inte finns i normbiblioteket. Här föreslås **${AI_GUIDE_NORM_NAME}** med nyckeln \`${AI_GUIDE_NORM_KEY}\`; användaren kan välja bort förslaget innan importgranskningen öppnas.`,
+          { fullPage: false },
+        )
+      },
+    )
+
+    await guideStep(page, 'AI-assisterat författande — AI-analys', async () => {
+      const aiDialog = page.getByRole('dialog', {
+        name: 'AI-assisterat författande',
+      })
+      await aiDialog.getByRole('button', { name: 'AI-analys' }).click()
+      await expect(
+        aiDialog.locator('pre').filter({ hasText: 'spårbar ändringshistorik' }),
+      ).toBeVisible({ timeout: 5_000 })
+
+      await snap(
+        page,
+        'ai-analys',
+        'AI-assisterat författande — AI-analys',
+        'Fliken **AI-analys** visar modellens resonemang som en separat loggyta. Den är till för granskning och förbättring av prompten, inte som en del av de krav som importeras.',
+        { fullPage: false },
+      )
+    })
+
+    await guideStep(
+      page,
+      'AI-assisterat författande — råresultat',
+      async () => {
+        const aiDialog = page.getByRole('dialog', {
+          name: 'AI-assisterat författande',
+        })
+        await aiDialog.getByRole('button', { name: 'Råresultat' }).click()
+        await expect(
+          aiDialog.locator('pre').filter({ hasText: '"schemaVersion"' }),
+        ).toBeVisible({ timeout: 5_000 })
+
+        await snap(
+          page,
+          'ai-raresultat',
+          'AI-assisterat författande — råresultat',
+          'Fliken **Råresultat** visar den JSON som modellen returnerade. Det hjälper felsökning och transparens, men användaren fortsätter ändå via importgranskningen där värden valideras mot applikationens referensdata.',
+          { fullPage: false },
+        )
+      },
+    )
+
+    await guideStep(
+      page,
+      'AI-assisterat författande — till importgranskning',
+      async () => {
+        const aiDialog = page.getByRole('dialog', {
+          name: 'AI-assisterat författande',
+        })
+        await aiDialog
+          .getByRole('button', { exact: true, name: 'Kravkandidater' })
+          .click()
+        await aiDialog
+          .getByRole('button', { name: 'Förhandsgranska krav i import' })
+          .click()
+
+        const importDialog = dialogWithHeading(
+          page,
+          `Importera krav för ${AI_GUIDE_AREA_NAME}`,
+        )
+        await expect(
+          importDialog.getByText(AI_GUIDE_REQUIREMENT_ONE_INITIAL),
+        ).toBeVisible({ timeout: 15_000 })
+
+        await snap(
+          page,
+          'ai-importgranskning',
+          'AI-assisterat författande — förhandsgranska krav i import',
+          'När kravkandidater skickas vidare öppnas den redigerbara importgranskningen. Här är AI-resultatet omvandlat till samma granskningsyta som JSON-importen använder, med kravrader och föreslagna normreferenser som separata flikar.',
+          { fullPage: false },
+        )
+      },
+    )
+
+    await guideStep(
+      page,
+      'AI-assisterat författande — skapa föreslagen normreferens',
+      async () => {
+        const importDialog = dialogWithHeading(
+          page,
+          `Importera krav för ${AI_GUIDE_AREA_NAME}`,
+        )
+        await importDialog
+          .getByRole('tab', { name: /Föreslagna normreferenser/ })
+          .click()
+        await expect(
+          importDialog.getByText(AI_GUIDE_NORM_KEY, { exact: true }).first(),
+        ).toBeVisible({ timeout: 5_000 })
+
+        await snap(
+          page,
+          'ai-import-normforslag',
+          'AI-assisterat författande — föreslagen normreferens',
+          'Föreslagna normreferenser visas innan importen körs. Ett olöst förslag sparas inte automatiskt, men kan skapas eller länkas till en befintlig normreferens så att kopplingen följer med kravet.',
+          { fullPage: false },
+        )
+
+        const createNormReferenceButton = importDialog
+          .getByRole('button', { name: 'Skapa normreferens' })
+          .first()
+        if (await createNormReferenceButton.isEnabled()) {
+          await createNormReferenceButton.click()
+          const normDialog = page.getByRole('dialog', {
+            name: 'Skapa ny normreferens',
+          })
+          await expect(normDialog).toBeVisible({ timeout: 5_000 })
+
+          await snap(
+            page,
+            'ai-import-normreferens-skapa',
+            'AI-assisterat författande — skapa normreferens',
+            'När användaren väljer **"Skapa normreferens"** öppnas normbibliotekets formulär med värden förifyllda från AI-resultatet. Användaren kan granska och justera uppgifterna innan källan sparas.',
+            { fullPage: false },
+          )
+
+          const createNormReferenceResponse = page.waitForResponse(
+            response =>
+              response.url().includes('/api/norm-references') &&
+              response.request().method() === 'POST',
+            { timeout: 15_000 },
+          )
+          await normDialog.getByRole('button', { name: 'Spara' }).click()
+          await expectSuccessfulImportResponse(
+            createNormReferenceResponse,
+            'Create AI guide norm reference',
+          )
+          await expect(normDialog).toBeHidden({ timeout: 10_000 })
+        }
+        await expect(importDialog.getByText('Löst')).toBeVisible({
+          timeout: 10_000,
+        })
+
+        await snap(
+          page,
+          'ai-import-normreferens-lost',
+          'AI-assisterat författande — normreferens löst',
+          'När normreferensen har skapats markeras förslaget som **Löst**. Kravrader som hänvisade till förslaget uppdateras så att den skapade normreferensen följer med vid import.',
+          { fullPage: false },
+        )
+      },
+    )
+
+    await guideStep(
+      page,
+      'AI-assisterat författande — kravrad löst',
+      async () => {
+        const importDialog = dialogWithHeading(
+          page,
+          `Importera krav för ${AI_GUIDE_AREA_NAME}`,
+        )
+        await importDialog.getByRole('tab', { name: /^Krav\b/ }).click()
+        await expect(
+          importDialog.getByText(AI_GUIDE_REQUIREMENT_TWO),
+        ).toBeVisible({ timeout: 5_000 })
+
+        await snap(
+          page,
+          'ai-import-krav-normreferens-lost',
+          'AI-assisterat författande — kravrad löst',
+          'Tillbaka i fliken **Krav** visas kravraden som hänvisade till den föreslagna normreferensen utan varning. Den skapade normreferensen är nu kopplad till kravet och följer med vid import.',
+          { fullPage: false },
+        )
+      },
+    )
+
+    await guideStep(
+      page,
+      'AI-assisterat författande — redigera krav före import',
+      async () => {
+        const importDialog = dialogWithHeading(
+          page,
+          `Importera krav för ${AI_GUIDE_AREA_NAME}`,
+        )
+        await importDialog.getByRole('tab', { name: /^Krav\b/ }).click()
+        await importDialog
+          .getByRole('button', { name: 'Expandera rad #1', exact: true })
+          .click()
+        const requirementTextField = importDialog.getByRole('textbox', {
+          name: 'Kravtext',
+        })
+        await requirementTextField.fill(AI_GUIDE_REQUIREMENT_ONE_EDITED)
+        await expect(requirementTextField).toHaveValue(
+          AI_GUIDE_REQUIREMENT_ONE_EDITED,
+          { timeout: 5_000 },
+        )
+
+        await snap(
+          page,
+          'ai-import-redigera-krav',
+          'AI-assisterat författande — redigera krav före import',
+          'Importgranskningen är redigerbar. I exemplet preciseras första kravkandidaten innan import, så användaren kan korrigera AI-förslaget utan att gå tillbaka till prompten.',
+          { fullPage: false },
+        )
+      },
+    )
+
+    await guideStep(page, 'AI-assisterat författande — importera', async () => {
+      const importDialog = dialogWithHeading(
+        page,
+        `Importera krav för ${AI_GUIDE_AREA_NAME}`,
+      )
+      aiGuideCreatedRows = await executeImportRows(
+        page,
+        importDialog,
+        '/api/requirements/import/execute',
+      )
+      expect(aiGuideCreatedRows.length).toBe(3)
+
+      await snap(
+        page,
+        'ai-import-kvitto',
+        'AI-assisterat författande — importkvitto',
+        'När **"Importera valda"** körs skapas de valda kandidaterna som nya utkast i kravbiblioteket. Kvittot visar hur många rader som importerades och CSV-kvittot innehåller de Krav-ID:n som skapades.',
+        { fullPage: false },
+      )
+
+      await closeImportDialog(importDialog)
+      const createdIds = aiGuideCreatedRows
+        .map(row => row.createdVisibleId)
+        .filter(Boolean)
+      await guideGoto(page, '/sv/requirements')
+      await expect(
+        page.locator('[data-sticky-table-header="true"]'),
+      ).toBeVisible({ timeout: 10_000 })
+      const removePublishedFilter = page.getByRole('button', {
+        name: 'Ta bort Publicerad',
+      })
+      if ((await removePublishedFilter.count()) > 0) {
+        await removePublishedFilter.click()
+      }
+      await page.getByLabel('Filtrera efter Krav-ID').click()
+      const uniqueIdFilterInput = page.getByRole('textbox', {
+        name: 'Krav-ID',
+      })
+      await uniqueIdFilterInput.fill(AI_GUIDE_AREA_PREFIX)
+      await uniqueIdFilterInput.press('Enter')
+      for (const createdId of createdIds) {
+        await expect(page.getByText(createdId).first()).toBeVisible({
+          timeout: 10_000,
+        })
+      }
+
+      await snap(
+        page,
+        'ai-import-resultat-kravbibliotek',
+        'AI-assisterat författande — importerade krav i kravbiblioteket',
+        `Efter importen visas de skapade kraven i kravbiblioteket. Krav-ID:n skapas av applikationen med kravområdets prefix, till exempel \`${createdIds.join('`, `')}\`.`,
+        { fullPage: false },
+      )
+
+      if (cleanupAiMocks) {
+        await cleanupAiMocks()
+        cleanupAiMocks = null
+      }
+    })
 
     await guideStep(page, 'Kravbiblioteksimport — importfil', async () => {
       await guideGoto(page, '/sv/requirements')
@@ -1777,11 +2387,18 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page.getByText(/^Det gick inte att läsa in tillgängliga krav:/),
       ).toBeHidden({ timeout: 10_000 })
       await page
-        .getByRole('button', { name: 'Importera unika krav' })
+        .getByRole('button', { name: 'Lägg till unika krav' })
         .first()
         .click()
+      const localRequirementActionMenu = page.locator(
+        '[data-floating-action-menu="local-requirement-actions"]',
+      )
+      await expect(localRequirementActionMenu).toBeVisible({ timeout: 5_000 })
+      await localRequirementActionMenu
+        .getByRole('button', { name: 'Importera unika krav' })
+        .click()
 
-      const dialog = dialogWithHeading(page, 'Importera lokala krav')
+      const dialog = dialogWithHeading(page, GUIDE_SPECIFICATION_IMPORT_TITLE)
       await expect(dialog).toBeVisible({ timeout: 5_000 })
       await dialog.getByLabel(/Import-JSON/).fill(importSampleJson)
 
@@ -1813,7 +2430,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
     })
 
     await guideStep(page, 'Kravunderlagsimport — importera', async () => {
-      const dialog = dialogWithHeading(page, 'Importera lokala krav')
+      const dialog = dialogWithHeading(page, GUIDE_SPECIFICATION_IMPORT_TITLE)
       await executeImportRows(
         page,
         dialog,

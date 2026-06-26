@@ -326,7 +326,6 @@ describe('handleRequirementsMcpRequest', () => {
       expect(tools.map(tool => tool.name).sort()).toEqual(
         [
           'requirements_add_to_specification',
-          'requirements_generate_requirements',
           'requirements_get_requirement',
           'requirements_get_specification_items',
           'requirements_graduate_local_requirement',
@@ -564,17 +563,6 @@ describe('handleRequirementsMcpRequest', () => {
       expect(JSON.stringify(manageSuggestionTool?.outputSchema)).toContain(
         'result',
       )
-    })
-
-    it('describes requirements_generate_requirements limits and output', async () => {
-      const generateTool = getTool('requirements_generate_requirements')
-
-      expect(generateTool).toBeDefined()
-      const generateInputSchemaText = JSON.stringify(generateTool?.inputSchema)
-      expect(generateInputSchemaText).toContain('"maxLength":1000')
-      expect(generateInputSchemaText).toContain('Eligible OpenRouter model ID')
-      expect(generateTool?.description).toContain('using the generated fields')
-      expect(JSON.stringify(generateTool?.outputSchema)).toContain('stats')
     })
   })
 

@@ -121,16 +121,6 @@
         "content": "Disposable improvement suggestion",
         "responseFormat": "json"
       }
-    },
-    {
-      "name": "AI generation stays local-safe when OpenRouter is unset",
-      "tool": "requirements_generate_requirements",
-      "kind": "expected-error",
-      "arguments": {
-        "topic": "OpenRouter disabled smoke",
-        "areaId": "${area.id}",
-        "locale": "en"
-      }
     }
   ]
 }

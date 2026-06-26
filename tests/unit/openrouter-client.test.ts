@@ -18,6 +18,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllEnvs()
 })
 
@@ -338,6 +339,127 @@ describe('generateChatStream', () => {
     expect(events).toHaveLength(2)
     expect(events[0]).toEqual({ chunk: 'hello', phase: 'generating' })
     expect(events[1].phase).toBe('done')
+  })
+
+  it('uses an idle timeout instead of an absolute stream timeout', async () => {
+    vi.useFakeTimers()
+    const sseLines = [
+      'data: {"choices":[{"delta":{"reasoning":"first "}}]}\n\n',
+      'data: {"choices":[{"delta":{"reasoning":"second "}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"{\\"requirements\\":[]}"}}]}\n\n',
+    ]
+    const readResolves: Array<
+      (result: ReadableStreamReadResult<Uint8Array>) => void
+    > = []
+    const mockReader = {
+      read: () =>
+        new Promise<ReadableStreamReadResult<Uint8Array>>(resolve => {
+          readResolves.push(resolve)
+        }),
+      releaseLock: vi.fn(),
+    }
+    const waitForRead = async (count: number) => {
+      for (
+        let attempt = 0;
+        attempt < 10 && readResolves.length < count;
+        attempt++
+      ) {
+        await Promise.resolve()
+      }
+      expect(readResolves).toHaveLength(count)
+    }
+    const resolveLine = (
+      index: number,
+      result: ReadableStreamReadResult<Uint8Array>,
+    ) => readResolves[index]?.(result)
+
+    mockFetch.mockResolvedValueOnce({
+      body: { getReader: () => mockReader },
+      ok: true,
+    })
+
+    const eventsPromise = (async () => {
+      const events = []
+      for await (const event of generateChatStream({ messages: [] })) {
+        events.push(event)
+      }
+      return events
+    })()
+
+    await waitForRead(1)
+    await vi.advanceTimersByTimeAsync(60_000)
+    resolveLine(0, {
+      done: false,
+      value: new TextEncoder().encode(sseLines[0]),
+    })
+    await waitForRead(2)
+    await vi.advanceTimersByTimeAsync(60_000)
+    resolveLine(1, {
+      done: false,
+      value: new TextEncoder().encode(sseLines[1]),
+    })
+    await waitForRead(3)
+    await vi.advanceTimersByTimeAsync(60_000)
+    resolveLine(2, {
+      done: false,
+      value: new TextEncoder().encode(sseLines[2]),
+    })
+    await waitForRead(4)
+    resolveLine(3, { done: true, value: undefined })
+
+    const events = await eventsPromise
+    expect(events.map(event => event.phase)).toEqual([
+      'thinking',
+      'thinking',
+      'generating',
+      'done',
+    ])
+    expect(events).not.toContainEqual(
+      expect.objectContaining({ phase: 'error' }),
+    )
+  })
+
+  it('yields an error when the stream is idle past the timeout', async () => {
+    vi.useFakeTimers()
+    let requestSignal: AbortSignal | undefined
+    const mockReader = {
+      read: () =>
+        new Promise<ReadableStreamReadResult<Uint8Array>>((_, reject) => {
+          requestSignal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('Aborted', 'AbortError')),
+            { once: true },
+          )
+        }),
+      releaseLock: vi.fn(),
+    }
+
+    mockFetch.mockImplementationOnce(async (_url, init) => {
+      requestSignal = (init as { signal?: AbortSignal }).signal
+      return {
+        body: { getReader: () => mockReader },
+        ok: true,
+      }
+    })
+
+    const eventsPromise = (async () => {
+      const events = []
+      for await (const event of generateChatStream({ messages: [] })) {
+        events.push(event)
+      }
+      return events
+    })()
+
+    await vi.advanceTimersByTimeAsync(120_000)
+
+    const events = await eventsPromise
+    expect(events).toEqual([
+      {
+        cause: 'OpenRouter stream idle timeout after 120000 ms',
+        message: 'AI provider is unavailable',
+        phase: 'error',
+      },
+    ])
   })
 })
 

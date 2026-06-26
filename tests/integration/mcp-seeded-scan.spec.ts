@@ -649,21 +649,6 @@ test.describe('MCP seeded HTTP security gate', () => {
         uniqueId: disposableUniqueId,
       })
 
-      const aiResult = await client.callTool({
-        arguments: {
-          areaId,
-          locale: 'en',
-          topic: 'OpenRouter disabled smoke',
-        },
-        name: 'requirements_generate_requirements',
-      })
-      const aiText = expectToolError(aiResult, 'AI generation disabled')
-      expect(aiText).toBe('Error: An internal error occurred')
-      await recordEvent({
-        name: 'requirements_generate_requirements',
-        status: 'expected-error',
-      })
-
       events.push('seeded-corpus:ok')
       await writeSummary('passed', events)
     } catch (err) {

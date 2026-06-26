@@ -13,7 +13,9 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AiRequirementGenerator from '@/components/AiRequirementGenerator'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
-import RequirementsImportDialog from '@/components/RequirementsImportDialog'
+import RequirementsImportDialog, {
+  type InitialRequirementsImport,
+} from '@/components/RequirementsImportDialog'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import {
@@ -290,13 +292,22 @@ export default function RequirementsClient({
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [aiInitialImport, setAiInitialImport] =
+    useState<InitialRequirementsImport | null>(null)
   const isAiGenerationEnabled =
     aiGenerationAvailability.effectiveRequirementGenerationEnabled
+  const hasAuthorableRequirementArea = areas.some(
+    area => area.permissions?.canAuthor !== false,
+  )
+  const canOpenAiGeneration =
+    isAiGenerationEnabled && hasAuthorableRequirementArea
   const aiGenerationDisabledTooltip = !isAiGenerationEnabled
     ? aiGenerationAvailability.disabledByEnvironment
       ? t('aiGenerateDisabledByEnvironment')
       : t('aiGenerateDisabledByAdmin')
-    : undefined
+    : hasAuthorableRequirementArea
+      ? undefined
+      : t('aiGenerateDisabledNoAuthorableArea')
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasLoadedColumnPreferences, setHasLoadedColumnPreferences] =
@@ -944,11 +955,11 @@ export default function RequirementsClient({
                     developerModeContext: 'requirements table',
                     developerModeValue: 'ai generate',
                     ariaLabel: t('aiGenerate'),
-                    disabled: !isAiGenerationEnabled,
+                    disabled: !canOpenAiGeneration,
                     icon: <Sparkles aria-hidden="true" className="h-4 w-4" />,
                     id: 'ai-generate',
                     onClick: () => {
-                      if (isAiGenerationEnabled) setAiModalOpen(true)
+                      if (canOpenAiGeneration) setAiModalOpen(true)
                     },
                     position: 'beforeColumns',
                     tooltip: aiGenerationDisabledTooltip ?? t('aiGenerate'),
@@ -1096,16 +1107,25 @@ export default function RequirementsClient({
         aiGenerationAvailability={aiGenerationAvailability}
         areas={areas}
         onClose={() => setAiModalOpen(false)}
-        onCreated={() => {
-          fetchData()
+        onImportPreview={(payload, options) => {
+          setAiInitialImport({
+            areaId: options.areaId,
+            key: `ai-${Date.now()}`,
+            payload,
+            preview: options.preview,
+          })
+          setAiModalOpen(false)
+          setImportDialogOpen(true)
         }}
         open={aiModalOpen}
       />
       <RequirementsImportDialog
         areas={areas}
+        initialImport={aiInitialImport}
         mode="library"
         onClose={importSucceeded => {
           setImportDialogOpen(false)
+          setAiInitialImport(null)
           if (importSucceeded) {
             void fetchData()
           }

@@ -12,7 +12,6 @@ import type {
 
 const EXPECTED_TOOLS = [
   'requirements_add_to_specification',
-  'requirements_generate_requirements',
   'requirements_get_requirement',
   'requirements_get_specification_items',
   'requirements_graduate_local_requirement',
@@ -85,19 +84,6 @@ function createService() {
       createdRows: [],
       mode: 'specification-local' as const,
       summary: { createdCount: 0 },
-    })),
-    generateRequirements: vi.fn(async () => ({
-      message: 'Generated requirements',
-      model: 'test-model',
-      requirements: [],
-      stats: {
-        completionTokens: 1,
-        cost: 0,
-        promptTokens: 1,
-        reasoningTokens: 0,
-        totalTokens: 2,
-      },
-      thinking: '',
     })),
     getRequirement: vi.fn(async () => ({
       message: 'Requirement detail',
