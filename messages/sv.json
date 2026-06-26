@@ -2421,7 +2421,7 @@
     "repairedJsonSchemaMismatch": "Reparerad JSON matchade inte importens schema.",
     "imageSchemaErrorType": "Bildtypen stöds inte. Använd PNG, JPEG, GIF eller WebP.",
     "imageSchemaErrorSize": "Bilden överskrider gränsen på 10 MB.",
-    "invalidRequirementImportScope": "Biblioteksläge kräver areaId och kravunderlagslokalt läge kräver specificationId.",
+    "invalidRequirementImportScope": "Biblioteksläge kräver areaId och kravunderlagslokalt läge kräver specificationIdOrSlug.",
     "prompt": {
       "defaultInstruction": "Skapa kravkandidater som kan importeras genom applikationens kravimportflöde.\n\nUtforma varje kandidat så att den:\n- Har en tydlig, entydig och verifierbar kravtext i linje med ISO/IEC/IEEE 29148:2018 §5.2.5 (kvalitetskriterier för enskilda krav) och §5.2.7 (språkliga riktlinjer för kravformulering).\n- Använder kravformulering som passar funktionella och icke-funktionella krav.\n- Inkluderar acceptanskriterier när de gör verifieringen tydligare.\n- Sätter requiresTesting och verificationMethod när kravet ska verifieras.\n- Använder kategorier, kravtyper, kvalitetsegenskaper, prioritet, kravpaket och normreferenser endast genom fält som stöds av importinstruktionen.\n- Föredrar exakta namn när stabila ID:n är okända.\n- Håller varje kandidat fokuserad på en skyldighet.\n\nFör icke-funktionella krav, beakta relevanta kvalitetsegenskaper enligt ISO/IEC 25010:2023 och formulera kvalitetskrav med mätbara kvalitetsmål och verifierbara mått i linje med ISO/IEC 25030:2019 när behovet ger tillräckligt underlag, till exempel svarstid, tillgänglighet, kapacitet, noggrannhet eller felgränser.",
       "userHeader": "Behov och sammanhang",

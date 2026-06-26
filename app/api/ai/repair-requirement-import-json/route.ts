@@ -29,10 +29,9 @@ import {
   aiRequirementImportBaseBodySchema,
   checkAiRequirementImportThrottle,
   createAiRequirementImportThrottleResponse,
-  isValidRequirementImportScope,
   MAX_AI_INSTRUCTION_LENGTH,
   requirementImportScopeAction,
-  requirementImportScopeValidation,
+  validateRequirementImportScope,
 } from '../requirement-import-shared'
 
 const AI_REPAIR_REQUIREMENT_IMPORT_OPERATION =
@@ -51,7 +50,7 @@ const repairRequirementImportJsonSchema = aiRequirementImportBaseBodySchema
       .min(1)
       .max(MAX_AI_INSTRUCTION_LENGTH * 10),
   })
-  .refine(isValidRequirementImportScope, requirementImportScopeValidation)
+  .superRefine(validateRequirementImportScope)
 
 type RepairRequirementImportJsonBody = z.infer<
   typeof repairRequirementImportJsonSchema

@@ -40,12 +40,12 @@ import {
   createAiRequirementImportThrottleResponse,
   createUnavailableAiStreamResponse,
   imageDataUrlSchema,
-  isValidRequirementImportScope,
   MAX_AI_IMAGES,
   MAX_AI_NEED_LENGTH,
   requirementCandidateCountSchema,
   requirementImportScopeAction,
-  requirementImportScopeValidation,
+  validateRequirementImportImages,
+  validateRequirementImportScope,
   withImages,
 } from '../requirement-import-shared'
 
@@ -68,7 +68,10 @@ const generateRequirementImportSchema = aiRequirementImportBaseBodySchema
       .default([]),
     need: z.string().trim().min(1).max(MAX_AI_NEED_LENGTH),
   })
-  .refine(isValidRequirementImportScope, requirementImportScopeValidation)
+  .superRefine((body, context) => {
+    validateRequirementImportImages(body, context)
+    validateRequirementImportScope(body, context)
+  })
 
 type GenerateRequirementImportBody = z.infer<
   typeof generateRequirementImportSchema
@@ -204,8 +207,16 @@ export const POST = secureMutationRoute({
       )
     }
 
-    const importInstruction =
-      await createRequirementsRuntime(db).service.buildImportAiPrompt(locale)
+    let importInstruction: string
+    try {
+      importInstruction =
+        await createRequirementsRuntime(db).service.buildImportAiPrompt(locale)
+    } catch (error) {
+      logSanitizedError('AI requirement import prompt loading failed', error)
+      return createUnavailableAiStreamResponse(context, () =>
+        recordStreamEvent('failure', 503),
+      )
+    }
     const systemPrompt = buildRequirementImportSystemPrompt(
       importInstruction,
       locale,

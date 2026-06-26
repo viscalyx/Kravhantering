@@ -279,6 +279,12 @@ export interface BuildRequirementImportRepairPromptOptions {
   locale?: 'en' | 'sv'
 }
 
+function sanitizeRequirementImportRepairInput(rawInput: string): string {
+  const trimmed = rawInput.trim()
+  const fenceMatch = trimmed.match(/^```[^\r\n`]*\r?\n([\s\S]*?)\r?\n```$/)
+  return fenceMatch?.[1]?.trim() ?? trimmed
+}
+
 export function buildRequirementImportRepairPrompt({
   brokenJson,
   errors,
@@ -312,6 +318,13 @@ export function buildRequirementImportRepairPrompt({
           'repair',
           'defaultValidationError',
         ])}`
+  const encodedBrokenJson = JSON.stringify(
+    {
+      invalidJsonPayload: sanitizeRequirementImportRepairInput(brokenJson),
+    },
+    null,
+    2,
+  )
 
   return `${intro}
 
@@ -321,9 +334,7 @@ ${errorHeading}
 ${formattedErrors}
 
 ${jsonHeading}
-\`\`\`json
-${brokenJson}
-\`\`\``
+${encodedBrokenJson}`
 }
 
 function formatIssuePath(path: ZodError['issues'][number]['path']): string {

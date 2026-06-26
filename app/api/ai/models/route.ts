@@ -45,15 +45,9 @@ const modelCache = new Map<string, ModelCacheEntry>()
 const modelsQuerySchema = z
   .object({
     refresh: z.literal('1').optional(),
-    scopeId: z.coerce.number().int().positive().optional(),
-    scopeType: z.enum(['requirement_area', 'specification']).optional(),
     supported_parameters: z.string().trim().max(10_000).optional(),
   })
   .strict()
-  .refine(query => (query.scopeId == null) === (query.scopeType == null), {
-    message: 'scopeType and scopeId must be provided together',
-    path: ['scopeId'],
-  })
 
 const supportedParametersSchema = z
   .array(boundedDbStringSchema)

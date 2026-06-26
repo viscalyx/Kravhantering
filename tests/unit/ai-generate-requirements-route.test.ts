@@ -6,6 +6,7 @@ import { REQUIREMENTS_IMPORT_SCHEMA_VERSION } from '@/lib/requirements/import-sc
 import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 
 const routeState = vi.hoisted(() => ({
+  buildImportAiPrompt: vi.fn(),
   generateChatStream: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   query: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock('@/lib/requirements/server', async importOriginal => {
     ...original,
     createRequirementsRuntime: vi.fn(() => ({
       service: {
-        buildImportAiPrompt: vi.fn(async () => '# Import contract'),
+        buildImportAiPrompt: routeState.buildImportAiPrompt,
       },
     })),
   }
@@ -77,6 +78,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
       query: routeState.query,
     })
     routeState.query.mockResolvedValue([])
+    routeState.buildImportAiPrompt.mockResolvedValue('# Import contract')
     routeState.resolveOpenRouterModelCapabilities.mockResolvedValue({
       contextLength: 200000,
       id: 'anthropic/claude-sonnet-4',
@@ -170,5 +172,77 @@ describe('POST /api/ai/generate-requirement-import', () => {
     expect(text).toContain('event: validation_error')
     expect(text).not.toContain('event: done')
     expect(text).toContain('Generated JSON did not match')
+  })
+
+  it('streams provider unavailable when prompt loading fails before generation starts', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    routeState.buildImportAiPrompt.mockRejectedValueOnce(
+      new Error('prompt service unavailable'),
+    )
+
+    try {
+      const response = await POST(makeRequest())
+      const text = await response.text()
+
+      expect(response.status).toBe(503)
+      expect(response.headers.get('Content-Type')).toContain(
+        'text/event-stream',
+      )
+      expect(text).toContain('event: error')
+      expect(text).toContain('AI provider is unavailable')
+      expect(routeState.generateChatStream).not.toHaveBeenCalled()
+      expect(parseCapacityEvents(consoleErrorSpy)[0]).toMatchObject({
+        event: 'capacity.operation.failed',
+        operation: 'ai.generate-requirement-import',
+        status_code: 503,
+      })
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('localizes image and scope validation errors from the request locale', async () => {
+    const imageResponse = await POST(
+      makeRequest({
+        areaId: 1,
+        images: [{ dataUrl: 'data:text/plain;base64,SGVq' }],
+        locale: 'sv',
+        mode: 'library',
+        need: 'säker loggning',
+      }),
+    )
+    const imageBody = (await imageResponse.json()) as {
+      issues: Array<{ message: string; path: string }>
+    }
+
+    expect(imageResponse.status).toBe(400)
+    expect(imageBody.issues).toEqual([
+      expect.objectContaining({
+        message: 'Bildtypen stöds inte. Använd PNG, JPEG, GIF eller WebP.',
+        path: 'images.0.dataUrl',
+      }),
+    ])
+
+    const scopeResponse = await POST(
+      makeRequest({
+        locale: 'sv',
+        mode: 'specification-local',
+        need: 'säker loggning',
+      }),
+    )
+    const scopeBody = (await scopeResponse.json()) as {
+      issues: Array<{ message: string; path: string }>
+    }
+
+    expect(scopeResponse.status).toBe(400)
+    expect(scopeBody.issues).toEqual([
+      expect.objectContaining({
+        message:
+          'Biblioteksläge kräver areaId och kravunderlagslokalt läge kräver specificationIdOrSlug.',
+        path: 'mode',
+      }),
+    ])
   })
 })

@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { type RefinementCtx, z } from 'zod'
 import type { ContentPart } from '@/lib/ai/openrouter-client'
 import {
   DEFAULT_REQUIREMENT_CANDIDATE_COUNT,
@@ -40,7 +40,22 @@ export const providerPreferencesSchema = z
   })
   .strict()
 
-export const imageDataUrlSchema = z.string().superRefine((dataUrl, context) => {
+type RequirementImportLocale = z.infer<typeof localeSchema>
+
+function requirementImportLocale(body: {
+  locale?: RequirementImportLocale
+}): RequirementImportLocale {
+  return body.locale ?? 'en'
+}
+
+export const imageDataUrlSchema = z.string()
+
+function validateImageDataUrl(
+  dataUrl: string,
+  context: RefinementCtx,
+  locale: RequirementImportLocale,
+  path: Array<number | string>,
+): void {
   const mimeMatch = dataUrl.match(/^data:([^;]+);base64,/)
   if (
     !mimeMatch ||
@@ -50,7 +65,8 @@ export const imageDataUrlSchema = z.string().superRefine((dataUrl, context) => {
   ) {
     context.addIssue({
       code: 'custom',
-      message: getPromptMessage('en', ['ai', 'imageSchemaErrorType']),
+      message: getPromptMessage(locale, ['ai', 'imageSchemaErrorType']),
+      path,
     })
     return
   }
@@ -60,10 +76,28 @@ export const imageDataUrlSchema = z.string().superRefine((dataUrl, context) => {
   if (approxBytes > MAX_AI_IMAGE_BYTES) {
     context.addIssue({
       code: 'custom',
-      message: getPromptMessage('en', ['ai', 'imageSchemaErrorSize']),
+      message: getPromptMessage(locale, ['ai', 'imageSchemaErrorSize']),
+      path,
     })
   }
-})
+}
+
+export function validateRequirementImportImages(
+  body: {
+    images?: Array<{ dataUrl: string }>
+    locale?: RequirementImportLocale
+  },
+  context: RefinementCtx,
+): void {
+  const locale = requirementImportLocale(body)
+  for (const [index, image] of (body.images ?? []).entries()) {
+    validateImageDataUrl(image.dataUrl, context, locale, [
+      'images',
+      index,
+      'dataUrl',
+    ])
+  }
+}
 
 export const aiRequirementImportModeSchema = z.enum([
   'library',
@@ -80,9 +114,24 @@ export function isValidRequirementImportScope(body: {
     : body.specificationId != null && body.areaId == null
 }
 
-export const requirementImportScopeValidation = {
-  message: getPromptMessage('en', ['ai', 'invalidRequirementImportScope']),
-  path: ['mode'],
+export function validateRequirementImportScope(
+  body: {
+    areaId?: number
+    locale?: RequirementImportLocale
+    mode: 'library' | 'specification-local'
+    specificationId?: number
+  },
+  context: RefinementCtx,
+): void {
+  if (isValidRequirementImportScope(body)) return
+  context.addIssue({
+    code: 'custom',
+    message: getPromptMessage(requirementImportLocale(body), [
+      'ai',
+      'invalidRequirementImportScope',
+    ]),
+    path: ['mode'],
+  })
 }
 
 export const aiRequirementImportScopeBaseSchema = z
@@ -94,10 +143,7 @@ export const aiRequirementImportScopeBaseSchema = z
   .strict()
 
 export const aiRequirementImportScopeSchema =
-  aiRequirementImportScopeBaseSchema.refine(
-    isValidRequirementImportScope,
-    requirementImportScopeValidation,
-  )
+  aiRequirementImportScopeBaseSchema.superRefine(validateRequirementImportScope)
 
 export const aiRequirementImportBaseBodySchema =
   aiRequirementImportScopeBaseSchema.extend({

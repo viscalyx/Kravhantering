@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
 import { getKeyInfo } from '@/lib/ai/openrouter-client'
 import {
   AI_CREDIT_INFORMATION_UNAVAILABLE_MESSAGE,
   logSanitizedError,
 } from '@/lib/http/safe-errors'
-import { parseSearchParams } from '@/lib/http/validation'
 import {
   observeCapacity,
   recordCapacityEvent,
@@ -20,24 +18,8 @@ const AI_CREDITS_RATE_LIMIT = 20
 const AI_CREDITS_RATE_WINDOW_MS = 60_000
 const AI_CREDITS_SLOW_THRESHOLD_MS = 2_000
 
-const aiCreditsQuerySchema = z
-  .object({
-    scopeId: z.coerce.number().int().positive().optional(),
-    scopeType: z.enum(['requirement_area', 'specification']).optional(),
-  })
-  .strict()
-  .refine(query => (query.scopeId == null) === (query.scopeType == null), {
-    message: 'scopeType and scopeId must be provided together',
-    path: ['scopeId'],
-  })
-
 export async function GET(request: Request) {
   const context = await createRequestContext(request, 'rest')
-  const parsedQuery = parseSearchParams(
-    new URL(request.url).searchParams,
-    aiCreditsQuerySchema,
-  )
-  if (!parsedQuery.ok) return parsedQuery.response
   if (!context.actor.isAuthenticated) {
     const error = unauthorizedError()
     const { body, status } = toHttpErrorPayload(error)

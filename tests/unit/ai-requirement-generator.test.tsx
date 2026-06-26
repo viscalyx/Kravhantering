@@ -14,6 +14,7 @@ const translate = Object.assign(
     const messages: Record<string, string> = {
       analysisTab: 'AI analysis',
       candidateCount: 'Number of requirement candidates',
+      continueToImport: 'Preview requirements in import',
       rawResultTab: 'Raw result',
       'requestExplanation.aiInstructionLabel': 'AI instruction',
       'requestExplanation.aiInstructionValue':
@@ -87,6 +88,7 @@ const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
 import AiRequirementGenerator from '@/components/AiRequirementGenerator'
+import type { ImportRequirementsPayload } from '@/lib/requirements/import-schema'
 
 const testAreas = [
   { id: 1, name: 'Security' },
@@ -266,7 +268,10 @@ async function renderOpenGenerator(overrides?: {
   expectedModelName?: string
   loadModels?: boolean
   onClose?: () => void
-  onCreated?: () => void
+  onImportPreview?: (
+    payload: ImportRequirementsPayload,
+    options: { areaId?: number },
+  ) => void
   selectArea?: boolean
 }) {
   render(
@@ -274,7 +279,7 @@ async function renderOpenGenerator(overrides?: {
       aiGenerationAvailability={overrides?.aiGenerationAvailability}
       areas={overrides?.areas ?? testAreas}
       onClose={overrides?.onClose ?? vi.fn()}
-      onCreated={overrides?.onCreated ?? vi.fn()}
+      onImportPreview={overrides?.onImportPreview ?? vi.fn()}
       open
     />,
   )
@@ -349,7 +354,7 @@ describe('AiRequirementGenerator', () => {
       <AiRequirementGenerator
         areas={testAreas}
         onClose={vi.fn()}
-        onCreated={vi.fn()}
+        onImportPreview={vi.fn()}
         open={false}
       />,
     )
@@ -488,7 +493,7 @@ describe('AiRequirementGenerator', () => {
     const props = {
       areas: testAreas,
       onClose: vi.fn(),
-      onCreated: vi.fn(),
+      onImportPreview: vi.fn(),
     }
     const { rerender } = render(<AiRequirementGenerator {...props} open />)
 
@@ -1365,6 +1370,71 @@ describe('AiRequirementGenerator', () => {
     expect(
       screen.queryByRole('button', { name: /createSelected/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it('hands the generated preview payload to the import preview callback', async () => {
+    const onImportPreview = vi.fn()
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/ai/generate-requirement-import'
+      ) {
+        const payload = generatedImportPayload('Generated security requirement')
+        return generationStreamResponse({
+          payload,
+          rawContent: JSON.stringify(payload),
+          stats: {
+            completionTokens: 12,
+            cost: 0,
+            promptTokens: 10,
+            reasoningTokens: 0,
+            totalTokens: 22,
+          },
+          thinking: '',
+        })
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/requirements/import/preview'
+      ) {
+        return previewResponse('Generated security requirement')
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator({ onImportPreview })
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Encrypt logs')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    expect(
+      await screen.findByText('Generated security requirement'),
+    ).toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'Preview requirements in import',
+      }),
+    )
+
+    expect(onImportPreview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requirements: [
+          expect.objectContaining({
+            description: 'Generated security requirement',
+          }),
+        ],
+        schemaVersion: 'requirement-import.v1',
+      }),
+      { areaId: 1 },
+    )
   })
 
   it('streams analysis text in the right pane and follows appended content', async () => {

@@ -32,6 +32,7 @@ const REQUIRED_PROMPT_MESSAGE_PATHS = [
   ['ai', 'prompt', 'repair', 'intro'],
   ['ai', 'prompt', 'repair', 'errorHeading'],
   ['ai', 'prompt', 'repair', 'jsonHeading'],
+  ['ai', 'prompt', 'repair', 'defaultValidationError'],
 ] as const
 
 const REQUIRED_PROMPT_MESSAGE_LIST_PATHS = [
@@ -208,6 +209,20 @@ describe('buildRequirementImportRepairPrompt', () => {
     expect(prompt).toContain('Repair the JSON')
     expect(prompt).toContain('Preserve the requirement content')
     expect(prompt).toContain('requirements: must contain at least 1 item')
-    expect(prompt).toContain('```json\n{"requirements":[]}\n```')
+    expect(prompt).toContain('"invalidJsonPayload": "{\\"requirements\\":[]}"')
+    expect(prompt).not.toContain('```json')
+  })
+
+  it('strips outer markdown fences and uses the fallback repair error', () => {
+    const prompt = buildRequirementImportRepairPrompt({
+      brokenJson: '```json\n{"requirements":[]}\n```',
+      errors: [],
+    })
+
+    expect(prompt).toContain(
+      '- JSON did not validate against the import contract.',
+    )
+    expect(prompt).toContain('"invalidJsonPayload": "{\\"requirements\\":[]}"')
+    expect(prompt).not.toMatch(/^```/m)
   })
 })
