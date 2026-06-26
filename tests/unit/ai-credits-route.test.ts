@@ -117,35 +117,6 @@ describe('GET /api/ai/credits', () => {
     expectNoAuthorizationSideEffects()
   })
 
-  it('ignores legacy AI generation scope parameters for authenticated credit lookup', async () => {
-    const { getKeyInfo } = await import('@/lib/ai/openrouter-client')
-    vi.mocked(getKeyInfo).mockResolvedValueOnce({
-      isFreeTier: false,
-      limit: 50,
-      limitRemaining: 37,
-      managementKeyMissing: false,
-      totalCredits: 10,
-      usage: 13,
-      usageDaily: 2,
-    })
-
-    const response = await GET(
-      makeRequest(
-        [],
-        true,
-        'http://localhost:3000/api/ai/credits?scopeType=specification&scopeId=42',
-      ),
-    )
-
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toMatchObject({
-      limit: 50,
-      totalCredits: 10,
-    })
-    expect(getKeyInfo).toHaveBeenCalled()
-    expectNoAuthorizationSideEffects()
-  })
-
   it('denies anonymous credit lookup before calling OpenRouter', async () => {
     const { getKeyInfo } = await import('@/lib/ai/openrouter-client')
 

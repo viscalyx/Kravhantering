@@ -421,28 +421,6 @@ describe('requirement-areas route', () => {
       )
     })
 
-    it('rejects obsolete person payload fields on create', async () => {
-      const ownerPersonPayload = {
-        displayName: 'Verified Owner',
-        email: 'preview.owner@example.test',
-        givenName: 'Verified',
-        hsaId: 'NO5560000001-new1',
-        middleName: null,
-        surname: 'Owner',
-      }
-      const body = {
-        ownerHsaId: 'NO5560000001-new1',
-        ownerPersonPreview: ownerPersonPayload,
-        prefix: 'NEW',
-        name: 'New requirement area',
-      }
-
-      const res = await POST(request(body))
-
-      expect(res.status).toBe(400)
-      expect(mocks.createArea).not.toHaveBeenCalled()
-    })
-
     it('requires ownerHsaId', async () => {
       const res = await POST(
         request({ prefix: 'NEW', name: 'New requirement area' }),
@@ -456,21 +434,6 @@ describe('requirement-areas route', () => {
       const res = await POST(
         request({
           ownerHsaId: 'not-hsa',
-          prefix: 'NEW',
-          name: 'New requirement area',
-        }),
-      )
-
-      expect(res.status).toBe(400)
-      expect(mocks.createArea).not.toHaveBeenCalled()
-    })
-
-    it('rejects legacy ownerId and ownerName fields', async () => {
-      const res = await POST(
-        request({
-          ownerHsaId: 'SE5560000001-new1',
-          ownerId: 1,
-          ownerName: 'Anna Svensson',
           prefix: 'NEW',
           name: 'New requirement area',
         }),
@@ -605,20 +568,6 @@ describe('requirement-areas route', () => {
           'Requirement area owner cannot also be requirement area co-author',
       })
       expect(mocks.updateArea).not.toHaveBeenCalled()
-    })
-
-    it('rejects legacy ownerId and ownerName fields', async () => {
-      const res = await PUT(
-        request(
-          { ownerId: 1, ownerName: 'Anna Svensson' },
-          'http://localhost/api/requirement-areas/1',
-          'PUT',
-        ),
-        makeParams('1'),
-      )
-
-      expect(res.status).toBe(400)
-      expect(mocks.updateAreaWithOwnerCheck).not.toHaveBeenCalled()
     })
   })
 })

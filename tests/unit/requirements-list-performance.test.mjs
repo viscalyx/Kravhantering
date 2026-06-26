@@ -45,13 +45,11 @@ describe('requirements-list-performance.mjs', () => {
     expect(seedSql).toContain("CONCAT(N'SE5560000001-perf', area.area_index)")
     expect(seedSql).toContain('SET IDENTITY_INSERT requirements ON')
     expect(seedSql).toContain('published_version_number')
-    expect(seedSql).not.toContain('WHEN v.version_number = 1 THEN 3')
     expect(seedSql).toContain(
       'Performance fixture generated duplicate Published requirement_versions rows.',
     )
     expect(seedSql).toContain('requirement_version_norm_references')
     expect(seedSql).toContain('priority_level_id')
-    expect(seedSql).not.toContain('risk_level_id')
     expect(
       scenarios.find(scenario => scenario.name === 'classification-filters')
         .options,
@@ -72,7 +70,6 @@ describe('requirements-list-performance.mjs', () => {
       "N'priorityLevelIds' AS optionKey",
     )
     expect(buildReferencePreconditionSql()).toContain('FROM priority_levels')
-    expect(buildReferencePreconditionSql()).not.toContain('risk_levels')
   })
 
   it('parses SQL Server logical reads from STATISTICS IO messages', () => {

@@ -133,9 +133,6 @@ describe('requirement selection questions DAL', () => {
       expect.stringContaining('item.requirements_specification_id = @0'),
       [6],
     )
-    expect(String(query.mock.calls[0]?.[0])).not.toContain(
-      'item.specification_id',
-    )
   })
 
   it('treats no-requirement-selection answers as answered without filtering available requirements', async () => {

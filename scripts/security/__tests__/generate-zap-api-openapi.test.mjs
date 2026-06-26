@@ -139,7 +139,6 @@ describe('generateZapApiOpenApi', () => {
       DEFAULT_ALLOWED_OPERATIONS.map(operation => operation.path),
     )
     expect(generated.paths).toHaveProperty('/api/priority-levels')
-    expect(generated.paths).not.toHaveProperty('/api/risk-levels')
     expect(fs.existsSync(DEFAULT_SOURCE)).toBe(true)
   })
 })

@@ -58,6 +58,22 @@ expect(result).toEqual([{ slug: 'post-1' }, { slug: 'post-2' }])
 - Clear mocks in `beforeEach`
 - Use `@/lib/` path alias in mocks (not `../../lib/`)
 - Test ARIA roles and attributes on status and state components: assert `role`, `aria-current`, `aria-label` values using `screen.getByRole()` and `container.querySelector('[aria-current="step"]')`.
+- Test current behavior only. Do not add tests whose only purpose is guarding
+  removed fields, renamed fields, retired query tokens, old aliases, or other
+  historical behavior from returning.
+- When behavior is removed, renamed, or migrated, delete obsolete tests or
+  rewrite them around the current contract. Do not keep tests that only prove
+  how an older payload, route, field, SQL alias, UI label, or command used to
+  work.
+- Negative assertions are valid when they check a current contract, failure
+  mode, authorization boundary, privacy/security invariant, data-race guard, or
+  schema boundary. Name that invariant in the test.
+- Do not use `.not.*` assertions or hidden-element checks only to prove a
+  retired field, route, label, query parameter, command, or payload shape is
+  still absent.
+- Keep historical regression tests only for security-sensitive surfaces such as
+  authentication, authorization, CSRF, privacy, audit, token handling, or
+  secret redaction. Name the current security invariant in the test.
 
 ## React `act()` Guidance
 

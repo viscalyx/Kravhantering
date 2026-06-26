@@ -109,7 +109,7 @@ describe('Operator Upgrade gate', () => {
     )
   })
 
-  it('accepts operator upgrade notes without a legacy prefix', () => {
+  it('accepts operator upgrade notes in the current PR template format', () => {
     const result = evaluateOperatorUpgradeGate({
       prBody: operatorNotesPrBody,
     })

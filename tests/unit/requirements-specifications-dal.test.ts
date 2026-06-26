@@ -671,7 +671,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       expect.stringContaining('FROM specification_needs_references'),
       [5, 'IAM-42'],
     )
-    expect(query.mock.calls[0]?.[0]).not.toContain('needs_reference.id <> @2')
     expect(query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('INSERT INTO specification_needs_references'),

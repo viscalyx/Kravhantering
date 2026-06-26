@@ -113,30 +113,6 @@ describe('GET /api/ai/models', () => {
     expect(listModels).not.toHaveBeenCalled()
   })
 
-  it('rejects legacy AI generation scope query parameters', async () => {
-    const { listModels } = await import('@/lib/ai/openrouter-client')
-
-    const response = await GET(
-      makeRequest(
-        'http://localhost:3000/api/ai/models?scopeType=specification&scopeId=42',
-      ),
-    )
-    const body = (await response.json()) as {
-      error: string
-      issues: Array<{ code: string; path: string }>
-    }
-
-    expect(response.status).toBe(400)
-    expect(body.error).toBe('Invalid request')
-    expect(body.issues).toEqual([
-      expect.objectContaining({
-        code: 'unrecognized_keys',
-        path: '$',
-      }),
-    ])
-    expect(listModels).not.toHaveBeenCalled()
-  })
-
   it('does not add structured_outputs when model is not in structured subset', async () => {
     const { listModels } = await import('@/lib/ai/openrouter-client')
     const glmModel = {

@@ -184,10 +184,6 @@ describe('EditRequirementClient', () => {
       'data-initial-requirement-package-ids',
       '[7]',
     )
-    const initialData = JSON.parse(
-      screen.getByTestId('req-form').getAttribute('data-initial-data') ?? '{}',
-    ) as Record<string, unknown>
-    expect(initialData).not.toHaveProperty('ownerId')
     expect(screen.getByText(/REQ-001/)).toBeInTheDocument()
   })
 

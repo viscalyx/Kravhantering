@@ -1266,7 +1266,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     )
     window.localStorage.setItem(
       'requirements-specifications.visibleColumns.left.v3',
-      JSON.stringify(['uniqueId', 'legacySpecificationColumn']),
+      JSON.stringify(['uniqueId', 'unknownSpecificationColumn']),
     )
 
     renderRequirementsSpecificationDetailClient()

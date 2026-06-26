@@ -42,16 +42,6 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(stripWrappingQuotes('"value')).toBe('"value')
   })
 
-  it('ignores removed SQL Server-specific URL aliases', () => {
-    expect(() =>
-      getSqlServerDatabaseUrl({
-        DATABASE_URL: 'postgres://legacy.example.invalid/kravhantering',
-        SQLSERVER_DATABASE_URL:
-          'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-      }),
-    ).toThrow(/DATABASE_URL, or DB_HOST\/DB_PORT\/DB_NAME/)
-  })
-
   it('derives the main SQL Server URL from DB_* parts when no explicit URL is set', () => {
     expect(
       getSqlServerDatabaseUrl({
@@ -962,23 +952,6 @@ describe('db-sqlserver-admin.mjs', () => {
     const error = vi.fn()
 
     const exitCode = await main(['unknown'], {
-      consoleObj: { error, log: vi.fn() },
-      env: {
-        DATABASE_URL:
-          'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-      },
-    })
-
-    expect(exitCode).toBe(1)
-    expect(error).toHaveBeenCalledWith(
-      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migrate|seed:required|seed:demo|demo:clear|setup|browse-config>',
-    )
-  })
-
-  it('rejects the removed generic seed command', async () => {
-    const error = vi.fn()
-
-    const exitCode = await main(['seed'], {
       consoleObj: { error, log: vi.fn() },
       env: {
         DATABASE_URL:

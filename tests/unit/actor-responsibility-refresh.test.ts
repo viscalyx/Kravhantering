@@ -79,7 +79,6 @@ describe('actor responsibility person refresh', () => {
     expect(sql).toContain('FROM requirement_responsibility_people person')
     expect(sql).toContain('WHERE person.hsa_id = @0')
     expect(sql).toContain('EXISTS')
-    expect(sql).not.toContain('last_fetched_at')
   })
 
   it('skips refresh without querying when the session identity is incomplete', async () => {

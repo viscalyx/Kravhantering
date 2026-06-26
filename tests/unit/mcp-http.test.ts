@@ -1163,32 +1163,4 @@ describe('handleRequirementsMcpRequest', () => {
     await client.close()
     await transport.close()
   })
-
-  it('rejects the old references field in manage_requirement due to strict schema', async () => {
-    const { client, transport } = await createClient()
-
-    const result = await client.callTool({
-      arguments: {
-        operation: 'edit',
-        uniqueId: 'INT0001',
-        requirement: {
-          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
-          baseVersionId: 10,
-          description: 'Updated description',
-          references: [1],
-        },
-      },
-      name: 'requirements_manage_requirement',
-    })
-
-    expect(result.isError).toBe(true)
-    const content = result.content as Array<{
-      text?: string
-      type: string
-    }>
-    expect(content[0]?.text).toMatch(/unrecognized/i)
-
-    await client.close()
-    await transport.close()
-  })
 })

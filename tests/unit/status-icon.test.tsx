@@ -11,7 +11,7 @@ import {
 import { getStatusIconComponent } from '@/lib/icons/status-icon-components'
 
 describe('status icon allowlist', () => {
-  it('recognizes the installed Lucide icon catalog and previous defaults', () => {
+  it('recognizes the installed Lucide icon catalog and configured defaults', () => {
     expect(STATUS_ICON_NAMES.length).toBeGreaterThan(1000)
 
     for (const iconName of [

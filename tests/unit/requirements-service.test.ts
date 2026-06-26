@@ -518,7 +518,7 @@ describe('createRequirementsService', () => {
   it('preserves archived rows with pending replacement versions in queryCatalog results', async () => {
     mocks.listRequirements.mockResolvedValue([
       {
-        acceptanceCriteria: 'Legacy acceptance criteria',
+        acceptanceCriteria: 'Archived acceptance criteria',
         areaName: 'Integration',
         categoryNameEn: null,
         categoryNameSv: null,

@@ -80,7 +80,6 @@ describe('requirement list SQL builders', () => {
       'requirement_status.name_sv AS statusNameSv',
     )
     expect(query.sqlText).toContain('ORDER BY CASE WHEN requirement_status')
-    expect(query.sqlText).not.toContain('SELECT rs.name_sv')
   })
 
   it('builds the count query from the same filters without pagination', () => {

@@ -110,8 +110,6 @@ describe('reviewer wording', () => {
 
     expect(source).toContain("reviewer: 'Assigned reviewer'")
     expect(source).toContain("reviewer: 'Tilldelad granskningsperson'")
-    expect(source).not.toContain("reviewer: 'Reviewer'")
-    expect(source).not.toContain("reviewer: 'Granskare'")
   })
 
   it('uses glossary terms in the Swedish data-subject export model', () => {
@@ -124,7 +122,5 @@ describe('reviewer wording', () => {
     expect(text).toContain('Kravgranskare')
     expect(text).toContain('Tilldelad granskningsperson i behörighetsöversyn')
     expect(text).toContain('tilldelad granskningsperson')
-    expect(text).not.toContain('Granskare i behörighetsöversyn')
-    expect(text).not.toContain('utsedd granskare')
   })
 })

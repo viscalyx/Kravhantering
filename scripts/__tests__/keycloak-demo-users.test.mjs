@@ -400,16 +400,4 @@ describe('keycloak-demo-users', () => {
       'Cleared demo users (deleted 1).',
     )
   })
-
-  it('rejects the removed sync-live command', async () => {
-    const consoleObj = { error: vi.fn(), log: vi.fn() }
-
-    await expect(
-      main(['sync-live', '--users', 'users.json'], { consoleObj }),
-    ).resolves.toBe(1)
-
-    expect(consoleObj.error).toHaveBeenLastCalledWith(
-      expect.stringContaining('demo-users:sync'),
-    )
-  })
 })
