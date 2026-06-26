@@ -641,17 +641,27 @@ att stjärnan kan slås av och på utan att modellen väljs. Markera flera model
 som favoriter, stäng och öppna dialogen och kontrollera att den billigaste
 tillgängliga favoritmodellen är förvald.
 Kontrollera att `Modellkapaciteter` visar låsta krav under `Krävs` och valbara
-filter separat. Generera därefter krav med valt kravområde, byt kravområde
-efter att resultat visas och kontrollera att `AI-analys` och `Råresultat` är
-separata flikar med svart monospace-yta som scrollar internt utan att ändra
-modalens höjd. Kontrollera att kravområdeslistan bara visar kravområden där
-användaren får författa krav. Kontrollera att kravkandidaternas kategori, typ,
+filter separat. Öppna `Så byggs AI-anropet` och kontrollera att dialogen
+beskriver styrning från applikationen, användarens beställning och
+formatkravet för svaret på ett begripligt sätt. Kontrollera att modell,
+resonemangsnivå och dataintegritetsval visas som val som påverkar anropet.
+Öppna `Visa exakt text som skickas` och kontrollera att `Systeminstruktion`,
+`Användarens beställning` och formatkrav visas under varandra i den ordning
+modellen får dem. Kontrollera att dialogen förklarar att importregler ingår i
+systeminstruktionen, att AI-instruktionen ingår i användarens beställning och
+att JSON-schemat skickas separat som tvingande svarsformat. Generera därefter
+krav med valt kravområde, byt kravområde efter att resultat visas och
+kontrollera att `AI-analys` och `Råresultat` är separata flikar med svart
+monospace-yta som scrollar internt utan att ändra modalens höjd. Kontrollera att
+kravområdeslistan
+bara visar kravområden där användaren får författa krav. Kontrollera att
+kravkandidaternas kategori, typ,
 kvalitetsegenskap och prioritet visas med namn från referensdata, samt att ett
 olöst id eller namn visas med gul varningsikon. Kontrollera att `Skapa nya
 kravkandidater` ligger till vänster om urvalsknappen `Avmarkera alla`. Skicka
-kravkandidaterna till importgranskning och kontrollera att
-`Import-JSON`-formuläret inte visas kort innan importgranskningen öppnas.
-Försök skapa. Stäng dialogen och öppna den igen.
+kravkandidaterna till importgranskning och kontrollera att `Import-JSON`-
+formuläret inte visas kort innan importgranskningen öppnas. Försök skapa. Stäng
+dialogen och öppna den igen.
 
 **Förväntat resultat:** Endast modeller som uppfyller baskraven visas,
 resonemangsnivån skickas med genereringen, favoritmarkering påverkar inte vald
@@ -663,7 +673,9 @@ klassificeringsfält i kravkandidaterna använder referensdatans namn och marker
 olösta värden, knappen för att skapa nya kravkandidater är placerad intill
 urvalet, resultat samt skapa-knapp rensas när scope ändras och nyöppnad dialog
 startar med tomt behov, tomt kravområde, standardantal kravkandidater och
-stängda tillfälliga paneler.
+stängda tillfälliga paneler. `Så byggs AI-anropet` ger transparens om
+AI-anropet utan att visa schema- och importinstruktionsytan från vyerna för
+import som en del av huvudformuläret.
 
 ### REQ-16: Admin Center stänger av AI-kravgenerering
 

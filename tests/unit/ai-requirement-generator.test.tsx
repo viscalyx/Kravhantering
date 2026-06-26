@@ -15,6 +15,47 @@ const translate = Object.assign(
       analysisTab: 'AI analysis',
       candidateCount: 'Number of requirement candidates',
       rawResultTab: 'Raw result',
+      'requestExplanation.aiInstructionLabel': 'AI instruction',
+      'requestExplanation.aiInstructionValue':
+        "The application's writing rules for requirement candidates",
+      'requestExplanation.applicationRulesSummary':
+        'The application first assembles rules that control how the model should work and how the answer can be imported.',
+      'requestExplanation.applicationRulesTitle': 'Application control',
+      'requestExplanation.badgeFixed': 'Fixed rule',
+      'requestExplanation.badgeForm': 'From the form',
+      'requestExplanation.badgeFormat': 'Mandatory format',
+      'requestExplanation.buttonHelp':
+        'See which instructions, form values, and format rules are sent when candidates are created.',
+      'requestExplanation.emptyNeed': '(not filled in yet)',
+      'requestExplanation.exactMessagesHelp':
+        'The parts are shown in the order the model receives them.',
+      'requestExplanation.exactMessagesTitle': 'Show exact text sent',
+      'requestExplanation.formatLabel': 'Format',
+      'requestExplanation.fullSchemaLabel': 'Full schema',
+      'requestExplanation.imageCount': '{count} images',
+      'requestExplanation.imagesLabel': 'Images',
+      'requestExplanation.importRulesSummary':
+        'The import rules contain current reference data and which fields the import accepts.',
+      'requestExplanation.importViewsValue': 'Available in the import views',
+      'requestExplanation.intro':
+        'The AI request consists of application rules, your request, and a mandatory response format.',
+      'requestExplanation.jsonSchemaValue': 'JSON schema',
+      'requestExplanation.mandatoryFormatValue': 'Mandatory response format',
+      'requestExplanation.noDataPolicies': 'No special choices',
+      'requestExplanation.nonOverrideSummary':
+        "The user's need cannot override the import rules or the response format.",
+      'requestExplanation.otherChoicesTitle':
+        'Other choices that affect the request',
+      'requestExplanation.responseFormatTitle': 'Response format requirement',
+      'requestExplanation.schemaNote':
+        'The JSON schema is not shown here because it is sent separately in the API request as a mandatory response format.',
+      'requestExplanation.sentAsLabel': 'Sent as',
+      'requestExplanation.systemInstructionSummary':
+        'The system instruction sets the role and says that the import rules apply.',
+      'requestExplanation.systemInstructionTitle': 'System instruction',
+      'requestExplanation.title': 'How the AI request is built',
+      'requestExplanation.userOrderExactTitle': 'User request',
+      'requestExplanation.userOrderTitle': 'User request',
     }
     const template = messages[key] ?? key
     if (params) {
@@ -272,6 +313,15 @@ describe('AiRequirementGenerator', () => {
       }
       if (
         typeof url === 'string' &&
+        url.startsWith('/api/requirements/import/ai-prompt')
+      ) {
+        return {
+          ok: true,
+          text: async () => '# Import instruction\n\nUse schemaVersion.',
+        }
+      }
+      if (
+        typeof url === 'string' &&
         url === '/api/requirements/import/preview'
       ) {
         return previewResponse('Generated security requirement')
@@ -372,6 +422,47 @@ describe('AiRequirementGenerator', () => {
     )
   })
 
+  it('shows how the AI request is built without loading the import schema', async () => {
+    await renderOpenGenerator()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /How the AI request is built/ }),
+    )
+
+    expect(
+      screen.getByRole('dialog', {
+        name: 'How the AI request is built',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Application control')).toBeInTheDocument()
+    expect(screen.getAllByText('User request').length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByText('Response format requirement').length,
+    ).toBeGreaterThan(0)
+    expect(screen.getByText('Mandatory response format')).toBeInTheDocument()
+    expect(
+      screen.getByText(/not shown here because it is sent separately/),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Import instruction and schema/ }),
+    ).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByText('Show exact text sent'))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/experienced requirements engineer/),
+      ).toBeInTheDocument()
+    })
+    expect(screen.getAllByText(/Import instruction/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Use schemaVersion/).length).toBeGreaterThan(0)
+    expect(
+      mockFetch.mock.calls.some(([url]) =>
+        String(url).startsWith('/api/requirements/import/schema'),
+      ),
+    ).toBe(false)
+  })
+
   it('disables generate button when topic or area is empty', async () => {
     await renderOpenGenerator({ loadModels: false })
 
@@ -415,7 +506,9 @@ describe('AiRequirementGenerator', () => {
       },
     )
     await userEvent.click(screen.getByLabelText('help: topicLabel'))
-    await userEvent.click(screen.getByRole('button', { name: 'advancedLabel' }))
+    await userEvent.click(
+      screen.getByRole('button', { name: /How the AI request is built/ }),
+    )
     await userEvent.click(document.getElementById('ai-model') as HTMLElement)
     await userEvent.type(screen.getByLabelText('modelSearchLabel'), 'claude')
 
@@ -429,8 +522,8 @@ describe('AiRequirementGenerator', () => {
       'true',
     )
     expect(
-      screen.getByRole('button', { name: 'advancedLabel' }),
-    ).toHaveAttribute('aria-expanded', 'true')
+      screen.getByRole('dialog', { name: 'How the AI request is built' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('listbox')).toBeInTheDocument()
 
     rerender(<AiRequirementGenerator {...props} open={false} />)
@@ -452,8 +545,8 @@ describe('AiRequirementGenerator', () => {
       'false',
     )
     expect(
-      screen.getByRole('button', { name: 'advancedLabel' }),
-    ).toHaveAttribute('aria-expanded', 'false')
+      screen.queryByRole('dialog', { name: 'How the AI request is built' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 

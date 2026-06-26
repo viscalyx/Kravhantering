@@ -64,7 +64,9 @@ vi.mock('@/components/RequirementsTable', () => ({
       icon: ReactNode
       id: string
       menuItems?: {
+        disabled?: boolean
         href?: string
+        icon?: ReactNode
         id: string
         label: string
         onClick?: () => void
@@ -728,33 +730,44 @@ describe('RequirementsSpecificationDetailClient', () => {
     ])
   })
 
-  it('orders kravunderlag table actions with import before export and columns last', async () => {
+  it('groups kravunderlag local requirement actions in one flyout before reports and export', async () => {
     renderRequirementsSpecificationDetailClient()
     await waitForInitialAvailableRequirementsRefresh()
 
     const itemsTable = latestItemsTableProps()
     const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
       id: string
+      menuItems?: Array<{
+        disabled?: boolean
+        icon?: ReactNode
+        id: string
+        label: string
+      }>
       position?: string
+      variant?: string
     }>
+    const localRequirementActions = floatingActions.find(
+      action => action.id === 'local-requirement-actions',
+    )
 
     expect(itemsTable.columnPickerPlacement).toBe('end')
     expect(floatingActions.map(action => action.id)).toEqual([
-      'create-local',
-      'ai-assist-local',
+      'local-requirement-actions',
       'print',
-      'import-local',
       'export',
     ])
     expect(
       floatingActions.map(action => action.position ?? 'afterColumns'),
-    ).toEqual([
-      'beforeColumns',
-      'beforeColumns',
-      'afterColumns',
-      'afterColumns',
-      'afterColumns',
+    ).toEqual(['beforeColumns', 'afterColumns', 'afterColumns'])
+    expect(localRequirementActions?.variant).toBe('primary')
+    expect(localRequirementActions?.menuItems).toEqual([
+      expect.objectContaining({ id: 'create-local' }),
+      expect.objectContaining({ disabled: false, id: 'ai-assist-local' }),
+      expect.objectContaining({ id: 'import-local' }),
     ])
+    expect(
+      localRequirementActions?.menuItems?.every(item => item.icon != null),
+    ).toBe(true)
   })
 
   it('encodes profile print report href slugs as one route segment', async () => {
@@ -1728,23 +1741,37 @@ describe('RequirementsSpecificationDetailClient', () => {
       ).toBeInTheDocument()
     })
 
-    const createButton = screen.getByRole('button', {
-      name: 'specification.newLocalRequirement',
+    const localRequirementActionsButton = screen.getByRole('button', {
+      name: 'specification.localRequirementActions',
     })
-    expect(createButton).toHaveAttribute(
+    expect(localRequirementActionsButton).toHaveAttribute(
       'data-developer-mode-name',
       'table action',
     )
-    expect(createButton).toHaveAttribute(
+    expect(localRequirementActionsButton).toHaveAttribute(
       'data-developer-mode-context',
       'requirements specification detail',
     )
-    expect(createButton).toHaveAttribute(
+    expect(localRequirementActionsButton).toHaveAttribute(
       'data-developer-mode-value',
-      'create local requirement',
+      'local requirement actions',
     )
 
-    fireEvent.click(createButton)
+    const localRequirementActionItems = (latestItemsTableProps()
+      .floatingActions ?? []) as {
+      id: string
+      menuItems?: { id: string; onClick?: () => void }[]
+    }[]
+    const localRequirementActions = localRequirementActionItems.find(
+      action => action.id === 'local-requirement-actions',
+    )
+    const createItem = localRequirementActions?.menuItems?.find(
+      item => item.id === 'create-local',
+    )
+
+    await act(async () => {
+      createItem?.onClick?.()
+    })
 
     await waitFor(() => {
       expect(

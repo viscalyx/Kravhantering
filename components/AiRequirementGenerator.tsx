@@ -7,14 +7,11 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Download,
   HelpCircle,
   ImagePlus,
-  Info,
   Loader2,
   Lock,
   RefreshCw,
-  Settings,
   Sparkles,
   Star,
   X,
@@ -29,6 +26,7 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import AiRequestExplanationDialog from '@/components/AiRequestExplanationDialog'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { modalResizableTextareaRows4ClassName } from '@/components/modal-textarea-class'
@@ -39,7 +37,6 @@ import {
 } from '@/lib/ai/generation-availability'
 import {
   DEFAULT_REQUIREMENT_CANDIDATE_COUNT,
-  getDefaultInstruction,
   MAX_REQUIREMENT_CANDIDATE_COUNT,
   MIN_REQUIREMENT_CANDIDATE_COUNT,
 } from '@/lib/ai/requirement-prompt'
@@ -386,18 +383,6 @@ function modelSupports(model: OpenRouterModel | undefined, parameter: string) {
   return model?.supportedParameters.includes(parameter) ?? false
 }
 
-function createBlobDownload(filename: string, content: string, type: string) {
-  const url = URL.createObjectURL(new Blob([content], { type }))
-  try {
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    link.click()
-  } finally {
-    URL.revokeObjectURL(url)
-  }
-}
-
 function formatRawResult(value: string): string {
   if (!value) return ''
   try {
@@ -524,12 +509,11 @@ export default function AiRequirementGenerator({
     DEFAULT_REQUIREMENT_CANDIDATE_COUNT,
   )
   const [model, setModel] = useState('')
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [showAiInstruction, setShowAiInstruction] = useState(false)
-  const [showImportContract, setShowImportContract] = useState(false)
-  const [importContract, setImportContract] = useState('')
-  const [importSchema, setImportSchema] = useState('')
-  const [importContractLoading, setImportContractLoading] = useState(false)
+  const [aiRequestExplanationOpen, setAiRequestExplanationOpen] =
+    useState(false)
+  const [importInstruction, setImportInstruction] = useState('')
+  const [importInstructionLoading, setImportInstructionLoading] =
+    useState(false)
   const [needHelpOpen, setNeedHelpOpen] = useState(false)
   const [areaHelpOpen, setAreaHelpOpen] = useState(false)
   const [candidateCountHelpOpen, setCandidateCountHelpOpen] = useState(false)
@@ -607,6 +591,23 @@ export default function AiRequirementGenerator({
   const selectedModelPrice = selectedModel
     ? formatModelPrice(selectedModel, t('tierFree'))
     : null
+  const selectedModelName = selectedModel
+    ? `${formatProvider(selectedModel.provider)}: ${selectedModel.name}`
+    : undefined
+  const reasoningEffortLabel =
+    t(
+      REASONING_EFFORT_OPTIONS.find(option => option.value === reasoningEffort)
+        ?.labelKey ?? 'effortHigh',
+    ) ?? ''
+  const selectedDataPolicyLabels = dataPolicies
+    .map(policyKey =>
+      DATA_POLICY_OPTIONS.find(policy => policy.key === policyKey),
+    )
+    .filter(
+      (policy): policy is (typeof DATA_POLICY_OPTIONS)[number] =>
+        policy !== undefined,
+    )
+    .map(policy => t(policy.labelKey))
   const formattedRawResponse = useMemo(
     () => formatRawResult(rawResponse),
     [rawResponse],
@@ -933,10 +934,8 @@ export default function AiRequirementGenerator({
       setNeed('')
       setAreaId('')
       setCandidateCount(DEFAULT_REQUIREMENT_CANDIDATE_COUNT)
-      setShowAdvanced(false)
-      setShowAiInstruction(false)
-      setShowImportContract(false)
-      setImportContractLoading(false)
+      setAiRequestExplanationOpen(false)
+      setImportInstructionLoading(false)
       setNeedHelpOpen(false)
       setAreaHelpOpen(false)
       setCandidateCountHelpOpen(false)
@@ -974,18 +973,15 @@ export default function AiRequirementGenerator({
     resetAuthoringSession()
   }, [open])
 
-  const loadImportContract = useCallback(async () => {
-    if (importContractLoading || (importContract && importSchema)) return
-    setImportContractLoading(true)
+  const loadImportInstruction = useCallback(async () => {
+    if (importInstructionLoading || importInstruction) return
+    setImportInstructionLoading(true)
     try {
-      const [instructionResponse, schemaResponse] = await Promise.all([
-        apiFetch(`/api/requirements/import/ai-prompt?locale=${locale}`),
-        apiFetch(`/api/requirements/import/schema?locale=${locale}`),
-      ])
+      const instructionResponse = await apiFetch(
+        `/api/requirements/import/ai-prompt?locale=${locale}`,
+      )
       const instruction = await instructionResponse.text()
-      const schema = await schemaResponse.json()
-      setImportContract(instruction)
-      setImportSchema(JSON.stringify(schema, null, 2))
+      setImportInstruction(instruction)
     } catch (contractError) {
       setError(
         contractError instanceof Error
@@ -993,9 +989,9 @@ export default function AiRequirementGenerator({
           : t('errors.failedToLoadSystemPrompt'),
       )
     } finally {
-      setImportContractLoading(false)
+      setImportInstructionLoading(false)
     }
-  }, [importContract, importContractLoading, importSchema, locale, t])
+  }, [importInstruction, importInstructionLoading, locale, t])
 
   const loadPreview = useCallback(
     async (payload: ImportRequirementsPayload) => {
@@ -2058,113 +2054,21 @@ export default function AiRequirementGenerator({
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-secondary-200 dark:border-secondary-800">
-                  <button
-                    aria-expanded={showAdvanced}
-                    className="flex min-h-11 w-full items-center justify-between px-3 text-sm font-medium text-secondary-800 hover:bg-secondary-50 dark:text-secondary-100 dark:hover:bg-secondary-800"
-                    onClick={() => setShowAdvanced(open => !open)}
-                    type="button"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Settings aria-hidden className="h-4 w-4" />
-                      {t('advancedLabel')}
+                <button
+                  className="flex min-h-14 w-full items-center justify-between gap-3 rounded-lg border border-secondary-200 px-3 py-3 text-left text-sm text-secondary-800 hover:bg-secondary-50 dark:border-secondary-800 dark:text-secondary-100 dark:hover:bg-secondary-800"
+                  onClick={() => setAiRequestExplanationOpen(true)}
+                  type="button"
+                >
+                  <span className="min-w-0">
+                    <span className="block font-semibold">
+                      {t('requestExplanation.title')}
                     </span>
-                    {showAdvanced ? (
-                      <ChevronDown aria-hidden className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight aria-hidden className="h-4 w-4" />
-                    )}
-                  </button>
-                  {showAdvanced ? (
-                    <div className="space-y-3 border-t border-secondary-200 p-3 dark:border-secondary-800">
-                      <button
-                        aria-expanded={showAiInstruction}
-                        className="flex w-full items-center justify-between rounded-lg bg-secondary-50 px-3 py-2 text-left text-sm font-medium text-secondary-800 dark:bg-secondary-800 dark:text-secondary-100"
-                        onClick={() => setShowAiInstruction(open => !open)}
-                        type="button"
-                      >
-                        {t('aiInstruction')}
-                        {showAiInstruction ? (
-                          <ChevronDown aria-hidden className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight aria-hidden className="h-4 w-4" />
-                        )}
-                      </button>
-                      {showAiInstruction ? (
-                        <pre className="max-h-52 overflow-auto rounded-lg bg-secondary-950 p-3 text-xs text-secondary-50 whitespace-pre-wrap">
-                          {getDefaultInstruction(locale)}
-                        </pre>
-                      ) : null}
-
-                      <button
-                        aria-expanded={showImportContract}
-                        className="flex w-full items-center justify-between rounded-lg bg-secondary-50 px-3 py-2 text-left text-sm font-medium text-secondary-800 dark:bg-secondary-800 dark:text-secondary-100"
-                        onClick={() => {
-                          const next = !showImportContract
-                          setShowImportContract(next)
-                          if (next) void loadImportContract()
-                        }}
-                        type="button"
-                      >
-                        {t('importContract')}
-                        {showImportContract ? (
-                          <ChevronDown aria-hidden className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight aria-hidden className="h-4 w-4" />
-                        )}
-                      </button>
-                      {showImportContract ? (
-                        <div className="space-y-2">
-                          <p className="flex items-start gap-2 text-xs text-secondary-600 dark:text-secondary-300">
-                            <Info aria-hidden className="mt-0.5 h-4 w-4" />
-                            {t('importContractHelp')}
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-secondary-300 px-3 text-sm text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                              disabled={!importContract}
-                              onClick={() =>
-                                createBlobDownload(
-                                  locale === 'sv'
-                                    ? 'kravimport-instruktion.md'
-                                    : 'requirement-import-instructions.md',
-                                  importContract,
-                                  'text/markdown;charset=utf-8',
-                                )
-                              }
-                              type="button"
-                            >
-                              <Download aria-hidden className="h-4 w-4" />
-                              {t('downloadImportInstruction')}
-                            </button>
-                            <button
-                              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-secondary-300 px-3 text-sm text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                              disabled={!importSchema}
-                              onClick={() =>
-                                createBlobDownload(
-                                  locale === 'sv'
-                                    ? 'kravimport.schema.json'
-                                    : 'requirement-import.schema.json',
-                                  importSchema,
-                                  'application/schema+json;charset=utf-8',
-                                )
-                              }
-                              type="button"
-                            >
-                              <Download aria-hidden className="h-4 w-4" />
-                              {t('downloadSchema')}
-                            </button>
-                          </div>
-                          <pre className="max-h-72 overflow-auto rounded-lg bg-secondary-950 p-3 text-xs text-secondary-50 whitespace-pre-wrap">
-                            {importContractLoading
-                              ? tc('loading')
-                              : `${importContract}\n\n${importSchema}`}
-                          </pre>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-secondary-600 dark:text-secondary-300">
+                      {t('requestExplanation.buttonHelp')}
+                    </span>
+                  </span>
+                  <ChevronRight aria-hidden className="h-4 w-4 shrink-0" />
+                </button>
               </div>
             </section>
 
@@ -2649,6 +2553,21 @@ export default function AiRequirementGenerator({
           </footer>
         </motion.div>
         {modelMenuOverlay}
+        <AiRequestExplanationDialog
+          candidateCount={candidateCount}
+          dataPolicyLabels={selectedDataPolicyLabels}
+          imageCount={images.length}
+          importInstruction={importInstruction}
+          importInstructionLoading={importInstructionLoading}
+          locale={locale}
+          modelName={selectedModelName}
+          need={need}
+          needPlaceholder={t('topicPlaceholder')}
+          onClose={() => setAiRequestExplanationOpen(false)}
+          onLoadImportInstruction={loadImportInstruction}
+          open={aiRequestExplanationOpen}
+          reasoningEffortLabel={reasoningEffortLabel}
+        />
       </motion.div>
     </AnimatePresence>,
     document.body,

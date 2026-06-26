@@ -146,12 +146,16 @@ chat-completion work starts.
 
 **Timeout guarantees:**
 
-| Operation | Timeout | Constant |
+<!-- markdownlint-disable MD013 -->
+
+| Operation | Timeout | Contract |
 | --------- | ------- | -------- |
-| Chat completion | 120 s | `DEFAULT_TIMEOUT_MS` |
-| Streaming chat | 120 s | `STREAM_TIMEOUT_MS` |
+| Chat completion | 120 s | absolute request timeout (`DEFAULT_TIMEOUT_MS`) |
+| Streaming chat | 120 s | idle timeout; long active streams may continue while the provider sends chunks |
 | Model list | 10 s | `AbortSignal.timeout()` |
 | Key info | 5 s | `AbortSignal.timeout()` |
+
+<!-- markdownlint-enable MD013 -->
 
 **Signal handling:** the caller's `AbortSignal` and the
 internal timeout are wired so that whichever fires first
@@ -186,6 +190,19 @@ schema. It reuses the kravimport instruction and JSON Schema from section 5.
 The app-owned AI instruction adds generation-specific guidance, while the
 import instruction and schema remain mandatory and cannot be overridden by the
 user's need/context prompt.
+
+The AI request is split into a system message, a user message, and a structured
+response format. The system message contains the AI role, the non-override rule,
+and the runtime-built kravimport instruction. The user message contains the
+app-owned AI instruction, `Behov och sammanhang` / `Need and context`, and the
+requested candidate count. The JSON Schema is not inserted into the system
+message text; it is sent as the mandatory structured response format. The
+AI-assisted authoring UI exposes `Så byggs AI-anropet` / `How the AI request is
+built` as a separate explanation dialog. The dialog shows the request as
+application rules, the user's order, and the mandatory response format, with
+exact system/user/import text available as secondary details. It does not show
+or download the full schema; schema inspection and schema download belong to the
+import views.
 
 The user-facing prompt field is `Behov och sammanhang` / `Need and context`.
 There is no second free-text instruction field; later steering should be added

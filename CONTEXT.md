@@ -338,6 +338,16 @@ hanteras i ordinarie kravprocess.
 _Avoid_: AI-generering som huvudterm, AI-assistering, automatisk publicering,
 AI-beslut, källa till sanning.
 
+**AI-anrop**:
+En förfrågan från applikationen till en AI-leverantör. I AI-assisterat
+författande består AI-anropet av styrande instruktioner, användarens behov och
+ett tvingande svarsformat.
+
+- `en`: AI request
+
+_Avoid_: Prompt när hela anropet avses, AI-instruktion när bara
+författarinstruktionen avses.
+
 **AI-analys**:
 Analys- eller resonemangstext som en AI-leverantör returnerar tillsammans med
 förslag i AI-assisterat författande. AI-analysen är stödjande kontext för

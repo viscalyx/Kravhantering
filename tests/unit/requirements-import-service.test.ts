@@ -284,11 +284,15 @@ describe('requirements import service', () => {
       'Välj `priorityLevelId` från `priorityLevels[].id`; jämför kravet med `priorityLevels[].assessmentCriteria` och välj bästa matchning',
     )
     expect(promptEn).toContain(
-      'Return only a JSON object that follows the JSON Schema below',
+      'Return only a JSON object that follows the separate JSON Schema sent as the mandatory response format',
     )
     expect(promptSv).toContain(
-      'Returnera endast ett JSON-objekt som följer JSON Schema nedan',
+      'Returnera endast ett JSON-objekt som följer det separata JSON Schema som skickas som tvingande svarsformat',
     )
+    expect(promptEn).not.toContain('## JSON Schema')
+    expect(promptSv).not.toContain('## JSON Schema')
+    expect(promptEn).not.toContain('"$schema"')
+    expect(promptSv).not.toContain('"$schema"')
     expect(promptEn).toContain(
       'Set the top-level `schemaVersion` field to `requirement-import.v1`',
     )
@@ -339,7 +343,7 @@ describe('requirements import service', () => {
       'Omit `requirementPackageIds` or use `[]` when no requirement package clearly fits; weak keyword matches against package names are not enough.',
     )
     expect(prompt).toContain(
-      'When importing specification-local requirements, this field is ignored.',
+      'When importing specification-local requirements, `requirementPackageIds` is ignored.',
     )
     expect(referenceData.requirementPackages).toEqual([
       {

@@ -25,7 +25,6 @@ import {
 } from '@/lib/requirements/auth'
 import { conflictError, validationError } from '@/lib/requirements/errors'
 import {
-  buildRequirementsImportJsonSchema,
   type ImportExecuteBody,
   type ImportRequirement,
   type ImportRequirementsPayload,
@@ -1076,7 +1075,6 @@ export function createRequirementsImportWorkflow({
   return {
     async buildImportAiPrompt(locale: 'en' | 'sv') {
       const referenceData = await loadImportReferenceData(db)
-      const schema = buildRequirementsImportJsonSchema(locale)
       const isSv = locale === 'sv'
       return [
         isSv
@@ -1086,8 +1084,8 @@ export function createRequirementsImportWorkflow({
         isSv ? '## Regler' : '## Rules',
         '',
         isSv
-          ? '- Returnera endast ett JSON-objekt som följer JSON Schema nedan.'
-          : '- Return only a JSON object that follows the JSON Schema below.',
+          ? '- Returnera endast ett JSON-objekt som följer det separata JSON Schema som skickas som tvingande svarsformat.'
+          : '- Return only a JSON object that follows the separate JSON Schema sent as the mandatory response format.',
         isSv
           ? '- Sätt toppnivåfältet `schemaVersion` till `requirement-import.v1`.'
           : '- Set the top-level `schemaVersion` field to `requirement-import.v1`.',
@@ -1155,17 +1153,14 @@ export function createRequirementsImportWorkflow({
           ? '- Utelämna `requirementPackageIds` eller använd `[]` när inget kravpaket passar tydligt; svaga ordmatchningar mot paketnamn räcker inte.'
           : '- Omit `requirementPackageIds` or use `[]` when no requirement package clearly fits; weak keyword matches against package names are not enough.',
         isSv
+          ? '- Vid import av kravunderlagslokala krav ignoreras `requirementPackageIds`.'
+          : '- When importing specification-local requirements, `requirementPackageIds` is ignored.',
+        isSv
           ? '- Sätt `requiresTesting` till `true` när kravet ska verifieras; ange då `verificationMethod`.'
           : '- Set `requiresTesting` to `true` when the requirement should be verified; then provide `verificationMethod`.',
         isSv
           ? '- Använd `verificationMethod` för verifieringssätt, inte för godkännandekriterier.'
           : '- Use `verificationMethod` for the verification method, not acceptance criteria.',
-        '',
-        '## JSON Schema',
-        '',
-        '```json',
-        JSON.stringify(schema, null, 2),
-        '```',
         '',
         '## Reference Data',
         '',
