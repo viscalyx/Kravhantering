@@ -290,6 +290,59 @@ describe('Navigation', () => {
     )
   })
 
+  it('aborts superseded and unmounted database schema focus refreshes', async () => {
+    const databaseSchemaSignals: AbortSignal[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url =
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url
+        if (url.includes('/api/auth/me')) {
+          return Promise.resolve(okJson(authState.value))
+        }
+        if (url.includes('/api/requirement-areas')) {
+          return Promise.resolve(okJson(areasState.value))
+        }
+        if (url.includes('/api/database-schema-status')) {
+          if (init?.signal) databaseSchemaSignals.push(init.signal)
+          return new Promise<Response>(() => {})
+        }
+        return Promise.reject(new Error(`Unexpected fetch ${url}`))
+      }),
+    )
+    const { unmount } = render(
+      <Navigation
+        buildMetadata={{
+          builtAt: '2026-05-21T19:00:00.000Z',
+          commitSha: 'abc123',
+          expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
+          imageTag: 'registry.example/app:1.2.3',
+          version: '1.2.3',
+        }}
+      />,
+    )
+    await waitFor(() => expect(databaseSchemaSignals.length).toBeGreaterThan(0))
+    databaseSchemaSignals.length = 0
+
+    window.dispatchEvent(new Event('focus'))
+    await waitFor(() => expect(databaseSchemaSignals).toHaveLength(1))
+    const firstFocusSignal = databaseSchemaSignals[0]
+    expect(firstFocusSignal.aborted).toBe(false)
+
+    window.dispatchEvent(new Event('focus'))
+    await waitFor(() => expect(databaseSchemaSignals).toHaveLength(2))
+    expect(firstFocusSignal.aborted).toBe(true)
+    const secondFocusSignal = databaseSchemaSignals[1]
+    expect(secondFocusSignal.aborted).toBe(false)
+
+    unmount()
+    expect(secondFocusSignal.aborted).toBe(true)
+  })
+
   it('starts collapsed and persists the expanded rail state', async () => {
     const layoutListener = vi.fn()
     window.addEventListener(GLOBAL_NAVIGATION_LAYOUT_EVENT, layoutListener)

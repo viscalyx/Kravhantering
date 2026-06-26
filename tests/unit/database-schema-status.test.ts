@@ -38,6 +38,15 @@ describe('readDatabaseSchemaStatus', () => {
     vi.clearAllMocks()
   })
 
+  it('checks the TypeORM migrations table with an explicit schema', () => {
+    expect(LATEST_DATABASE_SCHEMA_VERSION_QUERY).toContain(
+      "OBJECT_ID(N'dbo.migrations', N'U')",
+    )
+    expect(LATEST_DATABASE_SCHEMA_VERSION_QUERY).toContain(
+      'FROM [dbo].[migrations]',
+    )
+  })
+
   it('returns matches when the database head equals build metadata', async () => {
     const { query } = setStatusDefaults()
 

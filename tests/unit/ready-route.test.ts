@@ -81,7 +81,7 @@ describe('GET /api/ready', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(await readJson(response)).toEqual({ status: 'ready' })
     expect(query).toHaveBeenNthCalledWith(1, 'SELECT 1 AS ready')
-    expect(query.mock.calls[1]?.[0]).toContain('FROM [migrations]')
+    expect(query.mock.calls[1]?.[0]).toContain('FROM [dbo].[migrations]')
     expect(fetch).toHaveBeenCalledWith(
       'https://issuer.example.com/realms/test/.well-known/openid-configuration',
       expect.objectContaining({

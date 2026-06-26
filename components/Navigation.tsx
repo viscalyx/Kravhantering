@@ -356,14 +356,19 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   useEffect(() => {
     if (!buildMetadata) return undefined
 
+    let focusRefreshController: AbortController | null = null
+
     const refreshOnFocus = () => {
-      void loadDatabaseSchemaStatus()
+      focusRefreshController?.abort()
+      focusRefreshController = new AbortController()
+      void loadDatabaseSchemaStatus(focusRefreshController.signal)
     }
 
     window.addEventListener('focus', refreshOnFocus)
 
     return () => {
       window.removeEventListener('focus', refreshOnFocus)
+      focusRefreshController?.abort()
     }
   }, [buildMetadata, loadDatabaseSchemaStatus])
 

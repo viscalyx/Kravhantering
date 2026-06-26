@@ -2,11 +2,11 @@ import { readBuildMetadata } from '@/lib/build-metadata'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 
 export const LATEST_DATABASE_SCHEMA_VERSION_QUERY = `
-IF OBJECT_ID(N'migrations', N'U') IS NULL
+IF OBJECT_ID(N'dbo.migrations', N'U') IS NULL
   SELECT CAST(NULL AS nvarchar(255)) AS [name]
 ELSE
   SELECT TOP (1) [name] AS [name]
-  FROM [migrations]
+  FROM [dbo].[migrations]
   ORDER BY [id] DESC
 `
 

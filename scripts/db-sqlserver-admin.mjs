@@ -481,6 +481,19 @@ function migrationHeadFromDescriptor(descriptor) {
   }
 }
 
+function compareMigrationHeadsByExecutionOrder(left, right) {
+  const leftTimestamp = typeof left.timestamp === 'number' ? left.timestamp : -1
+  const rightTimestamp =
+    typeof right.timestamp === 'number' ? right.timestamp : -1
+  if (leftTimestamp !== rightTimestamp) return leftTimestamp - rightTimestamp
+
+  const leftSequence = typeof left.sequence === 'number' ? left.sequence : -1
+  const rightSequence = typeof right.sequence === 'number' ? right.sequence : -1
+  if (leftSequence !== rightSequence) return leftSequence - rightSequence
+
+  return String(left.name ?? '').localeCompare(String(right.name ?? ''))
+}
+
 function migrationHeadFromExecutedMigration(migration, descriptorsByName) {
   if (!migration) return null
   const descriptor = descriptorsByName.get(migration.name)
@@ -532,9 +545,9 @@ function buildMigrationStateReport({
   const descriptorsByName = new Map(
     migrationDescriptors.map(descriptor => [descriptor.name, descriptor]),
   )
-  const bundledMigrations = migrationDescriptors.map(
-    migrationHeadFromDescriptor,
-  )
+  const bundledMigrations = migrationDescriptors
+    .map(migrationHeadFromDescriptor)
+    .sort(compareMigrationHeadsByExecutionOrder)
   const expectedHead = bundledMigrations.at(-1) ?? null
   const executed = normalizeExecutedMigrations(executedMigrations)
   const observedHead = migrationHeadFromExecutedMigration(

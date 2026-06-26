@@ -27,9 +27,30 @@ import {
   waitForSqlServer,
 } from '../db-sqlserver-admin.mjs'
 
+function newestMigrationDescriptor(descriptors) {
+  return [...descriptors]
+    .sort((left, right) => {
+      const leftTimestamp =
+        typeof left.timestamp === 'number' ? left.timestamp : -1
+      const rightTimestamp =
+        typeof right.timestamp === 'number' ? right.timestamp : -1
+      if (leftTimestamp !== rightTimestamp)
+        return leftTimestamp - rightTimestamp
+
+      const leftSequence =
+        typeof left.sequence === 'number' ? left.sequence : -1
+      const rightSequence =
+        typeof right.sequence === 'number' ? right.sequence : -1
+      if (leftSequence !== rightSequence) return leftSequence - rightSequence
+
+      return String(left.name ?? '').localeCompare(String(right.name ?? ''))
+    })
+    .at(-1)
+}
+
 async function createTargetHeadMigrationExecutor() {
   const descriptors = await loadMigrationDescriptors()
-  const target = descriptors.at(-1)
+  const target = newestMigrationDescriptor(descriptors)
   return class FakeMigrationExecutor {
     async getExecutedMigrations() {
       return [
@@ -513,6 +534,59 @@ describe('db-sqlserver-admin.mjs', () => {
     })
     expect(initialize).toHaveBeenCalled()
     expect(destroy).toHaveBeenCalled()
+  })
+
+  it('selects the expected migration head by TypeORM timestamp order', async () => {
+    class NewestByTimestamp1713900000000 {
+      name = 'NewestByTimestamp1713900000000'
+    }
+    class FilenameLastButOlder1713800000000 {
+      name = 'FilenameLastButOlder1713800000000'
+    }
+    const migrationDescriptors = [
+      {
+        classRef: NewestByTimestamp1713900000000,
+        fileName: '0001_newest_by_timestamp.mjs',
+        name: 'NewestByTimestamp1713900000000',
+        sequence: 1,
+        timestamp: 1713900000000,
+      },
+      {
+        classRef: FilenameLastButOlder1713800000000,
+        fileName: '9999_filename_last_but_older.mjs',
+        name: 'FilenameLastButOlder1713800000000',
+        sequence: 2,
+        timestamp: 1713800000000,
+      },
+    ]
+    class FakeDataSource {
+      destroy = vi.fn(async () => undefined)
+      initialize = vi.fn(async () => undefined)
+    }
+    class FakeMigrationExecutor {
+      async getExecutedMigrations() {
+        return []
+      }
+
+      async getPendingMigrations() {
+        return []
+      }
+    }
+
+    const result = await getSqlServerMigrationStatus(
+      'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
+      {
+        dataSourceCtor: FakeDataSource,
+        migrationDescriptors,
+        migrationExecutorCtor: FakeMigrationExecutor,
+      },
+    )
+
+    expect(result.expectedHead).toMatchObject({
+      fileName: '0001_newest_by_timestamp.mjs',
+      name: 'NewestByTimestamp1713900000000',
+      timestamp: 1713900000000,
+    })
   })
 
   it('returns a non-zero CLI status for unknown database migrations', async () => {
