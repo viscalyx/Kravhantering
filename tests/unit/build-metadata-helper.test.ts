@@ -4,6 +4,7 @@ import { parseBuildMetadata, readBuildMetadata } from '@/lib/build-metadata'
 const validMetadata = {
   builtAt: '2026-05-21T19:00:00.000Z',
   commitSha: 'abc123',
+  expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
   imageTag: 'registry.example/app:1.2.3',
   version: '1.2.3',
 }
@@ -17,6 +18,12 @@ describe('build metadata helper', () => {
     expect(parseBuildMetadata(null)).toBeNull()
     expect(parseBuildMetadata({ ...validMetadata, version: '' })).toBeNull()
     expect(parseBuildMetadata({ ...validMetadata, builtAt: 123 })).toBeNull()
+    expect(
+      parseBuildMetadata({
+        ...validMetadata,
+        expectedDatabaseSchemaVersion: '',
+      }),
+    ).toBeNull()
   })
 
   it('reads metadata from JSON', () => {

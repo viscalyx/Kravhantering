@@ -32,6 +32,13 @@ const areasState = vi.hoisted(() => ({
   },
 }))
 
+const databaseSchemaStatusState = vi.hoisted(() => ({
+  value: {
+    expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
+    status: 'matches' as 'matches' | 'mismatch' | 'unknown',
+  } as Record<string, unknown>,
+}))
+
 const helpState = vi.hoisted(() => ({
   value: {
     content: null as { sections: never[]; titleKey: string } | null,
@@ -56,7 +63,7 @@ vi.mock('next-intl', () => ({
     (namespace?: string) =>
     (key: string, values?: Record<string, string | number>) => {
       const label = namespace ? `${namespace}.${key}` : key
-      return values?.version ? `${label} ${values.version}` : label
+      return values ? `${label} ${Object.values(values).join(' ')}` : label
     },
   useLocale: () => 'en',
 }))
@@ -121,6 +128,10 @@ describe('Navigation', () => {
     searchParamsState.value = new URLSearchParams()
     authState.value = { authenticated: true, roles: [] }
     areasState.value = { areas: [] }
+    databaseSchemaStatusState.value = {
+      expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
+      status: 'matches',
+    }
     localStorage.clear()
     document.documentElement.style.removeProperty('--global-nav-width')
     helpState.value = {
@@ -141,6 +152,9 @@ describe('Navigation', () => {
         if (url.includes('/api/requirement-areas')) {
           return okJson(areasState.value)
         }
+        if (url.includes('/api/database-schema-status')) {
+          return okJson(databaseSchemaStatusState.value)
+        }
         throw new Error(`Unexpected fetch ${url}`)
       }),
     )
@@ -150,12 +164,13 @@ describe('Navigation', () => {
     vi.unstubAllGlobals()
   })
 
-  it('exposes build version on the app title tooltip', () => {
+  it('exposes build and database schema status on the app title tooltip', async () => {
     render(
       <Navigation
         buildMetadata={{
           builtAt: '2026-05-21T19:00:00.000Z',
           commitSha: 'abc123',
+          expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
           imageTag: 'registry.example/app:1.2.3',
           version: '1.2.3',
         }}
@@ -164,9 +179,11 @@ describe('Navigation', () => {
 
     const appTitle = screen.getByRole('link', { name: 'common.appName' })
 
-    expect(appTitle).toHaveAttribute(
-      'title',
-      'common.buildVersionTooltip 1.2.3',
+    await waitFor(() =>
+      expect(appTitle).toHaveAttribute(
+        'title',
+        'common.buildVersionTooltip 1.2.3\ncommon.databaseSchemaMatchesTooltip',
+      ),
     )
     expect(appTitle).toHaveAttribute(
       'data-developer-mode-context',
@@ -174,6 +191,103 @@ describe('Navigation', () => {
     )
     expect(appTitle).toHaveAttribute('data-developer-mode-name', 'link')
     expect(appTitle).toHaveAttribute('data-developer-mode-value', 'app title')
+  })
+
+  it('does not expose observed database schema mismatch details to non-admin users', async () => {
+    databaseSchemaStatusState.value = {
+      expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
+      status: 'mismatch',
+    }
+
+    render(
+      <Navigation
+        buildMetadata={{
+          builtAt: '2026-05-21T19:00:00.000Z',
+          commitSha: 'abc123',
+          expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
+          imageTag: 'registry.example/app:1.2.3',
+          version: '1.2.3',
+        }}
+      />,
+    )
+
+    const appTitle = screen.getByRole('link', { name: 'common.appName' })
+
+    await waitFor(() =>
+      expect(appTitle).toHaveAttribute(
+        'title',
+        expect.stringContaining('common.databaseSchemaMismatchTooltip'),
+      ),
+    )
+    expect(appTitle.getAttribute('title')).not.toContain(
+      'OlderSchema1713000000000',
+    )
+  })
+
+  it('shows observed database schema mismatch details when the status response includes them', async () => {
+    databaseSchemaStatusState.value = {
+      expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
+      observedDatabaseSchemaVersion: 'OlderSchema1713000000000',
+      status: 'mismatch',
+    }
+
+    render(
+      <Navigation
+        buildMetadata={{
+          builtAt: '2026-05-21T19:00:00.000Z',
+          commitSha: 'abc123',
+          expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
+          imageTag: 'registry.example/app:1.2.3',
+          version: '1.2.3',
+        }}
+      />,
+    )
+
+    const appTitle = screen.getByRole('link', { name: 'common.appName' })
+
+    await waitFor(() =>
+      expect(appTitle).toHaveAttribute(
+        'title',
+        expect.stringContaining(
+          'common.databaseSchemaAdminMismatchTooltip InitialSchema1713720000000 OlderSchema1713000000000',
+        ),
+      ),
+    )
+  })
+
+  it('refreshes database schema status when the window regains focus', async () => {
+    render(
+      <Navigation
+        buildMetadata={{
+          builtAt: '2026-05-21T19:00:00.000Z',
+          commitSha: 'abc123',
+          expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
+          imageTag: 'registry.example/app:1.2.3',
+          version: '1.2.3',
+        }}
+      />,
+    )
+
+    const appTitle = screen.getByRole('link', { name: 'common.appName' })
+    await waitFor(() =>
+      expect(appTitle).toHaveAttribute(
+        'title',
+        expect.stringContaining('common.databaseSchemaMatchesTooltip'),
+      ),
+    )
+
+    databaseSchemaStatusState.value = {
+      expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
+      status: 'unknown',
+    }
+    window.dispatchEvent(new Event('focus'))
+
+    await waitFor(() =>
+      expect(appTitle).toHaveAttribute(
+        'title',
+        expect.stringContaining('common.databaseSchemaUnavailableTooltip'),
+      ),
+    )
   })
 
   it('starts collapsed and persists the expanded rail state', async () => {

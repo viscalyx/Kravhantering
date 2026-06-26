@@ -125,6 +125,7 @@ jobs:
             --metadata-file tmp/container-release-artifacts/metadata/app-runtime-buildx.json \
             --build-arg BUILD_VERSION="${RELEASE_VERSION}" \
             --build-arg BUILD_COMMIT_SHA="${GITHUB_SHA}" \
+            --build-arg BUILD_EXPECTED_DATABASE_SCHEMA_VERSION="${BUILD_EXPECTED_DATABASE_SCHEMA_VERSION}" \
             --build-arg BUILD_TIME="$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")" \
             --build-arg BUILD_IMAGE_TAG="${APP_RUNTIME_PRIMARY_TAG}" \
             --build-arg NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}" \

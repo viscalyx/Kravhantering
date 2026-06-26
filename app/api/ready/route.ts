@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getAuthConfig } from '@/lib/auth/config'
+import {
+  type DatabaseSchemaStatusReason,
+  readDatabaseSchemaStatus,
+} from '@/lib/database-schema-status'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { getSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
@@ -8,16 +12,46 @@ export const runtime = 'nodejs'
 
 const OIDC_DISCOVERY_TIMEOUT_MS = 2_000
 
-type ReadinessCheckName = 'runtime_config' | 'sql_server' | 'oidc_discovery'
+type ReadinessCheckName =
+  | 'runtime_config'
+  | 'sql_server'
+  | 'database_migration_compatibility'
+  | 'oidc_discovery'
+
+type ReadinessFailureReason =
+  | 'runtime_config_invalid'
+  | 'sql_server_unavailable'
+  | DatabaseSchemaStatusReason
+  | 'oidc_discovery_unavailable'
 
 interface ReadinessCheck {
+  defaultReason: ReadinessFailureReason
   name: ReadinessCheckName
   run: () => Promise<void> | void
 }
 
-function jsonResponse(status: 'ready' | 'not_ready', httpStatus: 200 | 503) {
+interface FailedReadinessCheck {
+  name: ReadinessCheckName
+  reason: ReadinessFailureReason
+}
+
+class ReadinessFailure extends Error {
+  readonly reason: ReadinessFailureReason
+
+  constructor(reason: ReadinessFailureReason) {
+    super(reason)
+    this.name = 'ReadinessFailure'
+    this.reason = reason
+  }
+}
+
+function jsonResponse(
+  status: 'ready' | 'not_ready',
+  httpStatus: 200 | 503,
+  failedChecks: FailedReadinessCheck[] = [],
+) {
   return NextResponse.json(
-    { status },
+    status === 'ready' ? { status } : { failedChecks, status },
     {
       headers: { 'Cache-Control': 'no-store' },
       status: httpStatus,
@@ -45,6 +79,13 @@ function sanitizeError(error: unknown): string {
   return 'Error'
 }
 
+function failureReason(
+  error: unknown,
+  fallback: ReadinessFailureReason,
+): ReadinessFailureReason {
+  return error instanceof ReadinessFailure ? error.reason : fallback
+}
+
 async function checkRuntimeConfig() {
   assertSiteUrlConfigured()
   getAuthConfig()
@@ -54,6 +95,13 @@ async function checkRuntimeConfig() {
 async function checkSqlServer() {
   const db = await getRequestSqlServerDataSource()
   await db.query('SELECT 1 AS ready')
+}
+
+async function checkDatabaseMigrationCompatibility() {
+  const status = await readDatabaseSchemaStatus()
+  if (status.status !== 'matches') {
+    throw new ReadinessFailure(status.reason)
+  }
 }
 
 async function checkOidcDiscovery() {
@@ -74,29 +122,51 @@ async function checkOidcDiscovery() {
   }
 }
 
-async function runCheck(check: ReadinessCheck): Promise<boolean> {
+async function runCheck(
+  check: ReadinessCheck,
+): Promise<FailedReadinessCheck | null> {
   try {
     await check.run()
-    return true
+    return null
   } catch (error) {
+    const reason = failureReason(error, check.defaultReason)
     console.warn('[readiness] check failed', {
       check: check.name,
       error: sanitizeError(error),
+      reason,
     })
-    return false
+    return { name: check.name, reason }
   }
 }
 
 export async function GET() {
   const checks: ReadinessCheck[] = [
-    { name: 'runtime_config', run: checkRuntimeConfig },
-    { name: 'sql_server', run: checkSqlServer },
-    { name: 'oidc_discovery', run: checkOidcDiscovery },
+    {
+      defaultReason: 'runtime_config_invalid',
+      name: 'runtime_config',
+      run: checkRuntimeConfig,
+    },
+    {
+      defaultReason: 'sql_server_unavailable',
+      name: 'sql_server',
+      run: checkSqlServer,
+    },
+    {
+      defaultReason: 'database_schema_version_check_failed',
+      name: 'database_migration_compatibility',
+      run: checkDatabaseMigrationCompatibility,
+    },
+    {
+      defaultReason: 'oidc_discovery_unavailable',
+      name: 'oidc_discovery',
+      run: checkOidcDiscovery,
+    },
   ]
 
   for (const check of checks) {
-    if (!(await runCheck(check))) {
-      return jsonResponse('not_ready', 503)
+    const failedCheck = await runCheck(check)
+    if (failedCheck) {
+      return jsonResponse('not_ready', 503, [failedCheck])
     }
   }
 

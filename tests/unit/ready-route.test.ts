@@ -4,6 +4,7 @@ const routeState = vi.hoisted(() => ({
   getAuthConfig: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   getSqlServerDatabaseUrl: vi.fn(),
+  readBuildMetadata: vi.fn(),
 }))
 
 vi.mock('@/lib/auth/config', () => ({
@@ -14,6 +15,10 @@ vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
 
+vi.mock('@/lib/build-metadata', () => ({
+  readBuildMetadata: routeState.readBuildMetadata,
+}))
+
 vi.mock('@/lib/typeorm/sqlserver-config', () => ({
   getSqlServerDatabaseUrl: routeState.getSqlServerDatabaseUrl,
 }))
@@ -21,9 +26,21 @@ vi.mock('@/lib/typeorm/sqlserver-config', () => ({
 import * as route from '@/app/api/ready/route'
 
 function setReadyDefaults() {
-  const query = vi.fn().mockResolvedValue([{ ready: 1 }])
+  const query = vi.fn(
+    async (sql: string): Promise<Array<Record<string, unknown>>> => {
+      if (sql === 'SELECT 1 AS ready') return [{ ready: 1 }]
+      return [{ name: 'InitialSchema1713720000000' }]
+    },
+  )
   routeState.getAuthConfig.mockReturnValue({
     issuerUrl: 'https://issuer.example.com/realms/test',
+  })
+  routeState.readBuildMetadata.mockReturnValue({
+    builtAt: '2026-05-21T19:00:00.000Z',
+    commitSha: 'abc123',
+    expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
+    imageTag: 'registry.example/app:1.2.3',
+    version: '1.2.3',
   })
   routeState.getSqlServerDatabaseUrl.mockReturnValue(
     'mssql://app:secret@db:1433/kravhantering',
@@ -63,7 +80,8 @@ describe('GET /api/ready', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(await readJson(response)).toEqual({ status: 'ready' })
-    expect(query).toHaveBeenCalledWith('SELECT 1 AS ready')
+    expect(query).toHaveBeenNthCalledWith(1, 'SELECT 1 AS ready')
+    expect(query.mock.calls[1]?.[0]).toContain('FROM [migrations]')
     expect(fetch).toHaveBeenCalledWith(
       'https://issuer.example.com/realms/test/.well-known/openid-configuration',
       expect.objectContaining({
@@ -82,7 +100,15 @@ describe('GET /api/ready', () => {
     const body = await response.text()
 
     expect(response.status).toBe(503)
-    expect(JSON.parse(body)).toEqual({ status: 'not_ready' })
+    expect(JSON.parse(body)).toEqual({
+      failedChecks: [
+        {
+          name: 'runtime_config',
+          reason: 'runtime_config_invalid',
+        },
+      ],
+      status: 'not_ready',
+    })
     expect(body).not.toContain('NEXT_PUBLIC_SITE_URL')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(fetch).not.toHaveBeenCalled()
@@ -102,13 +128,81 @@ describe('GET /api/ready', () => {
     const body = await response.text()
 
     expect(response.status).toBe(503)
-    expect(JSON.parse(body)).toEqual({ status: 'not_ready' })
+    expect(JSON.parse(body)).toEqual({
+      failedChecks: [
+        {
+          name: 'sql_server',
+          reason: 'sql_server_unavailable',
+        },
+      ],
+      status: 'not_ready',
+    })
     expect(body).not.toContain('database unavailable')
     expect(fetch).not.toHaveBeenCalled()
     expect(warn).toHaveBeenCalledWith(
       '[readiness] check failed',
       expect.objectContaining({ check: 'sql_server' }),
     )
+    warn.mockRestore()
+  })
+
+  it('returns not_ready when the database has no migration head', async () => {
+    const { query } = setReadyDefaults()
+    query.mockImplementation(async (sql: string) => {
+      if (sql === 'SELECT 1 AS ready') return [{ ready: 1 }]
+      return [{ name: null }]
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const response = await route.GET()
+    const body = await response.text()
+
+    expect(response.status).toBe(503)
+    expect(JSON.parse(body)).toEqual({
+      failedChecks: [
+        {
+          name: 'database_migration_compatibility',
+          reason: 'database_schema_version_missing',
+        },
+      ],
+      status: 'not_ready',
+    })
+    expect(body).not.toContain('InitialSchema1713720000000')
+    expect(fetch).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledWith(
+      '[readiness] check failed',
+      expect.objectContaining({
+        check: 'database_migration_compatibility',
+        reason: 'database_schema_version_missing',
+      }),
+    )
+    warn.mockRestore()
+  })
+
+  it('returns not_ready when the database schema version differs from build metadata', async () => {
+    const { query } = setReadyDefaults()
+    query.mockImplementation(async (sql: string) => {
+      if (sql === 'SELECT 1 AS ready') return [{ ready: 1 }]
+      return [{ name: 'OlderSchema1713000000000' }]
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const response = await route.GET()
+    const body = await response.text()
+
+    expect(response.status).toBe(503)
+    expect(JSON.parse(body)).toEqual({
+      failedChecks: [
+        {
+          name: 'database_migration_compatibility',
+          reason: 'database_schema_version_mismatch',
+        },
+      ],
+      status: 'not_ready',
+    })
+    expect(body).not.toContain('OlderSchema1713000000000')
+    expect(body).not.toContain('InitialSchema1713720000000')
+    expect(fetch).not.toHaveBeenCalled()
     warn.mockRestore()
   })
 
@@ -123,7 +217,15 @@ describe('GET /api/ready', () => {
     const response = await route.GET()
 
     expect(response.status).toBe(503)
-    expect(await readJson(response)).toEqual({ status: 'not_ready' })
+    expect(await readJson(response)).toEqual({
+      failedChecks: [
+        {
+          name: 'oidc_discovery',
+          reason: 'oidc_discovery_unavailable',
+        },
+      ],
+      status: 'not_ready',
+    })
     expect(warn).toHaveBeenCalledWith(
       '[readiness] check failed',
       expect.objectContaining({ check: 'oidc_discovery' }),
@@ -142,7 +244,15 @@ describe('GET /api/ready', () => {
     const response = await route.GET()
 
     expect(response.status).toBe(503)
-    expect(await readJson(response)).toEqual({ status: 'not_ready' })
+    expect(await readJson(response)).toEqual({
+      failedChecks: [
+        {
+          name: 'oidc_discovery',
+          reason: 'oidc_discovery_unavailable',
+        },
+      ],
+      status: 'not_ready',
+    })
     expect(warn).toHaveBeenCalledWith(
       '[readiness] check failed',
       expect.objectContaining({ check: 'oidc_discovery' }),
@@ -160,7 +270,15 @@ describe('GET /api/ready', () => {
     const response = await route.GET()
 
     expect(response.status).toBe(503)
-    expect(await readJson(response)).toEqual({ status: 'not_ready' })
+    expect(await readJson(response)).toEqual({
+      failedChecks: [
+        {
+          name: 'oidc_discovery',
+          reason: 'oidc_discovery_unavailable',
+        },
+      ],
+      status: 'not_ready',
+    })
     expect(warn).toHaveBeenCalledWith(
       '[readiness] check failed',
       expect.objectContaining({

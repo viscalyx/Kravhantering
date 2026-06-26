@@ -47,6 +47,7 @@ interface RequirementDetailResponse {
 interface BuildMetadataResponse {
   builtAt?: unknown
   commitSha?: unknown
+  expectedDatabaseSchemaVersion?: unknown
   imageTag?: unknown
   version?: unknown
 }
@@ -163,6 +164,10 @@ test.describe('Release smoke container flow', () => {
       expectNonEmptyString(metadata.commitSha, 'commitSha')
       expectNonEmptyString(metadata.builtAt, 'builtAt')
       expectNonEmptyString(metadata.imageTag, 'imageTag')
+      expectNonEmptyString(
+        metadata.expectedDatabaseSchemaVersion,
+        'expectedDatabaseSchemaVersion',
+      )
       expect(Number.isNaN(Date.parse(metadata.builtAt))).toBe(false)
 
       await test.info().attach('build-metadata.json', {

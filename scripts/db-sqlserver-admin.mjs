@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { DataSource } from 'typeorm'
+import { DataSource, MigrationExecutor } from 'typeorm'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 export const MIGRATIONS_DIR = resolve(SCRIPT_DIR, '../typeorm/migrations')
@@ -56,10 +56,9 @@ export const DEMO_RESET_TABLES = Object.freeze([
 ])
 
 /**
- * Discover migration filenames in `typeorm/migrations/` (sorted by filename so
- * the `NNNN_description.mjs` naming convention drives execution order). Kept in
- * sync with the glob pattern used by `lib/typeorm/sqlserver-config.ts` so the
- * runtime DataSource and this admin script never diverge again.
+ * Discover migration filenames in `typeorm/migrations/` with deterministic
+ * filename ordering. TypeORM still orders execution by the timestamp suffix in
+ * the migration class/name.
  */
 export function listMigrationFilenames(directory = MIGRATIONS_DIR) {
   return readdirSync(directory)
@@ -69,32 +68,50 @@ export function listMigrationFilenames(directory = MIGRATIONS_DIR) {
 
 /**
  * Dynamically import every migration module in `typeorm/migrations/` and
- * return the exported migration classes (anything exported as a function).
+ * return descriptors for the exported migration classes.
  */
-export async function loadMigrationClasses(directory = MIGRATIONS_DIR) {
+export async function loadMigrationDescriptors(directory = MIGRATIONS_DIR) {
   const filenames = listMigrationFilenames(directory)
-  const classes = []
+  const descriptors = []
   const seen = new Set()
-  for (const filename of filenames) {
+  for (const [fileIndex, filename] of filenames.entries()) {
     const moduleUrl = pathToFileURL(resolve(directory, filename)).href
     const module = await import(moduleUrl)
     for (const exported of Object.values(module)) {
       if (typeof exported === 'function' && !seen.has(exported)) {
         seen.add(exported)
-        classes.push(exported)
+        descriptors.push(
+          createMigrationDescriptor(exported, filename, fileIndex),
+        )
       }
     }
   }
-  return classes
+  return descriptors
 }
 
-let cachedMigrationClassesPromise
+/**
+ * Dynamically import every migration module in `typeorm/migrations/` and
+ * return the exported migration classes (anything exported as a function).
+ */
+export async function loadMigrationClasses(directory = MIGRATIONS_DIR) {
+  return (await loadMigrationDescriptors(directory)).map(
+    descriptor => descriptor.classRef,
+  )
+}
 
-function getMigrationClasses() {
-  if (!cachedMigrationClassesPromise) {
-    cachedMigrationClassesPromise = loadMigrationClasses()
+let cachedMigrationDescriptorsPromise
+
+async function getMigrationDescriptors() {
+  if (!cachedMigrationDescriptorsPromise) {
+    cachedMigrationDescriptorsPromise = loadMigrationDescriptors()
   }
-  return cachedMigrationClassesPromise
+  return cachedMigrationDescriptorsPromise
+}
+
+async function getMigrationClasses() {
+  return (await getMigrationDescriptors()).map(
+    descriptor => descriptor.classRef,
+  )
 }
 
 export async function loadSeedProfile(profile, options = {}) {
@@ -137,6 +154,7 @@ const CORE_COMMANDS = Object.freeze([
   'wait',
   'reset',
   'bootstrap',
+  'migration-status',
   'migrate',
   'seed:required',
 ])
@@ -430,6 +448,204 @@ function buildMigrationDataSourceOptions(
   }
 }
 
+function createMigrationDescriptor(MigrationClass, fileName, fileIndex) {
+  let instance
+  try {
+    instance = new MigrationClass()
+  } catch {
+    instance = null
+  }
+  const name = instance?.name ?? MigrationClass.name
+  const timestamp = Number.parseInt(name.match(/(\d{13})$/u)?.[1] ?? '', 10)
+
+  if (!name) {
+    throw new Error(`Unable to determine migration name for ${fileName}`)
+  }
+
+  return {
+    classRef: MigrationClass,
+    fileName,
+    name,
+    sequence: fileIndex + 1,
+    timestamp: Number.isFinite(timestamp) ? timestamp : null,
+  }
+}
+
+function migrationHeadFromDescriptor(descriptor) {
+  if (!descriptor) return null
+  return {
+    fileName: descriptor.fileName,
+    name: descriptor.name,
+    sequence: descriptor.sequence,
+    timestamp: descriptor.timestamp,
+  }
+}
+
+function migrationHeadFromExecutedMigration(migration, descriptorsByName) {
+  if (!migration) return null
+  const descriptor = descriptorsByName.get(migration.name)
+  return {
+    ...(descriptor ? migrationHeadFromDescriptor(descriptor) : {}),
+    id: typeof migration.id === 'number' ? migration.id : null,
+    name: migration.name,
+    timestamp:
+      typeof migration.timestamp === 'number'
+        ? migration.timestamp
+        : (descriptor?.timestamp ?? null),
+  }
+}
+
+function normalizeExecutedMigrations(migrations = []) {
+  return [...migrations].sort((left, right) => {
+    const leftId = typeof left.id === 'number' ? left.id : -1
+    const rightId = typeof right.id === 'number' ? right.id : -1
+    if (leftId !== rightId) return rightId - leftId
+    const leftTimestamp =
+      typeof left.timestamp === 'number' ? left.timestamp : -1
+    const rightTimestamp =
+      typeof right.timestamp === 'number' ? right.timestamp : -1
+    if (leftTimestamp !== rightTimestamp) return rightTimestamp - leftTimestamp
+    return String(right.name ?? '').localeCompare(String(left.name ?? ''))
+  })
+}
+
+function normalizePendingMigrations(migrations = [], descriptorsByName) {
+  return migrations.map(migration => {
+    const descriptor = descriptorsByName.get(migration.name)
+    return {
+      ...(descriptor ? migrationHeadFromDescriptor(descriptor) : {}),
+      name: migration.name,
+      timestamp:
+        typeof migration.timestamp === 'number'
+          ? migration.timestamp
+          : (descriptor?.timestamp ?? null),
+    }
+  })
+}
+
+function buildMigrationStateReport({
+  database,
+  executedMigrations,
+  migrationDescriptors,
+  pendingMigrations,
+}) {
+  const descriptorsByName = new Map(
+    migrationDescriptors.map(descriptor => [descriptor.name, descriptor]),
+  )
+  const bundledMigrations = migrationDescriptors.map(
+    migrationHeadFromDescriptor,
+  )
+  const expectedHead = bundledMigrations.at(-1) ?? null
+  const executed = normalizeExecutedMigrations(executedMigrations)
+  const observedHead = migrationHeadFromExecutedMigration(
+    executed[0],
+    descriptorsByName,
+  )
+  const unknownMigrations = executed
+    .filter(migration => !descriptorsByName.has(migration.name))
+    .map(migration =>
+      migrationHeadFromExecutedMigration(migration, descriptorsByName),
+    )
+  const problems = []
+
+  if (!expectedHead) {
+    problems.push({
+      code: 'target_schema_version_missing',
+      message: 'The db-job image does not contain any TypeORM migrations.',
+    })
+  }
+
+  if (unknownMigrations.length > 0) {
+    problems.push({
+      code: 'database_schema_version_unknown',
+      message:
+        'The database contains migration names that are not bundled with this db-job image.',
+      migrations: unknownMigrations.map(migration => migration.name),
+    })
+  }
+
+  return {
+    compatible: problems.length === 0,
+    database,
+    expectedHead,
+    observedHead,
+    pendingMigrations: normalizePendingMigrations(
+      pendingMigrations,
+      descriptorsByName,
+    ),
+    bundledMigrationCount: bundledMigrations.length,
+    executedMigrationCount: executed.length,
+    unknownMigrations,
+    problems,
+  }
+}
+
+function assertMigrationStateCompatible(report) {
+  if (report.compatible) return
+  const codes = report.problems.map(problem => problem.code).join(', ')
+  throw new Error(
+    `SQL Server migration preflight failed for ${report.database}: ${codes}.`,
+  )
+}
+
+function assertPostMigrationHeadMatchesTarget(report) {
+  if (report.observedHead?.name === report.expectedHead?.name) return
+  throw new Error(
+    `SQL Server migration post-check failed for ${report.database}: expected ${report.expectedHead?.name ?? 'none'}, observed ${report.observedHead?.name ?? 'none'}.`,
+  )
+}
+
+async function inspectMigrationState(
+  dataSource,
+  connectionString,
+  options = {},
+) {
+  const MigrationExecutorCtor =
+    options.migrationExecutorCtor ?? MigrationExecutor
+  const env = options.env ?? process.env
+  const migrationDescriptors =
+    options.migrationDescriptors ?? (await getMigrationDescriptors())
+  const executor = new MigrationExecutorCtor(dataSource)
+  const executedMigrations = await executor.getExecutedMigrations()
+  const pendingMigrations = await executor.getPendingMigrations()
+
+  return buildMigrationStateReport({
+    database: parseSqlServerConnectionString(connectionString, env).database,
+    executedMigrations,
+    migrationDescriptors,
+    pendingMigrations,
+  })
+}
+
+export async function getSqlServerMigrationStatus(
+  connectionString,
+  options = {},
+) {
+  const DataSourceCtor = options.dataSourceCtor ?? DataSource
+  const env = options.env ?? process.env
+  const migrationDescriptors =
+    options.migrationDescriptors ?? (await getMigrationDescriptors())
+  const migrationClasses = migrationDescriptors.map(
+    descriptor => descriptor.classRef,
+  )
+  const dataSource = new DataSourceCtor(
+    buildMigrationDataSourceOptions(connectionString, migrationClasses, env),
+  )
+
+  await dataSource.initialize()
+
+  try {
+    return await inspectMigrationState(dataSource, connectionString, {
+      ...options,
+      migrationDescriptors,
+    })
+  } finally {
+    if (typeof dataSource.destroy === 'function') {
+      await dataSource.destroy()
+    }
+  }
+}
+
 async function defaultConnect(config) {
   const mssqlModule = await import('mssql')
   const connect =
@@ -687,7 +903,11 @@ ${buildBootstrapLoginSql(principals)}
 export async function runSqlServerMigrations(connectionString, options = {}) {
   const DataSourceCtor = options.dataSourceCtor ?? DataSource
   const env = options.env ?? process.env
-  const migrationClasses = await getMigrationClasses()
+  const migrationDescriptors =
+    options.migrationDescriptors ?? (await getMigrationDescriptors())
+  const migrationClasses = migrationDescriptors.map(
+    descriptor => descriptor.classRef,
+  )
   const dataSource = new DataSourceCtor(
     buildMigrationDataSourceOptions(connectionString, migrationClasses, env),
   )
@@ -695,11 +915,42 @@ export async function runSqlServerMigrations(connectionString, options = {}) {
   await dataSource.initialize()
 
   try {
+    const preflight = await inspectMigrationState(
+      dataSource,
+      connectionString,
+      {
+        ...options,
+        migrationDescriptors,
+      },
+    )
+    assertMigrationStateCompatible(preflight)
+
     const migrations = await dataSource.runMigrations()
+    const postMigration = await inspectMigrationState(
+      dataSource,
+      connectionString,
+      {
+        ...options,
+        migrationDescriptors,
+      },
+    )
+    assertMigrationStateCompatible(postMigration)
+    assertPostMigrationHeadMatchesTarget(postMigration)
 
     return {
       database: parseSqlServerConnectionString(connectionString, env).database,
+      migration: {
+        applied: migrations.map(migration => ({
+          name: migration.name,
+          timestamp:
+            typeof migration.timestamp === 'number'
+              ? migration.timestamp
+              : null,
+        })),
+      },
       migrationsApplied: migrations.length,
+      postMigration,
+      preflight,
     }
   } finally {
     if (typeof dataSource.destroy === 'function') {
@@ -1063,6 +1314,7 @@ export async function main(args, dependencies = {}) {
   loadEnvironmentFiles(env)
 
   const [command] = args
+  const jsonOutput = args.includes('--json')
   if (!command) {
     consoleObj.error(commandUsage(env))
     return 1
@@ -1080,7 +1332,7 @@ export async function main(args, dependencies = {}) {
   if (!isSupportedCommand(command, env)) {
     if (isProductionDbJobImage(env) && DEMO_DATA_COMMANDS.includes(command)) {
       consoleObj.error(
-        `${command} is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migrate and seed:required in the production db-job image.`,
+        `${command} is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migration-status, migrate and seed:required in the production db-job image.`,
       )
       return 1
     }
@@ -1185,15 +1437,37 @@ export async function main(args, dependencies = {}) {
     }
   }
 
+  if (command === 'migration-status') {
+    try {
+      const result = await getSqlServerMigrationStatus(
+        connectionString,
+        dependencies,
+      )
+      consoleObj.log(JSON.stringify(result, null, 2))
+      return result.compatible ? 0 : 1
+    } catch (error) {
+      consoleObj.error(
+        error instanceof Error
+          ? error.message
+          : 'SQL Server migration status failed.',
+      )
+      return 1
+    }
+  }
+
   if (command === 'migrate') {
     try {
       const result = await runSqlServerMigrations(
         connectionString,
         dependencies,
       )
-      consoleObj.log(
-        `SQL Server migrations applied to ${result.database} (${result.migrationsApplied} migration${result.migrationsApplied === 1 ? '' : 's'}).`,
-      )
+      if (jsonOutput) {
+        consoleObj.log(JSON.stringify(result, null, 2))
+      } else {
+        consoleObj.log(
+          `SQL Server migrations applied to ${result.database} (${result.migrationsApplied} migration${result.migrationsApplied === 1 ? '' : 's'}).`,
+        )
+      }
       return 0
     } catch (error) {
       consoleObj.error(

@@ -139,6 +139,7 @@ Runtime pool defaults are conservative for a single app process:
 | `npm run db:health` | Run a simple `SELECT 1` health probe |
 | `npm run db:browse` | Print a read-only VS Code SQLTools connection block |
 | `npm run db:setup` | Wait, reset, run TypeORM migrations, seed required + demo profiles, and configure the read-only login |
+| `npm run db:migration-status` | Report expected, observed, pending, and unknown TypeORM migrations as JSON |
 | `npm run db:migrate` | Run TypeORM migrations only |
 | `npm run db:seed:required` | Apply only required system and lookup seed data |
 | `npm run db:seed:demo` | Reset non-required rows, then apply optional demo, smoke-test, guide, and integration seed data |
@@ -260,14 +261,19 @@ stricter baseline so future regressions are caught.
 Create a new file in `typeorm/migrations/` named `NNNN_short_description.mjs`
 (zero-padded, monotonically increasing). Both
 `lib/typeorm/sqlserver-config.ts` and `scripts/db-sqlserver-admin.mjs`
-auto-discover migration files in that directory (alphabetical filename order
-drives execution order, which matches the numeric prefix). No manual import
-list to update; a guard test in
+auto-discover migration files in that directory. The numeric filename prefix
+keeps discovery deterministic and reviewable, while TypeORM uses the
+timestamp suffix in the migration `name` as the executable order. No manual
+import list to update; a guard test in
 `scripts/__tests__/db-sqlserver-admin.test.mjs` enforces this.
 
 Existing dev or production databases that are already at an earlier migration
-will pick up new files on the next `npm run db:migrate`. Clean databases run
-the full set in order via `npm run db:setup`.
+will show pending migrations in `npm run db:migration-status` and pick up new
+files on the next `npm run db:migrate`. Clean databases run the full set in
+order via `npm run db:setup`. The status command accepts empty migration
+history as a valid migration-job state, but app runtime readiness requires the
+database to have reached the build metadata field
+`expectedDatabaseSchemaVersion`.
 
 ## Read-Only Browse Workflow
 

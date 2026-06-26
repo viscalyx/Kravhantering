@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
+import buildMetadataTools from '../build-metadata.js'
 import {
   APP_RUNTIME_DESCRIPTION,
   APP_RUNTIME_PACKAGE,
@@ -30,6 +31,10 @@ import {
 } from '../release/container-release.mjs'
 
 const gitVersion = { FullSemVer: '1.2.0-preview.4' }
+const { readExpectedDatabaseSchemaVersion } = buildMetadataTools
+const expectedDatabaseSchemaVersion = readExpectedDatabaseSchemaVersion({
+  env: {},
+})
 
 function env(overrides = {}) {
   return {
@@ -97,6 +102,7 @@ describe('trusted container release helpers', () => {
       appRuntimeImage: `ghcr.io/viscalyx/${APP_RUNTIME_PACKAGE}`,
       createGitHubRelease: true,
       demoSeedImage: `ghcr.io/viscalyx/${DEMO_SEED_PACKAGE}`,
+      expectedDatabaseSchemaVersion,
       hasRelevantChange: true,
       hsaDirectoryMockImage: `ghcr.io/viscalyx/${HSA_DIRECTORY_MOCK_PACKAGE}`,
       prerelease: true,
@@ -131,6 +137,9 @@ describe('trusted container release helpers', () => {
 
     expect(values.APP_RUNTIME_DESCRIPTION).toBe(APP_RUNTIME_DESCRIPTION)
     expect(values.DB_JOB_DESCRIPTION).toBe(DB_JOB_DESCRIPTION)
+    expect(values.BUILD_EXPECTED_DATABASE_SCHEMA_VERSION).toBe(
+      expectedDatabaseSchemaVersion,
+    )
     expect(values.DEMO_SEED_DESCRIPTION).toBe(DEMO_SEED_DESCRIPTION)
     expect(values.HSA_DIRECTORY_MOCK_DESCRIPTION).toBe(
       HSA_DIRECTORY_MOCK_DESCRIPTION,
@@ -299,6 +308,9 @@ describe('trusted container release helpers', () => {
     expect(metadata.dbJob).toMatchObject({
       imageId: 'sha256:dbjob-image',
       manifestDigest: 'sha256:dbjob-manifest',
+    })
+    expect(metadata.database).toEqual({
+      expectedSchemaVersion: expectedDatabaseSchemaVersion,
     })
   })
 
@@ -1356,6 +1368,9 @@ describe('trusted container release helpers', () => {
       expect(result.manifest).toMatchObject({
         commitSha: plan.commitSha,
         schemaVersion: 2,
+        database: {
+          expectedSchemaVersion: expectedDatabaseSchemaVersion,
+        },
         images: {
           appRuntime:
             'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app-manifest',
@@ -1524,6 +1539,10 @@ describe('trusted container release helpers', () => {
       '--run-id "$' + '{CONTAINER_STACK_RUN_ID}" || true',
     )
     expect(workflow).toContain('container-release.mjs identities')
+    expect(workflow).toContain(
+      '--build-arg BUILD_EXPECTED_DATABASE_SCHEMA_VERSION="$' +
+        '{BUILD_EXPECTED_DATABASE_SCHEMA_VERSION}"',
+    )
     expect(workflow).toContain('APP_RUNTIME_MANIFEST_DIGEST_REF')
     expect(workflow).toContain('DB_JOB_MANIFEST_DIGEST_REF')
     expect(workflow).toContain('DEMO_SEED_MANIFEST_DIGEST_REF')

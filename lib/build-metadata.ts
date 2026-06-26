@@ -4,6 +4,7 @@ import path from 'node:path'
 export interface BuildMetadata {
   builtAt: string
   commitSha: string
+  expectedDatabaseSchemaVersion: string
   imageTag: string
   version: string
 }
@@ -31,9 +32,26 @@ export function parseBuildMetadata(value: unknown): BuildMetadata | null {
   const commitSha = readNonEmptyString(value.commitSha)
   const builtAt = readNonEmptyString(value.builtAt)
   const imageTag = readNonEmptyString(value.imageTag)
+  const expectedDatabaseSchemaVersion = readNonEmptyString(
+    value.expectedDatabaseSchemaVersion,
+  )
 
-  if (!version || !commitSha || !builtAt || !imageTag) return null
-  return { builtAt, commitSha, imageTag, version }
+  if (
+    !version ||
+    !commitSha ||
+    !builtAt ||
+    !imageTag ||
+    !expectedDatabaseSchemaVersion
+  ) {
+    return null
+  }
+  return {
+    builtAt,
+    commitSha,
+    expectedDatabaseSchemaVersion,
+    imageTag,
+    version,
+  }
 }
 
 export function readBuildMetadata(

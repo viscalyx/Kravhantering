@@ -115,6 +115,7 @@
     "db:down": "docker compose --env-file .env.sqlserver -f docker-compose.sqlserver.yml down",
     "db:wait": "node scripts/db-sqlserver-admin.mjs wait",
     "db:health": "node scripts/db-sqlserver-admin.mjs health",
+    "db:migration-status": "node scripts/db-sqlserver-admin.mjs migration-status",
     "db:migrate": "node scripts/db-sqlserver-admin.mjs migrate",
     "db:seed:required": "node scripts/db-sqlserver-admin.mjs seed:required",
     "db:seed:demo": "node scripts/db-sqlserver-admin.mjs seed:demo",

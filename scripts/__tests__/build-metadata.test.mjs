@@ -8,8 +8,10 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
 const {
+  DEFAULT_MIGRATIONS_DIR,
   UNKNOWN_COMMIT_SHA,
   createBuildMetadata,
+  readExpectedDatabaseSchemaVersion,
   writeBuildMetadata,
 } = require('../build-metadata.js')
 
@@ -20,7 +22,22 @@ function makeProject(version = '0.1.0') {
   tempDirs.push(dir)
   const packageJsonPath = path.join(dir, 'package.json')
   fs.writeFileSync(packageJsonPath, JSON.stringify({ version }))
+  addMigration(dir, '0001_initial.mjs', 'InitialSchema1713720000000')
   return { dir, packageJsonPath }
+}
+
+function addMigration(dir, filename, migrationName) {
+  const migrationsDir = path.join(dir, DEFAULT_MIGRATIONS_DIR)
+  fs.mkdirSync(migrationsDir, { recursive: true })
+  fs.writeFileSync(
+    path.join(migrationsDir, filename),
+    [
+      `export class ${migrationName} {`,
+      `  name = '${migrationName}'`,
+      '}',
+      '',
+    ].join('\n'),
+  )
 }
 
 function addDotnetToolManifest(dir) {
@@ -54,6 +71,8 @@ describe('build metadata generator', () => {
     const metadata = createBuildMetadata({
       cwd: dir,
       env: {
+        BUILD_EXPECTED_DATABASE_SCHEMA_VERSION:
+          'ReleaseExpectedMigration1713900000000',
         BUILD_COMMIT_SHA: 'abc123',
         BUILD_IMAGE_TAG: 'registry.example/app:1.2.3',
         BUILD_TIME: '2026-05-21T19:00:00.000Z',
@@ -68,6 +87,7 @@ describe('build metadata generator', () => {
     expect(metadata).toEqual({
       builtAt: '2026-05-21T19:00:00.000Z',
       commitSha: 'abc123',
+      expectedDatabaseSchemaVersion: 'ReleaseExpectedMigration1713900000000',
       imageTag: 'registry.example/app:1.2.3',
       version: '1.2.3',
     })
@@ -87,6 +107,7 @@ describe('build metadata generator', () => {
     expect(metadata).toEqual({
       builtAt: '2026-05-21T20:00:00.000Z',
       commitSha: 'deadbeef',
+      expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
       imageTag: 'local-dev',
       version: '1.0.0-preview.1',
     })
@@ -113,6 +134,7 @@ describe('build metadata generator', () => {
     expect(metadata).toEqual({
       builtAt: '2026-05-21T20:30:00.000Z',
       commitSha: 'deadbeef',
+      expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
       imageTag: 'local-dev',
       version: '0.2.0-example.7',
     })
@@ -146,9 +168,34 @@ describe('build metadata generator', () => {
     expect(metadata).toEqual({
       builtAt: '2026-05-21T21:00:00.000Z',
       commitSha: UNKNOWN_COMMIT_SHA,
+      expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
       imageTag: 'local-dev',
       version: '0.2.0',
     })
+  })
+
+  it('derives the expected database schema version from the latest migration file', () => {
+    const { dir, packageJsonPath } = makeProject('0.2.0')
+    addMigration(dir, '0002_add_answers.mjs', 'AddAnswers1713800000000')
+
+    expect(
+      readExpectedDatabaseSchemaVersion({
+        cwd: dir,
+        env: {},
+      }),
+    ).toBe('AddAnswers1713800000000')
+
+    const metadata = createBuildMetadata({
+      cwd: dir,
+      env: {},
+      execFileSync: () => 'deadbeef\n',
+      now: () => new Date('2026-05-21T21:30:00.000Z'),
+      packageJsonPath,
+    })
+
+    expect(metadata.expectedDatabaseSchemaVersion).toBe(
+      'AddAnswers1713800000000',
+    )
   })
 
   it('writes public build metadata as formatted JSON', () => {

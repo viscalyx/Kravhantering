@@ -25,7 +25,11 @@ The image entrypoint is `node scripts/db-sqlserver-admin.mjs`, so Compose or
 manual runs pass the admin command as arguments:
 
 - `bootstrap` creates the database plus the app and job SQL principals.
+- `migration-status` prints JSON evidence with expected, observed, pending and
+  unknown TypeORM migrations without modifying the database.
 - `migrate` applies TypeORM migrations.
+- `migrate --json` applies TypeORM migrations and prints the preflight,
+  applied migration and post-migration evidence as JSON.
 - `seed:required` applies only required system and lookup seed data.
 - `health` runs a simple SQL Server read check.
 - `wait` polls SQL Server until it responds.

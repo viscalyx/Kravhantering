@@ -10,9 +10,11 @@ import {
   ensureReadonlySqlServerAccess,
   formatReadonlyBrowseConfig,
   getSqlServerDatabaseUrl,
+  getSqlServerMigrationStatus,
   healthCheckSqlServer,
   listMigrationFilenames,
   loadMigrationClasses,
+  loadMigrationDescriptors,
   loadSeedProfile,
   MIGRATIONS_DIR,
   main,
@@ -24,6 +26,26 @@ import {
   stripWrappingQuotes,
   waitForSqlServer,
 } from '../db-sqlserver-admin.mjs'
+
+async function createTargetHeadMigrationExecutor() {
+  const descriptors = await loadMigrationDescriptors()
+  const target = descriptors.at(-1)
+  return class FakeMigrationExecutor {
+    async getExecutedMigrations() {
+      return [
+        {
+          id: descriptors.length,
+          name: target.name,
+          timestamp: target.timestamp,
+        },
+      ]
+    }
+
+    async getPendingMigrations() {
+      return []
+    }
+  }
+}
 
 describe('db-sqlserver-admin.mjs', () => {
   beforeEach(() => {
@@ -375,6 +397,7 @@ describe('db-sqlserver-admin.mjs', () => {
     const destroy = vi.fn(async () => undefined)
     const initialize = vi.fn(async () => undefined)
     const runMigrations = vi.fn(async () => [{ name: 'InitialMigration' }])
+    const migrationExecutorCtor = await createTargetHeadMigrationExecutor()
     class FakeDataSource {
       constructor(options) {
         dataSourceOptions = options
@@ -386,7 +409,7 @@ describe('db-sqlserver-admin.mjs', () => {
 
     const result = await runSqlServerMigrations(
       'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-      { dataSourceCtor: FakeDataSource },
+      { dataSourceCtor: FakeDataSource, migrationExecutorCtor },
     )
 
     expect(initialize).toHaveBeenCalled()
@@ -399,9 +422,154 @@ describe('db-sqlserver-admin.mjs', () => {
     ).toEqual(expectedMigrationNames)
     expect(runMigrations).toHaveBeenCalled()
     expect(destroy).toHaveBeenCalled()
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       database: 'kravhantering',
       migrationsApplied: 1,
+      postMigration: {
+        compatible: true,
+      },
+      preflight: {
+        compatible: true,
+      },
+    })
+  })
+
+  it('reports migration status with pending migrations as compatible', async () => {
+    class InitialSchema1713720000000 {
+      name = 'InitialSchema1713720000000'
+    }
+    class AddAnswers1713800000000 {
+      name = 'AddAnswers1713800000000'
+    }
+    const migrationDescriptors = [
+      {
+        classRef: InitialSchema1713720000000,
+        fileName: '0001_initial.mjs',
+        name: 'InitialSchema1713720000000',
+        sequence: 1,
+        timestamp: 1713720000000,
+      },
+      {
+        classRef: AddAnswers1713800000000,
+        fileName: '0002_add_answers.mjs',
+        name: 'AddAnswers1713800000000',
+        sequence: 2,
+        timestamp: 1713800000000,
+      },
+    ]
+    const destroy = vi.fn(async () => undefined)
+    const initialize = vi.fn(async () => undefined)
+    class FakeDataSource {
+      destroy = destroy
+      initialize = initialize
+    }
+    class FakeMigrationExecutor {
+      async getExecutedMigrations() {
+        return [
+          {
+            id: 1,
+            name: 'InitialSchema1713720000000',
+            timestamp: 1713720000000,
+          },
+        ]
+      }
+
+      async getPendingMigrations() {
+        return [
+          {
+            name: 'AddAnswers1713800000000',
+            timestamp: 1713800000000,
+          },
+        ]
+      }
+    }
+
+    const result = await getSqlServerMigrationStatus(
+      'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
+      {
+        dataSourceCtor: FakeDataSource,
+        migrationDescriptors,
+        migrationExecutorCtor: FakeMigrationExecutor,
+      },
+    )
+
+    expect(result).toMatchObject({
+      compatible: true,
+      database: 'kravhantering',
+      expectedHead: {
+        fileName: '0002_add_answers.mjs',
+        name: 'AddAnswers1713800000000',
+      },
+      observedHead: {
+        fileName: '0001_initial.mjs',
+        name: 'InitialSchema1713720000000',
+      },
+      pendingMigrations: [
+        expect.objectContaining({
+          name: 'AddAnswers1713800000000',
+        }),
+      ],
+      problems: [],
+    })
+    expect(initialize).toHaveBeenCalled()
+    expect(destroy).toHaveBeenCalled()
+  })
+
+  it('returns a non-zero CLI status for unknown database migrations', async () => {
+    class InitialSchema1713720000000 {
+      name = 'InitialSchema1713720000000'
+    }
+    const log = vi.fn()
+    const error = vi.fn()
+    class FakeDataSource {
+      destroy = vi.fn(async () => undefined)
+      initialize = vi.fn(async () => undefined)
+    }
+    class FakeMigrationExecutor {
+      async getExecutedMigrations() {
+        return [
+          {
+            id: 1,
+            name: 'BranchOnly1719999999999',
+            timestamp: 1719999999999,
+          },
+        ]
+      }
+
+      async getPendingMigrations() {
+        return []
+      }
+    }
+
+    const exitCode = await main(['migration-status'], {
+      consoleObj: { error, log },
+      dataSourceCtor: FakeDataSource,
+      env: {
+        DATABASE_URL:
+          'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
+      },
+      migrationDescriptors: [
+        {
+          classRef: InitialSchema1713720000000,
+          fileName: '0001_initial.mjs',
+          name: 'InitialSchema1713720000000',
+          sequence: 1,
+          timestamp: 1713720000000,
+        },
+      ],
+      migrationExecutorCtor: FakeMigrationExecutor,
+    })
+
+    expect(exitCode).toBe(1)
+    expect(error).not.toHaveBeenCalled()
+    const payload = JSON.parse(log.mock.calls[0][0])
+    expect(payload).toMatchObject({
+      compatible: false,
+      problems: [
+        expect.objectContaining({
+          code: 'database_schema_version_unknown',
+        }),
+      ],
     })
   })
 
@@ -820,10 +988,10 @@ describe('db-sqlserver-admin.mjs', () => {
     ).resolves.toBe(1)
 
     expect(error).toHaveBeenCalledWith(
-      'seed:demo is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migrate and seed:required in the production db-job image.',
+      'seed:demo is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migration-status, migrate and seed:required in the production db-job image.',
     )
     expect(error).toHaveBeenCalledWith(
-      'demo:clear is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migrate and seed:required in the production db-job image.',
+      'demo:clear is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migration-status, migrate and seed:required in the production db-job image.',
     )
     expect(log).not.toHaveBeenCalled()
     expect(dataSourceCtor).not.toHaveBeenCalled()
@@ -855,6 +1023,7 @@ describe('db-sqlserver-admin.mjs', () => {
       events.push('migrate')
       return [{ name: 'InitialMigration' }]
     })
+    const migrationExecutorCtor = await createTargetHeadMigrationExecutor()
     class FakeDataSource {
       destroy = vi.fn(async () => undefined)
       initialize = vi.fn(async () => undefined)
@@ -874,6 +1043,7 @@ describe('db-sqlserver-admin.mjs', () => {
           'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
       },
       healthCheckImpl,
+      migrationExecutorCtor,
       seedDemoDatabaseImpl: vi.fn(async () => {
         events.push('demo')
         return 11
@@ -961,7 +1131,7 @@ describe('db-sqlserver-admin.mjs', () => {
 
     expect(exitCode).toBe(1)
     expect(error).toHaveBeenCalledWith(
-      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migrate|seed:required|seed:demo|demo:clear|setup|browse-config>',
+      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migration-status|migrate|seed:required|seed:demo|demo:clear|setup|browse-config>',
     )
   })
 

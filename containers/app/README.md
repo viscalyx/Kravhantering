@@ -118,6 +118,9 @@ Optional application values:
 
 - `BUILD_VERSION`, `BUILD_COMMIT_SHA`, `BUILD_TIME`, and `BUILD_IMAGE_TAG`
   populate generated public build metadata before `next build`.
+- `BUILD_EXPECTED_DATABASE_SCHEMA_VERSION` can pin the TypeORM migration
+  `name` that the built app expects. When omitted, the build metadata generator
+  derives it from the latest file in `typeorm/migrations/`.
 - `AUTH_OIDC_API_AUDIENCE` configures token audiences for MCP traffic.
 - `MCP_CLIENT_ID` selects the local MCP service-account client for token
   helper scripts.

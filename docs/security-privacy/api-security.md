@@ -49,6 +49,11 @@ Deferred from this contract:
 - CSV export, MCP, AI routes, admin catalog/settings mutations,
   specifications, deviations, improvement suggestions, and Admin Center
   access-review routes (`/api/admin/access-reviews/**`).
+- `/api/database-schema-status` remains outside the OpenAPI/Schemathesis
+  contract. It is an authenticated UI diagnostic route for the global
+  navigation version tooltip. It returns the expected database schema version
+  and a sanitized match state; only Admin users receive the observed TypeORM
+  migration `name`, and only for mismatch diagnostics.
 - Access-review routes remain outside the OpenAPI/Schemathesis contract for
   now. They use the same request-context and CSRF protections as other Admin
   Center mutations, but the useful assertions are role-matrix and

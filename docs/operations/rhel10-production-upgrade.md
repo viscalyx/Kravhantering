@@ -220,11 +220,20 @@ place.
    set -a
    . /etc/kravhantering/release.env
    set +a
+   EVIDENCE_DIR="/var/tmp/kravhantering-upgrade-${VERSION}-evidence"
+   mkdir -p "$EVIDENCE_DIR"
 
    podman run --rm --env-file /etc/kravhantering/db-job.env \
      "$DB_JOB_IMAGE_REF" wait
    podman run --rm --env-file /etc/kravhantering/db-job.env \
-     "$DB_JOB_IMAGE_REF" migrate
+     "$DB_JOB_IMAGE_REF" migration-status \
+     > "$EVIDENCE_DIR/migration-status-before-${VERSION}.json"
+   podman run --rm --env-file /etc/kravhantering/db-job.env \
+     "$DB_JOB_IMAGE_REF" migrate --json \
+     > "$EVIDENCE_DIR/migration-run-${VERSION}.json"
+   podman run --rm --env-file /etc/kravhantering/db-job.env \
+     "$DB_JOB_IMAGE_REF" migration-status \
+     > "$EVIDENCE_DIR/migration-status-after-${VERSION}.json"
    podman run --rm --env-file /etc/kravhantering/db-job.env \
      "$DB_JOB_IMAGE_REF" seed:required
 
@@ -358,14 +367,18 @@ place.
     Put the app nodes back into the load balancer, reverse proxy or firewall
     rotation only after the readiness probes and read-only workflow succeed.
     Add the final bundle checksum, image refs, restore-point reference and
-    readiness results to the
+    `migration-status-before-<version>.json`,
+    `migration-run-<version>.json`,
+    `migration-status-after-<version>.json` and readiness results to the
     [Operational Evidence](./rhel10-production-deploy.md#operational-evidence)
     record.
 
 ## Rollback
 
 Rollback after a migration requires restoring the database backup or restore
-point taken before the upgrade. The supported sequence is:
+point taken before the upgrade. Use the captured migration evidence to confirm
+which database head was observed before and after the failed upgrade. The
+supported sequence is:
 
 1. Disable traffic to all app nodes.
 
