@@ -324,12 +324,14 @@ export async function newAnonymousContext(
 }
 
 export function aiGenerationBody(scope?: {
-  scopeId: number
-  scopeType: 'requirement_area' | 'specification'
+  areaId?: number
+  mode?: 'library' | 'specification-local'
+  specificationId?: number
 }): Record<string, unknown> {
   return {
     locale: 'sv',
-    topic: 'Behörighetskontroll som ska stoppas före AI-provider.',
+    mode: scope?.mode ?? 'library',
+    need: 'Behörighetskontroll som ska stoppas före AI-provider.',
     ...(scope ?? {}),
   }
 }

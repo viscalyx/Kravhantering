@@ -294,6 +294,11 @@ const initialAvailableRequirement = {
 
 function createInitialData(): RequirementsSpecificationDetailInitialData {
   return {
+    aiGenerationAvailability: {
+      disabledByEnvironment: false,
+      effectiveRequirementGenerationEnabled: true,
+      requirementGenerationEnabled: true,
+    },
     areas: [],
     availableNeedsRefs: [],
     availableRequirements: {
@@ -736,13 +741,20 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(itemsTable.columnPickerPlacement).toBe('end')
     expect(floatingActions.map(action => action.id)).toEqual([
       'create-local',
+      'ai-assist-local',
       'print',
       'import-local',
       'export',
     ])
     expect(
       floatingActions.map(action => action.position ?? 'afterColumns'),
-    ).toEqual(['beforeColumns', 'afterColumns', 'afterColumns', 'afterColumns'])
+    ).toEqual([
+      'beforeColumns',
+      'beforeColumns',
+      'afterColumns',
+      'afterColumns',
+      'afterColumns',
+    ])
   })
 
   it('encodes profile print report href slugs as one route segment', async () => {

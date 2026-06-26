@@ -174,7 +174,7 @@ const aiGenerateRequirementsRoutePath = join(
   'app',
   'api',
   'ai',
-  'generate-requirements',
+  'generate-requirement-import',
   'route.ts',
 )
 const adminCenterDocPath = join(
@@ -236,12 +236,6 @@ const aiRequirementGeneratorPath = join(
   repoRoot,
   'components',
   'AiRequirementGenerator.tsx',
-)
-const requirementsServiceEntryPath = join(
-  repoRoot,
-  'lib',
-  'requirements',
-  'service.ts',
 )
 const requirementsServicePath = join(
   repoRoot,
@@ -593,7 +587,6 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
   const scanGuardSource = readFileSync(scanGuardPath, 'utf8')
   const adminRouteSource = readFileSync(adminAiSettingsRoutePath, 'utf8')
   const restRouteSource = readFileSync(aiGenerateRequirementsRoutePath, 'utf8')
-  const serviceSource = readFileSync(requirementsServiceEntryPath, 'utf8')
   const adminClientSource = readFileSync(adminClientPath, 'utf8')
   const requirementsPageSource = readFileSync(requirementsPagePath, 'utf8')
   const requirementsClientSource = readFileSync(requirementsClientPath, 'utf8')
@@ -631,13 +624,8 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
 
   expect(restRouteSource).toContain('getAiGenerationAvailability')
   expect(restRouteSource).toContain('AI_PROVIDER_UNAVAILABLE_MESSAGE')
-  expect(restRouteSource).toContain(
-    "recordStreamEvent(context, 'failure', 503)",
-  )
-  expect(serviceSource).toContain('getAiGenerationAvailability')
-  expect(serviceSource).toContain('serviceUnavailableError')
-  expect(serviceSource).toContain("reason: 'ai_generation_disabled'")
-
+  expect(restRouteSource).toContain('createUnavailableAiStreamResponse')
+  expect(restRouteSource).toContain("recordStreamEvent('failure', 503)")
   expect(adminClientSource).toContain("id: 'ai'")
   expect(adminClientSource).toContain('/api/admin/ai-settings')
   expect(adminClientSource).toContain('disabledByEnvironment')

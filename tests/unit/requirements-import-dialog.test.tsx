@@ -78,6 +78,14 @@ async function expandFirstImportRow() {
   )
 }
 
+function createDeferredResponse() {
+  let resolve!: (value: Response) => void
+  const promise = new Promise<Response>(promiseResolve => {
+    resolve = promiseResolve
+  })
+  return { promise, resolve }
+}
+
 describe('RequirementsImportDialog', () => {
   beforeEach(() => {
     confirmMock.mockReset()
@@ -105,6 +113,9 @@ describe('RequirementsImportDialog', () => {
     const jsonField = screen.getByLabelText(/Import-JSON/)
     const areaSelect = screen.getByLabelText(/Kravområde/)
 
+    expect(
+      screen.getByRole('heading', { name: 'Importera krav' }),
+    ).toBeInTheDocument()
     expect(loadButton).toBeDisabled()
     expect(
       screen.getByText(
@@ -137,6 +148,11 @@ describe('RequirementsImportDialog', () => {
 
     fireEvent.change(jsonField, { target: { value: '' } })
     fireEvent.change(areaSelect, { target: { value: '7' } })
+    expect(
+      screen.getByRole('heading', {
+        name: 'Importera krav för Bilddiagnostik',
+      }),
+    ).toBeInTheDocument()
     expect(
       screen.getByText(
         'Klistra in import-JSON eller välj en JSON-fil för att förhandsgranska kraven.',
@@ -345,6 +361,113 @@ describe('RequirementsImportDialog', () => {
     await waitFor(() =>
       expect(screen.getByLabelText(/Import-JSON/)).toHaveValue(payload),
     )
+  })
+
+  it('hides the JSON file form while AI import preview is prepared', async () => {
+    const pendingPreview = createDeferredResponse()
+    vi.mocked(apiFetch).mockReturnValueOnce(pendingPreview.promise)
+
+    render(
+      <RequirementsImportDialog
+        areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
+        initialImport={{
+          areaId: 7,
+          key: 'ai-import-1',
+          payload: {
+            requirements: [{ description: 'Kravtext' }],
+            schemaVersion: 'requirement-import.v1',
+          },
+        }}
+        mode="library"
+        onClose={vi.fn()}
+        open
+      />,
+    )
+
+    expect(
+      screen.getByText('Förbereder importgranskning...'),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Import-JSON/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'Släpp en JSON-fil här, eller klicka för att välja fil.',
+      }),
+    ).not.toBeInTheDocument()
+
+    pendingPreview.resolve({
+      json: async () => ({
+        previewToken: 'preview-token',
+        proposals: [],
+        rows: [
+          {
+            errors: [],
+            proposedNormReferenceKeys: [],
+            reviewRowId: 'row-0',
+            selected: true,
+            sourceIndex: 0,
+            values: {
+              acceptanceCriteria: null,
+              categoryId: null,
+              description: 'Kravtext',
+              needsReferenceId: null,
+              normReferenceIds: [],
+              priorityLevelId: null,
+              qualityCharacteristicId: null,
+              requirementPackageIds: [],
+              requiresTesting: false,
+              typeId: null,
+              verificationMethod: null,
+            },
+            warnings: [],
+          },
+        ],
+        summary: { errorCount: 0, rowCount: 1, warningCount: 0 },
+      }),
+      ok: true,
+    } as Response)
+
+    expect(await screen.findByText('Kravtext')).toBeInTheDocument()
+  })
+
+  it('shows the JSON file form when AI import preview fails', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      text: async () => 'Preview failed',
+      ok: false,
+    } as Response)
+
+    render(
+      <RequirementsImportDialog
+        areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
+        initialImport={{
+          areaId: 7,
+          key: 'ai-import-error',
+          payload: {
+            requirements: [{ description: 'Kravtext' }],
+            schemaVersion: 'requirement-import.v1',
+          },
+        }}
+        mode="library"
+        onClose={vi.fn()}
+        open
+      />,
+    )
+
+    expect(
+      screen.getByText('Förbereder importgranskning...'),
+    ).toBeInTheDocument()
+
+    const jsonField = await screen.findByLabelText(/Import-JSON/)
+    expect(jsonField).toHaveValue(
+      JSON.stringify(
+        {
+          requirements: [{ description: 'Kravtext' }],
+          schemaVersion: 'requirement-import.v1',
+        },
+        null,
+        2,
+      ),
+    )
+    expect(screen.getByText('Preview failed')).toBeInTheDocument()
   })
 
   it('starts loaded rows collapsed with a switch and priority summary', async () => {
@@ -633,12 +756,19 @@ describe('RequirementsImportDialog', () => {
 
     render(
       <RequirementsImportDialog
+        destinationName="Elevbetyg 2026"
         mode="specification-local"
         onClose={vi.fn()}
         open
         specificationSlug="spec"
       />,
     )
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Importera krav för Elevbetyg 2026',
+      }),
+    ).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText(/Import-JSON/), {
       target: {

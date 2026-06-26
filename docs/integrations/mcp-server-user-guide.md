@@ -102,16 +102,6 @@ agents can use it reliably.
   an improvement suggestion on a requirement. Operations: `create`, `edit`, `delete`,
   `request_review`, `revert_to_draft`, `resolve`, `dismiss`.
 
-#### AI-Assisted Authoring
-
-- `requirements_generate_requirements`
-  Generate system requirements using AI (OpenRouter) based on a
-  topic. Returns generated requirements with a thinking trace.
-  Optional model IDs must belong to the server's eligible model catalog.
-  To create the generated requirements, call
-  `requirements_manage_requirement` with `operation: "create"`
-  for each requirement.
-
 ### Resources
 
 - `requirements://requirement/{uniqueId}`
@@ -351,8 +341,7 @@ Use a configuration like this:
         "requirements_graduate_local_requirement",
         "requirements_remove_from_specification",
         "requirements_list_improvement_suggestions",
-        "requirements_manage_improvement_suggestion",
-        "requirements_generate_requirements"
+        "requirements_manage_improvement_suggestion"
       ],
       "headers": {
         "Authorization": "$COPILOT_MCP_REQUIREMENT_MANAGEMENT_AUTHORIZATION"
@@ -391,8 +380,7 @@ Example:
         "requirements_graduate_local_requirement",
         "requirements_remove_from_specification",
         "requirements_list_improvement_suggestions",
-        "requirements_manage_improvement_suggestion",
-        "requirements_generate_requirements"
+        "requirements_manage_improvement_suggestion"
       ],
       "headers": {
         "Authorization":

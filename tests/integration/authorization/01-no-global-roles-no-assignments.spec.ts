@@ -114,45 +114,24 @@ test('AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or assignments 
       'no-role action log read',
     )
     await expectStatus(
-      await noRoles.get('/api/ai/models'),
-      403,
-      'no-role AI models without scope',
-    )
-    await expectStatus(
-      await noRoles.get('/api/ai/credits'),
-      403,
-      'no-role AI credits without scope',
-    )
-    await expectStatus(
-      await noRoles.post('/api/ai/generate-requirements', {
-        data: aiGenerationBody(),
-      }),
-      403,
-      'no-role AI generation without scope',
-    )
-    await expectStatus(
-      await noRoles.get(
-        `/api/ai/models?scopeType=requirement_area&scopeId=${fixture.areaId}`,
-      ),
-      403,
-      'no-role AI models with unauthorized area scope',
-    )
-    await expectStatus(
-      await noRoles.get(
-        `/api/ai/credits?scopeType=requirement_area&scopeId=${fixture.areaId}`,
-      ),
-      403,
-      'no-role AI credits with unauthorized area scope',
-    )
-    await expectStatus(
-      await noRoles.post('/api/ai/generate-requirements', {
+      await noRoles.post('/api/ai/generate-requirement-import', {
         data: aiGenerationBody({
-          scopeId: fixture.areaId,
-          scopeType: 'requirement_area',
+          areaId: fixture.areaId,
+          mode: 'library',
         }),
       }),
       403,
       'no-role AI generation with unauthorized area scope',
+    )
+    await expectStatus(
+      await noRoles.post('/api/ai/generate-requirement-import', {
+        data: aiGenerationBody({
+          mode: 'specification-local',
+          specificationId: fixture.specificationId,
+        }),
+      }),
+      403,
+      'no-role AI generation with unauthorized specification scope',
     )
   } finally {
     await noRoles.dispose()

@@ -9,6 +9,7 @@ import {
   Pencil,
   Plus,
   Printer,
+  Sparkles,
   Trash2,
   Upload,
   X,
@@ -29,6 +30,7 @@ import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requiremen
 import SpecificationRequirementSelectionPanel from '@/app/[locale]/specifications/[slug]/specification-requirement-selection-panel'
 import SpecificationRfiListPanel from '@/app/[locale]/specifications/[slug]/specification-rfi-list-panel'
 import SpecificationFormModal from '@/app/[locale]/specifications/specification-form-modal'
+import AiRequirementGenerator from '@/components/AiRequirementGenerator'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
@@ -56,6 +58,7 @@ import {
   type SpecificationCsvProfile,
   type SpecificationReportProfile,
 } from '@/lib/reports/specification-profiles'
+import type { ImportRequirementsPayload } from '@/lib/requirements/import-schema'
 import {
   type AreaOption,
   buildRequirementListParams,
@@ -339,6 +342,15 @@ export default function KravunderlagDetailClient({
     showImportLocalRequirementsModal,
     setShowImportLocalRequirementsModal,
   ] = useState(false)
+  const [showAiLocalRequirementsModal, setShowAiLocalRequirementsModal] =
+    useState(false)
+  const [
+    aiLocalRequirementsInitialImport,
+    setAiLocalRequirementsInitialImport,
+  ] = useState<{
+    key: string
+    payload: ImportRequirementsPayload
+  } | null>(null)
   const [createLocalRequirementFormDirty, setCreateLocalRequirementFormDirty] =
     useState(false)
   const [pendingAddIds, setPendingAddIds] = useState<number[]>([])
@@ -1637,6 +1649,16 @@ export default function KravunderlagDetailClient({
   const canMutateSpecification =
     permissions.canEditContent === true ||
     permissions.canManageAssignments === true
+  const canOpenAiLocalRequirements =
+    canEditContent &&
+    permissions.canUseAi === true &&
+    initialData.aiGenerationAvailability.effectiveRequirementGenerationEnabled
+  const aiLocalRequirementsDisabledTooltip = !initialData
+    .aiGenerationAvailability.effectiveRequirementGenerationEnabled
+    ? initialData.aiGenerationAvailability.disabledByEnvironment
+      ? t('aiGenerateDisabledByEnvironment')
+      : t('aiGenerateDisabledByAdmin')
+    : undefined
 
   const localName = (obj: { nameSv: string; nameEn: string } | null) =>
     obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
@@ -2588,6 +2610,26 @@ export default function KravunderlagDetailClient({
                           </span>
                         </button>
                         <button
+                          aria-label={t('aiGenerate')}
+                          className={leftPanelActionPillClassName}
+                          disabled={!canOpenAiLocalRequirements}
+                          {...devMarker({
+                            context: 'requirements specification detail',
+                            name: 'table action',
+                            priority: 350,
+                            value: 'ai assist local requirements',
+                          })}
+                          onClick={() => setShowAiLocalRequirementsModal(true)}
+                          title={
+                            aiLocalRequirementsDisabledTooltip ??
+                            t('aiGenerate')
+                          }
+                          type="button"
+                        >
+                          <Sparkles aria-hidden="true" className="h-4 w-4" />
+                          <span className="sr-only">{t('aiGenerate')}</span>
+                        </button>
+                        <button
                           aria-label={t('importLocalRequirements')}
                           className={leftPanelActionPillClassName}
                           {...devMarker({
@@ -2642,6 +2684,27 @@ export default function KravunderlagDetailClient({
                                 void handleOpenCreateLocalRequirementModal(),
                               position: 'beforeColumns' as const,
                               variant: 'primary' as const,
+                            },
+                            {
+                              ariaLabel: t('aiGenerate'),
+                              developerModeContext:
+                                'requirements specification detail',
+                              developerModeValue:
+                                'ai assist local requirements',
+                              disabled: !canOpenAiLocalRequirements,
+                              icon: (
+                                <Sparkles
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                              ),
+                              id: 'ai-assist-local',
+                              onClick: () =>
+                                setShowAiLocalRequirementsModal(true),
+                              position: 'beforeColumns' as const,
+                              tooltip:
+                                aiLocalRequirementsDisabledTooltip ??
+                                t('aiGenerate'),
                             },
                           ]
                         : []),
@@ -3093,10 +3156,29 @@ export default function KravunderlagDetailClient({
       />
       {addModal}
       {createLocalRequirementModal}
+      <AiRequirementGenerator
+        aiGenerationAvailability={initialData.aiGenerationAvailability}
+        mode="specification-local"
+        onClose={() => setShowAiLocalRequirementsModal(false)}
+        onImportPreview={payload => {
+          setAiLocalRequirementsInitialImport({
+            key: `ai-local-${Date.now()}`,
+            payload,
+          })
+          setShowAiLocalRequirementsModal(false)
+          setShowImportLocalRequirementsModal(true)
+        }}
+        open={showAiLocalRequirementsModal}
+        specificationId={spec.id}
+        specificationSlug={specificationSlug}
+      />
       <RequirementsImportDialog
+        destinationName={spec.name}
+        initialImport={aiLocalRequirementsInitialImport}
         mode="specification-local"
         needsReferences={availableNeedsRefs}
         onClose={importSucceeded => {
+          setAiLocalRequirementsInitialImport(null)
           void handleImportLocalRequirementsClose(importSucceeded)
         }}
         open={showImportLocalRequirementsModal}

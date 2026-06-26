@@ -89,11 +89,6 @@ const TOOL_CASES: ToolCase[] = [
       requirementId: 1,
     },
   },
-  {
-    acceptsResponseFormat: false,
-    name: 'requirements_generate_requirements',
-    valid: { topic: 'Security posture' },
-  },
 ]
 
 function createVersion(versionNumber = 2): RequirementVersionDetail {
@@ -155,19 +150,6 @@ function createService() {
       createdRows: [],
       mode: 'specification-local' as const,
       summary: { createdCount: 0 },
-    })),
-    generateRequirements: vi.fn(async () => ({
-      message: 'Generated requirements',
-      model: 'test-model',
-      requirements: [],
-      stats: {
-        completionTokens: 1,
-        cost: 0,
-        promptTokens: 1,
-        reasoningTokens: 0,
-        totalTokens: 2,
-      },
-      thinking: '',
     })),
     getRequirement: vi.fn(async () => ({
       message: 'Requirement detail',
@@ -403,11 +385,6 @@ describe('MCP property-based input validation', () => {
         { numRuns: 8 },
       )
 
-      await expectInvalidToolCall(
-        client,
-        'requirements_generate_requirements',
-        { topic: 'x'.repeat(1001) },
-      )
       await expectInvalidToolCall(client, 'requirements_query_catalog', {
         descriptionSearch: 'x'.repeat(201),
       })

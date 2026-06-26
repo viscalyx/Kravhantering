@@ -56,6 +56,12 @@ export interface ImportMessage {
 export interface RequirementsImportPreviewRow {
   errors: ImportMessage[]
   infos: ImportMessage[]
+  labels: {
+    category: string | null
+    priorityLevel: string | null
+    qualityCharacteristic: string | null
+    type: string | null
+  }
   proposedNormReferenceKeys: string[]
   reviewRowId: string
   selected: boolean
@@ -633,6 +639,7 @@ function previewProposals(
 }
 
 function previewRows(args: {
+  locale: 'en' | 'sv'
   mode: RequirementsImportMode
   payload: ImportRequirementsPayload
   proposals: RequirementsImportProposalPreview[]
@@ -742,6 +749,24 @@ function previewRows(args: {
       typeId,
       verificationMethod: requiresTesting ? verificationMethod : null,
     }
+    const labels = {
+      category: receiptName(
+        args.referenceData.categories,
+        values.categoryId,
+        args.locale,
+      ),
+      priorityLevel: receiptPriorityName(
+        args.referenceData.priorityLevels,
+        values.priorityLevelId,
+        args.locale,
+      ),
+      qualityCharacteristic: receiptName(
+        args.referenceData.qualityCharacteristics,
+        values.qualityCharacteristicId,
+        args.locale,
+      ),
+      type: receiptName(args.referenceData.types, values.typeId, args.locale),
+    }
 
     if (values.requiresTesting && !values.verificationMethod) {
       errors.push(
@@ -756,6 +781,7 @@ function previewRows(args: {
     return {
       errors,
       infos,
+      labels,
       proposedNormReferenceKeys: [
         ...new Set(
           (row.proposedNormReferenceKeys ?? []).map(key => key.trim()),
@@ -853,12 +879,14 @@ function validateExecuteRows(args: {
 
 function previewFromReferenceData(args: {
   destinationId: number
+  locale: 'en' | 'sv'
   mode: RequirementsImportMode
   payload: ImportRequirementsPayload
   referenceData: ImportReferenceData
 }): RequirementsImportPreview {
   const proposals = previewProposals(args.payload, args.referenceData)
   const rows = previewRows({
+    locale: args.locale,
     mode: args.mode,
     payload: args.payload,
     proposals,
@@ -1345,6 +1373,7 @@ export function createRequirementsImportWorkflow({
       const referenceData = await loadImportReferenceData(db)
       return previewFromReferenceData({
         destinationId: input.areaId,
+        locale: input.locale,
         mode: 'library',
         payload: input.payload,
         referenceData,
@@ -1374,6 +1403,7 @@ export function createRequirementsImportWorkflow({
       const referenceData = await loadImportReferenceData(db)
       return previewFromReferenceData({
         destinationId: specificationId,
+        locale: input.locale,
         mode: 'specification-local',
         payload: input.payload,
         referenceData,

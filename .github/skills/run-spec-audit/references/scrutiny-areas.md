@@ -179,14 +179,14 @@ maintenance rule.
 
 - **Code:** `lib/dal/ai-settings.ts`,
   `app/api/admin/ai-settings/route.ts`,
-  `app/api/ai/generate-requirements/route.ts`,
-  `lib/requirements/service.ts`, Admin Center UI, and requirements UI.
+  `app/api/ai/generate-requirement-import/route.ts`, Admin Center UI, and
+  requirements UI.
 - **Spec:** `docs/governance/admin-center.md` and
   `docs/governance/reference-data-and-ai.md`.
 - **Req tag:** `[Req: formal — docs/governance/admin-center.md "AI"]`
 - **Question:** Does the persisted Admin Center preference disable AI
-  generation across UI, REST, and MCP while preserving the environment guard as
-  the highest-precedence hard override?
+  generation across UI and REST while preserving the environment guard as the
+  highest-precedence hard override?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 24: Admin Center AI generation disablement is globally effective"`
 

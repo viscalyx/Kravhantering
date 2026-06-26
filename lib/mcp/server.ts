@@ -15,7 +15,6 @@ import {
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import {
   buildRequirementViewUri,
-  type GenerateRequirementsInput,
   type GetRequirementInput,
   type GraduateSpecificationLocalRequirementInput,
   type ListGraduationTargetAreasInput,
@@ -236,39 +235,6 @@ const ManageSuggestionOutputSchema = z
     result: z
       .record(z.string(), z.unknown())
       .describe('Created or updated suggestion data, or an operation result.'),
-  })
-  .strict()
-
-const GeneratedRequirementOutputSchema = z
-  .object({
-    acceptanceCriteria: z.string().nullable().optional(),
-    categoryId: z.number().optional(),
-    description: z.string(),
-    qualityCharacteristicId: z.number().optional(),
-    rationale: z.string(),
-    requiresTesting: z.boolean(),
-    priorityLevelId: z.number().optional(),
-    requirementPackageIds: z.array(z.number()).optional(),
-    typeId: z.number(),
-    verificationMethod: z.string().nullable().optional(),
-  })
-  .strict()
-
-const GenerateRequirementsOutputSchema = z
-  .object({
-    message: z.string(),
-    model: z.string(),
-    requirements: z.array(GeneratedRequirementOutputSchema),
-    stats: z
-      .object({
-        completionTokens: z.number(),
-        cost: z.number(),
-        promptTokens: z.number(),
-        reasoningTokens: z.number(),
-        totalTokens: z.number(),
-      })
-      .strict(),
-    thinking: z.string(),
   })
   .strict()
 
@@ -2121,127 +2087,6 @@ export function createKravhanteringMcpServer(
         )
         return {
           content: [{ text: payload.message, type: 'text' }],
-          structuredContent: payload as unknown as Record<string, unknown>,
-        }
-      } catch (error) {
-        return formatError(error)
-      }
-    },
-  )
-
-  // ── AI Requirement Generation ───────────────────────────────────────
-  server.registerTool(
-    'requirements_generate_requirements',
-    {
-      annotations: {
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-        readOnlyHint: true,
-      },
-      description:
-        'Generate system requirements using AI (OpenRouter) based on a topic. ' +
-        'Returns generated requirements with thinking trace. ' +
-        'To create the generated requirements, call requirements_manage_requirement ' +
-        'with operation "create" for each requirement, using the generated fields as the requirement object and setting requirement.areaId ' +
-        "to the areaId provided in this tool's input.",
-      inputSchema: z
-        .object({
-          areaId: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-              'Requirement area ID to assign to generated requirements when creating them via requirements_manage_requirement. Also used as the requirement_area AI authorization scope when scopeType/scopeId are omitted.',
-            ),
-          customInstruction: z
-            .string()
-            .max(5000)
-            .optional()
-            .describe(
-              'Custom instruction to override the default generation prompt',
-            ),
-          locale: z
-            .enum(['en', 'sv'])
-            .default('en')
-            .describe('Locale for taxonomy names in the prompt'),
-          model: z
-            .string()
-            .max(100)
-            .optional()
-            .describe(
-              'Eligible OpenRouter model ID from the server model catalog (e.g. "anthropic/claude-sonnet-4"). Uses NEXT_PUBLIC_DEFAULT_MODEL env var if omitted.',
-            ),
-          scopeId: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-              'Authorized AI scope ID. Required for non-Admin actors unless areaId is provided as a requirement_area scope.',
-            ),
-          scopeType: z
-            .enum(['requirement_area', 'specification'])
-            .optional()
-            .describe(
-              'Authorized AI scope type. Use requirement_area for kravbibliotek authoring or specification for kravunderlag authoring.',
-            ),
-          topic: z
-            .string()
-            .min(1)
-            .max(1000)
-            .describe(
-              'The topic or system context to generate requirements for',
-            ),
-        })
-        .strict(),
-      outputSchema: GenerateRequirementsOutputSchema,
-      title: 'Generate Requirements (AI)',
-    },
-    async input => {
-      try {
-        const generateInput = input as GenerateRequirementsInput & {
-          areaId?: number
-        }
-        if (!generateInput.scopeType && !generateInput.scopeId) {
-          generateInput.scopeId = generateInput.areaId
-          generateInput.scopeType =
-            generateInput.areaId == null ? undefined : 'requirement_area'
-        }
-        const payload = await service.generateRequirements(
-          await getBaseContext(request, 'requirements_generate_requirements'),
-          generateInput,
-        )
-
-        const reqSummary = payload.requirements
-          .map(
-            (r, i) =>
-              `${i + 1}. [Type ${r.typeId}] ${r.description.slice(0, 120)}`,
-          )
-          .join('\n')
-
-        const areaNote = (input as { areaId?: number }).areaId
-          ? ` Set \`areaId: ${(input as { areaId?: number }).areaId}\` on each requirement.`
-          : ' Remember to set `areaId` on each requirement.'
-
-        const text = [
-          `Generated ${payload.requirements.length} requirements (model: ${payload.model})`,
-          '',
-          '## Requirements',
-          reqSummary,
-          '',
-          '## Thinking Trace',
-          payload.thinking
-            ? payload.thinking.slice(0, 2000)
-            : '(no thinking trace)',
-          '',
-          '---',
-          `To create these requirements, call \`requirements_manage_requirement\` with \`operation: "create"\` for each one.${areaNote}`,
-        ].join('\n')
-
-        return {
-          content: [{ text, type: 'text' }],
           structuredContent: payload as unknown as Record<string, unknown>,
         }
       } catch (error) {

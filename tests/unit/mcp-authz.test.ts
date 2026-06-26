@@ -151,27 +151,6 @@ function createService() {
     message: 'Suggestion updated',
     result: { id: 3 },
   }))
-  const generateRequirements = vi.fn(async (_context: RequestContext) => ({
-    message: 'Generated requirements',
-    model: 'test-model',
-    requirements: [
-      {
-        description: 'Generated requirement',
-        rationale: 'Matches the topic',
-        requiresTesting: true,
-        typeId: 1,
-      },
-    ],
-    stats: {
-      completionTokens: 1,
-      cost: 0,
-      promptTokens: 1,
-      reasoningTokens: 0,
-      totalTokens: 2,
-    },
-    thinking: '',
-  }))
-
   const service = {
     addToSpecification,
     buildImportAiPrompt: vi.fn(async () => ''),
@@ -185,7 +164,6 @@ function createService() {
       mode: 'specification-local' as const,
       summary: { createdCount: 0 },
     })),
-    generateRequirements,
     getRequirement,
     getSpecificationItems,
     graduateSpecificationLocalRequirement,
@@ -217,7 +195,6 @@ function createService() {
 
   return {
     addToSpecification,
-    generateRequirements,
     getRequirement,
     graduateSpecificationLocalRequirement,
     listGraduationTargetAreas,
@@ -332,11 +309,6 @@ describe('MCP authorization seams', () => {
       },
       name: 'requirements_manage_improvement_suggestion',
     })
-    await client.callTool({
-      arguments: { topic: 'Secure audit logging' },
-      name: 'requirements_generate_requirements',
-    })
-
     expectContext(service.queryCatalog, 'requirements_query_catalog')
     expectContext(service.manageRequirement, 'requirements_manage_requirement')
     expectContext(
@@ -359,27 +331,6 @@ describe('MCP authorization seams', () => {
       service.manageSuggestion,
       'requirements_manage_improvement_suggestion',
     )
-    expectContext(
-      service.generateRequirements,
-      'requirements_generate_requirements',
-    )
-
-    await Promise.allSettled([client.close(), server.close()])
-  })
-
-  it('returns generated requirements without persisting them through manage_requirement', async () => {
-    const service = createService()
-    const { client, server } = await createClient(service.service)
-
-    const result = await client.callTool({
-      arguments: { topic: 'Disposable local scan targets' },
-      name: 'requirements_generate_requirements',
-    })
-
-    expect(result.isError).not.toBe(true)
-    expect(service.generateRequirements).toHaveBeenCalledTimes(1)
-    expect(service.manageRequirement).not.toHaveBeenCalled()
-
     await Promise.allSettled([client.close(), server.close()])
   })
 })

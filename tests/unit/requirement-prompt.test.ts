@@ -1,148 +1,42 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildSystemPrompt,
-  buildUserPrompt,
+  buildRequirementImportRepairPrompt,
+  buildRequirementImportResponseFormatSchema,
+  buildRequirementImportSystemPrompt,
+  buildRequirementImportUserPrompt,
+  clampRequirementCandidateCount,
   DEFAULT_INSTRUCTION_EN,
   DEFAULT_INSTRUCTION_SV,
-  type GeneratedRequirement,
+  DEFAULT_REQUIREMENT_CANDIDATE_COUNT,
   getDefaultInstruction,
   getPromptMessage,
   getPromptMessageList,
   getPromptValue,
-  REQUIREMENT_FORMAT_SCHEMA,
-  type TaxonomyData,
-  validateGeneratedRequirements,
+  MAX_REQUIREMENT_CANDIDATE_COUNT,
+  MIN_REQUIREMENT_CANDIDATE_COUNT,
 } from '@/lib/ai/requirement-prompt'
-
-const testTaxonomy: TaxonomyData = {
-  categories: [
-    { id: 1, name: 'Business' },
-    { id: 2, name: 'IT' },
-    { id: 3, name: 'Supplier' },
-  ],
-  qualityCharacteristics: [
-    { id: 1, name: 'Functional suitability' },
-    {
-      id: 2,
-      name: 'Functional correctness',
-      parentName: 'Functional suitability',
-    },
-    { id: 10, name: 'Performance efficiency' },
-    { id: 11, name: 'Time behaviour', parentName: 'Performance efficiency' },
-  ],
-  priorityLevels: [
-    {
-      assessmentCriteria: 'Minor importance',
-      code: 'P2',
-      description: 'Low priority',
-      id: 2,
-      name: 'Low',
-    },
-    {
-      assessmentCriteria: 'Clear importance',
-      code: 'P3',
-      description: 'Medium high priority',
-      id: 3,
-      name: 'Medium high',
-    },
-    {
-      assessmentCriteria: 'High importance',
-      code: 'P4',
-      description: 'High priority',
-      id: 4,
-      name: 'High',
-    },
-  ],
-  requirementPackages: [
-    { id: 1, name: 'Normal operation' },
-    { id: 2, name: 'High load' },
-  ],
-  types: [
-    { id: 1, name: 'Functional' },
-    { id: 2, name: 'Non-functional' },
-  ],
-}
+import {
+  buildRequirementsImportJsonSchema,
+  REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+} from '@/lib/requirements/import-schema'
 
 const PROMPT_LOCALES = ['en', 'sv'] as const
 
 const REQUIRED_PROMPT_MESSAGE_PATHS = [
   ['ai', 'prompt', 'defaultInstruction'],
-  ['ai', 'prompt', 'noRequirementPackagesAvailable'],
   ['ai', 'prompt', 'userHeader'],
+  ['ai', 'prompt', 'countLabel'],
+  ['ai', 'prompt', 'instructionHeader'],
   ['ai', 'prompt', 'system', 'intro'],
-  ['ai', 'prompt', 'system', 'taxonomyIntro'],
-  ['ai', 'prompt', 'system', 'headings', 'types'],
-  ['ai', 'prompt', 'system', 'headings', 'categories'],
-  ['ai', 'prompt', 'system', 'headings', 'qualityCharacteristics'],
-  ['ai', 'prompt', 'system', 'headings', 'priorityLevels'],
-  ['ai', 'prompt', 'system', 'headings', 'requirementPackages'],
-  ['ai', 'prompt', 'system', 'headings', 'outputRules'],
+  ['ai', 'prompt', 'system', 'importContractHeading'],
+  ['ai', 'prompt', 'repair', 'intro'],
+  ['ai', 'prompt', 'repair', 'errorHeading'],
+  ['ai', 'prompt', 'repair', 'jsonHeading'],
 ] as const
 
 const REQUIRED_PROMPT_MESSAGE_LIST_PATHS = [
-  ['ai', 'prompt', 'system', 'outputRules'],
+  ['ai', 'prompt', 'repair', 'rules'],
 ] as const
-
-describe('buildSystemPrompt', () => {
-  it('includes all taxonomy IDs', () => {
-    const prompt = buildSystemPrompt(testTaxonomy)
-    expect(prompt).toContain('ID 1: Functional')
-    expect(prompt).toContain('ID 2: Non-functional')
-    expect(prompt).toContain('ID 1: Business')
-    expect(prompt).toContain('ID 4: P4 - High')
-    expect(prompt).toContain('High priority')
-    expect(prompt).toContain('Assessment criteria: High importance')
-    expect(prompt).toContain('ID 2: High load')
-    expect(prompt).toContain(
-      'ID 2: Functional suitability > Functional correctness',
-    )
-  })
-
-  it('includes ISO standard references', () => {
-    const prompt = buildSystemPrompt(testTaxonomy)
-    expect(prompt).toContain('ISO/IEC/IEEE 29148:2018')
-    expect(prompt).toContain('ISO/IEC 25030:2019')
-    expect(prompt).toContain('ISO/IEC 25010:2023')
-  })
-
-  it('includes output rules', () => {
-    const prompt = buildSystemPrompt(testTaxonomy)
-    expect(prompt).toContain('typeId is required')
-    expect(prompt).toContain(
-      'requirementPackageIds must be [] or only contain IDs from the requirements packages list above',
-    )
-    expect(prompt).toContain('requiresTesting must be true')
-  })
-
-  it('generates Swedish system prompt when locale is sv', () => {
-    const prompt = buildSystemPrompt(testTaxonomy, 'sv')
-    expect(prompt).toContain('Du är en expert på kravhantering')
-    expect(prompt).toContain('Kravtyper')
-    expect(prompt).toContain('Prioritetsskala')
-    expect(prompt).toContain('Kravpaket')
-    expect(prompt).toContain('ID 1: Functional')
-  })
-
-  it('uses localized fallback text when no requirements packages are available', () => {
-    const taxonomyWithoutRequirementPackages: TaxonomyData = {
-      ...testTaxonomy,
-      requirementPackages: [],
-    }
-
-    expect(buildSystemPrompt(taxonomyWithoutRequirementPackages)).toContain(
-      'No requirement package available',
-    )
-    expect(buildSystemPrompt(taxonomyWithoutRequirementPackages)).not.toContain(
-      '  - No requirement package available',
-    )
-    expect(
-      buildSystemPrompt(taxonomyWithoutRequirementPackages, 'sv'),
-    ).toContain('Inga kravpaket tillgängliga')
-    expect(
-      buildSystemPrompt(taxonomyWithoutRequirementPackages, 'sv'),
-    ).not.toContain('  - Inga kravpaket tillgängliga')
-  })
-})
 
 describe('prompt localization helpers', () => {
   it.each(
@@ -180,44 +74,15 @@ describe('prompt localization helpers', () => {
 
   it('throws invalid type errors for existing paths with the wrong shape', () => {
     expect(() =>
-      getPromptMessage('en', ['ai', 'prompt', 'system', 'outputRules']),
+      getPromptMessage('en', ['ai', 'prompt', 'repair', 'rules']),
     ).toThrow(
-      'Invalid prompt localization type for en:ai.prompt.system.outputRules: expected string but got array<string>',
+      'Invalid prompt localization type for en:ai.prompt.repair.rules: expected string but got array<string>',
     )
     expect(() =>
       getPromptMessageList('en', ['ai', 'prompt', 'defaultInstruction']),
     ).toThrow(
       'Invalid prompt localization type for en:ai.prompt.defaultInstruction: expected string[] but got string',
     )
-  })
-})
-
-describe('buildUserPrompt', () => {
-  it('uses default instruction when none provided', () => {
-    const prompt = buildUserPrompt('User management system')
-    expect(prompt).toContain(DEFAULT_INSTRUCTION_EN)
-    expect(prompt).toContain('User management system')
-  })
-
-  it('uses custom instruction when provided', () => {
-    const custom = 'Generate 3 security requirements'
-    const prompt = buildUserPrompt('Auth service', custom)
-    expect(prompt).toContain(custom)
-    expect(prompt).not.toContain(DEFAULT_INSTRUCTION_EN)
-    expect(prompt).toContain('Auth service')
-  })
-
-  it('uses Swedish instruction when locale is sv', () => {
-    const prompt = buildUserPrompt('Hantering av användare', undefined, 'sv')
-    expect(prompt).toContain(DEFAULT_INSTRUCTION_SV)
-    expect(prompt).toContain('Ämne / Systemkontext')
-    expect(prompt).not.toContain('Topic / System Context')
-  })
-
-  it('uses English header when locale is en', () => {
-    const prompt = buildUserPrompt('User management')
-    expect(prompt).toContain('Topic / System Context')
-    expect(prompt).not.toContain('Ämne / Systemkontext')
   })
 })
 
@@ -231,94 +96,118 @@ describe('getDefaultInstruction', () => {
   })
 })
 
-describe('REQUIREMENT_FORMAT_SCHEMA', () => {
-  it('has the expected top-level structure', () => {
-    expect(REQUIREMENT_FORMAT_SCHEMA).toHaveProperty('properties.requirements')
-    expect(REQUIREMENT_FORMAT_SCHEMA).toHaveProperty('required', [
+describe('buildRequirementImportResponseFormatSchema', () => {
+  it('derives a structured-output strict schema from the import schema', () => {
+    const importSchema = buildRequirementsImportJsonSchema('sv')
+    const schema = buildRequirementImportResponseFormatSchema('sv')
+
+    expect(importSchema).toHaveProperty('required', [
+      'schemaVersion',
       'requirements',
     ])
+    expect(schema).not.toHaveProperty('$schema')
+    expect(schema).toMatchObject({
+      additionalProperties: false,
+      required: ['proposedNormReferences', 'requirements', 'schemaVersion'],
+      title: 'Kravimport',
+      type: 'object',
+    })
+    expect(schema).toHaveProperty('properties.schemaVersion.enum', [
+      REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    ])
+
+    const properties = schema.properties as Record<string, unknown>
+    const proposedNormReferences = properties.proposedNormReferences as {
+      items: { properties: Record<string, unknown>; required: string[] }
+    }
+    expect(proposedNormReferences.items.required).toEqual(
+      Object.keys(proposedNormReferences.items.properties),
+    )
+    expect(proposedNormReferences.items.required).toContain('normReferenceId')
+    expect(
+      proposedNormReferences.items.properties.normReferenceId,
+    ).toMatchObject({
+      type: ['string', 'null'],
+    })
+
+    const requirements = properties.requirements as {
+      items: { properties: Record<string, unknown>; required: string[] }
+    }
+    expect(requirements.items.required).toEqual(
+      Object.keys(requirements.items.properties),
+    )
+    expect(requirements.items.properties.categoryId).toMatchObject({
+      type: ['integer', 'null'],
+    })
+    expect(requirements.items.properties.requiresTesting).toMatchObject({
+      type: ['boolean', 'null'],
+    })
+  })
+})
+
+describe('buildRequirementImportSystemPrompt', () => {
+  it('contains only AI generation framing plus the import contract', () => {
+    const prompt = buildRequirementImportSystemPrompt(
+      '# Import instruction\n\nUse schemaVersion.',
+    )
+
+    expect(prompt).toContain('Generate requirement import JSON only')
+    expect(prompt).toContain('cannot be overridden')
+    expect(prompt).toContain('# Import instruction')
+    expect(prompt).not.toContain('taxonomy IDs')
+  })
+})
+
+describe('buildRequirementImportUserPrompt', () => {
+  it('uses default AI instruction, need, and requested candidate count', () => {
+    const prompt = buildRequirementImportUserPrompt({
+      count: 12,
+      need: 'Student grading system',
+    })
+
+    expect(prompt).toContain(DEFAULT_INSTRUCTION_EN)
+    expect(prompt).toContain('Need and context')
+    expect(prompt).toContain('Student grading system')
+    expect(prompt).toContain('Number of requirement candidates\n12')
   })
 
-  it('defines required fields in items', () => {
-    const items = (
-      REQUIREMENT_FORMAT_SCHEMA.properties as Record<
-        string,
-        Record<string, unknown>
-      >
-    ).requirements as Record<string, unknown>
-    const itemSchema = items.items as Record<string, unknown>
-    expect(itemSchema.required).toEqual(
-      expect.arrayContaining([
-        'description',
-        'typeId',
-        'requiresTesting',
-        'rationale',
-      ]),
+  it('uses Swedish labels and instruction when locale is sv', () => {
+    const prompt = buildRequirementImportUserPrompt({
+      locale: 'sv',
+      need: 'Elevbetyg',
+    })
+
+    expect(prompt).toContain(DEFAULT_INSTRUCTION_SV)
+    expect(prompt).toContain('Behov och sammanhang')
+    expect(prompt).toContain('Elevbetyg')
+  })
+})
+
+describe('clampRequirementCandidateCount', () => {
+  it('keeps candidate count within supported bounds', () => {
+    expect(clampRequirementCandidateCount(-1)).toBe(
+      MIN_REQUIREMENT_CANDIDATE_COUNT,
+    )
+    expect(clampRequirementCandidateCount(5.8)).toBe(5)
+    expect(clampRequirementCandidateCount(999)).toBe(
+      MAX_REQUIREMENT_CANDIDATE_COUNT,
+    )
+    expect(clampRequirementCandidateCount(Number.NaN)).toBe(
+      DEFAULT_REQUIREMENT_CANDIDATE_COUNT,
     )
   })
 })
 
-describe('validateGeneratedRequirements', () => {
-  const validRequirement: GeneratedRequirement = {
-    categoryId: 1,
-    description: 'The system shall authenticate users',
-    qualityCharacteristicId: 2,
-    rationale: 'Security',
-    requiresTesting: true,
-    priorityLevelId: 4,
-    requirementPackageIds: [1],
-    typeId: 1,
-  }
+describe('buildRequirementImportRepairPrompt', () => {
+  it('builds a narrow repair prompt with errors and broken JSON', () => {
+    const prompt = buildRequirementImportRepairPrompt({
+      brokenJson: '{"requirements":[]}',
+      errors: ['requirements: must contain at least 1 item'],
+    })
 
-  it('keeps requirements with valid taxonomy IDs', () => {
-    const result = validateGeneratedRequirements(
-      [validRequirement],
-      testTaxonomy,
-    )
-    expect(result).toHaveLength(1)
-    expect(result[0]).toEqual(validRequirement)
-  })
-
-  it('filters out requirements with invalid typeId', () => {
-    const invalid = { ...validRequirement, typeId: 99 }
-    const result = validateGeneratedRequirements([invalid], testTaxonomy)
-    expect(result).toHaveLength(0)
-  })
-
-  it('clears invalid categoryId but keeps requirement', () => {
-    const withBadCat = { ...validRequirement, categoryId: 99 }
-    const result = validateGeneratedRequirements([withBadCat], testTaxonomy)
-    expect(result).toHaveLength(1)
-    expect(result[0].categoryId).toBeUndefined()
-  })
-
-  it('clears invalid qualityCharacteristicId but keeps requirement', () => {
-    const withBadQc = { ...validRequirement, qualityCharacteristicId: 999 }
-    const result = validateGeneratedRequirements([withBadQc], testTaxonomy)
-    expect(result).toHaveLength(1)
-    expect(result[0].qualityCharacteristicId).toBeUndefined()
-  })
-
-  it('filters invalid requirementPackageIds', () => {
-    const withBadRequirementPackage = {
-      ...validRequirement,
-      requirementPackageIds: [1, 99, 2],
-    }
-    const result = validateGeneratedRequirements(
-      [withBadRequirementPackage],
-      testTaxonomy,
-    )
-    expect(result).toHaveLength(1)
-    expect(result[0].requirementPackageIds).toEqual([1, 2])
-  })
-
-  it('clears invalid priorityLevelId', () => {
-    const withBadPriority = { ...validRequirement, priorityLevelId: 5 }
-    const result = validateGeneratedRequirements(
-      [withBadPriority],
-      testTaxonomy,
-    )
-    expect(result).toHaveLength(1)
-    expect(result[0].priorityLevelId).toBeUndefined()
+    expect(prompt).toContain('Repair the JSON')
+    expect(prompt).toContain('Preserve the requirement content')
+    expect(prompt).toContain('requirements: must contain at least 1 item')
+    expect(prompt).toContain('```json\n{"requirements":[]}\n```')
   })
 })

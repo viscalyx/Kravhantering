@@ -117,9 +117,11 @@ governance object types are informational taxonomy values.
 
 ## 4 — AI Requirement Generation
 
-Sources: `lib/ai/openrouter-client.ts`,
-`lib/ai/openrouter-model-catalog.ts`, `lib/ai/requirement-prompt.ts`,
-`lib/ai/taxonomy.ts`
+Sources: `app/api/ai/generate-requirement-import/route.ts`,
+`app/api/ai/repair-requirement-import-json/route.ts`,
+`lib/ai/openrouter-client.ts`, `lib/ai/openrouter-model-catalog.ts`,
+`lib/ai/requirement-prompt.ts`, and requirement import schema/prompt sources
+listed in section 5.
 
 Local OpenRouter setup and live-provider smoke guidance live in
 [ai-assisted-authoring-developer-workflow.md](../development/ai-assisted-authoring-developer-workflow.md).
@@ -135,10 +137,9 @@ it:
 
 The environment guard has higher precedence and is intended for security scans
 and deployment freeze windows. When either control disables generation, the
-requirements-library action remains visible but disabled, an already-open
-generator dialog disables its Generate button, REST generation returns the
-sanitized provider-unavailable SSE error, and the MCP generation tool returns
-the existing `service_unavailable` error before taxonomy, model-catalog, or
+requirements-library and kravunderlag actions remain visible but disabled, an
+already-open generator dialog disables its Generate button, and REST generation
+returns the sanitized provider-unavailable SSE error before model-catalog or
 chat-completion work starts.
 
 ### OpenRouter Client Contracts
@@ -161,7 +162,9 @@ cancels the fetch.
 
 **Default model:**
 `process.env.NEXT_PUBLIC_DEFAULT_MODEL` or
-`'anthropic/claude-sonnet-4'`.
+`'anthropic/claude-sonnet-4'`. In the UI, saved favorite models take
+precedence: the cheapest available favorite is preselected before the
+deployment default and the first available model.
 
 **Reasoning effort:** `'high'` by default; `'none'` disables
 reasoning tokens.
@@ -175,56 +178,34 @@ with the sanitized AI-provider-unavailable response.
 
 ### Prompt Contracts
 
-**Locale-dependent:** full system and user prompts exist in
-both English and Swedish. The prompt language matches the
-active locale.
+**Locale-dependent:** the AI generation instruction exists in both English and
+Swedish. The prompt language matches the active locale.
 
-`messages/sv.json` intentionally has one extra
-`ai.prompt.system.outputRules` item requiring generated
-descriptions, acceptance criteria, verification methods and
-rationales to be written in Swedish. Keep this locale-specific
-rule when comparing `outputRules` with `messages/en.json`;
-alignment should preserve deliberate language constraints.
+AI-assisted authoring does not maintain a separate generated-requirement output
+schema. It reuses the kravimport instruction and JSON Schema from section 5.
+The app-owned AI instruction adds generation-specific guidance, while the
+import instruction and schema remain mandatory and cannot be overridden by the
+user's need/context prompt.
 
-**Taxonomy binding:** the system prompt includes all taxonomy
-IDs with their locale-appropriate names so the model can
-reference valid IDs in its output.
+The user-facing prompt field is `Behov och sammanhang` / `Need and context`.
+There is no second free-text instruction field; later steering should be added
+as concrete controls when needed.
 
-**ISO standards referenced:** 29148:2018, 25030:2019,
-25010:2023.
+**Reference-data binding:** the import instruction includes current taxonomy
+and norm-reference data so the model can emit import JSON with stable IDs where
+possible. The model may propose missing norm references through
+`proposedNormReferences`; those proposals are previewed separately and only
+move forward when selected by the user.
+
+**ISO standards referenced:** 29148:2018, 25030:2019, 25010:2023.
 
 ### Validation and Repair
 
-`validateGeneratedRequirements()` in
-`lib/ai/requirement-prompt.ts` applies these rules:
-
-- **Invalid `typeId`** → requirement filtered out (deleted
-  from results).
-- **Invalid `categoryId`** → set to `undefined` (repaired).
-- **Invalid `qualityCharacteristicId`** → set to `undefined`
-  (repaired).
-- **Invalid `priorityLevelId`** → set to `undefined` (repaired).
-- **Invalid `requirementPackageIds` entries** → filtered from array.
-
-`typeId` is the only hard requirement because every
-requirement must have a type.
-
-### Taxonomy Loading
-
-`loadTaxonomy()` in `lib/ai/taxonomy.ts`:
-
-- Runs 5 DAL queries in parallel via `Promise.all`:
-  categories, types, quality characteristics, priority levels,
-  requirement packages.
-- Selects localized `nameEn` or `nameSv` for taxonomy tables based on the
-  `locale` parameter. Requirement packages are authored as one-language content
-  and use their stored `name` for both locales.
-- Quality characteristics include parent hierarchy: a `Map`
-  by `id` resolves `parentName` from `parentId`.
-- Priority levels include `id`, `code`, localized `name`, localized
-  `description`, and localized `assessmentCriteria`.
-- Other results are mapped to `{ id, name }` (plus `parentName` for quality
-  characteristics).
+Generated output is parsed as JSON and validated with
+`requirementsImportPayloadSchema`. Valid output is previewed through the same
+editable import review surface as uploaded import files. Invalid output is
+reported as schema issues, logged without raw prompt/content, and can be sent
+to the repair route together with a generated repair prompt and selected model.
 
 ## 5 — Requirement Import Schema and AI Reference Prompt
 

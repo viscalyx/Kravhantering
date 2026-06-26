@@ -1,4 +1,3 @@
-import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import {
   countDeviationsBySpecification,
   createDeviation,
@@ -14,8 +13,6 @@ import {
   getSpecificationBySlug,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
-import { recordCapacityEvent } from '@/lib/observability/capacity'
-import { checkInMemoryThrottle } from '@/lib/observability/throttle'
 import {
   type AuthorizationService,
   createDefaultAuthorizationService,
@@ -23,11 +20,7 @@ import {
   type RequirementsAction,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
-import {
-  notFoundError,
-  serviceUnavailableError,
-  validationError,
-} from '@/lib/requirements/errors'
+import { notFoundError, validationError } from '@/lib/requirements/errors'
 import type {
   ImportExecuteBody,
   ImportRequirementsPayload,
@@ -87,9 +80,6 @@ export type CatalogKind =
   | 'statuses'
   | 'requirement_packages'
   | 'transitions'
-
-const AI_SERVICE_GENERATE_RATE_LIMIT = 5
-const AI_SERVICE_GENERATE_RATE_WINDOW_MS = 60_000
 
 export interface RequirementMutationInput {
   acceptanceCriteria?: string
@@ -163,24 +153,6 @@ export interface TransitionRequirementInput extends RequirementRefInput {
   locale?: ResponseLocale
   responseFormat?: ResponseFormat
   toStatusId: number
-}
-
-export interface GenerateRequirementsInput {
-  customInstruction?: string
-  locale?: ResponseLocale
-  model?: string
-  reasoningEffort?: string
-  scopeId?: number
-  scopeType?: 'requirement_area' | 'specification'
-  topic: string
-}
-
-export interface GenerateRequirementsOutput {
-  message: string
-  model: string
-  requirements: import('@/lib/ai/requirement-prompt').GeneratedRequirement[]
-  stats: import('@/lib/ai/openrouter-client').GenerationStats
-  thinking: string
 }
 
 export interface SpecificationRefInput {
@@ -376,10 +348,6 @@ export interface RequirementsService {
     },
   ): Promise<RequirementsImportExecuteResult>
 
-  generateRequirements(
-    context: RequestContext,
-    input: GenerateRequirementsInput,
-  ): Promise<GenerateRequirementsOutput>
   getRequirement(
     context: RequestContext,
     input: GetRequirementInput,
@@ -768,176 +736,6 @@ export function createRequirementsService(
               responseFormat,
             ),
             result: { id: input.deviationId },
-          }
-        },
-      )
-    },
-
-    async generateRequirements(context, input) {
-      const locale = input.locale ?? 'en'
-      const topic = (input.topic ?? '').trim()
-      const customInstruction = (input.customInstruction ?? '').trim()
-
-      const MAX_TOPIC_LENGTH = 1000
-      const MAX_CUSTOM_INSTRUCTION_LENGTH = 5000
-
-      if (!topic) {
-        throw validationError('topic is required and cannot be empty')
-      }
-      if (topic.length > MAX_TOPIC_LENGTH) {
-        throw validationError(
-          `topic must not exceed ${MAX_TOPIC_LENGTH} characters`,
-        )
-      }
-      if (customInstruction.length > MAX_CUSTOM_INSTRUCTION_LENGTH) {
-        throw validationError(
-          `customInstruction must not exceed ${MAX_CUSTOM_INSTRUCTION_LENGTH} characters`,
-        )
-      }
-
-      await authorize(
-        authorization,
-        {
-          kind: 'generate_requirements',
-          scopeId: input.scopeId,
-          scopeType: input.scopeType,
-        },
-        context,
-      )
-      const throttle = checkInMemoryThrottle({
-        key: [
-          'requirements.generate_requirements',
-          context.source,
-          context.actor.source,
-          context.actor.id ?? context.actor.hsaId ?? context.correlationId,
-        ].join(':'),
-        limit: AI_SERVICE_GENERATE_RATE_LIMIT,
-        windowMs: AI_SERVICE_GENERATE_RATE_WINDOW_MS,
-      })
-
-      if (!throttle.allowed) {
-        recordCapacityEvent({
-          correlationId: context.correlationId,
-          event: 'capacity.throttled',
-          level: 'warn',
-          metrics: { throttled: true },
-          operation: 'requirements.generate_requirements',
-          outcome: 'throttled',
-          requestId: context.requestId,
-          retryAfterSeconds: throttle.retryAfterSeconds,
-          source: context.source,
-          statusCode: 429,
-          toolName: context.toolName,
-        })
-        throw validationError(
-          'Too many AI generation requests. Try again later.',
-          {
-            reason: 'rate_limited',
-            retryAfterSeconds: throttle.retryAfterSeconds,
-          },
-        )
-      }
-
-      const availability = await getAiGenerationAvailability(db).catch(
-        () => null,
-      )
-      if (!availability?.effectiveRequirementGenerationEnabled) {
-        throw serviceUnavailableError('AI provider is unavailable', {
-          reason: 'ai_generation_disabled',
-        })
-      }
-
-      return withLogging(
-        logger,
-        context,
-        'requirements.generate_requirements',
-        { topicLength: topic.length, model: input.model },
-        async () => {
-          const { loadTaxonomy } = await import('@/lib/ai/taxonomy')
-          const taxonomy = await loadTaxonomy(db, locale as 'en' | 'sv')
-
-          const {
-            buildSystemPrompt,
-            buildUserPrompt,
-            REQUIREMENT_FORMAT_SCHEMA,
-            validateGeneratedRequirements,
-          } = await import('@/lib/ai/requirement-prompt')
-          const { generateChat } = await import('@/lib/ai/openrouter-client')
-          const { resolveOpenRouterModelCapabilities } = await import(
-            '@/lib/ai/openrouter-model-catalog'
-          )
-
-          const systemPrompt = buildSystemPrompt(
-            taxonomy,
-            locale as 'en' | 'sv',
-          )
-          const userPrompt = buildUserPrompt(
-            topic,
-            customInstruction || undefined,
-            locale as 'en' | 'sv',
-          )
-
-          const resolvedModel =
-            input.model ||
-            process.env.NEXT_PUBLIC_DEFAULT_MODEL ||
-            'anthropic/claude-sonnet-4'
-          let modelCapabilities: Awaited<
-            ReturnType<typeof resolveOpenRouterModelCapabilities>
-          >
-          try {
-            modelCapabilities =
-              await resolveOpenRouterModelCapabilities(resolvedModel)
-          } catch {
-            throw serviceUnavailableError('AI provider is unavailable', {
-              model: resolvedModel,
-              reason: 'model_capabilities_unavailable',
-            })
-          }
-
-          const result = await generateChat<{
-            requirements: import('@/lib/ai/requirement-prompt').GeneratedRequirement[]
-          }>({
-            format: REQUIREMENT_FORMAT_SCHEMA,
-            messages: [
-              { content: systemPrompt, role: 'system' },
-              { content: userPrompt, role: 'user' },
-            ],
-            model: modelCapabilities.id,
-            reasoningEffort: input.reasoningEffort,
-            supportedParameters: modelCapabilities.supportedParameters,
-          })
-
-          if (!result?.content || !Array.isArray(result.content.requirements)) {
-            throw validationError(
-              'AI model returned an invalid response: missing requirements array',
-            )
-          }
-
-          const validated = validateGeneratedRequirements(
-            result.content.requirements,
-            taxonomy,
-          )
-
-          if (
-            validated.length === 0 &&
-            result.content.requirements.length > 0
-          ) {
-            throw validationError(
-              'No valid requirements after taxonomy validation',
-            )
-          }
-
-          const message =
-            locale === 'sv'
-              ? `Genererade ${validated.length} krav för ämne: ${topic}`
-              : `Generated ${validated.length} requirements for topic: ${topic}`
-
-          return {
-            message,
-            model: modelCapabilities.id,
-            requirements: validated,
-            stats: result.stats,
-            thinking: result.thinking,
           }
         },
       )

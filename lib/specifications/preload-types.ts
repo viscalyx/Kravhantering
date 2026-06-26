@@ -1,3 +1,4 @@
+import type { AiRequirementGenerationAvailability } from '@/lib/ai/generation-availability'
 import type {
   AreaOption,
   RequirementPackageOption,
@@ -67,6 +68,7 @@ export interface AvailableRequirementsData {
 }
 
 export interface RequirementsSpecificationDetailInitialData {
+  aiGenerationAvailability: AiRequirementGenerationAvailability
   areas: AreaOption[]
   availableNeedsRefs: SpecificationNeedsReference[]
   availableRequirements: AvailableRequirementsData

@@ -338,6 +338,27 @@ hanteras i ordinarie kravprocess.
 _Avoid_: AI-generering som huvudterm, AI-assistering, automatisk publicering,
 AI-beslut, källa till sanning.
 
+**AI-analys**:
+Analys- eller resonemangstext som en AI-leverantör returnerar tillsammans med
+förslag i AI-assisterat författande. AI-analysen är stödjande kontext för
+användarens granskning och är inte en fullständig eller auktoritativ
+resonemangskedja.
+
+- `en`: AI analysis
+
+_Avoid_: Resonemangskedja, fullständig tankekedja, beslutsmotivering,
+granskningsprotokoll.
+
+**Råresultat**:
+Systemnära output från AI-assisterat författande eller kravbiblioteksimport som
+visas för insyn och felsökning. Råresultatet kan göras läsbart, men är inte
+kravdata som användaren granskar som krav.
+
+- `en`: Raw result
+
+_Avoid_: Resultat när kravkandidater eller föreslagna normreferenser avses,
+Import-JSON som användarnära huvudterm.
+
 **Kravbiblioteksimport**:
 Ett stödflöde där flera kravtexter och eventuell metadata förbereds utanför
 applikationen och sedan förs in som krav i kravbibliotekets ordinarie

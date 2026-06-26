@@ -1,99 +1,28 @@
-/**
- * System prompt builder for AI requirement generation.
- * Produces prompts grounded in ISO/IEC/IEEE 29148:2018, ISO/IEC 25030:2019,
- * and ISO/IEC 25010:2023 standards.
- */
-
+import type { ZodError } from 'zod'
 import type { GenerationStats } from '@/lib/ai/openrouter-client'
+import {
+  buildRequirementsImportJsonSchema,
+  type ImportRequirementsPayload,
+} from '@/lib/requirements/import-schema'
 import enMessages from '@/messages/en.json'
 import svMessages from '@/messages/sv.json'
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+export const DEFAULT_REQUIREMENT_CANDIDATE_COUNT = 8
+export const MIN_REQUIREMENT_CANDIDATE_COUNT = 1
+export const MAX_REQUIREMENT_CANDIDATE_COUNT = 25
 
-export interface GeneratedRequirement {
-  acceptanceCriteria?: string
-  categoryId?: number
-  description: string
-  priorityLevelId?: number
-  qualityCharacteristicId?: number
-  rationale: string
-  requirementPackageIds?: number[]
-  requiresTesting: boolean
-  typeId: number
-  verificationMethod?: string
-}
-
-export interface GenerationResult {
+export interface RequirementImportGenerationResult {
   model: string
-  requirements: GeneratedRequirement[]
+  payload: ImportRequirementsPayload
+  rawContent: string
   stats: GenerationStats
   thinking: string
 }
 
-export interface TaxonomyData {
-  categories: Array<{ id: number; name: string }>
-  priorityLevels: Array<{
-    assessmentCriteria: string
-    code: string
-    description: string
-    id: number
-    name: string
-  }>
-  qualityCharacteristics: Array<{
-    id: number
-    name: string
-    parentName?: string
-  }>
-  requirementPackages: Array<{ id: number; name: string }>
-  types: Array<{ id: number; name: string }>
-}
-
-// ---------------------------------------------------------------------------
-// JSON schema for OpenRouter `response_format` parameter
-// ---------------------------------------------------------------------------
-
-export const REQUIREMENT_FORMAT_SCHEMA: Record<string, unknown> = {
-  properties: {
-    requirements: {
-      items: {
-        properties: {
-          acceptanceCriteria: { type: ['string', 'null'] },
-          categoryId: { type: ['integer', 'null'] },
-          description: { type: 'string' },
-          qualityCharacteristicId: { type: ['integer', 'null'] },
-          rationale: { type: 'string' },
-          requiresTesting: { type: 'boolean' },
-          priorityLevelId: { type: ['integer', 'null'] },
-          requirementPackageIds: {
-            items: { type: 'integer' },
-            type: ['array', 'null'],
-          },
-          typeId: { type: 'integer' },
-          verificationMethod: { type: ['string', 'null'] },
-        },
-        required: [
-          'acceptanceCriteria',
-          'categoryId',
-          'description',
-          'qualityCharacteristicId',
-          'rationale',
-          'requiresTesting',
-          'priorityLevelId',
-          'requirementPackageIds',
-          'typeId',
-          'verificationMethod',
-        ],
-        additionalProperties: false,
-        type: 'object',
-      },
-      type: 'array',
-    },
-  },
-  required: ['requirements'],
-  additionalProperties: false,
-  type: 'object',
+export interface FormattedSchemaIssue {
+  code: string
+  message: string
+  path: string
 }
 
 const PROMPT_MESSAGES = {
@@ -195,57 +124,6 @@ export function getPromptMessageList(
   return current
 }
 
-const SYSTEM_PROMPT_HEADING_KEYS = [
-  'types',
-  'categories',
-  'qualityCharacteristics',
-  'priorityLevels',
-  'requirementPackages',
-  'outputRules',
-] as const
-
-type SystemPromptHeadingKey = (typeof SYSTEM_PROMPT_HEADING_KEYS)[number]
-type SystemPromptHeadings = Record<SystemPromptHeadingKey, string>
-
-function getSystemPromptHeadings(locale: 'en' | 'sv'): SystemPromptHeadings {
-  const path = ['ai', 'prompt', 'system', 'headings'] as const
-  const current = getPromptValue(locale, path)
-
-  if (
-    typeof current !== 'object' ||
-    current === null ||
-    Array.isArray(current)
-  ) {
-    throw invalidPromptLocalizationTypeError(
-      locale,
-      path,
-      'record<string,string>',
-      current,
-    )
-  }
-
-  const currentRecord = current as Record<string, unknown>
-  const headings: Partial<SystemPromptHeadings> = {}
-  for (const key of SYSTEM_PROMPT_HEADING_KEYS) {
-    const heading = currentRecord[key]
-    if (typeof heading !== 'string') {
-      throw invalidPromptLocalizationTypeError(
-        locale,
-        [...path, key],
-        'string',
-        heading,
-      )
-    }
-    headings[key] = heading
-  }
-
-  return headings as SystemPromptHeadings
-}
-
-// ---------------------------------------------------------------------------
-// Default instruction constant
-// ---------------------------------------------------------------------------
-
 export const DEFAULT_INSTRUCTION_EN = getPromptMessage('en', [
   'ai',
   'prompt',
@@ -259,147 +137,203 @@ export const DEFAULT_INSTRUCTION_SV = getPromptMessage('sv', [
 ])
 
 export function getDefaultInstruction(locale: 'en' | 'sv' = 'en'): string {
-  return getPromptMessage(locale, ['ai', 'prompt', 'defaultInstruction'])
+  return locale === 'sv' ? DEFAULT_INSTRUCTION_SV : DEFAULT_INSTRUCTION_EN
 }
 
-// ---------------------------------------------------------------------------
-// Prompt builder
-// ---------------------------------------------------------------------------
+function isJsonSchemaRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
 
-export function buildSystemPrompt(
-  taxonomy: TaxonomyData,
+function toNullableTypeSchema(
+  schema: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const anyOf = schema.anyOf
+  if (!Array.isArray(anyOf)) return null
+
+  const nullSchemas = anyOf.filter(
+    item => isJsonSchemaRecord(item) && item.type === 'null',
+  )
+  const valueSchemas = anyOf.filter(
+    item => !(isJsonSchemaRecord(item) && item.type === 'null'),
+  )
+  if (nullSchemas.length !== 1 || valueSchemas.length !== 1) return null
+  const valueSchema = valueSchemas[0]
+  if (
+    !isJsonSchemaRecord(valueSchema) ||
+    typeof valueSchema.type !== 'string'
+  ) {
+    return null
+  }
+
+  const { anyOf: _anyOf, ...schemaWithoutAnyOf } = schema
+  const { type, ...valueSchemaWithoutType } = valueSchema
+  return {
+    ...schemaWithoutAnyOf,
+    ...valueSchemaWithoutType,
+    type: [type, 'null'],
+  }
+}
+
+function toStructuredOutputStrictSchema(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(item => toStructuredOutputStrictSchema(item))
+  }
+  if (!isJsonSchemaRecord(value)) return value
+
+  const nullableSchema = toNullableTypeSchema(value)
+  const schema = nullableSchema ?? value
+  const result: Record<string, unknown> = {}
+
+  for (const [key, item] of Object.entries(schema)) {
+    if (key === '$schema') continue
+    if (key === 'const') {
+      result.enum = [item]
+      continue
+    }
+    result[key] = toStructuredOutputStrictSchema(item)
+  }
+
+  if (isJsonSchemaRecord(result.properties)) {
+    const properties = result.properties
+    result.required = Object.keys(properties)
+    result.additionalProperties = false
+  }
+
+  return result
+}
+
+export function buildRequirementImportResponseFormatSchema(
+  locale: 'en' | 'sv' = 'en',
+): Record<string, unknown> {
+  return toStructuredOutputStrictSchema(
+    buildRequirementsImportJsonSchema(locale),
+  ) as Record<string, unknown>
+}
+
+export function buildRequirementImportSystemPrompt(
+  importInstruction: string,
   locale: 'en' | 'sv' = 'en',
 ): string {
-  const headings = getSystemPromptHeadings(locale)
-  const typeList = taxonomy.types
-    .map(t => `  - ID ${t.id}: ${t.name}`)
-    .join('\n')
-  const catList = taxonomy.categories
-    .map(c => `  - ID ${c.id}: ${c.name}`)
-    .join('\n')
-  const assessmentLabel =
-    locale === 'sv' ? 'Bedömningsgrunder' : 'Assessment criteria'
-  const priorityList = taxonomy.priorityLevels
-    .map(
-      priority =>
-        `  - ID ${priority.id}: ${priority.code} - ${priority.name}. ${priority.description} ${assessmentLabel}: ${priority.assessmentCriteria}`,
-    )
-    .join('\n')
-  const requirementPackageList =
-    taxonomy.requirementPackages.length > 0
-      ? taxonomy.requirementPackages
-          .map(s => `  - ID ${s.id}: ${s.name}`)
-          .join('\n')
-      : `_${getPromptMessage(locale, [
-          'ai',
-          'prompt',
-          'noRequirementPackagesAvailable',
-        ])}_`
-  const outputRules = getPromptMessageList(locale, [
+  const systemIntro = getPromptMessage(locale, [
     'ai',
     'prompt',
     'system',
-    'outputRules',
+    'intro',
   ])
-    .map(rule => `- ${rule}`)
-    .join('\n')
-
-  const qcList = taxonomy.qualityCharacteristics
-    .map(
-      qc =>
-        `  - ID ${qc.id}: ${qc.parentName ? `${qc.parentName} > ` : ''}${qc.name}`,
-    )
-    .join('\n')
-
-  return `${getPromptMessage(locale, ['ai', 'prompt', 'system', 'intro'])}
-
-${getPromptMessage(locale, ['ai', 'prompt', 'system', 'taxonomyIntro'])}
-
-## ${headings.types}
-${typeList}
-
-## ${headings.categories}
-${catList}
-
-## ${headings.qualityCharacteristics}
-${qcList}
-
-## ${headings.priorityLevels}
-${priorityList}
-
-## ${headings.requirementPackages}
-${requirementPackageList}
-
-## ${headings.outputRules}
-${outputRules}`
-}
-
-export function buildUserPrompt(
-  topic: string,
-  customInstruction?: string,
-  locale?: 'en' | 'sv',
-): string {
-  const instruction = customInstruction?.trim() || getDefaultInstruction(locale)
-  const header = getPromptMessage(locale ?? 'en', [
+  const importHeading = getPromptMessage(locale, [
     'ai',
     'prompt',
-    'userHeader',
+    'system',
+    'importContractHeading',
   ])
-  return `${instruction}
 
-## ${header}
-${topic}`
+  return `${systemIntro}
+
+${importHeading}
+
+${importInstruction}`
 }
 
-// ---------------------------------------------------------------------------
-// Validation: filter requirements with invalid taxonomy IDs
-// ---------------------------------------------------------------------------
-
-export function validateGeneratedRequirements(
-  requirements: GeneratedRequirement[],
-  taxonomy: TaxonomyData,
-): GeneratedRequirement[] {
-  return validateGeneratedRequirementsWithMetadata(requirements, taxonomy)
-    .requirements
+export interface BuildRequirementImportUserPromptOptions {
+  count?: number
+  locale?: 'en' | 'sv'
+  need: string
 }
 
-export function validateGeneratedRequirementsWithMetadata(
-  requirements: GeneratedRequirement[],
-  taxonomy: TaxonomyData,
-): { originalIndexes: number[]; requirements: GeneratedRequirement[] } {
-  const validTypeIds = new Set(taxonomy.types.map(t => t.id))
-  const validCatIds = new Set(taxonomy.categories.map(c => c.id))
-  const validQcIds = new Set(taxonomy.qualityCharacteristics.map(qc => qc.id))
-  const validPriorityIds = new Set(taxonomy.priorityLevels.map(r => r.id))
-  const validRequirementPackageIds = new Set(
-    taxonomy.requirementPackages.map(s => s.id),
+export function clampRequirementCandidateCount(count: number): number {
+  if (!Number.isFinite(count)) return DEFAULT_REQUIREMENT_CANDIDATE_COUNT
+  return Math.min(
+    MAX_REQUIREMENT_CANDIDATE_COUNT,
+    Math.max(MIN_REQUIREMENT_CANDIDATE_COUNT, Math.trunc(count)),
   )
+}
 
-  const validated: GeneratedRequirement[] = []
-  const originalIndexes: number[] = []
+export function buildRequirementImportUserPrompt({
+  count = DEFAULT_REQUIREMENT_CANDIDATE_COUNT,
+  locale = 'en',
+  need,
+}: BuildRequirementImportUserPromptOptions): string {
+  const candidateCount = clampRequirementCandidateCount(count)
+  const userHeader = getPromptMessage(locale, ['ai', 'prompt', 'userHeader'])
+  const countLabel = getPromptMessage(locale, ['ai', 'prompt', 'countLabel'])
+  const instructionHeader = getPromptMessage(locale, [
+    'ai',
+    'prompt',
+    'instructionHeader',
+  ])
+  const instruction = getDefaultInstruction(locale)
 
-  requirements.forEach((r, index) => {
-    if (!validTypeIds.has(r.typeId)) return
-    originalIndexes.push(index)
-    validated.push({
-      ...r,
-      categoryId:
-        r.categoryId && validCatIds.has(r.categoryId)
-          ? r.categoryId
-          : undefined,
-      qualityCharacteristicId:
-        r.qualityCharacteristicId && validQcIds.has(r.qualityCharacteristicId)
-          ? r.qualityCharacteristicId
-          : undefined,
-      priorityLevelId:
-        r.priorityLevelId && validPriorityIds.has(r.priorityLevelId)
-          ? r.priorityLevelId
-          : undefined,
-      requirementPackageIds: r.requirementPackageIds?.filter(id =>
-        validRequirementPackageIds.has(id),
-      ),
-    })
-  })
+  return [
+    `${instructionHeader}
+${instruction}`,
+    `${userHeader}
+${need.trim()}`,
+    `${countLabel}
+${candidateCount}`,
+  ].join('\n\n')
+}
 
-  return { originalIndexes, requirements: validated }
+export interface BuildRequirementImportRepairPromptOptions {
+  brokenJson: string
+  errors: readonly string[]
+  locale?: 'en' | 'sv'
+}
+
+export function buildRequirementImportRepairPrompt({
+  brokenJson,
+  errors,
+  locale = 'en',
+}: BuildRequirementImportRepairPromptOptions): string {
+  const intro = getPromptMessage(locale, ['ai', 'prompt', 'repair', 'intro'])
+  const rules = getPromptMessageList(locale, [
+    'ai',
+    'prompt',
+    'repair',
+    'rules',
+  ])
+  const errorHeading = getPromptMessage(locale, [
+    'ai',
+    'prompt',
+    'repair',
+    'errorHeading',
+  ])
+  const jsonHeading = getPromptMessage(locale, [
+    'ai',
+    'prompt',
+    'repair',
+    'jsonHeading',
+  ])
+  const formattedErrors =
+    errors.length > 0
+      ? errors.map(error => `- ${error}`).join('\n')
+      : '- JSON did not validate against the import contract.'
+
+  return `${intro}
+
+${rules.map(rule => `- ${rule}`).join('\n')}
+
+${errorHeading}
+${formattedErrors}
+
+${jsonHeading}
+\`\`\`json
+${brokenJson}
+\`\`\``
+}
+
+function formatIssuePath(path: ZodError['issues'][number]['path']): string {
+  if (path.length === 0) return '$'
+  return path.map(segment => String(segment)).join('.')
+}
+
+export function formatSchemaIssues(error: ZodError): FormattedSchemaIssue[] {
+  return error.issues.map(issue => ({
+    code: issue.code,
+    message: issue.message,
+    path: formatIssuePath(issue.path),
+  }))
+}
+
+export function parseJsonObject(rawContent: string): unknown {
+  return JSON.parse(rawContent)
 }

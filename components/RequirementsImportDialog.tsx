@@ -11,6 +11,7 @@ import {
   FileInput,
   FileJson,
   Info,
+  Loader2,
   Plus,
   Trash2,
   Upload,
@@ -21,6 +22,7 @@ import {
   type ChangeEvent,
   type CSSProperties,
   type DragEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -103,6 +105,12 @@ interface ImportMessage {
 interface ImportPreviewRow {
   errors: ImportMessage[]
   infos?: ImportMessage[]
+  labels?: {
+    category: string | null
+    priorityLevel: string | null
+    qualityCharacteristic: string | null
+    type: string | null
+  }
   proposedNormReferenceKeys: string[]
   reviewRowId: string
   selected: boolean
@@ -177,6 +185,12 @@ interface ImportExecuteResponse {
 
 interface RequirementsImportDialogProps {
   areas?: AreaOption[]
+  destinationName?: string
+  initialImport?: {
+    areaId?: number
+    key: string
+    payload: ImportRequirementsPayload
+  } | null
   mode: ImportMode
   needsReferences?: NeedsReferenceOption[]
   onClose: (importSucceeded: boolean) => void
@@ -231,10 +245,13 @@ const TEXT = {
       'The JSON does not match requirement-import.v1. Fix the import file before previewing requirements.',
     importTitleLibrary: 'Import requirements',
     importTitleSpecification: 'Import local requirements',
+    importTitleWithDestination: (title: string, destination: string) =>
+      `${title} for ${destination}`,
     importReviewTabs: 'Import review',
     ignoredRequirementPackagesInfo:
       'Requirement packages in the import file are not used for specification-local requirements.',
     linkExistingNormReference: 'Link existing norm reference',
+    loadingInitialImport: 'Preparing import review...',
     loadReview: 'Preview requirements',
     needsReference: 'Needs reference',
     noExistingNormReference: 'No linked norm reference',
@@ -329,10 +346,13 @@ const TEXT = {
       'JSON följer inte requirement-import.v1. Korrigera importfilen innan granskningen laddas.',
     importTitleLibrary: 'Importera krav',
     importTitleSpecification: 'Importera lokala krav',
+    importTitleWithDestination: (title: string, destination: string) =>
+      `${title} för ${destination}`,
     importReviewTabs: 'Importgranskning',
     ignoredRequirementPackagesInfo:
       'Kravpaket i importfilen används inte för kravunderlagslokala krav.',
     linkExistingNormReference: 'Länka befintlig normreferens',
+    loadingInitialImport: 'Förbereder importgranskning...',
     loadReview: 'Förhandsgranska krav',
     needsReference: 'Behovsreferens',
     noExistingNormReference: 'Ingen länkad normreferens',
@@ -614,6 +634,8 @@ function RequirementSummaryText({
 
 export default function RequirementsImportDialog({
   areas = [],
+  destinationName,
+  initialImport = null,
   mode,
   needsReferences = [],
   onClose,
@@ -632,6 +654,7 @@ export default function RequirementsImportDialog({
   const [createdProposalKeys, setCreatedProposalKeys] = useState<string[]>([])
   const [previewToken, setPreviewToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [initialImportLoading, setInitialImportLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null)
   const [normReferences, setNormReferences] = useState<NormReferenceOption[]>(
@@ -686,11 +709,16 @@ export default function RequirementsImportDialog({
   const [expandedSummaryRowIds, setExpandedSummaryRowIds] = useState<
     Set<string>
   >(() => new Set())
+  const appliedInitialImportKeyRef = useRef<string | null>(null)
 
   const authorableAreas = useMemo(
     () => areas.filter(area => area.permissions?.canAuthor !== false),
     [areas],
   )
+  const selectedAreaName = useMemo(() => {
+    if (mode !== 'library' || !selectedAreaId) return null
+    return areas.find(area => String(area.id) === selectedAreaId)?.name ?? null
+  }, [areas, mode, selectedAreaId])
   const importPayloadValidation = useMemo<ImportPayloadValidation>(() => {
     if (!rawJson.trim()) return { payload: null, reason: 'missing-json' }
     try {
@@ -764,48 +792,54 @@ export default function RequirementsImportDialog({
     JSON.stringify(toNormReferencePayload(normRefForm)) !==
     JSON.stringify(toNormReferencePayload(EMPTY_NORM_REFERENCE_FORM))
 
-  const getEditableErrors = (values: ImportReviewValues): ImportMessage[] => {
-    const nextErrors: ImportMessage[] = []
-    if (!values.description.trim()) {
-      nextErrors.push({
-        code: 'description_required',
-        field: 'description',
-        level: 'error',
-        message:
-          locale === 'sv'
-            ? 'Kravtext måste anges innan raden kan importeras.'
-            : 'Requirement text is required before this row can be imported.',
-      })
-    }
-    if (values.requiresTesting && !values.verificationMethod?.trim()) {
-      nextErrors.push({
-        code: 'verification_method_required',
-        field: 'verificationMethod',
-        level: 'error',
-        message:
-          locale === 'sv'
-            ? 'Verifieringsmetod måste anges för verifierbara krav.'
-            : 'Verification method is required for verifiable requirements.',
-      })
-    }
-    return nextErrors
-  }
+  const getEditableErrors = useCallback(
+    (values: ImportReviewValues): ImportMessage[] => {
+      const nextErrors: ImportMessage[] = []
+      if (!values.description.trim()) {
+        nextErrors.push({
+          code: 'description_required',
+          field: 'description',
+          level: 'error',
+          message:
+            locale === 'sv'
+              ? 'Kravtext måste anges innan raden kan importeras.'
+              : 'Requirement text is required before this row can be imported.',
+        })
+      }
+      if (values.requiresTesting && !values.verificationMethod?.trim()) {
+        nextErrors.push({
+          code: 'verification_method_required',
+          field: 'verificationMethod',
+          level: 'error',
+          message:
+            locale === 'sv'
+              ? 'Verifieringsmetod måste anges för verifierbara krav.'
+              : 'Verification method is required for verifiable requirements.',
+        })
+      }
+      return nextErrors
+    },
+    [locale],
+  )
 
-  const revalidateEditableRow = (row: ImportPreviewRow): ImportPreviewRow => {
-    const values =
-      row.values.typeId == null
-        ? { ...row.values, qualityCharacteristicId: null }
-        : row.values
-    return {
-      ...row,
-      infos: row.infos ?? [],
-      values,
-      errors: [
-        ...row.errors.filter(error => !EDITABLE_ERROR_CODES.has(error.code)),
-        ...getEditableErrors(values),
-      ],
-    }
-  }
+  const revalidateEditableRow = useCallback(
+    (row: ImportPreviewRow): ImportPreviewRow => {
+      const values =
+        row.values.typeId == null
+          ? { ...row.values, qualityCharacteristicId: null }
+          : row.values
+      return {
+        ...row,
+        infos: row.infos ?? [],
+        values,
+        errors: [
+          ...row.errors.filter(error => !EDITABLE_ERROR_CODES.has(error.code)),
+          ...getEditableErrors(values),
+        ],
+      }
+    },
+    [getEditableErrors],
+  )
 
   useEffect(() => {
     if (!open) return
@@ -865,6 +899,91 @@ export default function RequirementsImportDialog({
       cancelled = true
     }
   }, [open])
+
+  useEffect(() => {
+    if (!open || !initialImport) return
+    if (appliedInitialImportKeyRef.current === initialImport.key) return
+    const initial = initialImport
+    setInitialImportLoading(true)
+    appliedInitialImportKeyRef.current = initial.key
+
+    let cancelled = false
+    async function loadInitialImport() {
+      setRawJson(JSON.stringify(initial.payload, null, 2))
+      setLoading(true)
+      setErrorMessage(null)
+      setNoticeMessage(null)
+      setReceiptRows([])
+      setHadSuccessfulImport(false)
+      if (mode === 'library' && initial.areaId) {
+        setSelectedAreaId(String(initial.areaId))
+      }
+      try {
+        const isLibrary = mode === 'library'
+        const response = await apiFetch(
+          isLibrary
+            ? '/api/requirements/import/preview'
+            : '/api/specification-local-requirements/import/preview',
+          {
+            body: JSON.stringify({
+              ...(isLibrary ? { areaId: initial.areaId } : {}),
+              ...(!isLibrary
+                ? { specificationIdOrSlug: specificationSlug ?? '' }
+                : {}),
+              locale,
+              payload: initial.payload,
+            }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'POST',
+          },
+        )
+        if (cancelled) return
+        if (!response.ok) {
+          setErrorMessage(await readResponseMessage(response))
+          return
+        }
+        const preview = (await response.json()) as ImportPreviewResponse
+        if (cancelled) return
+        setProposals(preview.proposals)
+        setCreatedProposalKeys([])
+        setRows(preview.rows.map(revalidateEditableRow))
+        setActiveReviewTab('requirements')
+        setExpandedRowIds(new Set())
+        setExpandedSummaryRowIds(new Set())
+        setNormReferenceEditDraftIds({})
+        setPackageEditDraftIds({})
+        setAssociationPicker(null)
+        setAssociationPickerDraftIds([])
+        setAssociationPickerSearch('')
+        setPreviewToken(preview.previewToken)
+        if (preview.rows.length >= 200) {
+          setNoticeMessage(text.tooManyRows)
+        }
+      } catch {
+        if (!cancelled) {
+          setErrorMessage(text.error)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+          setInitialImportLoading(false)
+        }
+      }
+    }
+    void loadInitialImport()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    initialImport,
+    locale,
+    mode,
+    open,
+    revalidateEditableRow,
+    specificationSlug,
+    text.error,
+    text.tooManyRows,
+  ])
 
   useEffect(() => {
     if (
@@ -1232,6 +1351,7 @@ export default function RequirementsImportDialog({
     setPackageEditDraftIds({})
     closeAssociationPicker()
     setPreviewToken(null)
+    setInitialImportLoading(false)
     setReceiptRows([])
     setErrorMessage(null)
     setNoticeMessage(null)
@@ -1584,9 +1704,20 @@ export default function RequirementsImportDialog({
     }
   }
 
-  const title =
+  const titleBase =
     mode === 'library' ? text.importTitleLibrary : text.importTitleSpecification
+  const titleDestination =
+    mode === 'library' ? selectedAreaName : destinationName?.trim() || null
+  const title = titleDestination
+    ? text.importTitleWithDestination(text.importTitleLibrary, titleDestination)
+    : titleBase
   const hasLoadedReview = previewToken !== null
+  const isPreparingInitialImport = Boolean(
+    initialImport &&
+      !hasLoadedReview &&
+      (initialImportLoading ||
+        appliedInitialImportKeyRef.current !== initialImport.key),
+  )
   const formatMessage = (message: ImportMessage) =>
     message.code === 'import_proposed_norm_reference_unresolved'
       ? text.proposedNormReferenceUnresolved(text.proposedNormReferences)
@@ -1658,7 +1789,9 @@ export default function RequirementsImportDialog({
       >
         <div
           className={`flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-secondary-950 ${
-            hasLoadedReview ? 'h-[calc(100dvh-2rem)] max-w-6xl' : 'max-w-xl'
+            hasLoadedReview || isPreparingInitialImport
+              ? 'h-[calc(100dvh-2rem)] max-w-6xl'
+              : 'max-w-xl'
           }`}
         >
           <div className="flex items-center justify-between gap-3 border-b border-secondary-200 px-5 py-3 dark:border-secondary-800">
@@ -1681,12 +1814,23 @@ export default function RequirementsImportDialog({
           </div>
           <div
             className={
-              hasLoadedReview
+              hasLoadedReview || isPreparingInitialImport
                 ? 'min-h-0 flex-1 overflow-hidden'
                 : 'overflow-y-auto overscroll-contain'
             }
           >
-            {!hasLoadedReview ? (
+            {isPreparingInitialImport ? (
+              <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 p-6 text-center">
+                <Loader2
+                  aria-hidden="true"
+                  className="h-8 w-8 animate-spin text-primary-600"
+                />
+                <p className="text-sm font-medium text-secondary-700 dark:text-secondary-200">
+                  {text.loadingInitialImport}
+                </p>
+              </div>
+            ) : null}
+            {!hasLoadedReview && !isPreparingInitialImport ? (
               <aside className="space-y-4 p-4">
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-2">

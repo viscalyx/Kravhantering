@@ -19,13 +19,11 @@ import {
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { checkInMemoryThrottle } from '@/lib/observability/throttle'
 import {
-  createDefaultAuthorizationService,
   createRequestContext,
   type RequestContext,
-  type RequirementsAction,
 } from '@/lib/requirements/auth'
+import { unauthorizedError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
-import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
 
 // ---------------------------------------------------------------------------
 // In-memory cache (24 h TTL, keyed by supported_parameters)
@@ -173,18 +171,8 @@ export async function GET(request: NextRequest) {
   if (!parsedQuery.ok) {
     return parsedQuery.response
   }
-  const authorizationAction: RequirementsAction = {
-    kind: 'generate_requirements',
-    scopeId: parsedQuery.data.scopeId,
-    scopeType: parsedQuery.data.scopeType,
-  }
-  try {
-    await createDefaultAuthorizationService().assertAuthorized(
-      authorizationAction,
-      context,
-    )
-  } catch (error) {
-    await recordAuthorizationDenied(context, authorizationAction, error)
+  if (!context.actor.isAuthenticated) {
+    const error = unauthorizedError()
     const { body, status } = toHttpErrorPayload(error)
     return applyResponseCorrelationHeaders(
       NextResponse.json(body, { status }),

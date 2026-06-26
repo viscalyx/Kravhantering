@@ -17,7 +17,10 @@ vi.mock('@/lib/ai/openrouter-client', () => ({
   getKeyInfo: vi.fn(),
 }))
 
-function makeRequest(roles: string[] = ['Admin']): Request {
+function makeRequest(
+  roles: string[] = ['Admin'],
+  isAuthenticated = true,
+): Request {
   const request = new Request('http://localhost:3000/api/ai/credits', {
     headers: {
       'x-correlation-id': 'workflow-credits',
@@ -26,11 +29,11 @@ function makeRequest(roles: string[] = ['Admin']): Request {
   })
   attachVerifiedActor(request, {
     displayName: 'AI User',
-    hsaId: 'SE5560000001-ai1',
-    id: 'ai-user',
-    isAuthenticated: true,
+    hsaId: isAuthenticated ? 'SE5560000001-ai1' : null,
+    id: isAuthenticated ? 'ai-user' : null,
+    isAuthenticated,
     roles,
-    source: 'oidc',
+    source: isAuthenticated ? 'oidc' : 'anonymous',
   })
   return request
 }
@@ -71,14 +74,36 @@ describe('GET /api/ai/credits', () => {
     })
   })
 
-  it('denies credit lookup before calling OpenRouter when AI generation is unauthorized', async () => {
+  it('allows credit lookup for authenticated actors without an AI generation scope', async () => {
     const { getKeyInfo } = await import('@/lib/ai/openrouter-client')
+    vi.mocked(getKeyInfo).mockResolvedValueOnce({
+      isFreeTier: false,
+      limit: 50,
+      limitRemaining: 37,
+      managementKeyMissing: false,
+      totalCredits: 10,
+      usage: 13,
+      usageDaily: 2,
+    })
 
     const response = await GET(makeRequest([]))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      limit: 50,
+      totalCredits: 10,
+    })
+    expect(getKeyInfo).toHaveBeenCalled()
+  })
+
+  it('denies anonymous credit lookup before calling OpenRouter', async () => {
+    const { getKeyInfo } = await import('@/lib/ai/openrouter-client')
+
+    const response = await GET(makeRequest([], false))
     const body = (await response.json()) as { error: string }
 
-    expect(response.status).toBe(403)
-    expect(body.error).toBe('Forbidden')
+    expect(response.status).toBe(401)
+    expect(body.error).toBe('Authentication is required')
     expect(getKeyInfo).not.toHaveBeenCalled()
   })
 

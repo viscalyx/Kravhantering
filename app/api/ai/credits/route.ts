@@ -12,13 +12,9 @@ import {
 } from '@/lib/observability/capacity'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { checkInMemoryThrottle } from '@/lib/observability/throttle'
-import {
-  createDefaultAuthorizationService,
-  createRequestContext,
-  type RequirementsAction,
-} from '@/lib/requirements/auth'
+import { createRequestContext } from '@/lib/requirements/auth'
+import { unauthorizedError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
-import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
 
 const AI_CREDITS_RATE_LIMIT = 20
 const AI_CREDITS_RATE_WINDOW_MS = 60_000
@@ -42,18 +38,8 @@ export async function GET(request: Request) {
     aiCreditsQuerySchema,
   )
   if (!parsedQuery.ok) return parsedQuery.response
-  const authorizationAction: RequirementsAction = {
-    kind: 'generate_requirements',
-    scopeId: parsedQuery.data.scopeId,
-    scopeType: parsedQuery.data.scopeType,
-  }
-  try {
-    await createDefaultAuthorizationService().assertAuthorized(
-      authorizationAction,
-      context,
-    )
-  } catch (error) {
-    await recordAuthorizationDenied(context, authorizationAction, error)
+  if (!context.actor.isAuthenticated) {
+    const error = unauthorizedError()
     const { body, status } = toHttpErrorPayload(error)
     return applyResponseCorrelationHeaders(
       NextResponse.json(body, { status }),

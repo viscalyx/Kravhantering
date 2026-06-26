@@ -22,7 +22,7 @@ it writes one JSON line per event to stdout or stderr:
   "request_id": "request-1",
   "correlation_id": "workflow-1",
   "source": "rest",
-  "operation": "ai.generate-requirements",
+  "operation": "ai.generate-requirement-import",
   "outcome": "success",
   "duration_ms": 4120,
   "status_code": 200
@@ -74,10 +74,9 @@ strings, tokens, secrets, or HSA-id values.
 
 V1 measures:
 
-- AI-assisted authoring through `/api/ai/generate-requirements`.
+- AI-assisted authoring through `/api/ai/generate-requirement-import`.
 - AI metadata through `/api/ai/models` cache misses, `refresh=1`, and
   `/api/ai/credits`.
-- AI-assisted authoring through the MCP tool `requirements_generate_requirements`.
 - Shared service operations through service logging.
 - Server-side report item loading for the specification report.
 - Server-side PDF rendering for requirement, specification, privacy, and

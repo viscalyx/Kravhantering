@@ -278,18 +278,37 @@ export async function* generateChatStream(
     body.provider = options.providerPreferences
   }
 
-  // Timeout + caller-signal support, mirroring generateChat hardening.
-  const STREAM_TIMEOUT_MS = 120_000
+  // Use an idle timeout for streaming: long active generations are allowed,
+  // but a provider that stops sending data is still cancelled.
+  const STREAM_IDLE_TIMEOUT_MS = 120_000
   const childController = new AbortController()
-  const streamTimeoutId = setTimeout(
-    () => childController.abort(),
-    STREAM_TIMEOUT_MS,
-  )
+  let idleTimeoutId: ReturnType<typeof setTimeout> | undefined
+  let idleTimeoutTriggered = false
+  let callerAbortTriggered = false
 
-  const onCallerAbort = () => childController.abort()
+  const clearIdleTimeout = () => {
+    if (idleTimeoutId) {
+      clearTimeout(idleTimeoutId)
+      idleTimeoutId = undefined
+    }
+  }
+
+  const startIdleTimeout = () => {
+    clearIdleTimeout()
+    idleTimeoutTriggered = false
+    idleTimeoutId = setTimeout(() => {
+      idleTimeoutTriggered = true
+      childController.abort()
+    }, STREAM_IDLE_TIMEOUT_MS)
+  }
+
+  const onCallerAbort = () => {
+    callerAbortTriggered = true
+    childController.abort()
+  }
   if (options.signal) {
     if (options.signal.aborted) {
-      childController.abort()
+      onCallerAbort()
     } else {
       options.signal.addEventListener('abort', onCallerAbort, { once: true })
     }
@@ -297,6 +316,7 @@ export async function* generateChatStream(
 
   let response: Response
   try {
+    startIdleTimeout()
     response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
       body: JSON.stringify(body),
       headers: {
@@ -307,19 +327,24 @@ export async function* generateChatStream(
       signal: childController.signal,
     })
   } catch (err) {
-    clearTimeout(streamTimeoutId)
+    clearIdleTimeout()
     options.signal?.removeEventListener('abort', onCallerAbort)
+    if (callerAbortTriggered) return
     const message = err instanceof Error ? err.message : 'Fetch failed'
     yield {
-      cause: `OpenRouter fetch error: ${message}`,
+      cause: idleTimeoutTriggered
+        ? `OpenRouter stream idle timeout after ${STREAM_IDLE_TIMEOUT_MS} ms`
+        : `OpenRouter fetch error: ${message}`,
       message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
       phase: 'error',
     }
     return
+  } finally {
+    clearIdleTimeout()
   }
 
   if (!response.ok) {
-    clearTimeout(streamTimeoutId)
+    clearIdleTimeout()
     options.signal?.removeEventListener('abort', onCallerAbort)
     const text = await response.text().catch(() => '')
     yield {
@@ -331,7 +356,7 @@ export async function* generateChatStream(
   }
 
   if (!response.body) {
-    clearTimeout(streamTimeoutId)
+    clearIdleTimeout()
     options.signal?.removeEventListener('abort', onCallerAbort)
     yield {
       cause: 'No response body from OpenRouter',
@@ -356,7 +381,26 @@ export async function* generateChatStream(
 
   try {
     for (;;) {
-      const { done, value } = await reader.read()
+      let readResult: ReadableStreamReadResult<Uint8Array>
+      try {
+        startIdleTimeout()
+        readResult = await reader.read()
+      } catch (err) {
+        if (callerAbortTriggered) return
+        const message = err instanceof Error ? err.message : 'Stream failed'
+        yield {
+          cause: idleTimeoutTriggered
+            ? `OpenRouter stream idle timeout after ${STREAM_IDLE_TIMEOUT_MS} ms`
+            : `OpenRouter stream read error: ${message}`,
+          message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+          phase: 'error',
+        }
+        return
+      } finally {
+        clearIdleTimeout()
+      }
+
+      const { done, value } = readResult
       if (done) break
 
       buffer += decoder.decode(value, { stream: true })
@@ -435,7 +479,7 @@ export async function* generateChatStream(
       thinking: thinkingSoFar,
     }
   } finally {
-    clearTimeout(streamTimeoutId)
+    clearIdleTimeout()
     options.signal?.removeEventListener('abort', onCallerAbort)
     reader.releaseLock()
   }

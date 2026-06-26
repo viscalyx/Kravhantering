@@ -22,6 +22,7 @@ vi.mock('@/lib/ai/openrouter-client', () => ({
 function makeRequest(
   url = 'http://localhost:3000/api/ai/models',
   roles: string[] = ['Admin'],
+  isAuthenticated = true,
 ) {
   const request = new NextRequest(url, {
     headers: {
@@ -31,11 +32,11 @@ function makeRequest(
   })
   attachVerifiedActor(request, {
     displayName: 'AI User',
-    hsaId: 'SE5560000001-ai1',
-    id: 'ai-user',
-    isAuthenticated: true,
+    hsaId: isAuthenticated ? 'SE5560000001-ai1' : null,
+    id: isAuthenticated ? 'ai-user' : null,
+    isAuthenticated,
     roles,
-    source: 'oidc',
+    source: isAuthenticated ? 'oidc' : 'anonymous',
   })
   return request
 }
@@ -89,14 +90,26 @@ describe('GET /api/ai/models', () => {
     expect(data.models[0].supportedParameters).toContain('structured_outputs')
   })
 
-  it('denies model lookup before calling OpenRouter when AI generation is unauthorized', async () => {
+  it('allows model lookup for authenticated actors without an AI generation scope', async () => {
     const { listModels } = await import('@/lib/ai/openrouter-client')
+    vi.mocked(listModels).mockResolvedValue([])
 
     const response = await GET(makeRequest(undefined, []))
+    const body = (await response.json()) as { models: unknown[] }
+
+    expect(response.status).toBe(200)
+    expect(body.models).toEqual([])
+    expect(listModels).toHaveBeenCalled()
+  })
+
+  it('denies anonymous model lookup before calling OpenRouter', async () => {
+    const { listModels } = await import('@/lib/ai/openrouter-client')
+
+    const response = await GET(makeRequest(undefined, [], false))
     const body = (await response.json()) as { error: string }
 
-    expect(response.status).toBe(403)
-    expect(body.error).toBe('Forbidden')
+    expect(response.status).toBe(401)
+    expect(body.error).toBe('Authentication is required')
     expect(listModels).not.toHaveBeenCalled()
   })
 

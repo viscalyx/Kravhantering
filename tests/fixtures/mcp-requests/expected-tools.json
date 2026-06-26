@@ -1,7 +1,6 @@
 {
   "tools": [
     "requirements_add_to_specification",
-    "requirements_generate_requirements",
     "requirements_get_requirement",
     "requirements_get_specification_items",
     "requirements_graduate_local_requirement",
