@@ -2,6 +2,7 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import buildMetadataTools from '../build-metadata.js'
 import { assertHsaIntegrationSupportLockSchema } from '../containers/generate-hsa-integration-support-lock.mjs'
 import { assertStackLockSchema } from '../containers/generate-stack-lock.mjs'
 import { assertTestSupportLockSchema } from '../containers/generate-test-support-lock.mjs'
@@ -40,6 +41,8 @@ const USAGE = `Usage:
   node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path> [--operator-notes <path>]
   node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--hsa-integration-support-lock <path>] [--test-support-lock <path>] [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
   node scripts/release/container-release.mjs ensure-tag --plan <path>`
+
+const { readExpectedDatabaseSchemaVersion } = buildMetadataTools
 
 const RELEVANT_PATH_PREFIXES = [
   '.github/workflows/container-release.yml',
@@ -310,6 +313,8 @@ function csv(values) {
 
 export function createReleasePlan(input = {}) {
   const env = input.env ?? process.env
+  const cwd = input.cwd ?? process.cwd()
+  const fsImpl = input.fsImpl ?? fs
   const gitVersion = input.gitVersion ?? {}
   const repository =
     readNonEmpty(input.repository) ?? readNonEmpty(env.GITHUB_REPOSITORY)
@@ -345,6 +350,9 @@ export function createReleasePlan(input = {}) {
     gitVersionValue(gitVersion, 'SemVer', undefined) ??
     '0.0.0-local'
   const version = versionWithoutBuildMetadata(rawVersion)
+  const expectedDatabaseSchemaVersion =
+    readNonEmpty(input.expectedDatabaseSchemaVersion) ??
+    readExpectedDatabaseSchemaVersion({ cwd, env, fsImpl })
   const releaseTagName =
     isStableRelease || shouldCreatePreviewRelease ? `v${version}` : ''
   const appRuntimeImage = `ghcr.io/${owner}/${APP_RUNTIME_PACKAGE}`
@@ -374,6 +382,7 @@ export function createReleasePlan(input = {}) {
     demoSeedPackage: DEMO_SEED_PACKAGE,
     demoSeedTags: tags.map(tag => `${demoSeedImage}:${tag}`),
     eventName,
+    expectedDatabaseSchemaVersion,
     hasRelevantChange,
     hsaDirectoryMockImage,
     hsaDirectoryMockPackage: HSA_DIRECTORY_MOCK_PACKAGE,
@@ -414,6 +423,7 @@ export function releasePlanEnv(plan) {
     APP_RUNTIME_PRIMARY_TAG_NAME: plan.tags[0],
     APP_RUNTIME_TAGS_CSV: csv(plan.appRuntimeTags),
     BUILD_COMMIT_SHA: plan.commitSha,
+    BUILD_EXPECTED_DATABASE_SCHEMA_VERSION: plan.expectedDatabaseSchemaVersion,
     BUILD_IMAGE_TAG: plan.buildImageTag,
     BUILD_VERSION: plan.version,
     CONTAINER_PROJECT_NAME: `kravhantering-container-stack-release-smoke-${plan.runId}`,
@@ -539,6 +549,9 @@ export function createReleaseMetadata(
       appBuildxMetadata,
     ),
     commitSha: plan.commitSha,
+    database: {
+      expectedSchemaVersion: plan.expectedDatabaseSchemaVersion,
+    },
     dbJob: createImageMetadata(
       plan.dbJobImage,
       plan.dbJobTags,
@@ -684,6 +697,11 @@ export function createDeploymentBundleManifest({
       nginx: imageId(services.nginx),
       sqlserver: imageId(services.sqlserver),
       keycloak: imageId(services.keycloak),
+    },
+    database: {
+      expectedSchemaVersion:
+        metadata.database?.expectedSchemaVersion ??
+        plan.expectedDatabaseSchemaVersion,
     },
     ...(testSupportServices
       ? {

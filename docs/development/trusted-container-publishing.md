@@ -219,13 +219,15 @@ Each trusted run also writes runtime evidence:
   `manifestDigest`, `imageId`, source and role for the test-only HSA directory
   mock support image.
 - `release-metadata.json` records published project image identities, including
-  the optional `kravhantering-demo-seed` image. The production deployment
-  bundle writes a filtered copy that excludes that optional demo image.
+  the expected database schema migration `name` and the optional
+  `kravhantering-demo-seed` image. The production deployment bundle writes a
+  filtered copy that excludes that optional demo image.
 - `container-stack.compose.yml` is the generated Compose file that the smoke
   test started.
 - `hashes.sha256` contains checksums for saved runtime evidence.
-- `public/build.json` contains the app version, commit SHA, build time and
-  image tag embedded in the tested app image.
+- `public/build.json` contains the app version, commit SHA, build time, image
+  tag and expected database schema migration `name` embedded in the tested app
+  image.
 - `api-docs/hsa-person-lookup/` contains the static Swagger UI for the
   HSA-person lookup REST contract.
 

@@ -1,7 +1,9 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
+import buildMetadataTools from '../build-metadata.js'
 import {
   APP_RUNTIME_DESCRIPTION,
   APP_RUNTIME_PACKAGE,
@@ -30,6 +32,27 @@ import {
 } from '../release/container-release.mjs'
 
 const gitVersion = { FullSemVer: '1.2.0-preview.4' }
+const { readExpectedDatabaseSchemaVersion } = buildMetadataTools
+const REPO_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../..',
+)
+let cachedExpectedDatabaseSchemaVersion
+
+function getExpectedDatabaseSchemaVersion() {
+  cachedExpectedDatabaseSchemaVersion ??= readExpectedDatabaseSchemaVersion({
+    cwd: REPO_ROOT,
+    env: {},
+  })
+  return cachedExpectedDatabaseSchemaVersion
+}
+
+function createTestReleasePlan(input = {}) {
+  return createReleasePlan({
+    expectedDatabaseSchemaVersion: getExpectedDatabaseSchemaVersion(),
+    ...input,
+  })
+}
 
 function env(overrides = {}) {
   return {
@@ -87,7 +110,7 @@ function buildxMetadataWithDescriptorAnnotation(manifestDigest, imageId) {
 
 describe('trusted container release helpers', () => {
   it('creates semantic-version primary tags for preview releases', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['app/[locale]/page.tsx', 'docs/notes.md'],
       env: env(),
       gitVersion,
@@ -97,6 +120,7 @@ describe('trusted container release helpers', () => {
       appRuntimeImage: `ghcr.io/viscalyx/${APP_RUNTIME_PACKAGE}`,
       createGitHubRelease: true,
       demoSeedImage: `ghcr.io/viscalyx/${DEMO_SEED_PACKAGE}`,
+      expectedDatabaseSchemaVersion: getExpectedDatabaseSchemaVersion(),
       hasRelevantChange: true,
       hsaDirectoryMockImage: `ghcr.io/viscalyx/${HSA_DIRECTORY_MOCK_PACKAGE}`,
       prerelease: true,
@@ -121,7 +145,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('exports package descriptions for GHCR image metadata', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
       gitVersion,
@@ -131,6 +155,9 @@ describe('trusted container release helpers', () => {
 
     expect(values.APP_RUNTIME_DESCRIPTION).toBe(APP_RUNTIME_DESCRIPTION)
     expect(values.DB_JOB_DESCRIPTION).toBe(DB_JOB_DESCRIPTION)
+    expect(values.BUILD_EXPECTED_DATABASE_SCHEMA_VERSION).toBe(
+      getExpectedDatabaseSchemaVersion(),
+    )
     expect(values.DEMO_SEED_DESCRIPTION).toBe(DEMO_SEED_DESCRIPTION)
     expect(values.HSA_DIRECTORY_MOCK_DESCRIPTION).toBe(
       HSA_DIRECTORY_MOCK_DESCRIPTION,
@@ -148,7 +175,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('strips GitVersion build metadata from preview release tags', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
       gitVersion: {
@@ -178,7 +205,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('keeps docs-only main pushes as snapshots without preview releases', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['docs/prompt.md', 'tests/unit/example.test.ts'],
       env: env(),
       gitVersion,
@@ -197,7 +224,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('uses stable v-tags as exact release versions without latest image tags', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: [],
       env: env({
         GITHUB_REF: 'refs/tags/v1.2.3',
@@ -274,7 +301,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('reads Buildx image IDs from descriptor annotations', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
       gitVersion,
@@ -299,6 +326,9 @@ describe('trusted container release helpers', () => {
     expect(metadata.dbJob).toMatchObject({
       imageId: 'sha256:dbjob-image',
       manifestDigest: 'sha256:dbjob-manifest',
+    })
+    expect(metadata.database).toEqual({
+      expectedSchemaVersion: getExpectedDatabaseSchemaVersion(),
     })
   })
 
@@ -337,7 +367,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('treats bundled single-node upgrade docs as release-relevant', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: [
         'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
       ],
@@ -354,7 +384,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('selects the previous stable release without using prereleases', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: [],
       env: env({
         GITHUB_REF: 'refs/tags/v1.2.3',
@@ -373,7 +403,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('selects the previous preview release without using stable releases', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
       gitVersion,
@@ -389,7 +419,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('excludes the current release tag when rerunning notes', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
       gitVersion,
@@ -404,7 +434,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('reports when no same-kind release exists without building an extra commit list', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: [],
       env: env({
         GITHUB_REF: 'refs/tags/v1.2.3',
@@ -439,7 +469,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('keeps a notice when GitHub-generated notes fail', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
       gitVersion,
@@ -469,7 +499,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('builds repository package version URLs from matching container tags', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
       gitVersion,
@@ -497,7 +527,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('reads package HTML URLs when package version ids are absent', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
       gitVersion,
@@ -554,7 +584,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('falls back to repository package pages when package API endpoints fail', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
       gitVersion,
@@ -601,7 +631,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('adds package version URLs to release metadata when the package API is available', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
       gitVersion,
@@ -678,7 +708,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('renders release notes with generated changes, GHCR refs and bundle links', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
       gitVersion,
@@ -865,7 +895,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('renders operator upgrade notes before container image evidence', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['docs/operations/operator-upgrade-notes.md'],
       env: env(),
       gitVersion,
@@ -1013,7 +1043,7 @@ describe('trusted container release helpers', () => {
   it('stages the production deployment bundle with manifest and templates', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-release-bundle-'))
     try {
-      const plan = createReleasePlan({
+      const plan = createTestReleasePlan({
         changedFiles: ['containers/app/Dockerfile'],
         env: env({
           GITHUB_REF: 'refs/tags/v1.2.3',
@@ -1356,6 +1386,9 @@ describe('trusted container release helpers', () => {
       expect(result.manifest).toMatchObject({
         commitSha: plan.commitSha,
         schemaVersion: 2,
+        database: {
+          expectedSchemaVersion: getExpectedDatabaseSchemaVersion(),
+        },
         images: {
           appRuntime:
             'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app-manifest',
@@ -1390,7 +1423,7 @@ describe('trusted container release helpers', () => {
   })
 
   it('does not move an existing release tag to another commit', () => {
-    const plan = createReleasePlan({
+    const plan = createTestReleasePlan({
       changedFiles: ['app/[locale]/page.tsx'],
       env: env(),
       gitVersion,
@@ -1524,6 +1557,10 @@ describe('trusted container release helpers', () => {
       '--run-id "$' + '{CONTAINER_STACK_RUN_ID}" || true',
     )
     expect(workflow).toContain('container-release.mjs identities')
+    expect(workflow).toContain(
+      '--build-arg BUILD_EXPECTED_DATABASE_SCHEMA_VERSION="$' +
+        '{BUILD_EXPECTED_DATABASE_SCHEMA_VERSION}"',
+    )
     expect(workflow).toContain('APP_RUNTIME_MANIFEST_DIGEST_REF')
     expect(workflow).toContain('DB_JOB_MANIFEST_DIGEST_REF')
     expect(workflow).toContain('DEMO_SEED_MANIFEST_DIGEST_REF')

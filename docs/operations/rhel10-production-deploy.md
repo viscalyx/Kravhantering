@@ -626,11 +626,20 @@ cd /opt/kravhantering/current
 set -a
 . /etc/kravhantering/release.env
 set +a
+EVIDENCE_DIR="/var/tmp/kravhantering-deploy-${VERSION}-evidence"
+mkdir -p "$EVIDENCE_DIR"
 
 podman run --rm --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" wait
 podman run --rm --env-file /etc/kravhantering/db-job.env \
-  "$DB_JOB_IMAGE_REF" migrate
+  "$DB_JOB_IMAGE_REF" migration-status \
+  > "$EVIDENCE_DIR/migration-status-before-${VERSION}.json"
+podman run --rm --env-file /etc/kravhantering/db-job.env \
+  "$DB_JOB_IMAGE_REF" migrate --json \
+  > "$EVIDENCE_DIR/migration-run-${VERSION}.json"
+podman run --rm --env-file /etc/kravhantering/db-job.env \
+  "$DB_JOB_IMAGE_REF" migration-status \
+  > "$EVIDENCE_DIR/migration-status-after-${VERSION}.json"
 podman run --rm --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" seed:required
 
@@ -983,6 +992,9 @@ Keep these files with the deployment record:
 - `container-stack.lock.json`
 - `public/build.json`
 - `release-metadata.json`
+- `migration-status-before-<version>.json`
+- `migration-run-<version>.json`
+- `migration-status-after-<version>.json`
 - SQL backup or restore-point reference
 - final `/etc/kravhantering/release.env` image refs
 - readiness check results

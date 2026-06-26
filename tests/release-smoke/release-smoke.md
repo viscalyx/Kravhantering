@@ -25,6 +25,7 @@ Example build metadata shape:
 {
   "version": "0.1.0",
   "commitSha": "abc123",
+  "expectedDatabaseSchemaVersion": "InitialSqlServerSchema1713720000000",
   "builtAt": "2026-05-22T12:00:00.000Z",
   "imageTag": "localhost/kravhantering/app-runtime:local"
 }
@@ -86,7 +87,8 @@ CSRF-protected requirement mutation.
 3. Assert at least one seeded requirement is returned and visible in the page.
 4. Assert at least one `/_next/static/` resource loaded with HTTP 200.
 5. Attach a full-page screenshot as release smoke evidence.
-6. Request `/build.json`, validate all metadata fields, and attach the JSON.
+6. Request `/build.json`, validate all metadata fields including the expected
+   database schema version, and attach the JSON.
 7. Request `/api/requirement-areas` and choose the seeded `AUTHZ` requirement
    area assigned to the smoke user.
 8. POST `/api/requirements` with a description beginning

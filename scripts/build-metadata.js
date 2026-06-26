@@ -5,6 +5,7 @@ const path = require('node:path')
 // cSpell:ignore DOTNET GITVERSION FULLSEMVER showvariable
 
 const DEFAULT_OUTPUT_PATH = path.join('public', 'build.json')
+const DEFAULT_MIGRATIONS_DIR = path.join('typeorm', 'migrations')
 const DEFAULT_IMAGE_TAG = 'local-dev'
 const UNKNOWN_COMMIT_SHA = 'unknown'
 const GITVERSION_TOOL_MANIFEST_PATH = path.join('.config', 'dotnet-tools.json')
@@ -94,6 +95,50 @@ function readGitVersionSemVer(cwd, env, fsImpl, execFileSync) {
   return undefined
 }
 
+function listMigrationFiles(directory, fsImpl) {
+  try {
+    return fsImpl
+      .readdirSync(directory)
+      .filter(name => name.endsWith('.mjs'))
+      .sort()
+  } catch (error) {
+    if (error?.code === 'ENOENT') return []
+    throw error
+  }
+}
+
+function readMigrationName(filePath, fsImpl) {
+  const content = fsImpl.readFileSync(filePath, 'utf8')
+  const nameMatch = content.match(/\bname\s*=\s*['"](?<name>[^'"]+)['"]/u)
+  if (nameMatch?.groups?.name) return nameMatch.groups.name
+
+  const classMatch = content.match(/export\s+class\s+(?<name>[A-Za-z0-9_]+)/u)
+  if (classMatch?.groups?.name) return classMatch.groups.name
+
+  throw new Error(`Unable to determine TypeORM migration name in ${filePath}`)
+}
+
+function readExpectedDatabaseSchemaVersion(options = {}) {
+  const env = options.env ?? process.env
+  const explicit =
+    readNonEmpty(env.BUILD_EXPECTED_DATABASE_SCHEMA_VERSION) ??
+    readNonEmpty(env.EXPECTED_DATABASE_SCHEMA_VERSION)
+  if (explicit) return explicit
+
+  const fsImpl = options.fsImpl ?? fs
+  const cwd = options.cwd ?? process.cwd()
+  const migrationsDir =
+    options.migrationsDir ?? path.join(cwd, DEFAULT_MIGRATIONS_DIR)
+  const files = listMigrationFiles(migrationsDir, fsImpl)
+  if (files.length === 0) {
+    throw new Error(
+      `No TypeORM migration files found in ${migrationsDir}; build metadata cannot determine expectedDatabaseSchemaVersion.`,
+    )
+  }
+
+  return readMigrationName(path.join(migrationsDir, files.at(-1)), fsImpl)
+}
+
 function createBuildMetadata(options = {}) {
   const env = options.env ?? process.env
   const fsImpl = options.fsImpl ?? fs
@@ -114,6 +159,12 @@ function createBuildMetadata(options = {}) {
       readNonEmpty(env.BUILD_COMMIT_SHA) ??
       readNonEmpty(env.GITHUB_SHA) ??
       readGitCommitSha(cwd, execFileSync),
+    expectedDatabaseSchemaVersion: readExpectedDatabaseSchemaVersion({
+      cwd,
+      env,
+      fsImpl,
+      migrationsDir: options.migrationsDir,
+    }),
     builtAt: readNonEmpty(env.BUILD_TIME) ?? now().toISOString(),
     imageTag: readNonEmpty(env.BUILD_IMAGE_TAG) ?? DEFAULT_IMAGE_TAG,
   }
@@ -136,8 +187,10 @@ function writeBuildMetadata(options = {}) {
 
 module.exports = {
   DEFAULT_IMAGE_TAG,
+  DEFAULT_MIGRATIONS_DIR,
   DEFAULT_OUTPUT_PATH,
   UNKNOWN_COMMIT_SHA,
   createBuildMetadata,
+  readExpectedDatabaseSchemaVersion,
   writeBuildMetadata,
 }

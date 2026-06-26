@@ -121,6 +121,14 @@ interface RequirementAreasResponse {
   }>
 }
 
+type DatabaseSchemaStatusValue = 'matches' | 'mismatch' | 'unknown'
+
+interface DatabaseSchemaStatusResponse {
+  expectedDatabaseSchemaVersion?: string | null
+  observedDatabaseSchemaVersion?: string | null
+  status: DatabaseSchemaStatusValue
+}
+
 interface ComponentProps {
   buildMetadata?: BuildMetadata | null
 }
@@ -161,6 +169,37 @@ function getActiveStewardshipTab(
   return pathname.startsWith('/requirements/stewardship')
     ? (stewardshipTabFromValue(searchParams.get('tab')) ?? 'packages')
     : 'packages'
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function readOptionalString(value: unknown): string | null | undefined {
+  return typeof value === 'string' || value === null ? value : undefined
+}
+
+function parseDatabaseSchemaStatusResponse(
+  value: unknown,
+): DatabaseSchemaStatusResponse | null {
+  if (!isRecord(value)) return null
+  if (
+    value.status !== 'matches' &&
+    value.status !== 'mismatch' &&
+    value.status !== 'unknown'
+  ) {
+    return null
+  }
+
+  return {
+    expectedDatabaseSchemaVersion: readOptionalString(
+      value.expectedDatabaseSchemaVersion,
+    ),
+    observedDatabaseSchemaVersion: readOptionalString(
+      value.observedDatabaseSchemaVersion,
+    ),
+    status: value.status,
+  }
 }
 
 function getNavigationLinkClassName(active: boolean, expanded: boolean) {
@@ -211,6 +250,8 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   const [desktopExpanded, setDesktopExpanded] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [canOpenRequirementAreas, setCanOpenRequirementAreas] = useState(false)
+  const [databaseSchemaStatus, setDatabaseSchemaStatus] =
+    useState<DatabaseSchemaStatusResponse | null>(null)
   const mobileCloseButtonRef = useRef<HTMLButtonElement>(null)
   const mobileDrawerRef = useRef<HTMLDivElement>(null)
   const mobileDrawerReturnFocusRef = useRef<HTMLButtonElement>(null)
@@ -223,9 +264,42 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
     () => getActiveStewardshipTab(pathname, searchParams),
     [pathname, searchParams],
   )
-  const buildVersionTitle = buildMetadata
-    ? tc('buildVersionTooltip', { version: buildMetadata.version })
-    : undefined
+  const buildVersionTitle = useMemo(() => {
+    if (!buildMetadata) return undefined
+
+    const parts = [
+      tc('buildVersionTooltip', {
+        version: buildMetadata.version,
+      }),
+    ]
+
+    if (databaseSchemaStatus?.status === 'matches') {
+      parts.push(tc('databaseSchemaMatchesTooltip'))
+    } else if (databaseSchemaStatus?.status === 'mismatch') {
+      parts.push(tc('databaseSchemaMismatchTooltip'))
+      if (databaseSchemaStatus.observedDatabaseSchemaVersion !== undefined) {
+        parts.push(
+          databaseSchemaStatus.observedDatabaseSchemaVersion
+            ? tc('databaseSchemaAdminMismatchTooltip', {
+                expectedDatabaseSchemaVersion:
+                  databaseSchemaStatus.expectedDatabaseSchemaVersion ??
+                  buildMetadata.expectedDatabaseSchemaVersion,
+                observedDatabaseSchemaVersion:
+                  databaseSchemaStatus.observedDatabaseSchemaVersion,
+              })
+            : tc('databaseSchemaAdminMissingTooltip', {
+                expectedDatabaseSchemaVersion:
+                  databaseSchemaStatus.expectedDatabaseSchemaVersion ??
+                  buildMetadata.expectedDatabaseSchemaVersion,
+              }),
+        )
+      }
+    } else if (databaseSchemaStatus?.status === 'unknown') {
+      parts.push(tc('databaseSchemaUnavailableTooltip'))
+    }
+
+    return parts.join('\n')
+  }, [buildMetadata, databaseSchemaStatus, tc])
 
   const closeMobileDrawer = useCallback(() => {
     setMobileOpen(false)
@@ -249,6 +323,54 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
       setDesktopExpanded(true)
     }
   }, [])
+
+  const loadDatabaseSchemaStatus = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const response = await fetch('/api/database-schema-status', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        signal,
+      })
+      const payload = (await response.json()) as unknown
+      const parsed = parseDatabaseSchemaStatusResponse(payload)
+      setDatabaseSchemaStatus(parsed ?? { status: 'unknown' })
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return
+      }
+      setDatabaseSchemaStatus({ status: 'unknown' })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!buildMetadata) return undefined
+
+    const controller = new AbortController()
+    void loadDatabaseSchemaStatus(controller.signal)
+
+    return () => {
+      controller.abort()
+    }
+  }, [buildMetadata, loadDatabaseSchemaStatus])
+
+  useEffect(() => {
+    if (!buildMetadata) return undefined
+
+    let focusRefreshController: AbortController | null = null
+
+    const refreshOnFocus = () => {
+      focusRefreshController?.abort()
+      focusRefreshController = new AbortController()
+      void loadDatabaseSchemaStatus(focusRefreshController.signal)
+    }
+
+    window.addEventListener('focus', refreshOnFocus)
+
+    return () => {
+      window.removeEventListener('focus', refreshOnFocus)
+      focusRefreshController?.abort()
+    }
+  }, [buildMetadata, loadDatabaseSchemaStatus])
 
   useEffect(() => {
     const width = desktopExpanded

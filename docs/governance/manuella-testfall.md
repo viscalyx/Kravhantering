@@ -1447,7 +1447,12 @@ referensen.
 ### RES-03: readiness och build-metadata
 
 **Steg:** Kontrollera readiness-endpoint och synlig buildmetadata enligt lokal
-miljö.
+miljö. Hovra över Kravhantering-loggan i global sidopanel efter inloggning.
 
-**Förväntat resultat:** Readiness svarar OK och metadata saknar känsliga
-värden.
+**Förväntat resultat:** Readiness svarar OK när databasen har samma
+migrations-`name` som `expectedDatabaseSchemaVersion` i `/build.json`. Vid
+fel svarar readiness med ett sanerat `failedChecks`-objekt, och metadata saknar
+känsliga värden. Tooltipen visar appversion och databasschemats status på
+separata rader. Vid mismatch visar tooltipen bara generell mismatch för
+vanliga användare; Admin kan även se förväntad migrering i appen och
+nuvarande DB-migrering.
