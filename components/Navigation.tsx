@@ -7,11 +7,11 @@ import {
   FolderTree,
   Info,
   LibraryBig,
-  Menu,
   MessageCircleQuestionMark,
   Package,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings2,
-  X,
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -36,6 +36,8 @@ const NAV_RAIL_STORAGE_KEY = 'requirements.navigationRail.expanded.v1'
 const STEWARDSHIP_STORAGE_KEY = 'requirements.stewardship.tab'
 const NAV_RAIL_COLLAPSED_WIDTH = '4.5rem'
 const NAV_RAIL_EXPANDED_WIDTH = '16.5rem'
+const mobileDrawerToggleButtonClassName =
+  'fixed left-3 top-3 z-50 inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-secondary-200/80 bg-white/92 text-secondary-700 shadow-lg backdrop-blur-xl transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white md:hidden dark:border-secondary-800 dark:bg-secondary-950/92 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950'
 
 const workNavItems = [
   {
@@ -473,7 +475,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
         <div className="flex shrink-0 flex-col gap-3 border-b border-secondary-200/70 px-3 py-4 dark:border-secondary-800">
           <button
             aria-label={desktopExpanded ? t('collapseRail') : t('expandRail')}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-secondary-700 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
+            className="inline-flex min-h-11 w-12 min-w-11 items-center justify-center rounded-xl text-secondary-700 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
             onClick={toggleDesktopRail}
             title={desktopExpanded ? t('collapseRail') : t('expandRail')}
             type="button"
@@ -484,9 +486,9 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
             })}
           >
             {desktopExpanded ? (
-              <X aria-hidden="true" className="h-5 w-5" />
+              <PanelLeftClose aria-hidden="true" className="h-5 w-5" />
             ) : (
-              <Menu aria-hidden="true" className="h-5 w-5" />
+              <PanelLeftOpen aria-hidden="true" className="h-5 w-5" />
             )}
           </button>
           <Link
@@ -519,7 +521,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
         <button
           aria-expanded={mobileOpen}
           aria-label={t('openMenu')}
-          className="fixed left-3 top-3 z-50 inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-secondary-200/80 bg-white/92 text-secondary-700 shadow-lg backdrop-blur-xl transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white md:hidden dark:border-secondary-800 dark:bg-secondary-950/92 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
+          className={mobileDrawerToggleButtonClassName}
           onClick={event => openMobileDrawer(event.currentTarget)}
           ref={mobileDrawerReturnFocusRef}
           title={t('openMenu')}
@@ -530,7 +532,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
             value: 'open mobile drawer',
           })}
         >
-          <Menu aria-hidden="true" className="h-5 w-5" />
+          <PanelLeftOpen aria-hidden="true" className="h-5 w-5" />
         </button>
       ) : null}
 
@@ -550,8 +552,24 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
             tabIndex={-1}
             type="button"
           />
+          <button
+            aria-expanded={mobileOpen}
+            aria-label={t('closeMenu')}
+            className={mobileDrawerToggleButtonClassName}
+            onClick={closeMobileDrawer}
+            ref={mobileCloseButtonRef}
+            title={t('closeMenu')}
+            type="button"
+            {...devMarker({
+              context: 'navigation',
+              name: 'button',
+              value: 'close mobile drawer',
+            })}
+          >
+            <PanelLeftClose aria-hidden="true" className="h-5 w-5" />
+          </button>
           <div className="relative flex h-full w-[min(20rem,calc(100vw-2rem))] flex-col border-r border-secondary-200 bg-white shadow-2xl dark:border-secondary-800 dark:bg-secondary-950">
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-secondary-200/70 px-4 py-3 dark:border-secondary-800">
+            <div className="flex shrink-0 items-center border-b border-secondary-200/70 py-3 pl-16 pr-4 dark:border-secondary-800">
               <Link
                 className="inline-flex min-h-11 min-w-0 items-center gap-3 rounded-xl pr-3 font-bold text-primary-700 dark:text-primary-300"
                 href="/requirements"
@@ -568,21 +586,6 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
                   {tc('appName')}
                 </span>
               </Link>
-              <button
-                aria-label={t('closeMenu')}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-secondary-700 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
-                onClick={closeMobileDrawer}
-                ref={mobileCloseButtonRef}
-                title={t('closeMenu')}
-                type="button"
-                {...devMarker({
-                  context: 'navigation',
-                  name: 'button',
-                  value: 'close mobile drawer',
-                })}
-              >
-                <X aria-hidden="true" className="h-5 w-5" />
-              </button>
             </div>
             <nav
               aria-label={t('mainNavigation')}
