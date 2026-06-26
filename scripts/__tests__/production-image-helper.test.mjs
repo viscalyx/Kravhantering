@@ -165,8 +165,23 @@ set -euo pipefail
 printf '%s\\n' "$*" >> "$PODMAN_LOG"
 if [[ "$1 $2" == "image inspect" ]]; then
   ref="$3"
+  format="\${5:-}"
   if [[ "\${FAKE_NGINX_MISMATCH:-}" == "1" && "$ref" == *nginx* ]]; then
     printf '%s\\n' 'sha256:wrong-nginx'
+    exit 0
+  fi
+  if [[ "$format" == "{{.Digest}}" || "$format" == "{{index .RepoDigests 0}}" ]]; then
+    case "$ref" in
+      *app-runtime*) printf '%s\\n' 'registry.example/app-runtime@sha256:app-manifest' ;;
+      *db-job*) printf '%s\\n' 'registry.example/db-job@sha256:db-manifest' ;;
+      *nginx*) printf '%s\\n' 'registry.example/nginx@sha256:nginx-manifest' ;;
+      *sqlserver*) printf '%s\\n' 'registry.example/sqlserver@sha256:sql-manifest' ;;
+      *keycloak*) printf '%s\\n' 'registry.example/keycloak@sha256:keycloak-manifest' ;;
+      *kong*) printf '%s\\n' 'registry.example/kong@sha256:kong-manifest' ;;
+      *hsa-person-lookup-adapter*) printf '%s\\n' 'registry.example/hsa-person-lookup-adapter@sha256:hsa-adapter-manifest' ;;
+      *hsa-directory-mock*) printf '%s\\n' 'registry.example/hsa-directory-mock@sha256:hsa-manifest' ;;
+      *) printf '%s\\n' '<none>' ;;
+    esac
     exit 0
   fi
   case "$ref" in
@@ -327,9 +342,67 @@ describe('production image helper', () => {
       'nginx image ID sha256:wrong-nginx does not match locked sha256:nginx-image',
     )
     expect(result.stderr).toContain(
-      'pull the locked manifest registry.example/nginx@sha256:nginx-manifest',
+      'pull the locked manifest registry.example/nginx:1.31.1-alpine@sha256:nginx-manifest',
     )
     expect(result.stderr).toContain('set NGINX_IMAGE_REF to a site mirror tag')
+  })
+
+  it('accepts tag and digest refs when they match the lock', () => {
+    const dir = makeTempDir()
+    const lockFile = writeLockFile(dir)
+    const envFile = writeEnvFile(dir, {
+      APP_RUNTIME_IMAGE_REF:
+        'registry.example/app-runtime:1.2.3@sha256:app-manifest',
+      DB_JOB_IMAGE_REF: 'registry.example/db-job:1.2.3@sha256:db-manifest',
+    })
+
+    const result = runHelper(dir, [
+      '--topology',
+      'app-node',
+      '--lock-file',
+      lockFile,
+      '--env-file',
+      envFile,
+      'verify',
+    ])
+
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain(
+      'Verified app-runtime (registry.example/app-runtime:1.2.3@sha256:app-manifest)',
+    )
+    expect(result.log).toContain(
+      'image inspect registry.example/app-runtime:1.2.3@sha256:app-manifest --format {{.Digest}}',
+    )
+    expect(result.log).toContain(
+      'image inspect registry.example/app-runtime:1.2.3@sha256:app-manifest --format {{.Id}}',
+    )
+  })
+
+  it('fails verification when a ref digest differs from the lock', () => {
+    const dir = makeTempDir()
+    const lockFile = writeLockFile(dir)
+    const envFile = writeEnvFile(dir, {
+      APP_RUNTIME_IMAGE_REF:
+        'registry.example/app-runtime:1.2.3@sha256:wrong-manifest',
+    })
+
+    const result = runHelper(dir, [
+      '--topology',
+      'app-node',
+      '--lock-file',
+      lockFile,
+      '--env-file',
+      envFile,
+      'verify',
+    ])
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'app-runtime manifest digest sha256:wrong-manifest does not match locked sha256:app-manifest',
+    )
+    expect(result.stderr).toContain(
+      'registry.example/app-runtime:1.2.3@sha256:app-manifest',
+    )
   })
 
   it('exports local images, loads, tags, and verifies a disconnected image bundle', () => {
@@ -372,7 +445,7 @@ describe('production image helper', () => {
     expect(loaded.stdout).toContain('Verified app-runtime')
   })
 
-  it('rejects digest refs as production runtime refs', () => {
+  it('loads digest refs by tagging the loaded image to the tag portion', () => {
     const dir = makeTempDir()
     const lockFile = writeLockFile(dir)
     const exportEnvFile = writeEnvFile(dir)
@@ -393,7 +466,8 @@ describe('production image helper', () => {
     ).toBe(0)
 
     const envFile = writeEnvFile(dir, {
-      APP_RUNTIME_IMAGE_REF: 'registry.example/app-runtime@sha256:app-manifest',
+      APP_RUNTIME_IMAGE_REF:
+        'registry.example/app-runtime:1.2.3@sha256:app-manifest',
     })
 
     const result = runHelper(dir, [
@@ -408,9 +482,13 @@ describe('production image helper', () => {
       bundle,
     ])
 
-    expect(result.status).not.toBe(0)
-    expect(result.stderr).toContain(
-      'production runtime refs must use tag-style',
+    expect(result.status).toBe(0)
+    expect(result.log).toContain(
+      'tag sha256:app-image registry.example/app-runtime:1.2.3',
     )
+    expect(result.log).not.toContain(
+      'tag sha256:app-image registry.example/app-runtime:1.2.3@sha256:app-manifest',
+    )
+    expect(result.stdout).toContain('Verified app-runtime')
   })
 })

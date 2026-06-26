@@ -48,13 +48,15 @@ The site must provide approved runtime image refs for:
 - `db-job`
 - nginx
 
-The refs must use tag-style `image:tag` values that point at public upstream
+Use tag-style `image:tag` values by default, pointing at public upstream
 registries or an internal registry mirror. Each configured ref must resolve to
 the locked `imageId` in `container-stack.lock.json` when inspected with Podman.
 For third-party images, prefer release-specific internal mirror tags instead
-of moving public tags such as `stable-alpine`. The lock file, not the tag text,
-is the source of truth; `bin/kravhantering-images.sh verify` fails if a tag now
-resolves to another image ID.
+of moving public tags such as `stable-alpine`. The helper also accepts
+`image:tag@sha256:digest` when a site explicitly requires pull-time digest
+pinning. The lock file, not the tag text, is the source of truth;
+`bin/kravhantering-images.sh verify` fails if a ref now resolves to another
+image ID.
 
 ## Configuration BoM
 
@@ -283,10 +285,10 @@ sudo chcon -R -t container_file_t \
 ## Image References
 
 Set image references in `/etc/kravhantering/release.env` to the site's
-approved runtime refs. Production runtime refs must use tag-style `image:tag`
-values. Prefer release-specific internal mirror tags for third-party images.
-For connected staging only, derive the public upstream refs from the release
-lock and verify them immediately:
+approved runtime refs. Use tag-style `image:tag` values by default, and prefer
+release-specific internal mirror tags for third-party images. For connected
+staging only, derive the public upstream refs from the release lock and verify
+them immediately:
 
 ```bash
 update_ref() {
@@ -345,7 +347,9 @@ update_ref NGINX_IMAGE_REF \
 
 If the internal mirror uses a custom repository layout, set the three
 `*_IMAGE_REF` values manually to site-approved tag refs, then run the
-verification below. Each ref must resolve to the locked `imageId`.
+verification below. Each ref must resolve to the locked `imageId`. If a site
+explicitly requires digest-pinned pulls, the helper also accepts
+`image:tag@sha256:digest` refs.
 
 Pull and verify the images as the service user:
 
