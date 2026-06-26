@@ -62,7 +62,7 @@ interface AiRequirementGeneratorProps {
   onCreated?: () => void
   onImportPreview?: (
     payload: ImportRequirementsPayload,
-    options: { areaId?: number },
+    options: { areaId?: number; preview?: PreviewResponse },
   ) => void
   open: boolean
   specificationId?: number
@@ -565,6 +565,7 @@ export default function AiRequirementGenerator({
   const [stats, setStats] = useState<GenerationStats | null>(null)
   const [generatedPayload, setGeneratedPayload] =
     useState<ImportRequirementsPayload | null>(null)
+  const [previewToken, setPreviewToken] = useState<string | null>(null)
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([])
   const [previewProposals, setPreviewProposals] = useState<ProposalPreview[]>(
     [],
@@ -954,6 +955,7 @@ export default function AiRequirementGenerator({
       setRawResponse('')
       setStats(null)
       setGeneratedPayload(null)
+      setPreviewToken(null)
       setPreviewRows([])
       setPreviewProposals([])
       setSelectedRows(new Set())
@@ -1025,6 +1027,7 @@ export default function AiRequirementGenerator({
       }
       const preview = (await response.json()) as PreviewResponse
       setGeneratedPayload(normalizedPayload)
+      setPreviewToken(preview.previewToken)
       setPreviewRows(preview.rows)
       setPreviewProposals(preview.proposals)
       setSelectedRows(
@@ -1120,6 +1123,7 @@ export default function AiRequirementGenerator({
     setRawResponse('')
     setStats(null)
     setGeneratedPayload(null)
+    setPreviewToken(null)
     setPreviewRows([])
     setPreviewProposals([])
     setSelectedRows(new Set())
@@ -1371,10 +1375,62 @@ export default function AiRequirementGenerator({
   const handleContinueToImport = useCallback(() => {
     const payload = buildSelectedPayload()
     if (!payload) return
+    const selectedPreviewRows = previewRows
+      .filter(row => selectedRows.has(row.reviewRowId))
+      .map(row => ({
+        ...row,
+        proposedNormReferenceKeys: row.proposedNormReferenceKeys.filter(key =>
+          selectedProposals.has(key),
+        ),
+        selected: true,
+      }))
+    const selectedPreviewProposals = previewProposals
+      .filter(proposal => selectedProposals.has(proposal.key))
+      .map(proposal => ({
+        ...proposal,
+        referencedCount: selectedPreviewRows.filter(row =>
+          row.proposedNormReferenceKeys.includes(proposal.key),
+        ).length,
+      }))
+    const preview =
+      previewToken != null
+        ? {
+            previewToken,
+            proposals: selectedPreviewProposals,
+            rows: selectedPreviewRows,
+            summary: {
+              errorCount: selectedPreviewRows.reduce(
+                (count, row) => count + row.errors.length,
+                0,
+              ),
+              rowCount: selectedPreviewRows.length,
+              warningCount:
+                selectedPreviewRows.reduce(
+                  (count, row) => count + row.warnings.length,
+                  0,
+                ) +
+                selectedPreviewProposals.reduce(
+                  (count, proposal) => count + proposal.warnings.length,
+                  0,
+                ),
+            },
+          }
+        : undefined
     onImportPreview?.(payload, {
       areaId: mode === 'library' && targetAreaId ? targetAreaId : undefined,
+      preview,
     })
-  }, [buildSelectedPayload, mode, onImportPreview, targetAreaId])
+  }, [
+    buildSelectedPayload,
+    mode,
+    onImportPreview,
+    previewProposals,
+    previewRows,
+    previewToken,
+    selectedProposals,
+    selectedRows,
+    targetAreaId,
+  ])
 
   if (!open || typeof document === 'undefined') return null
 

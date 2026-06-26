@@ -245,4 +245,29 @@ describe('POST /api/ai/generate-requirement-import', () => {
       }),
     ])
   })
+
+  it('rejects malformed image base64 before provider use', async () => {
+    const response = await POST(
+      makeRequest({
+        areaId: 1,
+        images: [{ dataUrl: 'data:image/png;base64,not-base64' }],
+        locale: 'en',
+        mode: 'library',
+        need: 'secure audit logging',
+      }),
+    )
+    const body = (await response.json()) as {
+      issues: Array<{ message: string; path: string }>
+    }
+
+    expect(response.status).toBe(400)
+    expect(body.issues).toEqual([
+      expect.objectContaining({
+        message: 'Image data is not valid base64.',
+        path: 'images.0.dataUrl',
+      }),
+    ])
+    expect(routeState.buildImportAiPrompt).not.toHaveBeenCalled()
+    expect(routeState.generateChatStream).not.toHaveBeenCalled()
+  })
 })

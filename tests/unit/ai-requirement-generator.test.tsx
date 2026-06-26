@@ -270,7 +270,7 @@ async function renderOpenGenerator(overrides?: {
   onClose?: () => void
   onImportPreview?: (
     payload: ImportRequirementsPayload,
-    options: { areaId?: number },
+    options: { areaId?: number; preview?: unknown },
   ) => void
   selectArea?: boolean
 }) {
@@ -466,6 +466,32 @@ describe('AiRequirementGenerator', () => {
         String(url).startsWith('/api/requirements/import/schema'),
       ),
     ).toBe(false)
+  })
+
+  it('traps focus in the AI request explanation dialog and restores focus on close', async () => {
+    await renderOpenGenerator()
+    const trigger = screen.getByRole('button', {
+      name: /How the AI request is built/,
+    })
+
+    await userEvent.click(trigger)
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'How the AI request is built',
+    })
+    const closeButton = within(dialog).getByLabelText('close')
+
+    await waitFor(() => expect(closeButton).toHaveFocus())
+
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(closeButton).toHaveFocus()
+
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
+    expect(closeButton).toHaveFocus()
+
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
   it('disables generate button when topic or area is empty', async () => {
@@ -1433,7 +1459,18 @@ describe('AiRequirementGenerator', () => {
         ],
         schemaVersion: 'requirement-import.v1',
       }),
-      { areaId: 1 },
+      {
+        areaId: 1,
+        preview: expect.objectContaining({
+          previewToken: 'preview-token',
+          rows: [
+            expect.objectContaining({
+              reviewRowId: 'row-1',
+              selected: true,
+            }),
+          ],
+        }),
+      },
     )
   })
 

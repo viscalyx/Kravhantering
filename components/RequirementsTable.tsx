@@ -155,6 +155,35 @@ function isFloatingActionMenuLink(
   return typeof (item as { href?: unknown }).href === 'string'
 }
 
+function FloatingActionMenuItemContent({
+  item,
+}: {
+  item: FloatingActionMenuItemBase
+}) {
+  return (
+    <>
+      {item.icon ? (
+        <span
+          aria-hidden="true"
+          className="flex h-5 w-5 shrink-0 items-center justify-center text-secondary-500 dark:text-secondary-300"
+        >
+          {item.icon}
+        </span>
+      ) : null}
+      <div className="min-w-0">
+        <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+          {item.label}
+        </div>
+        {item.description ? (
+          <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
+            {item.description}
+          </div>
+        ) : null}
+      </div>
+    </>
+  )
+}
+
 export interface FloatingActionItem {
   ariaLabel: string
   badge?: string | number
@@ -178,6 +207,13 @@ const floatingPillBaseClassName =
 
 const floatingActionMenuFocusableSelector =
   'a[href], button:not([disabled]), [role="button"]:not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
+
+const floatingActionMenuItemBaseClassName =
+  'flex w-full min-h-11 min-w-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-secondary-900'
+
+const floatingActionMenuItemEnabledClassName = `${floatingActionMenuItemBaseClassName} hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70`
+
+const floatingActionMenuItemDisabledClassName = `${floatingActionMenuItemBaseClassName} cursor-not-allowed opacity-50`
 
 const floatingPillVariantClassNames: Record<FloatingActionPillVariant, string> =
   {
@@ -383,33 +419,27 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                     {action.menuItems?.map(item => (
                       <li key={item.id}>
                         {isFloatingActionMenuLink(item) ? (
-                          <Link
-                            className="flex min-h-11 min-w-11 items-center gap-3 rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
-                            href={item.href}
-                            onClick={() => setOpen(false)}
-                          >
-                            {item.icon ? (
-                              <span
-                                aria-hidden="true"
-                                className="flex h-5 w-5 shrink-0 items-center justify-center text-secondary-500 dark:text-secondary-300"
-                              >
-                                {item.icon}
-                              </span>
-                            ) : null}
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-                                {item.label}
-                              </div>
-                              {item.description ? (
-                                <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
-                                  {item.description}
-                                </div>
-                              ) : null}
-                            </div>
-                          </Link>
+                          item.disabled ? (
+                            <span
+                              aria-disabled="true"
+                              className={
+                                floatingActionMenuItemDisabledClassName
+                              }
+                            >
+                              <FloatingActionMenuItemContent item={item} />
+                            </span>
+                          ) : (
+                            <Link
+                              className={floatingActionMenuItemEnabledClassName}
+                              href={item.href}
+                              onClick={() => setOpen(false)}
+                            >
+                              <FloatingActionMenuItemContent item={item} />
+                            </Link>
+                          )
                         ) : (
                           <button
-                            className={`flex w-full min-h-11 min-w-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-secondary-900 ${
+                            className={`${floatingActionMenuItemBaseClassName} ${
                               item.disabled
                                 ? 'cursor-not-allowed opacity-50'
                                 : 'hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70'
@@ -422,24 +452,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                             }}
                             type="button"
                           >
-                            {item.icon ? (
-                              <span
-                                aria-hidden="true"
-                                className="flex h-5 w-5 shrink-0 items-center justify-center text-secondary-500 dark:text-secondary-300"
-                              >
-                                {item.icon}
-                              </span>
-                            ) : null}
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-                                {item.label}
-                              </div>
-                              {item.description ? (
-                                <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
-                                  {item.description}
-                                </div>
-                              ) : null}
-                            </div>
+                            <FloatingActionMenuItemContent item={item} />
                           </button>
                         )}
                       </li>

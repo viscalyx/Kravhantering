@@ -50,6 +50,29 @@ function requirementImportLocale(body: {
 
 export const imageDataUrlSchema = z.string()
 
+const BASE64_PAYLOAD_PATTERN =
+  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/
+
+function normalizeBase64Payload(base64Data: string): string | null {
+  if (base64Data.length === 0 || /\s/.test(base64Data)) return null
+  const remainder = base64Data.length % 4
+  if (remainder === 1) return null
+  const normalized =
+    remainder === 0
+      ? base64Data
+      : base64Data.padEnd(base64Data.length + 4 - remainder, '=')
+  return BASE64_PAYLOAD_PATTERN.test(normalized) ? normalized : null
+}
+
+function countBase64Bytes(base64Data: string): number {
+  const paddingBytes = base64Data.endsWith('==')
+    ? 2
+    : base64Data.endsWith('=')
+      ? 1
+      : 0
+  return (base64Data.length / 4) * 3 - paddingBytes
+}
+
 function validateImageDataUrl(
   dataUrl: string,
   context: RefinementCtx,
@@ -72,8 +95,17 @@ function validateImageDataUrl(
   }
 
   const base64Data = dataUrl.slice(dataUrl.indexOf(',') + 1)
-  const approxBytes = (base64Data.length * 3) / 4
-  if (approxBytes > MAX_AI_IMAGE_BYTES) {
+  const normalizedBase64Data = normalizeBase64Payload(base64Data)
+  if (!normalizedBase64Data) {
+    context.addIssue({
+      code: 'custom',
+      message: getPromptMessage(locale, ['ai', 'imageSchemaErrorBase64']),
+      path,
+    })
+    return
+  }
+
+  if (countBase64Bytes(normalizedBase64Data) > MAX_AI_IMAGE_BYTES) {
     context.addIssue({
       code: 'custom',
       message: getPromptMessage(locale, ['ai', 'imageSchemaErrorSize']),

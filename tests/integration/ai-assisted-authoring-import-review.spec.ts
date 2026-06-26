@@ -124,9 +124,6 @@ async function mockImportPreview(
   await page.route(endpoint, async route => {
     callCount += 1
     bodies.push(route.request().postDataJSON())
-    if (callCount === 2) {
-      await new Promise(resolve => setTimeout(resolve, 300))
-    }
     await fulfillJson(route, previewBody(`${tokenPrefix}-${callCount}`))
   })
   return {
@@ -179,11 +176,10 @@ test('AI-assisted authoring hands library candidates to requirement import revie
     .getByRole('button', { name: 'Förhandsgranska krav i import' })
     .click()
 
-  await expect(page.getByText('Förbereder importgranskning...')).toBeVisible()
   await expect(page.getByLabel(/Import-JSON/)).toBeHidden()
   await expect(page.getByText(generatedDescription)).toBeVisible()
-  expect(preview.callCount).toBe(2)
-  expect(preview.bodies[1]).toMatchObject({
+  expect(preview.callCount).toBe(1)
+  expect(preview.bodies[preview.bodies.length - 1]).toMatchObject({
     payload: generatedPayload,
   })
 })
@@ -209,11 +205,10 @@ test('AI-assisted authoring hands kravunderlag candidates to local import review
     .getByRole('button', { name: 'Förhandsgranska krav i import' })
     .click()
 
-  await expect(page.getByText('Förbereder importgranskning...')).toBeVisible()
   await expect(page.getByLabel(/Import-JSON/)).toBeHidden()
   await expect(page.getByText(generatedDescription)).toBeVisible()
-  expect(preview.callCount).toBe(2)
-  expect(preview.bodies[1]).toMatchObject({
+  expect(preview.callCount).toBe(1)
+  expect(preview.bodies[preview.bodies.length - 1]).toMatchObject({
     payload: generatedPayload,
     specificationIdOrSlug: specificationSlug,
   })

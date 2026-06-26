@@ -1087,8 +1087,8 @@ export function createRequirementsImportWorkflow({
           ? '- Returnera endast ett JSON-objekt som följer det separata JSON Schema som skickas som tvingande svarsformat.'
           : '- Return only a JSON object that follows the separate JSON Schema sent as the mandatory response format.',
         isSv
-          ? '- Sätt toppnivåfältet `schemaVersion` till `requirement-import.v1`.'
-          : '- Set the top-level `schemaVersion` field to `requirement-import.v1`.',
+          ? `- Sätt toppnivåfältet \`schemaVersion\` till \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\`.`
+          : `- Set the top-level \`schemaVersion\` field to \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\`.`,
         isSv
           ? '- Använd inte U+2013 EN DASH i JSON-värden; använd vanligt bindestreck (-) i stället.'
           : '- Do not use U+2013 EN DASH in JSON values; use a plain hyphen (-) instead.',

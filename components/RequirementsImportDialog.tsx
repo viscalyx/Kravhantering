@@ -147,7 +147,7 @@ interface ImportProposalPreview {
   warnings: ImportMessage[]
 }
 
-interface ImportPreviewResponse {
+export interface ImportPreviewResponse {
   previewToken: string
   proposals: ImportProposalPreview[]
   rows: ImportPreviewRow[]
@@ -183,14 +183,17 @@ interface ImportExecuteResponse {
   summary: { createdCount: number }
 }
 
+export interface InitialRequirementsImport {
+  areaId?: number
+  key: string
+  payload: ImportRequirementsPayload
+  preview?: ImportPreviewResponse
+}
+
 interface RequirementsImportDialogProps {
   areas?: AreaOption[]
   destinationName?: string
-  initialImport?: {
-    areaId?: number
-    key: string
-    payload: ImportRequirementsPayload
-  } | null
+  initialImport?: InitialRequirementsImport | null
   mode: ImportMode
   needsReferences?: NeedsReferenceOption[]
   onClose: (importSucceeded: boolean) => void
@@ -907,7 +910,28 @@ export default function RequirementsImportDialog({
       if (mode === 'library' && initial.areaId) {
         setSelectedAreaId(String(initial.areaId))
       }
+      const applyPreview = (preview: ImportPreviewResponse) => {
+        setProposals(preview.proposals)
+        setCreatedProposalKeys([])
+        setRows(preview.rows.map(revalidateEditableRow))
+        setActiveReviewTab('requirements')
+        setExpandedRowIds(new Set())
+        setExpandedSummaryRowIds(new Set())
+        setNormReferenceEditDraftIds({})
+        setPackageEditDraftIds({})
+        setAssociationPicker(null)
+        setAssociationPickerDraftIds([])
+        setAssociationPickerSearch('')
+        setPreviewToken(preview.previewToken)
+        if (preview.rows.length >= 200) {
+          setNoticeMessage(text.tooManyRows)
+        }
+      }
       try {
+        if (initial.preview) {
+          applyPreview(initial.preview)
+          return
+        }
         const isLibrary = mode === 'library'
         const response = await apiFetch(
           isLibrary
@@ -933,21 +957,7 @@ export default function RequirementsImportDialog({
         }
         const preview = (await response.json()) as ImportPreviewResponse
         if (cancelled) return
-        setProposals(preview.proposals)
-        setCreatedProposalKeys([])
-        setRows(preview.rows.map(revalidateEditableRow))
-        setActiveReviewTab('requirements')
-        setExpandedRowIds(new Set())
-        setExpandedSummaryRowIds(new Set())
-        setNormReferenceEditDraftIds({})
-        setPackageEditDraftIds({})
-        setAssociationPicker(null)
-        setAssociationPickerDraftIds([])
-        setAssociationPickerSearch('')
-        setPreviewToken(preview.previewToken)
-        if (preview.rows.length >= 200) {
-          setNoticeMessage(text.tooManyRows)
-        }
+        applyPreview(preview)
       } catch {
         if (!cancelled) {
           setErrorMessage(text.error)

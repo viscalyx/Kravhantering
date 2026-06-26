@@ -2420,6 +2420,7 @@
     "generatedJsonSchemaMismatch": "Genererad JSON matchade inte importens schema.",
     "repairedJsonSchemaMismatch": "Reparerad JSON matchade inte importens schema.",
     "imageSchemaErrorType": "Bildtypen stöds inte. Använd PNG, JPEG, GIF eller WebP.",
+    "imageSchemaErrorBase64": "Bilddata är inte giltigt base64.",
     "imageSchemaErrorSize": "Bilden överskrider gränsen på 10 MB.",
     "invalidRequirementImportScope": "Biblioteksläge kräver areaId och kravunderlagslokalt läge kräver specificationIdOrSlug.",
     "prompt": {

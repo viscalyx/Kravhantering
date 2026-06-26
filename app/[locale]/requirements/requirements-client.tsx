@@ -13,14 +13,15 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AiRequirementGenerator from '@/components/AiRequirementGenerator'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
-import RequirementsImportDialog from '@/components/RequirementsImportDialog'
+import RequirementsImportDialog, {
+  type InitialRequirementsImport,
+} from '@/components/RequirementsImportDialog'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import {
   type AiRequirementGenerationAvailability,
   DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
 } from '@/lib/ai/generation-availability'
-import type { ImportRequirementsPayload } from '@/lib/requirements/import-schema'
 import {
   type AreaOption,
   buildRequirementListParams,
@@ -291,11 +292,8 @@ export default function RequirementsClient({
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
-  const [aiInitialImport, setAiInitialImport] = useState<{
-    areaId?: number
-    key: string
-    payload: ImportRequirementsPayload
-  } | null>(null)
+  const [aiInitialImport, setAiInitialImport] =
+    useState<InitialRequirementsImport | null>(null)
   const isAiGenerationEnabled =
     aiGenerationAvailability.effectiveRequirementGenerationEnabled
   const hasAuthorableRequirementArea = areas.some(
@@ -1114,6 +1112,7 @@ export default function RequirementsClient({
             areaId: options.areaId,
             key: `ai-${Date.now()}`,
             payload,
+            preview: options.preview,
           })
           setAiModalOpen(false)
           setImportDialogOpen(true)

@@ -36,7 +36,9 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
-import RequirementsImportDialog from '@/components/RequirementsImportDialog'
+import RequirementsImportDialog, {
+  type InitialRequirementsImport,
+} from '@/components/RequirementsImportDialog'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
@@ -58,7 +60,6 @@ import {
   type SpecificationCsvProfile,
   type SpecificationReportProfile,
 } from '@/lib/reports/specification-profiles'
-import type { ImportRequirementsPayload } from '@/lib/requirements/import-schema'
 import {
   type AreaOption,
   buildRequirementListParams,
@@ -347,10 +348,7 @@ export default function KravunderlagDetailClient({
   const [
     aiLocalRequirementsInitialImport,
     setAiLocalRequirementsInitialImport,
-  ] = useState<{
-    key: string
-    payload: ImportRequirementsPayload
-  } | null>(null)
+  ] = useState<InitialRequirementsImport | null>(null)
   const [localRequirementActionsOpen, setLocalRequirementActionsOpen] =
     useState(false)
   const localRequirementActionsRef = useRef<HTMLDivElement | null>(null)
@@ -3233,10 +3231,11 @@ export default function KravunderlagDetailClient({
         aiGenerationAvailability={initialData.aiGenerationAvailability}
         mode="specification-local"
         onClose={() => setShowAiLocalRequirementsModal(false)}
-        onImportPreview={payload => {
+        onImportPreview={(payload, options) => {
           setAiLocalRequirementsInitialImport({
             key: `ai-local-${Date.now()}`,
             payload,
+            preview: options.preview,
           })
           setShowAiLocalRequirementsModal(false)
           setShowImportLocalRequirementsModal(true)

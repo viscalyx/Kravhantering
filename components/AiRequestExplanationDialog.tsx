@@ -12,8 +12,9 @@ import {
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { ReactNode } from 'react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import {
   buildRequirementImportSystemPrompt,
   buildRequirementImportUserPrompt,
@@ -167,24 +168,21 @@ export default function AiRequestExplanationDialog({
   const t = useTranslations('ai')
   const tc = useTranslations('common')
   const shouldReduceMotion = useReducedMotion()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
   const trimmedNeed = need.trim()
   const displayNeed = trimmedNeed || needPlaceholder
   const exactNeed = trimmedNeed || t('requestExplanation.emptyNeed')
+  const { handleKeyDown } = useModalFocus({
+    initialFocusRef: closeButtonRef,
+    modalRef: dialogRef,
+    onClose,
+    open,
+  })
 
   useEffect(() => {
     if (open) onLoadImportInstruction()
   }, [onLoadImportInstruction, open])
-
-  useEffect(() => {
-    if (!open) return
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose, open])
 
   const systemMessage = useMemo(
     () =>
@@ -216,6 +214,8 @@ export default function AiRequestExplanationDialog({
           aria-labelledby="ai-request-explanation-title"
           aria-modal="true"
           className="flex max-h-[min(92vh,58rem)] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-secondary-900"
+          onKeyDown={handleKeyDown}
+          ref={dialogRef}
           role="dialog"
         >
           <header className="flex shrink-0 items-center justify-between gap-4 border-b border-secondary-200 px-5 py-4 dark:border-secondary-800">
@@ -234,6 +234,7 @@ export default function AiRequestExplanationDialog({
               aria-label={tc('close')}
               className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
               onClick={onClose}
+              ref={closeButtonRef}
               type="button"
             >
               <X aria-hidden className="h-5 w-5" />

@@ -294,10 +294,10 @@ describe('requirements import service', () => {
     expect(promptEn).not.toContain('"$schema"')
     expect(promptSv).not.toContain('"$schema"')
     expect(promptEn).toContain(
-      'Set the top-level `schemaVersion` field to `requirement-import.v1`',
+      `Set the top-level \`schemaVersion\` field to \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\``,
     )
     expect(promptSv).toContain(
-      'Sätt toppnivåfältet `schemaVersion` till `requirement-import.v1`',
+      `Sätt toppnivåfältet \`schemaVersion\` till \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\``,
     )
     expect(promptEn).not.toContain('requirements-import.v1')
     expect(promptSv).not.toContain('requirements-import.v1')

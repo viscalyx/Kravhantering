@@ -2420,6 +2420,7 @@
     "generatedJsonSchemaMismatch": "Generated JSON did not match the requirement import schema.",
     "repairedJsonSchemaMismatch": "Repaired JSON did not match the requirement import schema.",
     "imageSchemaErrorType": "Unsupported image type. Use PNG, JPEG, GIF or WebP.",
+    "imageSchemaErrorBase64": "Image data is not valid base64.",
     "imageSchemaErrorSize": "Image exceeds the 10 MB size limit.",
     "invalidRequirementImportScope": "Library mode requires areaId and specification-local mode requires specificationIdOrSlug.",
     "prompt": {
