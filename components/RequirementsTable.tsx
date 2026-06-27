@@ -129,7 +129,7 @@ export interface RequirementsTableProps {
   wrapDescription?: boolean
 }
 
-export type FloatingActionPillVariant = 'default' | 'primary'
+export type FloatingActionPillVariant = 'default' | 'primary' | 'warning'
 
 interface FloatingActionMenuItemBase {
   badge?: string | number
@@ -231,6 +231,8 @@ const floatingPillVariantClassNames: Record<FloatingActionPillVariant, string> =
       'border-secondary-200/80 bg-white/90 text-secondary-500 hover:border-secondary-300 hover:text-secondary-700 hover:shadow-[0_14px_36px_-20px_rgba(15,23,42,0.5)] dark:border-secondary-700/80 dark:bg-secondary-900/80 dark:text-secondary-300 dark:hover:border-secondary-600 dark:hover:text-secondary-100',
     primary:
       'border-primary-600/80 bg-primary-700 text-white hover:border-primary-700 hover:bg-primary-800 hover:shadow-[0_14px_36px_-20px_rgba(67,56,202,0.55)] dark:border-primary-500/80 dark:bg-primary-600 dark:hover:border-primary-400 dark:hover:bg-primary-700',
+    warning:
+      'border-amber-400/80 bg-amber-500/10 text-amber-700 hover:border-amber-500 hover:bg-amber-500/20 hover:text-amber-800 dark:border-amber-400/50 dark:bg-amber-400/10 dark:text-amber-300 dark:hover:border-amber-300 dark:hover:bg-amber-300/20 dark:hover:text-amber-200',
   }
 
 function getFloatingPillClassName(

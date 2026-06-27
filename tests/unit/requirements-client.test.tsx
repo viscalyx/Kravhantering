@@ -1101,7 +1101,7 @@ describe('RequirementsClient', () => {
     )
     expect(reportsAction?.menuItems).toHaveLength(1)
     expect(reportsAction?.badge).toBeUndefined()
-    expect(reportsAction?.customStyle).toBeUndefined()
+    expect(reportsAction?.variant).toBeUndefined()
     expect(pdfListItem).toBeTruthy()
     pdfListItem?.onClick?.()
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
@@ -1128,10 +1128,7 @@ describe('RequirementsClient', () => {
     const selectedReportsAction = latestFloatingActions().find(
       action => action.id === 'reports',
     )
-    expect(selectedReportsAction?.customStyle).toEqual({
-      borderColor: '#eab308',
-      backgroundColor: '#eab30815',
-    })
+    expect(selectedReportsAction?.variant).toBe('warning')
     const reviewPdfItem = selectedReportsAction?.menuItems?.find(
       item => item.id === 'review-report-pdf',
     )

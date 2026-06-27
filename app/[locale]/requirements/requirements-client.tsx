@@ -970,13 +970,6 @@ export default function RequirementsClient({
                       selectedIds.size > 0 && anySelectedIsReview
                         ? selectedIds.size
                         : undefined,
-                    customStyle:
-                      selectedIds.size > 0 && anySelectedIsReview
-                        ? {
-                            borderColor: '#eab308',
-                            backgroundColor: '#eab30815',
-                          }
-                        : undefined,
                     developerModeContext: 'requirements table',
                     developerModeValue: 'reports',
                     ariaLabel: tc('reports'),
@@ -1016,6 +1009,10 @@ export default function RequirementsClient({
                         : []),
                     ],
                     tooltip: tc('reports'),
+                    variant:
+                      selectedIds.size > 0 && anySelectedIsReview
+                        ? 'warning'
+                        : undefined,
                   },
                   {
                     developerModeContext: 'requirements table',
