@@ -24,3 +24,4 @@ allow_local_binding = true
 "hsa-person-lookup-adapter" = "allow"
 "localhost" = "allow"
 "127.0.0.1" = "allow"
+"::1" = "allow"
