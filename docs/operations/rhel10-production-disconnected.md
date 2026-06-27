@@ -230,8 +230,8 @@ disconnected app node with the site's approved transfer procedure.
 
 Before importing, complete
 [Prepare RHEL 10 Host](./rhel10-production-deploy.md#prepare-rhel-10-host) on
-the disconnected app node. Do not run the regular guide's connected
-`Install a Release` or `Image References` sections.
+the disconnected app node. Do not run the regular guide's connected release
+download, extraction or image-pull steps.
 
 Unpack and verify the disconnected bundle:
 
@@ -255,7 +255,7 @@ tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
 (cd "$OFFLINE_ROOT/release" && sha256sum -c "${RELEASE_ARCHIVE}.sha256")
 ```
 
-Install the release and copy first-install templates:
+Prepare the release directory without switching `current`:
 
 ```bash
 test ! -e "/opt/kravhantering/releases/${VERSION}" || {
@@ -269,34 +269,30 @@ sudo install -d -o root -g root -m 0755 \
 sudo tar -xzf "$OFFLINE_ROOT/release/$RELEASE_ARCHIVE" \
   -C "/opt/kravhantering/releases/${VERSION}" \
   --strip-components=1
-sudo ln -sfn "/opt/kravhantering/releases/${VERSION}" \
-  /opt/kravhantering/current
-
-sudo install -o root -g kravhantering -m 0640 \
-  /opt/kravhantering/current/env/release.env.template \
-  /etc/kravhantering/release.env
-sudo install -o root -g kravhantering -m 0640 \
-  /opt/kravhantering/current/env/app.env.template \
-  /etc/kravhantering/app.env
-sudo install -o root -g kravhantering -m 0640 \
-  /opt/kravhantering/current/env/db-job.env.template \
-  /etc/kravhantering/db-job.env
-
 sudo chcon -R -t container_file_t \
   "/opt/kravhantering/releases/${VERSION}/nginx"
 ```
 
-Set disconnected image refs. By default this preserves the source refs recorded
-in the bundle manifest. Set `TARGET_IMAGE_REGISTRY` before running the block if
-the disconnected host should use a local or non-resolvable registry hostname:
+Review the imported release before handoff:
+
+```bash
+less "/opt/kravhantering/releases/${VERSION}/DEPLOYMENT-MANIFEST.json"
+less "/opt/kravhantering/releases/${VERSION}/container-stack.lock.json"
+less "$OFFLINE_ROOT/offline-manifest.json"
+```
+
+Create a temporary image-ref env from the disconnected manifest. This file is
+only for loading and verifying images before the regular deployment guide
+copies `/etc/kravhantering/release.env`. By default it preserves the source refs
+recorded in the bundle manifest. Set `TARGET_IMAGE_REGISTRY` before running the
+block if the disconnected host should use a local or non-resolvable registry
+hostname:
 
 ```bash
 TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
 MANIFEST="$OFFLINE_ROOT/offline-manifest.json"
+IMAGE_ENV="$OFFLINE_ROOT/disconnected-release.env"
 
-update_ref() {
-  sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
-}
 source_ref() {
   jq -r --arg name "$1" '.imageRefs[$name]' "$MANIFEST"
 }
@@ -312,12 +308,17 @@ target_ref() {
   printf '%s/%s:%s\n' "$TARGET_IMAGE_REGISTRY" "${path#*/}" "$tag"
 }
 
-update_ref APP_RUNTIME_IMAGE_REF "$(target_ref app-runtime)"
-update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
-update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
+{
+  printf 'APP_RUNTIME_IMAGE_REF=%s\n' "$(target_ref app-runtime)"
+  printf 'DB_JOB_IMAGE_REF=%s\n' "$(target_ref db-job)"
+  printf 'NGINX_IMAGE_REF=%s\n' "$(target_ref nginx)"
+} > "$IMAGE_ENV"
+sudo chgrp kravhantering "$IMAGE_ENV"
+chmod 0640 "$IMAGE_ENV"
 ```
 
-Load, tag and verify the images as the rootless service user:
+Load, tag and verify the images from the prepared release directory as the
+rootless service user:
 
 ```bash
 sudo -iu kravhantering
@@ -325,25 +326,30 @@ VERSION=1.2.3 # Change to the version being deployed.
 TOPOLOGY=app-node
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
-cd /opt/kravhantering/current
+RELEASE_DIR="/opt/kravhantering/releases/${VERSION}"
+IMAGE_ENV="$OFFLINE_ROOT/disconnected-release.env"
+
+cd "$RELEASE_DIR"
 bin/kravhantering-images.sh --topology app-node \
   --lock-file container-stack.lock.json \
-  --env-file /etc/kravhantering/release.env \
+  --env-file "$IMAGE_ENV" \
   load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
 exit
 ```
 
 Resume the regular deployment guide at
-[External SQL Server Primary Path](./rhel10-production-deploy.md#external-sql-server-primary-path).
-Keep the copied `/etc/kravhantering/release.env` and edit only the normal
-site-specific values from the regular guide.
+[Activate the Release](./rhel10-production-deploy.md#activate-the-release).
+Use the disconnected handoff notes there: activate
+`/opt/kravhantering/current`, copy first-install templates, apply image refs
+from `offline-manifest.json`, verify the already loaded images, and then
+continue with the normal site-specific configuration.
 
 ## Upgrade Import
 
 Create and transfer the disconnected bundle before the downtime window. During
 the window, follow the regular upgrade guide for backup, traffic drain and
-service stop. Then use this section instead of the connected artifact install
-and image-pull steps.
+service stop. Then use this section instead of the connected artifact download,
+extraction and image-pull steps.
 
 Unpack and verify the disconnected bundle on every disconnected app node:
 
@@ -367,7 +373,7 @@ tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
 (cd "$OFFLINE_ROOT/release" && sha256sum -c "${RELEASE_ARCHIVE}.sha256")
 ```
 
-Install the target release and move `current`:
+Prepare the target release directory without switching `current`:
 
 ```bash
 test ! -e "/opt/kravhantering/releases/${VERSION}" || {
@@ -383,20 +389,25 @@ sudo tar -xzf "$OFFLINE_ROOT/release/$RELEASE_ARCHIVE" \
   --strip-components=1
 sudo chcon -R -t container_file_t \
   "/opt/kravhantering/releases/${VERSION}/nginx"
-sudo ln -sfn "/opt/kravhantering/releases/${VERSION}" \
-  /opt/kravhantering/current
-readlink -f /opt/kravhantering/current
 ```
 
-Update only the image refs in the existing `/etc/kravhantering/release.env`:
+Review the imported release before handoff:
+
+```bash
+less "/opt/kravhantering/releases/${VERSION}/DEPLOYMENT-MANIFEST.json"
+less "/opt/kravhantering/releases/${VERSION}/container-stack.lock.json"
+less "$OFFLINE_ROOT/offline-manifest.json"
+```
+
+Create a temporary image-ref env from the disconnected manifest. The regular
+upgrade guide later applies the same refs to
+`/etc/kravhantering/release.env` after it switches `current`:
 
 ```bash
 TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
 MANIFEST="$OFFLINE_ROOT/offline-manifest.json"
+IMAGE_ENV="$OFFLINE_ROOT/disconnected-release.env"
 
-update_ref() {
-  sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
-}
 source_ref() {
   jq -r --arg name "$1" '.imageRefs[$name]' "$MANIFEST"
 }
@@ -412,12 +423,17 @@ target_ref() {
   printf '%s/%s:%s\n' "$TARGET_IMAGE_REGISTRY" "${path#*/}" "$tag"
 }
 
-update_ref APP_RUNTIME_IMAGE_REF "$(target_ref app-runtime)"
-update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
-update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
+{
+  printf 'APP_RUNTIME_IMAGE_REF=%s\n' "$(target_ref app-runtime)"
+  printf 'DB_JOB_IMAGE_REF=%s\n' "$(target_ref db-job)"
+  printf 'NGINX_IMAGE_REF=%s\n' "$(target_ref nginx)"
+} > "$IMAGE_ENV"
+sudo chgrp kravhantering "$IMAGE_ENV"
+chmod 0640 "$IMAGE_ENV"
 ```
 
-Load, tag and verify the images as the rootless service user:
+Load, tag and verify the images from the prepared release directory as the
+rootless service user:
 
 ```bash
 sudo -iu kravhantering
@@ -425,14 +441,20 @@ VERSION=1.2.4 # Change to the version being deployed.
 TOPOLOGY=app-node
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
-cd /opt/kravhantering/current
+RELEASE_DIR="/opt/kravhantering/releases/${VERSION}"
+IMAGE_ENV="$OFFLINE_ROOT/disconnected-release.env"
+
+cd "$RELEASE_DIR"
 bin/kravhantering-images.sh --topology app-node \
   --lock-file container-stack.lock.json \
-  --env-file /etc/kravhantering/release.env \
+  --env-file "$IMAGE_ENV" \
   load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
 exit
 ```
 
-Resume the regular upgrade guide at the database job step. Run the database
-job sequence once for the release, then start each app node with the regular
-upgrade guide.
+Resume the regular upgrade guide at step 6 in
+[Planned-Downtime Upgrade](./rhel10-production-upgrade.md#planned-downtime-upgrade).
+In step 7, choose the disconnected image-reference path that reads
+`offline-manifest.json`; the images are already loaded, so run verification
+without pulling from a registry. Then run the database job sequence once for
+the release and start each app node with the regular upgrade guide.

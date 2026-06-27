@@ -23,9 +23,9 @@ To uninstall a first install of this topology, use
 >[!IMPORTANT]
 >For disconnected deployment, first follow
 >[rhel10-production-disconnected.md](./rhel10-production-disconnected.md). The
->disconnected guide prepares the transferable bundle before this deployment
->guide starts and tells you where to resume these regular deployment steps on
->the disconnected app node.
+>disconnected guide prepares the transferable bundle, imports the release
+>directory and images on the disconnected app node, and tells you where to
+>resume these regular deployment steps.
 
 <!-- markdownlint-disable MD013 -->
 ![Kravhantering Infographic Production Access and Service Flow](../images/infographic-production-access-and-service-flow.png)
@@ -212,6 +212,16 @@ sudo firewall-cmd \
 
 ## Install a Release
 
+Use one release-input path:
+
+- Connected deployment downloads and extracts the release in this section.
+- Disconnected deployment first prepares
+  `/opt/kravhantering/releases/${VERSION}` with
+  [First Install Import](./rhel10-production-disconnected.md#first-install-import),
+  then resumes this section at [Activate the Release](#activate-the-release).
+
+### Connected Release Input
+
 Download the deployment bundle and checksum from the internal release
 repository. Set `RELEASE_DOWNLOAD_URL` to the per-version directory that hosts
 the approved release artifacts.
@@ -238,7 +248,7 @@ curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.ta
 sha256sum -c "kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
 ```
 
-Install the bundle:
+Install and label the bundle:
 
 ```bash
 sudo install -d -o root -g root -m 0755 \
@@ -246,6 +256,15 @@ sudo install -d -o root -g root -m 0755 \
 sudo tar -xzf "kravhantering-production-deploy-${VERSION}.tar.gz" \
   -C "/opt/kravhantering/releases/${VERSION}" \
   --strip-components=1
+sudo chcon -R -t container_file_t \
+  "/opt/kravhantering/releases/${VERSION}/nginx"
+```
+
+### Activate the Release
+
+Connected and disconnected deployments both activate the prepared release here:
+
+```bash
 sudo ln -sfn "/opt/kravhantering/releases/${VERSION}" \
   /opt/kravhantering/current
 ```
@@ -274,21 +293,60 @@ sudo install -o root -g kravhantering -m 0640 \
 Edit the copied files with environment-specific values. Do not edit files
 under `/opt/kravhantering/current`; they are release artifacts.
 
-Label the release-owned nginx configuration files for container bind mounts.
-Run this once per installed release:
-
-```bash
-sudo chcon -R -t container_file_t \
-  "/opt/kravhantering/releases/${VERSION}/nginx"
-```
-
 ## Image References
 
 Set image references in `/etc/kravhantering/release.env` to the site's
 approved runtime refs. Use tag-style `image:tag` values by default, and prefer
-release-specific internal mirror tags for third-party images. For connected
-staging only, derive the public upstream refs from the release lock and verify
-them immediately:
+release-specific internal mirror tags for third-party images.
+
+Choose exactly one image-reference method:
+
+- For disconnected deployment, derive refs from the transferred
+  `offline-manifest.json`.
+- For connected staging only, derive public upstream refs from the release lock.
+- For an internal registry mirror that preserves repository paths, rewrite only
+  the registry host while keeping the locked tags.
+- For an internal mirror with a custom repository layout, set the three
+  `*_IMAGE_REF` values manually to site-approved tag refs.
+
+### Disconnected Imported Refs
+
+Use this method only after
+[First Install Import](./rhel10-production-disconnected.md#first-install-import)
+loads and verifies the disconnected image bundle:
+
+```bash
+TOPOLOGY=app-node
+OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
+TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
+MANIFEST="$OFFLINE_ROOT/offline-manifest.json"
+
+update_ref() {
+  sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+}
+source_ref() {
+  jq -r --arg name "$1" '.imageRefs[$name]' "$MANIFEST"
+}
+target_ref() {
+  local ref path tag
+  ref="$(source_ref "$1")"
+  if [ -z "$TARGET_IMAGE_REGISTRY" ]; then
+    printf '%s\n' "$ref"
+    return
+  fi
+  tag="${ref##*:}"
+  path="${ref%:*}"
+  printf '%s/%s:%s\n' "$TARGET_IMAGE_REGISTRY" "${path#*/}" "$tag"
+}
+
+update_ref APP_RUNTIME_IMAGE_REF "$(target_ref app-runtime)"
+update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
+update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
+```
+
+### Connected Staging Public Upstream Refs
+
+For connected staging only, derive public upstream refs from the release lock:
 
 ```bash
 update_ref() {
@@ -315,6 +373,8 @@ update_ref DB_JOB_IMAGE_REF \
 update_ref NGINX_IMAGE_REF \
   "$(service_ref nginx)"
 ```
+
+### Internal Mirror With Preserved Repository Paths
 
 If the site pulls from an internal registry mirror that preserves repository
 paths, rewrite only the registry host while keeping the locked tags:
@@ -345,13 +405,18 @@ update_ref NGINX_IMAGE_REF \
   "$(mirror_ref nginx)"
 ```
 
+### Internal Mirror With Custom Repository Layout
+
 If the internal mirror uses a custom repository layout, set the three
 `*_IMAGE_REF` values manually to site-approved tag refs, then run the
 verification below. Each ref must resolve to the locked `imageId`. If a site
 explicitly requires digest-pinned pulls, the helper also accepts
 `image:tag@sha256:digest` refs.
 
-Pull and verify the images as the service user:
+### Verify Selected Refs
+
+After completing exactly one image-reference method above, verify the images as
+the service user. Connected deployments pull before verification:
 
 ```bash
 sudo -iu kravhantering
@@ -363,6 +428,21 @@ set +a
 podman pull "$APP_RUNTIME_IMAGE_REF"
 podman pull "$DB_JOB_IMAGE_REF"
 podman pull "$NGINX_IMAGE_REF"
+
+bin/kravhantering-images.sh --topology app-node \
+  --lock-file container-stack.lock.json \
+  --env-file /etc/kravhantering/release.env \
+  verify
+
+exit
+```
+
+Disconnected deployments already load images during import. Verify without
+pulling from a registry:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
 
 bin/kravhantering-images.sh --topology app-node \
   --lock-file container-stack.lock.json \

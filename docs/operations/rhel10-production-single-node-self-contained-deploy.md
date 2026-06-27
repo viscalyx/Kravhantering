@@ -27,9 +27,9 @@ To uninstall a first install of this topology, use
 >[!IMPORTANT]
 >For disconnected deployment, first follow
 >[rhel10-production-single-node-self-contained-disconnected.md](./rhel10-production-single-node-self-contained-disconnected.md).
->The disconnected guide prepares the transferable bundle before this deployment
->guide starts and tells you where to resume these regular deployment steps on
->the disconnected host.
+>The disconnected guide prepares the transferable bundle, imports the release
+>directory and images on the disconnected host, and tells you where to resume
+>these regular deployment steps.
 
 ![Kravhantering Infographic Single Node Access Flow](../images/infographic-single-node-access-flow.png)
 
@@ -336,6 +336,16 @@ sudo firewall-cmd \
 
 ## Install a Release
 
+Use one release-input path:
+
+- Connected deployment downloads and extracts the release in this section.
+- Disconnected deployment first prepares
+  `/opt/kravhantering/releases/${VERSION}` with
+  [First Install Import](./rhel10-production-single-node-self-contained-disconnected.md#first-install-import),
+  then resumes this section at [Activate the Release](#activate-the-release).
+
+### Connected Release Input
+
 Download the deployment bundle and checksum from the internal release
 repository. Set `RELEASE_DOWNLOAD_URL` to the per-version directory that hosts
 the approved release artifacts.
@@ -362,7 +372,7 @@ curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.ta
 sha256sum -c "kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
 ```
 
-Install the bundle:
+Install and label the bundle:
 
 ```bash
 sudo install -d -o root -g root -m 0755 \
@@ -370,6 +380,15 @@ sudo install -d -o root -g root -m 0755 \
 sudo tar -xzf "kravhantering-production-deploy-${VERSION}.tar.gz" \
   -C "/opt/kravhantering/releases/${VERSION}" \
   --strip-components=1
+sudo chcon -R -t container_file_t \
+  "/opt/kravhantering/releases/${VERSION}/nginx"
+```
+
+### Activate the Release
+
+Connected and disconnected deployments both activate the prepared release here:
+
+```bash
 sudo ln -sfn "/opt/kravhantering/releases/${VERSION}" \
   /opt/kravhantering/current
 ```
@@ -410,14 +429,6 @@ sudo install -o root -g kravhantering -m 0640 \
 Edit the copied files with environment-specific values. Do not edit files
 under `/opt/kravhantering/current`; they are release artifacts.
 
-Label the release-owned nginx configuration files for container bind mounts.
-Run this once per installed release:
-
-```bash
-sudo chcon -R -t container_file_t \
-  "/opt/kravhantering/releases/${VERSION}/nginx"
-```
-
 ## Image References
 
 Set image references in `/etc/kravhantering/release.env` to the site's
@@ -427,6 +438,8 @@ release-specific internal mirror tags for third-party images.
 Choose exactly one image-reference method before running commands in this
 section:
 
+- For disconnected deployment, derive refs from the transferred
+  `offline-manifest.json`.
 - For connected staging only, derive public upstream refs from the release
   lock.
 - For an internal registry mirror that preserves repository paths, rewrite only
@@ -439,6 +452,51 @@ requires pull-time digest pinning.
 
 Do not run the connected-staging block for a production site that must pull
 third-party images from an internal mirror.
+
+### Disconnected Imported Refs
+
+Use this method only after
+[First Install Import](./rhel10-production-single-node-self-contained-disconnected.md#first-install-import)
+loads and verifies the disconnected image bundle:
+
+```bash
+TOPOLOGY=single-node
+# Test/demo only: set TOPOLOGY=single-node-demo.
+OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
+TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
+MANIFEST="$OFFLINE_ROOT/offline-manifest.json"
+
+update_ref() {
+  sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+}
+source_ref() {
+  jq -r --arg name "$1" '.imageRefs[$name]' "$MANIFEST"
+}
+target_ref() {
+  local ref path tag
+  ref="$(source_ref "$1")"
+  if [ -z "$TARGET_IMAGE_REGISTRY" ]; then
+    printf '%s\n' "$ref"
+    return
+  fi
+  tag="${ref##*:}"
+  path="${ref%:*}"
+  printf '%s/%s:%s\n' "$TARGET_IMAGE_REGISTRY" "${path#*/}" "$tag"
+}
+
+update_ref APP_RUNTIME_IMAGE_REF "$(target_ref app-runtime)"
+update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
+update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
+update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
+update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
+if [ "$TOPOLOGY" = "single-node-demo" ]; then
+  update_ref KONG_IMAGE_REF "$(target_ref kong)"
+  update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
+    "$(target_ref hsa-person-lookup-adapter)"
+  update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
+    "$(target_ref hsa-directory-mock)"
+fi
+```
 
 ### Connected Staging Public Upstream Refs
 
@@ -522,8 +580,8 @@ verification below. Each ref must resolve to the locked `imageId`.
 
 ### Verify Selected Refs
 
-After completing exactly one image-reference method above, pull and verify the
-images as the service user:
+After completing exactly one image-reference method above, verify the images as
+the service user. Connected deployments pull before verification:
 
 ```bash
 sudo -iu kravhantering
@@ -546,10 +604,41 @@ bin/kravhantering-images.sh --topology single-node \
 exit
 ```
 
+Disconnected deployments already load images during import. Verify without
+pulling from a registry:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+TOPOLOGY=single-node
+# Test/demo only: set TOPOLOGY=single-node-demo.
+
+SUPPORT_LOCK_ARGS=()
+if [ "$TOPOLOGY" = "single-node-demo" ]; then
+  SUPPORT_LOCK_ARGS=(
+    --hsa-integration-lock-file container-hsa-integration-support.lock.json
+    --test-lock-file container-test-support.lock.json
+  )
+fi
+
+bin/kravhantering-images.sh --topology "$TOPOLOGY" \
+  --lock-file container-stack.lock.json \
+  "${SUPPORT_LOCK_ARGS[@]}" \
+  --env-file /etc/kravhantering/release.env \
+  verify
+
+exit
+```
+
 ### Optional Test Support Image Refs
 
 Use this only for a disposable `single-node-demo` release-test or demo
 environment. Do not use these refs in production.
+
+If you used [Disconnected Imported Refs](#disconnected-imported-refs) with
+`TOPOLOGY=single-node-demo`, skip this section. The import and disconnected
+verification already set and verify the support image refs from
+`offline-manifest.json`.
 
 Set Kong and the adapter refs from
 `container-hsa-integration-support.lock.json`, and set the HSA directory mock
@@ -614,6 +703,9 @@ Use this only for a disposable test or development database that should be
 reset to the release's current demo fixtures. Do not add this value to
 `/etc/kravhantering/release.env`; keep it as an explicit shell variable for the
 one-shot destructive command.
+
+If you used the disconnected `single-node-demo` import and it printed
+`DEMO_SEED_IMAGE_REF`, reuse that value and skip the registry pull below.
 
 Pick the tag-style ref from the GitHub Release notes under Demonstration
 Container Images, or use the equivalent site-approved internal mirror tag:
