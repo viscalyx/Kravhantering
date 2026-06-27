@@ -49,9 +49,10 @@ formatted table.
 - Includes all currently visible requirements (after filtering/sorting)
 - Uses the same displayed requirement version and status as the list view, so
   Review rows are included when the current filter includes them
-- Does not apply an application-level item-count cap; visible rows are carried
-  through the existing `ids` query string, subject to practical URL length
-  limits
+- Does not apply an application-level item-count cap. The list report route
+  resolves the full matching requirement set server-side from the active
+  filters and sort order instead of relying on the currently loaded client
+  page.
 - Header shows total count and generation timestamp
 
 ### 4. Combined Review Report

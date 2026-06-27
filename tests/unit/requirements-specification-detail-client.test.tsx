@@ -19,6 +19,10 @@ import type {
 } from '@/lib/specifications/preload-types'
 
 const requirementsTableMock = vi.fn()
+const pdfDownloadState = vi.hoisted(() => ({
+  clearError: vi.fn(),
+  download: vi.fn(),
+}))
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
@@ -180,6 +184,16 @@ vi.mock('@/components/RequirementsTable', () => ({
       </div>
     )
   },
+}))
+
+vi.mock('@/components/reports/pdf/useServerPdfDownload', () => ({
+  useServerPdfDownload: () => ({
+    clearError: pdfDownloadState.clearError,
+    dialog: null,
+    download: pdfDownloadState.download,
+    downloading: false,
+    error: null,
+  }),
 }))
 
 vi.mock('@/i18n/routing', () => ({
@@ -383,6 +397,9 @@ describe('RequirementsSpecificationDetailClient', () => {
     vi.clearAllMocks()
     vi.mocked(useReducedMotion).mockReturnValue(false)
     requirementsTableMock.mockReset()
+    pdfDownloadState.clearError.mockReset()
+    pdfDownloadState.download.mockReset()
+    pdfDownloadState.download.mockResolvedValue(undefined)
     addRequirementsResponse = { body: { ok: true }, ok: true }
     activeSpecificationSlug = defaultSpecificationSlug
     bulkNeedsReferencePatchError = null
@@ -722,6 +739,24 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(exportAction?.menuItems?.map(item => item.id)).toEqual([
       'export-full',
     ])
+
+    reportsAction?.menuItems
+      ?.find(item => item.id === 'pdf-progress')
+      ?.onClick?.()
+    reportsAction?.menuItems
+      ?.find(item => item.id === 'pdf-traceability')
+      ?.onClick?.()
+
+    expect(pdfDownloadState.download).toHaveBeenCalledWith({
+      fallbackFilename:
+        'specification.reportProfiles.progress Authorization and IAM ETJANST-UPP-2026.pdf',
+      url: '/en/specifications/ETJANST-UPP-2026/reports/pdf/progress',
+    })
+    expect(pdfDownloadState.download).toHaveBeenCalledWith({
+      fallbackFilename:
+        'specification.reportProfiles.traceability Authorization and IAM ETJANST-UPP-2026.pdf',
+      url: '/en/specifications/ETJANST-UPP-2026/reports/pdf/traceability?refs=lib%3A31',
+    })
   })
 
   it('groups kravunderlag local requirement actions in one flyout before reports and export', async () => {
@@ -785,6 +820,16 @@ describe('RequirementsSpecificationDetailClient', () => {
       expect.objectContaining({ id: 'pdf-progress' }),
       expect.objectContaining({ id: 'pdf-traceability' }),
     ])
+
+    reportsAction?.menuItems
+      ?.find(item => item.id === 'pdf-progress')
+      ?.onClick?.()
+
+    expect(pdfDownloadState.download).toHaveBeenCalledWith({
+      fallbackFilename:
+        'specification.reportProfiles.progress Authorization and IAM ETJANST-UPP-2026.pdf',
+      url: '/en/specifications/ETJANST%20UPP%2F2026/reports/pdf/progress',
+    })
   })
 
   it('builds traceability report refs from the filtered requirement applications', async () => {

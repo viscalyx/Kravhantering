@@ -550,9 +550,9 @@ down.
 - Always visible in the list view as a report icon pill.
 - Opens a dropdown with "Requirements List", which generates the server PDF
   route.
-- Passes the IDs of all currently visible rows as `?ids=` query params.
-- Does not apply an application-level item-count cap to visible rows, though
-  very large selections still use a browser URL.
+- Passes the list view's active filters and sort order to the localized PDF
+  route so the server resolves the complete matching requirement set.
+- Does not apply an application-level item-count cap to matching rows.
 - The report shows Requirement ID, requirement text, requirement area, and
   status columns.
 

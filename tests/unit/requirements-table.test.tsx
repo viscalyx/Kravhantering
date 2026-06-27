@@ -1793,8 +1793,10 @@ describe('RequirementsTable', () => {
   })
 
   it('attaches floating action menu item tooltips to disabled action rows', async () => {
-    const tooltip =
+    const description =
       'Alla valda krav måste ha status Granskning för att generera rapporten'
+    const tooltip =
+      'Rapporten kan bara skapas när alla markerade krav är i Granskning'
 
     render(
       <RequirementsTable
@@ -1806,7 +1808,7 @@ describe('RequirementsTable', () => {
             menuItems: [
               {
                 badge: 3,
-                description: tooltip,
+                description,
                 disabled: true,
                 id: 'combined-review',
                 label: 'Kombinerad granskningsrapport',
@@ -1834,7 +1836,8 @@ describe('RequirementsTable', () => {
     expect(trigger).toHaveAttribute('title', 'Rapporter')
     expect(disabledItem).toBeTruthy()
     expect(disabledItem).toHaveAttribute('title', tooltip)
-    expect(screen.getByText(tooltip)).toBeInTheDocument()
+    expect(screen.getByText(description)).toBeInTheDocument()
+    expect(screen.queryByText(tooltip)).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', {
         name: /Kombinerad granskningsrapport/,

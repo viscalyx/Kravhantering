@@ -46,8 +46,9 @@ PDF routes live under `.../reports/pdf/`.
 
 - **History**: `.../pdf/history/[id]`
 - **Review**: `.../pdf/review/[id]`
-- **List**: `.../pdf/list?ids=...` for the requirement rows currently shown
-  by the list view after filtering and sorting
+- **List**: `.../pdf/list?sortBy=...&sortDirection=...&statuses=...` for the
+  requirement rows resolved server-side from the list view's current filters and
+  sort order. The route still accepts `ids=...` for explicit direct calls.
 - **Combined**: `.../pdf/review-combined?ids=...`
 - **Improvement Suggestion History**: `.../pdf/suggestion-history/[id]`
 

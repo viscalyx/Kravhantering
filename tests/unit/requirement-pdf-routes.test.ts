@@ -45,6 +45,7 @@ const routeState = vi.hoisted(() => ({
   listSpecificationRequirementSelectionQuestions: vi.fn(),
   parseLibrarySpecificationItemId: vi.fn(),
   parseSpecificationItemRef: vi.fn(),
+  queryRequirementList: vi.fn(),
   renderReportModelPdfResponse: vi.fn(),
   resolveSpecificationId: vi.fn(),
 }))
@@ -83,6 +84,10 @@ vi.mock('@/lib/dal/requirement-selection-questions', () => ({
 
 vi.mock('@/lib/requirements/server', () => ({
   createRequirementsRestRuntime: routeState.createRequirementsRestRuntime,
+}))
+
+vi.mock('@/lib/requirements/list-query', () => ({
+  queryRequirementList: routeState.queryRequirementList,
 }))
 
 vi.mock('@/lib/reports/templates/list-template', () => ({
@@ -130,6 +135,76 @@ function requirement(uniqueId = 'REQ-1') {
   }
 }
 
+function listRequirement(id: number, uniqueId = `REQ-${id}`) {
+  return {
+    area: { id: 8, name: 'Security' },
+    createdAt: '2026-05-12T12:00:00.000Z',
+    hasPendingVersion: false,
+    id,
+    isArchived: false,
+    normReferenceIds: [],
+    normReferenceUris: [],
+    pendingVersionStatusColor: null,
+    pendingVersionStatusIconName: null,
+    pendingVersionStatusId: null,
+    requirementPackages: [{ id: 9, name: 'Baseline' }],
+    suggestionCount: 0,
+    uniqueId,
+    version: {
+      acceptanceCriteria: null,
+      archiveInitiatedAt: null,
+      categoryId: null,
+      categoryNameEn: null,
+      categoryNameSv: null,
+      description: `Requirement ${id}`,
+      id: id * 10,
+      priorityLevelColor: null,
+      priorityLevelIconName: null,
+      priorityLevelId: null,
+      priorityLevelNameEn: null,
+      priorityLevelNameSv: null,
+      priorityLevelSortOrder: null,
+      qualityCharacteristicId: null,
+      qualityCharacteristicNameEn: null,
+      qualityCharacteristicNameSv: null,
+      requiresTesting: false,
+      revisionToken: `rev-${id}`,
+      status: 2,
+      statusColor: '#eab308',
+      statusIconName: 'clock',
+      statusNameEn: 'Review',
+      statusNameSv: 'Granskning',
+      typeId: null,
+      typeNameEn: null,
+      typeNameSv: null,
+      versionCreatedAt: '2026-05-12T13:00:00.000Z',
+      versionNumber: id,
+    },
+  }
+}
+
+function listQueryPage(
+  requirements: ReturnType<typeof listRequirement>[],
+  pagination: {
+    hasMore?: boolean
+    nextOffset?: number | null
+    offset?: number
+    total?: number
+  } = {},
+) {
+  return {
+    pagination: {
+      count: requirements.length,
+      hasMore: pagination.hasMore ?? false,
+      limit: 200,
+      nextOffset: pagination.nextOffset ?? null,
+      offset: pagination.offset ?? 0,
+      total: pagination.total ?? requirements.length,
+    },
+    requirements,
+  }
+}
+
 function reportIds(count: number): string[] {
   return Array.from({ length: count }, (_, index) => String(index + 1))
 }
@@ -155,6 +230,9 @@ describe('requirement PDF routes', () => {
       requirement('REQ-1'),
       requirement('REQ-2'),
     ])
+    routeState.queryRequirementList.mockResolvedValue(
+      listQueryPage([listRequirement(1), listRequirement(2)]),
+    )
     routeState.collectSuggestionsForReport.mockResolvedValue([])
     routeState.buildCombinedReviewReport.mockReturnValue({
       kind: 'combined-review',
@@ -304,6 +382,93 @@ describe('requirement PDF routes', () => {
     ).toHaveBeenCalledWith({ db: true }, ids)
   })
 
+  it('resolves list PDFs from the complete active filter and sort query', async () => {
+    routeState.queryRequirementList
+      .mockResolvedValueOnce(
+        listQueryPage([listRequirement(1, 'REQ-1')], {
+          hasMore: true,
+          nextOffset: 1,
+          total: 2,
+        }),
+      )
+      .mockResolvedValueOnce(
+        listQueryPage([listRequirement(2, 'REQ-2')], {
+          offset: 1,
+          total: 2,
+        }),
+      )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/sv/requirements/reports/pdf/list?locale=sv&sortBy=status&sortDirection=desc&statuses=2&statuses=3&uniqueIdSearch=REQ',
+      ),
+      { params: Promise.resolve({ locale: 'sv' }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(routeState.queryRequirementList).toHaveBeenNthCalledWith(
+      1,
+      { db: true },
+      {
+        filters: {
+          areaIds: undefined,
+          categoryIds: undefined,
+          descriptionSearch: undefined,
+          needsReferenceIds: undefined,
+          normReferenceIds: undefined,
+          priorityLevelIds: undefined,
+          qualityCharacteristicIds: undefined,
+          requirementPackageIds: undefined,
+          requiresTesting: undefined,
+          specificationItemStatusIds: undefined,
+          statuses: [2, 3],
+          typeIds: undefined,
+          uniqueIdSearch: 'REQ',
+        },
+        limit: 200,
+        locale: 'sv',
+        offset: 0,
+        sort: { by: 'status', direction: 'desc' },
+      },
+      {
+        authorization: routeState.authorization,
+        context: routeState.context,
+      },
+    )
+    expect(routeState.queryRequirementList).toHaveBeenNthCalledWith(
+      2,
+      { db: true },
+      expect.objectContaining({ offset: 1 }),
+      expect.anything(),
+    )
+    expect(
+      routeState.collectMultipleRequirementListItemsForReport,
+    ).not.toHaveBeenCalled()
+    expect(routeState.buildListReport).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          id: 1,
+          uniqueId: 'REQ-1',
+          versions: [
+            expect.objectContaining({
+              description: 'Requirement 1',
+              status: 2,
+              versionNumber: 1,
+            }),
+          ],
+        }),
+        expect.objectContaining({
+          id: 2,
+          uniqueId: 'REQ-2',
+        }),
+      ],
+      'sv',
+    )
+  })
+
   it('accepts combined review PDFs with more than 50 requirement ids', async () => {
     const ids = reportIds(60)
     const { GET } = await import(
@@ -415,7 +580,8 @@ describe('requirement PDF routes', () => {
     )
   })
 
-  it('rejects list PDFs without ids before opening the database', async () => {
+  it('rejects filter-based list PDFs when no requirements match', async () => {
+    routeState.queryRequirementList.mockResolvedValueOnce(listQueryPage([]))
     const { GET } = await import(
       '@/app/[locale]/requirements/reports/pdf/list/route'
     )
@@ -428,9 +594,8 @@ describe('requirement PDF routes', () => {
 
     expect(response.status).toBe(400)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
-    expect(body.error).toBe('No requirement IDs provided')
-    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
-    expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
+    expect(body.error).toBe('No requirements matched report filters')
+    expect(routeState.createRequirementsRestRuntime).toHaveBeenCalled()
     expect(
       routeState.collectMultipleRequirementListItemsForReport,
     ).not.toHaveBeenCalled()

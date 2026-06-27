@@ -1064,7 +1064,7 @@ describe('RequirementsClient', () => {
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:requirements-export')
   })
 
-  it('keeps list-view report URLs unprefixed for floating actions', async () => {
+  it('uses localized filter-based report URLs for floating actions', async () => {
     const reviewRow = makeRequirementRow(1)
     reviewRow.version.status = 2
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
@@ -1072,7 +1072,7 @@ describe('RequirementsClient', () => {
 
       if (url.startsWith('/api/requirements?')) {
         return okJson({
-          pagination: { hasMore: false },
+          pagination: { hasMore: true },
           requirements: [reviewRow],
         })
       }
@@ -1106,7 +1106,7 @@ describe('RequirementsClient', () => {
     pdfListItem?.onClick?.()
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename: 'requirements-list.pdf',
-      url: '/requirements/reports/pdf/list?limit=1&locale=sv&sortBy=uniqueId&sortDirection=asc&statuses=3&ids=1',
+      url: '/sv/requirements/reports/pdf/list?locale=sv&sortBy=uniqueId&sortDirection=asc&statuses=3',
     })
 
     fireEvent.click(screen.getByText('select-first-row'))
@@ -1144,7 +1144,7 @@ describe('RequirementsClient', () => {
     reviewPdfItem?.onClick?.()
     expect(pdfDownloadState.download).toHaveBeenLastCalledWith({
       fallbackFilename: 'combined-review-report.pdf',
-      url: '/requirements/reports/pdf/review-combined?ids=1',
+      url: '/sv/requirements/reports/pdf/review-combined?ids=1',
     })
   })
 

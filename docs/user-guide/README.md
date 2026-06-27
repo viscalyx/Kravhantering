@@ -756,7 +756,7 @@ både `Publicerad` och `Granskning`.
 **Åtkomst:** Rapportknappen i kravbibliotekets verktygsfält (alltid
 tillgänglig).
 
-**Rutt:** `/requirements/reports/pdf/list?ids=...`
+**Rutt:** `/requirements/reports/pdf/list?sortBy=...&sortDirection=...`
 
 ### Kravunderlagsrapporter
 

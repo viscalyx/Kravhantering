@@ -879,13 +879,11 @@ export default function RequirementsClient({
   const listReportPdfUrl = useMemo(() => {
     const params = buildRequirementListParams({
       filters,
-      limit: rows.length > 0 ? rows.length : undefined,
       locale,
       sort: sortState,
     })
-    params.set('ids', rows.map(r => r.id).join(','))
-    return `/requirements/reports/pdf/list?${params}`
-  }, [filters, locale, rows, sortState])
+    return `/${locale}/requirements/reports/pdf/list?${params}`
+  }, [filters, locale, sortState])
   const hasReviewVersion = (r: RequirementRow) =>
     r.version?.status === STATUS_REVIEW ||
     r.pendingVersionStatusId === STATUS_REVIEW
@@ -1008,7 +1006,7 @@ export default function RequirementsClient({
                                 void pdfDownload.download({
                                   fallbackFilename:
                                     'combined-review-report.pdf',
-                                  url: `/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
+                                  url: `/${locale}/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
                                 }),
                               tooltip: !allSelectedAreReview
                                 ? t('reviewReportAllMustBeReview')

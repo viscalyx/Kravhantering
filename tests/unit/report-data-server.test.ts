@@ -188,6 +188,25 @@ describe('report data server helpers', () => {
     })
   })
 
+  it('prefers the archived version over later non-archived fallbacks for archived requirements', async () => {
+    dalState.getRequirementById.mockResolvedValue({
+      ...reportRequirement(42),
+      isArchived: true,
+      versions: [
+        reportVersion(2, STATUS_REVIEW),
+        reportVersion(3, STATUS_ARCHIVED),
+        reportVersion(4, STATUS_DRAFT),
+      ],
+    })
+
+    await expect(
+      collectRequirementListItemForReport(createReportDb(), 42),
+    ).resolves.toMatchObject({
+      id: 42,
+      versions: [{ status: STATUS_ARCHIVED, versionNumber: 3 }],
+    })
+  })
+
   it('rejects requirement list report data when no requirement version exists', async () => {
     dalState.getRequirementById.mockResolvedValue({
       ...reportRequirement(42),

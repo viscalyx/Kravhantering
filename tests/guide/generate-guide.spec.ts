@@ -2569,7 +2569,10 @@ test.describe('Kravhantering — Guidegenerering', () => {
     currentSection = 'Administrationscenter'
 
     await guideStep(page, 'Admin — Kolumner', async () => {
-      await guideGoto(page, '/sv/admin')
+      await guideGoto(page, '/sv/admin', {
+        networkIdleTimeout: 20_000,
+        timeout: 90_000,
+      })
       await page.waitForTimeout(300)
       await snap(
         page,
@@ -2713,7 +2716,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'Kravlista',
         'Genererar de krav som för närvarande visas i kravbiblioteket som en formaterad tabell med Krav-ID, kravtext (trunkerad), kravområde och status. Rubriken visar antal krav och tidsstämpel. Rapporten följer kravbibliotekets aktuella filtrering, sortering och visade kravversioner, till exempel när listan visar både `Publicerad` och `Granskning`.\n\n' +
           '**Åtkomst:** Rapportknappen i kravbibliotekets verktygsfält (alltid tillgänglig).\n\n' +
-          '**Rutt:** `/requirements/reports/pdf/list?ids=...`',
+          '**Rutt:** `/requirements/reports/pdf/list?sortBy=...&sortDirection=...`',
       )
 
       textEntry(
