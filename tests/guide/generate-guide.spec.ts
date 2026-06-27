@@ -2709,7 +2709,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'Avstegsgranskningsrapport',
         'Granskar ett specifikt avsteg kopplat till ett krav i ett kravunderlag. Rapporten visar den kravversion som är kopplad till underlaget, avstegets motivering och kompletterande underlagskontext.\n\n' +
           '**Åtkomst:** Rapportmenyn i kravdetaljvyn i underlagskontexten (visas när avsteget är i status *Granskning begärd* eller *Beslutad*).\n\n' +
-          '**Rutt:** `/requirements/reports/pdf/deviation-review/[id]?spec={slug}&item={itemId}`',
+          '**Rutt:** `/requirements/reports/pdf/deviation-review/[id]?item={itemId}`',
       )
 
       textEntry(
@@ -2772,7 +2772,10 @@ test.describe('Kravhantering — Guidegenerering', () => {
     })
 
     await guideStep(page, 'Rapporter från kravdetalj', async () => {
-      await guideGoto(page, '/sv/requirements/1')
+      const detailUrl = createdRequirementUniqueId
+        ? selectedRequirementUrl(createdRequirementUniqueId, STATUS_PUBLISHED_ID)
+        : '/sv/requirements?selected=IDN0001&statuses=3'
+      await guideGoto(page, detailUrl)
 
       const reportBtn = page
         .getByRole('button', { name: /Rapport|Report/i })

@@ -742,8 +742,7 @@ motivering och kompletterande underlagskontext.
 **Åtkomst:** Rapportmenyn i kravdetaljvyn i underlagskontexten (visas när
 avsteget är i status *Granskning begärd* eller *Beslutad*).
 
-**Rutt:**
-`/requirements/reports/pdf/deviation-review/[id]?spec={slug}&item={itemId}`
+**Rutt:** `/requirements/reports/pdf/deviation-review/[id]?item={itemId}`
 
 ### Kravlista
 
