@@ -313,7 +313,8 @@ target_ref() {
   printf 'DB_JOB_IMAGE_REF=%s\n' "$(target_ref db-job)"
   printf 'NGINX_IMAGE_REF=%s\n' "$(target_ref nginx)"
 } > "$IMAGE_ENV"
-chmod 0644 "$IMAGE_ENV"
+sudo chgrp kravhantering "$IMAGE_ENV"
+chmod 0640 "$IMAGE_ENV"
 ```
 
 Load, tag and verify the images from the prepared release directory as the
@@ -427,7 +428,8 @@ target_ref() {
   printf 'DB_JOB_IMAGE_REF=%s\n' "$(target_ref db-job)"
   printf 'NGINX_IMAGE_REF=%s\n' "$(target_ref nginx)"
 } > "$IMAGE_ENV"
-chmod 0644 "$IMAGE_ENV"
+sudo chgrp kravhantering "$IMAGE_ENV"
+chmod 0640 "$IMAGE_ENV"
 ```
 
 Load, tag and verify the images from the prepared release directory as the
