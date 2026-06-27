@@ -1901,14 +1901,14 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await guideStep(page, 'Avsteg — granskningsrapport', async () => {
         const reportTrigger = page
           .locator('[data-expanded-detail-cell="true"]')
-          .getByRole('button', { name: t('common.print') })
+          .getByRole('button', { name: t('common.reports') })
         await expect(
           reportTrigger,
           `Guide generation expects the report menu trigger to be visible for ${GUIDE_DEVIATION_REQUIREMENT_ID}.`,
         ).toBeVisible({ timeout: 10_000 })
         await reportTrigger.click()
         const reportMenuItem = page.getByRole('menuitem', {
-          name: t('deviation.printDeviationReviewReport'),
+          name: t('deviation.downloadDeviationReviewReportPdf'),
         })
         await expect(
           reportMenuItem,
@@ -1916,14 +1916,14 @@ test.describe('Kravhantering — Guidegenerering', () => {
         ).toBeVisible({ timeout: 5_000 })
         await addAnnotation(
           page,
-          '[data-developer-mode-value="print deviation review"]',
+          '[data-developer-mode-value="deviation review report"]',
           { arrowSide: 'left' },
         )
         await snap(
           page,
           'avsteg-rapport-knapp',
           'Avsteg — granskningsrapport',
-          '**Steg 7 — Granskningsrapport.** När ett avsteg har skickats till granskning kan du generera en **granskningsrapport** direkt från detaljpanelens rapportmeny. Rapporten sammanställer kravets text, avstegets motivering och beslutsunderlag — i ett format lämpligt för dokumentation och revision. Den kan skrivas ut eller laddas ned som PDF.',
+          '**Steg 7 — Granskningsrapport.** När ett avsteg har skickats till granskning kan du generera en **granskningsrapport** direkt från detaljpanelens rapportmeny. Rapporten sammanställer kravets text, avstegets motivering och beslutsunderlag som servergenererad PDF för dokumentation och revision.',
           { fullPage: false },
         )
         await removeAnnotation(page)
@@ -2569,7 +2569,10 @@ test.describe('Kravhantering — Guidegenerering', () => {
     currentSection = 'Administrationscenter'
 
     await guideStep(page, 'Admin — Kolumner', async () => {
-      await guideGoto(page, '/sv/admin')
+      await guideGoto(page, '/sv/admin', {
+        networkIdleTimeout: 20_000,
+        timeout: 90_000,
+      })
       await page.waitForTimeout(300)
       await snap(
         page,
@@ -2677,7 +2680,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
     // ── Sektion 11: Rapporter ─────────────────────────────────────────────
     currentSection = 'Rapporter'
     setSectionIntro(
-      'Systemet erbjuder flera rapporttyper för granskning, spårbarhet och beslutsunderlag. Rapporter kan genereras som **utskriftsvänliga HTML-sidor** eller laddas ned som **PDF**. Nedan listas de tillgängliga rapporterna.',
+      'Systemet erbjuder flera servergenererade PDF-rapporter för granskning, spårbarhet och beslutsunderlag. Nedan listas de tillgängliga rapporterna.',
     )
 
     await guideStep(page, 'Rapportöversikt', async () => {
@@ -2685,49 +2688,49 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'Historikrapport',
         'Visar tidslinjen för alla ändringar av ett enskilt krav. Rapporten listar varje version i omvänd kronologisk ordning med status, författare, tidsstämplar och utdrag ur kravtexten. Den publicerade versionen (om den finns) visas överst, följd av opublicerade versioner markerade som utkast eller granskning.\n\n' +
           '**Åtkomst:** Rapportmenyn i kravdetaljvyn (alla kravversionsstatusar).\n\n' +
-          '**Rutt:** `/requirements/reports/print/history/[id]` (utskrift) · `/requirements/reports/pdf/history/[id]` (PDF)',
+          '**Rutt:** `/requirements/reports/pdf/history/[id]`',
       )
 
       textEntry(
         'Granskningsrapport',
         'Jämför en version i **Granskning** med den senast publicerade eller arkiverade versionen. Rapporten visar ord-för-ord-skillnader i kravtext och acceptanskriterier samt förändringar i metadata (kategori, typ, kvalitetsegenskaper, prioritet, normreferenser, kravpaket m.m.). Om ingen publicerad/arkiverad version finns noteras detta.\n\n' +
           '**Åtkomst:** Rapportmenyn i kravdetaljvyn (visas enbart när kravet är i status *Granskning*).\n\n' +
-          '**Rutt:** `/requirements/reports/print/review/[id]` (utskrift) · `/requirements/reports/pdf/review/[id]` (PDF)',
+          '**Rutt:** `/requirements/reports/pdf/review/[id]`',
       )
 
       textEntry(
         'Kombinerad granskningsrapport',
-        'En samlad rapport för flera krav som har status *Granskning*. Rapporten genereras genom att markera flera krav i kravbiblioteket. Den innehåller en innehållsförteckning med sidnummer, grupperad efter rapporttyp (arkiveringsförfrågningar först, sedan granskningsändringar). Varje krav börjar på en ny sida.\n\n' +
-          '**Åtkomst:** Flytande verktygsfält i kravbiblioteket när minst ett markerat krav har status *Granskning*.\n\n' +
-          '**Rutt:** `/requirements/reports/print/review-combined?ids=...` (utskrift) · `/requirements/reports/pdf/review-combined?ids=...` (PDF)',
+        'En samlad rapport för flera krav som har status *Granskning*. Rapporten genereras genom att markera flera krav i kravbiblioteket. Den innehåller en innehållsförteckning med sidnummer, grupperad efter rapporttyp (arkiveringsförfrågningar först, sedan granskningsrapporter). Varje krav börjar på en ny sida.\n\n' +
+          '**Åtkomst:** Rapportmenyn i kravbiblioteket när minst ett markerat krav har status *Granskning*.\n\n' +
+          '**Rutt:** `/requirements/reports/pdf/review-combined?ids=...`',
       )
 
       textEntry(
-        'Granskningsrapport för avsteg',
+        'Avstegsgranskningsrapport',
         'Granskar ett specifikt avsteg kopplat till ett krav i ett kravunderlag. Rapporten visar den kravversion som är kopplad till underlaget, avstegets motivering och kompletterande underlagskontext.\n\n' +
           '**Åtkomst:** Rapportmenyn i kravdetaljvyn i underlagskontexten (visas när avsteget är i status *Granskning begärd* eller *Beslutad*).\n\n' +
-          '**Rutt:** `/requirements/reports/print/deviation-review/[id]?spec={slug}&item={itemId}` (utskrift) · `.../pdf/...` (PDF)',
+          '**Rutt:** `/requirements/reports/pdf/deviation-review/[id]?item={itemId}`',
       )
 
       textEntry(
         'Kravlista',
-        'Skriver ut de krav som för närvarande visas i kravbiblioteket som en formaterad tabell med Krav-ID, kravtext (trunkerad), kravområde och status. Rubriken visar antal krav och tidsstämpel.\n\n' +
-          '**Åtkomst:** Utskriftsknappen i kravbibliotekets verktygsfält (alltid tillgänglig).\n\n' +
-          '**Rutt:** `/requirements/reports/print/list?ids=...` (utskrift) · `/requirements/reports/pdf/list?ids=...` (PDF)',
+        'Genererar de krav som för närvarande visas i kravbiblioteket som en formaterad tabell med Krav-ID, kravtext (trunkerad), kravområde och status. Rubriken visar antal krav och tidsstämpel. Rapporten följer kravbibliotekets aktuella filtrering, sortering och visade kravversioner, till exempel när listan visar både `Publicerad` och `Granskning`.\n\n' +
+          '**Åtkomst:** Rapportknappen i kravbibliotekets verktygsfält (alltid tillgänglig).\n\n' +
+          '**Rutt:** `/requirements/reports/pdf/list?sortBy=...&sortDirection=...`',
       )
 
       textEntry(
         'Kravunderlagsrapporter',
-        'Skriver ut hela kravunderlaget med den rapportprofil som passar underlagets livscykelstatus. `Kravbilaga för upphandling` visas för upphandling, `Genomföranderapport` för införande och utveckling, och `Förvaltningsrapport` för förvaltning. Alla profiler sorterar kraven på Krav-ID och använder den kravversion som är kopplad till kravunderlaget.\n\n' +
-          '**Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält när underlaget har en livscykelstatus med rapportprofil.\n\n' +
-          '**Rutt:** `/specifications/[slug]/reports/print/[profile]` (utskrift) · `/specifications/[slug]/reports/pdf/[profile]` (PDF)',
+        'Genererar hela kravunderlaget med den rapportprofil som passar underlagets livscykelstatus. `Kravbilaga för upphandling` visas för upphandling, `Genomföranderapport` för införande och utveckling, och `Förvaltningsrapport` för förvaltning. Alla profiler sorterar kraven på Krav-ID och använder den kravversion som är kopplad till kravunderlaget.\n\n' +
+          '**Åtkomst:** Rapportknappen i kravunderlagsdetaljvyns verktygsfält när underlaget har en livscykelstatus med rapportprofil.\n\n' +
+          '**Rutt:** `/specifications/[slug]/reports/pdf/[profile]`',
       )
 
       textEntry(
-        'Ändringsförslagshistorik',
+        'Förbättringsförslagshistorik',
         'Listar alla förbättringsförslag grupperade per kravversion i fallande versionsordning. Varje förslag visar status, innehåll, författare, datum och eventuella beslutsmotiveringar. Statusfärger: *Utkast* (blå), *Granskning begärd* (gul), *Beslutad* (grön), *Avvisad* (röd).\n\n' +
           '**Åtkomst:** Rapportmenyn i kravdetaljvyn eller underlagskravdetaljvyn.\n\n' +
-          '**Rutt:** `/requirements/reports/print/suggestion-history/[id]` (utskrift) · `/requirements/reports/pdf/suggestion-history/[id]` (PDF)',
+          '**Rutt:** `/requirements/reports/pdf/suggestion-history/[id]`',
       )
     })
 
@@ -2744,24 +2747,24 @@ test.describe('Kravhantering — Guidegenerering', () => {
       if ((await firstCheckbox.count()) > 0) {
         await firstCheckbox.click()
         await page.waitForTimeout(300)
-        await addAnnotation(page, '[data-developer-mode-value="print"]')
+        await addAnnotation(page, '[data-developer-mode-value="reports"]')
         await snap(
           page,
           'rapporter-kravbibliotek',
           'Rapportgenerering från kravbiblioteket',
-          'Markera ett eller flera krav i kravbiblioteket för att aktivera rapportknappar i verktygsfältet. Du kan generera PDF-rapporter för granskningsunderlag, avstegsöversikter, ändringshistorik och mer.',
+          'Rapportmenyn i kravbiblioteket innehåller **Kravlista**, som följer aktuell filtrering och sortering. När markerade krav omfattar status **Granskning** visar samma rapportmeny även **Kombinerad granskningsrapport** med antal markerade krav.',
           { fullPage: false },
         )
         await removeAnnotation(page)
         // Deselect
         await firstCheckbox.click()
       } else {
-        await addAnnotation(page, '[data-developer-mode-value="print"]')
+        await addAnnotation(page, '[data-developer-mode-value="reports"]')
         await snap(
           page,
           'rapporter-kravbibliotek',
           'Rapporter',
-          'Markera krav i kravbiblioteket för att aktivera rapportfunktionerna. Systemet stödjer PDF- och utskriftsrapporter för granskning, avstegsöversikter och ändringshistorik.',
+          'Rapportmenyn i kravbiblioteket är alltid tillgänglig för **Kravlista**. Markera krav i status **Granskning** för att även kunna skapa **Kombinerad granskningsrapport**.',
           { fullPage: false },
         )
         await removeAnnotation(page)
@@ -2769,10 +2772,16 @@ test.describe('Kravhantering — Guidegenerering', () => {
     })
 
     await guideStep(page, 'Rapporter från kravdetalj', async () => {
-      await guideGoto(page, '/sv/requirements/1')
+      const detailUrl = createdRequirementUniqueId
+        ? selectedRequirementUrl(
+            createdRequirementUniqueId,
+            STATUS_PUBLISHED_ID,
+          )
+        : '/sv/requirements?selected=IDN0001&statuses=3'
+      await guideGoto(page, detailUrl)
 
       const reportBtn = page
-        .getByRole('button', { name: /Skriv ut|Rapport|Print/i })
+        .getByRole('button', { name: /Rapport|Report/i })
         .first()
       if ((await reportBtn.count()) > 0) {
         await reportBtn.click()
@@ -2781,7 +2790,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'rapporter-kravdetalj',
           'Rapporter från kravdetaljsidan',
-          'Från kravdetaljsidan kan du öppna rapportmenyn för att ladda ned eller skriva ut: **Ändringshistorik** (alla versioner), **Förbättringsförslagshistorik** och granskningsunderlag. Rapporterna är formaterade för utskrift och PDF-export.',
+          'Från kravdetaljsidan kan du öppna rapportmenyn för att generera **Historikrapport**, **Förbättringsförslagshistorik** och **Granskningsrapport** som PDF.',
           { fullPage: false },
         )
         await page.keyboard.press('Escape')

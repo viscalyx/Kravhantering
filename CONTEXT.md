@@ -942,12 +942,19 @@ inte till ett enskilt avsteg i ett kravunderlag.
 _Avoid_: Avsteg, felanmälan, RFI-frågeförslag.
 
 **Granskningsrapport**:
-Rapport som stödjer granskning och publiceringsbeslut för en eller flera
-kravversioner.
+Rapport som stödjer granskning och publiceringsbeslut för en kravversion.
 
 - `en`: Review report
 
-_Avoid_: Avstegsrapport.
+_Avoid_: Avstegsrapport, kombinerad granskningsrapport.
+
+**Kombinerad granskningsrapport**:
+Rapport som samlar granskningsunderlag för flera kravversioner i en gemensam
+rapport.
+
+- `en`: Combined review report
+
+_Avoid_: Granskningsrapport när flera kravversioner avses tillsammans.
 
 **Avstegsgranskningsrapport**:
 Rapport som stödjer granskning och beslut om avsteg i ett kravunderlag.
@@ -955,6 +962,14 @@ Rapport som stödjer granskning och beslut om avsteg i ett kravunderlag.
 - `en`: Deviation review report
 
 _Avoid_: Granskningsrapport när avsteg avses.
+
+**Kravlista**:
+Rapport som sammanställer krav från kravbiblioteket utan att rapporten är
+knuten till ett visst kravunderlag eller upphandlingssyfte.
+
+- `en`: Requirements list
+
+_Avoid_: Kravbilaga för upphandling.
 
 **Kravbilaga för upphandling**:
 Rapport som sammanställer krav som ska ingå i ett upphandlingsunderlag.

@@ -259,7 +259,7 @@ The behaviors below apply to the requirement list rendered by:
   heading for either tab.
 - The action pills on the right side of that sticky header are contextual:
   `Krav i underlaget` shows requirement-list actions such as local creation,
-  column settings, print, export, and selected-row bulk actions, while
+  column settings, reports, export, and selected-row bulk actions, while
   `Behovsreferenser` replaces them with the needs-reference creation action.
 - In `Krav i underlaget`, the inline rail orders import immediately before
   export and keeps the column settings pill last.
@@ -518,7 +518,7 @@ down.
 - Specification-local inline detail now follows the specification-item detail
   chrome more
   closely: deviation pills sit above the card, the right-side action rail
-  starts with print and deviation controls, and local edit/delete actions are
+  starts with report and deviation controls, and local edit/delete actions are
   appended in the same vertical rail.
 - That unique-requirement action rail also uses the same full-width button
   sizing rhythm as the library requirements specification-item rail, including
@@ -545,15 +545,14 @@ down.
   library requirement, navigates to that new requirement's created Draft
   version, and leaves the source unique row and any local deviations unchanged.
 
-## Print List Report Floating Pill
+## Requirements List Floating Pill
 
-- Always visible in the list view as a Printer icon pill.
-- Opens a dropdown with two options:
-  - "Print Requirements List" — opens the print engine route
-  - "Download Requirements List (PDF)" — downloads the server PDF route
-- Passes the IDs of all currently visible rows as `?ids=` query params.
-- Does not apply an application-level item-count cap to visible rows, though
-  very large selections still use a browser URL.
+- Always visible in the list view as a report icon pill.
+- Opens a dropdown with "Requirements List", which generates the server PDF
+  route.
+- Passes the list view's active filters and sort order to the localized PDF
+  route so the server resolves the complete matching requirement set.
+- Does not apply an application-level item-count cap to matching rows.
 - The report shows Requirement ID, requirement text, requirement area, and
   status columns.
 
@@ -566,15 +565,13 @@ down.
 
 ## Requirements Specification Reports And Exports
 
-- The specification-detail print dropdown is lifecycle-driven and shows at most
+- The specification-detail report dropdown is lifecycle-driven and shows at most
   one report profile:
   - `Kravbilaga för upphandling` for lifecycle status `Upphandling`
   - `Genomföranderapport` for lifecycle status `Införande` or `Utveckling`
   - `Förvaltningsrapport` for lifecycle status `Förvaltning`
 - Report routes always cover the whole specification. They do not accept row
   selection query parameters.
-- Print routes use
-  `/[locale]/specifications/[slug]/reports/print/[profile]`.
 - PDF routes use
   `/[locale]/specifications/[slug]/reports/pdf/[profile]`.
 - Both routes authorize read access to the specification before report data is
@@ -738,29 +735,29 @@ down.
   edit the specification RFI list. Relevance remains separate and is edited only
   after the list is locked.
 
-## Combined Review Report Floating Pill
+## Combined Review Report In Requirements Library
 
-- Appears when at least one selected requirement has a version in Review status
-  (either as the current version or as a pending version).
-- Disabled (greyed out) if any selected requirement lacks a Review version.
-- Shows a badge with the number of selected requirements.
-- Uses the Review status color (`#eab308`) as a visual indicator.
-- Opens a dropdown with options to print or download the combined report.
-- Tooltip explains why the pill is disabled when applicable.
+- The requirements library uses the standard report/print floating pill for
+  list and review reports.
+- When at least one selected requirement has a version in Review status (either
+  as the current version or as a pending version), the report/print pill shows
+  the Review status color (`#eab308`) and a badge with the number of selected
+  requirements.
+- The report dropdown includes `Kombinerad granskningsrapport` with the same
+  selected requirement count as a badge.
+- `Kombinerad granskningsrapport` is disabled if any selected requirement lacks
+  a Review version.
+- The disabled menu item explains why the combined report is unavailable.
 
-## Print Dropdown in Detail View
+## Report Dropdown in Detail View
 
-- A print dropdown button appears in the action buttons column before the
+- A report dropdown button appears in the action buttons column before the
   share button.
-- Always shows "Print History Report" and "Download History Report (PDF)".
-- Shows "Print Review Report" and "Download Review Report (PDF)" only when
-  the current version has Review status.
-- Print report URLs use `window.open` with the locale prefix.
+- Always shows "History Report".
+- Shows "Review Report" only when the current version has Review status.
 - PDF report URLs are fetched as blobs from the server route; a temporary
   progress dialog appears only when generation takes longer than two seconds.
-- List view print report URLs use `next-intl` `Link` without the locale prefix
-  (the router adds it automatically); list view PDF downloads use the shared
-  blob download helper.
+- List view PDF actions use the shared blob helper.
 
 For report implementation details, see
 [report-generation-developer-workflow.md](../development/report-generation-developer-workflow.md).
@@ -799,7 +796,7 @@ The requirements list table has an optional `requirementPackage`
 column (hidden by default) that shows linked requirement package names
 for each requirement in the current locale. In interactive web views, hovering
 or focusing a requirement package name shows the package purpose and scope as a
-tooltip; exports and print-style outputs keep the compact package names without
+tooltip; exports and PDF outputs keep the compact package names without
 the tooltip surface.
 
 ## Contributor Guardrails

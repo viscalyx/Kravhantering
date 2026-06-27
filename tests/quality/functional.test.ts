@@ -344,17 +344,6 @@ const specificationTraceabilityApiRoutePath = join(
   'traceability-items',
   'route.ts',
 )
-const specificationTraceabilityPrintRoutePath = join(
-  repoRoot,
-  'app',
-  '[locale]',
-  'specifications',
-  '[slug]',
-  'reports',
-  'print',
-  'traceability',
-  'page.tsx',
-)
 const specificationTraceabilityPdfRoutePath = join(
   repoRoot,
   'app',
@@ -665,10 +654,6 @@ it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selec
     specificationTraceabilityApiRoutePath,
     'utf8',
   )
-  const traceabilityPrintRouteSource = readFileSync(
-    specificationTraceabilityPrintRoutePath,
-    'utf8',
-  )
   const traceabilityPdfRouteSource = readFileSync(
     specificationTraceabilityPdfRoutePath,
     'utf8',
@@ -693,7 +678,6 @@ it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selec
     'canExportProcurementCsvForLifecycleStatus',
   )
   expect(detailClientSource).toContain('export-full')
-  expect(detailClientSource).toContain('/reports/print/traceability?refs=')
   expect(detailClientSource).toContain('/reports/pdf/traceability?refs=')
 
   expect(profileTemplateSource).toContain(
@@ -716,8 +700,6 @@ it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selec
     'Expected unique item references',
   )
   expect(traceabilityApiRouteSource).toContain('get_specification_items')
-  expect(traceabilityPrintRouteSource).toContain('/traceability-items?refs=')
-  expect(traceabilityPrintRouteSource).toContain('encodeURIComponent(refs)')
   expect(traceabilityPdfRouteSource).toContain('parseSpecificationItemRef')
   expect(traceabilityPdfRouteSource).toContain('ARRAY_INPUT_MAX_ITEMS')
 

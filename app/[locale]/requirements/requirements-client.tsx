@@ -1,13 +1,6 @@
 'use client'
 
-import {
-  Download,
-  FileText,
-  Plus,
-  Printer,
-  Sparkles,
-  Upload,
-} from 'lucide-react'
+import { Download, Plus, Printer, Sparkles, Upload } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -883,6 +876,14 @@ export default function RequirementsClient({
     () => rows.filter(r => selectedIds.has(r.id)),
     [rows, selectedIds],
   )
+  const listReportPdfUrl = useMemo(() => {
+    const params = buildRequirementListParams({
+      filters,
+      locale,
+      sort: sortState,
+    })
+    return `/${locale}/requirements/reports/pdf/list?${params}`
+  }, [filters, locale, sortState])
   const hasReviewVersion = (r: RequirementRow) =>
     r.version?.status === STATUS_REVIEW ||
     r.pendingVersionStatusId === STATUS_REVIEW
@@ -965,67 +966,54 @@ export default function RequirementsClient({
                     tooltip: aiGenerationDisabledTooltip ?? t('aiGenerate'),
                   },
                   {
+                    badge:
+                      selectedIds.size > 0 && anySelectedIsReview
+                        ? selectedIds.size
+                        : undefined,
                     developerModeContext: 'requirements table',
-                    developerModeValue: 'print',
-                    ariaLabel: tc('print'),
+                    developerModeValue: 'reports',
+                    ariaLabel: tc('reports'),
                     icon: <Printer aria-hidden="true" className="h-4 w-4" />,
-                    id: 'print',
+                    id: 'reports',
                     menuItems: [
-                      {
-                        href: `/requirements/reports/print/list?ids=${displayRows.map(r => r.id).join(',')}`,
-                        id: 'print-list',
-                        label: t('printListReport'),
-                      },
                       {
                         id: 'pdf-list',
                         label: t('downloadListReportPdf'),
                         onClick: () =>
                           void pdfDownload.download({
                             fallbackFilename: 'requirements-list.pdf',
-                            url: `/requirements/reports/pdf/list?ids=${displayRows.map(r => r.id).join(',')}`,
+                            url: listReportPdfUrl,
                           }),
                       },
-                    ],
-                  },
-                  ...(selectedIds.size > 0 && anySelectedIsReview
-                    ? [
-                        {
-                          ariaLabel: t('combinedReviewReport'),
-                          badge: selectedIds.size,
-                          customStyle: {
-                            borderColor: '#eab308',
-                            backgroundColor: '#eab30815',
-                          },
-                          developerModeContext: 'requirements table',
-                          developerModeValue: 'review report',
-                          disabled: !allSelectedAreReview,
-                          icon: (
-                            <FileText aria-hidden="true" className="h-4 w-4" />
-                          ),
-                          id: 'review-report',
-                          menuItems: [
+                      ...(selectedIds.size > 0 && anySelectedIsReview
+                        ? [
                             {
-                              href: `/requirements/reports/print/review-combined?ids=${Array.from(selectedIds).join(',')}`,
-                              id: 'review-report-print',
-                              label: t('printCombinedReport'),
-                            },
-                            {
+                              badge: selectedIds.size,
+                              description: !allSelectedAreReview
+                                ? t('reviewReportAllMustBeReview')
+                                : undefined,
+                              disabled: !allSelectedAreReview,
                               id: 'review-report-pdf',
                               label: t('downloadCombinedReportPdf'),
                               onClick: () =>
                                 void pdfDownload.download({
                                   fallbackFilename:
                                     'combined-review-report.pdf',
-                                  url: `/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
+                                  url: `/${locale}/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
                                 }),
+                              tooltip: !allSelectedAreReview
+                                ? t('reviewReportAllMustBeReview')
+                                : undefined,
                             },
-                          ],
-                          tooltip: !allSelectedAreReview
-                            ? t('reviewReportAllMustBeReview')
-                            : t('combinedReviewReport'),
-                        },
-                      ]
-                    : []),
+                          ]
+                        : []),
+                    ],
+                    tooltip: tc('reports'),
+                    variant:
+                      selectedIds.size > 0 && anySelectedIsReview
+                        ? 'warning'
+                        : undefined,
+                  },
                   {
                     developerModeContext: 'requirements table',
                     developerModeValue: 'import requirements',

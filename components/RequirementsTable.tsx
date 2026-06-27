@@ -129,14 +129,16 @@ export interface RequirementsTableProps {
   wrapDescription?: boolean
 }
 
-export type FloatingActionPillVariant = 'default' | 'primary'
+export type FloatingActionPillVariant = 'default' | 'primary' | 'warning'
 
 interface FloatingActionMenuItemBase {
+  badge?: string | number
   description?: string
   disabled?: boolean
   icon?: ReactNode
   id: string
   label: string
+  tooltip?: string
 }
 
 export type FloatingActionMenuItem =
@@ -170,9 +172,17 @@ function FloatingActionMenuItemContent({
           {item.icon}
         </span>
       ) : null}
-      <div className="min-w-0">
-        <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 text-sm font-medium text-secondary-900 dark:text-secondary-100">
           {item.label}
+          {item.badge != null ? (
+            <span
+              className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[11px] font-bold text-white"
+              data-floating-action-menu-item-badge="true"
+            >
+              {item.badge}
+            </span>
+          ) : null}
         </div>
         {item.description ? (
           <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
@@ -221,6 +231,8 @@ const floatingPillVariantClassNames: Record<FloatingActionPillVariant, string> =
       'border-secondary-200/80 bg-white/90 text-secondary-500 hover:border-secondary-300 hover:text-secondary-700 hover:shadow-[0_14px_36px_-20px_rgba(15,23,42,0.5)] dark:border-secondary-700/80 dark:bg-secondary-900/80 dark:text-secondary-300 dark:hover:border-secondary-600 dark:hover:text-secondary-100',
     primary:
       'border-primary-600/80 bg-primary-700 text-white hover:border-primary-700 hover:bg-primary-800 hover:shadow-[0_14px_36px_-20px_rgba(67,56,202,0.55)] dark:border-primary-500/80 dark:bg-primary-600 dark:hover:border-primary-400 dark:hover:bg-primary-700',
+    warning:
+      'border-amber-400/80 bg-amber-500/10 text-amber-700 hover:border-amber-500 hover:bg-amber-500/20 hover:text-amber-800 dark:border-amber-400/50 dark:bg-amber-400/10 dark:text-amber-300 dark:hover:border-amber-300 dark:hover:bg-amber-300/20 dark:hover:text-amber-200',
   }
 
 function getFloatingPillClassName(
@@ -425,6 +437,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               className={
                                 floatingActionMenuItemDisabledClassName
                               }
+                              title={item.tooltip}
                             >
                               <FloatingActionMenuItemContent item={item} />
                             </span>
@@ -433,23 +446,27 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               className={floatingActionMenuItemEnabledClassName}
                               href={item.href}
                               onClick={() => setOpen(false)}
+                              title={item.tooltip}
                             >
                               <FloatingActionMenuItemContent item={item} />
                             </Link>
                           )
+                        ) : item.disabled ? (
+                          <span
+                            aria-disabled="true"
+                            className={floatingActionMenuItemDisabledClassName}
+                            title={item.tooltip}
+                          >
+                            <FloatingActionMenuItemContent item={item} />
+                          </span>
                         ) : (
                           <button
-                            className={`${floatingActionMenuItemBaseClassName} ${
-                              item.disabled
-                                ? 'cursor-not-allowed opacity-50'
-                                : 'hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70'
-                            }`}
-                            disabled={item.disabled}
+                            className={`${floatingActionMenuItemBaseClassName} hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70`}
                             onClick={() => {
-                              if (item.disabled) return
                               item.onClick()
                               setOpen(false)
                             }}
+                            title={item.tooltip}
                             type="button"
                           >
                             <FloatingActionMenuItemContent item={item} />

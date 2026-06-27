@@ -170,7 +170,7 @@ function ServerPdfDownloadDialog({
               {...devMarker({
                 name: 'dialog',
                 priority: 420,
-                value: 'PDF download error',
+                value: 'PDF generation error',
               })}
               onKeyDown={handleKeyDown}
               ref={errorRef}

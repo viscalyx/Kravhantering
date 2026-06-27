@@ -7,21 +7,26 @@ import { STATUS_REVIEW } from '@/lib/requirements/status-constants.mjs'
 vi.mock('next-intl', () => ({
   useTranslations: (namespace: string) => (key: string) => {
     const translations: Record<string, string> = {
-      'common.print': 'Print',
-      'deviation.downloadDeviationReviewReportPdf':
-        'Download deviation review PDF',
-      'deviation.printDeviationReviewReport': 'Print deviation review',
-      'requirement.downloadHistoryReportPdf': 'Download history PDF',
+      'common.reports': 'Reports',
+      'deviation.downloadDeviationReviewReportPdf': 'Deviation Review Report',
+      'requirement.downloadHistoryReportPdf': 'History Report',
       'requirement.downloadSuggestionHistoryReportPdf':
-        'Download suggestion history PDF',
-      'requirement.downloadReviewReportPdf': 'Download review PDF',
-      'requirement.printHistoryReport': 'Print history',
-      'requirement.printReviewReport': 'Print review',
-      'requirement.printSuggestionHistoryReport': 'Print suggestion history',
+        'Improvement Suggestion History',
+      'requirement.downloadReviewReportPdf': 'Review Report',
     }
 
     return translations[`${namespace}.${key}`] ?? `${namespace}.${key}`
   },
+}))
+
+vi.mock('@/components/reports/pdf/useServerPdfDownload', () => ({
+  useServerPdfDownload: () => ({
+    clearError: vi.fn(),
+    dialog: null,
+    download: vi.fn(),
+    downloading: false,
+    error: null,
+  }),
 }))
 
 describe('RequirementReportMenu', () => {
@@ -39,7 +44,7 @@ describe('RequirementReportMenu', () => {
       />,
     )
 
-    const trigger = screen.getByRole('button', { name: 'Print' })
+    const trigger = screen.getByRole('button', { name: 'Reports' })
     expect(trigger).toHaveAttribute('aria-haspopup', 'menu')
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
     expect(trigger).toHaveAttribute('aria-controls')
@@ -47,10 +52,7 @@ describe('RequirementReportMenu', () => {
       'data-developer-mode-context',
       'requirements specification detail > inline detail pane: REQ-123',
     )
-    expect(trigger).toHaveAttribute(
-      'data-developer-mode-name',
-      'report print button',
-    )
+    expect(trigger).toHaveAttribute('data-developer-mode-name', 'report button')
     expect(trigger).toHaveAttribute(
       'data-developer-mode-value',
       'specification reports',
@@ -58,23 +60,20 @@ describe('RequirementReportMenu', () => {
 
     await userEvent.click(trigger)
 
-    const reportMenu = screen.getByRole('menu', { name: 'Print' })
+    const reportMenu = screen.getByRole('menu', { name: 'Reports' })
     expect(reportMenu).toHaveAttribute(
       'id',
       trigger.getAttribute('aria-controls'),
     )
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(
-      screen.getByRole('menuitem', { name: 'Print history' }),
-    ).toHaveAttribute('data-developer-mode-value', 'print history')
+      screen.getByRole('menuitem', { name: 'History Report' }),
+    ).toHaveAttribute('data-developer-mode-value', 'history report')
     expect(
       screen.getByRole('menuitem', {
-        name: 'Download suggestion history PDF',
+        name: 'Improvement Suggestion History',
       }),
-    ).toHaveAttribute(
-      'data-developer-mode-value',
-      'download suggestion history pdf',
-    )
+    ).toHaveAttribute('data-developer-mode-value', 'suggestion history report')
   })
 
   it('marks specification deviation review report options for Developer Mode', async () => {
@@ -91,17 +90,11 @@ describe('RequirementReportMenu', () => {
       />,
     )
 
-    await userEvent.click(screen.getByRole('button', { name: 'Print' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Reports' }))
 
     expect(
-      screen.getByRole('menuitem', { name: 'Print deviation review' }),
-    ).toHaveAttribute('data-developer-mode-value', 'print deviation review')
-    expect(
-      screen.getByRole('menuitem', { name: 'Download deviation review PDF' }),
-    ).toHaveAttribute(
-      'data-developer-mode-value',
-      'download deviation review pdf',
-    )
+      screen.getByRole('menuitem', { name: 'Deviation Review Report' }),
+    ).toHaveAttribute('data-developer-mode-value', 'deviation review report')
   })
 
   it('supports standalone report menu keyboard navigation', async () => {
@@ -115,29 +108,30 @@ describe('RequirementReportMenu', () => {
       />,
     )
 
-    const trigger = screen.getByRole('button', { name: 'Print' })
+    const trigger = screen.getByRole('button', { name: 'Reports' })
     await userEvent.click(trigger)
 
-    const printHistory = screen.getByRole('menuitem', { name: 'Print history' })
-    const downloadHistory = screen.getByRole('menuitem', {
-      name: 'Download history PDF',
+    const historyReport = screen.getByRole('menuitem', {
+      name: 'History Report',
     })
-    const downloadReview = screen.getByRole('menuitem', {
-      name: 'Download review PDF',
+    const reviewReport = screen.getByRole('menuitem', {
+      name: 'Review Report',
     })
 
-    expect(screen.getAllByRole('menuitem')).toHaveLength(6)
+    expect(screen.getAllByRole('menuitem')).toHaveLength(3)
     expect(screen.getAllByRole('separator')).toHaveLength(2)
-    await waitFor(() => expect(printHistory).toHaveFocus())
+    await waitFor(() => expect(historyReport).toHaveFocus())
 
     await userEvent.keyboard('{ArrowDown}')
-    expect(downloadHistory).toHaveFocus()
+    expect(
+      screen.getByRole('menuitem', { name: 'Improvement Suggestion History' }),
+    ).toHaveFocus()
 
     await userEvent.keyboard('{End}')
-    expect(downloadReview).toHaveFocus()
+    expect(reviewReport).toHaveFocus()
 
     await userEvent.keyboard('{ArrowDown}')
-    expect(printHistory).toHaveFocus()
+    expect(historyReport).toHaveFocus()
 
     await userEvent.keyboard('{Escape}')
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()

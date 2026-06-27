@@ -1,8 +1,8 @@
 # Report Generation
 
-The report system generates requirement reports through two rendering engines:
-browser print HTML and server-side PDF rendering. Both engines share a template
-layer so report content changes apply to both.
+The report system uses server-generated PDF as the report delivery mechanism.
+Report content is modeled in a shared template layer and rendered by the server
+PDF renderer.
 
 Implementation architecture and contributor workflow live in
 [report-generation-developer-workflow.md](../development/report-generation-developer-workflow.md).
@@ -17,13 +17,13 @@ package entries.
 
 Shows the timeline of changes for a specific requirement.
 
-- Available from the print dropdown in the detail view (all statuses)
+- Available from the report dropdown in the detail view (all statuses)
 - Current published version summary at top (if exists)
 - Unpublished versions (draft/review) shown after published, clearly marked
 - All versions listed in reverse chronological order with status, author,
   timestamps, and requirement text excerpt
 
-### 2. Review Change Report
+### 2. Review Report
 
 Highlights changes made in a Review version compared to the published or
 latest archived version.
@@ -36,20 +36,23 @@ latest archived version.
   distinct: titled "Arkiveringsförfrågan" / "Archive Request" with a
   subtitle and amber warning banner
 
-### 3. Requirements List Report
+### 3. Requirements List
 
-Prints the requirements currently displayed in the list view as a
+Outputs the requirements currently displayed in the list view as a
 formatted table.
 
-- Available from the print dropdown pill (always visible in list view)
+- Available from the report dropdown pill (always visible in list view)
+- The PDF menu entry is labeled only with the report name:
+  `Kravlista` / `Requirements List`
 - Shows Requirement ID, requirement text (truncated), requirement area, and
   status columns
 - Includes all currently visible requirements (after filtering/sorting)
-- Does not apply an application-level item-count cap; visible rows are carried
-  through the existing `ids` query string, subject to practical URL length
-  limits
-- Server PDF output uses the latest published version for each included
-  requirement and omits requirements without a published version
+- Uses the same displayed requirement version and status as the list view, so
+  Review rows are included when the current filter includes them
+- Does not apply an application-level item-count cap. The list report route
+  resolves the full matching requirement set server-side from the active
+  filters and sort order instead of relying on the currently loaded client
+  page.
 - Header shows total count and generation timestamp
 
 ### 4. Combined Review Report
@@ -57,12 +60,15 @@ formatted table.
 Generates a multi-requirement review report from the list view.
 
 - Select requirements using the checkbox column
-- A floating pill appears when any selected requirement has Review status
-- The pill is disabled if any selected requirement is not in Review status
+- The list view's report pill is highlighted when any selected requirement has
+  Review status and shows a badge with the number of selected requirements
+- The combined report menu item is disabled if any selected requirement is not
+  in Review status
+- The combined report menu item shows the selected requirement count as a badge
 - Does not apply an application-level item-count cap to the selected
   requirements
 - Table of contents on the first page, grouped by report type:
-  archiving requests first, then review change reports
+  archiving requests first, then review reports
 - Each TOC entry shows its page number
 - Each requirement starts on a new page after the TOC
 
@@ -83,9 +89,10 @@ Available profiles are lifecycle-driven:
 - **Förvaltningsrapport** / **Management report**: shown only when the
   specification lifecycle status is `Förvaltning`.
 
-Each profile has both a browser print route and a server PDF route. The
-specification detail menu shows only the profile that matches the lifecycle
-status.
+Each profile has a server PDF route. The specification detail menu shows only
+the profile that matches the lifecycle status. PDF menu entries use only the
+profile report name, for example
+`Genomföranderapport`, without a download verb or `(PDF)` suffix.
 
 ### 6. Requirement Application Traceability
 
@@ -108,23 +115,22 @@ detail list.
 - Detail rows show requirement ID, origin, version, area, needs reference,
   usage status, status changed date, deviation state, risk, verification, and
   note
-- The detail view shows traceability print and PDF actions only when the
-  filtered requirement application list contains at most 200 items. The
-  selected `refs` payload is capped at the same limit before the report routes
-  are called.
+- The detail view shows traceability PDF actions only when the filtered
+  requirement application list contains at most 200 items. The selected `refs`
+  payload is capped at the same limit before the report route is called.
 
-Browser print loads data through
+The traceability report loads data through
 `/api/requirements-specifications/{idOrSlug}/traceability-items?refs=...`.
 The API accepts only `lib:{id}` and `local:{id}` refs, applies the shared report
 array item cap, returns 400 for invalid or duplicate refs, and returns 404 when
 a syntactically valid ref does not belong to the requested specification.
 
-### 7. Improvement Suggestion History Report
+### 7. Improvement Suggestion History
 
 Lists all improvement suggestions grouped under each requirement
 version, sorted in descending version order.
 
-- Available from the print dropdown in both normal and
+- Available from the report dropdown in both normal and
   specification-item detail views
 - Each version section shows a version summary followed by
   its suggestions (or an empty-state label)
@@ -306,6 +312,13 @@ CSV with the following conventions:
   whole specification, stay row-oriented, do not include metadata rows, and are
   returned with a UTF-8 BOM at the HTTP boundary.
 
+## Output Behavior
+
+Server PDF is the report delivery mechanism for report sharing, archival use,
+and stable rendering. PDF report menu items are labeled with only the report
+name, for example `Kravlista` or `Historikrapport`; the labels do not include
+download verbs or a `(PDF)` suffix.
+
 Browser-created JSON evidence downloads use the same UTF-8 BOM download
 boundary. API JSON responses remain strict BOM-free JSON.
 
@@ -335,9 +348,9 @@ reject selected refs that do not belong to the requested specification.
 - Requirements specification traceability:
   `{localized label} {specification name} {specification ID}.pdf`
   (e.g., `Tillämpningsspårbarhet Tillgänglighet PKG001.pdf`)
-- Suggestion History:
+- Improvement Suggestion History:
   `{localized label} {uniqueId}.pdf`
-  (e.g., `Ändringsförslagshistorik ANV0022.pdf`)
+  (e.g., `Förbättringsförslagshistorik ANV0022.pdf`)
 
 ## Archiving Reviews
 
