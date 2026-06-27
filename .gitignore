@@ -252,7 +252,6 @@ __pycache__/
 # Test artifacts
 /temp-test-content/
 .claude
-.codex
 
 # Sandbox runtime artifacts (bwrap copies these into workspace root temporarily)
 .bash_profile

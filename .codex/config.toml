@@ -1,0 +1,26 @@
+# Project-scoped Codex defaults for the Kravhantering devcontainer.
+#
+# The default `workspace-write` sandbox blocks network access, which prevents
+# database-backed checks from resolving Compose service names such as `db`.
+# This profile keeps filesystem access scoped to the workspace while allowing
+# the local devcontainer service network.
+
+approval_policy = "on-request"
+default_permissions = "kravhantering-devcontainer"
+
+[permissions.kravhantering-devcontainer]
+description = "Workspace access with Kravhantering devcontainer service network."
+extends = ":workspace"
+
+[permissions.kravhantering-devcontainer.network]
+enabled = true
+allow_local_binding = true
+
+[permissions.kravhantering-devcontainer.network.domains]
+"db" = "allow"
+"idp" = "allow"
+"kong" = "allow"
+"hsa-directory-mock" = "allow"
+"hsa-person-lookup-adapter" = "allow"
+"localhost" = "allow"
+"127.0.0.1" = "allow"

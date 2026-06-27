@@ -77,3 +77,17 @@ normal development. For detailed database and auth workflows, use:
 
 - [SQL Server Developer Workflow](./sql-server-developer-workflow.md)
 - [Auth developer workflow](./auth-developer-workflow.md)
+
+## Codex Network Sandbox
+
+The repository includes [`.codex/config.toml`](../../.codex/config.toml) with
+a project-scoped permission profile for the devcontainer. It keeps filesystem
+access scoped to the workspace, but enables network access to the local Compose
+service names used by development checks, including `db`, `idp`, `kong`, the
+HSA mock, and loopback.
+
+This is required because the default Codex `workspace-write` sandbox blocks
+network access. Without the project profile, Codex commands cannot resolve
+`db` or open TCP sockets to SQL Server, even though the same command works from
+a normal devcontainer terminal. Reload or restart Codex after changing the
+project config so the new permission profile is loaded.
