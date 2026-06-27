@@ -87,6 +87,11 @@ configuration change.
 5. Install the new release bundle under `/opt/kravhantering/releases`.
    Extract the verified bundle and label the release-owned nginx files:
 
+   For disconnected upgrades, skip this step. The disconnected
+   [Upgrade Import](./rhel10-production-single-node-self-contained-disconnected.md#upgrade-import)
+   prepares and labels `/opt/kravhantering/releases/${VERSION}` before this
+   guide resumes at step 6.
+
    ```bash
    cd "/tmp/kravhantering-${VERSION}"
    sudo install -d -o root -g root -m 0755 \
@@ -118,8 +123,64 @@ configuration change.
 7. Update `/etc/kravhantering/release.env` image refs and verify image IDs.
    Use tag-style `image:tag` values by default. Prefer release-specific
    internal mirror tags for third-party images so moving public tags cannot
-   drift after release. For connected staging only, derive the public upstream
-   refs from the target release lock and verify them immediately:
+   drift after release.
+
+   Choose exactly one image-reference method:
+
+   - For disconnected upgrades, derive refs from the transferred
+     `offline-manifest.json`.
+   - For connected staging only, derive public upstream refs from the target
+     release lock.
+   - For an internal registry mirror that preserves repository paths, rewrite
+     only the registry host while keeping the locked tags.
+   - For an internal mirror with a custom repository layout, set the five
+     `*_IMAGE_REF` values manually to site-approved tag refs.
+
+   For disconnected upgrades, use the manifest that
+   [Upgrade Import](./rhel10-production-single-node-self-contained-disconnected.md#upgrade-import)
+   verifies and transfers:
+
+   ```bash
+   TOPOLOGY=single-node
+   # Test/demo only: set TOPOLOGY=single-node-demo.
+   OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
+   TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
+   MANIFEST="$OFFLINE_ROOT/offline-manifest.json"
+
+   update_ref() {
+     sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+   }
+   source_ref() {
+     jq -r --arg name "$1" '.imageRefs[$name]' "$MANIFEST"
+   }
+   target_ref() {
+     local ref path tag
+     ref="$(source_ref "$1")"
+     if [ -z "$TARGET_IMAGE_REGISTRY" ]; then
+       printf '%s\n' "$ref"
+       return
+     fi
+     tag="${ref##*:}"
+     path="${ref%:*}"
+     printf '%s/%s:%s\n' "$TARGET_IMAGE_REGISTRY" "${path#*/}" "$tag"
+   }
+
+   update_ref APP_RUNTIME_IMAGE_REF "$(target_ref app-runtime)"
+   update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
+   update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
+   update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
+   update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
+   if [ "$TOPOLOGY" = "single-node-demo" ]; then
+     update_ref KONG_IMAGE_REF "$(target_ref kong)"
+     update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
+       "$(target_ref hsa-person-lookup-adapter)"
+     update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
+       "$(target_ref hsa-directory-mock)"
+   fi
+   ```
+
+   For connected staging only, derive the public upstream refs from the target
+   release lock and verify them immediately:
 
    ```bash
    update_ref() {
@@ -188,7 +249,7 @@ configuration change.
    `*_IMAGE_REF` values manually to site-approved tag refs, then run the
    verification below. Each ref must resolve to the locked `imageId`.
 
-   Pull and verify the target images as the service user:
+   Connected upgrades pull and verify the target images as the service user:
 
    ```bash
    sudo -iu kravhantering
@@ -205,6 +266,32 @@ configuration change.
 
    bin/kravhantering-images.sh --topology single-node \
      --lock-file container-stack.lock.json \
+     --env-file /etc/kravhantering/release.env \
+     verify
+
+   exit
+   ```
+
+   Disconnected upgrades already load images during import. Verify without
+   pulling from a registry:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   TOPOLOGY=single-node
+   # Test/demo only: set TOPOLOGY=single-node-demo.
+
+   SUPPORT_LOCK_ARGS=()
+   if [ "$TOPOLOGY" = "single-node-demo" ]; then
+     SUPPORT_LOCK_ARGS=(
+       --hsa-integration-lock-file container-hsa-integration-support.lock.json
+       --test-lock-file container-test-support.lock.json
+     )
+   fi
+
+   bin/kravhantering-images.sh --topology "$TOPOLOGY" \
+     --lock-file container-stack.lock.json \
+     "${SUPPORT_LOCK_ARGS[@]}" \
      --env-file /etc/kravhantering/release.env \
      verify
 
