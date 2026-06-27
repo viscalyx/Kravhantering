@@ -709,20 +709,14 @@ describe('RequirementsSpecificationDetailClient', () => {
       id: string
       menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
     }>
-    const printAction = floatingActions.find(action => action.id === 'print')
+    const reportsAction = floatingActions.find(
+      action => action.id === 'reports',
+    )
     const exportAction = floatingActions.find(action => action.id === 'export')
 
-    expect(printAction?.hidden).toBe(false)
-    expect(printAction?.menuItems).toEqual([
-      expect.objectContaining({
-        href: '/specifications/ETJANST-UPP-2026/reports/print/progress',
-        id: 'print-progress',
-      }),
+    expect(reportsAction?.hidden).toBe(false)
+    expect(reportsAction?.menuItems).toEqual([
       expect.objectContaining({ id: 'pdf-progress' }),
-      expect.objectContaining({
-        href: '/specifications/ETJANST-UPP-2026/reports/print/traceability?refs=lib%3A31',
-        id: 'print-traceability',
-      }),
       expect.objectContaining({ id: 'pdf-traceability' }),
     ])
     expect(exportAction?.menuItems?.map(item => item.id)).toEqual([
@@ -753,7 +747,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(itemsTable.columnPickerPlacement).toBe('end')
     expect(floatingActions.map(action => action.id)).toEqual([
       'local-requirement-actions',
-      'print',
+      'reports',
       'export',
     ])
     expect(
@@ -770,7 +764,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).toBe(true)
   })
 
-  it('encodes profile print report href slugs as one route segment', async () => {
+  it('keeps profile PDF report actions lifecycle-scoped', async () => {
     renderRequirementsSpecificationDetailClient(
       createInitialData(),
       'ETJANST UPP/2026',
@@ -783,18 +777,12 @@ describe('RequirementsSpecificationDetailClient', () => {
       id: string
       menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
     }>
-    const printAction = floatingActions.find(action => action.id === 'print')
+    const reportsAction = floatingActions.find(
+      action => action.id === 'reports',
+    )
 
-    expect(printAction?.menuItems).toEqual([
-      expect.objectContaining({
-        href: '/specifications/ETJANST%20UPP%2F2026/reports/print/progress',
-        id: 'print-progress',
-      }),
+    expect(reportsAction?.menuItems).toEqual([
       expect.objectContaining({ id: 'pdf-progress' }),
-      expect.objectContaining({
-        href: '/specifications/ETJANST%20UPP%2F2026/reports/print/traceability?refs=lib%3A31',
-        id: 'print-traceability',
-      }),
       expect.objectContaining({ id: 'pdf-traceability' }),
     ])
   })
@@ -841,16 +829,17 @@ describe('RequirementsSpecificationDetailClient', () => {
       id: string
       menuItems?: Array<{ href?: string; id: string }>
     }>
-    const printAction = floatingActions.find(action => action.id === 'print')
+    const reportsAction = floatingActions.find(
+      action => action.id === 'reports',
+    )
 
     expect(
       itemsTable.rows.map((row: { itemRef?: string }) => row.itemRef),
     ).toEqual(['lib:31'])
-    expect(printAction?.menuItems).toEqual(
+    expect(reportsAction?.menuItems).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          href: '/specifications/ETJANST-UPP-2026/reports/print/traceability?refs=lib%3A31',
-          id: 'print-traceability',
+          id: 'pdf-traceability',
         }),
       ]),
     )
@@ -878,14 +867,12 @@ describe('RequirementsSpecificationDetailClient', () => {
       id: string
       menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
     }>
-    const printAction = floatingActions.find(action => action.id === 'print')
+    const reportsAction = floatingActions.find(
+      action => action.id === 'reports',
+    )
 
-    expect(printAction?.hidden).toBe(false)
-    expect(printAction?.menuItems).toEqual([
-      expect.objectContaining({
-        href: '/specifications/ETJANST-UPP-2026/reports/print/progress',
-        id: 'print-progress',
-      }),
+    expect(reportsAction?.hidden).toBe(false)
+    expect(reportsAction?.menuItems).toEqual([
       expect.objectContaining({ id: 'pdf-progress' }),
     ])
   })

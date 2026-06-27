@@ -105,7 +105,7 @@ for (const viewport of viewports) {
 
       const specificationReportButton = expandedDetail
         .locator(
-          '[data-developer-mode-name="report print button"][data-developer-mode-value="specification reports"]',
+          '[data-developer-mode-name="report button"][data-developer-mode-value="specification reports"]',
         )
         .first()
       await specificationReportButton.scrollIntoViewIfNeeded()
@@ -118,9 +118,7 @@ for (const viewport of viewports) {
       await specificationReportButton.hover()
       const chip = page.locator('[data-developer-mode-overlay-chip="true"]')
       await expect(chip).toBeVisible()
-      await expect(chip).toContainText(
-        'report print button: specification reports',
-      )
+      await expect(chip).toContainText('report button: specification reports')
     })
 
     test('keeps sticky table headers referenceable in developer mode', async ({

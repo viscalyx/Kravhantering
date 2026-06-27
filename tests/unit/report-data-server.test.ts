@@ -2,11 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   collectDeviationForReport,
-  collectPublishedRequirementForReport,
+  collectRequirementListItemForReport,
   parseLibrarySpecificationItemId,
   type ReportDataError,
 } from '@/lib/reports/data/server'
 import {
+  STATUS_ARCHIVED,
   STATUS_DRAFT,
   STATUS_PUBLISHED,
   STATUS_REVIEW,
@@ -56,8 +57,22 @@ function reportVersion(id: number, status = STATUS_PUBLISHED) {
     status,
     statusColor: null,
     statusIconName: null,
-    statusNameEn: status === STATUS_PUBLISHED ? 'Published' : 'Draft',
-    statusNameSv: status === STATUS_PUBLISHED ? 'Publicerad' : 'Utkast',
+    statusNameEn:
+      status === STATUS_PUBLISHED
+        ? 'Published'
+        : status === STATUS_REVIEW
+          ? 'Review'
+          : status === STATUS_ARCHIVED
+            ? 'Archived'
+            : 'Draft',
+    statusNameSv:
+      status === STATUS_PUBLISHED
+        ? 'Publicerad'
+        : status === STATUS_REVIEW
+          ? 'Granskning'
+          : status === STATUS_ARCHIVED
+            ? 'Arkiverad'
+            : 'Utkast',
     type: null,
     verificationMethod: null,
     versionNormReferences: [],
@@ -140,7 +155,7 @@ describe('report data server helpers', () => {
     )
   })
 
-  it('shapes requirement list report data to the latest published version only', async () => {
+  it('shapes requirement list report data to the list-view published display version', async () => {
     dalState.getRequirementById.mockResolvedValue({
       ...reportRequirement(42),
       versions: [
@@ -152,26 +167,37 @@ describe('report data server helpers', () => {
     })
 
     await expect(
-      collectPublishedRequirementForReport(createReportDb(), 42),
+      collectRequirementListItemForReport(createReportDb(), 42),
     ).resolves.toMatchObject({
       id: 42,
       versions: [{ status: STATUS_PUBLISHED, versionNumber: 3 }],
     })
   })
 
-  it('rejects requirement list report data when no published version exists', async () => {
+  it('includes review requirements in list report data when no published version exists', async () => {
     dalState.getRequirementById.mockResolvedValue({
       ...reportRequirement(42),
-      versions: [
-        reportVersion(2, STATUS_REVIEW),
-        reportVersion(4, STATUS_DRAFT),
-      ],
+      versions: [reportVersion(2, STATUS_REVIEW)],
     })
 
     await expect(
-      collectPublishedRequirementForReport(createReportDb(), 42),
+      collectRequirementListItemForReport(createReportDb(), 42),
+    ).resolves.toMatchObject({
+      id: 42,
+      versions: [{ status: STATUS_REVIEW, versionNumber: 2 }],
+    })
+  })
+
+  it('rejects requirement list report data when no requirement version exists', async () => {
+    dalState.getRequirementById.mockResolvedValue({
+      ...reportRequirement(42),
+      versions: [],
+    })
+
+    await expect(
+      collectRequirementListItemForReport(createReportDb(), 42),
     ).rejects.toMatchObject({
-      message: 'Published requirement not found: 42',
+      message: 'Requirement version not found: 42',
       name: 'ReportDataError',
       status: 404,
     } satisfies Partial<ReportDataError>)

@@ -1646,24 +1646,6 @@ export default function KravunderlagDetailClient({
     traceabilityItemRefsParam,
   ])
 
-  const openPrintReportHref = useCallback(
-    (profile: SpecificationReportProfile) =>
-      `/specifications/${encodeURIComponent(
-        specificationSlug,
-      )}/reports/print/${profile}`,
-    [specificationSlug],
-  )
-
-  const openTraceabilityPrintReportHref = useCallback(
-    () =>
-      `/specifications/${encodeURIComponent(
-        specificationSlug,
-      )}/reports/print/traceability?refs=${encodeURIComponent(
-        traceabilityItemRefsParam,
-      )}`,
-    [specificationSlug, traceabilityItemRefsParam],
-  )
-
   const specName = spec ? spec.name : '…'
   const permissions = spec?.permissions ?? {
     canEditContent: false,
@@ -2801,28 +2783,17 @@ export default function KravunderlagDetailClient({
                           ]
                         : []),
                       {
-                        ariaLabel: tc('print'),
+                        ariaLabel: tc('reports'),
                         hidden:
                           !specificationReportProfile &&
                           !hasTraceabilityReportActions,
                         icon: (
                           <Printer aria-hidden="true" className="h-4 w-4" />
                         ),
-                        id: 'print',
+                        id: 'reports',
                         menuItems: [
                           ...(specificationReportProfile
                             ? [
-                                {
-                                  href: openPrintReportHref(
-                                    specificationReportProfile,
-                                  ),
-                                  id: `print-${specificationReportProfile}`,
-                                  label: t('printProfileReport', {
-                                    report: reportProfileLabel(
-                                      specificationReportProfile,
-                                    ),
-                                  }),
-                                },
                                 {
                                   id: `pdf-${specificationReportProfile}`,
                                   label: t('downloadProfileReportPdf', {
@@ -2839,13 +2810,6 @@ export default function KravunderlagDetailClient({
                             : []),
                           ...(hasTraceabilityReportActions
                             ? [
-                                {
-                                  href: openTraceabilityPrintReportHref(),
-                                  id: 'print-traceability',
-                                  label: t('printProfileReport', {
-                                    report: t('reportProfiles.traceability'),
-                                  }),
-                                },
                                 {
                                   id: 'pdf-traceability',
                                   label: t('downloadProfileReportPdf', {

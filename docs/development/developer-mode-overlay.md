@@ -192,9 +192,8 @@ Status, reports, and cards:
 - `type card`
 - `iso badge`
 - `quality heading`
-- `report print button`
+- `report button`
 - `report option`
-- `review report pill`
 - `report state`
 
 ## Update Checklist

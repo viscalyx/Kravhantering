@@ -212,6 +212,15 @@ vi.mock('@/components/RequirementsTable', () => ({
           select-first-row
         </button>
         <button
+          onClick={() => {
+            const nextSelectedIds = (rows ?? []).slice(0, 2).map(row => row.id)
+            onSelectionChange?.(new Set(nextSelectedIds))
+          }}
+          type="button"
+        >
+          select-first-two-rows
+        </button>
+        <button
           onClick={() => onSortChange?.({ by: 'status', direction: 'asc' })}
           type="button"
         >
@@ -963,7 +972,7 @@ describe('RequirementsClient', () => {
       ),
     )
     expect(screen.getByTestId('floating-actions-order').textContent).toBe(
-      'create:beforeColumns:primary,ai-generate:beforeColumns:default,print:afterColumns:default,import:afterColumns:default,export:afterColumns:default',
+      'create:beforeColumns:primary,ai-generate:beforeColumns:default,reports:afterColumns:default,import:afterColumns:default,export:afterColumns:default',
     )
     expect(tableState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
       columnPickerPlacement: 'end',
@@ -977,7 +986,7 @@ describe('RequirementsClient', () => {
         .floatingActionVariant,
     ).toBe('primary')
     expect(
-      screen.getByRole('button', { name: 'print' }).dataset
+      screen.getByRole('button', { name: 'reports' }).dataset
         .floatingActionVariant,
     ).toBe('default')
     expect(
@@ -1032,11 +1041,11 @@ describe('RequirementsClient', () => {
       ),
     )
 
-    // Print pill is now a dropdown menu with list report options (menu
+    // Reports pill is a dropdown menu with list report options (menu
     // rendering tested in requirements-table.test.tsx floating-action tests)
-    expect(screen.getByRole('button', { name: 'print' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'reports' })).toHaveAttribute(
       'data-floating-action-id',
-      'print',
+      'reports',
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'export' }))
@@ -1083,60 +1092,115 @@ describe('RequirementsClient', () => {
       expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
     )
 
-    const printAction = latestFloatingActions().find(
-      action => action.id === 'print',
+    const reportsAction = latestFloatingActions().find(
+      action => action.id === 'reports',
     )
-    expect(
-      printAction?.menuItems?.find(item => item.id === 'print-list'),
-    ).toMatchObject({
-      href: '/requirements/reports/print/list?ids=1',
-    })
 
-    const pdfListItem = printAction?.menuItems?.find(
+    const pdfListItem = reportsAction?.menuItems?.find(
       item => item.id === 'pdf-list',
     )
+    expect(reportsAction?.menuItems).toHaveLength(1)
+    expect(reportsAction?.badge).toBeUndefined()
+    expect(reportsAction?.customStyle).toBeUndefined()
     expect(pdfListItem).toBeTruthy()
     pdfListItem?.onClick?.()
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename: 'requirements-list.pdf',
-      url: '/requirements/reports/pdf/list?ids=1',
+      url: '/requirements/reports/pdf/list?limit=1&locale=sv&sortBy=uniqueId&sortDirection=asc&statuses=3&ids=1',
     })
 
     fireEvent.click(screen.getByText('select-first-row'))
 
-    await waitFor(() =>
-      expect(
-        latestFloatingActions().some(action => action.id === 'review-report'),
-      ).toBe(true),
-    )
+    await waitFor(() => {
+      const selectedReportsAction = latestFloatingActions().find(
+        action => action.id === 'reports',
+      )
+      expect(selectedReportsAction?.badge).toBe(1)
+    })
     expect(latestFloatingActions().map(action => action.id)).toEqual([
       'create',
       'ai-generate',
-      'print',
-      'review-report',
+      'reports',
       'import',
       'export',
     ])
 
-    const reviewReportAction = latestFloatingActions().find(
-      action => action.id === 'review-report',
+    const selectedReportsAction = latestFloatingActions().find(
+      action => action.id === 'reports',
     )
-    expect(
-      reviewReportAction?.menuItems?.find(
-        item => item.id === 'review-report-print',
-      ),
-    ).toMatchObject({
-      href: '/requirements/reports/print/review-combined?ids=1',
+    expect(selectedReportsAction?.customStyle).toEqual({
+      borderColor: '#eab308',
+      backgroundColor: '#eab30815',
     })
-
-    const reviewPdfItem = reviewReportAction?.menuItems?.find(
+    const reviewPdfItem = selectedReportsAction?.menuItems?.find(
       item => item.id === 'review-report-pdf',
     )
+    expect(selectedReportsAction?.menuItems).toHaveLength(2)
+    expect(reviewPdfItem).toMatchObject({
+      badge: 1,
+      label: 'downloadCombinedReportPdf',
+    })
     expect(reviewPdfItem).toBeTruthy()
     reviewPdfItem?.onClick?.()
     expect(pdfDownloadState.download).toHaveBeenLastCalledWith({
       fallbackFilename: 'combined-review-report.pdf',
       url: '/requirements/reports/pdf/review-combined?ids=1',
+    })
+  })
+
+  it('keeps the mixed-status report guidance on the disabled combined report row', async () => {
+    const reviewRow = makeRequirementRow(1)
+    reviewRow.version.status = 2
+    const publishedRow = makeRequirementRow(2)
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return okJson({
+          pagination: { hasMore: false },
+          requirements: [reviewRow, publishedRow],
+        })
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001,INT0002'),
+    )
+
+    fireEvent.click(screen.getByText('select-first-two-rows'))
+
+    await waitFor(() => {
+      const selectedReportsAction = latestFloatingActions().find(
+        action => action.id === 'reports',
+      )
+      expect(selectedReportsAction?.badge).toBe(2)
+    })
+
+    const selectedReportsAction = latestFloatingActions().find(
+      action => action.id === 'reports',
+    )
+    const reviewPdfItem = selectedReportsAction?.menuItems?.find(
+      item => item.id === 'review-report-pdf',
+    )
+
+    expect(selectedReportsAction?.tooltip).toBe('reports')
+    expect(reviewPdfItem).toMatchObject({
+      badge: 2,
+      description: 'reviewReportAllMustBeReview',
+      disabled: true,
+      label: 'downloadCombinedReportPdf',
+      tooltip: 'reviewReportAllMustBeReview',
     })
   })
 

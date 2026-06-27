@@ -566,12 +566,13 @@ metadata, referenser och paket.
 
 ### REQ-10: rapport från kravlistan fungerar
 
-**Steg:** Öppna rapport-/utskriftsmenyn från kravbiblioteket och välj en
-listbaserad rapport.
+**Steg:** Filtrera kravbiblioteket så att listan innehåller både krav med
+status `Publicerad` och krav med status `Granskning`. Öppna rapportmenyn från
+kravbiblioteket och välj `Kravlista`.
 
-**Förväntat resultat:** Rapporten öppnas eller laddas ned utan fel. PDF från
-kravlistan innehåller bara publicerade kravversioner även om listan innehåller
-krav med utkast eller granskning.
+**Förväntat resultat:** Servergenererad PDF skapas utan fel. PDF från
+kravlistan följer kravbibliotekets aktuella filtrering, sortering och visade
+kravversioner.
 
 ### REQ-11: svensk länk till krav omdirigerar till befintlig kravdetalj
 
@@ -592,7 +593,7 @@ kravbiblioteket.
 
 ### REQ-13: detaljmenyer går att använda med tangentbord
 
-**Steg:** Öppna `Dela` och `Skriv ut` i kravdetaljvyn med tangentbord, navigera
+**Steg:** Öppna `Dela` och `Rapporter` i kravdetaljvyn med tangentbord, navigera
 med piltangenter och stäng med Escape.
 
 **Förväntat resultat:** Fokus hålls korrekt och kopiering annonseras.
@@ -1051,7 +1052,7 @@ kravunderlag där användaren saknar läsbehörighet.
 
 **Steg:** Öppna ett kravunderlag med minst ett bibliotekskrav och ett unikt
 krav. Filtrera listan `Krav i underlaget`, öppna rapportmenyn och välj
-`Tillämpningsspårbarhet`. Upprepa med PDF-alternativet. Upprepa kontrollen med
+`Tillämpningsspårbarhet`. Upprepa kontrollen med
 ett filter som visar fler än 200 kravtillämpningar.
 
 **Förväntat resultat:** Rapporten omfattar bara filtrerade kravtillämpningar.

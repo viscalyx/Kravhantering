@@ -152,7 +152,7 @@ scanning.
    `data-developer-mode-value="specification reports"`.
 5. Focus that trigger and activate Developer Mode.
 6. Hover over the specification report trigger.
-7. Assert the chip contains `"report print button: specification reports"`.
+7. Assert the chip contains `"report button: specification reports"`.
 
 ## keeps sticky table headers referenceable in developer mode
 

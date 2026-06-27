@@ -33,7 +33,7 @@
     "filterBy": "Filter by {label}",
     "columns": "Columns",
     "export": "Export",
-    "print": "Print",
+    "reports": "Reports",
     "yes": "Yes",
     "no": "No",
     "back": "Back",
@@ -523,17 +523,12 @@
     "afterSavePage": "Detail page",
     "noPublishedVersion": "There is no published version of this requirement.",
     "readOnlyNotice": "You can read this requirement, but you cannot change its lifecycle or content.",
-    "printHistoryReport": "Print History Report",
-    "downloadHistoryReportPdf": "Download History Report (PDF)",
-    "printReviewReport": "Print Review Change Report",
-    "downloadReviewReportPdf": "Download Review Change Report (PDF)",
-    "printSuggestionHistoryReport": "Print Suggestion History Report",
-    "downloadSuggestionHistoryReportPdf": "Download Suggestion History Report (PDF)",
+    "downloadHistoryReportPdf": "History Report",
+    "downloadReviewReportPdf": "Review Report",
+    "downloadSuggestionHistoryReportPdf": "Improvement Suggestion History",
     "combinedReviewReport": "Combined Review Report",
-    "printCombinedReport": "Print Combined Report",
-    "downloadCombinedReportPdf": "Download Combined Report (PDF)",
-    "printListReport": "Print Requirements List",
-    "downloadListReportPdf": "Download Requirements List (PDF)",
+    "downloadCombinedReportPdf": "Combined Review Report",
+    "downloadListReportPdf": "Requirements List",
     "reviewReportAllMustBeReview": "All selected requirements must be in Review status to generate the report",
     "editNotAllowedStatusReview": "This requirement cannot be edited because it is in Review status. Return it to Draft status first.",
     "editNotAllowedStatusArchived": "This requirement is Archived and must be restored before it can be edited.",
@@ -799,8 +794,7 @@
       "procurement": "Tender CSV",
       "full": "Full CSV export"
     },
-    "printProfileReport": "Print {report}",
-    "downloadProfileReportPdf": "Download {report} (PDF)"
+    "downloadProfileReportPdf": "{report}"
   },
   "deviation": {
     "title": "Deviations",
@@ -824,8 +818,7 @@
     "deleteDeviation": "Delete deviation",
     "deleteDeviationConfirm": "Are you sure you want to delete this deviation? This cannot be undone.",
     "deleteDeviationConfirmTitle": "Delete deviation",
-    "printDeviationReviewReport": "Print deviation review report",
-    "downloadDeviationReviewReportPdf": "Download deviation review report (PDF)",
+    "downloadDeviationReviewReportPdf": "Deviation Review Report",
     "recordDecision": "Record decision",
     "approve": "Approve",
     "reject": "Reject",
@@ -920,9 +913,8 @@
     "loadingData": "Loading report data...",
     "generatingPdfTitle": "Preparing PDF",
     "generatingPdf": "Working...",
-    "pdfDownloadStarted": "PDF download started.",
-    "downloadAgain": "Download Again",
-    "printButton": "Print",
+    "pdfDownloadStarted": "PDF report created.",
+    "downloadAgain": "Create Again",
     "historicalSelectionAnswer": "(historical answer)",
     "noRequirementIds": "No requirement IDs provided",
     "missingItemId": "Missing item ID in URL",
@@ -965,14 +957,14 @@
         "selectionContext": "Selection context",
         "combinedReview": "Combined Review Report",
         "archiveRequests": "Archive Requests",
-        "reviewChangeReports": "Review Change Reports",
+        "reviewChangeReports": "Review Reports",
         "contents": "Contents",
         "deviationReview": "Deviation Review Report",
         "history": "History Report",
         "suggestionHistory": "Improvement Suggestion History",
         "traceability": "Requirement Application Traceability",
         "archiveRequest": "Archive Request",
-        "reviewChangeReport": "Review Change Report"
+        "reviewChangeReport": "Review Report"
       },
       "subtitles": {
         "requirementUnderArchivingReview": "Requirement is under review for archiving",
@@ -1844,11 +1836,11 @@
       },
       "lifecycle": {
         "heading": "Requirement process",
-        "body": "Draft: you can write, edit, delete the latest draft, and send it to review. Review: the content is locked for editing until you send it back to Draft or publish it. Published: this is the published requirement version; you can add it to specifications, share or print it, and start editing, which creates a new draft while the published requirement version stays in effect. When you choose Archive, the requirement first enters an archiving review where you can approve or cancel the archiving. Archived: the requirement is read-only and cannot be edited or added to specifications; restore it to create a new draft."
+        "body": "Draft: you can write, edit, delete the latest draft, and send it to review. Review: the content is locked for editing until you send it back to Draft or publish it. Published: this is the published requirement version; you can add it to specifications, share it, create reports for it, and start editing, which creates a new draft while the published requirement version stays in effect. When you choose Archive, the requirement first enters an archiving review where you can approve or cancel the archiving. Archived: the requirement is read-only and cannot be edited or added to specifications; restore it to create a new draft."
       },
       "actions": {
         "heading": "Actions",
-        "body": "Use the toolbar to create a new requirement, export the visible list to CSV or PDF, or print it. Select rows with the checkboxes when you want to add multiple requirements to a requirements specification or generate a combined review report."
+        "body": "Use the toolbar to create a new requirement, export the visible list to CSV, or create the Requirements List as PDF. Select rows with the checkboxes when you want to add multiple requirements to a requirements specification or generate a combined review report."
       }
     },
     "newRequirement": {
@@ -1874,7 +1866,7 @@
       },
       "reports": {
         "heading": "Reports",
-        "body": "Generate a review report or history report for this requirement using the report buttons. Reports are available as print view or PDF download."
+        "body": "Generate a review report or history report for this requirement using the report buttons. Reports are generated as PDF."
       }
     },
     "editRequirement": {

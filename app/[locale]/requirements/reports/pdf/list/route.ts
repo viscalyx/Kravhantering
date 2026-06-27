@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
 import {
-  collectMultiplePublishedRequirementsForReport,
+  collectMultipleRequirementListItemsForReport,
   ReportDataError,
 } from '@/lib/reports/data/server'
 import { getReportLabels } from '@/lib/reports/report-labels'
@@ -38,7 +38,7 @@ export async function GET(
         'detail',
       )
     }
-    const requirements = await collectMultiplePublishedRequirementsForReport(
+    const requirements = await collectMultipleRequirementListItemsForReport(
       runtime.db,
       ids,
     )

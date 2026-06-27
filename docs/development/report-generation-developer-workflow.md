@@ -7,18 +7,15 @@ authorization behavior, filenames, and output semantics live in
 
 ## Architecture
 
+Server-generated PDF is the report delivery mechanism. The server PDF renderer
+consumes the shared report model.
+
 ```text
 Shared Layer (engine-agnostic)
   lib/reports/types.ts              Report model types
   lib/reports/text-diff.ts          Word-level diff utility
   lib/reports/data/                 Data fetching helpers
   lib/reports/templates/            Template functions (data -> ReportModel)
-
-Browser Print Engine
-  components/reports/print/            PrintReportRenderer + CSS
-  app/[locale]/requirements/reports/print/     Route pages
-  app/[locale]/specifications/[slug]/reports/print/
-                                       Specification route pages
 
 Server PDF Engine
   components/reports/pdf/              PdfReportRenderer
@@ -45,17 +42,14 @@ authorized report data and do not call the authorization service themselves.
 
 ## Route URL Patterns
 
-Print engine routes live under `.../reports/print/`, PDF engine routes live
-under `.../reports/pdf/`.
+PDF routes live under `.../reports/pdf/`.
 
-- **History**: `.../print/history/[id]` | `.../pdf/history/[id]`
-- **Review**: `.../print/review/[id]` | `.../pdf/review/[id]`
-- **List**: `.../print/list?ids=...` | `.../pdf/list?ids=...`
-- **Combined**: `.../print/review-combined?ids=...` |
-  `.../pdf/review-combined?ids=...`
-- **Suggestion History**:
-  `.../print/suggestion-history/[id]` |
-  `.../pdf/suggestion-history/[id]`
+- **History**: `.../pdf/history/[id]`
+- **Review**: `.../pdf/review/[id]`
+- **List**: `.../pdf/list?ids=...` for the requirement rows currently shown
+  by the list view after filtering and sorting
+- **Combined**: `.../pdf/review-combined?ids=...`
+- **Improvement Suggestion History**: `.../pdf/suggestion-history/[id]`
 
 All routes above are prefixed with `/[locale]/requirements/reports`.
 
@@ -63,71 +57,38 @@ Requirements specification reports use a separate prefix
 `/[locale]/specifications/[slug]/reports`:
 
 - **Procurement requirements appendix**:
-  `.../print/procurement` | `.../pdf/procurement`
+  `.../pdf/procurement`
 - **Progress report**:
-  `.../print/progress` | `.../pdf/progress`
+  `.../pdf/progress`
 - **Management report**:
-  `.../print/management` | `.../pdf/management`
+  `.../pdf/management`
 - **Requirement application traceability**:
-  `.../print/traceability?refs=lib:31,local:41` |
   `.../pdf/traceability?refs=lib:31,local:41`
 
-Detail view uses `window.open` with the locale prefix, for example
-`/${locale}/requirements/reports/...`. The list view floating pill uses
-`next-intl` `Link` without a locale prefix, for example
-`/requirements/reports/...`.
+The detail view must keep traceability PDF menu actions hidden when the
+filtered requirement application list exceeds that cap.
 
-The browser print traceability route fetches its row data from
-`/api/requirements-specifications/{idOrSlug}/traceability-items?refs=...`.
-That API accepts `lib:{id}` and `local:{id}` item refs, applies the shared
-array input cap, and rejects refs that are invalid or not part of the requested
-requirements specification.
-The detail view must keep the traceability print and PDF menu actions hidden
-when the filtered requirement application list exceeds that cap.
-
-## Engines
-
-### Browser Print
-
-Browser print opens a dedicated route in a new tab, renders the report as
-HTML/CSS, and triggers `window.print()`. The user saves as PDF via the browser's
-print dialog. It uses `@media print` CSS for page margins, page breaks, and
-hiding screen-only elements.
-
-Print report routes are wrapped in a layout that forces light mode rendering
-regardless of the app's dark mode setting. The app navigation and footer are
-hidden on report pages, both on screen and in print. Styles are in
-`components/reports/print/print-styles.css`, which is imported by the reports
-layout.
-
-### Server PDF
+## PDF Rendering
 
 Server PDF uses `@react-pdf/renderer` only from Node route handlers to render
-the shared report model to binary PDF. The browser never imports React-PDF,
-which keeps production CSP compatible with strict `script-src` values and
-avoids `unsafe-eval`/WebAssembly eval exceptions.
+the shared report model to binary PDF. It is the path for report delivery,
+sharing, and archival output. The browser never imports React-PDF, which keeps
+production CSP compatible with strict `script-src` values and avoids
+`unsafe-eval`/WebAssembly eval exceptions.
 
-The client download helper fetches the route as a blob, shows a temporary
-"Generating PDF..." modal after two seconds, and closes it as soon as the blob
-download is triggered.
+The client helper fetches the route as a blob, shows a temporary
+"Generating PDF..." modal after two seconds, and closes it as soon as the PDF
+file handoff is triggered. User-facing report menu labels use only the report
+name for PDF actions, without a download verb or `(PDF)` suffix.
 
 ## Adding a Report Type
 
 1. Create a template in `lib/reports/templates/` that returns a `ReportModel`.
-2. Add route pages/handlers under both `app/.../reports/print/` and
-   `app/.../reports/pdf/`.
+2. Add a route handler under `app/.../reports/pdf/`.
 3. In server PDF handlers, authorize the report scope before collecting data.
-4. Add menu items in the detail view or list view to open the report.
+4. Add menu items in the detail view or list view to open the report. PDF menu
+   item labels must be the report name only.
 5. Add translations to both `messages/en.json` and `messages/sv.json`.
 6. Update [reports.md](../reference/reports.md) when the change affects report
    types, field profiles, CSV/export contracts, authorization, filenames, or
    output behavior.
-
-## Adding or Removing an Engine
-
-To add an engine, create `components/reports/{engine}/` with a renderer that
-consumes `ReportModel`, then add route pages under
-`app/.../reports/{engine}/`.
-
-To remove an engine, delete `components/reports/{engine}/` and
-`app/.../reports/{engine}/` routes, then remove the corresponding menu items.

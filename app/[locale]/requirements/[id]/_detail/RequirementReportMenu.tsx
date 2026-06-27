@@ -47,11 +47,6 @@ export default function RequirementReportMenu(
     return null
   }
 
-  const openReport = (url: string) => {
-    reportMenu.closeMenu({ restoreFocus: true })
-    window.open(url, '_blank')
-  }
-
   const downloadPdf = (url: string, fallbackFilename: string) => {
     reportMenu.closeMenu({ restoreFocus: true })
     void pdfDownload.download({ fallbackFilename, url })
@@ -61,13 +56,13 @@ export default function RequirementReportMenu(
     variant === 'standalone'
       ? devMarker({
           context: detailContext,
-          name: 'report print button',
+          name: 'report button',
           priority: 290,
           value: 'reports',
         })
       : devMarker({
           context: detailContext,
-          name: 'report print button',
+          name: 'report button',
           priority: 290,
           value: 'specification reports',
         })
@@ -83,11 +78,11 @@ export default function RequirementReportMenu(
         id={reportMenu.triggerId}
         onClick={() => setShowReportMenu(prev => !prev)}
         ref={reportMenu.triggerRef}
-        title={tc('print')}
+        title={tc('reports')}
         type="button"
       >
         <Printer aria-hidden="true" className="h-4 w-4" />
-        {tc('print')}
+        {tc('reports')}
       </button>
       {showReportMenu && (
         <div
@@ -100,47 +95,26 @@ export default function RequirementReportMenu(
         >
           {variant === 'specification' ? (
             props.deviationStep === 'review_requested' ? (
-              <>
-                <button
-                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                  {...devMarker({
-                    context: detailContext,
-                    name: 'report option',
-                    priority: 295,
-                    value: 'print deviation review',
-                  })}
-                  onClick={() =>
-                    openReport(
-                      `/${locale}/requirements/reports/print/deviation-review/${requirementId}?spec=${props.specificationSlug}&item=${props.specificationItemId}`,
-                    )
-                  }
-                  role="menuitem"
-                  type="button"
-                >
-                  <Printer aria-hidden="true" className="h-4 w-4" />
-                  {td('printDeviationReviewReport')}
-                </button>
-                <button
-                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                  {...devMarker({
-                    context: detailContext,
-                    name: 'report option',
-                    priority: 296,
-                    value: 'download deviation review pdf',
-                  })}
-                  onClick={() =>
-                    downloadPdf(
-                      `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?spec=${props.specificationSlug}&item=${props.specificationItemId}`,
-                      `deviation-review-report-${requirementId}.pdf`,
-                    )
-                  }
-                  role="menuitem"
-                  type="button"
-                >
-                  <Printer aria-hidden="true" className="h-4 w-4" />
-                  {td('downloadDeviationReviewReportPdf')}
-                </button>
-              </>
+              <button
+                className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                {...devMarker({
+                  context: detailContext,
+                  name: 'report option',
+                  priority: 296,
+                  value: 'deviation review report',
+                })}
+                onClick={() =>
+                  downloadPdf(
+                    `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?spec=${props.specificationSlug}&item=${props.specificationItemId}`,
+                    `deviation-review-report-${requirementId}.pdf`,
+                  )
+                }
+                role="menuitem"
+                type="button"
+              >
+                <Printer aria-hidden="true" className="h-4 w-4" />
+                {td('downloadDeviationReviewReportPdf')}
+              </button>
             ) : (
               <>
                 <button
@@ -148,27 +122,8 @@ export default function RequirementReportMenu(
                   {...devMarker({
                     context: detailContext,
                     name: 'report option',
-                    priority: 295,
-                    value: 'print history',
-                  })}
-                  onClick={() =>
-                    openReport(
-                      `/${locale}/requirements/reports/print/history/${requirementId}`,
-                    )
-                  }
-                  role="menuitem"
-                  type="button"
-                >
-                  <Printer aria-hidden="true" className="h-4 w-4" />
-                  {t('printHistoryReport')}
-                </button>
-                <button
-                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                  {...devMarker({
-                    context: detailContext,
-                    name: 'report option',
                     priority: 296,
-                    value: 'download history pdf',
+                    value: 'history report',
                   })}
                   onClick={() =>
                     downloadPdf(
@@ -188,27 +143,8 @@ export default function RequirementReportMenu(
                   {...devMarker({
                     context: detailContext,
                     name: 'report option',
-                    priority: 299,
-                    value: 'print suggestion history',
-                  })}
-                  onClick={() =>
-                    openReport(
-                      `/${locale}/requirements/reports/print/suggestion-history/${requirementId}`,
-                    )
-                  }
-                  role="menuitem"
-                  type="button"
-                >
-                  <Printer aria-hidden="true" className="h-4 w-4" />
-                  {t('printSuggestionHistoryReport')}
-                </button>
-                <button
-                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                  {...devMarker({
-                    context: detailContext,
-                    name: 'report option',
                     priority: 300,
-                    value: 'download suggestion history pdf',
+                    value: 'suggestion history report',
                   })}
                   onClick={() =>
                     downloadPdf(
@@ -231,27 +167,8 @@ export default function RequirementReportMenu(
                 {...devMarker({
                   context: detailContext,
                   name: 'report option',
-                  priority: 295,
-                  value: 'print history',
-                })}
-                onClick={() =>
-                  openReport(
-                    `/${locale}/requirements/reports/print/history/${requirementId}`,
-                  )
-                }
-                role="menuitem"
-                type="button"
-              >
-                <Printer aria-hidden="true" className="h-4 w-4" />
-                {t('printHistoryReport')}
-              </button>
-              <button
-                className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                {...devMarker({
-                  context: detailContext,
-                  name: 'report option',
                   priority: 296,
-                  value: 'download history pdf',
+                  value: 'history report',
                 })}
                 onClick={() =>
                   downloadPdf(
@@ -271,27 +188,8 @@ export default function RequirementReportMenu(
                 {...devMarker({
                   context: detailContext,
                   name: 'report option',
-                  priority: 299,
-                  value: 'print suggestion history',
-                })}
-                onClick={() =>
-                  openReport(
-                    `/${locale}/requirements/reports/print/suggestion-history/${requirementId}`,
-                  )
-                }
-                role="menuitem"
-                type="button"
-              >
-                <Printer aria-hidden="true" className="h-4 w-4" />
-                {t('printSuggestionHistoryReport')}
-              </button>
-              <button
-                className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                {...devMarker({
-                  context: detailContext,
-                  name: 'report option',
                   priority: 300,
-                  value: 'download suggestion history pdf',
+                  value: 'suggestion history report',
                 })}
                 onClick={() =>
                   downloadPdf(
@@ -313,27 +211,8 @@ export default function RequirementReportMenu(
                     {...devMarker({
                       context: detailContext,
                       name: 'report option',
-                      priority: 297,
-                      value: 'print review',
-                    })}
-                    onClick={() =>
-                      openReport(
-                        `/${locale}/requirements/reports/print/review/${requirementId}`,
-                      )
-                    }
-                    role="menuitem"
-                    type="button"
-                  >
-                    <Printer aria-hidden="true" className="h-4 w-4" />
-                    {t('printReviewReport')}
-                  </button>
-                  <button
-                    className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                    {...devMarker({
-                      context: detailContext,
-                      name: 'report option',
                       priority: 298,
-                      value: 'download review pdf',
+                      value: 'review report',
                     })}
                     onClick={() =>
                       downloadPdf(

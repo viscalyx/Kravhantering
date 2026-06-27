@@ -132,11 +132,13 @@ export interface RequirementsTableProps {
 export type FloatingActionPillVariant = 'default' | 'primary'
 
 interface FloatingActionMenuItemBase {
+  badge?: string | number
   description?: string
   disabled?: boolean
   icon?: ReactNode
   id: string
   label: string
+  tooltip?: string
 }
 
 export type FloatingActionMenuItem =
@@ -170,9 +172,17 @@ function FloatingActionMenuItemContent({
           {item.icon}
         </span>
       ) : null}
-      <div className="min-w-0">
-        <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 text-sm font-medium text-secondary-900 dark:text-secondary-100">
           {item.label}
+          {item.badge != null ? (
+            <span
+              className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[11px] font-bold text-white"
+              data-floating-action-menu-item-badge="true"
+            >
+              {item.badge}
+            </span>
+          ) : null}
         </div>
         {item.description ? (
           <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
@@ -425,6 +435,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               className={
                                 floatingActionMenuItemDisabledClassName
                               }
+                              title={item.tooltip}
                             >
                               <FloatingActionMenuItemContent item={item} />
                             </span>
@@ -433,23 +444,27 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               className={floatingActionMenuItemEnabledClassName}
                               href={item.href}
                               onClick={() => setOpen(false)}
+                              title={item.tooltip}
                             >
                               <FloatingActionMenuItemContent item={item} />
                             </Link>
                           )
+                        ) : item.disabled ? (
+                          <span
+                            aria-disabled="true"
+                            className={floatingActionMenuItemDisabledClassName}
+                            title={item.tooltip}
+                          >
+                            <FloatingActionMenuItemContent item={item} />
+                          </span>
                         ) : (
                           <button
-                            className={`${floatingActionMenuItemBaseClassName} ${
-                              item.disabled
-                                ? 'cursor-not-allowed opacity-50'
-                                : 'hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70'
-                            }`}
-                            disabled={item.disabled}
+                            className={`${floatingActionMenuItemBaseClassName} hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70`}
                             onClick={() => {
-                              if (item.disabled) return
                               item.onClick()
                               setOpen(false)
                             }}
+                            title={item.tooltip}
                             type="button"
                           >
                             <FloatingActionMenuItemContent item={item} />

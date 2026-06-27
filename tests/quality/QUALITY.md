@@ -988,9 +988,7 @@ implementation ranges:
 ```text
 app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:1395-1479
 app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:2426-2508
-app/[locale]/specifications/[slug]/reports/print/[profile]/page.tsx:20-94
 app/[locale]/specifications/[slug]/reports/pdf/[profile]/route.ts:22-78
-app/[locale]/specifications/[slug]/reports/print/traceability/page.tsx:1-130
 app/[locale]/specifications/[slug]/reports/pdf/traceability/route.ts:1-85
 app/api/requirements-specifications/[id]/report-output/route.ts:35-120
 app/api/requirements-specifications/[id]/traceability-items/route.ts:1-120

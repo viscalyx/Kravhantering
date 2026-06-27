@@ -19,6 +19,10 @@ import type {
 } from '@/lib/requirements/types'
 
 const routerPush = vi.fn()
+const pdfDownloadState = vi.hoisted(() => ({
+  clearError: vi.fn(),
+  download: vi.fn(),
+}))
 let resizeObserverCallback: ResizeObserverCallback | null = null
 let mutationObserverCallback: MutationCallback | null = null
 
@@ -45,6 +49,7 @@ vi.mock('next-intl', () => ({
       'common.no': 'No',
       'common.noResults': 'No results',
       'common.reactivate': 'Restore',
+      'common.reports': 'Reports',
       'common.restoreVersion': 'Restore version',
       'common.copied': 'Copied',
       'common.share': 'Share',
@@ -80,6 +85,10 @@ vi.mock('next-intl', () => ({
         `Published version v${values?.version} is available`,
       'requirement.noPublishedVersion':
         'There is no published version of this requirement.',
+      'requirement.downloadHistoryReportPdf': 'History Report',
+      'requirement.downloadReviewReportPdf': 'Review Report',
+      'requirement.downloadSuggestionHistoryReportPdf':
+        'Improvement Suggestion History',
       'requirement.readOnlyNotice':
         'You can read this requirement, but you cannot change it.',
       'requirement.specificationCount': 'Used in specification',
@@ -108,6 +117,7 @@ vi.mock('next-intl', () => ({
         'Det finns inga förbättringsförslag att visa.',
       'improvementSuggestion.title': 'Förbättringsförslag',
       'specification.needsReference': 'Needs reference',
+      'deviation.downloadDeviationReviewReportPdf': 'Deviation Review Report',
     }
 
     return (key: string, values?: Record<string, number | string>) => {
@@ -116,6 +126,16 @@ vi.mock('next-intl', () => ({
       return entry ?? `${namespace}.${key}`
     }
   },
+}))
+
+vi.mock('@/components/reports/pdf/useServerPdfDownload', () => ({
+  useServerPdfDownload: () => ({
+    clearError: pdfDownloadState.clearError,
+    dialog: null,
+    download: pdfDownloadState.download,
+    downloading: false,
+    error: null,
+  }),
 }))
 
 vi.mock('@/i18n/routing', () => ({
@@ -634,6 +654,9 @@ function renderSubject(
 describe('RequirementDetailClient', () => {
   beforeEach(() => {
     routerPush.mockReset()
+    pdfDownloadState.clearError.mockReset()
+    pdfDownloadState.download.mockReset()
+    pdfDownloadState.download.mockResolvedValue(undefined)
     resizeObserverCallback = null
     mutationObserverCallback = null
 
@@ -1954,8 +1977,7 @@ describe('RequirementDetailClient', () => {
     )
   })
 
-  it('opens standalone report URLs with the locale prefix', async () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+  it('generates standalone report PDFs with the locale prefix', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Reportable requirement',
@@ -1971,21 +1993,20 @@ describe('RequirementDetailClient', () => {
     renderSubject()
 
     await screen.findByText('Reportable requirement')
-    await userEvent.click(screen.getByRole('button', { name: 'common.print' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Reports' }))
     await userEvent.click(
       screen.getByRole('menuitem', {
-        name: 'requirement.printHistoryReport',
+        name: 'History Report',
       }),
     )
 
-    expect(openSpy).toHaveBeenCalledWith(
-      '/sv/requirements/reports/print/history/123',
-      '_blank',
-    )
+    expect(pdfDownloadState.download).toHaveBeenCalledWith({
+      fallbackFilename: 'history-report-123.pdf',
+      url: '/sv/requirements/reports/pdf/history/123',
+    })
   })
 
-  it('opens specification-context deviation review report URLs', async () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+  it('generates specification-context deviation review report PDFs', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Published specification requirement',
@@ -2020,17 +2041,17 @@ describe('RequirementDetailClient', () => {
     })
 
     await screen.findByText('Deviation under review')
-    await userEvent.click(screen.getByRole('button', { name: 'common.print' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Reports' }))
     await userEvent.click(
       screen.getByRole('menuitem', {
-        name: 'deviation.printDeviationReviewReport',
+        name: 'Deviation Review Report',
       }),
     )
 
-    expect(openSpy).toHaveBeenCalledWith(
-      '/sv/requirements/reports/print/deviation-review/123?spec=ETJANST-UPP-2026&item=31',
-      '_blank',
-    )
+    expect(pdfDownloadState.download).toHaveBeenCalledWith({
+      fallbackFilename: 'deviation-review-report-123.pdf',
+      url: '/sv/requirements/reports/pdf/deviation-review/123?spec=ETJANST-UPP-2026&item=31',
+    })
   })
 
   it('shows a neutral empty suggestions message for draft versions reached by unique id', async () => {

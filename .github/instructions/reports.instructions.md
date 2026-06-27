@@ -6,9 +6,10 @@ applyTo: "{lib/reports/**/*,components/reports/**/*,app/[locale]/requirements/re
 
 ## Architecture
 
-- Shared template + dual renderer pattern.
+- Server-generated PDF is the report delivery mechanism.
+- Shared template + server PDF renderer pattern.
 - `lib/reports/` is engine-agnostic: no imports from `components/reports/` or `@react-pdf/renderer`.
-- Each engine is independently removable.
+- React-PDF stays server-only to preserve strict CSP compatibility.
 
 ## Changing Report Layout
 
@@ -17,27 +18,20 @@ applyTo: "{lib/reports/**/*,components/reports/**/*,app/[locale]/requirements/re
 
 ## Changing Report Styling
 
-- Edit `components/reports/print/` for browser print visuals
 - Edit `components/reports/pdf/` for react-pdf visuals
 
 ## Adding a Section Type
 
 1. Add variant to `ReportSection` union in `lib/reports/types.ts`
-2. Add rendering in `components/reports/print/PrintReportRenderer.tsx`
-3. Add rendering in `components/reports/pdf/PdfReportRenderer.tsx`
+2. Add rendering in `components/reports/pdf/PdfReportRenderer.tsx`
 
 ## Adding a Report Type
 
 1. Add template in `lib/reports/templates/`
-2. Add route pages under `app/.../reports/print/` and `app/.../reports/pdf/`
+2. Add route handler under `app/.../reports/pdf/`
 3. Add menu items in detail view or list view
 4. Add translations to both locale files
-
-## Adding an Engine
-
-1. Create `components/reports/{engine}/` with renderer consuming `ReportModel`
-2. Add route folder under `app/.../reports/{engine}/`
-3. Add menu items referencing the new engine routes
+5. Label PDF report menu items with only the report name.
 
 ## Removing an Engine
 
@@ -47,9 +41,7 @@ applyTo: "{lib/reports/**/*,components/reports/**/*,app/[locale]/requirements/re
 
 ## Report Page Rendering
 
-- Report routes force light mode via `force-light-mode` class in the reports layout
-- Navigation and footer are hidden on report pages (both screen and print)
-- Styles are in `components/reports/print/print-styles.css`, imported by the reports layout
+- Report route handlers return binary PDF responses.
 
 ## Archiving vs Publishing Reviews
 
@@ -59,9 +51,8 @@ applyTo: "{lib/reports/**/*,components/reports/**/*,app/[locale]/requirements/re
 
 ## Report URLs
 
-- Detail view uses `window.open` with locale prefix (`/${locale}/requirements/reports/...`)
-- List view floating pill uses `next-intl` `Link` without locale prefix (`/requirements/reports/...`)
-- Do not mix these patterns — `Link` auto-prefixes, `window.open` does not
+- Detail view PDF actions use locale-prefixed URLs (`/${locale}/requirements/reports/pdf/...`)
+- List view PDF actions use locale-prefixed or current-locale-safe PDF route URLs.
 
 ## After Changes
 

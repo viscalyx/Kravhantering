@@ -17,8 +17,8 @@ const routeState = vi.hoisted(() => ({
   buildReviewReport: vi.fn(),
   buildSpecificationProfileReport: vi.fn(),
   collectDeviationForReport: vi.fn(),
+  collectMultipleRequirementListItemsForReport: vi.fn(),
   collectMultipleRequirementsForReport: vi.fn(),
-  collectMultiplePublishedRequirementsForReport: vi.fn(),
   collectRequirementForReport: vi.fn(),
   collectSpecificationOutputData: vi.fn(),
   collectSuggestionsForReport: vi.fn(),
@@ -56,10 +56,10 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/reports/data/server', () => ({
   ReportDataError: routeState.ReportDataError,
   collectDeviationForReport: routeState.collectDeviationForReport,
+  collectMultipleRequirementListItemsForReport:
+    routeState.collectMultipleRequirementListItemsForReport,
   collectMultipleRequirementsForReport:
     routeState.collectMultipleRequirementsForReport,
-  collectMultiplePublishedRequirementsForReport:
-    routeState.collectMultiplePublishedRequirementsForReport,
   collectRequirementForReport: routeState.collectRequirementForReport,
   collectSuggestionsForReport: routeState.collectSuggestionsForReport,
   parseLibrarySpecificationItemId: routeState.parseLibrarySpecificationItemId,
@@ -151,7 +151,7 @@ describe('requirement PDF routes', () => {
       requirement('REQ-1'),
       requirement('REQ-2'),
     ])
-    routeState.collectMultiplePublishedRequirementsForReport.mockResolvedValue([
+    routeState.collectMultipleRequirementListItemsForReport.mockResolvedValue([
       requirement('REQ-1'),
       requirement('REQ-2'),
     ])
@@ -268,7 +268,7 @@ describe('requirement PDF routes', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Type')).toBe('application/pdf')
     expect(
-      routeState.collectMultiplePublishedRequirementsForReport,
+      routeState.collectMultipleRequirementListItemsForReport,
     ).toHaveBeenCalledWith({ db: true }, ['1', 'REQ-2'])
     expect(routeState.authorization.assertAuthorized).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'get_requirement', view: 'detail' }),
@@ -300,7 +300,7 @@ describe('requirement PDF routes', () => {
 
     expect(response.status).toBe(200)
     expect(
-      routeState.collectMultiplePublishedRequirementsForReport,
+      routeState.collectMultipleRequirementListItemsForReport,
     ).toHaveBeenCalledWith({ db: true }, ids)
   })
 
@@ -401,12 +401,12 @@ describe('requirement PDF routes', () => {
     expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
       expect.anything(),
       'sv',
-      'Granskningsrapport avsteg REQ-1.pdf',
+      'Avstegsgranskningsrapport REQ-1.pdf',
     )
     expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
       expect.anything(),
       'sv',
-      'Ändringsförslagshistorik REQ-1.pdf',
+      'Förbättringsförslagshistorik REQ-1.pdf',
     )
     expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
       { kind: 'specification-profile' },
@@ -432,7 +432,7 @@ describe('requirement PDF routes', () => {
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
     expect(
-      routeState.collectMultiplePublishedRequirementsForReport,
+      routeState.collectMultipleRequirementListItemsForReport,
     ).not.toHaveBeenCalled()
   })
 

@@ -1757,6 +1757,91 @@ describe('RequirementsTable', () => {
     })
   })
 
+  it('renders floating action menu item badges next to the item label', async () => {
+    render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'reports',
+            icon: <span aria-hidden="true">P</span>,
+            id: 'reports',
+            menuItems: [
+              {
+                badge: 2,
+                id: 'combined-review',
+                label: 'Kombinerad granskningsrapport',
+                onClick: vi.fn(),
+              },
+            ],
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'reports' }))
+
+    const reportItem = await screen.findByRole('button', {
+      name: /Kombinerad granskningsrapport/,
+    })
+    const badge = reportItem.querySelector(
+      '[data-floating-action-menu-item-badge="true"]',
+    )
+
+    expect(badge).toHaveTextContent('2')
+  })
+
+  it('attaches floating action menu item tooltips to disabled action rows', async () => {
+    const tooltip =
+      'Alla valda krav måste ha status Granskning för att generera rapporten'
+
+    render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'reports',
+            icon: <span aria-hidden="true">P</span>,
+            id: 'reports',
+            menuItems: [
+              {
+                badge: 3,
+                description: tooltip,
+                disabled: true,
+                id: 'combined-review',
+                label: 'Kombinerad granskningsrapport',
+                onClick: vi.fn(),
+                tooltip,
+              },
+            ],
+            tooltip: 'Rapporter',
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'reports' })
+
+    fireEvent.click(trigger)
+
+    const reportLabel = await screen.findByText('Kombinerad granskningsrapport')
+    const disabledItem = reportLabel.closest(
+      '[aria-disabled="true"]',
+    ) as HTMLElement | null
+
+    expect(trigger).toHaveAttribute('title', 'Rapporter')
+    expect(disabledItem).toBeTruthy()
+    expect(disabledItem).toHaveAttribute('title', tooltip)
+    expect(screen.getByText(tooltip)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: /Kombinerad granskningsrapport/,
+      }),
+    ).not.toBeInTheDocument()
+  })
+
   it('renders disabled floating menu links as inert items', async () => {
     render(
       <RequirementsTable

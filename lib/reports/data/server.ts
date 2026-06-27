@@ -21,7 +21,10 @@ import {
   getReportLabels,
   localizeReportValue,
 } from '@/lib/reports/report-labels'
-import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
+import {
+  STATUS_ARCHIVED,
+  STATUS_PUBLISHED,
+} from '@/lib/requirements/status-constants.mjs'
 
 export class ReportDataError extends Error {
   status: number
@@ -82,31 +85,36 @@ export async function collectRequirementForReport(
   }
 }
 
-function publishedRequirementForReport(
+function listRequirementForReport(
   data: RequirementReportData,
   id: string | number,
 ): RequirementReportData {
-  const publishedVersion = [...data.versions]
-    .sort((left, right) => right.versionNumber - left.versionNumber)
-    .find(version => version.status === STATUS_PUBLISHED)
-  if (!publishedVersion) {
-    throw new ReportDataError(`Published requirement not found: ${id}`, 404)
+  const versions = [...data.versions].sort(
+    (left, right) => right.versionNumber - left.versionNumber,
+  )
+  const publishedVersion = versions.find(
+    version => version.status === STATUS_PUBLISHED,
+  )
+  const archivedVersion = data.isArchived
+    ? versions.find(version => version.status === STATUS_ARCHIVED)
+    : undefined
+  const displayVersion = publishedVersion ?? archivedVersion ?? versions[0]
+
+  if (!displayVersion) {
+    throw new ReportDataError(`Requirement version not found: ${id}`, 404)
   }
 
   return {
     ...data,
-    versions: [publishedVersion],
+    versions: [displayVersion],
   }
 }
 
-export async function collectPublishedRequirementForReport(
+export async function collectRequirementListItemForReport(
   db: SqlServerDatabase,
   id: string | number,
 ): Promise<RequirementReportData> {
-  return publishedRequirementForReport(
-    await collectRequirementForReport(db, id),
-    id,
-  )
+  return listRequirementForReport(await collectRequirementForReport(db, id), id)
 }
 
 export async function collectMultipleRequirementsForReport(
@@ -118,12 +126,12 @@ export async function collectMultipleRequirementsForReport(
   )
 }
 
-export async function collectMultiplePublishedRequirementsForReport(
+export async function collectMultipleRequirementListItemsForReport(
   db: SqlServerDatabase,
   ids: (number | string)[],
 ): Promise<RequirementReportData[]> {
   return mapReportItemsWithConcurrency(ids, id =>
-    collectPublishedRequirementForReport(db, id),
+    collectRequirementListItemForReport(db, id),
   )
 }
 
