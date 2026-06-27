@@ -2773,7 +2773,10 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
     await guideStep(page, 'Rapporter från kravdetalj', async () => {
       const detailUrl = createdRequirementUniqueId
-        ? selectedRequirementUrl(createdRequirementUniqueId, STATUS_PUBLISHED_ID)
+        ? selectedRequirementUrl(
+            createdRequirementUniqueId,
+            STATUS_PUBLISHED_ID,
+          )
         : '/sv/requirements?selected=IDN0001&statuses=3'
       await guideGoto(page, detailUrl)
 
