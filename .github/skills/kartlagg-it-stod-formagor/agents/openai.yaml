@@ -2,3 +2,5 @@ interface:
   display_name: "Kartlägg IT-stödets förmågor"
   short_description: "Lista IT-stödets förmågor och funktioner"
   default_prompt: "Use $kartlagg-it-stod-formagor to analyze this codebase and create a Swedish capability and functionality inventory that can later be mapped to business processes."
+policy:
+  allow_implicit_invocation: false

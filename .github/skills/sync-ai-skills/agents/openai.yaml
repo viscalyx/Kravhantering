@@ -2,3 +2,5 @@ interface:
   display_name: "Sync AI Skills"
   short_description: "Copy .github skills to AI skill directories"
   default_prompt: "Use $sync-ai-skills to run the bundled script that copies .github/skills into ${CODEX_HOME:-$HOME/.codex}/skills and .agent/skills, then verify matching hashes in the script output."
+policy:
+  allow_implicit_invocation: false

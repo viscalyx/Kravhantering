@@ -2,3 +2,5 @@ interface:
   display_name: "Report Dead Code"
   short_description: "Audit dead code, stale docs, and compatibility seams"
   default_prompt: "Use $report-dead-code to scan this codebase for dead code, stale documentation, and compatibility-only code, then update a concise evidence-backed report."
+policy:
+  allow_implicit_invocation: false
