@@ -2,3 +2,5 @@ interface:
   display_name: "Playwright Generate Test"
   short_description: "Generate Playwright tests from described scenarios"
   default_prompt: "Use $playwright-generate-test to generate Playwright test code for a described scenario, including selectors and assertions."
+policy:
+  allow_implicit_invocation: false
