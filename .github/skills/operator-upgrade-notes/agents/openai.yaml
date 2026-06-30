@@ -2,3 +2,5 @@ interface:
   display_name: "Operator Upgrade Notes"
   short_description: "Review PR diffs for operator upgrade notes"
   default_prompt: "Use $operator-upgrade-notes to review the local branch diff against main and draft any high-level operator upgrade notes needed for the PR."
+policy:
+  allow_implicit_invocation: false
