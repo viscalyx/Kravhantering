@@ -142,7 +142,7 @@ const MANUAL_CASE_LINKS = {
   'REQ-10':
     'docs/governance/manuella-testfall.md#req-10-rapport-fran-kravlistan-fungerar',
   'SPEC-10':
-    'docs/governance/manuella-testfall.md#spec-10-generera-kravunderlagsrapport',
+    'docs/governance/manuella-testfall.md#spec-10-generera-upphandlingsrapport-och-anbuds-csv',
   'SPEC-10d':
     'docs/governance/manuella-testfall.md#spec-10d-kravunderlagsrapporter-kraver-lasbehorighet',
 } as const

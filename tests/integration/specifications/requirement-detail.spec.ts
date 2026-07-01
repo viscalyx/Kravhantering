@@ -297,7 +297,9 @@ async function clickMenuItem(page: Page, menuName: string, itemName: string) {
       ? 'reports'
       : menuName === 'Exportera'
         ? 'export'
-        : null
+        : menuName === 'Lägg till unika krav'
+          ? 'local-requirement-actions'
+          : null
   const menuButton = actionId
     ? page
         .locator(`[data-floating-action-menu-trigger="${actionId}"]:visible`)
@@ -1251,6 +1253,51 @@ test.describe('Requirements specification deterministic manual cases', () => {
       ])
   })
 
+  test('SPEC-10: generates procurement report and CSV exports for a procurement specification', async ({
+    page,
+  }) => {
+    const downloadRequests = await mockReportDownloads(page)
+
+    await gotoSpecificationDetail(page, specificationSlug)
+    await clickMenuItem(page, 'Rapporter', 'Kravbilaga för upphandling')
+    await expect
+      .poll(() =>
+        downloadRequests.some(url =>
+          url.includes(
+            '/sv/specifications/ETJANST-UPP-2026/reports/pdf/procurement',
+          ),
+        ),
+      )
+      .toBe(true)
+
+    await page.getByRole('button', { name: 'Exportera' }).click()
+    await expect(page.getByText('Anbuds-CSV', { exact: true })).toBeVisible()
+    await page.getByText('Anbuds-CSV', { exact: true }).click()
+    await expect
+      .poll(() =>
+        downloadRequests.some(
+          url =>
+            url.includes(
+              '/api/requirements-specifications/ETJANST-UPP-2026/exports',
+            ) && url.includes('profile=procurement'),
+        ),
+      )
+      .toBe(true)
+
+    await page.getByRole('button', { name: 'Exportera' }).click()
+    await page.getByText('Full CSV-export', { exact: true }).click()
+    await expect
+      .poll(() =>
+        downloadRequests.some(
+          url =>
+            url.includes(
+              '/api/requirements-specifications/ETJANST-UPP-2026/exports',
+            ) && url.includes('profile=full'),
+        ),
+      )
+      .toBe(true)
+  })
+
   test('SPEC-10b: generates progress reports for Införande and Utveckling specifications', async ({
     page,
   }) => {
@@ -1334,6 +1381,207 @@ test.describe('Requirements specification deterministic manual cases', () => {
         ),
       )
       .toBe(true)
+  })
+
+  test('SPEC-17: imports reviewed JSON as specification-local requirements', async ({
+    page,
+  }) => {
+    const importedDescription =
+      'Playwright importerat lokalt krav ska kunna granskas.'
+    const importPayload = {
+      proposedNormReferences: [
+        {
+          issuer: 'Socialstyrelsen',
+          key: 'LOCAL-NORM-1',
+          name: 'Lokal importreferens',
+          normReferenceId: 'LOCAL-NORM-1',
+          reference: '1 kap. 1 §',
+          type: 'Föreskrift',
+          uri: 'https://example.test/local-norm',
+          version: '2026',
+        },
+      ],
+      requirements: [
+        {
+          description: importedDescription,
+          proposedNormReferenceKeys: ['LOCAL-NORM-1'],
+          requirementPackageNames: ['Ignorerat kravpaket'],
+          requiresTesting: true,
+          typeId: 1,
+        },
+      ],
+      schemaVersion: 'requirement-import.v1',
+    }
+    const previewRequests: unknown[] = []
+    const executeRequests: unknown[] = []
+
+    await page.route(
+      '**/api/specification-local-requirements/import/preview',
+      async route => {
+        previewRequests.push(route.request().postDataJSON())
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            previewToken: 'spec-local-import-preview-token',
+            proposals: [
+              {
+                issuer: 'Socialstyrelsen',
+                key: 'LOCAL-NORM-1',
+                name: 'Lokal importreferens',
+                normReferenceId: 'LOCAL-NORM-1',
+                reference: '1 kap. 1 §',
+                referencedCount: 1,
+                resolvedNormReferenceDbId: 1,
+                type: 'Föreskrift',
+                uri: 'https://example.test/local-norm',
+                version: '2026',
+                warnings: [],
+              },
+            ],
+            rows: [
+              {
+                errors: [
+                  {
+                    code: 'import_verification_method_required',
+                    field: 'verificationMethod',
+                    level: 'error',
+                    message:
+                      'Verification method is required when requiresTesting is true.',
+                  },
+                ],
+                infos: [
+                  {
+                    code: 'import_requirement_packages_ignored_for_specification_local',
+                    field: 'requirementPackageNames',
+                    level: 'info',
+                    message:
+                      'Requirement packages in the import file are not used for specification-local requirements.',
+                  },
+                ],
+                labels: {
+                  category: null,
+                  priorityLevel: null,
+                  qualityCharacteristic: null,
+                  type: 'Funktionellt',
+                },
+                proposedNormReferenceKeys: ['LOCAL-NORM-1'],
+                reviewRowId: 'local-import-row-1',
+                selected: true,
+                sourceIndex: 0,
+                values: {
+                  acceptanceCriteria: null,
+                  categoryId: null,
+                  description: importedDescription,
+                  needsReferenceId: null,
+                  normReferenceIds: [1],
+                  priorityLevelId: null,
+                  qualityCharacteristicId: null,
+                  requirementPackageIds: [],
+                  requiresTesting: true,
+                  typeId: 1,
+                  verificationMethod: null,
+                },
+                warnings: [],
+              },
+            ],
+            summary: { errorCount: 1, rowCount: 1, warningCount: 0 },
+          },
+          status: 200,
+        })
+      },
+    )
+    await page.route(
+      '**/api/specification-local-requirements/import/execute',
+      async route => {
+        executeRequests.push(route.request().postDataJSON())
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            createdRows: [
+              {
+                acceptanceCriteria: null,
+                categoryName: null,
+                createdDatabaseId: 920099,
+                createdVisibleId: 'KRAV0099',
+                description: importedDescription,
+                importMode: 'specification-local',
+                needsReferenceId: 1,
+                normReferences: ['LOCAL-NORM-1 - Lokal importreferens'],
+                priorityLevelName: null,
+                qualityCharacteristicName: null,
+                requirementPackageNames: [],
+                requiresTesting: true,
+                sourceIndex: 0,
+                targetAreaId: null,
+                targetSpecificationId: 920001,
+                typeName: 'Funktionellt',
+                verificationMethod: 'Dokumentgranskning',
+              },
+            ],
+            summary: { createdCount: 1 },
+          },
+          status: 200,
+        })
+      },
+    )
+
+    await gotoSpecificationDetail(page, editSpecificationSlug)
+    await clickMenuItem(page, 'Lägg till unika krav', 'Importera unika krav')
+
+    const dialog = page.getByRole('dialog', { name: /Importera krav för/ })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByLabel('Kravområde')).toHaveCount(0)
+    await expect(
+      dialog.getByRole('button', { name: 'Förhandsgranska krav' }),
+    ).toBeDisabled()
+
+    await dialog.getByLabel('Import-JSON').fill(JSON.stringify(importPayload))
+    await dialog.getByRole('button', { name: 'Förhandsgranska krav' }).click()
+
+    await expect(page.getByLabel(/Import-JSON/)).toHaveCount(0)
+    await expect(dialog.getByRole('tab', { name: /Krav 1/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await expect(
+      dialog.getByRole('tab', { name: /Föreslagna normreferenser 1/ }),
+    ).toHaveCount(1)
+    await dialog
+      .getByRole('button', { exact: true, name: 'Expandera rad #1' })
+      .click()
+    await expect(
+      dialog.getByText('Kravpaket i importfilen används inte'),
+    ).toBeVisible()
+    await dialog.getByLabel('Behovsreferens').selectOption({ index: 1 })
+    await dialog.getByLabel('Verifieringsmetod').fill('Dokumentgranskning')
+    await expect(
+      dialog.getByRole('button', { name: 'Importera valda' }),
+    ).toBeEnabled()
+    await dialog.getByRole('button', { name: 'Importera valda' }).click()
+
+    await expect.poll(() => previewRequests.length).toBe(1)
+    expect(previewRequests[0]).toMatchObject({
+      locale: 'sv',
+      payload: importPayload,
+      specificationIdOrSlug: editSpecificationSlug,
+    })
+    await expect.poll(() => executeRequests.length).toBe(1)
+    expect(executeRequests[0]).toMatchObject({
+      locale: 'sv',
+      previewToken: 'spec-local-import-preview-token',
+      rows: [
+        expect.objectContaining({
+          description: importedDescription,
+          needsReferenceId: expect.any(Number),
+          normReferenceIds: [1],
+          reviewRowId: 'local-import-row-1',
+          sourceIndex: 0,
+          verificationMethod: 'Dokumentgranskning',
+        }),
+      ],
+      specificationIdOrSlug: editSpecificationSlug,
+    })
+    await expect(page.getByText(/Importerade rader: 1/)).toBeVisible()
   })
 
   // cSpell:ignore relocks

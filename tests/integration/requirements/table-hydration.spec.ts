@@ -57,7 +57,7 @@ for (const viewportConfig of [
   test.describe(`Requirements table hydration (${viewportConfig.name})`, () => {
     test.use({ viewport: viewportConfig.viewport })
 
-    test(`REQ-06: uses persisted columns and widths on the first visible render and after reload (${viewportConfig.name})`, async ({
+    test(`REQ-06: uses persisted columns and widths on the first visible render, after reload, and after reset (${viewportConfig.name})`, async ({
       page,
     }) => {
       await page.addInitScript(
@@ -98,6 +98,33 @@ for (const viewportConfig of [
 
       await expectInitialLoadingState(page)
       await expectHydratedTable(page)
+
+      await page.locator('[data-column-picker-trigger="true"]').click()
+      await page.getByRole('button', { name: 'Återställ standardvy' }).click()
+
+      await expect
+        .poll(async () =>
+          page
+            .locator(VISIBLE_HEADER_CELL_SELECTOR)
+            .evaluateAll(nodes =>
+              nodes.map(
+                node =>
+                  node.textContent
+                    ?.replace(/\s+/g, ' ')
+                    .replace(/\d.*$/, '')
+                    .trim() ?? '',
+              ),
+            ),
+        )
+        .toEqual([
+          '',
+          'Krav-ID',
+          'Kravtext',
+          'Kravområde',
+          'Kategori',
+          'Typ',
+          'Kravversionsstatus',
+        ])
     })
   })
 }

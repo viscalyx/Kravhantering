@@ -202,14 +202,13 @@ test('AUTHZ-01/AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or ass
   }
 })
 
-test('REQ-10/LIFE-11/SPEC-10/SPEC-10d/AUTH-10/AUTH-11: report PDFs enforce published and history boundaries', async ({
+test('REQ-10/LIFE-11/SPEC-10d/AUTH-10/AUTH-11: report PDFs enforce published and history boundaries', async ({
   browserName: _browserName,
 }, testInfo) => {
   referenceManualCases(
     testInfo,
     'REQ-10',
     'LIFE-11',
-    'SPEC-10',
     'SPEC-10d',
     'AUTH-10',
     'AUTH-11',
@@ -344,5 +343,39 @@ test.describe('AUTH-10/AUTH-11: forbidden requirement specification surface', ()
     referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
 
     await assertReadOnlyRequirementDetail(page)
+  })
+
+  test('AUTH-08/AUTH-10/AUTH-11: keeps Admincenter privileged tabs disabled for users without roles', async ({
+    page,
+  }, testInfo) => {
+    referenceManualCases(testInfo, 'AUTH-08', 'AUTH-10', 'AUTH-11')
+
+    await page.goto('/sv/admin?tab=actionAuditLog')
+
+    const columnsTab = page.getByRole('tab', { name: 'Kolumner' })
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Administrationscenter' }),
+    ).toBeVisible()
+    await expect(columnsTab).toHaveAttribute('aria-selected', 'true')
+    await expect(
+      page.getByRole('tab', { name: 'Taxonomi' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+    await expect(
+      page.getByRole('tab', { name: 'Statusar och arbetsflöden' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+
+    for (const tabName of [
+      'Identitet',
+      'AI',
+      'Dataskydd',
+      'Behörighetsöversyn',
+      'Arkivering',
+      'Åtgärdslogg',
+    ]) {
+      const tab = page.getByRole('tab', { name: tabName })
+      await expect(tab).toHaveAttribute('aria-disabled', 'true')
+      await tab.click({ force: true })
+      await expect(columnsTab).toHaveAttribute('aria-selected', 'true')
+    }
   })
 })

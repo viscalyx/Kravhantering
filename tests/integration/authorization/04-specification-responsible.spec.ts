@@ -117,6 +117,13 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
       403,
       'specification responsible action log read',
     )
+    await expectStatus(
+      await specificationResponsible.post('/api/privacy/erasure-preview', {
+        data: { target: { hsaId: HSA.areaOwner } },
+      }),
+      403,
+      'specification responsible privacy preview',
+    )
   } finally {
     await specificationResponsible.dispose()
   }

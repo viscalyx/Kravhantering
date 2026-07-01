@@ -80,6 +80,18 @@ test('AUTHZ-07/AUTH-10/AUTH-11: requirement package co-authors are exported but 
       403,
       'package co-author update',
     )
+    await expectStatus(
+      await packageCoauthor.put(
+        `/api/requirement-packages/${fixture.packageId}/co-authors`,
+        {
+          data: {
+            coAuthorHsaIds: [],
+          },
+        },
+      ),
+      403,
+      'package co-author co-author management',
+    )
 
     const exportResponse = await packageCoauthor.post(
       '/api/privacy/data-subject-export',

@@ -138,7 +138,7 @@ test.describe('Requirement selection answer drag and drop', () => {
   test.setTimeout(180_000)
   test.use({ viewport: { height: 900, width: 1280 } })
 
-  test('REQ-14: reorders collapsed requirement-selection questions by dragging the question handle', async ({
+  test('REQ-14b: reorders collapsed requirement-selection questions by dragging the question handle', async ({
     page,
   }) => {
     try {
@@ -218,7 +218,7 @@ test.describe('Requirement selection answer drag and drop', () => {
     }
   })
 
-  test('REQ-14: reorders expanded requirement-selection answers by dragging the answer handle', async ({
+  test('REQ-14b: reorders expanded requirement-selection answers by dragging the answer handle', async ({
     page,
   }) => {
     try {

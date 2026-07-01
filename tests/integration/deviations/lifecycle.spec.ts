@@ -451,6 +451,12 @@ for (const viewport of viewports) {
               deviationCase.expectedStatus,
             )
             await expect(reviewerDetailPane).toContainText(decisionMotivation)
+            await expect(
+              reviewerDetailPane.getByRole('button', { name: 'Beslutad ↗' }),
+            ).toHaveCount(0)
+            await expect(
+              reviewerDetailPane.getByRole('button', { name: '← Utkast' }),
+            ).toHaveCount(0)
           })
 
           await test.step('verify persisted API state', async () => {
@@ -470,7 +476,7 @@ for (const viewport of viewports) {
       })
     }
 
-    test('DEV-07: specification coauthors can request review but cannot decide deviations', async ({
+    test('DEV-07/AUTHZ-09: specification coauthors can request review but only reviewers can decide deviations', async ({
       browser,
     }, testInfo) => {
       const fixture = {

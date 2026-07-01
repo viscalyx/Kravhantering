@@ -10,18 +10,26 @@ test.describe('Global navigation', () => {
 
     await test.step('verify the desktop rail collapsed state', async () => {
       await expect(desktopRail).toBeVisible()
-      await expect(
-        desktopRail.getByRole('button', { name: 'Expandera navigation' }),
-      ).toBeVisible()
+      const expandButton = desktopRail.getByRole('button', {
+        name: 'Expandera navigation',
+      })
+      await expect(expandButton).toBeVisible()
+      await expect(expandButton.locator('svg')).toHaveClass(
+        /lucide-panel-left-open/,
+      )
     })
 
     await test.step('expand and collapse affordances stay aligned', async () => {
       await desktopRail
         .getByRole('button', { name: 'Expandera navigation' })
         .click()
-      await expect(
-        desktopRail.getByRole('button', { name: 'Fäll ihop navigation' }),
-      ).toBeVisible()
+      const collapseButton = desktopRail.getByRole('button', {
+        name: 'Fäll ihop navigation',
+      })
+      await expect(collapseButton).toBeVisible()
+      await expect(collapseButton.locator('svg')).toHaveClass(
+        /lucide-panel-left-close/,
+      )
       await expect(
         desktopRail.getByText('Kravbiblioteksförvaltning'),
       ).toBeVisible()
@@ -46,13 +54,19 @@ test.describe('Global navigation', () => {
 
     await test.step('verify the mobile drawer opens and closes', async () => {
       await page.setViewportSize({ height: 812, width: 375 })
-      await page.getByRole('button', { name: 'Öppna meny' }).click()
+      const openButton = page.getByRole('button', { name: 'Öppna meny' })
+      await expect(openButton.locator('svg')).toHaveClass(
+        /lucide-panel-left-open/,
+      )
+      await openButton.click()
       const drawer = page.getByRole('dialog', { name: 'Huvudmeny' })
       await expect(drawer).toBeVisible()
-      await expect(
-        drawer.getByRole('button', { name: 'Stäng meny' }),
-      ).toBeVisible()
-      await drawer.getByRole('button', { name: 'Stäng meny' }).click()
+      const closeButton = drawer.getByRole('button', { name: 'Stäng meny' })
+      await expect(closeButton).toBeVisible()
+      await expect(closeButton.locator('svg')).toHaveClass(
+        /lucide-panel-left-close/,
+      )
+      await closeButton.click()
       await expect(drawer).toBeHidden()
     })
   })

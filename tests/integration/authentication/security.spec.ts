@@ -30,7 +30,15 @@ test.describe('signed-out auth boundary', () => {
     )
   })
 
-  test('AUTH-03: API requests return 401 JSON', async ({ request }) => {
+  test('AUTH-03: protected API requests return 401 JSON while auth/me stays a safe anonymous probe', async ({
+    request,
+  }) => {
+    const meResponse = await request.get('/api/auth/me')
+    expect(meResponse.status()).toBe(200)
+    await expect(meResponse.json()).resolves.toEqual({
+      authenticated: false,
+    })
+
     const response = await request.get('/api/requirements')
 
     expect(response.status()).toBe(401)
@@ -65,6 +73,37 @@ test.describe('signed-out auth boundary', () => {
 })
 
 test.describe('signed-in auth boundary', () => {
+  test('AUTH-02: logout from Admincenter removes access before reopening protected pages', async ({
+    page,
+  }) => {
+    await page.goto('/sv/admin')
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Administrationscenter' }),
+    ).toBeVisible()
+
+    const userMenuButton = page.getByRole('button', {
+      name: /^Inloggad som /,
+    })
+    await userMenuButton.hover()
+    const userInfoDialog = page.getByRole('dialog', {
+      name: 'Kontouppgifter',
+    })
+    await expect(userInfoDialog).toBeVisible()
+    await userInfoDialog.getByRole('button', { name: 'Logga ut' }).click()
+
+    await expect
+      .poll(async () => {
+        const response = await page.request.get('/api/auth/me')
+        return response.json()
+      })
+      .toEqual({ authenticated: false })
+
+    await page.goto('/sv/requirements')
+    await expect(page).toHaveURL(
+      /\/api\/auth\/login|\/realms\/kravhantering-dev\/protocol\/openid-connect/,
+    )
+  })
+
   test('AUTH-04: auth/me returns only the safe session projection', async ({
     request,
   }) => {

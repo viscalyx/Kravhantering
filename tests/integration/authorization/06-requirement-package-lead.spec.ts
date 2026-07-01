@@ -59,6 +59,27 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
 
     await page.reload()
     await expect(page.getByText(updatedPurposeAndScope)).toBeVisible()
+    const updatedRow = page.getByRole('row', {
+      name: new RegExp(fixture.packageName),
+    })
+    await updatedRow
+      .getByRole('button', { name: 'Hantera medförfattare' })
+      .click()
+    const coAuthorsDialog = page.getByRole('dialog', {
+      name: 'Kravpaketsmedförfattare',
+    })
+    await expect(coAuthorsDialog).toBeVisible()
+    await expect(coAuthorsDialog.getByText(HSA.packageCoauthor)).toBeVisible()
+    await expect(
+      coAuthorsDialog.getByRole('textbox', {
+        name: 'Medförfattares HSA-id',
+      }),
+    ).toBeVisible()
+    await expect(
+      coAuthorsDialog.getByRole('button', { name: 'Hämta' }),
+    ).toBeVisible()
+    await coAuthorsDialog.getByRole('button', { name: 'Stäng' }).last().click()
+    await expect(coAuthorsDialog).toBeHidden()
 
     const updateResponse = await packageLead.put(
       `/api/requirement-packages/${fixture.packageId}`,

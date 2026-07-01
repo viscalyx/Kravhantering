@@ -17,7 +17,7 @@ test.describe('login flow', () => {
     }
     expect(meBefore.authenticated).toBe(false)
 
-    await page.goto('/api/auth/login')
+    await page.goto('/sv/requirements')
     await page.waitForURL(
       /\/realms\/kravhantering-dev\/protocol\/openid-connect/,
     )
@@ -35,5 +35,17 @@ test.describe('login flow', () => {
     }
     expect(meAfter.authenticated).toBe(true)
     expect(meAfter.name).toBeTruthy()
+
+    await expect(page).toHaveURL(/\/sv\/requirements(?:\?|$)/)
+    await expect(
+      page.getByRole('table', { name: 'Lista över krav' }),
+    ).toBeVisible()
+    const userMenuButton = page.getByRole('button', {
+      name: /^Inloggad som /,
+    })
+    await userMenuButton.hover()
+    await expect(
+      page.getByRole('dialog', { name: 'Kontouppgifter' }),
+    ).toContainText('Admin')
   })
 })

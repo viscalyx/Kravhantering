@@ -282,6 +282,16 @@ for (const { name, viewport } of viewportVariants) {
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(
         'Administrationscenter',
       )
+
+      await page.getByRole('tab', { name: 'Taxonomi' }).click()
+      await expect(
+        page.getByRole('tabpanel', { name: 'Taxonomi' }),
+      ).toContainText('Kravområden')
+
+      await page.getByRole('tab', { name: 'Statusar och arbetsflöden' }).click()
+      await expect(
+        page.getByRole('tabpanel', { name: 'Statusar och arbetsflöden' }),
+      ).toContainText('Kravversionsstatusar')
     })
 
     test(`ADMIN-01: persists column changes through library reloads (${name})`, async ({

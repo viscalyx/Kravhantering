@@ -139,8 +139,67 @@ test.describe('Requirements library', () => {
 
     await descriptionSortButton.click()
     await expect(descriptionHeader).toHaveAttribute('aria-sort', 'ascending')
+    const ascendingRows = await page
+      .getByRole('table', { name: 'Lista över krav' })
+      .getByRole('row')
+      .evaluateAll(rows =>
+        rows
+          .slice(1)
+          .map(row => row.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+          .filter(Boolean),
+      )
     await descriptionSortButton.click()
     await expect(descriptionHeader).toHaveAttribute('aria-sort', 'descending')
+    const descendingRows = await page
+      .getByRole('table', { name: 'Lista över krav' })
+      .getByRole('row')
+      .evaluateAll(rows =>
+        rows
+          .slice(1)
+          .map(row => row.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+          .filter(Boolean),
+      )
+
+    expect(descendingRows).not.toEqual(ascendingRows)
+  })
+
+  test('REQ-09: inline detail orders text, criteria, metadata, references, and packages', async ({
+    page,
+  }) => {
+    const detailPane = await openRequirementDetail(page, 'INT0001')
+
+    const sectionOrder = await detailPane.evaluate(root => {
+      const wantedLabels = new Set([
+        'Kravtext',
+        'Acceptanskriterier',
+        'Kravområde',
+        'Normreferenser',
+        'Kravpaket',
+      ])
+
+      return Array.from(root.querySelectorAll('h3, dt'))
+        .map(element => {
+          const text = element.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+          return text === 'Acceptanskriterium' || text === 'Acceptanskriterier'
+            ? 'Acceptanskriterier'
+            : text
+        })
+        .filter(text => wantedLabels.has(text))
+    })
+
+    expect(sectionOrder.indexOf('Kravtext')).toBeGreaterThanOrEqual(0)
+    expect(sectionOrder.indexOf('Acceptanskriterier')).toBeGreaterThan(
+      sectionOrder.indexOf('Kravtext'),
+    )
+    expect(sectionOrder.indexOf('Kravområde')).toBeGreaterThan(
+      sectionOrder.indexOf('Acceptanskriterier'),
+    )
+    expect(sectionOrder.indexOf('Normreferenser')).toBeGreaterThan(
+      sectionOrder.indexOf('Kravområde'),
+    )
+    expect(sectionOrder.indexOf('Kravpaket')).toBeGreaterThan(
+      sectionOrder.indexOf('Normreferenser'),
+    )
   })
 
   test('REQ-11: Swedish krav aliases redirect to canonical requirement detail routes', async ({

@@ -90,7 +90,7 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
 test.describe('Stewardship navigation memory', () => {
   test.use({ viewport: { height: 720, width: 1280 } })
 
-  test('REQ-14: returns directly to the remembered question tab from specifications', async ({
+  test('REQ-14b: returns directly to the remembered question tab from specifications', async ({
     page,
   }) => {
     await test.step('browse to the question stewardship tab', async () => {

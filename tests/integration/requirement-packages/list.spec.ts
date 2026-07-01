@@ -42,7 +42,7 @@ for (const viewport of viewports) {
   test.describe(`Requirement packages list filter — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
     test.use({ viewport: { height: viewport.height, width: viewport.width } })
 
-    test('REQ-14: filters the table by package name or purpose and scope and clears the search', async ({
+    test('REQ-14a: filters and inspects requirement packages with HSA-id responsibility controls', async ({
       page,
     }) => {
       const hsaVerifyRequests: Record<string, unknown>[] = []
