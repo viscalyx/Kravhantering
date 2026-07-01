@@ -13338,6 +13338,7 @@ const HSA_BY_DISPLAY_NAME = new Map([
   ['Erik Svensson', 'SE5560000001-eriks'],
   ['Johan Eriksson', 'SE5560000001-johanerik'],
   ['Kalle Svensson', 'SE5560000001-kalle1'],
+  ['PWT Privacy Target', 'SE5560000001-pwtprivacy'],
 ])
 
 const OWNER_HSA_BY_ID = new Map([
@@ -13373,12 +13374,30 @@ const SPEC_RESPONSIBLE_BY_ID = new Map([
   [910301, { displayName: 'Oscar Nilsson', hsaId: 'SE5560000001-oscarn' }],
   [910302, { displayName: 'Emma Lindqvist', hsaId: 'SE5560000001-emmal' }],
   [910400, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
+  [920001, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
+  [920002, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
+  [920003, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
+  [920004, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
+  [920005, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
+  [920006, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
+  [920007, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
 ])
 
 function seedTable(name) {
   const table = SEED_DATA[name]
   if (!table) throw new Error(`Privacy seed: missing table '${name}'`)
   return table
+}
+
+function ensureSeedTable(name, columns, pk) {
+  if (!SEED_DATA[name]) {
+    SEED_DATA[name] = {
+      columns,
+      pk,
+      rows: [],
+    }
+  }
+  return SEED_DATA[name]
 }
 
 function ensureColumn(table, columnName, valueForRow) {
@@ -13893,76 +13912,82 @@ function applyPrivacyIdentitySeed() {
       'SE5560000001-seed',
   )
 
-  SEED_DATA.requirement_area_co_authors = {
-    columns: [
+  const requirementAreaCoAuthors = ensureSeedTable(
+    'requirement_area_co_authors',
+    [
       'area_id',
       'hsa_id',
       'created_at',
       'created_by_hsa_id',
       'created_by_display_name',
     ],
-    pk: ['area_id', 'hsa_id'],
-    rows: [
-      [1, 'SE5560000001-kalle1', PRIVACY_SEED_TS, 'SE5560000001-seed', 'seed'],
-      [2, 'SE5560000001-kalle2', PRIVACY_SEED_TS, 'SE5560000001-seed', 'seed'],
-      [
-        1001,
-        'SE5560000001-linneab',
-        PRIVACY_SEED_TS,
-        'SE5560000001-linneab',
-        'Linnéa Bergström',
-      ],
-      [
-        910100,
-        'SE5560000001-areaco1',
-        PRIVACY_SEED_TS,
-        'SE5560000001-admin1',
-        'Ada Admin',
-      ],
-      [
-        910100,
-        'SE5560000001-smoke1',
-        PRIVACY_SEED_TS,
-        'SE5560000001-admin1',
-        'Ada Admin',
-      ],
+    ['area_id', 'hsa_id'],
+  )
+  for (const row of [
+    [1, 'SE5560000001-kalle1', PRIVACY_SEED_TS, 'SE5560000001-seed', 'seed'],
+    [2, 'SE5560000001-kalle2', PRIVACY_SEED_TS, 'SE5560000001-seed', 'seed'],
+    [
+      1001,
+      'SE5560000001-linneab',
+      PRIVACY_SEED_TS,
+      'SE5560000001-linneab',
+      'Linnéa Bergström',
     ],
+    [
+      910100,
+      'SE5560000001-areaco1',
+      PRIVACY_SEED_TS,
+      'SE5560000001-admin1',
+      'Ada Admin',
+    ],
+    [
+      910100,
+      'SE5560000001-smoke1',
+      PRIVACY_SEED_TS,
+      'SE5560000001-admin1',
+      'Ada Admin',
+    ],
+  ]) {
+    ensureSeedRow(requirementAreaCoAuthors, row)
   }
 
-  SEED_DATA.specification_co_authors = {
-    columns: [
+  const specificationCoAuthors = ensureSeedTable(
+    'specification_co_authors',
+    [
       'specification_id',
       'hsa_id',
       'created_at',
       'created_by_hsa_id',
       'created_by_display_name',
     ],
-    pk: ['specification_id', 'hsa_id'],
-    rows: [
-      [1, 'SE5560000001-kalle1', PRIVACY_SEED_TS, 'SE5560000001-seed', 'seed'],
-      [2, 'SE5560000001-kalle2', PRIVACY_SEED_TS, 'SE5560000001-seed', 'seed'],
-      [
-        1001,
-        'SE5560000001-saraholm',
-        PRIVACY_SEED_TS,
-        'SE5560000001-seeddogfood',
-        'seed-dogfood',
-      ],
-      [
-        6,
-        'SE5560000001-linneab',
-        PRIVACY_SEED_TS,
-        'SE5560000001-linneab',
-        'Linnéa Bergström',
-      ],
-      [
-        910400,
-        'SE5560000001-specco1',
-        PRIVACY_SEED_TS,
-        'SE5560000001-admin1',
-        'Ada Admin',
-      ],
+    ['specification_id', 'hsa_id'],
+  )
+  for (const row of [
+    [1, 'SE5560000001-kalle1', PRIVACY_SEED_TS, 'SE5560000001-seed', 'seed'],
+    [2, 'SE5560000001-kalle2', PRIVACY_SEED_TS, 'SE5560000001-seed', 'seed'],
+    [
+      1001,
+      'SE5560000001-saraholm',
+      PRIVACY_SEED_TS,
+      'SE5560000001-seeddogfood',
+      'seed-dogfood',
     ],
+    [
+      6,
+      'SE5560000001-linneab',
+      PRIVACY_SEED_TS,
+      'SE5560000001-linneab',
+      'Linnéa Bergström',
+    ],
+    [
+      910400,
+      'SE5560000001-specco1',
+      PRIVACY_SEED_TS,
+      'SE5560000001-admin1',
+      'Ada Admin',
+    ],
+  ]) {
+    ensureSeedRow(specificationCoAuthors, row)
   }
 
   SEED_DATA.access_review_runs = {

@@ -24,10 +24,10 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   fixture = await createAuthorizationFixture(testInfo)
 })
 
-test('AUTH-10/AUTH-11: requirement package co-authors are exported but cannot manage packages', async ({
+test('AUTHZ-07/AUTH-10/AUTH-11: requirement package co-authors are exported but cannot manage packages', async ({
   page,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-07', 'AUTH-10', 'AUTH-11')
   const packageCoauthor = await newRoleContext(testInfo, 'packageCoauthor')
 
   try {

@@ -2883,6 +2883,11 @@ export default function KravunderlagDetailClient({
                               fetchNeedsReferences(),
                             ])
                           }}
+                          permissions={{
+                            canEditContent,
+                            canReviewDecisions:
+                              permissions.canReviewDecisions === true,
+                          }}
                           specificationSlug={specificationSlug}
                           usageStatus={{
                             specificationItemStatusColor:
@@ -2905,6 +2910,11 @@ export default function KravunderlagDetailClient({
                           }}
                           requirementId={id}
                           specificationItemId={item.specificationItemId}
+                          specificationPermissions={{
+                            canEditContent,
+                            canReviewDecisions:
+                              permissions.canReviewDecisions === true,
+                          }}
                           specificationSlug={specificationSlug}
                         />
                       ) : (

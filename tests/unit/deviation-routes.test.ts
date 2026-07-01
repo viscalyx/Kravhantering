@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { validationError } from '@/lib/requirements/errors'
+import { forbiddenError, validationError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
+  assertAuthorized: vi.fn(),
   createDeviation: vi.fn(),
   createDeviationForItemRef: vi.fn(),
+  createDefaultAuthorizationService: vi.fn(),
   createRequestContext: vi.fn(),
   deleteDeviation: vi.fn(),
   deleteSpecificationLocalDeviation: vi.fn(),
@@ -13,6 +15,7 @@ const routeState = vi.hoisted(() => ({
   listDeviationsForSpecificationItem: vi.fn(),
   listDeviationsForSpecificationLocalRequirement: vi.fn(),
   recordDecision: vi.fn(),
+  recordDeniedActionAuditEvent: vi.fn(),
   requestReview: vi.fn(),
   requireHumanActorSnapshot: vi.fn(),
   revertToDraft: vi.fn(),
@@ -22,6 +25,10 @@ const routeState = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/audit/action-audit', () => ({
+  recordDeniedActionAuditEvent: routeState.recordDeniedActionAuditEvent,
 }))
 
 vi.mock('@/lib/dal/deviations', () => ({
@@ -47,6 +54,8 @@ vi.mock('@/lib/dal/deviations', () => ({
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({
+  createDefaultAuthorizationService:
+    routeState.createDefaultAuthorizationService,
   createRequestContext: routeState.createRequestContext,
   requireHumanActorSnapshot: routeState.requireHumanActorSnapshot,
 }))
@@ -68,6 +77,10 @@ function params<T extends Record<string, string>>(value: T) {
 describe('deviation mutation routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    routeState.assertAuthorized.mockResolvedValue(undefined)
+    routeState.createDefaultAuthorizationService.mockReturnValue({
+      assertAuthorized: routeState.assertAuthorized,
+    })
     routeState.getRequestSqlServerDataSource.mockResolvedValue(mockDb)
     routeState.createRequestContext.mockResolvedValue({
       actor: {
@@ -135,7 +148,7 @@ describe('deviation mutation routes', () => {
     ).toBeLessThan(routeState.updateDeviation.mock.invocationCallOrder[0])
   })
 
-  it('rejects deviation updates before loading the database when no human actor is present', async () => {
+  it('rejects deviation updates before DAL writes when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
         'Authenticated actor with a verified HSA-id is required for this write',
@@ -154,7 +167,44 @@ describe('deviation mutation routes', () => {
     expect(response.status).toBe(400)
     expect(routeState.updateDeviation).not.toHaveBeenCalled()
     expect(routeState.updateSpecificationLocalDeviation).not.toHaveBeenCalled()
-    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects deviation decisions for non-reviewers before DAL writes', async () => {
+    routeState.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Reviewer role is required for this decision', {
+        reason: 'reviewer_required',
+        requiredRoles: ['Reviewer'],
+      }),
+    )
+    const { POST } = await import('@/app/api/deviations/[id]/decision/route')
+
+    const response = await POST(
+      new Request('https://example.test/api/deviations/7/decision', {
+        body: JSON.stringify({
+          decision: 1,
+          decisionMotivation: 'Looks good',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      }) as never,
+      params({ id: '7' }),
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'forbidden',
+      error: 'Forbidden',
+    })
+    expect(routeState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        deviationId: 7,
+        kind: 'manage_deviation',
+        operation: 'record_decision',
+      },
+      expect.any(Object),
+    )
+    expect(routeState.recordDecision).not.toHaveBeenCalled()
   })
 
   it('returns the decision route error shape when DB acquisition fails', async () => {
@@ -220,7 +270,7 @@ describe('deviation mutation routes', () => {
     }
   })
 
-  it('rejects deviation request-review before loading the database when no human actor is present', async () => {
+  it('rejects deviation request-review before DAL writes when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
         'Authenticated actor with a verified HSA-id is required for this write',
@@ -240,7 +290,7 @@ describe('deviation mutation routes', () => {
 
     expect(response.status).toBe(400)
     expect(routeState.requestReview).not.toHaveBeenCalled()
-    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
   })
 
   it('requests deviation review when a human actor is present', async () => {
@@ -261,7 +311,7 @@ describe('deviation mutation routes', () => {
     expect(routeState.requestReview).toHaveBeenCalledWith(mockDb, 7)
   })
 
-  it('rejects deviation revert-to-draft before loading the database when no human actor is present', async () => {
+  it('rejects deviation revert-to-draft before DAL writes when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
         'Authenticated actor with a verified HSA-id is required for this write',
@@ -281,7 +331,7 @@ describe('deviation mutation routes', () => {
 
     expect(response.status).toBe(400)
     expect(routeState.revertToDraft).not.toHaveBeenCalled()
-    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
   })
 
   it('reverts deviations to draft when a human actor is present', async () => {
@@ -302,7 +352,7 @@ describe('deviation mutation routes', () => {
     expect(routeState.revertToDraft).toHaveBeenCalledWith(mockDb, 7)
   })
 
-  it('rejects deviation deletes before loading the database when no human actor is present', async () => {
+  it('rejects deviation deletes before DAL writes when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
         'Authenticated actor with a verified HSA-id is required for this write',
@@ -320,7 +370,7 @@ describe('deviation mutation routes', () => {
 
     expect(response.status).toBe(400)
     expect(routeState.deleteDeviation).not.toHaveBeenCalled()
-    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
   })
 
   it('deletes deviations when a human actor is present', async () => {
@@ -388,7 +438,7 @@ describe('deviation mutation routes', () => {
     )
   })
 
-  it('rejects specification-local deviation updates before loading the database when no human actor is present', async () => {
+  it('rejects specification-local deviation updates before DAL writes when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
         'Authenticated actor with a verified HSA-id is required for this write',
@@ -409,10 +459,10 @@ describe('deviation mutation routes', () => {
     expect(response.status).toBe(400)
     expect(routeState.updateDeviation).not.toHaveBeenCalled()
     expect(routeState.updateSpecificationLocalDeviation).not.toHaveBeenCalled()
-    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
   })
 
-  it('rejects specification-local deviation deletes before loading the database when no human actor is present', async () => {
+  it('rejects specification-local deviation deletes before DAL writes when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
         'Authenticated actor with a verified HSA-id is required for this write',
@@ -432,7 +482,7 @@ describe('deviation mutation routes', () => {
 
     expect(response.status).toBe(400)
     expect(routeState.deleteSpecificationLocalDeviation).not.toHaveBeenCalled()
-    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
   })
 
   it('deletes specification-local deviations when a human actor is present', async () => {

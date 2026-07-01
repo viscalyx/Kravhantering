@@ -10,7 +10,7 @@ import { parseSpecificationItemRef } from '@/lib/dal/requirements-specifications
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
-  customMutationPolicy,
+  requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
@@ -20,8 +20,14 @@ import {
   routeSegmentSchema,
   SQL_SERVER_INT_MAX,
 } from '@/lib/http/validation'
-import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
-import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import {
+  type RequirementsAction,
+  requireHumanActorSnapshot,
+} from '@/lib/requirements/auth'
+import {
+  isRequirementsServiceError,
+  validationError,
+} from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 type Params = Promise<{ itemId: string }>
@@ -93,6 +99,28 @@ function parseItemId(itemId: string): ParsedSpecificationItemId {
   return { decodedItemId, numericItemId, ok: true, parsedItemRef }
 }
 
+function createDeviationAction(itemId: string): RequirementsAction {
+  const itemIdResult = parseItemId(itemId)
+  if (!itemIdResult.ok) {
+    throw validationError('Invalid itemId', { reason: 'invalid_item_id' })
+  }
+
+  const { numericItemId, parsedItemRef } = itemIdResult
+  if (parsedItemRef?.kind === 'specificationLocal') {
+    return {
+      kind: 'manage_specification_local_requirement',
+      localRequirementId: parsedItemRef.id,
+      operation: 'create_deviation',
+    }
+  }
+
+  return {
+    kind: 'manage_deviation',
+    operation: 'create',
+    specificationItemId: parsedItemRef?.id ?? numericItemId ?? 0,
+  }
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
@@ -131,23 +159,21 @@ export async function GET(
 
 export const POST = secureMutationRoute({
   bodySchema: createDeviationSchema,
+  errorMessage: 'Failed to create deviation',
   paramsSchema: itemDeviationParamSchema,
-  policy: customMutationPolicy(
-    'specification_item_deviation.create',
-    ({ context }) => {
-      requireHumanActorSnapshot(context)
-    },
+  policy: requirementsMutationPolicy<unknown, { itemId: string }>(
+    ({ params }) => createDeviationAction(params.itemId),
   ),
-  handler: async ({ body, context, params }) => {
+  handler: async ({ body, context, db: authorizedDb, params }) => {
     const itemIdResult = parseItemId(params.itemId)
     if (!itemIdResult.ok) {
       return itemIdResult.response
     }
     const { decodedItemId, parsedItemRef, numericItemId } = itemIdResult
     const { motivation } = body
-    const db = await getRequestSqlServerDataSource()
 
     try {
+      const db = authorizedDb ?? (await getRequestSqlServerDataSource())
       const actor = requireHumanActorSnapshot(context)
       const result =
         parsedItemRef == null

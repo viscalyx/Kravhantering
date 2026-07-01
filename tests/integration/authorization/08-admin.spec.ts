@@ -16,11 +16,19 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   await createAuthorizationFixture(testInfo)
 })
 
-test('AUTH-06/AUTH-10/AUTH-11: Admin keeps admin powers without PrivacyOfficer or Reviewer powers', async ({
+test('AUTHZ-08/AUTH-06/AUTH-10/AUTH-11/ADMIN-10: Admin keeps admin powers without PrivacyOfficer or Reviewer powers', async ({
   browserName: _browserName,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-06', 'AUTH-10', 'AUTH-11')
+  referenceManualCases(
+    testInfo,
+    'AUTHZ-08',
+    'AUTH-06',
+    'AUTH-10',
+    'AUTH-11',
+    'ADMIN-10',
+  )
   const adminOnly = await newRoleContext(testInfo, 'adminOnly')
+  const admin = await newRoleContext(testInfo, 'admin')
 
   try {
     await expectOk(
@@ -39,6 +47,28 @@ test('AUTH-06/AUTH-10/AUTH-11: Admin keeps admin powers without PrivacyOfficer o
       'admin-only privacy preview',
     )
     await expectStatus(
+      await adminOnly.post('/api/admin/archiving/preview', {
+        data: { policyId: 1 },
+      }),
+      403,
+      'admin-only retention preview',
+    )
+    const policiesResponse = await admin.get('/api/admin/archiving/policies')
+    await expectOk(policiesResponse, 'admin retention policies')
+    const policiesBody = (await policiesResponse.json()) as {
+      policies?: Array<{ id: number }>
+    }
+    const policy = policiesBody.policies?.[0]
+    expect(policy).toBeDefined()
+    if (policy) {
+      await expectOk(
+        await admin.post('/api/admin/archiving/preview', {
+          data: { policyId: policy.id },
+        }),
+        'admin retention preview',
+      )
+    }
+    await expectStatus(
       await adminOnly.post('/api/requirement-transitions/PWT0005', {
         data: { statusId: STATUS_ARCHIVED },
       }),
@@ -46,11 +76,12 @@ test('AUTH-06/AUTH-10/AUTH-11: Admin keeps admin powers without PrivacyOfficer o
       'admin-only reviewer lifecycle decision',
     )
   } finally {
+    await admin.dispose()
     await adminOnly.dispose()
   }
 })
 
-test.describe('AUTH-06/AUTH-11: Admin Center tab permissions for Admin-only users', () => {
+test.describe('AUTHZ-08/AUTH-06/AUTH-11: Admin Center tab permissions for Admin-only users', () => {
   test.use({
     storageState: ROLE_STORAGE_STATE.adminOnly,
     viewport: { height: 720, width: 1280 },
@@ -59,7 +90,7 @@ test.describe('AUTH-06/AUTH-11: Admin Center tab permissions for Admin-only user
   test('enables Admin tabs while PrivacyOfficer tabs stay disabled', async ({
     page,
   }, testInfo) => {
-    referenceManualCases(testInfo, 'AUTH-06', 'AUTH-11')
+    referenceManualCases(testInfo, 'AUTHZ-08', 'AUTH-06', 'AUTH-11')
     await page.goto('/sv/admin?tab=privacy')
 
     const columnsTab = page.getByRole('tab', { name: 'Kolumner' })

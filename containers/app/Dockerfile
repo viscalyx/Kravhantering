@@ -111,6 +111,7 @@ COPY --chown=node:node typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
 COPY --chown=node:node typeorm/seed.mjs ./typeorm/seed.mjs
 COPY --chown=node:node typeorm/seed-dogfood.mjs ./typeorm/seed-dogfood.mjs
 COPY --chown=node:node typeorm/seed-dogfood-build.mjs ./typeorm/seed-dogfood-build.mjs
+COPY --chown=node:node typeorm/seed-playwright-manual-cases-build.mjs ./typeorm/seed-playwright-manual-cases-build.mjs
 COPY --chown=node:node typeorm/seed-archiving-retention-build.mjs ./typeorm/seed-archiving-retention-build.mjs
 
 USER node

@@ -23,10 +23,10 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   fixture = await createAuthorizationFixture(testInfo)
 })
 
-test('AUTH-10/AUTH-11: specification co-authors can edit content but not delegate access', async ({
+test('AUTHZ-05/AUTH-10/AUTH-11: specification co-authors can edit content but not delegate access', async ({
   page,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-05', 'AUTH-10', 'AUTH-11')
   const specificationCoauthor = await newRoleContext(
     testInfo,
     'specificationCoauthor',

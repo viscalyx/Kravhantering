@@ -24,6 +24,7 @@ import {
   type DragEvent,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -643,6 +644,7 @@ export default function RequirementsImportDialog({
   const text = TEXT[locale]
   const importText = useTranslations('requirementsImportDialog')
   const { confirm } = useConfirmModal()
+  const titleId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [rawJson, setRawJson] = useState('')
   const [selectedAreaId, setSelectedAreaId] = useState('')
@@ -1785,6 +1787,7 @@ export default function RequirementsImportDialog({
   return createPortal(
     <>
       <div
+        aria-labelledby={titleId}
         aria-modal="true"
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
         role="dialog"
@@ -1801,7 +1804,10 @@ export default function RequirementsImportDialog({
               <p className="text-xs font-semibold uppercase text-primary-700 dark:text-primary-300">
                 JSON
               </p>
-              <h2 className="truncate text-lg font-semibold text-secondary-950 dark:text-secondary-50">
+              <h2
+                className="truncate text-lg font-semibold text-secondary-950 dark:text-secondary-50"
+                id={titleId}
+              >
                 {title}
               </h2>
             </div>

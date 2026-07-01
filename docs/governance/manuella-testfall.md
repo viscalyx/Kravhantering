@@ -1073,7 +1073,8 @@ menyn fortfarande fungerar.
 
 ### SPEC-12: svara på kravurvalsfrågor
 
-**Steg:** Öppna kravunderlagets kravurvalsfrågor, välj svar och spara urval.
+**Steg:** Öppna kravunderlagets kravurvalsfrågor och välj svar. Panelen sparar
+valet direkt när svaret markeras.
 
 **Förväntat resultat:** Laddningstexten visas utan en tillfällig svarsräknare.
 När frågorna har laddats visas svarsräknaren, till exempel `Besvarade: 0/1`.
@@ -1115,7 +1116,7 @@ rensas för den fråga vars version ändrats.
 
 ### SPEC-16: skapa och hantera RFI-frågeförslag
 
-**Steg:** Öppna kravunderlaget `INTPLATT-UPP-2026` och fliken
+**Steg:** Öppna kravunderlaget `PWT-RFI-WORKFLOW-2026` och fliken
 `RFI-frågelista`. Klicka på förslagsikonen på en RFI-fråga, kontrollera
 mottagarraden i modalen och skicka ett förslag. Klicka även på
 förslagsikonen i en kravområdesrubrik och kontrollera att modalen anger att
@@ -1127,7 +1128,7 @@ skickat förslag visas en bekräftelse och förslagsräknaren uppdateras.
 
 ### SPEC-16a: visa och ta bort RFI-frågeförslag från kravunderlaget
 
-**Steg:** I kravunderlaget `INTPLATT-UPP-2026`, öppna förslagsräknaren på en
+**Steg:** I kravunderlaget `PWT-RFI-WORKFLOW-2026`, öppna förslagsräknaren på en
 RFI-fråga och i en kravområdesrubrik. Kontrollera seedade förslag med öppet,
 i granskning och hanterat/avfärdat läge. Ta bort ett öppet förslag från
 modalen.
@@ -1235,12 +1236,20 @@ förkasta-bekräftelse.
 
 **Förväntat resultat:** Inga åtgärder för ny beslutscykel visas.
 
-### DEV-07: användare utan roll kan inte besluta avsteg
+### DEV-07: endast kravgranskare kan besluta avsteg
 
-**Steg:** Logga in som `noah.noroles`, öppna avsteg i granskning och försök
-besluta via UI och API.
+**Steg:** Logga in som kravunderlagsmedförfattare `signe.speccoauthor`, öppna
+ett kravunderlag där användaren är medförfattare och skapa ett avsteg på ett
+krav. Redigera avsteget vid behov, begär granskning och kontrollera att
+återtagning till utkast är möjlig. Försök därefter besluta samma avsteg via UI
+och API. Upprepa API-försöket som `noah.noroles`. Logga till sist in som
+`rita.reviewer`, öppna samma kravunderlag och besluta avsteget.
 
-**Förväntat resultat:** UI saknar beslutsåtgärder och API svarar 403.
+**Förväntat resultat:** Kravunderlagsmedförfattaren kan skapa, redigera,
+begära granskning och återta avsteg i sitt kravunderlag men saknar
+beslutsåtgärd och får 403 vid besluts-API. `noah.noroles` får också 403.
+`rita.reviewer` kan läsa kravunderlaget, ser beslutsåtgärden och kan godkänna
+eller avslå avsteget med beslutsmotivering.
 
 ## Admincenter
 

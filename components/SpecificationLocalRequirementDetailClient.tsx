@@ -130,6 +130,10 @@ interface SpecificationLocalRequirementDetailClientProps {
   localRequirementId: number
   needsReferences: { id: number; text: string }[]
   onChange?: () => void | Promise<void>
+  permissions?: {
+    canEditContent: boolean
+    canReviewDecisions: boolean
+  }
   specificationSlug: string
   usageStatus?: SpecificationLocalRequirementUsageStatusSnapshot
 }
@@ -453,6 +457,7 @@ export default function SpecificationLocalRequirementDetailClient({
   localRequirementId,
   needsReferences,
   onChange,
+  permissions,
   specificationSlug,
   usageStatus,
 }: SpecificationLocalRequirementDetailClientProps) {
@@ -1165,9 +1170,13 @@ export default function SpecificationLocalRequirementDetailClient({
 
   const hasPendingDeviation =
     deviationStep === 'draft' || deviationStep === 'review_requested'
+  const canEditContent = permissions?.canEditContent === true
+  const canReviewDecisions = permissions?.canReviewDecisions === true
   const canMutateLocalRequirement =
+    canEditContent &&
     requirement.specificationItemStatusId ===
-      DEFAULT_SPECIFICATION_ITEM_STATUS_ID && !hasPendingDeviation
+      DEFAULT_SPECIFICATION_ITEM_STATUS_ID &&
+    !hasPendingDeviation
   const localRequirementMutationTooltip = canMutateLocalRequirement
     ? undefined
     : tp('localRequirementActionDisabledTooltip')
@@ -1258,7 +1267,9 @@ export default function SpecificationLocalRequirementDetailClient({
                         </p>
                       ) : null}
 
-                      {deviationStep === null || deviationStep === 'decided' ? (
+                      {(deviationStep === null ||
+                        deviationStep === 'decided') &&
+                      canEditContent ? (
                         <button
                           className={railAmberButtonClass}
                           disabled={deviationSaving}
@@ -1271,7 +1282,7 @@ export default function SpecificationLocalRequirementDetailClient({
                           />
                           {td('requestDeviation')}
                         </button>
-                      ) : deviationStep === 'draft' ? (
+                      ) : deviationStep === 'draft' && canEditContent ? (
                         <>
                           <button
                             className={railAmberButtonClass}
@@ -1300,28 +1311,32 @@ export default function SpecificationLocalRequirementDetailClient({
                             {td('requestReview')}
                           </button>
                         </>
-                      ) : (
+                      ) : deviationStep === 'review_requested' ? (
                         <>
-                          <button
-                            className={railSecondaryButtonClass}
-                            disabled={deviationSaving}
-                            onClick={event => void handleRevertToDraft(event)}
-                            type="button"
-                          >
-                            {td('revertToDraft')}
-                          </button>
-                          <button
-                            className={railPrimaryButtonClass}
-                            disabled={deviationSaving}
-                            onClick={() => setShowDecisionForm(true)}
-                            type="button"
-                          >
-                            {td('recordDecision')}
-                          </button>
+                          {canEditContent ? (
+                            <button
+                              className={railSecondaryButtonClass}
+                              disabled={deviationSaving}
+                              onClick={event => void handleRevertToDraft(event)}
+                              type="button"
+                            >
+                              {td('revertToDraft')}
+                            </button>
+                          ) : null}
+                          {canReviewDecisions ? (
+                            <button
+                              className={railPrimaryButtonClass}
+                              disabled={deviationSaving}
+                              onClick={() => setShowDecisionForm(true)}
+                              type="button"
+                            >
+                              {td('recordDecision')}
+                            </button>
+                          ) : null}
                         </>
-                      )}
+                      ) : null}
 
-                      {graduationTargetAreas.length > 0 ? (
+                      {canEditContent && graduationTargetAreas.length > 0 ? (
                         <>
                           <span className="inline-flex w-full">
                             <button
@@ -1358,46 +1373,54 @@ export default function SpecificationLocalRequirementDetailClient({
                         </>
                       ) : null}
 
-                      <span
-                        className="inline-flex w-full"
-                        title={localRequirementMutationTooltip}
-                      >
-                        <button
-                          className={railSecondaryButtonClass}
-                          disabled={!canMutateLocalRequirement || isDeleting}
-                          {...devMarker({
-                            context: detailContext,
-                            name: 'detail action',
-                            priority: 290,
-                            value: 'edit local requirement',
-                          })}
-                          onClick={() => setShowEditForm(true)}
-                          type="button"
-                        >
-                          <Pencil aria-hidden="true" className="h-4 w-4" />
-                          {tc('edit')}
-                        </button>
-                      </span>
-                      <span
-                        className="inline-flex w-full"
-                        title={localRequirementMutationTooltip}
-                      >
-                        <button
-                          className={railDangerButtonClass}
-                          disabled={!canMutateLocalRequirement || isDeleting}
-                          {...devMarker({
-                            context: detailContext,
-                            name: 'detail action',
-                            priority: 291,
-                            value: 'delete local requirement',
-                          })}
-                          onClick={event => void handleDelete(event)}
-                          type="button"
-                        >
-                          <Trash2 aria-hidden="true" className="h-4 w-4" />
-                          {tc('delete')}
-                        </button>
-                      </span>
+                      {canEditContent ? (
+                        <>
+                          <span
+                            className="inline-flex w-full"
+                            title={localRequirementMutationTooltip}
+                          >
+                            <button
+                              className={railSecondaryButtonClass}
+                              disabled={
+                                !canMutateLocalRequirement || isDeleting
+                              }
+                              {...devMarker({
+                                context: detailContext,
+                                name: 'detail action',
+                                priority: 290,
+                                value: 'edit local requirement',
+                              })}
+                              onClick={() => setShowEditForm(true)}
+                              type="button"
+                            >
+                              <Pencil aria-hidden="true" className="h-4 w-4" />
+                              {tc('edit')}
+                            </button>
+                          </span>
+                          <span
+                            className="inline-flex w-full"
+                            title={localRequirementMutationTooltip}
+                          >
+                            <button
+                              className={railDangerButtonClass}
+                              disabled={
+                                !canMutateLocalRequirement || isDeleting
+                              }
+                              {...devMarker({
+                                context: detailContext,
+                                name: 'detail action',
+                                priority: 291,
+                                value: 'delete local requirement',
+                              })}
+                              onClick={event => void handleDelete(event)}
+                              type="button"
+                            >
+                              <Trash2 aria-hidden="true" className="h-4 w-4" />
+                              {tc('delete')}
+                            </button>
+                          </span>
+                        </>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

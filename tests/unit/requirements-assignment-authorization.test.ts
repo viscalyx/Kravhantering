@@ -544,6 +544,21 @@ describe('AssignmentBasedAuthorizationService', () => {
     })
   })
 
+  it('does not let Reviewer replace specification authorship for non-decision deviation mutations', async () => {
+    await expect(
+      makeService({ specAuthor: false }).service.assertAuthorized(
+        {
+          kind: 'manage_deviation',
+          operation: 'request_review',
+          deviationId: 5,
+        },
+        makeContext(['Reviewer']),
+      ),
+    ).rejects.toMatchObject({
+      details: { reason: 'specification_author_required' },
+    })
+  })
+
   it('allows published suggestion lists but requires area authorship for unpublished suggestion lists', async () => {
     await expect(
       makeService({

@@ -8,6 +8,8 @@ import RequirementReportMenu from './RequirementReportMenu'
 import type { UseDeviationWorkflowResult } from './use-deviation-workflow'
 
 interface SpecificationDeviationRailProps {
+  canManageDeviationDrafts: boolean
+  canReviewDeviationDecisions: boolean
   detailContext?: string
   locale: string
   priorityLevel: { color: string; name: string | null } | null
@@ -18,6 +20,8 @@ interface SpecificationDeviationRailProps {
 }
 
 export default function SpecificationDeviationRail({
+  canManageDeviationDrafts,
+  canReviewDeviationDecisions,
   detailContext,
   locale,
   specificationItemId,
@@ -45,8 +49,9 @@ export default function SpecificationDeviationRail({
           {workflow.deviationError}
         </p>
       )}
-      {workflow.deviationStep === null ||
-      workflow.deviationStep === 'decided' ? (
+      {(workflow.deviationStep === null ||
+        workflow.deviationStep === 'decided') &&
+      canManageDeviationDrafts ? (
         <button
           className="inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-11 min-w-11"
           disabled={workflow.deviationSaving}
@@ -56,7 +61,7 @@ export default function SpecificationDeviationRail({
           <AlertTriangle aria-hidden="true" className="h-4 w-4" />
           {td('requestDeviation')}
         </button>
-      ) : workflow.deviationStep === 'draft' ? (
+      ) : workflow.deviationStep === 'draft' && canManageDeviationDrafts ? (
         <>
           <button
             className="inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-11 min-w-11"
@@ -87,22 +92,26 @@ export default function SpecificationDeviationRail({
         </>
       ) : workflow.deviationStep === 'review_requested' ? (
         <>
-          <button
-            className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
-            disabled={workflow.deviationSaving}
-            onClick={event => void workflow.handleRevertToDraft(event)}
-            type="button"
-          >
-            {td('revertToDraft')}
-          </button>
-          <button
-            className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
-            disabled={workflow.deviationSaving}
-            onClick={workflow.openDecisionDialog}
-            type="button"
-          >
-            {td('markDecided')}
-          </button>
+          {canManageDeviationDrafts ? (
+            <button
+              className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+              disabled={workflow.deviationSaving}
+              onClick={event => void workflow.handleRevertToDraft(event)}
+              type="button"
+            >
+              {td('revertToDraft')}
+            </button>
+          ) : null}
+          {canReviewDeviationDecisions ? (
+            <button
+              className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+              disabled={workflow.deviationSaving}
+              onClick={workflow.openDecisionDialog}
+              type="button"
+            >
+              {td('markDecided')}
+            </button>
+          ) : null}
         </>
       ) : null}
       <DeviationFormModal

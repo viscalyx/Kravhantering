@@ -142,6 +142,11 @@ function createDeferredJsonResponse() {
   }
 }
 
+const editablePermissions = {
+  canEditContent: true,
+  canReviewDecisions: true,
+}
+
 describe('SpecificationLocalRequirementDetailClient', () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -217,6 +222,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
         needsReferences={[]}
+        permissions={editablePermissions}
         specificationSlug="ETJANST-UPP-2026"
       />,
     )
@@ -306,6 +312,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
         needsReferences={[]}
+        permissions={editablePermissions}
         specificationSlug="ETJANST-UPP-2026"
       />,
     )
@@ -384,6 +391,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
         needsReferences={[]}
+        permissions={editablePermissions}
         specificationSlug="ETJANST-UPP-2026"
       />,
     )
@@ -465,6 +473,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
         localRequirementId={1}
         needsReferences={[]}
         onChange={onChange}
+        permissions={editablePermissions}
         specificationSlug="ETJANST-UPP-2026"
       />,
     )
@@ -543,6 +552,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
         needsReferences={[]}
+        permissions={editablePermissions}
         specificationSlug="ETJANST-UPP-2026"
       />,
     )
@@ -611,6 +621,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
         needsReferences={[]}
+        permissions={editablePermissions}
         specificationSlug="ETJANST-UPP-2026"
         usageStatus={{
           specificationItemStatusColor: '#94a3b8',
@@ -639,6 +650,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
         needsReferences={[]}
+        permissions={editablePermissions}
         specificationSlug="ETJANST-UPP-2026"
         usageStatus={{
           specificationItemStatusColor: '#f59e0b',
@@ -713,6 +725,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
         needsReferences={[]}
+        permissions={editablePermissions}
         specificationSlug="ETJANST-UPP-2026"
       />,
     )

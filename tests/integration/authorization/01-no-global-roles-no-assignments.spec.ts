@@ -24,6 +24,51 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   fixture = await createAuthorizationFixture(testInfo)
 })
 
+test.describe('AUTHZ-00/AUTH-11: authorization fixture seed', () => {
+  test.use({
+    storageState: ROLE_STORAGE_STATE.admin,
+    viewport: { height: 720, width: 1280 },
+  })
+
+  test('AUTHZ-00/AUTH-11: seeded AUTHZ objects and identities are visible', async ({
+    page,
+  }, testInfo) => {
+    referenceManualCases(testInfo, 'AUTHZ-00', 'AUTH-11')
+
+    await page.goto('/sv/admin')
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Administrationscenter' }),
+    ).toBeVisible()
+
+    await page.goto(`/sv/specifications/${fixture.specificationSlug}`)
+    await expect(
+      page.getByRole('heading', {
+        level: 1,
+        name: fixture.specificationName,
+      }),
+    ).toBeVisible()
+
+    await page.goto('/sv/requirement-areas')
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Kravområden' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('row', { name: new RegExp(fixture.areaPrefix) }),
+    ).toBeVisible()
+
+    await page.goto('/sv/requirements/stewardship?tab=packages')
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Kravpaket' }),
+    ).toBeVisible()
+    await page
+      .getByRole('textbox', { name: 'Filtrera på namn eller beskrivning' })
+      .fill(fixture.packageName)
+    await expect(
+      page.getByRole('row', { name: new RegExp(fixture.packageName) }),
+    ).toBeVisible()
+  })
+})
+
 test('AUTH-03/AUTH-11: anonymous API requests return JSON 401 where authentication is required', async ({
   browserName: _browserName,
 }, testInfo) => {
@@ -42,10 +87,10 @@ test('AUTH-03/AUTH-11: anonymous API requests return JSON 401 where authenticati
   }
 })
 
-test('AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or assignments are read-limited', async ({
+test('AUTHZ-01/AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or assignments are read-limited', async ({
   browserName: _browserName,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-08', 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-01', 'AUTH-08', 'AUTH-10', 'AUTH-11')
   const noRoles = await newRoleContext(testInfo, 'noRoles')
 
   try {
@@ -138,7 +183,7 @@ test('AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or assignments 
   }
 })
 
-test('REQ-10/LIFE-11/SPEC-10/AUTH-10/AUTH-11: report PDFs enforce published and history boundaries', async ({
+test('REQ-10/LIFE-11/SPEC-10/SPEC-10d/AUTH-10/AUTH-11: report PDFs enforce published and history boundaries', async ({
   browserName: _browserName,
 }, testInfo) => {
   referenceManualCases(
@@ -146,6 +191,7 @@ test('REQ-10/LIFE-11/SPEC-10/AUTH-10/AUTH-11: report PDFs enforce published and 
     'REQ-10',
     'LIFE-11',
     'SPEC-10',
+    'SPEC-10d',
     'AUTH-10',
     'AUTH-11',
   )

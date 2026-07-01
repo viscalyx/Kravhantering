@@ -13,10 +13,10 @@ test.use({
   viewport: { height: 720, width: 1280 },
 })
 
-test('AUTH-10/AUTH-11: Reviewers can read broadly without privileged admin tabs', async ({
+test('AUTHZ-09/AUTH-10/AUTH-11: Reviewers can read broadly without privileged admin tabs', async ({
   page,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-09', 'AUTH-10', 'AUTH-11')
   const reviewer = await newRoleContext(testInfo, 'reviewer')
 
   try {

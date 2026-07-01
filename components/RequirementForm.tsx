@@ -146,6 +146,32 @@ function toRequirementPayload(
   }
 }
 
+function createRequirementPayloadSignature(
+  form: RequirementFormFieldValues,
+  mode: RequirementFormProps['mode'],
+) {
+  return createDirtySnapshot(
+    toRequirementPayload(form, { includeEditTokens: false, mode }),
+    REQUIREMENT_DIRTY_SNAPSHOT_OPTIONS,
+  )
+}
+
+function createInitialRequirementSignature(
+  initialData: RequirementFormProps['initialData'],
+  initialNormReferenceIds: RequirementFormProps['initialNormReferenceIds'],
+  initialRequirementPackageIds: RequirementFormProps['initialRequirementPackageIds'],
+  mode: RequirementFormProps['mode'],
+) {
+  return createRequirementPayloadSignature(
+    createInitialRequirementForm(
+      initialData,
+      initialNormReferenceIds,
+      initialRequirementPackageIds,
+    ),
+    mode,
+  )
+}
+
 function toNormReferencePayload(form: typeof EMPTY_NORM_REFERENCE_FORM) {
   return {
     issuer: form.issuer,
@@ -202,6 +228,12 @@ export default function RequirementForm({
     },
   )
 
+  const initialRequirementSignature = createInitialRequirementSignature(
+    initialData,
+    initialNormReferenceIds,
+    initialRequirementPackageIds,
+    mode,
+  )
   const [form, setForm] = useState<RequirementFormFieldValues>(() =>
     createInitialRequirementForm(
       initialData,
@@ -209,60 +241,41 @@ export default function RequirementForm({
       initialRequirementPackageIds,
     ),
   )
-  const [baselineSignature, setBaselineSignature] = useState(() =>
-    createDirtySnapshot(
-      toRequirementPayload(
-        createInitialRequirementForm(
-          initialData,
-          initialNormReferenceIds,
-          initialRequirementPackageIds,
-        ),
-        { includeEditTokens: false, mode },
-      ),
-      REQUIREMENT_DIRTY_SNAPSHOT_OPTIONS,
-    ),
+  const [baselineSignature, setBaselineSignature] = useState(
+    initialRequirementSignature,
   )
 
   const taxonomyOptions = useTaxonomyOptions(form.typeId, form.normReferenceIds)
 
-  const prevInitialData = useRef(initialData)
-  const prevNormReferenceIds = useRef(initialNormReferenceIds)
-  const prevRequirementPackageIds = useRef(initialRequirementPackageIds)
+  const appliedInitialRequirementSignature = useRef(initialRequirementSignature)
 
   useEffect(() => {
-    const dataChanged = initialData !== prevInitialData.current
-    const normRefsChanged =
-      initialNormReferenceIds !== prevNormReferenceIds.current
-    const requirementPackagesChanged =
-      initialRequirementPackageIds !== prevRequirementPackageIds.current
-    if (!dataChanged && !normRefsChanged && !requirementPackagesChanged) return
+    if (
+      appliedInitialRequirementSignature.current === initialRequirementSignature
+    ) {
+      return
+    }
 
-    prevInitialData.current = initialData
-    prevNormReferenceIds.current = initialNormReferenceIds
-    prevRequirementPackageIds.current = initialRequirementPackageIds
-
+    appliedInitialRequirementSignature.current = initialRequirementSignature
     const nextForm = createInitialRequirementForm(
       initialData,
       initialNormReferenceIds,
       initialRequirementPackageIds,
     )
     setForm(nextForm)
-    setBaselineSignature(
-      createDirtySnapshot(
-        toRequirementPayload(nextForm, { includeEditTokens: false, mode }),
-        REQUIREMENT_DIRTY_SNAPSHOT_OPTIONS,
-      ),
-    )
-  }, [initialData, initialNormReferenceIds, initialRequirementPackageIds, mode])
+    setBaselineSignature(initialRequirementSignature)
+  }, [
+    initialData,
+    initialNormReferenceIds,
+    initialRequirementPackageIds,
+    initialRequirementSignature,
+  ])
 
   const handleFieldsChange = (values: RequirementFormFieldValues) => {
     setForm(values)
   }
 
-  const currentSignature = createDirtySnapshot(
-    toRequirementPayload(form, { includeEditTokens: false, mode }),
-    REQUIREMENT_DIRTY_SNAPSHOT_OPTIONS,
-  )
+  const currentSignature = createRequirementPayloadSignature(form, mode)
   const formDirty = baselineSignature !== currentSignature
   const normRefFormDirty =
     createDirtySnapshot(toNormReferencePayload(normRefForm)) !==

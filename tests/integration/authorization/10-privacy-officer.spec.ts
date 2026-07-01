@@ -15,10 +15,10 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   await createAuthorizationFixture(testInfo)
 })
 
-test('AUTH-07/AUTH-11: PrivacyOfficer users can use privacy and access review without action log', async ({
+test('AUTHZ-10/AUTH-07/AUTH-11: PrivacyOfficer users can use privacy and access review without action log', async ({
   browserName: _browserName,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-07', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-10', 'AUTH-07', 'AUTH-11')
   const privacyOfficer = await newRoleContext(testInfo, 'privacyOfficer')
 
   try {
@@ -42,7 +42,7 @@ test('AUTH-07/AUTH-11: PrivacyOfficer users can use privacy and access review wi
   }
 })
 
-test.describe('AUTH-07/AUTH-11: Admin Center tab permissions for PrivacyOfficer users', () => {
+test.describe('AUTHZ-10/AUTH-07/AUTH-11: Admin Center tab permissions for PrivacyOfficer users', () => {
   test.use({
     storageState: ROLE_STORAGE_STATE.privacyOfficer,
     viewport: { height: 720, width: 1280 },
@@ -51,7 +51,7 @@ test.describe('AUTH-07/AUTH-11: Admin Center tab permissions for PrivacyOfficer 
   test('enables privacy tabs while Admin-only tabs stay disabled', async ({
     page,
   }, testInfo) => {
-    referenceManualCases(testInfo, 'AUTH-07', 'AUTH-11')
+    referenceManualCases(testInfo, 'AUTHZ-10', 'AUTH-07', 'AUTH-11')
     await page.goto('/sv/admin?tab=actionAuditLog')
 
     const columnsTab = page.getByRole('tab', { name: 'Kolumner' })

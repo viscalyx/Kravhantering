@@ -3,7 +3,7 @@ import { revertToDraft } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
-  customMutationPolicy,
+  requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { idParamSchema } from '@/lib/http/validation'
@@ -14,14 +14,17 @@ import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 export const dynamic = 'force-dynamic'
 
 export const POST = secureMutationRoute({
+  errorMessage: 'Failed to revert to draft',
   paramsSchema: idParamSchema,
-  policy: customMutationPolicy('deviation.revert_to_draft', ({ context }) => {
-    requireHumanActorSnapshot(context)
-  }),
-  handler: async ({ params }) => {
-    const db = await getRequestSqlServerDataSource()
-
+  policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
+    deviationId: params.id,
+    kind: 'manage_deviation',
+    operation: 'revert_to_draft',
+  })),
+  handler: async ({ context, db: authorizedDb, params }) => {
     try {
+      requireHumanActorSnapshot(context)
+      const db = authorizedDb ?? (await getRequestSqlServerDataSource())
       await revertToDraft(db, params.id)
       return NextResponse.json({ ok: true })
     } catch (error) {

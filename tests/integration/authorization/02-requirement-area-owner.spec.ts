@@ -27,10 +27,10 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   fixture = await createAuthorizationFixture(testInfo)
 })
 
-test('AUTH-10/AUTH-11: requirement area owners can manage their area and co-authors', async ({
+test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage their area and co-authors', async ({
   page,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-02', 'AUTH-10', 'AUTH-11', 'ADMIN-13')
   const areaOwner = await newRoleContext(testInfo, 'areaOwner')
   const updatedDescription = `Updated by area owner ${Date.now()}`
 

@@ -114,6 +114,27 @@ const MANUAL_CASE_LINKS = {
     'docs/governance/manuella-testfall.md#auth-10-behorighetsmatris-for-ansvarstilldelningar',
   'AUTH-11':
     'docs/governance/manuella-testfall.md#auth-11-playwrightfaser-for-behorighetsroller',
+  'AUTHZ-00':
+    'docs/governance/manuella-testfall.md#authz-00-fas-0-testdata-och-identiteter',
+  'AUTHZ-01':
+    'docs/governance/manuella-testfall.md#authz-01-ingen-global-roll-och-ingen-ansvarstilldelning',
+  'AUTHZ-02': 'docs/governance/manuella-testfall.md#authz-02-kravomradesagare',
+  'AUTHZ-03':
+    'docs/governance/manuella-testfall.md#authz-03-kravomradesmedforfattare',
+  'AUTHZ-04':
+    'docs/governance/manuella-testfall.md#authz-04-kravunderlagsansvarig',
+  'AUTHZ-05':
+    'docs/governance/manuella-testfall.md#authz-05-kravunderlagsmedforfattare',
+  'AUTHZ-06':
+    'docs/governance/manuella-testfall.md#authz-06-kravpaketsansvarig',
+  'AUTHZ-07':
+    'docs/governance/manuella-testfall.md#authz-07-kravpaketsmedforfattare',
+  'AUTHZ-08': 'docs/governance/manuella-testfall.md#authz-08-admin',
+  'AUTHZ-09': 'docs/governance/manuella-testfall.md#authz-09-reviewer',
+  'AUTHZ-10':
+    'docs/governance/manuella-testfall.md#authz-10-dataskyddsansvarig',
+  'ADMIN-10':
+    'docs/governance/manuella-testfall.md#admin-10-arkiveringsgallring-kraver-dataskyddsroll',
   'ADMIN-13':
     'docs/governance/manuella-testfall.md#admin-13-byte-av-kravomradesagare-anvander-hsa-id',
   'LIFE-11':
@@ -122,6 +143,8 @@ const MANUAL_CASE_LINKS = {
     'docs/governance/manuella-testfall.md#req-10-rapport-fran-kravlistan-fungerar',
   'SPEC-10':
     'docs/governance/manuella-testfall.md#spec-10-generera-kravunderlagsrapport',
+  'SPEC-10d':
+    'docs/governance/manuella-testfall.md#spec-10d-kravunderlagsrapporter-kraver-lasbehorighet',
 } as const
 
 export type ManualCaseId = keyof typeof MANUAL_CASE_LINKS

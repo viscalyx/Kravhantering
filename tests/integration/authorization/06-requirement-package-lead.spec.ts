@@ -23,10 +23,10 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   fixture = await createAuthorizationFixture(testInfo)
 })
 
-test('AUTH-10/AUTH-11: requirement package leads can update packages but not archive them', async ({
+test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages but not archive them', async ({
   page,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-06', 'AUTH-10', 'AUTH-11')
   const packageLead = await newRoleContext(testInfo, 'packageLead')
   const updatedPurposeAndScope = `Updated by package lead ${Date.now()}`
 

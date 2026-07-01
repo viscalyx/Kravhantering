@@ -23,10 +23,10 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   fixture = await createAuthorizationFixture(testInfo)
 })
 
-test('AUTH-10/AUTH-11: requirement area co-authors can create requirements in assigned areas', async ({
+test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors can create requirements in assigned areas', async ({
   page,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-03', 'AUTH-10', 'AUTH-11')
   const areaCoauthor = await newRoleContext(testInfo, 'areaCoauthor')
   const timestamp = Date.now()
   const apiRequirementText = `Area co-author API requirement ${timestamp}`
@@ -56,10 +56,10 @@ test('AUTH-10/AUTH-11: requirement area co-authors can create requirements in as
   }
 })
 
-test('AUTH-10/AUTH-11: requirement area co-authors cannot delegate area access', async ({
+test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area access', async ({
   page,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-03', 'AUTH-10', 'AUTH-11')
   const areaCoauthor = await newRoleContext(testInfo, 'areaCoauthor')
 
   try {

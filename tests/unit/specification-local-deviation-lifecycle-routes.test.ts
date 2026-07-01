@@ -1,10 +1,14 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { forbiddenError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
+  assertAuthorized: vi.fn(),
+  createDefaultAuthorizationService: vi.fn(),
   createRequestContext: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   recordSpecificationLocalDecision: vi.fn(),
+  recordDeniedActionAuditEvent: vi.fn(),
   requestSpecificationLocalReview: vi.fn(),
   requireHumanActorSnapshot: vi.fn(),
   revertSpecificationLocalToDraft: vi.fn(),
@@ -12,6 +16,10 @@ const routeState = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/audit/action-audit', () => ({
+  recordDeniedActionAuditEvent: routeState.recordDeniedActionAuditEvent,
 }))
 
 vi.mock('@/lib/dal/deviations', () => ({
@@ -23,6 +31,8 @@ vi.mock('@/lib/dal/deviations', () => ({
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({
+  createDefaultAuthorizationService:
+    routeState.createDefaultAuthorizationService,
   createRequestContext: routeState.createRequestContext,
   requireHumanActorSnapshot: routeState.requireHumanActorSnapshot,
 }))
@@ -58,6 +68,10 @@ async function expectInvalidRequest(
 describe('specification-local deviation lifecycle routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    routeState.assertAuthorized.mockResolvedValue(undefined)
+    routeState.createDefaultAuthorizationService.mockReturnValue({
+      assertAuthorized: routeState.assertAuthorized,
+    })
     routeState.getRequestSqlServerDataSource.mockResolvedValue(mockDb)
     routeState.createRequestContext.mockResolvedValue({
       actor: {
@@ -202,6 +216,14 @@ describe('specification-local deviation lifecycle routes', () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
     expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
+    expect(routeState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        deviationId: 1,
+        kind: 'manage_deviation',
+        operation: 'record_decision',
+      },
+      expect.any(Object),
+    )
     expect(routeState.recordSpecificationLocalDecision).toHaveBeenCalledWith(
       mockDb,
       1,
@@ -212,6 +234,37 @@ describe('specification-local deviation lifecycle routes', () => {
         decidedByHsaId: 'SE5560000001-reviewer1',
       },
     )
+  })
+
+  it('decision rejects non-reviewers before delegating to the DAL', async () => {
+    routeState.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Reviewer role is required for this decision', {
+        reason: 'reviewer_required',
+        requiredRoles: ['Reviewer'],
+      }),
+    )
+
+    const response = await postDecision(
+      new NextRequest(
+        'https://example.test/api/specification-local-deviations/1/decision',
+        {
+          body: JSON.stringify({
+            decision: 1,
+            decisionMotivation: 'Looks good',
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      ),
+      makeParams('1'),
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'forbidden',
+      error: 'Forbidden',
+    })
+    expect(routeState.recordSpecificationLocalDecision).not.toHaveBeenCalled()
   })
 
   it('decision propagates requirements service errors', async () => {
