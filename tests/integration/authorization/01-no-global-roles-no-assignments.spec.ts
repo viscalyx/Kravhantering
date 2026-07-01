@@ -18,6 +18,10 @@ import {
 
 let fixture: AuthorizationFixture
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 test.describe.configure({ mode: 'serial' })
 
 test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
@@ -35,37 +39,52 @@ test.describe('AUTHZ-00/AUTH-11: authorization fixture seed', () => {
   }, testInfo) => {
     referenceManualCases(testInfo, 'AUTHZ-00', 'AUTH-11')
 
-    await page.goto('/sv/admin')
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Administrationscenter' }),
-    ).toBeVisible()
+    await test.step('verify the admin page is visible', async () => {
+      await page.goto('/sv/admin')
+      await expect(
+        page.getByRole('heading', {
+          level: 1,
+          name: 'Administrationscenter',
+        }),
+      ).toBeVisible()
+    })
 
-    await page.goto(`/sv/specifications/${fixture.specificationSlug}`)
-    await expect(
-      page.getByRole('heading', {
-        level: 1,
-        name: fixture.specificationName,
-      }),
-    ).toBeVisible()
+    await test.step('verify the seeded specification is visible', async () => {
+      await page.goto(`/sv/specifications/${fixture.specificationSlug}`)
+      await expect(
+        page.getByRole('heading', {
+          level: 1,
+          name: fixture.specificationName,
+        }),
+      ).toBeVisible()
+    })
 
-    await page.goto('/sv/requirement-areas')
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Kravområden' }),
-    ).toBeVisible()
-    await expect(
-      page.getByRole('row', { name: new RegExp(fixture.areaPrefix) }),
-    ).toBeVisible()
+    await test.step('verify the seeded requirement area is visible', async () => {
+      await page.goto('/sv/requirement-areas')
+      await expect(
+        page.getByRole('heading', { level: 1, name: 'Kravområden' }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('row', {
+          name: new RegExp(escapeRegExp(fixture.areaPrefix)),
+        }),
+      ).toBeVisible()
+    })
 
-    await page.goto('/sv/requirements/stewardship?tab=packages')
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Kravpaket' }),
-    ).toBeVisible()
-    await page
-      .getByRole('textbox', { name: 'Filtrera på namn eller beskrivning' })
-      .fill(fixture.packageName)
-    await expect(
-      page.getByRole('row', { name: new RegExp(fixture.packageName) }),
-    ).toBeVisible()
+    await test.step('verify the seeded requirement package is visible', async () => {
+      await page.goto('/sv/requirements/stewardship?tab=packages')
+      await expect(
+        page.getByRole('heading', { level: 1, name: 'Kravpaket' }),
+      ).toBeVisible()
+      await page
+        .getByRole('textbox', { name: 'Filtrera på namn eller beskrivning' })
+        .fill(fixture.packageName)
+      await expect(
+        page.getByRole('row', {
+          name: new RegExp(escapeRegExp(fixture.packageName)),
+        }),
+      ).toBeVisible()
+    })
   })
 })
 

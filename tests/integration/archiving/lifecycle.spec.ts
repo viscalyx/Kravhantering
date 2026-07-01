@@ -293,18 +293,15 @@ async function openRequirement(page: Page, uniqueId: string): Promise<Locator> {
   const detailPane = page.locator('main')
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page.goto(
-      `/sv/requirements/${encodeURIComponent(uniqueId)}/${latestVersionNumber}`,
-      {
-        timeout: 30_000,
-      },
-    )
     try {
+      await page.goto(
+        `/sv/requirements/${encodeURIComponent(uniqueId)}/${latestVersionNumber}`,
+      )
       await expect(
         detailPane.getByRole('group', {
           name: 'Arbetsflöde för kravversionsstatus',
         }),
-      ).toBeVisible({ timeout: 30_000 })
+      ).toBeVisible()
       break
     } catch (error) {
       if (attempt === 2) throw error
@@ -398,7 +395,7 @@ async function assertRequirementApiState(
   },
 ) {
   await expect
-    .poll(() => getRequirementPersistedState(uniqueId), { timeout: 30_000 })
+    .poll(() => getRequirementPersistedState(uniqueId))
     .toEqual(expected)
 }
 
@@ -407,17 +404,15 @@ async function assertRequirementListStatus(
   uniqueId: string,
   expectedStatusText: string,
 ) {
-  await page.goto(`/sv/requirements?selected=${encodeURIComponent(uniqueId)}`, {
-    timeout: 30_000,
-  })
+  await page.goto(`/sv/requirements?selected=${encodeURIComponent(uniqueId)}`)
 
   const rowButton = page.getByRole('button', {
     name: new RegExp(`\\b${escapeRegExp(uniqueId)}\\b`),
   })
   const row = rowButton.locator('xpath=ancestor::tr[1]')
 
-  await expect(rowButton).toBeVisible({ timeout: 30_000 })
-  await expect(row).toContainText(expectedStatusText, { timeout: 30_000 })
+  await expect(rowButton).toBeVisible()
+  await expect(row).toContainText(expectedStatusText)
 }
 
 async function confirmLatestDialog(page: Page) {
@@ -435,7 +430,6 @@ async function cancelLatestDialog(page: Page) {
 for (const viewport of viewports) {
   test.describe(`Archive lifecycle — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
     test.use({ viewport: { height: viewport.height, width: viewport.width } })
-    test.setTimeout(120_000)
 
     test('LIFE-08: cancels archive initiation without changing Published state', async ({
       page,

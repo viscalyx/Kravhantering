@@ -173,8 +173,8 @@ export const POST = secureMutationRoute({
     const { motivation } = body
 
     try {
-      const db = authorizedDb ?? (await getRequestSqlServerDataSource())
       const actor = requireHumanActorSnapshot(context)
+      const db = authorizedDb ?? (await getRequestSqlServerDataSource())
       const result =
         parsedItemRef == null
           ? await createDeviation(db, {

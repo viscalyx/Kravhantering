@@ -70,21 +70,27 @@ async function requestOkWithRetry(
   let lastFailure = 'unknown failure'
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
+    let response: APIResponse
     try {
-      const response = await request()
-      if (response.ok()) return response
-
-      lastFailure = `${response.status()} ${await response.text()}`
-      if (response.status() < 500 || attempt === 3) {
-        throw new Error(`${label} returned ${lastFailure}`)
-      }
+      response = await request()
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error)
       if (attempt === 3) {
         throw new Error(`${label} failed after retries: ${lastFailure}`)
       }
+      await delay(750 * (attempt + 1))
+      continue
     }
 
+    if (response.ok()) return response
+
+    lastFailure = `${response.status()} ${await response.text()}`
+    if (response.status() < 500) {
+      throw new Error(`${label} returned ${lastFailure}`)
+    }
+    if (attempt === 3) {
+      throw new Error(`${label} failed after retries: ${lastFailure}`)
+    }
     await delay(750 * (attempt + 1))
   }
 
@@ -177,21 +183,18 @@ async function expectLatestDeviationState(
   >,
 ) {
   await expect
-    .poll(
-      async () => {
-        const latest = (await listDeviations(request, itemRef)).at(-1)
+    .poll(async () => {
+      const latest = (await listDeviations(request, itemRef)).at(-1)
 
-        if (!latest) return null
+      if (!latest) return null
 
-        return {
-          decision: latest.decision,
-          decisionMotivation: latest.decisionMotivation,
-          isReviewRequested: latest.isReviewRequested,
-          motivation: latest.motivation,
-        }
-      },
-      { timeout: 60_000 },
-    )
+      return {
+        decision: latest.decision,
+        decisionMotivation: latest.decisionMotivation,
+        isReviewRequested: latest.isReviewRequested,
+        motivation: latest.motivation,
+      }
+    })
     .toMatchObject(expected)
 }
 
@@ -214,19 +217,17 @@ async function openSpecificationFixtureRow(
   })
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page.goto(`/sv/specifications/${slug}`, {
-      timeout: 30_000,
-      waitUntil: 'commit',
-    })
-
     try {
+      await page.goto(`/sv/specifications/${slug}`, {
+        waitUntil: 'commit',
+      })
       await expect(
         page.getByRole('heading', {
           level: 1,
           name: heading,
         }),
-      ).toBeVisible({ timeout: 30_000 })
-      await expect(rowButton).toBeVisible({ timeout: 30_000 })
+      ).toBeVisible()
+      await expect(rowButton).toBeVisible()
       const detailPaneId = await rowButton.getAttribute('aria-controls')
       if (!detailPaneId) {
         throw new Error(
@@ -240,10 +241,10 @@ async function openSpecificationFixtureRow(
           await rowButton.click()
         }
 
-        if (await detailPane.isVisible({ timeout: 5_000 }).catch(() => false)) {
+        if (await detailPane.isVisible().catch(() => false)) {
           await expect(
             detailPane.getByRole('heading', { name: 'Kravtext' }),
-          ).toBeVisible({ timeout: 30_000 })
+          ).toBeVisible()
           return detailPane
         }
       }
@@ -286,13 +287,12 @@ async function assertActiveStepperStep(
     .getByRole('group', { name: 'Steg i avstegsarbetsflödet' })
     .locator('[aria-current="step"]')
 
-  await expect(activeStep).toContainText(expectedText, { timeout: 30_000 })
+  await expect(activeStep).toContainText(expectedText)
 }
 
 for (const viewport of viewports) {
   test.describe(`Deviation lifecycle — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
     test.use({ viewport: { height: viewport.height, width: viewport.width } })
-    test.setTimeout(240_000)
 
     test('DEV-03: cancels returning a deviation review to draft', async ({
       page,
@@ -375,7 +375,7 @@ for (const viewport of viewports) {
             )
             await expect(
               detailPane.getByRole('button', { name: 'Begär ett avsteg' }),
-            ).toBeVisible({ timeout: 30_000 })
+            ).toBeVisible()
           })
 
           await test.step('create a draft deviation', async () => {
@@ -390,7 +390,7 @@ for (const viewport of viewports) {
             await dialog
               .getByRole('button', { name: 'Registrera avsteg' })
               .click()
-            await expect(dialog).toBeHidden({ timeout: 30_000 })
+            await expect(dialog).toBeHidden()
 
             detailPane = await openSpecificationFixtureRow(
               page,
@@ -440,7 +440,7 @@ for (const viewport of viewports) {
             await decisionDialog
               .getByRole('button', { name: 'Registrera beslut' })
               .click()
-            await expect(decisionDialog).toBeHidden({ timeout: 30_000 })
+            await expect(decisionDialog).toBeHidden()
             reviewerDetailPane = await openSpecificationFixtureRow(
               reviewer.page,
               fixture.uniqueId,
@@ -491,107 +491,130 @@ for (const viewport of viewports) {
         'specificationCoauthor',
         viewport,
       )
+      let latestDeviationId: number | null = null
 
       try {
-        await closeLatestPendingDeviation(
-          coauthorRequest,
-          reviewerRequest,
-          fixture.itemRef,
-        )
+        await test.step('create a deviation and request review as specification coauthor', async () => {
+          await closeLatestPendingDeviation(
+            coauthorRequest,
+            reviewerRequest,
+            fixture.itemRef,
+          )
 
-        let detailPane = await openSpecificationFixtureRow(
-          coauthor.page,
-          fixture.uniqueId,
-          {
-            heading: MANUAL_SPECIFICATION_HEADING,
-            slug: MANUAL_SPECIFICATION_SLUG,
-          },
-        )
-
-        await detailPane
-          .getByRole('button', { name: 'Begär ett avsteg' })
-          .click()
-
-        const dialog = coauthor.page.getByRole('dialog', {
-          name: 'Begär ett avsteg',
-        })
-        await dialog.locator('#deviation-motivation').fill(motivation)
-        await dialog.getByRole('button', { name: 'Registrera avsteg' }).click()
-        await expect(dialog).toBeHidden({ timeout: 30_000 })
-
-        await expectLatestDeviationState(coauthorRequest, fixture.itemRef, {
-          decision: null,
-          isReviewRequested: 0,
-          motivation,
-        })
-
-        detailPane = await openSpecificationFixtureRow(
-          coauthor.page,
-          fixture.uniqueId,
-          {
-            heading: MANUAL_SPECIFICATION_HEADING,
-            slug: MANUAL_SPECIFICATION_SLUG,
-          },
-        )
-        await detailPane.getByRole('button', { name: 'Granskning ↗' }).click()
-        await expectLatestDeviationState(coauthorRequest, fixture.itemRef, {
-          decision: null,
-          isReviewRequested: 1,
-          motivation,
-        })
-        await assertActiveStepperStep(detailPane, 'Granskning begärd')
-        await expect(
-          detailPane.getByRole('button', { name: '← Utkast' }),
-        ).toHaveCount(1)
-        await expect(
-          detailPane.getByRole('button', { name: 'Beslutad ↗' }),
-        ).toHaveCount(0)
-
-        const latest = (
-          await listDeviations(coauthorRequest, fixture.itemRef)
-        ).at(-1)
-        if (!latest) {
-          throw new Error('Expected a latest deviation after requesting review')
-        }
-
-        const coauthorDecision = await coauthorRequest.post(
-          `/api/deviations/${latest.id}/decision`,
-          {
-            data: {
-              decision: 1,
-              decisionMotivation: 'Coauthor must not decide.',
+          let detailPane = await openSpecificationFixtureRow(
+            coauthor.page,
+            fixture.uniqueId,
+            {
+              heading: MANUAL_SPECIFICATION_HEADING,
+              slug: MANUAL_SPECIFICATION_SLUG,
             },
-          },
-        )
-        expect(coauthorDecision.status()).toBe(403)
+          )
 
-        const noRolesDecision = await noRolesRequest.post(
-          `/api/deviations/${latest.id}/decision`,
-          {
-            data: {
-              decision: 1,
-              decisionMotivation: 'No-role user must not decide.',
+          await detailPane
+            .getByRole('button', { name: 'Begär ett avsteg' })
+            .click()
+
+          const dialog = coauthor.page.getByRole('dialog', {
+            name: 'Begär ett avsteg',
+          })
+          await dialog.locator('#deviation-motivation').fill(motivation)
+          await dialog
+            .getByRole('button', { name: 'Registrera avsteg' })
+            .click()
+          await expect(dialog).toBeHidden()
+
+          await expectLatestDeviationState(coauthorRequest, fixture.itemRef, {
+            decision: null,
+            isReviewRequested: 0,
+            motivation,
+          })
+
+          detailPane = await openSpecificationFixtureRow(
+            coauthor.page,
+            fixture.uniqueId,
+            {
+              heading: MANUAL_SPECIFICATION_HEADING,
+              slug: MANUAL_SPECIFICATION_SLUG,
             },
-          },
-        )
-        expect(noRolesDecision.status()).toBe(403)
+          )
+          await detailPane.getByRole('button', { name: 'Granskning ↗' }).click()
+          await expectLatestDeviationState(coauthorRequest, fixture.itemRef, {
+            decision: null,
+            isReviewRequested: 1,
+            motivation,
+          })
+          await assertActiveStepperStep(detailPane, 'Granskning begärd')
+          await expect(
+            detailPane.getByRole('button', { name: '← Utkast' }),
+          ).toHaveCount(1)
+          await expect(
+            detailPane.getByRole('button', { name: 'Beslutad ↗' }),
+          ).toHaveCount(0)
 
-        await requestOkWithRetry(
-          `reviewer decision for deviation ${latest.id}`,
-          () =>
-            reviewerRequest.post(`/api/deviations/${latest.id}/decision`, {
+          const latest = (
+            await listDeviations(coauthorRequest, fixture.itemRef)
+          ).at(-1)
+          if (!latest) {
+            throw new Error(
+              'Expected a latest deviation after requesting review',
+            )
+          }
+          latestDeviationId = latest.id
+        })
+
+        await test.step('verify coauthor and no-role users cannot decide', async () => {
+          if (latestDeviationId == null) {
+            throw new Error('Expected latest deviation id before 403 checks')
+          }
+
+          const coauthorDecision = await coauthorRequest.post(
+            `/api/deviations/${latestDeviationId}/decision`,
+            {
               data: {
                 decision: 1,
-                decisionMotivation,
+                decisionMotivation: 'Coauthor must not decide.',
               },
-              timeout: 30_000,
-            }),
-        )
-        await expectLatestDeviationState(reviewerRequest, fixture.itemRef, {
-          decision: 1,
-          decisionMotivation,
-          isReviewRequested: 1,
-          motivation,
+            },
+          )
+          expect(coauthorDecision.status()).toBe(403)
+
+          const noRolesDecision = await noRolesRequest.post(
+            `/api/deviations/${latestDeviationId}/decision`,
+            {
+              data: {
+                decision: 1,
+                decisionMotivation: 'No-role user must not decide.',
+              },
+            },
+          )
+          expect(noRolesDecision.status()).toBe(403)
+        })
+
+        await test.step('record a reviewer decision', async () => {
+          if (latestDeviationId == null) {
+            throw new Error('Expected latest deviation id before decision')
+          }
+
+          await requestOkWithRetry(
+            `reviewer decision for deviation ${latestDeviationId}`,
+            () =>
+              reviewerRequest.post(
+                `/api/deviations/${latestDeviationId}/decision`,
+                {
+                  data: {
+                    decision: 1,
+                    decisionMotivation,
+                  },
+                  timeout: 30_000,
+                },
+              ),
+          )
+          await expectLatestDeviationState(reviewerRequest, fixture.itemRef, {
+            decision: 1,
+            decisionMotivation,
+            isReviewRequested: 1,
+            motivation,
+          })
         })
       } finally {
         await coauthor.context.close()

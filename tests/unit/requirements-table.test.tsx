@@ -1736,7 +1736,10 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'manage' }))
+    const trigger = screen.getByRole('button', { name: 'manage' })
+    expect(trigger).toHaveAttribute('aria-haspopup', 'menu')
+
+    fireEvent.click(trigger)
 
     await waitFor(() => {
       const menu = document.querySelector(

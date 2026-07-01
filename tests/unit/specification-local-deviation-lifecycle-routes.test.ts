@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { forbiddenError } from '@/lib/requirements/errors'
+import { forbiddenError, validationError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
   assertAuthorized: vi.fn(),
@@ -265,6 +265,34 @@ describe('specification-local deviation lifecycle routes', () => {
       error: 'Forbidden',
     })
     expect(routeState.recordSpecificationLocalDecision).not.toHaveBeenCalled()
+  })
+
+  it('decision rejects missing human actors before delegating to the DAL', async () => {
+    routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
+      throw validationError(
+        'Authenticated actor with a verified HSA-id is required for this write',
+        { reason: 'missing_actor_hsa_id' },
+      )
+    })
+
+    const response = await postDecision(
+      new NextRequest(
+        'https://example.test/api/specification-local-deviations/1/decision',
+        {
+          body: JSON.stringify({
+            decision: 1,
+            decisionMotivation: 'Looks good',
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      ),
+      makeParams('1'),
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.recordSpecificationLocalDecision).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
   })
 
   it('decision propagates requirements service errors', async () => {

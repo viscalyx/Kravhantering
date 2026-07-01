@@ -125,6 +125,34 @@ describe('deviation mutation routes', () => {
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 
+  it('rejects requirement application deviation creation before DAL writes when no human actor is present', async () => {
+    routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
+      throw validationError(
+        'Authenticated actor with a verified HSA-id is required for this write',
+        { reason: 'missing_actor_hsa_id' },
+      )
+    })
+    const { POST } = await import(
+      '@/app/api/specification-item-deviations/[itemId]/route'
+    )
+
+    const response = await POST(
+      new Request('https://example.test/api/specification-item-deviations/1', {
+        body: JSON.stringify({
+          motivation: 'A valid deviation motivation',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      }) as never,
+      params({ itemId: '1' }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.createDeviation).not.toHaveBeenCalled()
+    expect(routeState.createDeviationForItemRef).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
+  })
+
   it('updates deviations without mutating original creator fields', async () => {
     routeState.updateDeviation.mockResolvedValue(undefined)
     const { PUT } = await import('@/app/api/deviations/[id]/route')
@@ -205,6 +233,32 @@ describe('deviation mutation routes', () => {
       expect.any(Object),
     )
     expect(routeState.recordDecision).not.toHaveBeenCalled()
+  })
+
+  it('rejects deviation decisions before DAL writes when no human actor is present', async () => {
+    routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
+      throw validationError(
+        'Authenticated actor with a verified HSA-id is required for this write',
+        { reason: 'missing_actor_hsa_id' },
+      )
+    })
+    const { POST } = await import('@/app/api/deviations/[id]/decision/route')
+
+    const response = await POST(
+      new Request('https://example.test/api/deviations/7/decision', {
+        body: JSON.stringify({
+          decision: 1,
+          decisionMotivation: 'Looks good',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      }) as never,
+      params({ id: '7' }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.recordDecision).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
   })
 
   it('returns the decision route error shape when DB acquisition fails', async () => {

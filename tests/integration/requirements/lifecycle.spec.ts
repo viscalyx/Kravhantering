@@ -99,21 +99,27 @@ async function getOkWithRetry(
   let lastFailure = 'unknown failure'
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
+    let response: OkResponse
     try {
-      const response = await request()
-      if (response.ok()) return response
-
-      lastFailure = `${response.status()} ${await response.text()}`
-      if (response.status() < 500 || attempt === 3) {
-        throw new Error(`${context} failed with ${lastFailure}`)
-      }
+      response = await request()
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error)
       if (attempt === 3) {
         throw new Error(`${context} failed after retries: ${lastFailure}`)
       }
+      await delay(750 * (attempt + 1))
+      continue
     }
 
+    if (response.ok()) return response
+
+    lastFailure = `${response.status()} ${await response.text()}`
+    if (response.status() < 500) {
+      throw new Error(`${context} failed with ${lastFailure}`)
+    }
+    if (attempt === 3) {
+      throw new Error(`${context} failed after retries: ${lastFailure}`)
+    }
     await delay(750 * (attempt + 1))
   }
 
@@ -167,25 +173,15 @@ async function transitionRequirement(
   let lastFailure = 'unknown failure'
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
+    let response: Awaited<ReturnType<APIRequestContext['post']>>
     try {
-      const response = await request.post(
+      response = await request.post(
         `/api/requirement-transitions/${uniqueId}`,
         {
           data: { statusId },
           timeout: 30_000,
         },
       )
-      if (response.ok()) return
-
-      lastFailure = `${response.status()} ${await response.text()}`
-      const updated = await getRequirement(request, uniqueId).catch(() => null)
-      if (updated && latestVersion(updated).status === statusId) return
-
-      if (response.status() < 500 || attempt === 3) {
-        throw new Error(
-          `POST transition ${uniqueId} to ${statusId} failed with ${lastFailure}`,
-        )
-      }
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error)
       const updated = await getRequirement(request, uniqueId).catch(() => null)
@@ -196,8 +192,26 @@ async function transitionRequirement(
           `POST transition ${uniqueId} to ${statusId} failed after retries: ${lastFailure}`,
         )
       }
+      await delay(750 * (attempt + 1))
+      continue
     }
 
+    if (response.ok()) return
+
+    lastFailure = `${response.status()} ${await response.text()}`
+    const updated = await getRequirement(request, uniqueId).catch(() => null)
+    if (updated && latestVersion(updated).status === statusId) return
+
+    if (response.status() < 500) {
+      throw new Error(
+        `POST transition ${uniqueId} to ${statusId} failed with ${lastFailure}`,
+      )
+    }
+    if (attempt === 3) {
+      throw new Error(
+        `POST transition ${uniqueId} to ${statusId} failed after retries: ${lastFailure}`,
+      )
+    }
     await delay(750 * (attempt + 1))
   }
 
@@ -447,82 +461,79 @@ test.describe('Requirement lifecycle manual cases', () => {
     page,
     request,
   }, testInfo) => {
-    const reviewerRequest = await newRoleContext(testInfo, 'reviewer')
-    let requirement: RequirementDetail
-    try {
-      requirement = await createRequirementInStatus(
-        request,
-        STATUS_PUBLISHED,
-        'Playwright LIFE-06 published requirement',
-        reviewerRequest,
-      )
-    } finally {
-      await reviewerRequest.dispose()
-    }
-    const detailPane = await openRequirementStandalone(
-      page,
-      requirement.uniqueId,
-    )
+    const requirement =
+      await test.step('prepare a published requirement', async () => {
+        const reviewerRequest = await newRoleContext(testInfo, 'reviewer')
+        try {
+          return await createRequirementInStatus(
+            request,
+            STATUS_PUBLISHED,
+            'Playwright LIFE-06 published requirement',
+            reviewerRequest,
+          )
+        } finally {
+          await reviewerRequest.dispose()
+        }
+      })
 
-    await detailPane.getByRole('link', { name: 'Redigera' }).click()
-    await expect(page).toHaveURL(
-      new RegExp(`/sv/requirements/${requirement.uniqueId}/edit$`),
-    )
-    const descriptionField = page.getByRole('textbox', { name: 'Kravtext *' })
-    await expect(descriptionField).toHaveValue(
-      'Playwright LIFE-06 published requirement',
-    )
-    await descriptionField.fill('Playwright LIFE-06 updated draft version')
-    await expect(descriptionField).toHaveValue(
-      'Playwright LIFE-06 updated draft version',
-    )
-    const saveButton = page.getByRole('button', { name: 'Spara' })
-    await expect(saveButton).toBeEnabled()
-    await saveButton.scrollIntoViewIfNeeded()
-    const editForm = page.locator('form')
-    await expect
-      .poll(() =>
-        editForm.evaluate(form => (form as HTMLFormElement).checkValidity()),
+    await test.step('open the edit form and update the requirement text', async () => {
+      const detailPane = await openRequirementStandalone(
+        page,
+        requirement.uniqueId,
       )
-      .toBe(true)
-    await Promise.all([
-      page.waitForRequest(
-        request => {
+
+      await detailPane.getByRole('link', { name: 'Redigera' }).click()
+      await expect(page).toHaveURL(
+        new RegExp(`/sv/requirements/${requirement.uniqueId}/edit$`),
+      )
+      const descriptionField = page.getByRole('textbox', {
+        name: 'Kravtext *',
+      })
+      await expect(descriptionField).toHaveValue(
+        'Playwright LIFE-06 published requirement',
+      )
+      await descriptionField.fill('Playwright LIFE-06 updated draft version')
+      await expect(descriptionField).toHaveValue(
+        'Playwright LIFE-06 updated draft version',
+      )
+    })
+
+    await test.step('save through the enabled form button', async () => {
+      const saveButton = page.getByRole('button', { name: 'Spara' })
+      await expect(saveButton).toBeEnabled()
+      await saveButton.scrollIntoViewIfNeeded()
+      const editForm = page.locator('form')
+      await expect
+        .poll(() =>
+          editForm.evaluate(form => (form as HTMLFormElement).checkValidity()),
+        )
+        .toBe(true)
+      await Promise.all([
+        page.waitForRequest(request => {
           const url = new URL(request.url())
           return (
             request.method() === 'PUT' &&
             url.pathname === `/api/requirements/${requirement.uniqueId}`
           )
-        },
-        { timeout: 30_000 },
-      ),
-      editForm.evaluate(form => {
-        const htmlForm = form as HTMLFormElement
-        const submitter = htmlForm.querySelector('button[type="submit"]')
-        htmlForm.dispatchEvent(
-          new SubmitEvent('submit', {
-            bubbles: true,
-            cancelable: true,
-            submitter: submitter instanceof HTMLElement ? submitter : undefined,
-          }),
-        )
-      }),
-    ])
-    await expect
-      .poll(
-        async () => {
+        }),
+        saveButton.click(),
+      ])
+    })
+
+    await test.step('verify a new draft version was created', async () => {
+      await expect
+        .poll(async () => {
           const updated = await getRequirement(request, requirement.uniqueId)
           return {
             latestStatus: latestVersion(updated).status,
             versionCount: updated.versions.length,
           }
-        },
-        { timeout: 60_000 },
-      )
-      .toEqual({
-        latestStatus: STATUS_DRAFT,
-        versionCount: 2,
-      })
+        })
+        .toEqual({
+          latestStatus: STATUS_DRAFT,
+          versionCount: 2,
+        })
+    })
   })
 
   test('LIFE-07: restores an archived requirement version through the UI', async ({

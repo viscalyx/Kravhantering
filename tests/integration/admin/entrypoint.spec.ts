@@ -300,7 +300,7 @@ for (const { name, viewport } of viewportVariants) {
       await page.goto('/sv/requirements')
       await expect(
         page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
-      ).toContainText('Kategori', { timeout: 45_000 })
+      ).toContainText('Kategori')
 
       const readHeaderTexts = async () =>
         page
@@ -328,7 +328,7 @@ for (const { name, viewport } of viewportVariants) {
       await page.reload()
       await expect(
         page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
-      ).toContainText('Kategori', { timeout: 45_000 })
+      ).toContainText('Kategori')
 
       await page.goto('/sv/admin')
       await expect
@@ -340,7 +340,7 @@ for (const { name, viewport } of viewportVariants) {
       test.describe('admin-only permissions', () => {
         test.use({ storageState: 'test-results/auth/admin-only.json' })
 
-        test('ADMIN-10: keeps Swedish admin tabs reachable while retention preview is disabled', async ({
+        test('AUTH-06: keeps Swedish admin tabs reachable while retention preview is disabled', async ({
           page,
         }) => {
           await page.goto('/sv/admin')

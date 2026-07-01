@@ -39,8 +39,8 @@ export const POST = secureMutationRoute({
   })),
   handler: async ({ body, context, db: authorizedDb, params }) => {
     try {
-      const db = authorizedDb ?? (await getRequestSqlServerDataSource())
       const actor = requireHumanActorSnapshot(context)
+      const db = authorizedDb ?? (await getRequestSqlServerDataSource())
       await recordSpecificationLocalDecision(db, params.id, {
         decision: body.decision,
         decisionMotivation: body.decisionMotivation,

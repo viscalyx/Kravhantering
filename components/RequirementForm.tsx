@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { AlertTriangle, ExternalLink, Plus, RotateCcw } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FormActionRow from '@/components/FormActionRow'
@@ -228,11 +228,15 @@ export default function RequirementForm({
     },
   )
 
-  const initialRequirementSignature = createInitialRequirementSignature(
-    initialData,
-    initialNormReferenceIds,
-    initialRequirementPackageIds,
-    mode,
+  const initialRequirementSignature = useMemo(
+    () =>
+      createInitialRequirementSignature(
+        initialData,
+        initialNormReferenceIds,
+        initialRequirementPackageIds,
+        mode,
+      ),
+    [initialData, initialNormReferenceIds, initialRequirementPackageIds, mode],
   )
   const [form, setForm] = useState<RequirementFormFieldValues>(() =>
     createInitialRequirementForm(

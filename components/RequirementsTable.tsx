@@ -373,6 +373,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
         <button
           aria-controls={open ? `floating-action-menu-${action.id}` : undefined}
           aria-expanded={open}
+          aria-haspopup="menu"
           aria-label={action.ariaLabel}
           className={`${getFloatingPillClassName(variant)}${disabledClass}`}
           {...devMarker({

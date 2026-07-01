@@ -47,21 +47,27 @@ async function requestOkWithRetry(
   let lastFailure = 'unknown failure'
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
+    let response: ResponseWithBody
     try {
-      const response = await request()
-      if (response.ok()) return response
-
-      lastFailure = `${response.status()} ${response.statusText()}: ${await response.text()}`
-      if (response.status() < 500 || attempt === 3) {
-        throw new Error(`${label} returned ${lastFailure}`)
-      }
+      response = await request()
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error)
       if (attempt === 3) {
         throw new Error(`${label} failed after retries: ${lastFailure}`)
       }
+      await delay(750 * (attempt + 1))
+      continue
     }
 
+    if (response.ok()) return response
+
+    lastFailure = `${response.status()} ${response.statusText()}: ${await response.text()}`
+    if (response.status() < 500) {
+      throw new Error(`${label} returned ${lastFailure}`)
+    }
+    if (attempt === 3) {
+      throw new Error(`${label} failed after retries: ${lastFailure}`)
+    }
     await delay(750 * (attempt + 1))
   }
 

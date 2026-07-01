@@ -411,20 +411,25 @@ test.describe('Requirements specifications destructive manual cases', () => {
       name: /PWT-MANUAL redigerbart kravunderlag/,
     })
     await expect(row).toHaveCount(1)
-    await row.getByRole('button', { name: 'Ta bort' }).click()
-    let dialog = page.getByRole('alertdialog')
-    await expect(dialog).toHaveCount(1)
-    await dialog.getByRole('button', { name: 'Avbryt' }).click()
-    await expect(dialog).toHaveCount(0)
-    expect(deleteRequests).toEqual([])
-    await expect(row).toHaveCount(1)
 
-    await row.getByRole('button', { name: 'Ta bort' }).click()
-    dialog = page.getByRole('alertdialog')
-    await dialog.getByRole('button', { name: 'Bekräfta' }).click()
-    await expect.poll(() => deleteRequests.length).toBe(1)
-    await expect(
-      page.getByRole('row', { name: /PWT-MANUAL redigerbart kravunderlag/ }),
-    ).toHaveCount(0)
+    await test.step('cancel the delete confirmation', async () => {
+      await row.getByRole('button', { name: 'Ta bort' }).click()
+      const dialog = page.getByRole('alertdialog')
+      await expect(dialog).toHaveCount(1)
+      await dialog.getByRole('button', { name: 'Avbryt' }).click()
+      await expect(dialog).toHaveCount(0)
+      expect(deleteRequests).toEqual([])
+      await expect(row).toHaveCount(1)
+    })
+
+    await test.step('confirm deletion and remove the row', async () => {
+      await row.getByRole('button', { name: 'Ta bort' }).click()
+      const dialog = page.getByRole('alertdialog')
+      await dialog.getByRole('button', { name: 'Bekräfta' }).click()
+      await expect.poll(() => deleteRequests.length).toBe(1)
+      await expect(
+        page.getByRole('row', { name: /PWT-MANUAL redigerbart kravunderlag/ }),
+      ).toHaveCount(0)
+    })
   })
 })
