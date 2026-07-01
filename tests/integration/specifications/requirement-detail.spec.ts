@@ -1183,6 +1183,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       .toBe(true)
   })
 
+  // cSpell:ignore relocks
   test('SPEC-15: unlocks and relocks an RFI list after a question version changes', async ({
     page,
   }) => {

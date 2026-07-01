@@ -3,6 +3,7 @@ import { expect, type Route, test } from '@playwright/test'
 const importedDescription =
   'Playwright importerat krav ska kunna granskas och importeras.'
 
+// cSpell:ignore SOSFS
 const validImportPayload = {
   proposedNormReferences: [
     {
@@ -152,7 +153,9 @@ test.describe('Requirements import', () => {
         '[data-floating-action-rail-placement="fixed-right"] [data-floating-action-group="primary"] [data-floating-action-item="true"]',
       )
       .evaluateAll(elements =>
-        elements.map(element => element.getAttribute('data-floating-action-id')),
+        elements.map(element =>
+          element.getAttribute('data-floating-action-id'),
+        ),
       )
     expect(actionIds.indexOf('import')).toBeLessThan(
       actionIds.indexOf('export'),
@@ -206,7 +209,9 @@ test.describe('Requirements import', () => {
       .getByLabel('Kravområde')
       .locator('option:checked')
       .textContent()
-    const selectedAreaTitleName = selectedAreaName?.trim().replace(/^\S+\s+/, '')
+    const selectedAreaTitleName = selectedAreaName
+      ?.trim()
+      .replace(/^\S+\s+/, '')
     await dialog
       .getByLabel('Import-JSON')
       .fill(JSON.stringify(validImportPayload))

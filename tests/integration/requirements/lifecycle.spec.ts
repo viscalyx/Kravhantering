@@ -432,9 +432,7 @@ test.describe('Requirement lifecycle manual cases', () => {
     const requirement = await getRequirement(request, 'PWT-LIFE-PACKAGE-SWAP')
 
     const detailPane = await openRequirement(page, requirement.uniqueId)
-    await expect(
-      detailPane.getByText('PWT-MANUAL källpaket'),
-    ).toHaveCount(1)
+    await expect(detailPane.getByText('PWT-MANUAL källpaket')).toHaveCount(1)
     await expect(
       detailPane.getByText('PWT-MANUAL ersättningspaket'),
     ).toHaveCount(0)

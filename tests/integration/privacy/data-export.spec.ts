@@ -8,7 +8,7 @@ import {
   type SqlServerRuntimeEnv,
 } from '../../../lib/typeorm/sqlserver-config'
 
-// cspell:ignore kalle linneab retentionorphan
+// cspell:ignore kalle linneab retentionorphan pwtprivacy
 
 const PWT_PRIVACY_TARGET_HSA_ID = 'SE5560000001-pwtprivacy'
 const PRIVACY_OFFICER_STORAGE_STATE = 'test-results/auth/privacy-officer.json'

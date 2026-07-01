@@ -952,7 +952,8 @@
     "Kravimport",
     "kravkandidaten",
     "Persisterad",
-    "referensdatan"
+    "referensdatan",
+    "kravområdesförvaltningen"
   ],
   "flagWords": [],
   "ignorePaths": [
