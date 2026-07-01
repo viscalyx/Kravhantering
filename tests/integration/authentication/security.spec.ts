@@ -30,7 +30,7 @@ test.describe('signed-out auth boundary', () => {
     )
   })
 
-  test('API requests return 401 JSON', async ({ request }) => {
+  test('AUTH-03: API requests return 401 JSON', async ({ request }) => {
     const response = await request.get('/api/requirements')
 
     expect(response.status()).toBe(401)
@@ -94,7 +94,7 @@ test.describe('signed-in auth boundary', () => {
     }
   })
 
-  test('mutating REST requests without X-Requested-With are rejected', async ({
+  test('AUTH-12: mutating REST requests without X-Requested-With are rejected', async ({
     request: _request,
   }, testInfo) => {
     const baseURL = getBaseUrl(testInfo)
@@ -126,7 +126,7 @@ test.describe('signed-in auth boundary', () => {
     }
   })
 
-  test('cross-origin mutating REST requests are rejected', async ({
+  test('AUTH-12: cross-origin mutating REST requests are rejected', async ({
     request: _request,
   }, testInfo) => {
     const context = await playwrightRequest.newContext({

@@ -305,7 +305,7 @@ test.describe('AUTH-10/AUTH-11: forbidden requirement specification surface', ()
     viewport: { height: 720, width: 1280 },
   })
 
-  test('shows responsible contact without content on desktop', async ({
+  test('AUTH-10/AUTH-11: shows responsible contact without content on desktop', async ({
     page,
   }, testInfo) => {
     referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
@@ -319,7 +319,7 @@ test.describe('AUTH-10/AUTH-11: forbidden requirement specification surface', ()
     await assertForbiddenSpecificationSurface(page)
   })
 
-  test('shows published requirement detail as read-only without lifecycle controls', async ({
+  test('AUTH-10/AUTH-11: shows published requirement detail as read-only without lifecycle controls', async ({
     page,
   }, testInfo) => {
     referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')

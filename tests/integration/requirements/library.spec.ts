@@ -26,7 +26,9 @@ async function openRequirementDetail(
 
       const detailPaneId = await rowButton.getAttribute('aria-controls')
       if (!detailPaneId) {
-        throw new Error(`Requirement row ${uniqueId} has no detail pane target.`)
+        throw new Error(
+          `Requirement row ${uniqueId} has no detail pane target.`,
+        )
       }
 
       const detailPane = page.locator(`#${detailPaneId}`)

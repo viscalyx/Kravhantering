@@ -117,7 +117,9 @@ export function useAsyncResource<T>(
 
     let request: SharedRequest<T>
     if (dedupe) {
-      request = getOrCreateSharedRequest(key, signal => fetcherRef.current(signal))
+      request = getOrCreateSharedRequest(key, signal =>
+        fetcherRef.current(signal),
+      )
     } else {
       controllerRef.current?.abort()
       const controller = new AbortController()

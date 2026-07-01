@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test.describe('admin center permissions', () => {
   test.use({ storageState: 'test-results/auth/reviewer.json' })
 
-  test('reviewer-only users see privileged admin tabs disabled', async ({
+  test('AUTHZ-09/AUTH-10/AUTH-11: reviewer-only users see privileged admin tabs disabled', async ({
     page,
   }) => {
     await page.goto('/sv/admin?tab=accessReview')

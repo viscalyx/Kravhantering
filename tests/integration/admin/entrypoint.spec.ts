@@ -708,7 +708,7 @@ for (const { name, viewport } of viewportVariants) {
 }
 
 for (const locale of ['sv', 'en'] as const) {
-  test(`admin page loads for ${locale}`, async ({ page }) => {
+  test(`AUTH-05: admin page loads for ${locale}`, async ({ page }) => {
     await page.goto(`/${locale}/admin`)
 
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(

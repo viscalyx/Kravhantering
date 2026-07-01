@@ -25,7 +25,7 @@ interface RequirementSelectionQuestionResponse {
 
 type ResponseWithBody = Pick<
   Awaited<ReturnType<APIRequestContext['put']>>,
-  'ok' | 'status' | 'statusText' | 'text'
+  'json' | 'ok' | 'status' | 'statusText' | 'text'
 >
 
 function delay(ms: number): Promise<void> {
@@ -118,13 +118,11 @@ async function resetDriftAnswerOrder(request: APIRequestContext) {
   for (const [sortOrder, answerText] of DRF_ANSWER_TEXT_ORDER.entries()) {
     const answerId = answerIdsByText.get(answerText)
     expect(answerId).toBeTruthy()
-    await requestOkWithRetry(
-      `Reset sort order for answer ${answerText}`,
-      () =>
-        request.put(
-          `/api/requirement-selection-questions/${question.id}/answers/${answerId}`,
-          { data: { sortOrder }, timeout: 30_000 },
-        ),
+    await requestOkWithRetry(`Reset sort order for answer ${answerText}`, () =>
+      request.put(
+        `/api/requirement-selection-questions/${question.id}/answers/${answerId}`,
+        { data: { sortOrder }, timeout: 30_000 },
+      ),
     )
   }
 }
@@ -134,7 +132,7 @@ test.describe('Requirement selection answer drag and drop', () => {
   test.setTimeout(180_000)
   test.use({ viewport: { height: 900, width: 1280 } })
 
-  test('reorders collapsed requirement-selection questions by dragging the question handle', async ({
+  test('REQ-14: reorders collapsed requirement-selection questions by dragging the question handle', async ({
     page,
   }) => {
     try {
@@ -214,7 +212,7 @@ test.describe('Requirement selection answer drag and drop', () => {
     }
   })
 
-  test('reorders expanded requirement-selection answers by dragging the answer handle', async ({
+  test('REQ-14: reorders expanded requirement-selection answers by dragging the answer handle', async ({
     page,
   }) => {
     try {

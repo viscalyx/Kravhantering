@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 const viewports = [
   { name: 'mobile', width: 375, height: 812 },
@@ -137,7 +137,7 @@ for (const viewport of viewports) {
       await expect(chip).toContainText('report button: specification reports')
     })
 
-    test('keeps sticky table headers referenceable in developer mode', async ({
+    test('DEVTOOLS-01: keeps sticky table headers referenceable in developer mode', async ({
       page,
     }) => {
       await gotoRequirementInlineDetail(page, 'INT0001')

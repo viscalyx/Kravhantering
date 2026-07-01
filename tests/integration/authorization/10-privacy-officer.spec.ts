@@ -48,7 +48,7 @@ test.describe('AUTHZ-10/AUTH-07/AUTH-11: Admin Center tab permissions for Privac
     viewport: { height: 720, width: 1280 },
   })
 
-  test('enables privacy tabs while Admin-only tabs stay disabled', async ({
+  test('AUTHZ-10/AUTH-07/AUTH-11: enables privacy tabs while Admin-only tabs stay disabled', async ({
     page,
   }, testInfo) => {
     referenceManualCases(testInfo, 'AUTHZ-10', 'AUTH-07', 'AUTH-11')

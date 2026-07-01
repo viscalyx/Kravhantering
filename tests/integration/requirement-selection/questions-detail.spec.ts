@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test.describe('Requirement selection question detail preview', () => {
   test.use({ viewport: { height: 720, width: 1280 } })
 
-  test('opens a library-style read-only requirement detail card from the answer modal', async ({
+  test('REQ-14: opens a library-style read-only requirement detail card from the answer modal', async ({
     page,
   }) => {
     await test.step('open a seeded requirement-selection answer for editing', async () => {

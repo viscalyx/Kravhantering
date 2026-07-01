@@ -48,7 +48,7 @@ test('ADMIN-07: admin can filter action-log events and export CSV', async ({
   expect(csv).toContain('203.0.113.10')
 })
 
-test('admin can use the action log inline from admin center', async ({
+test('ADMIN-07: admin can use the action log inline from admin center', async ({
   page,
 }) => {
   await page.goto('/sv/admin?tab=actionAuditLog')

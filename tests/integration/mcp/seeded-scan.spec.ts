@@ -285,7 +285,7 @@ async function writeSummary(status: string, details: string[]) {
 }
 
 test.describe('MCP seeded HTTP security gate', () => {
-  test('rejects missing and invalid bearer tokens over HTTP', async ({
+  test('MCP-01: rejects missing and invalid bearer tokens over HTTP', async ({
     request: _request,
   }, testInfo) => {
     const baseUrl = getBaseUrl(testInfo)
@@ -336,7 +336,7 @@ test.describe('MCP seeded HTTP security gate', () => {
     }
   })
 
-  test('runs the authenticated seeded MCP corpus', async ({
+  test('MCP-01: runs the authenticated seeded MCP corpus', async ({
     browserName: _browserName,
   }, testInfo) => {
     test.setTimeout(90_000)

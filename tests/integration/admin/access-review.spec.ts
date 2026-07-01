@@ -171,7 +171,7 @@ for (const { error, status } of [
   { error: 'Serverfel vid beslut', status: 500 },
   { error: 'Saknar behörighet', status: 403 },
 ]) {
-  test(`surfaces decision failure ${status} without saving the row`, async ({
+  test(`ADMIN-08: surfaces decision failure ${status} without saving the row`, async ({
     page,
   }) => {
     const { decisionRequests } = await routeAccessReviewApis(page, {
@@ -201,7 +201,7 @@ for (const { error, status } of [
     status: 409,
   },
 ]) {
-  test(`surfaces export failure ${status}`, async ({ page }) => {
+  test(`ADMIN-08: surfaces export failure ${status}`, async ({ page }) => {
     const { exportRequests } = await routeAccessReviewApis(page, {
       exportError: { error, status },
     })

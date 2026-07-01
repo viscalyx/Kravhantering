@@ -358,7 +358,7 @@ test.describe('Requirements table column resizing', () => {
           .toContain('"description"')
       })
 
-      test('scrolls immediately up and down after opening an inline detail pane', async ({
+      test('REQ-08: scrolls immediately up and down after opening an inline detail pane', async ({
         page,
       }) => {
         await page.goto('/sv/requirements')

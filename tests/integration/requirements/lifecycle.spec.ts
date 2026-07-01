@@ -34,6 +34,7 @@ interface RequirementDetail {
 }
 
 interface OkResponse {
+  json(): Promise<unknown>
   ok(): boolean
   status(): number
   text(): Promise<string>
@@ -260,7 +261,9 @@ async function openRequirement(page: Page, uniqueId: string): Promise<Locator> {
 
       const detailPaneId = await rowButton.getAttribute('aria-controls')
       if (!detailPaneId) {
-        throw new Error(`Requirement row ${uniqueId} has no detail pane target.`)
+        throw new Error(
+          `Requirement row ${uniqueId} has no detail pane target.`,
+        )
       }
 
       const detailPane = page.locator(`#${detailPaneId}`)
@@ -456,7 +459,10 @@ test.describe('Requirement lifecycle manual cases', () => {
     } finally {
       await reviewerRequest.dispose()
     }
-    const detailPane = await openRequirementStandalone(page, requirement.uniqueId)
+    const detailPane = await openRequirementStandalone(
+      page,
+      requirement.uniqueId,
+    )
 
     await detailPane.getByRole('link', { name: 'Redigera' }).click()
     await expect(page).toHaveURL(
@@ -497,20 +503,22 @@ test.describe('Requirement lifecycle manual cases', () => {
           new SubmitEvent('submit', {
             bubbles: true,
             cancelable: true,
-            submitter:
-              submitter instanceof HTMLElement ? submitter : undefined,
+            submitter: submitter instanceof HTMLElement ? submitter : undefined,
           }),
         )
       }),
     ])
     await expect
-      .poll(async () => {
-        const updated = await getRequirement(request, requirement.uniqueId)
-        return {
-          latestStatus: latestVersion(updated).status,
-          versionCount: updated.versions.length,
-        }
-      }, { timeout: 60_000 })
+      .poll(
+        async () => {
+          const updated = await getRequirement(request, requirement.uniqueId)
+          return {
+            latestStatus: latestVersion(updated).status,
+            versionCount: updated.versions.length,
+          }
+        },
+        { timeout: 60_000 },
+      )
       .toEqual({
         latestStatus: STATUS_DRAFT,
         versionCount: 2,

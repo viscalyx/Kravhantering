@@ -1,5 +1,6 @@
-<!-- cSpell:words AUTHZ areaco DevTools KUF noroles pkglead PkgCoAuthor -->
-<!-- cSpell:words RetentionFresh RetentionLinked RetentionOrphan specco -->
+<!-- cSpell:words AUTHZ CSRF MCP areaco DevTools KUF noroles pkglead -->
+<!-- cSpell:words PkgCoAuthor RetentionFresh RetentionLinked -->
+<!-- cSpell:words RetentionOrphan specco -->
 <!-- markdownlint-disable MD033 -->
 
 # Manuella testfall
@@ -18,7 +19,7 @@ vanlig `curl` inte använder samma lokala autentiseringsstöd.
 - [Allmän förberedelse](#allmän-förberedelse)
 - [Navigering](#navigering)
 - [Autentisering och behörighet](#autentisering-och-behörighet)
-  - [AUTH-01 till AUTH-11](#auth-01-logga-in-via-keycloak)
+  - [AUTH-01 till AUTH-12](#auth-01-logga-in-via-keycloak)
   - [AUTHZ-00 till AUTHZ-10](#authz-00-fas-0-testdata-och-identiteter)
 - [Kravbibliotek](#kravbibliotek)
 - [Skapa krav och livscykel](#skapa-krav-och-livscykel)
@@ -286,6 +287,26 @@ detaljsida saknas eller är inaktiva redan i UI:t, och API:t nekar samma
 **Förväntat resultat:** Manual, fasdokument och spec-filer beskriver samma
 behörighetsrisker.
 
+### AUTH-12: muterande REST-anrop kräver skydd mot CSRF
+
+**Syfte:** Bekräfta att muterande REST-anrop kräver både korrekt
+`X-Requested-With`-header och samma ursprung.
+
+**Användare:** `ada.admin`.
+
+**Steg:**
+
+1. Logga in som `ada.admin`.
+1. Kör en muterande API-kontroll med sessionskaka men utan
+   `X-Requested-With: XMLHttpRequest`, till exempel mot
+   `/api/requirement-areas`.
+1. Upprepa kontrollen med `X-Requested-With: XMLHttpRequest` men med
+   `Origin: https://evil.example`.
+
+**Förväntat resultat:** Båda anropen nekas med HTTP 403 och JSON-body. Det
+första svaret anger att `X-Requested-With` saknas, och det andra anger att
+cross-origin-anropet avvisas.
+
 ### AUTHZ-00: Fas 0, testdata och identiteter
 
 **Syfte:** Kontrollera att testmiljön innehåller alla separata personer och
@@ -552,10 +573,11 @@ kolumnen igen.
 
 ### REQ-08: sticky tabellrubrik och flytande verktyg är användbara
 
-**Steg:** Scrolla kravbiblioteket och använd den flytande åtgärdsytan.
+**Steg:** Scrolla kravbiblioteket, använd den flytande åtgärdsytan och öppna
+ett krav i inline-detalj. Scrolla därefter direkt upp och ned igen.
 
 **Förväntat resultat:** Tabellrubrik och åtgärder ligger kvar på ett läsbart
-sätt.
+sätt, och öppnad inline-detalj hindrar inte användaren från att rulla vidare.
 
 ### REQ-09: innehållsordning i inline-detalj
 
@@ -618,7 +640,12 @@ med piltangenter och stäng med Escape.
    att den separata dialogen har tilläggsfält överst, laddningsläge och en
    sparad tabell för att lägga till och ta bort kravpaketsmedförfattare.
 1. Skapa en kravurvalsfråga, lägg till svar och ändra ordning.
+1. Ändra ordning på kravurvalsfrågor och svar genom att dra respektive
+   ordningshandtag.
 1. Kontrollera synlighetsvillkor, hierarkimodal och kravurvalsförhandsvisning.
+1. Öppna ett krav i förhandsvisningen för kravurval från modalen för svaret
+   och kontrollera att det visas skrivskyddat med kravbibliotekets
+   detaljlayout.
 1. Öppna `RFI-frågor`, sök efter en fråga, filtrera på kravområde och status
    samt kontrollera att frågorna visas grupperade per kravområde.
 1. Skapa och redigera en RFI-fråga via den flytande skapa-knappen och
@@ -1302,15 +1329,19 @@ Normreferens-ID sist och fullbrett. Mobil visar samma fält i en kolumn utan
 
 ### ADMIN-07: åtgärdslogg filtrerar och exporterar CSV
 
-**Steg:** Öppna åtgärdslogg, filtrera på aktör eller händelse och exportera.
+**Steg:** Öppna åtgärdslogg direkt och via fliken `Åtgärdslogg` i
+Admincenter. Filtrera på aktör eller händelse och exportera.
 
 **Förväntat resultat:** Listan filtreras och CSV innehåller matchande rader.
 
 ### ADMIN-08: åtkomstöversyn, beslut och export
 
 **Steg:** Öppna åtkomstöversyn, fatta ett testbeslut och exportera underlag.
+Upprepa med simulerat serverfel eller behörighetsfel vid beslut och export.
 
-**Förväntat resultat:** Beslut sparas och exporten innehåller beslutet.
+**Förväntat resultat:** Beslut sparas och exporten innehåller beslutet. Vid
+fel visas felmeddelande, beslutet ligger kvar som ej sparat och exportfel
+bryter inte sidan.
 
 ### ADMIN-09: åtkomstöversyn avvisar för långa kommentarer
 
@@ -1426,9 +1457,20 @@ otilldelade personer som inte matchar målet.
 ### DEVTOOLS-01: Developer Mode-chip kopierar referens
 
 **Steg:** Aktivera Developer Mode, hovra över en annoterad kontroll och kopiera
-referensen.
+referensen. Scrolla kravbiblioteket tills tabellrubriken ligger sticky och
+upprepa kontrollen på en annoterad kolumnrubrik.
 
 **Förväntat resultat:** Referensen kopieras och bekräftas visuellt.
+
+### MCP-01: MCP HTTP kräver bearer och exponerar seedade verktyg
+
+**Steg:** Kör MCP-kontroll utan bearer-token, med ogiltig bearer-token och med
+giltig lokal MCP-token. Lista därefter verktyg och kör den seedade
+MCP-korpusen.
+
+**Förväntat resultat:** Saknad eller ogiltig bearer-token ger HTTP 401 med
+`WWW-Authenticate: Bearer`. Med giltig token exponeras exakt den dokumenterade
+verktygsuppsättningen och seedade MCP-anrop fungerar utan oväntade verktyg.
 
 ### DEVTOOLS-02: Developer Mode ligger kvar vid navigering
 
