@@ -487,60 +487,63 @@ for (const { name, viewport } of viewportVariants) {
 
       test('ADMIN-12: retention preview excludes saved historical requirement-selection answers', async ({
         page,
+        request,
       }) => {
-        const previewRequests: unknown[] = []
-        await page.route('**/api/admin/archiving/policies', async route => {
-          await fulfillJson(route, {
-            policies: [REQUIREMENT_SELECTION_RETENTION_POLICY],
-          })
+        const policiesResponse = await requestOkWithRetry(
+          'retention policies',
+          () => request.get('/api/admin/archiving/policies'),
+        )
+        const policiesBody = (await policiesResponse.json()) as {
+          policies?: Array<typeof REQUIREMENT_SELECTION_RETENTION_POLICY>
+        }
+        const policy = policiesBody.policies?.find(
+          candidate =>
+            candidate.policyKey ===
+            REQUIREMENT_SELECTION_RETENTION_POLICY.policyKey,
+        )
+        expect(policy).toBeDefined()
+        if (!policy) {
+          throw new Error('Requirement-selection retention policy not found.')
+        }
+
+        const previewResponse = await requestOkWithRetry(
+          'requirement-selection retention preview',
+          () =>
+            request.post('/api/admin/archiving/preview', {
+              data: { policyId: policy.id },
+              timeout: 30_000,
+            }),
+        )
+        const preview = (await previewResponse.json()) as {
+          candidates?: Array<{
+            currentDisplayValue?: string
+            reference?: string
+            sourceKey?: string
+          }>
+          policy?: { policyKey?: string }
+          summary?: { candidateCount?: number; deleteCount?: number }
+        }
+        expect(preview.policy?.policyKey).toBe(policy.policyKey)
+        expect(preview.summary).toMatchObject({
+          candidateCount: 2,
+          deleteCount: 2,
         })
-        await page.route('**/api/admin/archiving/preview', async route => {
-          previewRequests.push(route.request().postDataJSON())
-          await fulfillJson(route, {
-            candidates: [
-              {
-                action: 'delete',
-                ageBasis: '2025-04-24T09:00:00.000Z',
-                blockedReasonKey: null,
-                currentDisplayValue: 'PWT ADMIN-12 arkiverad fråga',
-                fieldKey: 'requirementSelection',
-                key: 'requirement_selection_questions.archived:920401',
-                objectKey: 'requirementSelectionQuestions',
-                reference: 'PWT-ADMIN12-KUF001',
-                requiresExport: false,
-                sourceKey: 'requirement_selection_questions.archived',
-                subjectId: '920401',
-                subjectTable: 'requirement_selection_questions',
-              },
-              {
-                action: 'delete',
-                ageBasis: '2025-04-24T09:00:00.000Z',
-                blockedReasonKey: null,
-                currentDisplayValue: 'PWT ADMIN-12 arkiverat svar',
-                fieldKey: 'requirementSelection',
-                key: 'requirement_selection_answers.archived:920411',
-                objectKey: 'requirementSelectionAnswers',
-                reference: 'PWT ADMIN-12 svarsalternativ',
-                requiresExport: false,
-                sourceKey: 'requirement_selection_answers.archived',
-                subjectId: '920411',
-                subjectTable: 'requirement_selection_answers',
-              },
-            ],
-            cutoff: '2025-05-14T00:00:00.000Z',
-            policy: REQUIREMENT_SELECTION_RETENTION_POLICY,
-            previewToken: 'requirement-selection-retention-preview-token',
-            summary: {
-              archiveCount: 0,
-              candidateCount: 2,
-              deleteCount: 2,
-              exceptionCount: 0,
-              skippedCount: 0,
-            },
-          })
-        })
+        expect(
+          preview.candidates?.map(candidate => candidate.sourceKey).sort(),
+        ).toEqual([
+          'requirement_selection_answers.archived',
+          'requirement_selection_questions.archived',
+        ])
+        expect(JSON.stringify(preview)).toContain('PWT-ADMIN12-KUF001')
+        expect(JSON.stringify(preview)).toContain(
+          'PWT ADMIN-12 svarsalternativ',
+        )
+        expect(JSON.stringify(preview)).not.toContain(
+          'PWT ADMIN-12 historiskt sparat svar',
+        )
 
         await page.goto('/sv/admin?tab=archiving')
+        await page.getByLabel('Gallringspolicy').selectOption(String(policy.id))
         await page
           .getByRole('button', { name: 'Förhandsgranska gallring' })
           .click()
@@ -553,9 +556,6 @@ for (const { name, viewport } of viewportVariants) {
         await expect(
           page.getByText('PWT ADMIN-12 historiskt sparat svar'),
         ).toHaveCount(0)
-        expect(previewRequests).toEqual([
-          { policyId: REQUIREMENT_SELECTION_RETENTION_POLICY.id },
-        ])
       })
 
       test('ADMIN-03: browser back returns to the taxonomy tab after opening a taxonomy page', async ({

@@ -367,11 +367,16 @@ kravområdesägare.
 1. Öppna radåtgärden `Hantera medförfattare` och verifiera att
    dialogen visar ett tilläggsfält överst, laddningsläge vid hämtning och en
    sparad tabell med kravområdesmedförfattare.
+1. Lägg till ett tillfälligt HSA-id som kravområdesmedförfattare, kontrollera
+   att raden visas i den sparade tabellen, ta bort samma rad och ladda om
+   dialogen.
 1. Ladda om sidan och kontrollera att ändringen finns kvar.
 1. Försök administrera global Admin-yta.
 
 **Förväntat resultat:** Olle kan arbeta inom sitt kravområde men kan inte ta
-global Admin-behörighet utanför sin tilldelning.
+global Admin-behörighet utanför sin tilldelning. Dialogens sparade tabell visar
+tillagd medförfattare efter sparande och saknar samma rad efter borttagning och
+omladdning.
 
 ### AUTHZ-03: kravområdesmedförfattare
 
@@ -406,11 +411,14 @@ tilldelningsstyrning och global Admin.
    verksamhetsbehovsreferens.
 1. Stäng redigeringen och öppna radåtgärden `Hantera medförfattare`.
 1. Kontrollera att tilläggsfältet ligger över den sparade tabellen och lägg
-   till eller verifiera en kravunderlagsmedförfattare i dialogen.
+   till en tillfällig kravunderlagsmedförfattare i dialogen.
+1. Kontrollera att medförfattaren visas i den sparade tabellen, ta bort samma
+   rad och öppna dialogen igen.
 1. Försök utföra Admin-only-åtgärd eller dataskyddsförhandsgranskning.
 
 **Förväntat resultat:** Petra kan förvalta sitt kravunderlag och dess
-tilldelningar men nekas global Admin och dataskydd.
+tilldelningar men nekas global Admin och dataskydd. Tillfällig medförfattare
+sparas i dialogens tabell och är borttagen efter ny öppning av dialogen.
 
 ### AUTHZ-05: kravunderlagsmedförfattare
 
@@ -446,11 +454,14 @@ utföra Admin-only-åtgärder.
 1. Öppna radåtgärden `Hantera medförfattare` och verifiera att paketets
    kravpaketsmedförfattare visas i en sparad tabell och kan läggas till eller
    tas bort i den separata dialogen.
+1. Lägg till ett tillfälligt HSA-id, kontrollera att raden sparas, ta bort
+   samma rad och öppna dialogen igen.
 1. Ladda om sidan och verifiera att Leo fortfarande är kravpaketsansvarig.
 1. Försök arkivera paketet om UI visar åtgärden, annars kontrollera API.
 
 **Förväntat resultat:** Leo kan uppdatera paketmetadata men kan inte utföra
-Admin-only-arkivering.
+Admin-only-arkivering. Tillfällig paketmedförfattare finns kvar efter sparande
+och saknas efter borttagning och omladdad dialog.
 
 ### AUTHZ-07: kravpaketsmedförfattare
 
@@ -698,7 +709,7 @@ exportknappen medan kolumnväljaren ligger sist till höger. Granskningen delar
 upp `Krav` och `Föreslagna normreferenser`, rader är kollapsade från start,
 `Typ` visas före `Kvalitetsegenskap`, verifieringsmetod visas när
 `Verifierbar` är aktiv och löst förslag till normreferens visas som löst. Importen
-skickar vald rad och skapar CSV-kvitto.
+skickar vald rad och skapar CSV-kvitto med importerad kravrad.
 
 ## Skapa krav och livscykel
 
@@ -835,8 +846,10 @@ välj ett testunderlag.
 
 **Steg:** Öppna rapport för förslagshistorik på ett krav med förslag.
 
-**Förväntat resultat:** Rapporten för förslagshistorik kan hämtas som PDF för krav
-med förslag och servern returnerar PDF-svar.
+**Förväntat resultat:** Rapporten för förslagshistorik kan hämtas som PDF för
+krav med förslag och servern returnerar PDF-svar. Automatiserad täckning får
+verifiera serverns PDF-svar och rapportens datakälla via befintlig
+rapportmodell eller rapportslutpunkt.
 
 ### COL-07: metadata visar kravområdesägare och taxonomi
 
@@ -930,7 +943,9 @@ rapportmenyn och välj `Kravbilaga för upphandling`. Öppna exportmenyn och vä
 på Krav-ID, och innehåller bara Krav-ID, Kravtext, Kvalitetsegenskap med
 ISO-kapitel och Normreferenser utan rå URI. `Anbuds-CSV` innehåller samma
 kravfält och en separat Norm-URI-kolumn. `Full CSV-export` finns också och
-exporterna använder rätt profil i API-anropet.
+exporterna använder rätt profil i API-anropet. Automatiserad täckning får
+verifiera rapportens fält via befintlig strukturerad rapportslutpunkt och
+CSV-innehållet via exportslutpunkten.
 
 ### SPEC-10b: generera genomföranderapport för införande och utveckling
 
@@ -942,7 +957,8 @@ exportmenyn.
 innehåller intern uppföljningsmetadata, kravversion, kravområde, kategori, typ,
 kvalitetsegenskap, risknivå, kravversionsstatus, verifierbarhet,
 behovsreferens, användningsstatus och normreferenser. `Anbuds-CSV` visas inte.
-`Full CSV-export` visas.
+`Full CSV-export` visas. Automatiserad täckning får verifiera fälten via
+befintlig strukturerad rapportslutpunkt.
 
 ### SPEC-10c: generera förvaltningsrapport
 
@@ -951,7 +967,8 @@ rapportmenyn och välj `Förvaltningsrapport`.
 
 **Förväntat resultat:** Rapporten återanvänder genomföranderapportens fält och
 visar dessutom avstegssignal och rest från införande. Avvikna krav flaggas via
-avstegssignalen, inte genom att räknas som implementerad rest.
+avstegssignalen, inte genom att räknas som implementerad rest. Automatiserad
+täckning får verifiera fälten via befintlig strukturerad rapportslutpunkt.
 
 ### SPEC-10d: kravunderlagsrapporter kräver läsbehörighet
 
@@ -975,7 +992,8 @@ ursprung, version, kravområde, behovsreferens, användningsstatus,
 statusändringsdatum, avsteg, risk, verifierbarhet/verifieringsmetod och
 anteckning. När filtret visar fler än 200 kravtillämpningar visas inte
 alternativen för `Tillämpningsspårbarhet`, medan övriga rapportalternativ i
-menyn fortfarande fungerar.
+menyn fortfarande fungerar. Automatiserad täckning får verifiera filtrerat
+innehåll via befintlig traceability-endpoint och menygränsen i UI.
 
 ### SPEC-11: återställ kolumnvyer för kravunderlag
 
@@ -1236,6 +1254,8 @@ ikoner tillsammans med läsbara etiketter.
 **Steg:** Kör gallringsförhandsgranskning för arkiverade kravurvalsdata.
 
 **Förväntat resultat:** Sparad historik undantas enligt retentionregeln.
+Automatiserad täckning ska verifiera serverns gallringsförhandsgranskning så
+att historiska sparade svar inte förekommer bland kandidaterna.
 
 ### ADMIN-13: kravområdesägare och medförfattare visas med HSA-id
 
@@ -1249,7 +1269,8 @@ redigering och kontrollera HSA-id för kravområdesägaren.
 **Förväntat resultat:** Listan visar ikonbaserade knappar för Hantera
 medförfattare, Redigera och Ta bort. Medförfattare hanteras i en separat modal,
 inte i metadataformuläret. Kravområdesägaren visas och sparas som HSA-id och
-dialogen för medförfattare visar befintliga HSA-id-rader.
+dialogen för medförfattare visar befintliga HSA-id-rader samt sparar tillagd
+rad och tar bort den efter omladdning.
 
 ### ADMIN-14: HSA-id-prefix administreras från Identitet
 
@@ -1369,4 +1390,6 @@ miljö. Hovra över Kravhantering-loggan i global sidopanel efter inloggning.
 **Förväntat resultat:** Readiness svarar OK när databasen har samma
 migrations-`name` som `expectedDatabaseSchemaVersion` i `/build.json`. Vid
 fel svarar readiness med ett sanerat `failedChecks`-objekt, och metadata saknar
-känsliga värden. Tooltipen visar appversion i global sidopanel.
+känsliga värden. Automatiserad täckning ska verifiera aktuell körningsgren och
+en separat mismatch-gren om lokal miljö inte säkert kan tvinga fram schemafel.
+Tooltipen visar appversion i global sidopanel.

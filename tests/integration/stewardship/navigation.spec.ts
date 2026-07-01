@@ -275,36 +275,52 @@ test.describe('Stewardship navigation memory', () => {
       page.getByRole('heading', { level: 1, name: 'RFI-frågor' }),
     ).toBeVisible()
 
-    await page
-      .getByRole('button', {
-        name: 'Behandla RFI-frågeförslag: PWM-RFI001',
-      })
-      .click()
+    const questionSuggestionButton = page.getByRole('button', {
+      name: 'Behandla RFI-frågeförslag: PWM-RFI001',
+    })
+    await expect(questionSuggestionButton.locator('svg')).toBeVisible()
+    await expect(questionSuggestionButton.getByText('1')).toBeVisible()
+    await questionSuggestionButton.click()
     let suggestionsDialog = page.getByRole('dialog', {
       name: 'Behandla RFI-frågeförslag',
     })
+    await expect(suggestionsDialog).toContainText('Nya')
+    await expect(suggestionsDialog).toContainText('Behandlade (1)')
     await expect(suggestionsDialog).toContainText(
       'PWT-MANUAL öppet frågeförslag.',
     )
     await suggestionsDialog
       .getByRole('textbox', { name: /Beslutsmotivering/u })
       .fill('PWT SPEC-16c skickad till granskning.')
+    await expect(
+      suggestionsDialog
+        .getByRole('button', { name: 'Begär granskning' })
+        .locator('svg'),
+    ).toBeVisible()
     await suggestionsDialog
       .getByRole('button', { name: 'Begär granskning' })
       .click()
 
     await expect.poll(() => reviewRequests).toEqual([920001])
     await expect(suggestionsDialog).toContainText('I granskning')
+    await expect(suggestionsDialog).toContainText('Behandlade (1)')
+    await expect(
+      suggestionsDialog
+        .getByRole('button', { name: 'Markera hanterad' })
+        .locator('svg'),
+    ).toBeVisible()
     await suggestionsDialog.getByRole('button', { name: 'Stäng' }).click()
 
-    await page
-      .getByRole('button', {
-        name: 'Behandla RFI-frågeförslag: PWM PWT-MANUAL Playwright manual cases',
-      })
-      .click()
+    const areaSuggestionButton = page.getByRole('button', {
+      name: 'Behandla RFI-frågeförslag: PWM PWT-MANUAL Playwright manual cases',
+    })
+    await expect(areaSuggestionButton.locator('svg')).toBeVisible()
+    await expect(areaSuggestionButton.getByText('1')).toBeVisible()
+    await areaSuggestionButton.click()
     suggestionsDialog = page.getByRole('dialog', {
       name: 'Behandla RFI-frågeförslag',
     })
+    await expect(suggestionsDialog).toContainText('Nya')
     await expect(suggestionsDialog).toContainText(
       'PWT-MANUAL öppet områdesförslag.',
     )
@@ -325,5 +341,6 @@ test.describe('Stewardship navigation memory', () => {
         },
       ])
     await expect(suggestionsDialog).toContainText('Hanterad')
+    await expect(suggestionsDialog).toContainText('Behandlade')
   })
 })

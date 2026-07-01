@@ -1,10 +1,12 @@
 import {
+  type APIRequestContext,
   expect,
   type Locator,
   type Page,
   type Route,
   test,
 } from '@playwright/test'
+import { newRoleContext } from '../authorization/authorization-test-helpers'
 
 interface SuggestionData {
   content: string
@@ -50,6 +52,31 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
     json: body,
     status,
   })
+}
+
+async function expectOk(response: APIResponseLike, context: string) {
+  if (response.ok()) return
+  throw new Error(
+    `${context} failed with ${response.status()}: ${await response.text()}`,
+  )
+}
+
+interface APIResponseLike {
+  ok(): boolean
+  status(): number
+  text(): Promise<string>
+}
+
+async function getRequirementId(
+  request: APIRequestContext,
+  uniqueId: string,
+): Promise<number> {
+  const response = await request.get(`/api/requirements/${uniqueId}`, {
+    timeout: 30_000,
+  })
+  await expectOk(response, `GET requirement ${uniqueId}`)
+  const body = (await response.json()) as { id: number }
+  return body.id
 }
 
 async function openRequirementDetail(
@@ -167,47 +194,71 @@ test.describe('Requirement collaboration', () => {
 
   test('COL-01: adds a requirement to a selected kravunderlag', async ({
     page,
-  }) => {
-    const addRequests: unknown[] = []
-    await page.route('**/api/requirements-specifications', async route => {
-      await fulfillJson(route, {
-        specifications: [{ id: 501, name: 'Playwright testunderlag' }],
+  }, testInfo) => {
+    const specificationResponsible = await newRoleContext(
+      testInfo,
+      'specificationResponsible',
+    )
+    const uniqueSuffix = `${Date.now()}`
+    const specificationSlug = `PWT-COL-01-${uniqueSuffix}`
+    const specificationName = `PWT COL-01 testunderlag ${uniqueSuffix}`
+    let createdSpecification: { id: number; uniqueId: string } | null = null
+
+    try {
+      const createResponse = await specificationResponsible.post(
+        '/api/requirements-specifications',
+        {
+          data: {
+            businessNeedsReference:
+              'Playwright COL-01 verifierar tillagt krav i kravunderlag.',
+            name: specificationName,
+            specificationLifecycleStatusId: 1,
+            uniqueId: specificationSlug,
+          },
+        },
+      )
+      await expectOk(createResponse, 'create COL-01 kravunderlag')
+      createdSpecification = (await createResponse.json()) as {
+        id: number
+        uniqueId: string
+      }
+
+      const detailPane = await openRequirementDetail(page)
+      await detailPane
+        .getByRole('button', { name: 'Lägg till i kravunderlag' })
+        .click()
+      const dialog = page.getByRole('dialog', {
+        name: 'Lägg till i kravunderlag',
       })
-    })
-    await page.route(
-      '**/api/requirements-specifications/501/needs-references',
-      async route => {
-        await fulfillJson(route, { needsReferences: [] })
-      },
-    )
-    await page.route(
-      '**/api/requirements-specifications/501/items',
-      async route => {
-        addRequests.push(route.request().postDataJSON())
-        await fulfillJson(route, { addedCount: 1 })
-      },
-    )
+      await expect(dialog).toHaveCount(1)
+      await dialog
+        .getByLabel('Välj kravunderlag *')
+        .selectOption(String(createdSpecification.id))
+      await dialog
+        .getByRole('button', { name: 'Lägg till i kravunderlag' })
+        .click()
 
-    const detailPane = await openRequirementDetail(page)
-    await detailPane
-      .getByRole('button', { name: 'Lägg till i kravunderlag' })
-      .click()
-    const dialog = page.getByRole('dialog', {
-      name: 'Lägg till i kravunderlag',
-    })
-    await expect(dialog).toHaveCount(1)
-    await dialog.getByLabel('Välj kravunderlag *').selectOption('501')
-    await dialog
-      .getByRole('button', { name: 'Lägg till i kravunderlag' })
-      .click()
+      await expect(
+        dialog.getByText('Kravet har lagts till i kravunderlaget.'),
+      ).toHaveCount(1)
 
-    await expect.poll(() => addRequests.length).toBe(1)
-    expect(addRequests[0]).toMatchObject({
-      requirementIds: [expect.any(Number)],
-    })
-    await expect(
-      dialog.getByText('Kravet har lagts till i kravunderlaget.'),
-    ).toHaveCount(1)
+      await page.goto(`/sv/specifications/${createdSpecification.uniqueId}`)
+      await expect(
+        page.getByRole('heading', { level: 1, name: specificationName }),
+      ).toBeVisible({ timeout: 30_000 })
+      await expect(
+        page.getByRole('button', { name: /^INT0001\b/u }),
+      ).toBeVisible({ timeout: 30_000 })
+    } finally {
+      if (createdSpecification) {
+        await specificationResponsible
+          .delete(
+            `/api/requirements-specifications/${createdSpecification.uniqueId}`,
+          )
+          .catch(() => undefined)
+      }
+      await specificationResponsible.dispose()
+    }
   })
 
   test('COL-02: registers a new improvement suggestion from requirement detail', async ({
@@ -324,36 +375,45 @@ test.describe('Requirement collaboration', () => {
 
   test('COL-06: opens the suggestion-history report for a requirement with suggestions', async ({
     page,
+    request,
   }) => {
-    await mockSuggestions(page, [
-      suggestion(14, {
-        content: 'Playwright förslag i rapport',
-        isReviewRequested: 1,
-        resolution: 1,
-        resolutionMotivation: 'Rapportmotivering',
-        resolvedAt: '2026-06-01T11:00:00.000Z',
-        resolvedBy: 'Playwright reviewer',
-      }),
-    ])
-    let reportRequested = false
-    await page.route(
-      '**/requirements/reports/pdf/suggestion-history/**',
-      async route => {
-        reportRequested = true
-        await route.fulfill({
-          body: '%PDF-1.4\n% Playwright suggestion history\n',
-          contentType: 'application/pdf',
-        })
-      },
+    const requirementId = await getRequirementId(
+      request,
+      'PWT-SPEC-EDIT-SOURCE',
     )
-
-    const detailPane = await openRequirementDetail(page)
+    const detailPane = await openRequirementDetail(page, 'PWT-SPEC-EDIT-SOURCE')
     await detailPane.getByRole('button', { name: 'Rapporter' }).click()
+    const pdfResponsePromise = page.waitForResponse(response => {
+      return (
+        response
+          .url()
+          .includes('/requirements/reports/pdf/suggestion-history/') &&
+        response.request().method() === 'GET'
+      )
+    })
     await page
       .getByRole('menuitem', { name: 'Förbättringsförslagshistorik' })
       .click()
 
-    await expect.poll(() => reportRequested).toBe(true)
+    const pdfResponse = await pdfResponsePromise
+    expect(pdfResponse.ok()).toBe(true)
+    expect(await pdfResponse.headerValue('content-type')).toContain(
+      'application/pdf',
+    )
+    const contentDisposition =
+      (await pdfResponse.headerValue('content-disposition')) ?? ''
+    expect(contentDisposition).toContain('PWT-SPEC-EDIT-SOURCE')
+    expect(contentDisposition).toContain('.pdf')
+    const directPdfResponse = await request.get(
+      `/sv/requirements/reports/pdf/suggestion-history/${requirementId}`,
+      { timeout: 30_000 },
+    )
+    await expectOk(directPdfResponse, 'GET suggestion-history PDF body')
+    expect(directPdfResponse.headers()['content-type']).toContain(
+      'application/pdf',
+    )
+    const pdfBody = await directPdfResponse.body()
+    expect(pdfBody.subarray(0, 4).toString('utf8')).toBe('%PDF')
   })
 
   test('COL-07: requirement detail metadata shows owner, taxonomy, packages, and references', async ({

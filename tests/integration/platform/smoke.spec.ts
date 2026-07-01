@@ -31,7 +31,10 @@ test('RES-03: readiness, build metadata, and navigation metadata are exposed saf
 }) => {
   const readyResponse = await request.get('/api/ready')
   expect([200, 503]).toContain(readyResponse.status())
-  const readyBody = (await readyResponse.json()) as Record<string, unknown>
+  const readyBody = (await readyResponse.json()) as {
+    failedChecks?: Array<{ name?: string; reason?: string }>
+    status?: string
+  }
   expect(readyBody.status).toMatch(/^(ready|not_ready)$/)
   expect(JSON.stringify(readyBody.failedChecks ?? {})).not.toMatch(
     /token|secret|password/i,
@@ -48,6 +51,30 @@ test('RES-03: readiness, build metadata, and navigation metadata are exposed saf
     version: expect.any(String),
   })
   expect(JSON.stringify(buildBody)).not.toMatch(/token|secret|password/i)
+
+  const schemaResponse = await request.get('/api/database-schema-status')
+  expect([200, 503]).toContain(schemaResponse.status())
+  const schemaBody = (await schemaResponse.json()) as {
+    expectedDatabaseSchemaVersion?: string | null
+    reason?: string
+    status?: string
+  }
+  expect(schemaBody.expectedDatabaseSchemaVersion).toBe(
+    buildBody.expectedDatabaseSchemaVersion,
+  )
+  if (readyBody.status === 'ready') {
+    expect(readyResponse.status()).toBe(200)
+    expect(schemaBody.status).toBe('matches')
+  } else {
+    expect(readyResponse.status()).toBe(503)
+    const schemaFailure = readyBody.failedChecks?.find(
+      check => check.name === 'database_migration_compatibility',
+    )
+    if (schemaFailure) {
+      expect(schemaBody.status).not.toBe('matches')
+      expect(schemaBody.reason).toBe(schemaFailure.reason)
+    }
+  }
 
   await page.goto('/sv/requirements')
   await expect(

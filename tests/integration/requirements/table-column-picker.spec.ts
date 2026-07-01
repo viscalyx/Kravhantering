@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v4'
 
@@ -12,6 +12,20 @@ const viewportVariants = [
     viewport: { height: 720, width: 1280 },
   },
 ] as const
+
+async function expectStoredVersionColumn(page: Page, visible: boolean) {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        storageKey =>
+          (globalThis.localStorage.getItem(storageKey) ?? '').includes(
+            '"version"',
+          ),
+        COLUMN_VISIBILITY_STORAGE_KEY,
+      ),
+    )
+    .toBe(visible)
+}
 
 test.describe('Requirements table column picker', () => {
   test.beforeEach(async ({ page }) => {
@@ -122,6 +136,31 @@ test.describe('Requirements table column picker', () => {
             Math.abs(requiresTestingLabelCenterY - versionLabelCenterY),
           ).toBeLessThanOrEqual(2)
         }
+
+        await trigger.click()
+        await expect(popover).toBeVisible()
+        await versionCheckbox.uncheck()
+        await expect(versionCheckbox).not.toBeChecked()
+        await expectStoredVersionColumn(page, false)
+        await trigger.click()
+
+        await page.reload()
+        await expect(
+          page.locator('[data-requirement-header-label="version"]'),
+        ).toHaveCount(0)
+
+        await expect(trigger).toBeVisible()
+        await trigger.click()
+        await expect(popover).toBeVisible()
+        await versionCheckbox.check()
+        await expect(versionCheckbox).toBeChecked()
+        await expectStoredVersionColumn(page, true)
+        await trigger.click()
+
+        await page.reload()
+        await expect(
+          page.locator('[data-requirement-header-label="version"]'),
+        ).toBeVisible()
 
         const storedColumns = await page.evaluate(
           storageKey => globalThis.localStorage.getItem(storageKey) ?? '',

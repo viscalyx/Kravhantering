@@ -66,6 +66,7 @@ for (const viewport of viewports) {
 
     test('SPEC-01/SPEC-02: filters the table by specification name, clears the search, and opens create/edit forms', async ({
       page,
+      request,
     }) => {
       await page.goto('/specifications')
 
@@ -181,6 +182,49 @@ for (const viewport of viewports) {
 
         await createForm.getByRole('button', { name: 'Avbryt' }).click()
         await expect(createDialog).toBeHidden()
+      })
+
+      await test.step('create and persist a disposable kravunderlag', async () => {
+        const createdSlug = `PWT-SPEC-02-${viewport.name.toUpperCase()}-${Date.now()}`
+        const createdName = `PWT SPEC-02 skapat kravunderlag ${viewport.name}`
+
+        try {
+          await createButton.click()
+          const createDialog = page.getByRole('dialog', {
+            name: 'Nytt kravunderlag',
+          })
+          await expect(createDialog).toBeVisible()
+          const createForm = createDialog.locator(
+            'form#requirement-specification-form',
+          )
+          await createForm
+            .getByRole('textbox', { name: 'Namn *' })
+            .fill(createdName)
+          await createForm
+            .getByRole('textbox', { name: /Kravunderlag-ID/u })
+            .fill(createdSlug)
+          await createForm
+            .getByRole('textbox', { name: 'Underlagssyfte' })
+            .fill('Playwright SPEC-02 verifierar komplett create-flöde.')
+          await createForm
+            .getByRole('combobox', {
+              name: /Kravunderlagets livscykelstatus/u,
+            })
+            .selectOption('1')
+          await createForm.getByRole('button', { name: 'Spara' }).click()
+          await expect(createDialog).toBeHidden({ timeout: 30_000 })
+
+          const createdRow = page.getByRole('row', {
+            name: new RegExp(createdName),
+          })
+          await expect(createdRow).toBeVisible({ timeout: 30_000 })
+          await expect(createdRow).toContainText(createdSlug)
+        } finally {
+          await request
+            .delete(`/api/requirements-specifications/${createdSlug}`)
+            .catch(() => undefined)
+          await page.reload()
+        }
       })
 
       await test.step('open responsible change modal from the list edit form', async () => {

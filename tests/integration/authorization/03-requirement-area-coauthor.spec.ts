@@ -132,7 +132,7 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors can create requireme
 })
 
 test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area access', async ({
-  browserName: _browserName,
+  page,
 }, testInfo) => {
   referenceManualCases(testInfo, 'AUTHZ-03', 'AUTH-10', 'AUTH-11')
   const areaCoauthor = await newRoleContext(testInfo, 'areaCoauthor')
@@ -157,6 +157,26 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area
       canAuthor: true,
       canManageAssignments: false,
     })
+
+    await page.goto('/sv/requirement-areas')
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Kravområden' }),
+    ).toBeVisible()
+    const areaRow = page.getByRole('row', {
+      name: new RegExp(fixture.areaPrefix),
+    })
+    await expect(areaRow).toBeVisible()
+    await expect(
+      areaRow.getByRole('button', { name: 'Hantera medförfattare' }),
+    ).toHaveCount(0)
+    await areaRow.getByRole('button', { name: 'Redigera' }).click()
+    const editForm = page.locator('form').filter({ hasText: 'Kravområde' })
+    await expect(editForm).toBeVisible()
+    await expect(
+      editForm.getByRole('textbox', { name: 'Kravområdesägare' }),
+    ).toHaveValue(HSA.areaOwner)
+    await expect(editForm.getByRole('button', { name: 'Hämta' })).toHaveCount(0)
+    await editForm.getByRole('button', { name: 'Avbryt' }).click()
 
     const exportResponse = await expectOkWithRetry(
       'area co-author self privacy export',

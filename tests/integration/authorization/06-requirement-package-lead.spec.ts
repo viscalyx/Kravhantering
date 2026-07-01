@@ -29,8 +29,29 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
   referenceManualCases(testInfo, 'AUTHZ-06', 'AUTH-10', 'AUTH-11')
   const packageLead = await newRoleContext(testInfo, 'packageLead')
   const updatedPurposeAndScope = `Updated by package lead ${Date.now()}`
+  const originalCoAuthors = [HSA.packageCoauthor]
+  const temporaryCoAuthor = HSA.admin
 
   try {
+    const coAuthorLoadGate: { release?: () => void } = {}
+    const coAuthorLoadStarted = new Promise<void>(resolve => {
+      void page.route(
+        `**/api/requirement-packages/${fixture.packageId}/co-authors`,
+        async route => {
+          if (
+            route.request().method() === 'GET' &&
+            coAuthorLoadGate.release === undefined
+          ) {
+            await new Promise<void>(loadResolve => {
+              coAuthorLoadGate.release = loadResolve
+              resolve()
+            })
+          }
+          await route.continue()
+        },
+      )
+    })
+
     await page.goto('/sv/requirements/stewardship?tab=packages')
     await expect(
       page.getByRole('heading', { level: 1, name: 'Kravpaket' }),
@@ -69,6 +90,11 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
       name: 'Kravpaketsmedförfattare',
     })
     await expect(coAuthorsDialog).toBeVisible()
+    await coAuthorLoadStarted
+    await expect(coAuthorsDialog.getByRole('status')).toContainText(
+      /Hämtar .*medförfattare/u,
+    )
+    coAuthorLoadGate.release?.()
     await expect(coAuthorsDialog.getByText(HSA.packageCoauthor)).toBeVisible()
     await expect(
       coAuthorsDialog.getByRole('textbox', {
@@ -78,6 +104,29 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
     await expect(
       coAuthorsDialog.getByRole('button', { name: 'Hämta' }),
     ).toBeVisible()
+    await coAuthorsDialog
+      .getByRole('textbox', { name: 'Medförfattares HSA-id' })
+      .fill('admin1')
+    await coAuthorsDialog.getByRole('button', { name: 'Hämta' }).click()
+    await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toBeVisible()
+    await coAuthorsDialog
+      .getByRole('row', { name: new RegExp(temporaryCoAuthor) })
+      .getByRole('button', { name: 'Ta bort' })
+      .click()
+    await page
+      .getByRole('alertdialog', { name: 'Ta bort' })
+      .getByRole('button', { name: 'Ta bort' })
+      .click()
+    await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toHaveCount(0)
+    await coAuthorsDialog.getByRole('button', { name: 'Stäng' }).last().click()
+    await expect(coAuthorsDialog).toBeHidden()
+
+    await updatedRow
+      .getByRole('button', { name: 'Hantera medförfattare' })
+      .click()
+    await expect(coAuthorsDialog).toBeVisible()
+    await expect(coAuthorsDialog.getByText(HSA.packageCoauthor)).toBeVisible()
+    await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toHaveCount(0)
     await coAuthorsDialog.getByRole('button', { name: 'Stäng' }).last().click()
     await expect(coAuthorsDialog).toBeHidden()
 
@@ -118,6 +167,13 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
       'package lead archive',
     )
   } finally {
+    await packageLead
+      .put(`/api/requirement-packages/${fixture.packageId}/co-authors`, {
+        data: {
+          coAuthorHsaIds: originalCoAuthors,
+        },
+      })
+      .catch(() => undefined)
     await packageLead.dispose()
   }
 })

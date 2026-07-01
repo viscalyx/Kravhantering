@@ -166,6 +166,19 @@ test('AUTHZ-01/AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or ass
       'no-role direct existing specification read',
     )
     await expectStatus(
+      await noRoles.put(
+        `/api/requirements-specifications/${fixture.specificationSlug}`,
+        {
+          data: {
+            businessNeedsReference:
+              'No-role user must not mutate kravunderlag.',
+          },
+        },
+      ),
+      403,
+      'no-role specification metadata update',
+    )
+    await expectStatus(
       await noRoles.get(
         `/api/requirements-specifications/${fixture.specificationSlug}-MISSING`,
       ),

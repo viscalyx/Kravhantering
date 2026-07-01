@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { expect, type Route, test } from '@playwright/test'
 
 const importedDescription =
@@ -307,9 +308,25 @@ test.describe('Requirements import', () => {
       })
       expect(executeRequests[0]).toHaveProperty('areaId')
       await expect(page.getByText(/Importerade rader: 1/)).toHaveCount(1)
-      await expect(
-        page.getByRole('button', { name: 'Ladda ner CSV-kvitto' }),
-      ).toBeEnabled()
+      const receiptDownloadPromise = page.waitForEvent('download')
+      await page.getByRole('button', { name: 'Ladda ner CSV-kvitto' }).click()
+      const receiptDownload = await receiptDownloadPromise
+      expect(receiptDownload.suggestedFilename()).toBe(
+        'requirements-import-receipt.csv',
+      )
+      const receiptPath = await receiptDownload.path()
+      if (!receiptPath) {
+        throw new Error('CSV receipt download did not expose a local path.')
+      }
+      const receiptCsv = await readFile(receiptPath, 'utf8')
+      expect(receiptCsv).toContain(
+        'importMode,sourceIndex,createdVisibleId,createdDatabaseId,description',
+      )
+      expect(receiptCsv).toContain('"library","0","PWI9001","9001"')
+      expect(receiptCsv).toContain(`"${importedDescription}"`)
+      expect(receiptCsv).toContain(
+        '"SOSFS-IMPORT-1 - Importreferens","true","Demonstration","1"',
+      )
     })
   })
 })

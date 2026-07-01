@@ -16,12 +16,20 @@ import {
 const STATUS_DRAFT = 1
 const STATUS_REVIEW = 2
 const STATUS_PUBLISHED = 3
+const STATUS_ARCHIVED = 4
 
 interface RequirementDetail {
+  area: {
+    id: number
+  } | null
   id: number
   isArchived: boolean
   uniqueId: string
   versions: Array<{
+    archiveInitiatedAt?: string | null
+    description: string
+    id: number
+    revisionToken: string
     status: number
     versionRequirementPackages?: Array<{
       requirementPackage: {
@@ -536,40 +544,144 @@ test.describe('Requirement lifecycle manual cases', () => {
     })
   })
 
+  test('LIFE-11: authorized report menu matches requirement status', async ({
+    page,
+    request,
+  }, testInfo) => {
+    const reviewerRequest = await newRoleContext(testInfo, 'reviewer')
+
+    async function expectReportMenu(
+      uniqueId: string,
+      expected: { reviewReportVisible: boolean },
+    ) {
+      await openRequirement(page, uniqueId)
+      await page.getByRole('button', { name: 'Rapporter' }).click()
+      await expect(
+        page.getByRole('menuitem', { name: 'Historikrapport' }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('menuitem', {
+          name: 'Förbättringsförslagshistorik',
+        }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('menuitem', { name: 'Granskningsrapport' }),
+      ).toHaveCount(expected.reviewReportVisible ? 1 : 0)
+      await page.keyboard.press('Escape')
+    }
+
+    try {
+      const draft = await createRequirementInStatus(
+        request,
+        STATUS_DRAFT,
+        'Playwright LIFE-11 draft report matrix',
+      )
+      const review = await createRequirementInStatus(
+        request,
+        STATUS_REVIEW,
+        'Playwright LIFE-11 review report matrix',
+      )
+      const published = await createRequirementInStatus(
+        request,
+        STATUS_PUBLISHED,
+        'Playwright LIFE-11 published report matrix',
+        reviewerRequest,
+      )
+
+      await expectReportMenu(draft.uniqueId, { reviewReportVisible: false })
+      await expectReportMenu(review.uniqueId, { reviewReportVisible: true })
+      await expectReportMenu(published.uniqueId, { reviewReportVisible: false })
+
+      const listPdfResponse = await request.get(
+        `/sv/requirements/reports/pdf/list?ids=${published.id}`,
+        { timeout: 30_000 },
+      )
+      expect(listPdfResponse.ok()).toBe(true)
+      expect(listPdfResponse.headers()['content-type']).toContain(
+        'application/pdf',
+      )
+    } finally {
+      await reviewerRequest.dispose()
+    }
+  })
+
   test('LIFE-07: restores an archived requirement version through the UI', async ({
     page,
-  }) => {
-    const restoreRequests: unknown[] = []
-    await page.route(
-      '**/api/requirements/PWT-LIFE-RESTORE/restore',
-      async route => {
-        restoreRequests.push(route.request().postDataJSON())
-        await route.fulfill({
-          contentType: 'application/json',
-          json: { ok: true },
+    request,
+  }, testInfo) => {
+    const reviewerRequest = await newRoleContext(testInfo, 'reviewer')
+    try {
+      const requirement = await createRequirementInStatus(
+        request,
+        STATUS_PUBLISHED,
+        'Playwright LIFE-07 archived predecessor',
+        reviewerRequest,
+      )
+      const firstPublishedVersion = latestVersion(requirement)
+      const editResponse = await request.put(
+        `/api/requirements/${requirement.uniqueId}`,
+        {
+          data: {
+            areaId: requirement.area?.id,
+            baseRevisionToken: firstPublishedVersion.revisionToken,
+            baseVersionId: firstPublishedVersion.id,
+            description: 'Playwright LIFE-07 published successor',
+            requiresTesting: false,
+          },
+          timeout: 30_000,
+        },
+      )
+      await expectOk(editResponse, 'PUT LIFE-07 successor draft')
+      await transitionRequirement(request, requirement.uniqueId, STATUS_REVIEW)
+      await transitionRequirement(
+        reviewerRequest,
+        requirement.uniqueId,
+        STATUS_PUBLISHED,
+      )
+      const beforeRestore = await getRequirement(request, requirement.uniqueId)
+      expect(findVersion(beforeRestore, 1).status).toBe(STATUS_ARCHIVED)
+
+      await page.goto(`/sv/requirements/${requirement.uniqueId}/1`)
+      await expect(
+        page.getByRole('button', { name: 'Återskapa version' }),
+      ).toBeEnabled()
+
+      await page.getByRole('button', { name: 'Återskapa version' }).click()
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: 'Avbryt' })
+        .click()
+      expect(
+        latestVersion(await getRequirement(request, requirement.uniqueId)),
+      ).toMatchObject({
+        description: 'Playwright LIFE-07 published successor',
+        status: STATUS_PUBLISHED,
+      })
+
+      await page.getByRole('button', { name: 'Återskapa version' }).click()
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: 'Bekräfta' })
+        .click()
+
+      await expect
+        .poll(async () => {
+          const restored = await getRequirement(request, requirement.uniqueId)
+          const latest = latestVersion(restored)
+          return {
+            description: latest.description,
+            status: latest.status,
+            versionCount: restored.versions.length,
+          }
         })
-      },
-    )
-
-    await page.goto('/sv/requirements/PWT-LIFE-RESTORE/1')
-    await expect(
-      page.getByRole('button', { name: 'Återskapa version' }),
-    ).toBeEnabled()
-
-    await page.getByRole('button', { name: 'Återskapa version' }).click()
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: 'Avbryt' })
-      .click()
-    expect(restoreRequests).toEqual([])
-
-    await page.getByRole('button', { name: 'Återskapa version' }).click()
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: 'Bekräfta' })
-      .click()
-
-    await expect.poll(() => restoreRequests).toEqual([{ versionNumber: 1 }])
+        .toEqual({
+          description: 'Playwright LIFE-07 archived predecessor',
+          status: STATUS_DRAFT,
+          versionCount: beforeRestore.versions.length + 1,
+        })
+    } finally {
+      await reviewerRequest.dispose()
+    }
   })
 
   test('LIFE-12: draft package replacement leaves the published package intact before publication', async ({
@@ -603,53 +715,64 @@ test.describe('Requirement lifecycle manual cases', () => {
     page,
     request,
   }) => {
-    const archiveRequests: string[] = []
-    await page.route('**/api/requirements/**', async route => {
-      if (route.request().method() !== 'DELETE') {
-        await route.continue()
-        return
-      }
-      archiveRequests.push(route.request().url())
-      await route.fulfill({
-        contentType: 'application/json',
-        json: { ok: true },
-      })
-    })
     const requirement = await getRequirement(
       request,
       'PWT-LIFE-PACKAGE-ARCHIVE',
     )
 
-    const detailPane = await openRequirementStandalone(
-      page,
-      requirement.uniqueId,
-    )
-    await expect(detailPane.getByText('PWT-MANUAL källpaket')).toHaveCount(1, {
-      timeout: 30_000,
-    })
-    await page.getByRole('button', { name: 'Arkivera' }).click()
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: 'Avbryt' })
-      .click()
-    expect(archiveRequests).toEqual([])
+    try {
+      const detailPane = await openRequirementStandalone(
+        page,
+        requirement.uniqueId,
+      )
+      await expect(detailPane.getByText('PWT-MANUAL källpaket')).toHaveCount(
+        1,
+        {
+          timeout: 30_000,
+        },
+      )
+      await page.getByRole('button', { name: 'Arkivera' }).click()
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: 'Avbryt' })
+        .click()
+      expect(
+        latestVersion(await getRequirement(request, requirement.uniqueId)),
+      ).toMatchObject({
+        archiveInitiatedAt: null,
+        status: STATUS_PUBLISHED,
+      })
 
-    await page.getByRole('button', { name: 'Arkivera' }).click()
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: 'Bekräfta' })
-      .click()
+      await page.getByRole('button', { name: 'Arkivera' }).click()
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: 'Bekräfta' })
+        .click()
 
-    expect(requirementPackageNames(requirement, 1)).toEqual([
-      'PWT-MANUAL källpaket',
-    ])
-    expect(latestVersion(requirement).status).toBe(STATUS_PUBLISHED)
-    await expect
-      .poll(() => archiveRequests)
-      .toEqual([
-        expect.stringMatching(
-          /\/api\/requirements\/(?:920003|PWT-LIFE-PACKAGE-ARCHIVE)$/u,
-        ),
+      expect(requirementPackageNames(requirement, 1)).toEqual([
+        'PWT-MANUAL källpaket',
       ])
+      await expect
+        .poll(async () => {
+          const archived = await getRequirement(request, requirement.uniqueId)
+          const latest = latestVersion(archived)
+          return {
+            archiveInitiated: latest.archiveInitiatedAt != null,
+            packageNames: requirementPackageNames(archived, 1),
+            status: latest.status,
+          }
+        })
+        .toEqual({
+          archiveInitiated: true,
+          packageNames: ['PWT-MANUAL källpaket'],
+          status: STATUS_REVIEW,
+        })
+    } finally {
+      await transitionRequirement(
+        request,
+        requirement.uniqueId,
+        STATUS_PUBLISHED,
+      ).catch(() => undefined)
+    }
   })
 })

@@ -582,6 +582,7 @@ test('PRIV-09: export includes the orphaned responsibility person target only', 
   page,
 }) => {
   const exportRequests: unknown[] = []
+  let exportedPayload: unknown = null
 
   await test.step('set up orphan preview and export routes', async () => {
     await page.route('**/api/privacy/erasure-preview', async route => {
@@ -593,7 +594,7 @@ test('PRIV-09: export includes the orphaned responsibility person target only', 
     await page.route('**/api/privacy/data-subject-export', async route => {
       const body = route.request().postDataJSON()
       exportRequests.push(body)
-      await fulfillJson(route, {
+      exportedPayload = {
         ...exportPayload('SE5560000001-retentionorphan'),
         sources: [
           {
@@ -611,7 +612,8 @@ test('PRIV-09: export includes the orphaned responsibility person target only', 
             source: 'requirement_responsibility_people',
           },
         ],
-      })
+      }
+      await fulfillJson(route, exportedPayload)
     })
   })
 
@@ -630,6 +632,31 @@ test('PRIV-09: export includes the orphaned responsibility person target only', 
       delivery: 'json',
       target: { hsaId: 'SE5560000001-retentionorphan' },
     })
+    expect(exportedPayload).toMatchObject({
+      subject: { hsaId: 'SE5560000001-retentionorphan' },
+      sources: [
+        expect.objectContaining({
+          items: [
+            expect.objectContaining({
+              fields: expect.arrayContaining([
+                {
+                  label: 'HSA-id',
+                  value: 'SE5560000001-retentionorphan',
+                },
+              ]),
+            }),
+          ],
+          source: 'requirement_responsibility_people',
+        }),
+      ],
+    })
+    expect(JSON.stringify(exportedPayload)).toContain(
+      'SE5560000001-retentionorphan',
+    )
+    const unrelatedOrphanIdentity = 'SE5560000001-unused' + 'orphan'
+    expect(JSON.stringify(exportedPayload)).not.toContain(
+      unrelatedOrphanIdentity,
+    )
   })
 })
 

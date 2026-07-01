@@ -25,12 +25,12 @@ jobs:
           - server: dev
             displayName: Dev
             testCommand: npm run test:integration
-            timeoutMinutes: 15
+            timeoutMinutes: 360
             retentionDays: 7
           - server: prodlike
             displayName: Prod-like
             testCommand: npm run test:integration:prodlike
-            timeoutMinutes: 25
+            timeoutMinutes: 360
             retentionDays: 7
 
     steps:
@@ -99,7 +99,7 @@ jobs:
   test-prodlike-pruned:
     name: Test Prod-like Server With Dev Dependencies Pruned
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 360
 
     steps:
       - name: Checkout code

@@ -1,4 +1,5 @@
 import {
+  type APIRequestContext,
   type APIResponse,
   expect,
   type Locator,
@@ -252,6 +253,58 @@ async function mockRfiList(
       })
     },
   )
+  await page.route(
+    `**/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/items/*`,
+    async route => {
+      const questionId = Number(route.request().url().split('/').at(-1))
+      const body = route.request().postDataJSON() as {
+        isIncluded?: boolean
+        relevance?: 'not_relevant' | 'relevant' | null
+      }
+      list = {
+        list: {
+          ...list.list,
+          items: list.list.items.map(item =>
+            item.questionId === questionId
+              ? {
+                  ...item,
+                  isIncluded: body.isIncluded ?? item.isIncluded,
+                  relevance:
+                    body.relevance === undefined
+                      ? item.relevance
+                      : body.relevance,
+                }
+              : item,
+          ),
+        },
+      }
+      await route.fulfill({
+        contentType: 'application/json',
+        json: list,
+      })
+    },
+  )
+  await page.route(
+    `**/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/areas/*`,
+    async route => {
+      const areaId = Number(route.request().url().split('/').at(-1))
+      const body = route.request().postDataJSON() as { isIncluded?: boolean }
+      list = {
+        list: {
+          ...list.list,
+          items: list.list.items.map(item =>
+            item.areaId === areaId
+              ? { ...item, isIncluded: body.isIncluded ?? item.isIncluded }
+              : item,
+          ),
+        },
+      }
+      await route.fulfill({
+        contentType: 'application/json',
+        json: list,
+      })
+    },
+  )
   await page.route('**/api/rfi-question-suggestions?*', async route => {
     await route.fulfill({
       contentType: 'application/json',
@@ -289,6 +342,58 @@ async function mockReportDownloads(page: Page) {
     },
   )
   return requests
+}
+
+interface StructuredReportModel {
+  orientation?: string
+  sections?: Array<Record<string, unknown>>
+}
+
+function reportTable(model: StructuredReportModel) {
+  const table = model.sections?.find(
+    section => section.type === 'requirement-table',
+  )
+  expect(table).toBeDefined()
+  return table as {
+    columns: Array<{ key: string }>
+    rows: Array<{ cells: Record<string, string> }>
+    type: 'requirement-table'
+  }
+}
+
+async function getStructuredReport(
+  request: APIRequestContext,
+  slug: string,
+  profile: 'management' | 'procurement' | 'progress',
+) {
+  const response = await requestWithRetry(
+    `structured ${profile} report for ${slug}`,
+    () =>
+      request.get(
+        `/api/requirements-specifications/${slug}/report-output?profile=${profile}&locale=sv`,
+        { timeout: 30_000 },
+      ),
+  )
+  expect(response.ok()).toBe(true)
+  return (await response.json()) as StructuredReportModel
+}
+
+async function getCsvExport(
+  request: APIRequestContext,
+  slug: string,
+  profile: 'full' | 'procurement',
+) {
+  const response = await requestWithRetry(
+    `${profile} CSV export for ${slug}`,
+    () =>
+      request.get(
+        `/api/requirements-specifications/${slug}/exports?profile=${profile}&locale=sv`,
+        { timeout: 30_000 },
+      ),
+  )
+  expect(response.ok()).toBe(true)
+  expect(response.headers()['content-type']).toContain('text/csv')
+  return response.text()
 }
 
 async function clickMenuItem(page: Page, menuName: string, itemName: string) {
@@ -851,7 +956,8 @@ for (const viewport of viewports) {
       test('SPEC-13/SPEC-14: shows RFI scope switches and the included-only view filter', async ({
         page,
       }) => {
-        await gotoSpecificationDetail(page)
+        await mockRfiList(page)
+        await gotoSpecificationDetail(page, rfiSpecificationSlug)
 
         await test.step('open the RFI question list tab', async () => {
           await openDetailTab(page, 'RFI-frågelista')
@@ -860,9 +966,50 @@ for (const viewport of viewports) {
               name: 'Visa endast de som ingår i RFI',
             }),
           ).toHaveAttribute('aria-pressed', 'false', { timeout: 30_000 })
+          const areaSection = page
+            .locator('section')
+            .filter({ hasText: 'PWT-MANUAL Playwright manual cases' })
+          await expect(areaSection).toContainText('PWM-RFI001')
+          await expect(areaSection).toContainText('PWM-RFI002')
+          await expect(areaSection).toContainText(
+            'PWT-MANUAL vilken information ska leverantören lämna?',
+          )
+          await expect(areaSection).toContainText(
+            'PWT-MANUAL hur ska området besvaras samlat?',
+          )
         })
 
-        await test.step('toggle the transient included-only filter', async () => {
+        await test.step('toggle question scope and included-only filter', async () => {
+          const areaSection = page
+            .locator('section')
+            .filter({ hasText: 'PWT-MANUAL Playwright manual cases' })
+          const primaryQuestion = areaSection
+            .locator('article')
+            .filter({ hasText: 'PWM-RFI001' })
+          const primaryScopeSwitch = primaryQuestion.getByRole('switch', {
+            name: /Ändra om PWM-RFI001 ingår i RFI/u,
+          })
+          await primaryScopeSwitch.click()
+          await expect(primaryScopeSwitch).toHaveAttribute(
+            'title',
+            'Ingår inte i RFI',
+          )
+          await expect(
+            primaryQuestion
+              .locator('p')
+              .filter({
+                hasText:
+                  'PWT-MANUAL vilken information ska leverantören lämna?',
+              })
+              .first(),
+          ).toHaveClass(/opacity-55/)
+          await expect(
+            areaSection.getByRole('switch', {
+              name: /Ändra om kravområdet .+ ingår i RFI/u,
+            }),
+          ).toHaveAttribute('title', 'Delvis')
+          await expect(areaSection.getByText('Delvis')).toBeVisible()
+
           const filterButton = page.getByRole('button', {
             name: 'Visa endast de som ingår i RFI',
           })
@@ -874,6 +1021,8 @@ for (const viewport of viewports) {
             'aria-pressed',
             'true',
           )
+          await expect(areaSection).not.toContainText('PWM-RFI001')
+          await expect(areaSection).toContainText('PWM-RFI002')
           await activeFilterButton.click()
           await expect(
             page.getByRole('button', {
@@ -882,7 +1031,39 @@ for (const viewport of viewports) {
           ).toHaveAttribute('aria-pressed', 'false')
         })
 
-        await test.step('verify scope controls stay separate from export actions', async () => {
+        await test.step('toggle area scope and verify export actions', async () => {
+          const areaSection = page
+            .locator('section')
+            .filter({ hasText: 'PWT-MANUAL Playwright manual cases' })
+          const areaScopeSwitch = areaSection.getByRole('switch', {
+            name: /Ändra om kravområdet .+ ingår i RFI/u,
+          })
+          await areaScopeSwitch.click()
+          await expect(areaScopeSwitch).toHaveAttribute('title', 'Ingår i RFI')
+          await expect(
+            areaSection.getByRole('switch', {
+              name: /Ändra om PWM-RFI001 ingår i RFI/u,
+            }),
+          ).toHaveAttribute('title', 'Ingår i RFI')
+
+          await areaScopeSwitch.click()
+          await expect(areaScopeSwitch).toHaveAttribute(
+            'title',
+            'Ingår inte i RFI',
+          )
+          await expect(
+            areaSection
+              .locator('p')
+              .filter({
+                hasText: 'PWT-MANUAL hur ska området besvaras samlat?',
+              })
+              .first(),
+          ).toHaveClass(/opacity-55/)
+
+          await page
+            .getByRole('button', { name: 'Visa endast de som ingår i RFI' })
+            .click()
+          await expect(areaSection).toHaveCount(0)
           await expect(page.getByRole('link', { name: 'CSV' })).toHaveAttribute(
             'href',
             /\/rfi-list\/export\?format=csv/u,
@@ -891,20 +1072,6 @@ for (const viewport of viewports) {
             'href',
             /\/rfi-list\/export\?format=pdf/u,
           )
-          await expect(
-            page
-              .getByRole('switch', {
-                name: /Ändra om kravområdet .+ ingår i RFI/u,
-              })
-              .first(),
-          ).toHaveAttribute('title', /Ingår i RFI|Ingår inte i RFI|Delvis/u)
-          await expect(
-            page
-              .getByRole('switch', {
-                name: /Ändra om .+-RFI\d+ ingår i RFI/u,
-              })
-              .first(),
-          ).toHaveAttribute('title', /Ingår i RFI|Ingår inte i RFI/u)
         })
       })
     }
@@ -920,12 +1087,92 @@ test.describe('Requirements specification deterministic manual cases', () => {
   }) => {
     const addRequests: unknown[] = []
     const removeRequests: unknown[] = []
+    let reportRequirementAdded = false
+    let editSourceRemoved = false
+    const reportRequirementItem = {
+      area: { name: 'PWT-MANUAL Playwright manual cases' },
+      deviationCount: 0,
+      hasApprovedDeviation: false,
+      hasPendingDeviation: false,
+      id: 920005,
+      isArchived: false,
+      itemRef: 'lib:920005',
+      kind: 'library',
+      needsReference: 'PWT SPEC-06 behov',
+      needsReferenceId: 990006,
+      normReferenceIds: [],
+      requirementPackageIds: [],
+      requirementPackages: [],
+      specificationItemId: 990006,
+      specificationItemStatusColor: '#2563eb',
+      specificationItemStatusIconName: 'check-circle',
+      specificationItemStatusId: 1,
+      specificationItemStatusNameEn: 'Included',
+      specificationItemStatusNameSv: 'Inkluderad',
+      uniqueId: 'PWT-REPORT-A',
+      version: {
+        categoryNameEn: null,
+        categoryNameSv: null,
+        description: 'PWT-MANUAL report fixture requirement A.',
+        priorityLevelColor: null,
+        priorityLevelIconName: null,
+        priorityLevelId: null,
+        priorityLevelNameEn: null,
+        priorityLevelNameSv: null,
+        priorityLevelSortOrder: null,
+        qualityCharacteristicNameEn: null,
+        qualityCharacteristicNameSv: null,
+        requiresTesting: false,
+        status: 3,
+        statusColor: '#16a34a',
+        statusIconName: 'check-circle',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        typeNameEn: null,
+        typeNameSv: null,
+        versionNumber: 1,
+      },
+    }
     await page.route(
       `**/api/requirements-specifications/${editSpecificationSlug}/items`,
       async route => {
         const method = route.request().method()
+        if (method === 'GET') {
+          const response = await route.fetch()
+          const data = (await response.json()) as { items?: unknown[] }
+          let items = data.items ?? []
+          if (editSourceRemoved) {
+            items = items.filter(
+              item =>
+                !(
+                  typeof item === 'object' &&
+                  item !== null &&
+                  'uniqueId' in item &&
+                  item.uniqueId === 'PWT-SPEC-EDIT-SOURCE'
+                ),
+            )
+          }
+          if (
+            reportRequirementAdded &&
+            !items.some(
+              item =>
+                typeof item === 'object' &&
+                item !== null &&
+                'uniqueId' in item &&
+                item.uniqueId === 'PWT-REPORT-A',
+            )
+          ) {
+            items = [reportRequirementItem, ...items]
+          }
+          await route.fulfill({
+            contentType: 'application/json',
+            json: { items },
+          })
+          return
+        }
         if (method === 'POST') {
           addRequests.push(route.request().postDataJSON())
+          reportRequirementAdded = true
           await route.fulfill({
             contentType: 'application/json',
             json: { addedCount: 1, ok: true },
@@ -935,6 +1182,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
         }
         if (method === 'DELETE') {
           removeRequests.push(route.request().postDataJSON())
+          editSourceRemoved = true
           await route.fulfill({
             contentType: 'application/json',
             json: { ok: true },
@@ -970,6 +1218,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
           requirementIds: expect.arrayContaining([920005]),
         }),
       ])
+    const specificationItemsPanel = page.locator(
+      '[data-specification-detail-list-panel="items"]',
+    )
+    await expect(
+      specificationItemsPanel.getByRole('button', { name: /^PWT-REPORT-A\b/u }),
+    ).toBeVisible({ timeout: 30_000 })
 
     await page
       .getByRole('checkbox', { name: 'Markera PWT-SPEC-EDIT-SOURCE' })
@@ -996,16 +1250,69 @@ test.describe('Requirements specification deterministic manual cases', () => {
           itemRefs: expect.arrayContaining(['lib:920001']),
         }),
       ])
+    await expect(
+      specificationItemsPanel.getByRole('button', {
+        name: /^PWT-SPEC-EDIT-SOURCE\b/u,
+      }),
+    ).toHaveCount(0)
   })
 
   test('SPEC-07: creates a specification-local requirement and opens the graduation action', async ({
     page,
   }) => {
     const createRequests: unknown[] = []
+    let localRequirementCreated = false
+    const createdLocalRequirementItem = {
+      area: null,
+      deviationCount: 0,
+      hasApprovedDeviation: false,
+      hasPendingDeviation: false,
+      id: 920099,
+      isArchived: false,
+      isSpecificationLocal: true,
+      itemRef: 'local:920099',
+      kind: 'specificationLocal',
+      needsReference: null,
+      needsReferenceId: null,
+      normReferenceIds: [],
+      requirementPackageIds: [],
+      requirementPackages: [],
+      specificationItemId: 920099,
+      specificationItemStatusColor: '#2563eb',
+      specificationItemStatusIconName: 'check-circle',
+      specificationItemStatusId: 1,
+      specificationItemStatusNameEn: 'Included',
+      specificationItemStatusNameSv: 'Inkluderad',
+      specificationLocalRequirementId: 920099,
+      uniqueId: 'KRAV0002',
+      version: {
+        categoryNameEn: null,
+        categoryNameSv: null,
+        description: 'PWT SPEC-07 unikt krav.',
+        priorityLevelColor: null,
+        priorityLevelIconName: null,
+        priorityLevelId: null,
+        priorityLevelNameEn: null,
+        priorityLevelNameSv: null,
+        priorityLevelSortOrder: null,
+        qualityCharacteristicNameEn: null,
+        qualityCharacteristicNameSv: null,
+        requiresTesting: true,
+        status: 3,
+        statusColor: '#16a34a',
+        statusIconName: 'check-circle',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        typeNameEn: null,
+        typeNameSv: null,
+        versionNumber: 1,
+      },
+    }
     await page.route(
       `**/api/requirements-specifications/${editSpecificationSlug}/local-requirements`,
       async route => {
         createRequests.push(route.request().postDataJSON())
+        localRequirementCreated = true
         await route.fulfill({
           contentType: 'application/json',
           json: {
@@ -1016,6 +1323,90 @@ test.describe('Requirements specification deterministic manual cases', () => {
             ok: true,
           },
           status: 201,
+        })
+      },
+    )
+    await page.route(
+      `**/api/requirements-specifications/${editSpecificationSlug}/local-requirements/920099`,
+      async route => {
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            acceptanceCriteria: 'Verifiera i UI.',
+            createdAt: '2026-04-24T09:00:00.000Z',
+            description: 'PWT SPEC-07 unikt krav.',
+            id: 920099,
+            itemRef: 'local:920099',
+            needsReference: null,
+            needsReferenceId: null,
+            normReferences: [],
+            priorityLevel: null,
+            qualityCharacteristic: null,
+            requirementArea: null,
+            requirementCategory: null,
+            requirementPackages: [],
+            requirementType: null,
+            requiresTesting: true,
+            specificationId: 920004,
+            specificationItemStatusColor: '#2563eb',
+            specificationItemStatusIconName: 'check-circle',
+            specificationItemStatusId: 1,
+            specificationItemStatusNameEn: 'Included',
+            specificationItemStatusNameSv: 'Inkluderad',
+            uniqueId: 'KRAV0002',
+            updatedAt: '2026-04-24T09:00:00.000Z',
+            verificationMethod: 'Playwright-test.',
+          },
+        })
+      },
+    )
+    await page.route(
+      '**/api/specification-item-deviations/local%3A920099',
+      async route => {
+        await route.fulfill({
+          contentType: 'application/json',
+          json: { deviations: [] },
+        })
+      },
+    )
+    await page.route(
+      `**/api/requirements-specifications/${editSpecificationSlug}/local-requirements/920099/graduation-target-areas`,
+      async route => {
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            areas: [
+              {
+                id: rfiAreaId,
+                name: 'PWT-MANUAL Playwright manual cases',
+                prefix: 'PWM',
+              },
+            ],
+          },
+        })
+      },
+    )
+    await page.route(
+      `**/api/requirements-specifications/${editSpecificationSlug}/items`,
+      async route => {
+        const response = await route.fetch()
+        const data = (await response.json()) as { items?: unknown[] }
+        let items = data.items ?? []
+        if (
+          localRequirementCreated &&
+          !items.some(
+            item =>
+              typeof item === 'object' &&
+              item !== null &&
+              'uniqueId' in item &&
+              item.uniqueId === 'KRAV0002',
+          )
+        ) {
+          items = [createdLocalRequirementItem, ...items]
+        }
+        await route.fulfill({
+          contentType: 'application/json',
+          json: { items },
         })
       },
     )
@@ -1050,7 +1441,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       ])
 
     const localRow = page.getByRole('button', {
-      name: /KRAV0001\b/,
+      name: /KRAV0002\b/u,
     })
     await expect(localRow).toBeVisible({ timeout: 30_000 })
     await localRow.click()
@@ -1255,6 +1646,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
   test('SPEC-10: generates procurement report and CSV exports for a procurement specification', async ({
     page,
+    request,
   }) => {
     const downloadRequests = await mockReportDownloads(page)
 
@@ -1270,6 +1662,29 @@ test.describe('Requirements specification deterministic manual cases', () => {
       )
       .toBe(true)
 
+    const procurementReport = await getStructuredReport(
+      request,
+      specificationSlug,
+      'procurement',
+    )
+    expect(procurementReport.orientation).toBe('portrait')
+    expect(
+      procurementReport.sections?.find(
+        section => section.type === 'specification-cover',
+      ),
+    ).toMatchObject({
+      uniqueId: specificationSlug,
+      variant: 'minimal',
+    })
+    const procurementTable = reportTable(procurementReport)
+    expect(procurementTable.columns.map(column => column.key)).toEqual([
+      'uniqueId',
+      'description',
+      'qualityCharacteristic',
+      'normReferences',
+    ])
+    expect(procurementTable.rows.length).toBeGreaterThan(0)
+
     await page.getByRole('button', { name: 'Exportera' }).click()
     await expect(page.getByText('Anbuds-CSV', { exact: true })).toBeVisible()
     await page.getByText('Anbuds-CSV', { exact: true }).click()
@@ -1283,6 +1698,15 @@ test.describe('Requirements specification deterministic manual cases', () => {
         ),
       )
       .toBe(true)
+    const procurementCsv = await getCsvExport(
+      request,
+      specificationSlug,
+      'procurement',
+    )
+    expect(procurementCsv).toContain(
+      'Krav-ID;Kravtext;Kvalitetsegenskap;Normreferenser;Norm-URI',
+    )
+    expect(procurementCsv).not.toContain('Underlagssyfte')
 
     await page.getByRole('button', { name: 'Exportera' }).click()
     await page.getByText('Full CSV-export', { exact: true }).click()
@@ -1296,10 +1720,16 @@ test.describe('Requirements specification deterministic manual cases', () => {
         ),
       )
       .toBe(true)
+    const fullCsv = await getCsvExport(request, specificationSlug, 'full')
+    expect(fullCsv).toContain(
+      'Krav-ID;Kravtext;Kravområde;Kategori;Typ;Kvalitetsegenskap;Prioritet',
+    )
+    expect(fullCsv).toContain('Behovsreferens;Användningsstatus')
   })
 
   test('SPEC-10b: generates progress reports for Införande and Utveckling specifications', async ({
     page,
+    request,
   }) => {
     const downloadRequests = await mockReportDownloads(page)
 
@@ -1313,6 +1743,31 @@ test.describe('Requirements specification deterministic manual cases', () => {
           ),
         )
         .toBe(true)
+      const progressReport = await getStructuredReport(
+        request,
+        slug,
+        'progress',
+      )
+      expect(progressReport.orientation).toBe('landscape')
+      expect(
+        progressReport.sections?.find(section => section.type === 'header'),
+      ).toMatchObject({ title: 'Genomföranderapport' })
+      const progressTable = reportTable(progressReport)
+      expect(progressTable.columns.map(column => column.key)).toEqual([
+        'uniqueId',
+        'version',
+        'description',
+        'area',
+        'category',
+        'type',
+        'qualityCharacteristic',
+        'priorityLevel',
+        'requirementVersionStatus',
+        'verifiable',
+        'needsReference',
+        'usageStatus',
+        'normReferences',
+      ])
 
       await page.getByRole('button', { name: 'Exportera' }).click()
       await expect(page.getByText('Anbuds-CSV', { exact: true })).toHaveCount(0)
@@ -1327,11 +1782,15 @@ test.describe('Requirements specification deterministic manual cases', () => {
           ),
         )
         .toBe(true)
+      const fullCsv = await getCsvExport(request, slug, 'full')
+      expect(fullCsv).toContain('Krav-ID;Kravtext;Kravområde')
+      expect(fullCsv).toContain('Användningsstatus')
     }
   })
 
   test('SPEC-10c: generates a management report for Förvaltning specifications', async ({
     page,
+    request,
   }) => {
     const downloadRequests = await mockReportDownloads(page)
 
@@ -1347,14 +1806,49 @@ test.describe('Requirements specification deterministic manual cases', () => {
         ),
       )
       .toBe(true)
+    const managementReport = await getStructuredReport(
+      request,
+      'PWT-SPEC-REPORT-FORV',
+      'management',
+    )
+    expect(managementReport.orientation).toBe('landscape')
+    const managementTable = reportTable(managementReport)
+    expect(managementTable.columns.map(column => column.key)).toContain(
+      'deviationSignal',
+    )
+    expect(managementTable.columns.map(column => column.key)).toContain(
+      'residualFromImplementation',
+    )
+    expect(managementTable.rows.length).toBeGreaterThan(0)
   })
 
   test('SPEC-10e: shows traceability only up to the 200 filtered-item limit', async ({
     page,
+    request,
   }) => {
     const downloadRequests = await mockReportDownloads(page)
 
     await gotoSpecificationDetail(page, 'PWT-SPEC-TRACE-200')
+    const itemsResponse = await requestWithRetry(
+      'traceability source items',
+      () =>
+        request.get(
+          '/api/requirements-specifications/PWT-SPEC-TRACE-200/items',
+          {
+            timeout: 30_000,
+          },
+        ),
+    )
+    expect(itemsResponse.ok()).toBe(true)
+    const itemsData = (await itemsResponse.json()) as {
+      items?: Array<{ itemRef?: string }>
+    }
+    const filteredRefs =
+      itemsData.items
+        ?.map(item => item.itemRef)
+        .filter((value): value is string => Boolean(value))
+        .slice(0, 2) ?? []
+    expect(filteredRefs.length).toBeGreaterThan(0)
     await clickMenuItem(page, 'Rapporter', 'Tillämpningsspårbarhet')
     await expect
       .poll(() =>
@@ -1365,6 +1859,33 @@ test.describe('Requirements specification deterministic manual cases', () => {
         ),
       )
       .toBe(true)
+    const traceabilityResponse = await requestWithRetry(
+      'traceability items for filtered refs',
+      () =>
+        request.get(
+          `/api/requirements-specifications/PWT-SPEC-TRACE-200/traceability-items?refs=${filteredRefs.map(encodeURIComponent).join(',')}`,
+          { timeout: 30_000 },
+        ),
+    )
+    expect(traceabilityResponse.ok()).toBe(true)
+    const traceabilityData = (await traceabilityResponse.json()) as {
+      items?: Array<{
+        itemRef: string
+        needsReference: string | null
+        uniqueId: string
+        verificationMethod: string | null
+      }>
+      specification?: { uniqueId?: string }
+    }
+    expect(traceabilityData.specification?.uniqueId).toBe('PWT-SPEC-TRACE-200')
+    expect(traceabilityData.items?.map(item => item.itemRef)).toEqual(
+      filteredRefs,
+    )
+    expect(traceabilityData.items?.[0]).toMatchObject({
+      uniqueId: expect.stringMatching(/^PWT-TRACE-/u),
+    })
+    expect(traceabilityData.items?.[0]).toHaveProperty('needsReference')
+    expect(traceabilityData.items?.[0]).toHaveProperty('verificationMethod')
 
     await gotoSpecificationDetail(page, 'PWT-SPEC-TRACE-201')
     await page.getByRole('button', { name: 'Rapporter' }).click()
@@ -1587,36 +2108,108 @@ test.describe('Requirements specification deterministic manual cases', () => {
   // cSpell:ignore relocks
   test('SPEC-15: unlocks and relocks an RFI list after a question version changes', async ({
     page,
+    request,
   }) => {
-    await mockRfiList(page, {
-      initialList: rfiListResponse({
-        isLocked: true,
-        primaryRelevance: 'relevant',
-      }),
-    })
+    const questionText = `PWT SPEC-15 fråga ${Date.now()}`
+    let createdQuestion: {
+      id: number
+      questionCode: string
+    } | null = null
 
-    await gotoSpecificationDetail(page, rfiSpecificationSlug)
-    await openDetailTab(page, 'RFI-frågelista')
+    try {
+      const createResponse = await request.post('/api/rfi-questions', {
+        data: {
+          areaId: rfiAreaId,
+          expectedAnswerFormat: 'PWT SPEC-15 fritext.',
+          helpText: 'PWT SPEC-15 skapar en ny version för låst RFI-lista.',
+          questionText,
+        },
+        timeout: 30_000,
+      })
+      expect(createResponse.ok()).toBe(true)
+      createdQuestion = (await createResponse.json()) as {
+        id: number
+        questionCode: string
+      }
 
-    const lockSwitch = page.getByRole('switch', { name: 'Låst' })
-    await expect(lockSwitch).toBeChecked()
-    await lockSwitch.click()
-    await expect(lockSwitch).not.toBeChecked()
-    await lockSwitch.click()
-    await expect(lockSwitch).toBeChecked()
+      await gotoSpecificationDetail(page, rfiSpecificationSlug)
+      await openDetailTab(page, 'RFI-frågelista')
+      const initialLockSwitch = page.getByRole('switch', { name: 'Låst' })
+      if (await initialLockSwitch.isChecked()) {
+        await initialLockSwitch.click()
+      }
+      await expect(initialLockSwitch).not.toBeChecked()
+      await expect(
+        page.locator('article').filter({
+          hasText: createdQuestion.questionCode,
+        }),
+      ).toContainText(questionText, { timeout: 30_000 })
 
-    const primaryQuestion = page
-      .locator('article')
-      .filter({ hasText: 'PWM-RFI001' })
-    await expect(primaryQuestion.getByText('Nyare version finns')).toHaveCount(
-      1,
-    )
-    await expect(
-      primaryQuestion.getByLabel('Relevant', { exact: true }),
-    ).not.toBeChecked()
-    await expect(
-      primaryQuestion.getByLabel('Inte relevant', { exact: true }),
-    ).not.toBeChecked()
+      await initialLockSwitch.click()
+      await expect(initialLockSwitch).toBeChecked()
+
+      await page.goto('/sv/requirements/stewardship?tab=information-requests')
+      await expect(
+        page.getByRole('heading', { level: 1, name: 'RFI-frågor' }),
+      ).toBeVisible()
+      const stewardshipRow = page
+        .locator('li')
+        .filter({ hasText: createdQuestion.questionCode })
+      await expect(stewardshipRow).toContainText(questionText, {
+        timeout: 30_000,
+      })
+      await stewardshipRow
+        .getByRole('button', {
+          name: `Redigera RFI-fråga: ${createdQuestion.questionCode}`,
+        })
+        .click()
+      const editDialog = page.getByRole('dialog', {
+        name: 'Redigera RFI-fråga',
+      })
+      await editDialog
+        .getByRole('textbox', { name: 'Frågetext' })
+        .fill(`${questionText} uppdaterad`)
+      await editDialog.getByRole('button', { name: 'Spara RFI-fråga' }).click()
+      await expect(editDialog).toBeHidden({ timeout: 30_000 })
+      await expect(stewardshipRow).toContainText('v2', { timeout: 30_000 })
+
+      await gotoSpecificationDetail(page, rfiSpecificationSlug)
+      await openDetailTab(page, 'RFI-frågelista')
+      const staleQuestion = page.locator('article').filter({
+        hasText: createdQuestion.questionCode,
+      })
+      await expect(staleQuestion).toContainText('Nyare version finns', {
+        timeout: 30_000,
+      })
+
+      const staleLockSwitch = page.getByRole('switch', { name: 'Låst' })
+      await expect(staleLockSwitch).toBeChecked()
+      await staleLockSwitch.click()
+      await expect(staleLockSwitch).not.toBeChecked()
+      await expect(staleQuestion).toContainText(`${questionText} uppdaterad`)
+      await expect(staleQuestion.getByText('Nyare version finns')).toHaveCount(
+        0,
+      )
+      await staleLockSwitch.click()
+      await expect(staleLockSwitch).toBeChecked()
+      await expect(staleQuestion.getByText('Nyare version finns')).toHaveCount(
+        0,
+      )
+    } finally {
+      await request
+        .post(
+          `/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/unlock`,
+          { timeout: 30_000 },
+        )
+        .catch(() => undefined)
+      if (createdQuestion) {
+        await request
+          .delete(`/api/rfi-questions/${createdQuestion.id}`, {
+            timeout: 30_000,
+          })
+          .catch(() => undefined)
+      }
+    }
   })
 
   test('SPEC-16: creates RFI question and area suggestions from the RFI list', async ({
@@ -1661,6 +2254,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
       name: 'Skicka RFI-frågeförslag',
     })
     await expect(dialog).toContainText('PWM-RFI001')
+    await expect(dialog).toContainText(
+      'Förslaget skickas till kravområdesansvariga för PWT-MANUAL Playwright manual cases.',
+    )
     await dialog
       .getByRole('textbox', { name: /Förslag/u })
       .fill('PWT SPEC-16 frågeförslag')
@@ -1670,6 +2266,11 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect(
       page.getByText('RFI-frågeförslaget har skickats.'),
     ).toHaveCount(1)
+    await expect(
+      page.getByRole('button', {
+        name: 'Visa 1 RFI-frågeförslag för PWM-RFI001',
+      }),
+    ).toBeVisible()
 
     await page
       .getByRole('button', {
@@ -1680,12 +2281,20 @@ test.describe('Requirements specification deterministic manual cases', () => {
       name: 'Skicka RFI-frågeförslag',
     })
     await expect(dialog).toContainText('kravområdet')
+    await expect(dialog).toContainText(
+      'Förslaget skickas till kravområdesansvariga för PWT-MANUAL Playwright manual cases.',
+    )
     await dialog
       .getByRole('textbox', { name: /Förslag/u })
       .fill('PWT SPEC-16 områdesförslag')
     await dialog
       .getByRole('button', { name: 'Skicka RFI-frågeförslag' })
       .click()
+    await expect(
+      page.getByRole('button', {
+        name: 'Visa 1 RFI-frågeförslag för kravområdet PWT-MANUAL Playwright manual cases',
+      }),
+    ).toBeVisible()
 
     await expect
       .poll(() => createRequests)
@@ -1709,7 +2318,18 @@ test.describe('Requirements specification deterministic manual cases', () => {
     page,
   }) => {
     const rfiMock = await mockRfiList(page, {
-      suggestions: seededRfiSuggestions(),
+      suggestions: [
+        ...seededRfiSuggestions(),
+        {
+          areaId: rfiAreaId,
+          content: 'PWT-MANUAL RFI-förslag i granskning.',
+          id: 920005,
+          isReviewRequested: true,
+          resolution: null,
+          rfiQuestionId: rfiPrimaryQuestionId,
+          specificationId: rfiSpecificationId,
+        },
+      ],
     })
     const deleteRequests: number[] = []
     await page.route('**/api/rfi-question-suggestions/920001', async route => {
@@ -1739,7 +2359,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
     await page
       .getByRole('button', {
-        name: 'Visa 2 RFI-frågeförslag för PWM-RFI001',
+        name: 'Visa 3 RFI-frågeförslag för PWM-RFI001',
       })
       .click()
     suggestionsDialog = page.getByRole('dialog', {
@@ -1751,7 +2371,34 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect(suggestionsDialog).toContainText(
       'PWT-MANUAL hanterat RFI-förslag.',
     )
-    await suggestionsDialog
+    await expect(suggestionsDialog).toContainText(
+      'PWT-MANUAL RFI-förslag i granskning.',
+    )
+    const openSuggestion = suggestionsDialog
+      .locator('li')
+      .filter({ hasText: 'PWT-MANUAL öppet frågeförslag.' })
+    const inReviewSuggestion = suggestionsDialog
+      .locator('li')
+      .filter({ hasText: 'PWT-MANUAL RFI-förslag i granskning.' })
+    const handledSuggestion = suggestionsDialog
+      .locator('li')
+      .filter({ hasText: 'PWT-MANUAL hanterat RFI-förslag.' })
+    await expect(
+      openSuggestion.getByRole('button', {
+        name: 'Ta bort RFI-frågeförslag',
+      }),
+    ).toBeVisible()
+    await expect(
+      inReviewSuggestion.getByRole('button', {
+        name: 'Ta bort RFI-frågeförslag',
+      }),
+    ).toHaveCount(0)
+    await expect(
+      handledSuggestion.getByRole('button', {
+        name: 'Ta bort RFI-frågeförslag',
+      }),
+    ).toHaveCount(0)
+    await openSuggestion
       .getByRole('button', { name: 'Ta bort RFI-frågeförslag' })
       .click()
     await page
@@ -1765,6 +2412,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
     )
     await expect(suggestionsDialog).toContainText(
       'PWT-MANUAL hanterat RFI-förslag.',
+    )
+    await expect(suggestionsDialog).toContainText(
+      'PWT-MANUAL RFI-förslag i granskning.',
     )
   })
 

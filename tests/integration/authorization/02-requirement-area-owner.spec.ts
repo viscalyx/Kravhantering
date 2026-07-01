@@ -33,8 +33,28 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
   referenceManualCases(testInfo, 'AUTHZ-02', 'AUTH-10', 'AUTH-11', 'ADMIN-13')
   const areaOwner = await newRoleContext(testInfo, 'areaOwner')
   const updatedDescription = `Updated by area owner ${Date.now()}`
+  const originalCoAuthors = [HSA.areaCoauthor]
+  const temporaryCoAuthor = HSA.admin
 
   try {
+    const coAuthorLoadGate: { release?: () => void } = {}
+    const coAuthorLoadStarted = new Promise<void>(resolve => {
+      void page.route(
+        `**/api/requirement-areas/${fixture.areaId}/co-authors`,
+        async route => {
+          if (
+            route.request().method() === 'GET' &&
+            coAuthorLoadGate.release === undefined
+          ) {
+            await new Promise<void>(loadResolve => {
+              coAuthorLoadGate.release = loadResolve
+              resolve()
+            })
+          }
+          await route.continue()
+        },
+      )
+    })
     const areaPrefixPattern = escapeRegExp(fixture.areaPrefix)
 
     await page.goto('/sv/requirement-areas')
@@ -71,10 +91,38 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
       name: 'Kravområdesmedförfattare',
     })
     await expect(coAuthorsDialog).toBeVisible()
+    await coAuthorLoadStarted
+    await expect(coAuthorsDialog.getByRole('status')).toContainText(
+      /Hämtar .*medförfattare/u,
+    )
+    coAuthorLoadGate.release?.()
     await expect(coAuthorsDialog.getByText(HSA.areaCoauthor)).toBeVisible()
     await expect(
       coAuthorsDialog.getByRole('textbox', { name: 'Medförfattares HSA-id' }),
     ).toBeVisible()
+    await coAuthorsDialog
+      .getByRole('textbox', { name: 'Medförfattares HSA-id' })
+      .fill('admin1')
+    await coAuthorsDialog.getByRole('button', { name: 'Hämta' }).click()
+    await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toBeVisible()
+    await coAuthorsDialog
+      .getByRole('row', { name: new RegExp(escapeRegExp(temporaryCoAuthor)) })
+      .getByRole('button', { name: 'Ta bort' })
+      .click()
+    await page
+      .getByRole('alertdialog', { name: 'Ta bort' })
+      .getByRole('button', { name: 'Ta bort' })
+      .click()
+    await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toHaveCount(0)
+    await coAuthorsDialog.getByRole('button', { name: 'Stäng' }).last().click()
+    await expect(coAuthorsDialog).toBeHidden()
+
+    await updatedRow
+      .getByRole('button', { name: 'Hantera medförfattare' })
+      .click()
+    await expect(coAuthorsDialog).toBeVisible()
+    await expect(coAuthorsDialog.getByText(HSA.areaCoauthor)).toBeVisible()
+    await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toHaveCount(0)
     await coAuthorsDialog.getByRole('button', { name: 'Stäng' }).last().click()
     await expect(coAuthorsDialog).toBeHidden()
 
@@ -104,6 +152,11 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
       'area-owner action log read',
     )
   } finally {
+    await areaOwner
+      .put(`/api/requirement-areas/${fixture.areaId}/co-authors`, {
+        data: { coAuthorHsaIds: originalCoAuthors },
+      })
+      .catch(() => undefined)
     await areaOwner.dispose()
   }
 })

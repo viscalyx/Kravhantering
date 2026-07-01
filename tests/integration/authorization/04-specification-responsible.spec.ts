@@ -36,8 +36,29 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
     'specificationResponsible',
   )
   const updatedPurpose = `Updated by responsible ${Date.now()}`
+  const originalCoAuthors = [HSA.specificationCoauthor]
+  const temporaryCoAuthor = HSA.admin
 
   try {
+    const coAuthorLoadGate: { release?: () => void } = {}
+    const coAuthorLoadStarted = new Promise<void>(resolve => {
+      void page.route(
+        `**/api/requirements-specifications/${fixture.specificationSlug}/co-authors`,
+        async route => {
+          if (
+            route.request().method() === 'GET' &&
+            coAuthorLoadGate.release === undefined
+          ) {
+            await new Promise<void>(loadResolve => {
+              coAuthorLoadGate.release = loadResolve
+              resolve()
+            })
+          }
+          await route.continue()
+        },
+      )
+    })
+
     await page.goto(`/sv/specifications/${fixture.specificationSlug}`)
     await expect(
       page.getByRole('heading', { level: 1, name: fixture.specificationName }),
@@ -68,6 +89,11 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
       name: 'Kravunderlagsmedförfattare',
     })
     await expect(coAuthorsDialog).toBeVisible()
+    await coAuthorLoadStarted
+    await expect(coAuthorsDialog.getByRole('status')).toContainText(
+      /Hämtar .*medförfattare/u,
+    )
+    coAuthorLoadGate.release?.()
     await expect(
       coAuthorsDialog.getByText(HSA.specificationCoauthor),
     ).toBeVisible()
@@ -76,6 +102,29 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
         name: 'Medförfattares HSA-id',
       }),
     ).toBeVisible()
+    await coAuthorsDialog
+      .getByRole('textbox', { name: 'Medförfattares HSA-id' })
+      .fill('admin1')
+    await coAuthorsDialog.getByRole('button', { name: 'Hämta' }).click()
+    await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toBeVisible()
+    await coAuthorsDialog
+      .getByRole('row', { name: new RegExp(escapeRegExp(temporaryCoAuthor)) })
+      .getByRole('button', { name: 'Ta bort' })
+      .click()
+    await page
+      .getByRole('alertdialog', { name: 'Ta bort' })
+      .getByRole('button', { name: 'Ta bort' })
+      .click()
+    await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toHaveCount(0)
+    await coAuthorsDialog.getByRole('button', { name: 'Stäng' }).last().click()
+    await expect(coAuthorsDialog).toBeHidden()
+
+    await row.getByRole('button', { name: 'Hantera medförfattare' }).click()
+    await expect(coAuthorsDialog).toBeVisible()
+    await expect(
+      coAuthorsDialog.getByText(HSA.specificationCoauthor),
+    ).toBeVisible()
+    await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toHaveCount(0)
     await coAuthorsDialog.getByRole('button', { name: 'Stäng' }).last().click()
     await expect(coAuthorsDialog).toBeHidden()
 
@@ -125,6 +174,14 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
       'specification responsible privacy preview',
     )
   } finally {
+    await specificationResponsible
+      .put(
+        `/api/requirements-specifications/${fixture.specificationSlug}/co-authors`,
+        {
+          data: { coAuthorHsaIds: originalCoAuthors },
+        },
+      )
+      .catch(() => undefined)
     await specificationResponsible.dispose()
   }
 })
