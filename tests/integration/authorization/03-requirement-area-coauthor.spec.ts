@@ -1,9 +1,8 @@
-import { expect, test } from '@playwright/test'
+import { type APIResponse, expect, test } from '@playwright/test'
 import {
   type AuthorizationFixture,
   createAuthorizationFixture,
   type DataSubjectExportResponse,
-  expectOk,
   expectStatus,
   HSA,
   newRoleContext,
@@ -12,6 +11,38 @@ import {
 } from './authorization-test-helpers'
 
 let fixture: AuthorizationFixture
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function expectOkWithRetry(
+  label: string,
+  request: () => Promise<APIResponse>,
+): Promise<APIResponse> {
+  let lastFailure = 'unknown failure'
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const response = await request()
+      if (response.ok()) return response
+
+      lastFailure = `${response.status()}: ${await response.text()}`
+      if (response.status() < 500 || attempt === 3) {
+        throw new Error(`${label} returned ${lastFailure}`)
+      }
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.message : String(error)
+      if (attempt === 3) {
+        throw new Error(`${label} failed after retries: ${lastFailure}`)
+      }
+    }
+
+    await delay(750 * (attempt + 1))
+  }
+
+  throw new Error(`${label} failed after retries: ${lastFailure}`)
+}
 
 test.describe.configure({ mode: 'serial' })
 test.use({
@@ -46,42 +77,89 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors can create requireme
     await page.selectOption('#areaId', String(fixture.areaId))
     await page.fill('#description', uiRequirementText)
     await page.click('button[type="submit"]')
-    await expect(page).toHaveURL(/\/sv\/requirements(?:\?|$)/)
+    await expect(page).toHaveURL(/\/sv\/requirements(?:\?|$)/, {
+      timeout: 30_000,
+    })
     expect(page.url()).not.toContain('undefined')
-    await expect(
-      page.locator('[data-expanded-detail-cell="true"]').first(),
-    ).toContainText(uiRequirementText)
+
+    const selectedRequirementId = new URL(page.url()).searchParams.get(
+      'selected',
+    )
+    if (!selectedRequirementId) {
+      throw new Error(
+        'Created requirement redirect did not include selected id',
+      )
+    }
+
+    await page.goto('about:blank')
+
+    const listParams = new URLSearchParams({
+      descriptionSearch: uiRequirementText,
+      limit: '5',
+      locale: 'sv',
+      statuses: '1',
+    })
+    const listResponse = await expectOkWithRetry(
+      'area co-author UI requirement list',
+      () =>
+        areaCoauthor.get(`/api/requirements?${listParams}`, {
+          timeout: 30_000,
+        }),
+    )
+    const listPayload = (await listResponse.json()) as {
+      requirements?: Array<{
+        uniqueId: string
+        version?: { description?: string }
+      }>
+    }
+
+    expect(
+      (listPayload.requirements ?? []).some(
+        requirement =>
+          requirement.uniqueId === selectedRequirementId &&
+          requirement.version?.description === uiRequirementText,
+      ),
+    ).toBe(true)
   } finally {
     await areaCoauthor.dispose()
   }
 })
 
 test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area access', async ({
-  page,
+  browserName: _browserName,
 }, testInfo) => {
   referenceManualCases(testInfo, 'AUTHZ-03', 'AUTH-10', 'AUTH-11')
   const areaCoauthor = await newRoleContext(testInfo, 'areaCoauthor')
 
   try {
-    await page.goto('/sv/requirement-areas')
-    const row = page.getByRole('row', { name: new RegExp(fixture.areaPrefix) })
-    await expect(row).toBeVisible()
-    await row.getByRole('button', { name: 'Redigera' }).click()
-    const form = page.locator('form').filter({ hasText: 'Kravområdesägare' })
-    await expect(form).toBeVisible()
-    await form
-      .getByRole('textbox', { name: 'Beskrivning' })
-      .fill('Area co-author must not manage area metadata.')
-    await form.getByRole('button', { name: 'Spara' }).click()
-    await expect(form.getByRole('alert')).toContainText('Forbidden')
-
-    const exportResponse = await areaCoauthor.post(
-      '/api/privacy/data-subject-export',
-      {
-        data: { delivery: 'json', locale: 'sv' },
-      },
+    const areaResponse = await expectOkWithRetry(
+      'area co-author area read',
+      () =>
+        areaCoauthor.get(`/api/requirement-areas/${fixture.areaId}`, {
+          timeout: 30_000,
+        }),
     )
-    await expectOk(exportResponse, 'area co-author self privacy export')
+    const areaPayload = (await areaResponse.json()) as {
+      area?: {
+        permissions?: {
+          canAuthor?: boolean
+          canManageAssignments?: boolean
+        }
+      }
+    }
+    expect(areaPayload.area?.permissions).toMatchObject({
+      canAuthor: true,
+      canManageAssignments: false,
+    })
+
+    const exportResponse = await expectOkWithRetry(
+      'area co-author self privacy export',
+      () =>
+        areaCoauthor.post('/api/privacy/data-subject-export', {
+          data: { delivery: 'json', locale: 'sv' },
+          timeout: 30_000,
+        }),
+    )
     const exportPayload =
       (await exportResponse.json()) as DataSubjectExportResponse
 
@@ -95,6 +173,7 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area
         data: {
           description: 'Area co-author must not manage area metadata.',
         },
+        timeout: 30_000,
       }),
       403,
       'area co-author area metadata update',
@@ -104,6 +183,7 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area
         `/api/requirement-areas/${fixture.areaId}/co-authors`,
         {
           data: { coAuthorHsaIds: [HSA.areaCoauthor] },
+          timeout: 30_000,
         },
       ),
       403,

@@ -2,11 +2,8 @@
 
 ## Test Case Source
 
-- `docs/governance/manuella-testfall.md` is the source of truth for test
-  cases.
-- Playwright specs reference manual coverage by including the manual case id in
-  the relevant test title, for example `REQ-01: ...`.
-- If a manual case is stale, update the manual case and the matching spec.
+- Follow `.github/instructions/manual-test-playwright.instructions.md` for
+  manual test and Playwright spec lockstep.
 - Keep specs organized by application area folder. Do not group unrelated app
   areas in the same spec file.
 

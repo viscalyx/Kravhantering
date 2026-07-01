@@ -196,7 +196,9 @@ test('SPEC-17: AI-assisted authoring hands kravunderlag candidates to local impo
 
   await page.goto(`/sv/specifications/${specificationSlug}`)
   await page.getByRole('button', { name: 'Lägg till unika krav' }).click()
-  await page.getByRole('button', { name: 'AI-assisterat författande' }).click()
+  await page
+    .getByRole('menuitem', { name: 'AI-assisterat författande' })
+    .click()
 
   await generateCandidate(page)
 

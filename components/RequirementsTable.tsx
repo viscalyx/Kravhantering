@@ -386,6 +386,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
           data-floating-action-menu-trigger={action.id}
           data-floating-action-variant={variant}
           disabled={action.disabled}
+          id={`floating-action-trigger-${action.id}`}
           onClick={() => !action.disabled && setOpen(value => !value)}
           ref={triggerRef}
           style={action.customStyle}
@@ -413,6 +414,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                 }}
               >
                 <div
+                  aria-labelledby={`floating-action-trigger-${action.id}`}
                   className="w-full overflow-y-auto rounded-2xl border border-secondary-200/80 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-secondary-700/70 dark:bg-secondary-900/95"
                   {...devMarker({
                     context: developerModeValue
@@ -425,6 +427,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                   data-floating-action-menu={action.id}
                   id={`floating-action-menu-${action.id}`}
                   ref={menuRef}
+                  role="menu"
                   style={{ maxHeight: menuPosition.maxHeight }}
                 >
                   <ul className="space-y-1">
@@ -437,6 +440,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               className={
                                 floatingActionMenuItemDisabledClassName
                               }
+                              role="menuitem"
                               title={item.tooltip}
                             >
                               <FloatingActionMenuItemContent item={item} />
@@ -446,6 +450,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               className={floatingActionMenuItemEnabledClassName}
                               href={item.href}
                               onClick={() => setOpen(false)}
+                              role="menuitem"
                               title={item.tooltip}
                             >
                               <FloatingActionMenuItemContent item={item} />
@@ -455,6 +460,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                           <span
                             aria-disabled="true"
                             className={floatingActionMenuItemDisabledClassName}
+                            role="menuitem"
                             title={item.tooltip}
                           >
                             <FloatingActionMenuItemContent item={item} />
@@ -466,6 +472,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               item.onClick()
                               setOpen(false)
                             }}
+                            role="menuitem"
                             title={item.tooltip}
                             type="button"
                           >

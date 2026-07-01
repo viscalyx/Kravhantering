@@ -1,9 +1,41 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 const viewports = [
   { name: 'mobile', width: 375, height: 812 },
   { name: 'desktop', width: 1280, height: 720 },
 ]
+
+async function gotoRequirementsWhenReady(page: Page) {
+  await page.goto('/sv/requirements')
+  await expect(
+    page.getByRole('button', { name: 'Filtrera efter Krav-ID' }),
+  ).toBeVisible({
+    timeout: 30_000,
+  })
+}
+
+async function gotoRequirementInlineDetail(page: Page, requirementId: string) {
+  await page.goto(
+    `/sv/requirements?selected=${encodeURIComponent(requirementId)}`,
+  )
+  const rowButton = page.getByRole('button', {
+    exact: true,
+    name: requirementId,
+  })
+  await expect(rowButton).toBeVisible({ timeout: 30_000 })
+
+  const expandedDetail = page.locator('[data-expanded-detail-cell]').first()
+  await expect(expandedDetail).toBeVisible({ timeout: 30_000 })
+
+  const requirementTextSection = page
+    .locator(
+      '[data-developer-mode-name="detail section"][data-developer-mode-value="requirement text"]',
+    )
+    .first()
+  await expect(requirementTextSection).toBeVisible({ timeout: 30_000 })
+
+  return { requirementTextSection, rowButton }
+}
 
 for (const viewport of viewports) {
   test.describe(`Developer mode overlay — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
@@ -12,38 +44,23 @@ for (const viewport of viewports) {
     test.beforeEach(async ({ page }) => {
       await page.addInitScript(() => {
         globalThis.localStorage.clear()
+        globalThis.sessionStorage.clear()
       })
     })
 
     test('DEVTOOLS-01: shows chip on hover and copies a contextual reference', async ({
       page,
     }) => {
-      await page.goto('/sv/requirements')
+      const { requirementTextSection, rowButton } =
+        await gotoRequirementInlineDetail(page, 'INT0001')
 
-      await page.getByLabel('Filtrera efter Krav-ID').click()
-      const searchInput = page.getByRole('textbox', { name: 'Krav-ID' })
-      await searchInput.fill('INT0001')
-      await searchInput.press('Enter')
-
-      // The sticky table header overlaps this button, so Playwright's
-      // actionability check would fail. We bypass it via evaluate() to
-      // expand the row before enabling developer mode.
-      await page
-        .getByRole('button', { exact: true, name: 'INT0001' })
-        .evaluate(el => (el as HTMLElement).click())
-      await expect(
-        page.locator('[data-expanded-detail-cell]').first(),
-      ).toBeVisible()
-      await page.getByRole('button', { exact: true, name: 'INT0001' }).focus()
+      await rowButton.focus()
       await page.keyboard.press('Control+Alt+Shift+H')
 
       await expect(page.getByTestId('developer-mode-badge')).toBeVisible()
 
       // Hover over the detail section and verify chip appears.
-      const detailSection = page.locator(
-        '[data-developer-mode-name="detail section"][data-developer-mode-value="requirement text"]',
-      )
-      await detailSection.hover()
+      await requirementTextSection.hover()
       const chip = page.locator('[data-developer-mode-overlay-chip="true"]')
       await expect(chip).toBeVisible()
       await expect(chip).toContainText('detail section: requirement text')
@@ -60,8 +77,7 @@ for (const viewport of viewports) {
     test('DEVTOOLS-02: keeps developer mode active across client navigation into admin', async ({
       page,
     }) => {
-      await page.goto('/sv/requirements')
-      await page.locator('tbody > tr').first().waitFor()
+      await gotoRequirementsWhenReady(page)
       await page.getByRole('button', { name: 'Filtrera efter Krav-ID' }).focus()
       await page.keyboard.press('Control+Alt+Shift+H')
 
@@ -108,8 +124,8 @@ for (const viewport of viewports) {
           '[data-developer-mode-name="report button"][data-developer-mode-value="specification reports"]',
         )
         .first()
+      await expect(specificationReportButton).toBeVisible({ timeout: 30_000 })
       await specificationReportButton.scrollIntoViewIfNeeded()
-      await expect(specificationReportButton).toBeVisible()
 
       await specificationReportButton.focus()
       await page.keyboard.press('Control+Alt+Shift+H')
@@ -124,13 +140,7 @@ for (const viewport of viewports) {
     test('keeps sticky table headers referenceable in developer mode', async ({
       page,
     }) => {
-      await page.goto('/sv/requirements')
-      await page.locator('tbody > tr').first().waitFor()
-      // force: true because the sticky header overlaps the row button at
-      // the top of the list before any scrolling has occurred.
-      await page
-        .getByRole('button', { exact: true, name: 'INT0001' })
-        .click({ force: true })
+      await gotoRequirementInlineDetail(page, 'INT0001')
 
       await page.mouse.wheel(0, 320)
       const stickyHeader = page.locator(

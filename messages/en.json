@@ -1486,6 +1486,7 @@
         "actor": "Actor",
         "accessReviewPrincipal": "Access review principal",
         "taxonomy": "Taxonomy",
+        "lifecycleStatus": "Specification lifecycle status",
         "requirementVersion": "Requirement version",
         "specificationArchive": "Specification",
         "requirementSelection": "Requirement selection",

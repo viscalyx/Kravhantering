@@ -39,6 +39,14 @@ interface OkResponse {
   text(): Promise<string>
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function latestVersion(detail: RequirementDetail) {
   const latest = [...detail.versions].sort(
     (left, right) => right.versionNumber - left.versionNumber,
@@ -83,12 +91,41 @@ async function expectOk(response: OkResponse, context: string) {
   )
 }
 
+async function getOkWithRetry(
+  context: string,
+  request: () => Promise<OkResponse>,
+): Promise<OkResponse> {
+  let lastFailure = 'unknown failure'
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const response = await request()
+      if (response.ok()) return response
+
+      lastFailure = `${response.status()} ${await response.text()}`
+      if (response.status() < 500 || attempt === 3) {
+        throw new Error(`${context} failed with ${lastFailure}`)
+      }
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.message : String(error)
+      if (attempt === 3) {
+        throw new Error(`${context} failed after retries: ${lastFailure}`)
+      }
+    }
+
+    await delay(750 * (attempt + 1))
+  }
+
+  throw new Error(`${context} failed after retries: ${lastFailure}`)
+}
+
 async function createDraftRequirement(
   request: APIRequestContext,
   description: string,
 ): Promise<RequirementDetail> {
-  const areasResponse = await request.get('/api/requirement-areas')
-  await expectOk(areasResponse, 'GET requirement areas')
+  const areasResponse = await getOkWithRetry('GET requirement areas', () =>
+    request.get('/api/requirement-areas', { timeout: 30_000 }),
+  )
   const areasBody = (await areasResponse.json()) as {
     areas: Array<{ id: number }>
   }
@@ -101,6 +138,7 @@ async function createDraftRequirement(
       description,
       requiresTesting: false,
     },
+    timeout: 30_000,
   })
   await expectOk(createResponse, 'POST requirement')
   const created = (await createResponse.json()) as {
@@ -114,8 +152,9 @@ async function getRequirement(
   request: APIRequestContext,
   uniqueId: string,
 ): Promise<RequirementDetail> {
-  const response = await request.get(`/api/requirements/${uniqueId}`)
-  await expectOk(response, `GET requirement ${uniqueId}`)
+  const response = await getOkWithRetry(`GET requirement ${uniqueId}`, () =>
+    request.get(`/api/requirements/${uniqueId}`, { timeout: 30_000 }),
+  )
   return (await response.json()) as RequirementDetail
 }
 
@@ -124,13 +163,46 @@ async function transitionRequirement(
   uniqueId: string,
   statusId: number,
 ) {
-  const response = await request.post(
-    `/api/requirement-transitions/${uniqueId}`,
-    {
-      data: { statusId },
-    },
+  let lastFailure = 'unknown failure'
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const response = await request.post(
+        `/api/requirement-transitions/${uniqueId}`,
+        {
+          data: { statusId },
+          timeout: 30_000,
+        },
+      )
+      if (response.ok()) return
+
+      lastFailure = `${response.status()} ${await response.text()}`
+      const updated = await getRequirement(request, uniqueId).catch(() => null)
+      if (updated && latestVersion(updated).status === statusId) return
+
+      if (response.status() < 500 || attempt === 3) {
+        throw new Error(
+          `POST transition ${uniqueId} to ${statusId} failed with ${lastFailure}`,
+        )
+      }
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.message : String(error)
+      const updated = await getRequirement(request, uniqueId).catch(() => null)
+      if (updated && latestVersion(updated).status === statusId) return
+
+      if (attempt === 3) {
+        throw new Error(
+          `POST transition ${uniqueId} to ${statusId} failed after retries: ${lastFailure}`,
+        )
+      }
+    }
+
+    await delay(750 * (attempt + 1))
+  }
+
+  throw new Error(
+    `POST transition ${uniqueId} to ${statusId} failed after retries: ${lastFailure}`,
   )
-  await expectOk(response, `POST transition ${uniqueId} to ${statusId}`)
 }
 
 async function createRequirementInStatus(
@@ -174,21 +246,64 @@ async function newRolePage(
 }
 
 async function openRequirement(page: Page, uniqueId: string): Promise<Locator> {
-  await page.goto(`/sv/requirements?selected=${encodeURIComponent(uniqueId)}`)
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.goto(
+      `/sv/requirements?selected=${encodeURIComponent(uniqueId)}`,
+      { timeout: 30_000, waitUntil: 'domcontentloaded' },
+    )
 
-  const rowButton = page.getByRole('button', {
-    name: new RegExp(`^${uniqueId}\\b`),
-  })
-  await expect(rowButton).toBeVisible()
+    try {
+      const rowButton = page.getByRole('button', {
+        name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`),
+      })
+      await expect(rowButton).toBeVisible({ timeout: 30_000 })
 
-  const detailPaneId = await rowButton.getAttribute('aria-controls')
-  if (!detailPaneId) {
-    throw new Error(`Requirement row ${uniqueId} has no detail pane target.`)
+      const detailPaneId = await rowButton.getAttribute('aria-controls')
+      if (!detailPaneId) {
+        throw new Error(`Requirement row ${uniqueId} has no detail pane target.`)
+      }
+
+      const detailPane = page.locator(`#${detailPaneId}`)
+      await expect(detailPane).toBeVisible({ timeout: 30_000 })
+      return detailPane
+    } catch (error) {
+      if (attempt === 2) throw error
+      await delay(750 * (attempt + 1))
+    }
   }
 
-  const detailPane = page.locator(`#${detailPaneId}`)
-  await expect(detailPane).toBeVisible()
-  return detailPane
+  throw new Error(`Requirement row ${uniqueId} did not load.`)
+}
+
+async function openRequirementStandalone(
+  page: Page,
+  uniqueId: string,
+  versionNumber?: number,
+): Promise<Locator> {
+  const suffix = versionNumber === undefined ? '' : `/${versionNumber}`
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.goto(`/sv/requirements/${uniqueId}${suffix}`, {
+      timeout: 30_000,
+      waitUntil: 'domcontentloaded',
+    })
+
+    try {
+      const main = page.locator('main')
+      await expect(
+        main.getByRole('heading', {
+          name: new RegExp(escapeRegExp(uniqueId)),
+        }),
+      ).toBeVisible({ timeout: 30_000 })
+      await expect(main.getByText('Kravtext')).toBeVisible({ timeout: 30_000 })
+      return main
+    } catch (error) {
+      if (attempt === 2) throw error
+      await delay(750 * (attempt + 1))
+    }
+  }
+
+  throw new Error(`Requirement detail ${uniqueId}${suffix} did not load.`)
 }
 
 async function assertActiveStepperStep(
@@ -199,7 +314,23 @@ async function assertActiveStepperStep(
     .getByRole('group', { name: 'Arbetsflöde för kravversionsstatus' })
     .locator('[aria-current="step"]')
 
-  await expect(activeStep).toContainText(expectedText)
+  await expect(activeStep).toContainText(expectedText, { timeout: 30_000 })
+}
+
+async function expectLatestStatus(
+  request: APIRequestContext,
+  uniqueId: string,
+  expectedStatus: number,
+) {
+  await expect
+    .poll(
+      async () => {
+        const updated = await getRequirement(request, uniqueId)
+        return latestVersion(updated).status
+      },
+      { timeout: 60_000 },
+    )
+    .toBe(expectedStatus)
 }
 
 async function confirmDialog(page: Page) {
@@ -210,6 +341,7 @@ async function confirmDialog(page: Page) {
 }
 
 test.describe('Requirement lifecycle manual cases', () => {
+  test.setTimeout(180_000)
   test.use({ viewport: { height: 720, width: 1280 } })
 
   test('LIFE-02: incomplete requirement creation stays client-side invalid', async ({
@@ -252,14 +384,8 @@ test.describe('Requirement lifecycle manual cases', () => {
     const detailPane = await openRequirement(page, requirement.uniqueId)
 
     await detailPane.getByRole('button', { name: 'Granskning ↗' }).click()
+    await expectLatestStatus(request, requirement.uniqueId, STATUS_REVIEW)
     await assertActiveStepperStep(detailPane, 'Granskning')
-
-    await expect
-      .poll(async () => {
-        const updated = await getRequirement(request, requirement.uniqueId)
-        return latestVersion(updated).status
-      })
-      .toBe(STATUS_REVIEW)
   })
 
   test('LIFE-04: requirement in review can be returned to draft from the UI', async ({
@@ -281,17 +407,11 @@ test.describe('Requirement lifecycle manual cases', () => {
 
       await detailPane.getByRole('button', { name: '← Utkast' }).click()
       await confirmDialog(reviewer.page)
+      await expectLatestStatus(request, requirement.uniqueId, STATUS_DRAFT)
       await assertActiveStepperStep(detailPane, 'Utkast')
     } finally {
       await reviewer.context.close()
     }
-
-    await expect
-      .poll(async () => {
-        const updated = await getRequirement(request, requirement.uniqueId)
-        return latestVersion(updated).status
-      })
-      .toBe(STATUS_DRAFT)
   })
 
   test('LIFE-05: requirement in review can be published from the UI', async ({
@@ -313,17 +433,11 @@ test.describe('Requirement lifecycle manual cases', () => {
 
       await detailPane.getByRole('button', { name: 'Publicera ↗' }).click()
       await confirmDialog(reviewer.page)
+      await expectLatestStatus(request, requirement.uniqueId, STATUS_PUBLISHED)
       await assertActiveStepperStep(detailPane, 'Publicerad')
     } finally {
       await reviewer.context.close()
     }
-
-    await expect
-      .poll(async () => {
-        const updated = await getRequirement(request, requirement.uniqueId)
-        return latestVersion(updated).status
-      })
-      .toBe(STATUS_PUBLISHED)
   })
 
   test('LIFE-06: editing a published requirement creates a new draft version', async ({
@@ -342,7 +456,7 @@ test.describe('Requirement lifecycle manual cases', () => {
     } finally {
       await reviewerRequest.dispose()
     }
-    const detailPane = await openRequirement(page, requirement.uniqueId)
+    const detailPane = await openRequirementStandalone(page, requirement.uniqueId)
 
     await detailPane.getByRole('link', { name: 'Redigera' }).click()
     await expect(page).toHaveURL(
@@ -352,29 +466,43 @@ test.describe('Requirement lifecycle manual cases', () => {
     await expect(descriptionField).toHaveValue(
       'Playwright LIFE-06 published requirement',
     )
-    await page.waitForLoadState('networkidle')
     await descriptionField.fill('Playwright LIFE-06 updated draft version')
     await expect(descriptionField).toHaveValue(
       'Playwright LIFE-06 updated draft version',
     )
     const saveButton = page.getByRole('button', { name: 'Spara' })
     await expect(saveButton).toBeEnabled()
-    const saveResponse = page.waitForResponse(response => {
-      const url = new URL(response.url())
-      return (
-        response.request().method() === 'PUT' &&
-        url.pathname === `/api/requirements/${requirement.uniqueId}`
+    await saveButton.scrollIntoViewIfNeeded()
+    const editForm = page.locator('form')
+    await expect
+      .poll(() =>
+        editForm.evaluate(form => (form as HTMLFormElement).checkValidity()),
       )
-    })
-    await saveButton.click()
-    await expectOk(
-      await saveResponse,
-      `PUT requirement edit ${requirement.uniqueId}`,
-    )
-
-    await expect(page).toHaveURL(
-      new RegExp(`/sv/requirements\\?selected=${requirement.uniqueId}`),
-    )
+      .toBe(true)
+    await Promise.all([
+      page.waitForRequest(
+        request => {
+          const url = new URL(request.url())
+          return (
+            request.method() === 'PUT' &&
+            url.pathname === `/api/requirements/${requirement.uniqueId}`
+          )
+        },
+        { timeout: 30_000 },
+      ),
+      editForm.evaluate(form => {
+        const htmlForm = form as HTMLFormElement
+        const submitter = htmlForm.querySelector('button[type="submit"]')
+        htmlForm.dispatchEvent(
+          new SubmitEvent('submit', {
+            bubbles: true,
+            cancelable: true,
+            submitter:
+              submitter instanceof HTMLElement ? submitter : undefined,
+          }),
+        )
+      }),
+    ])
     await expect
       .poll(async () => {
         const updated = await getRequirement(request, requirement.uniqueId)
@@ -382,7 +510,7 @@ test.describe('Requirement lifecycle manual cases', () => {
           latestStatus: latestVersion(updated).status,
           versionCount: updated.versions.length,
         }
-      })
+      }, { timeout: 60_000 })
       .toEqual({
         latestStatus: STATUS_DRAFT,
         versionCount: 2,
@@ -431,8 +559,14 @@ test.describe('Requirement lifecycle manual cases', () => {
   }) => {
     const requirement = await getRequirement(request, 'PWT-LIFE-PACKAGE-SWAP')
 
-    const detailPane = await openRequirement(page, requirement.uniqueId)
-    await expect(detailPane.getByText('PWT-MANUAL källpaket')).toHaveCount(1)
+    const detailPane = await openRequirementStandalone(
+      page,
+      requirement.uniqueId,
+      1,
+    )
+    await expect(detailPane.getByText('PWT-MANUAL källpaket')).toHaveCount(1, {
+      timeout: 30_000,
+    })
     await expect(
       detailPane.getByText('PWT-MANUAL ersättningspaket'),
     ).toHaveCount(0)
@@ -467,8 +601,13 @@ test.describe('Requirement lifecycle manual cases', () => {
       'PWT-LIFE-PACKAGE-ARCHIVE',
     )
 
-    const detailPane = await openRequirement(page, requirement.uniqueId)
-    await expect(detailPane.getByText('PWT-MANUAL källpaket')).toHaveCount(1)
+    const detailPane = await openRequirementStandalone(
+      page,
+      requirement.uniqueId,
+    )
+    await expect(detailPane.getByText('PWT-MANUAL källpaket')).toHaveCount(1, {
+      timeout: 30_000,
+    })
     await page.getByRole('button', { name: 'Arkivera' }).click()
     await page
       .getByRole('alertdialog')

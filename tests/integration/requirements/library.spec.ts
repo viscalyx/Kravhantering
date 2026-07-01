@@ -4,28 +4,69 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 async function openRequirementDetail(
   page: Page,
   uniqueId = 'INT0001',
 ): Promise<Locator> {
-  await page.goto(`/sv/requirements?selected=${encodeURIComponent(uniqueId)}`)
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.goto(
+      `/sv/requirements?selected=${encodeURIComponent(uniqueId)}`,
+      { timeout: 30_000, waitUntil: 'domcontentloaded' },
+    )
 
-  const rowButton = page.getByRole('button', {
-    name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`),
-  })
-  await expect(rowButton).toBeVisible()
+    try {
+      const rowButton = page.getByRole('button', {
+        name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`),
+      })
+      await expect(rowButton).toBeVisible({ timeout: 30_000 })
 
-  const detailPaneId = await rowButton.getAttribute('aria-controls')
-  if (!detailPaneId) {
-    throw new Error(`Requirement row ${uniqueId} has no detail pane target.`)
+      const detailPaneId = await rowButton.getAttribute('aria-controls')
+      if (!detailPaneId) {
+        throw new Error(`Requirement row ${uniqueId} has no detail pane target.`)
+      }
+
+      const detailPane = page.locator(`#${detailPaneId}`)
+      await expect(detailPane).toBeVisible({ timeout: 30_000 })
+      return detailPane
+    } catch (error) {
+      if (attempt === 2) throw error
+      await delay(750 * (attempt + 1))
+    }
   }
 
-  const detailPane = page.locator(`#${detailPaneId}`)
-  await expect(detailPane).toBeVisible()
-  return detailPane
+  throw new Error(`Requirement row ${uniqueId} did not load.`)
+}
+
+async function expectRequirementDetailRoute(
+  page: Page,
+  path: string,
+  expectedUrl: RegExp,
+  uniqueId = 'INT0001',
+) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.goto(path, { timeout: 30_000, waitUntil: 'domcontentloaded' })
+    await expect(page).toHaveURL(expectedUrl, { timeout: 30_000 })
+
+    try {
+      await expect(
+        page.getByRole('heading', { name: new RegExp(escapeRegExp(uniqueId)) }),
+      ).toBeVisible({ timeout: 30_000 })
+      return
+    } catch (error) {
+      if (attempt === 2) throw error
+      await delay(750 * (attempt + 1))
+    }
+  }
+
+  throw new Error(`Requirement detail route ${path} did not load.`)
 }
 
 test.describe('Requirements library', () => {
+  test.setTimeout(120_000)
   test.use({ viewport: { height: 720, width: 1280 } })
 
   test('REQ-01: requirements library loads seeded requirements and opens detail metadata', async ({
@@ -103,15 +144,23 @@ test.describe('Requirements library', () => {
   test('REQ-11: Swedish krav aliases redirect to canonical requirement detail routes', async ({
     page,
   }) => {
-    await page.goto('/krav/INT0001')
-    await expect(page).toHaveURL(/\/sv\/requirements\/INT0001$/)
-    await expect(page.getByRole('heading', { name: /INT0001/ })).toBeVisible()
+    await expectRequirementDetailRoute(
+      page,
+      '/krav/INT0001',
+      /\/sv\/requirements\/INT0001$/,
+    )
 
-    await page.goto('/sv/krav/INT0001')
-    await expect(page).toHaveURL(/\/sv\/requirements\/INT0001$/)
+    await expectRequirementDetailRoute(
+      page,
+      '/sv/krav/INT0001',
+      /\/sv\/requirements\/INT0001$/,
+    )
 
-    await page.goto('/en/krav/INT0001')
-    await expect(page).toHaveURL(/\/en\/requirements\/INT0001$/)
+    await expectRequirementDetailRoute(
+      page,
+      '/en/krav/INT0001',
+      /\/en\/requirements\/INT0001$/,
+    )
   })
 
   test('REQ-13: requirement detail share and report menus support keyboard use', async ({

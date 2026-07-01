@@ -1486,6 +1486,7 @@
         "actor": "Aktör",
         "accessReviewPrincipal": "Behörig i översyn",
         "taxonomy": "Taxonomi",
+        "lifecycleStatus": "Kravunderlagets livscykelstatus",
         "requirementVersion": "Kravversion",
         "specificationArchive": "Kravunderlag",
         "requirementSelection": "Kravurval",

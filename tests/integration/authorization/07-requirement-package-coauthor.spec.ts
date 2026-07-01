@@ -55,6 +55,7 @@ test('AUTHZ-07/AUTH-10/AUTH-11: requirement package co-authors are exported but 
 
     const readResponse = await packageCoauthor.get(
       `/api/requirement-packages/${fixture.packageId}`,
+      { timeout: 30_000 },
     )
     await expectOk(readResponse, 'package co-author package read')
     const packagePayload = (await readResponse.json()) as {

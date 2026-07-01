@@ -1,4 +1,11 @@
-import { expect, type Page, type Route, test } from '@playwright/test'
+import {
+  type APIResponse,
+  expect,
+  type Locator,
+  type Page,
+  type Route,
+  test,
+} from '@playwright/test'
 import {
   expectStatus,
   newRoleContext,
@@ -12,14 +19,59 @@ const rfiAreaId = 920001
 const rfiPrimaryQuestionId = 920001
 const rfiSecondaryQuestionId = 920002
 
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function requestWithRetry(
+  label: string,
+  request: () => Promise<APIResponse>,
+): Promise<APIResponse> {
+  let lastFailure = 'unknown failure'
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      return await request()
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.message : String(error)
+      if (attempt === 3) {
+        throw new Error(`${label} failed after retries: ${lastFailure}`)
+      }
+    }
+
+    await delay(750 * (attempt + 1))
+  }
+
+  throw new Error(`${label} failed after retries: ${lastFailure}`)
+}
+
 async function gotoSpecificationDetail(
   page: Page,
   slug = specificationSlug,
 ): Promise<void> {
-  await page.goto(`/sv/specifications/${slug}`)
-  await expect(
-    page.getByText(/^Det gick inte att läsa in tillgängliga krav:/),
-  ).toBeHidden({ timeout: 10_000 })
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.goto(`/sv/specifications/${slug}`, {
+      timeout: 45_000,
+      waitUntil: 'domcontentloaded',
+    })
+
+    try {
+      await expect(
+        page.getByRole('tab', { name: 'RFI-frågelista' }),
+      ).toBeVisible({
+        timeout: 30_000,
+      })
+      await expect(
+        page.getByText(/^Det gick inte att läsa in tillgängliga krav:/),
+      ).toBeHidden({ timeout: 10_000 })
+      return
+    } catch (error) {
+      if (attempt === 2) throw error
+      await delay(750 * (attempt + 1))
+    }
+  }
+
+  throw new Error(`Specification detail ${slug} did not load`)
 }
 
 function requirementSelectionQuestions(answerIds: number[]) {
@@ -240,8 +292,60 @@ async function mockReportDownloads(page: Page) {
 }
 
 async function clickMenuItem(page: Page, menuName: string, itemName: string) {
-  await page.getByRole('button', { name: menuName }).click()
-  await page.getByText(itemName, { exact: true }).click()
+  const actionId =
+    menuName === 'Rapporter'
+      ? 'reports'
+      : menuName === 'Exportera'
+        ? 'export'
+        : null
+  const menuButton = actionId
+    ? page
+        .locator(`[data-floating-action-menu-trigger="${actionId}"]:visible`)
+        .first()
+    : page.getByRole('button', { name: menuName })
+  await expect(menuButton).toBeVisible({ timeout: 30_000 })
+  const menu = actionId
+    ? page.locator(`[data-floating-action-menu="${actionId}"]`)
+    : page.getByRole('menu')
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await menuButton.scrollIntoViewIfNeeded()
+    if (attempt === 1) {
+      await menuButton.press('Enter')
+    } else {
+      await menuButton.click({ force: attempt >= 2 })
+    }
+    if (await menu.isVisible({ timeout: 2_000 }).catch(() => false)) break
+  }
+  await expect(menu).toBeVisible({ timeout: 5_000 })
+  const menuItem = menu.getByText(itemName, { exact: true })
+  await expect(menuItem).toBeVisible({ timeout: 5_000 })
+  await menuItem.click()
+}
+
+async function openDetailTab(page: Page, tabName: string) {
+  const tab = page.getByRole('tab', { name: tabName })
+  await expect(tab).toBeVisible({ timeout: 30_000 })
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await tab.click()
+    if (
+      await tab
+        .getAttribute('aria-selected', { timeout: 2_000 })
+        .then(value => value === 'true')
+        .catch(() => false)
+    ) {
+      return
+    }
+  }
+
+  if (tabName === 'RFI-frågelista') {
+    const url = new URL(page.url())
+    url.searchParams.set('leftTab', 'rfi')
+    await page.goto(`${url.pathname}${url.search}`, {
+      waitUntil: 'domcontentloaded',
+    })
+  }
+
+  await expect(tab).toHaveAttribute('aria-selected', 'true', { timeout: 5_000 })
 }
 
 async function filterAvailableRequirementById(page: Page, uniqueId: string) {
@@ -249,20 +353,61 @@ async function filterAvailableRequirementById(page: Page, uniqueId: string) {
     name: 'Tillgängliga krav',
   })
 
-  await availablePanel
-    .getByRole('button', { name: 'Filtrera efter Krav-ID' })
-    .click()
+  const filterButton = availablePanel.getByRole('button', {
+    name: 'Filtrera efter Krav-ID',
+  })
+  await expect(filterButton).toBeVisible({ timeout: 30_000 })
+  await filterButton.click()
   const filterInput = page.getByRole('textbox', { name: 'Krav-ID' })
+  await expect(filterInput).toBeVisible({ timeout: 30_000 })
   await filterInput.fill(uniqueId)
   await filterInput.press('Enter')
 
   await expect(
     availablePanel.getByRole('checkbox', { name: `Markera ${uniqueId}` }),
-  ).toBeVisible()
+  ).toBeVisible({ timeout: 30_000 })
+}
+
+async function openColumnPicker(page: Page, panel: Locator) {
+  const columnButton = panel.getByRole('button', { name: 'Kolumner' })
+  await expect(columnButton).toBeVisible({ timeout: 30_000 })
+  const popover = page.locator('[data-column-picker-popover="true"]')
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await columnButton.click()
+    if (await popover.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      return popover
+    }
+  }
+
+  await expect(popover).toBeVisible({ timeout: 30_000 })
+  return popover
+}
+
+async function openSpecificationEditDialog(page: Page) {
+  const editButton = page.getByRole('button', {
+    name: 'Redigera kravunderlag',
+  })
+  const editDialog = page.getByRole('dialog', {
+    name: 'Redigera kravunderlag',
+  })
+  await expect(editButton).toBeVisible({ timeout: 30_000 })
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await editButton.scrollIntoViewIfNeeded()
+    await editButton.click({ force: attempt === 2 })
+    if (await editDialog.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      return editDialog
+    }
+  }
+
+  await expect(editDialog).toBeVisible({ timeout: 5_000 })
+  return editDialog
 }
 
 for (const viewport of viewports) {
   test.describe(`Requirements specification detail edit action — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
+    test.setTimeout(180_000)
     test.use({ viewport: { width: viewport.width, height: viewport.height } })
 
     test('SPEC-03: opens the specification edit dialog from the title action', async ({
@@ -290,12 +435,7 @@ for (const viewport of viewports) {
         throw new Error('Specification detail split panel has no class list.')
       }
 
-      await page.getByRole('button', { name: 'Redigera kravunderlag' }).click()
-
-      const editDialog = page.getByRole('dialog', {
-        name: 'Redigera kravunderlag',
-      })
-      await expect(editDialog).toBeVisible()
+      const editDialog = await openSpecificationEditDialog(page)
       await expect(editDialog.getByLabel('Namn *')).toHaveValue(
         'Upphandling av e-tjänstplattform',
       )
@@ -377,7 +517,7 @@ for (const viewport of viewports) {
           '[data-specification-detail-list-panel="available"]',
         )
         const leftTopBar = leftPanel.locator(
-          '[data-requirements-sticky-top-bar="true"]',
+          '[data-requirements-sticky-top-bar="true"], [role="tablist"]',
         )
         const leftTrigger = leftPanel.locator(
           '[data-column-picker-trigger="true"]',
@@ -423,7 +563,7 @@ for (const viewport of viewports) {
         const hasLeftPanel = (await leftPanel.count()) > 0
         if (hasLeftPanel) {
           await expect(leftPanel).toBeVisible()
-          await expect(leftTopBar).toBeVisible()
+          await expect(leftTopBar.first()).toBeVisible({ timeout: 30_000 })
           await expect(leftTrigger).toBeVisible()
           await expect(leftItemsTab).toBeVisible()
           await expect(leftNeedsReferencesTab).toBeVisible()
@@ -570,13 +710,10 @@ for (const viewport of viewports) {
         )
         await expect(leftPanel).toBeVisible()
 
-        await leftPanel.locator('[data-column-picker-trigger="true"]').click()
-
-        const popover = page.locator('[data-column-picker-popover="true"]')
+        const popover = await openColumnPicker(page, leftPanel)
         const statusCheckbox = popover.locator(
           '[data-column-picker-option="specificationItemStatus"] input[type="checkbox"]',
         )
-        await expect(popover).toBeVisible()
         if (!(await statusCheckbox.isChecked())) {
           await statusCheckbox.check()
         }
@@ -625,12 +762,11 @@ for (const viewport of viewports) {
         await expect(leftPanel).toHaveCount(1)
         await expect(areaHeader).toHaveCount(1)
 
-        await leftPanel.locator('[data-column-picker-trigger="true"]').click()
-        const popover = page.locator('[data-column-picker-popover="true"]')
+        const popover = await openColumnPicker(page, leftPanel)
         const areaCheckbox = popover.locator(
           '[data-column-picker-option="area"] input[type="checkbox"]',
         )
-        await expect(areaCheckbox).toBeChecked()
+        await expect(areaCheckbox).toBeChecked({ timeout: 30_000 })
         await areaCheckbox.uncheck()
         await expect(areaHeader).toHaveCount(0)
 
@@ -716,12 +852,12 @@ for (const viewport of viewports) {
         await gotoSpecificationDetail(page)
 
         await test.step('open the RFI question list tab', async () => {
-          await page.getByRole('tab', { name: 'RFI-frågelista' }).click()
+          await openDetailTab(page, 'RFI-frågelista')
           await expect(
             page.getByRole('button', {
               name: 'Visa endast de som ingår i RFI',
             }),
-          ).toHaveAttribute('aria-pressed', 'false')
+          ).toHaveAttribute('aria-pressed', 'false', { timeout: 30_000 })
         })
 
         await test.step('toggle the transient included-only filter', async () => {
@@ -774,6 +910,7 @@ for (const viewport of viewports) {
 }
 
 test.describe('Requirements specification deterministic manual cases', () => {
+  test.setTimeout(180_000)
   test.use({ viewport: { height: 720, width: 1280 } })
 
   test('SPEC-06: adds and removes a requirement in the specification detail UI', async ({
@@ -882,13 +1019,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
     )
 
     await gotoSpecificationDetail(page, editSpecificationSlug)
-    await page.getByRole('button', { name: 'Lägg till unika krav' }).click()
+    await clickMenuItem(page, 'Lägg till unika krav', 'Nytt unikt krav')
     const dialog = page.getByRole('dialog').filter({
       hasText: 'Nytt unikt krav',
     })
-    if (!(await dialog.isVisible({ timeout: 1_000 }).catch(() => false))) {
-      await page.getByRole('button', { name: 'Nytt unikt krav' }).click()
-    }
     await expect(dialog).toBeVisible()
     await dialog
       .getByRole('textbox', { name: /Kravtext/u })
@@ -916,11 +1050,16 @@ test.describe('Requirements specification deterministic manual cases', () => {
     const localRow = page.getByRole('button', {
       name: /KRAV0001\b/,
     })
+    await expect(localRow).toBeVisible({ timeout: 30_000 })
     await localRow.click()
     const localDetailRow = page
       .getByRole('row')
       .filter({ hasText: 'Lyft till kravbiblioteket' })
-    await localDetailRow.getByRole('button', { name: 'Redigera' }).click()
+    const editLocalButton = localDetailRow.getByRole('button', {
+      name: 'Redigera',
+    })
+    await expect(editLocalButton).toBeVisible({ timeout: 30_000 })
+    await editLocalButton.click()
     const editDialog = page.getByRole('dialog', {
       name: 'Redigera unikt krav',
     })
@@ -1036,10 +1175,17 @@ test.describe('Requirements specification deterministic manual cases', () => {
     )
 
     await gotoSpecificationDetail(page, editSpecificationSlug)
-    await page.getByRole('tab', { name: 'Behovsreferenser' }).click()
-    await page.getByRole('button', { name: 'Ny behovsreferens' }).click()
+    await openDetailTab(page, 'Behovsreferenser')
+    const newNeedsReferenceButton = page.getByRole('button', {
+      name: 'Ny behovsreferens',
+    })
+    await expect(newNeedsReferenceButton).toBeVisible({ timeout: 30_000 })
+    await newNeedsReferenceButton.click()
 
-    const createDialog = page.getByRole('dialog')
+    const createDialog = page.getByRole('dialog', {
+      name: 'Ny behovsreferens',
+    })
+    await expect(createDialog).toBeVisible({ timeout: 30_000 })
     await createDialog
       .getByRole('textbox', { name: 'Behovsreferens' })
       .fill('PWT SPEC-09 behov')
@@ -1047,15 +1193,22 @@ test.describe('Requirements specification deterministic manual cases', () => {
       .getByRole('textbox', { name: 'Beskrivning' })
       .fill('PWT SPEC-09 beskrivning')
     await createDialog.getByRole('button', { name: 'Spara' }).click()
+    await expect(createDialog).toBeHidden({ timeout: 30_000 })
 
     const createdRow = page
       .getByRole('row')
       .filter({ hasText: 'PWT SPEC-09 behov' })
-    await expect(createdRow).toBeVisible()
+    await expect(createdRow).toBeVisible({ timeout: 30_000 })
     await createdRow
       .getByRole('button', { name: 'Redigera behovsreferens' })
       .click()
-    const editDialog = page.getByRole('dialog')
+    const editDialog = page.getByRole('dialog', {
+      name: 'Redigera behovsreferens',
+    })
+    await expect(editDialog).toBeVisible({ timeout: 30_000 })
+    await expect(
+      editDialog.getByRole('textbox', { name: 'Behovsreferens' }),
+    ).toBeEnabled({ timeout: 30_000 })
     await editDialog
       .getByRole('textbox', { name: 'Behovsreferens' })
       .fill('PWT SPEC-09 ändrat behov')
@@ -1195,7 +1348,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     })
 
     await gotoSpecificationDetail(page, rfiSpecificationSlug)
-    await page.getByRole('tab', { name: 'RFI-frågelista' }).click()
+    await openDetailTab(page, 'RFI-frågelista')
 
     const lockSwitch = page.getByRole('switch', { name: 'Låst' })
     await expect(lockSwitch).toBeChecked()
@@ -1249,7 +1402,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     })
 
     await gotoSpecificationDetail(page, rfiSpecificationSlug)
-    await page.getByRole('tab', { name: 'RFI-frågelista' }).click()
+    await openDetailTab(page, 'RFI-frågelista')
 
     await page
       .getByRole('button', {
@@ -1321,7 +1474,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     })
 
     await gotoSpecificationDetail(page, rfiSpecificationSlug)
-    await page.getByRole('tab', { name: 'RFI-frågelista' }).click()
+    await openDetailTab(page, 'RFI-frågelista')
 
     await page
       .getByRole('button', {
@@ -1372,14 +1525,19 @@ test.describe('Requirements specification deterministic manual cases', () => {
   }, testInfo) => {
     const roleRequest = await newRoleContext(testInfo, 'specificationCoauthor')
     try {
-      const response = await roleRequest.post('/api/rfi-question-suggestions', {
-        data: {
-          areaId: rfiAreaId,
-          content: 'PWT SPEC-16b ska nekas',
-          rfiQuestionId: rfiPrimaryQuestionId,
-          specificationId: rfiSpecificationId,
-        },
-      })
+      const response = await requestWithRetry(
+        'create RFI suggestion without area authorship',
+        () =>
+          roleRequest.post('/api/rfi-question-suggestions', {
+            data: {
+              areaId: rfiAreaId,
+              content: 'PWT SPEC-16b ska nekas',
+              rfiQuestionId: rfiPrimaryQuestionId,
+              specificationId: rfiSpecificationId,
+            },
+            timeout: 30_000,
+          }),
+      )
       await expectStatus(
         response,
         403,

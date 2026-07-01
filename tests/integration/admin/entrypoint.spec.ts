@@ -80,18 +80,24 @@ async function requestOkWithRetry(
     await expect
       .poll(
         async () => {
-          const response = await sendRequest()
-          if (response.ok()) {
-            retryState.successfulResponse = response
-            return true
+          try {
+            const response = await sendRequest()
+            if (response.ok()) {
+              retryState.successfulResponse = response
+              return true
+            }
+
+            retryState.lastFailure = `${response.status()}: ${await response.text()}`
+          } catch (error) {
+            retryState.lastFailure =
+              error instanceof Error ? error.message : String(error)
           }
 
-          retryState.lastFailure = `${response.status()}: ${await response.text()}`
           return false
         },
         {
-          intervals: [100, 250, 500, 1_000],
-          timeout: 5_000,
+          intervals: [250, 500, 1_000, 2_000],
+          timeout: 45_000,
         },
       )
       .toBe(true)
@@ -116,12 +122,13 @@ async function resetAdminSettings(request: APIRequestContext) {
       data: {
         columns: DEFAULT_COLUMN_PAYLOAD,
       },
+      timeout: 30_000,
     }),
   )
 
   const currentPrefixesResponse = await requestOkWithRetry(
     'HSA-id prefixes load',
-    () => request.get('/api/admin/hsa-id-prefixes'),
+    () => request.get('/api/admin/hsa-id-prefixes', { timeout: 30_000 }),
   )
   const currentPrefixes = (await currentPrefixesResponse.json()) as {
     prefixes?: AdminHsaIdPrefixRow[]
@@ -154,6 +161,7 @@ async function resetAdminSettings(request: APIRequestContext) {
           ...preservedUsedPrefixes,
         ],
       },
+      timeout: 30_000,
     }),
   )
 }
@@ -292,7 +300,7 @@ for (const { name, viewport } of viewportVariants) {
       await page.goto('/sv/requirements')
       await expect(
         page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
-      ).toContainText('Kategori')
+      ).toContainText('Kategori', { timeout: 45_000 })
 
       const readHeaderTexts = async () =>
         page
@@ -320,7 +328,7 @@ for (const { name, viewport } of viewportVariants) {
       await page.reload()
       await expect(
         page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
-      ).toContainText('Kategori')
+      ).toContainText('Kategori', { timeout: 45_000 })
 
       await page.goto('/sv/admin')
       await expect

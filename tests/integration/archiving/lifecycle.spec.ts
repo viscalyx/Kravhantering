@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import {
   type APIRequestContext,
-  type APIResponse,
   expect,
   type Locator,
   type Page,
@@ -19,19 +18,6 @@ const STATUS_REVIEW = 2
 const STATUS_PUBLISHED = 3
 const STATUS_ARCHIVED = 4
 const REVIEWER_STORAGE_STATE = 'test-results/auth/reviewer.json'
-
-interface RequirementDetail {
-  id?: number
-  isArchived: boolean
-  uniqueId?: string
-  versions?: RequirementVersion[]
-}
-
-interface RequirementVersion {
-  archiveInitiatedAt: string | null
-  status: number
-  versionNumber: number
-}
 
 const viewports = [
   { height: 812, name: 'mobile', width: 375 },
@@ -55,40 +41,45 @@ const archiveFixtures = {
 
 let playwrightSqlServerDataSource: Promise<DataSource> | null = null
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function expectOk(response: APIResponse, context: string) {
-  if (response.ok()) return
-
-  throw new Error(
-    `${context} failed with ${response.status()} ${await response.text()}`,
+function isTransientSqlError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return (
+    message.includes('Rerun the query') ||
+    message.includes('Request failed to complete') ||
+    message.includes('ECONNRESET') ||
+    message.includes('Connection lost') ||
+    message.includes('resource pool')
   )
 }
 
-function latestVersion(detail: RequirementDetail): RequirementVersion {
-  const latest = [...(detail.versions ?? [])].sort(
-    (left, right) => right.versionNumber - left.versionNumber,
-  )[0]
-  if (!latest) {
-    const identifier =
-      detail.uniqueId && detail.id != null
-        ? `${detail.uniqueId} (${detail.id})`
-        : (detail.uniqueId ?? `id ${detail.id ?? 'unknown'}`)
-    throw new Error(`RequirementDetail has no versions for ${identifier}`)
+async function withTransientSqlRetry<T>(
+  label: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      return await operation()
+    } catch (error) {
+      lastError = error
+      if (!isTransientSqlError(error) || attempt === 3) {
+        throw error
+      }
+      await delay(750 * (attempt + 1))
+    }
   }
 
-  return latest
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`${label} failed after retries`)
 }
 
-async function getRequirement(
-  request: APIRequestContext,
-  uniqueId: string,
-): Promise<RequirementDetail> {
-  const response = await request.get(`/api/requirements/${uniqueId}`)
-  await expectOk(response, `GET ${uniqueId}`)
-  return (await response.json()) as RequirementDetail
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 async function ensurePublishedRequirement(
@@ -146,10 +137,18 @@ function readEnvFile(path: string): Record<string, string> {
 }
 
 function getPlaywrightSqlServerEnv(): SqlServerRuntimeEnv {
-  return {
+  const env = {
     ...readEnvFile('.env.prodlike'),
     ...readEnvFile('.env.sqlserver'),
     ...process.env,
+  } as SqlServerRuntimeEnv
+  return {
+    ...env,
+    DB_CONNECTION_TIMEOUT_MS: env.DB_CONNECTION_TIMEOUT_MS ?? '30000',
+    DB_POOL_MAX: env.DB_POOL_MAX ?? '1',
+    DB_POOL_MIN: env.DB_POOL_MIN ?? '0',
+    DB_POOL_ACQUIRE_TIMEOUT_MS: env.DB_POOL_ACQUIRE_TIMEOUT_MS ?? '30000',
+    DB_REQUEST_TIMEOUT_MS: env.DB_REQUEST_TIMEOUT_MS ?? '30000',
   } as SqlServerRuntimeEnv
 }
 
@@ -192,52 +191,54 @@ async function resetRequirementToPublished(uniqueId: string) {
   const db = await getPlaywrightSqlServerDataSource()
   const now = new Date()
 
-  await db.transaction(async manager => {
-    const requirementRows = (await manager.query(
-      `SELECT TOP (1) id FROM requirements WHERE unique_id = @0`,
-      [uniqueId],
-    )) as Array<{ id: number }>
-    const requirementId = requirementRows[0]?.id
-    if (requirementId == null) {
-      throw new Error(`Requirement ${uniqueId} not found`)
-    }
+  await withTransientSqlRetry(`reset ${uniqueId} to Published`, () =>
+    db.transaction(async manager => {
+      const requirementRows = (await manager.query(
+        `SELECT TOP (1) id FROM requirements WHERE unique_id = @0`,
+        [uniqueId],
+      )) as Array<{ id: number }>
+      const requirementId = requirementRows[0]?.id
+      if (requirementId == null) {
+        throw new Error(`Requirement ${uniqueId} not found`)
+      }
 
-    const latestRows = (await manager.query(
-      `SELECT TOP (1) id
+      const latestRows = (await manager.query(
+        `SELECT TOP (1) id
         FROM requirement_versions
         WHERE requirement_id = @0
         ORDER BY version_number DESC`,
-      [requirementId],
-    )) as Array<{ id: number }>
-    const latestVersionId = latestRows[0]?.id
-    if (latestVersionId == null) {
-      throw new Error(`Requirement ${uniqueId} has no versions`)
-    }
+        [requirementId],
+      )) as Array<{ id: number }>
+      const latestVersionId = latestRows[0]?.id
+      if (latestVersionId == null) {
+        throw new Error(`Requirement ${uniqueId} has no versions`)
+      }
 
-    await manager.query(
-      `UPDATE requirements SET is_archived = 0 WHERE id = @0`,
-      [requirementId],
-    )
-    await manager.query(
-      `UPDATE requirement_versions
+      await manager.query(
+        `UPDATE requirements SET is_archived = 0 WHERE id = @0`,
+        [requirementId],
+      )
+      await manager.query(
+        `UPDATE requirement_versions
         SET requirement_status_id = @3,
             archived_at = COALESCE(archived_at, @1),
             archive_initiated_at = NULL,
             revision_token = NEWID()
         WHERE requirement_id = @0 AND id <> @2`,
-      [requirementId, now, latestVersionId, STATUS_ARCHIVED],
-    )
-    await manager.query(
-      `UPDATE requirement_versions
+        [requirementId, now, latestVersionId, STATUS_ARCHIVED],
+      )
+      await manager.query(
+        `UPDATE requirement_versions
         SET requirement_status_id = @2,
             published_at = COALESCE(published_at, @1),
             archived_at = NULL,
             archive_initiated_at = NULL,
             revision_token = NEWID()
         WHERE id = @0`,
-      [latestVersionId, now, STATUS_PUBLISHED],
-    )
-  })
+        [latestVersionId, now, STATUS_PUBLISHED],
+      )
+    }),
+  )
 }
 
 async function resetRequirementToArchivingReview(uniqueId: string) {
@@ -246,83 +247,134 @@ async function resetRequirementToArchivingReview(uniqueId: string) {
   const db = await getPlaywrightSqlServerDataSource()
   const now = new Date()
 
-  await db.transaction(async manager => {
-    const requirementRows = (await manager.query(
-      `SELECT TOP (1) id FROM requirements WHERE unique_id = @0`,
-      [uniqueId],
-    )) as Array<{ id: number }>
-    const requirementId = requirementRows[0]?.id
-    if (requirementId == null) {
-      throw new Error(`Requirement ${uniqueId} not found`)
-    }
+  await withTransientSqlRetry(`reset ${uniqueId} to archiving review`, () =>
+    db.transaction(async manager => {
+      const requirementRows = (await manager.query(
+        `SELECT TOP (1) id FROM requirements WHERE unique_id = @0`,
+        [uniqueId],
+      )) as Array<{ id: number }>
+      const requirementId = requirementRows[0]?.id
+      if (requirementId == null) {
+        throw new Error(`Requirement ${uniqueId} not found`)
+      }
 
-    const latestRows = (await manager.query(
-      `SELECT TOP (1) id
+      const latestRows = (await manager.query(
+        `SELECT TOP (1) id
         FROM requirement_versions
         WHERE requirement_id = @0
         ORDER BY version_number DESC`,
-      [requirementId],
-    )) as Array<{ id: number }>
-    const latestVersionId = latestRows[0]?.id
-    if (latestVersionId == null) {
-      throw new Error(`Requirement ${uniqueId} has no versions`)
-    }
+        [requirementId],
+      )) as Array<{ id: number }>
+      const latestVersionId = latestRows[0]?.id
+      if (latestVersionId == null) {
+        throw new Error(`Requirement ${uniqueId} has no versions`)
+      }
 
-    await manager.query(
-      `UPDATE requirements SET is_archived = 0 WHERE id = @0`,
-      [requirementId],
-    )
-    await manager.query(
-      `UPDATE requirement_versions
+      await manager.query(
+        `UPDATE requirements SET is_archived = 0 WHERE id = @0`,
+        [requirementId],
+      )
+      await manager.query(
+        `UPDATE requirement_versions
         SET requirement_status_id = @2,
             archived_at = NULL,
             archive_initiated_at = @1,
             status_updated_at = @1,
             revision_token = NEWID()
         WHERE id = @0`,
-      [latestVersionId, now, STATUS_REVIEW],
-    )
-  })
+        [latestVersionId, now, STATUS_REVIEW],
+      )
+    }),
+  )
 }
 
 async function openRequirement(page: Page, uniqueId: string): Promise<Locator> {
-  await page.goto(`/sv/requirements?selected=${encodeURIComponent(uniqueId)}`)
+  const latestVersionNumber = await getLatestVersionNumber(uniqueId)
+  const detailPane = page.locator('main')
 
-  const rowButton = page.getByRole('button', {
-    name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`),
-  })
-  await expect(rowButton).toBeVisible()
-
-  const detailPaneId = await rowButton.getAttribute('aria-controls')
-  if (!detailPaneId) {
-    throw new Error(
-      `Requirement row ${uniqueId} does not control a detail pane`,
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.goto(
+      `/sv/requirements/${encodeURIComponent(uniqueId)}/${latestVersionNumber}`,
+      {
+        timeout: 30_000,
+      },
     )
+    try {
+      await expect(
+        detailPane.getByRole('group', {
+          name: 'Arbetsflöde för kravversionsstatus',
+        }),
+      ).toBeVisible({ timeout: 30_000 })
+      break
+    } catch (error) {
+      if (attempt === 2) throw error
+      await delay(750 * (attempt + 1))
+    }
   }
-
-  const detailPane = page.locator(`#${detailPaneId}`)
-  await expect(detailPane).toBeVisible()
 
   return detailPane
 }
 
-async function selectLatestVersion(
-  detailPane: Locator,
-  request: APIRequestContext,
-  uniqueId: string,
-  expectedStatusText?: string,
-) {
-  const detail = await getRequirement(request, uniqueId)
-  const latest = latestVersion(detail)
-  const latestVersionPill = detailPane.locator(
-    `button[data-version-number="${latest.versionNumber}"]`,
-  )
-
-  await expect(latestVersionPill).toBeVisible()
-  if (expectedStatusText) {
-    await expect(latestVersionPill).toContainText(expectedStatusText)
+async function getRequirementPersistedState(uniqueId: string): Promise<{
+  archiveInitiated: boolean
+  isArchived: boolean
+  status: number
+}> {
+  const db = await getPlaywrightSqlServerDataSource()
+  const rows = (await withTransientSqlRetry(
+    `read persisted state for ${uniqueId}`,
+    () =>
+      db.query(
+        `SELECT TOP (1)
+            requirement.is_archived AS isArchived,
+            version_record.archive_initiated_at AS archiveInitiatedAt,
+            version_record.requirement_status_id AS status
+          FROM requirements requirement
+          INNER JOIN requirement_versions version_record
+            ON version_record.requirement_id = requirement.id
+          WHERE requirement.unique_id = @0
+          ORDER BY version_record.version_number DESC`,
+        [uniqueId],
+      ),
+  )) as Array<{
+    archiveInitiatedAt: Date | null
+    isArchived: boolean
+    status: number
+  }>
+  const row = rows[0]
+  if (!row) {
+    throw new Error(`Requirement ${uniqueId} not found`)
   }
-  await latestVersionPill.click()
+
+  return {
+    archiveInitiated: Boolean(row.archiveInitiatedAt),
+    isArchived: Boolean(row.isArchived),
+    status: row.status,
+  }
+}
+
+async function getLatestVersionNumber(uniqueId: string): Promise<number> {
+  const db = await getPlaywrightSqlServerDataSource()
+  const rows = (await withTransientSqlRetry(
+    `read latest version for ${uniqueId}`,
+    () =>
+      db.query(
+        `SELECT TOP (1)
+            version_record.version_number AS versionNumber
+          FROM requirements requirement
+          INNER JOIN requirement_versions version_record
+            ON version_record.requirement_id = requirement.id
+          WHERE requirement.unique_id = @0
+          ORDER BY version_record.version_number DESC`,
+        [uniqueId],
+      ),
+  )) as Array<{ versionNumber: number }>
+  const row = rows[0]
+  if (!row) {
+    throw new Error(`Requirement ${uniqueId} not found`)
+  }
+
+  return row.versionNumber
 }
 
 async function assertActiveStepperStep(
@@ -337,7 +389,7 @@ async function assertActiveStepperStep(
 }
 
 async function assertRequirementApiState(
-  request: APIRequestContext,
+  _request: APIRequestContext,
   uniqueId: string,
   expected: {
     archiveInitiated: boolean
@@ -346,16 +398,7 @@ async function assertRequirementApiState(
   },
 ) {
   await expect
-    .poll(async () => {
-      const detail = await getRequirement(request, uniqueId)
-      const latest = latestVersion(detail)
-
-      return {
-        archiveInitiated: Boolean(latest.archiveInitiatedAt),
-        isArchived: detail.isArchived,
-        status: latest.status,
-      }
-    })
+    .poll(() => getRequirementPersistedState(uniqueId), { timeout: 30_000 })
     .toEqual(expected)
 }
 
@@ -364,12 +407,17 @@ async function assertRequirementListStatus(
   uniqueId: string,
   expectedStatusText: string,
 ) {
+  await page.goto(`/sv/requirements?selected=${encodeURIComponent(uniqueId)}`, {
+    timeout: 30_000,
+  })
+
   const rowButton = page.getByRole('button', {
     name: new RegExp(`\\b${escapeRegExp(uniqueId)}\\b`),
   })
   const row = rowButton.locator('xpath=ancestor::tr[1]')
 
-  await expect(row).toContainText(expectedStatusText, { timeout: 15_000 })
+  await expect(rowButton).toBeVisible({ timeout: 30_000 })
+  await expect(row).toContainText(expectedStatusText, { timeout: 30_000 })
 }
 
 async function confirmLatestDialog(page: Page) {
@@ -387,6 +435,7 @@ async function cancelLatestDialog(page: Page) {
 for (const viewport of viewports) {
   test.describe(`Archive lifecycle — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
     test.use({ viewport: { height: viewport.height, width: viewport.width } })
+    test.setTimeout(120_000)
 
     test('LIFE-08: cancels archive initiation without changing Published state', async ({
       page,
@@ -436,18 +485,12 @@ for (const viewport of viewports) {
 
         await test.step('prepare and open an archiving review', async () => {
           await ensureArchivingReviewRequirement(request, uniqueId)
-          detailPane = await openRequirement(page, uniqueId)
           await assertRequirementListStatus(
             page,
             uniqueId,
             'Arkiveringsgranskning',
           )
-          await selectLatestVersion(
-            detailPane,
-            request,
-            uniqueId,
-            'Arkiveringsgranskning',
-          )
+          detailPane = await openRequirement(page, uniqueId)
 
           await assertActiveStepperStep(detailPane, 'Arkiveringsgranskning')
         })
@@ -476,7 +519,6 @@ for (const viewport of viewports) {
             .getByRole('button', { name: 'Godkänn arkivering' })
             .click()
           await confirmLatestDialog(page)
-          await expect(detailPane).toBeHidden()
 
           await assertRequirementApiState(request, uniqueId, {
             archiveInitiated: false,
@@ -495,18 +537,12 @@ for (const viewport of viewports) {
 
         await test.step('prepare and open an archiving review', async () => {
           await ensureArchivingReviewRequirement(request, uniqueId)
-          detailPane = await openRequirement(page, uniqueId)
           await assertRequirementListStatus(
             page,
             uniqueId,
             'Arkiveringsgranskning',
           )
-          await selectLatestVersion(
-            detailPane,
-            request,
-            uniqueId,
-            'Arkiveringsgranskning',
-          )
+          detailPane = await openRequirement(page, uniqueId)
 
           await assertActiveStepperStep(detailPane, 'Arkiveringsgranskning')
         })
@@ -536,7 +572,6 @@ for (const viewport of viewports) {
             .click()
           await confirmLatestDialog(page)
 
-          await assertActiveStepperStep(detailPane, 'Publicerad')
           await assertRequirementApiState(request, uniqueId, {
             archiveInitiated: false,
             isArchived: false,

@@ -28,6 +28,10 @@ type ResponseWithBody = Pick<
   'ok' | 'status' | 'statusText' | 'text'
 >
 
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 async function expectRequestOk(response: ResponseWithBody, context: string) {
   if (response.ok()) return
   const body = await response.text()
@@ -36,11 +40,42 @@ async function expectRequestOk(response: ResponseWithBody, context: string) {
   )
 }
 
+async function requestOkWithRetry(
+  label: string,
+  request: () => Promise<ResponseWithBody>,
+): Promise<ResponseWithBody> {
+  let lastFailure = 'unknown failure'
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const response = await request()
+      if (response.ok()) return response
+
+      lastFailure = `${response.status()} ${response.statusText()}: ${await response.text()}`
+      if (response.status() < 500 || attempt === 3) {
+        throw new Error(`${label} returned ${lastFailure}`)
+      }
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.message : String(error)
+      if (attempt === 3) {
+        throw new Error(`${label} failed after retries: ${lastFailure}`)
+      }
+    }
+
+    await delay(750 * (attempt + 1))
+  }
+
+  throw new Error(`${label} failed after retries: ${lastFailure}`)
+}
+
 async function getRequirementSelectionQuestions(request: APIRequestContext) {
-  const response = await request.get(
-    '/api/requirement-selection-questions?includeArchived=true',
+  const response = await requestOkWithRetry(
+    'Load requirement-selection questions',
+    () =>
+      request.get('/api/requirement-selection-questions?includeArchived=true', {
+        timeout: 30_000,
+      }),
   )
-  await expectRequestOk(response, 'Load requirement-selection questions')
   const body = (await response.json()) as {
     questions?: RequirementSelectionQuestionResponse[]
   }
@@ -63,13 +98,13 @@ async function resetDriftQuestionOrder(request: APIRequestContext) {
   for (const [sortOrder, questionCode] of DRF_QUESTION_CODE_ORDER.entries()) {
     const questionId = questionIdsByCode.get(questionCode)
     expect(questionId).toBeTruthy()
-    const response = await request.put(
-      `/api/requirement-selection-questions/${questionId}`,
-      { data: { sortOrder } },
-    )
-    await expectRequestOk(
-      response,
+    await requestOkWithRetry(
       `Reset sort order for question ${questionCode}`,
+      () =>
+        request.put(`/api/requirement-selection-questions/${questionId}`, {
+          data: { sortOrder },
+          timeout: 30_000,
+        }),
     )
   }
 }
@@ -83,16 +118,20 @@ async function resetDriftAnswerOrder(request: APIRequestContext) {
   for (const [sortOrder, answerText] of DRF_ANSWER_TEXT_ORDER.entries()) {
     const answerId = answerIdsByText.get(answerText)
     expect(answerId).toBeTruthy()
-    const response = await request.put(
-      `/api/requirement-selection-questions/${question.id}/answers/${answerId}`,
-      { data: { sortOrder } },
+    await requestOkWithRetry(
+      `Reset sort order for answer ${answerText}`,
+      () =>
+        request.put(
+          `/api/requirement-selection-questions/${question.id}/answers/${answerId}`,
+          { data: { sortOrder }, timeout: 30_000 },
+        ),
     )
-    await expectRequestOk(response, `Reset sort order for answer ${answerText}`)
   }
 }
 
 test.describe('Requirement selection answer drag and drop', () => {
   test.describe.configure({ mode: 'serial' })
+  test.setTimeout(180_000)
   test.use({ viewport: { height: 900, width: 1280 } })
 
   test('reorders collapsed requirement-selection questions by dragging the question handle', async ({

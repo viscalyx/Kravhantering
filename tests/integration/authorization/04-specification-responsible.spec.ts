@@ -81,6 +81,7 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
 
     const readResponse = await specificationResponsible.get(
       `/api/requirements-specifications/${fixture.specificationSlug}`,
+      { timeout: 30_000 },
     )
     await expectOk(readResponse, 'specification responsible read')
     const specification = (await readResponse.json()) as SpecificationResponse
@@ -105,6 +106,7 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
 
     const coAuthorsResponse = await specificationResponsible.get(
       `/api/requirements-specifications/${fixture.specificationSlug}/co-authors`,
+      { timeout: 30_000 },
     )
     await expectOk(
       coAuthorsResponse,
