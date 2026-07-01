@@ -30,7 +30,12 @@ Covered by this contract:
 - Requirement detail responses include server-derived permissions for the
   current actor and requirement; there is no separate generic permissions
   endpoint in the v1 contract.
-- Read-only requirements library routes used by the requirements UI.
+- Requirements library catalog read routes used by the UI, including
+  requirement areas, categories, types, statuses, packages, quality
+  characteristics, priority levels, and norm references.
+- Norm-reference archive and reactivate mutations stay in scope because they
+  are bounded state changes with path-only input, standard CSRF headers, and
+  stable JSON responses.
 
 Operational probes stay outside the OpenAPI/Schemathesis contract. `/api/health`
 is a liveness check, and `/api/ready` is a public readiness check for
@@ -46,14 +51,25 @@ same `requirementUniqueId`.
 
 Deferred from this contract:
 
-- CSV export, MCP, AI routes, admin catalog/settings mutations,
-  specifications, deviations, improvement suggestions, and Admin Center
-  access-review routes (`/api/admin/access-reviews/**`).
 - `/api/database-schema-status` remains outside the OpenAPI/Schemathesis
   contract. It is an authenticated UI diagnostic route for the global
   navigation version tooltip. It returns the expected database schema version
   and a sanitized match state; only Admin users receive the observed TypeORM
   migration `name`, and only for mismatch diagnostics.
+- CSV, PDF, and report export routes remain outside the
+  OpenAPI/Schemathesis v1 contract, except for data-subject export. Their
+  useful assertions are exact columns, localized filenames, byte content,
+  `Cache-Control: no-store`, and authorization-before-data checks, so focused
+  route/report tests are the better coverage mechanism.
+- AI routes (`/api/ai/**`) remain outside the OpenAPI/Schemathesis v1
+  contract. They include streaming responses, provider-specific failure modes,
+  model capability discovery, prompt construction, image payload validation,
+  throttling, and vendor-token boundaries that are covered by focused route,
+  schema, and provider-client tests.
+- Admin catalog and settings mutations remain outside the
+  OpenAPI/Schemathesis v1 contract when their assertions depend on Admin-only
+  access, CSRF/same-origin enforcement for saves, privileged audit, effective
+  configuration precedence, or linked-object conflict checks.
 - Access-review routes remain outside the OpenAPI/Schemathesis contract for
   now. They use the same request-context and CSRF protections as other Admin
   Center mutations, but the useful assertions are role-matrix and
@@ -76,6 +92,11 @@ Deferred from this contract:
   stateless preview tokens, and are covered by strict schema/unit tests,
   secure-route coverage, authorization policies, and manual workflow cases
   rather than generated fuzzing in this contract slice.
+- Requirements specification CRUD, item, available-requirements, responsible,
+  local-requirement, and needs-reference routes remain outside the
+  OpenAPI/Schemathesis v1 contract. Their useful assertions are assignment
+  authorization, co-author/responsible role behavior, local-versus-library item
+  semantics, import preview tokens, duplicate handling, and UI workflow state.
 - Co-author assignment management routes for requirement areas, requirements
   specifications, and requirement packages remain outside the
   OpenAPI/Schemathesis v1 contract. They are same-origin editing helpers backed
@@ -86,10 +107,16 @@ Deferred from this contract:
   specification and CSV surfaces. Their useful assertions are
   authorization-before-data, lifecycle profile gating, linked-version
   selection, selected-ref ownership checks, and exact output columns.
-- Norm-reference stewardship mutations remain outside the OpenAPI/Schemathesis
-  v1 contract for the same reason. The read-only `GET /api/norm-references`
-  catalog route stays in scope; create, update, archive, reactivate, and delete
-  are covered by secure-route and focused route/UI tests.
+- Specification deviation routes, requirement-library deviation routes, and
+  improvement-suggestion routes remain outside the OpenAPI/Schemathesis v1
+  contract. Their useful assertions are lifecycle state machines, reviewer
+  decisions, revert-to-draft behavior, authorization boundaries, audit detail,
+  and UI stepper behavior.
+- Norm-reference create, update, and delete routes remain outside the
+  OpenAPI/Schemathesis v1 contract. `GET /api/norm-references`,
+  `POST /api/norm-reference-actions/{id}/archive`, and
+  `POST /api/norm-references/{id}/reactivate` stay in scope; the remaining
+  stewardship mutations are covered by secure-route and focused route/UI tests.
 - Admin Center settings routes such as `GET/PUT /api/admin/ai-settings` and
   `GET/PUT /api/admin/hsa-id-prefixes` remain outside the
   OpenAPI/Schemathesis v1 contract. Their useful assertions are Admin-only
@@ -100,6 +127,9 @@ Deferred from this contract:
   same-origin, CSRF-protected editing helper that is only useful with an
   authenticated session, assignment purpose, and, where applicable, scoped edit
   permission. The app does not expose a browser-usable general HSA search route.
+- MCP remains outside the REST OpenAPI/Schemathesis contract. `/api/mcp` is
+  governed by MCP schemas, tool-contract tests, Bearer-token authentication
+  tests, and the seeded MCP workflow rather than REST route fuzzing.
 - Paid vendor scanners that require service-specific CI secrets.
 
 The existing catalog `GET /api/requirement-packages` route stays in scope and
@@ -109,9 +139,10 @@ The catalog `GET /api/norm-references` route also stays in scope and documents
 `includeArchived`, `includeIds`, `linked`, and `statuses` query parameters.
 
 ZAP API scanning now uses a filtered read-only contract derived from this
-static source. Role-matrix and full active ZAP workflows run outside the
-Schemathesis contract because they exercise browser crawl and active DAST
-behavior rather than route-level schema conformance.
+static source. Issue #119 tracks the broader DAST workflow split where useful
+coverage belongs in ZAP API, role-matrix, or full active ZAP workflows instead
+of this Schemathesis contract. Those workflows exercise browser crawl and
+active DAST behavior rather than route-level schema conformance.
 
 ## Runtime Validation
 
