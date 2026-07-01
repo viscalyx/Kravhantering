@@ -24,14 +24,21 @@ bash .github/skills/sync-ai-instructions/scripts/sync_ai_instructions.sh
 bash /path/to/repo/.github/skills/sync-ai-instructions/scripts/sync_ai_instructions.sh /path/to/repo
 ```
 
-3. Verify the output lists copied files and a final synced count.
+3. Verify the output lists copied files and a final `Verified ... hash(es)
+   match` line.
 4. Report the target path and any files copied.
 
 ## Safety Rules
 
 - Run the bundled script instead of recreating each copied file manually.
+- Run the script against the real repository root. Do not pass an alternate
+  root to redirect or avoid the intended `.agents/rules/` target.
+- If the repository root or `.agents/rules/` target is outside the writable
+  sandbox, request approval to run the script with escalated permissions.
 - Copy only files directly under `.github/instructions/`.
 - Create `.agents/rules/` when it does not exist.
 - Overwrite matching files in `.agents/rules/`.
 - Do not delete existing files in `.agents/rules/`.
 - Do not copy `.github/copilot-instructions.md`.
+- Fail the sync if any copied source file is missing or has a different
+  SHA-256 hash in `.agents/rules/`.

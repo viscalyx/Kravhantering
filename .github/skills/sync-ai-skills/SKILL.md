@@ -30,6 +30,11 @@ bash /path/to/repo/.github/skills/sync-ai-skills/scripts/sync_ai_skills.sh /path
 ## Safety Rules
 
 - Run the bundled script instead of recreating each copied skill file manually.
+- Run the script against the real `${CODEX_HOME:-$HOME/.codex}` target when it
+  exists. Do not override `CODEX_HOME`, change `HOME`, rename directories, or
+  otherwise force the Codex target to be skipped.
+- If the Codex target is outside the writable sandbox, request approval to run
+  the script with escalated permissions.
 - Do not create `${CODEX_HOME:-$HOME/.codex}` if it does not exist.
 - Create `.agent/skills` when it does not exist.
 - Copy only direct skill folders under `.github/skills`.
@@ -40,4 +45,5 @@ bash /path/to/repo/.github/skills/sync-ai-skills/scripts/sync_ai_skills.sh /path
   SHA-256 hash in the destination.
 - Do not treat extra files already present in a target skill directory as
   failure; this sync does not delete target files.
-- Request approval before running a command that copies outside the sandbox.
+- Skip Codex skills only when `${CODEX_HOME:-$HOME/.codex}` does not exist or
+  the user denies approval for an out-of-sandbox write.
