@@ -112,7 +112,7 @@ const MANUAL_CASE_LINKS = {
   'AUTH-06':
     'docs/governance/manuella-testfall.md#auth-06-admin-utan-dataskyddsroll-kan-inte-anvanda-dataskyddsflikar',
   'AUTH-07':
-    'docs/governance/manuella-testfall.md#auth-07-dataskyddsansvarig-utan-adminbehorighet',
+    'docs/governance/manuella-testfall.md#auth-07-dataskyddshandlaggare-utan-adminbehorighet',
   'AUTH-08':
     'docs/governance/manuella-testfall.md#auth-08-anvandare-utan-roll-nekas-privilegierat-arbete',
   'AUTH-10':
@@ -137,7 +137,7 @@ const MANUAL_CASE_LINKS = {
   'AUTHZ-08': 'docs/governance/manuella-testfall.md#authz-08-admin',
   'AUTHZ-09': 'docs/governance/manuella-testfall.md#authz-09-reviewer',
   'AUTHZ-10':
-    'docs/governance/manuella-testfall.md#authz-10-dataskyddsansvarig',
+    'docs/governance/manuella-testfall.md#authz-10-dataskyddshandlaggare',
   'ADMIN-10':
     'docs/governance/manuella-testfall.md#admin-10-arkiveringsgallring-kraver-dataskyddsroll',
   'ADMIN-13':

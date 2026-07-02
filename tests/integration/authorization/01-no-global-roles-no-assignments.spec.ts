@@ -360,16 +360,16 @@ async function assertReadOnlyRequirementDetail(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: 'Dela' })).toBeVisible()
 }
 
-test.describe('AUTH-10/AUTH-11: forbidden requirement specification surface', () => {
+test.describe('AUTHZ-01/AUTH-10/AUTH-11: forbidden requirement specification surface', () => {
   test.use({
     storageState: ROLE_STORAGE_STATE.noRoles,
     viewport: { height: 720, width: 1280 },
   })
 
-  test('AUTH-10/AUTH-11: shows responsible contact without content on desktop', async ({
+  test('AUTHZ-01/AUTH-10/AUTH-11: shows responsible contact without content on desktop', async ({
     page,
   }, testInfo) => {
-    referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
+    referenceManualCases(testInfo, 'AUTHZ-01', 'AUTH-10', 'AUTH-11')
 
     await page.goto('/sv/specifications')
     await expect(
@@ -380,18 +380,18 @@ test.describe('AUTH-10/AUTH-11: forbidden requirement specification surface', ()
     await assertForbiddenSpecificationSurface(page)
   })
 
-  test('AUTH-10/AUTH-11: shows published requirement detail as read-only without lifecycle controls', async ({
+  test('AUTHZ-01/AUTH-10/AUTH-11: shows published requirement detail as read-only without lifecycle controls', async ({
     page,
   }, testInfo) => {
-    referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
+    referenceManualCases(testInfo, 'AUTHZ-01', 'AUTH-10', 'AUTH-11')
 
     await assertReadOnlyRequirementDetail(page)
   })
 
-  test('AUTH-08/AUTH-10/AUTH-11: keeps Admincenter privileged tabs disabled for users without roles', async ({
+  test('AUTHZ-01/AUTH-08/AUTH-10/AUTH-11: keeps Admincenter privileged tabs disabled for users without roles', async ({
     page,
   }, testInfo) => {
-    referenceManualCases(testInfo, 'AUTH-08', 'AUTH-10', 'AUTH-11')
+    referenceManualCases(testInfo, 'AUTHZ-01', 'AUTH-08', 'AUTH-10', 'AUTH-11')
 
     await page.goto('/sv/admin?tab=actionAuditLog')
 

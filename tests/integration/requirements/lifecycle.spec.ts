@@ -14,6 +14,7 @@ import {
   newRoleContext,
   ROLE_STORAGE_STATE,
   type RoleContext,
+  referenceManualCases,
 } from '../authorization/authorization-test-helpers'
 import { resolveIntegrationBaseUrl } from '../base-url'
 
@@ -358,10 +359,11 @@ test.describe('Requirement lifecycle manual cases', () => {
     await assertActiveStepperStep(detailPane, 'Granskning')
   })
 
-  test('LIFE-04: requirement in review can be returned to draft from the UI', async ({
+  test('LIFE-04/AUTHZ-09: requirement in review can be returned to draft from the UI by a Reviewer', async ({
     browser,
     request,
   }, testInfo) => {
+    referenceManualCases(testInfo, 'AUTHZ-09')
     const requirement = await createRequirementInStatus(
       request,
       STATUS_REVIEW,
@@ -384,10 +386,11 @@ test.describe('Requirement lifecycle manual cases', () => {
     }
   })
 
-  test('LIFE-05: requirement in review can be published from the UI', async ({
+  test('LIFE-05/AUTHZ-09: requirement in review can be published from the UI by a Reviewer', async ({
     browser,
     request,
   }, testInfo) => {
+    referenceManualCases(testInfo, 'AUTHZ-09')
     const requirement = await createRequirementInStatus(
       request,
       STATUS_REVIEW,

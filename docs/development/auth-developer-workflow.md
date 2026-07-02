@@ -598,14 +598,14 @@ hands the id and secret over together per env.
 
 The GitHub Actions integration-test workflow in
 [`.github/workflows/integration-tests.yml`](../../.github/workflows/integration-tests.yml)
-brings up a local Keycloak realm before running Playwright. The shared
-`test-server` matrix has both `dev` (`npm run test:integration`) and
-`prodlike` (`npm run test:integration:prodlike`) legs, and both legs use
-the same `npm run idp:up` start step and `npm run idp:down` cleanup step.
-`npm run idp:up` waits for the realm OIDC discovery and JWKS endpoints
-before returning. The dedicated `test-prodlike-pruned` job also starts
-and stops Keycloak before running the prodlike suite against the pruned
-server.
+brings up a local Keycloak realm before running Playwright. The
+`Dev Server Smoke (Developer Mode)` job runs a focused dev-server smoke
+through `npm run test:integration`, while
+`Canonical Playwright Gate (Prod-like, Pruned Dependencies)` runs the full
+prodlike suite through `npm run test:integration:prodlike` against the pruned
+server. Both jobs use the same `npm run idp:up` start step and
+`npm run idp:down` cleanup step. `npm run idp:up` waits for the realm OIDC
+discovery and JWKS endpoints before returning.
 
 Because CI imports
 [`dev/keycloak/realm-kravhantering-dev.json`](../../dev/keycloak/realm-kravhantering-dev.json),

@@ -106,7 +106,6 @@
     "type-check": "rimraf .next/dev/types && next typegen && tsc --noEmit",
     "fix": "npm run format && npm run lint:fix && npm run lint:md:fix && npm run dotenv:fix && npm run spell:fix",
     "clean": "rimraf .next out",
-    "test:integration:all": "npm run test:integration && npm run test:integration:prodlike",
     "perf:requirements-list": "node scripts/requirements-list-performance.mjs check",
     "perf:requirements-list:update": "node scripts/requirements-list-performance.mjs update-baseline",
     "openapi:hsa-person-lookup:generate": "node scripts/openapi/generate-hsa-person-lookup-swagger-ui.mjs",

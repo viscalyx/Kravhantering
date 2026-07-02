@@ -14,6 +14,7 @@ import {
   newRoleContext,
   ROLE_STORAGE_STATE,
   type RoleContext,
+  referenceManualCases,
 } from '../authorization/authorization-test-helpers'
 import { resolveIntegrationBaseUrl } from '../base-url'
 
@@ -304,6 +305,7 @@ for (const viewport of viewports) {
         'DEV-02',
         deviationCase.action === 'approve' ? 'DEV-04' : 'DEV-05',
         'DEV-06',
+        'AUTHZ-09',
       ].join('/')
 
       test(`${manualCaseIds}: can ${deviationCase.action} a deviation after review is requested`, async ({
@@ -311,6 +313,7 @@ for (const viewport of viewports) {
         page,
         request,
       }, testInfo) => {
+        referenceManualCases(testInfo, 'AUTHZ-09')
         const fixture = deviationCase.fixtures[viewport.name]
         const motivation = `${fixture.uniqueId} ${viewport.name} ${deviationCase.action} deviation`
         const decisionMotivation = `${fixture.uniqueId} ${viewport.name} ${deviationCase.action} decision`
@@ -365,6 +368,10 @@ for (const viewport of viewports) {
             await detailPane
               .getByRole('button', { name: 'Granskning ↗' })
               .click()
+            await expectLatestDeviationState(request, fixture.itemRef, {
+              isReviewRequested: 1,
+              motivation,
+            })
             detailPane = await openSpecificationFixtureRow(
               page,
               fixture.uniqueId,
@@ -440,6 +447,7 @@ for (const viewport of viewports) {
     test('DEV-07/AUTHZ-09: specification coauthors can request review but only reviewers can decide deviations', async ({
       browser,
     }, testInfo) => {
+      referenceManualCases(testInfo, 'AUTHZ-09')
       const fixture = {
         itemRef: 'lib:920001',
         uniqueId: 'PWT-SPEC-EDIT-SOURCE',

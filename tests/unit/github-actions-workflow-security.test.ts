@@ -1,6 +1,10 @@
 import { readdirSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+
+const require = createRequire(import.meta.url)
+const yaml = require('js-yaml') as { load(source: string): unknown }
 
 const WORKFLOWS_DIR = path.join(process.cwd(), '.github', 'workflows')
 const ACTIONS_DIR = path.join(process.cwd(), '.github', 'actions')
@@ -9,6 +13,23 @@ const FULL_COMMIT_SHA = /^[a-f0-9]{40}$/iu
 const USES_LINE = /^\s*uses:\s*([^#\s]+)(?:\s+#\s*(.+))?\s*$/u
 const PERSIST_CREDENTIALS_FALSE_LINE =
   /^\s*persist-credentials:\s*['"]?false['"]?(?:\s+#.*)?$/iu
+
+type WorkflowDocument = {
+  jobs?: Record<string, WorkflowJob>
+  on?: Record<string, unknown>
+}
+
+type WorkflowJob = {
+  name?: unknown
+  steps?: WorkflowStep[]
+  strategy?: unknown
+}
+
+type WorkflowStep = {
+  env?: Record<string, unknown>
+  name?: unknown
+  run?: unknown
+}
 
 function yamlFiles(
   root: string,
@@ -35,6 +56,12 @@ function yamlFiles(
 
 function workflowAndActionFiles() {
   return [...yamlFiles(WORKFLOWS_DIR), ...yamlFiles(ACTIONS_DIR)]
+}
+
+function readWorkflowYaml(fileName: string): WorkflowDocument {
+  return yaml.load(
+    readFileSync(path.join(WORKFLOWS_DIR, fileName), 'utf8'),
+  ) as WorkflowDocument
 }
 
 function isLocalOrContainerReference(reference: string) {
@@ -82,6 +109,14 @@ function disablesCheckoutCredentialPersistence(
   return false
 }
 
+function stepRunText(job: WorkflowJob | undefined, stepName: string) {
+  expect(job, `Expected job for step "${stepName}" to exist`).toBeDefined()
+  const step = job?.steps?.find(candidate => candidate.name === stepName)
+  expect(step, `Expected step "${stepName}" to exist`).toBeDefined()
+  expect(typeof step?.run).toBe('string')
+  return step?.run as string
+}
+
 describe('GitHub Actions workflow security', () => {
   it('pins external actions and hardens checkout credentials', () => {
     const unpinnedReferences: string[] = []
@@ -118,6 +153,55 @@ describe('GitHub Actions workflow security', () => {
     }
 
     expect(unpinnedReferences).toEqual([])
+  })
+
+  it('keeps Playwright integration CI consolidated on the pruned prodlike gate', () => {
+    const workflow = readWorkflowYaml('integration-tests.yml')
+    const jobs = workflow.jobs ?? {}
+    const devSmoke = jobs['dev-server-smoke']
+    const prodlikePruned = jobs['test-prodlike-pruned']
+
+    expect(workflow.on).toHaveProperty('pull_request')
+    expect(workflow.on).toHaveProperty('push')
+    expect(jobs).not.toHaveProperty('test-server')
+
+    expect(devSmoke?.name).toBe('Dev Server Smoke (Developer Mode)')
+    expect(devSmoke?.strategy).toBeUndefined()
+    const devSmokeCommand = stepRunText(
+      devSmoke,
+      'Run Developer Mode smoke against dev server',
+    )
+    expect(devSmokeCommand).toContain('npm run test:integration --')
+    expect(devSmokeCommand).toContain(
+      'tests/integration/developer-mode/overlay.spec.ts',
+    )
+    expect(devSmokeCommand).toContain(
+      '--grep "DEVTOOLS-01: shows chip on hover and copies a contextual reference"',
+    )
+    expect(devSmokeCommand).not.toMatch(/npm run test:integration\s*$/mu)
+    expect(devSmokeCommand).not.toContain('npm run test:integration:prodlike')
+
+    expect(prodlikePruned?.name).toBe(
+      'Canonical Playwright Gate (Prod-like, Pruned Dependencies)',
+    )
+    expect(
+      stepRunText(prodlikePruned, 'Start pruned prod-like server'),
+    ).toContain('npm run start:prodlike-pruned')
+    expect(
+      stepRunText(
+        prodlikePruned,
+        'Run Playwright tests against pruned prod-like server',
+      ),
+    ).toContain('npm run test:integration:prodlike')
+    const prodlikeRunStep = prodlikePruned?.steps?.find(
+      step =>
+        step.name === 'Run Playwright tests against pruned prod-like server',
+    )
+    expect(prodlikeRunStep?.env).toMatchObject({
+      PLAYWRIGHT_BASE_URL: 'http://localhost:3001',
+      PLAYWRIGHT_FORCE_AUTH_SETUP: '1',
+      PLAYWRIGHT_SKIP_WEBSERVER: '1',
+    })
   })
 
   it('keeps the fork-compatible SSDLC gate on trusted base code', () => {
