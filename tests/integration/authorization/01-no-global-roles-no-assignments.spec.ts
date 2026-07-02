@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Page, type TestInfo, test } from '@playwright/test'
 import { escapeRegExp } from '@/tests/helpers/common'
 import {
   type AuthMeResponse,
@@ -19,6 +19,9 @@ import {
 
 let fixture: AuthorizationFixture
 
+const specificationNavigationTimeoutMs = 45_000
+const diagnosticBodyPreviewLength = 2_000
+
 test.describe.configure({ mode: 'serial' })
 
 test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
@@ -30,6 +33,7 @@ test.describe('AUTHZ-00/AUTH-11: authorization fixture seed', () => {
     storageState: ROLE_STORAGE_STATE.admin,
     viewport: { height: 720, width: 1280 },
   })
+  test.setTimeout(120_000)
 
   test('AUTHZ-00/AUTH-11: seeded AUTHZ objects and identities are visible', async ({
     page,
@@ -47,7 +51,7 @@ test.describe('AUTHZ-00/AUTH-11: authorization fixture seed', () => {
     })
 
     await test.step('verify the seeded specification is visible', async () => {
-      await page.goto(`/sv/specifications/${fixture.specificationSlug}`)
+      await gotoSeededSpecification(page, testInfo)
       await expect(
         page.getByRole('heading', {
           level: 1,
@@ -84,6 +88,101 @@ test.describe('AUTHZ-00/AUTH-11: authorization fixture seed', () => {
     })
   })
 })
+
+function errorSummary(error: unknown) {
+  if (!(error instanceof Error)) {
+    return { message: String(error) }
+  }
+
+  return {
+    message: error.message,
+    name: error.name,
+    stack: error.stack ?? null,
+  }
+}
+
+function compactText(value: string) {
+  return value.length <= diagnosticBodyPreviewLength
+    ? value
+    : `${value.slice(0, diagnosticBodyPreviewLength)}\n... truncated ${value.length - diagnosticBodyPreviewLength} chars`
+}
+
+async function attachSpecificationNavigationDiagnostics(
+  page: Page,
+  testInfo: TestInfo,
+  path: string,
+  startedAt: number,
+  error: unknown,
+) {
+  const diagnostics: Record<string, unknown> = {
+    currentUrl: page.url(),
+    elapsedMs: Date.now() - startedAt,
+    environment: {
+      baseURL: testInfo.project.use.baseURL ?? null,
+      ci: process.env.CI ?? null,
+      playwrightBaseUrl: process.env.PLAYWRIGHT_BASE_URL ?? null,
+      playwrightNavigationTimeout:
+        process.env.PLAYWRIGHT_NAVIGATION_TIMEOUT ?? null,
+      playwrightSkipWebserver: process.env.PLAYWRIGHT_SKIP_WEBSERVER ?? null,
+    },
+    error: errorSummary(error),
+    targetPath: path,
+    test: {
+      projectName: testInfo.project.name,
+      retry: testInfo.retry,
+      titlePath: testInfo.titlePath,
+      workerIndex: testInfo.workerIndex,
+    },
+    timeoutMs: specificationNavigationTimeoutMs,
+  }
+
+  try {
+    const responseStartedAt = Date.now()
+    const response = await page.request.get(path, { timeout: 30_000 })
+    diagnostics.followUpGet = {
+      bodyPreview: compactText(await response.text()),
+      contentType: response.headers()['content-type'] ?? null,
+      durationMs: Date.now() - responseStartedAt,
+      ok: response.ok(),
+      status: response.status(),
+      statusText: response.statusText(),
+      url: response.url(),
+    }
+  } catch (followUpError) {
+    diagnostics.followUpGet = {
+      error: errorSummary(followUpError),
+    }
+  }
+
+  await testInfo.attach('seeded specification navigation diagnostics', {
+    body: JSON.stringify(diagnostics, null, 2),
+    contentType: 'application/json',
+  })
+}
+
+async function gotoSeededSpecification(
+  page: Page,
+  testInfo: TestInfo,
+): Promise<void> {
+  const path = `/sv/specifications/${fixture.specificationSlug}`
+  const startedAt = Date.now()
+
+  try {
+    await page.goto(path, {
+      timeout: specificationNavigationTimeoutMs,
+      waitUntil: 'domcontentloaded',
+    })
+  } catch (error) {
+    await attachSpecificationNavigationDiagnostics(
+      page,
+      testInfo,
+      path,
+      startedAt,
+      error,
+    )
+    throw error
+  }
+}
 
 test('AUTH-03/AUTH-11: anonymous API requests return JSON 401 where authentication is required', async ({
   browserName: _browserName,

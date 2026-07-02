@@ -18,8 +18,6 @@ jobs:
     name: Test Against ${{ matrix.displayName }} Server
     runs-on: ubuntu-latest
     timeout-minutes: ${{ matrix.timeoutMinutes }}
-    env:
-      HSA_PERSON_LOOKUP_URL: http://127.0.0.1:8790/hsa/person-records/lookup
     strategy:
       fail-fast: false
       matrix:
@@ -73,24 +71,7 @@ jobs:
         run: npm run idp:up
 
       - name: Start local HSA lookup fixture
-        run: |
-          mkdir -p test-results/hsa-person-lookup
-          node scripts/ci-hsa-person-lookup-fixture.mjs \
-            > "test-results/hsa-person-lookup/${{ matrix.server }}.log" 2>&1 &
-          echo "$!" > "test-results/hsa-person-lookup/${{ matrix.server }}.pid"
-
-          for attempt in $(seq 1 30); do
-            if curl -sf --max-time 5 -o /dev/null "http://127.0.0.1:8790/health"; then
-              echo "HSA lookup fixture is responding."
-              exit 0
-            fi
-            echo "Attempt ${attempt}/30 - HSA lookup fixture is not ready yet."
-            sleep 1
-          done
-
-          echo "HSA lookup fixture did not become ready in time."
-          cat "test-results/hsa-person-lookup/${{ matrix.server }}.log" || true
-          exit 1
+        run: bash scripts/ci-hsa-person-lookup-fixture.sh start "${{ matrix.server }}"
 
       - name: Run Playwright tests against ${{ matrix.server }} server
         run: |
@@ -119,10 +100,7 @@ jobs:
 
       - name: Stop local HSA lookup fixture
         if: always()
-        run: |
-          if [ -f "test-results/hsa-person-lookup/${{ matrix.server }}.pid" ]; then
-            kill "$(cat "test-results/hsa-person-lookup/${{ matrix.server }}.pid")" || true
-          fi
+        run: bash scripts/ci-hsa-person-lookup-fixture.sh stop "${{ matrix.server }}"
 
       - name: Upload test results (${{ matrix.server }})
         if: always()
@@ -163,8 +141,6 @@ jobs:
     name: Test Prod-like Server With Dev Dependencies Pruned
     runs-on: ubuntu-latest
     timeout-minutes: 150
-    env:
-      HSA_PERSON_LOOKUP_URL: http://127.0.0.1:8790/hsa/person-records/lookup
 
     steps:
       - name: Checkout code
@@ -203,24 +179,7 @@ jobs:
         run: npm run idp:up
 
       - name: Start local HSA lookup fixture
-        run: |
-          mkdir -p test-results/hsa-person-lookup
-          node scripts/ci-hsa-person-lookup-fixture.mjs \
-            > test-results/hsa-person-lookup/prodlike-pruned.log 2>&1 &
-          echo "$!" > test-results/hsa-person-lookup/prodlike-pruned.pid
-
-          for attempt in $(seq 1 30); do
-            if curl -sf --max-time 5 -o /dev/null "http://127.0.0.1:8790/health"; then
-              echo "HSA lookup fixture is responding."
-              exit 0
-            fi
-            echo "Attempt ${attempt}/30 - HSA lookup fixture is not ready yet."
-            sleep 1
-          done
-
-          echo "HSA lookup fixture did not become ready in time."
-          cat test-results/hsa-person-lookup/prodlike-pruned.log || true
-          exit 1
+        run: bash scripts/ci-hsa-person-lookup-fixture.sh start "prodlike-pruned"
 
       # Build with the full devDependency tree so Tailwind can resolve
       # `@import "@viscalyx/developer-mode-react/safelist.css"` from
@@ -312,10 +271,7 @@ jobs:
 
       - name: Stop local HSA lookup fixture
         if: always()
-        run: |
-          if [ -f test-results/hsa-person-lookup/prodlike-pruned.pid ]; then
-            kill "$(cat test-results/hsa-person-lookup/prodlike-pruned.pid)" || true
-          fi
+        run: bash scripts/ci-hsa-person-lookup-fixture.sh stop "prodlike-pruned"
 
       - name: Upload pruned server log
         if: always()

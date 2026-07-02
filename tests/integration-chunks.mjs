@@ -17,6 +17,15 @@ const APP_READY_PATH = '/api/auth/login'
 const APP_READY_STATUSES = [302, 303, 307, 308]
 const READY_BODY_EXCERPT_LENGTH = 1_000
 const DEV_SERVER_OUTPUT_DIR = '.next/dev'
+const RECURSIVE_REMOVE_MAX_ATTEMPTS = 6
+const RECURSIVE_REMOVE_RETRY_DELAY_MS = 250
+const RETRIABLE_REMOVE_ERROR_CODES = new Set([
+  'EBUSY',
+  'EMFILE',
+  'ENFILE',
+  'ENOTEMPTY',
+  'EPERM',
+])
 
 const SUITE_CONFIG = {
   dev: {
@@ -501,6 +510,65 @@ function errorMessage(error) {
   return String(error)
 }
 
+function removeErrorCode(error) {
+  if (error && typeof error === 'object' && 'code' in error) {
+    return String(error.code)
+  }
+  return undefined
+}
+
+export function isRetriableRemoveError(error) {
+  const code = removeErrorCode(error)
+  return code != null && RETRIABLE_REMOVE_ERROR_CODES.has(code)
+}
+
+export function formatRecursiveRemoveRetryLine({
+  attempt,
+  delayMs,
+  error,
+  maxAttempts,
+  targetPath,
+}) {
+  const code = removeErrorCode(error) ?? 'unknown error'
+  return `[integration-chunks] Retrying cleanup of ${targetPath} after ${code}; attempt ${attempt}/${maxAttempts} in ${delayMs} ms\n`
+}
+
+export async function removePathRecursivelyWithRetries(
+  targetPath,
+  options = {},
+) {
+  const {
+    maxAttempts = RECURSIVE_REMOVE_MAX_ATTEMPTS,
+    onRetry,
+    retryDelayMs = RECURSIVE_REMOVE_RETRY_DELAY_MS,
+    rmImpl = fs.rm,
+    sleepImpl = sleep,
+  } = options
+
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+    throw new Error('maxAttempts must be a positive integer')
+  }
+  if (!Number.isFinite(retryDelayMs) || retryDelayMs < 0) {
+    throw new Error('retryDelayMs must be a non-negative number')
+  }
+
+  for (let attemptIndex = 0; attemptIndex < maxAttempts; attemptIndex += 1) {
+    try {
+      await rmImpl(targetPath, { force: true, recursive: true })
+      return
+    } catch (error) {
+      const attempt = attemptIndex + 2
+      if (attempt > maxAttempts || !isRetriableRemoveError(error)) {
+        throw error
+      }
+
+      const delayMs = retryDelayMs * (attemptIndex + 1)
+      onRetry?.({ attempt, delayMs, error, maxAttempts, targetPath })
+      await sleepImpl(delayMs)
+    }
+  }
+}
+
 function truncateBodyExcerpt(body, maxLength) {
   if (body.length <= maxLength) return body
   return `${body.slice(0, maxLength)}...`
@@ -952,10 +1020,7 @@ async function stopServer(server) {
       child.kill('SIGTERM')
     }
 
-    const exited = await Promise.race([
-      new Promise(resolve => child.once('exit', () => resolve(true))),
-      sleep(5_000).then(() => false),
-    ])
+    const exited = await waitForChildExit(child, 5_000)
 
     if (exited) return
 
@@ -968,9 +1033,20 @@ async function stopServer(server) {
     } catch {
       child.kill('SIGKILL')
     }
+
+    await waitForChildExit(child, 5_000)
   } finally {
     await new Promise(resolve => server.logStream.end(resolve))
   }
+}
+
+async function waitForChildExit(child, timeoutMs) {
+  if (child.exitCode != null || child.signalCode != null) return true
+
+  return await Promise.race([
+    new Promise(resolve => child.once('exit', () => resolve(true))),
+    sleep(timeoutMs).then(() => false),
+  ])
 }
 
 async function resetDevServerOutput({ chunkId, cwd, suite }) {
@@ -984,7 +1060,15 @@ async function resetDevServerOutput({ chunkId, cwd, suite }) {
       suite,
     }),
   )
-  await fs.rm(outputDir, { force: true, recursive: true })
+  await removePathRecursivelyWithRetries(outputDir, {
+    onRetry: retry =>
+      process.stdout.write(
+        formatRecursiveRemoveRetryLine({
+          ...retry,
+          targetPath: DEV_SERVER_OUTPUT_DIR,
+        }),
+      ),
+  })
 }
 
 async function runDirect(plan) {
@@ -994,7 +1078,7 @@ async function runDirect(plan) {
 }
 
 async function runChunked(plan) {
-  await fs.rm(plan.reportPaths.blobDir, { force: true, recursive: true })
+  await removePathRecursivelyWithRetries(plan.reportPaths.blobDir)
   await fs.mkdir(plan.reportPaths.blobDir, { recursive: true })
 
   const buildCommand = plan.commands.find(entry => entry.kind === 'build')

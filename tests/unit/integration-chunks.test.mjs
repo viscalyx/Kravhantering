@@ -9,8 +9,11 @@ import {
   formatDevServerOutputResetLine,
   formatDurationMs,
   formatHttpReadinessWaitLine,
+  formatRecursiveRemoveRetryLine,
+  isRetriableRemoveError,
   parseArgs,
   readSystemMemorySnapshot,
+  removePathRecursivelyWithRetries,
   selectChunks,
   shouldIgnoreSpec,
   waitForHttpReady,
@@ -232,6 +235,64 @@ describe('integration chunk command planning', () => {
     ).toBe(
       '[integration-chunks] Resetting dev chunk dev-00-report-pdf dev server output: .next/dev\n',
     )
+  })
+
+  it('retries transient recursive cleanup failures', async () => {
+    const calls = []
+    const delays = []
+    const retryLines = []
+
+    await removePathRecursivelyWithRetries('.next/dev', {
+      maxAttempts: 3,
+      onRetry: retry => retryLines.push(formatRecursiveRemoveRetryLine(retry)),
+      retryDelayMs: 25,
+      rmImpl: async (targetPath, options) => {
+        calls.push({ options, targetPath })
+        if (calls.length === 1) {
+          throw Object.assign(new Error('directory not empty'), {
+            code: 'ENOTEMPTY',
+          })
+        }
+      },
+      sleepImpl: async delayMs => {
+        delays.push(delayMs)
+      },
+    })
+
+    expect(calls).toEqual([
+      { options: { force: true, recursive: true }, targetPath: '.next/dev' },
+      { options: { force: true, recursive: true }, targetPath: '.next/dev' },
+    ])
+    expect(delays).toEqual([25])
+    expect(retryLines).toEqual([
+      '[integration-chunks] Retrying cleanup of .next/dev after ENOTEMPTY; attempt 2/3 in 25 ms\n',
+    ])
+  })
+
+  it('does not retry non-transient recursive cleanup failures', async () => {
+    const failure = Object.assign(new Error('invalid path'), { code: 'EINVAL' })
+    const calls = []
+    const delays = []
+
+    await expect(
+      removePathRecursivelyWithRetries('.next/dev', {
+        maxAttempts: 3,
+        retryDelayMs: 25,
+        rmImpl: async (targetPath, options) => {
+          calls.push({ options, targetPath })
+          throw failure
+        },
+        sleepImpl: async delayMs => {
+          delays.push(delayMs)
+        },
+      }),
+    ).rejects.toBe(failure)
+
+    expect(isRetriableRemoveError(failure)).toBe(false)
+    expect(calls).toEqual([
+      { options: { force: true, recursive: true }, targetPath: '.next/dev' },
+    ])
+    expect(delays).toEqual([])
   })
 
   it('selects a chunk by stable id', () => {
