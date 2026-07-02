@@ -16,6 +16,7 @@ import {
   getSqlServerDatabaseUrl,
   type SqlServerRuntimeEnv,
 } from '@/lib/typeorm/sqlserver-config'
+import { resolveIntegrationBaseUrl } from '../base-url'
 
 export const ROLE_STORAGE_STATE = {
   admin: 'test-results/auth/admin.json',
@@ -239,11 +240,7 @@ export function referenceManualCases(
 }
 
 function baseUrlFor(testInfo: TestInfo): string {
-  return String(
-    testInfo.project.use.baseURL ??
-      process.env.PLAYWRIGHT_BASE_URL ??
-      'http://localhost:3000',
-  ).replace(/\/$/, '')
+  return resolveIntegrationBaseUrl(testInfo, { stripTrailingSlash: true })
 }
 
 function originFor(baseUrl: string): string {

@@ -14,6 +14,7 @@ import {
   ROLE_STORAGE_STATE,
   type RoleContext,
 } from '../authorization/authorization-test-helpers'
+import { resolveIntegrationBaseUrl } from '../base-url'
 
 const STATUS_DRAFT = 1
 const STATUS_REVIEW = 2
@@ -217,11 +218,7 @@ async function newRolePage(
   role: RoleContext,
 ) {
   const context = await browser.newContext({
-    baseURL: String(
-      testInfo.project.use.baseURL ??
-        process.env.PLAYWRIGHT_BASE_URL ??
-        'http://localhost:3000',
-    ),
+    baseURL: resolveIntegrationBaseUrl(testInfo),
     storageState: ROLE_STORAGE_STATE[role],
     viewport: { height: 720, width: 1280 },
   })

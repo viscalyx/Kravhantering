@@ -4,14 +4,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
-
-function getBaseUrl(testInfo: TestInfo): string {
-  return String(
-    testInfo.project.use.baseURL ??
-      process.env.PLAYWRIGHT_BASE_URL ??
-      'http://localhost:3000',
-  )
-}
+import { resolveIntegrationBaseUrl } from '../base-url'
 
 function getStorageState(testInfo: TestInfo) {
   return testInfo.project.use.storageState ?? 'test-results/auth/admin.json'
@@ -138,7 +131,7 @@ test.describe('signed-in auth boundary', () => {
   test('AUTH-12: mutating REST requests without X-Requested-With are rejected', async ({
     request: _request,
   }, testInfo) => {
-    const baseURL = getBaseUrl(testInfo)
+    const baseURL = resolveIntegrationBaseUrl(testInfo)
     const context = await playwrightRequest.newContext({
       baseURL,
       storageState: getStorageState(testInfo),
@@ -171,7 +164,7 @@ test.describe('signed-in auth boundary', () => {
     request: _request,
   }, testInfo) => {
     const context = await playwrightRequest.newContext({
-      baseURL: getBaseUrl(testInfo),
+      baseURL: resolveIntegrationBaseUrl(testInfo),
       storageState: getStorageState(testInfo),
     })
 

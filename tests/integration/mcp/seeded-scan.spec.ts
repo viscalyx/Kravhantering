@@ -9,6 +9,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
+import { resolveIntegrationBaseUrl } from '../base-url'
 
 const execFileAsync = promisify(execFile)
 const SCAN_DIR = 'test-results/mcp-seeded'
@@ -27,16 +28,15 @@ test.beforeAll(async () => {
   await writeFile(EVENTS_PATH, '')
 })
 
-function getBaseUrl(testInfo: TestInfo): string {
-  return String(
-    testInfo.project.use.baseURL ??
-      process.env.PLAYWRIGHT_BASE_URL ??
-      'http://localhost:3001',
-  ).replace(/\/$/, '')
+function resolveMcpBaseUrl(testInfo: TestInfo): string {
+  return resolveIntegrationBaseUrl(testInfo, {
+    fallback: 'http://localhost:3001',
+    stripTrailingSlash: true,
+  })
 }
 
 function getMcpUrl(testInfo: TestInfo): URL {
-  const baseUrl = getBaseUrl(testInfo)
+  const baseUrl = resolveMcpBaseUrl(testInfo)
   if (baseUrl !== 'http://localhost:3001') {
     throw new Error(`Refusing to run MCP seeded scan against ${baseUrl}`)
   }
@@ -288,7 +288,7 @@ test.describe('MCP seeded HTTP security gate', () => {
   test('MCP-01: rejects missing and invalid bearer tokens over HTTP', async ({
     request: _request,
   }, testInfo) => {
-    const baseUrl = getBaseUrl(testInfo)
+    const baseUrl = resolveMcpBaseUrl(testInfo)
     const targetUrl = getMcpUrl(testInfo)
     const context = await playwrightRequest.newContext({ baseURL: baseUrl })
     const initializeBody = {

@@ -14,6 +14,7 @@ import {
   ROLE_STORAGE_STATE,
   type RoleContext,
 } from '../authorization/authorization-test-helpers'
+import { resolveIntegrationBaseUrl } from '../base-url'
 
 interface DeviationData {
   decision: number | null
@@ -229,11 +230,7 @@ async function newRolePage(
   viewport: (typeof viewports)[number],
 ) {
   const context = await browser.newContext({
-    baseURL: String(
-      testInfo.project.use.baseURL ??
-        process.env.PLAYWRIGHT_BASE_URL ??
-        'http://localhost:3000',
-    ),
+    baseURL: resolveIntegrationBaseUrl(testInfo),
     storageState: ROLE_STORAGE_STATE[role],
     viewport: { height: viewport.height, width: viewport.width },
   })

@@ -1,19 +1,12 @@
 import { expect, test } from '@playwright/test'
-
-function getBaseUrl(testInfo: { project: { use: { baseURL?: unknown } } }) {
-  return String(
-    testInfo.project.use.baseURL ??
-      process.env.PLAYWRIGHT_BASE_URL ??
-      'http://localhost:3000',
-  )
-}
+import { resolveIntegrationBaseUrl } from '../base-url'
 
 test('RES-02: homepage loads for signed-in and signed-out sessions', async ({
   browser,
   page,
 }, testInfo) => {
   const anonymousContext = await browser.newContext({
-    baseURL: getBaseUrl(testInfo),
+    baseURL: resolveIntegrationBaseUrl(testInfo),
     storageState: { cookies: [], origins: [] },
   })
   try {
