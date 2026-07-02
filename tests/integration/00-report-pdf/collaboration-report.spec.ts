@@ -1,5 +1,7 @@
 import { Buffer } from 'node:buffer'
 import {
+  type APIRequestContext,
+  type APIResponse,
   type Download,
   expect,
   type Locator,
@@ -15,6 +17,63 @@ import {
 
 const PDF_EVENT_TIMEOUT_MS = 15_000
 const RESPONSE_BODY_EXCERPT_LENGTH = 2_000
+
+async function apiResponseBodyExcerpt(response: APIResponse): Promise<string> {
+  const body = await response.text()
+  return body.length > RESPONSE_BODY_EXCERPT_LENGTH
+    ? `${body.slice(0, RESPONSE_BODY_EXCERPT_LENGTH)}...`
+    : body
+}
+
+async function isNextDevNotFoundApiResponse(
+  response: APIResponse,
+): Promise<boolean> {
+  if (response.status() !== 404) return false
+
+  const contentType = response.headers()['content-type'] ?? ''
+  if (!contentType.includes('text/html')) return false
+
+  const bodyExcerpt = await apiResponseBodyExcerpt(response)
+  return bodyExcerpt.includes('/_not-found') || bodyExcerpt.includes('404')
+}
+
+async function waitForReportRouteReady(
+  request: APIRequestContext,
+  url: string,
+  label: string,
+): Promise<void> {
+  let lastStatus: number | null = null
+  let lastBodyExcerpt: string | null = null
+  let routeReady = false
+
+  await expect
+    .poll(
+      async () => {
+        const response = await request.get(url)
+        lastStatus = response.status()
+
+        if (!(await isNextDevNotFoundApiResponse(response))) {
+          lastBodyExcerpt = null
+          routeReady = true
+          return 'ready'
+        }
+
+        lastBodyExcerpt = await apiResponseBodyExcerpt(response)
+        return 'next-dev-not-found'
+      },
+      {
+        message: `${label} route should resolve after Next dev route compilation`,
+        timeout: 20_000,
+      },
+    )
+    .toBe('ready')
+
+  if (!routeReady) {
+    throw new Error(
+      `${label} did not return a response after route-ready polling. Last status: ${lastStatus}; previous body excerpt: ${lastBodyExcerpt ?? '<not captured>'}`,
+    )
+  }
+}
 
 function isSuggestionHistoryPdfResponse(response: Response): boolean {
   try {
@@ -106,7 +165,16 @@ test('COL-06: opens the suggestion-history report for a requirement with suggest
   page,
 }, testInfo) => {
   const requirementUniqueId = 'PWT-SPEC-EDIT-SOURCE'
+  const suggestionHistoryReportUrl = `/sv/requirements/reports/pdf/suggestion-history/${encodeURIComponent(requirementUniqueId)}`
   const detailPane = await openRequirementDetail(page, requirementUniqueId)
+
+  await test.step('wait for the suggestion-history PDF route to be ready', async () => {
+    await waitForReportRouteReady(
+      page.request,
+      suggestionHistoryReportUrl,
+      'suggestion-history PDF',
+    )
+  })
 
   const suggestionHistoryMenuItem =
     await test.step('open the suggestion-history report menu', async () => {

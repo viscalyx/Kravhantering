@@ -13,6 +13,9 @@ export const MANIFEST_PATH = 'tests/integration-chunks.manifest.json'
 
 const GENERATED_BY = 'tests/integration-chunks.mjs'
 const SUITE_NAMES = ['dev', 'prodlike']
+const APP_READY_PATH = '/api/auth/login'
+const APP_READY_STATUSES = [302, 303, 307, 308]
+const READY_BODY_EXCERPT_LENGTH = 1_000
 
 const SUITE_CONFIG = {
   dev: {
@@ -60,6 +63,11 @@ function assertSuite(suite) {
 
 function sleep(delayMs) {
   return new Promise(resolve => setTimeout(resolve, delayMs))
+}
+
+function appReadinessUrlForSuite(suite) {
+  assertSuite(suite)
+  return new URL(APP_READY_PATH, SUITE_CONFIG[suite].baseUrl).toString()
 }
 
 export function toPosixPath(value) {
@@ -476,6 +484,146 @@ export function formatChunkDurationLine({ chunkId, durationMs, suite }) {
   return `[integration-chunks] Duration ${suite} chunk ${chunkId}: ${formatDurationMs(durationMs)}\n`
 }
 
+function formatExpectedStatuses(expectedStatuses) {
+  return expectedStatuses.join(', ')
+}
+
+function serverExitDescription(child) {
+  if (!child) return null
+  if (child.exitCode != null) return `exitCode=${child.exitCode}`
+  if (child.signalCode != null) return `signal=${child.signalCode}`
+  return null
+}
+
+function errorMessage(error) {
+  if (error instanceof Error) return error.message
+  return String(error)
+}
+
+function truncateBodyExcerpt(body, maxLength) {
+  if (body.length <= maxLength) return body
+  return `${body.slice(0, maxLength)}...`
+}
+
+async function responseBodyExcerpt(response, maxLength) {
+  try {
+    return truncateBodyExcerpt(await response.text(), maxLength)
+  } catch (error) {
+    return `<failed to read response body: ${errorMessage(error)}>`
+  }
+}
+
+export function formatHttpReadinessWaitLine({
+  chunkId,
+  expectedStatuses,
+  suite,
+  url,
+}) {
+  return `[integration-chunks] Waiting for ${suite} chunk ${chunkId} app readiness: ${url} expected status ${formatExpectedStatuses(expectedStatuses)}\n`
+}
+
+function formatHttpReadinessFailure({
+  description,
+  expectedStatuses,
+  lastBodyExcerpt,
+  lastContentType,
+  lastError,
+  lastStatus,
+  reason,
+  serverExit,
+  timeoutMs,
+  url,
+}) {
+  return [
+    `${description} did not become ready within ${timeoutMs} ms`,
+    `Reason: ${reason}`,
+    `URL: ${url}`,
+    `Expected status: ${formatExpectedStatuses(expectedStatuses)}`,
+    `Last status: ${lastStatus ?? '<none>'}`,
+    `Last content-type: ${lastContentType || '<none>'}`,
+    `Last body excerpt: ${lastBodyExcerpt ?? '<none>'}`,
+    `Last fetch error: ${lastError ? errorMessage(lastError) : '<none>'}`,
+    `Server process: ${serverExit ?? 'still running or not provided'}`,
+  ].join('\n')
+}
+
+export async function waitForHttpReady(url, options = {}) {
+  const {
+    bodyExcerptLength = READY_BODY_EXCERPT_LENGTH,
+    child,
+    description = url,
+    expectedStatuses = [200],
+    fetchImpl = fetch,
+    intervalMs = 1_000,
+    now = () => Date.now(),
+    requestTimeoutMs = 5_000,
+    sleepImpl = sleep,
+    timeoutMs = 120_000,
+  } = options
+  const expectedStatusSet = new Set(expectedStatuses)
+  const deadline = now() + timeoutMs
+  let lastBodyExcerpt
+  let lastContentType
+  let lastError
+  let lastStatus
+
+  while (now() <= deadline) {
+    const serverExit = serverExitDescription(child)
+    if (serverExit) {
+      throw new Error(
+        formatHttpReadinessFailure({
+          description,
+          expectedStatuses,
+          lastBodyExcerpt,
+          lastContentType,
+          lastError,
+          lastStatus,
+          reason: 'server exited before readiness',
+          serverExit,
+          timeoutMs,
+          url,
+        }),
+      )
+    }
+
+    try {
+      const response = await fetchImpl(url, {
+        cache: 'no-store',
+        redirect: 'manual',
+        signal: AbortSignal.timeout(requestTimeoutMs),
+      })
+      lastStatus = response.status
+      lastContentType = response.headers.get('content-type') ?? ''
+
+      if (expectedStatusSet.has(response.status)) {
+        return response
+      }
+
+      lastBodyExcerpt = await responseBodyExcerpt(response, bodyExcerptLength)
+    } catch (error) {
+      lastError = error
+    }
+
+    await sleepImpl(intervalMs)
+  }
+
+  const serverExit = serverExitDescription(child)
+  throw new Error(
+    formatHttpReadinessFailure({
+      description,
+      expectedStatuses,
+      lastBodyExcerpt,
+      lastContentType,
+      lastError,
+      lastStatus,
+      reason: 'timeout',
+      serverExit,
+      timeoutMs,
+      url,
+    }),
+  )
+}
+
 function command(commandName, args = [], env = {}) {
   return {
     args,
@@ -820,43 +968,6 @@ async function stopServer(server) {
   }
 }
 
-async function waitForUrl(url, options = {}) {
-  const {
-    child,
-    fetchImpl = fetch,
-    intervalMs = 1_000,
-    requestTimeoutMs = 5_000,
-    timeoutMs = 120_000,
-  } = options
-  const deadline = Date.now() + timeoutMs
-  let lastError
-
-  while (Date.now() <= deadline) {
-    if (child && child.exitCode != null) {
-      throw new Error(`Server exited before ${url} became ready`)
-    }
-
-    try {
-      await fetchImpl(url, {
-        cache: 'no-store',
-        redirect: 'manual',
-        signal: AbortSignal.timeout(requestTimeoutMs),
-      })
-      return
-    } catch (error) {
-      lastError = error
-    }
-
-    await sleep(intervalMs)
-  }
-
-  const reason =
-    lastError instanceof Error ? lastError.message : String(lastError)
-  throw new Error(
-    `${url} did not become ready within ${timeoutMs} ms: ${reason}`,
-  )
-}
-
 async function runDirect(plan) {
   const [directCommand] = plan.commands
   const result = await runCommand(directCommand, { allowFailure: true })
@@ -912,8 +1023,19 @@ async function runChunked(plan) {
       if (!plan.externalServer) {
         await runCommand(killCommand)
         server = await startServer(startCommand, { logFile: serverLogFile })
-        await waitForUrl(SUITE_CONFIG[plan.suite].baseUrl, {
+        const readyUrl = appReadinessUrlForSuite(plan.suite)
+        process.stdout.write(
+          formatHttpReadinessWaitLine({
+            chunkId: chunk.id,
+            expectedStatuses: APP_READY_STATUSES,
+            suite: plan.suite,
+            url: readyUrl,
+          }),
+        )
+        await waitForHttpReady(readyUrl, {
           child: server.child,
+          description: `${plan.suite} chunk ${chunk.id} app readiness`,
+          expectedStatuses: APP_READY_STATUSES,
         })
       }
 

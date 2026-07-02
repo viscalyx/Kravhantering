@@ -7,10 +7,12 @@ import {
   formatChunkMemoryLine,
   formatChunkServerLogFinishedLine,
   formatDurationMs,
+  formatHttpReadinessWaitLine,
   parseArgs,
   readSystemMemorySnapshot,
   selectChunks,
   shouldIgnoreSpec,
+  waitForHttpReady,
 } from '../integration-chunks.mjs'
 
 const fixtureSpecs = [
@@ -24,6 +26,25 @@ const fixtureSpecs = [
   'tests/integration/requirements/library.spec.ts',
   'tests/integration/requirements/lifecycle.spec.ts',
 ]
+
+function testClock() {
+  let currentTime = 0
+  return {
+    now: () => currentTime,
+    sleepImpl: async delayMs => {
+      currentTime += delayMs
+    },
+  }
+}
+
+async function captureError(action) {
+  try {
+    await action()
+  } catch (error) {
+    return error
+  }
+  throw new Error('Expected action to throw')
+}
 
 describe('integration chunk manifest generation', () => {
   it('keeps suite-specific ignore rules explicit', () => {
@@ -187,6 +208,19 @@ describe('integration chunk command planning', () => {
     )
   })
 
+  it('formats app readiness wait lines for console discovery', () => {
+    expect(
+      formatHttpReadinessWaitLine({
+        chunkId: 'dev-00-report-pdf',
+        expectedStatuses: [302, 303, 307, 308],
+        suite: 'dev',
+        url: 'http://localhost:3000/api/auth/login',
+      }),
+    ).toBe(
+      '[integration-chunks] Waiting for dev chunk dev-00-report-pdf app readiness: http://localhost:3000/api/auth/login expected status 302, 303, 307, 308\n',
+    )
+  })
+
   it('selects a chunk by stable id', () => {
     const manifest = buildManifestFromSpecs(fixtureSpecs)
 
@@ -314,5 +348,125 @@ describe('integration chunk command planning', () => {
     expect(chunkCommands.length).toBeGreaterThan(1)
     expect(chunkCommands[0].env.PLAYWRIGHT_FORCE_AUTH_SETUP).toBe('1')
     expect(chunkCommands[1].env.PLAYWRIGHT_FORCE_AUTH_SETUP).toBeUndefined()
+  })
+})
+
+describe('integration chunk app readiness probe', () => {
+  it('retries transient 404 HTML until the auth route redirects', async () => {
+    const { now, sleepImpl } = testClock()
+    const fetchCalls = []
+    const responses = [
+      new Response('<html><body>/_not-found</body></html>', {
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+        status: 404,
+      }),
+      new Response(null, {
+        headers: { location: 'http://localhost:8080/realms/dev' },
+        status: 302,
+      }),
+    ]
+
+    const response = await waitForHttpReady(
+      'http://localhost:3000/api/auth/login',
+      {
+        expectedStatuses: [302, 303, 307, 308],
+        fetchImpl: async (url, init) => {
+          fetchCalls.push({ init, url })
+          return responses.shift()
+        },
+        intervalMs: 1,
+        now,
+        sleepImpl,
+        timeoutMs: 10,
+      },
+    )
+
+    expect(response.status).toBe(302)
+    expect(fetchCalls).toHaveLength(2)
+    expect(fetchCalls[0]).toMatchObject({
+      url: 'http://localhost:3000/api/auth/login',
+    })
+    expect(fetchCalls[0].init).toMatchObject({
+      cache: 'no-store',
+      redirect: 'manual',
+    })
+  })
+
+  it('times out repeated 404s with status, content type, and body excerpt', async () => {
+    const { now, sleepImpl } = testClock()
+
+    const error = await captureError(() =>
+      waitForHttpReady('http://localhost:3000/api/auth/login', {
+        bodyExcerptLength: 32,
+        expectedStatuses: [302, 303, 307, 308],
+        fetchImpl: async () =>
+          new Response('<html><body>/_not-found route missing</body></html>', {
+            headers: { 'content-type': 'text/html; charset=utf-8' },
+            status: 404,
+          }),
+        intervalMs: 1,
+        now,
+        sleepImpl,
+        timeoutMs: 2,
+      }),
+    )
+
+    expect(error).toBeInstanceOf(Error)
+    expect(error.message).toContain('Reason: timeout')
+    expect(error.message).toContain('Expected status: 302, 303, 307, 308')
+    expect(error.message).toContain('Last status: 404')
+    expect(error.message).toContain(
+      'Last content-type: text/html; charset=utf-8',
+    )
+    expect(error.message).toContain(
+      'Last body excerpt: <html><body>/_not-found route mi...',
+    )
+  })
+
+  it('fails clearly when the server exits before readiness', async () => {
+    const { now, sleepImpl } = testClock()
+
+    const error = await captureError(() =>
+      waitForHttpReady('http://localhost:3000/api/auth/login', {
+        child: { exitCode: 1, signalCode: null },
+        expectedStatuses: [302],
+        fetchImpl: async () => new Response(null, { status: 302 }),
+        intervalMs: 1,
+        now,
+        sleepImpl,
+        timeoutMs: 10,
+      }),
+    )
+
+    expect(error).toBeInstanceOf(Error)
+    expect(error.message).toContain('Reason: server exited before readiness')
+    expect(error.message).toContain('Server process: exitCode=1')
+    expect(error.message).toContain('Last status: <none>')
+  })
+
+  it('retries network errors and reports the last fetch error', async () => {
+    const { now, sleepImpl } = testClock()
+    let attempts = 0
+
+    const error = await captureError(() =>
+      waitForHttpReady('http://localhost:3000/api/auth/login', {
+        expectedStatuses: [302],
+        fetchImpl: async () => {
+          attempts += 1
+          throw new Error('connect ECONNREFUSED 127.0.0.1:3000')
+        },
+        intervalMs: 1,
+        now,
+        sleepImpl,
+        timeoutMs: 2,
+      }),
+    )
+
+    expect(attempts).toBeGreaterThan(1)
+    expect(error).toBeInstanceOf(Error)
+    expect(error.message).toContain('Last status: <none>')
+    expect(error.message).toContain(
+      'Last fetch error: connect ECONNREFUSED 127.0.0.1:3000',
+    )
   })
 })
