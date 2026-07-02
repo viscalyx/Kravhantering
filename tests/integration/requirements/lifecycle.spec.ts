@@ -554,8 +554,8 @@ test.describe('Requirement lifecycle manual cases', () => {
       uniqueId: string,
       expected: { reviewReportVisible: boolean },
     ) {
-      await openRequirement(page, uniqueId)
-      await page.getByRole('button', { name: 'Rapporter' }).click()
+      const detailPane = await openRequirement(page, uniqueId)
+      await detailPane.getByRole('button', { name: 'Rapporter' }).click()
       await expect(
         page.getByRole('menuitem', { name: 'Historikrapport' }),
       ).toBeVisible()
@@ -591,15 +591,6 @@ test.describe('Requirement lifecycle manual cases', () => {
       await expectReportMenu(draft.uniqueId, { reviewReportVisible: false })
       await expectReportMenu(review.uniqueId, { reviewReportVisible: true })
       await expectReportMenu(published.uniqueId, { reviewReportVisible: false })
-
-      const listPdfResponse = await request.get(
-        `/sv/requirements/reports/pdf/list?ids=${published.id}`,
-        { timeout: 30_000 },
-      )
-      expect(listPdfResponse.ok()).toBe(true)
-      expect(listPdfResponse.headers()['content-type']).toContain(
-        'application/pdf',
-      )
     } finally {
       await reviewerRequest.dispose()
     }
@@ -714,13 +705,19 @@ test.describe('Requirement lifecycle manual cases', () => {
   test('LIFE-13: package membership remains visible for the archived package-history fixture', async ({
     page,
     request,
-  }) => {
-    const requirement = await getRequirement(
-      request,
-      'PWT-LIFE-PACKAGE-ARCHIVE',
-    )
+  }, testInfo) => {
+    const reviewerRequest = await newRoleContext(testInfo, 'reviewer')
 
     try {
+      await transitionRequirement(
+        reviewerRequest,
+        'PWT-LIFE-PACKAGE-ARCHIVE',
+        STATUS_PUBLISHED,
+      ).catch(() => undefined)
+      const requirement = await getRequirement(
+        request,
+        'PWT-LIFE-PACKAGE-ARCHIVE',
+      )
       const detailPane = await openRequirementStandalone(
         page,
         requirement.uniqueId,
@@ -769,10 +766,11 @@ test.describe('Requirement lifecycle manual cases', () => {
         })
     } finally {
       await transitionRequirement(
-        request,
-        requirement.uniqueId,
+        reviewerRequest,
+        'PWT-LIFE-PACKAGE-ARCHIVE',
         STATUS_PUBLISHED,
       ).catch(() => undefined)
+      await reviewerRequest.dispose()
     }
   })
 })

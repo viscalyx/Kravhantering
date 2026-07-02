@@ -43,6 +43,25 @@ async function openRequirementDetail(
   throw new Error(`Requirement row ${uniqueId} did not load.`)
 }
 
+async function filterRequirementId(
+  page: Page,
+  uniqueId: string,
+  locale: 'en' | 'sv' = 'sv',
+) {
+  const filterButtonName =
+    locale === 'en' ? 'Filter by Requirement ID' : 'Filtrera efter Krav-ID'
+  const textboxName = locale === 'en' ? 'Requirement ID' : 'Krav-ID'
+
+  await page.getByRole('button', { name: filterButtonName }).click()
+  await page.getByRole('textbox', { name: textboxName }).fill(uniqueId)
+  await page.keyboard.press('Enter')
+  await expect(
+    page.getByRole('button', {
+      name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`, 'u'),
+    }),
+  ).toBeVisible()
+}
+
 async function expectRequirementDetailRoute(
   page: Page,
   path: string,
@@ -96,7 +115,7 @@ test.describe('Requirements library', () => {
     await expect(
       page.getByRole('table', { name: 'Requirements list' }),
     ).toBeVisible()
-    await expect(page.getByRole('button', { name: /^INT0001\b/ })).toBeVisible()
+    await filterRequirementId(page, 'INT0001', 'en')
 
     await page.getByRole('button', { name: 'Switch language' }).click()
     await expect(page).toHaveURL(/\/sv\/requirements$/)
@@ -122,7 +141,10 @@ test.describe('Requirements library', () => {
     )
 
     await page.getByRole('button', { name: 'Ta bort INT0001' }).click()
-    await expect(page.getByRole('button', { name: /^INT0002\b/ })).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Ta bort INT0001' }),
+    ).toHaveCount(0)
+    await filterRequirementId(page, 'INT0002')
   })
 
   test('REQ-04: sortable requirement columns update the sort direction', async ({
@@ -136,31 +158,23 @@ test.describe('Requirements library', () => {
     const descriptionSortButton = page.getByRole('button', {
       name: 'Sortera efter Kravtext',
     })
+    const getVisibleRows = () =>
+      page
+        .getByRole('table', { name: 'Lista över krav' })
+        .getByRole('row')
+        .evaluateAll(rows =>
+          rows
+            .slice(1)
+            .map(row => row.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+            .filter(Boolean),
+        )
 
     await descriptionSortButton.click()
     await expect(descriptionHeader).toHaveAttribute('aria-sort', 'ascending')
-    const ascendingRows = await page
-      .getByRole('table', { name: 'Lista över krav' })
-      .getByRole('row')
-      .evaluateAll(rows =>
-        rows
-          .slice(1)
-          .map(row => row.textContent?.replace(/\s+/g, ' ').trim() ?? '')
-          .filter(Boolean),
-      )
+    const ascendingRows = await getVisibleRows()
     await descriptionSortButton.click()
     await expect(descriptionHeader).toHaveAttribute('aria-sort', 'descending')
-    const descendingRows = await page
-      .getByRole('table', { name: 'Lista över krav' })
-      .getByRole('row')
-      .evaluateAll(rows =>
-        rows
-          .slice(1)
-          .map(row => row.textContent?.replace(/\s+/g, ' ').trim() ?? '')
-          .filter(Boolean),
-      )
-
-    expect(descendingRows).not.toEqual(ascendingRows)
+    await expect.poll(getVisibleRows).not.toEqual(ascendingRows)
   })
 
   test('REQ-09: inline detail orders text, criteria, metadata, references, and packages', async ({

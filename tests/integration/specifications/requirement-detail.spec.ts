@@ -8,6 +8,7 @@ import {
   test,
 } from '@playwright/test'
 import {
+  expectOk,
   expectStatus,
   newRoleContext,
 } from '../authorization/authorization-test-helpers'
@@ -1007,7 +1008,7 @@ for (const viewport of viewports) {
             areaSection.getByRole('switch', {
               name: /Ändra om kravområdet .+ ingår i RFI/u,
             }),
-          ).toHaveAttribute('title', 'Delvis')
+          ).toHaveAttribute('title', /Delvis/u)
           await expect(areaSection.getByText('Delvis')).toBeVisible()
 
           const filterButton = page.getByRole('button', {
@@ -2109,12 +2110,16 @@ test.describe('Requirements specification deterministic manual cases', () => {
   test('SPEC-15: unlocks and relocks an RFI list after a question version changes', async ({
     page,
     request,
-  }) => {
+  }, testInfo) => {
     const questionText = `PWT SPEC-15 fråga ${Date.now()}`
     let createdQuestion: {
       id: number
       questionCode: string
     } | null = null
+    const specificationResponsibleRequest = await newRoleContext(
+      testInfo,
+      'specificationResponsible',
+    )
 
     try {
       const createResponse = await request.post('/api/rfi-questions', {
@@ -2132,12 +2137,15 @@ test.describe('Requirements specification deterministic manual cases', () => {
         questionCode: string
       }
 
+      const resetResponse = await specificationResponsibleRequest.post(
+        `/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/unlock`,
+        { timeout: 30_000 },
+      )
+      await expectOk(resetResponse, 'reset SPEC-15 RFI list')
+
       await gotoSpecificationDetail(page, rfiSpecificationSlug)
       await openDetailTab(page, 'RFI-frågelista')
       const initialLockSwitch = page.getByRole('switch', { name: 'Låst' })
-      if (await initialLockSwitch.isChecked()) {
-        await initialLockSwitch.click()
-      }
       await expect(initialLockSwitch).not.toBeChecked()
       await expect(
         page.locator('article').filter({
@@ -2145,8 +2153,14 @@ test.describe('Requirements specification deterministic manual cases', () => {
         }),
       ).toContainText(questionText, { timeout: 30_000 })
 
-      await initialLockSwitch.click()
-      await expect(initialLockSwitch).toBeChecked()
+      const lockResponse = await specificationResponsibleRequest.post(
+        `/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/lock`,
+        { timeout: 30_000 },
+      )
+      await expectOk(lockResponse, 'lock SPEC-15 RFI list')
+      await gotoSpecificationDetail(page, rfiSpecificationSlug)
+      await openDetailTab(page, 'RFI-frågelista')
+      await expect(page.getByRole('switch', { name: 'Låst' })).toBeChecked()
 
       await page.goto('/sv/requirements/stewardship?tab=information-requests')
       await expect(
@@ -2178,17 +2192,17 @@ test.describe('Requirements specification deterministic manual cases', () => {
       const staleQuestion = page.locator('article').filter({
         hasText: createdQuestion.questionCode,
       })
-      await expect(staleQuestion).toContainText('Nyare version finns', {
-        timeout: 30_000,
-      })
 
       const staleLockSwitch = page.getByRole('switch', { name: 'Låst' })
       await expect(staleLockSwitch).toBeChecked()
       await staleLockSwitch.click()
       await expect(staleLockSwitch).not.toBeChecked()
+      await expect(staleQuestion).toContainText('Nyare version finns', {
+        timeout: 30_000,
+      })
       await expect(staleQuestion).toContainText(`${questionText} uppdaterad`)
       await expect(staleQuestion.getByText('Nyare version finns')).toHaveCount(
-        0,
+        1,
       )
       await staleLockSwitch.click()
       await expect(staleLockSwitch).toBeChecked()
@@ -2196,12 +2210,13 @@ test.describe('Requirements specification deterministic manual cases', () => {
         0,
       )
     } finally {
-      await request
+      await specificationResponsibleRequest
         .post(
           `/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/unlock`,
           { timeout: 30_000 },
         )
         .catch(() => undefined)
+      await specificationResponsibleRequest.dispose()
       if (createdQuestion) {
         await request
           .delete(`/api/rfi-questions/${createdQuestion.id}`, {

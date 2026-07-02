@@ -517,7 +517,9 @@ for (const { name, viewport } of viewportVariants) {
         const preview = (await previewResponse.json()) as {
           candidates?: Array<{
             currentDisplayValue?: string
+            key?: string
             reference?: string
+            subjectId?: string
             sourceKey?: string
           }>
           policy?: { policyKey?: string }
@@ -534,13 +536,24 @@ for (const { name, viewport } of viewportVariants) {
           'requirement_selection_answers.archived',
           'requirement_selection_questions.archived',
         ])
-        expect(JSON.stringify(preview)).toContain('PWT-ADMIN12-KUF001')
+        expect(
+          preview.candidates?.map(candidate => candidate.key).sort(),
+        ).toEqual([
+          'requirement_selection_answers.archived:910414',
+          'requirement_selection_questions.archived:910401',
+        ])
         expect(JSON.stringify(preview)).toContain(
-          'PWT ADMIN-12 svarsalternativ',
+          'RETENTION-SEED arkiverad kravurvalsfråga utan historik',
         )
-        expect(JSON.stringify(preview)).not.toContain(
-          'PWT ADMIN-12 historiskt sparat svar',
+        expect(JSON.stringify(preview)).toContain(
+          'RETENTION-SEED arkiverat kravurvalssvar utan historik',
         )
+        expect(
+          preview.candidates?.map(candidate => candidate.subjectId),
+        ).not.toContain('910403')
+        expect(
+          preview.candidates?.map(candidate => candidate.subjectId),
+        ).not.toContain('910416')
 
         await page.goto('/sv/admin?tab=archiving')
         await page.getByLabel('Gallringspolicy').selectOption(String(policy.id))
@@ -549,13 +562,20 @@ for (const { name, viewport } of viewportVariants) {
           .click()
 
         await expect(page.getByText('2 gallringskandidat(er)')).toHaveCount(1)
-        await expect(page.getByText('PWT-ADMIN12-KUF001')).toHaveCount(1)
         await expect(
-          page.getByText('PWT ADMIN-12 svarsalternativ'),
-        ).toHaveCount(1)
+          page.getByRole('cell', {
+            exact: true,
+            name: 'RETENTION-SEED arkiverad kravurvalsfråga utan historik',
+          }),
+        ).toBeVisible()
         await expect(
-          page.getByText('PWT ADMIN-12 historiskt sparat svar'),
-        ).toHaveCount(0)
+          page.getByRole('cell', {
+            exact: true,
+            name: 'RETENTION-SEED arkiverat kravurvalssvar utan historik',
+          }),
+        ).toBeVisible()
+        await expect(page.getByText('910403')).toHaveCount(0)
+        await expect(page.getByText('910416')).toHaveCount(0)
       })
 
       test('ADMIN-03: browser back returns to the taxonomy tab after opening a taxonomy page', async ({

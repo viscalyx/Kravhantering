@@ -167,7 +167,7 @@ test.describe('Admin statuses and workflows', () => {
       throw new Error('No seeded priority level was found.')
     }
 
-    const temporaryDescription = `${priorityLevel.descriptionSv} Playwright ADMIN-02 taxonomy`
+    const temporaryDescription = `Playwright ADMIN-02 taxonomy ${Date.now()}`
 
     try {
       const form = await openPriorityLevelForm(page, priorityLevel)

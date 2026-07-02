@@ -307,7 +307,7 @@ async function withPlaywrightSqlServerDataSource<T>(
   }
 }
 
-async function seedAuthorizationResponsibilityPeople() {
+export async function seedAuthorizationResponsibilityPeople() {
   await withPlaywrightSqlServerDataSource(async dataSource => {
     for (const person of Object.values(AUTHORIZATION_RESPONSIBILITY_PEOPLE)) {
       await upsertRequirementResponsibilityPerson(dataSource, person)

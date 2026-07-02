@@ -1,4 +1,5 @@
 import { expect, type Locator, test } from '@playwright/test'
+import { seedAuthorizationResponsibilityPeople } from '../authorization/authorization-test-helpers'
 
 const viewports = [
   { name: 'mobile', width: 375, height: 812 },
@@ -185,8 +186,14 @@ for (const viewport of viewports) {
       })
 
       await test.step('create and persist a disposable kravunderlag', async () => {
-        const createdSlug = `PWT-SPEC-02-${viewport.name.toUpperCase()}-${Date.now()}`
-        const createdName = `PWT SPEC-02 skapat kravunderlag ${viewport.name}`
+        await seedAuthorizationResponsibilityPeople()
+        const randomSuffix = Math.random()
+          .toString(36)
+          .slice(2, 8)
+          .toUpperCase()
+        const viewportPrefix = viewport.name === 'mobile' ? 'M' : 'D'
+        const createdSlug = `PWT-SPEC02-${viewportPrefix}-${randomSuffix}`
+        const createdName = `PWT SPEC-02 skapat kravunderlag ${viewport.name} ${randomSuffix}`
 
         try {
           await createButton.click()
@@ -197,12 +204,14 @@ for (const viewport of viewports) {
           const createForm = createDialog.locator(
             'form#requirement-specification-form',
           )
-          await createForm
-            .getByRole('textbox', { name: 'Namn *' })
-            .fill(createdName)
-          await createForm
-            .getByRole('textbox', { name: /Kravunderlag-ID/u })
-            .fill(createdSlug)
+          const nameInput = createForm.getByRole('textbox', { name: 'Namn *' })
+          const slugInput = createForm.getByRole('textbox', {
+            name: /Kravunderlag-ID/u,
+          })
+          await nameInput.fill(createdName)
+          await nameInput.blur()
+          await slugInput.fill(createdSlug)
+          await expect(slugInput).toHaveValue(createdSlug)
           await createForm
             .getByRole('textbox', { name: 'Underlagssyfte' })
             .fill('Playwright SPEC-02 verifierar komplett create-flöde.')
@@ -218,7 +227,18 @@ for (const viewport of viewports) {
             name: new RegExp(createdName),
           })
           await expect(createdRow).toBeVisible({ timeout: 30_000 })
-          await expect(createdRow).toContainText(createdSlug)
+          await expect(createdRow).toContainText('Ada Admin')
+          await expect(createdRow).toContainText('Upphandling')
+          const createdResponse = await request.get(
+            `/api/requirements-specifications/${createdSlug}`,
+          )
+          expect(createdResponse.ok()).toBe(true)
+          expect(await createdResponse.json()).toMatchObject({
+            name: createdName,
+            responsibleHsaId: 'SE5560000001-admin1',
+            specificationLifecycleStatusId: 1,
+            uniqueId: createdSlug,
+          })
         } finally {
           await request
             .delete(`/api/requirements-specifications/${createdSlug}`)

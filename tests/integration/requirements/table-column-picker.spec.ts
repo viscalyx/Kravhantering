@@ -2,6 +2,14 @@ import { expect, type Page, test } from '@playwright/test'
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v4'
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 const viewportVariants = [
   {
     name: 'mobile',
@@ -27,10 +35,48 @@ async function expectStoredVersionColumn(page: Page, visible: boolean) {
     .toBe(visible)
 }
 
+async function openRequirementInlineDetail(page: Page, uniqueId = 'INT0001') {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.goto(
+      `/sv/requirements?selected=${encodeURIComponent(uniqueId)}`,
+      { timeout: 30_000, waitUntil: 'domcontentloaded' },
+    )
+
+    try {
+      const rowButton = page
+        .getByRole('button', {
+          name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`, 'u'),
+        })
+        .first()
+      await expect(rowButton).toBeVisible({ timeout: 30_000 })
+
+      const detailPaneId = await rowButton.getAttribute('aria-controls')
+      if (!detailPaneId) {
+        throw new Error(
+          `Requirement row ${uniqueId} has no detail pane target.`,
+        )
+      }
+
+      await expect(page.locator(`#${detailPaneId}`)).toBeVisible({
+        timeout: 30_000,
+      })
+      return
+    } catch (error) {
+      if (attempt === 2) throw error
+      await delay(750 * (attempt + 1))
+    }
+  }
+
+  throw new Error(`Requirement row ${uniqueId} did not load.`)
+}
+
 test.describe('Requirements table column picker', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
+      const clearMarker = '__playwright_requirements_columns_cleared__'
+      if (globalThis.sessionStorage.getItem(clearMarker) === '1') return
       globalThis.localStorage.clear()
+      globalThis.sessionStorage.setItem(clearMarker, '1')
     })
   })
 
@@ -175,12 +221,7 @@ test.describe('Requirements table column picker', () => {
       test('REQ-08: keeps the floating rail fixed and the header sticky during vertical scroll', async ({
         page,
       }) => {
-        await page.goto('/sv/requirements')
-
-        await page.locator('tbody > tr').first().waitFor()
-        await page
-          .getByRole('button', { exact: true, name: 'INT0001' })
-          .click({ force: true })
+        await openRequirementInlineDetail(page)
 
         const columnsTrigger = page.locator(
           '[data-column-picker-trigger="true"]',
