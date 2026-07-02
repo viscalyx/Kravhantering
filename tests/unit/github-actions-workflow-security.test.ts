@@ -180,10 +180,18 @@ describe('GitHub Actions workflow security', () => {
     )
     expect(devSmokeCommand).not.toMatch(/npm run test:integration\s*$/mu)
     expect(devSmokeCommand).not.toContain('npm run test:integration:prodlike')
+    expect(
+      devSmoke?.steps?.some(
+        step => step.run === 'npm run test:integration:chunks:check',
+      ),
+    ).toBe(false)
 
     expect(prodlikePruned?.name).toBe(
       'Canonical Playwright Gate (Prod-like, Pruned Dependencies)',
     )
+    expect(
+      stepRunText(prodlikePruned, 'Check integration chunk manifest'),
+    ).toBe('npm run test:integration:chunks:check')
     expect(
       stepRunText(prodlikePruned, 'Start pruned prod-like server'),
     ).toContain('npm run start:prodlike-pruned')
