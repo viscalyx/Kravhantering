@@ -59,7 +59,7 @@ async function filterRequirementId(
     page.getByRole('button', {
       name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`, 'u'),
     }),
-  ).toBeVisible()
+  ).toHaveCount(1)
 }
 
 async function expectRequirementDetailRoute(

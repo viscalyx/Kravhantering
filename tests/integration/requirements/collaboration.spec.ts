@@ -6,6 +6,10 @@ import {
   test,
 } from '@playwright/test'
 import { newRoleContext } from '../authorization/authorization-test-helpers'
+import {
+  getRequirementRowButton,
+  resolveRequirementDetailPane,
+} from './requirement-detail-test-helpers'
 
 interface SuggestionData {
   content: string
@@ -21,10 +25,6 @@ interface SuggestionData {
 }
 
 const SELECTED_INT0001_VERSION_ID = 1
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 
 function suggestion(
   id: number,
@@ -72,17 +72,14 @@ async function openRequirementDetail(
 ): Promise<Locator> {
   await page.goto(`/sv/requirements?selected=${encodeURIComponent(uniqueId)}`)
 
-  const rowButton = page.getByRole('button', {
-    name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`),
-  })
+  const rowButton = getRequirementRowButton(page, uniqueId)
   await expect(rowButton).toHaveCount(1)
 
-  const detailPaneId = await rowButton.getAttribute('aria-controls')
-  if (!detailPaneId) {
-    throw new Error(`Requirement row ${uniqueId} has no detail pane target.`)
-  }
-
-  const detailPane = page.locator(`#${detailPaneId}`)
+  const detailPane = await resolveRequirementDetailPane(
+    page,
+    rowButton,
+    uniqueId,
+  )
   await expect(detailPane).toHaveCount(1)
   return detailPane
 }

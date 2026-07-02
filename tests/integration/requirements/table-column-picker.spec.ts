@@ -1,14 +1,10 @@
 import { expect, type Page, test } from '@playwright/test'
+import {
+  getRequirementRowButton,
+  resolveRequirementDetailPane,
+} from './requirement-detail-test-helpers'
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v4'
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
 
 const viewportVariants = [
   {
@@ -36,38 +32,20 @@ async function expectStoredVersionColumn(page: Page, visible: boolean) {
 }
 
 async function openRequirementInlineDetail(page: Page, uniqueId = 'INT0001') {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page.goto(
-      `/sv/requirements?selected=${encodeURIComponent(uniqueId)}`,
-      { timeout: 30_000, waitUntil: 'domcontentloaded' },
-    )
+  await page.goto(`/sv/requirements?selected=${encodeURIComponent(uniqueId)}`, {
+    timeout: 30_000,
+    waitUntil: 'domcontentloaded',
+  })
 
-    try {
-      const rowButton = page
-        .getByRole('button', {
-          name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`, 'u'),
-        })
-        .first()
-      await expect(rowButton).toBeVisible({ timeout: 30_000 })
+  const rowButton = getRequirementRowButton(page, uniqueId)
+  await expect(rowButton).toHaveCount(1, { timeout: 30_000 })
 
-      const detailPaneId = await rowButton.getAttribute('aria-controls')
-      if (!detailPaneId) {
-        throw new Error(
-          `Requirement row ${uniqueId} has no detail pane target.`,
-        )
-      }
-
-      await expect(page.locator(`#${detailPaneId}`)).toBeVisible({
-        timeout: 30_000,
-      })
-      return
-    } catch (error) {
-      if (attempt === 2) throw error
-      await delay(750 * (attempt + 1))
-    }
-  }
-
-  throw new Error(`Requirement row ${uniqueId} did not load.`)
+  const detailPane = await resolveRequirementDetailPane(
+    page,
+    rowButton,
+    uniqueId,
+  )
+  await expect(detailPane).toHaveCount(1, { timeout: 30_000 })
 }
 
 test.describe('Requirements table column picker', () => {
