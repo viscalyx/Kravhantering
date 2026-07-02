@@ -22,6 +22,22 @@ const rfiPrimaryQuestionId = 920001
 const rfiSecondaryQuestionId = 920002
 const diagnosticBodyPreviewLength = 2_000
 
+type Spec15CreatedQuestion = {
+  id: number
+  questionCode: string
+} | null
+
+type Spec15RfiMutationDiagnosticOptions = {
+  createdQuestion?: Spec15CreatedQuestion
+  label: string
+  operation: 'lock' | 'unlock'
+  questionText?: string
+  request: APIRequestContext
+  slug: string
+  specificationId: number
+  testInfo: TestInfo
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -94,46 +110,85 @@ async function summarizeGetDiagnostic(
   try {
     const response = await request.get(path, { timeout: 30_000 })
     const { summary } = await summarizeResponse(response)
-    return summary
+    return { method: 'GET', path, ...summary }
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : String(error),
+      method: 'GET',
       path,
     }
   }
 }
 
-async function expectSpec15RfiMutationOk(
+async function attachSpec15RfiMutationDiagnostics(
   response: APIResponse,
-  options: {
-    label: string
-    request: APIRequestContext
-    slug: string
-    testInfo: TestInfo
-  },
+  options: Spec15RfiMutationDiagnosticOptions,
 ) {
-  if (response.ok()) return
-
   const failed = await summarizeResponse(response)
+  const mutationPaths = {
+    byId: `/api/requirements-specifications/${options.specificationId}/rfi-list/${options.operation}`,
+    bySlug: `/api/requirements-specifications/${options.slug}/rfi-list/${options.operation}`,
+  }
   const diagnostics = {
+    createdQuestion: options.createdQuestion ?? null,
     environment: {
       baseURL: options.testInfo.project.use.baseURL ?? null,
+      ci: process.env.CI ?? null,
+      nodeEnv: process.env.NODE_ENV ?? null,
+      playwrightBlobOutputDir: process.env.PLAYWRIGHT_BLOB_OUTPUT_DIR ?? null,
+      playwrightBlobOutputName: process.env.PLAYWRIGHT_BLOB_OUTPUT_NAME ?? null,
       playwrightBaseUrl: process.env.PLAYWRIGHT_BASE_URL ?? null,
       playwrightSkipWebserver: process.env.PLAYWRIGHT_SKIP_WEBSERVER ?? null,
     },
     failedResponse: failed.summary,
     followUpGets: {
       authMe: await summarizeGetDiagnostic(options.request, '/api/auth/me'),
-      rfiList: await summarizeGetDiagnostic(
+      rfiListById: await summarizeGetDiagnostic(
+        options.request,
+        `/api/requirements-specifications/${options.specificationId}/rfi-list`,
+      ),
+      rfiListBySlug: await summarizeGetDiagnostic(
         options.request,
         `/api/requirements-specifications/${options.slug}/rfi-list`,
       ),
-      specification: await summarizeGetDiagnostic(
+      specificationById: await summarizeGetDiagnostic(
+        options.request,
+        `/api/requirements-specifications/${options.specificationId}`,
+      ),
+      specificationBySlug: await summarizeGetDiagnostic(
         options.request,
         `/api/requirements-specifications/${options.slug}`,
       ),
     },
     label: options.label,
+    mutation: {
+      expectedSpecification: {
+        id: options.specificationId,
+        slug: options.slug,
+      },
+      operation: options.operation,
+      paths: mutationPaths,
+    },
+    questionText: options.questionText ?? null,
+    routeProbes: {
+      mutationByIdGet: await summarizeGetDiagnostic(
+        options.request,
+        mutationPaths.byId,
+      ),
+      mutationBySlugGet: await summarizeGetDiagnostic(
+        options.request,
+        mutationPaths.bySlug,
+      ),
+    },
+    test: {
+      parallelIndex: options.testInfo.parallelIndex,
+      projectName: options.testInfo.project.name,
+      repeatEachIndex: options.testInfo.repeatEachIndex,
+      retry: options.testInfo.retry,
+      title: options.testInfo.title,
+      titlePath: options.testInfo.titlePath,
+      workerIndex: options.testInfo.workerIndex,
+    },
     timestamp: new Date().toISOString(),
   }
 
@@ -146,8 +201,21 @@ async function expectSpec15RfiMutationOk(
     contentType: failed.summary.contentType ?? 'text/plain',
   })
 
+  return failed.summary
+}
+
+async function expectSpec15RfiMutationOk(
+  response: APIResponse,
+  options: Spec15RfiMutationDiagnosticOptions,
+) {
+  if (response.ok()) return
+
+  const failedSummary = await attachSpec15RfiMutationDiagnostics(
+    response,
+    options,
+  )
   throw new Error(
-    `${options.label} returned ${failed.summary.status} ${failed.summary.statusText}; diagnostics attached`,
+    `${options.label} returned ${failedSummary.status} ${failedSummary.statusText}; diagnostics attached`,
   )
 }
 
@@ -2246,9 +2314,13 @@ test.describe('Requirements specification deterministic manual cases', () => {
         { timeout: 30_000 },
       )
       await expectSpec15RfiMutationOk(resetResponse, {
+        createdQuestion,
         label: 'reset SPEC-15 RFI list',
+        operation: 'unlock',
+        questionText,
         request: specificationResponsibleRequest,
         slug: rfiSpecificationSlug,
+        specificationId: rfiSpecificationId,
         testInfo,
       })
 
@@ -2267,9 +2339,13 @@ test.describe('Requirements specification deterministic manual cases', () => {
         { timeout: 30_000 },
       )
       await expectSpec15RfiMutationOk(lockResponse, {
+        createdQuestion,
         label: 'lock SPEC-15 RFI list',
+        operation: 'lock',
+        questionText,
         request: specificationResponsibleRequest,
         slug: rfiSpecificationSlug,
+        specificationId: rfiSpecificationId,
         testInfo,
       })
       await gotoSpecificationDetail(page, rfiSpecificationSlug)
@@ -2324,12 +2400,40 @@ test.describe('Requirements specification deterministic manual cases', () => {
         0,
       )
     } finally {
-      await specificationResponsibleRequest
+      const cleanupResponse = await specificationResponsibleRequest
         .post(
           `/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/unlock`,
           { timeout: 30_000 },
         )
-        .catch(() => undefined)
+        .catch(async error => {
+          await testInfo.attach('cleanup SPEC-15 RFI list request error', {
+            body: JSON.stringify(
+              {
+                createdQuestion,
+                error: error instanceof Error ? error.message : String(error),
+                label: 'cleanup SPEC-15 RFI list',
+                questionText,
+                timestamp: new Date().toISOString(),
+              },
+              null,
+              2,
+            ),
+            contentType: 'application/json',
+          })
+          return null
+        })
+      if (cleanupResponse && !cleanupResponse.ok()) {
+        await attachSpec15RfiMutationDiagnostics(cleanupResponse, {
+          createdQuestion,
+          label: 'cleanup SPEC-15 RFI list',
+          operation: 'unlock',
+          questionText,
+          request: specificationResponsibleRequest,
+          slug: rfiSpecificationSlug,
+          specificationId: rfiSpecificationId,
+          testInfo,
+        })
+      }
       await specificationResponsibleRequest.dispose()
       if (createdQuestion) {
         await request
