@@ -7,6 +7,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
+import { delay, escapeRegExp } from '@/tests/helpers/common'
 import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 import {
   newRoleContext,
@@ -47,14 +48,6 @@ interface OkResponse {
   ok(): boolean
   status(): number
   text(): Promise<string>
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function latestVersion(detail: RequirementDetail) {

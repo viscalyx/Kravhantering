@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { escapeRegExp } from '@/tests/helpers/common'
 import {
   type AuthorizationFixture,
   createAuthorizationFixture,
@@ -12,10 +13,6 @@ import {
 } from './authorization-test-helpers'
 
 let fixture: AuthorizationFixture
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 
 test.describe.configure({ mode: 'serial' })
 test.use({

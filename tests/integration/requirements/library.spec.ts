@@ -1,12 +1,5 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
+import { delay, escapeRegExp } from '@/tests/helpers/common'
 
 async function openRequirementDetail(
   page: Page,

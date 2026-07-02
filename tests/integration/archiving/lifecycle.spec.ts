@@ -7,6 +7,7 @@ import {
   test,
 } from '@playwright/test'
 import type { DataSource } from 'typeorm'
+import { delay, escapeRegExp } from '@/tests/helpers/common'
 import { sqlServerEntities } from '../../../lib/typeorm/entities'
 import {
   createSqlServerDataSource,
@@ -41,10 +42,6 @@ const archiveFixtures = {
 
 let playwrightSqlServerDataSource: Promise<DataSource> | null = null
 
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
 function isTransientSqlError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
   return (
@@ -76,10 +73,6 @@ async function withTransientSqlRetry<T>(
   throw lastError instanceof Error
     ? lastError
     : new Error(`${label} failed after retries`)
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 async function ensurePublishedRequirement(

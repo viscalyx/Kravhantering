@@ -8,6 +8,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
+import { delay } from '@/tests/helpers/common'
 import {
   expectStatus,
   newRoleContext,
@@ -36,10 +37,6 @@ type Spec15RfiMutationDiagnosticOptions = {
   slug: string
   specificationId: number
   testInfo: TestInfo
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 async function requestWithRetry(

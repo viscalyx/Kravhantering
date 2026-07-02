@@ -1,14 +1,11 @@
 import { expect, type Locator, test } from '@playwright/test'
+import { escapeRegExp } from '@/tests/helpers/common'
 import { seedAuthorizationResponsibilityPeople } from '../authorization/authorization-test-helpers'
 
 const viewports = [
   { name: 'mobile', width: 375, height: 812 },
   { name: 'desktop', width: 1280, height: 720 },
 ]
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 
 function splitHsaId(hsaId: string): { prefix: string; suffix: string } {
   const separatorIndex = hsaId.indexOf('-')

@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { expect, type Route, test } from '@playwright/test'
+import { escapeRegExp } from '@/tests/helpers/common'
 
 const importedDescription =
   'Playwright importerat krav ska kunna granskas och importeras.'
@@ -36,10 +37,6 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
     json: body,
     status,
   })
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 test.describe('Requirements import', () => {

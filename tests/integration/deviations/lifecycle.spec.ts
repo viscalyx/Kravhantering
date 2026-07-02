@@ -7,6 +7,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
+import { delay, escapeRegExp } from '@/tests/helpers/common'
 import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 import {
   newRoleContext,
@@ -54,14 +55,6 @@ const deviationCases = [
     radioLabel: 'Avslå',
   },
 ] as const
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
 
 async function listDeviations(
   request: APIRequestContext,

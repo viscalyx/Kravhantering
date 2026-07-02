@@ -1,8 +1,7 @@
 import type { Locator, Page } from '@playwright/test'
+import { escapeRegExp } from '@/tests/helpers/common'
 
-export function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
+export { escapeRegExp }
 
 export function getRequirementRowButton(page: Page, uniqueId: string): Locator {
   return page.getByRole('button', {

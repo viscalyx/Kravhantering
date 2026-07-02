@@ -1,3 +1,5 @@
+import { delay } from '@/tests/helpers/common'
+
 export interface RetryableApiResponse {
   ok(): boolean
   status(): number
@@ -15,10 +17,6 @@ const DEFAULT_RETRY_ATTEMPTS = 4
 
 function defaultRetryDelayMs(attemptIndex: number) {
   return 750 * (attemptIndex + 1)
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 async function responseFailure(response: RetryableApiResponse) {
