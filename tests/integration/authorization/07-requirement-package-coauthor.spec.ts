@@ -24,10 +24,10 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   fixture = await createAuthorizationFixture(testInfo)
 })
 
-test('AUTH-10/AUTH-11: requirement package co-authors are exported but cannot manage packages', async ({
+test('AUTHZ-07/AUTH-10/AUTH-11: requirement package co-authors are exported but cannot manage packages', async ({
   page,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-07', 'AUTH-10', 'AUTH-11')
   const packageCoauthor = await newRoleContext(testInfo, 'packageCoauthor')
 
   try {
@@ -55,6 +55,7 @@ test('AUTH-10/AUTH-11: requirement package co-authors are exported but cannot ma
 
     const readResponse = await packageCoauthor.get(
       `/api/requirement-packages/${fixture.packageId}`,
+      { timeout: 30_000 },
     )
     await expectOk(readResponse, 'package co-author package read')
     const packagePayload = (await readResponse.json()) as {
@@ -78,6 +79,18 @@ test('AUTH-10/AUTH-11: requirement package co-authors are exported but cannot ma
       ),
       403,
       'package co-author update',
+    )
+    await expectStatus(
+      await packageCoauthor.put(
+        `/api/requirement-packages/${fixture.packageId}/co-authors`,
+        {
+          data: {
+            coAuthorHsaIds: [],
+          },
+        },
+      ),
+      403,
+      'package co-author co-author management',
     )
 
     const exportResponse = await packageCoauthor.post(

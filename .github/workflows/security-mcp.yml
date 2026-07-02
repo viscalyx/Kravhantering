@@ -98,7 +98,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "::add-mask::${MCP_BEARER_TOKEN}"
-          npm run test:integration:prodlike -- tests/integration/mcp-seeded-scan.spec.ts
+          npm run test:integration:prodlike -- tests/integration/mcp/seeded-scan.spec.ts
 
       - name: Print MCP seeded scan summary
         if: always()

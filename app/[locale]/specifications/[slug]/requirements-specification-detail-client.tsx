@@ -1852,6 +1852,7 @@ export default function KravunderlagDetailClient({
     showCreateLocalRequirementModal && typeof window !== 'undefined'
       ? createPortal(
           <div
+            aria-labelledby="create-local-requirement-title"
             aria-modal="true"
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             onKeyDown={e => {
@@ -1873,7 +1874,9 @@ export default function KravunderlagDetailClient({
                     {t('itemsInSpecification')}
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                    {t('newLocalRequirement')}
+                    <span id="create-local-requirement-title">
+                      {t('newLocalRequirement')}
+                    </span>
                   </h2>
                 </div>
                 <button
@@ -1910,6 +1913,7 @@ export default function KravunderlagDetailClient({
           <AnimatePresence>
             {needsReferenceForm ? (
               <motion.div
+                aria-labelledby="needs-reference-form-title"
                 aria-modal="true"
                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
                 key="needs-reference-form-backdrop"
@@ -1933,9 +1937,11 @@ export default function KravunderlagDetailClient({
                         {t('needsReferences')}
                       </p>
                       <h2 className="mt-1 text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                        {needsReferenceForm.id == null
-                          ? t('newNeedsReference')
-                          : t('editNeedsReference')}
+                        <span id="needs-reference-form-title">
+                          {needsReferenceForm.id == null
+                            ? t('newNeedsReference')
+                            : t('editNeedsReference')}
+                        </span>
                       </h2>
                     </div>
                     <button
@@ -2883,6 +2889,11 @@ export default function KravunderlagDetailClient({
                               fetchNeedsReferences(),
                             ])
                           }}
+                          permissions={{
+                            canEditContent,
+                            canReviewDecisions:
+                              permissions.canReviewDecisions === true,
+                          }}
                           specificationSlug={specificationSlug}
                           usageStatus={{
                             specificationItemStatusColor:
@@ -2905,6 +2916,11 @@ export default function KravunderlagDetailClient({
                           }}
                           requirementId={id}
                           specificationItemId={item.specificationItemId}
+                          specificationPermissions={{
+                            canEditContent,
+                            canReviewDecisions:
+                              permissions.canReviewDecisions === true,
+                          }}
                           specificationSlug={specificationSlug}
                         />
                       ) : (

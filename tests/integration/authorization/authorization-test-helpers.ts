@@ -16,6 +16,11 @@ import {
   getSqlServerDatabaseUrl,
   type SqlServerRuntimeEnv,
 } from '@/lib/typeorm/sqlserver-config'
+import {
+  expectApiResponseOk,
+  expectApiResponseStatus,
+} from '../api-response-assertions'
+import { resolveIntegrationBaseUrl } from '../base-url'
 
 export const ROLE_STORAGE_STATE = {
   admin: 'test-results/auth/admin.json',
@@ -114,6 +119,27 @@ const MANUAL_CASE_LINKS = {
     'docs/governance/manuella-testfall.md#auth-10-behorighetsmatris-for-ansvarstilldelningar',
   'AUTH-11':
     'docs/governance/manuella-testfall.md#auth-11-playwrightfaser-for-behorighetsroller',
+  'AUTHZ-00':
+    'docs/governance/manuella-testfall.md#authz-00-fas-0-testdata-och-identiteter',
+  'AUTHZ-01':
+    'docs/governance/manuella-testfall.md#authz-01-ingen-global-roll-och-ingen-ansvarstilldelning',
+  'AUTHZ-02': 'docs/governance/manuella-testfall.md#authz-02-kravomradesagare',
+  'AUTHZ-03':
+    'docs/governance/manuella-testfall.md#authz-03-kravomradesmedforfattare',
+  'AUTHZ-04':
+    'docs/governance/manuella-testfall.md#authz-04-kravunderlagsansvarig',
+  'AUTHZ-05':
+    'docs/governance/manuella-testfall.md#authz-05-kravunderlagsmedforfattare',
+  'AUTHZ-06':
+    'docs/governance/manuella-testfall.md#authz-06-kravpaketsansvarig',
+  'AUTHZ-07':
+    'docs/governance/manuella-testfall.md#authz-07-kravpaketsmedforfattare',
+  'AUTHZ-08': 'docs/governance/manuella-testfall.md#authz-08-admin',
+  'AUTHZ-09': 'docs/governance/manuella-testfall.md#authz-09-reviewer',
+  'AUTHZ-10':
+    'docs/governance/manuella-testfall.md#authz-10-dataskyddsansvarig',
+  'ADMIN-10':
+    'docs/governance/manuella-testfall.md#admin-10-arkiveringsgallring-kraver-dataskyddsroll',
   'ADMIN-13':
     'docs/governance/manuella-testfall.md#admin-13-byte-av-kravomradesagare-anvander-hsa-id',
   'LIFE-11':
@@ -121,7 +147,9 @@ const MANUAL_CASE_LINKS = {
   'REQ-10':
     'docs/governance/manuella-testfall.md#req-10-rapport-fran-kravlistan-fungerar',
   'SPEC-10':
-    'docs/governance/manuella-testfall.md#spec-10-generera-kravunderlagsrapport',
+    'docs/governance/manuella-testfall.md#spec-10-generera-upphandlingsrapport-och-anbuds-csv',
+  'SPEC-10d':
+    'docs/governance/manuella-testfall.md#spec-10d-kravunderlagsrapporter-kraver-lasbehorighet',
 } as const
 
 export type ManualCaseId = keyof typeof MANUAL_CASE_LINKS
@@ -216,11 +244,7 @@ export function referenceManualCases(
 }
 
 function baseUrlFor(testInfo: TestInfo): string {
-  return String(
-    testInfo.project.use.baseURL ??
-      process.env.PLAYWRIGHT_BASE_URL ??
-      'http://localhost:3000',
-  ).replace(/\/$/, '')
+  return resolveIntegrationBaseUrl(testInfo, { stripTrailingSlash: true })
 }
 
 function originFor(baseUrl: string): string {
@@ -284,7 +308,7 @@ async function withPlaywrightSqlServerDataSource<T>(
   }
 }
 
-async function seedAuthorizationResponsibilityPeople() {
+export async function seedAuthorizationResponsibilityPeople() {
   await withPlaywrightSqlServerDataSource(async dataSource => {
     for (const person of Object.values(AUTHORIZATION_RESPONSIBILITY_PEOPLE)) {
       await upsertRequirementResponsibilityPerson(dataSource, person)
@@ -340,23 +364,15 @@ export async function expectStatus(
   response: APIResponse,
   status: number,
   label: string,
-): Promise<void> {
-  if (response.status() === status) return
-
-  throw new Error(
-    `${label} returned ${response.status()} instead of ${status}: ${await response.text()}`,
-  )
+): Promise<APIResponse> {
+  return expectApiResponseStatus(response, status, label)
 }
 
 export async function expectOk(
   response: APIResponse,
   label: string,
-): Promise<void> {
-  if (response.ok()) return
-
-  throw new Error(
-    `${label} returned ${response.status()}: ${await response.text()}`,
-  )
+): Promise<APIResponse> {
+  return expectApiResponseOk(response, label)
 }
 
 async function verifyResponsibilityPerson(

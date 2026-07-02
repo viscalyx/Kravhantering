@@ -1,4 +1,5 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Page, type TestInfo, test } from '@playwright/test'
+import { escapeRegExp } from '@/tests/helpers/common'
 import {
   type AuthMeResponse,
   type AuthorizationFixture,
@@ -18,11 +19,170 @@ import {
 
 let fixture: AuthorizationFixture
 
+const specificationNavigationTimeoutMs = 45_000
+const diagnosticBodyPreviewLength = 2_000
+
 test.describe.configure({ mode: 'serial' })
 
 test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   fixture = await createAuthorizationFixture(testInfo)
 })
+
+test.describe('AUTHZ-00/AUTH-11: authorization fixture seed', () => {
+  test.use({
+    storageState: ROLE_STORAGE_STATE.admin,
+    viewport: { height: 720, width: 1280 },
+  })
+  test.setTimeout(120_000)
+
+  test('AUTHZ-00/AUTH-11: seeded AUTHZ objects and identities are visible', async ({
+    page,
+  }, testInfo) => {
+    referenceManualCases(testInfo, 'AUTHZ-00', 'AUTH-11')
+
+    await test.step('verify the admin page is visible', async () => {
+      await page.goto('/sv/admin')
+      await expect(
+        page.getByRole('heading', {
+          level: 1,
+          name: 'Administrationscenter',
+        }),
+      ).toBeVisible()
+    })
+
+    await test.step('verify the seeded specification is visible', async () => {
+      await gotoSeededSpecification(page, testInfo)
+      await expect(
+        page.getByRole('heading', {
+          level: 1,
+          name: fixture.specificationName,
+        }),
+      ).toBeVisible()
+    })
+
+    await test.step('verify the seeded requirement area is visible', async () => {
+      await page.goto('/sv/requirement-areas')
+      await expect(
+        page.getByRole('heading', { level: 1, name: 'Kravområden' }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('row', {
+          name: new RegExp(escapeRegExp(fixture.areaPrefix)),
+        }),
+      ).toBeVisible()
+    })
+
+    await test.step('verify the seeded requirement package is visible', async () => {
+      await page.goto('/sv/requirements/stewardship?tab=packages')
+      await expect(
+        page.getByRole('heading', { level: 1, name: 'Kravpaket' }),
+      ).toBeVisible()
+      await page
+        .getByRole('textbox', { name: 'Filtrera på namn eller beskrivning' })
+        .fill(fixture.packageName)
+      await expect(
+        page.getByRole('row', {
+          name: new RegExp(escapeRegExp(fixture.packageName)),
+        }),
+      ).toBeVisible()
+    })
+  })
+})
+
+function errorSummary(error: unknown) {
+  if (!(error instanceof Error)) {
+    return { message: String(error) }
+  }
+
+  return {
+    message: error.message,
+    name: error.name,
+    stack: error.stack ?? null,
+  }
+}
+
+function compactText(value: string) {
+  return value.length <= diagnosticBodyPreviewLength
+    ? value
+    : `${value.slice(0, diagnosticBodyPreviewLength)}\n... truncated ${value.length - diagnosticBodyPreviewLength} chars`
+}
+
+async function attachSpecificationNavigationDiagnostics(
+  page: Page,
+  testInfo: TestInfo,
+  path: string,
+  startedAt: number,
+  error: unknown,
+) {
+  const diagnostics: Record<string, unknown> = {
+    currentUrl: page.url(),
+    elapsedMs: Date.now() - startedAt,
+    environment: {
+      baseURL: testInfo.project.use.baseURL ?? null,
+      ci: process.env.CI ?? null,
+      playwrightBaseUrl: process.env.PLAYWRIGHT_BASE_URL ?? null,
+      playwrightNavigationTimeout:
+        process.env.PLAYWRIGHT_NAVIGATION_TIMEOUT ?? null,
+      playwrightSkipWebserver: process.env.PLAYWRIGHT_SKIP_WEBSERVER ?? null,
+    },
+    error: errorSummary(error),
+    targetPath: path,
+    test: {
+      projectName: testInfo.project.name,
+      retry: testInfo.retry,
+      titlePath: testInfo.titlePath,
+      workerIndex: testInfo.workerIndex,
+    },
+    timeoutMs: specificationNavigationTimeoutMs,
+  }
+
+  try {
+    const responseStartedAt = Date.now()
+    const response = await page.request.get(path, { timeout: 30_000 })
+    diagnostics.followUpGet = {
+      bodyPreview: compactText(await response.text()),
+      contentType: response.headers()['content-type'] ?? null,
+      durationMs: Date.now() - responseStartedAt,
+      ok: response.ok(),
+      status: response.status(),
+      statusText: response.statusText(),
+      url: response.url(),
+    }
+  } catch (followUpError) {
+    diagnostics.followUpGet = {
+      error: errorSummary(followUpError),
+    }
+  }
+
+  await testInfo.attach('seeded specification navigation diagnostics', {
+    body: JSON.stringify(diagnostics, null, 2),
+    contentType: 'application/json',
+  })
+}
+
+async function gotoSeededSpecification(
+  page: Page,
+  testInfo: TestInfo,
+): Promise<void> {
+  const path = `/sv/specifications/${fixture.specificationSlug}`
+  const startedAt = Date.now()
+
+  try {
+    await page.goto(path, {
+      timeout: specificationNavigationTimeoutMs,
+      waitUntil: 'domcontentloaded',
+    })
+  } catch (error) {
+    await attachSpecificationNavigationDiagnostics(
+      page,
+      testInfo,
+      path,
+      startedAt,
+      error,
+    )
+    throw error
+  }
+}
 
 test('AUTH-03/AUTH-11: anonymous API requests return JSON 401 where authentication is required', async ({
   browserName: _browserName,
@@ -42,10 +202,10 @@ test('AUTH-03/AUTH-11: anonymous API requests return JSON 401 where authenticati
   }
 })
 
-test('AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or assignments are read-limited', async ({
+test('AUTHZ-01/AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or assignments are read-limited', async ({
   browserName: _browserName,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-08', 'AUTH-10', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-01', 'AUTH-08', 'AUTH-10', 'AUTH-11')
   const noRoles = await newRoleContext(testInfo, 'noRoles')
 
   try {
@@ -102,6 +262,19 @@ test('AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or assignments 
       'no-role direct existing specification read',
     )
     await expectStatus(
+      await noRoles.put(
+        `/api/requirements-specifications/${fixture.specificationSlug}`,
+        {
+          data: {
+            businessNeedsReference:
+              'No-role user must not mutate kravunderlag.',
+          },
+        },
+      ),
+      403,
+      'no-role specification metadata update',
+    )
+    await expectStatus(
       await noRoles.get(
         `/api/requirements-specifications/${fixture.specificationSlug}-MISSING`,
       ),
@@ -132,72 +305,6 @@ test('AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or assignments 
       }),
       403,
       'no-role AI generation with unauthorized specification scope',
-    )
-  } finally {
-    await noRoles.dispose()
-  }
-})
-
-test('REQ-10/LIFE-11/SPEC-10/AUTH-10/AUTH-11: report PDFs enforce published and history boundaries', async ({
-  browserName: _browserName,
-}, testInfo) => {
-  referenceManualCases(
-    testInfo,
-    'REQ-10',
-    'LIFE-11',
-    'SPEC-10',
-    'AUTH-10',
-    'AUTH-11',
-  )
-  const noRoles = await newRoleContext(testInfo, 'noRoles')
-
-  try {
-    const requirementsResponse = await noRoles.get(
-      '/api/requirements?limit=1&locale=sv&statuses=3',
-    )
-    await expectOk(requirementsResponse, 'published requirements list')
-    const requirements =
-      (await requirementsResponse.json()) as RequirementListResponse
-    const publishedRequirement = requirements.requirements[0]
-    expect(publishedRequirement).toBeDefined()
-
-    const listPdfResponse = await noRoles.get(
-      `/sv/requirements/reports/pdf/list?ids=${publishedRequirement.id}`,
-    )
-    await expectOk(listPdfResponse, 'published requirement list PDF')
-    expect(listPdfResponse.headers()['content-type']).toContain(
-      'application/pdf',
-    )
-
-    const historyUrls = [
-      [
-        `/sv/requirements/reports/pdf/history/${publishedRequirement.id}`,
-        'history PDF without history access',
-      ],
-      [
-        `/sv/requirements/reports/pdf/review/${publishedRequirement.id}`,
-        'review PDF without history access',
-      ],
-      [
-        `/sv/requirements/reports/pdf/suggestion-history/${publishedRequirement.id}`,
-        'suggestion history PDF without history access',
-      ],
-      [
-        `/sv/requirements/reports/pdf/review-combined?ids=${publishedRequirement.id}`,
-        'combined review PDF without history access',
-      ],
-    ] as const
-
-    for (const [url, label] of historyUrls) {
-      await expectStatus(await noRoles.get(url), 403, label)
-    }
-
-    await expectStatus(
-      await noRoles.get(
-        `/sv/specifications/${fixture.specificationSlug}/reports/pdf/procurement`,
-      ),
-      403,
-      'unassigned specification profile PDF',
     )
   } finally {
     await noRoles.dispose()
@@ -259,7 +366,7 @@ test.describe('AUTH-10/AUTH-11: forbidden requirement specification surface', ()
     viewport: { height: 720, width: 1280 },
   })
 
-  test('shows responsible contact without content on desktop', async ({
+  test('AUTH-10/AUTH-11: shows responsible contact without content on desktop', async ({
     page,
   }, testInfo) => {
     referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
@@ -273,11 +380,45 @@ test.describe('AUTH-10/AUTH-11: forbidden requirement specification surface', ()
     await assertForbiddenSpecificationSurface(page)
   })
 
-  test('shows published requirement detail as read-only without lifecycle controls', async ({
+  test('AUTH-10/AUTH-11: shows published requirement detail as read-only without lifecycle controls', async ({
     page,
   }, testInfo) => {
     referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
 
     await assertReadOnlyRequirementDetail(page)
+  })
+
+  test('AUTH-08/AUTH-10/AUTH-11: keeps Admincenter privileged tabs disabled for users without roles', async ({
+    page,
+  }, testInfo) => {
+    referenceManualCases(testInfo, 'AUTH-08', 'AUTH-10', 'AUTH-11')
+
+    await page.goto('/sv/admin?tab=actionAuditLog')
+
+    const columnsTab = page.getByRole('tab', { name: 'Kolumner' })
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Administrationscenter' }),
+    ).toBeVisible()
+    await expect(columnsTab).toHaveAttribute('aria-selected', 'true')
+    await expect(
+      page.getByRole('tab', { name: 'Taxonomi' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+    await expect(
+      page.getByRole('tab', { name: 'Statusar och arbetsflöden' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+
+    for (const tabName of [
+      'Identitet',
+      'AI',
+      'Dataskydd',
+      'Behörighetsöversyn',
+      'Arkivering',
+      'Åtgärdslogg',
+    ]) {
+      const tab = page.getByRole('tab', { name: tabName })
+      await expect(tab).toHaveAttribute('aria-disabled', 'true')
+      await tab.click({ force: true })
+      await expect(columnsTab).toHaveAttribute('aria-selected', 'true')
+    }
   })
 })

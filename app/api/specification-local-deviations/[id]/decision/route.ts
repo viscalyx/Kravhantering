@@ -8,7 +8,7 @@ import {
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
-  customMutationPolicy,
+  requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { businessTextSchema, idParamSchema } from '@/lib/http/validation'
@@ -30,17 +30,17 @@ const decisionBodySchema = z
 
 export const POST = secureMutationRoute({
   bodySchema: decisionBodySchema,
+  errorMessage: 'Failed to record decision',
   paramsSchema: idParamSchema,
-  policy: customMutationPolicy(
-    'specification_local_deviation.decision',
-    ({ context }) => {
-      requireHumanActorSnapshot(context)
-    },
-  ),
-  handler: async ({ body, context, params }) => {
+  policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
+    deviationId: params.id,
+    kind: 'manage_deviation',
+    operation: 'record_decision',
+  })),
+  handler: async ({ body, context, db: authorizedDb, params }) => {
     try {
-      const db = await getRequestSqlServerDataSource()
       const actor = requireHumanActorSnapshot(context)
+      const db = authorizedDb ?? (await getRequestSqlServerDataSource())
       await recordSpecificationLocalDecision(db, params.id, {
         decision: body.decision,
         decisionMotivation: body.decisionMotivation,

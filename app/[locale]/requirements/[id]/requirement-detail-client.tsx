@@ -66,12 +66,18 @@ const REQUIREMENT_DETAIL_HELP: HelpContent = {
   titleKey: 'requirementDetail.title',
 }
 
+interface SpecificationDeviationPermissions {
+  canEditContent: boolean
+  canReviewDecisions: boolean
+}
+
 interface RequirementDetailClientPropsBase {
   defaultVersion?: number
   inline?: boolean
   onChange?: (detail?: RequirementDetailResponse) => void | Promise<void>
   onClose?: () => void
   requirementId: number | string
+  specificationPermissions?: SpecificationDeviationPermissions
 }
 
 interface RequirementDetailClientStandalone
@@ -95,6 +101,7 @@ export default function RequirementDetailClient({
   inline,
   onChange,
   onClose,
+  specificationPermissions,
   specificationItemId,
   specificationSlug,
   requirementId,
@@ -1023,6 +1030,12 @@ export default function RequirementDetailClient({
               specificationItemId != null &&
               specificationSlug ? (
                 <SpecificationDeviationRail
+                  canManageDeviationDrafts={
+                    specificationPermissions?.canEditContent === true
+                  }
+                  canReviewDeviationDecisions={
+                    specificationPermissions?.canReviewDecisions === true
+                  }
                   detailContext={detailContext}
                   locale={locale}
                   priorityLevel={priorityLevelForDeviation}

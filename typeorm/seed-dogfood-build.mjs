@@ -29,6 +29,7 @@ import {
   SPECIFICATION_LOCAL_ID_BASE,
   VERSION_ID_BASE,
 } from './seed-dogfood.mjs'
+import { appendPlaywrightManualCaseSeed } from './seed-playwright-manual-cases-build.mjs'
 
 // Stable revision-token namespace so re-running the builder produces stable
 // UUIDs for each Krav. We use a deterministic hash of (krav-index, version).
@@ -1174,9 +1175,14 @@ export function appendDogfoodSeed(SEED_DATA) {
   }
 
   appendRequirementSelectionDemoSeed(SEED_DATA)
+  const playwrightManualCaseSummary = appendPlaywrightManualCaseSeed(SEED_DATA)
 
   return {
     requirementsAdded: minted.length,
+    playwrightManualCaseRequirementsAdded:
+      playwrightManualCaseSummary.requirementCount,
+    playwrightManualCaseSpecificationsAdded:
+      playwrightManualCaseSummary.specificationCount,
     requirementSelectionAnswersAdded: REQUIREMENT_SELECTION_ANSWERS.length,
     requirementSelectionQuestionsAdded: REQUIREMENT_SELECTION_QUESTIONS.length,
     specificationRequirementSelectionAnswersAdded:

@@ -129,7 +129,16 @@ copy_skills_to_target() {
 }
 
 if [[ -d "$codex_root" ]]; then
-  copy_skills_to_target "$codex_root/skills" "Codex skills"
+  codex_target="$codex_root/skills"
+  if ! mkdir -p "$codex_target" 2>/dev/null; then
+    printf 'Skipping Codex skills: Codex skills target could not be created: %s\n' \
+      "$codex_target"
+  elif [[ ! -w "$codex_target" ]]; then
+    printf 'Skipping Codex skills: Codex skills target is not writable: %s\n' \
+      "$codex_target"
+  else
+    copy_skills_to_target "$codex_target" "Codex skills"
+  fi
 else
   printf 'Skipping Codex skills: Codex home does not exist: %s\n' "$codex_root"
 fi

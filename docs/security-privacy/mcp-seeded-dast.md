@@ -75,7 +75,7 @@ MCP_BEARER_TOKEN="$(node scripts/security/get-mcp-token.mjs)" \
 PLAYWRIGHT_BASE_URL=http://localhost:3001 \
 PLAYWRIGHT_SKIP_WEBSERVER=1 \
 PLAYWRIGHT_SKIP_AUTH_SETUP=1 \
-npm run test:integration:prodlike -- tests/integration/mcp-seeded-scan.spec.ts
+npm run test:integration:prodlike -- tests/integration/mcp/seeded-scan.spec.ts
 ```
 
 The helper defaults match the committed dev realm:
@@ -132,7 +132,7 @@ unknown tool, stale edit conflict, and sanitized AI-disabled error.
 ## Extending The Corpus
 
 Add new MCP cases in `tests/fixtures/mcp-requests/` and wire the deterministic
-runtime assertions in `tests/integration/mcp-seeded-scan.spec.ts`.
+runtime assertions in `tests/integration/mcp/seeded-scan.spec.ts`.
 
 When adding a case:
 

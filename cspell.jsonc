@@ -24,6 +24,7 @@
     "Direktvalt",
     "dimmad",
     "dogfood",
+    "domcontentloaded",
     "ECONNRESET",
     "Embedder",
     "erikl",
@@ -952,7 +953,8 @@
     "Kravimport",
     "kravkandidaten",
     "Persisterad",
-    "referensdatan"
+    "referensdatan",
+    "kravområdesförvaltningen"
   ],
   "flagWords": [],
   "ignorePaths": [

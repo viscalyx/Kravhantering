@@ -51,7 +51,7 @@ export default defineConfig({
   // surfaces those specs assert on are intentionally absent in prodlike. Skip
   // the spec here instead of forcing ENABLE_DEVELOPER_MODE=true on the
   // prodlike build, which is meant to mirror real production.
-  testIgnore: ['**/developer-mode-overlay.spec.ts'],
+  testIgnore: ['**/developer-mode/overlay.spec.ts'],
   globalSetup: './tests/integration/global-setup.ts',
   outputDir: 'test-results/prodlike',
   fullyParallel: true,

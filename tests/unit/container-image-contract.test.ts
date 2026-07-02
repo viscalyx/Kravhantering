@@ -152,6 +152,7 @@ describe('container image contract', () => {
     expect(target).toContain('typeorm/seed.mjs')
     expect(target).toContain('typeorm/seed-dogfood.mjs')
     expect(target).toContain('typeorm/seed-dogfood-build.mjs')
+    expect(target).toContain('typeorm/seed-playwright-manual-cases-build.mjs')
     expect(target).toContain('typeorm/seed-archiving-retention-build.mjs')
     expect(target).toContain('ENV KRAVHANTERING_DB_ADMIN_IMAGE=demo-seed')
     expect(target).toContain('USER node')
@@ -175,6 +176,9 @@ describe('container image contract', () => {
     expect(dockerignore).toContain('public/api-docs/')
     expect(dockerignore).not.toContain('typeorm/seed.mjs')
     expect(dockerignore).not.toContain('typeorm/seed-dogfood.mjs')
+    expect(dockerignore).not.toContain(
+      'typeorm/seed-playwright-manual-cases-build.mjs',
+    )
     expect(dockerignore).not.toContain(
       'typeorm/seed-archiving-retention-build.mjs',
     )

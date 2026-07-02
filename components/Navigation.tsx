@@ -668,7 +668,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           role="dialog"
         >
           <button
-            aria-label={t('closeMenu')}
+            aria-label={t('closeMenuBackdrop')}
             className="absolute inset-0 h-full w-full bg-secondary-950/35 backdrop-blur-sm"
             onClick={closeMobileDrawer}
             tabIndex={-1}

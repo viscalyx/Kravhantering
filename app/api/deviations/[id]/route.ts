@@ -8,7 +8,7 @@ import {
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
-  customMutationPolicy,
+  requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
@@ -53,13 +53,17 @@ export async function GET(
 
 export const PUT = secureMutationRoute({
   bodySchema: updateDeviationSchema,
+  errorMessage: 'Failed to update deviation',
   paramsSchema: idParamSchema,
-  policy: customMutationPolicy('deviation.update', ({ context }) => {
-    requireHumanActorSnapshot(context)
-  }),
-  handler: async ({ body, params }) => {
+  policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
+    deviationId: params.id,
+    kind: 'manage_deviation',
+    operation: 'edit',
+  })),
+  handler: async ({ body, context, db: authorizedDb, params }) => {
     try {
-      const db = await getRequestSqlServerDataSource()
+      requireHumanActorSnapshot(context)
+      const db = authorizedDb ?? (await getRequestSqlServerDataSource())
       await updateDeviation(db, params.id, {
         motivation: body.motivation,
       })
@@ -79,14 +83,17 @@ export const PUT = secureMutationRoute({
 })
 
 export const DELETE = secureMutationRoute({
+  errorMessage: 'Failed to delete deviation',
   paramsSchema: idParamSchema,
-  policy: customMutationPolicy('deviation.delete', ({ context }) => {
-    requireHumanActorSnapshot(context)
-  }),
-  handler: async ({ params }) => {
-    const db = await getRequestSqlServerDataSource()
-
+  policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
+    deviationId: params.id,
+    kind: 'manage_deviation',
+    operation: 'delete',
+  })),
+  handler: async ({ context, db: authorizedDb, params }) => {
     try {
+      requireHumanActorSnapshot(context)
+      const db = authorizedDb ?? (await getRequestSqlServerDataSource())
       await deleteDeviation(db, params.id)
       return NextResponse.json({ ok: true })
     } catch (error) {

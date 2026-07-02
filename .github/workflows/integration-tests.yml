@@ -25,12 +25,12 @@ jobs:
           - server: dev
             displayName: Dev
             testCommand: npm run test:integration
-            timeoutMinutes: 15
+            timeoutMinutes: 120
             retentionDays: 7
           - server: prodlike
             displayName: Prod-like
             testCommand: npm run test:integration:prodlike
-            timeoutMinutes: 25
+            timeoutMinutes: 120
             retentionDays: 7
 
     steps:
@@ -47,6 +47,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check integration chunk manifest
+        run: npm run test:integration:chunks:check
 
       - name: Clean server and database state
         run: npm run clean:all
@@ -67,10 +70,37 @@ jobs:
       - name: Start and wait for local IdP service
         run: npm run idp:up
 
+      - name: Start local HSA lookup fixture
+        run: bash scripts/ci-hsa-person-lookup-fixture.sh start "${{ matrix.server }}"
+
       - name: Run Playwright tests against ${{ matrix.server }} server
-        run: ${{ matrix.testCommand }}
+        run: |
+          set -euo pipefail
+          start_epoch="$(date +%s)"
+          set +e
+          ${{ matrix.testCommand }}
+          test_exit=$?
+          set -e
+          end_epoch="$(date +%s)"
+          duration_seconds=$((end_epoch - start_epoch))
+          hours=$((duration_seconds / 3600))
+          minutes=$(((duration_seconds % 3600) / 60))
+          seconds=$((duration_seconds % 60))
+          formatted="$(printf '%02dh %02dm %02ds' "${hours}" "${minutes}" "${seconds}")"
+          echo "Integration tests (${{ matrix.server }}) runtime: ${formatted} (${duration_seconds}s)"
+          {
+            echo "### Integration test runtime (${{ matrix.server }})"
+            echo
+            echo "- Runtime: ${formatted} (${duration_seconds}s)"
+            echo "- Command: \`${{ matrix.testCommand }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "${test_exit}"
         env:
           CI: true
+
+      - name: Stop local HSA lookup fixture
+        if: always()
+        run: bash scripts/ci-hsa-person-lookup-fixture.sh stop "${{ matrix.server }}"
 
       - name: Upload test results (${{ matrix.server }})
         if: always()
@@ -88,6 +118,17 @@ jobs:
           path: test-results/${{ matrix.server }}/playwright-junit.xml
           retention-days: ${{ matrix.retentionDays }}
 
+      - name: Upload server logs (${{ matrix.server }})
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: integration-server-logs-${{ matrix.server }}
+          path: |
+            test-results/server-logs/${{ matrix.server }}/
+            test-results/hsa-person-lookup/${{ matrix.server }}.log
+          if-no-files-found: ignore
+          retention-days: ${{ matrix.retentionDays }}
+
       - name: Stop local IdP service
         if: always()
         run: npm run idp:down
@@ -99,7 +140,7 @@ jobs:
   test-prodlike-pruned:
     name: Test Prod-like Server With Dev Dependencies Pruned
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 150
 
     steps:
       - name: Checkout code
@@ -115,6 +156,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check integration chunk manifest
+        run: npm run test:integration:chunks:check
 
       - name: Clean server and database state
         run: npm run clean:all
@@ -133,6 +177,9 @@ jobs:
 
       - name: Start and wait for local IdP service
         run: npm run idp:up
+
+      - name: Start local HSA lookup fixture
+        run: bash scripts/ci-hsa-person-lookup-fixture.sh start "prodlike-pruned"
 
       # Build with the full devDependency tree so Tailwind can resolve
       # `@import "@viscalyx/developer-mode-react/safelist.css"` from
@@ -187,7 +234,27 @@ jobs:
           mv node_modules.full node_modules
 
       - name: Run Playwright tests against pruned prod-like server
-        run: npm run test:integration:prodlike
+        run: |
+          set -euo pipefail
+          start_epoch="$(date +%s)"
+          set +e
+          npm run test:integration:prodlike
+          test_exit=$?
+          set -e
+          end_epoch="$(date +%s)"
+          duration_seconds=$((end_epoch - start_epoch))
+          hours=$((duration_seconds / 3600))
+          minutes=$(((duration_seconds % 3600) / 60))
+          seconds=$((duration_seconds % 60))
+          formatted="$(printf '%02dh %02dm %02ds' "${hours}" "${minutes}" "${seconds}")"
+          echo "Integration tests (prodlike-pruned) runtime: ${formatted} (${duration_seconds}s)"
+          {
+            echo "### Integration test runtime (prodlike-pruned)"
+            echo
+            echo "- Runtime: ${formatted} (${duration_seconds}s)"
+            echo "- Command: \`npm run test:integration:prodlike\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "${test_exit}"
         env:
           CI: true
           ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1'
@@ -202,12 +269,18 @@ jobs:
             kill "$(cat test-results/prodlike-pruned/server.pid)" || true
           fi
 
+      - name: Stop local HSA lookup fixture
+        if: always()
+        run: bash scripts/ci-hsa-person-lookup-fixture.sh stop "prodlike-pruned"
+
       - name: Upload pruned server log
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: prodlike-pruned-server-log
-          path: test-results/prodlike-pruned/server.log
+          path: |
+            test-results/prodlike-pruned/server.log
+            test-results/hsa-person-lookup/prodlike-pruned.log
           retention-days: 7
 
       - name: Upload test results (prodlike-pruned)

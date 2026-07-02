@@ -258,6 +258,30 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
     top: number
     width: number
   } | null>(null)
+  const menuId = `floating-action-menu-${action.id}`
+  const triggerId = `floating-action-trigger-${action.id}`
+  const menuMounted =
+    open && menuPosition !== null && typeof document !== 'undefined'
+  const getFocusableMenuItems = useCallback(
+    () =>
+      Array.from(
+        menuRef.current?.querySelectorAll<HTMLElement>(
+          floatingActionMenuFocusableSelector,
+        ) ?? [],
+      ),
+    [],
+  )
+  const focusMenuItem = useCallback(
+    (index: number) => {
+      const items = getFocusableMenuItems()
+      if (items.length === 0) return
+
+      const wrappedIndex =
+        ((index % items.length) + items.length) % items.length
+      items[wrappedIndex]?.focus()
+    },
+    [getFocusableMenuItems],
+  )
 
   useEffect(() => {
     if (!hasMenu) {
@@ -284,21 +308,47 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
     }
 
     const frame = window.requestAnimationFrame(() => {
-      const firstMenuItem = menuRef.current?.querySelector(
-        floatingActionMenuFocusableSelector,
-      )
-      if (firstMenuItem instanceof HTMLElement) {
-        firstMenuItem.focus()
-      }
+      focusMenuItem(0)
     })
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setOpen(false)
+        triggerRef.current?.focus()
         return
       }
 
-      setOpen(false)
-      triggerRef.current?.focus()
+      const items = getFocusableMenuItems()
+      if (items.length === 0) return
+
+      const activeElement = document.activeElement
+      if (
+        !(activeElement instanceof HTMLElement) ||
+        !menuRef.current?.contains(activeElement)
+      ) {
+        return
+      }
+
+      const activeIndex = items.indexOf(activeElement)
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault()
+          focusMenuItem(activeIndex >= 0 ? activeIndex + 1 : 0)
+          break
+        case 'ArrowUp':
+          event.preventDefault()
+          focusMenuItem(activeIndex >= 0 ? activeIndex - 1 : items.length - 1)
+          break
+        case 'Home':
+          event.preventDefault()
+          focusMenuItem(0)
+          break
+        case 'End':
+          event.preventDefault()
+          focusMenuItem(items.length - 1)
+          break
+      }
     }
 
     document.addEventListener('keydown', handleKeyDown)
@@ -306,7 +356,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
       window.cancelAnimationFrame(frame)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [hasMenu, menuPosition, open])
+  }, [focusMenuItem, getFocusableMenuItems, hasMenu, menuPosition, open])
 
   useEffect(() => {
     if (!hasMenu || !open || !triggerRef.current) {
@@ -371,8 +421,9 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
     return (
       <div className="relative" ref={wrapperRef}>
         <button
-          aria-controls={open ? `floating-action-menu-${action.id}` : undefined}
-          aria-expanded={open}
+          aria-controls={menuMounted ? menuId : undefined}
+          aria-expanded={Boolean(menuMounted)}
+          aria-haspopup="menu"
           aria-label={action.ariaLabel}
           className={`${getFloatingPillClassName(variant)}${disabledClass}`}
           {...devMarker({
@@ -386,6 +437,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
           data-floating-action-menu-trigger={action.id}
           data-floating-action-variant={variant}
           disabled={action.disabled}
+          id={triggerId}
           onClick={() => !action.disabled && setOpen(value => !value)}
           ref={triggerRef}
           style={action.customStyle}
@@ -402,7 +454,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
             </span>
           )}
         </button>
-        {open && menuPosition && typeof document !== 'undefined'
+        {menuMounted
           ? createPortal(
               <div
                 className="fixed z-40"
@@ -413,6 +465,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                 }}
               >
                 <div
+                  aria-labelledby={triggerId}
                   className="w-full overflow-y-auto rounded-2xl border border-secondary-200/80 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-secondary-700/70 dark:bg-secondary-900/95"
                   {...devMarker({
                     context: developerModeValue
@@ -423,13 +476,14 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                     value: developerModeValue,
                   })}
                   data-floating-action-menu={action.id}
-                  id={`floating-action-menu-${action.id}`}
+                  id={menuId}
                   ref={menuRef}
+                  role="menu"
                   style={{ maxHeight: menuPosition.maxHeight }}
                 >
-                  <ul className="space-y-1">
+                  <ul className="space-y-1" role="none">
                     {action.menuItems?.map(item => (
-                      <li key={item.id}>
+                      <li key={item.id} role="none">
                         {isFloatingActionMenuLink(item) ? (
                           item.disabled ? (
                             <span
@@ -437,6 +491,8 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               className={
                                 floatingActionMenuItemDisabledClassName
                               }
+                              role="menuitem"
+                              tabIndex={-1}
                               title={item.tooltip}
                             >
                               <FloatingActionMenuItemContent item={item} />
@@ -446,6 +502,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               className={floatingActionMenuItemEnabledClassName}
                               href={item.href}
                               onClick={() => setOpen(false)}
+                              role="menuitem"
                               title={item.tooltip}
                             >
                               <FloatingActionMenuItemContent item={item} />
@@ -455,6 +512,8 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                           <span
                             aria-disabled="true"
                             className={floatingActionMenuItemDisabledClassName}
+                            role="menuitem"
+                            tabIndex={-1}
                             title={item.tooltip}
                           >
                             <FloatingActionMenuItemContent item={item} />
@@ -466,6 +525,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               item.onClick()
                               setOpen(false)
                             }}
+                            role="menuitem"
                             title={item.tooltip}
                             type="button"
                           >

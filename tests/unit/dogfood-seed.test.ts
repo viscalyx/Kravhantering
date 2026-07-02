@@ -12,8 +12,10 @@ import {
   ID,
   SPEC_KH,
   SPEC_KH_INFOR,
+  VERSION_ID_BASE,
 } from '../../typeorm/seed-dogfood.mjs'
 import { appendDogfoodSeed } from '../../typeorm/seed-dogfood-build.mjs'
+import { PWT_MANUAL_SEED } from '../../typeorm/seed-playwright-manual-cases-build.mjs'
 
 function emptySeed() {
   return {
@@ -270,6 +272,139 @@ function emptySeed() {
       pk: ['specification_id', 'question_id', 'answer_id'],
       rows: [],
     },
+    requirement_area_co_authors: {
+      columns: [
+        'area_id',
+        'hsa_id',
+        'created_at',
+        'created_by_hsa_id',
+        'created_by_display_name',
+      ],
+      pk: ['area_id', 'hsa_id'],
+      rows: [],
+    },
+    specification_co_authors: {
+      columns: [
+        'specification_id',
+        'hsa_id',
+        'created_at',
+        'created_by_hsa_id',
+        'created_by_display_name',
+      ],
+      pk: ['specification_id', 'hsa_id'],
+      rows: [],
+    },
+    rfi_question_sequences: {
+      columns: ['area_id', 'next_sequence'],
+      pk: ['area_id'],
+      rows: [],
+    },
+    rfi_questions: {
+      columns: [
+        'id',
+        'question_code',
+        'area_id',
+        'sort_order',
+        'is_archived',
+        'archived_at',
+        'created_at',
+        'updated_at',
+      ],
+      pk: ['id'],
+      rows: [],
+    },
+    rfi_question_versions: {
+      columns: [
+        'id',
+        'rfi_question_id',
+        'version_number',
+        'question_text',
+        'help_text',
+        'expected_answer_format',
+        'is_active',
+        'created_by_hsa_id',
+        'created_by_display_name',
+        'created_at',
+        'updated_at',
+      ],
+      pk: ['id'],
+      rows: [],
+    },
+    rfi_question_version_requirement_packages: {
+      columns: ['rfi_question_version_id', 'requirement_package_id'],
+      pk: ['rfi_question_version_id', 'requirement_package_id'],
+      rows: [],
+    },
+    specification_rfi_lists: {
+      columns: [
+        'specification_id',
+        'is_locked',
+        'locked_at',
+        'locked_by_hsa_id',
+        'locked_by_display_name',
+        'created_at',
+        'updated_at',
+      ],
+      pk: ['specification_id'],
+      rows: [],
+    },
+    specification_rfi_question_items: {
+      columns: [
+        'specification_id',
+        'rfi_question_id',
+        'rfi_question_version_id',
+        'is_included',
+        'relevance',
+        'changed_at',
+        'changed_by_hsa_id',
+        'changed_by_display_name',
+      ],
+      pk: ['specification_id', 'rfi_question_id'],
+      rows: [],
+    },
+    rfi_question_suggestions: {
+      columns: [
+        'id',
+        'area_id',
+        'rfi_question_id',
+        'specification_id',
+        'source_specification_unique_id',
+        'source_specification_name',
+        'content',
+        'is_review_requested',
+        'review_requested_at',
+        'resolution',
+        'resolution_motivation',
+        'created_by_hsa_id',
+        'created_by_display_name',
+        'created_at',
+        'updated_at',
+        'resolved_by_hsa_id',
+        'resolved_by_display_name',
+        'resolved_at',
+      ],
+      pk: ['id'],
+      rows: [],
+    },
+    improvement_suggestions: {
+      columns: [
+        'id',
+        'requirement_id',
+        'requirement_version_id',
+        'content',
+        'is_review_requested',
+        'resolution',
+        'resolution_motivation',
+        'resolved_by',
+        'resolved_at',
+        'created_by',
+        'created_at',
+        'updated_at',
+        'review_requested_at',
+      ],
+      pk: ['id'],
+      rows: [],
+    },
   }
 }
 
@@ -358,8 +493,17 @@ describe('appendDogfoodSeed', () => {
       DOGFOOD_KH_INFOR_INDEXES.length,
     )
 
-    // All dogfood requirement_versions are v1 + Publicerad
-    const versions = seed.requirement_versions.rows
+    // All dogfood requirement_versions are v1 + Publicerad. Manual-case
+    // fixtures appended by the demo/test seed include draft and archived rows.
+    const dogfoodVersionIds = new Set(
+      Array.from(
+        { length: DOGFOOD_KRAV.length },
+        (_, index) => VERSION_ID_BASE + index + 1,
+      ),
+    )
+    const versions = seed.requirement_versions.rows.filter(row =>
+      dogfoodVersionIds.has(row[0] as number),
+    )
     expect(versions).toHaveLength(DOGFOOD_KRAV.length)
     for (const v of versions) {
       expect(v[2]).toBe(1) // version_number
@@ -370,7 +514,10 @@ describe('appendDogfoodSeed', () => {
 
     // Every requirement application points to a published v1.
     const versionById = new Map(versions.map(v => [v[0], v]))
-    for (const it of items) {
+    const dogfoodItems = items.filter(
+      row => row[1] === SPEC_KH || row[1] === SPEC_KH_INFOR,
+    )
+    for (const it of dogfoodItems) {
       const v = versionById.get(it[3])
       expect(v).toBeDefined()
       expect(v?.[8]).toBe(ID.status.publicerad)
@@ -493,6 +640,71 @@ describe('appendDogfoodSeed', () => {
       'SE5560000001-oscarn',
       'Oscar Nilsson',
     ])
+  })
+
+  it('appends deterministic Playwright manual-case demo fixtures', () => {
+    const seed = emptySeed()
+    const summary = appendDogfoodSeed(seed)
+
+    expect(summary.playwrightManualCaseRequirementsAdded).toBe(207)
+    expect(summary.playwrightManualCaseSpecificationsAdded).toBe(7)
+
+    const requirementUniqueIds = new Set(
+      seed.requirements.rows.map(row => row[1]),
+    )
+    expect([...requirementUniqueIds]).toEqual(
+      expect.arrayContaining([
+        'PWT-LIFE-RESTORE',
+        'PWT-LIFE-PACKAGE-SWAP',
+        'PWT-LIFE-PACKAGE-ARCHIVE',
+        'PWT-SPEC-EDIT-SOURCE',
+      ]),
+    )
+
+    const specificationUniqueIds = new Set(
+      seed.requirements_specifications.rows.map(row => row[6]),
+    )
+    expect([...specificationUniqueIds]).toEqual(
+      expect.arrayContaining([
+        'PWT-SPEC-EDIT-2026',
+        'PWT-SPEC-REPORT-INFOR',
+        'PWT-SPEC-REPORT-UTV',
+        'PWT-SPEC-REPORT-FORV',
+        'PWT-SPEC-TRACE-200',
+        'PWT-SPEC-TRACE-201',
+        'PWT-RFI-WORKFLOW-2026',
+      ]),
+    )
+
+    const items = seed.requirements_specification_items.rows
+    expect(
+      items.filter(row => row[1] === PWT_MANUAL_SEED.specification.trace200),
+    ).toHaveLength(200)
+    expect(
+      items.filter(row => row[1] === PWT_MANUAL_SEED.specification.trace201),
+    ).toHaveLength(201)
+
+    expect(
+      seed.rfi_question_suggestions.rows.filter(
+        row => (row[0] as number) >= 920000,
+      ),
+    ).toHaveLength(4)
+    expect(seed.specification_co_authors.rows).toEqual(
+      expect.arrayContaining([
+        expect.arrayContaining([
+          PWT_MANUAL_SEED.specification.rfiWorkflow,
+          'SE5560000001-specco1',
+        ]),
+      ]),
+    )
+    expect(seed.improvement_suggestions.rows).toEqual(
+      expect.arrayContaining([
+        expect.arrayContaining([
+          920001,
+          PWT_MANUAL_SEED.requirement.editSource,
+        ]),
+      ]),
+    )
   })
 
   it('mints unique IDs from current area next_sequence rows', () => {

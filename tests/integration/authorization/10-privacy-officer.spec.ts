@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
+  type AuthorizationFixture,
   createAuthorizationFixture,
   expectOk,
   expectStatus,
@@ -9,16 +10,18 @@ import {
   referenceManualCases,
 } from './authorization-test-helpers'
 
+let fixture: AuthorizationFixture
+
 test.describe.configure({ mode: 'serial' })
 
 test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
-  await createAuthorizationFixture(testInfo)
+  fixture = await createAuthorizationFixture(testInfo)
 })
 
-test('AUTH-07/AUTH-11: PrivacyOfficer users can use privacy and access review without action log', async ({
+test('AUTHZ-10/AUTH-07/AUTH-11: PrivacyOfficer users can use privacy and access review without action log', async ({
   browserName: _browserName,
 }, testInfo) => {
-  referenceManualCases(testInfo, 'AUTH-07', 'AUTH-11')
+  referenceManualCases(testInfo, 'AUTHZ-10', 'AUTH-07', 'AUTH-11')
   const privacyOfficer = await newRoleContext(testInfo, 'privacyOfficer')
 
   try {
@@ -37,21 +40,43 @@ test('AUTH-07/AUTH-11: PrivacyOfficer users can use privacy and access review wi
       403,
       'privacy officer action log read',
     )
+    await expectStatus(
+      await privacyOfficer.put(`/api/requirement-areas/${fixture.areaId}`, {
+        data: {
+          description: 'PrivacyOfficer must not change area responsibility.',
+        },
+      }),
+      403,
+      'privacy officer requirement area update',
+    )
+    await expectStatus(
+      await privacyOfficer.put(
+        `/api/requirement-packages/${fixture.packageId}`,
+        {
+          data: {
+            purposeAndScope:
+              'PrivacyOfficer must not change package responsibility.',
+          },
+        },
+      ),
+      403,
+      'privacy officer requirement package update',
+    )
   } finally {
     await privacyOfficer.dispose()
   }
 })
 
-test.describe('AUTH-07/AUTH-11: Admin Center tab permissions for PrivacyOfficer users', () => {
+test.describe('AUTHZ-10/AUTH-07/AUTH-11: Admin Center tab permissions for PrivacyOfficer users', () => {
   test.use({
     storageState: ROLE_STORAGE_STATE.privacyOfficer,
     viewport: { height: 720, width: 1280 },
   })
 
-  test('enables privacy tabs while Admin-only tabs stay disabled', async ({
+  test('AUTHZ-10/AUTH-07/AUTH-11: enables privacy tabs while Admin-only tabs stay disabled', async ({
     page,
   }, testInfo) => {
-    referenceManualCases(testInfo, 'AUTH-07', 'AUTH-11')
+    referenceManualCases(testInfo, 'AUTHZ-10', 'AUTH-07', 'AUTH-11')
     await page.goto('/sv/admin?tab=actionAuditLog')
 
     const columnsTab = page.getByRole('tab', { name: 'Kolumner' })

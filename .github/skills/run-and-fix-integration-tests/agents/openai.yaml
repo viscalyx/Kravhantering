@@ -1,0 +1,6 @@
+interface:
+  display_name: "Run and Fix Integration Tests"
+  short_description: "Fix Playwright specs without production edits"
+  default_prompt: "Use $run-and-fix-integration-tests to run the failing Playwright integration specs, fix only spec files, and report any required production-code changes in a temporary file."
+policy:
+  allow_implicit_invocation: true

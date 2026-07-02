@@ -39,6 +39,63 @@ if [[ "${#instruction_files[@]}" -eq 0 ]]; then
   exit 1
 fi
 
+hash_file() {
+  local file_path="$1"
+  local hash_output
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    hash_output="$(sha256sum "$file_path")"
+    printf '%s\n' "${hash_output%% *}"
+    return
+  fi
+
+  if command -v shasum >/dev/null 2>&1; then
+    hash_output="$(shasum -a 256 "$file_path")"
+    printf '%s\n' "${hash_output%% *}"
+    return
+  fi
+
+  printf 'Neither sha256sum nor shasum is available for verification.\n' >&2
+  exit 1
+}
+
+verify_instruction_copy() {
+  local verified_files=0
+  local source_file
+
+  for source_file in "${instruction_files[@]}"; do
+    local file_name
+    local target_file
+    local source_hash
+    local target_hash
+
+    file_name="$(basename "$source_file")"
+    target_file="$target_dir/$file_name"
+
+    if [[ ! -f "$target_file" ]]; then
+      printf 'Verification failed: missing copied file: %s\n' \
+        "$target_file" >&2
+      exit 1
+    fi
+
+    source_hash="$(hash_file "$source_file")"
+    target_hash="$(hash_file "$target_file")"
+
+    if [[ "$source_hash" != "$target_hash" ]]; then
+      printf 'Verification failed: hash mismatch for %s\n' \
+        "$target_file" >&2
+      printf 'Source:      %s\nDestination: %s\n' \
+        "$source_hash" "$target_hash" >&2
+      exit 1
+    fi
+
+    verified_files=$((verified_files + 1))
+  done
+
+  printf 'Verified .agents/rules: %d source file hash(es) match destination\n' \
+    "$verified_files"
+}
+
 mkdir -p "$target_dir"
 
 copied=0
@@ -48,5 +105,7 @@ for source_file in "${instruction_files[@]}"; do
   printf 'Copied %s\n' ".agents/rules/$file_name"
   copied=$((copied + 1))
 done
+
+verify_instruction_copy
 
 printf 'Synced %d instruction file(s) to %s\n' "$copied" "$target_dir"

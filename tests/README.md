@@ -18,6 +18,28 @@ See `package.json` for the full list of test-related scripts.
 - Overview/specs: [tests/integration/smoke.md](tests/integration/smoke.md)
 - Error-boundary smoke tests and notes: [tests/integration/error-boundary-smoke.md](tests/integration/error-boundary-smoke.md)
 - Global Playwright setup: [tests/integration/global-setup.ts](tests/integration/global-setup.ts)
+- Chunk manifest: [tests/integration-chunks.manifest.json](tests/integration-chunks.manifest.json)
+
+`npm run test:integration` and `npm run test:integration:prodlike` run the
+Playwright suite in deterministic chunks by default. Run a single chunk with:
+
+```bash
+npm run test:integration -- --chunk dev-requirement-selection
+npm run test:integration:prodlike -- --chunk prodlike-mcp-seeded-scan
+```
+
+Passing a spec path still runs a direct Playwright invocation for debugging:
+
+```bash
+npm run test:integration -- tests/integration/requirements/library.spec.ts
+```
+
+When specs move or are added, refresh and verify the committed chunk manifest:
+
+```bash
+npm run test:integration:chunks:generate
+npm run test:integration:chunks:check
+```
 
 Test-only routes (used to exercise App Router error boundaries) are gated
 behind the `ENABLE_ERROR_BOUNDARY_TEST_ROUTE` environment variable. See
@@ -40,10 +62,10 @@ these locations:
 ## Other notes
 
 - Developer-mode and test infra notes live in `tests/integration` specs
-  (see `developer-mode-overlay.md`) and in `playwright.prodlike.config.ts`
+  (see `developer-mode/overlay.spec.ts`) and in `playwright.prodlike.config.ts`
   where developer-mode surfaces are intentionally excluded for prodlike runs.
 - The MCP seeded scan is prodlike-only. The dev Playwright config excludes
-  `tests/integration/mcp-seeded-scan.spec.ts`; run it with
+  `tests/integration/mcp/seeded-scan.spec.ts`; run it with
   `npm run test:integration:prodlike`.
 - When running integration tests locally, ensure the IdP and database are
   available (see `npm run idp:up` and `npm run db:setup`).
