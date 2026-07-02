@@ -16,6 +16,7 @@ const SUITE_NAMES = ['dev', 'prodlike']
 const APP_READY_PATH = '/api/auth/login'
 const APP_READY_STATUSES = [302, 303, 307, 308]
 const READY_BODY_EXCERPT_LENGTH = 1_000
+const DEV_SERVER_OUTPUT_DIR = '.next/dev'
 
 const SUITE_CONFIG = {
   dev: {
@@ -522,6 +523,10 @@ export function formatHttpReadinessWaitLine({
   return `[integration-chunks] Waiting for ${suite} chunk ${chunkId} app readiness: ${url} expected status ${formatExpectedStatuses(expectedStatuses)}\n`
 }
 
+export function formatDevServerOutputResetLine({ chunkId, outputDir, suite }) {
+  return `[integration-chunks] Resetting ${suite} chunk ${chunkId} dev server output: ${outputDir}\n`
+}
+
 function formatHttpReadinessFailure({
   description,
   expectedStatuses,
@@ -968,6 +973,20 @@ async function stopServer(server) {
   }
 }
 
+async function resetDevServerOutput({ chunkId, cwd, suite }) {
+  if (suite !== 'dev') return
+
+  const outputDir = path.join(cwd, DEV_SERVER_OUTPUT_DIR)
+  process.stdout.write(
+    formatDevServerOutputResetLine({
+      chunkId,
+      outputDir: DEV_SERVER_OUTPUT_DIR,
+      suite,
+    }),
+  )
+  await fs.rm(outputDir, { force: true, recursive: true })
+}
+
 async function runDirect(plan) {
   const [directCommand] = plan.commands
   const result = await runCommand(directCommand, { allowFailure: true })
@@ -1022,6 +1041,11 @@ async function runChunked(plan) {
     try {
       if (!plan.externalServer) {
         await runCommand(killCommand)
+        await resetDevServerOutput({
+          chunkId: chunk.id,
+          cwd: process.cwd(),
+          suite: plan.suite,
+        })
         server = await startServer(startCommand, { logFile: serverLogFile })
         const readyUrl = appReadinessUrlForSuite(plan.suite)
         process.stdout.write(

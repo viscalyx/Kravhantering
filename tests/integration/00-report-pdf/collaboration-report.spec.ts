@@ -31,20 +31,17 @@ async function isNextDevNotFoundApiResponse(
   if (response.status() !== 404) return false
 
   const contentType = response.headers()['content-type'] ?? ''
-  if (!contentType.includes('text/html')) return false
-
-  const bodyExcerpt = await apiResponseBodyExcerpt(response)
-  return bodyExcerpt.includes('/_not-found') || bodyExcerpt.includes('404')
+  return contentType.includes('text/html')
 }
 
 async function waitForReportRouteReady(
   request: APIRequestContext,
   url: string,
   label: string,
-): Promise<void> {
+): Promise<APIResponse> {
   let lastStatus: number | null = null
   let lastBodyExcerpt: string | null = null
-  let routeReady = false
+  let readyResponse: APIResponse | null = null
 
   await expect
     .poll(
@@ -54,7 +51,7 @@ async function waitForReportRouteReady(
 
         if (!(await isNextDevNotFoundApiResponse(response))) {
           lastBodyExcerpt = null
-          routeReady = true
+          readyResponse = response
           return 'ready'
         }
 
@@ -68,11 +65,12 @@ async function waitForReportRouteReady(
     )
     .toBe('ready')
 
-  if (!routeReady) {
+  if (!readyResponse) {
     throw new Error(
       `${label} did not return a response after route-ready polling. Last status: ${lastStatus}; previous body excerpt: ${lastBodyExcerpt ?? '<not captured>'}`,
     )
   }
+  return readyResponse
 }
 
 function isSuggestionHistoryPdfResponse(response: Response): boolean {
@@ -161,19 +159,45 @@ async function openRequirementDetail(
   return detailPane
 }
 
+async function getRequirementInternalId(
+  request: APIRequestContext,
+  uniqueId: string,
+): Promise<number> {
+  const response = await request.get(
+    `/api/requirements/${encodeURIComponent(uniqueId)}`,
+  )
+  if (!response.ok()) {
+    throw new Error(
+      `GET requirement ${uniqueId} returned ${response.status()} ${response.statusText()}. Response body excerpt: ${await apiResponseBodyExcerpt(response)}`,
+    )
+  }
+
+  const requirement = (await response.json()) as { id?: unknown }
+  if (typeof requirement.id !== 'number') {
+    throw new Error(`GET requirement ${uniqueId} did not return a numeric id.`)
+  }
+  return requirement.id
+}
+
 test('COL-06: opens the suggestion-history report for a requirement with suggestions', async ({
   page,
 }, testInfo) => {
   const requirementUniqueId = 'PWT-SPEC-EDIT-SOURCE'
-  const suggestionHistoryReportUrl = `/sv/requirements/reports/pdf/suggestion-history/${encodeURIComponent(requirementUniqueId)}`
   const detailPane = await openRequirementDetail(page, requirementUniqueId)
+  const requirementId =
+    await test.step('resolve the internal requirement id used by the report menu', async () => {
+      return getRequirementInternalId(page.request, requirementUniqueId)
+    })
+  const suggestionHistoryReportUrl = `/sv/requirements/reports/pdf/suggestion-history/${requirementId}`
 
   await test.step('wait for the suggestion-history PDF route to be ready', async () => {
-    await waitForReportRouteReady(
+    const response = await waitForReportRouteReady(
       page.request,
       suggestionHistoryReportUrl,
       'suggestion-history PDF',
     )
+    expect(response.ok()).toBe(true)
+    expect(response.headers()['content-type']).toContain('application/pdf')
   })
 
   const suggestionHistoryMenuItem =

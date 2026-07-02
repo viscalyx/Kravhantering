@@ -6,6 +6,7 @@ import {
   formatChunkDurationLine,
   formatChunkMemoryLine,
   formatChunkServerLogFinishedLine,
+  formatDevServerOutputResetLine,
   formatDurationMs,
   formatHttpReadinessWaitLine,
   parseArgs,
@@ -218,6 +219,18 @@ describe('integration chunk command planning', () => {
       }),
     ).toBe(
       '[integration-chunks] Waiting for dev chunk dev-00-report-pdf app readiness: http://localhost:3000/api/auth/login expected status 302, 303, 307, 308\n',
+    )
+  })
+
+  it('formats dev server output reset lines for console discovery', () => {
+    expect(
+      formatDevServerOutputResetLine({
+        chunkId: 'dev-00-report-pdf',
+        outputDir: '.next/dev',
+        suite: 'dev',
+      }),
+    ).toBe(
+      '[integration-chunks] Resetting dev chunk dev-00-report-pdf dev server output: .next/dev\n',
     )
   })
 

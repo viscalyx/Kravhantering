@@ -27,10 +27,7 @@ async function isNextDevNotFoundResponse(
   if (response.status() !== 404) return false
 
   const contentType = response.headers()['content-type'] ?? ''
-  if (!contentType.includes('text/html')) return false
-
-  const bodyExcerpt = await responseBodyExcerpt(response)
-  return bodyExcerpt.includes('/_not-found') || bodyExcerpt.includes('404')
+  return contentType.includes('text/html')
 }
 
 async function getAfterReportRouteReady(
