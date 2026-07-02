@@ -83,7 +83,7 @@ verify_instruction_copy() {
 
     if [[ "$source_hash" != "$target_hash" ]]; then
       printf 'Verification failed: hash mismatch for %s\n' \
-        ".agents/rules/$file_name" >&2
+        "$target_file" >&2
       printf 'Source:      %s\nDestination: %s\n' \
         "$source_hash" "$target_hash" >&2
       exit 1

@@ -6,6 +6,10 @@ const viewports = [
   { name: 'desktop', width: 1280, height: 720 },
 ]
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function splitHsaId(hsaId: string): { prefix: string; suffix: string } {
   const separatorIndex = hsaId.indexOf('-')
   if (separatorIndex < 0) {
@@ -224,7 +228,7 @@ for (const viewport of viewports) {
           await expect(createDialog).toBeHidden({ timeout: 30_000 })
 
           const createdRow = page.getByRole('row', {
-            name: new RegExp(createdName),
+            name: new RegExp(escapeRegExp(createdName)),
           })
           await expect(createdRow).toBeVisible({ timeout: 30_000 })
           await expect(createdRow).toContainText('Ada Admin')

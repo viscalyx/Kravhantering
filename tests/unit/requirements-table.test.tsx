@@ -1713,7 +1713,7 @@ describe('RequirementsTable', () => {
     })
   })
 
-  it('renders floating action menus as semantic lists with native links and touch-target classes', async () => {
+  it('renders floating action menus with menu semantics, native links, and touch-target classes', async () => {
     render(
       <RequirementsTable
         floatingActions={[
@@ -1738,22 +1738,29 @@ describe('RequirementsTable', () => {
 
     const trigger = screen.getByRole('button', { name: 'manage' })
     expect(trigger).toHaveAttribute('aria-haspopup', 'menu')
+    expect(trigger).toHaveAttribute('aria-controls')
+    const menuId = trigger.getAttribute('aria-controls')
+    if (!menuId) {
+      throw new Error('Floating action trigger did not expose a menu id.')
+    }
 
     fireEvent.click(trigger)
 
     await waitFor(() => {
-      const menu = document.querySelector(
-        '[data-floating-action-menu="manage"]',
-      ) as HTMLDivElement | null
-      const list = menu?.querySelector('ul')
+      const menu = screen.getByRole('menu', { name: 'manage' })
+      const list = menu.querySelector('ul')
       const item = list?.querySelector('li')
-      const link = screen.getByRole('link', { name: /Admin/ })
+      const link = screen.getByRole('menuitem', {
+        name: /Admin/,
+      }) as HTMLAnchorElement
 
       expect(menu).toBeTruthy()
-      expect(menu?.getAttribute('role')).toBeNull()
+      expect(menu).toHaveAttribute('id', menuId)
+      expect(menu).toHaveAttribute('aria-labelledby', trigger.id)
       expect(list).toBeTruthy()
       expect(item).toBeTruthy()
-      expect(link.getAttribute('role')).toBeNull()
+      expect(link.tagName).toBe('A')
+      expect(link).toHaveAttribute('href', '/sv/admin')
       expect(link.className).toContain('min-h-11')
       expect(link.className).toContain('min-w-11')
       expect(link.className).toContain('focus-visible:ring-2')
@@ -1785,7 +1792,7 @@ describe('RequirementsTable', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'reports' }))
 
-    const reportItem = await screen.findByRole('button', {
+    const reportItem = await screen.findByRole('menuitem', {
       name: /Kombinerad granskningsrapport/,
     })
     const badge = reportItem.querySelector(
@@ -1874,19 +1881,14 @@ describe('RequirementsTable', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'manage' }))
 
-    await waitFor(() => {
-      expect(screen.queryByRole('link', { name: /Admin/ })).toBeNull()
-    })
-
-    const disabledItem = screen
-      .getByText('Admin')
-      .closest('[aria-disabled="true"]') as HTMLElement | null
+    const disabledItem = await screen.findByRole('menuitem', { name: /Admin/ })
 
     expect(disabledItem).toBeTruthy()
-    expect(disabledItem?.className).toContain('cursor-not-allowed')
-    expect(disabledItem?.className).toContain('opacity-50')
+    expect(disabledItem).toHaveAttribute('aria-disabled', 'true')
+    expect(disabledItem.className).toContain('cursor-not-allowed')
+    expect(disabledItem.className).toContain('opacity-50')
 
-    fireEvent.click(disabledItem as HTMLElement)
+    fireEvent.click(disabledItem)
 
     expect(
       document.querySelector('[data-floating-action-menu="manage"]'),
@@ -1919,7 +1921,7 @@ describe('RequirementsTable', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'manage' }))
 
-    const actionButton = await screen.findByRole('button', { name: 'Export' })
+    const actionButton = await screen.findByRole('menuitem', { name: 'Export' })
 
     await waitFor(() => expect(actionButton).toHaveFocus())
 

@@ -469,6 +469,7 @@ test.describe('Requirement lifecycle manual cases', () => {
     page,
     request,
   }, testInfo) => {
+    const updatedDescription = 'Playwright LIFE-06 updated draft version'
     const requirement =
       await test.step('prepare a published requirement', async () => {
         const reviewerRequest = await newRoleContext(testInfo, 'reviewer')
@@ -500,10 +501,8 @@ test.describe('Requirement lifecycle manual cases', () => {
       await expect(descriptionField).toHaveValue(
         'Playwright LIFE-06 published requirement',
       )
-      await descriptionField.fill('Playwright LIFE-06 updated draft version')
-      await expect(descriptionField).toHaveValue(
-        'Playwright LIFE-06 updated draft version',
-      )
+      await descriptionField.fill(updatedDescription)
+      await expect(descriptionField).toHaveValue(updatedDescription)
     })
 
     await test.step('save through the enabled form button', async () => {
@@ -532,12 +531,15 @@ test.describe('Requirement lifecycle manual cases', () => {
       await expect
         .poll(async () => {
           const updated = await getRequirement(request, requirement.uniqueId)
+          const latest = latestVersion(updated)
           return {
-            latestStatus: latestVersion(updated).status,
+            latestDescription: latest.description,
+            latestStatus: latest.status,
             versionCount: updated.versions.length,
           }
         })
         .toEqual({
+          latestDescription: updatedDescription,
           latestStatus: STATUS_DRAFT,
           versionCount: 2,
         })

@@ -16,10 +16,13 @@ test('RES-02: homepage loads for signed-in and signed-out sessions', async ({
     baseURL: getBaseUrl(testInfo),
     storageState: { cookies: [], origins: [] },
   })
-  const anonymousPage = await anonymousContext.newPage()
-  await anonymousPage.goto('/')
-  await expect(anonymousPage).toHaveTitle(/.+/)
-  await anonymousContext.close()
+  try {
+    const anonymousPage = await anonymousContext.newPage()
+    await anonymousPage.goto('/')
+    await expect(anonymousPage).toHaveTitle(/.+/)
+  } finally {
+    await anonymousContext.close()
+  }
 
   await page.goto('/')
   await expect(page).toHaveTitle(/.+/)

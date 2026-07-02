@@ -149,6 +149,7 @@ test.describe('Requirements import', () => {
     const previewButton = dialog.getByRole('button', {
       name: 'Förhandsgranska krav',
     })
+    let selectedAreaId: number | null = null
     let selectedAreaDialogName = /Importera krav för/
 
     await test.step('open import and download supporting artifacts', async () => {
@@ -214,9 +215,16 @@ test.describe('Requirements import', () => {
         dialog.getByText(/JSON följer inte importschemat/),
       ).toHaveCount(1)
 
-      await dialog.getByLabel('Kravområde').selectOption({ index: 1 })
-      const selectedAreaName = await dialog
-        .getByLabel('Kravområde')
+      const areaSelect = dialog.getByLabel('Kravområde')
+      const [selectedAreaValue] = await areaSelect.selectOption({ index: 1 })
+      const parsedSelectedAreaId = Number(selectedAreaValue)
+      if (!Number.isInteger(parsedSelectedAreaId) || parsedSelectedAreaId < 1) {
+        throw new Error(
+          `Expected selected requirement area to have a numeric id, got "${selectedAreaValue}".`,
+        )
+      }
+      selectedAreaId = parsedSelectedAreaId
+      const selectedAreaName = await areaSelect
         .locator('option:checked')
         .textContent()
       const selectedAreaTitleName = selectedAreaName
@@ -289,11 +297,15 @@ test.describe('Requirements import', () => {
       await page.getByRole('button', { name: 'Importera valda' }).click()
 
       await expect.poll(() => executeRequests.length).toBe(1)
+      if (selectedAreaId == null) {
+        throw new Error('No requirement area id was captured before import.')
+      }
       expect(previewRequests[0]).toMatchObject({
         locale: 'sv',
         payload: validImportPayload,
       })
       expect(executeRequests[0]).toMatchObject({
+        areaId: selectedAreaId,
         locale: 'sv',
         previewToken: 'library-import-preview-token',
         rows: [
@@ -306,7 +318,6 @@ test.describe('Requirements import', () => {
           },
         ],
       })
-      expect(executeRequests[0]).toHaveProperty('areaId')
       await expect(page.getByText(/Importerade rader: 1/)).toHaveCount(1)
       const receiptDownloadPromise = page.waitForEvent('download')
       await page.getByRole('button', { name: 'Ladda ner CSV-kvitto' }).click()

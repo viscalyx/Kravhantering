@@ -13,6 +13,10 @@ import {
 
 let fixture: AuthorizationFixture
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 test.describe.configure({ mode: 'serial' })
 test.use({
   storageState: ROLE_STORAGE_STATE.packageLead,
@@ -60,7 +64,9 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
       name: 'Filtrera på namn eller beskrivning',
     })
     await filter.fill(fixture.packageName)
-    const row = page.getByRole('row', { name: new RegExp(fixture.packageName) })
+    const row = page.getByRole('row', {
+      name: new RegExp(escapeRegExp(fixture.packageName)),
+    })
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: 'Redigera' }).click()
 
@@ -81,7 +87,7 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
     await page.reload()
     await expect(page.getByText(updatedPurposeAndScope)).toBeVisible()
     const updatedRow = page.getByRole('row', {
-      name: new RegExp(fixture.packageName),
+      name: new RegExp(escapeRegExp(fixture.packageName)),
     })
     await updatedRow
       .getByRole('button', { name: 'Hantera medförfattare' })
@@ -110,7 +116,7 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
     await coAuthorsDialog.getByRole('button', { name: 'Hämta' }).click()
     await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toBeVisible()
     await coAuthorsDialog
-      .getByRole('row', { name: new RegExp(temporaryCoAuthor) })
+      .getByRole('row', { name: new RegExp(escapeRegExp(temporaryCoAuthor)) })
       .getByRole('button', { name: 'Ta bort' })
       .click()
     await page
