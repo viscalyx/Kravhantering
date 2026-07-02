@@ -125,8 +125,9 @@ installation starts without organization-specific prefix policy.
 
 ## AI
 
-The `AI` tab manages the global preference for AI-assisted requirement
-generation.
+The `AI` tab manages AI-assisted requirement generation directly in the AI
+panel. Its `AI and MCP security` section contains the MCP request payload
+limit.
 
 The source of truth is:
 
@@ -138,6 +139,7 @@ The source of truth is:
 Admin-managed AI settings include:
 
 - whether requirement generation is enabled as an administrator preference
+- the maximum MCP request payload size, sent as `mcpMaxRequestBytes`
 
 The effective setting is disabled when either the Admin Center preference is
 off or the deployment environment has `AI_REQUIREMENT_GENERATION_DISABLED=1` or
@@ -148,8 +150,18 @@ removed.
 
 When effective generation is disabled, the requirements-library AI action stays
 visible but disabled with an explanatory tooltip. An already-open generator
-dialog disables its Generate button. The REST and MCP generation paths also
-fail before taxonomy, model-catalog, or provider calls.
+dialog disables its Generate button. The REST generation path also fails before
+taxonomy, model-catalog, or provider calls.
+
+The MCP payload limit defaults to exactly `1 MiB` (`1048576` bytes). Admins can
+raise or lower it in `102.4 KiB` increments, modelled as ten steps per MiB.
+The database stores the resulting integer byte value, so the default is stored
+as `1048576` and ten increases from the default store `2097152` (`2 MiB`).
+The configured range is approximately `102.4 KiB` through `5 MiB`, with no
+unlimited value. `/api/mcp` applies an absolute `5 MiB` cap before
+authentication or database work, then applies the configured value from the
+process-local AI settings cache before bearer-token verification and service
+creation.
 
 ## Precedence Rules
 

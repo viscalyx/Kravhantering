@@ -184,6 +184,7 @@ erDiagram
     ai_settings {
         integer id PK
         bit requirement_generation_enabled
+        integer mcp_max_request_bytes
         datetime2 created_at
         datetime2 updated_at
     }
@@ -1392,13 +1393,15 @@ defaults used by the app.
 
 ### `ai_settings`
 
-Singleton Admin Center settings for AI-assisted requirement generation.
+Singleton Admin Center settings for AI-assisted requirement generation and MCP
+request payload security.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key; constrained to singleton row `1` |
 | `requirement_generation_enabled` | bit | Admin preference for AI requirement generation |
+| `mcp_max_request_bytes` | integer | Maximum MCP request payload size in bytes |
 | `created_at` | datetime2 | Creation timestamp |
 | `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
@@ -1406,16 +1409,21 @@ Singleton Admin Center settings for AI-assisted requirement generation.
 **Purpose:**
 
 - organization-wide Admin Center preference for AI requirement generation
-- persisted default used by the requirements UI, REST generation route, and MCP
-  generation tool
+- persisted default used by the requirements UI and REST generation route
+- organization-wide MCP request payload limit used by `/api/mcp` before
+  bearer-token verification and service creation
 - input to effective availability together with the deployment guard
   `AI_REQUIREMENT_GENERATION_DISABLED`
 
 **Seed value:** Required and demo seed data create row `id = 1` with
-`requirement_generation_enabled = 1`, so migrated installations stay enabled by
-default.
+`requirement_generation_enabled = 1` and `mcp_max_request_bytes = 1048576`, so
+migrated installations stay enabled with the exact `1 MiB` MCP default.
 
-**Check constraint:** `chk_ai_settings_id` enforces the singleton row ID.
+**Check constraints:** `chk_ai_settings_id` enforces the singleton row ID.
+`chk_ai_settings_mcp_max_request_bytes` enforces integer byte values on a
+ten-steps-per-MiB grid from approximately `102.4 KiB` through `5 MiB`, with no
+unlimited value. The grid keeps exact MiB anchors, so `1048576` is `1 MiB` and
+ten increases from the default become `2097152` (`2 MiB`).
 
 ### `requirement_list_column_defaults`
 

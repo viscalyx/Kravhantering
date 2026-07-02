@@ -539,11 +539,12 @@ const SEED_DATA = {
     columns: [
       'id',
       'requirement_generation_enabled',
+      'mcp_max_request_bytes',
       'created_at',
       'updated_at',
     ],
     pk: ['id'],
-    rows: [[1, 1, '2026-04-20 20:07:00', '2026-04-20 20:07:00']],
+    rows: [[1, 1, 1048576, '2026-04-20 20:07:00', '2026-04-20 20:07:00']],
   },
   requirement_list_column_defaults: {
     columns: [

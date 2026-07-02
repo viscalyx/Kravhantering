@@ -1340,13 +1340,20 @@
       "effectiveEnabled": "Generation enabled",
       "effectiveStatus": "Effective status",
       "environmentOverrideNotice": "Deployment configuration currently disables AI requirement generation. You can save the Admin Center preference, but generation stays disabled until the deployment override is removed.",
+      "decreaseMcpMaxRequestLimit": "Decrease MCP request limit",
       "fieldHelp": {
-        "requirementGenerationEnabled": "Turn off AI requirement generation for all users. The setting affects the requirements library button, the generator modal, the REST generation route, and the MCP generation tool."
+        "mcpMaxRequestLimit": "Maximum accepted MCP POST payload. The default is 1024 KiB. Values move in 102.4 KiB steps, so ten steps equal 1 MiB, and stay within the 102.4 KiB to 5 MiB range.",
+        "requirementGenerationEnabled": "Turn off AI requirement generation for all users. The setting affects the requirements library button, the generator modal, and the REST generation route."
       },
+      "increaseMcpMaxRequestLimit": "Increase MCP request limit",
       "loadError": "Could not load AI settings.",
+      "mcpMaxRequestLimit": "MCP request limit",
+      "mcpMaxRequestLimitCurrent": "Current limit: {value}",
       "requirementGenerationDescription": "When disabled, users can still view the AI controls but cannot start new requirement generation.",
       "requirementGenerationEnabled": "Requirement generation",
-      "saveError": "Could not save AI settings."
+      "saveError": "Could not save AI settings.",
+      "securityDescription": "Control MCP transport guardrails.",
+      "securityTitle": "AI and MCP security"
     },
     "aiDescription": "Control AI-assisted requirement generation availability.",
     "identityDescription": "Manage HSA-id prefixes for editable responsibility fields.",
@@ -2418,6 +2425,8 @@
     "invalidGeneratedJson": "Model output was not valid JSON.",
     "generatedJsonSchemaMismatch": "Generated JSON did not match the requirement import schema.",
     "repairedJsonSchemaMismatch": "Repaired JSON did not match the requirement import schema.",
+    "inputSafetyBlocked": "The AI request was blocked because the instructions appear unsafe. Revise the need or context and try again.",
+    "outputSafetyBlocked": "The AI response was blocked by the safety filter. Revise the request and try again.",
     "imageSchemaErrorType": "Unsupported image type. Use PNG, JPEG, GIF or WebP.",
     "imageSchemaErrorBase64": "Image data is not valid base64.",
     "imageSchemaErrorSize": "Image exceeds the 10 MB size limit.",

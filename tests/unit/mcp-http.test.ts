@@ -9,6 +9,7 @@ import {
 } from 'vitest'
 
 const serviceState = vi.hoisted(() => ({
+  getCachedMcpMaxRequestBytes: vi.fn(async () => 1024 * 1024),
   getService: vi.fn(),
 }))
 
@@ -46,11 +47,22 @@ vi.mock('@/lib/auth/mcp-token', () => ({
   })),
 }))
 
+vi.mock('@/lib/dal/ai-settings', () => ({
+  getCachedMcpMaxRequestBytes: serviceState.getCachedMcpMaxRequestBytes,
+}))
+
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import {
+  addMcpMaxRequestBytesSteps,
+  MCP_REQUEST_PAYLOAD_MAX_BYTES,
+} from '@/lib/ai/generation-availability'
 import { McpAuthError, verifyMcpBearerToken } from '@/lib/auth/mcp-token'
-import { handleRequirementsMcpRequest } from '@/lib/mcp/http'
+import {
+  handleRequirementsMcpRequest,
+  MCP_MAX_REQUEST_BYTES,
+} from '@/lib/mcp/http'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import { RequirementsServiceError } from '@/lib/requirements/errors'
 
@@ -292,6 +304,9 @@ async function createInMemoryClient(
 describe('handleRequirementsMcpRequest', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    serviceState.getCachedMcpMaxRequestBytes.mockResolvedValue(
+      MCP_MAX_REQUEST_BYTES,
+    )
     serviceState.getService.mockReturnValue(createFakeService())
   })
 
@@ -911,6 +926,131 @@ describe('handleRequirementsMcpRequest', () => {
       id: null,
       jsonrpc: '2.0',
     })
+    expect(serviceState.getService).not.toHaveBeenCalled()
+  })
+
+  it('returns 413 and skips auth for oversized MCP request payloads', async () => {
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp', {
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'tools/list',
+        }),
+        headers: {
+          'content-length': String(MCP_MAX_REQUEST_BYTES + 1),
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      }),
+      {} as never,
+    )
+
+    expect(response.status).toBe(413)
+    expect(await response.json()).toEqual({
+      error: {
+        code: -32000,
+        message: 'MCP request payload exceeds the 1024 KiB size limit.',
+      },
+      id: null,
+      jsonrpc: '2.0',
+    })
+    expect(serviceState.getCachedMcpMaxRequestBytes).toHaveBeenCalledOnce()
+    expect(verifyMcpBearerToken).not.toHaveBeenCalled()
+    expect(serviceState.getService).not.toHaveBeenCalled()
+  })
+
+  it('returns 413 before DB or auth for payloads above the absolute MCP cap', async () => {
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp', {
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'tools/list',
+        }),
+        headers: {
+          'content-length': String(MCP_REQUEST_PAYLOAD_MAX_BYTES + 1),
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      }),
+      {} as never,
+    )
+
+    expect(response.status).toBe(413)
+    expect(await response.json()).toEqual({
+      error: {
+        code: -32000,
+        message: 'MCP request payload exceeds the 5120 KiB size limit.',
+      },
+      id: null,
+      jsonrpc: '2.0',
+    })
+    expect(serviceState.getCachedMcpMaxRequestBytes).not.toHaveBeenCalled()
+    expect(verifyMcpBearerToken).not.toHaveBeenCalled()
+    expect(serviceState.getService).not.toHaveBeenCalled()
+  })
+
+  it('uses a lowered configured MCP request payload limit before auth', async () => {
+    const loweredLimit = addMcpMaxRequestBytesSteps(MCP_MAX_REQUEST_BYTES, -1)
+    serviceState.getCachedMcpMaxRequestBytes.mockResolvedValueOnce(loweredLimit)
+
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp', {
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'tools/list',
+        }),
+        headers: {
+          'content-length': String(MCP_MAX_REQUEST_BYTES),
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      }),
+      {} as never,
+    )
+
+    expect(response.status).toBe(413)
+    expect(await response.json()).toEqual({
+      error: {
+        code: -32000,
+        message: 'MCP request payload exceeds the 921.6 KiB size limit.',
+      },
+      id: null,
+      jsonrpc: '2.0',
+    })
+    expect(serviceState.getCachedMcpMaxRequestBytes).toHaveBeenCalledOnce()
+    expect(verifyMcpBearerToken).not.toHaveBeenCalled()
+    expect(serviceState.getService).not.toHaveBeenCalled()
+  })
+
+  it('allows payloads under a raised configured MCP request payload limit', async () => {
+    const raisedLimit = addMcpMaxRequestBytesSteps(MCP_MAX_REQUEST_BYTES, 1)
+    serviceState.getCachedMcpMaxRequestBytes.mockResolvedValueOnce(raisedLimit)
+    vi.mocked(verifyMcpBearerToken).mockRejectedValueOnce(
+      new McpAuthError('Missing Bearer token.', 401),
+    )
+
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp', {
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'tools/list',
+        }),
+        headers: {
+          'content-length': String(MCP_MAX_REQUEST_BYTES + 1),
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      }),
+      {} as never,
+    )
+
+    expect(response.status).toBe(401)
+    expect(serviceState.getCachedMcpMaxRequestBytes).toHaveBeenCalledOnce()
+    expect(verifyMcpBearerToken).toHaveBeenCalledOnce()
     expect(serviceState.getService).not.toHaveBeenCalled()
   })
 

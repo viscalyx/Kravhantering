@@ -8,6 +8,11 @@ import {
   formatSchemaIssues,
   getPromptMessage,
 } from '@/lib/ai/requirement-prompt'
+import {
+  recordAiSafetyDecision,
+  screenAiInput,
+  screenAiOutput,
+} from '@/lib/ai/safety'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
@@ -129,6 +134,27 @@ export const POST = secureMutationRoute({
       )
     }
 
+    const inputSafetyDecision = screenAiInput([body.rawJson, ...body.errors])
+    if (!inputSafetyDecision.allowed) {
+      recordAiSafetyDecision({
+        context,
+        decision: inputSafetyDecision,
+        event: 'ai.input_safety.blocked',
+        operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
+        request,
+      })
+      recordRepairEvent('failure', 400)
+      return applyResponseCorrelationHeaders(
+        Response.json(
+          {
+            error: getPromptMessage(body.locale, ['ai', 'inputSafetyBlocked']),
+          },
+          { status: 400 },
+        ),
+        context,
+      )
+    }
+
     try {
       const modelCapabilities = await resolveOpenRouterModelCapabilities(
         body.model,
@@ -160,6 +186,34 @@ export const POST = secureMutationRoute({
         signal: request.signal,
         supportedParameters: modelCapabilities.supportedParameters,
       })
+      const outputSafetyDecision = screenAiOutput([
+        JSON.stringify(result.content),
+        result.thinking,
+      ])
+      if (!outputSafetyDecision.allowed) {
+        recordAiSafetyDecision({
+          context,
+          decision: outputSafetyDecision,
+          event: 'ai.output_safety.blocked',
+          model: modelCapabilities.id,
+          operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
+          provider: modelCapabilities.provider,
+          request,
+        })
+        recordRepairEvent('failure', 422, result.stats)
+        return applyResponseCorrelationHeaders(
+          Response.json(
+            {
+              error: getPromptMessage(body.locale, [
+                'ai',
+                'outputSafetyBlocked',
+              ]),
+            },
+            { status: 422 },
+          ),
+          context,
+        )
+      }
       const validation = requirementsImportPayloadSchema.safeParse(
         result.content,
       )

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MCP_REQUEST_PAYLOAD_DEFAULT_BYTES } from '@/lib/ai/generation-availability'
 import { RequirementsServiceError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
@@ -76,6 +77,7 @@ import { GET, PUT } from '@/app/api/admin/ai-settings/route'
 const enabledResponse = {
   disabledByEnvironment: false,
   effectiveRequirementGenerationEnabled: true,
+  mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
   requirementGenerationEnabled: true,
 }
 
@@ -89,6 +91,7 @@ describe('admin AI settings route', () => {
         return {
           disabledByEnvironment: true,
           effectiveRequirementGenerationEnabled: false,
+          mcpMaxRequestBytes: values.mcpMaxRequestBytes,
           requirementGenerationEnabled: values.requirementGenerationEnabled,
         }
       },
@@ -150,10 +153,28 @@ describe('admin AI settings route', () => {
     expect(routeState.updateAiGenerationSettings).not.toHaveBeenCalled()
   })
 
+  it('rejects invalid MCP request payload limits before saving', async () => {
+    const response = await PUT(
+      new NextRequest('https://example.test/api/admin/ai-settings', {
+        body: JSON.stringify({
+          mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES + 1,
+          requirementGenerationEnabled: false,
+        }),
+        method: 'PUT',
+      }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.updateAiGenerationSettings).not.toHaveBeenCalled()
+  })
+
   it('saves the preference and records privileged audit', async () => {
     const response = await PUT(
       new NextRequest('https://example.test/api/admin/ai-settings', {
-        body: JSON.stringify({ requirementGenerationEnabled: false }),
+        body: JSON.stringify({
+          mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+          requirementGenerationEnabled: false,
+        }),
         method: 'PUT',
       }),
     )
@@ -164,11 +185,15 @@ describe('admin AI settings route', () => {
     expect(body).toEqual({
       disabledByEnvironment: true,
       effectiveRequirementGenerationEnabled: false,
+      mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
       requirementGenerationEnabled: false,
     })
     expect(routeState.updateAiGenerationSettings).toHaveBeenCalledWith(
       { db: true },
-      { requirementGenerationEnabled: false },
+      {
+        mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+        requirementGenerationEnabled: false,
+      },
       expect.objectContaining({ audit: expect.any(Function) }),
     )
     expect(
@@ -176,7 +201,7 @@ describe('admin AI settings route', () => {
     ).toHaveBeenCalledWith(
       expect.objectContaining({ requestId: 'request-ai' }),
       {
-        changedFields: ['requirementGenerationEnabled'],
+        changedFields: ['requirementGenerationEnabled', 'mcpMaxRequestBytes'],
         operation: 'save',
         resourceId: 'global',
         resourceType: 'ai_settings',
@@ -194,7 +219,10 @@ describe('admin AI settings route', () => {
 
     const response = await PUT(
       new NextRequest('https://example.test/api/admin/ai-settings', {
-        body: JSON.stringify({ requirementGenerationEnabled: false }),
+        body: JSON.stringify({
+          mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+          requirementGenerationEnabled: false,
+        }),
         method: 'PUT',
       }),
     )

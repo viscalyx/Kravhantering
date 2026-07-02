@@ -698,6 +698,18 @@ synlig men dimmad med förklarande text och dialogens genereringsknapp är
 dimmad. Om `AI_REQUIREMENT_GENERATION_DISABLED` är satt visar Admincenter att
 driftkonfigurationen har högre prioritet.
 
+### REQ-16B: Admin Center styr MCP-anropsgräns
+
+**Steg:** Logga in som `Admin`, öppna `/sv/admin?tab=ai` och kontrollera att
+`Kravgenerering` visas före sektionen `AI- och MCP-säkerhet`. Kontrollera att
+sektionen innehåller `MCP-anropsgräns`, notera aktuell gräns, höj gränsen ett
+steg med plusknappen och spara. Återställ därefter ursprungligt värde och spara.
+
+**Förväntat resultat:** Gränsen sparas i Admincenter och visas som aktuell
+gräns. Ett steg från standardvärdet `1024 KiB (1 MiB)` visar `1126,4 KiB`, och
+tio höjningar från standardvärdet motsvarar `2048 KiB` (`2 MiB`). Inställningen
+påverkar inte reglaget för kravgenerering om reglaget inte ändras separat.
+
 ### REQ-17: importera krav till kravbiblioteket
 
 **Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements`, välj

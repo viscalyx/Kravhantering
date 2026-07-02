@@ -1340,13 +1340,20 @@
       "effectiveEnabled": "Generering påslagen",
       "effectiveStatus": "Effektiv status",
       "environmentOverrideNotice": "Driftkonfigurationen stänger för närvarande av AI-kravgenerering. Du kan spara inställningen i Administrationscenter, men generering är fortsatt avstängd tills driftöverskrivningen tas bort.",
+      "decreaseMcpMaxRequestLimit": "Sänk MCP-anropsgränsen",
       "fieldHelp": {
-        "requirementGenerationEnabled": "Stäng av AI-kravgenerering för alla användare. Inställningen påverkar knappen i kravbiblioteket, genereringsdialogen, REST-rutten för generering och MCP-verktyget för generering."
+        "mcpMaxRequestLimit": "Största tillåtna MCP POST-nyttolast. Standardvärdet är 1024 KiB. Värden ändras i steg om 102,4 KiB, så tio steg motsvarar 1 MiB, och hålls inom intervallet 102,4 KiB till 5 MiB.",
+        "requirementGenerationEnabled": "Stäng av AI-kravgenerering för alla användare. Inställningen påverkar knappen i kravbiblioteket, genereringsdialogen och REST-rutten för generering."
       },
+      "increaseMcpMaxRequestLimit": "Höj MCP-anropsgränsen",
       "loadError": "Kunde inte läsa AI-inställningar.",
+      "mcpMaxRequestLimit": "MCP-anropsgräns",
+      "mcpMaxRequestLimitCurrent": "Aktuell gräns: {value}",
       "requirementGenerationDescription": "När detta är avstängt kan användare fortfarande se AI-kontrollerna, men inte starta ny kravgenerering.",
       "requirementGenerationEnabled": "Kravgenerering",
-      "saveError": "Kunde inte spara AI-inställningar."
+      "saveError": "Kunde inte spara AI-inställningar.",
+      "securityDescription": "Styr MCP-transportskydd.",
+      "securityTitle": "AI- och MCP-säkerhet"
     },
     "aiDescription": "Styr tillgänglighet för AI-assisterad kravgenerering.",
     "identityDescription": "Hantera HSA-id-prefix för redigerbara ansvarsfält.",
@@ -2418,6 +2425,8 @@
     "invalidGeneratedJson": "Modellens svar var inte giltig JSON.",
     "generatedJsonSchemaMismatch": "Genererad JSON matchade inte importens schema.",
     "repairedJsonSchemaMismatch": "Reparerad JSON matchade inte importens schema.",
+    "inputSafetyBlocked": "AI-anropet blockerades eftersom instruktionerna verkar osäkra. Ändra behovet eller sammanhanget och försök igen.",
+    "outputSafetyBlocked": "AI-svaret blockerades av säkerhetsfiltret. Ändra anropet och försök igen.",
     "imageSchemaErrorType": "Bildtypen stöds inte. Använd PNG, JPEG, GIF eller WebP.",
     "imageSchemaErrorBase64": "Bilddata är inte giltigt base64.",
     "imageSchemaErrorSize": "Bilden överskrider gränsen på 10 MB.",

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { isValidMcpMaxRequestBytes } from '@/lib/ai/generation-availability'
 import {
   formatAiSettingsLoadError,
   getAiGenerationAvailability,
@@ -20,6 +21,10 @@ import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 const aiSettingsPayloadSchema = z
   .object({
+    mcpMaxRequestBytes: z
+      .number()
+      .int()
+      .refine(isValidMcpMaxRequestBytes, 'Invalid MCP request payload limit.'),
     requirementGenerationEnabled: z.boolean(),
   })
   .strict()
@@ -74,7 +79,10 @@ export const PUT = secureMutationRoute({
           recordAdminPrivilegedActionSucceeded(
             context,
             {
-              changedFields: ['requirementGenerationEnabled'],
+              changedFields: [
+                'requirementGenerationEnabled',
+                'mcpMaxRequestBytes',
+              ],
               operation: 'save',
               resourceId: 'global',
               resourceType: 'ai_settings',

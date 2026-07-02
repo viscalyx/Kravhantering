@@ -208,6 +208,32 @@ The user-facing prompt field is `Behov och sammanhang` / `Need and context`.
 There is no second free-text instruction field; later steering should be added
 as concrete controls when needed.
 
+### AI Safety Controls
+
+AISVS evidence for AI-assisted authoring is tracked in
+[AISVS AI and MCP Control Mapping](../security-privacy/aisvs-ai-mcp-control-mapping.md).
+
+Generation and repair use the local deterministic safety screen in
+`lib/ai/safety.ts`. Input screening runs after AI availability is confirmed and
+before model-catalog or chat-completion work. The screen evaluates the user's
+need/context, repair `rawJson`, repair validation `errors`, and image MIME
+metadata. It blocks obvious instruction override, prompt extraction, encoded
+smuggling tied to override terms, secret extraction, and harmful-generation
+requests.
+
+Streaming generation buffers raw model chunks server-side. The route emits the
+final `done`, `validation_error`, or safe `error` event only after output
+safety screening and schema validation. Unsafe model output is never returned
+as `rawContent`, `thinking`, or validation-error payloads. The repair route
+uses the same output screen before validating or returning repaired JSON.
+
+Safety decisions are written to the JSON `security-audit` log stream with
+metadata only. The event names are `ai.input_safety.blocked`,
+`ai.output_safety.blocked`, and `ai.safety_filter.failed`. Details include
+operation, decision, rule IDs, categories, source, request/correlation IDs,
+and model/provider when available. They do not include prompts, raw model
+output, repair JSON, image data, or actor HSA-id values.
+
 **Reference-data binding:** the import instruction includes current taxonomy
 and norm-reference data so the model can emit import JSON with stable IDs where
 possible. The model may propose missing norm references through

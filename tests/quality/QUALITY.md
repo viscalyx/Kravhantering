@@ -927,30 +927,39 @@ npm exec -- vitest run tests/unit/requirements-assignment-authorization.test.ts
 **What happened:** AI requirement generation can now be disabled by an
 administrator without changing deployment configuration, while
 `AI_REQUIREMENT_GENERATION_DISABLED` remains a higher-precedence hard override
-for DAST scans and production operation. If the persisted setting were treated
-as only a UI preference, REST callers could still reach OpenRouter. If Admin
-Center could override the environment guard, security scans and operator-driven
-shutdowns would lose their fail-closed behavior.
+for DAST scans and production operation. The same Admin Center panel also owns
+the MCP request payload limit. If the persisted generation setting were
+treated as only a UI preference, REST callers could still reach OpenRouter. If
+the MCP limit stayed hard-coded, operators could not lower it during incident
+response or raise it within the agreed safety envelope for legitimate clients.
+If Admin Center could override the environment guard, security scans and
+operator-driven shutdowns would lose their fail-closed behavior.
 
 **The requirement:** The `ai_settings` table must be a singleton with a default
-enabled row so migrations preserve current behavior. Admin Center may save the
-global `requirementGenerationEnabled` preference through an Admin-only
+enabled row and exact `1 MiB` MCP payload limit so migrations preserve current
+behavior. Admin Center may save the global `requirementGenerationEnabled`
+preference and `mcpMaxRequestBytes` through an Admin-only
 `adminMutationPolicy()` route and privileged audit event. Effective generation
 availability is false when either the admin preference is disabled or
 `AI_REQUIREMENT_GENERATION_DISABLED` is `1` or `true`; the environment guard
 has highest precedence. REST AI-assisted authoring must check effective
-availability before model-catalog or chat-provider work. The requirements UI
-must keep the AI action visible but disabled with explanatory copy, and an
-already-open generator modal must also disable generation.
+availability before model-catalog or chat-provider work. `/api/mcp` must reject
+requests above an absolute `5 MiB` cap before database or auth work, then apply
+the cached configured limit before bearer-token verification and service
+creation. The requirements UI must keep the AI action visible but disabled with
+explanatory copy, and an already-open generator modal must also disable
+generation.
 
 **Scenario 24 code coverage:** Migration
 `typeorm/migrations/0037_ai_settings.mjs:1-25` creates and seeds the singleton
-table. Demo and required seed defaults are in `typeorm/seed.mjs:538-551` and
-`typeorm/seed-required.mjs:228-240`. Environment parsing is in
-`lib/ai/scan-guard.ts:1-10`; persisted availability and update/audit callback
-logic are in `lib/dal/ai-settings.ts:19-132`. The Admin API policy and audit
-surface are in `app/api/admin/ai-settings/route.ts:33-93`. The REST generation
-gate is in `app/api/ai/generate-requirement-import/route.ts`. UI wiring is in
+table, and `typeorm/migrations/0041_ai_mcp_payload_limit.mjs` adds the MCP
+payload column and check constraint. Demo and required seed defaults are in
+`typeorm/seed.mjs` and `typeorm/seed-required.mjs`. Environment parsing is in
+`lib/ai/scan-guard.ts:1-10`; persisted availability, MCP-limit validation, and
+cache fallback logic are in `lib/dal/ai-settings.ts`. The Admin API policy and
+audit surface are in `app/api/admin/ai-settings/route.ts`. The REST generation
+gate is in `app/api/ai/generate-requirement-import/route.ts`, and the MCP
+transport guard is in `lib/mcp/http.ts`. UI wiring is in
 `app/[locale]/admin/admin-client.tsx`, `app/[locale]/requirements/page.tsx`,
 `app/[locale]/requirements/requirements-client.tsx:230-290`, and
 `components/AiRequirementGenerator.tsx:232-251`.

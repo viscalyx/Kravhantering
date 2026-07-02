@@ -66,7 +66,13 @@ import type {
 } from '@/lib/access-review/types'
 import {
   type AiRequirementGenerationAvailability,
+  addMcpMaxRequestBytesSteps,
+  coerceMcpMaxRequestBytes,
   DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
+  formatMcpRequestPayloadKiB,
+  MCP_REQUEST_PAYLOAD_MAX_BYTES,
+  MCP_REQUEST_PAYLOAD_MIN_BYTES,
+  MCP_REQUEST_PAYLOAD_STEP_KIB,
 } from '@/lib/ai/generation-availability'
 import type { ActionAuditLogSearchParams } from '@/lib/audit/action-audit-query'
 import { downloadBlob } from '@/lib/browser-download'
@@ -532,11 +538,35 @@ const ACCESS_REVIEW_DECISIONS: Exclude<AccessReviewDecision, 'pending'>[] = [
 
 function aiSettingsSnapshot(settings: AiRequirementGenerationAvailability) {
   return createDirtySnapshot({
+    mcpMaxRequestBytes: settings.mcpMaxRequestBytes,
     requirementGenerationEnabled: settings.requirementGenerationEnabled,
   })
 }
 
+const MIN_ALLOWED_MCP_REQUEST_BYTES = coerceMcpMaxRequestBytes(
+  MCP_REQUEST_PAYLOAD_MIN_BYTES,
+)
+const MAX_ALLOWED_MCP_REQUEST_BYTES = coerceMcpMaxRequestBytes(
+  MCP_REQUEST_PAYLOAD_MAX_BYTES,
+)
+
+function formatMcpRequestLimitInputKiB(bytes: number): string {
+  return formatMcpRequestPayloadKiB(bytes)
+}
+
+function formatMcpRequestLimit(bytes: number, locale: string): string {
+  if (bytes === 1024 * 1024) return '1024 KiB (1 MiB)'
+  if (bytes % (1024 * 1024) === 0) return `${bytes / (1024 * 1024)} MiB`
+  const kib = bytes / 1024
+  const formatter = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: Number.isInteger(kib) ? 0 : 1,
+  })
+  return `${formatter.format(kib)} KiB`
+}
+
 function AiSettingsPanel() {
+  const locale = useLocale()
   const ta = useTranslations('admin')
   const tc = useTranslations('common')
   const [settings, setSettings] = useState<AiRequirementGenerationAvailability>(
@@ -549,6 +579,7 @@ function AiSettingsPanel() {
   const [message, setMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const [isMcpLimitHelpOpen, setIsMcpLimitHelpOpen] = useState(false)
   const saveTokenRef = useRef(0)
   const isSaving = saveState === 'saving'
   const isDirty = settingsBaseline !== aiSettingsSnapshot(settings)
@@ -556,6 +587,19 @@ function AiSettingsPanel() {
   const saveErrorMessage = ta('ai.saveError')
   const toggleId = 'admin-ai-requirement-generation-enabled'
   const helpId = `${toggleId}-help`
+  const mcpLimitId = 'admin-ai-mcp-max-request-kib'
+  const mcpLimitHelpId = `${mcpLimitId}-help`
+  const mcpLimitKiB = formatMcpRequestLimitInputKiB(settings.mcpMaxRequestBytes)
+
+  function updateMcpMaxRequestBytes(nextValue: number) {
+    const next = coerceMcpMaxRequestBytes(nextValue)
+    setSettings(current => ({
+      ...current,
+      mcpMaxRequestBytes: next,
+    }))
+    setSaveState('idle')
+    setMessage(null)
+  }
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true)
@@ -594,6 +638,7 @@ function AiSettingsPanel() {
     try {
       const response = await apiFetch('/api/admin/ai-settings', {
         body: JSON.stringify({
+          mcpMaxRequestBytes: settings.mcpMaxRequestBytes,
           requirementGenerationEnabled: settings.requirementGenerationEnabled,
         }),
         headers: { 'Content-Type': 'application/json' },
@@ -674,57 +719,173 @@ function AiSettingsPanel() {
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-1">
-                <label
-                  className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
-                  htmlFor={toggleId}
+        <div className="grid gap-4">
+          <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  <label
+                    className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
+                    htmlFor={toggleId}
+                  >
+                    {ta('ai.requirementGenerationEnabled')}
+                  </label>
+                  <button
+                    aria-controls={helpId}
+                    aria-expanded={isHelpOpen}
+                    aria-label={`${tc('help')}: ${ta('ai.requirementGenerationEnabled')}`}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                    onClick={() => setIsHelpOpen(open => !open)}
+                    type="button"
+                  >
+                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <AnimatedHelpPanel id={helpId} isOpen={isHelpOpen}>
+                  {ta('ai.fieldHelp.requirementGenerationEnabled')}
+                </AnimatedHelpPanel>
+                <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+                  {ta('ai.requirementGenerationDescription')}
+                </p>
+              </div>
+              <label className="inline-flex min-h-11 items-center gap-3 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200">
+                <input
+                  checked={settings.requirementGenerationEnabled}
+                  disabled={isLoading || isSaving}
+                  id={toggleId}
+                  onChange={event => {
+                    setSettings(current => ({
+                      ...current,
+                      requirementGenerationEnabled: event.target.checked,
+                      effectiveRequirementGenerationEnabled:
+                        event.target.checked && !current.disabledByEnvironment,
+                    }))
+                    setSaveState('idle')
+                    setMessage(null)
+                  }}
+                  type="checkbox"
+                />
+                <span>
+                  {settings.requirementGenerationEnabled
+                    ? ta('ai.adminPreferenceEnabled')
+                    : ta('ai.adminPreferenceDisabled')}
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-base font-semibold text-secondary-950 dark:text-secondary-50">
+              {ta('ai.securityTitle')}
+            </h3>
+            <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+              {ta('ai.securityDescription')}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  <label
+                    className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
+                    htmlFor={mcpLimitId}
+                  >
+                    {ta('ai.mcpMaxRequestLimit')}
+                  </label>
+                  <button
+                    aria-controls={mcpLimitHelpId}
+                    aria-expanded={isMcpLimitHelpOpen}
+                    aria-label={`${tc('help')}: ${ta('ai.mcpMaxRequestLimit')}`}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                    onClick={() => setIsMcpLimitHelpOpen(open => !open)}
+                    type="button"
+                  >
+                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <AnimatedHelpPanel
+                  id={mcpLimitHelpId}
+                  isOpen={isMcpLimitHelpOpen}
                 >
-                  {ta('ai.requirementGenerationEnabled')}
-                </label>
+                  {ta('ai.fieldHelp.mcpMaxRequestLimit')}
+                </AnimatedHelpPanel>
+                <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                  {ta('ai.mcpMaxRequestLimitCurrent', {
+                    value: formatMcpRequestLimit(
+                      settings.mcpMaxRequestBytes,
+                      locale,
+                    ),
+                  })}
+                </p>
+              </div>
+              <div className="flex min-h-11 items-center overflow-hidden rounded-full border border-secondary-200 bg-white text-sm font-medium text-secondary-800 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100">
                 <button
-                  aria-controls={helpId}
-                  aria-expanded={isHelpOpen}
-                  aria-label={`${tc('help')}: ${ta('ai.requirementGenerationEnabled')}`}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
-                  onClick={() => setIsHelpOpen(open => !open)}
+                  aria-label={ta('ai.decreaseMcpMaxRequestLimit')}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center border-r border-secondary-200 transition-colors hover:bg-secondary-100 disabled:opacity-50 dark:border-secondary-700 dark:hover:bg-secondary-800"
+                  disabled={
+                    isLoading ||
+                    isSaving ||
+                    settings.mcpMaxRequestBytes <= MIN_ALLOWED_MCP_REQUEST_BYTES
+                  }
+                  onClick={() =>
+                    updateMcpMaxRequestBytes(
+                      addMcpMaxRequestBytesSteps(
+                        settings.mcpMaxRequestBytes,
+                        -1,
+                      ),
+                    )
+                  }
                   type="button"
                 >
-                  <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                  <CircleMinus aria-hidden="true" className="h-4 w-4" />
+                </button>
+                <input
+                  aria-describedby={mcpLimitHelpId}
+                  className="h-11 w-24 border-0 bg-transparent px-3 text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  disabled={isLoading || isSaving}
+                  id={mcpLimitId}
+                  inputMode="numeric"
+                  max={MAX_ALLOWED_MCP_REQUEST_BYTES / 1024}
+                  min={Number(
+                    formatMcpRequestPayloadKiB(MIN_ALLOWED_MCP_REQUEST_BYTES),
+                  )}
+                  onChange={event => {
+                    if (event.target.value.trim() === '') return
+                    const parsed = Number(event.target.value)
+                    if (Number.isFinite(parsed)) {
+                      updateMcpMaxRequestBytes(parsed * 1024)
+                    }
+                  }}
+                  step={MCP_REQUEST_PAYLOAD_STEP_KIB}
+                  type="number"
+                  value={mcpLimitKiB}
+                />
+                <span className="px-2 text-xs text-secondary-500 dark:text-secondary-400">
+                  KiB
+                </span>
+                <button
+                  aria-label={ta('ai.increaseMcpMaxRequestLimit')}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center border-l border-secondary-200 transition-colors hover:bg-secondary-100 disabled:opacity-50 dark:border-secondary-700 dark:hover:bg-secondary-800"
+                  disabled={
+                    isLoading ||
+                    isSaving ||
+                    settings.mcpMaxRequestBytes >= MAX_ALLOWED_MCP_REQUEST_BYTES
+                  }
+                  onClick={() =>
+                    updateMcpMaxRequestBytes(
+                      addMcpMaxRequestBytesSteps(
+                        settings.mcpMaxRequestBytes,
+                        1,
+                      ),
+                    )
+                  }
+                  type="button"
+                >
+                  <Plus aria-hidden="true" className="h-4 w-4" />
                 </button>
               </div>
-              <AnimatedHelpPanel id={helpId} isOpen={isHelpOpen}>
-                {ta('ai.fieldHelp.requirementGenerationEnabled')}
-              </AnimatedHelpPanel>
-              <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-                {ta('ai.requirementGenerationDescription')}
-              </p>
             </div>
-            <label className="inline-flex min-h-11 items-center gap-3 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200">
-              <input
-                checked={settings.requirementGenerationEnabled}
-                disabled={isLoading || isSaving}
-                id={toggleId}
-                onChange={event => {
-                  setSettings(current => ({
-                    ...current,
-                    requirementGenerationEnabled: event.target.checked,
-                    effectiveRequirementGenerationEnabled:
-                      event.target.checked && !current.disabledByEnvironment,
-                  }))
-                  setSaveState('idle')
-                  setMessage(null)
-                }}
-                type="checkbox"
-              />
-              <span>
-                {settings.requirementGenerationEnabled
-                  ? ta('ai.adminPreferenceEnabled')
-                  : ta('ai.adminPreferenceDisabled')}
-              </span>
-            </label>
           </div>
         </div>
 

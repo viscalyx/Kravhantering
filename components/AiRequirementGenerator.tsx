@@ -1176,6 +1176,7 @@ export default function AiRequirementGenerator({
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let receivedTerminalEvent = false
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -1197,6 +1198,7 @@ export default function AiRequirementGenerator({
               current => `${current}${String(payload.chunk ?? '')}`,
             )
           } else if (parsed.event === 'done') {
+            receivedTerminalEvent = true
             const generated = payload.payload as ImportRequirementsPayload
             const rawContent = String(
               payload.rawContent ?? JSON.stringify(generated),
@@ -1206,7 +1208,9 @@ export default function AiRequirementGenerator({
             setStats((payload.stats as GenerationStats | undefined) ?? null)
             await loadPreview(generated)
             setPhase('done')
+            return
           } else if (parsed.event === 'validation_error') {
+            receivedTerminalEvent = true
             const issues = (payload.issues as SchemaIssue[] | undefined) ?? []
             setSchemaIssues(issues)
             setRawResponse(String(payload.rawContent ?? ''))
@@ -1214,10 +1218,15 @@ export default function AiRequirementGenerator({
             setStats((payload.stats as GenerationStats | undefined) ?? null)
             setError(String(payload.message ?? t('validationErrors')))
             setPhase('error')
+            return
           } else if (parsed.event === 'error') {
+            receivedTerminalEvent = true
             throw new Error(String(payload.message ?? t('createError')))
           }
         }
+      }
+      if (!receivedTerminalEvent) {
+        throw new Error(t('createError'))
       }
     } catch (generateError) {
       if (controller.signal.aborted) return

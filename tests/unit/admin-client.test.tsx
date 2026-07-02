@@ -14,6 +14,10 @@ import type { ActionAuditLogInitialState } from '@/components/admin/ActionAuditL
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { HelpProvider, useHelp } from '@/components/HelpPanel'
 import {
+  addMcpMaxRequestBytesSteps,
+  MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+} from '@/lib/ai/generation-availability'
+import {
   DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
   normalizeRequirementListColumnDefaults,
   type RequirementListColumnDefault,
@@ -625,16 +629,23 @@ describe('AdminClient', () => {
             okJson({
               disabledByEnvironment: true,
               effectiveRequirementGenerationEnabled: false,
+              mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
               requirementGenerationEnabled: true,
             }),
           )
         }
         if (url === '/api/admin/ai-settings' && method === 'PUT') {
+          const requestBody = JSON.parse(String(init?.body ?? '{}')) as {
+            mcpMaxRequestBytes: number
+            requirementGenerationEnabled: boolean
+          }
           return Promise.resolve(
             okJson({
               disabledByEnvironment: true,
               effectiveRequirementGenerationEnabled: false,
-              requirementGenerationEnabled: false,
+              mcpMaxRequestBytes: requestBody.mcpMaxRequestBytes,
+              requirementGenerationEnabled:
+                requestBody.requirementGenerationEnabled,
             }),
           )
         }
@@ -657,14 +668,48 @@ describe('AdminClient', () => {
       'true',
     )
     expect(screen.getByText('admin.ai.environmentOverrideNotice')).toBeVisible()
+    const requirementGenerationLabel = screen.getByText(
+      'admin.ai.requirementGenerationEnabled',
+    )
+    const securityHeading = screen.getByText('admin.ai.securityTitle')
+    const mcpLimitLabel = screen.getByText('admin.ai.mcpMaxRequestLimit')
+    expect(securityHeading).toBeVisible()
+    expect(mcpLimitLabel).toBeVisible()
+    expect(
+      screen.queryByText('admin.ai.fieldHelp.mcpMaxRequestLimit'),
+    ).not.toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'common.help: admin.ai.mcpMaxRequestLimit',
+      }),
+    )
+    expect(
+      screen.getByText('admin.ai.fieldHelp.mcpMaxRequestLimit'),
+    ).toBeVisible()
+    expect(
+      requirementGenerationLabel.compareDocumentPosition(securityHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      securityHeading.compareDocumentPosition(mcpLimitLabel) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
 
     const toggle = screen.getByLabelText(
       'admin.ai.requirementGenerationEnabled',
     )
+    const mcpLimitInput = screen.getByLabelText('admin.ai.mcpMaxRequestLimit')
     const saveButton = screen.getByRole('button', { name: 'common.save' })
     await waitFor(() => expect(toggle).toBeChecked())
+    expect(mcpLimitInput).toHaveValue(1024)
     expect(saveButton).toBeDisabled()
 
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'admin.ai.increaseMcpMaxRequestLimit',
+      }),
+    )
+    expect(mcpLimitInput).toHaveValue(1126.4)
     fireEvent.click(toggle)
     expect(toggle).not.toBeChecked()
     expect(saveButton).toBeEnabled()
@@ -683,7 +728,13 @@ describe('AdminClient', () => {
     )
     expect(
       JSON.parse(((putCall?.[1] as RequestInit)?.body as string) ?? '{}'),
-    ).toEqual({ requirementGenerationEnabled: false })
+    ).toEqual({
+      mcpMaxRequestBytes: addMcpMaxRequestBytesSteps(
+        MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+        1,
+      ),
+      requirementGenerationEnabled: false,
+    })
     await waitFor(() => expect(screen.getByText('admin.saved')).toBeVisible())
   })
 

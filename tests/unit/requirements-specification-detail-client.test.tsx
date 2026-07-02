@@ -313,6 +313,7 @@ function createInitialData(): RequirementsSpecificationDetailInitialData {
     aiGenerationAvailability: {
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: true,
+      mcpMaxRequestBytes: 1024 * 1024,
       requirementGenerationEnabled: true,
     },
     areas: [],

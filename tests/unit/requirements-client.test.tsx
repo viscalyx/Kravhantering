@@ -808,6 +808,7 @@ describe('RequirementsClient', () => {
     const aiGenerationAvailability = {
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: false,
+      mcpMaxRequestBytes: 1024 * 1024,
       requirementGenerationEnabled: false,
     }
     mockCommonFetches()

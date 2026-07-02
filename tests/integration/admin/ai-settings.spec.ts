@@ -5,11 +5,16 @@ import {
   type Route,
   test,
 } from '@playwright/test'
+import {
+  addMcpMaxRequestBytesSteps,
+  MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+} from '@/lib/ai/generation-availability'
 import { expectApiResponseOk } from '../api-response-assertions'
 
 interface AiGenerationAvailability {
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
+  mcpMaxRequestBytes: number
   requirementGenerationEnabled: boolean
 }
 
@@ -23,10 +28,13 @@ async function getAiSettings(
 
 async function putAiSettings(
   request: APIRequestContext,
-  requirementGenerationEnabled: boolean,
+  settings: Pick<
+    AiGenerationAvailability,
+    'mcpMaxRequestBytes' | 'requirementGenerationEnabled'
+  >,
 ): Promise<AiGenerationAvailability> {
   const response = await request.put('/api/admin/ai-settings', {
-    data: { requirementGenerationEnabled },
+    data: settings,
   })
   await expectApiResponseOk(response, 'PUT AI settings')
   return (await response.json()) as AiGenerationAvailability
@@ -83,12 +91,120 @@ async function mockUnavailableGeneration(route: Route) {
 test.describe('Admin AI settings', () => {
   test.use({ viewport: { height: 760, width: 1280 } })
 
+  test('REQ-16B: Admin Center controls the MCP request payload limit', async ({
+    page,
+    request,
+  }) => {
+    const original = await getAiSettings(request)
+    const oneStepLimit = addMcpMaxRequestBytesSteps(
+      MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+      1,
+    )
+    const tenStepLimit = addMcpMaxRequestBytesSteps(
+      MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+      10,
+    )
+    let shouldRestoreSettings = false
+
+    try {
+      await putAiSettings(request, {
+        mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+        requirementGenerationEnabled: original.requirementGenerationEnabled,
+      })
+      shouldRestoreSettings = true
+
+      await test.step('shows requirement generation before MCP security controls', async () => {
+        await page.goto('/sv/admin?tab=ai')
+        await expect(page.getByRole('tab', { name: 'AI' })).toHaveAttribute(
+          'aria-selected',
+          'true',
+        )
+        await expect(
+          page.getByRole('checkbox', { name: /Kravgenerering/ }),
+        ).toBeVisible()
+        await expect(
+          page.getByRole('heading', { name: 'AI- och MCP-säkerhet' }),
+        ).toHaveCount(1)
+        await expect(
+          page.getByRole('spinbutton', { name: 'MCP-anropsgräns' }),
+        ).toBeVisible()
+
+        const panelTextOrder = await page
+          .locator('#ai-panel')
+          .evaluate(panel => {
+            const text = panel.textContent ?? ''
+            return {
+              limit: text.indexOf('MCP-anropsgräns'),
+              requirementGeneration: text.indexOf('Kravgenerering'),
+              security: text.indexOf('AI- och MCP-säkerhet'),
+            }
+          })
+        expect(panelTextOrder.requirementGeneration).toBeGreaterThanOrEqual(0)
+        expect(panelTextOrder.security).toBeGreaterThan(
+          panelTextOrder.requirementGeneration,
+        )
+        expect(panelTextOrder.limit).toBeGreaterThan(panelTextOrder.security)
+      })
+
+      await test.step('keeps MCP guidance behind the field help button', async () => {
+        await expect(
+          page.getByText('Största tillåtna MCP POST-nyttolast.'),
+        ).toHaveCount(0)
+        await page
+          .getByRole('button', { name: 'Hjälp: MCP-anropsgräns' })
+          .click()
+        await expect(
+          page.getByText('Största tillåtna MCP POST-nyttolast.'),
+        ).toHaveCount(1)
+      })
+
+      const mcpLimitInput = page.locator('#admin-ai-mcp-max-request-kib')
+      const increaseButton = page.getByRole('button', {
+        name: 'Höj MCP-anropsgränsen',
+      })
+      const saveButton = page.getByRole('button', { name: 'Spara' })
+
+      await test.step('raises and persists one 102.4 KiB step', async () => {
+        await expect(mcpLimitInput).toHaveValue('1024')
+        await increaseButton.click()
+        await expect(mcpLimitInput).toHaveValue('1126.4')
+        await saveButton.click()
+        await expect(page.getByRole('status')).toHaveText('Sparat')
+
+        await expect
+          .poll(async () => (await getAiSettings(request)).mcpMaxRequestBytes)
+          .toBe(oneStepLimit)
+      })
+
+      await test.step('ten increases from the default reach exactly 2 MiB', async () => {
+        for (let index = 0; index < 9; index += 1) {
+          await increaseButton.click()
+        }
+        await expect(mcpLimitInput).toHaveValue('2048')
+        await saveButton.click()
+        await expect(page.getByRole('status')).toHaveText('Sparat')
+
+        await expect
+          .poll(async () => (await getAiSettings(request)).mcpMaxRequestBytes)
+          .toBe(tenStepLimit)
+      })
+    } finally {
+      if (shouldRestoreSettings) {
+        await putAiSettings(request, {
+          mcpMaxRequestBytes: original.mcpMaxRequestBytes,
+          requirementGenerationEnabled: original.requirementGenerationEnabled,
+        })
+      }
+    }
+  })
+
   test('REQ-16: Admin Center disables AI requirement generation across requirements UI and open dialogs', async ({
     context,
     page,
     request,
   }) => {
     const original = await getAiSettings(request)
+    let shouldRestoreSettings = false
 
     try {
       await page.goto('/sv/admin?tab=ai')
@@ -112,7 +228,11 @@ test.describe('Admin AI settings', () => {
         return
       }
 
-      await putAiSettings(request, true)
+      await putAiSettings(request, {
+        mcpMaxRequestBytes: original.mcpMaxRequestBytes,
+        requirementGenerationEnabled: true,
+      })
+      shouldRestoreSettings = true
 
       const generatorPage = await context.newPage()
       await mockAiDialogReferenceData(generatorPage)
@@ -161,7 +281,12 @@ test.describe('Admin AI settings', () => {
       ).toHaveCount(1)
       await generatorPage.close()
     } finally {
-      await putAiSettings(request, original.requirementGenerationEnabled)
+      if (shouldRestoreSettings) {
+        await putAiSettings(request, {
+          mcpMaxRequestBytes: original.mcpMaxRequestBytes,
+          requirementGenerationEnabled: original.requirementGenerationEnabled,
+        })
+      }
     }
   })
 })

@@ -129,7 +129,9 @@ Deferred from this contract:
   permission. The app does not expose a browser-usable general HSA search route.
 - MCP remains outside the REST OpenAPI/Schemathesis contract. `/api/mcp` is
   governed by MCP schemas, tool-contract tests, Bearer-token authentication
-  tests, and the seeded MCP workflow rather than REST route fuzzing.
+  tests, the Admin-configured MCP payload-size guard that defaults to `1 MiB`
+  with an absolute `5 MiB` cap, and the seeded MCP workflow rather than REST
+  route fuzzing.
 - Paid vendor scanners that require service-specific CI secrets.
 
 The existing catalog `GET /api/requirement-packages` route stays in scope and
