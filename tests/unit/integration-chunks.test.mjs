@@ -3,8 +3,10 @@ import {
   buildManifestFromSpecs,
   checkManifestAgainstSpecs,
   createRunPlan,
+  formatChunkDurationLine,
   formatChunkMemoryLine,
   formatChunkServerLogFinishedLine,
+  formatDurationMs,
   parseArgs,
   readSystemMemorySnapshot,
   selectChunks,
@@ -98,6 +100,34 @@ describe('integration chunk manifest validation', () => {
       ]),
     )
   })
+
+  it('reports exact manifest spec paths that are not discovered specs', () => {
+    const manifest = buildManifestFromSpecs(fixtureSpecs)
+    const broken = structuredClone(manifest)
+    const mcpChunk = broken.suites.prodlike.chunks.find(
+      chunk => chunk.id === 'prodlike-mcp-seeded-scan',
+    )
+    if (!mcpChunk) {
+      throw new Error(
+        'Expected the prodlike MCP chunk in the fixture manifest.',
+      )
+    }
+    mcpChunk.paths = ['tests/integration/mcp/missing.spec.ts']
+
+    const result = checkManifestAgainstSpecs(broken, fixtureSpecs)
+
+    expect(result.ok).toBe(false)
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          'suite prodlike chunk prodlike-mcp-seeded-scan matches no specs',
+        ),
+        expect.stringContaining(
+          'suite prodlike chunk prodlike-mcp-seeded-scan specCount is 1, expected 0',
+        ),
+      ]),
+    )
+  })
 })
 
 describe('integration chunk command planning', () => {
@@ -141,6 +171,19 @@ describe('integration chunk command planning', () => {
       }),
     ).toBe(
       '[integration-chunks] Finished prodlike chunk prodlike-requirements; app server log: test-results/server-logs/prodlike/prodlike-requirements.log\n',
+    )
+  })
+
+  it('formats chunk duration lines for console discovery', () => {
+    expect(formatDurationMs(3_661_000)).toBe('01h 01m 01s (3661s)')
+    expect(
+      formatChunkDurationLine({
+        chunkId: 'prodlike-requirements',
+        durationMs: 3_661_000,
+        suite: 'prodlike',
+      }),
+    ).toBe(
+      '[integration-chunks] Duration prodlike chunk prodlike-requirements: 01h 01m 01s (3661s)\n',
     )
   })
 
@@ -193,6 +236,23 @@ describe('integration chunk command planning', () => {
         env: {},
       },
     ])
+  })
+
+  it('parses a stable chunk id with the selected suite', () => {
+    expect(
+      parseArgs([
+        'run',
+        '--suite',
+        'prodlike',
+        '--chunk',
+        'prodlike-mcp-seeded-scan',
+      ]),
+    ).toMatchObject({
+      chunkId: 'prodlike-mcp-seeded-scan',
+      command: 'run',
+      passthroughArgs: [],
+      suite: 'prodlike',
+    })
   })
 
   it('plans an owned prodlike chunk with build, fresh server, and auth setup', () => {

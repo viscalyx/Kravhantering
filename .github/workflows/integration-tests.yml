@@ -71,7 +71,27 @@ jobs:
         run: npm run idp:up
 
       - name: Run Playwright tests against ${{ matrix.server }} server
-        run: ${{ matrix.testCommand }}
+        run: |
+          set -euo pipefail
+          start_epoch="$(date +%s)"
+          set +e
+          ${{ matrix.testCommand }}
+          test_exit=$?
+          set -e
+          end_epoch="$(date +%s)"
+          duration_seconds=$((end_epoch - start_epoch))
+          hours=$((duration_seconds / 3600))
+          minutes=$(((duration_seconds % 3600) / 60))
+          seconds=$((duration_seconds % 60))
+          formatted="$(printf '%02dh %02dm %02ds' "${hours}" "${minutes}" "${seconds}")"
+          echo "Integration tests (${{ matrix.server }}) runtime: ${formatted} (${duration_seconds}s)"
+          {
+            echo "### Integration test runtime (${{ matrix.server }})"
+            echo
+            echo "- Runtime: ${formatted} (${duration_seconds}s)"
+            echo "- Command: \`${{ matrix.testCommand }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "${test_exit}"
         env:
           CI: true
 
@@ -193,7 +213,27 @@ jobs:
           mv node_modules.full node_modules
 
       - name: Run Playwright tests against pruned prod-like server
-        run: npm run test:integration:prodlike
+        run: |
+          set -euo pipefail
+          start_epoch="$(date +%s)"
+          set +e
+          npm run test:integration:prodlike
+          test_exit=$?
+          set -e
+          end_epoch="$(date +%s)"
+          duration_seconds=$((end_epoch - start_epoch))
+          hours=$((duration_seconds / 3600))
+          minutes=$(((duration_seconds % 3600) / 60))
+          seconds=$((duration_seconds % 60))
+          formatted="$(printf '%02dh %02dm %02ds' "${hours}" "${minutes}" "${seconds}")"
+          echo "Integration tests (prodlike-pruned) runtime: ${formatted} (${duration_seconds}s)"
+          {
+            echo "### Integration test runtime (prodlike-pruned)"
+            echo
+            echo "- Runtime: ${formatted} (${duration_seconds}s)"
+            echo "- Command: \`npm run test:integration:prodlike\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "${test_exit}"
         env:
           CI: true
           ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1'

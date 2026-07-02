@@ -287,7 +287,7 @@ function canonicalManifestText(manifest) {
 function specsForManifestPath(manifestPath, specs) {
   const normalizedPath = toPosixPath(manifestPath)
   if (normalizedPath.endsWith('.spec.ts')) {
-    return specs.includes(normalizedPath) ? [normalizedPath] : [normalizedPath]
+    return specs.includes(normalizedPath) ? [normalizedPath] : []
   }
 
   const prefix = `${normalizedPath.replace(/\/$/u, '')}/`
@@ -462,6 +462,18 @@ export function formatChunkMemoryLine({ chunkId, phase, snapshot, suite }) {
       : '0.0'
   const timing = phase === 'before' ? 'before start' : 'after finish'
   return `[integration-chunks] Memory ${timing} ${suite} chunk ${chunkId}: used=${formatMemoryMiB(snapshot.usedBytes)} total=${formatMemoryMiB(snapshot.totalBytes)} free=${formatMemoryMiB(snapshot.freeBytes)} usedPercent=${usedPercent}%\n`
+}
+
+export function formatDurationMs(durationMs) {
+  const totalSeconds = Math.max(0, Math.round(durationMs / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s (${totalSeconds}s)`
+}
+
+export function formatChunkDurationLine({ chunkId, durationMs, suite }) {
+  return `[integration-chunks] Duration ${suite} chunk ${chunkId}: ${formatDurationMs(durationMs)}\n`
 }
 
 function command(commandName, args = [], env = {}) {
@@ -863,6 +875,7 @@ async function runChunked(plan) {
   const failedChunks = []
 
   for (const chunk of plan.chunks) {
+    const chunkStartedAt = Date.now()
     const killCommand = plan.commands.find(
       entry => entry.kind === 'kill-port' && entry.chunkId === chunk.id,
     )
@@ -915,6 +928,13 @@ async function runChunked(plan) {
           chunkId: chunk.id,
           phase: 'after',
           snapshot: readSystemMemorySnapshot(),
+          suite: plan.suite,
+        }),
+      )
+      process.stdout.write(
+        formatChunkDurationLine({
+          chunkId: chunk.id,
+          durationMs: Date.now() - chunkStartedAt,
           suite: plan.suite,
         }),
       )

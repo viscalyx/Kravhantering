@@ -1738,11 +1738,8 @@ describe('RequirementsTable', () => {
 
     const trigger = screen.getByRole('button', { name: 'manage' })
     expect(trigger).toHaveAttribute('aria-haspopup', 'menu')
-    expect(trigger).toHaveAttribute('aria-controls')
-    const menuId = trigger.getAttribute('aria-controls')
-    if (!menuId) {
-      throw new Error('Floating action trigger did not expose a menu id.')
-    }
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(trigger).not.toHaveAttribute('aria-controls')
 
     fireEvent.click(trigger)
 
@@ -1755,7 +1752,8 @@ describe('RequirementsTable', () => {
       }) as HTMLAnchorElement
 
       expect(menu).toBeTruthy()
-      expect(menu).toHaveAttribute('id', menuId)
+      expect(trigger).toHaveAttribute('aria-expanded', 'true')
+      expect(trigger).toHaveAttribute('aria-controls', menu.id)
       expect(menu).toHaveAttribute('aria-labelledby', trigger.id)
       expect(list).toBeTruthy()
       expect(item).toBeTruthy()
@@ -1765,6 +1763,74 @@ describe('RequirementsTable', () => {
       expect(link.className).toContain('min-w-11')
       expect(link.className).toContain('focus-visible:ring-2')
     })
+  })
+
+  it('supports keyboard navigation in floating action menus', async () => {
+    render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'manage',
+            icon: <span aria-hidden="true">M</span>,
+            id: 'manage',
+            menuItems: [
+              {
+                href: '/sv/admin',
+                id: 'admin',
+                label: 'Admin',
+              },
+              {
+                disabled: true,
+                id: 'disabled',
+                label: 'Disabled',
+                onClick: vi.fn(),
+              },
+              {
+                id: 'export',
+                label: 'Export',
+                onClick: vi.fn(),
+              },
+            ],
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'manage' })
+    fireEvent.click(trigger)
+
+    const adminItem = await screen.findByRole('menuitem', { name: 'Admin' })
+    const disabledItem = screen.getByRole('menuitem', { name: 'Disabled' })
+    const exportItem = screen.getByRole('menuitem', { name: 'Export' })
+
+    await waitFor(() => expect(adminItem).toHaveFocus())
+
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    expect(exportItem).toHaveFocus()
+    expect(disabledItem).not.toHaveFocus()
+
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    expect(adminItem).toHaveFocus()
+
+    fireEvent.keyDown(document, { key: 'ArrowUp' })
+    expect(exportItem).toHaveFocus()
+
+    fireEvent.keyDown(document, { key: 'Home' })
+    expect(adminItem).toHaveFocus()
+
+    fireEvent.keyDown(document, { key: 'End' })
+    expect(exportItem).toHaveFocus()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu', { name: 'manage' })).toBeNull()
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(trigger).not.toHaveAttribute('aria-controls')
+    })
+    expect(trigger).toHaveFocus()
   })
 
   it('renders floating action menu item badges next to the item label', async () => {

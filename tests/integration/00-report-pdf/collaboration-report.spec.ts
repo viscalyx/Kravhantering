@@ -108,65 +108,76 @@ test('COL-06: opens the suggestion-history report for a requirement with suggest
   const requirementUniqueId = 'PWT-SPEC-EDIT-SOURCE'
   const detailPane = await openRequirementDetail(page, requirementUniqueId)
 
-  await detailPane.getByRole('button', { name: 'Rapporter' }).click()
-  const suggestionHistoryMenuItem = page.getByRole('menuitem', {
-    name: 'Förbättringsförslagshistorik',
+  const suggestionHistoryMenuItem =
+    await test.step('open the suggestion-history report menu', async () => {
+      await detailPane.getByRole('button', { name: 'Rapporter' }).click()
+      const menuItem = page.getByRole('menuitem', {
+        name: 'Förbättringsförslagshistorik',
+      })
+      await expect(menuItem).toHaveCount(1)
+      return menuItem
+    })
+
+  const pdfDownload =
+    await test.step('trigger the suggestion-history PDF download', async () => {
+      const pdfResponsePromise = page.waitForResponse(
+        isSuggestionHistoryPdfResponse,
+        { timeout: PDF_EVENT_TIMEOUT_MS },
+      )
+      const pdfDownloadPromise = downloadResult(
+        page.waitForEvent('download', { timeout: PDF_EVENT_TIMEOUT_MS }),
+      )
+      await suggestionHistoryMenuItem.click()
+      const pdfResponse = await pdfResponsePromise
+
+      if (!pdfResponse.ok()) {
+        const bodyExcerpt = await attachPdfResponseDiagnostics({
+          page,
+          response: pdfResponse,
+          testInfo,
+        })
+
+        throw new Error(
+          [
+            `Suggestion-history PDF request returned ${pdfResponse.status()} ${pdfResponse.statusText()}.`,
+            `URL: ${pdfResponse.url()}.`,
+            `Response body excerpt: ${bodyExcerpt ?? '<not captured>'}`,
+          ].join(' '),
+        )
+      }
+
+      const pdfDownloadResult = await pdfDownloadPromise
+      if ('error' in pdfDownloadResult) {
+        await attachPdfResponseDiagnostics({
+          page,
+          response: pdfResponse,
+          testInfo,
+        })
+        const message =
+          pdfDownloadResult.error instanceof Error
+            ? pdfDownloadResult.error.message
+            : String(pdfDownloadResult.error)
+        throw new Error(
+          `Suggestion-history PDF response succeeded but no download event fired: ${message}`,
+        )
+      }
+      return pdfDownloadResult.download
+    })
+
+  await test.step('verify the suggestion-history PDF download', async () => {
+    expect(pdfDownload.suggestedFilename()).toContain(requirementUniqueId)
+    expect(pdfDownload.suggestedFilename()).toMatch(/\.pdf$/u)
+    const pdfStream = await pdfDownload.createReadStream()
+    if (!pdfStream) {
+      throw new Error(
+        'Suggestion-history PDF download did not expose a stream.',
+      )
+    }
+
+    const chunks: Buffer[] = []
+    for await (const chunk of pdfStream) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    }
+    expect(Buffer.concat(chunks).subarray(0, 4).toString('utf8')).toBe('%PDF')
   })
-  await expect(suggestionHistoryMenuItem).toHaveCount(1)
-
-  const pdfResponsePromise = page.waitForResponse(
-    isSuggestionHistoryPdfResponse,
-    { timeout: PDF_EVENT_TIMEOUT_MS },
-  )
-  const pdfDownloadPromise = downloadResult(
-    page.waitForEvent('download', { timeout: PDF_EVENT_TIMEOUT_MS }),
-  )
-  await suggestionHistoryMenuItem.click()
-  const pdfResponse = await pdfResponsePromise
-
-  if (!pdfResponse.ok()) {
-    const bodyExcerpt = await attachPdfResponseDiagnostics({
-      page,
-      response: pdfResponse,
-      testInfo,
-    })
-
-    throw new Error(
-      [
-        `Suggestion-history PDF request returned ${pdfResponse.status()} ${pdfResponse.statusText()}.`,
-        `URL: ${pdfResponse.url()}.`,
-        `Response body excerpt: ${bodyExcerpt ?? '<not captured>'}`,
-      ].join(' '),
-    )
-  }
-
-  const pdfDownloadResult = await pdfDownloadPromise
-  if ('error' in pdfDownloadResult) {
-    await attachPdfResponseDiagnostics({
-      page,
-      response: pdfResponse,
-      testInfo,
-    })
-    const message =
-      pdfDownloadResult.error instanceof Error
-        ? pdfDownloadResult.error.message
-        : String(pdfDownloadResult.error)
-    throw new Error(
-      `Suggestion-history PDF response succeeded but no download event fired: ${message}`,
-    )
-  }
-  const pdfDownload = pdfDownloadResult.download
-
-  expect(pdfDownload.suggestedFilename()).toContain(requirementUniqueId)
-  expect(pdfDownload.suggestedFilename()).toMatch(/\.pdf$/u)
-  const pdfStream = await pdfDownload.createReadStream()
-  if (!pdfStream) {
-    throw new Error('Suggestion-history PDF download did not expose a stream.')
-  }
-
-  const chunks: Buffer[] = []
-  for await (const chunk of pdfStream) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-  }
-  expect(Buffer.concat(chunks).subarray(0, 4).toString('utf8')).toBe('%PDF')
 })

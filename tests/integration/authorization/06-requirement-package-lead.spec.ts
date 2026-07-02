@@ -173,13 +173,20 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
       'package lead archive',
     )
   } finally {
-    await packageLead
-      .put(`/api/requirement-packages/${fixture.packageId}/co-authors`, {
-        data: {
-          coAuthorHsaIds: originalCoAuthors,
-        },
-      })
-      .catch(() => undefined)
-    await packageLead.dispose()
+    try {
+      await expectOk(
+        await packageLead.put(
+          `/api/requirement-packages/${fixture.packageId}/co-authors`,
+          {
+            data: {
+              coAuthorHsaIds: originalCoAuthors,
+            },
+          },
+        ),
+        'package lead co-author restore',
+      )
+    } finally {
+      await packageLead.dispose()
+    }
   }
 })
