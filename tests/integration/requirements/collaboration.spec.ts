@@ -314,11 +314,10 @@ test.describe('Requirement collaboration', () => {
     const suggestionStatus = detailPane
       .getByRole('status')
       .filter({ hasText: 'Playwright förslag till granskning' })
-    await expect(suggestionStatus).toHaveAttribute(
-      'data-developer-mode-value',
-      'review_requested',
-    )
     await expect(suggestionStatus).toContainText('Väntande')
+    await expect(
+      detailPane.getByRole('button', { name: 'Åtgärdad ↗' }),
+    ).toBeVisible()
     expect(suggestionMock.requests).toContainEqual({
       id: 11,
       type: 'request-review',
