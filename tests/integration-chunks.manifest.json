@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "$comment": "Generated file. Do not manually edit; run npm run test:integration:chunks:generate.",
+  "generatedBy": "tests/integration-chunks.mjs",
+  "root": "tests/integration",
+  "chunkPolicy": {
+    "areasPerChunk": 3,
+    "targetSpecs": 10
+  },
+  "discoveredSpecCount": 44,
+  "suites": {
+    "dev": {
+      "chunks": [
+        {
+          "id": "dev-00-report-pdf-admin-archiving",
+          "paths": [
+            "tests/integration/00-report-pdf",
+            "tests/integration/admin",
+            "tests/integration/archiving"
+          ],
+          "specCount": 10
+        },
+        {
+          "id": "dev-authentication",
+          "paths": ["tests/integration/authentication"],
+          "specCount": 2
+        },
+        {
+          "id": "dev-authorization",
+          "paths": ["tests/integration/authorization"],
+          "specCount": 10
+        },
+        {
+          "id": "dev-developer-mode-deviations-navigation",
+          "paths": [
+            "tests/integration/developer-mode",
+            "tests/integration/deviations",
+            "tests/integration/navigation"
+          ],
+          "specCount": 3
+        },
+        {
+          "id": "dev-platform-privacy-requirement-packages",
+          "paths": [
+            "tests/integration/platform",
+            "tests/integration/privacy",
+            "tests/integration/requirement-packages"
+          ],
+          "specCount": 4
+        },
+        {
+          "id": "dev-requirement-selection",
+          "paths": ["tests/integration/requirement-selection"],
+          "specCount": 2
+        },
+        {
+          "id": "dev-requirements",
+          "paths": ["tests/integration/requirements"],
+          "specCount": 9
+        },
+        {
+          "id": "dev-specifications-stewardship",
+          "paths": [
+            "tests/integration/specifications",
+            "tests/integration/stewardship"
+          ],
+          "specCount": 3
+        }
+      ],
+      "ignoredSpecs": ["tests/integration/mcp/seeded-scan.spec.ts"],
+      "includedSpecCount": 43
+    },
+    "prodlike": {
+      "chunks": [
+        {
+          "id": "prodlike-00-report-pdf-admin-archiving",
+          "paths": [
+            "tests/integration/00-report-pdf",
+            "tests/integration/admin",
+            "tests/integration/archiving"
+          ],
+          "specCount": 10
+        },
+        {
+          "id": "prodlike-authentication",
+          "paths": ["tests/integration/authentication"],
+          "specCount": 2
+        },
+        {
+          "id": "prodlike-authorization",
+          "paths": ["tests/integration/authorization"],
+          "specCount": 10
+        },
+        {
+          "id": "prodlike-deviations-navigation-platform",
+          "paths": [
+            "tests/integration/deviations",
+            "tests/integration/navigation",
+            "tests/integration/platform"
+          ],
+          "specCount": 4
+        },
+        {
+          "id": "prodlike-privacy-requirement-packages-requirement-selection",
+          "paths": [
+            "tests/integration/privacy",
+            "tests/integration/requirement-packages",
+            "tests/integration/requirement-selection"
+          ],
+          "specCount": 4
+        },
+        {
+          "id": "prodlike-requirements",
+          "paths": ["tests/integration/requirements"],
+          "specCount": 9
+        },
+        {
+          "id": "prodlike-specifications-stewardship",
+          "paths": [
+            "tests/integration/specifications",
+            "tests/integration/stewardship"
+          ],
+          "specCount": 3
+        },
+        {
+          "id": "prodlike-mcp-seeded-scan",
+          "paths": ["tests/integration/mcp/seeded-scan.spec.ts"],
+          "specCount": 1
+        }
+      ],
+      "ignoredSpecs": ["tests/integration/developer-mode/overlay.spec.ts"],
+      "includedSpecCount": 43
+    }
+  }
+}

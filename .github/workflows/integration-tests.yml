@@ -48,6 +48,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check integration chunk manifest
+        run: npm run test:integration:chunks:check
+
       - name: Clean server and database state
         run: npm run clean:all
 
@@ -115,6 +118,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check integration chunk manifest
+        run: npm run test:integration:chunks:check
 
       - name: Clean server and database state
         run: npm run clean:all

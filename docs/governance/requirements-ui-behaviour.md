@@ -822,4 +822,4 @@ the tooltip surface.
   - `tests/unit/developer-mode.test.ts`
   - `tests/unit/developer-mode-provider.test.tsx`
   - `tests/unit/requirements-table.test.tsx`
-  - `tests/integration/developer-mode-overlay.spec.ts`
+  - `tests/integration/developer-mode/overlay.spec.ts`

@@ -1,5 +1,5 @@
 {
-  "description": "Seeded MCP HTTP corpus. Placeholder values are resolved from the disposable seeded database by tests/integration/mcp-seeded-scan.spec.ts.",
+  "description": "Seeded MCP HTTP corpus. Placeholder values are resolved from the disposable seeded database by tests/integration/mcp/seeded-scan.spec.ts.",
   "cases": [
     {
       "name": "lookup requirements through catalog tool",

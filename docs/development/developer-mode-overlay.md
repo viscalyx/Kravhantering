@@ -222,7 +222,7 @@ Core tests:
 - `tests/unit/developer-mode.test.ts`
 - `tests/unit/developer-mode-provider.test.tsx`
 - `tests/unit/next-config.test.ts`
-- `tests/integration/developer-mode-overlay.spec.ts`
+- `tests/integration/developer-mode/overlay.spec.ts`
 
 Representative marker coverage:
 
@@ -237,7 +237,7 @@ Representative marker coverage:
 - `tests/unit/ai-requirement-generator-dev-markers.test.tsx`
 
 The integration flow documentation lives in
-[`tests/integration/developer-mode-overlay.md`](../../tests/integration/developer-mode-overlay.md).
+`tests/integration/developer-mode/overlay.spec.ts`.
 
 [upstream-core]: https://github.com/viscalyx/developer-mode/blob/main/specifications/developer-mode-core/README.md
 [upstream-react]: https://github.com/viscalyx/developer-mode/blob/main/specifications/developer-mode-react/README.md

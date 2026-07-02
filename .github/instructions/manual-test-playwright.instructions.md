@@ -13,6 +13,9 @@ applyTo: "{docs/governance/manuella-testfall.md,tests/integration/**/*.ts}"
 - Change `tests/integration/**/*.spec.ts` only with a production
   user-interaction or functionality change and the matching manual-case update.
 - Include the matching manual case ID or IDs in each Playwright scenario title.
+- When adding, moving, renaming, or removing Playwright spec files under
+  `tests/integration`, run `npm run test:integration:chunks:generate` and
+  include the updated `tests/integration-chunks.manifest.json`.
 - Do not make spec-only behavior changes. If the requested work is
   selector-only, flake-only, title-only, setup-only, or refactor-only spec
   maintenance, stop and ask for explicit scope change before editing specs.

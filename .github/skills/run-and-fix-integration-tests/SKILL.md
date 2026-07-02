@@ -29,41 +29,35 @@ Use /caveman for dialogs, normal mode for reports and changes.
 
 ## Commands
 
-- Dev full suite: `npm run test:integration`
+- Dev suite, chunked by default: `npm run test:integration`
+- Dev chunk phase: `npm run test:integration -- --chunk <chunk-id>`
 - Dev spec phase: `npm run test:integration -- <spec>`
-- Prodlike full suite: `npm run test:integration:prodlike`
+- Prodlike suite, chunked by default: `npm run test:integration:prodlike`
+- Prodlike chunk phase:
+  `npm run test:integration:prodlike -- --chunk <chunk-id>`
 - Prodlike spec phase: `npm run test:integration:prodlike -- <spec>`
-- Prodlike memory-safe setup:
-  - Build once: `npm run build:local-prod`
-  - Start the built server with test routes enabled:
-    `ENABLE_ERROR_BOUNDARY_TEST_ROUTE=1 npm run start:prodlike-pruned`
-  - Seed prodlike auth against the external server on the first chunk:
-    `PLAYWRIGHT_SKIP_WEBSERVER=1 PLAYWRIGHT_FORCE_AUTH_SETUP=1 npx playwright test --config=playwright.prodlike.config.ts <chunk>`
-  - Run later chunks without rebuilding:
-    `PLAYWRIGHT_SKIP_WEBSERVER=1 npx playwright test --config=playwright.prodlike.config.ts <chunk>`
+- List chunks:
+  - Dev: `node tests/integration-chunks.mjs list --suite dev`
+  - Prodlike: `node tests/integration-chunks.mjs list --suite prodlike`
+- Refresh the chunk manifest after adding, moving, renaming, or deleting
+  `tests/integration/**/*.spec.ts` files:
+  `npm run test:integration:chunks:generate`
 
 ## Memory-Safe Chunks
 
 Use chunks that keep related files together but allow the app server and
 Playwright runner to release memory between runs.
 
-Generate chunks with:
-
-- Dev: `node .github/skills/run-and-fix-integration-tests/scripts/get-integration-chunks.mjs --suite dev`
-- Prodlike: `node .github/skills/run-and-fix-integration-tests/scripts/get-integration-chunks.mjs --suite prodlike`
-
-The script is required. Do not hand-build chunks unless the user explicitly
-asks for a custom run. The script discovers current specs, skips suite-ignored
-specs, groups areas into memory-safe chunks, includes every eligible discovered
-area exactly once, and prints runnable commands. Use `--format json` when you
-need structured output.
+The npm integration scripts are the source of truth for chunked execution. Never call Playwright directly for full-suite or chunked runs. The runner must be used because it enforces the
+committed deterministic chunk manifest, fails fast when the manifest is stale,
+keeps app-server lifetimes memory-safe between chunks, and emits memory and
+app-server log-path diagnostics that are needed to debug intermittent resource
+exhaustion.
 
 Between chunks:
 
 - Check memory when the user reports pressure, or when dev-server memory is
-  known to climb.
-- Stop leftover dev servers with `npm run kill:port` before starting another
-  dev chunk if port 3000 is still bound.
+  known to climb. The chunk runner prints memory snapshots automatically.
 - Treat aggregate chunk success as equivalent coverage to one full suite run
   when a monolithic run would exhaust the devcontainer.
 
@@ -71,19 +65,26 @@ Between chunks:
 
 1. Build the phase list:
    - User supplied paths: use those spec files.
-   - No paths: run the selected suite in memory-safe chunks and collect
-     failing spec files. If a full run was explicitly requested and memory is
-     safe, run the full suite once instead.
+   - User supplied chunk id: use the matching chunk command.
+   - No paths: run the selected suite with the npm script and collect failing
+     chunk ids and spec files from Playwright output. If a full run was
+     explicitly requested and memory is safe, still use the npm script because
+     it is chunked by default.
 2. Pick one failing spec file.
-3. Re-run only that spec with the matching phase command.
-4. Inspect Playwright output, traces, screenshots, console errors, and logs.
-5. Fix the smallest spec defect that explains the failure.
-6. Re-run the same spec until it passes.
-7. Repeat steps 3-7 for each failing spec file.
-8. Run the selected suite after all known phases pass, using memory-safe chunks
+3. Re-run the failing chunk when the failure is not yet isolated:
+   - Dev: `npm run test:integration -- --chunk <chunk-id>`
+   - Prodlike: `npm run test:integration:prodlike -- --chunk <chunk-id>`
+4. Re-run only a specific failing spec with the matching spec phase command
+   once the failure is isolated.
+5. Inspect Playwright output, traces, screenshots, console errors, app-server
+   logs printed by the chunk runner, and memory snapshots.
+6. Fix the smallest spec defect that explains the failure.
+7. Re-run the same chunk or spec until it passes.
+8. Repeat steps 3-7 for each failing chunk or spec file.
+9. Run the selected suite after all known phases pass, using memory-safe chunks
    when a monolithic full suite risks devcontainer exhaustion.
-9. If new spec files fail, repeat from step 2.
-10. If dev and prodlike are both in scope, finish dev before starting prodlike.
+10. If new spec files fail, repeat from step 2.
+11. If dev and prodlike are both in scope, finish dev before starting prodlike.
 
 ## Fix Rules
 
