@@ -1,6 +1,5 @@
 import {
   type APIRequestContext,
-  type APIResponse,
   type Browser,
   expect,
   type Locator,
@@ -8,6 +7,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
+import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 import {
   newRoleContext,
   ROLE_STORAGE_STATE,
@@ -63,45 +63,11 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function requestOkWithRetry(
-  label: string,
-  request: () => Promise<APIResponse>,
-): Promise<APIResponse> {
-  let lastFailure = 'unknown failure'
-
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    let response: APIResponse
-    try {
-      response = await request()
-    } catch (error) {
-      lastFailure = error instanceof Error ? error.message : String(error)
-      if (attempt === 3) {
-        throw new Error(`${label} failed after retries: ${lastFailure}`)
-      }
-      await delay(750 * (attempt + 1))
-      continue
-    }
-
-    if (response.ok()) return response
-
-    lastFailure = `${response.status()} ${await response.text()}`
-    if (response.status() < 500) {
-      throw new Error(`${label} returned ${lastFailure}`)
-    }
-    if (attempt === 3) {
-      throw new Error(`${label} failed after retries: ${lastFailure}`)
-    }
-    await delay(750 * (attempt + 1))
-  }
-
-  throw new Error(`${label} failed after retries: ${lastFailure}`)
-}
-
 async function listDeviations(
   request: APIRequestContext,
   itemRef: string,
 ): Promise<DeviationData[]> {
-  const response = await requestOkWithRetry(
+  const response = await expectApiResponseOkWithRetry(
     `list deviations for ${itemRef}`,
     () =>
       request.get(
@@ -124,14 +90,16 @@ async function closeLatestPendingDeviation(
   if (!latest || latest.decision !== null) return
 
   if (latest.isReviewRequested !== 1) {
-    await requestOkWithRetry(`request review for deviation ${latest.id}`, () =>
-      authorRequest.post(`/api/deviations/${latest.id}/request-review`, {
-        timeout: 30_000,
-      }),
+    await expectApiResponseOkWithRetry(
+      `request review for deviation ${latest.id}`,
+      () =>
+        authorRequest.post(`/api/deviations/${latest.id}/request-review`, {
+          timeout: 30_000,
+        }),
     )
   }
 
-  await requestOkWithRetry(`close deviation ${latest.id}`, () =>
+  await expectApiResponseOkWithRetry(`close deviation ${latest.id}`, () =>
     reviewerRequest.post(`/api/deviations/${latest.id}/decision`, {
       data: {
         decision: 2,
@@ -150,7 +118,7 @@ async function createDeviationInReview(
 ): Promise<number> {
   await closeLatestPendingDeviation(authorRequest, reviewerRequest, itemRef)
 
-  const createResponse = await requestOkWithRetry(
+  const createResponse = await expectApiResponseOkWithRetry(
     `create deviation for ${itemRef}`,
     () =>
       authorRequest.post(
@@ -163,10 +131,12 @@ async function createDeviationInReview(
   )
   const created = (await createResponse.json()) as { id: number }
 
-  await requestOkWithRetry(`request review for deviation ${created.id}`, () =>
-    authorRequest.post(`/api/deviations/${created.id}/request-review`, {
-      timeout: 30_000,
-    }),
+  await expectApiResponseOkWithRetry(
+    `request review for deviation ${created.id}`,
+    () =>
+      authorRequest.post(`/api/deviations/${created.id}/request-review`, {
+        timeout: 30_000,
+      }),
   )
 
   return created.id
@@ -601,7 +571,7 @@ for (const viewport of viewports) {
             throw new Error('Expected latest deviation id before decision')
           }
 
-          await requestOkWithRetry(
+          await expectApiResponseOkWithRetry(
             `reviewer decision for deviation ${latestDeviationId}`,
             () =>
               reviewerRequest.post(

@@ -1,4 +1,5 @@
 import { type APIRequestContext, expect, test } from '@playwright/test'
+import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 
 const DRF_ANSWER_TEXT_ORDER = [
   'Egen drift/on-premises',
@@ -28,10 +29,6 @@ type ResponseWithBody = Pick<
   'json' | 'ok' | 'status' | 'statusText' | 'text'
 >
 
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
 async function expectRequestOk(response: ResponseWithBody, context: string) {
   if (response.ok()) return
   const body = await response.text()
@@ -40,42 +37,8 @@ async function expectRequestOk(response: ResponseWithBody, context: string) {
   )
 }
 
-async function requestOkWithRetry(
-  label: string,
-  request: () => Promise<ResponseWithBody>,
-): Promise<ResponseWithBody> {
-  let lastFailure = 'unknown failure'
-
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    let response: ResponseWithBody
-    try {
-      response = await request()
-    } catch (error) {
-      lastFailure = error instanceof Error ? error.message : String(error)
-      if (attempt === 3) {
-        throw new Error(`${label} failed after retries: ${lastFailure}`)
-      }
-      await delay(750 * (attempt + 1))
-      continue
-    }
-
-    if (response.ok()) return response
-
-    lastFailure = `${response.status()} ${response.statusText()}: ${await response.text()}`
-    if (response.status() < 500) {
-      throw new Error(`${label} returned ${lastFailure}`)
-    }
-    if (attempt === 3) {
-      throw new Error(`${label} failed after retries: ${lastFailure}`)
-    }
-    await delay(750 * (attempt + 1))
-  }
-
-  throw new Error(`${label} failed after retries: ${lastFailure}`)
-}
-
 async function getRequirementSelectionQuestions(request: APIRequestContext) {
-  const response = await requestOkWithRetry(
+  const response = await expectApiResponseOkWithRetry(
     'Load requirement-selection questions',
     () =>
       request.get('/api/requirement-selection-questions?includeArchived=true', {
@@ -104,7 +67,7 @@ async function resetDriftQuestionOrder(request: APIRequestContext) {
   for (const [sortOrder, questionCode] of DRF_QUESTION_CODE_ORDER.entries()) {
     const questionId = questionIdsByCode.get(questionCode)
     expect(questionId).toBeTruthy()
-    await requestOkWithRetry(
+    await expectApiResponseOkWithRetry(
       `Reset sort order for question ${questionCode}`,
       () =>
         request.put(`/api/requirement-selection-questions/${questionId}`, {
@@ -124,11 +87,13 @@ async function resetDriftAnswerOrder(request: APIRequestContext) {
   for (const [sortOrder, answerText] of DRF_ANSWER_TEXT_ORDER.entries()) {
     const answerId = answerIdsByText.get(answerText)
     expect(answerId).toBeTruthy()
-    await requestOkWithRetry(`Reset sort order for answer ${answerText}`, () =>
-      request.put(
-        `/api/requirement-selection-questions/${question.id}/answers/${answerId}`,
-        { data: { sortOrder }, timeout: 30_000 },
-      ),
+    await expectApiResponseOkWithRetry(
+      `Reset sort order for answer ${answerText}`,
+      () =>
+        request.put(
+          `/api/requirement-selection-questions/${question.id}/answers/${answerId}`,
+          { data: { sortOrder }, timeout: 30_000 },
+        ),
     )
   }
 }

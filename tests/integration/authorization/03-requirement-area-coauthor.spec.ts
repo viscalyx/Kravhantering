@@ -1,4 +1,5 @@
-import { type APIResponse, expect, test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 import {
   type AuthorizationFixture,
   createAuthorizationFixture,
@@ -11,44 +12,6 @@ import {
 } from './authorization-test-helpers'
 
 let fixture: AuthorizationFixture
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-async function expectOkWithRetry(
-  label: string,
-  request: () => Promise<APIResponse>,
-): Promise<APIResponse> {
-  let lastFailure = 'unknown failure'
-
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    let response: APIResponse
-    try {
-      response = await request()
-    } catch (error) {
-      lastFailure = error instanceof Error ? error.message : String(error)
-      if (attempt === 3) {
-        throw new Error(`${label} failed after retries: ${lastFailure}`)
-      }
-      await delay(750 * (attempt + 1))
-      continue
-    }
-
-    if (response.ok()) return response
-
-    lastFailure = `${response.status()}: ${await response.text()}`
-    if (response.status() < 500) {
-      throw new Error(`${label} returned ${lastFailure}`)
-    }
-    if (attempt === 3) {
-      throw new Error(`${label} failed after retries: ${lastFailure}`)
-    }
-    await delay(750 * (attempt + 1))
-  }
-
-  throw new Error(`${label} failed after retries: ${lastFailure}`)
-}
 
 test.describe.configure({ mode: 'serial' })
 test.use({
@@ -105,7 +68,7 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors can create requireme
       locale: 'sv',
       statuses: '1',
     })
-    const listResponse = await expectOkWithRetry(
+    const listResponse = await expectApiResponseOkWithRetry(
       'area co-author UI requirement list',
       () =>
         areaCoauthor.get(`/api/requirements?${listParams}`, {
@@ -138,7 +101,7 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area
   const areaCoauthor = await newRoleContext(testInfo, 'areaCoauthor')
 
   try {
-    const areaResponse = await expectOkWithRetry(
+    const areaResponse = await expectApiResponseOkWithRetry(
       'area co-author area read',
       () =>
         areaCoauthor.get(`/api/requirement-areas/${fixture.areaId}`, {
@@ -178,7 +141,7 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area
     await expect(editForm.getByRole('button', { name: 'Hämta' })).toHaveCount(0)
     await editForm.getByRole('button', { name: 'Avbryt' }).click()
 
-    const exportResponse = await expectOkWithRetry(
+    const exportResponse = await expectApiResponseOkWithRetry(
       'area co-author self privacy export',
       () =>
         areaCoauthor.post('/api/privacy/data-subject-export', {

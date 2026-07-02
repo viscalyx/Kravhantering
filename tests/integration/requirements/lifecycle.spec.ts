@@ -7,6 +7,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
+import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 import {
   newRoleContext,
   ROLE_STORAGE_STATE,
@@ -100,46 +101,13 @@ async function expectOk(response: OkResponse, context: string) {
   )
 }
 
-async function getOkWithRetry(
-  context: string,
-  request: () => Promise<OkResponse>,
-): Promise<OkResponse> {
-  let lastFailure = 'unknown failure'
-
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    let response: OkResponse
-    try {
-      response = await request()
-    } catch (error) {
-      lastFailure = error instanceof Error ? error.message : String(error)
-      if (attempt === 3) {
-        throw new Error(`${context} failed after retries: ${lastFailure}`)
-      }
-      await delay(750 * (attempt + 1))
-      continue
-    }
-
-    if (response.ok()) return response
-
-    lastFailure = `${response.status()} ${await response.text()}`
-    if (response.status() < 500) {
-      throw new Error(`${context} failed with ${lastFailure}`)
-    }
-    if (attempt === 3) {
-      throw new Error(`${context} failed after retries: ${lastFailure}`)
-    }
-    await delay(750 * (attempt + 1))
-  }
-
-  throw new Error(`${context} failed after retries: ${lastFailure}`)
-}
-
 async function createDraftRequirement(
   request: APIRequestContext,
   description: string,
 ): Promise<RequirementDetail> {
-  const areasResponse = await getOkWithRetry('GET requirement areas', () =>
-    request.get('/api/requirement-areas', { timeout: 30_000 }),
+  const areasResponse = await expectApiResponseOkWithRetry(
+    'GET requirement areas',
+    () => request.get('/api/requirement-areas', { timeout: 30_000 }),
   )
   const areasBody = (await areasResponse.json()) as {
     areas: Array<{ id: number }>
@@ -167,8 +135,9 @@ async function getRequirement(
   request: APIRequestContext,
   uniqueId: string,
 ): Promise<RequirementDetail> {
-  const response = await getOkWithRetry(`GET requirement ${uniqueId}`, () =>
-    request.get(`/api/requirements/${uniqueId}`, { timeout: 30_000 }),
+  const response = await expectApiResponseOkWithRetry(
+    `GET requirement ${uniqueId}`,
+    () => request.get(`/api/requirements/${uniqueId}`, { timeout: 30_000 }),
   )
   return (await response.json()) as RequirementDetail
 }
