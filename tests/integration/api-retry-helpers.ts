@@ -1,11 +1,10 @@
 import { delay } from '@/tests/helpers/common'
+import {
+  type ApiResponseLike,
+  apiResponseFailureMessage,
+} from './api-response-assertions'
 
-export interface RetryableApiResponse {
-  ok(): boolean
-  status(): number
-  statusText?(): string
-  text(): Promise<string>
-}
+export type RetryableApiResponse = ApiResponseLike
 
 interface ApiResponseRetryOptions {
   attempts?: number
@@ -17,15 +16,6 @@ const DEFAULT_RETRY_ATTEMPTS = 4
 
 function defaultRetryDelayMs(attemptIndex: number) {
   return 750 * (attemptIndex + 1)
-}
-
-async function responseFailure(response: RetryableApiResponse) {
-  const statusText = response.statusText?.()
-  const status = statusText
-    ? `${response.status()} ${statusText}`
-    : String(response.status())
-  const body = await response.text()
-  return `${status}: ${body}`
 }
 
 export async function expectApiResponseOkWithRetry<
@@ -56,7 +46,7 @@ export async function expectApiResponseOkWithRetry<
 
     if (response.ok()) return response
 
-    lastFailure = await responseFailure(response)
+    lastFailure = await apiResponseFailureMessage(response)
     if (!shouldRetryStatus(response.status())) {
       throw new Error(`${label} returned ${lastFailure}`)
     }

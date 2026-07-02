@@ -9,6 +9,7 @@ import {
   test,
 } from '@playwright/test'
 import { delay } from '@/tests/helpers/common'
+import { expectApiResponseOk } from '../api-response-assertions'
 import {
   expectStatus,
   newRoleContext,
@@ -544,7 +545,10 @@ async function getStructuredReport(
         { timeout: 30_000 },
       ),
   )
-  expect(response.ok()).toBe(true)
+  await expectApiResponseOk(
+    response,
+    `structured ${profile} report for ${slug}`,
+  )
   return (await response.json()) as StructuredReportModel
 }
 
@@ -561,7 +565,7 @@ async function getCsvExport(
         { timeout: 30_000 },
       ),
   )
-  expect(response.ok()).toBe(true)
+  await expectApiResponseOk(response, `${profile} CSV export for ${slug}`)
   expect(response.headers()['content-type']).toContain('text/csv')
   return response.text()
 }
@@ -2009,7 +2013,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
           },
         ),
     )
-    expect(itemsResponse.ok()).toBe(true)
+    await expectApiResponseOk(itemsResponse, 'traceability source items')
     const itemsData = (await itemsResponse.json()) as {
       items?: Array<{ itemRef?: string }>
     }
@@ -2037,7 +2041,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
           { timeout: 30_000 },
         ),
     )
-    expect(traceabilityResponse.ok()).toBe(true)
+    await expectApiResponseOk(
+      traceabilityResponse,
+      'traceability items for filtered refs',
+    )
     const traceabilityData = (await traceabilityResponse.json()) as {
       items?: Array<{
         itemRef: string
@@ -2300,7 +2307,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
         },
         timeout: 30_000,
       })
-      expect(createResponse.ok()).toBe(true)
+      await expectApiResponseOk(createResponse, 'create SPEC-15 RFI question')
       createdQuestion = (await createResponse.json()) as {
         id: number
         questionCode: string

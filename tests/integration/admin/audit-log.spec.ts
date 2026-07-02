@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
+import { expectApiResponseOk } from '../api-response-assertions'
 
 function requirementCreateAuditRows(page: Page) {
   return page.getByRole('row').filter({
@@ -39,7 +40,7 @@ test('ADMIN-07: admin can filter action-log events and export CSV', async ({
   expect(exportHref).toContain('locale=sv')
 
   const response = await page.request.get(exportHref ?? '')
-  expect(response.ok()).toBe(true)
+  await expectApiResponseOk(response, 'export filtered action log CSV')
   expect(response.headers()['content-type']).toContain('text/csv')
   const csv = await response.text()
   expect(csv).toContain('Tidpunkt;Aktörstyp')
@@ -75,7 +76,7 @@ test('ADMIN-07: admin can use the action log inline from admin center', async ({
   expect(exportHref).not.toContain('tab=actionAuditLog')
 
   const response = await page.request.get(exportHref ?? '')
-  expect(response.ok()).toBe(true)
+  await expectApiResponseOk(response, 'export inline action log CSV')
   expect(response.headers()['content-type']).toContain('text/csv')
   const csv = await response.text()
   expect(csv).toContain('Tidpunkt;Aktörstyp')

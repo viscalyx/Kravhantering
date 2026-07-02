@@ -5,6 +5,7 @@ import {
   type Route,
   test,
 } from '@playwright/test'
+import { expectApiResponseOk } from '../api-response-assertions'
 import { newRoleContext } from '../authorization/authorization-test-helpers'
 import {
   getRequirementRowButton,
@@ -51,19 +52,6 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
     json: body,
     status,
   })
-}
-
-async function expectOk(response: APIResponseLike, context: string) {
-  if (response.ok()) return
-  throw new Error(
-    `${context} failed with ${response.status()}: ${await response.text()}`,
-  )
-}
-
-interface APIResponseLike {
-  ok(): boolean
-  status(): number
-  text(): Promise<string>
 }
 
 async function openRequirementDetail(
@@ -201,7 +189,7 @@ test.describe('Requirement collaboration', () => {
           },
         },
       )
-      await expectOk(createResponse, 'create COL-01 kravunderlag')
+      await expectApiResponseOk(createResponse, 'create COL-01 kravunderlag')
       createdSpecification = (await createResponse.json()) as {
         id: number
         uniqueId: string

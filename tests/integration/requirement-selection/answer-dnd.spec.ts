@@ -1,4 +1,5 @@
 import { type APIRequestContext, expect, test } from '@playwright/test'
+import { expectApiResponseOk } from '../api-response-assertions'
 import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 
 const DRF_ANSWER_TEXT_ORDER = [
@@ -22,19 +23,6 @@ interface RequirementSelectionQuestionResponse {
   }>
   id: number
   questionCode: string
-}
-
-type ResponseWithBody = Pick<
-  Awaited<ReturnType<APIRequestContext['put']>>,
-  'json' | 'ok' | 'status' | 'statusText' | 'text'
->
-
-async function expectRequestOk(response: ResponseWithBody, context: string) {
-  if (response.ok()) return
-  const body = await response.text()
-  throw new Error(
-    `${context} failed with ${response.status()} ${response.statusText()}: ${body}`,
-  )
 }
 
 async function getRequirementSelectionQuestions(request: APIRequestContext) {
@@ -260,7 +248,7 @@ test.describe('Requirement selection answer drag and drop', () => {
       await sourceRowHandle.dispatchEvent('dragend', { dataTransfer })
       const answerOrderResponses = await persistedAnswerOrder
       for (const response of answerOrderResponses) {
-        await expectRequestOk(response, 'Persist answer order')
+        await expectApiResponseOk(response, 'Persist answer order')
       }
 
       await expect(answerRows.nth(0)).toContainText('Molndrift')

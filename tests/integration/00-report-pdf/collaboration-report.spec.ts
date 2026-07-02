@@ -10,6 +10,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
+import { expectApiResponseOk } from '../api-response-assertions'
 import {
   getRequirementRowButton,
   resolveRequirementDetailPane,
@@ -196,7 +197,7 @@ test('COL-06: opens the suggestion-history report for a requirement with suggest
       suggestionHistoryReportUrl,
       'suggestion-history PDF',
     )
-    expect(response.ok()).toBe(true)
+    await expectApiResponseOk(response, 'suggestion-history PDF')
     expect(response.headers()['content-type']).toContain('application/pdf')
   })
 

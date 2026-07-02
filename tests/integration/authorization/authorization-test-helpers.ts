@@ -16,6 +16,10 @@ import {
   getSqlServerDatabaseUrl,
   type SqlServerRuntimeEnv,
 } from '@/lib/typeorm/sqlserver-config'
+import {
+  expectApiResponseOk,
+  expectApiResponseStatus,
+} from '../api-response-assertions'
 import { resolveIntegrationBaseUrl } from '../base-url'
 
 export const ROLE_STORAGE_STATE = {
@@ -360,23 +364,15 @@ export async function expectStatus(
   response: APIResponse,
   status: number,
   label: string,
-): Promise<void> {
-  if (response.status() === status) return
-
-  throw new Error(
-    `${label} returned ${response.status()} instead of ${status}: ${await response.text()}`,
-  )
+): Promise<APIResponse> {
+  return expectApiResponseStatus(response, status, label)
 }
 
 export async function expectOk(
   response: APIResponse,
   label: string,
-): Promise<void> {
-  if (response.ok()) return
-
-  throw new Error(
-    `${label} returned ${response.status()}: ${await response.text()}`,
-  )
+): Promise<APIResponse> {
+  return expectApiResponseOk(response, label)
 }
 
 async function verifyResponsibilityPerson(

@@ -4,6 +4,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
+import { expectApiResponseStatus } from '../api-response-assertions'
 import { resolveIntegrationBaseUrl } from '../base-url'
 
 function getStorageState(testInfo: TestInfo) {
@@ -27,14 +28,14 @@ test.describe('signed-out auth boundary', () => {
     request,
   }) => {
     const meResponse = await request.get('/api/auth/me')
-    expect(meResponse.status()).toBe(200)
+    await expectApiResponseStatus(meResponse, 200, 'anonymous auth projection')
     await expect(meResponse.json()).resolves.toEqual({
       authenticated: false,
     })
 
     const response = await request.get('/api/requirements')
 
-    expect(response.status()).toBe(401)
+    await expectApiResponseStatus(response, 401, 'anonymous requirements list')
     await expect(response.json()).resolves.toMatchObject({
       error: 'Unauthorized',
     })
@@ -101,7 +102,7 @@ test.describe('signed-in auth boundary', () => {
     request,
   }) => {
     const response = await request.get('/api/auth/me')
-    expect(response.status()).toBe(200)
+    await expectApiResponseStatus(response, 200, 'signed-in auth projection')
 
     const body = (await response.json()) as Record<string, unknown>
     expect(body).toMatchObject({
@@ -150,7 +151,11 @@ test.describe('signed-in auth boundary', () => {
         },
       })
 
-      expect(response.status()).toBe(403)
+      await expectApiResponseStatus(
+        response,
+        403,
+        'mutating REST request without X-Requested-With',
+      )
       await expect(response.json()).resolves.toEqual({
         error: 'Forbidden',
         detail: 'Missing X-Requested-With header.',
@@ -181,7 +186,11 @@ test.describe('signed-in auth boundary', () => {
         },
       })
 
-      expect(response.status()).toBe(403)
+      await expectApiResponseStatus(
+        response,
+        403,
+        'cross-origin mutating REST request',
+      )
       await expect(response.json()).resolves.toEqual({
         error: 'Forbidden',
         detail: 'Cross-origin request rejected.',

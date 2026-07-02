@@ -9,6 +9,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
+import { expectApiResponseStatus } from '../api-response-assertions'
 import { resolveIntegrationBaseUrl } from '../base-url'
 
 const execFileAsync = promisify(execFile)
@@ -309,7 +310,7 @@ test.describe('MCP seeded HTTP security gate', () => {
       const missing = await context.post(targetUrl.pathname, {
         data: initializeBody,
       })
-      expect(missing.status()).toBe(401)
+      await expectApiResponseStatus(missing, 401, 'missing MCP bearer token')
       expect(missing.headers()['www-authenticate']).toBe('Bearer')
       await expect(missing.json()).resolves.toMatchObject({
         error: expect.objectContaining({
@@ -324,7 +325,7 @@ test.describe('MCP seeded HTTP security gate', () => {
           Authorization: 'Bearer invalid.mcp.token',
         },
       })
-      expect(invalid.status()).toBe(401)
+      await expectApiResponseStatus(invalid, 401, 'invalid MCP bearer token')
       expect(invalid.headers()['www-authenticate']).toBe('Bearer')
 
       await recordEvent({

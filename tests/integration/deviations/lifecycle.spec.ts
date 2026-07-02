@@ -8,6 +8,7 @@ import {
   test,
 } from '@playwright/test'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
+import { expectApiResponseStatus } from '../api-response-assertions'
 import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 import {
   newRoleContext,
@@ -542,7 +543,11 @@ for (const viewport of viewports) {
               },
             },
           )
-          expect(coauthorDecision.status()).toBe(403)
+          await expectApiResponseStatus(
+            coauthorDecision,
+            403,
+            'coauthor deviation decision',
+          )
 
           const noRolesDecision = await noRolesRequest.post(
             `/api/deviations/${latestDeviationId}/decision`,
@@ -553,7 +558,11 @@ for (const viewport of viewports) {
               },
             },
           )
-          expect(noRolesDecision.status()).toBe(403)
+          await expectApiResponseStatus(
+            noRolesDecision,
+            403,
+            'no-role deviation decision',
+          )
         })
 
         await test.step('record a reviewer decision', async () => {

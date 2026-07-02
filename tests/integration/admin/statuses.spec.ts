@@ -4,6 +4,7 @@ import {
   type Page,
   test,
 } from '@playwright/test'
+import { expectApiResponseOk } from '../api-response-assertions'
 
 interface SpecificationItemStatus {
   color: string
@@ -34,7 +35,7 @@ async function getUsageStatuses(
   request: APIRequestContext,
 ): Promise<SpecificationItemStatus[]> {
   const response = await request.get('/api/catalog/specification-item-statuses')
-  expect(response.ok()).toBe(true)
+  await expectApiResponseOk(response, 'GET specification item statuses')
 
   const body = (await response.json()) as {
     statuses?: SpecificationItemStatus[]
@@ -46,7 +47,7 @@ async function getPriorityLevels(
   request: APIRequestContext,
 ): Promise<PriorityLevel[]> {
   const response = await request.get('/api/priority-levels')
-  expect(response.ok()).toBe(true)
+  await expectApiResponseOk(response, 'GET priority levels')
 
   const body = (await response.json()) as {
     priorityLevels?: PriorityLevel[]

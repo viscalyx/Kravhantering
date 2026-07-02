@@ -1,11 +1,11 @@
 import {
   type APIRequestContext,
-  type APIResponse,
   expect,
   type Page,
   type Route,
   test,
 } from '@playwright/test'
+import { expectApiResponseOk } from '../api-response-assertions'
 
 interface AiGenerationAvailability {
   disabledByEnvironment: boolean
@@ -13,19 +13,11 @@ interface AiGenerationAvailability {
   requirementGenerationEnabled: boolean
 }
 
-async function expectOk(response: APIResponse, context: string) {
-  if (response.ok()) return
-
-  throw new Error(
-    `${context} failed with ${response.status()} ${await response.text()}`,
-  )
-}
-
 async function getAiSettings(
   request: APIRequestContext,
 ): Promise<AiGenerationAvailability> {
   const response = await request.get('/api/admin/ai-settings')
-  await expectOk(response, 'GET AI settings')
+  await expectApiResponseOk(response, 'GET AI settings')
   return (await response.json()) as AiGenerationAvailability
 }
 
@@ -36,7 +28,7 @@ async function putAiSettings(
   const response = await request.put('/api/admin/ai-settings', {
     data: { requirementGenerationEnabled },
   })
-  await expectOk(response, 'PUT AI settings')
+  await expectApiResponseOk(response, 'PUT AI settings')
   return (await response.json()) as AiGenerationAvailability
 }
 

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { expectApiResponseOk } from '../api-response-assertions'
 
 test.describe('Requirement creation', () => {
   for (const viewport of [
@@ -17,7 +18,7 @@ test.describe('Requirement creation', () => {
 
         // Get a valid requirement area for selection
         const areasRes = await request.get('/api/requirement-areas')
-        expect(areasRes.ok()).toBe(true)
+        await expectApiResponseOk(areasRes, 'GET requirement areas')
         const areasData = (await areasRes.json()) as {
           areas: { id: number; name: string }[]
         }

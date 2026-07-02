@@ -1,4 +1,8 @@
 import { expect, test } from '@playwright/test'
+import {
+  expectApiResponseOk,
+  expectApiResponseStatus,
+} from '../api-response-assertions'
 import { resolveIntegrationBaseUrl } from '../base-url'
 
 test('RES-02: homepage loads for signed-in and signed-out sessions', async ({
@@ -37,7 +41,7 @@ test('RES-03: readiness, build metadata, and navigation metadata are exposed saf
   )
 
   const buildResponse = await request.get('/build.json')
-  expect(buildResponse.ok()).toBe(true)
+  await expectApiResponseOk(buildResponse, 'GET build metadata')
   const buildBody = (await buildResponse.json()) as Record<string, unknown>
   expect(buildBody).toMatchObject({
     builtAt: expect.any(String),
@@ -59,10 +63,10 @@ test('RES-03: readiness, build metadata, and navigation metadata are exposed saf
     buildBody.expectedDatabaseSchemaVersion,
   )
   if (readyBody.status === 'ready') {
-    expect(readyResponse.status()).toBe(200)
+    await expectApiResponseStatus(readyResponse, 200, 'ready endpoint')
     expect(schemaBody.status).toBe('matches')
   } else {
-    expect(readyResponse.status()).toBe(503)
+    await expectApiResponseStatus(readyResponse, 503, 'ready endpoint')
     const schemaFailure = readyBody.failedChecks?.find(
       check => check.name === 'database_migration_compatibility',
     )

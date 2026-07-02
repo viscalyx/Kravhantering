@@ -1,5 +1,6 @@
 import { expect, type Locator, test } from '@playwright/test'
 import { escapeRegExp } from '@/tests/helpers/common'
+import { expectApiResponseOk } from '../api-response-assertions'
 import { seedAuthorizationResponsibilityPeople } from '../authorization/authorization-test-helpers'
 
 const viewports = [
@@ -233,7 +234,10 @@ for (const viewport of viewports) {
           const createdResponse = await request.get(
             `/api/requirements-specifications/${createdSlug}`,
           )
-          expect(createdResponse.ok()).toBe(true)
+          await expectApiResponseOk(
+            createdResponse,
+            'GET created requirement specification',
+          )
           expect(await createdResponse.json()).toMatchObject({
             name: createdName,
             responsibleHsaId: 'SE5560000001-admin1',

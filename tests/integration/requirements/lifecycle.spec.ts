@@ -8,6 +8,7 @@ import {
   test,
 } from '@playwright/test'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
+import { expectApiResponseOk } from '../api-response-assertions'
 import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
 import {
   newRoleContext,
@@ -42,13 +43,6 @@ interface RequirementDetail {
     }>
     versionNumber: number
   }>
-}
-
-interface OkResponse {
-  json(): Promise<unknown>
-  ok(): boolean
-  status(): number
-  text(): Promise<string>
 }
 
 function latestVersion(detail: RequirementDetail) {
@@ -87,14 +81,6 @@ function requirementPackageNames(
   )
 }
 
-async function expectOk(response: OkResponse, context: string) {
-  if (response.ok()) return
-
-  throw new Error(
-    `${context} failed with ${response.status()} ${await response.text()}`,
-  )
-}
-
 async function createDraftRequirement(
   request: APIRequestContext,
   description: string,
@@ -117,7 +103,7 @@ async function createDraftRequirement(
     },
     timeout: 30_000,
   })
-  await expectOk(createResponse, 'POST requirement')
+  await expectApiResponseOk(createResponse, 'POST requirement')
   const created = (await createResponse.json()) as {
     requirement: { id: number; uniqueId: string }
   }
@@ -583,7 +569,7 @@ test.describe('Requirement lifecycle manual cases', () => {
           timeout: 30_000,
         },
       )
-      await expectOk(editResponse, 'PUT LIFE-07 successor draft')
+      await expectApiResponseOk(editResponse, 'PUT LIFE-07 successor draft')
       await transitionRequirement(request, requirement.uniqueId, STATUS_REVIEW)
       await transitionRequirement(
         reviewerRequest,
