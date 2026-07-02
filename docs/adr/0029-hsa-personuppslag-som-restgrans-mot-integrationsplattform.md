@@ -1,6 +1,6 @@
 # HSA-personuppslag som REST-gräns mot integrationsplattform
 
-Status: Antagen 2026-06-14.
+Status: Antagen 2026-06-14. Uppdaterad 2026-07-02.
 
 Kravhantering behåller en stabil appnära gräns för HSA-personuppslag:
 `POST /hsa/person-records/lookup` med REST/JSON och ett kontrakt som
@@ -49,8 +49,16 @@ ut saknad HSA-id och konflikt; andra uppslagsfel visas som otillgänglig tjänst
 
 Kravhantering transporterar och lagrar även
 `hasProtectedPersonalData`, mappad från HSA `hsaProtectedPerson`, på
-Kravansvarsperson. Detta beslut inför ingen särskild UI-maskering eller
-policybehandling. Den verksamhets- och dataskyddspolicy som ska styra särskild
-hantering av HSA-personpost med skyddade personuppgifter ska beslutas separat
-i GitHub issue
+Kravansvarsperson. För att göra ansvar och behörighet tydliga för de
+anställda som har ett ansvar i applikationen behöver Kravhantering visa namn
+och den unika identitet som arbetsgivaren har delat ut, och som
+identitetsintygsutfärdaren intygar, på de ställen där uppgifterna behövs även
+om personen har skyddade personuppgifter. Skyddsflaggan ska därför inte ensam
+leda till generell maskering av namn eller HSA-id i obligatoriska arbetsflöden.
+
+Särskild hantering av HSA-personpost med skyddade personuppgifter ska i
+stället utgå från ändamål, vy, behörighet och regional riskbedömning:
+uppgifterna ska bara visas där de behövs för ansvar, spårbarhet, uppdrag eller
+behörighetsprövning, och export, loggning, hjälptext och eventuell
+skyddsmarkering styrs av policybeslutet i GitHub issue
 [#326](https://github.com/viscalyx/Kravhantering/issues/326).
