@@ -81,6 +81,74 @@ test('AUTHZ-08/AUTH-06/AUTH-10/AUTH-11/ADMIN-10: Admin keeps admin powers withou
   }
 })
 
+test.describe('AUTHZ-08/AUTH-11: Admin users with PrivacyOfficer can reach both Admin and privacy surfaces', () => {
+  test.use({
+    storageState: ROLE_STORAGE_STATE.admin,
+    viewport: { height: 720, width: 1280 },
+  })
+
+  test('AUTHZ-08/AUTH-11: Ada can use Admin tabs and PrivacyOfficer-only tabs', async ({
+    page,
+  }, testInfo) => {
+    referenceManualCases(testInfo, 'AUTHZ-08', 'AUTH-11')
+    await page.goto('/sv/admin')
+
+    const identityTab = page.getByRole('tab', { name: 'Identitet' })
+    const aiTab = page.getByRole('tab', { name: 'AI' })
+    const accessReviewTab = page.getByRole('tab', {
+      name: 'Behörighetsöversyn',
+    })
+    const archivingTab = page.getByRole('tab', { name: 'Arkivering' })
+    const privacyTab = page.getByRole('tab', { name: 'Dataskydd' })
+    const actionLogTab = page.getByRole('tab', { name: 'Åtgärdslogg' })
+
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Administrationscenter' }),
+    ).toBeVisible()
+
+    for (const tab of [
+      identityTab,
+      aiTab,
+      accessReviewTab,
+      archivingTab,
+      privacyTab,
+      actionLogTab,
+    ]) {
+      await expect(tab).not.toHaveAttribute('aria-disabled', 'true')
+    }
+
+    await identityTab.click()
+    await expect(identityTab).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('heading', { name: 'Identitet' })).toBeVisible()
+
+    await aiTab.click()
+    await expect(aiTab).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('heading', { name: 'AI' })).toBeVisible()
+
+    await accessReviewTab.click()
+    await expect(accessReviewTab).toHaveAttribute('aria-selected', 'true')
+    await expect(
+      page.getByRole('heading', { name: 'Behörighetsöversyn' }),
+    ).toBeVisible()
+
+    await actionLogTab.click()
+    await expect(actionLogTab).toHaveAttribute('aria-selected', 'true')
+    await expect(
+      page.getByRole('heading', { name: 'Åtgärdslogg' }),
+    ).toBeVisible()
+
+    await privacyTab.click()
+    await expect(privacyTab).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('heading', { name: 'Dataskydd' })).toBeVisible()
+
+    await archivingTab.click()
+    await expect(archivingTab).toHaveAttribute('aria-selected', 'true')
+    await expect(
+      page.getByRole('heading', { name: 'Arkivering' }),
+    ).toBeVisible()
+  })
+})
+
 test.describe('AUTHZ-08/AUTH-06/AUTH-11: Admin Center tab permissions for Admin-only users', () => {
   test.use({
     storageState: ROLE_STORAGE_STATE.adminOnly,
@@ -109,5 +177,29 @@ test.describe('AUTHZ-08/AUTH-06/AUTH-11: Admin Center tab permissions for Admin-
     await expect(archivingTab).toHaveAttribute('aria-disabled', 'true')
     await expect(privacyTab).toHaveAttribute('aria-disabled', 'true')
     await expect(privacyTab).toHaveAttribute('title', /Dataskyddshandläggare/)
+
+    await identityTab.click()
+    await expect(identityTab).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('heading', { name: 'Identitet' })).toBeVisible()
+
+    await accessReviewTab.click()
+    await expect(accessReviewTab).toHaveAttribute('aria-selected', 'true')
+    await expect(
+      page.getByRole('heading', { name: 'Behörighetsöversyn' }),
+    ).toBeVisible()
+
+    await actionLogTab.click()
+    await expect(actionLogTab).toHaveAttribute('aria-selected', 'true')
+    await expect(
+      page.getByRole('heading', { name: 'Åtgärdslogg' }),
+    ).toBeVisible()
+
+    await archivingTab.click({ force: true })
+    await expect(actionLogTab).toHaveAttribute('aria-selected', 'true')
+    await expect(archivingTab).toHaveAttribute('aria-selected', 'false')
+
+    await privacyTab.click({ force: true })
+    await expect(actionLogTab).toHaveAttribute('aria-selected', 'true')
+    await expect(privacyTab).toHaveAttribute('aria-selected', 'false')
   })
 })

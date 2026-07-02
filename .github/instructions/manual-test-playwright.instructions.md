@@ -28,3 +28,6 @@ applyTo: "{docs/governance/manuella-testfall.md,tests/integration/**/*.ts}"
   phases in `AUTH-11` and `AUTHZ-*`.
 - Preserve dedicated role storage states in `tests/integration/global-setup.ts`
   when authorization tests depend on them.
+- Automated Playwright scenarios may use isolated AUTHZ fixtures instead of the
+  deterministic seeded objects, as long as they verify the same roles,
+  assignments, and positive and negative authorization boundaries.

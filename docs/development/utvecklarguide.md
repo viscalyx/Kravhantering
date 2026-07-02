@@ -300,8 +300,9 @@ används behöver motsvarande pipelines finnas där.
   samlade lint- och formatpipelinen. Den kör formatkontroll, stavningskontroll,
   Biome-lint, Markdown-lint, TypeScript-kontroll, Pyright och dotenv-lint.
 - `Integration Tests` (`.github/workflows/integration-tests.yml`) körs på pull
-  requests och huvudgrenen. Den kör Playwright mot utvecklingsserver,
-  produktionslik server och produktionslik server utan utvecklingsberoenden.
+  requests och huvudgrenen. Den kör en kanonisk full Playwright-svit mot
+  produktionslik server utan utvecklingsberoenden och en liten Developer
+  Mode-kontroll mot utvecklingsservern.
 - `Requirement List Performance`
   (`.github/workflows/requirements-list-performance.yml`) körs på pull requests
   och huvudgrenen. Den verifierar SQL Server-baslinjen för kravlistans

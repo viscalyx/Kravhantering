@@ -21,7 +21,8 @@ See `package.json` for the full list of test-related scripts.
 - Chunk manifest: [tests/integration-chunks.manifest.json](tests/integration-chunks.manifest.json)
 
 `npm run test:integration` and `npm run test:integration:prodlike` run the
-Playwright suite in deterministic chunks by default. Run a single chunk with:
+Playwright suite locally in deterministic chunks by default. Run a single
+chunk with:
 
 ```bash
 npm run test:integration -- --chunk dev-requirement-selection
@@ -33,6 +34,12 @@ Passing a spec path still runs a direct Playwright invocation for debugging:
 ```bash
 npm run test:integration -- tests/integration/requirements/library.spec.ts
 ```
+
+In CI, the required full-suite Playwright gate is the pruned prodlike target in
+[`.github/workflows/integration-tests.yml`](../.github/workflows/integration-tests.yml).
+The same workflow keeps a small dev-server smoke for Developer Mode and local
+dev-server startup behavior; it does not run the full dev-server suite on every
+pull request.
 
 When specs move or are added, refresh and verify the committed chunk manifest:
 
@@ -49,7 +56,7 @@ these locations:
   and [app/[locale]/admin/error-boundary-test/page.tsx](app/[locale]/admin/error-boundary-test/page.tsx)
 - Playwright/dev configs that enable the gate: [playwright.config.ts](playwright.config.ts)
   and [playwright.prodlike.config.ts](playwright.prodlike.config.ts)
-- CI usage: [.github/workflows/integration-tests.yml](.github/workflows/integration-tests.yml)
+- CI usage: [.github/workflows/integration-tests.yml](../.github/workflows/integration-tests.yml)
 
 > [!NOTE]
 > The test-only pages call `notFound()` when the env var is not set, so

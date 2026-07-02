@@ -195,9 +195,9 @@ råa access-, refresh- eller id-tokenvärden.
 **Förväntat resultat:** Admin-ytor fungerar, men dataskyddsflikar saknas eller
 nekas.
 
-<a id="auth-07-dataskyddsansvarig-utan-adminbehorighet"></a>
+<a id="auth-07-dataskyddshandlaggare-utan-adminbehorighet"></a>
 
-### AUTH-07: dataskyddsansvarig utan Adminbehörighet
+### AUTH-07: Dataskyddshandläggare utan Adminbehörighet
 
 **Syfte:** Kontrollera att `PrivacyOfficer` inte ger Adminbehörighet.
 
@@ -206,7 +206,7 @@ nekas.
 **Steg:**
 
 1. Logga in som `disa.privacy`.
-1. Öppna `/sv/privacy`.
+1. Öppna `/sv/admin?tab=privacy`.
 1. Kör en förhandsgranskning av personuppgifter för ett känt HSA-id.
 1. Försök öppna Admincenter-flikar som `Åtgärdslogg` eller `Taxonomi`.
 
@@ -465,8 +465,8 @@ och saknas efter borttagning och omladdad dialog.
 
 ### AUTHZ-07: kravpaketsmedförfattare
 
-**Syfte:** Kontrollera att kravpaketsmedförfattare kan bidra till paket men
-inte ta över ansvar.
+**Syfte:** Kontrollera att kravpaketsmedförfattare syns som tilldelad till ett
+kravpaket men inte får ändra paketets metadata eller uppdrag.
 
 **Användare:** `paul.pkgcoauthor`.
 
@@ -474,13 +474,16 @@ inte ta över ansvar.
 
 1. Logga in som `paul.pkgcoauthor`.
 1. Öppna `AUTHZ kravpaket`.
-1. Gör en tillåten innehållsändring om UI tillåter det.
+1. Kontrollera att paketet visas med Leo som kravpaketsansvarig.
 1. Försök ändra paketmetadata.
+1. Kontrollera med API att Pauls egen personuppgiftsexport innehåller uppdraget
+   som kravpaketsmedförfattare.
 1. Kontrollera med API att kravpaketsmedförfattare inte får ändra
    kravpaketsansvarig eller kravpaketsmedförfattare.
 
-**Förväntat resultat:** Paul får bara de paketåtgärder som
-kravpaketsmedförfattare har behörighet till och nekas ansvarsstyrning.
+**Förväntat resultat:** Paul ser paketkontexten och uppdraget ingår i
+dataskyddsflödet, men han nekas paketmetadata, byte av kravpaketsansvarig och
+hantering av kravpaketsmedförfattare.
 
 ### AUTHZ-08: Admin
 
@@ -516,7 +519,9 @@ nekas dataskydd.
 **Förväntat resultat:** Rita kan utföra granskningsarbete men nekas Admin,
 dataskydd och ansvarsstyrning.
 
-### AUTHZ-10: dataskyddsansvarig
+<a id="authz-10-dataskyddshandlaggare"></a>
+
+### AUTHZ-10: Dataskyddshandläggare
 
 **Syfte:** Kontrollera att `PrivacyOfficer` kan hantera personuppgifter men
 inte administrera taxonomi eller krav.
@@ -526,7 +531,7 @@ inte administrera taxonomi eller krav.
 **Steg:**
 
 1. Logga in som `disa.privacy`.
-1. Öppna `/sv/privacy`.
+1. Öppna `/sv/admin?tab=privacy`.
 1. Förhandsgranska personuppgifter för `SE5560000001-linneab`.
 1. Exportera eller granska resultatet enligt dataskyddsflödet.
 1. Försök öppna Admincenter och ändra krav-/paketansvar.

@@ -14,24 +14,10 @@ permissions:
   contents: read
 
 jobs:
-  test-server:
-    name: Test Against ${{ matrix.displayName }} Server
+  dev-server-smoke:
+    name: Dev Server Smoke (Developer Mode)
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ matrix.timeoutMinutes }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - server: dev
-            displayName: Dev
-            testCommand: npm run test:integration
-            timeoutMinutes: 120
-            retentionDays: 7
-          - server: prodlike
-            displayName: Prod-like
-            testCommand: npm run test:integration:prodlike
-            timeoutMinutes: 120
-            retentionDays: 7
+    timeout-minutes: 45
 
     steps:
       - name: Checkout code
@@ -47,9 +33,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Check integration chunk manifest
-        run: npm run test:integration:chunks:check
 
       - name: Clean server and database state
         run: npm run clean:all
@@ -70,15 +53,14 @@ jobs:
       - name: Start and wait for local IdP service
         run: npm run idp:up
 
-      - name: Start local HSA lookup fixture
-        run: bash scripts/ci-hsa-person-lookup-fixture.sh start "${{ matrix.server }}"
-
-      - name: Run Playwright tests against ${{ matrix.server }} server
+      - name: Run Developer Mode smoke against dev server
         run: |
           set -euo pipefail
           start_epoch="$(date +%s)"
           set +e
-          ${{ matrix.testCommand }}
+          npm run test:integration -- \
+            tests/integration/developer-mode/overlay.spec.ts \
+            --grep "DEVTOOLS-01: shows chip on hover and copies a contextual reference"
           test_exit=$?
           set -e
           end_epoch="$(date +%s)"
@@ -87,47 +69,32 @@ jobs:
           minutes=$(((duration_seconds % 3600) / 60))
           seconds=$((duration_seconds % 60))
           formatted="$(printf '%02dh %02dm %02ds' "${hours}" "${minutes}" "${seconds}")"
-          echo "Integration tests (${{ matrix.server }}) runtime: ${formatted} (${duration_seconds}s)"
+          echo "Dev server smoke runtime: ${formatted} (${duration_seconds}s)"
           {
-            echo "### Integration test runtime (${{ matrix.server }})"
+            echo "### Dev server smoke runtime"
             echo
             echo "- Runtime: ${formatted} (${duration_seconds}s)"
-            echo "- Command: \`${{ matrix.testCommand }}\`"
+            echo "- Command: \`npm run test:integration -- tests/integration/developer-mode/overlay.spec.ts --grep \"DEVTOOLS-01: shows chip on hover and copies a contextual reference\"\`"
           } >> "$GITHUB_STEP_SUMMARY"
           exit "${test_exit}"
         env:
           CI: true
 
-      - name: Stop local HSA lookup fixture
-        if: always()
-        run: bash scripts/ci-hsa-person-lookup-fixture.sh stop "${{ matrix.server }}"
-
-      - name: Upload test results (${{ matrix.server }})
+      - name: Upload test results (dev smoke)
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: playwright-report-${{ matrix.server }}
-          path: playwright-report-${{ matrix.server }}/
-          retention-days: ${{ matrix.retentionDays }}
+          name: playwright-report-dev-smoke
+          path: playwright-report-dev/
+          retention-days: 7
 
-      - name: Upload test results XML (${{ matrix.server }})
+      - name: Upload test results XML (dev smoke)
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: playwright-junit-${{ matrix.server }}
-          path: test-results/${{ matrix.server }}/playwright-junit.xml
-          retention-days: ${{ matrix.retentionDays }}
-
-      - name: Upload server logs (${{ matrix.server }})
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: integration-server-logs-${{ matrix.server }}
-          path: |
-            test-results/server-logs/${{ matrix.server }}/
-            test-results/hsa-person-lookup/${{ matrix.server }}.log
-          if-no-files-found: ignore
-          retention-days: ${{ matrix.retentionDays }}
+          name: playwright-junit-dev-smoke
+          path: test-results/dev/playwright-junit.xml
+          retention-days: 7
 
       - name: Stop local IdP service
         if: always()
@@ -138,7 +105,7 @@ jobs:
         run: npm run db:down
 
   test-prodlike-pruned:
-    name: Test Prod-like Server With Dev Dependencies Pruned
+    name: Canonical Playwright Gate (Prod-like, Pruned Dependencies)
     runs-on: ubuntu-latest
     timeout-minutes: 150
 
