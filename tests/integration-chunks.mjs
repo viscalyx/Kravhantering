@@ -7,7 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const DEFAULT_ROOT = 'tests/integration'
-export const DEFAULT_AREAS_PER_CHUNK = 3
+export const DEFAULT_AREAS_PER_CHUNK = 1
 export const DEFAULT_TARGET_SPECS = 10
 export const MANIFEST_PATH = 'tests/integration-chunks.manifest.json'
 
@@ -432,7 +432,7 @@ function suiteReportPaths(suite) {
     blobDir: `test-results/playwright-blob-${suite}`,
     htmlDir: `playwright-report-${suite}`,
     junitFile: `test-results/${suite}/playwright-junit.xml`,
-    serverLogDir: `test-results/${suite}/server-logs`,
+    serverLogDir: `test-results/server-logs/${suite}`,
   }
 }
 

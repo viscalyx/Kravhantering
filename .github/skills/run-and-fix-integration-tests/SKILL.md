@@ -9,7 +9,7 @@ description: >-
 
 # Run And Fix Integration Tests/
 
-Use /caveman for dialogs, normal mode for reports and changes.
+Talk like /caveman for dialogs.
 
 ## Scope
 

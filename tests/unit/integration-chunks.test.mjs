@@ -45,6 +45,7 @@ describe('integration chunk manifest generation', () => {
     expect(manifest.$comment).toBe(
       'Generated file. Do not manually edit; run npm run test:integration:chunks:generate.',
     )
+    expect(manifest.chunkPolicy.areasPerChunk).toBe(1)
     expect(manifest.suites.dev.ignoredSpecs).toEqual([
       'tests/integration/mcp/seeded-scan.spec.ts',
     ])
@@ -56,6 +57,9 @@ describe('integration chunk manifest generation', () => {
       paths: ['tests/integration/mcp/seeded-scan.spec.ts'],
       specCount: 1,
     })
+    expect(
+      manifest.suites.dev.chunks.every(chunk => chunk.paths.length === 1),
+    ).toBe(true)
   })
 })
 
@@ -132,11 +136,11 @@ describe('integration chunk command planning', () => {
     expect(
       formatChunkServerLogFinishedLine({
         chunkId: 'prodlike-requirements',
-        logFile: 'test-results/prodlike/server-logs/prodlike-requirements.log',
+        logFile: 'test-results/server-logs/prodlike/prodlike-requirements.log',
         suite: 'prodlike',
       }),
     ).toBe(
-      '[integration-chunks] Finished prodlike chunk prodlike-requirements; app server log: test-results/prodlike/server-logs/prodlike-requirements.log\n',
+      '[integration-chunks] Finished prodlike chunk prodlike-requirements; app server log: test-results/server-logs/prodlike/prodlike-requirements.log\n',
     )
   })
 
@@ -226,7 +230,7 @@ describe('integration chunk command planning', () => {
       PLAYWRIGHT_SKIP_WEBSERVER: '1',
     })
     expect(plan.reportPaths.serverLogDir).toBe(
-      'test-results/prodlike/server-logs',
+      'test-results/server-logs/prodlike',
     )
   })
 

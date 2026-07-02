@@ -5,10 +5,10 @@ import {
   type Locator,
   type Page,
   type Route,
+  type TestInfo,
   test,
 } from '@playwright/test'
 import {
-  expectOk,
   expectStatus,
   newRoleContext,
 } from '../authorization/authorization-test-helpers'
@@ -20,6 +20,7 @@ const rfiSpecificationSlug = 'PWT-RFI-WORKFLOW-2026'
 const rfiAreaId = 920001
 const rfiPrimaryQuestionId = 920001
 const rfiSecondaryQuestionId = 920002
+const diagnosticBodyPreviewLength = 2_000
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -45,6 +46,109 @@ async function requestWithRetry(
   }
 
   throw new Error(`${label} failed after retries: ${lastFailure}`)
+}
+
+function compactText(value: string, maxLength = diagnosticBodyPreviewLength) {
+  return value.length <= maxLength
+    ? value
+    : `${value.slice(0, maxLength)}\n... truncated ${value.length - maxLength} chars`
+}
+
+function sanitizedHeaders(headers: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(headers).map(([name, value]) => [
+      name,
+      ['authorization', 'cookie', 'set-cookie'].includes(name.toLowerCase())
+        ? '<redacted>'
+        : value,
+    ]),
+  )
+}
+
+async function summarizeResponse(response: APIResponse) {
+  let body = ''
+  try {
+    body = await response.text()
+  } catch (error) {
+    body = `<<failed to read response body: ${error instanceof Error ? error.message : String(error)}>>`
+  }
+
+  return {
+    body,
+    summary: {
+      bodyPreview: compactText(body),
+      contentType: response.headers()['content-type'] ?? null,
+      headers: sanitizedHeaders(response.headers()),
+      ok: response.ok(),
+      status: response.status(),
+      statusText: response.statusText(),
+      url: response.url(),
+    },
+  }
+}
+
+async function summarizeGetDiagnostic(
+  request: APIRequestContext,
+  path: string,
+) {
+  try {
+    const response = await request.get(path, { timeout: 30_000 })
+    const { summary } = await summarizeResponse(response)
+    return summary
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : String(error),
+      path,
+    }
+  }
+}
+
+async function expectSpec15RfiMutationOk(
+  response: APIResponse,
+  options: {
+    label: string
+    request: APIRequestContext
+    slug: string
+    testInfo: TestInfo
+  },
+) {
+  if (response.ok()) return
+
+  const failed = await summarizeResponse(response)
+  const diagnostics = {
+    environment: {
+      baseURL: options.testInfo.project.use.baseURL ?? null,
+      playwrightBaseUrl: process.env.PLAYWRIGHT_BASE_URL ?? null,
+      playwrightSkipWebserver: process.env.PLAYWRIGHT_SKIP_WEBSERVER ?? null,
+    },
+    failedResponse: failed.summary,
+    followUpGets: {
+      authMe: await summarizeGetDiagnostic(options.request, '/api/auth/me'),
+      rfiList: await summarizeGetDiagnostic(
+        options.request,
+        `/api/requirements-specifications/${options.slug}/rfi-list`,
+      ),
+      specification: await summarizeGetDiagnostic(
+        options.request,
+        `/api/requirements-specifications/${options.slug}`,
+      ),
+    },
+    label: options.label,
+    timestamp: new Date().toISOString(),
+  }
+
+  await options.testInfo.attach(`${options.label} diagnostics`, {
+    body: JSON.stringify(diagnostics, null, 2),
+    contentType: 'application/json',
+  })
+  await options.testInfo.attach(`${options.label} response body`, {
+    body: failed.body,
+    contentType: failed.summary.contentType ?? 'text/plain',
+  })
+
+  throw new Error(
+    `${options.label} returned ${failed.summary.status} ${failed.summary.statusText}; diagnostics attached`,
+  )
 }
 
 async function gotoSpecificationDetail(
@@ -2141,7 +2245,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
         `/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/unlock`,
         { timeout: 30_000 },
       )
-      await expectOk(resetResponse, 'reset SPEC-15 RFI list')
+      await expectSpec15RfiMutationOk(resetResponse, {
+        label: 'reset SPEC-15 RFI list',
+        request: specificationResponsibleRequest,
+        slug: rfiSpecificationSlug,
+        testInfo,
+      })
 
       await gotoSpecificationDetail(page, rfiSpecificationSlug)
       await openDetailTab(page, 'RFI-frågelista')
@@ -2157,7 +2266,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
         `/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/lock`,
         { timeout: 30_000 },
       )
-      await expectOk(lockResponse, 'lock SPEC-15 RFI list')
+      await expectSpec15RfiMutationOk(lockResponse, {
+        label: 'lock SPEC-15 RFI list',
+        request: specificationResponsibleRequest,
+        slug: rfiSpecificationSlug,
+        testInfo,
+      })
       await gotoSpecificationDetail(page, rfiSpecificationSlug)
       await openDetailTab(page, 'RFI-frågelista')
       await expect(page.getByRole('switch', { name: 'Låst' })).toBeChecked()
