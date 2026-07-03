@@ -667,7 +667,10 @@ describe('AdminClient', () => {
       'aria-selected',
       'true',
     )
-    expect(screen.getByText('admin.ai.environmentOverrideNotice')).toBeVisible()
+    const environmentOverrideNotice = screen.getByText(
+      'admin.ai.environmentOverrideNotice',
+    )
+    expect(environmentOverrideNotice).toBeVisible()
     const requirementGenerationLabel = screen.getByText(
       'admin.ai.requirementGenerationEnabled',
     )
@@ -688,6 +691,15 @@ describe('AdminClient', () => {
     ).toBeVisible()
     expect(
       requirementGenerationLabel.compareDocumentPosition(securityHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      requirementGenerationLabel.compareDocumentPosition(
+        environmentOverrideNotice,
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      environmentOverrideNotice.compareDocumentPosition(securityHeading) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(

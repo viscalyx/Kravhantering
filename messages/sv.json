@@ -1336,9 +1336,6 @@
       "adminPreferenceDisabled": "Avstängt",
       "adminPreferenceEnabled": "Påslaget",
       "disabledTooltip": "Du behöver rollen Administratör.",
-      "effectiveDisabled": "Generering avstängd",
-      "effectiveEnabled": "Generering påslagen",
-      "effectiveStatus": "Effektiv status",
       "environmentOverrideNotice": "Driftkonfigurationen stänger för närvarande av AI-kravgenerering. Du kan spara inställningen i Administrationscenter, men generering är fortsatt avstängd tills driftöverskrivningen tas bort.",
       "decreaseMcpMaxRequestLimit": "Sänk MCP-anropsgränsen",
       "fieldHelp": {

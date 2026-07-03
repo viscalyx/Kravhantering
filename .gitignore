@@ -277,3 +277,4 @@ devcontainer-lock.json
 .npm-cache
 
 .playwright-mcp
+prototypes

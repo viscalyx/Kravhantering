@@ -1336,9 +1336,6 @@
       "adminPreferenceDisabled": "Disabled",
       "adminPreferenceEnabled": "Enabled",
       "disabledTooltip": "You need the Administrator role.",
-      "effectiveDisabled": "Generation disabled",
-      "effectiveEnabled": "Generation enabled",
-      "effectiveStatus": "Effective status",
       "environmentOverrideNotice": "Deployment configuration currently disables AI requirement generation. You can save the Admin Center preference, but generation stays disabled until the deployment override is removed.",
       "decreaseMcpMaxRequestLimit": "Decrease MCP request limit",
       "fieldHelp": {

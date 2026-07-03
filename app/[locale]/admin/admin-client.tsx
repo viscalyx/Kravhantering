@@ -742,7 +742,7 @@ function AiSettingsPanel() {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="mt-6 grid gap-4">
         <div className="grid gap-4">
           <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -771,6 +771,14 @@ function AiSettingsPanel() {
                 <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
                   {ta('ai.requirementGenerationDescription')}
                 </p>
+                {settings.disabledByEnvironment ? (
+                  <p
+                    className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100"
+                    role="status"
+                  >
+                    {ta('ai.environmentOverrideNotice')}
+                  </p>
+                ) : null}
               </div>
               <label className="inline-flex min-h-11 items-center gap-3 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200">
                 <input
@@ -917,26 +925,6 @@ function AiSettingsPanel() {
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="rounded-2xl border border-secondary-200/70 bg-white p-4 text-sm dark:border-secondary-700/60 dark:bg-secondary-900">
-          <div className="text-xs font-medium uppercase tracking-[0.14em] text-secondary-500 dark:text-secondary-400">
-            {ta('ai.effectiveStatus')}
-          </div>
-          <div className="mt-2 flex items-center gap-2 font-semibold text-secondary-950 dark:text-secondary-50">
-            <Sparkles aria-hidden="true" className="h-4 w-4" />
-            {settings.effectiveRequirementGenerationEnabled
-              ? ta('ai.effectiveEnabled')
-              : ta('ai.effectiveDisabled')}
-          </div>
-          {settings.disabledByEnvironment ? (
-            <p
-              className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100"
-              role="status"
-            >
-              {ta('ai.environmentOverrideNotice')}
-            </p>
-          ) : null}
         </div>
       </div>
     </section>
