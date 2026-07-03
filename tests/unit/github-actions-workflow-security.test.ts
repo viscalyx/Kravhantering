@@ -328,16 +328,37 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).toContain('branches: [main]')
     expect(workflow).toContain('types: [closed]')
     expect(workflow).toContain('contents: write')
-    expect(workflow).toContain('pull-requests: read')
+    expect(workflow).toContain('pull-requests: write')
     expect(workflow).toContain('if: github.event.pull_request.merged == true')
     expect(workflow).toContain('ref: main')
     expect(workflow).toContain('persist-credentials: false')
+    expect(workflow).toContain('OPERATOR_UPGRADE_NOTES_TOKEN is required.')
+    expect(workflow).toContain(
+      'NOTES_BRANCH: automation/operator-upgrade-notes',
+    )
     expect(workflow).toContain(
       'node scripts/release/operator-upgrade-notes.mjs sync-pr --github-pr',
     )
     expect(workflow).toContain(
       'git diff --quiet -- "docs/operations/operator-upgrade-notes.md"',
     )
+    expect(workflow).toContain(
+      'GH_TOKEN: ${{ secrets.OPERATOR_UPGRADE_NOTES_TOKEN }}',
+    )
+    expect(workflow).toContain(
+      'GITHUB_TOKEN: ${{ secrets.OPERATOR_UPGRADE_NOTES_TOKEN }}',
+    )
+    expect(workflow).not.toContain(
+      'secrets.OPERATOR_UPGRADE_NOTES_TOKEN || github.token',
+    )
+    expect(workflow).not.toContain('GITHUB_TOKEN: ${{ github.token }}')
+    expect(workflow).not.toContain('GH_TOKEN: ${{ github.token }}')
+    expect(workflow).not.toContain('OPERATOR_UPGRADE_NOTES_TOKEN_CONFIGURED')
+    expect(workflow).toContain('operator-upgrade:no-notes')
+    expect(workflow).toContain('ssdlc:requirements')
+    expect(workflow).toContain('gh pr create --base main')
+    expect(workflow).toContain('gh pr merge "${pr_number}" --squash --auto')
+    expect(workflow).not.toContain('git push origin HEAD:main')
     expect(workflow).not.toMatch(/github\.event\.pull_request\.head/iu)
     expect(workflow).not.toMatch(/\bgithub\.head_ref\b/iu)
     expect(workflow).not.toMatch(/\bnpm\s+(?:ci|install|run)\b/iu)

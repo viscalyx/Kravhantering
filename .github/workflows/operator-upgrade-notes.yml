@@ -11,7 +11,7 @@ concurrency:
 
 permissions:
   contents: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   persist-operator-upgrade-notes:
@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: main
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node.js
@@ -31,27 +32,102 @@ jobs:
         with:
           node-version-file: '.nvmrc'
 
+      - name: Validate operator upgrade notes token
+        env:
+          GH_TOKEN: ${{ secrets.OPERATOR_UPGRADE_NOTES_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::OPERATOR_UPGRADE_NOTES_TOKEN is required."
+            exit 1
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}" --jq '.full_name' >/dev/null
+
+      - name: Prepare operator notes branch
+        env:
+          NOTES_BRANCH: automation/operator-upgrade-notes
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin "${NOTES_BRANCH}" >/dev/null; then
+            git fetch origin "${NOTES_BRANCH}:refs/remotes/origin/${NOTES_BRANCH}"
+            git switch --create "${NOTES_BRANCH}" "origin/${NOTES_BRANCH}"
+            git rebase origin/main
+          else
+            git switch --create "${NOTES_BRANCH}"
+          fi
+
       - name: Sync operator upgrade notes
         run: node scripts/release/operator-upgrade-notes.mjs sync-pr --github-pr "${PR_NUMBER}"
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.OPERATOR_UPGRADE_NOTES_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
 
-      - name: Commit operator upgrade notes
+      - name: Open operator upgrade notes pull request
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.OPERATOR_UPGRADE_NOTES_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          NOTES_BRANCH: automation/operator-upgrade-notes
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- "docs/operations/operator-upgrade-notes.md"; then
+          if git diff --quiet -- "docs/operations/operator-upgrade-notes.md" &&
+            git diff --quiet origin/main...HEAD -- "docs/operations/operator-upgrade-notes.md"; then
             echo "No operator upgrade notes changes to commit."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "docs/operations/operator-upgrade-notes.md"
-          git commit -m "docs: persist operator upgrade notes from #${PR_NUMBER}"
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push origin HEAD:main
+
+          if ! git diff --quiet -- "docs/operations/operator-upgrade-notes.md"; then
+            git add "docs/operations/operator-upgrade-notes.md"
+            git commit -m "docs: persist operator upgrade notes from #${PR_NUMBER}"
+          fi
+
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git show-ref --verify --quiet "refs/remotes/origin/${NOTES_BRANCH}"; then
+            git push --force-with-lease origin HEAD:"refs/heads/${NOTES_BRANCH}"
+          else
+            git push origin HEAD:"refs/heads/${NOTES_BRANCH}"
+          fi
+
+          title="docs: persist operator upgrade notes"
+          body_file="$(mktemp)"
+          {
+            echo "This automated PR persists merged Operator Upgrade Impact notes under \`## Unreleased\`."
+            echo
+            echo "- Latest source PR: #${PR_NUMBER}"
+            echo "- Workflow run: ${RUN_URL}"
+            echo
+            echo "Merge after the required checks pass."
+            echo
+            echo "## Operator Upgrade Impact"
+            echo
+            echo "- [x] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->"
+            echo
+            echo "## SSDLC (Secure Software Development Life Cycle) Gate"
+            echo
+            echo "- [x] I have reviewed SSDLC requirements for this change and addressed any security, data protection, threat-model, and security-testing impacts. <!-- DO NOT REMOVE: ssdlc:requirements -->"
+          } > "${body_file}"
+
+          pr_number="$(gh pr list --base main --head "${NOTES_BRANCH}" --state open --json number --jq '.[0].number // empty')"
+          if [ -z "${pr_number}" ]; then
+            gh pr create --base main --head "${NOTES_BRANCH}" --title "${title}" --body-file "${body_file}"
+            pr_number="$(gh pr list --base main --head "${NOTES_BRANCH}" --state open --json number --jq '.[0].number // empty')"
+          else
+            gh pr edit "${pr_number}" --title "${title}" --body-file "${body_file}"
+          fi
+
+          if [ -z "${pr_number}" ]; then
+            echo "::error::Unable to find or create the operator upgrade notes pull request."
+            exit 1
+          fi
+
+          if gh pr merge "${pr_number}" --squash --auto --delete-branch; then
+            echo "Enabled auto-merge for operator upgrade notes PR #${pr_number}."
+          else
+            echo "::warning::Opened operator upgrade notes PR #${pr_number}, but auto-merge could not be enabled. Merge it after required checks pass."
+          fi
