@@ -119,7 +119,7 @@ The workflow fails after artifact upload when any of these happen:
 - Target is not exactly `http://localhost:3001`.
 - The MCP token cannot be acquired.
 - Missing or invalid Bearer token checks return 2xx.
-- The tool allowlist differs from the documented 11 tools.
+- The tool allowlist differs from the documented 12 tools.
 - A positive seeded call returns MCP `isError`, transport failure, or
   unexpected 5xx.
 - A mutation fails to preserve the expected safety behavior.

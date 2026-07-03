@@ -256,8 +256,10 @@ function previewResponse(
 
 async function renderOpenGenerator(overrides?: {
   aiGenerationAvailability?: {
+    aiSafetyRuleCacheTtlSeconds: number
     disabledByEnvironment: boolean
     effectiveRequirementGenerationEnabled: boolean
+    mcpMaxRequestBytes: number
     requirementGenerationEnabled: boolean
   }
   areas?: Array<{
@@ -402,8 +404,10 @@ describe('AiRequirementGenerator', () => {
     const user = userEvent.setup()
     await renderOpenGenerator({
       aiGenerationAvailability: {
+        aiSafetyRuleCacheTtlSeconds: 600,
         disabledByEnvironment: false,
         effectiveRequirementGenerationEnabled: false,
+        mcpMaxRequestBytes: 1024 * 1024,
         requirementGenerationEnabled: false,
       },
       loadModels: false,
@@ -1475,6 +1479,7 @@ describe('AiRequirementGenerator', () => {
   })
 
   it('streams analysis text in the right pane and follows appended content', async () => {
+    const finishGeneration = createDeferred<void>()
     const scrollIntoView = vi.fn()
     const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
@@ -1492,9 +1497,48 @@ describe('AiRequirementGenerator', () => {
         typeof url === 'string' &&
         url === '/api/ai/generate-requirement-import'
       ) {
-        return thinkingStreamResponse(
-          'First analysis line.\nSecond analysis line.',
-        )
+        return {
+          body: new ReadableStream({
+            async start(controller) {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `event: thinking\ndata: ${JSON.stringify({
+                    thinkingSoFar:
+                      'First analysis line.\nSecond analysis line.',
+                  })}\n\n`,
+                ),
+              )
+              await finishGeneration.promise
+              const payload = generatedImportPayload(
+                'Generated analysis requirement',
+              )
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `event: done\ndata: ${JSON.stringify({
+                    payload,
+                    rawContent: JSON.stringify(payload),
+                    stats: {
+                      completionTokens: 12,
+                      cost: 0,
+                      promptTokens: 10,
+                      reasoningTokens: 0,
+                      totalTokens: 22,
+                    },
+                    thinking: 'First analysis line.\nSecond analysis line.',
+                  })}\n\n`,
+                ),
+              )
+              controller.close()
+            },
+          }),
+          ok: true,
+        }
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/requirements/import/preview'
+      ) {
+        return previewResponse('Generated analysis requirement')
       }
       return { json: async () => ({}), ok: true }
     })
@@ -1513,12 +1557,43 @@ describe('AiRequirementGenerator', () => {
       await waitFor(() => {
         expect(scrollIntoView).toHaveBeenCalled()
       })
+      finishGeneration.resolve()
+      expect(
+        await screen.findByText('Generated analysis requirement'),
+      ).toBeInTheDocument()
     } finally {
       Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
         configurable: true,
         value: originalScrollIntoView,
       })
     }
+  })
+
+  it('shows an error when the AI stream closes without a terminal event', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/ai/generate-requirement-import'
+      ) {
+        return thinkingStreamResponse('Partial analysis')
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Grade access')
+    await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '1')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    expect(await screen.findByText('createError')).toBeInTheDocument()
   })
 
   it('styles generated priority badges from stable priority codes', async () => {

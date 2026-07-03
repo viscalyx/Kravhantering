@@ -29,6 +29,7 @@ type WorkflowStep = {
   env?: Record<string, unknown>
   name?: unknown
   run?: unknown
+  with?: Record<string, unknown>
 }
 
 function yamlFiles(
@@ -192,15 +193,32 @@ describe('GitHub Actions workflow security', () => {
     expect(
       stepRunText(prodlikePruned, 'Check integration chunk manifest'),
     ).toBe('npm run test:integration:chunks:check')
-    expect(
-      stepRunText(prodlikePruned, 'Start pruned prod-like server'),
-    ).toContain('npm run start:prodlike-pruned')
-    expect(
-      stepRunText(
-        prodlikePruned,
-        'Run Playwright tests against pruned prod-like server',
-      ),
-    ).toContain('npm run test:integration:prodlike')
+    const prodlikeStartCommand = stepRunText(
+      prodlikePruned,
+      'Start pruned prod-like server',
+    )
+    expect(prodlikeStartCommand).toContain('npm run start:prodlike-pruned')
+    expect(prodlikeStartCommand).toContain(
+      'server_log_path="test-results/prodlike-pruned/server.log"',
+    )
+    expect(prodlikeStartCommand).toContain(
+      'Writing prod-like production server console log to ',
+    )
+    const prodlikeRunCommand = stepRunText(
+      prodlikePruned,
+      'Run Playwright tests against pruned prod-like server',
+    )
+    expect(prodlikeRunCommand).toContain('npm run test:integration:prodlike')
+    expect(prodlikeRunCommand).toContain(
+      'prodlike_server_log="test-results/prodlike-pruned/server.log"',
+    )
+    expect(prodlikeRunCommand).toContain(
+      'Prod-like production server console log: ',
+    )
+    expect(prodlikeRunCommand).toContain('- Production server console log: \\`')
+    expect(prodlikeRunCommand).toContain(
+      '- Server log artifact: \\`prodlike-pruned-server-log\\`',
+    )
     const prodlikeRunStep = prodlikePruned?.steps?.find(
       step =>
         step.name === 'Run Playwright tests against pruned prod-like server',
@@ -210,6 +228,15 @@ describe('GitHub Actions workflow security', () => {
       PLAYWRIGHT_FORCE_AUTH_SETUP: '1',
       PLAYWRIGHT_SKIP_WEBSERVER: '1',
     })
+    const prodlikeLogUploadStep = prodlikePruned?.steps?.find(
+      step => step.name === 'Upload pruned server log',
+    )
+    expect(String(prodlikeLogUploadStep?.with?.path)).toContain(
+      'test-results/prodlike-pruned/server.log',
+    )
+    expect(String(prodlikeLogUploadStep?.with?.path)).toContain(
+      'test-results/server-logs/prodlike/**',
+    )
   })
 
   it('keeps the fork-compatible SSDLC gate on trusted base code', () => {

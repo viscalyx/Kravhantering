@@ -81,7 +81,7 @@ function extractTableColumns(table: string): Set<string> {
 
   // Later migrations may extend a table with `ALTER TABLE ... ADD ...`.
   const alterAddPattern = new RegExp(
-    `ALTER TABLE \\[${table}\\] ADD ([\\s\\S]*?);`,
+    `ALTER TABLE \\[${table}\\]\\s+ADD\\s+([\\s\\S]*?);`,
     'gm',
   )
   for (const match of migrationSource.matchAll(alterAddPattern)) {

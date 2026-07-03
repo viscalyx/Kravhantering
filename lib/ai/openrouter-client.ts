@@ -27,6 +27,12 @@ export interface GenerationStats {
   totalTokens: number
 }
 
+interface ReasoningDetail {
+  summary?: unknown
+  text?: unknown
+  type?: unknown
+}
+
 export type StreamEvent =
   | { chunk: string; phase: 'thinking'; thinkingSoFar: string }
   | { chunk: string; phase: 'generating' }
@@ -135,6 +141,29 @@ function applyKnownResponseFormat(
   applyResponseFormat(body, schema, supportedParameters)
 }
 
+function readReasoningDetailsText(value: unknown): string {
+  if (!Array.isArray(value)) return ''
+  return value
+    .map(detail => {
+      if (!detail || typeof detail !== 'object') return ''
+      const { summary, text } = detail as ReasoningDetail
+      if (typeof text === 'string') return text
+      if (typeof summary === 'string') return summary
+      return ''
+    })
+    .join('')
+}
+
+function readReasoningText(input: {
+  reasoning?: unknown
+  reasoning_details?: unknown
+}): string {
+  const reasoningDetails = readReasoningDetailsText(input.reasoning_details)
+  if (reasoningDetails) return reasoningDetails
+  const reasoning = typeof input.reasoning === 'string' ? input.reasoning : ''
+  return reasoning
+}
+
 // ---------------------------------------------------------------------------
 // Non-streaming chat (for MCP server)
 // ---------------------------------------------------------------------------
@@ -207,6 +236,7 @@ export async function generateChat<T>(
         message: {
           content: string | null
           reasoning?: string
+          reasoning_details?: unknown
         }
       }>
       usage?: {
@@ -243,7 +273,7 @@ export async function generateChat<T>(
         totalTokens:
           (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0),
       },
-      thinking: message.reasoning ?? '',
+      thinking: readReasoningText(message),
     }
   } finally {
     clearTimeout(timeoutId)
@@ -410,7 +440,15 @@ export async function* generateChatStream(
       for (const line of lines) {
         const trimmed = line.trim()
         if (!trimmed || trimmed.startsWith(':')) continue
-        if (trimmed === 'data: [DONE]') continue
+        if (trimmed === 'data: [DONE]') {
+          yield {
+            phase: 'done',
+            rawContent: contentSoFar,
+            stats: lastStats,
+            thinking: thinkingSoFar,
+          }
+          return
+        }
         if (!trimmed.startsWith('data: ')) continue
 
         const jsonStr = trimmed.slice(6)
@@ -419,6 +457,7 @@ export async function* generateChatStream(
             delta?: {
               content?: string | null
               reasoning?: string | null
+              reasoning_details?: unknown
             }
             finish_reason?: string | null
           }>
@@ -441,10 +480,11 @@ export async function* generateChatStream(
         const delta = chunk.choices?.[0]?.delta
 
         // Reasoning/thinking content
-        if (delta?.reasoning) {
-          thinkingSoFar += delta.reasoning
+        const reasoningChunk = delta ? readReasoningText(delta) : ''
+        if (reasoningChunk) {
+          thinkingSoFar += reasoningChunk
           yield {
-            chunk: delta.reasoning,
+            chunk: reasoningChunk,
             phase: 'thinking',
             thinkingSoFar,
           }

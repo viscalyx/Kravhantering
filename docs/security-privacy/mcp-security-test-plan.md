@@ -27,10 +27,15 @@ npm exec -- vitest run \
 
 The suite covers:
 
-- Tool allowlist: exactly the documented 11 tools are exposed, and unknown
+- Tool allowlist: exactly the documented 12 tools are exposed, and unknown
   tool names fail without invoking the requirements service.
 - Bearer auth: missing, invalid, wrong-issuer, wrong-audience, missing
   `employeeHsaId`, and invalid HSA-id.
+- Transport payload size: oversized POST bodies return JSON-RPC `413` before
+  bearer-token verification or service creation. Tests cover the exact
+  `1 MiB` default, lowered and raised Admin-configured limits, the safe
+  `1 MiB` fallback when settings cannot be loaded, and the absolute `5 MiB`
+  cap before database or authentication work.
 - Authorization seams: representative MCP calls receive a `RequestContext`
   with `source: "mcp"`, the expected `toolName`, the request ID, and the
   verified actor attached at the HTTP edge.
@@ -56,7 +61,7 @@ Use only disposable local services and non-production credentials.
 3. Open MCP Inspector or another MCP client that supports Streamable HTTP.
 4. Configure the server URL as `http://localhost:3000/api/mcp`.
 5. Add the header `Authorization: Bearer <non-production-token>`.
-6. Confirm that the server lists exactly 11 tools.
+6. Confirm that the server lists exactly 12 tools.
 7. Confirm that an unauthenticated request returns `401` and
    `WWW-Authenticate: Bearer`.
 8. Call `requirements_query_catalog` and `requirements_get_requirement` with
@@ -70,8 +75,10 @@ secrets for this smoke check.
 ## Non-Goals
 
 - New MCP tools or resource URIs stay out of scope.
-- Database schema, seed, migration, UI, REST route, and GitHub workflow changes
-  are not part of this pass.
+- New database schema, seed, migration, UI, REST route, and GitHub workflow
+  work stays outside the MCP transport test suite. The Admin-controlled MCP
+  payload limit is covered by the AI settings DAL/API/UI tests and by focused
+  MCP transport limit tests.
 - Browser CSRF checks on `/api/mcp` are excluded; it remains Bearer-token
   scoped.
 - Full RBAC policy coverage is handled by the shared service and focused RBAC

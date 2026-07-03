@@ -79,6 +79,61 @@ describe('generateChat (non-streaming)', () => {
     expect(result.stats.cost).toBe(0.0025)
   })
 
+  it('reads non-streaming reasoning_details when reasoning is not present', async () => {
+    mockFetch.mockResolvedValueOnce({
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: '{"requirements":[]}',
+              reasoning_details: [
+                {
+                  text: 'Detailed reasoning.',
+                  type: 'reasoning.text',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      ok: true,
+    })
+
+    const result = await generateChat<{ requirements: unknown[] }>({
+      messages: [],
+    })
+
+    expect(result.thinking).toBe('Detailed reasoning.')
+  })
+
+  it('does not duplicate non-streaming reasoning when reasoning_details is also present', async () => {
+    mockFetch.mockResolvedValueOnce({
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: '{"requirements":[]}',
+              reasoning: 'Detailed reasoning.',
+              reasoning_details: [
+                {
+                  text: 'Detailed reasoning.',
+                  type: 'reasoning.text',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      ok: true,
+    })
+
+    const result = await generateChat<{ requirements: unknown[] }>({
+      messages: [],
+    })
+
+    expect(result.thinking).toBe('Detailed reasoning.')
+  })
+
   it('uses custom model when provided', async () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => ({
@@ -339,6 +394,141 @@ describe('generateChatStream', () => {
     expect(events).toHaveLength(2)
     expect(events[0]).toEqual({ chunk: 'hello', phase: 'generating' })
     expect(events[1].phase).toBe('done')
+  })
+
+  it('streams reasoning_details as thinking events', async () => {
+    const sseLines = [
+      'data: {"choices":[{"delta":{"reasoning_details":[{"type":"reasoning.text","text":"Let me think. "}]} }]}\n\n',
+      'data: {"choices":[{"delta":{"reasoning_details":[{"type":"reasoning.text","text":"Then answer."}]} }]}\n\n',
+      'data: [DONE]\n\n',
+    ]
+
+    let lineIndex = 0
+    const mockReader = {
+      read: async () => {
+        if (lineIndex >= sseLines.length) {
+          return { done: true, value: undefined }
+        }
+        const value = new TextEncoder().encode(sseLines[lineIndex++])
+        return { done: false, value }
+      },
+      releaseLock: vi.fn(),
+    }
+
+    mockFetch.mockResolvedValueOnce({
+      body: { getReader: () => mockReader },
+      ok: true,
+    })
+
+    const events = []
+    for await (const event of generateChatStream({ messages: [] })) {
+      events.push(event)
+    }
+
+    expect(events).toEqual([
+      {
+        chunk: 'Let me think. ',
+        phase: 'thinking',
+        thinkingSoFar: 'Let me think. ',
+      },
+      {
+        chunk: 'Then answer.',
+        phase: 'thinking',
+        thinkingSoFar: 'Let me think. Then answer.',
+      },
+      {
+        phase: 'done',
+        rawContent: '',
+        stats: {
+          completionTokens: 0,
+          cost: 0,
+          promptTokens: 0,
+          reasoningTokens: 0,
+          totalTokens: 0,
+        },
+        thinking: 'Let me think. Then answer.',
+      },
+    ])
+  })
+
+  it('does not duplicate reasoning when chunks include reasoning and reasoning_details', async () => {
+    const sseLines = [
+      'data: {"choices":[{"delta":{"reasoning":"I ","reasoning_details":[{"type":"reasoning.text","text":"I "}]} }]}\n\n',
+      'data: {"choices":[{"delta":{"reasoning":"need ","reasoning_details":[{"type":"reasoning.text","text":"need "}]} }]}\n\n',
+      'data: {"choices":[{"delta":{"reasoning":"valid JSON.","reasoning_details":[{"type":"reasoning.text","text":"valid JSON."}]} }]}\n\n',
+      'data: [DONE]\n\n',
+    ]
+
+    let lineIndex = 0
+    const mockReader = {
+      read: async () => {
+        if (lineIndex >= sseLines.length) {
+          return { done: true, value: undefined }
+        }
+        const value = new TextEncoder().encode(sseLines[lineIndex++])
+        return { done: false, value }
+      },
+      releaseLock: vi.fn(),
+    }
+
+    mockFetch.mockResolvedValueOnce({
+      body: { getReader: () => mockReader },
+      ok: true,
+    })
+
+    const events = []
+    for await (const event of generateChatStream({ messages: [] })) {
+      events.push(event)
+    }
+
+    expect(events.at(-1)).toMatchObject({
+      phase: 'done',
+      thinking: 'I need valid JSON.',
+    })
+    expect(
+      events.filter(event => event.phase === 'thinking').at(-1),
+    ).toMatchObject({
+      thinkingSoFar: 'I need valid JSON.',
+    })
+  })
+
+  it('finishes when OpenRouter sends DONE without closing the response body', async () => {
+    let readCount = 0
+    const mockReader = {
+      read: async () => {
+        readCount += 1
+        if (readCount === 1) {
+          return {
+            done: false,
+            value: new TextEncoder().encode(
+              'data: {"choices":[{"delta":{"content":"{\\"requirements\\":[]}"}}]}\n\n',
+            ),
+          }
+        }
+        if (readCount === 2) {
+          return {
+            done: false,
+            value: new TextEncoder().encode('data: [DONE]\n\n'),
+          }
+        }
+        return new Promise<ReadableStreamReadResult<Uint8Array>>(() => {})
+      },
+      releaseLock: vi.fn(),
+    }
+
+    mockFetch.mockResolvedValueOnce({
+      body: { getReader: () => mockReader },
+      ok: true,
+    })
+
+    const events = []
+    for await (const event of generateChatStream({ messages: [] })) {
+      events.push(event)
+    }
+
+    expect(events.map(event => event.phase)).toEqual(['generating', 'done'])
+    expect(readCount).toBe(2)
+    expect(mockReader.releaseLock).toHaveBeenCalled()
   })
 
   it('uses an idle timeout instead of an absolute stream timeout', async () => {

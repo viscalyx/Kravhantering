@@ -14,6 +14,10 @@ import type { ActionAuditLogInitialState } from '@/components/admin/ActionAuditL
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { HelpProvider, useHelp } from '@/components/HelpPanel'
 import {
+  addMcpMaxRequestBytesSteps,
+  MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+} from '@/lib/ai/generation-availability'
+import {
   DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
   normalizeRequirementListColumnDefaults,
   type RequirementListColumnDefault,
@@ -389,6 +393,20 @@ function deferred<T>() {
   return { promise, reject, resolve }
 }
 
+function rect(values: Partial<DOMRectReadOnly> = {}): DOMRect {
+  return {
+    bottom: values.bottom ?? 0,
+    height: values.height ?? 0,
+    left: values.left ?? 0,
+    right: values.right ?? 0,
+    toJSON: () => ({}),
+    top: values.top ?? 0,
+    width: values.width ?? 0,
+    x: values.x ?? values.left ?? 0,
+    y: values.y ?? values.top ?? 0,
+  } as DOMRect
+}
+
 function renderWithConfirmModal(ui: Parameters<typeof render>[0]) {
   return render(<ConfirmModalProvider>{ui}</ConfirmModalProvider>)
 }
@@ -623,18 +641,65 @@ describe('AdminClient', () => {
         if (url === '/api/admin/ai-settings' && method === 'GET') {
           return Promise.resolve(
             okJson({
+              aiSafetyRuleCacheTtlSeconds: 600,
               disabledByEnvironment: true,
               effectiveRequirementGenerationEnabled: false,
+              mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
               requirementGenerationEnabled: true,
             }),
           )
         }
-        if (url === '/api/admin/ai-settings' && method === 'PUT') {
+        if (url === '/api/admin/ai-settings' && method === 'PATCH') {
+          const requestBody = JSON.parse(String(init?.body ?? '{}')) as {
+            aiSafetyRuleCacheTtlSeconds?: number
+            mcpMaxRequestBytes?: number
+            requirementGenerationEnabled?: boolean
+          }
           return Promise.resolve(
             okJson({
+              aiSafetyRuleCacheTtlSeconds:
+                requestBody.aiSafetyRuleCacheTtlSeconds ?? 600,
               disabledByEnvironment: true,
               effectiveRequirementGenerationEnabled: false,
-              requirementGenerationEnabled: false,
+              mcpMaxRequestBytes:
+                requestBody.mcpMaxRequestBytes ??
+                MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+              requirementGenerationEnabled:
+                requestBody.requirementGenerationEnabled ?? true,
+            }),
+          )
+        }
+        if (url === '/api/admin/ai-safety-rules' && method === 'GET') {
+          return Promise.resolve(
+            okJson({
+              rules: [
+                {
+                  category: 'prompt_injection',
+                  descriptionEn:
+                    'Blocks prompt injection instruction override.',
+                  descriptionSv:
+                    'Stoppar promptinjektion med instruktionsövertagande.',
+                  id: 1,
+                  nameEn: 'Prompt injection: instruction override',
+                  nameSv: 'Promptinjektion: instruktionsövertagande',
+                  patternKind: 'paired_terms',
+                  ruleId: 'instruction_override',
+                  sortOrder: 10,
+                  terms: [
+                    {
+                      direction: 'input_output',
+                      id: 11,
+                      isActive: true,
+                      isStandard: true,
+                      normalizedTerm: 'ignore',
+                      standardDirection: 'input_output',
+                      termText: 'ignore',
+                      termType: 'action',
+                    },
+                  ],
+                  windowChars: 80,
+                },
+              ],
             }),
           )
         }
@@ -643,10 +708,12 @@ describe('AdminClient', () => {
     )
 
     render(
-      <AdminClient
-        currentUserRoles={['Admin']}
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-      />,
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['Admin']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        />
+      </ConfirmModalProvider>,
     )
 
     expect(
@@ -656,35 +723,299 @@ describe('AdminClient', () => {
       'aria-selected',
       'true',
     )
-    expect(screen.getByText('admin.ai.environmentOverrideNotice')).toBeVisible()
+    const environmentOverrideNotice = screen.getByText(
+      'admin.ai.environmentOverrideNotice',
+    )
+    expect(environmentOverrideNotice).toBeVisible()
+    const requirementGenerationLabel = screen.getByText(
+      'admin.ai.requirementGenerationEnabled',
+    )
+    const securityHeading = screen.getByText('admin.ai.securityTitle')
+    const mcpLimitLabel = screen.getByText('admin.ai.mcpMaxRequestLimit')
+    expect(securityHeading).toBeVisible()
+    expect(mcpLimitLabel).toBeVisible()
+    expect(
+      screen.queryByText('admin.ai.fieldHelp.mcpMaxRequestLimit'),
+    ).not.toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'common.help: admin.ai.mcpMaxRequestLimit',
+      }),
+    )
+    expect(
+      screen.getByText('admin.ai.fieldHelp.mcpMaxRequestLimit'),
+    ).toBeVisible()
+    expect(
+      requirementGenerationLabel.compareDocumentPosition(securityHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      requirementGenerationLabel.compareDocumentPosition(
+        environmentOverrideNotice,
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      environmentOverrideNotice.compareDocumentPosition(securityHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      securityHeading.compareDocumentPosition(mcpLimitLabel) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
 
     const toggle = screen.getByLabelText(
       'admin.ai.requirementGenerationEnabled',
     )
-    const saveButton = screen.getByRole('button', { name: 'common.save' })
+    const mcpLimitInput = screen.getByLabelText('admin.ai.mcpMaxRequestLimit')
     await waitFor(() => expect(toggle).toBeChecked())
-    expect(saveButton).toBeDisabled()
+    expect(mcpLimitInput).toHaveValue(1024)
+    expect(screen.queryByRole('button', { name: 'common.save' })).toBeNull()
 
+    fireEvent.change(mcpLimitInput, { target: { value: '1080' } })
+    expect(mcpLimitInput).toHaveValue(1080)
+    fireEvent.keyDown(mcpLimitInput, { key: 'Enter' })
+    expect(mcpLimitInput).toHaveValue(1126.4)
     fireEvent.click(toggle)
     expect(toggle).not.toBeChecked()
-    expect(saveButton).toBeEnabled()
-    fireEvent.click(saveButton)
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/admin/ai-settings',
-        expect.objectContaining({ method: 'PUT' }),
+        expect.objectContaining({ method: 'PATCH' }),
       )
     })
-    const putCall = fetchMock.mock.calls.find(
+    const mcpPatchCall = fetchMock.mock.calls.find(
       ([url, init]) =>
         url === '/api/admin/ai-settings' &&
-        (init as RequestInit | undefined)?.method === 'PUT',
+        (init as RequestInit | undefined)?.method === 'PATCH' &&
+        String((init as RequestInit | undefined)?.body ?? '').includes(
+          'mcpMaxRequestBytes',
+        ),
     )
     expect(
-      JSON.parse(((putCall?.[1] as RequestInit)?.body as string) ?? '{}'),
-    ).toEqual({ requirementGenerationEnabled: false })
-    await waitFor(() => expect(screen.getByText('admin.saved')).toBeVisible())
+      JSON.parse(((mcpPatchCall?.[1] as RequestInit)?.body as string) ?? '{}'),
+    ).toEqual({
+      mcpMaxRequestBytes: addMcpMaxRequestBytesSteps(
+        MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+        1,
+      ),
+    })
+    const togglePatchCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/admin/ai-settings' &&
+        (init as RequestInit | undefined)?.method === 'PATCH' &&
+        String((init as RequestInit | undefined)?.body ?? '').includes(
+          'requirementGenerationEnabled',
+        ),
+    )
+    expect(
+      JSON.parse(
+        ((togglePatchCall?.[1] as RequestInit)?.body as string) ?? '{}',
+      ),
+    ).toEqual({
+      requirementGenerationEnabled: false,
+    })
+    await waitFor(() =>
+      expect(screen.getAllByText('admin.saved').length).toBeGreaterThan(0),
+    )
+  })
+
+  it('reverts only the failed AI setting after concurrent optimistic saves', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=ai')
+    const failedMcpSave = deferred<Response>()
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        const method = init?.method ?? 'GET'
+        if (url === '/api/admin/ai-settings' && method === 'GET') {
+          return Promise.resolve(
+            okJson({
+              aiSafetyRuleCacheTtlSeconds: 600,
+              disabledByEnvironment: false,
+              effectiveRequirementGenerationEnabled: true,
+              mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+              requirementGenerationEnabled: true,
+            }),
+          )
+        }
+        if (url === '/api/admin/ai-safety-rules' && method === 'GET') {
+          return Promise.resolve(okJson({ rules: [] }))
+        }
+        if (url === '/api/admin/ai-settings' && method === 'PATCH') {
+          const requestBody = JSON.parse(String(init?.body ?? '{}')) as {
+            mcpMaxRequestBytes?: number
+            requirementGenerationEnabled?: boolean
+          }
+          if (requestBody.mcpMaxRequestBytes !== undefined) {
+            return failedMcpSave.promise
+          }
+          return Promise.resolve(
+            okJson({
+              aiSafetyRuleCacheTtlSeconds: 600,
+              disabledByEnvironment: false,
+              effectiveRequirementGenerationEnabled:
+                requestBody.requirementGenerationEnabled ?? true,
+              mcpMaxRequestBytes: addMcpMaxRequestBytesSteps(
+                MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+                1,
+              ),
+              requirementGenerationEnabled:
+                requestBody.requirementGenerationEnabled ?? true,
+            }),
+          )
+        }
+        return Promise.reject(new Error(`Unexpected fetch ${method} ${url}`))
+      },
+    )
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+      />,
+    )
+
+    const toggle = await screen.findByLabelText(
+      'admin.ai.requirementGenerationEnabled',
+    )
+    const mcpLimitInput = screen.getByLabelText('admin.ai.mcpMaxRequestLimit')
+    await waitFor(() => expect(toggle).toBeChecked())
+
+    fireEvent.change(mcpLimitInput, { target: { value: '1080' } })
+    fireEvent.keyDown(mcpLimitInput, { key: 'Enter' })
+    fireEvent.click(toggle)
+
+    await waitFor(() => {
+      const patchCalls = fetchMock.mock.calls.filter(
+        ([url, init]) =>
+          url === '/api/admin/ai-settings' &&
+          (init as RequestInit | undefined)?.method === 'PATCH',
+      )
+      expect(patchCalls).toHaveLength(2)
+    })
+
+    failedMcpSave.resolve(errorJson({ error: 'MCP save failed' }, 500))
+
+    expect(await screen.findByText('MCP save failed')).toBeVisible()
+    expect(toggle).not.toBeChecked()
+    expect(screen.getByText('admin.ai.adminPreferenceDisabled')).toBeVisible()
+  })
+
+  it('anchors the selected safety-term removal dialog to the clicked button', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=ai')
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        const method = init?.method ?? 'GET'
+        if (url === '/api/admin/ai-settings' && method === 'GET') {
+          return Promise.resolve(
+            okJson({
+              aiSafetyRuleCacheTtlSeconds: 600,
+              disabledByEnvironment: false,
+              effectiveRequirementGenerationEnabled: true,
+              mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+              requirementGenerationEnabled: true,
+            }),
+          )
+        }
+        if (url === '/api/admin/ai-safety-rules' && method === 'GET') {
+          return Promise.resolve(
+            okJson({
+              rules: [
+                {
+                  category: 'prompt_injection',
+                  descriptionEn:
+                    'Blocks prompt injection instruction override.',
+                  descriptionSv:
+                    'Stoppar promptinjektion med instruktionsövertagande.',
+                  id: 1,
+                  nameEn: 'Prompt injection: instruction override',
+                  nameSv: 'Promptinjektion: instruktionsövertagande',
+                  patternKind: 'paired_terms',
+                  ruleId: 'instruction_override',
+                  sortOrder: 10,
+                  terms: [
+                    {
+                      direction: 'input_output',
+                      id: 11,
+                      isActive: true,
+                      isStandard: true,
+                      normalizedTerm: 'ignore',
+                      standardDirection: 'input_output',
+                      termText: 'ignore',
+                      termType: 'action',
+                    },
+                  ],
+                  windowChars: 80,
+                },
+              ],
+            }),
+          )
+        }
+        return Promise.reject(new Error(`Unexpected fetch ${method} ${url}`))
+      },
+    )
+    window.innerHeight = 800
+    window.innerWidth = 600
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0)
+      return 1
+    })
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+      />,
+    )
+
+    const ruleName = await screen.findByText(
+      'Promptinjektion: instruktionsövertagande',
+    )
+    const ruleButton = ruleName.closest('button')
+    expect(ruleButton).not.toBeNull()
+    fireEvent.click(ruleButton as HTMLButtonElement)
+    fireEvent.click(screen.getByLabelText('admin.ai.selectTermNamed'))
+    const removeButton = screen.getByRole('button', {
+      name: 'admin.ai.removeSelectedTerms',
+    })
+
+    const rectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function getBoundingClientRect(this: HTMLElement) {
+        if (this.getAttribute('role') === 'alertdialog') {
+          return rect({
+            bottom: 120,
+            height: 120,
+            left: 0,
+            right: 320,
+            top: 0,
+            width: 320,
+          })
+        }
+        if (this === removeButton) {
+          return rect({
+            bottom: 140,
+            height: 40,
+            left: 300,
+            right: 340,
+            top: 100,
+            width: 40,
+          })
+        }
+        return rect()
+      })
+
+    try {
+      fireEvent.click(removeButton)
+
+      const dialog = await screen.findByRole('alertdialog')
+      expect(dialog).toHaveStyle({ left: '160px', top: '148px' })
+    } finally {
+      rectSpy.mockRestore()
+      vi.unstubAllGlobals()
+    }
   })
 
   it('loads and saves HSA-id prefixes from the identity tab', async () => {

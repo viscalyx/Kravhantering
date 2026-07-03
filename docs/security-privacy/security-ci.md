@@ -32,6 +32,18 @@ personal-data handling, database schema or migrations, AI/MCP integrations,
 dependencies, containers, security workflows, release scripts, or the
 security policy and review templates themselves.
 
+### AI and MCP AISVS Evidence
+
+AI- and MCP-sensitive changes should reference the current
+[AISVS AI and MCP Control Mapping](./aisvs-ai-mcp-control-mapping.md) when they
+affect prompt construction, model invocation, output handling, MCP transport,
+MCP tools, or safety/security audit logging.
+
+The mapping is an assurance overlay. It does not replace the SSDLC checkbox,
+route tests, MCP tests, DAST, dependency checks, or human review. It records
+which AISVS controls are implemented, partially implemented, deferred, or not
+applicable for the current product surface.
+
 ### Required pull request evidence
 
 The pull request template contains a stable hidden marker that the script uses

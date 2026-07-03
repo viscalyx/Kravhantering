@@ -232,17 +232,22 @@ sequenceDiagram
 - Page responses get a per-request CSP nonce from `proxy.ts`.
 - Security audit events are emitted through
   [`lib/auth/audit.ts`](../../lib/auth/audit.ts). The current event set is:
-  `auth.login.succeeded`, `auth.login.failed`, `auth.logout`,
-  `auth.session.expired`, `auth.session.rejected`, `auth.token.rejected`,
+  `access_review.cancelled`, `access_review.completed`,
+  `access_review.created`, `access_review.exported`,
+  `access_review.item_decided`, `ai.input_safety.blocked`,
+  `ai.output_safety.blocked`, `ai.safety_filter.failed`,
+  `admin.archiving.exception.created`,
+  `admin.archiving.exception.deleted`, `admin.archiving.executed`,
+  `admin.archiving.exported`, `admin.archiving.previewed`,
+  `admin.privileged_action.succeeded`,
+  `delegated.privileged_action.succeeded`, `auth.login.succeeded`,
+  `auth.login.failed`, `auth.logout`, `auth.session.expired`,
+  `auth.session.rejected`, `auth.token.rejected`,
   `auth.mcp.token.accepted`, `auth.roles.changed`,
   `auth.csrf.rejected`, `auth.authorization.denied`,
-  `requirements.sensitive_mutation.succeeded`,
-  `admin.privileged_action.succeeded`,
-  `access_review.created`, `access_review.item_decided`,
-  `access_review.cancelled`, `access_review.completed`,
-  `access_review.exported`,
-  `privacy.erasure.previewed`, `privacy.erasure.executed`,
-  `privacy.data_subject_export.generated`.
+  `privacy.data_subject_export.generated`, `privacy.erasure.executed`,
+  `privacy.erasure.previewed`, and
+  `requirements.sensitive_mutation.succeeded`.
 - Audit events intentionally redact sensitive fields such as tokens, secrets,
   authorization codes, PKCE verifiers, `state`, and `nonce`. When a top-level
   detail key is redacted, the audit writer also emits a structured
@@ -285,6 +290,10 @@ sequenceDiagram
   same stream. Their `detail` payloads carry stable identifiers, counts, and
   action names only; free-text requirement content, motivations, and suggestion
   text are not emitted.
+- AI safety events use the same stream. Their `detail` payloads carry
+  operation, decision, rule IDs, categories, source, request/correlation IDs,
+  and model/provider when available. Prompts, model output, repair JSON, image
+  data, and actor HSA-id values are not emitted in AI safety details.
 - Application action-log rows in `action_audit_events` are separate from
   this stream. They are database records for successful app-owned mutations and
   authorization denials, include request/correlation IDs and optional validated

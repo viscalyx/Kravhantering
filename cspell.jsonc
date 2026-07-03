@@ -4,6 +4,8 @@
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
     "auditflöde",
+    "AISVS",
+    "agentnära",
     "appnära",
     "areaco",
     "areaowner",
@@ -21,6 +23,7 @@
     "datat",
     "DICOM",
     "NEMA",
+    "NFKC",
     "Direktvalt",
     "dimmad",
     "dogfood",
@@ -127,6 +130,7 @@
     "PYTHONUNBUFFERED",
     "produktionslik",
     "produktionslika",
+    "promptinjektion",
     "realised",
     "reimage",
     "responsibles",
@@ -953,8 +957,15 @@
     "Kravimport",
     "kravkandidaten",
     "Persisterad",
+    "backendprompt",
+    "exploitkod",
+    "inlogg",
+    "promptmall",
     "referensdatan",
-    "kravområdesförvaltningen"
+    "kravområdesförvaltningen",
+    "sessionstoken",
+    "spinbutton",
+    "unvalidated"
   ],
   "flagWords": [],
   "ignorePaths": [

@@ -117,11 +117,13 @@ Deferred from this contract:
   `POST /api/norm-reference-actions/{id}/archive`, and
   `POST /api/norm-references/{id}/reactivate` stay in scope; the remaining
   stewardship mutations are covered by secure-route and focused route/UI tests.
-- Admin Center settings routes such as `GET/PUT /api/admin/ai-settings` and
+- Admin Center settings routes such as `GET/PUT/PATCH /api/admin/ai-settings`,
+  `GET/POST /api/admin/ai-safety-rules`, AI safety term mutation routes, and
   `GET/PUT /api/admin/hsa-id-prefixes` remain outside the
   OpenAPI/Schemathesis v1 contract. Their useful assertions are Admin-only
   access, CSRF/same-origin enforcement for saves, privileged audit, effective
-  configuration precedence, and focused UI behavior.
+  configuration precedence, fail-closed AI safety behavior, and focused UI
+  behavior.
 - HSA person verification remains outside the OpenAPI/Schemathesis v1
   contract. `POST /api/requirement-responsibility-people/verify` is a
   same-origin, CSRF-protected editing helper that is only useful with an
@@ -129,7 +131,9 @@ Deferred from this contract:
   permission. The app does not expose a browser-usable general HSA search route.
 - MCP remains outside the REST OpenAPI/Schemathesis contract. `/api/mcp` is
   governed by MCP schemas, tool-contract tests, Bearer-token authentication
-  tests, and the seeded MCP workflow rather than REST route fuzzing.
+  tests, the Admin-configured MCP payload-size guard that defaults to `1 MiB`
+  with an absolute `5 MiB` cap, and the seeded MCP workflow rather than REST
+  route fuzzing.
 - Paid vendor scanners that require service-specific CI secrets.
 
 The existing catalog `GET /api/requirement-packages` route stays in scope and

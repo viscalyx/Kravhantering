@@ -1336,17 +1336,66 @@
       "adminPreferenceDisabled": "Avstängt",
       "adminPreferenceEnabled": "Påslaget",
       "disabledTooltip": "Du behöver rollen Administratör.",
-      "effectiveDisabled": "Generering avstängd",
-      "effectiveEnabled": "Generering påslagen",
-      "effectiveStatus": "Effektiv status",
       "environmentOverrideNotice": "Driftkonfigurationen stänger för närvarande av AI-kravgenerering. Du kan spara inställningen i Administrationscenter, men generering är fortsatt avstängd tills driftöverskrivningen tas bort.",
+      "decreaseMcpMaxRequestLimit": "Sänk MCP-anropsgränsen",
       "fieldHelp": {
-        "requirementGenerationEnabled": "Stäng av AI-kravgenerering för alla användare. Inställningen påverkar knappen i kravbiblioteket, genereringsdialogen, REST-rutten för generering och MCP-verktyget för generering."
+        "mcpMaxRequestLimit": "Största tillåtna MCP POST-nyttolast. Standardvärdet är 1024 KiB. Värden ändras i steg om 102,4 KiB, så tio steg motsvarar 1 MiB, och hålls inom intervallet 102,4 KiB till 5 MiB.",
+        "requirementGenerationEnabled": "Stäng av AI-kravgenerering för alla användare. Inställningen påverkar knappen i kravbiblioteket, genereringsdialogen och REST-rutten för generering.",
+        "safetyRuleCacheTtl": "Hur länge en process får använda den senast lästa regeluppsättningen innan den hämtas från databasen igen. Ändringar i denna process börjar gälla direkt när en administratör sparar en regel.",
+        "safetyRules": "Varje expanderbar rad är en säkerhetsregel. Lägg till egna ord med ordtyp och riktning. Standardord kan inaktiveras eller få annan riktning, och markeras då med en varningsikon."
       },
+      "increaseMcpMaxRequestLimit": "Höj MCP-anropsgränsen",
       "loadError": "Kunde inte läsa AI-inställningar.",
+      "mcpMaxRequestLimit": "MCP-anropsgräns",
+      "mcpMaxRequestLimitCurrent": "Aktuell gräns: {value}",
       "requirementGenerationDescription": "När detta är avstängt kan användare fortfarande se AI-kontrollerna, men inte starta ny kravgenerering.",
       "requirementGenerationEnabled": "Kravgenerering",
-      "saveError": "Kunde inte spara AI-inställningar."
+      "saveError": "Kunde inte spara AI-inställningar.",
+      "securityDescription": "Styr MCP-transportskydd och de ord som används av AI-säkerhetsfiltret.",
+      "securityTitle": "AI- och MCP-säkerhet",
+      "active": "Aktiv",
+      "activeTermCount": "{activeCount}/{totalCount} aktiva",
+      "addTerm": "Lägg till",
+      "customTerm": "Eget",
+      "deviationCount": "{count} avvikelse",
+      "direction": "Riktning",
+      "directionForTerm": "Riktning för {term}",
+      "inactive": "Inaktiv",
+      "noSafetyRules": "Inga AI-säkerhetsregler kunde visas.",
+      "reloadSafetyRules": "Läs in regler",
+      "removeSelectedTerms": "Ta bort markerade",
+      "removeSelectedTermsConfirmMessage": "{standardCount} standardord inaktiveras och {customCount} egna tillägg tas bort.",
+      "removeSelectedTermsConfirmTitle": "Ta bort markerade ord?",
+      "restoreRuleDefaults": "Återställ standard",
+      "rowSaveError": "Kunde inte spara",
+      "safetyDirections": {
+        "input": "Input",
+        "input_output": "Input och output",
+        "output": "Output"
+      },
+      "safetyRuleCacheTtl": "Cachetid för säkerhetsregler",
+      "safetyRuleRestoreError": "Kunde inte återställa standard för regeln.",
+      "safetyRulesHint": "Ändringar sparas direkt.",
+      "safetyRulesLoadError": "Kunde inte läsa AI-säkerhetsregler.",
+      "safetyRulesTitle": "AI-säkerhetsregler",
+      "safetyTermAddError": "Kunde inte lägga till ord.",
+      "safetyTermRemoveError": "Kunde inte ta bort markerade ord.",
+      "safetyTermSaveError": "Kunde inte spara ordet.",
+      "safetyTermTypes": {
+        "action": "Handlingar",
+        "coding": "Kodningsord",
+        "direct_marker": "Direkta fraser/markörer",
+        "target": "Mål"
+      },
+      "seconds": "sek",
+      "selectTerm": "Markera ord",
+      "selectTermNamed": "Markera {term}",
+      "standard": "Standard",
+      "standardDeviation": "Avviker från standard",
+      "status": "Status",
+      "termText": "Ord",
+      "termTextPlaceholder": "Skriv ord eller fras",
+      "termType": "Ordtyp"
     },
     "aiDescription": "Styr tillgänglighet för AI-assisterad kravgenerering.",
     "identityDescription": "Hantera HSA-id-prefix för redigerbara ansvarsfält.",
@@ -2037,11 +2086,35 @@
       "title": "AI",
       "overview": {
         "heading": "Syfte",
-        "body": "AI-fliken styr den globala inställningen i Administrationscenter för AI-assisterad kravgenerering."
+        "body": "AI-fliken styr hur AI-assisterad kravgenerering och AI-nära MCP-anrop får användas i hela systemet. Inställningarna gäller globalt och påverkar både kravlistan, kravunderlag och importflöden som använder AI."
+      },
+      "settings": {
+        "heading": "Vad kan ställas in",
+        "body": "Du kan slå på eller av AI-assisterad kravgenerering, styra hur länge den aktiva säkerhetsregeluppsättningen får ligga i servercache, sätta högsta tillåtna MCP-begäran och förvalta orden som AI- och MCP-säkerhetskontrollen använder. Alla ändringar på AI-fliken sparas direkt när du ändrar ett fält eller en rad."
       },
       "precedence": {
         "heading": "Prioritet",
         "body": "Driftvariabeln AI_REQUIREMENT_GENERATION_DISABLED har högre prioritet. När den är aktiv är generering avstängd även om den sparade inställningen i Administrationscenter är påslagen."
+      },
+      "safetyRules": {
+        "heading": "AI- och MCP-säkerhet",
+        "body": "Säkerhetsreglerna granskar text innan den skickas till en AI-modell och efter att modellen har svarat. Om regeluppsättningen inte kan läsas från databasen stoppas AI-assisteringen. Reglerna är avsedda att fånga instruktioner som försöker ta över prompten, begäran om interna instruktioner, kodade försök att kringgå skydd, hemligheter, skadligt innehåll och systemnära innehåll."
+      },
+      "ruleTypes": {
+        "heading": "Regeltyper",
+        "body": "Varje expanderbar rad är en regeltyp. Promptinjektion: instruktionsövertagande fångar försök att ignorera eller ersätta systemets instruktioner. Läckage av systemprompt fångar begäran om systempromptar, dolda instruktioner eller mallar för prompter. Promptinjektion via kodning och maskering fångar kombinationer av kodning, till exempel base64, alternativa representationer eller maskering och försök att kringgå skydd. Känslig informationsutläsning: hemligheter fångar begäran om nycklar, lösenord och tokenvärden. Begäran om skadligt innehåll fångar begäran om exempelvis nätfiske, skadlig kod eller stöld av inlogg. Läckage av systemnära innehåll används främst på modellens svar och fångar tecken på att interna instruktioner, tokenvärden eller annat systemnära innehåll har läckt ut."
+      },
+      "termGroups": {
+        "heading": "Handlingar, mål och markörer",
+        "body": "Termerna i en regel är uppdelade efter hur matchningen ska fungera. Handlingar är verb eller fraser som beskriver vad någon vill göra, till exempel visa, ignorera eller generera. Mål är objektet för handlingen, till exempel systeminstruktion, API-nyckel eller skadlig kod. Ord för kodning används när regeln ska känna igen kodade instruktioner eller försök att kringgå skydd. Direkta markörer är hela fraser eller tekniska mönster som räcker för träff utan att kombineras med en handling och ett mål."
+      },
+      "termColumns": {
+        "heading": "Kolumner i regellistan",
+        "body": "Ord visar termen som matchas. Riktning avgör om termen används för input, output eller båda. Standard visar om termen kommer från required seed-data eller är ett eget tillägg. Aktiv avgör om termen används i kontrollen. Varningsikonen visar att en standardterm har ändrats från sitt standardläge, till exempel inaktiverats eller fått annan riktning."
+      },
+      "saving": {
+        "heading": "Ändra och återställa",
+        "body": "Lägg till egna termer med plusknappen i en regeltyp. Ta bort markerade termer med minusknappen; egna tillägg tas bort medan standardtermer inaktiveras. Själva ordtexten redigeras inte: lägg till rätt ord och ta bort eller inaktivera det felaktiga. Återställ standard på en regel aktiverar standardtermerna och återställer deras riktning, men behåller egna tillägg."
       }
     },
     "adminPrivacy": {
@@ -2418,6 +2491,8 @@
     "invalidGeneratedJson": "Modellens svar var inte giltig JSON.",
     "generatedJsonSchemaMismatch": "Genererad JSON matchade inte importens schema.",
     "repairedJsonSchemaMismatch": "Reparerad JSON matchade inte importens schema.",
+    "inputSafetyBlocked": "AI-anropet blockerades eftersom instruktionerna verkar osäkra. Ändra behovet eller sammanhanget och försök igen.",
+    "outputSafetyBlocked": "AI-svaret blockerades av säkerhetsfiltret. Ändra anropet och försök igen.",
     "imageSchemaErrorType": "Bildtypen stöds inte. Använd PNG, JPEG, GIF eller WebP.",
     "imageSchemaErrorBase64": "Bilddata är inte giltigt base64.",
     "imageSchemaErrorSize": "Bilden överskrider gränsen på 10 MB.",

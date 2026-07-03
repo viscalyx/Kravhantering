@@ -1,3 +1,4 @@
+import { seedAiSafetyRules } from './ai-safety-seed-data.mjs'
 import { runSeedData, seedPositionDetail } from './seed-runner.mjs'
 
 export const REQUIRED_SEED_TABLES = Object.freeze([
@@ -8,6 +9,8 @@ export const REQUIRED_SEED_TABLES = Object.freeze([
   'specification_governance_object_types',
   'requirement_categories',
   'ai_settings',
+  'ai_safety_rules',
+  'ai_safety_rule_terms',
   'requirement_list_column_defaults',
   'requirement_statuses',
   'requirement_status_transitions',
@@ -230,11 +233,23 @@ export const REQUIRED_SEED_DATA = {
     columns: [
       'id',
       'requirement_generation_enabled',
+      'mcp_max_request_bytes',
+      'ai_safety_rule_cache_ttl_seconds',
       'created_at',
       'updated_at',
     ],
     pk: ['id'],
-    rows: [[1, 1, '2026-04-20 20:07:00', '2026-04-20 20:07:00']],
+    rows: [[1, 1, 1048576, 600, '2026-04-20 20:07:00', '2026-04-20 20:07:00']],
+  },
+  ai_safety_rules: {
+    columns: [],
+    pk: [],
+    rows: [],
+  },
+  ai_safety_rule_terms: {
+    columns: [],
+    pk: [],
+    rows: [],
   },
   requirement_list_column_defaults: {
     columns: [
@@ -471,7 +486,13 @@ export const REQUIRED_SEED_DATA = {
 export { seedPositionDetail }
 
 export async function seedRequiredDatabase(executor) {
-  return runSeedData(executor, REQUIRED_SEED_DATA, REQUIRED_SEED_TABLES)
+  const inserted = await runSeedData(
+    executor,
+    REQUIRED_SEED_DATA,
+    REQUIRED_SEED_TABLES,
+  )
+  await seedAiSafetyRules(executor)
+  return inserted
 }
 
 export default seedRequiredDatabase

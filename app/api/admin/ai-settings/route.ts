@@ -2,8 +2,14 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
+  isValidAiSafetyRuleCacheTtlSeconds,
+  isValidMcpMaxRequestBytes,
+} from '@/lib/ai/generation-availability'
+import { clearAiSafetyRuleSetCache } from '@/lib/dal/ai-safety-rules'
+import {
   formatAiSettingsLoadError,
   getAiGenerationAvailability,
+  patchAiGenerationSettings,
   updateAiGenerationSettings,
 } from '@/lib/dal/ai-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -20,9 +26,26 @@ import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 const aiSettingsPayloadSchema = z
   .object({
+    mcpMaxRequestBytes: z
+      .number()
+      .int()
+      .refine(isValidMcpMaxRequestBytes, 'Invalid MCP request payload limit.'),
     requirementGenerationEnabled: z.boolean(),
+    aiSafetyRuleCacheTtlSeconds: z
+      .number()
+      .int()
+      .refine(
+        isValidAiSafetyRuleCacheTtlSeconds,
+        'Invalid AI safety rule cache TTL.',
+      ),
   })
   .strict()
+
+const aiSettingsPatchPayloadSchema = aiSettingsPayloadSchema
+  .partial()
+  .refine(body => Object.keys(body).length > 0, {
+    message: 'Expected at least one AI setting.',
+  })
 
 function noStore<T extends NextResponse>(response: T): T {
   response.headers.set('Cache-Control', 'no-store')
@@ -74,7 +97,11 @@ export const PUT = secureMutationRoute({
           recordAdminPrivilegedActionSucceeded(
             context,
             {
-              changedFields: ['requirementGenerationEnabled'],
+              changedFields: [
+                'requirementGenerationEnabled',
+                'mcpMaxRequestBytes',
+                'aiSafetyRuleCacheTtlSeconds',
+              ],
               operation: 'save',
               resourceId: 'global',
               resourceType: 'ai_settings',
@@ -82,6 +109,7 @@ export const PUT = secureMutationRoute({
             executor,
           ),
       })
+      clearAiSafetyRuleSetCache()
 
       return noStore(NextResponse.json(settings))
     } catch (error) {
@@ -92,6 +120,48 @@ export const PUT = secureMutationRoute({
 
       console.error(
         'Failed to save admin AI settings',
+        formatAiSettingsLoadError(error),
+      )
+      return noStore(
+        NextResponse.json(
+          { error: 'Failed to save AI settings.' },
+          { status: 500 },
+        ),
+      )
+    }
+  },
+})
+
+export const PATCH = secureMutationRoute({
+  bodySchema: aiSettingsPatchPayloadSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context }) => {
+    try {
+      const db = await getRequestSqlServerDataSource()
+      const settings = await patchAiGenerationSettings(db, body, {
+        audit: executor =>
+          recordAdminPrivilegedActionSucceeded(
+            context,
+            {
+              changedFields: Object.keys(body),
+              operation: 'update',
+              resourceId: 'global',
+              resourceType: 'ai_settings',
+            },
+            executor,
+          ),
+      })
+      clearAiSafetyRuleSetCache()
+
+      return noStore(NextResponse.json(settings))
+    } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return noStore(NextResponse.json(body, { status }))
+      }
+
+      console.error(
+        'Failed to update admin AI settings',
         formatAiSettingsLoadError(error),
       )
       return noStore(

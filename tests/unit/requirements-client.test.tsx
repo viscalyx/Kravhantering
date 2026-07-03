@@ -806,8 +806,10 @@ describe('RequirementsClient', () => {
 
   it('disables AI generation when availability is disabled by Admin Center', async () => {
     const aiGenerationAvailability = {
+      aiSafetyRuleCacheTtlSeconds: 600,
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: false,
+      mcpMaxRequestBytes: 1024 * 1024,
       requirementGenerationEnabled: false,
     }
     mockCommonFetches()

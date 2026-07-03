@@ -12,6 +12,12 @@ import {
   getPromptMessage,
   parseJsonObject,
 } from '@/lib/ai/requirement-prompt'
+import {
+  recordAiSafetyDecision,
+  recordAiSafetyFilterFailure,
+  screenAiInput,
+  screenAiOutput,
+} from '@/lib/ai/safety'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
@@ -163,6 +169,17 @@ function parseAndValidatePayload(
   return { payload: validation.data }
 }
 
+function imageMetadataForSafety(
+  images: GenerateRequirementImportBody['images'],
+): readonly string[] {
+  return images.map((image, index) => {
+    const commaIndex = image.dataUrl.indexOf(',')
+    const header =
+      commaIndex >= 0 ? image.dataUrl.slice(0, commaIndex) : 'data-url'
+    return `image ${index + 1}: ${header}`
+  })
+}
+
 export const POST = secureMutationRoute({
   bodySchema: generateRequirementImportSchema,
   policy: requirementsMutationPolicy<GenerateRequirementImportBody>(
@@ -193,6 +210,16 @@ export const POST = secureMutationRoute({
       streamStartedAt,
     )
 
+    function recordSafetyFilterFailure(error: unknown) {
+      logSanitizedError('AI requirement import safety filter failed', error)
+      recordAiSafetyFilterFailure({
+        context,
+        error,
+        operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
+        request,
+      })
+    }
+
     try {
       const availability = await getAiGenerationAvailability(db)
       if (!availability.effectiveRequirementGenerationEnabled) {
@@ -204,6 +231,38 @@ export const POST = secureMutationRoute({
       logSanitizedError('AI requirement import availability failed', error)
       return createUnavailableAiStreamResponse(context, () =>
         recordStreamEvent('failure', 503),
+      )
+    }
+
+    let inputSafetyDecision: Awaited<ReturnType<typeof screenAiInput>>
+    try {
+      inputSafetyDecision = await screenAiInput(db, [
+        body.need,
+        ...imageMetadataForSafety(images),
+      ])
+    } catch (error) {
+      recordSafetyFilterFailure(error)
+      return createUnavailableAiStreamResponse(context, () =>
+        recordStreamEvent('failure', 503),
+      )
+    }
+    if (!inputSafetyDecision.allowed) {
+      recordAiSafetyDecision({
+        context,
+        decision: inputSafetyDecision,
+        event: 'ai.input_safety.blocked',
+        operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
+        request,
+      })
+      recordStreamEvent('failure', 400)
+      return applyResponseCorrelationHeaders(
+        Response.json(
+          {
+            error: getPromptMessage(locale, ['ai', 'inputSafetyBlocked']),
+          },
+          { status: 400 },
+        ),
+        context,
       )
     }
 
@@ -245,6 +304,7 @@ export const POST = secureMutationRoute({
             body.model,
           )
           const resolvedModel = modelCapabilities.id
+          let sentGeneratingProgress = false
           for await (const event of generateChatStream({
             format: buildRequirementImportResponseFormatSchema(locale),
             messages: [
@@ -261,16 +321,86 @@ export const POST = secureMutationRoute({
             supportedParameters: modelCapabilities.supportedParameters,
           })) {
             switch (event.phase) {
-              case 'thinking':
-                send('thinking', {
-                  chunk: event.chunk,
-                  thinkingSoFar: event.thinkingSoFar,
-                })
+              case 'thinking': {
+                let progressSafetyDecision: Awaited<
+                  ReturnType<typeof screenAiOutput>
+                >
+                try {
+                  progressSafetyDecision = await screenAiOutput(db, [
+                    event.thinkingSoFar || event.chunk,
+                  ])
+                } catch (error) {
+                  recordSafetyFilterFailure(error)
+                  send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
+                  recordStreamEvent('failure', 503)
+                  return
+                }
+                if (!progressSafetyDecision.allowed) {
+                  recordAiSafetyDecision({
+                    context,
+                    decision: progressSafetyDecision,
+                    event: 'ai.output_safety.blocked',
+                    model: resolvedModel,
+                    operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
+                    provider: modelCapabilities.provider,
+                    request,
+                  })
+                  send('error', {
+                    message: getPromptMessage(body.locale, [
+                      'ai',
+                      'outputSafetyBlocked',
+                    ]),
+                    model: resolvedModel,
+                  })
+                  recordStreamEvent('failure', 422)
+                  return
+                }
+                send('thinking', { thinkingSoFar: event.thinkingSoFar })
                 break
+              }
               case 'generating':
-                send('generating', { chunk: event.chunk })
+                if (!sentGeneratingProgress) {
+                  sentGeneratingProgress = true
+                  send('generating', { chunk: '' })
+                }
                 break
               case 'done': {
+                let outputSafetyDecision: Awaited<
+                  ReturnType<typeof screenAiOutput>
+                >
+                try {
+                  outputSafetyDecision = await screenAiOutput(db, [
+                    event.rawContent,
+                    event.thinking,
+                  ])
+                } catch (error) {
+                  recordSafetyFilterFailure(error)
+                  send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
+                  recordStreamEvent('failure', 503, event.stats)
+                  return
+                }
+                if (!outputSafetyDecision.allowed) {
+                  recordAiSafetyDecision({
+                    context,
+                    decision: outputSafetyDecision,
+                    event: 'ai.output_safety.blocked',
+                    model: resolvedModel,
+                    operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
+                    provider: modelCapabilities.provider,
+                    request,
+                  })
+                  send('error', {
+                    message: getPromptMessage(body.locale, [
+                      'ai',
+                      'outputSafetyBlocked',
+                    ]),
+                    model: resolvedModel,
+                    stats: event.stats,
+                  })
+                  recordStreamEvent('failure', 422, event.stats)
+                  return
+                }
+
                 const validation = parseAndValidatePayload(
                   event.rawContent,
                   body.locale,
@@ -299,7 +429,7 @@ export const POST = secureMutationRoute({
                     thinking: event.thinking,
                   })
                   recordStreamEvent('failure', 422, event.stats)
-                  break
+                  return
                 }
 
                 const rawContent = JSON.stringify(validation.payload)
@@ -311,7 +441,7 @@ export const POST = secureMutationRoute({
                   thinking: event.thinking,
                 })
                 recordStreamEvent('success', 200, event.stats)
-                break
+                return
               }
               case 'error':
                 logSanitizedError(
@@ -320,7 +450,7 @@ export const POST = secureMutationRoute({
                 )
                 send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
                 recordStreamEvent('failure', 503)
-                break
+                return
             }
           }
         } catch (error) {

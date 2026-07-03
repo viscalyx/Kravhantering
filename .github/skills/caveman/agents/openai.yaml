@@ -2,5 +2,3 @@ interface:
   display_name: "Caveman"
   short_description: "Talk like caveman. Cut filler. Keep technical accuracy."
   default_prompt: "Use $caveman to answer briefly, cut filler, and preserve exact technical substance."
-policy:
-  allow_implicit_invocation: true
