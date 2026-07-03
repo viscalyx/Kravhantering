@@ -61,7 +61,7 @@ import {
 import { McpAuthError, verifyMcpBearerToken } from '@/lib/auth/mcp-token'
 import {
   handleRequirementsMcpRequest,
-  MCP_MAX_REQUEST_BYTES,
+  MCP_DEFAULT_REQUEST_BYTES,
 } from '@/lib/mcp/http'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import { RequirementsServiceError } from '@/lib/requirements/errors'
@@ -305,7 +305,7 @@ describe('handleRequirementsMcpRequest', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     serviceState.getCachedMcpMaxRequestBytes.mockResolvedValue(
-      MCP_MAX_REQUEST_BYTES,
+      MCP_DEFAULT_REQUEST_BYTES,
     )
     serviceState.getService.mockReturnValue(createFakeService())
   })
@@ -938,7 +938,7 @@ describe('handleRequirementsMcpRequest', () => {
           method: 'tools/list',
         }),
         headers: {
-          'content-length': String(MCP_MAX_REQUEST_BYTES + 1),
+          'content-length': String(MCP_DEFAULT_REQUEST_BYTES + 1),
           'content-type': 'application/json',
         },
         method: 'POST',
@@ -992,7 +992,10 @@ describe('handleRequirementsMcpRequest', () => {
   })
 
   it('uses a lowered configured MCP request payload limit before auth', async () => {
-    const loweredLimit = addMcpMaxRequestBytesSteps(MCP_MAX_REQUEST_BYTES, -1)
+    const loweredLimit = addMcpMaxRequestBytesSteps(
+      MCP_DEFAULT_REQUEST_BYTES,
+      -1,
+    )
     serviceState.getCachedMcpMaxRequestBytes.mockResolvedValueOnce(loweredLimit)
 
     const response = await handleRequirementsMcpRequest(
@@ -1003,7 +1006,7 @@ describe('handleRequirementsMcpRequest', () => {
           method: 'tools/list',
         }),
         headers: {
-          'content-length': String(MCP_MAX_REQUEST_BYTES),
+          'content-length': String(MCP_DEFAULT_REQUEST_BYTES),
           'content-type': 'application/json',
         },
         method: 'POST',
@@ -1026,7 +1029,7 @@ describe('handleRequirementsMcpRequest', () => {
   })
 
   it('allows payloads under a raised configured MCP request payload limit', async () => {
-    const raisedLimit = addMcpMaxRequestBytesSteps(MCP_MAX_REQUEST_BYTES, 1)
+    const raisedLimit = addMcpMaxRequestBytesSteps(MCP_DEFAULT_REQUEST_BYTES, 1)
     serviceState.getCachedMcpMaxRequestBytes.mockResolvedValueOnce(raisedLimit)
     vi.mocked(verifyMcpBearerToken).mockRejectedValueOnce(
       new McpAuthError('Missing Bearer token.', 401),
@@ -1040,7 +1043,7 @@ describe('handleRequirementsMcpRequest', () => {
           method: 'tools/list',
         }),
         headers: {
-          'content-length': String(MCP_MAX_REQUEST_BYTES + 1),
+          'content-length': String(MCP_DEFAULT_REQUEST_BYTES + 1),
           'content-type': 'application/json',
         },
         method: 'POST',

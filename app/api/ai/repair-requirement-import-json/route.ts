@@ -10,6 +10,7 @@ import {
 } from '@/lib/ai/requirement-prompt'
 import {
   recordAiSafetyDecision,
+  recordAiSafetyFilterFailure,
   screenAiInput,
   screenAiOutput,
 } from '@/lib/ai/safety'
@@ -107,6 +108,19 @@ export const POST = secureMutationRoute({
       })
     }
 
+    function recordSafetyFilterFailure(error: unknown) {
+      logSanitizedError(
+        'AI requirement import repair safety filter failed',
+        error,
+      )
+      recordAiSafetyFilterFailure({
+        context,
+        error,
+        operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
+        request,
+      })
+    }
+
     try {
       const availability = await getAiGenerationAvailability(db)
       if (!availability.effectiveRequirementGenerationEnabled) {
@@ -134,7 +148,20 @@ export const POST = secureMutationRoute({
       )
     }
 
-    const inputSafetyDecision = screenAiInput([body.rawJson, ...body.errors])
+    let inputSafetyDecision: ReturnType<typeof screenAiInput>
+    try {
+      inputSafetyDecision = screenAiInput([body.rawJson, ...body.errors])
+    } catch (error) {
+      recordSafetyFilterFailure(error)
+      recordRepairEvent('failure', 503)
+      return applyResponseCorrelationHeaders(
+        Response.json(
+          { error: AI_PROVIDER_UNAVAILABLE_MESSAGE },
+          { status: 503 },
+        ),
+        context,
+      )
+    }
     if (!inputSafetyDecision.allowed) {
       recordAiSafetyDecision({
         context,
@@ -186,10 +213,23 @@ export const POST = secureMutationRoute({
         signal: request.signal,
         supportedParameters: modelCapabilities.supportedParameters,
       })
-      const outputSafetyDecision = screenAiOutput([
-        JSON.stringify(result.content),
-        result.thinking,
-      ])
+      let outputSafetyDecision: ReturnType<typeof screenAiOutput>
+      try {
+        outputSafetyDecision = screenAiOutput([
+          JSON.stringify(result.content),
+          result.thinking,
+        ])
+      } catch (error) {
+        recordSafetyFilterFailure(error)
+        recordRepairEvent('failure', 503, result.stats)
+        return applyResponseCorrelationHeaders(
+          Response.json(
+            { error: AI_PROVIDER_UNAVAILABLE_MESSAGE },
+            { status: 503 },
+          ),
+          context,
+        )
+      }
       if (!outputSafetyDecision.allowed) {
         recordAiSafetyDecision({
           context,

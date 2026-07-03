@@ -187,7 +187,7 @@ maintenance rule.
 - **Question:** Does the persisted Admin Center preference disable AI
   generation across UI and REST while preserving the environment guard as the
   highest-precedence hard override, and does the Admin-configured MCP payload
-  limit default to exact `1 MiB`, follow the `100 KiB` step grid, and apply
+  limit default to exact `1 MiB`, follow the `102.4 KiB` step grid, and apply
   before bearer-token verification?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 24: Admin Center AI generation disablement is globally effective"`

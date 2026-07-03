@@ -161,6 +161,21 @@ function collectErrorMessages(
   return []
 }
 
+function isExpectedLegacyAiSettingsReadError(error: unknown): boolean {
+  const joinedMessages = collectErrorMessages(error).join(' ')
+  return (
+    /\b207\b/.test(joinedMessages) &&
+    /mcp_max_request_bytes/i.test(joinedMessages)
+  )
+}
+
+function warnUnexpectedAiSettingsFallback(error: unknown): void {
+  console.warn(
+    'AI settings current projection failed; falling back to legacy settings.',
+    { error: formatAiSettingsLoadError(error) },
+  )
+}
+
 async function getLegacyAiGenerationSettings(
   db: SqlServerDatabase,
 ): Promise<AiGenerationSettings> {
@@ -228,6 +243,9 @@ export async function getAiGenerationSettings(
       requirementGenerationEnabled: toBoolean(row.requirementGenerationEnabled),
     }
   } catch (error) {
+    if (!isExpectedLegacyAiSettingsReadError(error)) {
+      warnUnexpectedAiSettingsFallback(error)
+    }
     try {
       return await getLegacyAiGenerationSettings(db)
     } catch (fallbackError) {

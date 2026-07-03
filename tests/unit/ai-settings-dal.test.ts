@@ -42,6 +42,7 @@ describe('AI settings DAL', () => {
   })
 
   it('falls back to the default MCP limit when the migrated column is missing on read', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     query
       .mockRejectedValueOnce(
         Object.assign(
@@ -51,27 +52,47 @@ describe('AI settings DAL', () => {
       )
       .mockResolvedValueOnce([{ requirementGenerationEnabled: 0 }])
 
-    await expect(getAiGenerationSettings(db)).resolves.toEqual({
-      mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
-      requirementGenerationEnabled: false,
-    })
+    try {
+      await expect(getAiGenerationSettings(db)).resolves.toEqual({
+        mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+        requirementGenerationEnabled: false,
+      })
 
-    expect(query).toHaveBeenCalledTimes(2)
-    expect(query.mock.calls[0]?.[0]).toContain('mcp_max_request_bytes')
-    expect(query.mock.calls[1]?.[0]).not.toContain('mcp_max_request_bytes')
+      expect(query).toHaveBeenCalledTimes(2)
+      expect(query.mock.calls[0]?.[0]).toContain('mcp_max_request_bytes')
+      expect(query.mock.calls[1]?.[0]).not.toContain('mcp_max_request_bytes')
+      expect(warnSpy).not.toHaveBeenCalled()
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 
-  it('falls back to the legacy AI settings read when the current projection fails', async () => {
+  it('warns when falling back to the legacy AI settings read unexpectedly', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     query
       .mockRejectedValueOnce(new Error('current projection unavailable'))
       .mockResolvedValueOnce([{ requirementGenerationEnabled: 1 }])
 
-    await expect(getAiGenerationSettings(db)).resolves.toEqual({
-      mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
-      requirementGenerationEnabled: true,
-    })
+    try {
+      await expect(getAiGenerationSettings(db)).resolves.toEqual({
+        mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+        requirementGenerationEnabled: true,
+      })
 
-    expect(query).toHaveBeenCalledTimes(2)
+      expect(query).toHaveBeenCalledTimes(2)
+      expect(warnSpy).toHaveBeenCalledWith(
+        'AI settings current projection failed; falling back to legacy settings.',
+        expect.objectContaining({
+          error: expect.objectContaining({
+            messages: expect.arrayContaining([
+              'current projection unavailable',
+            ]),
+          }),
+        }),
+      )
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 
   it('formats nested SQL Server load errors as JSON-friendly messages', () => {

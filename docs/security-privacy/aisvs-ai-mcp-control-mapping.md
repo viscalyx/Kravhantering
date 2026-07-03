@@ -33,8 +33,13 @@ Out of scope until the product adds those capabilities:
 
 AI input is screened locally before any model-catalog or chat-completion work.
 The current deterministic screen detects obvious instruction override,
-system-prompt extraction, encoded smuggling tied to override terms, secret
-extraction, and harmful-generation requests. It screens `need`, repair
+attempts to extract non-public prompt/backend material, encoded smuggling tied
+to override terms, secret extraction, and harmful-generation requests. It does
+not block requests for the AI request text that the AI-assisted authoring UI
+intentionally exposes in its request-explanation dialog. That distinction keeps
+AISVS prompt-injection evidence aligned with the product transparency model:
+visible app instructions are inspectable, while control override and hidden /
+backend instruction extraction remain blocked. It screens `need`, repair
 `rawJson`, repair `errors`, and image MIME metadata. It does not send prompts
 or content to a live external classifier. Service options are summarized in
 [AI Safety Classifier Services Research](./ai-safety-classifier-services-research.md).

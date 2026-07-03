@@ -11,7 +11,7 @@ import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 
-export const MCP_MAX_REQUEST_BYTES = MCP_REQUEST_PAYLOAD_DEFAULT_BYTES
+export const MCP_DEFAULT_REQUEST_BYTES = MCP_REQUEST_PAYLOAD_DEFAULT_BYTES
 
 interface RequestPayloadSize {
   contentLength?: number

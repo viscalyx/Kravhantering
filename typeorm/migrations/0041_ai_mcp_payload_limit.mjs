@@ -5,6 +5,10 @@ const UP_STATEMENTS = [
     ADD [mcp_max_request_bytes] int NOT NULL
       CONSTRAINT [df_ai_settings_mcp_max_request_bytes] DEFAULT (1048576)
       WITH VALUES;`,
+  // MCP payload limits use ten steps per 1 MiB. The bounds are step 1
+  // (104858 bytes) through 5 MiB (5242880 bytes); 1048576 is 1 MiB,
+  // 10 is the step scale, 524288 rounds to the nearest step, and
+  // +5 before /10 rounds the scaled byte result.
   `IF OBJECT_ID(N'ai_settings', N'U') IS NOT NULL
     AND NOT EXISTS (
       SELECT 1

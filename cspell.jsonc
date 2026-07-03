@@ -956,8 +956,15 @@
     "Kravimport",
     "kravkandidaten",
     "Persisterad",
+    "backendprompt",
+    "exploitkod",
+    "inlogg",
+    "promptmall",
     "referensdatan",
-    "kravområdesförvaltningen"
+    "kravområdesförvaltningen",
+    "sessionstoken",
+    "spinbutton",
+    "unvalidated"
   ],
   "flagWords": [],
   "ignorePaths": [

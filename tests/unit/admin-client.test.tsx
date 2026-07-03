@@ -704,11 +704,10 @@ describe('AdminClient', () => {
     expect(mcpLimitInput).toHaveValue(1024)
     expect(saveButton).toBeDisabled()
 
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'admin.ai.increaseMcpMaxRequestLimit',
-      }),
-    )
+    fireEvent.change(mcpLimitInput, { target: { value: '1080' } })
+    expect(mcpLimitInput).toHaveValue(1080)
+    expect(saveButton).toBeDisabled()
+    fireEvent.keyDown(mcpLimitInput, { key: 'Enter' })
     expect(mcpLimitInput).toHaveValue(1126.4)
     fireEvent.click(toggle)
     expect(toggle).not.toBeChecked()

@@ -217,9 +217,14 @@ Generation and repair use the local deterministic safety screen in
 `lib/ai/safety.ts`. Input screening runs after AI availability is confirmed and
 before model-catalog or chat-completion work. The screen evaluates the user's
 need/context, repair `rawJson`, repair validation `errors`, and image MIME
-metadata. It blocks obvious instruction override, prompt extraction, encoded
-smuggling tied to override terms, secret extraction, and harmful-generation
-requests.
+metadata. It blocks obvious instruction override, attempts to extract
+non-public prompt/backend material, encoded smuggling tied to override terms,
+secret extraction, and harmful-generation requests. Requests to inspect the
+AI request text that the app intentionally exposes in `Så byggs AI-anropet` /
+`How the AI request is built` are not safety blocks by themselves. This keeps
+the filter aligned with the transparency model: it prevents control override
+and non-public instruction extraction without treating the supported
+explanation UI as secret.
 
 Streaming generation buffers raw model chunks server-side. The route emits the
 final `done`, `validation_error`, or safe `error` event only after output

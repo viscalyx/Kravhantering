@@ -28,7 +28,7 @@ const INSTRUCTION_OVERRIDE_RULE: AiSafetyRule = {
   category: 'prompt_injection',
   id: 'instruction_override',
   test: text =>
-    /\b(?:ignore|disregard|forget|override)\b.{0,120}\b(?:previous|above|earlier|all|system|developer|policy|instructions?)\b/i.test(
+    /(?:\b(?:ignore|disregard|forget|override)\b|(?:ignorera|bortse från|glöm|åsidosätt)).{0,80}(?:\b(?:previous|above|earlier|all|system|developer|safety policy|content policy|instructions?)\b|(?:tidigare|ovanstående|alla|systeminstruktioner?|system|utvecklar|säkerhetspolicy|instruktioner?))/iu.test(
       text,
     ) ||
     /\b(?:you are now|developer mode|jailbreak|do anything now|unfiltered mode)\b/i.test(
@@ -36,11 +36,16 @@ const INSTRUCTION_OVERRIDE_RULE: AiSafetyRule = {
     ),
 }
 
-const SYSTEM_PROMPT_EXTRACTION_RULE: AiSafetyRule = {
+// The UI intentionally exposes the app-built AI request. Input screening only
+// treats requests for non-public prompt/backend material as extraction.
+const INTERNAL_PROMPT_EXTRACTION_RULE: AiSafetyRule = {
   category: 'prompt_extraction',
   id: 'system_prompt_extraction',
   test: text =>
-    /\b(?:show|reveal|print|dump|exfiltrate|leak|return)\b.{0,120}\b(?:system prompt|developer message|hidden instructions?|internal instructions?|prompt template|backend prompt)\b/i.test(
+    /\b(?:show|reveal|print|dump|exfiltrate|leak|return)\b.{0,80}\b(?:developer message|hidden instructions?|internal instructions?|prompt template|backend prompt)\b/i.test(
+      text,
+    ) ||
+    /(?:visa|avslöja|skriv ut|dumpa|läck|returnera).{0,80}(?:utvecklarmeddelande|dolda instruktioner?|interna instruktioner?|promptmall|backendprompt)/iu.test(
       text,
     ),
 }
@@ -49,10 +54,10 @@ const ENCODED_SMUGGLING_RULE: AiSafetyRule = {
   category: 'encoded_smuggling',
   id: 'encoded_smuggling',
   test: text =>
-    /\b(?:base64|rot13|hex|unicode|decode|encoded)\b.{0,160}\b(?:ignore|system prompt|developer message|hidden instructions?|jailbreak|bypass)\b/i.test(
+    /\b(?:base64|rot13|hex|unicode|decode|encoded)\b.{0,120}\b(?:ignore|system prompt|developer message|hidden instructions?|jailbreak|bypass)\b/i.test(
       text,
     ) ||
-    /\b(?:ignore|system prompt|developer message|hidden instructions?|jailbreak|bypass)\b.{0,160}\b(?:base64|rot13|hex|unicode|decode|encoded)\b/i.test(
+    /\b(?:ignore|system prompt|developer message|hidden instructions?|jailbreak|bypass)\b.{0,120}\b(?:base64|rot13|hex|unicode|decode|encoded)\b/i.test(
       text,
     ),
 }
@@ -61,7 +66,10 @@ const SECRET_EXTRACTION_RULE: AiSafetyRule = {
   category: 'secret_extraction',
   id: 'secret_extraction_request',
   test: text =>
-    /\b(?:show|print|reveal|return|include|exfiltrate)\b.{0,120}\b(?:api key|bearer token|authorization header|jwt|password|secret|openrouter key)\b/i.test(
+    /\b(?:show|print|reveal|return|include|exfiltrate)\b.{0,80}\b(?:api key|bearer token|jwt|password|secret|openrouter key|session tokens?)\b/i.test(
+      text,
+    ) ||
+    /(?:visa|skriv ut|avslöja|returnera|inkludera|läck).{0,80}(?:api-nyckel|bearer-token|jwt|lösenord|hemlighet|openrouter-nyckel|sessionstoken)/iu.test(
       text,
     ),
 }
@@ -70,7 +78,10 @@ const HARMFUL_GENERATION_RULE: AiSafetyRule = {
   category: 'harmful_content',
   id: 'harmful_generation_request',
   test: text =>
-    /\b(?:write|create|generate|build|provide|help)\b.{0,120}\b(?:malware|ransomware|phishing|credential theft|steal credentials|keylogger|exploit code)\b/i.test(
+    /\b(?:write|create|generate|build|provide|help)\b.{0,80}\b(?:malware|ransomware|phishing|credential theft|steal credentials|keylogger|exploit code)\b/i.test(
+      text,
+    ) ||
+    /(?:skriv|skapa|generera|bygg|ge|hjälp).{0,80}(?:skadlig kod|ransomware|nätfiske|lösenordsstöld|stjäla inlogg|keylogger|exploitkod)/iu.test(
       text,
     ),
 }
@@ -86,7 +97,7 @@ const SENSITIVE_BACKEND_LEAK_RULE: AiSafetyRule = {
 
 const INPUT_RULES: readonly AiSafetyRule[] = [
   INSTRUCTION_OVERRIDE_RULE,
-  SYSTEM_PROMPT_EXTRACTION_RULE,
+  INTERNAL_PROMPT_EXTRACTION_RULE,
   ENCODED_SMUGGLING_RULE,
   SECRET_EXTRACTION_RULE,
   HARMFUL_GENERATION_RULE,
@@ -94,7 +105,7 @@ const INPUT_RULES: readonly AiSafetyRule[] = [
 
 const OUTPUT_RULES: readonly AiSafetyRule[] = [
   INSTRUCTION_OVERRIDE_RULE,
-  SYSTEM_PROMPT_EXTRACTION_RULE,
+  INTERNAL_PROMPT_EXTRACTION_RULE,
   ENCODED_SMUGGLING_RULE,
   SECRET_EXTRACTION_RULE,
   HARMFUL_GENERATION_RULE,
@@ -179,10 +190,11 @@ export function recordAiSafetyDecision(args: {
 
 export function recordAiSafetyFilterFailure(args: {
   context: RequestContext
-  errorName: string
+  error: unknown
   operation: string
   request: Request
 }): void {
+  const errorName = args.error instanceof Error ? args.error.name : 'Error'
   recordSecurityEvent({
     actor: {
       source: args.context.actor.source,
@@ -191,7 +203,7 @@ export function recordAiSafetyFilterFailure(args: {
     detail: {
       correlationId: args.context.correlationId,
       decision: 'failed',
-      errorName: args.errorName,
+      errorName,
       operation: args.operation,
       requestId: args.context.requestId,
       source: args.context.source,

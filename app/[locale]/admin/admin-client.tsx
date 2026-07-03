@@ -589,7 +589,10 @@ function AiSettingsPanel() {
   const helpId = `${toggleId}-help`
   const mcpLimitId = 'admin-ai-mcp-max-request-kib'
   const mcpLimitHelpId = `${mcpLimitId}-help`
-  const mcpLimitKiB = formatMcpRequestLimitInputKiB(settings.mcpMaxRequestBytes)
+  const committedMcpLimitKiB = formatMcpRequestLimitInputKiB(
+    settings.mcpMaxRequestBytes,
+  )
+  const [mcpLimitInputKiB, setMcpLimitInputKiB] = useState(committedMcpLimitKiB)
 
   function updateMcpMaxRequestBytes(nextValue: number) {
     const next = coerceMcpMaxRequestBytes(nextValue)
@@ -597,8 +600,25 @@ function AiSettingsPanel() {
       ...current,
       mcpMaxRequestBytes: next,
     }))
+    setMcpLimitInputKiB(formatMcpRequestLimitInputKiB(next))
     setSaveState('idle')
     setMessage(null)
+  }
+
+  function commitMcpMaxRequestBytesInput(rawValue = mcpLimitInputKiB) {
+    const trimmed = rawValue.trim()
+    if (trimmed === '') {
+      setMcpLimitInputKiB(committedMcpLimitKiB)
+      return
+    }
+
+    const parsed = Number(trimmed)
+    if (!Number.isFinite(parsed)) {
+      setMcpLimitInputKiB(committedMcpLimitKiB)
+      return
+    }
+
+    updateMcpMaxRequestBytes(parsed * 1024)
   }
 
   const loadSettings = useCallback(async () => {
@@ -627,6 +647,10 @@ function AiSettingsPanel() {
   useEffect(() => {
     void loadSettings()
   }, [loadSettings])
+
+  useEffect(() => {
+    setMcpLimitInputKiB(committedMcpLimitKiB)
+  }, [committedMcpLimitKiB])
 
   const saveSettings = async () => {
     if (!isDirty) return
@@ -850,16 +874,22 @@ function AiSettingsPanel() {
                   min={Number(
                     formatMcpRequestPayloadKiB(MIN_ALLOWED_MCP_REQUEST_BYTES),
                   )}
+                  onBlur={event => {
+                    commitMcpMaxRequestBytesInput(event.currentTarget.value)
+                  }}
                   onChange={event => {
-                    if (event.target.value.trim() === '') return
-                    const parsed = Number(event.target.value)
-                    if (Number.isFinite(parsed)) {
-                      updateMcpMaxRequestBytes(parsed * 1024)
-                    }
+                    setMcpLimitInputKiB(event.target.value)
+                    setSaveState('idle')
+                    setMessage(null)
+                  }}
+                  onKeyDown={event => {
+                    if (event.key !== 'Enter') return
+                    event.preventDefault()
+                    commitMcpMaxRequestBytesInput(event.currentTarget.value)
                   }}
                   step={MCP_REQUEST_PAYLOAD_STEP_KIB}
                   type="number"
-                  value={mcpLimitKiB}
+                  value={mcpLimitInputKiB}
                 />
                 <span className="px-2 text-xs text-secondary-500 dark:text-secondary-400">
                   KiB

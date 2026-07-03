@@ -164,10 +164,14 @@ test.describe('Admin AI settings', () => {
       })
       const saveButton = page.getByRole('button', { name: 'Spara' })
 
-      await test.step('raises and persists one 102.4 KiB step', async () => {
+      await test.step('commits a typed MCP limit on blur', async () => {
         await expect(mcpLimitInput).toHaveValue('1024')
-        await increaseButton.click()
+        await mcpLimitInput.fill('1080')
+        await expect(mcpLimitInput).toHaveValue('1080')
+        await expect(saveButton).toBeDisabled()
+        await mcpLimitInput.blur()
         await expect(mcpLimitInput).toHaveValue('1126.4')
+        await expect(saveButton).toBeEnabled()
         await saveButton.click()
         await expect(page.getByRole('status')).toHaveText('Sparat')
 

@@ -14,6 +14,7 @@ import {
 } from '@/lib/ai/requirement-prompt'
 import {
   recordAiSafetyDecision,
+  recordAiSafetyFilterFailure,
   screenAiInput,
   screenAiOutput,
 } from '@/lib/ai/safety'
@@ -209,6 +210,16 @@ export const POST = secureMutationRoute({
       streamStartedAt,
     )
 
+    function recordSafetyFilterFailure(error: unknown) {
+      logSanitizedError('AI requirement import safety filter failed', error)
+      recordAiSafetyFilterFailure({
+        context,
+        error,
+        operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
+        request,
+      })
+    }
+
     try {
       const availability = await getAiGenerationAvailability(db)
       if (!availability.effectiveRequirementGenerationEnabled) {
@@ -223,10 +234,18 @@ export const POST = secureMutationRoute({
       )
     }
 
-    const inputSafetyDecision = screenAiInput([
-      body.need,
-      ...imageMetadataForSafety(images),
-    ])
+    let inputSafetyDecision: ReturnType<typeof screenAiInput>
+    try {
+      inputSafetyDecision = screenAiInput([
+        body.need,
+        ...imageMetadataForSafety(images),
+      ])
+    } catch (error) {
+      recordSafetyFilterFailure(error)
+      return createUnavailableAiStreamResponse(context, () =>
+        recordStreamEvent('failure', 503),
+      )
+    }
     if (!inputSafetyDecision.allowed) {
       recordAiSafetyDecision({
         context,
@@ -303,7 +322,17 @@ export const POST = secureMutationRoute({
           })) {
             switch (event.phase) {
               case 'thinking': {
-                const progressSafetyDecision = screenAiOutput([event.chunk])
+                let progressSafetyDecision: ReturnType<typeof screenAiOutput>
+                try {
+                  progressSafetyDecision = screenAiOutput([
+                    event.thinkingSoFar || event.chunk,
+                  ])
+                } catch (error) {
+                  recordSafetyFilterFailure(error)
+                  send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
+                  recordStreamEvent('failure', 503)
+                  return
+                }
                 if (!progressSafetyDecision.allowed) {
                   recordAiSafetyDecision({
                     context,
@@ -334,10 +363,18 @@ export const POST = secureMutationRoute({
                 }
                 break
               case 'done': {
-                const outputSafetyDecision = screenAiOutput([
-                  event.rawContent,
-                  event.thinking,
-                ])
+                let outputSafetyDecision: ReturnType<typeof screenAiOutput>
+                try {
+                  outputSafetyDecision = screenAiOutput([
+                    event.rawContent,
+                    event.thinking,
+                  ])
+                } catch (error) {
+                  recordSafetyFilterFailure(error)
+                  send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
+                  recordStreamEvent('failure', 503, event.stats)
+                  return
+                }
                 if (!outputSafetyDecision.allowed) {
                   recordAiSafetyDecision({
                     context,
