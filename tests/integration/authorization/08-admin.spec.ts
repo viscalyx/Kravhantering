@@ -123,7 +123,9 @@ test.describe('AUTHZ-08/AUTH-11: Admin users with PrivacyOfficer can reach both 
 
     await aiTab.click()
     await expect(aiTab).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('heading', { name: 'AI' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { exact: true, name: 'AI' }),
+    ).toBeVisible()
 
     await accessReviewTab.click()
     await expect(accessReviewTab).toHaveAttribute('aria-selected', 'true')

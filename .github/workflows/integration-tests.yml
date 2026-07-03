@@ -173,8 +173,10 @@ jobs:
       - name: Start pruned prod-like server
         run: |
           mkdir -p test-results/prodlike-pruned
+          server_log_path="test-results/prodlike-pruned/server.log"
+          echo "Writing prod-like production server console log to ${server_log_path}"
           nohup npm run start:prodlike-pruned \
-            > test-results/prodlike-pruned/server.log 2>&1 &
+            > "${server_log_path}" 2>&1 &
           echo "$!" > test-results/prodlike-pruned/server.pid
         env:
           ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1'
@@ -203,6 +205,9 @@ jobs:
       - name: Run Playwright tests against pruned prod-like server
         run: |
           set -euo pipefail
+          prodlike_server_log="test-results/prodlike-pruned/server.log"
+          echo "Prod-like production server console log: ${prodlike_server_log}"
+          echo "Server log artifact: prodlike-pruned-server-log"
           start_epoch="$(date +%s)"
           set +e
           npm run test:integration:prodlike
@@ -220,6 +225,8 @@ jobs:
             echo
             echo "- Runtime: ${formatted} (${duration_seconds}s)"
             echo "- Command: \`npm run test:integration:prodlike\`"
+            echo "- Production server console log: \`${prodlike_server_log}\`"
+            echo "- Server log artifact: \`prodlike-pruned-server-log\`"
           } >> "$GITHUB_STEP_SUMMARY"
           exit "${test_exit}"
         env:
@@ -247,6 +254,7 @@ jobs:
           name: prodlike-pruned-server-log
           path: |
             test-results/prodlike-pruned/server.log
+            test-results/server-logs/prodlike/**
             test-results/hsa-person-lookup/prodlike-pruned.log
           retention-days: 7
 
