@@ -35,7 +35,7 @@ export function buildDeviationReviewReport(
     versionNumber: v.versionNumber,
     description: v.description,
     acceptanceCriteria: v.acceptanceCriteria,
-    requiresTesting: v.requiresTesting,
+    verifiable: v.verifiable,
     verificationMethod: v.verificationMethod,
     category: v.category,
     type: v.type,

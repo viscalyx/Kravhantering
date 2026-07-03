@@ -127,9 +127,9 @@ export default function VersionDetailClient({
             </div>
             <div>
               <span className="text-secondary-600 dark:text-secondary-400">
-                {t('requiresTesting')}:
+                {t('verifiable')}:
               </span>{' '}
-              {v.requiresTesting ? tc('yes') : tc('no')}
+              {v.verifiable ? tc('yes') : tc('no')}
             </div>
             <div>
               <span className="text-secondary-600 dark:text-secondary-400">

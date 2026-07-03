@@ -196,7 +196,7 @@ test.describe('Release smoke container flow', () => {
         data: {
           areaId: area.id,
           description,
-          requiresTesting: false,
+          verifiable: false,
         },
       })
       expect(createResponse.status()).toBe(201)

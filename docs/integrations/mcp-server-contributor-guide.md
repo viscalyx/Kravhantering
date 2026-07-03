@@ -95,8 +95,8 @@ Combines:
   priority levels, statuses, usage statuses, requirement packages, and transitions
 
 Requirement search supports pagination, sorting, archive inclusion, taxonomy
-filters, status/testing filters, norm-reference filters, and requirement-package
-filters. Lookup catalogs ignore requirement-only filters except
+filters, status filters, verifiability filters, norm-reference filters, and
+requirement-package filters. Lookup catalogs ignore requirement-only filters except
 `typeId`, which filters the `quality_characteristics` catalog.
 
 Requirement version status, usage status, and priority-level catalog rows expose

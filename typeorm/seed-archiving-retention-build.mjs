@@ -175,7 +175,7 @@ function requirementVersionRow(values) {
     description:
       'RETENTION-SEED kravversion för deterministisk gallrings- och arkiveringspreview.',
     edited_at: OLD_365_TS,
-    is_testing_required: 1,
+    is_verifiable: 1,
     published_at: null,
     quality_characteristic_id: 1,
     requirement_category_id: 2,
@@ -512,7 +512,7 @@ function addRetentionSpecifications(seedData) {
     description:
       'RETENTION-SEED lokalt krav för representativ kravunderlagsexport.',
     id: RETENTION_SEED.localRequirement.obsoleteSpecification,
-    is_testing_required: 1,
+    is_verifiable: 1,
     needs_reference_id:
       RETENTION_SEED.needsReference.obsoleteSpecificationLocal,
     note: 'RETENTION-SEED lokal kravnotering.',

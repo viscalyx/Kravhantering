@@ -36,7 +36,7 @@ function makeVersion(
     ownerName: null,
     publishedAt: null,
     qualityCharacteristic: { id: 4, nameSv: 'TC', nameEn: 'TypeCat' },
-    requiresTesting: true,
+    verifiable: true,
     revisionToken: '11111111-1111-4111-8111-111111111111',
     priorityLevel: null,
     status: 2,

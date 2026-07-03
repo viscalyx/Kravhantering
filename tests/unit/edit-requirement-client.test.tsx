@@ -83,7 +83,7 @@ function makeVersion(
     ownerName: 'Owner',
     publishedAt: null,
     qualityCharacteristic: null,
-    requiresTesting: true,
+    verifiable: true,
     revisionToken: '11111111-1111-4111-8111-111111111111',
     priorityLevel: null,
     status: 1,
@@ -313,7 +313,7 @@ describe('EditRequirementClient', () => {
         makeRequirementDetailResponse(
           { uniqueId: 'REQ-002' },
           {
-            requiresTesting: false,
+            verifiable: false,
             qualityCharacteristic: {
               id: 42,
               nameEn: 'Maintainability',

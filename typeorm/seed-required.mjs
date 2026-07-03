@@ -269,7 +269,7 @@ export const REQUIRED_SEED_DATA = {
       [6, 'type', 4, 1, '2026-04-20 20:07:00'],
       [7, 'qualityCharacteristic', 5, 0, '2026-04-20 20:07:00'],
       [8, 'status', 6, 1, '2026-04-20 20:07:00'],
-      [9, 'requiresTesting', 7, 0, '2026-04-20 20:07:00'],
+      [9, 'verifiable', 7, 0, '2026-04-20 20:07:00'],
       [10, 'version', 8, 0, '2026-04-20 20:07:00'],
       [11, 'needsReference', 9, 0, '2026-04-20 20:07:00'],
       [16, 'requirementPackage', 11, 0, '2026-04-20 20:07:00'],

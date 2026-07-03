@@ -137,7 +137,7 @@ describe('RequirementsTable', () => {
         categoryNameEn: 'Business requirement',
         categoryNameSv: 'Verksamhetskrav',
         description: 'Testkrav',
-        requiresTesting: true,
+        verifiable: true,
         priorityLevelId: null,
         priorityLevelNameEn: null,
         priorityLevelNameSv: null,
@@ -1088,7 +1088,7 @@ describe('RequirementsTable', () => {
     fireEvent.click(getColumnPickerTrigger(container) as HTMLButtonElement)
 
     const option = document.querySelector(
-      '[data-column-picker-option="requiresTesting"]',
+      '[data-column-picker-option="verifiable"]',
     )
 
     expect(option).toHaveAttribute(
@@ -3011,7 +3011,7 @@ describe('RequirementsTable', () => {
         visibleColumns={[
           ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
           'qualityCharacteristic',
-          'requiresTesting',
+          'verifiable',
           'version',
         ]}
       />,
@@ -3119,7 +3119,7 @@ describe('RequirementsTable', () => {
         pendingVersionStatusId: 2,
         version: {
           ...makeRow().version,
-          requiresTesting: false,
+          verifiable: false,
           versionNumber: 1,
         },
         area: null,
@@ -3151,7 +3151,7 @@ describe('RequirementsTable', () => {
           priorityLevelNameSv: null,
           priorityLevelColor: null,
           priorityLevelSortOrder: null,
-          requiresTesting: false,
+          verifiable: false,
           versionNumber: 1,
           status: 4,
           statusNameSv: 'Arkiverad',
@@ -3195,7 +3195,7 @@ describe('RequirementsTable', () => {
           priorityLevelNameSv: null,
           priorityLevelColor: null,
           priorityLevelSortOrder: null,
-          requiresTesting: false,
+          verifiable: false,
           versionNumber: 1,
           status: 4,
           statusNameSv: 'Arkiverad',
@@ -3236,7 +3236,7 @@ describe('RequirementsTable', () => {
           priorityLevelNameSv: null,
           priorityLevelColor: null,
           priorityLevelSortOrder: null,
-          requiresTesting: false,
+          verifiable: false,
           versionNumber: 1,
           status: 4,
           statusNameSv: 'Arkiverad',
@@ -3372,7 +3372,7 @@ describe('RequirementsTable', () => {
           priorityLevelNameSv: null,
           priorityLevelColor: null,
           priorityLevelSortOrder: null,
-          requiresTesting: false,
+          verifiable: false,
           versionNumber: 1,
           status: 1,
           statusNameSv: 'Utkast',
@@ -3398,7 +3398,7 @@ describe('RequirementsTable', () => {
           priorityLevelNameSv: null,
           priorityLevelColor: null,
           priorityLevelSortOrder: null,
-          requiresTesting: false,
+          verifiable: false,
           versionNumber: 1,
           status: 1,
           statusNameSv: 'Utkast',
@@ -3425,7 +3425,7 @@ describe('RequirementsTable', () => {
           categoryIds: [20],
           descriptionSearch: 'search-term',
           qualityCharacteristicIds: [40],
-          requiresTesting: ['true'],
+          verifiable: ['true'],
           statuses: [3],
           typeIds: [30],
         }}
@@ -3459,7 +3459,7 @@ describe('RequirementsTable', () => {
           'type',
           'qualityCharacteristic',
           'status',
-          'requiresTesting',
+          'verifiable',
         ]}
       />,
     )
@@ -3500,7 +3500,7 @@ describe('RequirementsTable', () => {
             categoryIds: [20],
             descriptionSearch: 'search-term',
             qualityCharacteristicIds: [40],
-            requiresTesting: ['true'],
+            verifiable: ['true'],
             statuses: [3],
             typeIds: [30],
           }}
@@ -3534,7 +3534,7 @@ describe('RequirementsTable', () => {
             'type',
             'qualityCharacteristic',
             'status',
-            'requiresTesting',
+            'verifiable',
           ]}
         />,
       )

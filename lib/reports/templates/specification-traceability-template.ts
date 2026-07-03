@@ -82,7 +82,7 @@ function formatVerification(
   locale: string,
 ): string {
   const labels = getReportLabels(locale)
-  if (!item.requiresTesting) {
+  if (!item.verifiable) {
     return formatReportBoolean(false, labels)
   }
 

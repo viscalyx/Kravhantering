@@ -21,9 +21,9 @@ export interface VersionSummaryData {
   publishedAt: string | null
   qualityCharacteristic: { nameSv: string; nameEn: string } | null
   requirementPackages: { name: string }[]
-  requiresTesting: boolean
   status: { label: string; color: string | null; iconName?: string | null }
   type: { nameSv: string; nameEn: string } | null
+  verifiable: boolean
   verificationMethod: string | null
   versionNumber: number
 }

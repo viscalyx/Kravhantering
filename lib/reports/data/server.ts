@@ -189,7 +189,7 @@ function mapDeviationVersion(
       .map(vrp => ({
         name: requirementPackageName(vrp.requirementPackage),
       })),
-    requiresTesting: version.requiresTesting,
+    verifiable: version.verifiable,
     priorityLevel: version.priorityLevel
       ? {
           color: version.priorityLevel.color ?? null,

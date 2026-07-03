@@ -109,7 +109,7 @@ export default function EditRequirementClient({
             : '',
         description: String(latest.description ?? ''),
         acceptanceCriteria: String(latest.acceptanceCriteria ?? ''),
-        requiresTesting: Boolean(latest.requiresTesting ?? false),
+        verifiable: Boolean(latest.verifiable ?? false),
         verificationMethod: String(latest.verificationMethod ?? ''),
       })
       setInitialNormReferenceIds(

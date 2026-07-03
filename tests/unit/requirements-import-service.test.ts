@@ -299,7 +299,7 @@ describe('requirements import service', () => {
       'Använd `normReferenceIds` med värden från `normReferences[].normReferenceId`',
     )
     expect(promptEn).toContain(
-      'Set `requiresTesting` to `true` when the requirement should be verified; then provide `verificationMethod`',
+      'Set `verifiable` to `true` when the requirement version has objective conditions that can be checked; then provide `verificationMethod`',
     )
   })
 
@@ -464,7 +464,7 @@ describe('requirements import service', () => {
         {
           description: 'Systemet ska stödja grundläggande inloggning.',
           qualityCharacteristicId: 11,
-          requiresTesting: true,
+          verifiable: true,
           typeId: 1,
           verificationMethod: 'Test',
         },
@@ -501,7 +501,7 @@ describe('requirements import service', () => {
     expect(createRequirementsBatch).not.toHaveBeenCalled()
   })
 
-  it('rejects library execute rows that require testing without verification method', async () => {
+  it('rejects library execute rows that are verifiable without verification method', async () => {
     const authorization = { assertAuthorized: vi.fn() }
     const workflow = createRequirementsImportWorkflow({
       authorization,
@@ -511,7 +511,7 @@ describe('requirements import service', () => {
       requirements: [
         {
           description: 'Systemet ska logga viktiga händelser.',
-          requiresTesting: true,
+          verifiable: true,
           verificationMethod: 'Inspection',
         },
       ],
@@ -542,7 +542,7 @@ describe('requirements import service', () => {
       }),
     ).rejects.toMatchObject({
       code: 'validation',
-      message: 'verificationMethod is required when requiresTesting is true',
+      message: 'verificationMethod is required when verifiable is true',
     })
     expect(createRequirementsBatch).not.toHaveBeenCalled()
   })

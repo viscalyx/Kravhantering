@@ -22,7 +22,7 @@ export interface SpecificationLocalRequirementSubmitPayload {
   qualityCharacteristicId: number | null
   requirementCategoryId: number | null
   requirementTypeId: number | null
-  requiresTesting: boolean
+  verifiable: boolean
   verificationMethod: string | null
 }
 
@@ -46,7 +46,7 @@ const EMPTY_FIELDS: RequirementFormFieldValues = {
   description: '',
   normReferenceIds: [],
   qualityCharacteristicId: '',
-  requiresTesting: false,
+  verifiable: false,
   priorityLevelId: '',
   requirementPackageIds: [],
   typeId: '',
@@ -82,9 +82,7 @@ function toFieldValues(
     ...(initial.acceptanceCriteria != null
       ? { acceptanceCriteria: initial.acceptanceCriteria }
       : {}),
-    ...(initial.requiresTesting != null
-      ? { requiresTesting: initial.requiresTesting }
-      : {}),
+    ...(initial.verifiable != null ? { verifiable: initial.verifiable } : {}),
     ...(initial.verificationMethod != null
       ? { verificationMethod: initial.verificationMethod }
       : {}),
@@ -108,11 +106,11 @@ function toSubmitPayload(
       : null,
     requirementCategoryId: fields.categoryId ? Number(fields.categoryId) : null,
     requirementTypeId: fields.typeId ? Number(fields.typeId) : null,
-    requiresTesting: fields.requiresTesting,
+    verifiable: fields.verifiable,
     priorityLevelId: fields.priorityLevelId
       ? Number(fields.priorityLevelId)
       : null,
-    verificationMethod: fields.requiresTesting
+    verificationMethod: fields.verifiable
       ? fields.verificationMethod.trim() || null
       : null,
   }

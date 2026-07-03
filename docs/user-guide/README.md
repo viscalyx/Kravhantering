@@ -109,7 +109,7 @@ följer en översikt av varje egenskap och hur den stödjer kravets livscykel.
 | **Typ** | Anger om kravet är Funktionellt eller Icke-funktionellt. Båda typerna låser upp fältet för kvalitetsegenskap, men icke-funktionella krav erbjuder ett bredare urval av egenskaper från standarden ISO/IEC 25010 medan funktionella krav har en mindre delmängd. |
 | **Kvalitetsegenskap** | Följer standarden ISO/IEC 25010 och låter dig klassificera krav med egenskaper som Säkerhet, Prestandaeffektivitet eller Användbarhet. Icke-funktionella krav har tillgång till hela uppsättningen egenskaper, medan funktionella krav erbjuder en mindre delmängd. Det hjälper till att prioritera och gruppera relaterade krav under granskning och implementeringsplanering. |
 | **Prioritet** | Anger hur viktigt, angeläget eller kritiskt kravet är i förhållande till verksamhetens mål, nyttor, risker och intressenters behov. Högre prioritet signalerar att kravet bör granskas och följas upp noggrant. |
-| **Verifierbar** | Anger om kravet kan testas. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravunderlag där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning. |
+| **Verifierbar** | Anger om kravversionen har objektiva villkor som kan kontrolleras. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravunderlag där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning. |
 | **Verifieringsmetod** | Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravunderlag där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang. |
 | **Kravpaket** | Samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning. Varje kravpaket har en ägare som ansvarar för kraven inom grupperingen. Kopplingen hjälper till att avgränsa kravunderlag och filtrera krav efter relevanta grupperingar. |
 | **Normreferenser** | Kopplar kravet till externa standarder, lagar eller föreskrifter. Dessa kopplingar stödjer efterlevnadsrevision och gör det möjligt att spåra varje krav tillbaka till sitt rättsliga eller normativa ursprung. |
@@ -363,7 +363,7 @@ som servergenererad PDF för dokumentation och revision.
 
 ## Import av krav
 
-Importfunktionen använder JSON enligt `requirement-import.v1`. **AI-assisterat
+Importfunktionen använder JSON enligt `requirement-import.v2`. **AI-assisterat
 författande** använder samma importkontrakt och samma redigerbara
 importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya
 utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt

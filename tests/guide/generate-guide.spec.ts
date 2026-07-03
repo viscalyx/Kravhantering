@@ -108,7 +108,7 @@ const AI_GUIDE_PAYLOAD = {
       categoryName: 'IT-krav',
       description: AI_GUIDE_REQUIREMENT_ONE_INITIAL,
       priorityLevelCode: 'P4',
-      requiresTesting: true,
+      verifiable: true,
       typeName: 'Funktionellt',
       verificationMethod: 'Funktionstest',
     },
@@ -119,7 +119,7 @@ const AI_GUIDE_PAYLOAD = {
       description: AI_GUIDE_REQUIREMENT_TWO,
       priorityLevelCode: 'P5',
       proposedNormReferenceKeys: [AI_GUIDE_NORM_KEY],
-      requiresTesting: true,
+      verifiable: true,
       typeName: 'Funktionellt',
       verificationMethod: 'Behörighets- och loggtest',
     },
@@ -129,12 +129,12 @@ const AI_GUIDE_PAYLOAD = {
       categoryName: 'IT-krav',
       description: AI_GUIDE_REQUIREMENT_THREE,
       priorityLevelCode: 'P4',
-      requiresTesting: true,
+      verifiable: true,
       typeName: 'Icke-funktionellt',
       verificationMethod: 'Säkerhetstest',
     },
   ],
-  schemaVersion: 'requirement-import.v1',
+  schemaVersion: 'requirement-import.v2',
 }
 const GUIDE_SPECIFICATION_SLUG = 'ETJANST-UPP-2026'
 const GUIDE_SPECIFICATION_NAME = 'Upphandling av e-tjänstplattform'
@@ -1933,7 +1933,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
     // ── Sektion 7: Import av krav ─────────────────────────────────────────
     currentSection = 'Import av krav'
     setSectionIntro(
-      'Importfunktionen använder JSON enligt `requirement-import.v1`. **AI-assisterat författande** använder samma importkontrakt och samma redigerbara importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt i ett kravunderlag. Importen laddar först en granskning där rader, metadata och föreslagna normreferenser kan kontrolleras innan något sparas.',
+      'Importfunktionen använder JSON enligt `requirement-import.v2`. **AI-assisterat författande** använder samma importkontrakt och samma redigerbara importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt i ett kravunderlag. Importen laddar först en granskning där rader, metadata och föreslagna normreferenser kan kontrolleras innan något sparas.',
     )
 
     let cleanupAiMocks: (() => Promise<void>) | null = null

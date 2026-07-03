@@ -6,7 +6,7 @@ import {
   SQL_SERVER_INT_MAX,
 } from '@/lib/http/validation'
 
-export const REQUIREMENTS_IMPORT_SCHEMA_VERSION = 'requirement-import.v1'
+export const REQUIREMENTS_IMPORT_SCHEMA_VERSION = 'requirement-import.v2'
 
 const optionalImportTextSchema = z.string().max(BUSINESS_TEXT_MAX_LENGTH)
 const optionalImportDbStringSchema = z.string().max(DB_STRING_MAX_LENGTH)
@@ -49,7 +49,7 @@ export const importRequirementSchema = z
     qualityCharacteristicName: optionalNullableImportDbStringSchema,
     requirementPackageIds: positiveIntegerArraySchema.optional(),
     requirementPackageNames: z.array(nonEmptyArrayStringSchema).optional(),
-    requiresTesting: z.boolean().nullable().optional(),
+    verifiable: z.boolean().nullable().optional(),
     priorityLevelCode: optionalNullableImportDbStringSchema,
     priorityLevelId: positiveIntegerSchema.nullable().optional(),
     priorityLevelName: optionalNullableImportDbStringSchema,
@@ -101,7 +101,7 @@ export const importReviewRowSchema = z
     normReferenceIds: positiveIntegerArraySchema.optional().default([]),
     qualityCharacteristicId: positiveIntegerSchema.nullable().optional(),
     requirementPackageIds: positiveIntegerArraySchema.optional().default([]),
-    requiresTesting: z.boolean().optional().default(false),
+    verifiable: z.boolean().optional().default(false),
     reviewRowId: z.string().trim().min(1).max(DB_STRING_MAX_LENGTH),
     priorityLevelId: positiveIntegerSchema.nullable().optional(),
     sourceIndex: z.number().int().min(0).max(SQL_SERVER_INT_MAX),
@@ -230,7 +230,7 @@ export function buildRequirementsImportJsonSchema(
                 ? 'Namn på kravpaket används som reserv när ID saknas. Namn måste matcha exakt och unikt. Vid import till kravunderlagslokala krav ignoreras fältet.'
                 : 'Requirement package names are a fallback when IDs are unavailable. Names must match exactly and uniquely. When importing specification-local requirements, this field is ignored.',
             },
-            requiresTesting: {
+            verifiable: {
               anyOf: [{ type: 'boolean' }, { type: 'null' }],
             },
             priorityLevelId: {

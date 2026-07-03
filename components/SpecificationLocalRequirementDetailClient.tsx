@@ -54,7 +54,6 @@ interface SpecificationLocalRequirementDetail {
     purposeAndScope: string | null
   }[]
   requirementType: { id: number; nameEn: string; nameSv: string } | null
-  requiresTesting: boolean
   specificationId: number
   specificationItemStatusColor: string | null
   specificationItemStatusIconName: string | null
@@ -63,6 +62,7 @@ interface SpecificationLocalRequirementDetail {
   specificationItemStatusNameSv: string | null
   uniqueId: string
   updatedAt: string
+  verifiable: boolean
   verificationMethod: string | null
 }
 
@@ -350,7 +350,7 @@ function SpecificationLocalRequirementEditModal({
             typeId: requirement.requirementType
               ? String(requirement.requirementType.id)
               : '',
-            requiresTesting: requirement.requiresTesting,
+            verifiable: requirement.verifiable,
             priorityLevelId: requirement.priorityLevel
               ? String(requirement.priorityLevel.id)
               : '',
@@ -1095,17 +1095,17 @@ export default function SpecificationLocalRequirementDetailClient({
         ),
     },
     {
-      id: 'requires-testing',
-      label: t('requiresTesting'),
-      markerValue: 'requires testing',
-      value: requirement.requiresTesting ? tc('yes') : tc('no'),
+      id: 'verifiable',
+      label: t('verifiable'),
+      markerValue: 'verifiable',
+      value: requirement.verifiable ? tc('yes') : tc('no'),
     },
     {
       id: 'verification-method',
       label: t('verificationMethod'),
       markerValue: 'verification method',
       value:
-        requirement.requiresTesting && requirement.verificationMethod
+        requirement.verifiable && requirement.verificationMethod
           ? requirement.verificationMethod
           : '—',
     },

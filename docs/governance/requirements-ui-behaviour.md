@@ -54,7 +54,7 @@ The behaviors below apply to the requirement list rendered by:
 ## Requirement Import
 
 - Requirement import uses one strict JSON file format,
-  `requirement-import.v1`, for both kravbiblioteksimport and
+  `requirement-import.v2`, for both kravbiblioteksimport and
   kravunderlagsimport. The top-level `schemaVersion` versions the whole import
   file, including requirement candidates and support data such as proposed norm
   references. Destination fields such as `areaId`, `specificationId` and
@@ -79,7 +79,7 @@ The behaviors below apply to the requirement list rendered by:
   clickable drop target, or dropped onto that target. The paste field uses
   placeholder text so the instruction is not inserted into the JSON value.
   `Förhandsgranska krav` stays disabled until the JSON parses and passes
-  `requirement-import.v1` schema validation and, for kravbiblioteksimport, a
+  `requirement-import.v2` schema validation and, for kravbiblioteksimport, a
   kravområde is selected. When the action is disabled, a short warning above
   the button explains the current blocker, such as missing kravområde, missing
   JSON, parse errors, wrong `schemaVersion`, or schema validation errors.
@@ -196,7 +196,7 @@ The behaviors below apply to the requirement list rendered by:
 - If a filtered header column is hidden, its filter is cleared immediately.
 - Status is filterable and sortable.
 - `priorityLevel` is filterable and sortable.
-- `requiresTesting` is filterable, but not sortable.
+- `verifiable` is filterable, but not sortable.
 - `requirementPackage` is filterable through the requirement-package chip row
   even when the optional, non-sortable table column is hidden.
 - Requirement-package chip filters show the package purpose and scope in the

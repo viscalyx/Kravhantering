@@ -37,7 +37,7 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors can create requireme
       data: {
         areaId: fixture.areaId,
         description: apiRequirementText,
-        requiresTesting: false,
+        verifiable: false,
       },
     })
     await expectStatus(apiResponse, 201, 'area co-author requirement create')

@@ -683,7 +683,7 @@ kravområde, generera en kravkandidat och välj
 `Förhandsgranska krav i import`.
 
 **Förväntat resultat:** Den genererade kandidaten skickas som
-`requirement-import.v1` till importgranskningen för valt kravområde.
+`requirement-import.v2` till importgranskningen för valt kravområde.
 Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
 `Import-JSON`-formuläret.
 
@@ -727,7 +727,7 @@ påverkar inte reglaget för kravgenerering om reglaget inte ändras separat.
 
 **Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements`, välj
 importknappen i den flytande åtgärdsytan och ladda ner schema och
-importinstruktion. Klistra in `requirement-import.v1`-JSON med ett krav,
+importinstruktion. Klistra in `requirement-import.v2`-JSON med ett krav,
 föreslagen normreferens och ett först otillåtet destinationsfält. Välj
 kravområde, korrigera JSON, förhandsgranska, expandera raden, granska den
 föreslagna normreferensen, importera vald rad och ladda ner CSV-kvitto.
@@ -1124,10 +1124,10 @@ person.
 
 **Steg:** Logga in som `petra.specresp`, öppna ett kravunderlag där användaren
 är ansvarig, välj `Lägg till unika krav` och sedan `Importera unika krav`.
-Klistra in giltig `requirement-import.v1`-JSON med kravtext, föreslagen
+Klistra in giltig `requirement-import.v2`-JSON med kravtext, föreslagen
 normreferens och fält för kravpaket som ska ignoreras för kravunderlagslokala
 krav. Komplettera `Behovsreferens` i granskningsformuläret. Testa även en rad
-med `requiresTesting: true` utan verifieringsmetod och fyll sedan i metoden
+med `verifiable: true` utan verifieringsmetod och fyll sedan i metoden
 innan import.
 
 **Förväntat resultat:** Importen kräver kravunderlagsbehörighet men inget

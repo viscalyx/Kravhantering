@@ -80,7 +80,7 @@ function toVersionSummary(
     versionNumber: version.versionNumber,
     description: version.description,
     acceptanceCriteria: version.acceptanceCriteria,
-    requiresTesting: version.requiresTesting,
+    verifiable: version.verifiable,
     verificationMethod: version.verificationMethod,
     category: version.category
       ? {
@@ -179,11 +179,11 @@ function computeMetadataChanges(
     })
   }
 
-  if (baseVersion.requiresTesting !== reviewVersion.requiresTesting) {
+  if (baseVersion.verifiable !== reviewVersion.verifiable) {
     changes.push({
-      field: labels.columns.requiresTesting,
-      oldValue: formatReportBoolean(baseVersion.requiresTesting, labels),
-      newValue: formatReportBoolean(reviewVersion.requiresTesting, labels),
+      field: labels.columns.verifiable,
+      oldValue: formatReportBoolean(baseVersion.verifiable, labels),
+      newValue: formatReportBoolean(reviewVersion.verifiable, labels),
     })
   }
 

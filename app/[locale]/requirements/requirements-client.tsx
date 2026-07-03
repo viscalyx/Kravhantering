@@ -199,7 +199,7 @@ function mapRequirementDetailToRow(
           categoryNameEn: version.category?.nameEn ?? null,
           categoryNameSv: version.category?.nameSv ?? null,
           description: version.description,
-          requiresTesting: version.requiresTesting,
+          verifiable: version.verifiable,
           revisionToken: version.revisionToken,
           status: version.status,
           statusColor: version.statusColor,

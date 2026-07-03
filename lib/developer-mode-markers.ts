@@ -7,7 +7,7 @@ const REQUIREMENT_COLUMN_LABELS: Record<string, string> = {
   area: 'area',
   category: 'category',
   description: 'requirement text',
-  requiresTesting: 'verifiable',
+  verifiable: 'verifiable',
   status: 'status',
   type: 'type',
   qualityCharacteristic: 'quality characteristic',

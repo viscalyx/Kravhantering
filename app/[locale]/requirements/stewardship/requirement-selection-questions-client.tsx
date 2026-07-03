@@ -739,10 +739,10 @@ function CompactRequirementDetail({
       ),
     },
     {
-      id: 'requires-testing',
-      label: t('requiresTesting'),
-      markerValue: 'requires testing',
-      value: selectedVersion?.requiresTesting ? tc('yes') : tc('no'),
+      id: 'verifiable',
+      label: t('verifiable'),
+      markerValue: 'verifiable',
+      value: selectedVersion?.verifiable ? tc('yes') : tc('no'),
     },
     {
       id: 'verification-method',

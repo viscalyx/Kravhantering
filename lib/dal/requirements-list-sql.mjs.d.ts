@@ -15,12 +15,12 @@ export interface ListRequirementsOptions {
   priorityLevelIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementPackageIds?: number[]
-  requiresTesting?: boolean[]
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
+  verifiable?: boolean[]
 }
 
 export interface RequirementListSql {

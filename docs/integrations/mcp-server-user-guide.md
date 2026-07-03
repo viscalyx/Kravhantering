@@ -484,7 +484,7 @@ tool. For requirement lists, it supports:
 - `normReferenceIds`
 - `requirementPackageIds`
 - `statuses`
-- `requiresTesting`
+- `verifiable`
 - `sortBy`
 - `sortDirection`
 

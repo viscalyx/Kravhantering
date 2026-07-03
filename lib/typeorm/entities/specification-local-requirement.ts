@@ -12,7 +12,7 @@ export interface SpecificationLocalRequirementEntity {
   createdAt: Date
   description: string
   id: number
-  isTestingRequired: boolean
+  isVerifiable: boolean
   needsReference: SpecificationNeedsReferenceEntity | null
   note: string | null
   priorityLevel: PriorityLevelEntity | null
@@ -48,8 +48,8 @@ export const specificationLocalRequirementEntity =
         length: 'MAX',
         nullable: true,
       },
-      isTestingRequired: {
-        name: 'is_testing_required',
+      isVerifiable: {
+        name: 'is_verifiable',
         type: 'bit',
         default: false,
       },

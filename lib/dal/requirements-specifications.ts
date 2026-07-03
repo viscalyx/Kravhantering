@@ -56,12 +56,12 @@ export interface TraceabilityReportItem {
   note: string | null
   priorityLevelNameEn: string | null
   priorityLevelNameSv: string | null
-  requiresTesting: boolean
   specificationItemStatusId: number | null
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
   statusUpdatedAt: string | null
   uniqueId: string
+  verifiable: boolean
   verificationMethod: string | null
   versionNumber: number | null
 }
@@ -91,7 +91,7 @@ export interface SpecificationLocalRequirementMutationInput {
   qualityCharacteristicId?: number | null
   requirementCategoryId?: number | null
   requirementTypeId?: number | null
-  requiresTesting?: boolean
+  verifiable?: boolean
   verificationMethod?: string | null
 }
 
@@ -128,7 +128,6 @@ export interface SpecificationLocalRequirementDetail {
     purposeAndScope: string | null
   }[]
   requirementType: { id: number; nameEn: string; nameSv: string } | null
-  requiresTesting: boolean
   specificationId: number
   specificationItemStatusColor: string | null
   specificationItemStatusDescriptionEn: string | null
@@ -139,15 +138,16 @@ export interface SpecificationLocalRequirementDetail {
   specificationItemStatusNameSv: string | null
   uniqueId: string
   updatedAt: string
+  verifiable: boolean
   verificationMethod: string | null
 }
 
 interface SpecificationLocalRequirementIdentity {
   id: number
-  requiresTesting: boolean
   sequenceNumber: number
   specificationId: number
   uniqueId: string
+  verifiable: boolean
   verificationMethod: string | null
 }
 
@@ -160,9 +160,9 @@ interface SpecificationLocalRequirementGraduationRow {
   qualityCharacteristicId: number | null
   requirementCategoryId: number | null
   requirementTypeId: number | null
-  requiresTesting: boolean
   specificationId: number
   uniqueId: string
+  verifiable: boolean
   verificationMethod: string | null
 }
 
@@ -309,7 +309,7 @@ function mapTraceabilityReportRow(
     kind,
     needsReference: toStr(row.needsReference),
     note: toStr(row.note),
-    requiresTesting: toBool(row.requiresTesting),
+    verifiable: toBool(row.verifiable),
     priorityLevelNameEn: toStr(row.priorityLevelNameEn),
     priorityLevelNameSv: toStr(row.priorityLevelNameSv),
     specificationItemStatusId: toNum(row.specificationItemStatusId),
@@ -353,7 +353,7 @@ export async function listSpecificationTraceabilityItems(
           requirement.unique_id AS uniqueId,
           requirement_area.name AS areaName,
           requirement_version.version_number AS versionNumber,
-          requirement_version.is_testing_required AS requiresTesting,
+          requirement_version.is_verifiable AS verifiable,
           requirement_version.verification_method AS verificationMethod,
           priority_level.name_en AS priorityLevelNameEn,
           priority_level.name_sv AS priorityLevelNameSv,
@@ -415,7 +415,7 @@ export async function listSpecificationTraceabilityItems(
           local_requirement.id AS itemId,
           local_requirement.unique_id AS uniqueId,
           CAST(NULL AS nvarchar(450)) AS areaName,
-          local_requirement.is_testing_required AS requiresTesting,
+          local_requirement.is_verifiable AS verifiable,
           local_requirement.verification_method AS verificationMethod,
           priority_level.name_en AS priorityLevelNameEn,
           priority_level.name_sv AS priorityLevelNameSv,
@@ -1933,14 +1933,14 @@ async function normalizeSpecificationLocalRequirementInput(
     throw validationError('Description is required')
   }
 
-  const requiresTesting = data.requiresTesting ?? false
-  const verificationMethod = requiresTesting
+  const verifiable = data.verifiable ?? false
+  const verificationMethod = verifiable
     ? (data.verificationMethod?.trim() ?? '')
     : null
 
-  if (requiresTesting && !verificationMethod) {
+  if (verifiable && !verificationMethod) {
     throw validationError(
-      'verificationMethod is required when requiresTesting is true',
+      'verificationMethod is required when verifiable is true',
     )
   }
 
@@ -1974,7 +1974,7 @@ async function normalizeSpecificationLocalRequirementInput(
     qualityCharacteristicId: references.qualityCharacteristicId,
     requirementCategoryId: references.requirementCategoryId,
     requirementTypeId: references.requirementTypeId,
-    requiresTesting,
+    verifiable,
     priorityLevelId: references.priorityLevelId,
     verificationMethod,
   }
@@ -1992,7 +1992,7 @@ async function getSpecificationLocalRequirementIdentity(
         local_requirement.specification_id AS specificationId,
         local_requirement.sequence_number AS sequenceNumber,
         local_requirement.unique_id AS uniqueId,
-        local_requirement.is_testing_required AS requiresTesting,
+        local_requirement.is_verifiable AS verifiable,
         local_requirement.verification_method AS verificationMethod
       FROM specification_local_requirements local_requirement
       WHERE local_requirement.id = @0 AND local_requirement.specification_id = @1
@@ -2004,7 +2004,7 @@ async function getSpecificationLocalRequirementIdentity(
   if (!row) return null
   return {
     id: Number(row.id),
-    requiresTesting: toBool(row.requiresTesting),
+    verifiable: toBool(row.verifiable),
     specificationId: Number(row.specificationId),
     sequenceNumber: Number(row.sequenceNumber),
     uniqueId: String(row.uniqueId),
@@ -2019,7 +2019,7 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
     local_requirement.unique_id AS uniqueId,
     local_requirement.description AS description,
     local_requirement.acceptance_criteria AS acceptanceCriteria,
-    local_requirement.is_testing_required AS requiresTesting,
+    local_requirement.is_verifiable AS verifiable,
     local_requirement.verification_method AS verificationMethod,
     local_requirement.created_at AS createdAt,
     local_requirement.updated_at AS updatedAt,
@@ -2130,7 +2130,7 @@ function mapSpecificationLocalRequirementDetailFlat(
             nameSv: String(row.requirementTypeNameSv ?? ''),
           }
         : null,
-    requiresTesting: toBool(row.requiresTesting),
+    verifiable: toBool(row.verifiable),
     priorityLevel:
       priorityLevelId != null
         ? {
@@ -2252,7 +2252,7 @@ export async function createSpecificationLocalRequirement(
           requirement_type_id,
           quality_characteristic_id,
           priority_level_id,
-          is_testing_required,
+          is_verifiable,
           verification_method,
           needs_reference_id,
           specification_item_status_id,
@@ -2272,7 +2272,7 @@ export async function createSpecificationLocalRequirement(
         normalized.requirementTypeId,
         normalized.qualityCharacteristicId,
         normalized.priorityLevelId,
-        normalized.requiresTesting ? 1 : 0,
+        normalized.verifiable ? 1 : 0,
         normalized.verificationMethod,
         normalized.needsReferenceId,
         DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
@@ -2363,7 +2363,7 @@ export async function createSpecificationLocalRequirementsBatch(
             requirement_type_id,
             quality_characteristic_id,
             priority_level_id,
-            is_testing_required,
+            is_verifiable,
             verification_method,
             needs_reference_id,
             specification_item_status_id,
@@ -2383,7 +2383,7 @@ export async function createSpecificationLocalRequirementsBatch(
           normalized.requirementTypeId,
           normalized.qualityCharacteristicId,
           normalized.priorityLevelId,
-          normalized.requiresTesting ? 1 : 0,
+          normalized.verifiable ? 1 : 0,
           normalized.verificationMethod,
           normalized.needsReferenceId,
           DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
@@ -2444,10 +2444,10 @@ export async function updateSpecificationLocalRequirement(
   const normalized = await normalizeSpecificationLocalRequirementInput(
     db,
     specificationId,
-    data.requiresTesting === undefined
+    data.verifiable === undefined
       ? {
           ...data,
-          requiresTesting: existing.requiresTesting,
+          verifiable: existing.verifiable,
           verificationMethod:
             data.verificationMethod === undefined
               ? existing.verificationMethod
@@ -2468,7 +2468,7 @@ export async function updateSpecificationLocalRequirement(
           quality_characteristic_id = @3,
           requirement_category_id = @4,
           requirement_type_id = @5,
-          is_testing_required = @6,
+          is_verifiable = @6,
           priority_level_id = @7,
           verification_method = @8,
           updated_at = @9
@@ -2481,7 +2481,7 @@ export async function updateSpecificationLocalRequirement(
         normalized.qualityCharacteristicId,
         normalized.requirementCategoryId,
         normalized.requirementTypeId,
-        normalized.requiresTesting ? 1 : 0,
+        normalized.verifiable ? 1 : 0,
         normalized.priorityLevelId,
         normalized.verificationMethod,
         updatedAt,
@@ -2549,7 +2549,7 @@ function mapGraduationSourceRow(
     qualityCharacteristicId: toNum(row.qualityCharacteristicId),
     requirementCategoryId: toNum(row.requirementCategoryId),
     requirementTypeId: toNum(row.requirementTypeId),
-    requiresTesting: toBool(row.requiresTesting),
+    verifiable: toBool(row.verifiable),
     priorityLevelId: toNum(row.priorityLevelId),
     specificationId: Number(row.specificationId),
     uniqueId: String(row.uniqueId ?? ''),
@@ -2614,7 +2614,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
           local_requirement.requirement_type_id AS requirementTypeId,
           local_requirement.quality_characteristic_id AS qualityCharacteristicId,
           local_requirement.priority_level_id AS priorityLevelId,
-          CAST(local_requirement.is_testing_required AS int) AS requiresTesting,
+          CAST(local_requirement.is_verifiable AS int) AS verifiable,
           local_requirement.verification_method AS verificationMethod
         FROM specification_local_requirements local_requirement WITH (UPDLOCK, HOLDLOCK)
         WHERE local_requirement.id = @0
@@ -2664,7 +2664,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
     const prefix = String(sequenceRow.prefix ?? '')
     const uniqueId = `${prefix}${String(sequenceNumber).padStart(4, '0')}`
     const now = new Date()
-    const verificationMethod = source.requiresTesting
+    const verificationMethod = source.verifiable
       ? source.verificationMethod
       : null
 
@@ -2705,7 +2705,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
           quality_characteristic_id,
           priority_level_id,
           requirement_status_id,
-          is_testing_required,
+          is_verifiable,
           verification_method,
           created_at,
           edited_at,
@@ -2733,7 +2733,7 @@ export async function graduateSpecificationLocalRequirementToLibrary(
         source.qualityCharacteristicId,
         source.priorityLevelId,
         STATUS_DRAFT,
-        source.requiresTesting ? 1 : 0,
+        source.verifiable ? 1 : 0,
         verificationMethod,
         now,
         data.actorDisplayName,
@@ -2965,7 +2965,6 @@ interface LibrarySpecificationItemFlatRow {
   qualityCharacteristicNameSv: string | null
   requirementId: number
   requirementPackageIds: string | null
-  requiresTesting: unknown
   specificationItemId: number
   specificationItemStatusColor: string | null
   specificationItemStatusDescriptionEn: string | null
@@ -2982,6 +2981,7 @@ interface LibrarySpecificationItemFlatRow {
   typeNameEn: string | null
   typeNameSv: string | null
   uniqueId: string
+  verifiable: unknown
   versionNumber: number
 }
 
@@ -3018,7 +3018,7 @@ function mapLibrarySpecificationItemRow(
       description: row.description,
       qualityCharacteristicNameEn: row.qualityCharacteristicNameEn ?? null,
       qualityCharacteristicNameSv: row.qualityCharacteristicNameSv ?? null,
-      requiresTesting: toBool(row.requiresTesting),
+      verifiable: toBool(row.verifiable),
       priorityLevelColor: row.priorityLevelColor ?? null,
       priorityLevelIconName: row.priorityLevelIconName ?? null,
       priorityLevelId: row.priorityLevelId ?? null,
@@ -3055,7 +3055,6 @@ interface SpecificationLocalListFlatRow {
   requirementCategoryNameSv: string | null
   requirementTypeNameEn: string | null
   requirementTypeNameSv: string | null
-  requiresTesting: unknown
   specificationItemStatusColor: string | null
   specificationItemStatusDescriptionEn: string | null
   specificationItemStatusDescriptionSv: string | null
@@ -3064,6 +3063,7 @@ interface SpecificationLocalListFlatRow {
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
   uniqueId: string
+  verifiable: unknown
 }
 
 function mapSpecificationLocalRequirementListRow(
@@ -3099,7 +3099,7 @@ function mapSpecificationLocalRequirementListRow(
       description: row.description,
       qualityCharacteristicNameEn: row.qualityCharacteristicNameEn ?? null,
       qualityCharacteristicNameSv: row.qualityCharacteristicNameSv ?? null,
-      requiresTesting: toBool(row.requiresTesting),
+      verifiable: toBool(row.verifiable),
       priorityLevelColor: row.priorityLevelColor ?? null,
       priorityLevelIconName: row.priorityLevelIconName ?? null,
       priorityLevelId: row.priorityLevelId ?? null,
@@ -3150,7 +3150,7 @@ export async function listSpecificationItems(
           quality_characteristic.name_en AS qualityCharacteristicNameEn,
           quality_characteristic.name_sv AS qualityCharacteristicNameSv,
           requirement.id AS requirementId,
-          requirement_version.is_testing_required AS requiresTesting,
+          requirement_version.is_verifiable AS verifiable,
           priority_level.color AS priorityLevelColor,
           priority_level.icon_name AS priorityLevelIconName,
           requirement_version.priority_level_id AS priorityLevelId,
@@ -3224,7 +3224,7 @@ export async function listSpecificationItems(
           requirement_category.name_sv AS requirementCategoryNameSv,
           requirement_type.name_en AS requirementTypeNameEn,
           requirement_type.name_sv AS requirementTypeNameSv,
-          local_requirement.is_testing_required AS requiresTesting,
+          local_requirement.is_verifiable AS verifiable,
           priority_level.color AS priorityLevelColor,
           priority_level.icon_name AS priorityLevelIconName,
           local_requirement.priority_level_id AS priorityLevelId,

@@ -112,8 +112,8 @@ interface PreviewValues {
   priorityLevelId: number | null
   qualityCharacteristicId: number | null
   requirementPackageIds: number[]
-  requiresTesting: boolean
   typeId: number | null
+  verifiable: boolean
   verificationMethod: string | null
 }
 
@@ -2459,9 +2459,9 @@ export default function AiRequirementGenerator({
                                         ) : null}
                                       </span>
                                     ))}
-                                    {row.values.requiresTesting ? (
+                                    {row.values.verifiable ? (
                                       <span className="rounded-full bg-green-100 px-2 py-1 text-green-700 dark:bg-green-950 dark:text-green-300">
-                                        {t('detailRequiresTesting')}
+                                        {t('detailVerifiable')}
                                       </span>
                                     ) : null}
                                     {messageSummary ? (

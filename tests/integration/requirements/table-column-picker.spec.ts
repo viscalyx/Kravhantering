@@ -4,7 +4,7 @@ import {
   resolveRequirementDetailPane,
 } from './requirement-detail-test-helpers'
 
-const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v4'
+const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v5'
 
 const viewportVariants = [
   {
@@ -79,8 +79,8 @@ test.describe('Requirements table column picker', () => {
         const qualityCharacteristicCheckbox = popover.locator(
           '[data-column-picker-option="qualityCharacteristic"] input[type="checkbox"]',
         )
-        const requiresTestingCheckbox = popover.locator(
-          '[data-column-picker-option="requiresTesting"] input[type="checkbox"]',
+        const verifiableCheckbox = popover.locator(
+          '[data-column-picker-option="verifiable"] input[type="checkbox"]',
         )
         const versionCheckbox = popover.locator(
           '[data-column-picker-option="version"] input[type="checkbox"]',
@@ -91,8 +91,8 @@ test.describe('Requirements table column picker', () => {
         if (!(await qualityCharacteristicCheckbox.isChecked())) {
           await qualityCharacteristicCheckbox.check()
         }
-        if (!(await requiresTestingCheckbox.isChecked())) {
-          await requiresTestingCheckbox.check()
+        if (!(await verifiableCheckbox.isChecked())) {
+          await verifiableCheckbox.check()
         }
 
         await trigger.click()
@@ -133,31 +133,30 @@ test.describe('Requirements table column picker', () => {
 
         await trigger.click()
 
-        const requiresTestingHeaderLabel = page.locator(
-          '[data-requirement-header-label="requiresTesting"]',
+        const verifiableHeaderLabel = page.locator(
+          '[data-requirement-header-label="verifiable"]',
         )
         const versionHeaderLabel = page.locator(
           '[data-requirement-header-label="version"]',
         )
 
-        await expect(requiresTestingHeaderLabel).toBeVisible()
+        await expect(verifiableHeaderLabel).toBeVisible()
         await expect(versionHeaderLabel).toBeVisible()
 
-        const requiresTestingLabelBox =
-          await requiresTestingHeaderLabel.boundingBox()
+        const verifiableLabelBox = await verifiableHeaderLabel.boundingBox()
         const versionLabelBox = await versionHeaderLabel.boundingBox()
 
-        expect(requiresTestingLabelBox).not.toBeNull()
+        expect(verifiableLabelBox).not.toBeNull()
         expect(versionLabelBox).not.toBeNull()
 
-        if (requiresTestingLabelBox && versionLabelBox) {
-          const requiresTestingLabelCenterY =
-            requiresTestingLabelBox.y + requiresTestingLabelBox.height / 2
+        if (verifiableLabelBox && versionLabelBox) {
+          const verifiableLabelCenterY =
+            verifiableLabelBox.y + verifiableLabelBox.height / 2
           const versionLabelCenterY =
             versionLabelBox.y + versionLabelBox.height / 2
 
           expect(
-            Math.abs(requiresTestingLabelCenterY - versionLabelCenterY),
+            Math.abs(verifiableLabelCenterY - versionLabelCenterY),
           ).toBeLessThanOrEqual(2)
         }
 
@@ -192,7 +191,7 @@ test.describe('Requirements table column picker', () => {
         )
 
         expect(storedColumns).toContain('"qualityCharacteristic"')
-        expect(storedColumns).toContain('"requiresTesting"')
+        expect(storedColumns).toContain('"verifiable"')
         expect(storedColumns).toContain('"version"')
       })
 

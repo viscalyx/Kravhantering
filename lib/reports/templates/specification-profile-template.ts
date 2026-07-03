@@ -189,7 +189,7 @@ function buildProgressRow(
         item.specificationItemStatusNameSv,
         item.specificationItemStatusNameEn,
       ),
-      verifiable: formatReportBoolean(item.requiresTesting, labels),
+      verifiable: formatReportBoolean(item.verifiable, labels),
       version: String(item.versionNumber),
     },
   }

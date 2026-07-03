@@ -39,7 +39,7 @@ function createVersion(versionNumber = 2): RequirementVersionDetail {
     ownerName: null,
     publishedAt: null,
     qualityCharacteristic: null,
-    requiresTesting: true,
+    verifiable: true,
     revisionToken: '11111111-1111-4111-8111-111111111111',
     priorityLevel: null,
     status: 1,

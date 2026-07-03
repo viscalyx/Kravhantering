@@ -55,7 +55,7 @@ const listReportQuerySchema = z
     requirementPackageIds: optionalQueryArraySchema(
       positiveIntegerStringSchema,
     ),
-    requiresTesting: optionalQueryArraySchema(queryBooleanStringSchema),
+    verifiable: optionalQueryArraySchema(queryBooleanStringSchema),
     sortBy: z.enum(REQUIREMENT_SORT_FIELDS).optional(),
     sortDirection: z.enum(['asc', 'desc']).optional(),
     specificationItemStatusIds: optionalQueryArraySchema(
@@ -86,7 +86,7 @@ function filtersFromQuery(query: ListReportQuery): FilterValues {
     priorityLevelIds: query.priorityLevelIds,
     qualityCharacteristicIds: query.qualityCharacteristicIds,
     requirementPackageIds: query.requirementPackageIds,
-    requiresTesting: query.requiresTesting,
+    verifiable: query.verifiable,
     specificationItemStatusIds: query.specificationItemStatusIds,
     statuses: query.statuses,
     typeIds: query.typeIds,
@@ -142,7 +142,7 @@ function listQueryRequirementToReportData(
               },
         publishedAt: null,
         qualityCharacteristic: null,
-        requiresTesting: version.requiresTesting,
+        verifiable: version.verifiable,
         status: version.status,
         statusColor: version.statusColor,
         statusIconName: version.statusIconName,

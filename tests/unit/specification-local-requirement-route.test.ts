@@ -217,7 +217,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
         {
           body: JSON.stringify({
             description: 'New local requirement',
-            requiresTesting: true,
+            verifiable: true,
           }),
           headers: { 'Content-Type': 'application/json' },
           method: 'POST',
@@ -247,7 +247,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
       expect.objectContaining({
         description: 'New local requirement',
         normReferenceIds: [],
-        requiresTesting: true,
+        verifiable: true,
       }),
     )
   })

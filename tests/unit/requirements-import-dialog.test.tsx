@@ -187,13 +187,13 @@ describe('RequirementsImportDialog', () => {
     fireEvent.change(jsonField, { target: { value: '{}' } })
     expect(loadButton).toBeDisabled()
     expect(
-      screen.getByText('schemaVersion måste vara requirement-import.v1.'),
+      screen.getByText('schemaVersion måste vara requirement-import.v2.'),
     ).toBeInTheDocument()
 
     fireEvent.change(jsonField, {
       target: {
         value: JSON.stringify({
-          schemaVersion: 'requirement-import.v1',
+          schemaVersion: 'requirement-import.v2',
         }),
       },
     })
@@ -208,7 +208,7 @@ describe('RequirementsImportDialog', () => {
       target: {
         value: JSON.stringify({
           requirements: [{ description: 'Kravtext' }],
-          schemaVersion: 'requirement-import.v1',
+          schemaVersion: 'requirement-import.v2',
         }),
       },
     })
@@ -225,7 +225,7 @@ describe('RequirementsImportDialog', () => {
       ),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByText('schemaVersion måste vara requirement-import.v1.'),
+      screen.queryByText('schemaVersion måste vara requirement-import.v2.'),
     ).not.toBeInTheDocument()
   })
 
@@ -269,7 +269,7 @@ describe('RequirementsImportDialog', () => {
                 normReferenceIds: [],
                 qualityCharacteristicId: null,
                 requirementPackageIds: [],
-                requiresTesting: false,
+                verifiable: false,
                 priorityLevelId: null,
                 typeId: null,
                 verificationMethod: null,
@@ -296,7 +296,7 @@ describe('RequirementsImportDialog', () => {
               priorityLevelName: null,
               qualityCharacteristicName: null,
               requirementPackageNames: [],
-              requiresTesting: false,
+              verifiable: false,
               sourceIndex: 0,
               targetAreaId: 7,
               targetSpecificationId: null,
@@ -325,7 +325,7 @@ describe('RequirementsImportDialog', () => {
       target: {
         value: JSON.stringify({
           requirements: [{ description: 'Kravtext' }],
-          schemaVersion: 'requirement-import.v1',
+          schemaVersion: 'requirement-import.v2',
         }),
       },
     })
@@ -360,7 +360,7 @@ describe('RequirementsImportDialog', () => {
 
     const payload = JSON.stringify({
       requirements: [{ description: 'Kravtext' }],
-      schemaVersion: 'requirement-import.v1',
+      schemaVersion: 'requirement-import.v2',
     })
     const file = new File([payload], 'requirements.json', {
       type: 'application/json',
@@ -392,7 +392,7 @@ describe('RequirementsImportDialog', () => {
           key: 'ai-import-1',
           payload: {
             requirements: [{ description: 'Kravtext' }],
-            schemaVersion: 'requirement-import.v1',
+            schemaVersion: 'requirement-import.v2',
           },
         }}
         mode="library"
@@ -431,7 +431,7 @@ describe('RequirementsImportDialog', () => {
               priorityLevelId: null,
               qualityCharacteristicId: null,
               requirementPackageIds: [],
-              requiresTesting: false,
+              verifiable: false,
               typeId: null,
               verificationMethod: null,
             },
@@ -460,7 +460,7 @@ describe('RequirementsImportDialog', () => {
           key: 'ai-import-error',
           payload: {
             requirements: [{ description: 'Kravtext' }],
-            schemaVersion: 'requirement-import.v1',
+            schemaVersion: 'requirement-import.v2',
           },
         }}
         mode="library"
@@ -478,7 +478,7 @@ describe('RequirementsImportDialog', () => {
       JSON.stringify(
         {
           requirements: [{ description: 'Kravtext' }],
-          schemaVersion: 'requirement-import.v1',
+          schemaVersion: 'requirement-import.v2',
         },
         null,
         2,
@@ -517,7 +517,7 @@ describe('RequirementsImportDialog', () => {
               normReferenceIds: [],
               qualityCharacteristicId: null,
               requirementPackageIds: [],
-              requiresTesting: false,
+              verifiable: false,
               priorityLevelId: 4,
               typeId: null,
               verificationMethod: null,
@@ -546,7 +546,7 @@ describe('RequirementsImportDialog', () => {
       target: {
         value: JSON.stringify({
           requirements: [{ description: 'Kravtext' }],
-          schemaVersion: 'requirement-import.v1',
+          schemaVersion: 'requirement-import.v2',
         }),
       },
     })
@@ -627,7 +627,7 @@ describe('RequirementsImportDialog', () => {
               normReferenceIds: [910034],
               qualityCharacteristicId: null,
               requirementPackageIds: [3],
-              requiresTesting: false,
+              verifiable: false,
               priorityLevelId: null,
               typeId: null,
               verificationMethod: null,
@@ -651,7 +651,7 @@ describe('RequirementsImportDialog', () => {
 
     const payload = JSON.stringify({
       requirements: [{ description: 'Kravtext' }],
-      schemaVersion: 'requirement-import.v1',
+      schemaVersion: 'requirement-import.v2',
     })
     fireEvent.change(screen.getByLabelText(/Kravområde/), {
       target: { value: '7' },
@@ -758,7 +758,7 @@ describe('RequirementsImportDialog', () => {
               normReferenceIds: [],
               qualityCharacteristicId: null,
               requirementPackageIds: [],
-              requiresTesting: false,
+              verifiable: false,
               priorityLevelId: null,
               typeId: null,
               verificationMethod: null,
@@ -791,7 +791,7 @@ describe('RequirementsImportDialog', () => {
       target: {
         value: JSON.stringify({
           requirements: [{ description: 'Lokalt krav' }],
-          schemaVersion: 'requirement-import.v1',
+          schemaVersion: 'requirement-import.v2',
         }),
       },
     })
@@ -865,7 +865,7 @@ describe('RequirementsImportDialog', () => {
               normReferenceIds: [],
               qualityCharacteristicId: 11,
               requirementPackageIds: [],
-              requiresTesting: false,
+              verifiable: false,
               priorityLevelId: null,
               typeId: 2,
               verificationMethod: null,
@@ -894,7 +894,7 @@ describe('RequirementsImportDialog', () => {
       target: {
         value: JSON.stringify({
           requirements: [{ description: 'Kravtext' }],
-          schemaVersion: 'requirement-import.v1',
+          schemaVersion: 'requirement-import.v2',
         }),
       },
     })
@@ -965,7 +965,7 @@ describe('RequirementsImportDialog', () => {
               normReferenceIds: [910034],
               qualityCharacteristicId: null,
               requirementPackageIds: [3],
-              requiresTesting: false,
+              verifiable: false,
               priorityLevelId: null,
               typeId: null,
               verificationMethod: null,
@@ -994,7 +994,7 @@ describe('RequirementsImportDialog', () => {
       target: {
         value: JSON.stringify({
           requirements: [{ description: 'Kravtext' }],
-          schemaVersion: 'requirement-import.v1',
+          schemaVersion: 'requirement-import.v2',
         }),
       },
     })

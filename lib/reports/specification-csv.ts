@@ -111,10 +111,7 @@ function buildFullCsv(data: SpecificationOutputData, locale: string): string {
       item.specificationItemStatusNameSv,
       item.specificationItemStatusNameEn,
     ),
-    [labels.verifiable]: formatReportBoolean(
-      item.requiresTesting,
-      reportLabels,
-    ),
+    [labels.verifiable]: formatReportBoolean(item.verifiable, reportLabels),
     [labels.version]: String(item.versionNumber),
   }))
 

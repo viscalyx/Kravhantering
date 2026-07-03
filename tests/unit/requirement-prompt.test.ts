@@ -140,7 +140,7 @@ describe('buildRequirementImportResponseFormatSchema', () => {
     expect(requirements.items.properties.categoryId).toMatchObject({
       type: ['integer', 'null'],
     })
-    expect(requirements.items.properties.requiresTesting).toMatchObject({
+    expect(requirements.items.properties.verifiable).toMatchObject({
       type: ['boolean', 'null'],
     })
   })

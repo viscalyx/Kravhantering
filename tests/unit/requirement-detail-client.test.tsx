@@ -98,7 +98,7 @@ vi.mock('next-intl', () => ({
       'requirement.reference': 'Reference',
       'requirement.reviewVersionAvailableBanner': values =>
         `Review version v${values?.version} is available`,
-      'requirement.requiresTesting': 'Requires testing',
+      'requirement.verifiable': 'Verifiable',
       'requirement.restoreConfirm': 'Restore this version?',
       'requirement.requirementPackage': 'RequirementPackage',
       'requirement.shareLinkInline': 'Copy link (list view)',
@@ -289,7 +289,7 @@ function makeVersion(
     id: versionNumber,
     ownerName: 'Owner',
     publishedAt: null,
-    requiresTesting: false,
+    verifiable: false,
     revisionToken: `11111111-1111-4111-8111-${String(versionNumber).padStart(12, '0')}`,
     qualityCharacteristic: toLocalizedEntity(qualityCharacteristic, 30),
     priorityLevel: null,
@@ -713,7 +713,7 @@ describe('RequirementDetailClient', () => {
     const requirement = makeRequirement([
       makeVersion(3, {
         description: 'Draft description',
-        requiresTesting: false,
+        verifiable: false,
         status: 1,
         statusColor: '#3b82f6',
         statusNameEn: 'Draft',
@@ -1090,7 +1090,7 @@ describe('RequirementDetailClient', () => {
     const requirement = makeRequirement([
       makeVersion(3, {
         description: 'Draft description',
-        requiresTesting: false,
+        verifiable: false,
         status: 1,
         statusColor: '#3b82f6',
         statusNameEn: 'Draft',
@@ -1100,7 +1100,7 @@ describe('RequirementDetailClient', () => {
         category: { nameEn: 'Category', nameSv: 'Kategori' },
         description: 'Published description',
         publishedAt: '2026-03-02',
-        requiresTesting: true,
+        verifiable: true,
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
@@ -1119,7 +1119,7 @@ describe('RequirementDetailClient', () => {
       makeVersion(1, {
         archivedAt: '2026-03-01',
         description: 'Archived description',
-        requiresTesting: false,
+        verifiable: false,
         status: 4,
         statusColor: '#6b7280',
         statusNameEn: 'Archived',
@@ -1215,7 +1215,7 @@ describe('RequirementDetailClient', () => {
       makeVersion(2, {
         description: 'Published description',
         publishedAt: '2026-03-02',
-        requiresTesting: true,
+        verifiable: true,
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
@@ -1251,7 +1251,7 @@ describe('RequirementDetailClient', () => {
       makeVersion(2, {
         description: 'Published description',
         publishedAt: '2026-03-02',
-        requiresTesting: true,
+        verifiable: true,
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
@@ -1491,7 +1491,7 @@ describe('RequirementDetailClient', () => {
       makeVersion(2, {
         description: 'Draft description',
         editedAt: '2026-03-02',
-        requiresTesting: false,
+        verifiable: false,
         status: 1,
         statusColor: '#3b82f6',
         statusNameEn: 'Draft',
@@ -1557,7 +1557,7 @@ describe('RequirementDetailClient', () => {
       makeVersion(1, {
         description: 'Only draft with suggestions',
         editedAt: '2026-03-02',
-        requiresTesting: false,
+        verifiable: false,
         status: 1,
         statusColor: '#3b82f6',
         statusNameEn: 'Draft',
@@ -1624,7 +1624,7 @@ describe('RequirementDetailClient', () => {
       makeVersion(1, {
         description: 'Only draft',
         editedAt: '2026-03-02',
-        requiresTesting: false,
+        verifiable: false,
         status: 1,
         statusColor: '#3b82f6',
         statusNameEn: 'Draft',
@@ -1668,7 +1668,7 @@ describe('RequirementDetailClient', () => {
       makeVersion(1, {
         description: 'Only draft',
         editedAt: '2026-03-02',
-        requiresTesting: false,
+        verifiable: false,
         status: 1,
         statusColor: '#3b82f6',
         statusNameEn: 'Draft',
@@ -1709,7 +1709,7 @@ describe('RequirementDetailClient', () => {
       makeVersion(2, {
         description: 'Draft description',
         editedAt: '2026-03-02',
-        requiresTesting: false,
+        verifiable: false,
         status: 1,
         statusColor: '#3b82f6',
         statusNameEn: 'Draft',
@@ -1747,7 +1747,7 @@ describe('RequirementDetailClient', () => {
       makeVersion(1, {
         description: 'Only draft',
         editedAt: '2026-03-02',
-        requiresTesting: false,
+        verifiable: false,
         status: 1,
         statusColor: '#3b82f6',
         statusNameEn: 'Draft',
@@ -1786,7 +1786,7 @@ describe('RequirementDetailClient', () => {
     const requirement = makeRequirement([
       makeVersion(2, {
         description: 'Review description',
-        requiresTesting: false,
+        verifiable: false,
         status: 2,
         statusColor: '#eab308',
         statusNameEn: 'Review',

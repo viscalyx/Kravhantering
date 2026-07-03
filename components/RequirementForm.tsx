@@ -64,7 +64,7 @@ const EMPTY_FORM: RequirementFormFieldValues = {
   description: '',
   normReferenceIds: [],
   qualityCharacteristicId: '',
-  requiresTesting: false,
+  verifiable: false,
   priorityLevelId: '',
   requirementPackageIds: [],
   typeId: '',
@@ -127,8 +127,8 @@ function toRequirementPayload(
         ? options.baseVersionId
         : undefined,
     acceptanceCriteria: form.acceptanceCriteria || undefined,
-    requiresTesting: form.requiresTesting,
-    verificationMethod: form.requiresTesting
+    verifiable: form.verifiable,
+    verificationMethod: form.verifiable
       ? form.verificationMethod || undefined
       : undefined,
     normReferenceIds:

@@ -137,7 +137,7 @@ describe('requirements route', () => {
 
       const { GET } = await import('@/app/api/requirements/route')
       const req = new Request(
-        'http://localhost/api/requirements?sortBy=uniqueId&sortDirection=desc&limit=10&offset=5&areaIds=1&statuses=1&requiresTesting=true&categoryIds=2&typeIds=3&qualityCharacteristicIds=4&requirementPackageIds=5',
+        'http://localhost/api/requirements?sortBy=uniqueId&sortDirection=desc&limit=10&offset=5&areaIds=1&statuses=1&verifiable=true&categoryIds=2&typeIds=3&qualityCharacteristicIds=4&requirementPackageIds=5',
       )
       await GET(req as never)
       expect(mockQueryRequirementList).toHaveBeenCalledWith(
@@ -151,7 +151,7 @@ describe('requirements route', () => {
             categoryIds: [2],
             qualityCharacteristicIds: [4],
             requirementPackageIds: [5],
-            requiresTesting: ['true'],
+            verifiable: ['true'],
             statuses: [1],
             typeIds: [3],
           }),

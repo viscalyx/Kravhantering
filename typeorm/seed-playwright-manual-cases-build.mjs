@@ -174,7 +174,7 @@ function requirementVersion(values) {
     description:
       'PWT-MANUAL deterministic requirement version for integration testing.',
     edited_at: SEED_TS,
-    is_testing_required: 1,
+    is_verifiable: 1,
     priority_level_id: 2,
     published_at: null,
     quality_characteristic_id: 1,
@@ -510,7 +510,7 @@ function addSpecifications(seedData) {
     created_at: SEED_TS,
     description: 'PWT-MANUAL lokalt krav för kravunderlagsredigering.',
     id: PWT_MANUAL_SEED.specificationLocalRequirement.edit,
-    is_testing_required: 1,
+    is_verifiable: 1,
     needs_reference_id: PWT_MANUAL_SEED.specificationNeedsReference.edit,
     note: 'PWT-MANUAL lokal kravnotering.',
     priority_level_id: 2,

@@ -41,7 +41,7 @@ function LocalRequirementFormWrapper() {
     needsReferenceId: '7',
     normReferenceIds: [11],
     priorityLevelId: '2',
-    requiresTesting: false,
+    verifiable: false,
   }
 
   return (
@@ -68,7 +68,7 @@ function ChangingInitialValueWrapper() {
       needsReferenceId: '7',
       normReferenceIds: [11],
       priorityLevelId: '2',
-      requiresTesting: false,
+      verifiable: false,
     },
     replacement: {
       acceptanceCriteria: 'Replacement acceptance criteria',
@@ -76,7 +76,7 @@ function ChangingInitialValueWrapper() {
       needsReferenceId: '8',
       normReferenceIds: [12],
       priorityLevelId: '3',
-      requiresTesting: false,
+      verifiable: false,
     },
   }
   const initialValue = initialValues[variant]
