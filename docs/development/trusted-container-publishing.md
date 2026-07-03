@@ -191,6 +191,7 @@ sequenceDiagram
     participant Maintainer
     participant PR as Pull request
     participant Notes as Operator notes workflow
+    participant AutomationPR as Automation PR
     participant Main as docs/operations/operator-upgrade-notes.md
     participant Release as Container release workflow
     participant GitHub as GitHub Release
@@ -199,8 +200,9 @@ sequenceDiagram
     PR-->>Notes: Merged into main
     par Persist notes through PR
         Notes->>Notes: Append PR notes under Unreleased
-        Notes->>Main: Open or update automation PR
-        Main->>Main: Merge automation PR after required checks
+        Notes->>AutomationPR: Open or update automation PR
+        AutomationPR->>AutomationPR: Merge after required checks
+        AutomationPR-->>Main: Persist Unreleased notes
     and Prepare release
         Release->>Release: Compute release plan
         Release->>Release: Best-effort sync for merge commit PR

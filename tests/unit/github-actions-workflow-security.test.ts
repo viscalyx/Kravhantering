@@ -342,22 +342,26 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).toContain(
       'git diff --quiet -- "docs/operations/operator-upgrade-notes.md"',
     )
-    expect(workflow).toContain(
-      'GH_TOKEN: ${{ secrets.OPERATOR_UPGRADE_NOTES_TOKEN }}',
+    expect(workflow).toMatch(
+      /\bGH_TOKEN:\s*\$\{\{\s*secrets\.OPERATOR_UPGRADE_NOTES_TOKEN\s*\}\}/u,
     )
-    expect(workflow).toContain(
-      'GITHUB_TOKEN: ${{ secrets.OPERATOR_UPGRADE_NOTES_TOKEN }}',
+    expect(workflow).toMatch(
+      /\bGITHUB_TOKEN:\s*\$\{\{\s*secrets\.OPERATOR_UPGRADE_NOTES_TOKEN\s*\}\}/u,
     )
-    expect(workflow).not.toContain(
-      'secrets.OPERATOR_UPGRADE_NOTES_TOKEN || github.token',
-    )
-    expect(workflow).not.toContain('GITHUB_TOKEN: ${{ github.token }}')
-    expect(workflow).not.toContain('GH_TOKEN: ${{ github.token }}')
-    expect(workflow).not.toContain('OPERATOR_UPGRADE_NOTES_TOKEN_CONFIGURED')
+    const gitUserNameIndex = workflow.search(/git\s+config\s+user\.name\b/u)
+    const gitUserEmailIndex = workflow.search(/git\s+config\s+user\.email\b/u)
+    const gitRebaseIndex = workflow.search(/git\s+rebase\s+origin\/main\b/u)
+    expect(gitUserNameIndex).toBeGreaterThanOrEqual(0)
+    expect(gitUserEmailIndex).toBeGreaterThan(gitUserNameIndex)
+    expect(gitRebaseIndex).toBeGreaterThan(gitUserEmailIndex)
+    expect(workflow).not.toMatch(/\bgithub\s*\.\s*token\b/iu)
+    expect(workflow).not.toMatch(/\bOPERATOR_UPGRADE_NOTES_TOKEN_CONFIGURED\b/u)
     expect(workflow).toContain('operator-upgrade:no-notes')
     expect(workflow).toContain('ssdlc:requirements')
     expect(workflow).toContain('gh pr create --base main')
-    expect(workflow).toContain('gh pr merge "${pr_number}" --squash --auto')
+    expect(workflow).toMatch(
+      /gh\s+pr\s+merge\s+"\$\{pr_number\}"\s+--squash\s+--auto/u,
+    )
     expect(workflow).not.toContain('git push origin HEAD:main')
     expect(workflow).not.toMatch(/github\.event\.pull_request\.head/iu)
     expect(workflow).not.toMatch(/\bgithub\.head_ref\b/iu)

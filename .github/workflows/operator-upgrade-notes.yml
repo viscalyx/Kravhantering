@@ -49,6 +49,8 @@ jobs:
           NOTES_BRANCH: automation/operator-upgrade-notes
         run: |
           set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if git ls-remote --exit-code --heads origin "${NOTES_BRANCH}" >/dev/null; then
             git fetch origin "${NOTES_BRANCH}:refs/remotes/origin/${NOTES_BRANCH}"
             git switch --create "${NOTES_BRANCH}" "origin/${NOTES_BRANCH}"
@@ -78,9 +80,6 @@ jobs:
             echo "No operator upgrade notes changes to commit."
             exit 0
           fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           if ! git diff --quiet -- "docs/operations/operator-upgrade-notes.md"; then
             git add "docs/operations/operator-upgrade-notes.md"
