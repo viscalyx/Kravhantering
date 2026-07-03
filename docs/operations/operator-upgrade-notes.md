@@ -181,3 +181,7 @@ Access-review, privacy export and retention outputs now include
 requirement-package co-authors and local responsibility-person rows, while
 assignment-level AI flags no longer appear. Review local evidence templates or
 operator runbooks that expect those older fields.
+
+<!-- operator-upgrade:source pr-393 start -->
+Test upgrade note.
+<!-- operator-upgrade:source pr-393 end -->
