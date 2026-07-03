@@ -6,6 +6,7 @@ import {
   restoreAiSafetyRuleDefaults,
 } from '@/lib/dal/ai-safety-rules'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { noStore } from '@/lib/http/cache-control'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -19,11 +20,6 @@ const paramsSchema = z
     }),
   })
   .strict()
-
-function noStore<T extends NextResponse>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
 
 export const POST = secureMutationRoute({
   decorateErrorResponse: noStore,

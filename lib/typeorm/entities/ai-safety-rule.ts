@@ -49,8 +49,8 @@ export const aiSafetyRuleEntity = new EntitySchema<AiSafetyRuleEntity>({
     patternKind: { length: 64, name: 'pattern_kind', type: 'nvarchar' },
     windowChars: { name: 'window_chars', nullable: true, type: 'int' },
     sortOrder: { name: 'sort_order', type: 'int' },
-    createdAt: { name: 'created_at', type: 'datetime2' },
-    updatedAt: { name: 'updated_at', type: 'datetime2' },
+    createdAt: { name: 'created_at', precision: 3, type: 'datetime2' },
+    updatedAt: { name: 'updated_at', precision: 3, type: 'datetime2' },
   },
   checks: [
     {

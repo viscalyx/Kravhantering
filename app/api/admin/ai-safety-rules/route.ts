@@ -9,6 +9,7 @@ import {
   listAiSafetyRulesForAdmin,
 } from '@/lib/dal/ai-safety-rules'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { noStore } from '@/lib/http/cache-control'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -28,11 +29,6 @@ const createTermSchema = z
     termType: z.enum(AI_SAFETY_TERM_TYPES),
   })
   .strict()
-
-function noStore<T extends NextResponse>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
 
 async function assertAdmin(request: Request) {
   const context = await createRequestContext(request, 'rest')
@@ -69,13 +65,20 @@ export async function GET(request: Request) {
 
 export const POST = secureMutationRoute({
   bodySchema: createTermSchema,
+  decorateErrorResponse: noStore,
   policy: adminMutationPolicy(),
   handler: async ({ body, context }) => {
     try {
       const db = await getRequestSqlServerDataSource()
       const term = await createAiSafetyRuleTerm(db, body)
       await recordAdminPrivilegedActionSucceeded(context, {
-        changedFields: ['direction', 'isActive', 'termType'],
+        changedFields: ['direction', 'ruleId', 'termText', 'termType'],
+        details: {
+          direction: body.direction,
+          ruleId: body.ruleId,
+          termText: body.termText,
+          termType: body.termType,
+        },
         operation: 'create',
         resourceId: term.id,
         resourceType: 'ai_safety_rule_term',

@@ -45,6 +45,7 @@ export type AdminPrivilegedResourceType =
 
 export interface AdminPrivilegedActionDetail {
   changedFields?: readonly string[]
+  details?: Record<string, SecurityEventDetailValue | null | undefined>
   itemCount?: number
   operation: AdminPrivilegedActionOperation
   resourceId?: number | string
@@ -160,43 +161,60 @@ function delegatedActionName(detail: DelegatedPrivilegedActionDetail): string {
   return `delegated.${detail.resourceType}.${detail.operation}`
 }
 
+function adminAuditDetail(
+  context: RequestContext,
+  detail: AdminPrivilegedActionDetail,
+): Record<string, SecurityEventDetailValue> {
+  return compactDetail({
+    ...detail.details,
+    actionKind: 'admin.privileged_action',
+    actorRoles: context.actor.roles,
+    changedFields: detail.changedFields,
+    itemCount: detail.itemCount,
+    operation: detail.operation,
+    privilegeRoles: privilegedRoles(context),
+    privilegeSource: 'idp_role_claim',
+    requestSource: context.source,
+    resourceId: detail.resourceId,
+    resourceType: detail.resourceType,
+  })
+}
+
+function delegatedAuditDetail(
+  context: RequestContext,
+  detail: DelegatedPrivilegedActionDetail,
+): Record<string, SecurityEventDetailValue> {
+  return compactDetail({
+    ...detail.details,
+    actionKind: 'delegated.privileged_action',
+    actorRole: detail.actorRole,
+    actorRoles: context.actor.roles,
+    changedFields: detail.changedFields,
+    itemCount: detail.itemCount,
+    operation: detail.operation,
+    privilegeSource: 'resource_assignment',
+    requestSource: context.source,
+    resourceId: detail.resourceId,
+    resourceType: detail.resourceType,
+  })
+}
+
 export async function recordAdminPrivilegedActionSucceeded(
   context: RequestContext,
   detail: AdminPrivilegedActionDetail,
   executor?: QueryExecutor,
 ): Promise<void> {
   const auditExecutor = executor ?? (await getRequestSqlServerDataSource())
+  const auditDetail = adminAuditDetail(context, detail)
   await recordAllowedActionAuditEvent(auditExecutor, context, {
     action: adminActionName(detail),
-    details: compactDetail({
-      actionKind: 'admin.privileged_action',
-      actorRoles: context.actor.roles,
-      changedFields: detail.changedFields,
-      itemCount: detail.itemCount,
-      operation: detail.operation,
-      privilegeRoles: privilegedRoles(context),
-      privilegeSource: 'idp_role_claim',
-      requestSource: context.source,
-      resourceId: detail.resourceId,
-      resourceType: detail.resourceType,
-    }),
+    details: auditDetail,
     targetId: detail.resourceId,
     targetKind: detail.resourceType,
   })
   recordSecurityEvent({
     actor: auditActor(context),
-    detail: compactDetail({
-      actionKind: 'admin.privileged_action',
-      actorRoles: context.actor.roles,
-      changedFields: detail.changedFields,
-      itemCount: detail.itemCount,
-      operation: detail.operation,
-      privilegeRoles: privilegedRoles(context),
-      privilegeSource: 'idp_role_claim',
-      requestSource: context.source,
-      resourceId: detail.resourceId,
-      resourceType: detail.resourceType,
-    }),
+    detail: auditDetail,
     event: 'admin.privileged_action.succeeded',
     outcome: 'success',
     request: context.request ?? {
@@ -213,18 +231,7 @@ export async function recordDelegatedPrivilegedActionSucceeded(
   executor?: QueryExecutor,
 ): Promise<void> {
   const auditExecutor = executor ?? (await getRequestSqlServerDataSource())
-  const auditDetail = compactDetail({
-    actionKind: 'delegated.privileged_action',
-    actorRole: detail.actorRole,
-    actorRoles: context.actor.roles,
-    changedFields: detail.changedFields,
-    itemCount: detail.itemCount,
-    operation: detail.operation,
-    privilegeSource: 'resource_assignment',
-    requestSource: context.source,
-    resourceId: detail.resourceId,
-    resourceType: detail.resourceType,
-  })
+  const auditDetail = delegatedAuditDetail(context, detail)
   await recordAllowedActionAuditEvent(auditExecutor, context, {
     action: delegatedActionName(detail),
     details: auditDetail,

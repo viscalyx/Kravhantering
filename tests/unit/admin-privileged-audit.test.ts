@@ -109,6 +109,10 @@ describe('admin privileged action audit', () => {
     try {
       await recordAdminPrivilegedActionSucceeded(context, {
         changedFields: ['ownerHsaId'],
+        details: {
+          ruleId: 'instruction_override',
+          termText: 'Ignore previous',
+        },
         operation: 'update',
         resourceId: 7,
         resourceType: 'requirement_area',
@@ -147,6 +151,8 @@ describe('admin privileged action audit', () => {
         requestSource: 'rest',
         resourceId: 7,
         resourceType: 'requirement_area',
+        ruleId: 'instruction_override',
+        termText: 'Ignore previous',
       })
       expect(JSON.stringify(event.detail)).not.toContain('Ada Admin')
       expect(JSON.stringify(event.detail)).not.toContain('SE5560000001-admin1')

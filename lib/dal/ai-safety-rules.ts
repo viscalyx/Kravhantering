@@ -195,16 +195,12 @@ function assertTermType(termType: AiSafetyTermType): AiSafetyTermType {
 }
 
 function assertPositiveIds(ids: readonly number[]): readonly number[] {
-  const uniqueIds = [...new Set(ids.map(id => Math.trunc(id)))]
-  if (
-    uniqueIds.length === 0 ||
-    uniqueIds.some(id => !Number.isInteger(id) || id <= 0)
-  ) {
+  if (ids.length === 0 || ids.some(id => !Number.isInteger(id) || id <= 0)) {
     throw validationError('Expected positive AI safety term ids', {
       reason: 'invalid_term_ids',
     })
   }
-  return uniqueIds
+  return [...new Set(ids)]
 }
 
 function mapRuleRow(row: AiSafetyRuleRow): AiSafetyRuleAdminItem {

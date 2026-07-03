@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import { removeAiSafetyRuleTerms } from '@/lib/dal/ai-safety-rules'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { noStore } from '@/lib/http/cache-control'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -15,11 +16,6 @@ const removeTermsSchema = z
   })
   .strict()
 
-function noStore<T extends NextResponse>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
-
 export const POST = secureMutationRoute({
   bodySchema: removeTermsSchema,
   decorateErrorResponse: noStore,
@@ -28,7 +24,7 @@ export const POST = secureMutationRoute({
     const db = await getRequestSqlServerDataSource()
     const result = await removeAiSafetyRuleTerms(db, body.termIds)
     await recordAdminPrivilegedActionSucceeded(context, {
-      changedFields: ['isActive'],
+      changedFields: ['isActive', 'deleted'],
       itemCount: body.termIds.length,
       operation: 'delete',
       resourceId: 'batch',

@@ -806,10 +806,14 @@ function AiSettingsPanel() {
   ) {
     const requestToken = settingSaveTokensRef.current[key] + 1
     settingSaveTokensRef.current[key] = requestToken
-    const previousSettings = settings
+    const previousValue = settings[key]
     setSettings(current => optimistic(current))
     setSettingSaveState(key, 'saving')
     setMessage(null)
+
+    const revertFailedKey = () => {
+      setSettings(current => ({ ...current, [key]: previousValue }))
+    }
 
     try {
       const response = await apiFetch('/api/admin/ai-settings', {
@@ -819,7 +823,7 @@ function AiSettingsPanel() {
       })
       if (requestToken !== settingSaveTokensRef.current[key]) return
       if (!response.ok) {
-        setSettings(previousSettings)
+        revertFailedKey()
         setSettingSaveState(key, 'error')
         setMessage((await readResponseMessage(response)) ?? saveErrorMessage)
         return
@@ -832,7 +836,7 @@ function AiSettingsPanel() {
       setSettingSaveState(key, 'saved')
     } catch {
       if (requestToken !== settingSaveTokensRef.current[key]) return
-      setSettings(previousSettings)
+      revertFailedKey()
       setSettingSaveState(key, 'error')
       setMessage(saveErrorMessage)
     }
@@ -1072,12 +1076,17 @@ function AiSettingsPanel() {
     }
   }
 
-  async function removeSelectedSafetyTerms(rule: AiSafetyRuleAdminItem) {
+  async function removeSelectedSafetyTerms(
+    rule: AiSafetyRuleAdminItem,
+    event?: MouseEvent<HTMLButtonElement>,
+  ) {
+    const anchorEl = event?.currentTarget
     const selectedTerms = selectedTermsInRule(rule, selectedTermIds)
     if (selectedTerms.length === 0) return
     const standardCount = selectedTerms.filter(term => term.isStandard).length
     const customCount = selectedTerms.length - standardCount
     const confirmed = await confirm({
+      anchorEl,
       confirmText: ta('ai.removeSelectedTerms'),
       icon: 'caution',
       message: ta('ai.removeSelectedTermsConfirmMessage', {
@@ -1663,8 +1672,8 @@ function AiSettingsPanel() {
                                 selectedTerms.length === 0 ||
                                 ruleActionStates[rule.ruleId] === 'saving'
                               }
-                              onClick={() =>
-                                void removeSelectedSafetyTerms(rule)
+                              onClick={event =>
+                                void removeSelectedSafetyTerms(rule, event)
                               }
                               type="button"
                             >

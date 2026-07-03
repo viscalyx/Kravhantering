@@ -196,6 +196,8 @@ erDiagram
         text category
         text name_sv
         text name_en
+        text description_sv "nullable"
+        text description_en "nullable"
         text pattern_kind
         integer window_chars
         integer sort_order

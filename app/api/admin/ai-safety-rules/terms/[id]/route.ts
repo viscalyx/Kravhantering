@@ -7,6 +7,7 @@ import {
   updateAiSafetyRuleTerm,
 } from '@/lib/dal/ai-safety-rules'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { noStore } from '@/lib/http/cache-control'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -28,11 +29,6 @@ const updateTermSchema = z
   .refine(body => Object.keys(body).length > 0, {
     message: 'Expected at least one AI safety term change.',
   })
-
-function noStore<T extends NextResponse>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
 
 export const PATCH = secureMutationRoute({
   bodySchema: updateTermSchema,
