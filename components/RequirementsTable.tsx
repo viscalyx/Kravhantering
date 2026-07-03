@@ -1759,14 +1759,14 @@ export default function RequirementsTable({
     const desc = locale === 'sv' ? s.descriptionSv : s.descriptionEn
     return desc || undefined
   }
-  const requiresTestingOptions = [
+  const verifiableOptions = [
     { id: 1, label: tc('yes') },
     { id: 0, label: tc('no') },
   ]
-  const rtValue = (fv.requiresTesting ?? []).map(v => (v === 'true' ? 1 : 0))
-  const setRt = (ids: number[]) => {
+  const verifiableValue = (fv.verifiable ?? []).map(v => (v === 'true' ? 1 : 0))
+  const setVerifiable = (ids: number[]) => {
     const values = ids.map(id => (id === 1 ? 'true' : 'false'))
-    updateFilter({ requiresTesting: values.length > 0 ? values : undefined })
+    updateFilter({ verifiable: values.length > 0 ? values : undefined })
   }
   const handleRowAction = useCallback(
     (id: number) => {
@@ -2088,19 +2088,18 @@ export default function RequirementsTable({
             value={fv.statuses ?? []}
           />
         )
-      case 'requiresTesting':
+      case 'verifiable':
         return (
           <MultiSelectFilterPopover
-            activeCount={rtValue.length}
+            activeCount={verifiableValue.length}
             developerModeValue={developerModeValue}
             getLabel={option =>
-              requiresTestingOptions.find(item => item.id === option.id)
-                ?.label ?? ''
+              verifiableOptions.find(item => item.id === option.id)?.label ?? ''
             }
-            label={t('requiresTesting')}
-            onChange={setRt}
-            options={requiresTestingOptions}
-            value={rtValue}
+            label={t('verifiable')}
+            onChange={setVerifiable}
+            options={verifiableOptions}
+            value={verifiableValue}
           />
         )
       case 'needsReference':
@@ -2249,16 +2248,17 @@ export default function RequirementsTable({
             values={fv.statuses ?? []}
           />
         )
-      case 'requiresTesting':
+      case 'verifiable':
         return (
           <FilterChips
             developerModeContext={developerModeContext}
             getLabel={id =>
-              requiresTestingOptions.find(option => option.id === id)?.label ??
-              ''
+              verifiableOptions.find(option => option.id === id)?.label ?? ''
             }
-            onRemove={id => setRt(rtValue.filter(value => value !== id))}
-            values={rtValue}
+            onRemove={id =>
+              setVerifiable(verifiableValue.filter(value => value !== id))
+            }
+            values={verifiableValue}
           />
         )
       case 'needsReference':
@@ -2505,14 +2505,14 @@ export default function RequirementsTable({
             </span>
           </td>
         )
-      case 'requiresTesting':
+      case 'verifiable':
         return (
           <td
             className={`py-2 px-2 text-center ${archivedContentClass} ${dividerClass}`}
           >
-            {row.version?.requiresTesting && (
+            {row.version?.verifiable && (
               <SearchCheck
-                aria-label={t('requiresTesting')}
+                aria-label={t('verifiable')}
                 className="inline h-4 w-4 text-primary-700 dark:text-primary-300"
               />
             )}

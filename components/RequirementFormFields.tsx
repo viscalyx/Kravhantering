@@ -31,8 +31,8 @@ export interface RequirementFormFieldValues {
   priorityLevelId: string
   qualityCharacteristicId: string
   requirementPackageIds: number[]
-  requiresTesting: boolean
   typeId: string
+  verifiable: boolean
   verificationMethod: string
 }
 
@@ -202,7 +202,7 @@ export default function RequirementFormFields({
     value: string | boolean,
   ) => {
     const next = { ...values, [key]: value }
-    if (key === 'requiresTesting' && !value) {
+    if (key === 'verifiable' && !value) {
       next.verificationMethod = ''
     }
     if (key === 'typeId') {
@@ -517,18 +517,18 @@ export default function RequirementFormFields({
       <div className="flex items-center gap-2 text-sm">
         <label className="flex items-center gap-2">
           <input
-            checked={values.requiresTesting}
+            checked={values.verifiable}
             className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-            onChange={e => handleChange('requiresTesting', e.target.checked)}
+            onChange={e => handleChange('verifiable', e.target.checked)}
             type="checkbox"
           />
-          {t('requiresTesting')}
+          {t('verifiable')}
         </label>
-        {helpButton(fid('requiresTesting'), t('requiresTesting'))}
+        {helpButton(fid('verifiable'), t('verifiable'))}
       </div>
-      {helpPanel('requiresTestingHelp', fid('requiresTesting'))}
+      {helpPanel('verifiableHelp', fid('verifiable'))}
 
-      {values.requiresTesting && (
+      {values.verifiable && (
         <div>
           <div className="flex items-center gap-1.5 mb-1">
             <label

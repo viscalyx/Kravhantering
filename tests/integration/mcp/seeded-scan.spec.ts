@@ -494,7 +494,7 @@ test.describe('MCP seeded HTTP security gate', () => {
             areaId,
             createdBy: 'mcp-seeded-scan',
             description: `Disposable MCP requirement ${Date.now()}`,
-            requiresTesting: false,
+            verifiable: false,
           },
           responseFormat: 'json',
         },

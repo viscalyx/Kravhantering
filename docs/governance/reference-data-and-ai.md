@@ -270,7 +270,7 @@ Sources: `lib/requirements/import-schema.ts`,
 `app/api/requirements/import/ai-prompt`.
 
 Requirement import publishes a strict shared JSON Schema whose top-level
-`schemaVersion` is `requirement-import.v1`. The version applies to the whole
+`schemaVersion` is `requirement-import.v2`. The version applies to the whole
 import file, including requirement candidates and support data such as
 `proposedNormReferences`. The same file format is used for kravbiblioteksimport
 and kravunderlagsimport; destination context is selected in the UI/API outside
@@ -339,7 +339,7 @@ Minimal valid import JSON:
 
 ```json
 {
-  "schemaVersion": "requirement-import.v1",
+  "schemaVersion": "requirement-import.v2",
   "requirements": [
     {
       "description": "Systemet ska logga säkerhetsrelevanta händelser."
@@ -352,7 +352,7 @@ Richer import JSON with optional metadata and proposed norm references:
 
 ```json
 {
-  "schemaVersion": "requirement-import.v1",
+  "schemaVersion": "requirement-import.v2",
   "proposedNormReferences": [
     {
       "key": "gdpr-article-32",
@@ -375,7 +375,7 @@ Richer import JSON with optional metadata and proposed norm references:
       "requirementPackageNames": ["Integration med andra system"],
       "normReferenceIds": ["SFS 2018:218"],
       "proposedNormReferenceKeys": ["gdpr-article-32"],
-      "requiresTesting": true,
+      "verifiable": true,
       "verificationMethod": "Verifieras med behörighetstest."
     },
     {
@@ -384,7 +384,7 @@ Richer import JSON with optional metadata and proposed norm references:
       "typeId": 1,
       "qualityCharacteristicId": 2,
       "requirementPackageIds": [3],
-      "requiresTesting": false
+      "verifiable": false
     }
   ]
 }

@@ -36,7 +36,6 @@ export interface SpecificationOutputItem {
   qualityCharacteristicNameEn: string | null
   qualityCharacteristicNameSv: string | null
   requirementPackageNames: string[]
-  requiresTesting: boolean
   specificationItemStatusId: number | null
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
@@ -46,6 +45,7 @@ export interface SpecificationOutputItem {
   typeNameEn: string | null
   typeNameSv: string | null
   uniqueId: string
+  verifiable: boolean
   versionNumber: number
 }
 
@@ -270,7 +270,7 @@ function mapLibraryItem(row: Row): SpecificationOutputItem {
     qualityCharacteristicNameEn: toStr(row.qualityCharacteristicNameEn),
     qualityCharacteristicNameSv: toStr(row.qualityCharacteristicNameSv),
     requirementPackageNames: [],
-    requiresTesting: toBool(row.requiresTesting),
+    verifiable: toBool(row.verifiable),
     priorityLevelNameEn: toStr(row.priorityLevelNameEn),
     priorityLevelNameSv: toStr(row.priorityLevelNameSv),
     specificationItemStatusId: toNum(row.specificationItemStatusId),
@@ -302,7 +302,7 @@ function mapLocalItem(row: Row): SpecificationOutputItem {
     qualityCharacteristicNameEn: toStr(row.qualityCharacteristicNameEn),
     qualityCharacteristicNameSv: toStr(row.qualityCharacteristicNameSv),
     requirementPackageNames: [],
-    requiresTesting: toBool(row.requiresTesting),
+    verifiable: toBool(row.verifiable),
     priorityLevelNameEn: toStr(row.priorityLevelNameEn),
     priorityLevelNameSv: toStr(row.priorityLevelNameSv),
     specificationItemStatusId: toNum(row.specificationItemStatusId),
@@ -332,7 +332,7 @@ export async function collectSpecificationOutputData(
           requirement_area.name AS areaName,
           requirement_version.version_number AS versionNumber,
           requirement_version.description AS description,
-          requirement_version.is_testing_required AS requiresTesting,
+          requirement_version.is_verifiable AS verifiable,
           requirement_status.name_en AS statusNameEn,
           requirement_status.name_sv AS statusNameSv,
           requirement_category.name_en AS categoryNameEn,
@@ -380,7 +380,7 @@ export async function collectSpecificationOutputData(
           local_requirement.id AS itemId,
           local_requirement.unique_id AS uniqueId,
           local_requirement.description AS description,
-          local_requirement.is_testing_required AS requiresTesting,
+          local_requirement.is_verifiable AS verifiable,
           requirement_category.name_en AS categoryNameEn,
           requirement_category.name_sv AS categoryNameSv,
           requirement_type.name_en AS typeNameEn,

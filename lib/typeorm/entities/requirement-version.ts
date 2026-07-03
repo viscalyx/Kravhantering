@@ -17,7 +17,7 @@ export interface RequirementVersionEntity {
   editedAt: Date | null
   hasSpecificationItemHistory: boolean
   id: number
-  isTestingRequired: boolean
+  isVerifiable: boolean
   priorityLevel: PriorityLevelEntity | null
   publishedAt: Date | null
   qualityCharacteristic: QualityCharacteristicEntity | null
@@ -55,8 +55,8 @@ export const requirementVersionEntity =
         length: 'MAX',
         nullable: true,
       },
-      isTestingRequired: {
-        name: 'is_testing_required',
+      isVerifiable: {
+        name: 'is_verifiable',
         type: 'bit',
         default: false,
       },

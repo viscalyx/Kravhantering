@@ -578,8 +578,8 @@ function PdfVersionSummary({
           />
         )}
         <PdfMetadataItem
-          label={labels.columns.requiresTesting}
-          value={formatReportBoolean(version.requiresTesting, labels)}
+          label={labels.columns.verifiable}
+          value={formatReportBoolean(version.verifiable, labels)}
         />
         {createdBy && (
           <PdfMetadataItem label={createdByLabel} value={createdBy} />

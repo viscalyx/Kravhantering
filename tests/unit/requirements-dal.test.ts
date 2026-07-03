@@ -151,7 +151,7 @@ describe('requirements DAL (SQL Server path)', () => {
         versionNumber: 2,
         description: 'desc-v2',
         status: 3,
-        requiresTesting: 1,
+        verifiable: 1,
         versionCreatedAt: new Date('2026-04-20T08:30:00.000Z'),
         maxVersion: 2,
         requirementPackagesJson: JSON.stringify([
@@ -277,7 +277,7 @@ describe('requirements DAL (SQL Server path)', () => {
           qualityCharacteristicId: 6,
           priorityLevelId: 1,
           statusId: 3,
-          requiresTesting: 1,
+          verifiable: 1,
           verificationMethod: 'inspection',
           createdAt: new Date('2026-04-20T08:30:00.000Z'),
           editedAt: null,
@@ -361,7 +361,7 @@ describe('requirements DAL (SQL Server path)', () => {
     expect(version?.id).toBe(21)
     expect(version?.revisionToken).toBe('11111111-1111-4111-8111-111111111111')
     expect(version?.versionNumber).toBe(2)
-    expect(version?.requiresTesting).toBe(true)
+    expect(version?.verifiable).toBe(true)
     expect(version?.status).toBe(3)
     expect(version?.statusNameEn).toBe('Published')
     expect(version?.statusNameSv).toBe('Publicerad')
@@ -633,7 +633,7 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementCategoryId: null,
           requirementId: 7,
           requirementTypeId: null,
-          requiresTesting: 0,
+          verifiable: 0,
           revisionToken: '22222222-2222-4222-8222-222222222222',
           priorityLevelId: null,
           statusId: 1,
@@ -674,7 +674,7 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementCategoryId: null,
           requirementId: 7,
           requirementTypeId: null,
-          requiresTesting: 0,
+          verifiable: 0,
           priorityLevelId: null,
           verificationMethod: null,
         },
@@ -698,7 +698,7 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementCategoryId: null,
           requirementId: 7,
           requirementTypeId: null,
-          requiresTesting: 0,
+          verifiable: 0,
           revisionToken: '33333333-3333-4333-8333-333333333333',
           priorityLevelId: null,
           statusId: 1,
@@ -731,7 +731,7 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementCategoryId: null,
           requirementId: 7,
           requirementTypeId: null,
-          requiresTesting: 0,
+          verifiable: 0,
           priorityLevelId: null,
           verificationMethod: null,
         },
@@ -755,7 +755,7 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementCategoryId: null,
           requirementId: 7,
           requirementTypeId: null,
-          requiresTesting: 0,
+          verifiable: 0,
           revisionToken: '33333333-3333-4333-8333-333333333333',
           priorityLevelId: null,
           statusId: 1,
@@ -1043,7 +1043,7 @@ describe('archiving helpers (atomicity & strict-target rule)', () => {
             archiveInitiatedAt: null,
             description: 'review version',
             id: 22,
-            requiresTesting: 0,
+            verifiable: 0,
             revisionToken: '11111111-1111-4111-8111-111111111111',
             statusId: 2,
           },

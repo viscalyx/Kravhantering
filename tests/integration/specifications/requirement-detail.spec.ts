@@ -1296,7 +1296,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
         priorityLevelSortOrder: null,
         qualityCharacteristicNameEn: null,
         qualityCharacteristicNameSv: null,
-        requiresTesting: false,
+        verifiable: false,
         status: 3,
         statusColor: '#16a34a',
         statusIconName: 'check-circle',
@@ -1471,7 +1471,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
         priorityLevelSortOrder: null,
         qualityCharacteristicNameEn: null,
         qualityCharacteristicNameSv: null,
-        requiresTesting: true,
+        verifiable: true,
         status: 3,
         statusColor: '#16a34a',
         statusIconName: 'check-circle',
@@ -1520,7 +1520,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
             requirementCategory: null,
             requirementPackages: [],
             requirementType: null,
-            requiresTesting: true,
+            verifiable: true,
             specificationId: 920004,
             specificationItemStatusColor: '#2563eb',
             specificationItemStatusIconName: 'check-circle',
@@ -1609,7 +1609,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
         expect.objectContaining({
           acceptanceCriteria: 'Verifiera i UI.',
           description: 'PWT SPEC-07 unikt krav.',
-          requiresTesting: true,
+          verifiable: true,
           verificationMethod: 'Playwright-test.',
         }),
       ])
@@ -2104,11 +2104,11 @@ test.describe('Requirements specification deterministic manual cases', () => {
           description: importedDescription,
           proposedNormReferenceKeys: ['LOCAL-NORM-1'],
           requirementPackageNames: ['Ignorerat kravpaket'],
-          requiresTesting: true,
+          verifiable: true,
           typeId: 1,
         },
       ],
-      schemaVersion: 'requirement-import.v1',
+      schemaVersion: 'requirement-import.v2',
     }
     const previewRequests: unknown[] = []
     const executeRequests: unknown[] = []
@@ -2144,7 +2144,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
                     field: 'verificationMethod',
                     level: 'error',
                     message:
-                      'Verification method is required when requiresTesting is true.',
+                      'Verification method is required when verifiable is true.',
                   },
                 ],
                 infos: [
@@ -2175,7 +2175,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
                   priorityLevelId: null,
                   qualityCharacteristicId: null,
                   requirementPackageIds: [],
-                  requiresTesting: true,
+                  verifiable: true,
                   typeId: 1,
                   verificationMethod: null,
                 },
@@ -2208,7 +2208,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
                 priorityLevelName: null,
                 qualityCharacteristicName: null,
                 requirementPackageNames: [],
-                requiresTesting: true,
+                verifiable: true,
                 sourceIndex: 0,
                 targetAreaId: null,
                 targetSpecificationId: 920001,

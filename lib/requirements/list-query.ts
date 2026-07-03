@@ -155,7 +155,7 @@ export async function queryRequirementList(
     ),
     requirementIds: toPositiveIntegerIds(input.requirementIds),
     requirementPackageIds: toPositiveIntegerIds(filters.requirementPackageIds),
-    requiresTesting: toBooleans(filters.requiresTesting),
+    verifiable: toBooleans(filters.verifiable),
     priorityLevelIds: toPositiveIntegerIds(filters.priorityLevelIds),
     sortBy: sort.by,
     sortDirection: sort.direction,

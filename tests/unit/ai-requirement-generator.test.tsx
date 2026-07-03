@@ -179,11 +179,11 @@ function generatedImportPayload(description: string) {
       {
         description,
         priorityLevelId: null,
-        requiresTesting: true,
+        verifiable: true,
         typeId: 1,
       },
     ],
-    schemaVersion: 'requirement-import.v1',
+    schemaVersion: 'requirement-import.v2',
   }
 }
 
@@ -237,7 +237,7 @@ function previewResponse(
             priorityLevelId: overrides.priorityLevelId ?? null,
             qualityCharacteristicId: overrides.qualityCharacteristicId ?? null,
             requirementPackageIds: [],
-            requiresTesting: true,
+            verifiable: true,
             typeId: overrides.typeId ?? 1,
             verificationMethod: null,
           },
@@ -1461,7 +1461,7 @@ describe('AiRequirementGenerator', () => {
             description: 'Generated security requirement',
           }),
         ],
-        schemaVersion: 'requirement-import.v1',
+        schemaVersion: 'requirement-import.v2',
       }),
       {
         areaId: 1,

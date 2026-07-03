@@ -364,7 +364,7 @@ describe('RequirementForm', () => {
         (c[1] as RequestInit)?.method === 'POST',
     )
     const body = JSON.parse((postCall?.[1] as RequestInit).body as string)
-    expect(body).toHaveProperty('requiresTesting', false)
+    expect(body).toHaveProperty('verifiable', false)
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith('/requirements?selected=TST0042')
@@ -784,17 +784,17 @@ describe('RequirementForm', () => {
     )
   })
 
-  it('toggles requiresTesting checkbox', async () => {
+  it('toggles verifiable checkbox', async () => {
     render(<RequirementForm mode="create" />)
     await waitFor(() => {
       expect(
         screen.getByRole('checkbox', {
-          name: /requirement\.requiresTesting/,
+          name: /requirement\.verifiable/,
         }),
       ).toBeInTheDocument()
     })
     const checkbox = screen.getByRole('checkbox', {
-      name: /requirement\.requiresTesting/,
+      name: /requirement\.verifiable/,
     })
     fireEvent.click(checkbox)
     expect(checkbox).toBeChecked()

@@ -2143,7 +2143,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         acceptanceCriteria: 'Copied acceptance',
         description: 'Copied unique requirement',
         normReferenceIds: [normReference.id],
-        requiresTesting: true,
+        verifiable: true,
         verificationMethod: 'Inspection',
       },
     )
@@ -2211,7 +2211,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
              version.description,
              version.acceptance_criteria AS acceptanceCriteria,
              version.requirement_status_id AS statusId,
-             CAST(version.is_testing_required AS int) AS requiresTesting,
+             CAST(version.is_verifiable AS int) AS verifiable,
              version.verification_method AS verificationMethod,
              version.created_by AS createdBy,
              version.created_by_hsa_id AS createdByHsaId
@@ -2227,7 +2227,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
             createdByHsaId: string
             description: string
             requirementAreaId: number
-            requiresTesting: number
+            verifiable: number
             statusId: number
             uniqueId: string
             verificationMethod: string
@@ -2266,7 +2266,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         createdByHsaId: 'SE5560000001-functional1',
         description: 'Copied unique requirement',
         requirementAreaId: targetArea.id,
-        requiresTesting: 1,
+        verifiable: 1,
         statusId: STATUS_DRAFT,
         uniqueId: 'TGT0001',
         verificationMethod: 'Inspection',

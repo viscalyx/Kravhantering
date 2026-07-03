@@ -383,8 +383,8 @@ function renderRequirementHtml(
     locale === 'sv'
       ? (selectedVersion?.statusNameSv as string | undefined)
       : (selectedVersion?.statusNameEn as string | undefined)
-  const requiresTestingLabel = detailLabel('requiresTesting')
-  const requiresTestingOffLabel = detailLabel('requiresTestingOff')
+  const verifiableLabel = detailLabel('verifiable')
+  const verifiableOffLabel = detailLabel('verifiableOff')
   const noneLabel = getMessageString(localizedMessages, [
     'common',
     'noneAvailable',
@@ -460,7 +460,7 @@ function renderRequirementHtml(
     '      <div class="meta">',
     `        <span class="pill">${escapeHtml(statusLabel ?? 'Unknown')}</span>`,
     `        <span class="pill">${escapeHtml(String(detail.area?.name ?? 'No area'))}</span>`,
-    `        <span class="pill">${selectedVersion?.requiresTesting ? escapeHtml(requiresTestingLabel) : escapeHtml(requiresTestingOffLabel)}</span>`,
+    `        <span class="pill">${selectedVersion?.verifiable ? escapeHtml(verifiableLabel) : escapeHtml(verifiableOffLabel)}</span>`,
     selectedVersion?.verificationMethod
       ? `        <span class="pill">${escapeHtml(selectedVersion.verificationMethod)}</span>`
       : '',
@@ -563,11 +563,11 @@ function createQueryCatalogSchema() {
         .describe(
           'Quality characteristic IDs. Applies only to catalog "requirements".',
         ),
-      requiresTesting: z
+      verifiable: z
         .array(z.boolean())
         .optional()
         .describe(
-          'Filter by testing requirement. Applies only to catalog "requirements".',
+          'Filter by verifiability. Applies only to catalog "requirements".',
         ),
       responseFormat: ResponseFormatSchema,
       priorityLevelIds: z
@@ -726,16 +726,18 @@ const RequirementMutationSchema = z
       .max(4000)
       .optional()
       .describe('Requirement description text. Required for create and edit.'),
-    requiresTesting: z
+    verifiable: z
       .boolean()
       .optional()
-      .describe('Whether the requirement must be verified by test.'),
+      .describe(
+        'Whether the requirement version has objective conditions that can be checked.',
+      ),
     verificationMethod: z
       .string()
       .max(4000)
       .optional()
       .describe(
-        'How the requirement should be verified when requiresTesting is true.',
+        'How the requirement should be verified when verifiable is true.',
       ),
     requirementPackageIds: z
       .array(z.number().int().positive())
@@ -784,7 +786,7 @@ function createManageRequirementSchema() {
           'Operation to perform. Create has no existing requirement ID; all other operations require id or uniqueId.',
         ),
       requirement: RequirementMutationSchema.optional().describe(
-        'Requirement fields for create/edit. For create, pass at least requirement.areaId and requirement.description; optional fields include acceptanceCriteria, typeId, categoryId, qualityCharacteristicId, priorityLevelId, requiresTesting, verificationMethod, requirementPackageIds, normReferenceIds, and createdBy. For edit, first call requirements_get_requirement with view: "history" and copy requirement.versions[0].id to baseVersionId plus requirement.versions[0].revisionToken to baseRevisionToken.',
+        'Requirement fields for create/edit. For create, pass at least requirement.areaId and requirement.description; optional fields include acceptanceCriteria, typeId, categoryId, qualityCharacteristicId, priorityLevelId, verifiable, verificationMethod, requirementPackageIds, normReferenceIds, and createdBy. For edit, first call requirements_get_requirement with view: "history" and copy requirement.versions[0].id to baseVersionId plus requirement.versions[0].revisionToken to baseRevisionToken.',
       ),
       responseFormat: ResponseFormatSchema,
       uniqueId: z
@@ -1001,7 +1003,7 @@ function toCatalogInput(
     locale: toResponseLocale(input.locale),
     normReferenceIds: input.normReferenceIds,
     offset: input.offset,
-    requiresTesting: input.requiresTesting,
+    verifiable: input.verifiable,
     responseFormat: toResponseFormat(input.responseFormat),
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,

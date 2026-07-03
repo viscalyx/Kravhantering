@@ -64,7 +64,7 @@ describe('admin requirement columns route', () => {
         defaultVisible: false,
         sortOrder: 6,
       },
-      { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
+      { columnId: 'verifiable', defaultVisible: false, sortOrder: 7 },
       { columnId: 'version', defaultVisible: false, sortOrder: 8 },
     ])
 
@@ -93,7 +93,7 @@ describe('admin requirement columns route', () => {
       'type',
       'qualityCharacteristic',
       'priorityLevel',
-      'requiresTesting',
+      'verifiable',
       'version',
       'needsReference',
       'specificationItemStatus',
@@ -238,7 +238,7 @@ describe('admin requirement columns route', () => {
         sortOrder: 5,
       },
       { columnId: 'status', defaultVisible: true, sortOrder: 6 },
-      { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
+      { columnId: 'verifiable', defaultVisible: false, sortOrder: 7 },
       { columnId: 'version', defaultVisible: false, sortOrder: 8 },
     ])
     routeState.updateRequirementListColumnDefaults.mockImplementationOnce(
@@ -275,7 +275,7 @@ describe('admin requirement columns route', () => {
       'qualityCharacteristic',
       'priorityLevel',
       'status',
-      'requiresTesting',
+      'verifiable',
       'version',
       'needsReference',
       'specificationItemStatus',
@@ -317,7 +317,7 @@ describe('admin requirement columns route', () => {
             },
             { columnId: 'status', defaultVisible: true, sortOrder: 6 },
             {
-              columnId: 'requiresTesting',
+              columnId: 'verifiable',
               defaultVisible: false,
               sortOrder: 7,
             },

@@ -15,11 +15,11 @@ const generatedPayload = {
     {
       description: generatedDescription,
       priorityLevelId: null,
-      requiresTesting: true,
+      verifiable: true,
       typeId: 1,
     },
   ],
-  schemaVersion: 'requirement-import.v1',
+  schemaVersion: 'requirement-import.v2',
 }
 
 interface AiGenerationAvailability {
@@ -92,7 +92,7 @@ function previewBody(token: string) {
           priorityLevelId: null,
           qualityCharacteristicId: null,
           requirementPackageIds: [],
-          requiresTesting: true,
+          verifiable: true,
           typeId: 1,
           verificationMethod: null,
         },

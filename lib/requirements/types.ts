@@ -53,7 +53,6 @@ export interface RequirementVersionDetail {
   priorityLevel: PriorityLevelSummary | null
   publishedAt: string | null
   qualityCharacteristic: RequirementLocalizedEntity | null
-  requiresTesting: boolean
   revisionToken: string
   status: number
   statusColor: string | null
@@ -61,6 +60,7 @@ export interface RequirementVersionDetail {
   statusNameEn: string | null
   statusNameSv: string | null
   type: RequirementLocalizedEntity | null
+  verifiable: boolean
   verificationMethod: string | null
   versionNormReferences: RequirementVersionNormReference[]
   versionNumber: number

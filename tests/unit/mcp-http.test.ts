@@ -70,7 +70,7 @@ function createFakeService(
   normReferences: Array<{
     normReference?: { name?: string; reference?: string; uri?: string | null }
   }> = [],
-  requiresTesting = true,
+  verifiable = true,
 ) {
   return {
     addToSpecification: vi.fn().mockResolvedValue({
@@ -100,7 +100,7 @@ function createFakeService(
             id: 10,
             revisionToken: '11111111-1111-4111-8111-111111111111',
             versionNormReferences: normReferences,
-            requiresTesting,
+            verifiable,
             statusNameEn: 'Draft',
             statusNameSv: 'Utkast',
             type: {
@@ -132,7 +132,7 @@ function createFakeService(
         id: 10,
         revisionToken: '11111111-1111-4111-8111-111111111111',
         versionNormReferences: normReferences,
-        requiresTesting,
+        verifiable,
         statusNameEn: 'Draft',
         statusNameSv: 'Utkast',
         type: {

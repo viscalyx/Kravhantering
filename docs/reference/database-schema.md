@@ -251,7 +251,7 @@ erDiagram
         integer quality_characteristic_id FK
         integer priority_level_id FK
         integer requirement_status_id FK
-        integer is_testing_required "boolean"
+        integer is_verifiable "boolean"
         text verification_method
         text created_at
         text edited_at
@@ -445,7 +445,7 @@ erDiagram
         integer requirement_type_id FK
         integer quality_characteristic_id FK
         integer priority_level_id FK
-        integer is_testing_required
+        integer is_verifiable
         text verification_method
         integer needs_reference_id FK
         integer specification_item_status_id FK
@@ -1673,8 +1673,8 @@ precondition.
 | `quality_characteristic_id` | integer FK → `quality_characteristics.id` | ISO 25010 quality characteristic (nullable) |
 | `priority_level_id` | integer FK → `priority_levels.id` | Priority classification (nullable) |
 | `requirement_status_id` | integer FK → `requirement_statuses.id` | Current requirement version status (1=Draft, 2=Review, 3=Published, 4=Archived). The UI may render a derived label — see [UI status labels](../governance/lifecycle-workflow.md#ui-status-labels). |
-| `is_testing_required` | boolean (integer, default false) | Whether the requirement must be verified by test |
-| `verification_method` | text | How to verify the requirement (nullable; only meaningful when `is_testing_required` is true) |
+| `is_verifiable` | boolean (integer, default false) | Whether the requirement version has objective conditions that can be checked |
+| `verification_method` | text | Verification method used when `is_verifiable` is true |
 | `created_at` | text (ISO 8601) | When this version was created |
 | `edited_at` | text (ISO 8601) | Last content edit timestamp (nullable) |
 | `published_at` | text (ISO 8601) | When status changed to Published (nullable) |
@@ -1793,8 +1793,8 @@ version/review/publication lifecycle.
 | `requirement_type_id` | integer FK → `requirement_types.id` | Type classification (nullable) |
 | `quality_characteristic_id` | integer FK → `quality_characteristics.id` | Quality-characteristic classification (nullable) |
 | `priority_level_id` | integer FK → `priority_levels.id` | Priority classification (nullable) |
-| `is_testing_required` | integer NOT NULL DEFAULT 0 | Whether the requirement is marked as verifiable |
-| `verification_method` | text | Verification method |
+| `is_verifiable` | integer NOT NULL DEFAULT 0 | Whether the local requirement has objective conditions that can be checked |
+| `verification_method` | text | Verification method used when `is_verifiable` is true |
 | `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional specification-scoped needs reference |
 | `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Required usage status, defaults to Included (ID 1) |
 | `note` | text | Optional specification-scoped note |

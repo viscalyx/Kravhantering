@@ -18,7 +18,7 @@ describe('requirement list SQL builders', () => {
       offset: 50,
       qualityCharacteristicIds: [6],
       requirementPackageIds: [8],
-      requiresTesting: [true, false],
+      verifiable: [true, false],
       priorityLevelIds: [3],
       sortBy: 'status',
       sortDirection: 'desc',
@@ -63,7 +63,7 @@ describe('requirement list SQL builders', () => {
     expect(query.sqlText).toContain('version.quality_characteristic_id IN (@7)')
     expect(query.sqlText).toContain('version.priority_level_id IN (@8)')
     expect(query.sqlText).toContain(
-      'CAST(version.is_testing_required AS int) IN (@9, @10)',
+      'CAST(version.is_verifiable AS int) IN (@9, @10)',
     )
     expect(query.sqlText).toContain('vnr.norm_reference_id IN (@11, @12)')
     expect(query.sqlText).toContain('vus.requirement_package_id IN (@13)')

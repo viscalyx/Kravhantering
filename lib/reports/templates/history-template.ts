@@ -37,7 +37,7 @@ function toVersionSummary(
     versionNumber: version.versionNumber,
     description: version.description,
     acceptanceCriteria: version.acceptanceCriteria,
-    requiresTesting: version.requiresTesting,
+    verifiable: version.verifiable,
     verificationMethod: version.verificationMethod,
     category: version.category
       ? {

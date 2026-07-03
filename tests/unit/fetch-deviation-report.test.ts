@@ -29,7 +29,7 @@ describe('fetchDeviationForReport', () => {
                 description: 'Deviation target',
                 id: 9,
                 qualityCharacteristic: null,
-                requiresTesting: false,
+                verifiable: false,
                 priorityLevel: null,
                 status: 3,
                 statusColor: null,

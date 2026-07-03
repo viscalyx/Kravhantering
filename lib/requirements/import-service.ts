@@ -73,7 +73,7 @@ export interface RequirementsImportPreviewRow {
     normReferenceIds: number[]
     qualityCharacteristicId: number | null
     requirementPackageIds: number[]
-    requiresTesting: boolean
+    verifiable: boolean
     priorityLevelId: number | null
     typeId: number | null
     verificationMethod: string | null
@@ -123,12 +123,12 @@ export interface RequirementsImportReceiptRow {
   qualityCharacteristicName: string | null
   requirementPackageIds: number[]
   requirementPackageNames: string[]
-  requiresTesting: boolean
   sourceIndex: number
   targetAreaId: number | null
   targetSpecificationId: number | null
   typeId: number | null
   typeName: string | null
+  verifiable: boolean
   verificationMethod: string | null
 }
 
@@ -657,12 +657,12 @@ function previewRows(args: {
     const infos: ImportMessage[] = []
     const description = row.description.trim()
     const acceptanceCriteria = compactText(row.acceptanceCriteria)
-    const explicitRequiresTesting = row.requiresTesting
+    const explicitVerifiable = row.verifiable
     const verificationMethod = compactText(row.verificationMethod)
-    const requiresTesting =
-      explicitRequiresTesting == null
+    const verifiable =
+      explicitVerifiable == null
         ? verificationMethod != null
-        : explicitRequiresTesting
+        : explicitVerifiable
 
     const typeId = resolveScalarReference({
       field: 'typeId',
@@ -735,7 +735,7 @@ function previewRows(args: {
         warnings,
       }),
       requirementPackageIds,
-      requiresTesting,
+      verifiable,
       priorityLevelId: resolveScalarReference({
         field: 'priorityLevelId',
         id: row.priorityLevelId,
@@ -746,7 +746,7 @@ function previewRows(args: {
         warnings,
       }),
       typeId,
-      verificationMethod: requiresTesting ? verificationMethod : null,
+      verificationMethod: verifiable ? verificationMethod : null,
     }
     const labels = {
       category: receiptName(
@@ -767,11 +767,11 @@ function previewRows(args: {
       type: receiptName(args.referenceData.types, values.typeId, args.locale),
     }
 
-    if (values.requiresTesting && !values.verificationMethod) {
+    if (values.verifiable && !values.verificationMethod) {
       errors.push(
         error(
           'import_verification_method_required',
-          'Verification method is required when requiresTesting is true.',
+          'Verification method is required when verifiable is true.',
           { field: 'verificationMethod' },
         ),
       )
@@ -868,9 +868,9 @@ function validateExecuteRows(args: {
         'qualityCharacteristicId must belong to the selected typeId',
       )
     }
-    if (row.requiresTesting && !compactText(row.verificationMethod)) {
+    if (row.verifiable && !compactText(row.verificationMethod)) {
       throw validationError(
-        'verificationMethod is required when requiresTesting is true',
+        'verificationMethod is required when verifiable is true',
       )
     }
   }
@@ -1001,7 +1001,7 @@ function receiptRowsForInputs(args: {
       requirementPackageNames: requirementPackageIds
         .map(id => packageById.get(id)?.name)
         .filter((value): value is string => Boolean(value)),
-      requiresTesting: input.requiresTesting,
+      verifiable: input.verifiable,
       priorityLevelId: input.priorityLevelId ?? null,
       priorityLevelName: receiptPriorityName(
         args.referenceData.priorityLevels,
@@ -1018,7 +1018,7 @@ function receiptRowsForInputs(args: {
         input.typeId,
         args.locale,
       ),
-      verificationMethod: input.requiresTesting
+      verificationMethod: input.verifiable
         ? compactText(input.verificationMethod)
         : null,
     }
@@ -1041,9 +1041,9 @@ function toRequirementMutationInput(
     requirementCategoryId: row.categoryId ?? undefined,
     requirementPackageIds: row.requirementPackageIds,
     requirementTypeId: row.typeId ?? undefined,
-    requiresTesting: row.requiresTesting,
+    verifiable: row.verifiable,
     priorityLevelId: row.priorityLevelId ?? undefined,
-    verificationMethod: row.requiresTesting
+    verificationMethod: row.verifiable
       ? (compactText(row.verificationMethod) ?? null)
       : null,
   }
@@ -1060,9 +1060,9 @@ function toLocalRequirementMutationInput(
     qualityCharacteristicId: row.qualityCharacteristicId ?? null,
     requirementCategoryId: row.categoryId ?? null,
     requirementTypeId: row.typeId ?? null,
-    requiresTesting: row.requiresTesting,
+    verifiable: row.verifiable,
     priorityLevelId: row.priorityLevelId ?? null,
-    verificationMethod: row.requiresTesting
+    verificationMethod: row.verifiable
       ? (compactText(row.verificationMethod) ?? null)
       : null,
   }
@@ -1156,8 +1156,8 @@ export function createRequirementsImportWorkflow({
           ? '- Vid import av kravunderlagslokala krav ignoreras `requirementPackageIds`.'
           : '- When importing specification-local requirements, `requirementPackageIds` is ignored.',
         isSv
-          ? '- Sätt `requiresTesting` till `true` när kravet ska verifieras; ange då `verificationMethod`.'
-          : '- Set `requiresTesting` to `true` when the requirement should be verified; then provide `verificationMethod`.',
+          ? '- Sätt `verifiable` till `true` när kravversionen har objektiva villkor som kan kontrolleras; ange då `verificationMethod`.'
+          : '- Set `verifiable` to `true` when the requirement version has objective conditions that can be checked; then provide `verificationMethod`.',
         isSv
           ? '- Använd `verificationMethod` för verifieringssätt, inte för godkännandekriterier.'
           : '- Use `verificationMethod` for the verification method, not acceptance criteria.',

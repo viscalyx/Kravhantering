@@ -100,7 +100,7 @@ async function createDraftRequirement(
     data: {
       areaId: area.id,
       description,
-      requiresTesting: false,
+      verifiable: false,
     },
     timeout: 30_000,
   })
@@ -567,7 +567,7 @@ test.describe('Requirement lifecycle manual cases', () => {
             baseRevisionToken: firstPublishedVersion.revisionToken,
             baseVersionId: firstPublishedVersion.id,
             description: 'Playwright LIFE-07 published successor',
-            requiresTesting: false,
+            verifiable: false,
           },
           timeout: 30_000,
         },

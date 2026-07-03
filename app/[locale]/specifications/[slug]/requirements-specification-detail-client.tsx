@@ -1492,14 +1492,12 @@ export default function KravunderlagDetailClient({
           prioritySet.has(r.version.priorityLevelId),
       )
     }
-    if (leftFilters.requiresTesting && leftFilters.requiresTesting.length > 0) {
-      const requiresTestingSet = new Set(
-        leftFilters.requiresTesting.map(value => value === 'true'),
+    if (leftFilters.verifiable && leftFilters.verifiable.length > 0) {
+      const verifiableSet = new Set(
+        leftFilters.verifiable.map(value => value === 'true'),
       )
       rows = rows.filter(
-        r =>
-          r.version != null &&
-          requiresTestingSet.has(r.version.requiresTesting),
+        r => r.version != null && verifiableSet.has(r.version.verifiable),
       )
     }
     if (

@@ -24,9 +24,9 @@ export interface DeviationReportVersion {
   } | null
   qualityCharacteristic: { nameEn: string; nameSv: string } | null
   requirementPackages: { name: string }[]
-  requiresTesting: boolean
   status: { color: string | null; iconName: string | null; label: string }
   type: { nameEn: string; nameSv: string } | null
+  verifiable: boolean
   verificationMethod: string | null
   versionNumber: number
 }
@@ -77,7 +77,7 @@ export async function fetchDeviationForReport(
         nameEn: string
         nameSv: string
       } | null
-      requiresTesting: boolean
+      verifiable: boolean
       priorityLevel: {
         color: string | null
         iconName: string | null
@@ -157,7 +157,7 @@ export async function fetchDeviationForReport(
       versionNumber: version.versionNumber,
       description: version.description,
       acceptanceCriteria: version.acceptanceCriteria,
-      requiresTesting: version.requiresTesting,
+      verifiable: version.verifiable,
       verificationMethod: version.verificationMethod,
       category: version.category
         ? { nameEn: version.category.nameEn, nameSv: version.category.nameSv }

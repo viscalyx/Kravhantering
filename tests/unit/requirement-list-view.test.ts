@@ -28,7 +28,7 @@ function makeRow(overrides: Record<string, unknown> = {}) {
       categoryNameEn: 'Alpha',
       categoryNameSv: 'Zulu',
       description: 'Secure integration',
-      requiresTesting: true,
+      verifiable: true,
       status: 3,
       statusColor: '#22c55e',
       statusNameEn: 'Published',
@@ -105,7 +105,7 @@ describe('requirement list view helpers', () => {
         sortOrder: 6,
       },
       { columnId: 'priorityLevel', defaultVisible: false, sortOrder: 7 },
-      { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 8 },
+      { columnId: 'verifiable', defaultVisible: false, sortOrder: 8 },
       { columnId: 'version', defaultVisible: false, sortOrder: 9 },
     ])
 
@@ -118,7 +118,7 @@ describe('requirement list view helpers', () => {
       'type',
       'qualityCharacteristic',
       'priorityLevel',
-      'requiresTesting',
+      'verifiable',
       'version',
       'needsReference',
       'specificationItemStatus',
@@ -199,7 +199,7 @@ describe('requirement list view helpers', () => {
       ),
     ).toEqual({ category: 190 })
     expect(getRequirementColumnWidthsStorageKey('sv')).toBe(
-      'requirements.columnWidths.v4.sv',
+      'requirements.columnWidths.v5.sv',
     )
   })
 
@@ -309,7 +309,7 @@ describe('requirement list view helpers', () => {
     expect(hasActiveFilters({ categoryIds: [2] })).toBe(true)
     expect(hasActiveFilters({ typeIds: [1] })).toBe(true)
     expect(hasActiveFilters({ qualityCharacteristicIds: [1] })).toBe(true)
-    expect(hasActiveFilters({ requiresTesting: ['true'] })).toBe(true)
+    expect(hasActiveFilters({ verifiable: ['true'] })).toBe(true)
     expect(hasActiveFilters({ needsReferenceIds: [10] })).toBe(true)
     expect(hasActiveFilters({ requirementPackageIds: [12] })).toBe(true)
     expect(hasActiveFilters({ specificationItemStatusIds: [1] })).toBe(true)

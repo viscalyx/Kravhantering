@@ -48,12 +48,12 @@ export interface ListRequirementsOptions {
   qualityCharacteristicIds?: number[]
   requirementIds?: number[]
   requirementPackageIds?: number[]
-  requiresTesting?: boolean[]
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
+  verifiable?: boolean[]
 }
 
 function toIso(value: unknown): string | null {
@@ -191,7 +191,7 @@ export async function listRequirements(
     statusIconName:
       row.statusIconName == null ? null : String(row.statusIconName),
     archiveInitiatedAt: toIso(row.archiveInitiatedAt),
-    requiresTesting: toBool(row.requiresTesting),
+    verifiable: toBool(row.verifiable),
     versionCreatedAt: toIso(row.versionCreatedAt) ?? '',
     areaName: row.areaName == null ? null : String(row.areaName),
     categoryNameSv:
@@ -310,7 +310,7 @@ export interface RequirementMutationData {
   requirementCategoryId?: number
   requirementPackageIds?: number[]
   requirementTypeId?: number
-  requiresTesting?: boolean
+  verifiable?: boolean
   verificationMethod?: string | null
 }
 
@@ -360,10 +360,10 @@ interface VersionInsertedRow {
   requirementCategoryId: number | null
   requirementId: number
   requirementTypeId: number | null
-  requiresTesting: boolean
   revisionToken: string
   statusId: number
   statusUpdatedAt: string | null
+  verifiable: boolean
   verificationMethod: string | null
   versionNumber: number
 }
@@ -401,7 +401,7 @@ function mapVersion(row: Record<string, unknown>): VersionInsertedRow {
     qualityCharacteristicId: toNum(row.qualityCharacteristicId),
     priorityLevelId: toNum(row.priorityLevelId),
     statusId: Number(row.statusId),
-    requiresTesting: toBool(row.requiresTesting),
+    verifiable: toBool(row.verifiable),
     verificationMethod:
       row.verificationMethod == null ? null : String(row.verificationMethod),
     createdAt: toIso(row.createdAt) ?? '',
@@ -441,7 +441,7 @@ const VERSION_OUTPUT = `
     INSERTED.quality_characteristic_id AS qualityCharacteristicId,
     INSERTED.priority_level_id AS priorityLevelId,
     INSERTED.requirement_status_id AS statusId,
-    CAST(INSERTED.is_testing_required AS int) AS requiresTesting,
+    CAST(INSERTED.is_verifiable AS int) AS verifiable,
     INSERTED.verification_method AS verificationMethod,
     INSERTED.created_at AS createdAt,
     INSERTED.edited_at AS editedAt,
@@ -466,7 +466,7 @@ export async function createRequirement(
   const requirementAreaId = references.requirementAreaId
 
   const now = new Date()
-  const verificationMethod = data.requiresTesting
+  const verificationMethod = data.verifiable
     ? (data.verificationMethod ?? null)
     : null
 
@@ -493,7 +493,7 @@ export async function createRequirement(
       `INSERT INTO requirement_versions (
         requirement_id, version_number, description, acceptance_criteria,
         requirement_category_id, requirement_type_id, quality_characteristic_id,
-        priority_level_id, requirement_status_id, is_testing_required,
+        priority_level_id, requirement_status_id, is_verifiable,
         verification_method, created_at, edited_at, published_at,
         archived_at, archive_initiated_at, created_by, created_by_hsa_id,
         status_updated_at, has_specification_item_history
@@ -509,7 +509,7 @@ export async function createRequirement(
         references.qualityCharacteristicId,
         references.priorityLevelId,
         STATUS_DRAFT,
-        data.requiresTesting ? 1 : 0,
+        data.verifiable ? 1 : 0,
         verificationMethod,
         now,
         now,
@@ -564,7 +564,7 @@ export async function createRequirementsBatch(
         throw validationError('requirementAreaId must be a positive integer')
       }
       const now = new Date()
-      const verificationMethod = data.requiresTesting
+      const verificationMethod = data.verifiable
         ? (data.verificationMethod ?? null)
         : null
       const { sequenceNumber, uniqueId } = await reserveSequenceSqlServer(
@@ -583,7 +583,7 @@ export async function createRequirementsBatch(
         `INSERT INTO requirement_versions (
           requirement_id, version_number, description, acceptance_criteria,
           requirement_category_id, requirement_type_id, quality_characteristic_id,
-          priority_level_id, requirement_status_id, is_testing_required,
+          priority_level_id, requirement_status_id, is_verifiable,
           verification_method, created_at, edited_at, published_at,
           archived_at, archive_initiated_at, created_by, created_by_hsa_id,
           status_updated_at, has_specification_item_history
@@ -599,7 +599,7 @@ export async function createRequirementsBatch(
           references.qualityCharacteristicId,
           references.priorityLevelId,
           STATUS_DRAFT,
-          data.requiresTesting ? 1 : 0,
+          data.verifiable ? 1 : 0,
           verificationMethod,
           now,
           now,
@@ -639,9 +639,9 @@ interface VersionLite {
   qualityCharacteristicId: number | null
   requirementCategoryId: number | null
   requirementTypeId: number | null
-  requiresTesting: boolean
   revisionToken: string
   statusId: number
+  verifiable: boolean
   verificationMethod: string | null
   versionNumber: number
 }
@@ -665,7 +665,7 @@ async function getLatestVersionLite(
         requirement_type_id AS requirementTypeId,
         quality_characteristic_id AS qualityCharacteristicId,
         priority_level_id AS priorityLevelId,
-        CAST(is_testing_required AS int) AS requiresTesting,
+        CAST(is_verifiable AS int) AS verifiable,
         verification_method AS verificationMethod,
         created_by AS createdBy,
         created_by_hsa_id AS createdByHsaId
@@ -689,7 +689,7 @@ async function getLatestVersionLite(
     requirementTypeId: toNum(row.requirementTypeId),
     qualityCharacteristicId: toNum(row.qualityCharacteristicId),
     priorityLevelId: toNum(row.priorityLevelId),
-    requiresTesting: toBool(row.requiresTesting),
+    verifiable: toBool(row.verifiable),
     verificationMethod:
       row.verificationMethod == null ? null : String(row.verificationMethod),
     createdBy: row.createdBy == null ? null : String(row.createdBy),
@@ -754,7 +754,7 @@ export async function editRequirement(
   const baseVersionId = normalizeBaseVersionId(data.baseVersionId)
   const baseRevisionToken = normalizeBaseRevisionToken(data.baseRevisionToken)
   const now = new Date()
-  const verificationMethod = data.requiresTesting
+  const verificationMethod = data.verifiable
     ? (data.verificationMethod ?? null)
     : null
 
@@ -803,7 +803,7 @@ export async function editRequirement(
               requirement_type_id = @3,
               quality_characteristic_id = @4,
               priority_level_id = @5,
-              is_testing_required = @6,
+              is_verifiable = @6,
               verification_method = @7,
               edited_at = @8,
               revision_token = NEWID()
@@ -817,7 +817,7 @@ export async function editRequirement(
           references.requirementTypeId,
           references.qualityCharacteristicId,
           references.priorityLevelId,
-          data.requiresTesting ? 1 : 0,
+          data.verifiable ? 1 : 0,
           verificationMethod,
           now,
           baseVersionId,
@@ -859,7 +859,7 @@ export async function editRequirement(
         `INSERT INTO requirement_versions (
             requirement_id, version_number, description, acceptance_criteria,
             requirement_category_id, requirement_type_id, quality_characteristic_id,
-          priority_level_id, requirement_status_id, is_testing_required,
+          priority_level_id, requirement_status_id, is_verifiable,
           verification_method, created_at, edited_at, published_at,
           archived_at, archive_initiated_at, created_by, created_by_hsa_id,
           status_updated_at, has_specification_item_history
@@ -876,7 +876,7 @@ export async function editRequirement(
           references.qualityCharacteristicId,
           references.priorityLevelId,
           STATUS_DRAFT,
-          data.requiresTesting ? 1 : 0,
+          data.verifiable ? 1 : 0,
           verificationMethod,
           now,
           now,
@@ -1343,7 +1343,7 @@ async function restoreVersionSqlServer(
         requirement_type_id AS requirementTypeId,
         quality_characteristic_id AS qualityCharacteristicId,
         priority_level_id AS priorityLevelId,
-        CAST(is_testing_required AS int) AS requiresTesting,
+        CAST(is_verifiable AS int) AS verifiable,
         verification_method AS verificationMethod,
         created_by AS createdBy,
         created_by_hsa_id AS createdByHsaId
@@ -1375,7 +1375,7 @@ async function restoreVersionSqlServer(
     `INSERT INTO requirement_versions (
         requirement_id, version_number, description, acceptance_criteria,
         requirement_category_id, requirement_type_id, quality_characteristic_id,
-        priority_level_id, requirement_status_id, is_testing_required,
+        priority_level_id, requirement_status_id, is_verifiable,
         verification_method, created_at, edited_at, published_at,
         archived_at, archive_initiated_at, created_by, created_by_hsa_id,
         status_updated_at, has_specification_item_history
@@ -1392,7 +1392,7 @@ async function restoreVersionSqlServer(
       toNum(old.qualityCharacteristicId),
       toNum(old.priorityLevelId),
       STATUS_DRAFT,
-      toBool(old.requiresTesting) ? 1 : 0,
+      toBool(old.verifiable) ? 1 : 0,
       old.verificationMethod,
       now,
       now,
@@ -1473,7 +1473,7 @@ export async function getVersionHistory(
         version.quality_characteristic_id AS qualityCharacteristicId,
         version.priority_level_id AS priorityLevelId,
         version.requirement_status_id AS statusId,
-        CAST(version.is_testing_required AS int) AS requiresTesting,
+        CAST(version.is_verifiable AS int) AS verifiable,
         version.verification_method AS verificationMethod,
         version.created_at AS createdAt,
         version.edited_at AS editedAt,
@@ -1554,7 +1554,7 @@ export async function getVersionHistory(
       qualityCharacteristicId: qcId,
       priorityLevelId: toNum(row.priorityLevelId),
       statusId: Number(row.statusId),
-      requiresTesting: toBool(row.requiresTesting),
+      verifiable: toBool(row.verifiable),
       verificationMethod:
         row.verificationMethod == null ? null : String(row.verificationMethod),
       createdAt: toIso(row.createdAt) ?? '',
@@ -1648,7 +1648,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         version.quality_characteristic_id AS qualityCharacteristicId,
         version.priority_level_id AS priorityLevelId,
         version.requirement_status_id AS statusId,
-        CAST(version.is_testing_required AS int) AS requiresTesting,
+        CAST(version.is_verifiable AS int) AS verifiable,
         version.verification_method AS verificationMethod,
         version.created_at AS createdAt,
         version.edited_at AS editedAt,
@@ -1784,7 +1784,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
       qualityCharacteristicId: qcId,
       priorityLevelId: rlId,
       statusId: Number(row.statusId),
-      requiresTesting: toBool(row.requiresTesting),
+      verifiable: toBool(row.verifiable),
       verificationMethod:
         row.verificationMethod == null ? null : String(row.verificationMethod),
       createdAt: toIso(row.createdAt) ?? '',

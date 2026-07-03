@@ -52,7 +52,7 @@ function reportVersion(id: number, status = STATUS_PUBLISHED) {
     id,
     publishedAt: null,
     qualityCharacteristic: null,
-    requiresTesting: false,
+    verifiable: false,
     priorityLevel: null,
     status,
     statusColor: null,

@@ -228,7 +228,7 @@ paths:
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
-        - name: requiresTesting
+        - name: verifiable
           in: query
           schema:
             type: array
@@ -1193,7 +1193,7 @@ components:
         description: { type: string, nullable: true }
         acceptanceCriteria: { type: string, nullable: true }
         verificationMethod: { type: string, nullable: true }
-        requiresTesting: { type: boolean }
+        verifiable: { type: boolean }
         status: { type: integer, nullable: true }
         statusNameSv: { type: string, nullable: true }
         statusNameEn: { type: string, nullable: true }
@@ -1218,7 +1218,7 @@ components:
           nullable: true
           maxItems: 100
           items: { type: integer, minimum: 1 }
-        requiresTesting: { type: boolean }
+        verifiable: { type: boolean }
         priorityLevelId: { type: integer, minimum: 1, nullable: true }
         typeId: { type: integer, minimum: 1, nullable: true }
         verificationMethod: { type: string, maxLength: 4000 }
@@ -1250,7 +1250,7 @@ components:
           nullable: true
           maxItems: 100
           items: { type: integer, minimum: 1 }
-        requiresTesting: { type: boolean }
+        verifiable: { type: boolean }
         priorityLevelId: { type: integer, minimum: 1, nullable: true }
         typeId: { type: integer, minimum: 1, nullable: true }
         verificationMethod: { type: string, maxLength: 4000 }

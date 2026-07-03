@@ -9,11 +9,11 @@ export interface FilterValues {
   priorityLevelIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementPackageIds?: number[]
-  requiresTesting?: string[]
   specificationItemStatusIds?: number[]
   statuses?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
+  verifiable?: string[]
 }
 
 export interface FilterOption {
@@ -113,7 +113,7 @@ export interface RequirementRow {
     categoryNameEn: string | null
     categoryNameSv: string | null
     description: string | null
-    requiresTesting: boolean
+    verifiable: boolean
     revisionToken?: string
     priorityLevelId: number | null
     priorityLevelNameEn: string | null
@@ -150,7 +150,7 @@ export function hasActiveFilters(values: FilterValues): boolean {
   return !!(
     (values.areaIds && values.areaIds.length > 0) ||
     (values.categoryIds && values.categoryIds.length > 0) ||
-    (values.requiresTesting && values.requiresTesting.length > 0) ||
+    (values.verifiable && values.verifiable.length > 0) ||
     (values.typeIds && values.typeIds.length > 0) ||
     (values.qualityCharacteristicIds &&
       values.qualityCharacteristicIds.length > 0) ||
@@ -175,7 +175,7 @@ export const REQUIREMENT_COLUMN_ORDER = [
   'qualityCharacteristic',
   'priorityLevel',
   'status',
-  'requiresTesting',
+  'verifiable',
   'version',
   'needsReference',
   'specificationItemStatus',
@@ -237,9 +237,9 @@ export const DEFAULT_REQUIREMENT_SORT: RequirementSortState = {
 }
 
 export const REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY =
-  'requirements.visibleColumns.v4'
+  'requirements.visibleColumns.v5'
 export const REQUIREMENT_COLUMN_WIDTHS_STORAGE_KEY_PREFIX =
-  'requirements.columnWidths.v4'
+  'requirements.columnWidths.v5'
 
 export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
   {
@@ -353,8 +353,8 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     canSort: false,
     defaultVisible: false,
     defaultWidthPx: 88,
-    id: 'requiresTesting',
-    labelKey: 'requiresTesting',
+    id: 'verifiable',
+    labelKey: 'verifiable',
     labelNamespace: 'requirement',
     maxWidthPx: 160,
     minWidthPx: 72,
@@ -687,7 +687,7 @@ export function clearRequirementFiltersForHiddenColumns(
   clearIfHidden('priorityLevel', 'priorityLevelIds')
   clearIfHidden('specificationItemStatus', 'specificationItemStatusIds')
   clearIfHidden('status', 'statuses')
-  clearIfHidden('requiresTesting', 'requiresTesting')
+  clearIfHidden('verifiable', 'verifiable')
   clearIfHidden('needsReference', 'needsReferenceIds')
   clearIfHidden('normReferences', 'normReferenceIds')
 
@@ -841,9 +841,9 @@ export function buildRequirementListParams({
       params.append('priorityLevelIds', String(id))
     }
   }
-  if (filters.requiresTesting) {
-    for (const value of filters.requiresTesting) {
-      params.append('requiresTesting', value)
+  if (filters.verifiable) {
+    for (const value of filters.verifiable) {
+      params.append('verifiable', value)
     }
   }
   if (filters.statuses) {

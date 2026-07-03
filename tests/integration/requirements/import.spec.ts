@@ -23,12 +23,12 @@ const validImportPayload = {
     {
       description: importedDescription,
       proposedNormReferenceKeys: ['SOSFS-IMPORT-1'],
-      requiresTesting: true,
+      verifiable: true,
       typeId: 1,
       verificationMethod: 'Demonstration',
     },
   ],
-  schemaVersion: 'requirement-import.v1',
+  schemaVersion: 'requirement-import.v2',
 }
 
 async function fulfillJson(route: Route, body: unknown, status = 200) {
@@ -52,7 +52,7 @@ test.describe('Requirements import', () => {
     await page.route('**/api/requirements/import/schema?*', async route => {
       artifactDownloads.push('schema')
       await fulfillJson(route, {
-        schema: 'requirement-import.v1',
+        schema: 'requirement-import.v2',
       })
     })
     await page.route('**/api/requirements/import/ai-prompt?*', async route => {
@@ -104,7 +104,7 @@ test.describe('Requirements import', () => {
               priorityLevelId: null,
               qualityCharacteristicId: null,
               requirementPackageIds: [],
-              requiresTesting: true,
+              verifiable: true,
               typeId: 1,
               verificationMethod: 'Demonstration',
             },
@@ -130,7 +130,7 @@ test.describe('Requirements import', () => {
             priorityLevelName: null,
             qualityCharacteristicName: null,
             requirementPackageNames: [],
-            requiresTesting: true,
+            verifiable: true,
             sourceIndex: 0,
             targetAreaId: 1,
             targetSpecificationId: null,

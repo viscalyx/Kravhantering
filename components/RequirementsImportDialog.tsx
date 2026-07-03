@@ -129,8 +129,8 @@ interface ImportReviewValues {
   priorityLevelId: number | null
   qualityCharacteristicId: number | null
   requirementPackageIds: number[]
-  requiresTesting: boolean
   typeId: number | null
+  verifiable: boolean
   verificationMethod: string | null
 }
 
@@ -171,11 +171,11 @@ interface ImportReceiptRow {
   priorityLevelName: string | null
   qualityCharacteristicName: string | null
   requirementPackageNames: string[]
-  requiresTesting: boolean
   sourceIndex: number
   targetAreaId: number | null
   targetSpecificationId: number | null
   typeName: string | null
+  verifiable: boolean
   verificationMethod: string | null
 }
 
@@ -246,7 +246,7 @@ const TEXT = {
     expandRow: 'Expand row',
     infoCount: (count: number) => `${count} info`,
     invalidSchema:
-      'The JSON does not match requirement-import.v1. Fix the import file before previewing requirements.',
+      'The JSON does not match requirement-import.v2. Fix the import file before previewing requirements.',
     importTitleLibrary: 'Import requirements',
     importTitleSpecification: 'Import local requirements',
     importReviewTabs: 'Import review',
@@ -285,7 +285,7 @@ const TEXT = {
     requirementText: 'Requirement text',
     requirementsTab: 'Requirements',
     normReferencePickerTitle: 'Select norm references',
-    requiresTesting: 'Verifiable',
+    verifiable: 'Verifiable',
     priorityLevel: 'Priority',
     schemaFile: 'requirement-import.schema.json',
     selectedRows: 'selected',
@@ -344,7 +344,7 @@ const TEXT = {
     expandRow: 'Expandera rad',
     infoCount: (count: number) => `${count} info`,
     invalidSchema:
-      'JSON följer inte requirement-import.v1. Korrigera importfilen innan granskningen laddas.',
+      'JSON följer inte requirement-import.v2. Korrigera importfilen innan granskningen laddas.',
     importTitleLibrary: 'Importera krav',
     importTitleSpecification: 'Importera lokala krav',
     importReviewTabs: 'Importgranskning',
@@ -383,7 +383,7 @@ const TEXT = {
     requirementText: 'Kravtext',
     requirementsTab: 'Krav',
     normReferencePickerTitle: 'Välj normreferenser',
-    requiresTesting: 'Verifierbar',
+    verifiable: 'Verifierbar',
     priorityLevel: 'Prioritet',
     schemaFile: 'kravimport.schema.json',
     selectedRows: 'valda',
@@ -482,7 +482,7 @@ function receiptCsv(rows: ImportReceiptRow[]): string {
     'priorityLevel',
     'requirementPackages',
     'normReferences',
-    'requiresTesting',
+    'verifiable',
     'verificationMethod',
     'targetAreaId',
     'targetSpecificationId',
@@ -502,7 +502,7 @@ function receiptCsv(rows: ImportReceiptRow[]): string {
       row.priorityLevelName,
       row.requirementPackageNames,
       row.normReferences,
-      row.requiresTesting,
+      row.verifiable,
       row.verificationMethod,
       row.targetAreaId,
       row.targetSpecificationId,
@@ -803,7 +803,7 @@ export default function RequirementsImportDialog({
           message: importText('descriptionRequired'),
         })
       }
-      if (values.requiresTesting && !values.verificationMethod?.trim()) {
+      if (values.verifiable && !values.verificationMethod?.trim()) {
         nextErrors.push({
           code: 'verification_method_required',
           field: 'verificationMethod',
@@ -2684,28 +2684,28 @@ export default function RequirementsImportDialog({
                                     ) : null}
                                     <label className="inline-flex min-h-11 items-center gap-2 text-sm font-medium">
                                       <input
-                                        checked={row.values.requiresTesting}
+                                        checked={row.values.verifiable}
                                         onChange={event =>
                                           updateRowValue(
                                             row.reviewRowId,
-                                            'requiresTesting',
+                                            'verifiable',
                                             event.target.checked,
                                           )
                                         }
                                         type="checkbox"
                                       />
-                                      {text.requiresTesting}
+                                      {text.verifiable}
                                     </label>
                                     <label>
                                       <span className="mb-1 block text-sm font-medium">
                                         {text.verificationMethod}
-                                        {row.values.requiresTesting ? (
+                                        {row.values.verifiable ? (
                                           <RequiredFieldMarker />
                                         ) : null}
                                       </span>
                                       <input
                                         className={inputClass}
-                                        disabled={!row.values.requiresTesting}
+                                        disabled={!row.values.verifiable}
                                         onChange={event =>
                                           updateRowValue(
                                             row.reviewRowId,

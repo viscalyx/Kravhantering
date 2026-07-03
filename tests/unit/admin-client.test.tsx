@@ -3681,7 +3681,7 @@ describe('AdminClient', () => {
         sortOrder: 5,
       },
       { columnId: 'status', defaultVisible: true, sortOrder: 6 },
-      { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
+      { columnId: 'verifiable', defaultVisible: false, sortOrder: 7 },
       { columnId: 'version', defaultVisible: false, sortOrder: 8 },
     ])
     fetchMock.mockResolvedValueOnce(okJson({ columns: reorderedColumns }))
@@ -3793,7 +3793,7 @@ describe('AdminClient', () => {
         sortOrder: 5,
       },
       { columnId: 'status', defaultVisible: true, sortOrder: 6 },
-      { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
+      { columnId: 'verifiable', defaultVisible: false, sortOrder: 7 },
       { columnId: 'version', defaultVisible: false, sortOrder: 8 },
     ])
     fetchMock.mockResolvedValueOnce(okJson({ columns: reorderedColumns }))

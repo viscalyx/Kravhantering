@@ -19,7 +19,7 @@ function makeVersion(
     id: 1,
     publishedAt: null,
     qualityCharacteristic: null,
-    requiresTesting: false,
+    verifiable: false,
     priorityLevel: null,
     status: 3,
     statusColor: '#22c55e',
@@ -172,7 +172,7 @@ describe('report templates', () => {
         }),
         makeVersion({
           id: 2,
-          requiresTesting: true,
+          verifiable: true,
           status: 2,
           statusNameEn: 'Review',
           statusNameSv: 'Granskning',

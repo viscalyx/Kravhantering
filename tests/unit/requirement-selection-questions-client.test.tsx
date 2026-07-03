@@ -209,7 +209,7 @@ function sampleRequirementDetail() {
         ownerName: null,
         publishedAt: '2026-01-02T00:00:00.000Z',
         qualityCharacteristic: null,
-        requiresTesting: false,
+        verifiable: false,
         revisionToken: 'revision-token',
         priorityLevel: null,
         status: 3,

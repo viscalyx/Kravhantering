@@ -93,8 +93,8 @@ export interface RequirementMutationInput {
   priorityLevelId?: number
   qualityCharacteristicId?: number
   requirementPackageIds?: number[]
-  requiresTesting?: boolean
   typeId?: number
+  verifiable?: boolean
   verificationMethod?: string | null
 }
 
@@ -116,7 +116,6 @@ export interface QueryCatalogInput {
   priorityLevelIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementPackageIds?: number[]
-  requiresTesting?: boolean[]
   responseFormat?: ResponseFormat
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
@@ -124,6 +123,7 @@ export interface QueryCatalogInput {
   typeId?: number
   typeIds?: number[]
   uniqueIdSearch?: string
+  verifiable?: boolean[]
 }
 
 export interface GetRequirementInput extends RequirementRefInput {

@@ -77,7 +77,7 @@ change:
 - category, type, type category
 - priority
 - requirement packages
-- requires-testing
+- verifiable
 
 `edited_at` is **never** updated by:
 

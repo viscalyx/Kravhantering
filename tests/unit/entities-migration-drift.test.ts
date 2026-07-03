@@ -90,16 +90,15 @@ function extractTableColumns(table: string): Set<string> {
     }
   }
 
-  // Migration 0039 renames the package description column to the current
-  // purpose/scope field. Keep this narrow so DOWN migration rename statements
-  // are not mistaken for the final schema state in the offline parser.
-  if (
-    table === 'requirement_packages' &&
-    migrationSource.includes(
-      "EXEC sp_rename N'requirement_packages.description', N'purpose_and_scope', N'COLUMN'",
-    )
-  ) {
-    columns.add('purpose_and_scope')
+  // Later migrations may rename columns with SQL Server `sp_rename`.
+  // Include both directions so this offline parser can still verify current
+  // entity columns without trying to simulate the full migration state machine.
+  const columnRenamePattern = new RegExp(
+    `EXEC sp_rename N'${table}\\.([a-z_][a-z0-9_]*)',\\s*N'([a-z_][a-z0-9_]*)',\\s*N'COLUMN'`,
+    'g',
+  )
+  for (const match of migrationSource.matchAll(columnRenamePattern)) {
+    columns.add(match[2])
   }
 
   return columns

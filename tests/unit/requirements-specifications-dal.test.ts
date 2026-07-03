@@ -796,7 +796,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           uniqueId: 'LOK-001',
           description: 'Local requirement',
           acceptanceCriteria: 'Must pass',
-          requiresTesting: 1,
+          verifiable: 1,
           verificationMethod: 'Manual test',
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
@@ -879,7 +879,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         nameEn: 'Business',
         nameSv: 'Verksamhet',
       },
-      requiresTesting: true,
+      verifiable: true,
       priorityLevel: {
         color: '#dc2626',
         iconName: 'ShieldAlert',
@@ -909,7 +909,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           uniqueId: 'LOK-001',
           description: 'Created local requirement',
           acceptanceCriteria: null,
-          requiresTesting: 0,
+          verifiable: 0,
           verificationMethod: null,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-20T10:00:00.000Z'),
@@ -940,7 +940,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           uniqueId: 'LOK-001',
           description: 'Updated local requirement',
           acceptanceCriteria: 'Updated AC',
-          requiresTesting: 1,
+          verifiable: 1,
           verificationMethod: 'Checklist',
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
@@ -969,7 +969,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     const updated = await updateSpecificationLocalRequirement(db, 5, 41, {
       acceptanceCriteria: 'Updated AC',
       description: 'Updated local requirement',
-      requiresTesting: true,
+      verifiable: true,
       verificationMethod: 'Checklist',
     })
 
@@ -985,7 +985,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       id: 41,
       description: 'Updated local requirement',
       acceptanceCriteria: 'Updated AC',
-      requiresTesting: true,
+      verifiable: true,
       verificationMethod: 'Checklist',
     })
     const localInsertCall = query.mock.calls.find(([sql]) =>
@@ -1057,13 +1057,13 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     ])
   })
 
-  it('preserves specification-local testing fields when update omits them', async () => {
+  it('preserves specification-local verifiability fields when update omits them', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([
         {
           id: 41,
-          requiresTesting: 1,
+          verifiable: 1,
           sequenceNumber: 1,
           specificationId: 5,
           uniqueId: 'LOK-001',
@@ -1079,7 +1079,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           uniqueId: 'LOK-001',
           description: 'Updated local requirement',
           acceptanceCriteria: null,
-          requiresTesting: 1,
+          verifiable: 1,
           verificationMethod: 'Checklist',
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
@@ -1109,7 +1109,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(updateCall?.[1]?.at(6)).toBe(1)
     expect(updateCall?.[1]?.at(8)).toBe('Checklist')
     expect(updated).toMatchObject({
-      requiresTesting: true,
+      verifiable: true,
       verificationMethod: 'Checklist',
     })
   })
@@ -1137,7 +1137,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           qualityCharacteristicId: 5,
           requirementCategoryId: 3,
           requirementTypeId: 4,
-          requiresTesting: 1,
+          verifiable: 1,
           priorityLevelId: 2,
           specificationId: 5,
           specificationItemStatusId: 1,
@@ -1249,7 +1249,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           qualityCharacteristicId: null,
           requirementCategoryId: null,
           requirementTypeId: null,
-          requiresTesting: 0,
+          verifiable: 0,
           priorityLevelId: null,
           specificationId: 5,
           uniqueId: 'KRAV0001',
@@ -1363,7 +1363,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           qualityCharacteristicNameEn: 'Security',
           qualityCharacteristicNameSv: 'Säkerhet',
           requirementId: 11,
-          requiresTesting: 1,
+          verifiable: 1,
           priorityLevelColor: '#dc2626',
           priorityLevelIconName: 'ShieldAlert',
           priorityLevelId: 4,
@@ -1402,7 +1402,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           requirementCategoryNameSv: 'Funktionell',
           requirementTypeNameEn: 'Business',
           requirementTypeNameSv: 'Verksamhet',
-          requiresTesting: 0,
+          verifiable: 0,
           priorityLevelColor: '#eab308',
           priorityLevelIconName: 'AlertTriangle',
           priorityLevelId: 2,
@@ -1466,7 +1466,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           itemId: 31,
           needsReference: 'IAM-42',
           note: 'Library note',
-          requiresTesting: 1,
+          verifiable: 1,
           priorityLevelNameEn: 'High',
           priorityLevelNameSv: 'Hög',
           specificationItemStatusId: 2,
@@ -1488,7 +1488,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           itemId: 41,
           needsReference: null,
           note: 'Local note',
-          requiresTesting: 0,
+          verifiable: 0,
           priorityLevelNameEn: null,
           priorityLevelNameSv: null,
           specificationItemStatusId: 1,
@@ -1525,7 +1525,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         itemRef: 'local:41',
         kind: 'specificationLocal',
         note: 'Local note',
-        requiresTesting: false,
+        verifiable: false,
         statusUpdatedAt: '2026-06-04T10:00:00.000Z',
         uniqueId: 'KRAV0001',
         versionNumber: null,
@@ -1535,7 +1535,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         itemRef: 'lib:31',
         kind: 'library',
         needsReference: 'IAM-42',
-        requiresTesting: true,
+        verifiable: true,
         statusUpdatedAt: '2026-06-03T10:00:00.000Z',
         uniqueId: 'REQ-001',
         verificationMethod: 'Review evidence',

@@ -23,13 +23,13 @@ export interface RequirementReportVersion {
     nameEn: string
     nameSv: string
   } | null
-  requiresTesting: boolean
   status: number
   statusColor: string | null
   statusIconName?: string | null
   statusNameEn: string | null
   statusNameSv: string | null
   type: { id: number; nameEn: string; nameSv: string } | null
+  verifiable: boolean
   verificationMethod: string | null
   versionNormReferences: {
     normReference: {
