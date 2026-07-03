@@ -212,6 +212,12 @@ const aiMcpSettingsMigrationPath = join(
   'migrations',
   '0041_ai_mcp_payload_limit.mjs',
 )
+const aiSafetyRulesMigrationPath = join(
+  repoRoot,
+  'typeorm',
+  'migrations',
+  '0042_ai_safety_rules.mjs',
+)
 const hsaPersonVerifyFieldPath = join(
   repoRoot,
   'components',
@@ -577,6 +583,10 @@ it('Scenario 19: assignment RBAC denies hidden broad access', () => {
 it('Scenario 24: Admin Center AI generation disablement is globally effective', () => {
   const migrationSource = readFileSync(aiSettingsMigrationPath, 'utf8')
   const mcpMigrationSource = readFileSync(aiMcpSettingsMigrationPath, 'utf8')
+  const aiSafetyRulesMigrationSource = readFileSync(
+    aiSafetyRulesMigrationPath,
+    'utf8',
+  )
   const seedSource = readFileSync(seedPath, 'utf8')
   const requiredSeedSource = readFileSync(requiredSeedPath, 'utf8')
   const aiSettingsSource = readFileSync(aiSettingsPath, 'utf8')
@@ -608,30 +618,49 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
   expect(mcpMigrationSource).toContain(
     '[mcp_max_request_bytes] =\n          ((1048576 * ((([mcp_max_request_bytes] * 10) + 524288) / 1048576)) + 5) / 10',
   )
+  expect(aiSafetyRulesMigrationSource).toContain(
+    '[ai_safety_rule_cache_ttl_seconds] int NOT NULL',
+  )
+  expect(aiSafetyRulesMigrationSource).toContain(
+    'CREATE TABLE [ai_safety_rules]',
+  )
+  expect(aiSafetyRulesMigrationSource).toContain(
+    'CREATE TABLE [ai_safety_rule_terms]',
+  )
+  expect(aiSafetyRulesMigrationSource).toContain(
+    'CONSTRAINT [uq_ai_safety_rule_terms_rule_type_normalized]',
+  )
 
   expect(seedSource).toContain('ai_settings:')
   expect(requiredSeedSource).toContain('ai_settings:')
+  expect(requiredSeedSource).toContain('seedAiSafetyRules')
   expect(seedSource).toContain("'requirement_generation_enabled'")
   expect(requiredSeedSource).toContain("'requirement_generation_enabled'")
   expect(seedSource).toContain("'mcp_max_request_bytes'")
   expect(requiredSeedSource).toContain("'mcp_max_request_bytes'")
-  expect(seedSource).toMatch(/rows: \[\[1, 1, 1048576, '[^']+', '[^']+'\]\]/u)
+  expect(requiredSeedSource).toContain("'ai_safety_rule_cache_ttl_seconds'")
+  expect(seedSource).toMatch(
+    /rows: \[\s*\[\s*1,\s*1,\s*1048576,\s*600,\s*'[^']+',\s*'[^']+',?\s*\]\s*,?\s*\]/u,
+  )
   expect(requiredSeedSource).toMatch(
-    /rows: \[\[1, 1, 1048576, '[^']+', '[^']+'\]\]/u,
+    /rows: \[\s*\[\s*1,\s*1,\s*1048576,\s*600,\s*'[^']+',\s*'[^']+',?\s*\]\s*,?\s*\]/u,
   )
 
   expect(scanGuardSource).toContain('AI_REQUIREMENT_GENERATION_DISABLED')
   expect(aiSettingsSource).toContain('disabledByEnvironment')
   expect(aiSettingsSource).toContain('effectiveRequirementGenerationEnabled')
   expect(aiSettingsSource).toContain('mcpMaxRequestBytes')
+  expect(aiSettingsSource).toContain('aiSafetyRuleCacheTtlSeconds')
   expect(aiSettingsSource).toContain('getCachedMcpMaxRequestBytes')
   expect(aiSettingsSource).toContain('isAiRequirementGenerationDisabled')
 
   expect(adminRouteSource).toContain('adminMutationPolicy()')
   expect(adminRouteSource).toContain("resourceType: 'ai_settings'")
   expect(adminRouteSource).toContain("operation: 'save'")
+  expect(adminRouteSource).toContain("operation: 'update'")
   expect(adminRouteSource).toContain("'requirementGenerationEnabled'")
   expect(adminRouteSource).toContain("'mcpMaxRequestBytes'")
+  expect(adminRouteSource).toContain("'aiSafetyRuleCacheTtlSeconds'")
 
   expect(restRouteSource).toContain('getAiGenerationAvailability')
   expect(restRouteSource).toContain('AI_PROVIDER_UNAVAILABLE_MESSAGE')
@@ -641,7 +670,9 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
   expect(adminClientSource).toContain('/api/admin/ai-settings')
   expect(adminClientSource).toContain('disabledByEnvironment')
   expect(adminClientSource).toContain('mcpMaxRequestBytes')
+  expect(adminClientSource).toContain('aiSafetyRuleCacheTtlSeconds')
   expect(adminClientSource).toContain('admin-ai-mcp-max-request-kib')
+  expect(adminClientSource).toContain('/api/admin/ai-safety-rules')
   expect(adminClientSource).toContain("ta('ai.securityTitle')")
   expect(requirementsPageSource).toContain('getAiGenerationAvailability')
   expect(requirementsClientSource).toContain('aiGenerationAvailability')
@@ -653,12 +684,16 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
     'The `AI` tab manages AI-assisted requirement generation directly in the AI',
   )
   expect(adminCenterDoc).toContain(
-    'Its `AI and MCP security` section contains the MCP request payload',
+    'Its `AI and MCP security` section contains the safety-rule cache time',
   )
+  expect(adminCenterDoc).toContain('AI safety rules are shown as expandable')
   expect(adminCenterDoc).toContain('AI_REQUIREMENT_GENERATION_DISABLED')
   expect(databaseSchemaDoc).toContain('ai_settings')
+  expect(databaseSchemaDoc).toContain('ai_safety_rules')
+  expect(databaseSchemaDoc).toContain('ai_safety_rule_terms')
   expect(databaseSchemaDoc).toContain('requirement_generation_enabled')
   expect(databaseSchemaDoc).toContain('mcp_max_request_bytes')
+  expect(databaseSchemaDoc).toContain('ai_safety_rule_cache_ttl_seconds')
 })
 
 it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions', () => {

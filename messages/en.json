@@ -1340,7 +1340,9 @@
       "decreaseMcpMaxRequestLimit": "Decrease MCP request limit",
       "fieldHelp": {
         "mcpMaxRequestLimit": "Maximum accepted MCP POST payload. The default is 1024 KiB. Values move in 102.4 KiB steps, so ten steps equal 1 MiB, and stay within the 102.4 KiB to 5 MiB range.",
-        "requirementGenerationEnabled": "Turn off AI requirement generation for all users. The setting affects the requirements library button, the generator modal, and the REST generation route."
+        "requirementGenerationEnabled": "Turn off AI requirement generation for all users. The setting affects the requirements library button, the generator modal, and the REST generation route.",
+        "safetyRuleCacheTtl": "How long a process may use the last loaded rule set before reading it from the database again. Changes in this process apply immediately when an administrator saves a rule.",
+        "safetyRules": "Each expandable row is a safety rule. Add custom words with word type and direction. Standard words can be deactivated or given another direction, and are then marked with a warning icon."
       },
       "increaseMcpMaxRequestLimit": "Increase MCP request limit",
       "loadError": "Could not load AI settings.",
@@ -1349,8 +1351,51 @@
       "requirementGenerationDescription": "When disabled, users can still view the AI controls but cannot start new requirement generation.",
       "requirementGenerationEnabled": "Requirement generation",
       "saveError": "Could not save AI settings.",
-      "securityDescription": "Control MCP transport guardrails.",
-      "securityTitle": "AI and MCP security"
+      "securityDescription": "Control MCP transport guardrails and the words used by the AI safety filter.",
+      "securityTitle": "AI and MCP security",
+      "active": "Active",
+      "activeTermCount": "{activeCount}/{totalCount} active",
+      "addTerm": "Add",
+      "customTerm": "Custom",
+      "deviationCount": "{count} deviation",
+      "direction": "Direction",
+      "directionForTerm": "Direction for {term}",
+      "inactive": "Inactive",
+      "noSafetyRules": "No AI safety rules could be shown.",
+      "reloadSafetyRules": "Reload rules",
+      "removeSelectedTerms": "Remove selected",
+      "removeSelectedTermsConfirmMessage": "{standardCount} standard words will be deactivated and {customCount} custom additions will be deleted.",
+      "removeSelectedTermsConfirmTitle": "Remove selected words?",
+      "restoreRuleDefaults": "Restore default",
+      "rowSaveError": "Could not save",
+      "safetyDirections": {
+        "input": "Input",
+        "input_output": "Input and output",
+        "output": "Output"
+      },
+      "safetyRuleCacheTtl": "Safety rule cache time",
+      "safetyRuleRestoreError": "Could not restore the rule default.",
+      "safetyRulesHint": "Changes are saved immediately.",
+      "safetyRulesLoadError": "Could not load AI safety rules.",
+      "safetyRulesTitle": "AI safety rules",
+      "safetyTermAddError": "Could not add word.",
+      "safetyTermRemoveError": "Could not remove selected words.",
+      "safetyTermSaveError": "Could not save the word.",
+      "safetyTermTypes": {
+        "action": "Actions",
+        "coding": "Coding words",
+        "direct_marker": "Direct phrases/markers",
+        "target": "Targets"
+      },
+      "seconds": "sec",
+      "selectTerm": "Select word",
+      "selectTermNamed": "Select {term}",
+      "standard": "Standard",
+      "standardDeviation": "Deviates from standard",
+      "status": "Status",
+      "termText": "Word",
+      "termTextPlaceholder": "Enter word or phrase",
+      "termType": "Word type"
     },
     "aiDescription": "Control AI-assisted requirement generation availability.",
     "identityDescription": "Manage HSA-id prefixes for editable responsibility fields.",
@@ -2041,11 +2086,35 @@
       "title": "AI",
       "overview": {
         "heading": "Purpose",
-        "body": "The AI tab controls the global Admin Center preference for AI-assisted requirement generation."
+        "body": "The AI tab controls how AI-assisted requirement authoring and AI-adjacent MCP requests may be used across the system. The settings are global and affect requirement lists, specifications, and import flows that use AI."
+      },
+      "settings": {
+        "heading": "Available settings",
+        "body": "You can enable or disable AI-assisted requirement generation, control how long the active safety rule set may stay in the server cache, set the maximum allowed MCP request size, and maintain the words used by the AI and MCP safety screen. Every change on the AI tab is saved immediately when a field or row changes."
       },
       "precedence": {
         "heading": "Precedence",
         "body": "The deployment variable AI_REQUIREMENT_GENERATION_DISABLED has higher precedence. When it is active, generation remains disabled even if the saved Admin Center preference is enabled."
+      },
+      "safetyRules": {
+        "heading": "AI and MCP safety",
+        "body": "The safety rules screen text before it is sent to an AI model and after the model responds. If the rule set cannot be read from the database, AI assistance is stopped. The rules are intended to catch attempts to take over the prompt, requests for internal instructions, encoded bypasses, secrets, harmful content, and system-adjacent content."
+      },
+      "ruleTypes": {
+        "heading": "Rule types",
+        "body": "Each expandable row is a rule type. Prompt injection: instruction override catches attempts to ignore or replace the system's instructions. System prompt leakage catches requests for system prompts, hidden instructions, or prompt templates. Prompt injection via encoding and obfuscation catches combinations of encoding, such as base64, alternate representations, or obfuscation and attempts to bypass safeguards. Sensitive information disclosure: secrets catches requests for keys, passwords, and token values. Harmful content generation request catches requests for phishing, malware, credential theft, and similar content. System-adjacent content leakage is mainly used on model output and catches signs that internal instructions, token values, or other system-adjacent content leaked."
+      },
+      "termGroups": {
+        "heading": "Actions, targets, and markers",
+        "body": "Terms in a rule are grouped by how matching should work. Actions are verbs or phrases that describe what someone wants to do, such as show, ignore, or generate. Targets are the object of the action, such as system instruction, API key, or malware. Coding terms are used when a rule should recognize encoded instructions or bypasses. Direct markers are full phrases or technical patterns that are enough to match without being paired with an action and a target."
+      },
+      "termColumns": {
+        "heading": "Rule list columns",
+        "body": "Word shows the term being matched. Direction decides whether the term is used for input, output, or both. Standard shows whether the term comes from required seed data or is a custom addition. Active decides whether the safety screen uses the term. The warning icon shows that a standard term differs from its default state, for example because it has been disabled or given another direction."
+      },
+      "saving": {
+        "heading": "Change and restore",
+        "body": "Add custom terms with the plus button inside a rule type. Remove selected terms with the minus button; custom additions are deleted while standard terms are deactivated. The word text itself is not edited: add the correct word and remove or deactivate the incorrect one. Restore standard on a rule activates the standard terms and restores their directions, but keeps custom additions."
       }
     },
     "adminPrivacy": {

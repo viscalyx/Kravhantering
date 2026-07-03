@@ -12,6 +12,7 @@ import {
 import { expectApiResponseOk } from '../api-response-assertions'
 
 interface AiGenerationAvailability {
+  aiSafetyRuleCacheTtlSeconds: number
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
   mcpMaxRequestBytes: number
@@ -30,7 +31,9 @@ async function putAiSettings(
   request: APIRequestContext,
   settings: Pick<
     AiGenerationAvailability,
-    'mcpMaxRequestBytes' | 'requirementGenerationEnabled'
+    | 'aiSafetyRuleCacheTtlSeconds'
+    | 'mcpMaxRequestBytes'
+    | 'requirementGenerationEnabled'
   >,
 ): Promise<AiGenerationAvailability> {
   const response = await request.put('/api/admin/ai-settings', {
@@ -108,6 +111,7 @@ test.describe('Admin AI settings', () => {
 
     try {
       await putAiSettings(request, {
+        aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
         mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
         requirementGenerationEnabled: original.requirementGenerationEnabled,
       })
@@ -162,18 +166,14 @@ test.describe('Admin AI settings', () => {
       const increaseButton = page.getByRole('button', {
         name: 'Höj MCP-anropsgränsen',
       })
-      const saveButton = page.getByRole('button', { name: 'Spara' })
 
       await test.step('commits a typed MCP limit on blur', async () => {
         await expect(mcpLimitInput).toHaveValue('1024')
         await mcpLimitInput.fill('1080')
         await expect(mcpLimitInput).toHaveValue('1080')
-        await expect(saveButton).toBeDisabled()
+        await expect(page.getByRole('button', { name: 'Spara' })).toHaveCount(0)
         await mcpLimitInput.blur()
         await expect(mcpLimitInput).toHaveValue('1126.4')
-        await expect(saveButton).toBeEnabled()
-        await saveButton.click()
-        await expect(page.getByRole('status')).toHaveText('Sparat')
 
         await expect
           .poll(async () => (await getAiSettings(request)).mcpMaxRequestBytes)
@@ -185,8 +185,6 @@ test.describe('Admin AI settings', () => {
           await increaseButton.click()
         }
         await expect(mcpLimitInput).toHaveValue('2048')
-        await saveButton.click()
-        await expect(page.getByRole('status')).toHaveText('Sparat')
 
         await expect
           .poll(async () => (await getAiSettings(request)).mcpMaxRequestBytes)
@@ -195,6 +193,7 @@ test.describe('Admin AI settings', () => {
     } finally {
       if (shouldRestoreSettings) {
         await putAiSettings(request, {
+          aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
           mcpMaxRequestBytes: original.mcpMaxRequestBytes,
           requirementGenerationEnabled: original.requirementGenerationEnabled,
         })
@@ -233,6 +232,7 @@ test.describe('Admin AI settings', () => {
       }
 
       await putAiSettings(request, {
+        aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
         mcpMaxRequestBytes: original.mcpMaxRequestBytes,
         requirementGenerationEnabled: true,
       })
@@ -262,8 +262,12 @@ test.describe('Admin AI settings', () => {
 
       await page.goto('/sv/admin?tab=ai')
       await page.locator('#admin-ai-requirement-generation-enabled').uncheck()
-      await page.getByRole('button', { name: 'Spara' }).click()
-      await expect(page.getByRole('status')).toHaveText('Sparat')
+      await expect
+        .poll(
+          async () =>
+            (await getAiSettings(request)).requirementGenerationEnabled,
+        )
+        .toBe(false)
 
       await page.goto('/sv/requirements')
       const aiButton = page
@@ -287,6 +291,7 @@ test.describe('Admin AI settings', () => {
     } finally {
       if (shouldRestoreSettings) {
         await putAiSettings(request, {
+          aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
           mcpMaxRequestBytes: original.mcpMaxRequestBytes,
           requirementGenerationEnabled: original.requirementGenerationEnabled,
         })

@@ -4,6 +4,7 @@ import * as aiSafety from '@/lib/ai/safety'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
 import { REQUIREMENTS_IMPORT_SCHEMA_VERSION } from '@/lib/requirements/import-schema'
+import { mockAiSafetyScreening } from '@/tests/helpers/ai-safety-screening'
 import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 import { parseSecurityAuditEvents } from '@/tests/helpers/security-audit-events'
 
@@ -76,6 +77,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     clearInMemoryThrottleForTests()
+    mockAiSafetyScreening(aiSafety)
     routeState.getRequestSqlServerDataSource.mockResolvedValue({
       query: routeState.query,
     })

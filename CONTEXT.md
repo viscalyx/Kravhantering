@@ -160,6 +160,45 @@ sak som åtgärdsloggen och hör hemma i plattformens logg- och SIEM-flöde.
 _Avoid_: Säkerhetsaudit, säkerhetsrevision när loggströmmen avses,
 Åtgärdslogg, vanlig applikationslogg, tillämpningsspårbarhet.
 
+**AI-säkerhetsregel**:
+En regel som bedömer om text i AI-relaterade flöden ska tillåtas eller
+blockeras för att skydda instruktioner, hemligheter, uppgifter i bakomliggande
+system och andra säkerhetsrelevanta gränser.
+
+- `en`: AI safety rule
+
+_Avoid_: AI-regel när sammanhanget inte tydligt är säkerhet.
+
+**Läckage av systemnära innehåll**:
+AI-säkerhetsregeltyp som fångar när utgående modelltext innehåller interna
+instruktioner, tokenvärden eller andra tekniska systemmarkörer.
+
+- `en`: System-adjacent content leakage
+
+_Avoid_: Backend-begrepp som svensk UI-term för denna regeltyp.
+
+**AI-säkerhetsregeltyper**:
+Använd dessa användarsynliga namn för standardreglerna i Admin Center:
+Promptinjektion: instruktionsövertagande, Läckage av systemprompt,
+Promptinjektion via kodning och maskering, Känslig informationsutläsning:
+hemligheter, Begäran om skadligt innehåll och Läckage av systemnära innehåll.
+
+- `en`: Prompt injection: instruction override, System prompt leakage, Prompt
+  injection via encoding and obfuscation, Sensitive information disclosure:
+  secrets, Harmful content generation request, System-adjacent content leakage
+
+_Avoid_: äldre namn som bygger på smuggling eller backend som svensk UI-term
+för dessa regeltyper.
+
+**Säkerhetsregelriktning**:
+Anger om en AI-säkerhetsregel eller ett ord i en AI-säkerhetsregel gäller
+inkommande användar- eller systemtext, utgående modelltext eller båda
+riktningarna.
+
+- `en`: Safety rule direction
+
+_Avoid_: Riktning utan säkerhetsregelsammanhang.
+
 **HSA-id-prefix**:
 Delen före bindestrecket i ett HSA-id. Ett HSA-id-prefix består av två versala
 bokstäver för landskod följt av tio siffror för organisationsnummer och skrivs

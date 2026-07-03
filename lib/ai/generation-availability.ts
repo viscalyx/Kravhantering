@@ -1,4 +1,5 @@
 export interface AiRequirementGenerationAvailability {
+  aiSafetyRuleCacheTtlSeconds: number
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
   mcpMaxRequestBytes: number
@@ -10,6 +11,9 @@ export const MCP_REQUEST_PAYLOAD_STEPS_PER_MIB = 10
 export const MCP_REQUEST_PAYLOAD_MIN_STEP = 1
 export const MCP_REQUEST_PAYLOAD_DEFAULT_STEP = 10
 export const MCP_REQUEST_PAYLOAD_MAX_STEP = 50
+export const AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS = 600
+export const AI_SAFETY_RULE_CACHE_TTL_MIN_SECONDS = 30
+export const AI_SAFETY_RULE_CACHE_TTL_MAX_SECONDS = 3600
 export const MCP_REQUEST_PAYLOAD_STEP_KIB =
   1024 / MCP_REQUEST_PAYLOAD_STEPS_PER_MIB
 export const MCP_REQUEST_PAYLOAD_MIN_BYTES = getMcpRequestPayloadBytesForStep(
@@ -19,6 +23,7 @@ export const MCP_REQUEST_PAYLOAD_MAX_BYTES = 5 * 1024 * 1024
 
 export const DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY: AiRequirementGenerationAvailability =
   Object.freeze({
+    aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
     disabledByEnvironment: false,
     effectiveRequirementGenerationEnabled: true,
     mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
@@ -58,6 +63,22 @@ export function isValidMcpMaxRequestBytes(value: number): boolean {
     step >= MCP_REQUEST_PAYLOAD_MIN_STEP &&
     step <= MCP_REQUEST_PAYLOAD_MAX_STEP &&
     getMcpRequestPayloadBytesForStep(step) === value
+  )
+}
+
+export function isValidAiSafetyRuleCacheTtlSeconds(value: number): boolean {
+  return (
+    Number.isInteger(value) &&
+    value >= AI_SAFETY_RULE_CACHE_TTL_MIN_SECONDS &&
+    value <= AI_SAFETY_RULE_CACHE_TTL_MAX_SECONDS
+  )
+}
+
+export function coerceAiSafetyRuleCacheTtlSeconds(value: number): number {
+  const rounded = Math.round(value)
+  return Math.min(
+    AI_SAFETY_RULE_CACHE_TTL_MAX_SECONDS,
+    Math.max(AI_SAFETY_RULE_CACHE_TTL_MIN_SECONDS, rounded),
   )
 }
 

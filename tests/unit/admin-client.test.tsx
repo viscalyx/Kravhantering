@@ -627,6 +627,7 @@ describe('AdminClient', () => {
         if (url === '/api/admin/ai-settings' && method === 'GET') {
           return Promise.resolve(
             okJson({
+              aiSafetyRuleCacheTtlSeconds: 600,
               disabledByEnvironment: true,
               effectiveRequirementGenerationEnabled: false,
               mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
@@ -634,18 +635,57 @@ describe('AdminClient', () => {
             }),
           )
         }
-        if (url === '/api/admin/ai-settings' && method === 'PUT') {
+        if (url === '/api/admin/ai-settings' && method === 'PATCH') {
           const requestBody = JSON.parse(String(init?.body ?? '{}')) as {
-            mcpMaxRequestBytes: number
-            requirementGenerationEnabled: boolean
+            aiSafetyRuleCacheTtlSeconds?: number
+            mcpMaxRequestBytes?: number
+            requirementGenerationEnabled?: boolean
           }
           return Promise.resolve(
             okJson({
+              aiSafetyRuleCacheTtlSeconds:
+                requestBody.aiSafetyRuleCacheTtlSeconds ?? 600,
               disabledByEnvironment: true,
               effectiveRequirementGenerationEnabled: false,
-              mcpMaxRequestBytes: requestBody.mcpMaxRequestBytes,
+              mcpMaxRequestBytes:
+                requestBody.mcpMaxRequestBytes ??
+                MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
               requirementGenerationEnabled:
-                requestBody.requirementGenerationEnabled,
+                requestBody.requirementGenerationEnabled ?? true,
+            }),
+          )
+        }
+        if (url === '/api/admin/ai-safety-rules' && method === 'GET') {
+          return Promise.resolve(
+            okJson({
+              rules: [
+                {
+                  category: 'prompt_injection',
+                  descriptionEn:
+                    'Blocks prompt injection instruction override.',
+                  descriptionSv:
+                    'Stoppar promptinjektion med instruktionsövertagande.',
+                  id: 1,
+                  nameEn: 'Prompt injection: instruction override',
+                  nameSv: 'Promptinjektion: instruktionsövertagande',
+                  patternKind: 'paired_terms',
+                  ruleId: 'instruction_override',
+                  sortOrder: 10,
+                  terms: [
+                    {
+                      direction: 'input_output',
+                      id: 11,
+                      isActive: true,
+                      isStandard: true,
+                      normalizedTerm: 'ignore',
+                      standardDirection: 'input_output',
+                      termText: 'ignore',
+                      termType: 'action',
+                    },
+                  ],
+                  windowChars: 80,
+                },
+              ],
             }),
           )
         }
@@ -654,10 +694,12 @@ describe('AdminClient', () => {
     )
 
     render(
-      <AdminClient
-        currentUserRoles={['Admin']}
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-      />,
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['Admin']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        />
+      </ConfirmModalProvider>,
     )
 
     expect(
@@ -711,42 +753,57 @@ describe('AdminClient', () => {
       'admin.ai.requirementGenerationEnabled',
     )
     const mcpLimitInput = screen.getByLabelText('admin.ai.mcpMaxRequestLimit')
-    const saveButton = screen.getByRole('button', { name: 'common.save' })
     await waitFor(() => expect(toggle).toBeChecked())
     expect(mcpLimitInput).toHaveValue(1024)
-    expect(saveButton).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'common.save' })).toBeNull()
 
     fireEvent.change(mcpLimitInput, { target: { value: '1080' } })
     expect(mcpLimitInput).toHaveValue(1080)
-    expect(saveButton).toBeDisabled()
     fireEvent.keyDown(mcpLimitInput, { key: 'Enter' })
     expect(mcpLimitInput).toHaveValue(1126.4)
     fireEvent.click(toggle)
     expect(toggle).not.toBeChecked()
-    expect(saveButton).toBeEnabled()
-    fireEvent.click(saveButton)
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/admin/ai-settings',
-        expect.objectContaining({ method: 'PUT' }),
+        expect.objectContaining({ method: 'PATCH' }),
       )
     })
-    const putCall = fetchMock.mock.calls.find(
+    const mcpPatchCall = fetchMock.mock.calls.find(
       ([url, init]) =>
         url === '/api/admin/ai-settings' &&
-        (init as RequestInit | undefined)?.method === 'PUT',
+        (init as RequestInit | undefined)?.method === 'PATCH' &&
+        String((init as RequestInit | undefined)?.body ?? '').includes(
+          'mcpMaxRequestBytes',
+        ),
     )
     expect(
-      JSON.parse(((putCall?.[1] as RequestInit)?.body as string) ?? '{}'),
+      JSON.parse(((mcpPatchCall?.[1] as RequestInit)?.body as string) ?? '{}'),
     ).toEqual({
       mcpMaxRequestBytes: addMcpMaxRequestBytesSteps(
         MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
         1,
       ),
+    })
+    const togglePatchCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/admin/ai-settings' &&
+        (init as RequestInit | undefined)?.method === 'PATCH' &&
+        String((init as RequestInit | undefined)?.body ?? '').includes(
+          'requirementGenerationEnabled',
+        ),
+    )
+    expect(
+      JSON.parse(
+        ((togglePatchCall?.[1] as RequestInit)?.body as string) ?? '{}',
+      ),
+    ).toEqual({
       requirementGenerationEnabled: false,
     })
-    await waitFor(() => expect(screen.getByText('admin.saved')).toBeVisible())
+    await waitFor(() =>
+      expect(screen.getAllByText('admin.saved').length).toBeGreaterThan(0),
+    )
   })
 
   it('loads and saves HSA-id prefixes from the identity tab', async () => {

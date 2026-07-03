@@ -214,17 +214,25 @@ AISVS evidence for AI-assisted authoring is tracked in
 [AISVS AI and MCP Control Mapping](../security-privacy/aisvs-ai-mcp-control-mapping.md).
 
 Generation and repair use the local deterministic safety screen in
-`lib/ai/safety.ts`. Input screening runs after AI availability is confirmed and
-before model-catalog or chat-completion work. The screen evaluates the user's
-need/context, repair `rawJson`, repair validation `errors`, and image MIME
-metadata. It blocks obvious instruction override, attempts to extract
-non-public prompt/backend material, encoded smuggling tied to override terms,
-secret extraction, and harmful-generation requests. Requests to inspect the
-AI request text that the app intentionally exposes in `Så byggs AI-anropet` /
-`How the AI request is built` are not safety blocks by themselves. This keeps
-the filter aligned with the transparency model: it prevents control override
-and non-public instruction extraction without treating the supported
-explanation UI as secret.
+`lib/ai/safety.ts`. The rule patterns are code-owned, while rule terms are
+required seed data stored in `ai_safety_rules` and `ai_safety_rule_terms` and
+administered from the Admin Center `AI and MCP security` section. There is no
+runtime fallback list in code; if the active rule set cannot be read from the
+database, AI-assisted authoring fails closed before provider work. Input
+screening runs after AI availability is confirmed and before model-catalog or
+chat-completion work. The screen evaluates the user's need/context, repair
+`rawJson`, repair validation `errors`, and image MIME metadata. It blocks
+obvious instruction override, attempts to extract non-public prompt/backend
+material, encoded smuggling tied to override terms, secret extraction, and
+harmful-generation requests. Requests to inspect the AI request text that the
+app intentionally exposes in `Så byggs AI-anropet` / `How the AI request is
+built` are not safety blocks by themselves. This keeps the filter aligned with
+the transparency model: it prevents control override and non-public instruction
+extraction without treating the supported explanation UI as secret.
+
+The active rule set is cached in process memory for the Admin-configured
+`aiSafetyRuleCacheTtlSeconds`. Admin mutations clear the local cache
+immediately; other instances observe changes when their TTL expires.
 
 Streaming generation buffers raw model chunks server-side. The route emits the
 final `done`, `validation_error`, or safe `error` event only after output

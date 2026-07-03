@@ -69,16 +69,16 @@ configured limit before bearer-token verification or service creation.
 | AISVS area | Target | Status | Evidence | Gap / follow-up |
 | --- | --- | --- | --- | --- |
 | C2 input validation: bounded text and request shape | L1 | Implemented | Zod route schemas, image MIME/base64/size checks, `MAX_AI_*` limits | None |
-| C2 prompt-injection detection | L1 | Implemented first pass | `lib/ai/safety.ts`, route tests for input block before provider use | Broader evasion coverage: #386 |
-| C2 encoded-smuggling detection | L1/L2 | Partial | Local encoded-smuggling rule tied to override terms | Stronger canonicalization and classifier evaluation: #386 |
+| C2 prompt-injection detection | L1 | Implemented first pass | `lib/ai/safety.ts`, DB-backed `ai_safety_rule_terms`, route tests for input block before provider use | Broader evasion coverage: #386 |
+| C2 prompt injection via encoding and obfuscation | L1/L2 | Partial | DB-backed coding and representation terms tied to prompt-injection targets | Stronger canonicalization and classifier evaluation: #386 |
 | C2 image hidden-content detection | L2 | Deferred | Image type/base64/size are validated; hidden text is not inspected | Hidden image content screening: #387 |
 | C5 access control around AI and MCP | L1 | Implemented | `secureMutationRoute`, requirements authorization policies, MCP bearer-token verification | None |
 | C7 output schema validation | L1 | Implemented | Structured OpenRouter response format and `requirementsImportPayloadSchema` validation | None |
-| C7 unsafe output filtering | L1/L2 | Implemented first pass | `screenAiOutput`, route tests proving unsafe output is not echoed | Broader harmful-content classifier evaluation: #386 |
-| C7 system/backend leakage detection | L2 | Implemented first pass | Output rules for bearer headers, OpenRouter key shape, HSA claim names, and prompt markers | Expand if future evidence shows leakage patterns |
+| C7 unsafe output filtering | L1/L2 | Implemented first pass | `screenAiOutput`, DB-backed output terms, route tests proving unsafe output is not echoed | Broader harmful-content classifier evaluation: #386 |
+| C7 system-adjacent content leakage detection | L2 | Implemented first pass | Output terms for bearer headers, OpenRouter key shape, HSA claim names, and prompt markers | Expand if future evidence shows leakage patterns |
 | C9 orchestration budgets and timeouts | L1 | Implemented | OpenRouter request/model timeouts, AI throttle, capacity metrics, MCP schema tests | None |
 | C9 human approval before persistence | L1 | Implemented | AI output only enters import preview; no requirement is persisted until the user confirms import/create | None |
-| C9 kill switch | L1/L2 | Implemented | Admin AI setting plus `AI_REQUIREMENT_GENERATION_DISABLED` environment override | None |
+| C9 kill switch | L1/L2 | Implemented | Admin AI setting plus `AI_REQUIREMENT_GENERATION_DISABLED` environment override; AI safety DB read failures fail closed | None |
 | C10 MCP token validation | L1 | Implemented | JWT signature, issuer, audience, expiry, HSA-id, and role parsing tests | None |
 | C10 MCP token non-persistence | L1 | Implemented | Bearer token is verified per request and not stored in app state or logs | None |
 | C10 strict MCP tool schemas | L1 | Implemented | Zod schemas and MCP unit/property tests | None |

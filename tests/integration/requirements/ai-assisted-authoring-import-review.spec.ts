@@ -23,6 +23,7 @@ const generatedPayload = {
 }
 
 interface AiGenerationAvailability {
+  aiSafetyRuleCacheTtlSeconds: number
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
   mcpMaxRequestBytes: number
@@ -41,7 +42,9 @@ async function putAiSettings(
   request: APIRequestContext,
   settings: Pick<
     AiGenerationAvailability,
-    'mcpMaxRequestBytes' | 'requirementGenerationEnabled'
+    | 'aiSafetyRuleCacheTtlSeconds'
+    | 'mcpMaxRequestBytes'
+    | 'requirementGenerationEnabled'
   >,
 ): Promise<AiGenerationAvailability> {
   const response = await request.put('/api/admin/ai-settings', {
@@ -237,6 +240,7 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
 
   try {
     await putAiSettings(request, {
+      aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
       mcpMaxRequestBytes: original.mcpMaxRequestBytes,
       requirementGenerationEnabled: true,
     })
@@ -274,6 +278,7 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
   } finally {
     if (shouldRestoreSettings) {
       await putAiSettings(request, {
+        aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
         mcpMaxRequestBytes: original.mcpMaxRequestBytes,
         requirementGenerationEnabled: original.requirementGenerationEnabled,
       })

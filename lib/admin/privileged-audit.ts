@@ -27,6 +27,8 @@ export type AdminPrivilegedActionOperation =
 
 export type AdminPrivilegedResourceType =
   | 'ai_settings'
+  | 'ai_safety_rule'
+  | 'ai_safety_rule_term'
   | 'hsa_id_prefix'
   | 'norm_reference'
   | 'owner'

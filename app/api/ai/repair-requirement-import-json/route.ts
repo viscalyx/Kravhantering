@@ -148,9 +148,12 @@ export const POST = secureMutationRoute({
       )
     }
 
-    let inputSafetyDecision: ReturnType<typeof screenAiInput>
+    let inputSafetyDecision: Awaited<ReturnType<typeof screenAiInput>>
     try {
-      inputSafetyDecision = screenAiInput([body.rawJson, ...body.errors])
+      inputSafetyDecision = await screenAiInput(db, [
+        body.rawJson,
+        ...body.errors,
+      ])
     } catch (error) {
       recordSafetyFilterFailure(error)
       recordRepairEvent('failure', 503)
@@ -213,9 +216,9 @@ export const POST = secureMutationRoute({
         signal: request.signal,
         supportedParameters: modelCapabilities.supportedParameters,
       })
-      let outputSafetyDecision: ReturnType<typeof screenAiOutput>
+      let outputSafetyDecision: Awaited<ReturnType<typeof screenAiOutput>>
       try {
-        outputSafetyDecision = screenAiOutput([
+        outputSafetyDecision = await screenAiOutput(db, [
           JSON.stringify(result.content),
           result.thinking,
         ])

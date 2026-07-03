@@ -256,6 +256,7 @@ function previewResponse(
 
 async function renderOpenGenerator(overrides?: {
   aiGenerationAvailability?: {
+    aiSafetyRuleCacheTtlSeconds: number
     disabledByEnvironment: boolean
     effectiveRequirementGenerationEnabled: boolean
     mcpMaxRequestBytes: number
@@ -403,6 +404,7 @@ describe('AiRequirementGenerator', () => {
     const user = userEvent.setup()
     await renderOpenGenerator({
       aiGenerationAvailability: {
+        aiSafetyRuleCacheTtlSeconds: 600,
         disabledByEnvironment: false,
         effectiveRequirementGenerationEnabled: false,
         mcpMaxRequestBytes: 1024 * 1024,

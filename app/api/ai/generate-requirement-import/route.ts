@@ -234,9 +234,9 @@ export const POST = secureMutationRoute({
       )
     }
 
-    let inputSafetyDecision: ReturnType<typeof screenAiInput>
+    let inputSafetyDecision: Awaited<ReturnType<typeof screenAiInput>>
     try {
-      inputSafetyDecision = screenAiInput([
+      inputSafetyDecision = await screenAiInput(db, [
         body.need,
         ...imageMetadataForSafety(images),
       ])
@@ -322,9 +322,11 @@ export const POST = secureMutationRoute({
           })) {
             switch (event.phase) {
               case 'thinking': {
-                let progressSafetyDecision: ReturnType<typeof screenAiOutput>
+                let progressSafetyDecision: Awaited<
+                  ReturnType<typeof screenAiOutput>
+                >
                 try {
-                  progressSafetyDecision = screenAiOutput([
+                  progressSafetyDecision = await screenAiOutput(db, [
                     event.thinkingSoFar || event.chunk,
                   ])
                 } catch (error) {
@@ -363,9 +365,11 @@ export const POST = secureMutationRoute({
                 }
                 break
               case 'done': {
-                let outputSafetyDecision: ReturnType<typeof screenAiOutput>
+                let outputSafetyDecision: Awaited<
+                  ReturnType<typeof screenAiOutput>
+                >
                 try {
-                  outputSafetyDecision = screenAiOutput([
+                  outputSafetyDecision = await screenAiOutput(db, [
                     event.rawContent,
                     event.thinking,
                   ])

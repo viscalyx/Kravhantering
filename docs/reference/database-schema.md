@@ -185,6 +185,35 @@ erDiagram
         integer id PK
         bit requirement_generation_enabled
         integer mcp_max_request_bytes
+        integer ai_safety_rule_cache_ttl_seconds
+        datetime2 created_at
+        datetime2 updated_at
+    }
+
+    ai_safety_rules {
+        integer id PK
+        text rule_id UK
+        text category
+        text name_sv
+        text name_en
+        text pattern_kind
+        integer window_chars
+        integer sort_order
+        datetime2 created_at
+        datetime2 updated_at
+    }
+
+    ai_safety_rule_terms {
+        integer id PK
+        integer rule_id FK
+        text term_type
+        text term_text
+        text normalized_term
+        text direction
+        text standard_direction
+        bit is_standard
+        bit is_active
+        integer sort_order
         datetime2 created_at
         datetime2 updated_at
     }
@@ -1402,6 +1431,7 @@ request payload security.
 | `id` | integer PK | Auto-increment primary key; constrained to singleton row `1` |
 | `requirement_generation_enabled` | bit | Admin preference for AI requirement generation |
 | `mcp_max_request_bytes` | integer | Maximum MCP request payload size in bytes |
+| `ai_safety_rule_cache_ttl_seconds` | integer | Process-local active AI safety rule-set cache time in seconds |
 | `created_at` | datetime2 | Creation timestamp |
 | `updated_at` | datetime2 | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
@@ -1412,18 +1442,86 @@ request payload security.
 - persisted default used by the requirements UI and REST generation route
 - organization-wide MCP request payload limit used by `/api/mcp` before
   bearer-token verification and service creation
+- process-local cache time for DB-backed AI safety rules
 - input to effective availability together with the deployment guard
   `AI_REQUIREMENT_GENERATION_DISABLED`
 
 **Seed value:** Required and demo seed data create row `id = 1` with
-`requirement_generation_enabled = 1` and `mcp_max_request_bytes = 1048576`, so
-migrated installations stay enabled with the exact `1 MiB` MCP default.
+`requirement_generation_enabled = 1`, `mcp_max_request_bytes = 1048576`, and
+`ai_safety_rule_cache_ttl_seconds = 600`, so migrated installations stay
+enabled with the exact `1 MiB` MCP default and ten-minute AI safety rule cache.
 
 **Check constraints:** `chk_ai_settings_id` enforces the singleton row ID.
 `chk_ai_settings_mcp_max_request_bytes` enforces integer byte values on a
 ten-steps-per-MiB grid from approximately `102.4 KiB` through `5 MiB`, with no
 unlimited value. The grid keeps exact MiB anchors, so `1048576` is `1 MiB` and
 ten increases from the default become `2097152` (`2 MiB`).
+`chk_ai_settings_ai_safety_rule_cache_ttl_seconds` enforces cache values from
+`30` to `3600` seconds.
+
+### `ai_safety_rules`
+
+DB-backed catalog of AI safety rule definitions shown in the Admin Center AI
+tab. Rule patterns are implemented in `lib/ai/safety.ts`; this table stores the
+rule metadata and matching window used with seeded/administered terms.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `rule_id` | nvarchar(64) UK | Stable rule identifier used by the safety screen and audit events |
+| `category` | nvarchar(64) | Safety category emitted in blocked safety decisions |
+| `name_sv` | nvarchar(255) | Swedish display name |
+| `name_en` | nvarchar(255) | English display name |
+| `description_sv` | nvarchar(max) | Swedish admin help text, nullable |
+| `description_en` | nvarchar(max) | English admin help text, nullable |
+| `pattern_kind` | nvarchar(64) | Pattern kind: `paired_terms`, `bidirectional_pair`, or `direct_markers` |
+| `window_chars` | integer | Character window for paired term matching, nullable for direct markers |
+| `sort_order` | integer | Admin display order |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Seed value:** Required seed synchronizes all standard AI safety rules.
+
+**Constraints:** `uq_ai_safety_rules_rule_id` keeps rule identifiers unique.
+`chk_ai_safety_rules_pattern_kind` restricts the pattern kind allowlist.
+
+### `ai_safety_rule_terms`
+
+DB-backed term rows used by the AI safety screen. Standard rows come from
+required seed data (`is_standard = 1`). Admin-created rows use
+`is_standard = 0`. Admins may deactivate standard rows, delete custom rows, and
+change a term direction. The term text itself is not edited; changing a word
+means adding the new word and removing/deactivating the old one.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `rule_id` | integer FK | Parent `ai_safety_rules.id` |
+| `term_type` | nvarchar(64) | Term group: `action`, `target`, `direct_marker`, or `coding` |
+| `term_text` | nvarchar(255) | Literal word or phrase shown to admins and escaped before regex matching |
+| `normalized_term` | nvarchar(255) | NFKC-normalized, whitespace-collapsed, lower-case uniqueness key |
+| `direction` | nvarchar(32) | Active direction: `input`, `output`, or `input_output` |
+| `standard_direction` | nvarchar(32) | Seeded default direction used by per-rule restore |
+| `is_standard` | bit | Whether the row is part of required standard seed data |
+| `is_active` | bit | Whether the safety screen uses the row |
+| `sort_order` | integer | Admin display order inside a rule and term type |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Seed behavior:** Required seed updates or inserts standard terms. If a future
+standard term matches an existing custom term by rule, term type and normalized
+term, the row is converted to `is_standard = 1`, activated, and assigned the
+seeded standard direction. Existing standard rows that an admin has deactivated
+remain deactivated across repeated seed runs.
+
+**Constraints:** `fk_ai_safety_rule_terms_rule_id` cascades deletes from
+rules. `uq_ai_safety_rule_terms_rule_type_normalized` prevents duplicate terms
+within the same rule and term group. Check constraints enforce term type,
+direction, standard direction, and non-empty normalized terms.
 
 ### `requirement_list_column_defaults`
 
@@ -2345,6 +2443,7 @@ its purpose and the table/column(s) it covers.
 | `idx_archiving_retention_runs_policy_id` | `archiving_retention_runs` | `policy_id` | Speed up latest-run lookups per retention policy |
 | `idx_archiving_retention_runs_started_at` | `archiving_retention_runs` | `started_at` | Speed up retention execution history ordering |
 | `idx_archiving_retention_exceptions_policy_source` | `archiving_retention_exceptions` | `(policy_id, source_key)` | Speed up filtering legal-hold exceptions during preview |
+| `idx_ai_safety_rule_terms_rule_id` | `ai_safety_rule_terms` | `rule_id` | Speed up loading safety terms per rule |
 <!-- markdownlint-enable MD013 -->
 
 ### Named Foreign Key Constraints
@@ -2370,6 +2469,7 @@ The following table lists every named FK constraint:
 | Constraint Name | Table | Column(s) | References | On Delete | On Update |
 | --------------- | ----- | --------- | ---------- | --------- | --------- |
 | `fk_requirement_areas_owner_hsa_id` | `requirement_areas` | `owner_hsa_id` | `requirement_responsibility_people.hsa_id` | NO ACTION | NO ACTION |
+| `fk_ai_safety_rule_terms_rule_id` | `ai_safety_rule_terms` | `rule_id` | `ai_safety_rules.id` | CASCADE | NO ACTION |
 | `fk_requirement_area_co_authors_area_id` | `requirement_area_co_authors` | `area_id` | `requirement_areas.id` | CASCADE | NO ACTION |
 | `fk_requirement_area_co_authors_hsa_id` | `requirement_area_co_authors` | `hsa_id` | `requirement_responsibility_people.hsa_id` | NO ACTION | NO ACTION |
 | `fk_requirements_specifications_specification_implementation_type_id` | `requirements_specifications` | `specification_implementation_type_id` | `specification_implementation_types.id` | NO ACTION | NO ACTION |
@@ -2457,6 +2557,8 @@ graph LR
 
     subgraph UI Settings
         AIS[ai_settings]
+        AIR[ai_safety_rules]
+        AIRT[ai_safety_rule_terms]
         RLCD[requirement_list_column_defaults]
         HIP[hsa_id_prefixes]
     end
@@ -2514,6 +2616,8 @@ graph LR
     HIP -- "uq_hsa_id_prefixes_prefix\n(prefix)" --> HIP
     HIP -- "uq_hsa_id_prefixes_default\n(is_default WHERE is_default = 1)" --> HIP
     HIP -- "idx_hsa_id_prefixes_is_visible\n(is_visible)" --> HIP
+    AIRT -- "FK rule_id" --> AIR
+    AIRT -- "uq_..._rule_type_normalized\n(rule_id, term_type, normalized_term)" --> AIRT
 
     RA -- "uq_requirement_areas_prefix\n(prefix)" --> RA
     RA -- "FK owner_hsa_id" --> RRP

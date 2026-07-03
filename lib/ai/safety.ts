@@ -1,13 +1,15 @@
 import { recordSecurityEvent, type SecurityEventName } from '@/lib/auth/audit'
+import {
+  type ActiveAiSafetyRule,
+  type ActiveAiSafetyRuleSet,
+  type ActiveAiSafetyRuleTerm,
+  type AiSafetyRuleId,
+  getCachedAiSafetyRuleSet,
+} from '@/lib/dal/ai-safety-rules'
+import type { SqlServerDatabase } from '@/lib/db'
 import type { RequestContext } from '@/lib/requirements/auth'
 
-export type AiSafetyRuleId =
-  | 'encoded_smuggling'
-  | 'harmful_generation_request'
-  | 'instruction_override'
-  | 'secret_extraction_request'
-  | 'sensitive_backend_leak'
-  | 'system_prompt_extraction'
+export type { AiSafetyRuleId } from '@/lib/dal/ai-safety-rules'
 
 export interface AiSafetyDecision {
   allowed: boolean
@@ -16,101 +18,8 @@ export interface AiSafetyDecision {
   textLength: number
 }
 
-interface AiSafetyRule {
-  category: string
-  id: AiSafetyRuleId
-  test: (text: string) => boolean
-}
-
 const ZERO_WIDTH_CHARS = /[\u200B-\u200D\uFEFF]/g
-
-const INSTRUCTION_OVERRIDE_RULE: AiSafetyRule = {
-  category: 'prompt_injection',
-  id: 'instruction_override',
-  test: text =>
-    /(?:\b(?:ignore|disregard|forget|override)\b|(?:ignorera|bortse från|glöm|åsidosätt)).{0,80}(?:\b(?:previous|above|earlier|all|system|developer|safety policy|content policy|instructions?)\b|(?:tidigare|ovanstående|alla|systeminstruktioner?|system|utvecklar|säkerhetspolicy|instruktioner?))/iu.test(
-      text,
-    ) ||
-    /\b(?:you are now|developer mode|jailbreak|do anything now|unfiltered mode)\b/i.test(
-      text,
-    ),
-}
-
-// The UI intentionally exposes the app-built AI request. Input screening only
-// treats requests for non-public prompt/backend material as extraction.
-const INTERNAL_PROMPT_EXTRACTION_RULE: AiSafetyRule = {
-  category: 'prompt_extraction',
-  id: 'system_prompt_extraction',
-  test: text =>
-    /\b(?:show|reveal|print|dump|exfiltrate|leak|return)\b.{0,80}\b(?:developer message|hidden instructions?|internal instructions?|prompt template|backend prompt)\b/i.test(
-      text,
-    ) ||
-    /(?:visa|avslöja|skriv ut|dumpa|läck|returnera).{0,80}(?:utvecklarmeddelande|dolda instruktioner?|interna instruktioner?|promptmall|backendprompt)/iu.test(
-      text,
-    ),
-}
-
-const ENCODED_SMUGGLING_RULE: AiSafetyRule = {
-  category: 'encoded_smuggling',
-  id: 'encoded_smuggling',
-  test: text =>
-    /\b(?:base64|rot13|hex|unicode|decode|encoded)\b.{0,120}\b(?:ignore|system prompt|developer message|hidden instructions?|jailbreak|bypass)\b/i.test(
-      text,
-    ) ||
-    /\b(?:ignore|system prompt|developer message|hidden instructions?|jailbreak|bypass)\b.{0,120}\b(?:base64|rot13|hex|unicode|decode|encoded)\b/i.test(
-      text,
-    ),
-}
-
-const SECRET_EXTRACTION_RULE: AiSafetyRule = {
-  category: 'secret_extraction',
-  id: 'secret_extraction_request',
-  test: text =>
-    /\b(?:show|print|reveal|return|include|exfiltrate)\b.{0,80}\b(?:api key|bearer token|jwt|password|secret|openrouter key|session tokens?)\b/i.test(
-      text,
-    ) ||
-    /(?:visa|skriv ut|avslöja|returnera|inkludera|läck).{0,80}(?:api-nyckel|bearer-token|jwt|lösenord|hemlighet|openrouter-nyckel|sessionstoken)/iu.test(
-      text,
-    ),
-}
-
-const HARMFUL_GENERATION_RULE: AiSafetyRule = {
-  category: 'harmful_content',
-  id: 'harmful_generation_request',
-  test: text =>
-    /\b(?:write|create|generate|build|provide|help)\b.{0,80}\b(?:malware|ransomware|phishing|credential theft|steal credentials|keylogger|exploit code)\b/i.test(
-      text,
-    ) ||
-    /(?:skriv|skapa|generera|bygg|ge|hjälp).{0,80}(?:skadlig kod|ransomware|nätfiske|lösenordsstöld|stjäla inlogg|keylogger|exploitkod)/iu.test(
-      text,
-    ),
-}
-
-const SENSITIVE_BACKEND_LEAK_RULE: AiSafetyRule = {
-  category: 'backend_leakage',
-  id: 'sensitive_backend_leak',
-  test: text =>
-    /\b(?:authorization:\s*bearer|sk-or-v1-|employeeHsaId|begin system prompt|begin developer message|<\|system\|>|system prompt:\s*["'])/i.test(
-      text,
-    ),
-}
-
-const INPUT_RULES: readonly AiSafetyRule[] = [
-  INSTRUCTION_OVERRIDE_RULE,
-  INTERNAL_PROMPT_EXTRACTION_RULE,
-  ENCODED_SMUGGLING_RULE,
-  SECRET_EXTRACTION_RULE,
-  HARMFUL_GENERATION_RULE,
-]
-
-const OUTPUT_RULES: readonly AiSafetyRule[] = [
-  INSTRUCTION_OVERRIDE_RULE,
-  INTERNAL_PROMPT_EXTRACTION_RULE,
-  ENCODED_SMUGGLING_RULE,
-  SECRET_EXTRACTION_RULE,
-  HARMFUL_GENERATION_RULE,
-  SENSITIVE_BACKEND_LEAK_RULE,
-]
+const UNICODE_WORD_CHAR = String.raw`[\p{L}\p{N}_]`
 
 function normalizeSafetyText(text: string): string {
   return text
@@ -119,17 +28,104 @@ function normalizeSafetyText(text: string): string {
     .replace(/\s+/g, ' ')
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function termPattern(termText: string): string {
+  const normalized = normalizeSafetyText(termText).trim()
+  const escapedParts = normalized.split(' ').filter(Boolean).map(escapeRegExp)
+  const pattern = escapedParts.join(String.raw`\s*`)
+  const usesOnlyWordAndSpace = /^[\p{L}\p{N}_ ]+$/u.test(normalized)
+  if (!usesOnlyWordAndSpace) return pattern
+  return `(?<!${UNICODE_WORD_CHAR})${pattern}(?!${UNICODE_WORD_CHAR})`
+}
+
+function alternationPattern(terms: readonly ActiveAiSafetyRuleTerm[]): string {
+  return terms.map(term => termPattern(term.termText)).join('|')
+}
+
+function termsByType(
+  rule: ActiveAiSafetyRule,
+  direction: 'input' | 'output',
+  termType: ActiveAiSafetyRuleTerm['termType'],
+): readonly ActiveAiSafetyRuleTerm[] {
+  return rule.terms.filter(
+    term =>
+      term.termType === termType &&
+      (term.direction === 'input_output' || term.direction === direction),
+  )
+}
+
+function directMatch(
+  text: string,
+  terms: readonly ActiveAiSafetyRuleTerm[],
+): boolean {
+  const alternation = alternationPattern(terms)
+  return alternation.length > 0
+    ? new RegExp(`(?:${alternation})`, 'iu').test(text)
+    : false
+}
+
+function pairedMatch(
+  text: string,
+  firstTerms: readonly ActiveAiSafetyRuleTerm[],
+  secondTerms: readonly ActiveAiSafetyRuleTerm[],
+  windowChars: number,
+  bidirectional = false,
+): boolean {
+  const first = alternationPattern(firstTerms)
+  const second = alternationPattern(secondTerms)
+  if (!first || !second) return false
+  const gap = String.raw`[\s\S]{0,${windowChars}}`
+  const forward = new RegExp(`(?:${first})${gap}(?:${second})`, 'iu')
+  if (forward.test(text)) return true
+  if (!bidirectional) return false
+  return new RegExp(`(?:${second})${gap}(?:${first})`, 'iu').test(text)
+}
+
+function ruleMatches(
+  rule: ActiveAiSafetyRule,
+  text: string,
+  direction: 'input' | 'output',
+): boolean {
+  const windowChars = rule.windowChars ?? 80
+  const actions = termsByType(rule, direction, 'action')
+  const targets = termsByType(rule, direction, 'target')
+  const coding = termsByType(rule, direction, 'coding')
+  const directMarkers = termsByType(rule, direction, 'direct_marker')
+
+  switch (rule.ruleId) {
+    case 'instruction_override':
+      return (
+        directMatch(text, directMarkers) ||
+        pairedMatch(text, actions, targets, windowChars)
+      )
+    case 'encoded_smuggling':
+      return pairedMatch(text, coding, targets, windowChars, true)
+    case 'sensitive_backend_leak':
+      return directMatch(text, directMarkers)
+    case 'harmful_generation_request':
+    case 'secret_extraction_request':
+    case 'system_prompt_extraction':
+      return pairedMatch(text, actions, targets, windowChars)
+  }
+}
+
 function uniqueSorted<T extends string>(values: Iterable<T>): readonly T[] {
   return [...new Set(values)].sort()
 }
 
 function screenTextParts(
-  rules: readonly AiSafetyRule[],
+  ruleSet: ActiveAiSafetyRuleSet,
+  direction: 'input' | 'output',
   textParts: readonly string[],
 ): AiSafetyDecision {
   const text = normalizeSafetyText(textParts.filter(Boolean).join('\n\n'))
-  const matches = rules.filter(rule => rule.test(text))
-  const ruleIds = uniqueSorted(matches.map(match => match.id))
+  const matches = ruleSet.rules.filter(rule =>
+    ruleMatches(rule, text, direction),
+  )
+  const ruleIds = uniqueSorted(matches.map(match => match.ruleId))
   return {
     allowed: ruleIds.length === 0,
     categories: uniqueSorted(matches.map(match => match.category)),
@@ -138,12 +134,35 @@ function screenTextParts(
   }
 }
 
-export function screenAiInput(textParts: readonly string[]): AiSafetyDecision {
-  return screenTextParts(INPUT_RULES, textParts)
+export function screenAiInputWithRuleSet(
+  ruleSet: ActiveAiSafetyRuleSet,
+  textParts: readonly string[],
+): AiSafetyDecision {
+  return screenTextParts(ruleSet, 'input', textParts)
 }
 
-export function screenAiOutput(textParts: readonly string[]): AiSafetyDecision {
-  return screenTextParts(OUTPUT_RULES, textParts)
+export function screenAiOutputWithRuleSet(
+  ruleSet: ActiveAiSafetyRuleSet,
+  textParts: readonly string[],
+): AiSafetyDecision {
+  return screenTextParts(ruleSet, 'output', textParts)
+}
+
+export async function screenAiInput(
+  db: SqlServerDatabase,
+  textParts: readonly string[],
+): Promise<AiSafetyDecision> {
+  return screenAiInputWithRuleSet(await getCachedAiSafetyRuleSet(db), textParts)
+}
+
+export async function screenAiOutput(
+  db: SqlServerDatabase,
+  textParts: readonly string[],
+): Promise<AiSafetyDecision> {
+  return screenAiOutputWithRuleSet(
+    await getCachedAiSafetyRuleSet(db),
+    textParts,
+  )
 }
 
 function textLengthBucket(textLength: number): string {

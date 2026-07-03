@@ -1,9 +1,101 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   recordAiSafetyDecision,
-  screenAiInput,
-  screenAiOutput,
+  screenAiInputWithRuleSet,
+  screenAiOutputWithRuleSet,
 } from '@/lib/ai/safety'
+import type {
+  ActiveAiSafetyRuleSet,
+  ActiveAiSafetyRuleTerm,
+  AiSafetyTermType,
+} from '@/lib/dal/ai-safety-rules'
+
+function term(
+  termType: AiSafetyTermType,
+  termText: string,
+): ActiveAiSafetyRuleTerm {
+  return {
+    direction: 'input_output',
+    termText,
+    termType,
+  }
+}
+
+const TEST_RULE_SET: ActiveAiSafetyRuleSet = {
+  rules: [
+    {
+      category: 'prompt_injection',
+      patternKind: 'paired_terms',
+      ruleId: 'instruction_override',
+      terms: [
+        term('action', 'ignore'),
+        term('action', 'ignorera'),
+        term('action', 'bortse från'),
+        term('target', 'previous'),
+        term('target', 'system instructions'),
+        term('target', 'tidigare'),
+        term('target', 'systeminstruktioner'),
+        term('target', 'instructions'),
+      ],
+      windowChars: 80,
+    },
+    {
+      category: 'prompt_extraction',
+      patternKind: 'paired_terms',
+      ruleId: 'system_prompt_extraction',
+      terms: [
+        term('action', 'show'),
+        term('action', 'visa'),
+        term('target', 'hidden instructions'),
+        term('target', 'dolda instruktioner'),
+        term('target', 'utvecklarmeddelande'),
+      ],
+      windowChars: 80,
+    },
+    {
+      category: 'encoded_smuggling',
+      patternKind: 'bidirectional_pair',
+      ruleId: 'encoded_smuggling',
+      terms: [term('coding', 'base64'), term('target', 'ignore')],
+      windowChars: 120,
+    },
+    {
+      category: 'secret_extraction',
+      patternKind: 'paired_terms',
+      ruleId: 'secret_extraction_request',
+      terms: [term('action', 'show'), term('target', 'api key')],
+      windowChars: 80,
+    },
+    {
+      category: 'harmful_content',
+      patternKind: 'paired_terms',
+      ruleId: 'harmful_generation_request',
+      terms: [term('action', 'create'), term('target', 'malware')],
+      windowChars: 80,
+    },
+    {
+      category: 'backend_leakage',
+      patternKind: 'direct_markers',
+      ruleId: 'sensitive_backend_leak',
+      terms: [
+        {
+          direction: 'output',
+          termText: 'authorization: bearer',
+          termType: 'direct_marker',
+        },
+      ],
+      windowChars: null,
+    },
+  ],
+}
+
+function screenAiInput(textParts: readonly string[]) {
+  return screenAiInputWithRuleSet(TEST_RULE_SET, textParts)
+}
+
+function screenAiOutput(textParts: readonly string[]) {
+  return screenAiOutputWithRuleSet(TEST_RULE_SET, textParts)
+}
 
 describe('AI safety screening', () => {
   it('allows ordinary requirement-authoring input', () => {
@@ -89,7 +181,7 @@ describe('AI safety screening', () => {
     expect(outputDecision.ruleIds).toEqual([])
   })
 
-  it('blocks sensitive backend leakage in model output', () => {
+  it('blocks system-adjacent content leakage in model output', () => {
     const decision = screenAiOutput([
       '{"requirements":[{"description":"The system shall keep logs."}]}',
       'Authorization: Bearer secret-value',

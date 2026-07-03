@@ -1,5 +1,7 @@
 import {
+  AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
   type AiRequirementGenerationAvailability,
+  isValidAiSafetyRuleCacheTtlSeconds,
   isValidMcpMaxRequestBytes,
   MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
 } from '@/lib/ai/generation-availability'
@@ -9,11 +11,15 @@ import { validationError } from '@/lib/requirements/errors'
 import { toBoolean } from '@/lib/typeorm/value-mappers'
 
 export interface AiGenerationSettings {
+  aiSafetyRuleCacheTtlSeconds: number
   mcpMaxRequestBytes: number
   requirementGenerationEnabled: boolean
 }
 
+export type AiGenerationSettingsPatch = Partial<AiGenerationSettings>
+
 interface AiSettingsRow {
+  aiSafetyRuleCacheTtlSeconds?: number | string
   mcpMaxRequestBytes?: number | string
   requirementGenerationEnabled: boolean | number | string
 }
@@ -42,6 +48,7 @@ interface AiSettingsWriteOptions {
 
 export const DEFAULT_AI_GENERATION_SETTINGS: AiGenerationSettings =
   Object.freeze({
+    aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
     mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
     requirementGenerationEnabled: true,
   })
@@ -80,6 +87,7 @@ export function resolveAiGenerationAvailability(
   const disabledByEnvironment = isAiRequirementGenerationDisabled(env)
   return {
     disabledByEnvironment,
+    aiSafetyRuleCacheTtlSeconds: settings.aiSafetyRuleCacheTtlSeconds,
     effectiveRequirementGenerationEnabled:
       settings.requirementGenerationEnabled && !disabledByEnvironment,
     mcpMaxRequestBytes: settings.mcpMaxRequestBytes,
@@ -94,10 +102,25 @@ function readMcpMaxRequestBytes(value: unknown): number {
     : MCP_REQUEST_PAYLOAD_DEFAULT_BYTES
 }
 
+function readAiSafetyRuleCacheTtlSeconds(value: unknown): number {
+  const numeric = Number(value ?? AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS)
+  return isValidAiSafetyRuleCacheTtlSeconds(numeric)
+    ? numeric
+    : AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS
+}
+
 function assertMcpMaxRequestBytes(value: number): void {
   if (!isValidMcpMaxRequestBytes(value)) {
     throw validationError('Invalid AI settings', {
       reason: 'invalid_mcp_max_request_bytes',
+    })
+  }
+}
+
+function assertAiSafetyRuleCacheTtlSeconds(value: number): void {
+  if (!isValidAiSafetyRuleCacheTtlSeconds(value)) {
+    throw validationError('Invalid AI settings', {
+      reason: 'invalid_ai_safety_rule_cache_ttl_seconds',
     })
   }
 }
@@ -165,7 +188,20 @@ function isExpectedLegacyAiSettingsReadError(error: unknown): boolean {
   const joinedMessages = collectErrorMessages(error).join(' ')
   return (
     /\b207\b/.test(joinedMessages) &&
-    /mcp_max_request_bytes/i.test(joinedMessages)
+    /(?:mcp_max_request_bytes|ai_safety_rule_cache_ttl_seconds)/i.test(
+      joinedMessages,
+    )
+  )
+}
+
+function isExpectedMissingAiSettingsColumnError(
+  error: unknown,
+  columnName: string,
+): boolean {
+  const joinedMessages = collectErrorMessages(error).join(' ')
+  return (
+    /\b207\b/.test(joinedMessages) &&
+    joinedMessages.toLowerCase().includes(columnName.toLowerCase())
   )
 }
 
@@ -192,7 +228,31 @@ async function getLegacyAiGenerationSettings(
   }
 
   return {
+    aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
     mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+    requirementGenerationEnabled: toBoolean(row.requirementGenerationEnabled),
+  }
+}
+
+async function getAiGenerationSettingsWithoutCacheTtl(
+  db: SqlServerDatabase,
+): Promise<AiGenerationSettings> {
+  const rows = (await db.query(`
+    SELECT TOP (1)
+      mcp_max_request_bytes AS mcpMaxRequestBytes,
+      requirement_generation_enabled AS requirementGenerationEnabled
+    FROM ai_settings
+    WHERE id = 1
+  `)) as AiSettingsRow[]
+
+  const row = rows[0]
+  if (!row) {
+    return DEFAULT_AI_GENERATION_SETTINGS
+  }
+
+  return {
+    aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+    mcpMaxRequestBytes: readMcpMaxRequestBytes(row.mcpMaxRequestBytes),
     requirementGenerationEnabled: toBoolean(row.requirementGenerationEnabled),
   }
 }
@@ -227,6 +287,7 @@ export async function getAiGenerationSettings(
   try {
     const rows = (await db.query(`
       SELECT TOP (1)
+        ai_safety_rule_cache_ttl_seconds AS aiSafetyRuleCacheTtlSeconds,
         mcp_max_request_bytes AS mcpMaxRequestBytes,
         requirement_generation_enabled AS requirementGenerationEnabled
       FROM ai_settings
@@ -239,6 +300,9 @@ export async function getAiGenerationSettings(
     }
 
     return {
+      aiSafetyRuleCacheTtlSeconds: readAiSafetyRuleCacheTtlSeconds(
+        row.aiSafetyRuleCacheTtlSeconds,
+      ),
       mcpMaxRequestBytes: readMcpMaxRequestBytes(row.mcpMaxRequestBytes),
       requirementGenerationEnabled: toBoolean(row.requirementGenerationEnabled),
     }
@@ -247,14 +311,23 @@ export async function getAiGenerationSettings(
       warnUnexpectedAiSettingsFallback(error)
     }
     try {
-      return await getLegacyAiGenerationSettings(db)
-    } catch (fallbackError) {
-      throw Object.assign(
-        new Error('Failed to load AI settings from the database.', {
-          cause: error,
-        }),
-        { fallbackError },
+      return isExpectedMissingAiSettingsColumnError(
+        error,
+        'ai_safety_rule_cache_ttl_seconds',
       )
+        ? await getAiGenerationSettingsWithoutCacheTtl(db)
+        : await getLegacyAiGenerationSettings(db)
+    } catch (fallbackError) {
+      try {
+        return await getLegacyAiGenerationSettings(db)
+      } catch (legacyFallbackError) {
+        throw Object.assign(
+          new Error('Failed to load AI settings from the database.', {
+            cause: error,
+          }),
+          { fallbackError, legacyFallbackError },
+        )
+      }
     }
   }
 }
@@ -272,6 +345,7 @@ export async function updateAiGenerationSettings(
   options: AiSettingsWriteOptions = {},
 ): Promise<AiRequirementGenerationAvailability> {
   assertMcpMaxRequestBytes(values.mcpMaxRequestBytes)
+  assertAiSafetyRuleCacheTtlSeconds(values.aiSafetyRuleCacheTtlSeconds)
   const now = new Date().toISOString()
 
   await db.transaction(async manager => {
@@ -279,9 +353,10 @@ export async function updateAiGenerationSettings(
       `
         UPDATE ai_settings
         SET
-          mcp_max_request_bytes = @0,
-          requirement_generation_enabled = @1,
-          updated_at = @2
+          ai_safety_rule_cache_ttl_seconds = @0,
+          mcp_max_request_bytes = @1,
+          requirement_generation_enabled = @2,
+          updated_at = @3
         WHERE id = 1;
 
         IF @@ROWCOUNT = 0
@@ -290,21 +365,43 @@ export async function updateAiGenerationSettings(
 
           INSERT INTO ai_settings (
             id,
+            ai_safety_rule_cache_ttl_seconds,
             mcp_max_request_bytes,
             requirement_generation_enabled,
             created_at,
             updated_at
           )
-          VALUES (1, @0, @1, @2, @2);
+          VALUES (1, @0, @1, @2, @3, @3);
 
           SET IDENTITY_INSERT ai_settings OFF;
         END
       `,
-      [values.mcpMaxRequestBytes, values.requirementGenerationEnabled, now],
+      [
+        values.aiSafetyRuleCacheTtlSeconds,
+        values.mcpMaxRequestBytes,
+        values.requirementGenerationEnabled,
+        now,
+      ],
     )
     await options.audit?.(manager)
   })
 
   cacheMcpMaxRequestBytes(values.mcpMaxRequestBytes)
   return resolveAiGenerationAvailability(values, options.env)
+}
+
+export async function patchAiGenerationSettings(
+  db: SqlServerDatabase,
+  patch: AiGenerationSettingsPatch,
+  options: AiSettingsWriteOptions = {},
+): Promise<AiRequirementGenerationAvailability> {
+  const current = await getAiGenerationSettings(db)
+  return updateAiGenerationSettings(
+    db,
+    {
+      ...current,
+      ...patch,
+    },
+    options,
+  )
 }

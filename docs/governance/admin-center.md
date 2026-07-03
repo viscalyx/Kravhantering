@@ -126,20 +126,31 @@ installation starts without organization-specific prefix policy.
 ## AI
 
 The `AI` tab manages AI-assisted requirement generation directly in the AI
-panel. Its `AI and MCP security` section contains the MCP request payload
-limit.
+panel. Its `AI and MCP security` section contains the safety-rule cache time,
+MCP request payload limit, and editable AI safety-rule terms. The AI tab has no
+shared Save button; controls save directly when changed, with per-control or
+per-row status.
 
 The source of truth is:
 
 - table: `ai_settings`
+- tables: `ai_safety_rules`, `ai_safety_rule_terms`
 - DAL: `lib/dal/ai-settings.ts`
-- admin API: `GET/PUT /api/admin/ai-settings`
+- DAL: `lib/dal/ai-safety-rules.ts`
+- admin API: `GET/PUT/PATCH /api/admin/ai-settings`
+- admin API: `GET/POST /api/admin/ai-safety-rules`
+- admin API: `PATCH/DELETE /api/admin/ai-safety-rules/terms/{id}`
+- admin API: `POST /api/admin/ai-safety-rules/terms/remove`
+- admin API: `POST /api/admin/ai-safety-rules/{ruleId}/restore-defaults`
 - hard override: `AI_REQUIREMENT_GENERATION_DISABLED`
 
 Admin-managed AI settings include:
 
 - whether requirement generation is enabled as an administrator preference
 - the maximum MCP request payload size, sent as `mcpMaxRequestBytes`
+- the AI safety-rule cache time, sent as `aiSafetyRuleCacheTtlSeconds`
+- active AI safety-rule terms, their direction, and whether standard terms have
+  been disabled
 
 The effective setting is disabled when either the Admin Center preference is
 off or the deployment environment has `AI_REQUIREMENT_GENERATION_DISABLED=1` or
@@ -162,6 +173,17 @@ unlimited value. `/api/mcp` applies an absolute `5 MiB` cap before
 authentication or database work, then applies the configured value from the
 process-local AI settings cache before bearer-token verification and service
 creation.
+
+AI safety rules are shown as expandable rows. Each row contains term groups for
+actions, targets, direct phrases/markers, and coding words. Term rows show the
+word, direction (`Input`, `Output`, or `Input and output`), whether the row is
+standard, and whether it is active. Admins can add custom terms, change a term
+direction, deactivate standard terms, delete custom terms through the selected
+rows action, and restore standard terms for a single rule. A warning icon marks
+standard terms whose active state or direction differs from the seeded
+standard. The safety filter reads active terms from the database only; if the
+rule set cannot be loaded, AI-assisted authoring fails closed before provider
+work.
 
 ## Precedence Rules
 

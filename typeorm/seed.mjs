@@ -15,6 +15,8 @@ const TABLE_ORDER = [
   'requirement_area_co_authors',
   'requirement_categories',
   'ai_settings',
+  'ai_safety_rules',
+  'ai_safety_rule_terms',
   'requirement_list_column_defaults',
   'hsa_id_prefixes',
   'requirements_specifications',
@@ -540,11 +542,22 @@ const SEED_DATA = {
       'id',
       'requirement_generation_enabled',
       'mcp_max_request_bytes',
+      'ai_safety_rule_cache_ttl_seconds',
       'created_at',
       'updated_at',
     ],
     pk: ['id'],
-    rows: [[1, 1, 1048576, '2026-04-20 20:07:00', '2026-04-20 20:07:00']],
+    rows: [[1, 1, 1048576, 600, '2026-04-20 20:07:00', '2026-04-20 20:07:00']],
+  },
+  ai_safety_rules: {
+    columns: [],
+    pk: [],
+    rows: [],
+  },
+  ai_safety_rule_terms: {
+    columns: [],
+    pk: [],
+    rows: [],
   },
   requirement_list_column_defaults: {
     columns: [
