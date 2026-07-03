@@ -166,10 +166,18 @@ Operator upgrade notes are maintained in
 `docs/operations/operator-upgrade-notes.md`. A separate merged-pull-request
 workflow reads completed Operator Upgrade Impact evidence from the trusted pull
 request body and appends it under `## Unreleased` with hidden source markers.
-The container release job also runs a local best-effort sync for the merge
-commit before image publication so a preview release can include notes even when
-the persistence workflow is still catching up. That fallback only changes the
-release workspace; it does not push documentation commits.
+Instead of pushing directly to protected `main`, the workflow opens or updates
+the `automation/operator-upgrade-notes` PR and enables auto-merge when GitHub
+allows it. Configure an `OPERATOR_UPGRADE_NOTES_TOKEN` secret from a
+fine-scoped PAT or GitHub App token that can push branches and create pull
+requests so the normal PR checks run for that automation PR. The workflow
+fails when that secret is absent or cannot authenticate against the repository;
+it does not fall back to `github.token`, because that would hide token expiry
+and can suppress downstream PR workflow runs. The container release job also
+runs a local best-effort sync for the merge commit before image publication so
+a preview release can include notes even when the persistence workflow is still
+catching up. That fallback only changes the release workspace; it does not push
+documentation commits.
 
 Stable releases consume the visible `## Unreleased` notes into the GitHub
 Release body and then archive that same section under
@@ -183,14 +191,18 @@ sequenceDiagram
     participant Maintainer
     participant PR as Pull request
     participant Notes as Operator notes workflow
+    participant AutomationPR as Automation PR
     participant Main as docs/operations/operator-upgrade-notes.md
     participant Release as Container release workflow
     participant GitHub as GitHub Release
 
     Maintainer->>PR: Completes Operator Upgrade Impact
     PR-->>Notes: Merged into main
-    par Persist notes on main
-        Notes->>Main: Append PR notes under Unreleased
+    par Persist notes through PR
+        Notes->>Notes: Append PR notes under Unreleased
+        Notes->>AutomationPR: Open or update automation PR
+        AutomationPR->>AutomationPR: Merge after required checks
+        AutomationPR-->>Main: Persist Unreleased notes
     and Prepare release
         Release->>Release: Compute release plan
         Release->>Release: Best-effort sync for merge commit PR

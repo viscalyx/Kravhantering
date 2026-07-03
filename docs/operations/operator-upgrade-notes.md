@@ -58,6 +58,15 @@ certificate generator on top of `single-node`. The mock, demo certificate
 generator, test support lock file, mock image, SBOM and attestation are relevant
 only for operators who mirror or validate that demo/test topology.
 
+Only use `single-node-demo` for release smoke, disposable demos or other
+test-only environments. Before starting that topology, set `KONG_IMAGE_REF` and
+`HSA_DIRECTORY_MOCK_IMAGE_REF` from `container-test-support.lock.json` or from
+your internal mirrored tags, and set the demo app runtime to
+`HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup`. For
+disconnected demo/test hosts, export and load images with
+`bin/kravhantering-images.sh --topology single-node-demo --test-lock-file
+container-test-support.lock.json`.
+
 ### Before upgrading
 
 Correct legacy requirements specifications that lack lifecycle status before
@@ -120,7 +129,22 @@ mTLS or OAuth2 client credentials variables:
 when the token endpoint requires them. The canonical flow is described in
 [HSA person lookup integration](../integrations/hsa-person-lookup-integration.md).
 
+Disconnected first installs and planned upgrades now split import from
+activation. For disconnected environments, use the disconnected guide to verify
+the transferred bundle, prepare the target release, and load or verify images
+only. Do not activate the new release or copy first-install configuration
+during the disconnected import step.
+
+After import completes, resume the regular deployment or upgrade guide at the
+activation step. Apply the image references recorded in the transferred offline
+manifest, then verify the already loaded images instead of pulling from a
+registry. This applies to both app-node and single-node topologies, including
+the disposable single-node demo path.
+
 ### After upgrading
+
+Releases with DB-backed AI safety rules require the `seed:required` step to
+complete after migration.
 
 Review Admin Center > Identity and confirm the visible/default HSA-id-prefix
 values are correct for the organization. The migration seeds prefixes from
