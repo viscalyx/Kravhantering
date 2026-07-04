@@ -62,6 +62,26 @@ const ResponseLocaleSchema = z
   .default('en')
   .describe('Response language for names and messages.')
 
+const ImportArtifactLocaleSchema = z
+  .enum(['en', 'sv'])
+  .default('en')
+  .describe(
+    'Artifact language. Supported values: "en" and "sv". Defaults to "en".',
+  )
+
+const ImportInstructionOutputSchema = z
+  .object({
+    importInstruction: z
+      .string()
+      .describe('Canonical import instruction Markdown.'),
+  })
+  .strict()
+
+const ImportSchemaOutputSchema = z
+  .object({})
+  .catchall(z.unknown())
+  .describe('Canonical requirement import JSON Schema object.')
+
 const QueryCatalogOutputSchema = z
   .object({
     catalog: z
@@ -1246,6 +1266,90 @@ export function createKravhanteringMcpServer(
           content: [
             {
               text: payload.message,
+              type: 'text',
+            },
+          ],
+          structuredContent: payload,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    'requirements_get_import_schema',
+    {
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+        readOnlyHint: true,
+      },
+      description:
+        'Return the canonical JSON Schema for producing a Kravimportfil (requirement import file). Use this schema as the mandatory contract for generated import JSON. The only input is locale, with supported values "en" and "sv".',
+      inputSchema: z
+        .object({
+          locale: ImportArtifactLocaleSchema,
+        })
+        .strict(),
+      outputSchema: ImportSchemaOutputSchema,
+      title: 'Get Requirement Import Schema',
+    },
+    async input => {
+      try {
+        const payload = await service.getImportSchema(
+          await getBaseContext(request, 'requirements_get_import_schema'),
+          {
+            locale: toResponseLocale(input.locale),
+          },
+        )
+        return {
+          content: [
+            {
+              text: 'Requirement import JSON Schema returned in structuredContent.',
+              type: 'text',
+            },
+          ],
+          structuredContent: payload,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    'requirements_get_import_instruction',
+    {
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+        readOnlyHint: true,
+      },
+      description:
+        'Return the canonical Importinstruktion (import instruction) Markdown for producing a Kravimportfil. Use requirements_get_import_schema as the mandatory JSON contract; this instruction is Kravhantering guidance and does not override or replace the schema. The only input is locale, with supported values "en" (for English) and "sv" (for Swedish).',
+      inputSchema: z
+        .object({
+          locale: ImportArtifactLocaleSchema,
+        })
+        .strict(),
+      outputSchema: ImportInstructionOutputSchema,
+      title: 'Get Requirement Import Instruction',
+    },
+    async input => {
+      try {
+        const payload = await service.getImportInstruction(
+          await getBaseContext(request, 'requirements_get_import_instruction'),
+          {
+            locale: toResponseLocale(input.locale),
+          },
+        )
+        return {
+          content: [
+            {
+              text: 'Requirement import instruction returned in structuredContent.importInstruction.',
               type: 'text',
             },
           ],

@@ -89,6 +89,9 @@ function actionAuditDetail(
   switch (action.kind) {
     case 'query_catalog':
       return { actionKind: action.kind, catalog: action.catalog }
+    case 'get_import_schema':
+    case 'get_import_instruction':
+      return { actionKind: action.kind }
     case 'list_specifications':
       return { actionKind: action.kind }
     case 'get_specification_items':

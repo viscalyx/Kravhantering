@@ -67,6 +67,16 @@ function createService() {
       total: 0,
     },
   }))
+  const getImportSchema = vi.fn(
+    async (_context: RequestContext, _input: { locale: 'en' | 'sv' }) => ({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+    }),
+  )
+  const getImportInstruction = vi.fn(
+    async (_context: RequestContext, _input: { locale: 'en' | 'sv' }) => ({
+      importInstruction: '# Create JSON for requirements import',
+    }),
+  )
   const getRequirement = vi.fn(async (_context: RequestContext) => ({
     message: 'Requirement detail',
     requirement: createDetail(),
@@ -164,6 +174,8 @@ function createService() {
       mode: 'specification-local' as const,
       summary: { createdCount: 0 },
     })),
+    getImportInstruction,
+    getImportSchema,
     getRequirement,
     getSpecificationItems,
     graduateSpecificationLocalRequirement,
@@ -195,6 +207,8 @@ function createService() {
 
   return {
     addToSpecification,
+    getImportInstruction,
+    getImportSchema,
     getRequirement,
     graduateSpecificationLocalRequirement,
     listGraduationTargetAreas,
@@ -267,6 +281,14 @@ describe('MCP authorization seams', () => {
       name: 'requirements_query_catalog',
     })
     await client.callTool({
+      arguments: {},
+      name: 'requirements_get_import_schema',
+    })
+    await client.callTool({
+      arguments: {},
+      name: 'requirements_get_import_instruction',
+    })
+    await client.callTool({
       arguments: {
         operation: 'edit',
         requirement: {
@@ -310,6 +332,11 @@ describe('MCP authorization seams', () => {
       name: 'requirements_manage_improvement_suggestion',
     })
     expectContext(service.queryCatalog, 'requirements_query_catalog')
+    expectContext(service.getImportSchema, 'requirements_get_import_schema')
+    expectContext(
+      service.getImportInstruction,
+      'requirements_get_import_instruction',
+    )
     expectContext(service.manageRequirement, 'requirements_manage_requirement')
     expectContext(
       service.transitionRequirement,

@@ -23,6 +23,16 @@ const TOOL_CASES: ToolCase[] = [
     valid: { catalog: 'requirements' },
   },
   {
+    acceptsResponseFormat: false,
+    name: 'requirements_get_import_schema',
+    valid: {},
+  },
+  {
+    acceptsResponseFormat: false,
+    name: 'requirements_get_import_instruction',
+    valid: {},
+  },
+  {
     acceptsResponseFormat: true,
     name: 'requirements_get_requirement',
     valid: { uniqueId: 'INT0001' },
@@ -150,6 +160,12 @@ function createService() {
       createdRows: [],
       mode: 'specification-local' as const,
       summary: { createdCount: 0 },
+    })),
+    getImportInstruction: vi.fn(async () => ({
+      importInstruction: '# Create JSON for requirements import',
+    })),
+    getImportSchema: vi.fn(async () => ({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
     })),
     getRequirement: vi.fn(async () => ({
       message: 'Requirement detail',

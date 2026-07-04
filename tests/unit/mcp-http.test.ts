@@ -65,6 +65,10 @@ import {
 } from '@/lib/mcp/http'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import { RequirementsServiceError } from '@/lib/requirements/errors'
+import {
+  buildRequirementsImportJsonSchema,
+  REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+} from '@/lib/requirements/import-schema'
 
 function createFakeService(
   normReferences: Array<{
@@ -79,6 +83,18 @@ function createFakeService(
       skippedCount: 0,
       skippedIds: [],
     }),
+    getImportInstruction: vi.fn(
+      async (_context: unknown, input: { locale: 'en' | 'sv' }) => ({
+        importInstruction:
+          input.locale === 'sv'
+            ? '# Skapa JSON för kravimport'
+            : '# Create JSON for requirements import',
+      }),
+    ),
+    getImportSchema: vi.fn(
+      async (_context: unknown, input: { locale: 'en' | 'sv' }) =>
+        buildRequirementsImportJsonSchema(input.locale),
+    ),
     getRequirement: vi.fn().mockResolvedValue({
       message: 'Requirement detail',
       requirement: {
@@ -341,6 +357,8 @@ describe('handleRequirementsMcpRequest', () => {
       expect(tools.map(tool => tool.name).sort()).toEqual(
         [
           'requirements_add_to_specification',
+          'requirements_get_import_instruction',
+          'requirements_get_import_schema',
           'requirements_get_requirement',
           'requirements_get_specification_items',
           'requirements_graduate_local_requirement',
@@ -367,6 +385,35 @@ describe('handleRequirementsMcpRequest', () => {
       expect(queryInputSchemaText).toContain('requirementPackageIds')
       expect(queryInputSchemaText).toContain('sortBy')
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('pagination')
+    })
+
+    it('describes import schema and instruction artifacts', async () => {
+      const schemaTool = getTool('requirements_get_import_schema')
+      const instructionTool = getTool('requirements_get_import_instruction')
+
+      expect(schemaTool).toBeDefined()
+      expect(schemaTool?.description).toContain('mandatory contract')
+      expect(schemaTool?.description).toContain('Kravimportfil')
+      expect(JSON.stringify(schemaTool?.inputSchema)).toContain(
+        'Supported values',
+      )
+      expect(JSON.stringify(schemaTool?.inputSchema)).toContain('"en"')
+      expect(JSON.stringify(schemaTool?.inputSchema)).toContain('"sv"')
+      expect(JSON.stringify(schemaTool?.outputSchema)).toContain(
+        'Canonical requirement import JSON Schema object',
+      )
+
+      expect(instructionTool).toBeDefined()
+      expect(instructionTool?.description).toContain('Importinstruktion')
+      expect(instructionTool?.description).toContain(
+        'does not override the schema',
+      )
+      expect(JSON.stringify(instructionTool?.inputSchema)).toContain(
+        'Supported values',
+      )
+      expect(JSON.stringify(instructionTool?.outputSchema)).toContain(
+        'importInstruction',
+      )
     })
 
     it('describes specification copy paths for MCP clients', async () => {
@@ -688,6 +735,74 @@ describe('handleRequirementsMcpRequest', () => {
         sortDirection: 'desc',
         requirementPackageIds: [3],
       }),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns the canonical import schema as structured content', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    const result = await client.callTool({
+      arguments: { locale: 'sv' },
+      name: 'requirements_get_import_schema',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(result.content).toEqual([
+      expect.objectContaining({
+        text: 'Requirement import JSON Schema returned in structuredContent.',
+        type: 'text',
+      }),
+    ])
+    expect(result.structuredContent).toMatchObject({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      properties: {
+        schemaVersion: {
+          const: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        },
+      },
+      required: ['schemaVersion', 'requirements'],
+      title: 'Kravimport',
+    })
+    const schemaProperties = (
+      result.structuredContent as { properties?: Record<string, unknown> }
+    ).properties
+    expect(schemaProperties).not.toHaveProperty('areaId')
+    expect(schemaProperties).not.toHaveProperty('specificationId')
+    expect(fakeService.getImportSchema).toHaveBeenCalledWith(
+      expect.anything(),
+      { locale: 'sv' },
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns the canonical import instruction as structured content', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    const result = await client.callTool({
+      arguments: {},
+      name: 'requirements_get_import_instruction',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(result.content).toEqual([
+      expect.objectContaining({
+        text: 'Requirement import instruction returned in structuredContent.importInstruction.',
+        type: 'text',
+      }),
+    ])
+    expect(result.structuredContent).toEqual({
+      importInstruction: '# Create JSON for requirements import',
+    })
+    expect(fakeService.getImportInstruction).toHaveBeenCalledWith(
+      expect.anything(),
+      { locale: 'en' },
     )
 
     await client.close()

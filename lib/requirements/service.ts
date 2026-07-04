@@ -24,6 +24,7 @@ import { notFoundError, validationError } from '@/lib/requirements/errors'
 import type {
   ImportExecuteBody,
   ImportRequirementsPayload,
+  JsonSchema,
 } from '@/lib/requirements/import-schema'
 import {
   createRequirementsImportWorkflow,
@@ -348,6 +349,16 @@ export interface RequirementsService {
     },
   ): Promise<RequirementsImportExecuteResult>
 
+  getImportInstruction(
+    context: RequestContext,
+    input: { locale: ResponseLocale },
+  ): Promise<{ importInstruction: string }>
+
+  getImportSchema(
+    context: RequestContext,
+    input: { locale: ResponseLocale },
+  ): Promise<JsonSchema>
+
   getRequirement(
     context: RequestContext,
     input: GetRequirementInput,
@@ -523,7 +534,7 @@ export function createRequirementsService(
   } = {},
 ): RequirementsService {
   return {
-    ...createRequirementsImportWorkflow({ authorization, db }),
+    ...createRequirementsImportWorkflow({ authorization, db, logger }),
     ...createRequirementWorkflow({ authorization, db, logger }),
 
     ...createSpecificationWorkflow({ authorization, db, logger }),
