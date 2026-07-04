@@ -49,8 +49,8 @@ jobs:
           NOTES_BRANCH: automation/operator-upgrade-notes
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "Viscalyxbot"
+          git config user.email "viscalyxbot@viscalyx.se"
           if git ls-remote --exit-code --heads origin "${NOTES_BRANCH}" >/dev/null; then
             git fetch origin "${NOTES_BRANCH}:refs/remotes/origin/${NOTES_BRANCH}"
             git switch --create "${NOTES_BRANCH}" "origin/${NOTES_BRANCH}"
@@ -93,7 +93,7 @@ jobs:
             git push origin HEAD:"refs/heads/${NOTES_BRANCH}"
           fi
 
-          title="docs: persist operator upgrade notes"
+          title="docs: persist operator upgrade notes from #${PR_NUMBER}"
           body_file="$(mktemp)"
           {
             echo "This automated PR persists merged Operator Upgrade Impact notes under \`## Unreleased\`."

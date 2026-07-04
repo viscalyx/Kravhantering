@@ -169,8 +169,11 @@ request body and appends it under `## Unreleased` with hidden source markers.
 Instead of pushing directly to protected `main`, the workflow opens or updates
 the `automation/operator-upgrade-notes` PR and enables auto-merge when GitHub
 allows it. Configure an `OPERATOR_UPGRADE_NOTES_TOKEN` secret from a
-fine-scoped PAT or GitHub App token that can push branches and create pull
-requests so the normal PR checks run for that automation PR. The workflow
+fine-scoped PAT or GitHub App token for the `Viscalyxbot` machine user that can
+push branches and create pull requests so the normal PR checks run for that
+automation PR. The workflow commits those documentation changes as
+`Viscalyxbot <viscalyxbot@viscalyx.se>` before opening or updating the PR, and
+the PR title includes the latest source PR number. It
 fails when that secret is absent or cannot authenticate against the repository;
 it does not fall back to `github.token`, because that would hide token expiry
 and can suppress downstream PR workflow runs. The container release job also
