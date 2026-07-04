@@ -366,6 +366,45 @@ test.describe('MCP seeded HTTP security gate', () => {
         status: 'ok',
       })
 
+      const importSchema = await callToolOk(
+        client,
+        'requirements_get_import_schema',
+        {
+          locale: 'sv',
+        },
+      )
+      expect(importSchema.$schema).toBe(
+        'https://json-schema.org/draft/2020-12/schema',
+      )
+      expect(arrayField(importSchema, 'required', 'import schema')).toEqual(
+        expect.arrayContaining(['schemaVersion', 'requirements']),
+      )
+      const importSchemaProperties = recordField(
+        importSchema,
+        'properties',
+        'import schema',
+      )
+      expect(importSchemaProperties).not.toHaveProperty('areaId')
+      expect(importSchemaProperties).not.toHaveProperty('specificationId')
+      expect(importSchema).not.toHaveProperty('jsonSchema')
+
+      const importInstruction = await callToolOk(
+        client,
+        'requirements_get_import_instruction',
+        {
+          locale: 'en',
+        },
+      )
+      expect(
+        stringField(
+          importInstruction,
+          'importInstruction',
+          'import instruction',
+        ),
+      ).toContain('# Create JSON for requirements import')
+      expect(importInstruction).not.toHaveProperty('schemaVersion')
+      events.push('import-contracts:ok')
+
       let unknownTool: ToolCallResult | undefined
       let unknownToolError: unknown
       try {
