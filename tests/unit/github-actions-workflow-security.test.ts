@@ -363,7 +363,9 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).toContain('operator-upgrade:no-notes')
     expect(workflow).toContain('ssdlc:requirements')
     expect(workflow).toContain(
-      'title="docs: persist operator upgrade notes from #${PR_NUMBER}"',
+      ['title="docs: persist operator upgrade notes from #$', '{PR_NUMBER}"'].join(
+        '',
+      ),
     )
     expect(workflow).toContain('gh pr create --base main')
     expect(workflow).toMatch(
