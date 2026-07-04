@@ -348,6 +348,10 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).toMatch(
       /\bGITHUB_TOKEN:\s*\$\{\{\s*secrets\.OPERATOR_UPGRADE_NOTES_TOKEN\s*\}\}/u,
     )
+    expect(workflow).toContain('git config user.name "Viscalyxbot"')
+    expect(workflow).toContain(
+      'git config user.email "viscalyxbot@viscalyx.se"',
+    )
     const gitUserNameIndex = workflow.search(/git\s+config\s+user\.name\b/u)
     const gitUserEmailIndex = workflow.search(/git\s+config\s+user\.email\b/u)
     const gitRebaseIndex = workflow.search(/git\s+rebase\s+origin\/main\b/u)
@@ -358,6 +362,9 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).not.toMatch(/\bOPERATOR_UPGRADE_NOTES_TOKEN_CONFIGURED\b/u)
     expect(workflow).toContain('operator-upgrade:no-notes')
     expect(workflow).toContain('ssdlc:requirements')
+    expect(workflow).toContain(
+      'title="docs: persist operator upgrade notes from #${PR_NUMBER}"',
+    )
     expect(workflow).toContain('gh pr create --base main')
     expect(workflow).toMatch(
       /gh\s+pr\s+merge\s+"\$\{pr_number\}"\s+--squash\s+--auto/u,
