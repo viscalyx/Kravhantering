@@ -60,13 +60,8 @@ const ResponseFormatSchema = z
 const ResponseLocaleSchema = z
   .enum(['en', 'sv'])
   .default('en')
-  .describe('Response language for names and messages.')
-
-const ImportArtifactLocaleSchema = z
-  .enum(['en', 'sv'])
-  .default('en')
   .describe(
-    'Artifact language. Supported values: "en" and "sv". Defaults to "en".',
+    'Response language for names, messages, and generated artifacts. Supported values: "en" and "sv". Defaults to "en".',
   )
 
 const ImportInstructionOutputSchema = z
@@ -1290,7 +1285,7 @@ export function createKravhanteringMcpServer(
         'Return the canonical JSON Schema for producing a Kravimportfil (requirement import file). Use this schema as the mandatory contract for generated import JSON. The only input is locale, with supported values "en" and "sv".',
       inputSchema: z
         .object({
-          locale: ImportArtifactLocaleSchema,
+          locale: ResponseLocaleSchema,
         })
         .strict(),
       outputSchema: ImportSchemaOutputSchema,
@@ -1332,7 +1327,7 @@ export function createKravhanteringMcpServer(
         'Return the canonical Importinstruktion (import instruction) Markdown for producing a Kravimportfil. Use requirements_get_import_schema as the mandatory JSON contract; this instruction is Kravhantering guidance and does not override or replace the schema. The only input is locale, with supported values "en" (for English) and "sv" (for Swedish).',
       inputSchema: z
         .object({
-          locale: ImportArtifactLocaleSchema,
+          locale: ResponseLocaleSchema,
         })
         .strict(),
       outputSchema: ImportInstructionOutputSchema,
@@ -1541,7 +1536,7 @@ export function createKravhanteringMcpServer(
       description: `List all requirements specifications, optionally filtered by name. Returns id, uniqueId (slug), names, item count, governance object type, and implementation type for each specification. ${specificationIdentifierCopyPaths}`,
       inputSchema: z
         .object({
-          locale: z.enum(['en', 'sv']).default('en'),
+          locale: ResponseLocaleSchema,
           nameSearch: z
             .string()
             .optional()
@@ -1613,7 +1608,7 @@ export function createKravhanteringMcpServer(
             .describe(
               'Case-insensitive substring filter on the requirement description.',
             ),
-          locale: z.enum(['en', 'sv']).default('en'),
+          locale: ResponseLocaleSchema,
           specificationId: z
             .number()
             .int()
@@ -1779,7 +1774,7 @@ export function createKravhanteringMcpServer(
       description: `Link one or more requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach an existing needsReferenceId or create a new needsReferenceText plus needsReferenceDescription for all added items. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2"). ${specificationIdentifierCopyPaths} ${addRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
-          locale: z.enum(['en', 'sv']).default('en'),
+          locale: ResponseLocaleSchema,
           needsReferenceDescription: z
             .string()
             .optional()
@@ -1900,7 +1895,7 @@ export function createKravhanteringMcpServer(
       description: `Unlink one or more requirements from a requirements specification. The requirements themselves are not deleted. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2"). ${specificationIdentifierCopyPaths} ${removeRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
-          locale: z.enum(['en', 'sv']).default('en'),
+          locale: ResponseLocaleSchema,
           specificationId: z
             .number()
             .int()

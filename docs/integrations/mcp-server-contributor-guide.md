@@ -120,7 +120,7 @@ schema is the mandatory contract for generated import JSON.
 
 Returns the canonical `Importinstruktion` Markdown for producing a
 `Kravimportfil`. The instruction is Kravhantering guidance and does not override
-the JSON Schema.
+or replace the JSON Schema.
 
 - **Inputs:** `locale` (`en` | `sv`, default `en`)
 - **Output:** Markdown in `structuredContent.importInstruction`

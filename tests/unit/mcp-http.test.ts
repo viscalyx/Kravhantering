@@ -406,7 +406,7 @@ describe('handleRequirementsMcpRequest', () => {
       expect(instructionTool).toBeDefined()
       expect(instructionTool?.description).toContain('Importinstruktion')
       expect(instructionTool?.description).toContain(
-        'does not override the schema',
+        'does not override or replace the schema',
       )
       expect(JSON.stringify(instructionTool?.inputSchema)).toContain(
         'Supported values',
