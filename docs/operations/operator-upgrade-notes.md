@@ -185,3 +185,7 @@ operator runbooks that expect those older fields.
 <!-- operator-upgrade:source pr-394 start -->
 Update automated requirement-import producers and API/MCP integrations before rollout to use the version 2 requirement import schema and the renamed verifiability attribute. Payloads built for the previous import schema, including the old testing-required flag, will not be accepted by this release.
 <!-- operator-upgrade:source pr-394 end -->
+
+<!-- operator-upgrade:source pr-399 start -->
+After rollout, MCP clients can discover two additional requirements-import tools for retrieving the canonical import schema and import instruction. Existing MCP clients should continue to work, but operators or support staff should notify teams that maintain strict MCP tool inventories, allowlists, or client-side assertions so they can refresh their expected tool count after upgrade.
+<!-- operator-upgrade:source pr-399 end -->
