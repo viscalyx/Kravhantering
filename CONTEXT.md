@@ -437,6 +437,16 @@ var kraven ska sparas; destinationen väljs i importflödet.
 _Avoid_: Kravbiblioteksimport när filformatet avses, kravunderlagsimport när
 filformatet avses, datamigrering.
 
+**Importinstruktion**:
+Vägledning för att ta fram en kravimportfil. Importinstruktionen beskriver
+regler, fältval och stödjande sammanhang för import-JSON, men JSON Schema är
+det styrande filformatskontraktet.
+
+- `en`: Import instruction
+
+_Avoid_: AI-prompt när importvägledningen avses, schema när strikt JSON Schema
+avses.
+
 **Terminologi**:
 De verksamhetsbegrepp och användargränssnittstermer som används för att
 beskriva kravhanteringen. Terminologi förvaltas genom detta sammanhang,

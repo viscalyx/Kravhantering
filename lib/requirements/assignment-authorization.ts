@@ -464,6 +464,8 @@ export class AssignmentBasedAuthorizationService
 
     switch (action.kind) {
       case 'query_catalog':
+      case 'get_import_schema':
+      case 'get_import_instruction':
         return
       case 'list_specifications':
         return this.assertCanListSpecifications(context)

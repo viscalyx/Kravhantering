@@ -1,6 +1,8 @@
 {
   "tools": [
     "requirements_add_to_specification",
+    "requirements_get_import_instruction",
+    "requirements_get_import_schema",
     "requirements_get_requirement",
     "requirements_get_specification_items",
     "requirements_graduate_local_requirement",

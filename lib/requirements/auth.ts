@@ -90,6 +90,12 @@ export type RequirementsAction =
       catalog: string
     }
   | {
+      kind: 'get_import_schema'
+    }
+  | {
+      kind: 'get_import_instruction'
+    }
+  | {
       kind: 'list_specifications'
       nameSearch?: string
     }

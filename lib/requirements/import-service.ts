@@ -25,13 +25,20 @@ import {
 } from '@/lib/requirements/auth'
 import { conflictError, validationError } from '@/lib/requirements/errors'
 import {
+  buildRequirementsImportJsonSchema,
   type ImportExecuteBody,
   type ImportRequirement,
   type ImportRequirementsPayload,
   type ImportReviewRowInput,
+  type JsonSchema,
   REQUIREMENTS_IMPORT_SCHEMA_VERSION,
 } from '@/lib/requirements/import-schema'
+import {
+  createRequirementsLogger,
+  type RequirementsLogger,
+} from '@/lib/requirements/logging'
 import { recordSensitiveMutationSucceededWithExecutor } from '@/lib/requirements/security-audit'
+import { authorize, withLogging } from '@/lib/requirements/service-shared'
 
 export type RequirementsImportMode = 'library' | 'specification-local'
 
@@ -143,6 +150,7 @@ export interface RequirementsImportExecuteResult {
 export interface ImportWorkflowOptions {
   authorization: AuthorizationService
   db: SqlServerDatabase
+  logger?: RequirementsLogger
 }
 
 function compactText(value: string | null | undefined): string | null {
@@ -1071,8 +1079,45 @@ function toLocalRequirementMutationInput(
 export function createRequirementsImportWorkflow({
   authorization,
   db,
+  logger = createRequirementsLogger(),
 }: ImportWorkflowOptions) {
-  return {
+  const workflow = {
+    async getImportSchema(
+      context: RequestContext,
+      input: { locale: 'en' | 'sv' },
+    ): Promise<JsonSchema> {
+      await authorize(authorization, { kind: 'get_import_schema' }, context)
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.get_import_schema',
+        { locale: input.locale },
+        async () => buildRequirementsImportJsonSchema(input.locale),
+      )
+    },
+
+    async getImportInstruction(
+      context: RequestContext,
+      input: { locale: 'en' | 'sv' },
+    ): Promise<{ importInstruction: string }> {
+      await authorize(
+        authorization,
+        { kind: 'get_import_instruction' },
+        context,
+      )
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.get_import_instruction',
+        { locale: input.locale },
+        async () => ({
+          importInstruction: await workflow.buildImportAiPrompt(input.locale),
+        }),
+      )
+    },
+
     async buildImportAiPrompt(locale: 'en' | 'sv') {
       const referenceData = await loadImportReferenceData(db)
       const isSv = locale === 'sv'
@@ -1405,4 +1450,6 @@ export function createRequirementsImportWorkflow({
       })
     },
   }
+
+  return workflow
 }

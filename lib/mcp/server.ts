@@ -60,7 +60,22 @@ const ResponseFormatSchema = z
 const ResponseLocaleSchema = z
   .enum(['en', 'sv'])
   .default('en')
-  .describe('Response language for names and messages.')
+  .describe(
+    'Response language for names, messages, and generated artifacts. Supported values: "en" and "sv". Defaults to "en".',
+  )
+
+const ImportInstructionOutputSchema = z
+  .object({
+    importInstruction: z
+      .string()
+      .describe('Canonical import instruction Markdown.'),
+  })
+  .strict()
+
+const ImportSchemaOutputSchema = z
+  .object({})
+  .catchall(z.unknown())
+  .describe('Canonical requirement import JSON Schema object.')
 
 const QueryCatalogOutputSchema = z
   .object({
@@ -1258,6 +1273,90 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
+    'requirements_get_import_schema',
+    {
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+        readOnlyHint: true,
+      },
+      description:
+        'Return the canonical JSON Schema for producing a Kravimportfil (requirement import file). Use this schema as the mandatory contract for generated import JSON. The only input is locale, with supported values "en" and "sv".',
+      inputSchema: z
+        .object({
+          locale: ResponseLocaleSchema,
+        })
+        .strict(),
+      outputSchema: ImportSchemaOutputSchema,
+      title: 'Get Requirement Import Schema',
+    },
+    async input => {
+      try {
+        const payload = await service.getImportSchema(
+          await getBaseContext(request, 'requirements_get_import_schema'),
+          {
+            locale: toResponseLocale(input.locale),
+          },
+        )
+        return {
+          content: [
+            {
+              text: 'Requirement import JSON Schema returned in structuredContent.',
+              type: 'text',
+            },
+          ],
+          structuredContent: payload,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    'requirements_get_import_instruction',
+    {
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+        readOnlyHint: true,
+      },
+      description:
+        'Return the canonical Importinstruktion (import instruction) Markdown for producing a Kravimportfil. Use requirements_get_import_schema as the mandatory JSON contract; this instruction is Kravhantering guidance and does not override or replace the schema. The only input is locale, with supported values "en" (for English) and "sv" (for Swedish).',
+      inputSchema: z
+        .object({
+          locale: ResponseLocaleSchema,
+        })
+        .strict(),
+      outputSchema: ImportInstructionOutputSchema,
+      title: 'Get Requirement Import Instruction',
+    },
+    async input => {
+      try {
+        const payload = await service.getImportInstruction(
+          await getBaseContext(request, 'requirements_get_import_instruction'),
+          {
+            locale: toResponseLocale(input.locale),
+          },
+        )
+        return {
+          content: [
+            {
+              text: 'Requirement import instruction returned in structuredContent.importInstruction.',
+              type: 'text',
+            },
+          ],
+          structuredContent: payload,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  server.registerTool(
     'requirements_get_requirement',
     {
       annotations: {
@@ -1437,7 +1536,7 @@ export function createKravhanteringMcpServer(
       description: `List all requirements specifications, optionally filtered by name. Returns id, uniqueId (slug), names, item count, governance object type, and implementation type for each specification. ${specificationIdentifierCopyPaths}`,
       inputSchema: z
         .object({
-          locale: z.enum(['en', 'sv']).default('en'),
+          locale: ResponseLocaleSchema,
           nameSearch: z
             .string()
             .optional()
@@ -1509,7 +1608,7 @@ export function createKravhanteringMcpServer(
             .describe(
               'Case-insensitive substring filter on the requirement description.',
             ),
-          locale: z.enum(['en', 'sv']).default('en'),
+          locale: ResponseLocaleSchema,
           specificationId: z
             .number()
             .int()
@@ -1675,7 +1774,7 @@ export function createKravhanteringMcpServer(
       description: `Link one or more requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach an existing needsReferenceId or create a new needsReferenceText plus needsReferenceDescription for all added items. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2"). ${specificationIdentifierCopyPaths} ${addRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
-          locale: z.enum(['en', 'sv']).default('en'),
+          locale: ResponseLocaleSchema,
           needsReferenceDescription: z
             .string()
             .optional()
@@ -1796,7 +1895,7 @@ export function createKravhanteringMcpServer(
       description: `Unlink one or more requirements from a requirements specification. The requirements themselves are not deleted. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2"). ${specificationIdentifierCopyPaths} ${removeRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
-          locale: z.enum(['en', 'sv']).default('en'),
+          locale: ResponseLocaleSchema,
           specificationId: z
             .number()
             .int()

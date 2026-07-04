@@ -127,7 +127,7 @@ export type ImportPreviewBody = z.infer<typeof importPreviewBodySchema>
 export type ImportReviewRowInput = z.infer<typeof importReviewRowSchema>
 export type ImportExecuteBody = z.infer<typeof importExecuteBodySchema>
 
-type JsonSchema = Record<string, unknown>
+export type JsonSchema = Record<string, unknown>
 
 const optionalStringSchema = (maxLength = BUSINESS_TEXT_MAX_LENGTH) => ({
   maxLength,

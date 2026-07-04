@@ -21,7 +21,7 @@ For admin-managed default column settings, see
 - Primary public identifier: `uniqueId`
 - Read response formats: `markdown`, `json`
 - Supported locales: `en`, `sv`
-- Exposed MCP tools: 12
+- Exposed MCP tools: 14
 - Exposed MCP resources:
   - `requirements://requirement/{uniqueId}`
   - `ui://requirements/requirement-detail/{uniqueId}`
@@ -36,7 +36,7 @@ For admin-managed default column settings, see
   Creates a fresh `WebStandardStreamableHTTPServerTransport` for each request
   and connects the server instance.
 - `lib/mcp/server.ts`
-  Registers the twelve tools, the JSON resource, and the HTML UI resource.
+  Registers the fourteen tools, the JSON resource, and the HTML UI resource.
 - `lib/dal/ui-settings.ts`
   Loads default column settings.
 - `messages/en.json` and `messages/sv.json`
@@ -81,9 +81,9 @@ keeps lifecycle behavior aligned between REST and MCP.
 
 ## Tool Design
 
-The MCP surface is split into three areas: individual requirements (four
-tools), requirements specifications (six tools), and improvement suggestions
-(two tools).
+The MCP surface is split into four areas: import contracts (two tools),
+individual requirements (four tools), requirements specifications (six tools),
+and improvement suggestions (two tools).
 
 ### `requirements_query_catalog`
 
@@ -105,6 +105,28 @@ status icon data and priority-level icon data as additive fields so older
 clients can keep using the existing status and priority-level names.
 
 This avoids a larger set of narrowly scoped read tools.
+
+### `requirements_get_import_schema`
+
+Returns the canonical JSON Schema for producing a `Kravimportfil`. The returned
+schema is the mandatory contract for generated import JSON.
+
+- **Inputs:** `locale` (`en` | `sv`, default `en`)
+- **Output:** the JSON Schema object directly in `structuredContent`
+- **Text content:** short status text that points to `structuredContent`
+- **Grouping:** import contracts
+
+### `requirements_get_import_instruction`
+
+Returns the canonical `Importinstruktion` Markdown for producing a
+`Kravimportfil`. The instruction is Kravhantering guidance and does not override
+or replace the JSON Schema.
+
+- **Inputs:** `locale` (`en` | `sv`, default `en`)
+- **Output:** Markdown in `structuredContent.importInstruction`
+- **Text content:** short status text that points to
+  `structuredContent.importInstruction`
+- **Grouping:** import contracts
 
 ### `requirements_get_requirement`
 
@@ -467,7 +489,7 @@ Useful commands:
 Manual verification should still include:
 
 - connecting an MCP client to `/api/mcp` with a non-production Bearer token
-- checking that all twelve tools appear
+- checking that all fourteen tools appear
 - checking that the JSON resource resolves
 - checking that the requirement view app renders in a client with MCP Apps
   support

@@ -138,14 +138,15 @@ describe('AssignmentBasedAuthorizationService', () => {
     expect(lookup.isRequirementAreaAuthor).not.toHaveBeenCalled()
   })
 
-  it('allows catalog queries for any authenticated actor', async () => {
+  it.each<RequirementsAction>([
+    { catalog: 'requirements', kind: 'query_catalog' },
+    { kind: 'get_import_schema' },
+    { kind: 'get_import_instruction' },
+  ])('allows %s for any authenticated actor', async action => {
     const { lookup, service } = makeService()
 
     await expect(
-      service.assertAuthorized(
-        { catalog: 'requirements', kind: 'query_catalog' },
-        makeContext([]),
-      ),
+      service.assertAuthorized(action, makeContext([], '')),
     ).resolves.toBeUndefined()
     expect(lookup.resolveRequirementTarget).not.toHaveBeenCalled()
   })

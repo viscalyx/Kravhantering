@@ -12,6 +12,22 @@
       }
     },
     {
+      "name": "read requirement import JSON Schema",
+      "tool": "requirements_get_import_schema",
+      "kind": "read",
+      "arguments": {
+        "locale": "sv"
+      }
+    },
+    {
+      "name": "read requirement import instruction",
+      "tool": "requirements_get_import_instruction",
+      "kind": "read",
+      "arguments": {
+        "locale": "en"
+      }
+    },
+    {
       "name": "read requirement detail",
       "tool": "requirements_get_requirement",
       "kind": "read",

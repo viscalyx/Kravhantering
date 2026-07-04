@@ -26,6 +26,12 @@ agents can use it reliably.
   List or search requirements and fetch lookup catalogs such as areas,
   categories, types, quality characteristics, priority levels, statuses,
   usage statuses, requirement packages, and transitions.
+- `requirements_get_import_schema`
+  Retrieve the canonical JSON Schema for a `Kravimportfil`. Use this as the
+  mandatory file-format contract for generated import JSON.
+- `requirements_get_import_instruction`
+  Retrieve the canonical `Importinstruktion` Markdown for a `Kravimportfil`.
+  This is Kravhantering guidance and does not override or replace the JSON Schema.
 - `requirements_get_requirement`
   Fetch the current requirement detail, a specific version, or full version
   history.

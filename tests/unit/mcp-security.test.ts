@@ -12,6 +12,8 @@ import type {
 
 const EXPECTED_TOOLS = [
   'requirements_add_to_specification',
+  'requirements_get_import_instruction',
+  'requirements_get_import_schema',
   'requirements_get_requirement',
   'requirements_get_specification_items',
   'requirements_graduate_local_requirement',
@@ -84,6 +86,12 @@ function createService() {
       createdRows: [],
       mode: 'specification-local' as const,
       summary: { createdCount: 0 },
+    })),
+    getImportInstruction: vi.fn(async () => ({
+      importInstruction: '# Create JSON for requirements import',
+    })),
+    getImportSchema: vi.fn(async () => ({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
     })),
     getRequirement: vi.fn(async () => ({
       message: 'Requirement detail',

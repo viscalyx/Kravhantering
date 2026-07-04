@@ -12,7 +12,9 @@ import {
   createSpecificationLocalRequirementsBatch,
   getSpecificationBySlug,
 } from '@/lib/dal/requirements-specifications'
+import type { RequestContext } from '@/lib/requirements/auth'
 import {
+  buildRequirementsImportJsonSchema,
   REQUIREMENTS_IMPORT_SCHEMA_VERSION,
   requirementsImportPayloadSchema,
 } from '@/lib/requirements/import-schema'
@@ -78,6 +80,23 @@ function extractReferenceData(prompt: string) {
       name: string
       purposeAndScope: string | null
     }>
+  }
+}
+
+function makeContext(toolName: string): RequestContext {
+  return {
+    actor: {
+      displayName: 'Import Service Actor',
+      hsaId: 'SE5560000001-import1',
+      id: 'actor-import',
+      isAuthenticated: true,
+      roles: ['Reviewer'],
+      source: 'mcp',
+    },
+    correlationId: 'corr-import-service',
+    requestId: 'req-import-service',
+    source: 'mcp',
+    toolName,
   }
 }
 
@@ -150,6 +169,70 @@ describe('requirements import service', () => {
         }),
       ],
     })
+  })
+
+  it('returns the import JSON Schema through the authorized service method', async () => {
+    const authorization = { assertAuthorized: vi.fn() }
+    const logger = { error: vi.fn(), info: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+      logger,
+    })
+    const context = makeContext('requirements_get_import_schema')
+
+    const schema = await workflow.getImportSchema(context, { locale: 'sv' })
+
+    expect(schema).toEqual(buildRequirementsImportJsonSchema('sv'))
+    expect(authorization.assertAuthorized).toHaveBeenCalledWith(
+      { kind: 'get_import_schema' },
+      context,
+    )
+    expect(logger.info).toHaveBeenCalledWith(
+      'requirements.get_import_schema',
+      expect.objectContaining({
+        actor_id: 'actor-import',
+        correlation_id: 'corr-import-service',
+        locale: 'sv',
+        request_id: 'req-import-service',
+        source: 'mcp',
+        tool_name: 'requirements_get_import_schema',
+      }),
+    )
+  })
+
+  it('returns the import instruction through the authorized service method', async () => {
+    const authorization = { assertAuthorized: vi.fn() }
+    const logger = { error: vi.fn(), info: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+      logger,
+    })
+    const context = makeContext('requirements_get_import_instruction')
+
+    const result = await workflow.getImportInstruction(context, {
+      locale: 'en',
+    })
+
+    expect(result.importInstruction).toContain(
+      '# Create JSON for requirements import',
+    )
+    expect(authorization.assertAuthorized).toHaveBeenCalledWith(
+      { kind: 'get_import_instruction' },
+      context,
+    )
+    expect(logger.info).toHaveBeenCalledWith(
+      'requirements.get_import_instruction',
+      expect.objectContaining({
+        actor_id: 'actor-import',
+        correlation_id: 'corr-import-service',
+        locale: 'en',
+        request_id: 'req-import-service',
+        source: 'mcp',
+        tool_name: 'requirements_get_import_instruction',
+      }),
+    )
   })
 
   it('resolves proposed norm references by key when norm reference id is omitted', async () => {
