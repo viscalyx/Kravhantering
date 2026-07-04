@@ -182,9 +182,6 @@ requirement-package co-authors and local responsibility-person rows, while
 assignment-level AI flags no longer appear. Review local evidence templates or
 operator runbooks that expect those older fields.
 
-<!-- operator-upgrade:source pr-393 start -->
-Test upgrade note.
-<!-- operator-upgrade:source pr-393 end -->
 
 <!-- operator-upgrade:source pr-394 start -->
 Update automated requirement-import producers and API/MCP integrations before rollout to use the version 2 requirement import schema and the renamed verifiability attribute. Payloads built for the previous import schema, including the old testing-required flag, will not be accepted by this release.
