@@ -369,9 +369,7 @@ test.describe('MCP seeded HTTP security gate', () => {
       const importSchema = await callToolOk(
         client,
         'requirements_get_import_schema',
-        {
-          locale: 'sv',
-        },
+        {},
       )
       expect(importSchema.$schema).toBe(
         'https://json-schema.org/draft/2020-12/schema',
@@ -403,6 +401,25 @@ test.describe('MCP seeded HTTP security gate', () => {
         ),
       ).toContain('# Create JSON for requirements import')
       expect(importInstruction).not.toHaveProperty('schemaVersion')
+
+      const importDestinations = await callToolOk(
+        client,
+        'requirements_manage_import',
+        {
+          operation: 'list_destinations',
+        },
+      )
+      arrayField(importDestinations, 'result', 'import destinations')
+
+      const normReferences = await callToolOk(
+        client,
+        'requirements_manage_norm_reference',
+        {
+          operation: 'list',
+        },
+      )
+      arrayField(normReferences, 'result', 'norm references')
+
       events.push('import-contracts:ok')
 
       let unknownTool: ToolCallResult | undefined

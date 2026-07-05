@@ -64,7 +64,6 @@ import type {
   GetRequirementInput,
   ManageRequirementInput,
   QueryCatalogInput,
-  QueryCatalogOutput,
   RequirementRefInput,
   RequirementsService,
   TransitionRequirementInput,
@@ -216,8 +215,24 @@ function lookupSearchFields(
         .join(' '),
     }
   }
+  if (catalog === 'categories') {
+    const category = row as unknown as RequirementCategoryRow
+    return {
+      id: category.id,
+      nameEn: category.nameEn,
+      nameSv: category.nameSv,
+    }
+  }
+  if (catalog === 'quality_characteristics') {
+    const qualityCharacteristic = row as unknown as QualityCharacteristicRow
+    return {
+      chapterId: qualityCharacteristic.chapterId,
+      id: qualityCharacteristic.id,
+      nameEn: qualityCharacteristic.nameEn,
+      nameSv: qualityCharacteristic.nameSv,
+    }
+  }
   return {
-    chapterId: row.chapterId,
     id: row.id,
     nameEn: row.nameEn,
     nameSv: row.nameSv,
@@ -542,7 +557,7 @@ export function createRequirementWorkflow({
             ).sort(compareLookupRows)
 
             if (input.operation === 'list') {
-              return { result: rows } as unknown as QueryCatalogOutput
+              return { result: rows }
             }
 
             const search = input.search?.trim()
@@ -568,7 +583,7 @@ export function createRequirementWorkflow({
                   compareLookupRows(left, right),
               )
 
-            return { result } as unknown as QueryCatalogOutput
+            return { result }
           }
 
           if (catalog === 'requirements') {

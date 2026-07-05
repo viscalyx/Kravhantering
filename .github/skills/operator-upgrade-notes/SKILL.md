@@ -24,11 +24,15 @@ operators must prepare for before rollout.
 2. Run focused diff discovery before judging impact:
 
 ```bash
-git rev-parse --verify main
-git log --oneline main..HEAD
+BASE_REF=main
+if ! git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
+  BASE_REF=origin/main
+fi
+git rev-parse --verify "$BASE_REF"
+git log --oneline "$BASE_REF"..HEAD
 git status --short
-git diff --name-status main...HEAD
-git diff --stat main...HEAD
+git diff --name-status "$BASE_REF"...HEAD
+git diff --stat "$BASE_REF"...HEAD
 git diff --cached --name-status
 git diff --cached --stat
 git diff --name-status

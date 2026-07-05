@@ -18,7 +18,12 @@ const UP_STATEMENTS = [
   `IF OBJECT_ID(N'ai_settings', N'U') IS NOT NULL
     AND COL_LENGTH(N'ai_settings', N'mcp_max_request_bytes') IS NOT NULL
     UPDATE [ai_settings]
-    SET [mcp_max_request_bytes] = 10485760
+    SET [mcp_max_request_bytes] =
+      CASE
+        WHEN [mcp_max_request_bytes] < 1048576 THEN 1048576
+        WHEN [mcp_max_request_bytes] > 10485760 THEN 10485760
+        ELSE (([mcp_max_request_bytes] + 524288) / 1048576) * 1048576
+      END
     WHERE [mcp_max_request_bytes] < 1048576
        OR [mcp_max_request_bytes] > 10485760
        OR [mcp_max_request_bytes] % 1048576 <> 0;`,

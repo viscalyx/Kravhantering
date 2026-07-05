@@ -8,6 +8,7 @@ import type {
   AuthorizationService,
   RequestContext,
 } from '@/lib/requirements/auth'
+import { validationError } from '@/lib/requirements/errors'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import {
   compareMcpSearchMatches,
@@ -131,6 +132,10 @@ export function createNormReferenceWorkflow({
             }
           }
 
+          const search = input.operation === 'search' ? input.search.trim() : ''
+          if (input.operation === 'search' && !search) {
+            throw validationError('Search text is required')
+          }
           const rows = (
             await listNormReferences(db, {
               includeArchived: input.includeArchived ?? false,
@@ -140,8 +145,6 @@ export function createNormReferenceWorkflow({
           if (input.operation === 'list') {
             return { result: rows }
           }
-
-          const search = input.search.trim()
           const matched = rows
             .flatMap(
               (row): Array<McpNormReferenceRow & { match: McpSearchMatch }> => {

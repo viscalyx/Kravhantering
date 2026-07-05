@@ -1151,6 +1151,51 @@ describe('handleRequirementsMcpRequest', () => {
     expect(serviceState.getService).not.toHaveBeenCalled()
   })
 
+  it('stops measuring streamed MCP request payloads once the configured limit is exceeded', async () => {
+    const limitBytes = 1024
+    let pullCount = 0
+    serviceState.getCachedMcpRuntimeSettings.mockResolvedValueOnce({
+      mcpImportMaxRows: 500,
+      mcpImportValidationTtlMinutes: 60,
+      mcpMaxRequestBytes: limitBytes,
+    })
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pullCount += 1
+        if (pullCount > 50) {
+          throw new Error('Payload reader drained past the configured limit')
+        }
+        controller.enqueue(new Uint8Array(600))
+      },
+    })
+
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp', {
+        body,
+        duplex: 'half',
+        headers: {
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      } as RequestInit & { duplex: 'half' }),
+      {} as never,
+    )
+
+    expect(response.status).toBe(413)
+    expect(await response.json()).toEqual({
+      error: {
+        code: -32000,
+        message: 'MCP request payload exceeds the 1 KiB size limit.',
+      },
+      id: null,
+      jsonrpc: '2.0',
+    })
+    expect(pullCount).toBeLessThan(50)
+    expect(serviceState.getCachedMcpRuntimeSettings).toHaveBeenCalledOnce()
+    expect(verifyMcpBearerToken).toHaveBeenCalledOnce()
+    expect(serviceState.getService).not.toHaveBeenCalled()
+  })
+
   it('uses a lowered configured MCP request payload limit after auth', async () => {
     const loweredLimit = addMcpMaxRequestBytesSteps(
       MCP_DEFAULT_REQUEST_BYTES,

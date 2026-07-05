@@ -122,6 +122,7 @@ export interface RequirementsImportProposalPreview {
   normReferenceId: string | null
   reference: string
   referencedCount: number
+  resolvedIsArchived: boolean
   resolvedNormReferenceDbId: number | null
   type: string
   uri: string | null
@@ -824,7 +825,15 @@ function resolveNormReferenceIds(
       )
       continue
     }
-    if (proposal.resolvedNormReferenceDbId != null) {
+    if (proposal.resolvedIsArchived) {
+      warnings.push(
+        warning(
+          'import_proposed_norm_reference_archived',
+          'Proposed norm reference resolves to an archived norm reference and will not be saved.',
+          { field: 'proposedNormReferenceKeys', originalValue: key },
+        ),
+      )
+    } else if (proposal.resolvedNormReferenceDbId != null) {
       const match = referenceData.normReferences.find(
         item => item.id === proposal.resolvedNormReferenceDbId,
       )
@@ -931,6 +940,7 @@ function previewProposals(
       referencedCount,
       resolvedNormReferenceDbId:
         resolved && !resolved.isArchived ? resolved.id : null,
+      resolvedIsArchived,
       type: proposal.type,
       uri: compactText(proposal.uri),
       version: compactText(proposal.version),
@@ -1619,9 +1629,26 @@ function schemaIssuePath(path: readonly (string | number | symbol)[]): string {
   return jsonPointer(path.map(segment => String(segment)))
 }
 
+function valueAtSchemaPath(
+  input: unknown,
+  path: readonly (string | number | symbol)[],
+): unknown {
+  let current = input
+  for (const segment of path) {
+    if (typeof segment === 'symbol') return undefined
+    if (current == null) return undefined
+    if (typeof current !== 'object') return undefined
+    current = (current as Record<string | number, unknown>)[segment]
+  }
+  return current
+}
+
 function schemaIssueCode(issue: {
   code: string
+  input?: unknown
   message: string
+  path: readonly (string | number | symbol)[]
+  rootInput?: unknown
 }): McpImportIssueCode {
   if (issue.code === 'unrecognized_keys') {
     return 'import_schema_unrecognized_field'
@@ -1630,20 +1657,26 @@ function schemaIssueCode(issue: {
     return 'import_schema_invalid_enum'
   }
   if (issue.code === 'invalid_type') {
-    return issue.message.includes('received undefined')
+    return ('input' in issue
+      ? issue.input
+      : valueAtSchemaPath(issue.rootInput, issue.path)) === undefined
       ? 'import_schema_missing_required'
       : 'import_schema_invalid_type'
   }
   return 'import_schema_invalid'
 }
 
-function schemaIssueToMcpIssue(issue: {
-  code: string
-  message: string
-  path: readonly (string | number | symbol)[]
-}): McpImportIssue {
+function schemaIssueToMcpIssue(
+  issue: {
+    code: string
+    input?: unknown
+    message: string
+    path: readonly (string | number | symbol)[]
+  },
+  rootInput?: unknown,
+): McpImportIssue {
   return {
-    code: schemaIssueCode(issue),
+    code: schemaIssueCode({ ...issue, rootInput }),
     message: issue.message,
     path: schemaIssuePath(issue.path),
     severity: 'error',
@@ -2144,23 +2177,25 @@ export function createRequirementsImportWorkflow({
             await purgeExpiredRequirementImportValidationSessions(db).catch(
               () => undefined,
             )
+            await assertMcpImportDestinationAuthorized(
+              authorization,
+              context,
+              input.destination,
+            )
             const destinationOrIssue =
               await resolveImportableDestinationSnapshot(db, input.destination)
             if ('code' in destinationOrIssue) {
               return issueResponse(destinationOrIssue)
             }
             const destination = destinationOrIssue
-            await assertMcpImportDestinationAuthorized(
-              authorization,
-              context,
-              input.destination,
-            )
 
             const parsed = requirementsImportPayloadSchema.safeParse(
               input.payload,
             )
             if (!parsed.success) {
-              const issues = parsed.error.issues.map(schemaIssueToMcpIssue)
+              const issues = parsed.error.issues.map(issue =>
+                schemaIssueToMcpIssue(issue, input.payload),
+              )
               return {
                 hasErrors: true,
                 hasWarnings: false,
@@ -2310,16 +2345,13 @@ export function createRequirementsImportWorkflow({
             }
           }
 
-          const referenceData = await loadImportReferenceData(db, {
-            includeArchivedNormReferences: true,
-          })
-          const currentFingerprint = referenceDataFingerprint(referenceData)
           const diagnosticValidation =
             parseSessionJson<McpImportValidationSessionJson>(
               session.validationResultJson,
               'validation result',
             )
           const diagnosticExecution = parseExecutionSession(session)
+          let diagnosticCurrentFingerprint: string | undefined
 
           try {
             return await db.transaction('SERIALIZABLE', async manager => {
@@ -2340,6 +2372,14 @@ export function createRequirementsImportWorkflow({
                   'validation result',
                 )
               const execution = parseExecutionSession(lockedSession)
+              const referenceData = await loadImportReferenceData(
+                manager as unknown as SqlServerDatabase,
+                {
+                  includeArchivedNormReferences: true,
+                },
+              )
+              const currentFingerprint = referenceDataFingerprint(referenceData)
+              diagnosticCurrentFingerprint = currentFingerprint
               if (
                 currentFingerprint !== lockedSession.referenceDataFingerprint
               ) {
@@ -2539,7 +2579,7 @@ export function createRequirementsImportWorkflow({
               'requirements.manage_import.validation_session_diagnostic',
               {
                 ...validationSessionDiagnosticFields({
-                  currentReferenceDataFingerprint: currentFingerprint,
+                  currentReferenceDataFingerprint: diagnosticCurrentFingerprint,
                   destination,
                   execution: diagnosticExecution,
                   reason: 'execution_failed',

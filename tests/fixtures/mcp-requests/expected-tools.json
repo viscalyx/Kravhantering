@@ -9,8 +9,10 @@
     "requirements_list_improvement_suggestions",
     "requirements_list_graduation_target_areas",
     "requirements_list_specifications",
-    "requirements_manage_requirement",
+    "requirements_manage_import",
     "requirements_manage_improvement_suggestion",
+    "requirements_manage_norm_reference",
+    "requirements_manage_requirement",
     "requirements_query_catalog",
     "requirements_remove_from_specification",
     "requirements_transition_requirement"

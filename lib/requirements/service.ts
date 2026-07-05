@@ -143,7 +143,7 @@ export interface QueryCatalogInput {
   verifiable?: boolean[]
 }
 
-export interface QueryCatalogOutput {
+export interface QueryCatalogListOutput {
   catalog: CatalogKind
   items: unknown[]
   message: string
@@ -155,8 +155,15 @@ export interface QueryCatalogOutput {
     offset: number
     total: number
   } | null
-  result?: unknown[]
 }
+
+export interface QueryCatalogLookupOutput {
+  result: unknown[]
+}
+
+export type QueryCatalogOutput =
+  | QueryCatalogListOutput
+  | QueryCatalogLookupOutput
 
 export interface GetRequirementInput extends RequirementRefInput {
   locale?: ResponseLocale

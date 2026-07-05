@@ -64,6 +64,7 @@ function parseContentLength(request: Request): number | undefined {
 
 async function inspectRequestPayloadSize(
   request: Request,
+  limitBytes: number,
 ): Promise<RequestPayloadSize> {
   if (request.method !== 'POST') return {}
   const contentLength = parseContentLength(request)
@@ -82,6 +83,10 @@ async function inspectRequestPayloadSize(
       return { measuredBytes: totalBytes }
     }
     totalBytes += value.byteLength
+    if (totalBytes > limitBytes) {
+      void reader.cancel().catch(() => undefined)
+      return { measuredBytes: totalBytes }
+    }
   }
 }
 
@@ -127,7 +132,10 @@ export async function handleRequirementsMcpRequest(
 
   const mcpSettings = await getCachedMcpRuntimeSettings(db)
   if (request.method === 'POST') {
-    const payloadSize = await inspectRequestPayloadSize(request)
+    const payloadSize = await inspectRequestPayloadSize(
+      request,
+      mcpSettings.mcpMaxRequestBytes,
+    )
     if (
       requestPayloadExceedsLimit(payloadSize, mcpSettings.mcpMaxRequestBytes)
     ) {

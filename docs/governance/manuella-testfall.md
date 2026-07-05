@@ -716,14 +716,15 @@ driftkonfigurationen har högre prioritet.
 **Steg:** Logga in som `Admin`, öppna `/sv/admin?tab=ai` och kontrollera att
 sektionen `AI-assistering` innehåller `Kravgenerering`. Kontrollera att
 sektionen `MCP-gränssnitt` visas efter `AI-assistering` och innehåller
-`MCP-anropsgräns` med synligt tillåtet intervall och steg, notera aktuell
-gräns, höj gränsen ett steg med plusknappen och spara. Återställ därefter
+`MCP-anropsgräns` med synligt tillåtet intervall och steg. Notera aktuell
+gräns, ställ in `1 MiB` och spara. Höj därefter gränsen ett steg med
+plusknappen, kontrollera att den blir `2 MiB` och spara. Återställ därefter
 ursprungligt värde och spara.
 
 **Förväntat resultat:** Gränsen sparas i Admincenter och visas som aktuell
 gräns. Det tillåtna intervallet visas som `1 MiB` till `10 MiB` med steg
-`1 MiB`. Standardvärdet är `10 MiB`; ett steg ned visar `9 MiB` och ett steg
-upp återställer `10 MiB`. Inställningen påverkar inte reglaget för
+`1 MiB`. Standardvärdet är `10 MiB`; den sparade teständringen visar `2 MiB`
+efter ett steg upp från minimum. Inställningen påverkar inte reglaget för
 kravgenerering om reglaget inte ändras separat.
 
 ### REQ-17: importera krav till kravbiblioteket

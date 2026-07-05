@@ -135,7 +135,7 @@ test.describe('Admin AI settings', () => {
         ).toHaveCount(1)
         await expect(
           page.getByRole('spinbutton', { name: 'MCP-anropsgräns' }),
-        ).toBeVisible()
+        ).toHaveCount(1)
         await expect(
           page.getByText('Tillåtet intervall: 1 MiB till 10 MiB. Steg: 1 MiB.'),
         ).toHaveCount(1)

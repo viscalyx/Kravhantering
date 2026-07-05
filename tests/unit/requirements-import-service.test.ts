@@ -31,6 +31,7 @@ import {
   listSpecificationsForActor,
 } from '@/lib/dal/requirements-specifications'
 import type { RequestContext } from '@/lib/requirements/auth'
+import { forbiddenError } from '@/lib/requirements/errors'
 import {
   buildRequirementsImportJsonSchema,
   REQUIREMENTS_IMPORT_SCHEMA_VERSION,
@@ -350,6 +351,42 @@ describe('requirements import service', () => {
         tool_name: 'requirements_get_import_instruction',
       }),
     )
+  })
+
+  it('authorizes MCP validate destinations before resolving destination existence', async () => {
+    const denied = forbiddenError('Blocked by policy', {
+      reason: 'policy_missing',
+    })
+    const authorization = {
+      assertAuthorized: vi.fn(async () => {
+        throw denied
+      }),
+    }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: makeManageImportDb().db as never,
+    })
+    const context = makeContext('requirements_manage_import')
+
+    await expect(
+      workflow.manageImport(context, {
+        destination: { areaId: 987_654, kind: 'requirements_library' },
+        operation: 'validate',
+        payload: {
+          requirements: [{ description: 'Systemet ska logga händelser.' }],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        },
+      }),
+    ).rejects.toBe(denied)
+
+    expect(authorization.assertAuthorized).toHaveBeenCalledWith(
+      {
+        kind: 'manage_import',
+        operation: 'validate',
+      },
+      context,
+    )
+    expect(getAreaById).not.toHaveBeenCalled()
   })
 
   it('maps MCP import schema failures to the public issue-code set', async () => {
@@ -689,6 +726,98 @@ describe('requirements import service', () => {
     expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
   })
 
+  it('executes a validated library import and stores the execution result in the same transaction', async () => {
+    const { db, manager } = makeManageImportDb()
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: db as never,
+    })
+    const context = makeContext('requirements_manage_import')
+
+    await workflow.manageImport(context, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        requirements: [
+          { description: 'Systemet ska logga viktiga händelser.' },
+        ],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+    const createData = vi
+      .mocked(createRequirementImportValidationSession)
+      .mock.calls.at(-1)?.[1]
+    if (!createData) throw new Error('Expected validation session data')
+    const session = makeSessionRecord(createData)
+    vi.mocked(
+      getRequirementImportValidationSessionByTokenHash,
+    ).mockResolvedValue(session)
+    vi.mocked(createRequirementsBatchWithExecutor).mockResolvedValue([
+      {
+        requirement: {
+          id: 101,
+          requirementAreaId: 7,
+          sequenceNumber: 1,
+          uniqueId: 'TEST0001',
+        },
+        version: {
+          id: 201,
+          requirementId: 101,
+          statusId: 1,
+          versionNumber: 1,
+        },
+      },
+    ] as never)
+
+    const result = await workflow.manageImport(context, {
+      operation: 'execute',
+      validationToken: 'opaque-validation-token',
+    })
+
+    expect(result).toMatchObject({
+      importedRows: [
+        expect.objectContaining({
+          kravId: 'TEST0001',
+          uniqueId: 'TEST0001',
+        }),
+      ],
+      summary: {
+        importedCount: 1,
+        notImportedCount: 0,
+        totalRowCount: 1,
+      },
+    })
+    expect(listCategories).toHaveBeenLastCalledWith(manager)
+    expect(createRequirementsBatchWithExecutor).toHaveBeenCalledWith(
+      manager,
+      [
+        expect.objectContaining({
+          description: 'Systemet ska logga viktiga händelser.',
+        }),
+      ],
+      expect.objectContaining({
+        audit: expect.any(Function),
+        batchAudit: expect.any(Function),
+      }),
+    )
+    expect(
+      updateRequirementImportValidationSessionExecutionResult,
+    ).toHaveBeenCalledWith(
+      manager,
+      session.id,
+      expect.stringContaining('TEST0001'),
+      expect.any(Date),
+    )
+    expect(
+      vi.mocked(createRequirementsBatchWithExecutor).mock
+        .invocationCallOrder[0],
+    ).toBeLessThan(
+      vi.mocked(updateRequirementImportValidationSessionExecutionResult).mock
+        .invocationCallOrder[0],
+    )
+  })
+
   it('resolves proposed norm references by key when norm reference id is omitted', async () => {
     const existingNormReference: NormReferenceRow = {
       createdAt: '2026-01-01T00:00:00.000Z',
@@ -746,6 +875,75 @@ describe('requirements import service', () => {
       }),
     ])
     expect(preview.rows[0]?.values.normReferenceIds).toEqual([910033])
+    expect(preview.rows[0]?.warnings.map(item => item.code)).not.toContain(
+      'import_proposed_norm_reference_unresolved',
+    )
+  })
+
+  it('reports archived proposed norm-reference matches as archived by key', async () => {
+    const archivedNormReference: NormReferenceRow = {
+      createdAt: '2026-01-01T00:00:00.000Z',
+      id: 910034,
+      isArchived: true,
+      issuer: 'National Electrical Manufacturers Association (NEMA)',
+      name: 'Digital Imaging and Communications in Medicine Part 3',
+      normReferenceId: 'DICOM-PS3.3',
+      reference: 'DICOM PS3.3',
+      type: 'Standard',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      uri: 'https://dicom.nema.org/medical/dicom/current/output/html/part03.html',
+      version: null,
+    }
+    vi.mocked(listNormReferences).mockResolvedValue([archivedNormReference])
+    const payload = requirementsImportPayloadSchema.parse({
+      proposedNormReferences: [
+        {
+          issuer: 'National Electrical Manufacturers Association (NEMA)',
+          key: 'DICOM-PS3.3',
+          name: 'Digital Imaging and Communications in Medicine Part 3',
+          normReferenceId: null,
+          reference: 'DICOM PS3.3',
+          type: 'Standard',
+          uri: 'https://dicom.nema.org/medical/dicom/current/output/html/part03.html',
+          version: null,
+        },
+      ],
+      requirements: [
+        {
+          description: 'Leverantören ska bifoga DICOM Conformance Statement.',
+          proposedNormReferenceKeys: ['DICOM-PS3.3'],
+        },
+      ],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    const preview = await workflow.previewLibraryImport({} as never, {
+      areaId: 7,
+      locale: 'sv',
+      payload,
+    })
+
+    expect(preview.proposals).toEqual([
+      expect.objectContaining({
+        key: 'DICOM-PS3.3',
+        resolvedIsArchived: true,
+        resolvedNormReferenceDbId: null,
+        warnings: [
+          expect.objectContaining({
+            code: 'import_proposed_norm_reference_archived',
+          }),
+        ],
+      }),
+    ])
+    expect(preview.rows[0]?.values.normReferenceIds).toEqual([])
+    expect(preview.rows[0]?.warnings.map(item => item.code)).toContain(
+      'import_proposed_norm_reference_archived',
+    )
     expect(preview.rows[0]?.warnings.map(item => item.code)).not.toContain(
       'import_proposed_norm_reference_unresolved',
     )

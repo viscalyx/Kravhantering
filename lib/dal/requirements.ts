@@ -549,6 +549,8 @@ export async function createRequirementsBatchWithExecutor(
   inputs: RequirementMutationData[],
   options: CreateRequirementsBatchOptions = {},
 ): Promise<CreateRequirementResult[]> {
+  if (inputs.length === 0) return []
+
   const results: CreateRequirementResult[] = []
 
   for (const [index, data] of inputs.entries()) {

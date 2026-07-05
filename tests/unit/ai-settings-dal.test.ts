@@ -262,6 +262,21 @@ describe('AI settings DAL', () => {
     expect(query).toHaveBeenCalledTimes(1)
   })
 
+  it('falls back to default MCP runtime settings when the singleton row is absent', async () => {
+    await expect(getCachedMcpRuntimeSettings(db)).resolves.toEqual({
+      mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+      mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+      mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+    })
+    await expect(getCachedMcpRuntimeSettings(db)).resolves.toEqual({
+      mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+      mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+      mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+
   it('fails closed when runtime MCP settings cannot be loaded', async () => {
     query.mockRejectedValueOnce(new Error('settings unavailable'))
 

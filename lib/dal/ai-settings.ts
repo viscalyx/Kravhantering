@@ -71,6 +71,12 @@ export const DEFAULT_AI_GENERATION_SETTINGS: AiGenerationSettings =
     requirementGenerationEnabled: true,
   })
 
+const DEFAULT_MCP_RUNTIME_SETTINGS: McpRuntimeSettings = Object.freeze({
+  mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+  mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+  mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+})
+
 const MCP_RUNTIME_SETTINGS_CACHE_TTL_MS = 30_000
 
 let cachedMcpRuntimeSettings:
@@ -357,9 +363,8 @@ export async function getCachedMcpRuntimeSettings(
 
   const row = rows[0]
   if (!row) {
-    throw validationError('MCP runtime settings are not configured', {
-      reason: 'missing_mcp_runtime_settings',
-    })
+    cacheMcpRuntimeSettings(DEFAULT_MCP_RUNTIME_SETTINGS)
+    return DEFAULT_MCP_RUNTIME_SETTINGS
   }
 
   const settings = {
