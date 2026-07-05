@@ -248,7 +248,7 @@ all rule IDs/types, categories, source, request/correlation IDs, and
 model/provider when available. The metadata event does not include prompts, raw
 model output, repair JSON, image data, matched terms, or actor HSA-id values.
 
-During the current diagnostic phase, Admin Center defaults
+During the current diagnostic phase, Admin Center seed data defaults
 `aiSafetyForensicLoggingEnabled` to enabled. When enabled, an AI safety block
 also writes a separate `security-forensics` JSON event named
 `ai.input_safety.blocked_content_captured` or

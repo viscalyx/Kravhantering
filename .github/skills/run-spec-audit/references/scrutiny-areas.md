@@ -188,7 +188,8 @@ maintenance rule.
   generation across UI and REST while preserving the environment guard as the
   highest-precedence hard override, and does the Admin-configured MCP payload
   limit default to exact `1 MiB`, follow the `102.4 KiB` step grid, and apply
-  before bearer-token verification?
+  before bearer-token verification? Do required and demo seed insertions keep
+  forensic AI safety logging enabled during the diagnostic phase?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 24: Admin Center AI generation disablement is globally effective"`
 

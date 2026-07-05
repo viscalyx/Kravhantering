@@ -64,6 +64,10 @@ const ZERO_WIDTH_CHARS = /[\u200B-\u200D\uFEFF]/g
 const UNICODE_WORD_CHAR = String.raw`[\p{L}\p{N}_]`
 const AI_SAFETY_BLOCK_REASON = 'ai_safety_rule_match'
 const COMBINED_PART_LABEL = 'combined'
+const DEFAULT_PAIR_WINDOW_CHARS = 80
+const MAX_PAIR_WINDOW_CHARS = 1000
+
+type PairRegexCache = Map<string, RegExp>
 
 const AI_SAFETY_RULE_PRIORITY: readonly AiSafetyRuleId[] = [
   'instruction_override',
@@ -144,6 +148,60 @@ function matchTerm(
   return [...text.matchAll(regex)].map(match => match[0])
 }
 
+function safePairWindowChars(windowChars: number | null | undefined): number {
+  const numeric =
+    typeof windowChars === 'number' && Number.isFinite(windowChars)
+      ? Math.trunc(windowChars)
+      : DEFAULT_PAIR_WINDOW_CHARS
+  return Math.min(MAX_PAIR_WINDOW_CHARS, Math.max(0, numeric))
+}
+
+function pairRegexCacheKey(
+  rule: ActiveAiSafetyRule,
+  firstTerm: ActiveAiSafetyRuleTerm,
+  secondTerm: ActiveAiSafetyRuleTerm,
+  windowChars: number,
+): string {
+  return JSON.stringify([
+    rule.ruleId,
+    rule.patternKind,
+    windowChars,
+    firstTerm.direction,
+    firstTerm.termType,
+    firstTerm.termText,
+    secondTerm.direction,
+    secondTerm.termType,
+    secondTerm.termText,
+  ])
+}
+
+function getPairRegex(args: {
+  cache: PairRegexCache
+  firstTerm: ActiveAiSafetyRuleTerm
+  rule: ActiveAiSafetyRule
+  secondTerm: ActiveAiSafetyRuleTerm
+  windowChars: number
+}): RegExp {
+  const key = pairRegexCacheKey(
+    args.rule,
+    args.firstTerm,
+    args.secondTerm,
+    args.windowChars,
+  )
+  const cached = args.cache.get(key)
+  if (cached) return cached
+
+  const gap = String.raw`[\s\S]{0,${args.windowChars}}`
+  const regex = new RegExp(
+    `(${termPattern(args.firstTerm.termText)})${gap}(${termPattern(
+      args.secondTerm.termText,
+    )})`,
+    'giu',
+  )
+  args.cache.set(key, regex)
+  return regex
+}
+
 function directEvidence(
   text: string,
   rule: ActiveAiSafetyRule,
@@ -177,17 +235,19 @@ function pairedEvidenceOneWay(
   secondTerms: readonly ActiveAiSafetyRuleTerm[],
   windowChars: number,
   partLabel: string,
+  pairRegexCache: PairRegexCache,
 ): AiSafetyForensicEvidence[] {
   const evidence: AiSafetyForensicEvidence[] = []
-  const gap = String.raw`[\s\S]{0,${windowChars}}`
   for (const firstTerm of firstTerms) {
     for (const secondTerm of secondTerms) {
-      const regex = new RegExp(
-        `(${termPattern(firstTerm.termText)})${gap}(${termPattern(
-          secondTerm.termText,
-        )})`,
-        'giu',
-      )
+      const regex = getPairRegex({
+        cache: pairRegexCache,
+        firstTerm,
+        rule,
+        secondTerm,
+        windowChars,
+      })
+      regex.lastIndex = 0
       for (const match of text.matchAll(regex)) {
         const firstMatchedText = match[1]
         const secondMatchedText = match[2]
@@ -222,6 +282,7 @@ function pairedEvidence(
   secondTerms: readonly ActiveAiSafetyRuleTerm[],
   windowChars: number,
   partLabel: string,
+  pairRegexCache: PairRegexCache,
   bidirectional = false,
 ): AiSafetyForensicEvidence[] {
   const evidence = pairedEvidenceOneWay(
@@ -231,6 +292,7 @@ function pairedEvidence(
     secondTerms,
     windowChars,
     partLabel,
+    pairRegexCache,
   )
   if (!bidirectional) return evidence
   return [
@@ -242,6 +304,7 @@ function pairedEvidence(
       firstTerms,
       windowChars,
       partLabel,
+      pairRegexCache,
     ),
   ]
 }
@@ -251,8 +314,9 @@ function ruleEvidence(
   text: string,
   direction: AiSafetyDirection,
   partLabel: string,
+  pairRegexCache: PairRegexCache,
 ): AiSafetyForensicEvidence[] {
-  const windowChars = rule.windowChars ?? 80
+  const windowChars = safePairWindowChars(rule.windowChars)
   const actions = termsByType(rule, direction, 'action')
   const targets = termsByType(rule, direction, 'target')
   const coding = termsByType(rule, direction, 'coding')
@@ -262,7 +326,15 @@ function ruleEvidence(
     case 'instruction_override':
       return [
         ...directEvidence(text, rule, directMarkers, partLabel),
-        ...pairedEvidence(text, rule, actions, targets, windowChars, partLabel),
+        ...pairedEvidence(
+          text,
+          rule,
+          actions,
+          targets,
+          windowChars,
+          partLabel,
+          pairRegexCache,
+        ),
       ]
     case 'encoded_smuggling':
       return pairedEvidence(
@@ -272,6 +344,7 @@ function ruleEvidence(
         targets,
         windowChars,
         partLabel,
+        pairRegexCache,
         true,
       )
     case 'sensitive_backend_leak':
@@ -286,6 +359,7 @@ function ruleEvidence(
         targets,
         windowChars,
         partLabel,
+        pairRegexCache,
       )
   }
 }
@@ -362,9 +436,12 @@ function collectEvidence(
   normalizedParts: readonly AiSafetyScreenPart[],
 ): readonly AiSafetyForensicEvidence[] {
   const evidence: AiSafetyForensicEvidence[] = []
+  const pairRegexCache: PairRegexCache = new Map()
   for (const part of normalizedParts) {
     for (const rule of ruleSet.rules) {
-      evidence.push(...ruleEvidence(rule, part.text, direction, part.label))
+      evidence.push(
+        ...ruleEvidence(rule, part.text, direction, part.label, pairRegexCache),
+      )
     }
   }
 
@@ -374,7 +451,13 @@ function collectEvidence(
     for (const rule of ruleSet.rules) {
       if (matchedRuleIds.has(rule.ruleId)) continue
       evidence.push(
-        ...ruleEvidence(rule, combinedText, direction, COMBINED_PART_LABEL),
+        ...ruleEvidence(
+          rule,
+          combinedText,
+          direction,
+          COMBINED_PART_LABEL,
+          pairRegexCache,
+        ),
       )
     }
   }

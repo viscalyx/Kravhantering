@@ -1,11 +1,5 @@
-import {
-  type APIRequestContext,
-  expect,
-  type Page,
-  type Route,
-  test,
-} from '@playwright/test'
-import { expectApiResponseOk } from '../api-response-assertions'
+import { expect, type Page, type Route, test } from '@playwright/test'
+import { getAiSettings, putAiSettings } from '../ai-settings-test-helpers'
 
 const specificationSlug = 'ETJANST-UPP-2026'
 const generatedDescription =
@@ -20,44 +14,6 @@ const generatedPayload = {
     },
   ],
   schemaVersion: 'requirement-import.v2',
-}
-
-interface AiGenerationAvailability {
-  aiSafetyForensicLoggingEnabled: boolean
-  aiSafetyRuleCacheTtlSeconds: number
-  disabledByEnvironment: boolean
-  effectiveRequirementGenerationEnabled: boolean
-  mcpImportMaxRows: number
-  mcpImportValidationTtlMinutes: number
-  mcpMaxRequestBytes: number
-  requirementGenerationEnabled: boolean
-}
-
-async function getAiSettings(
-  request: APIRequestContext,
-): Promise<AiGenerationAvailability> {
-  const response = await request.get('/api/admin/ai-settings')
-  await expectApiResponseOk(response, 'GET AI settings')
-  return (await response.json()) as AiGenerationAvailability
-}
-
-async function putAiSettings(
-  request: APIRequestContext,
-  settings: Pick<
-    AiGenerationAvailability,
-    | 'aiSafetyForensicLoggingEnabled'
-    | 'aiSafetyRuleCacheTtlSeconds'
-    | 'mcpImportMaxRows'
-    | 'mcpImportValidationTtlMinutes'
-    | 'mcpMaxRequestBytes'
-    | 'requirementGenerationEnabled'
-  >,
-): Promise<AiGenerationAvailability> {
-  const response = await request.put('/api/admin/ai-settings', {
-    data: settings,
-  })
-  await expectApiResponseOk(response, 'PUT AI settings')
-  return (await response.json()) as AiGenerationAvailability
 }
 
 function jsonResponse(body: unknown) {

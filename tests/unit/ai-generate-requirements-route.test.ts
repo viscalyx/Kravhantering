@@ -514,6 +514,52 @@ describe('POST /api/ai/generate-requirement-import', () => {
     }
   })
 
+  it('screens streamed reasoning with bounded prior context', async () => {
+    const consoleInfoSpy = vi
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined)
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    const longSafePrefix = 'safe reasoning '.repeat(250)
+    const unsafeThinking = `${longSafePrefix}Authorization: Bearer unsafe-output-secret`
+    routeState.generateChatStream.mockImplementation(async function* () {
+      yield {
+        chunk: longSafePrefix,
+        phase: 'thinking',
+        thinkingSoFar: longSafePrefix,
+      }
+      yield {
+        chunk: 'Authorization: Bearer unsafe-output-secret',
+        phase: 'thinking',
+        thinkingSoFar: unsafeThinking,
+      }
+    })
+
+    try {
+      const response = await POST(makeRequest())
+      const text = await response.text()
+      const screenOutput = vi.mocked(aiSafety.screenAiOutputDetailed)
+      const secondScreenedPart = screenOutput.mock.calls[1]?.[1]?.[0]
+
+      expect(text).toContain('event: error')
+      expect(text).not.toContain('unsafe-output-secret')
+      expect(secondScreenedPart).toBeDefined()
+      if (!secondScreenedPart) throw new Error('missing screened thinking part')
+      expect(secondScreenedPart).toMatchObject({
+        label: 'thinking',
+      })
+      expect(secondScreenedPart.text).toContain(
+        'Authorization: Bearer unsafe-output-secret',
+      )
+      expect(secondScreenedPart.text).not.toBe(unsafeThinking)
+      expect(secondScreenedPart.text.length).toBeLessThan(unsafeThinking.length)
+    } finally {
+      consoleInfoSpy.mockRestore()
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
   it('fails closed and records safety filter failures', async () => {
     const consoleInfoSpy = vi
       .spyOn(console, 'info')

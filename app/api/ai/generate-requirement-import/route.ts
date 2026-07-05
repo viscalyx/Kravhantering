@@ -59,6 +59,7 @@ import {
 
 const AI_GENERATE_REQUIREMENT_IMPORT_OPERATION =
   'ai.generate-requirement-import'
+const STREAMED_REASONING_SAFETY_CONTEXT_CHARS = 1000
 
 const generateRequirementImportSchema = aiRequirementImportBaseBodySchema
   .extend({
@@ -317,6 +318,7 @@ export const POST = secureMutationRoute({
           )
           const resolvedModel = modelCapabilities.id
           let sentGeneratingProgress = false
+          let screenedThinkingLength = 0
           for await (const event of generateChatStream({
             format: buildRequirementImportResponseFormatSchema(locale),
             messages: [
@@ -337,11 +339,21 @@ export const POST = secureMutationRoute({
                 let progressSafetyScreening: Awaited<
                   ReturnType<typeof screenAiOutputDetailed>
                 >
+                const thinkingText = event.thinkingSoFar || event.chunk
+                const alreadyScreenedLength = Math.min(
+                  screenedThinkingLength,
+                  thinkingText.length,
+                )
+                const safetyWindowStart = Math.max(
+                  0,
+                  alreadyScreenedLength -
+                    STREAMED_REASONING_SAFETY_CONTEXT_CHARS,
+                )
                 try {
                   progressSafetyScreening = await screenAiOutputDetailed(db, [
                     {
                       label: 'thinking',
-                      text: event.thinkingSoFar || event.chunk,
+                      text: thinkingText.slice(safetyWindowStart),
                     },
                   ])
                 } catch (error) {
@@ -374,6 +386,7 @@ export const POST = secureMutationRoute({
                   recordStreamEvent('failure', 422)
                   return
                 }
+                screenedThinkingLength = thinkingText.length
                 send('thinking', { thinkingSoFar: event.thinkingSoFar })
                 break
               }

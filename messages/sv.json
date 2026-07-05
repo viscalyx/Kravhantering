@@ -1343,7 +1343,7 @@
       "environmentOverrideNotice": "Driftkonfigurationen stänger för närvarande av AI-kravgenerering. Du kan spara inställningen i Administrationscenter, men generering är fortsatt avstängd tills driftöverskrivningen tas bort.",
       "decreaseMcpMaxRequestLimit": "Sänk MCP-anropsgränsen",
       "fieldHelp": {
-        "aiSafetyForensicLogging": "När inställningen är på skriver AI-säkerhetsblockeringar en separat forensisk JSON-händelse med rått blockerat innehåll och matchade regeltermer. Metadatahändelsen i säkerhetsloggen skrivs alltid.",
+        "aiSafetyForensicLogging": "När inställningen är på skriver AI-säkerhetsblockeringar en separat forensisk JSON-händelse med rått blockerat innehåll och matchade regeltermer. Metadatahändelsen i säkerhetsloggen skrivs alltid. Ändringar gäller direkt i denna app-process och kan ta upp till 30 sekunder i andra app-processer.",
         "mcpImportMaxRows": "Högsta antal rader som accepteras i en MCP-valideringssession för import. Använd detta för att hålla importvalidering på en hanterbar nivå.",
         "mcpImportValidationTtl": "Hur länge en sparad MCP-valideringstoken för import kan användas för inspektion eller körning innan den upphör att gälla.",
         "mcpMaxRequestLimit": "Största tillåtna MCP POST-nyttolast och sparad MCP-importsession. Använd detta för att styra hur stora MCP-anrop och valideringssessioner får bli.",
@@ -1365,8 +1365,6 @@
       "mcpMaxRequestLimitCurrent": "Aktuell gräns: {value}",
       "requirementGenerationEnabled": "Kravgenerering",
       "saveError": "Kunde inte spara AI-inställningar.",
-      "securityDescription": "Styr AI-assisterad kravgenerering, säkerhetsregelcache och AI-säkerhetsfilter.",
-      "securityTitle": "AI-assistering",
       "rows": "rader",
       "active": "Aktiv",
       "activeTermCount": "{activeCount}/{totalCount} aktiva",

@@ -163,8 +163,11 @@ Admin-managed AI settings include:
 The forensic AI safety logging setting only controls the separate
 `security-forensics` JSON output. It does not enable or disable the AI safety
 filter, the metadata-only `security-audit` event, blocking behavior, or
-user-facing error messages. The setting defaults to enabled during the current
-diagnostic phase.
+user-facing error messages. When an admin saves
+this setting, the saving process clears `cachedAiSafetyRuntimeSettings` in the
+local process immediately; other app processes can continue to use their cached
+value until
+`AI_SAFETY_RUNTIME_SETTINGS_CACHE_TTL_MS` expires after 30 seconds.
 
 The effective setting is disabled when either the Admin Center preference is
 off or the deployment environment has `AI_REQUIREMENT_GENERATION_DISABLED=1` or
@@ -200,9 +203,11 @@ work.
 When an AI safety block happens, the metadata event is always written to
 `security-audit`. If forensic AI safety logging is enabled, the same block also
 writes a `security-forensics` JSON event with the same request id,
-correlation id, and event id. The forensic event contains only the screened
-content parts for the blocked step and the matched rule evidence, including
-configured terms and matched text.
+correlation id, and event id. The forensic event includes actor/source
+metadata, blocked step, direction, operation, source, text-length bucket,
+decision/reason fields, category values, primary and matched rule IDs/types,
+optional model/provider values, the screened content parts for the blocked
+step, and matched rule evidence including configured terms and matched text.
 
 ## Precedence Rules
 

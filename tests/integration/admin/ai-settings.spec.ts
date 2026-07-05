@@ -1,54 +1,10 @@
-import {
-  type APIRequestContext,
-  expect,
-  type Page,
-  type Route,
-  test,
-} from '@playwright/test'
+import { expect, type Page, type Route, test } from '@playwright/test'
 import {
   addMcpMaxRequestBytesSteps,
   MCP_REQUEST_PAYLOAD_MAX_BYTES,
   MCP_REQUEST_PAYLOAD_MIN_BYTES,
 } from '@/lib/ai/generation-availability'
-import { expectApiResponseOk } from '../api-response-assertions'
-
-interface AiGenerationAvailability {
-  aiSafetyForensicLoggingEnabled: boolean
-  aiSafetyRuleCacheTtlSeconds: number
-  disabledByEnvironment: boolean
-  effectiveRequirementGenerationEnabled: boolean
-  mcpImportMaxRows: number
-  mcpImportValidationTtlMinutes: number
-  mcpMaxRequestBytes: number
-  requirementGenerationEnabled: boolean
-}
-
-async function getAiSettings(
-  request: APIRequestContext,
-): Promise<AiGenerationAvailability> {
-  const response = await request.get('/api/admin/ai-settings')
-  await expectApiResponseOk(response, 'GET AI settings')
-  return (await response.json()) as AiGenerationAvailability
-}
-
-async function putAiSettings(
-  request: APIRequestContext,
-  settings: Pick<
-    AiGenerationAvailability,
-    | 'aiSafetyForensicLoggingEnabled'
-    | 'aiSafetyRuleCacheTtlSeconds'
-    | 'mcpImportMaxRows'
-    | 'mcpImportValidationTtlMinutes'
-    | 'mcpMaxRequestBytes'
-    | 'requirementGenerationEnabled'
-  >,
-): Promise<AiGenerationAvailability> {
-  const response = await request.put('/api/admin/ai-settings', {
-    data: settings,
-  })
-  await expectApiResponseOk(response, 'PUT AI settings')
-  return (await response.json()) as AiGenerationAvailability
-}
+import { getAiSettings, putAiSettings } from '../ai-settings-test-helpers'
 
 async function mockAiDialogReferenceData(page: Page) {
   await page.route('**/api/ai/models?*', async route => {

@@ -1343,7 +1343,7 @@
       "environmentOverrideNotice": "Deployment configuration currently disables AI requirement generation. You can save the Admin Center preference, but generation stays disabled until the deployment override is removed.",
       "decreaseMcpMaxRequestLimit": "Decrease MCP request limit",
       "fieldHelp": {
-        "aiSafetyForensicLogging": "When enabled, AI safety blocks write a separate forensic JSON event with raw blocked content and matched rule terms. The metadata event in the security audit log is always written.",
+        "aiSafetyForensicLogging": "When enabled, AI safety blocks write a separate forensic JSON event with raw blocked content and matched rule terms. The metadata event in the security audit log is always written. Changes apply immediately in this app process and can take up to 30 seconds in other app processes.",
         "mcpImportMaxRows": "Maximum number of rows accepted in one MCP import validation session. Use this to keep import validation work within an operationally manageable size.",
         "mcpImportValidationTtl": "How long a persisted MCP import validation token remains usable for inspection or execution before it expires.",
         "mcpMaxRequestLimit": "Maximum accepted MCP POST payload and persisted MCP import session size. Use this to control how large MCP requests and validation sessions may become.",
@@ -1365,8 +1365,6 @@
       "mcpMaxRequestLimitCurrent": "Current limit: {value}",
       "requirementGenerationEnabled": "Requirement generation",
       "saveError": "Could not save AI settings.",
-      "securityDescription": "Control AI-assisted requirement generation, the safety-rule cache, and the AI safety filter.",
-      "securityTitle": "AI assistance",
       "rows": "rows",
       "active": "Active",
       "activeTermCount": "{activeCount}/{totalCount} active",

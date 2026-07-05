@@ -1478,10 +1478,11 @@ security, and MCP request payload security.
 `ai_safety_forensic_logging_enabled = 1`,
 `mcp_max_request_bytes = 1048576`, `mcp_import_max_rows = 500`,
 `mcp_import_validation_ttl_minutes = 60`, and
-`ai_safety_rule_cache_ttl_seconds = 600`, so migrated installations stay
-enabled with forensic AI safety logging on, the existing `1 MiB` seeded MCP
-limit, 500-row import cap, 60-minute validation TTL, and ten-minute AI safety
-rule cache.
+`ai_safety_rule_cache_ttl_seconds = 600`, so new seed insertions keep AI
+requirement generation enabled, forensic AI safety logging on, the existing
+`1 MiB` seeded MCP limit, 500-row import cap, 60-minute validation TTL, and
+ten-minute AI safety rule cache. Required seed data does not overwrite an
+existing singleton row.
 
 **Check constraints:** `chk_ai_settings_id` enforces the singleton row ID.
 `chk_ai_settings_mcp_max_request_bytes` enforces integer byte values on a
