@@ -9,7 +9,7 @@ import {
 import { useReducedMotion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[slug]/requirements-specification-detail-client'
+import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[specificationId]/requirements-specification-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import type { RequirementPackageOption } from '@/lib/requirements/list-view'
@@ -218,9 +218,9 @@ function okJson(body: unknown) {
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
-const defaultSpecificationSlug = 'ETJANST-UPP-2026'
+const defaultSpecificationId = 8
 let addRequirementsResponse: { body: unknown; ok: boolean }
-let activeSpecificationSlug = defaultSpecificationSlug
+let activeSpecificationId = defaultSpecificationId
 let bulkNeedsReferencePatchError: Error | null
 let bulkNeedsReferencePatchResponse: { body: unknown; ok: boolean } | null
 let exportCsvError: Error | null
@@ -248,7 +248,7 @@ const initialSpec = {
   specificationLifecycleStatusId: 3,
   specificationGovernanceObjectTypeId: 1,
   governanceObjectType: { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
-  uniqueId: 'ETJANST-UPP-2026',
+  specificationCode: 'ETJANST-UPP-2026',
 }
 
 const initialSpecificationItem = {
@@ -344,21 +344,21 @@ function createInitialData(): RequirementsSpecificationDetailInitialData {
 
 function renderRequirementsSpecificationDetailClient(
   initialData = createInitialData(),
-  specificationSlug = defaultSpecificationSlug,
+  specificationId = defaultSpecificationId,
 ) {
-  activeSpecificationSlug = specificationSlug
+  activeSpecificationId = specificationId
   return render(
     <ConfirmModalProvider>
       <RequirementsSpecificationDetailClient
         initialData={initialData}
-        specificationSlug={specificationSlug}
+        specificationId={specificationId}
       />
     </ConfirmModalProvider>,
   )
 }
 
 function specificationApiPath(path = '') {
-  return `/api/requirements-specifications/${activeSpecificationSlug}${path}`
+  return `/api/requirements-specifications/${activeSpecificationId}${path}`
 }
 
 function availableRequirementsFetchUrls(): string[] {
@@ -403,7 +403,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     pdfDownloadState.download.mockReset()
     pdfDownloadState.download.mockResolvedValue(undefined)
     addRequirementsResponse = { body: { ok: true }, ok: true }
-    activeSpecificationSlug = defaultSpecificationSlug
+    activeSpecificationId = defaultSpecificationId
     bulkNeedsReferencePatchError = null
     bulkNeedsReferencePatchResponse = null
     exportCsvError = null
@@ -441,7 +441,7 @@ describe('RequirementsSpecificationDetailClient', () => {
               specificationLifecycleStatusId: 3,
               specificationGovernanceObjectTypeId: 1,
               governanceObjectType: { nameEn: 'Platform', nameSv: 'Plattform' },
-              uniqueId: 'ETJANST-UPP-2026',
+              specificationCode: 'ETJANST-UPP-2026',
             }),
           )
         }
@@ -752,12 +752,12 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename:
         'specification.reportProfiles.progress Authorization and IAM ETJANST-UPP-2026.pdf',
-      url: '/en/specifications/ETJANST-UPP-2026/reports/pdf/progress',
+      url: '/en/specifications/8/reports/pdf/progress',
     })
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename:
         'specification.reportProfiles.traceability Authorization and IAM ETJANST-UPP-2026.pdf',
-      url: '/en/specifications/ETJANST-UPP-2026/reports/pdf/traceability?refs=lib%3A31',
+      url: '/en/specifications/8/reports/pdf/traceability?refs=lib%3A31',
     })
   })
 
@@ -802,10 +802,7 @@ describe('RequirementsSpecificationDetailClient', () => {
   })
 
   it('keeps profile PDF report actions lifecycle-scoped', async () => {
-    renderRequirementsSpecificationDetailClient(
-      createInitialData(),
-      'ETJANST UPP/2026',
-    )
+    renderRequirementsSpecificationDetailClient(createInitialData(), 8)
     await waitForInitialAvailableRequirementsRefresh()
 
     const itemsTable = latestItemsTableProps()
@@ -830,7 +827,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename:
         'specification.reportProfiles.progress Authorization and IAM ETJANST-UPP-2026.pdf',
-      url: '/en/specifications/ETJANST%20UPP%2F2026/reports/pdf/progress',
+      url: '/en/specifications/8/reports/pdf/progress',
     })
   })
 
@@ -1911,15 +1908,14 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements-specifications/ETJANST-UPP-2026/needs-references',
+        '/api/requirements-specifications/8/needs-references',
         expect.objectContaining({ method: 'POST' }),
       )
     })
 
     const postCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url ===
-          '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
+        url === '/api/requirements-specifications/8/needs-references' &&
         (init as RequestInit | undefined)?.method === 'POST',
     )
     expect(JSON.parse(String((postCall?.[1] as RequestInit).body))).toEqual({
@@ -1974,7 +1970,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31',
+        '/api/requirements-specifications/8/items/lib%3A31',
         expect.objectContaining({
           body: JSON.stringify({ needsReferenceId: 81 }),
           method: 'PATCH',
@@ -2013,7 +2009,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements-specifications/ETJANST-UPP-2026/items',
+        '/api/requirements-specifications/8/items',
         expect.objectContaining({
           body: JSON.stringify({
             itemRefs: ['lib:31'],

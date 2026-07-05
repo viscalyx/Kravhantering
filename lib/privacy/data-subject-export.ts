@@ -309,7 +309,7 @@ async function collectDeviationActor(
         deviation.id AS deviationId,
         CONCAT(
           COALESCE(req.unique_id, CONCAT(N'Deviation ', deviation.id)),
-          CASE WHEN spec.unique_id IS NULL THEN N'' ELSE CONCAT(N' / ', spec.unique_id) END
+          CASE WHEN spec.specification_code IS NULL THEN N'' ELSE CONCAT(N' / ', spec.specification_code) END
         ) AS deviationLabel,
         deviation.${options.hsaField} AS hsaId,
         deviation.${options.displayField} AS displayName,
@@ -367,7 +367,7 @@ async function collectLocalDeviationActor(
     `/* privacy:data-export:${options.key} */
       SELECT
         deviation.id AS deviationId,
-        CONCAT(spec.unique_id, N' / ', local_requirement.unique_id) AS deviationLabel,
+        CONCAT(spec.specification_code, N' / ', local_requirement.unique_id) AS deviationLabel,
         deviation.${options.hsaField} AS hsaId,
         deviation.${options.displayField} AS displayName,
         deviation.${options.timestampField} AS actorTimestamp
@@ -377,7 +377,7 @@ async function collectLocalDeviationActor(
       INNER JOIN requirements_specifications spec
         ON spec.id = local_requirement.specification_id
       WHERE deviation.${options.hsaField} = @0
-      ORDER BY spec.unique_id ASC, local_requirement.unique_id ASC, deviation.id ASC`,
+      ORDER BY spec.specification_code ASC, local_requirement.unique_id ASC, deviation.id ASC`,
     [targetHsaId],
   )) as ExportRow[]
 
@@ -475,12 +475,12 @@ async function collectSpecificationResponsible(
     `/* privacy:data-export:requirements_specifications.responsible */
       SELECT
         spec.id AS specificationId,
-        CONCAT(spec.unique_id, N' ', spec.name) AS specificationLabel,
+        CONCAT(spec.specification_code, N' ', spec.name) AS specificationLabel,
         spec.responsible_hsa_id AS hsaId,
         spec.updated_at AS updatedAt
       FROM requirements_specifications spec
       WHERE spec.responsible_hsa_id = @0
-      ORDER BY spec.unique_id ASC, spec.id ASC`,
+      ORDER BY spec.specification_code ASC, spec.id ASC`,
     [targetHsaId],
   )) as ExportRow[]
 
@@ -673,13 +673,13 @@ async function collectSpecificationCoAuthors(
     `/* privacy:data-export:specification_co_authors.hsa_id */
       SELECT
         co_author.specification_id AS specificationId,
-        CONCAT(spec.unique_id, N' ', spec.name) AS specificationLabel,
+        CONCAT(spec.specification_code, N' ', spec.name) AS specificationLabel,
         co_author.hsa_id AS hsaId,
         co_author.created_at AS createdAt
       FROM specification_co_authors co_author
       INNER JOIN requirements_specifications spec ON spec.id = co_author.specification_id
       WHERE co_author.hsa_id = @0
-      ORDER BY spec.unique_id ASC, spec.id ASC`,
+      ORDER BY spec.specification_code ASC, spec.id ASC`,
     [targetHsaId],
   )) as ExportRow[]
 
@@ -710,14 +710,14 @@ async function collectSpecificationCoAuthorCreators(
     `/* privacy:data-export:specification_co_authors.created_by */
       SELECT
         co_author.specification_id AS specificationId,
-        CONCAT(spec.unique_id, N' ', spec.name) AS specificationLabel,
+        CONCAT(spec.specification_code, N' ', spec.name) AS specificationLabel,
         co_author.created_by_hsa_id AS hsaId,
         co_author.created_by_display_name AS displayName,
         co_author.created_at AS createdAt
       FROM specification_co_authors co_author
       INNER JOIN requirements_specifications spec ON spec.id = co_author.specification_id
       WHERE co_author.created_by_hsa_id = @0
-      ORDER BY spec.unique_id ASC, spec.id ASC`,
+      ORDER BY spec.specification_code ASC, spec.id ASC`,
     [targetHsaId],
   )) as ExportRow[]
 

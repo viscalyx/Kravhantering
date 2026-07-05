@@ -515,7 +515,7 @@ async function listSpecificationRows(
     `
       SELECT
         specification_record.id AS id,
-        specification_record.unique_id AS uniqueId,
+        specification_record.specification_code AS specificationCode,
         specification_record.name AS name,
         specification_record.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
         specification_record.specification_implementation_type_id AS specificationImplementationTypeId,
@@ -635,7 +635,7 @@ async function mapSpecificationRows(db: SqlServerDatabase, specRows: Row[]) {
 
     return {
       id,
-      uniqueId: String(row.uniqueId),
+      specificationCode: String(row.specificationCode),
       name: String(row.name),
       specificationGovernanceObjectTypeId,
       specificationImplementationTypeId,
@@ -726,10 +726,10 @@ interface SpecificationRecord {
   name: string
   responsibleDisplayName: string | null
   responsibleHsaId: string
+  specificationCode: string
   specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
-  uniqueId: string
   updatedAt: string
 }
 
@@ -743,7 +743,7 @@ export interface SpecificationForbiddenSummary {
   id: number
   name: string
   responsible: ResponsibilityPersonSummary
-  uniqueId: string
+  specificationCode: string
 }
 
 function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
@@ -759,7 +759,7 @@ function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
   )
   return {
     id: Number(row.id),
-    uniqueId: String(row.uniqueId),
+    specificationCode: String(row.specificationCode),
     name: String(row.name),
     specificationGovernanceObjectTypeId,
     specificationImplementationTypeId,
@@ -806,7 +806,7 @@ function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
 const SPECIFICATION_SELECT_WITH_JOINS = `
   SELECT TOP (1)
     specification_record.id AS id,
-    specification_record.unique_id AS uniqueId,
+    specification_record.specification_code AS specificationCode,
     specification_record.name AS name,
     specification_record.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
     specification_record.specification_implementation_type_id AS specificationImplementationTypeId,
@@ -844,40 +844,20 @@ export async function getSpecificationById(db: SqlServerDatabase, id: number) {
   return mapSpecificationRow(rows[0])
 }
 
-export async function getSpecificationBySlug(
+export async function getSpecificationByCode(
   db: SqlServerDatabase,
-  slug: string,
+  specificationCode: string,
 ) {
   const rows = (await db.query(
-    `${SPECIFICATION_SELECT_WITH_JOINS} WHERE specification_record.unique_id = @0`,
-    [slug],
+    `${SPECIFICATION_SELECT_WITH_JOINS} WHERE specification_record.specification_code = @0`,
+    [specificationCode],
   )) as Row[]
   return mapSpecificationRow(rows[0])
 }
 
-export async function getSpecificationForbiddenSummaryBySlug(
-  db: SqlServerDatabase,
-  slug: string,
-): Promise<SpecificationForbiddenSummary | null> {
-  const rows = (await db.query(
-    `
-      SELECT TOP (1)
-        specification_record.id AS id,
-        specification_record.unique_id AS uniqueId,
-        specification_record.name AS name,
-        specification_record.responsible_hsa_id AS responsibleHsaId,
-        responsible_person.given_name AS responsibleGivenName,
-        responsible_person.middle_name AS responsibleMiddleName,
-        responsible_person.surname AS responsibleSurname,
-        responsible_person.email AS responsibleEmail
-      FROM requirements_specifications specification_record
-      LEFT JOIN requirement_responsibility_people responsible_person
-        ON responsible_person.hsa_id = specification_record.responsible_hsa_id
-      WHERE specification_record.unique_id = @0
-    `,
-    [slug],
-  )) as Row[]
-  const row = rows[0]
+function mapSpecificationForbiddenSummaryRow(
+  row: Row | undefined,
+): SpecificationForbiddenSummary | null {
   if (!row) return null
 
   return {
@@ -888,8 +868,47 @@ export async function getSpecificationForbiddenSummaryBySlug(
       email: toStr(row.responsibleEmail),
       hsaId: requireStr(row.responsibleHsaId, 'responsibleHsaId'),
     },
-    uniqueId: String(row.uniqueId),
+    specificationCode: String(row.specificationCode),
   }
+}
+
+const SPECIFICATION_FORBIDDEN_SUMMARY_SELECT = `
+  SELECT TOP (1)
+    specification_record.id AS id,
+    specification_record.specification_code AS specificationCode,
+    specification_record.name AS name,
+    specification_record.responsible_hsa_id AS responsibleHsaId,
+    responsible_person.given_name AS responsibleGivenName,
+    responsible_person.middle_name AS responsibleMiddleName,
+    responsible_person.surname AS responsibleSurname,
+    responsible_person.email AS responsibleEmail
+  FROM requirements_specifications specification_record
+  LEFT JOIN requirement_responsibility_people responsible_person
+    ON responsible_person.hsa_id = specification_record.responsible_hsa_id
+`
+
+export async function getSpecificationForbiddenSummaryById(
+  db: SqlServerDatabase,
+  specificationId: number,
+): Promise<SpecificationForbiddenSummary | null> {
+  const rows = (await db.query(
+    `${SPECIFICATION_FORBIDDEN_SUMMARY_SELECT}
+      WHERE specification_record.id = @0`,
+    [specificationId],
+  )) as Row[]
+  return mapSpecificationForbiddenSummaryRow(rows[0])
+}
+
+export async function getSpecificationForbiddenSummaryByCode(
+  db: SqlServerDatabase,
+  specificationCode: string,
+): Promise<SpecificationForbiddenSummary | null> {
+  const rows = (await db.query(
+    `${SPECIFICATION_FORBIDDEN_SUMMARY_SELECT}
+      WHERE specification_record.specification_code = @0`,
+    [specificationCode],
+  )) as Row[]
+  return mapSpecificationForbiddenSummaryRow(rows[0])
 }
 
 export async function listSpecificationCoAuthors(
@@ -941,11 +960,11 @@ export async function listSpecificationCoAuthorHsaIdsBySpecification(
   db: SqlServerDatabase,
   specificationIds: number[],
 ): Promise<Map<number, string[]>> {
-  const uniqueIds = [...new Set(specificationIds)].filter(
+  const distinctSpecificationIds = [...new Set(specificationIds)].filter(
     id => Number.isInteger(id) && id > 0,
   )
   const bySpecification = new Map<number, string[]>()
-  if (uniqueIds.length === 0) {
+  if (distinctSpecificationIds.length === 0) {
     return bySpecification
   }
 
@@ -953,10 +972,10 @@ export async function listSpecificationCoAuthorHsaIdsBySpecification(
     `
       SELECT specification_id AS specificationId, hsa_id AS hsaId
       FROM specification_co_authors
-      WHERE specification_id IN (${buildInClause(0, uniqueIds)})
+      WHERE specification_id IN (${buildInClause(0, distinctSpecificationIds)})
       ORDER BY specification_id ASC, hsa_id ASC
     `,
-    uniqueIds,
+    distinctSpecificationIds,
   )) as Row[]
 
   for (const row of rows) {
@@ -1028,14 +1047,14 @@ export async function canManageSpecificationAssignments(
   return rows.length > 0
 }
 
-export async function isSlugTaken(
+export async function isSpecificationCodeTaken(
   db: SqlServerDatabase,
-  slug: string,
+  specificationCode: string,
   excludeId?: number,
 ): Promise<boolean> {
   const rows = (await db.query(
-    `SELECT TOP (1) id AS id FROM requirements_specifications WHERE unique_id = @0`,
-    [slug],
+    `SELECT TOP (1) id AS id FROM requirements_specifications WHERE specification_code = @0`,
+    [specificationCode],
   )) as Array<{ id: number }>
   if (rows.length === 0) return false
   if (excludeId !== undefined) return Number(rows[0].id) !== excludeId
@@ -1045,7 +1064,7 @@ export async function isSlugTaken(
 export async function createSpecification(
   db: SqlServerDatabase,
   data: {
-    uniqueId: string
+    specificationCode: string
     name: string
     specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null
@@ -1065,7 +1084,7 @@ export async function createSpecification(
     const rows = (await executor.query(
       `
         INSERT INTO requirements_specifications (
-          unique_id,
+          specification_code,
           name,
           specification_governance_object_type_id,
           specification_implementation_type_id,
@@ -1077,7 +1096,7 @@ export async function createSpecification(
         )
         OUTPUT
           INSERTED.id AS id,
-          INSERTED.unique_id AS uniqueId,
+          INSERTED.specification_code AS specificationCode,
           INSERTED.name AS name,
           INSERTED.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
           INSERTED.specification_implementation_type_id AS specificationImplementationTypeId,
@@ -1089,7 +1108,7 @@ export async function createSpecification(
         VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @7)
       `,
       [
-        data.uniqueId,
+        data.specificationCode,
         data.name,
         data.specificationGovernanceObjectTypeId ?? null,
         data.specificationImplementationTypeId ?? null,
@@ -1106,7 +1125,7 @@ export async function createSpecification(
     }
     return {
       id: Number(row.id),
-      uniqueId: String(row.uniqueId),
+      specificationCode: String(row.specificationCode),
       name: String(row.name),
       specificationGovernanceObjectTypeId: toNum(
         row.specificationGovernanceObjectTypeId,
@@ -1139,7 +1158,7 @@ async function updateSpecificationFields(
   db: SqlExecutor,
   id: number,
   data: {
-    uniqueId?: string
+    specificationCode?: string
     name?: string
     specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null
@@ -1152,9 +1171,9 @@ async function updateSpecificationFields(
   const setClauses: string[] = []
   const params: unknown[] = []
 
-  if ('uniqueId' in data) {
-    setClauses.push(`unique_id = @${params.length}`)
-    params.push(data.uniqueId)
+  if ('specificationCode' in data) {
+    setClauses.push(`specification_code = @${params.length}`)
+    params.push(data.specificationCode)
   }
   if ('name' in data) {
     setClauses.push(`name = @${params.length}`)
@@ -1197,7 +1216,7 @@ async function updateSpecificationFields(
       SET ${setClauses.join(', ')}
       OUTPUT
         INSERTED.id AS id,
-        INSERTED.unique_id AS uniqueId,
+        INSERTED.specification_code AS specificationCode,
         INSERTED.name AS name,
         INSERTED.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
         INSERTED.specification_implementation_type_id AS specificationImplementationTypeId,
@@ -1224,7 +1243,7 @@ export async function updateSpecification(
   db: SqlServerDatabase,
   id: number,
   data: {
-    uniqueId?: string
+    specificationCode?: string
     name?: string
     specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null

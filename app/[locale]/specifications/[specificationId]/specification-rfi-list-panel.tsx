@@ -60,7 +60,6 @@ interface RfiSuggestion {
 interface Props {
   canEdit: boolean
   specificationId: number
-  specificationSlug: string
 }
 
 interface RfiAreaGroup {
@@ -143,13 +142,12 @@ function areaScopeState(items: RfiListItem[]) {
 export default function SpecificationRfiListPanel({
   canEdit,
   specificationId,
-  specificationSlug,
 }: Props) {
   const t = useTranslations('specificationRfiList')
   const tc = useTranslations('common')
   const locale = useLocale()
   const { confirm } = useConfirmModal()
-  const encodedSlug = encodeURIComponent(specificationSlug)
+  const encodedSpecificationId = encodeURIComponent(String(specificationId))
   const [list, setList] = useState<RfiList | null>(null)
   const [suggestions, setSuggestions] = useState<RfiSuggestion[]>([])
   const [loading, setLoading] = useState(true)
@@ -201,7 +199,7 @@ export default function SpecificationRfiListPanel({
     setError(null)
     try {
       const response = await apiFetch(
-        `/api/requirements-specifications/${encodedSlug}/rfi-list`,
+        `/api/requirements-specifications/${encodedSpecificationId}/rfi-list`,
       )
       if (!response.ok) {
         throw new Error((await readResponseMessage(response)) ?? t('loadError'))
@@ -214,7 +212,7 @@ export default function SpecificationRfiListPanel({
     } finally {
       setLoading(false)
     }
-  }, [encodedSlug, loadSuggestions, t])
+  }, [encodedSpecificationId, loadSuggestions, t])
 
   useEffect(() => {
     void reload()
@@ -246,7 +244,7 @@ export default function SpecificationRfiListPanel({
     setError(null)
     try {
       const response = await apiFetch(
-        `/api/requirements-specifications/${encodedSlug}/rfi-list/${path}`,
+        `/api/requirements-specifications/${encodedSpecificationId}/rfi-list/${path}`,
         jsonRequest('POST', body),
       )
       if (!response.ok) {
@@ -266,7 +264,7 @@ export default function SpecificationRfiListPanel({
     setError(null)
     try {
       const response = await apiFetch(
-        `/api/requirements-specifications/${encodedSlug}/rfi-list/items/${item.questionId}`,
+        `/api/requirements-specifications/${encodedSpecificationId}/rfi-list/items/${item.questionId}`,
         jsonRequest('PATCH', body),
       )
       if (!response.ok) {
@@ -286,7 +284,7 @@ export default function SpecificationRfiListPanel({
     setError(null)
     try {
       const response = await apiFetch(
-        `/api/requirements-specifications/${encodedSlug}/rfi-list/areas/${group.areaId}`,
+        `/api/requirements-specifications/${encodedSpecificationId}/rfi-list/areas/${group.areaId}`,
         jsonRequest('PATCH', { isIncluded }),
       )
       if (!response.ok) {
@@ -527,7 +525,7 @@ export default function SpecificationRfiListPanel({
             <a
               aria-label="CSV"
               className={exportPillClassName}
-              href={`/api/requirements-specifications/${encodedSlug}/rfi-list/export?format=csv&locale=${locale}`}
+              href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=csv&locale=${locale}`}
               title="CSV"
             >
               <Download aria-hidden="true" className="h-4 w-4" />
@@ -536,7 +534,7 @@ export default function SpecificationRfiListPanel({
             <a
               aria-label="PDF"
               className={exportPillClassName}
-              href={`/api/requirements-specifications/${encodedSlug}/rfi-list/export?format=pdf&locale=${locale}`}
+              href={`/api/requirements-specifications/${encodedSpecificationId}/rfi-list/export?format=pdf&locale=${locale}`}
               title="PDF"
             >
               <Printer aria-hidden="true" className="h-4 w-4" />

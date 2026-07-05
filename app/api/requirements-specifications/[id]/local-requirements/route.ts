@@ -3,16 +3,14 @@ import { z } from 'zod'
 import {
   createSpecificationLocalRequirement,
   getSpecificationById,
-  getSpecificationBySlug,
 } from '@/lib/dal/requirements-specifications'
-import type { SqlServerDatabase } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { specificationLocalRequirementSchema } from '@/lib/http/specification-local-requirement-validation'
-import { specificationIdOrSlugSchema } from '@/lib/http/validation'
+import { idParamSchema } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
@@ -20,20 +18,9 @@ export const dynamic = 'force-dynamic'
 
 const specificationParamSchema = z
   .object({
-    id: specificationIdOrSlugSchema,
+    id: idParamSchema.shape.id,
   })
   .strict()
-
-async function resolveSpecificationId(
-  db: SqlServerDatabase,
-  idOrSlug: string,
-): Promise<number | null> {
-  if (/^\d+$/.test(idOrSlug)) {
-    return (await getSpecificationById(db, Number(idOrSlug)))?.id ?? null
-  }
-
-  return (await getSpecificationBySlug(db, idOrSlug))?.id ?? null
-}
 
 export const POST = secureMutationRoute({
   bodySchema: specificationLocalRequirementSchema,
@@ -44,8 +31,7 @@ export const POST = secureMutationRoute({
   >(({ params }) => ({
     kind: 'manage_specification_local_requirement',
     operation: 'create',
-    specificationSlug: /^\d+$/.test(params.id) ? undefined : params.id,
-    specificationId: /^\d+$/.test(params.id) ? Number(params.id) : undefined,
+    specificationId: params.id,
   })),
   handler: async ({ body, db, params }) => {
     const { id } = params
@@ -53,15 +39,15 @@ export const POST = secureMutationRoute({
       throw new Error('Missing authorized database context')
     }
 
-    const specificationId = await resolveSpecificationId(db, id)
-    if (specificationId === null) {
+    const specification = await getSpecificationById(db, id)
+    if (!specification) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     try {
       const localRequirement = await createSpecificationLocalRequirement(
         db,
-        specificationId,
+        specification.id,
         {
           acceptanceCriteria: body.acceptanceCriteria ?? null,
           description: body.description,

@@ -20,10 +20,10 @@ const mockContext = {
 const mocks = {
   createRequirementsRestRuntime: vi.fn(),
   getExistingSpecificationRequirementIds: vi.fn(),
+  getSpecificationById: vi.fn(),
   getRequirementSelectionFilterForSpecification: vi.fn(),
   logSanitizedError: vi.fn(),
   queryRequirementList: vi.fn(),
-  resolveSpecificationId: vi.fn(),
 }
 
 vi.mock('@/lib/dal/requirement-selection-questions', () => ({
@@ -31,8 +31,11 @@ vi.mock('@/lib/dal/requirement-selection-questions', () => ({
     mocks.getExistingSpecificationRequirementIds(...args),
   getRequirementSelectionFilterForSpecification: (...args: unknown[]) =>
     mocks.getRequirementSelectionFilterForSpecification(...args),
-  resolveSpecificationId: (...args: unknown[]) =>
-    mocks.resolveSpecificationId(...args),
+}))
+
+vi.mock('@/lib/dal/requirements-specifications', () => ({
+  getSpecificationById: (...args: unknown[]) =>
+    mocks.getSpecificationById(...args),
 }))
 
 vi.mock('@/lib/http/safe-errors', async importOriginal => {
@@ -68,6 +71,7 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
       db: mockDb,
     })
     mocks.getExistingSpecificationRequirementIds.mockResolvedValue([101, 102])
+    mocks.getSpecificationById.mockResolvedValue({ id: 6 })
     mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
       hasCurrentAnswers: false,
       hasRequirementSelection: false,
@@ -78,15 +82,14 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
       pagination: { hasMore: false, total: 1 },
       requirements: [{ id: 201, uniqueId: 'IAM0201' }],
     })
-    mocks.resolveSpecificationId.mockResolvedValue(6)
   })
 
   it('rejects status query params because available requirements are always published-only', async () => {
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements?limit=15&locale=sv&sortBy=uniqueId&sortDirection=asc&statuses=3',
+        'http://localhost/api/requirements-specifications/6/available-requirements?limit=15&locale=sv&sortBy=uniqueId&sortDirection=asc&statuses=3',
       ),
-      makeParams('IAM-INFOR-2026'),
+      makeParams('6'),
     )
 
     expect(response.status).toBe(400)
@@ -113,9 +116,9 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements?applyRequirementSelectionFilter=true',
+        'http://localhost/api/requirements-specifications/6/available-requirements?applyRequirementSelectionFilter=true',
       ),
-      makeParams('IAM-INFOR-2026'),
+      makeParams('6'),
     )
 
     expect(response.status).toBe(200)
@@ -149,9 +152,9 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements',
+        'http://localhost/api/requirements-specifications/6/available-requirements',
       ),
-      makeParams('IAM-INFOR-2026'),
+      makeParams('6'),
     )
 
     expect(response.status).toBe(200)
@@ -181,9 +184,9 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements?applyRequirementSelectionFilter=true&limit=15',
+        'http://localhost/api/requirements-specifications/6/available-requirements?applyRequirementSelectionFilter=true&limit=15',
       ),
-      makeParams('IAM-INFOR-2026'),
+      makeParams('6'),
     )
 
     expect(response.status).toBe(200)
@@ -211,9 +214,9 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
   it('rejects needs-reference filters because the available list does not use them', async () => {
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements?needsReferenceIds=1',
+        'http://localhost/api/requirements-specifications/6/available-requirements?needsReferenceIds=1',
       ),
-      makeParams('IAM-INFOR-2026'),
+      makeParams('6'),
     )
 
     expect(response.status).toBe(400)
@@ -229,9 +232,9 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements?limit=15&locale=sv',
+        'http://localhost/api/requirements-specifications/6/available-requirements?limit=15&locale=sv',
       ),
-      makeParams('IAM-INFOR-2026'),
+      makeParams('6'),
     )
 
     expect(response.status).toBe(500)
@@ -242,7 +245,7 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
     expect(mocks.logSanitizedError).toHaveBeenCalledWith(
       '[API] Failed to list available requirements for specification',
       error,
-      { specificationIdOrSlug: 'IAM-INFOR-2026' },
+      { specificationId: 6 },
     )
   })
 })

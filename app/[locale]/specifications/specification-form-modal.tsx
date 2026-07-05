@@ -19,7 +19,10 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
-import { generateSpecificationSlug, normalizeSlugInput } from '@/lib/slug'
+import {
+  generateSpecificationCode,
+  normalizeSpecificationCodeInput,
+} from '@/lib/slug'
 
 export const SPECIFICATION_FORM_ID = 'requirement-specification-form'
 
@@ -48,10 +51,10 @@ export interface SpecificationFormModalSpec {
   }
   responsibleDisplayName: string | null
   responsibleHsaId: string
+  specificationCode: string
   specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
-  uniqueId: string
 }
 
 interface SpecificationFormState {
@@ -61,10 +64,10 @@ interface SpecificationFormState {
   responsibleEmail: string
   responsibleHsaId: string
   responsiblePersonVerification: HsaPersonVerification | null
+  specificationCode: string
   specificationGovernanceObjectTypeId: string
   specificationImplementationTypeId: string
   specificationLifecycleStatusId: string
-  uniqueId: string
 }
 
 interface ResponsibleChangeState {
@@ -85,10 +88,10 @@ interface SpecificationFormModalProps {
   onResponsibleChanged?: (
     spec: SpecificationFormModalSpec,
   ) => Promise<void> | void
-  onSaved: (result: { newUniqueId: string }) => Promise<void> | void
+  onSaved: (result: { newSpecificationCode: string }) => Promise<void> | void
   open: boolean
   spec?: SpecificationFormModalSpec | null
-  specificationSlug?: string
+  specificationId?: number
 }
 
 function readCurrentUser(
@@ -126,7 +129,7 @@ function editableSignature(form: SpecificationFormState) {
       form.specificationGovernanceObjectTypeId,
     specificationImplementationTypeId: form.specificationImplementationTypeId,
     specificationLifecycleStatusId: form.specificationLifecycleStatusId,
-    uniqueId: form.uniqueId,
+    specificationCode: form.specificationCode,
   })
 }
 
@@ -141,7 +144,7 @@ function blankFormState(): SpecificationFormState {
     specificationGovernanceObjectTypeId: '',
     specificationImplementationTypeId: '',
     specificationLifecycleStatusId: '',
-    uniqueId: '',
+    specificationCode: '',
   }
 }
 
@@ -175,13 +178,13 @@ function buildEditFormState(
       spec.specificationImplementationTypeId?.toString() ?? '',
     specificationLifecycleStatusId:
       spec.specificationLifecycleStatusId?.toString() ?? '',
-    uniqueId: spec.uniqueId,
+    specificationCode: spec.specificationCode,
   }
 }
 
-async function readSuccessUniqueId(
+async function readSuccessSpecificationCode(
   response: Response,
-  fallbackUniqueId: string,
+  fallbackSpecificationCode: string,
 ): Promise<string> {
   const responseWithOptionalText = response as Response & {
     text?: () => Promise<string>
@@ -192,23 +195,23 @@ async function readSuccessUniqueId(
 
   if (typeof responseWithOptionalText.text === 'function') {
     const text = await responseWithOptionalText.text()
-    if (!text) return fallbackUniqueId
+    if (!text) return fallbackSpecificationCode
     try {
-      const data = JSON.parse(text) as { uniqueId?: string }
-      return data.uniqueId ?? fallbackUniqueId
+      const data = JSON.parse(text) as { specificationCode?: string }
+      return data.specificationCode ?? fallbackSpecificationCode
     } catch {
-      return fallbackUniqueId
+      return fallbackSpecificationCode
     }
   }
 
   if (typeof responseWithOptionalJson.json === 'function') {
     const data = (await responseWithOptionalJson.json()) as {
-      uniqueId?: string
+      specificationCode?: string
     }
-    return data.uniqueId ?? fallbackUniqueId
+    return data.specificationCode ?? fallbackSpecificationCode
   }
 
-  return fallbackUniqueId
+  return fallbackSpecificationCode
 }
 
 export default function SpecificationFormModal({
@@ -225,7 +228,7 @@ export default function SpecificationFormModal({
   onSaved,
   open,
   spec,
-  specificationSlug,
+  specificationId,
 }: SpecificationFormModalProps) {
   const t = useTranslations('specification')
   const tc = useTranslations('common')
@@ -250,8 +253,8 @@ export default function SpecificationFormModal({
   const [responsibleChange, setResponsibleChange] =
     useState<ResponsibleChangeState | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [slugEdited, setSlugEdited] = useState(false)
-  const [slugError, setSlugError] = useState<string | null>(null)
+  const [codeEdited, setCodeEdited] = useState(false)
+  const [codeError, setCodeError] = useState<string | null>(null)
 
   const effectiveCurrentUser = currentUser ?? loadedCurrentUser
   const effectiveCurrentUserLoading =
@@ -281,7 +284,7 @@ export default function SpecificationFormModal({
   const metadataControlsDisabled =
     formControlsDisabled || (isEdit && !canEditContent)
   const formResetKey = isEdit
-    ? `edit:${spec.id}:${spec.uniqueId}:${locale}`
+    ? `edit:${spec.id}:${spec.specificationCode}:${locale}`
     : `create:${effectiveCurrentUserHsaId}:${effectiveCurrentUserDisplayName}:${effectiveCurrentUserEmail}`
   const title = isEdit ? t('editSpecification') : t('newSpecification')
   const formDeveloperModeContext =
@@ -290,7 +293,7 @@ export default function SpecificationFormModal({
   const titleId = isEdit
     ? 'requirement-specification-edit-title'
     : 'requirement-specification-create-title'
-  const editSpecificationSlug = specificationSlug ?? spec?.uniqueId
+  const editSpecificationId = specificationId ?? spec?.id
   const metadataDirty = initialSignature !== editableSignature(form)
   const inputClassName =
     'min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50'
@@ -386,8 +389,8 @@ export default function SpecificationFormModal({
     setIsSubmitting(false)
     setResponsibleChange(null)
     setSaveError(null)
-    setSlugEdited(mode === 'edit')
-    setSlugError(null)
+    setCodeEdited(mode === 'edit')
+    setCodeError(null)
     formResetKeyRef.current = formResetKey
   }, [
     applyEffectiveCurrentUserResponsible,
@@ -430,7 +433,7 @@ export default function SpecificationFormModal({
     nextResponsibleHsaId: string,
     person: HsaPersonVerification | null,
   ): Promise<HsaPersonChangeSubmitResult> => {
-    if (!responsibleChange || !editSpecificationSlug) return { ok: false }
+    if (!responsibleChange || !editSpecificationId) return { ok: false }
     if (!effectiveCurrentUser) {
       return { error: t('currentUserUnavailable'), ok: false }
     }
@@ -451,7 +454,7 @@ export default function SpecificationFormModal({
 
     try {
       const response = await apiFetch(
-        `/api/requirements-specifications/${editSpecificationSlug}/responsible`,
+        `/api/requirements-specifications/${editSpecificationId}/responsible`,
         {
           body: JSON.stringify({ responsibleHsaId: nextResponsibleHsaId }),
           headers: { 'Content-Type': 'application/json' },
@@ -497,7 +500,7 @@ export default function SpecificationFormModal({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (isSubmitting) return
-    if (mode === 'edit' && !editSpecificationSlug) return
+    if (mode === 'edit' && !editSpecificationId) return
     if (!metadataDirty) return
     if (isEdit && !canEditContent) return
     if (createCurrentUserBlocked) {
@@ -509,13 +512,13 @@ export default function SpecificationFormModal({
       return
     }
 
-    setSlugError(null)
+    setCodeError(null)
     setSaveError(null)
     setIsSubmitting(true)
 
     try {
       const specificationPayload = {
-        uniqueId: form.uniqueId,
+        specificationCode: form.specificationCode,
         name: form.name,
         specificationGovernanceObjectTypeId:
           form.specificationGovernanceObjectTypeId
@@ -539,7 +542,7 @@ export default function SpecificationFormModal({
             }
       const response = await apiFetch(
         mode === 'edit'
-          ? `/api/requirements-specifications/${editSpecificationSlug}`
+          ? `/api/requirements-specifications/${editSpecificationId}`
           : '/api/requirements-specifications',
         {
           body: JSON.stringify(requestBody),
@@ -549,7 +552,7 @@ export default function SpecificationFormModal({
       )
 
       if (response.status === 409) {
-        setSlugError(t('uniqueIdTaken'))
+        setCodeError(t('specificationCodeTaken'))
         return
       }
 
@@ -562,7 +565,10 @@ export default function SpecificationFormModal({
       }
 
       await onSaved({
-        newUniqueId: await readSuccessUniqueId(response, form.uniqueId),
+        newSpecificationCode: await readSuccessSpecificationCode(
+          response,
+          form.specificationCode,
+        ),
       })
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : t('saveFailed'))
@@ -619,17 +625,19 @@ export default function SpecificationFormModal({
                   disabled={metadataControlsDisabled}
                   id="spec-name"
                   onBlur={() => {
-                    if (!slugEdited && form.name) {
-                      const nextUniqueId = generateSpecificationSlug(form.name)
-                      if (!nextUniqueId) {
-                        setSlugError(t('uniqueIdGenerationFailed'))
+                    if (!codeEdited && form.name) {
+                      const nextSpecificationCode = generateSpecificationCode(
+                        form.name,
+                      )
+                      if (!nextSpecificationCode) {
+                        setCodeError(t('specificationCodeGenerationFailed'))
                         return
                       }
-                      if (form.uniqueId !== nextUniqueId) {
-                        setSlugError(null)
+                      if (form.specificationCode !== nextSpecificationCode) {
+                        setCodeError(null)
                         setForm(current => ({
                           ...current,
-                          uniqueId: nextUniqueId,
+                          specificationCode: nextSpecificationCode,
                         }))
                       }
                     }
@@ -648,43 +656,45 @@ export default function SpecificationFormModal({
 
               <div>
                 <FieldLabelWithHelp
-                  help={t('uniqueIdHelp')}
-                  htmlFor="spec-unique-id"
-                  label={t('uniqueId')}
+                  help={t('specificationCodeHelp')}
+                  htmlFor="spec-specification-code"
+                  label={t('specificationCode')}
                   required
                 />
                 <input
                   aria-describedby={
-                    slugError ? 'spec-unique-id-error' : undefined
+                    codeError ? 'spec-specification-code-error' : undefined
                   }
-                  aria-invalid={!!slugError}
-                  className={`${inputClassName} font-mono${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
+                  aria-invalid={!!codeError}
+                  className={`${inputClassName} font-mono${codeError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
                   disabled={metadataControlsDisabled}
-                  id="spec-unique-id"
+                  id="spec-specification-code"
                   onChange={event => {
-                    setSlugEdited(true)
-                    setSlugError(null)
+                    setCodeEdited(true)
+                    setCodeError(null)
                     setForm(current => ({
                       ...current,
-                      uniqueId: normalizeSlugInput(event.target.value),
+                      specificationCode: normalizeSpecificationCodeInput(
+                        event.target.value,
+                      ),
                     }))
                   }}
-                  onInvalid={() => setSlugError(t('uniqueIdRequired'))}
-                  placeholder={t('uniqueIdPlaceholder')}
+                  onInvalid={() => setCodeError(t('specificationCodeRequired'))}
+                  placeholder={t('specificationCodePlaceholder')}
                   required
-                  value={form.uniqueId}
+                  value={form.specificationCode}
                 />
-                {slugError ? (
+                {codeError ? (
                   <p
                     className="mt-1 text-xs text-red-600 dark:text-red-400"
-                    id="spec-unique-id-error"
+                    id="spec-specification-code-error"
                     role="alert"
                   >
-                    {slugError}
+                    {codeError}
                   </p>
                 ) : (
                   <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                    {t('uniqueIdHelp')}
+                    {t('specificationCodeHelp')}
                   </p>
                 )}
               </div>

@@ -4,11 +4,9 @@ import {
   createSpecificationNeedsReference,
   deleteSpecificationNeedsReference,
   getSpecificationById,
-  getSpecificationBySlug,
   listSpecificationNeedsReferences,
   updateSpecificationNeedsReference,
 } from '@/lib/dal/requirements-specifications'
-import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   requirementsMutationPolicy,
@@ -16,10 +14,10 @@ import {
 } from '@/lib/http/secure-mutation-route'
 import {
   boundedDbStringSchema,
+  idParamSchema,
   nullableBusinessTextSchema,
   parseRouteParams,
   positiveIntegerSchema,
-  specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
@@ -29,11 +27,7 @@ export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
 
-const specificationParamSchema = z
-  .object({
-    id: specificationIdOrSlugSchema,
-  })
-  .strict()
+const specificationParamSchema = idParamSchema
 
 const createNeedsReferenceSchema = z
   .object({
@@ -56,21 +50,6 @@ const deleteNeedsReferenceSchema = z
   })
   .strict()
 
-async function resolveSpecificationId(db: SqlServerDatabase, idOrSlug: string) {
-  if (/^\d+$/.test(idOrSlug)) {
-    const spec = await getSpecificationById(db, Number(idOrSlug))
-    return spec?.id ?? null
-  }
-  const spec = await getSpecificationBySlug(db, idOrSlug)
-  return spec?.id ?? null
-}
-
-function specificationActionReference(idOrSlug: string) {
-  return /^\d+$/.test(idOrSlug)
-    ? { specificationId: Number(idOrSlug) }
-    : { specificationSlug: idOrSlug }
-}
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Params },
@@ -83,22 +62,21 @@ export async function GET(
     const { id } = parsedParams.data
     const { authorization, context, db } =
       await createRequirementsRestRuntime(request)
-    const specificationId = await resolveSpecificationId(db, id)
-    if (specificationId === null) {
+    const specification = await getSpecificationById(db, id)
+    if (!specification) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     await authorize(
       authorization,
       {
         kind: 'get_specification_items',
-        specificationId,
-        specificationSlug: /^\d+$/.test(id) ? undefined : id,
+        specificationId: specification.id,
       },
       context,
     )
     const needsReferences = await listSpecificationNeedsReferences(
       db,
-      specificationId,
+      specification.id,
     )
     return NextResponse.json({ needsReferences })
   } catch (error) {
@@ -119,18 +97,18 @@ export const POST = secureMutationRoute<
   >(({ params }) => ({
     kind: 'manage_specification_needs_reference',
     operation: 'create',
-    ...specificationActionReference(params.id),
+    specificationId: params.id,
   })),
   handler: async ({ body, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const specificationId = await resolveSpecificationId(db, params.id)
-    if (specificationId === null) {
+    const specification = await getSpecificationById(db, params.id)
+    if (!specification) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     const needsReference = await createSpecificationNeedsReference(
       db,
-      specificationId,
+      specification.id,
       {
         description: body.description ?? null,
         text: body.text,
@@ -153,18 +131,18 @@ export const PATCH = secureMutationRoute<
     kind: 'manage_specification_needs_reference',
     needsReferenceId: body.id,
     operation: 'update',
-    ...specificationActionReference(params.id),
+    specificationId: params.id,
   })),
   handler: async ({ body, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const specificationId = await resolveSpecificationId(db, params.id)
-    if (specificationId === null) {
+    const specification = await getSpecificationById(db, params.id)
+    if (!specification) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     const needsReference = await updateSpecificationNeedsReference(
       db,
-      specificationId,
+      specification.id,
       body.id,
       {
         description: body.description ?? null,
@@ -188,18 +166,18 @@ export const DELETE = secureMutationRoute<
     kind: 'manage_specification_needs_reference',
     needsReferenceId: body.id,
     operation: 'delete',
-    ...specificationActionReference(params.id),
+    specificationId: params.id,
   })),
   handler: async ({ body, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const specificationId = await resolveSpecificationId(db, params.id)
-    if (specificationId === null) {
+    const specification = await getSpecificationById(db, params.id)
+    if (!specification) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     const deleted = await deleteSpecificationNeedsReference(
       db,
-      specificationId,
+      specification.id,
       body.id,
     )
     if (!deleted) {

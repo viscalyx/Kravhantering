@@ -1,22 +1,22 @@
 import type { z } from 'zod'
-import { specificationIdOrSlugSchema } from '@/lib/http/validation'
+import { positiveIntegerSchema } from '@/lib/http/validation'
 import {
   importExecuteBodySchema,
   importPreviewBodySchema,
 } from '@/lib/requirements/import-schema'
 
-const specificationIdOrSlugBodyShape = {
-  specificationIdOrSlug: specificationIdOrSlugSchema,
+const specificationIdBodyShape = {
+  specificationId: positiveIntegerSchema,
 }
 
 export const specificationImportPreviewBodySchema = importPreviewBodySchema
   .omit({ areaId: true })
-  .extend(specificationIdOrSlugBodyShape)
+  .extend(specificationIdBodyShape)
   .strict()
 
 export const specificationImportExecuteBodySchema = importExecuteBodySchema
   .omit({ areaId: true })
-  .extend(specificationIdOrSlugBodyShape)
+  .extend(specificationIdBodyShape)
   .strict()
 
 export type SpecificationImportPreviewBody = z.infer<
@@ -26,9 +26,3 @@ export type SpecificationImportPreviewBody = z.infer<
 export type SpecificationImportExecuteBody = z.infer<
   typeof specificationImportExecuteBodySchema
 >
-
-export function specificationActionTarget(specificationIdOrSlug: string) {
-  return /^\d+$/.test(specificationIdOrSlug)
-    ? { specificationId: Number(specificationIdOrSlug) }
-    : { specificationSlug: specificationIdOrSlug }
-}

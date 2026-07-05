@@ -6,7 +6,6 @@ import {
 import { getRequirementById } from '@/lib/dal/requirements'
 import {
   getPublishedVersionIdForRequirement,
-  getSpecificationBySlug,
   getSpecificationLocalRequirementDetail,
   graduateSpecificationLocalRequirementToLibrary,
   linkRequirementsToSpecificationAtomically,
@@ -22,11 +21,7 @@ import {
   type RequirementsAction,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
-import {
-  forbiddenError,
-  notFoundError,
-  validationError,
-} from '@/lib/requirements/errors'
+import { forbiddenError, notFoundError } from '@/lib/requirements/errors'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import {
   recordAuthorizationDenied,
@@ -53,6 +48,7 @@ import {
   getSpecificationServiceTitle,
   getSpecificationWord,
   localizeName,
+  resolveSpecificationIdOrThrow,
   translateServiceMessage,
   withLogging,
 } from '@/lib/requirements/service-shared'
@@ -67,39 +63,11 @@ interface SpecificationWorkflowDependencies {
   logger: RequirementsLogger
 }
 
-async function resolveSpecificationIdOrThrow(
-  db: SqlServerDatabase,
-  input: SpecificationRefInput,
-) {
-  if (input.specificationId == null && input.specificationSlug == null) {
-    throw validationError('Missing specification reference', {
-      specificationId: input.specificationId,
-      specificationSlug: input.specificationSlug,
-    })
-  }
-
-  const specificationId =
-    input.specificationId != null
-      ? input.specificationId
-      : input.specificationSlug
-        ? (await getSpecificationBySlug(db, input.specificationSlug))?.id
-        : undefined
-
-  if (specificationId == null) {
-    throw notFoundError('Specification not found.', {
-      specificationId: input.specificationId,
-      specificationSlug: input.specificationSlug,
-    })
-  }
-
-  return specificationId
-}
-
 function getSpecificationReferenceLabel(
   input: SpecificationRefInput,
   specificationId: number,
 ) {
-  return input.specificationSlug ?? String(specificationId)
+  return String(input.specificationId ?? specificationId)
 }
 
 function isAdminActor(context: RequestContext): boolean {
@@ -220,7 +188,7 @@ export function createSpecificationWorkflow({
                     nameSv: p.governanceObjectType.nameSv,
                   }
                 : null,
-              uniqueId: p.uniqueId,
+              specificationCode: p.specificationCode,
             }
 
             if (!input.includeRestFields) {
@@ -288,7 +256,6 @@ export function createSpecificationWorkflow({
         {
           kind: 'get_specification_items',
           specificationId: input.specificationId,
-          specificationSlug: input.specificationSlug,
         },
         context,
       )
@@ -300,10 +267,9 @@ export function createSpecificationWorkflow({
         {
           description_search: input.descriptionSearch,
           specification_id: input.specificationId,
-          specification_slug: input.specificationSlug,
         },
         async () => {
-          const specificationId = await resolveSpecificationIdOrThrow(db, input)
+          const specificationId = await resolveSpecificationIdOrThrow(input)
           let items = await listSpecificationItems(db, specificationId)
           if (input.descriptionSearch) {
             const q = input.descriptionSearch.toLowerCase()
@@ -374,7 +340,6 @@ export function createSpecificationWorkflow({
         kind: 'list_graduation_target_areas',
         localRequirementId: input.localRequirementId,
         specificationId: input.specificationId,
-        specificationSlug: input.specificationSlug,
       }
 
       await authorize(authorization, action, context)
@@ -386,10 +351,9 @@ export function createSpecificationWorkflow({
         {
           local_requirement_id: input.localRequirementId,
           specification_id: input.specificationId,
-          specification_slug: input.specificationSlug,
         },
         async () => {
-          const specificationId = await resolveSpecificationIdOrThrow(db, input)
+          const specificationId = await resolveSpecificationIdOrThrow(input)
           const localRequirement = await getSpecificationLocalRequirementDetail(
             db,
             specificationId,
@@ -443,7 +407,6 @@ export function createSpecificationWorkflow({
         localRequirementId: input.localRequirementId,
         requirementAreaId: input.requirementAreaId,
         specificationId: input.specificationId,
-        specificationSlug: input.specificationSlug,
       }
 
       await authorize(authorization, action, context)
@@ -456,11 +419,10 @@ export function createSpecificationWorkflow({
           local_requirement_id: input.localRequirementId,
           requirement_area_id: input.requirementAreaId,
           specification_id: input.specificationId,
-          specification_slug: input.specificationSlug,
         },
         async () => {
           const actor = requireHumanActorSnapshot(context)
-          const specificationId = await resolveSpecificationIdOrThrow(db, input)
+          const specificationId = await resolveSpecificationIdOrThrow(input)
           const targetArea = await getAreaById(db, input.requirementAreaId)
           if (!targetArea) {
             throw notFoundError('Requirement area not found', {
@@ -519,7 +481,6 @@ export function createSpecificationWorkflow({
             newRequirementUniqueId: detail.uniqueId,
             operation: 'graduate_specification_local_requirement',
             specificationId,
-            specificationSlug: input.specificationSlug,
             targetRequirementAreaId: input.requirementAreaId,
           })
 
@@ -550,7 +511,6 @@ export function createSpecificationWorkflow({
         {
           kind: 'add_to_specification',
           specificationId: input.specificationId,
-          specificationSlug: input.specificationSlug,
           requirementIds: input.requirementIds,
         },
         context,
@@ -562,11 +522,10 @@ export function createSpecificationWorkflow({
         'requirements.add_to_specification',
         {
           specification_id: input.specificationId,
-          specification_slug: input.specificationSlug,
           requirement_count: input.requirementIds.length,
         },
         async () => {
-          const specificationId = await resolveSpecificationIdOrThrow(db, input)
+          const specificationId = await resolveSpecificationIdOrThrow(input)
           const versionResults = await Promise.all(
             input.requirementIds.map(async id => ({
               id,
@@ -601,7 +560,6 @@ export function createSpecificationWorkflow({
               requirementCount: input.requirementIds.length,
               requirementIds: succeeded.map(r => r.id),
               specificationId,
-              specificationSlug: input.specificationSlug,
             })
           }
 
@@ -660,7 +618,6 @@ export function createSpecificationWorkflow({
         {
           kind: 'remove_from_specification',
           specificationId: input.specificationId,
-          specificationSlug: input.specificationSlug,
           requirementIds: input.requirementIds,
         },
         context,
@@ -672,11 +629,10 @@ export function createSpecificationWorkflow({
         'requirements.remove_from_specification',
         {
           specification_id: input.specificationId,
-          specification_slug: input.specificationSlug,
           requirement_count: input.requirementIds.length,
         },
         async () => {
-          const specificationId = await resolveSpecificationIdOrThrow(db, input)
+          const specificationId = await resolveSpecificationIdOrThrow(input)
           const removedCount = await unlinkRequirementsFromSpecification(
             db,
             specificationId,
@@ -688,7 +644,6 @@ export function createSpecificationWorkflow({
             removedCount,
             requirementCount: input.requirementIds.length,
             specificationId,
-            specificationSlug: input.specificationSlug,
           })
           const ref = getSpecificationReferenceLabel(input, specificationId)
           const summary = translateServiceMessage(

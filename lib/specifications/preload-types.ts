@@ -28,10 +28,10 @@ export interface SpecificationMeta {
   permissions?: SpecificationPermissions
   responsibleDisplayName: string | null
   responsibleHsaId: string
+  specificationCode: string
   specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
-  uniqueId: string
 }
 
 export interface SpecificationListItem extends RequirementRow {
@@ -81,7 +81,7 @@ export interface RequirementsSpecificationDetailInitialData {
     }
     specification: {
       name: string
-      uniqueId: string
+      specificationCode: string
     }
   }
   leftNormReferenceOptions: NormReferenceOption[]
@@ -113,10 +113,10 @@ export interface Specification {
   requirementAreas: SpecificationRequirementArea[]
   responsibleDisplayName: string | null
   responsibleHsaId: string
+  specificationCode: string
   specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
-  uniqueId: string
 }
 
 export interface RequirementsSpecificationsInitialData {

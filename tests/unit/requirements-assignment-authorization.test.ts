@@ -86,7 +86,7 @@ function makeLookup(
       requirementTarget(options.requirement ?? {}),
     ),
     resolveSpecificationId: vi.fn(
-      async (input: { specificationId?: number; specificationSlug?: string }) =>
+      async (input: { specificationId?: number }) =>
         input.specificationId ?? options.specificationId ?? 42,
     ),
     resolveSpecificationIdForLocalRequirement: vi.fn(

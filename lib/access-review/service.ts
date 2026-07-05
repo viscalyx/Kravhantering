@@ -333,7 +333,7 @@ export async function collectAccessReviewAssignments(
           ${requirementResponsibilityPersonNameSql('responsible_person')} AS principalDisplayName,
           N'requirements_specification' AS scopeType,
           CAST(spec.id AS nvarchar(120)) AS scopeKey,
-          CONCAT(spec.unique_id, N' ', spec.name) AS scopeLabel,
+          CONCAT(spec.specification_code, N' ', spec.name) AS scopeLabel,
           N'specification_responsible' AS permissionType
         FROM requirements_specifications spec
         INNER JOIN requirement_responsibility_people responsible_person
@@ -347,7 +347,7 @@ export async function collectAccessReviewAssignments(
           ${requirementResponsibilityPersonNameSql('co_author_person')} AS principalDisplayName,
           N'requirements_specification' AS scopeType,
           CAST(spec.id AS nvarchar(120)) AS scopeKey,
-          CONCAT(spec.unique_id, N' ', spec.name) AS scopeLabel,
+          CONCAT(spec.specification_code, N' ', spec.name) AS scopeLabel,
           N'specification_co_author' AS permissionType
         FROM specification_co_authors co_author
         INNER JOIN requirements_specifications spec

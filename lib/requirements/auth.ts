@@ -115,45 +115,38 @@ export type RequirementsAction =
   | {
       kind: 'get_specification_items'
       specificationId?: number
-      specificationSlug?: string
     }
   | {
       kind: 'add_to_specification'
       specificationId?: number
-      specificationSlug?: string
       requirementIds: number[]
     }
   | {
       kind: 'remove_from_specification'
       specificationId?: number
-      specificationSlug?: string
       requirementIds: number[]
     }
   | {
       kind: 'list_graduation_target_areas'
       localRequirementId: number
       specificationId?: number
-      specificationSlug?: string
     }
   | {
       kind: 'graduate_specification_local_requirement'
       localRequirementId: number
       requirementAreaId: number
       specificationId?: number
-      specificationSlug?: string
     }
   | {
       kind: 'manage_specification_local_requirement'
       operation: string
       specificationId?: number
-      specificationSlug?: string
       localRequirementId?: number
     }
   | {
       kind: 'manage_specification_needs_reference'
       operation: string
       specificationId?: number
-      specificationSlug?: string
       needsReferenceId?: number
     }
   | {
@@ -179,7 +172,6 @@ export type RequirementsAction =
   | {
       kind: 'list_deviations'
       specificationId?: number
-      specificationSlug?: string
     }
   | {
       kind: 'manage_deviation'
@@ -208,7 +200,6 @@ export type RequirementsAction =
       kind: 'manage_specification_rfi'
       operation: string
       specificationId?: number
-      specificationSlug?: string
     }
   | {
       areaId?: number
@@ -216,7 +207,6 @@ export type RequirementsAction =
       operation: string
       suggestionId?: number
       specificationId?: number
-      specificationSlug?: string
     }
   | {
       kind: 'generate_requirements'

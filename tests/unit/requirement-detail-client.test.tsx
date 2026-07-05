@@ -934,7 +934,7 @@ describe('RequirementDetailClient', () => {
     renderSubject({
       inline: true,
       specificationItemId: 31,
-      specificationSlug: 'ETJANST-UPP-2026',
+      specificationId: 1,
       requirementId: 123,
     })
 
@@ -2037,7 +2037,7 @@ describe('RequirementDetailClient', () => {
     renderSubject({
       inline: true,
       specificationItemId: 31,
-      specificationSlug: 'ETJANST-UPP-2026',
+      specificationId: 1,
     })
 
     await screen.findByText('Deviation under review')
@@ -2050,7 +2050,7 @@ describe('RequirementDetailClient', () => {
 
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename: 'deviation-review-report-123.pdf',
-      url: '/sv/requirements/reports/pdf/deviation-review/123?spec=ETJANST-UPP-2026&item=31',
+      url: '/sv/requirements/reports/pdf/deviation-review/123?spec=1&item=31',
     })
   })
 

@@ -1,6 +1,7 @@
 // Dogfood seed: realistic Krav describing the Kravhantering application itself
-// plus a "Kravhantering" Kravunderlag (uniqueId KH) that contains them all and a
-// smaller controlled-introduction specification (uniqueId KH-INFOR).
+// plus a "Kravhantering" Kravunderlag (kravunderlagskod KH) that contains them
+// all and a smaller controlled-introduction specification (kravunderlagskod
+// KH-INFOR).
 //
 // Strategy:
 // - All new IDs use offsets well above the existing seed's max IDs to avoid
@@ -1183,7 +1184,7 @@ const DOGFOOD_KRAV = [
   {
     area: ID.area.RAP,
     desc: 'Reports-modulen ska producera en kravunderlagsrapport med kravinklusion och status per post.',
-    ac: 'Rapporten listar varje requirement_specification_item med uniqueId, beskrivning, status och länkad version; sortering följer underlagets ordning.',
+    ac: 'Rapporten listar varje requirement_specification_item med Krav-ID, beskrivning, status och länkad version; sortering följer underlagets ordning.',
     vm: 'Enhetstester av lib/reports/data och manuell verifiering på underlaget KH.',
     cat: ID.cat.verksamhet,
     type: ID.type.funk,

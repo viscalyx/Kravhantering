@@ -5,7 +5,6 @@ import { collectSpecificationOutputData } from '@/lib/reports/data/specification
 const dalState = vi.hoisted(() => ({
   countDeviationsPerItemRef: vi.fn(),
   getSpecificationById: vi.fn(),
-  getSpecificationBySlug: vi.fn(),
   parseSpecificationItemRef: vi.fn(),
 }))
 
@@ -17,7 +16,6 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   createLibraryItemRef: (id: number) => `lib:${id}`,
   createSpecificationLocalItemRef: (id: number) => `local:${id}`,
   getSpecificationById: dalState.getSpecificationById,
-  getSpecificationBySlug: dalState.getSpecificationBySlug,
   parseSpecificationItemRef: dalState.parseSpecificationItemRef,
 }))
 
@@ -35,7 +33,7 @@ function specification() {
     specificationGovernanceObjectTypeId: null,
     specificationImplementationTypeId: null,
     specificationLifecycleStatusId: 3,
-    uniqueId: 'SPEC-1',
+    specificationCode: 'SPEC-1',
     updatedAt: '2026-06-02T00:00:00.000Z',
   }
 }
@@ -142,7 +140,7 @@ function createDb() {
 describe('collectSpecificationOutputData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    dalState.getSpecificationBySlug.mockResolvedValue(specification())
+    dalState.getSpecificationById.mockResolvedValue(specification())
     dalState.countDeviationsPerItemRef.mockResolvedValue(
       new Map([
         ['lib:31', { approved: 1, pending: 0, rejected: 0, total: 1 }],
@@ -154,7 +152,7 @@ describe('collectSpecificationOutputData', () => {
   it('uses the requirement version pinned by the specification item', async () => {
     const { db, queries } = createDb()
 
-    const result = await collectSpecificationOutputData(db, 'SPEC-1')
+    const result = await collectSpecificationOutputData(db, 10)
 
     expect(result.items.map(item => item.uniqueId)).toEqual(['A-1', 'B-2'])
     expect(result.items[0]).toMatchObject({

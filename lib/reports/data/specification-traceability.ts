@@ -1,6 +1,5 @@
 import {
   getSpecificationById,
-  getSpecificationBySlug,
   listSpecificationTraceabilityItems,
   type SpecificationItemRef,
   type TraceabilityReportItem,
@@ -14,35 +13,22 @@ export interface SpecificationTraceabilityData {
 }
 
 export type SpecificationTraceabilitySpecification = NonNullable<
-  Awaited<ReturnType<typeof getSpecificationBySlug>>
+  Awaited<ReturnType<typeof getSpecificationById>>
 >
 
 type SpecificationTraceabilitySource =
   | SpecificationTraceabilitySpecification
   | number
-  | string
-
-function decodeSegment(value: string | number): string {
-  const raw = String(value)
-  try {
-    return decodeURIComponent(raw)
-  } catch {
-    return raw
-  }
-}
 
 async function resolveSpecification(
   db: SqlServerDatabase,
-  specificationIdOrSlug: string | number,
+  specificationId: number,
 ) {
-  const decoded = decodeSegment(specificationIdOrSlug)
-  const specification = /^\d+$/.test(decoded)
-    ? await getSpecificationById(db, Number(decoded))
-    : await getSpecificationBySlug(db, decoded)
+  const specification = await getSpecificationById(db, specificationId)
 
   if (!specification) {
     throw new ReportDataError(
-      `Specification not found: ${specificationIdOrSlug}`,
+      `Specification not found: ${specificationId}`,
       404,
     )
   }

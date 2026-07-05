@@ -6,7 +6,6 @@ import {
   createLibraryItemRef,
   createSpecificationLocalItemRef,
   getSpecificationById,
-  getSpecificationBySlug,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { ReportDataError } from '@/lib/reports/data/server'
@@ -51,7 +50,7 @@ export interface SpecificationOutputItem {
 
 export interface SpecificationOutputData {
   items: SpecificationOutputItem[]
-  specification: NonNullable<Awaited<ReturnType<typeof getSpecificationBySlug>>>
+  specification: NonNullable<Awaited<ReturnType<typeof getSpecificationById>>>
 }
 
 const EMPTY_DEVIATION_COUNTS: DeviationCounts = {
@@ -59,15 +58,6 @@ const EMPTY_DEVIATION_COUNTS: DeviationCounts = {
   pending: 0,
   rejected: 0,
   total: 0,
-}
-
-function decodeSegment(value: string | number): string {
-  const raw = String(value)
-  try {
-    return decodeURIComponent(raw)
-  } catch {
-    return raw
-  }
 }
 
 function toBool(value: unknown): boolean {
@@ -93,16 +83,13 @@ function buildInClause(startIndex: number, values: number[]): string {
 
 async function resolveSpecification(
   db: SqlServerDatabase,
-  specificationIdOrSlug: string | number,
+  specificationId: number,
 ) {
-  const decoded = decodeSegment(specificationIdOrSlug)
-  const specification = /^\d+$/.test(decoded)
-    ? await getSpecificationById(db, Number(decoded))
-    : await getSpecificationBySlug(db, decoded)
+  const specification = await getSpecificationById(db, specificationId)
 
   if (!specification) {
     throw new ReportDataError(
-      `Specification not found: ${specificationIdOrSlug}`,
+      `Specification not found: ${specificationId}`,
       404,
     )
   }
@@ -320,9 +307,9 @@ function mapLocalItem(row: Row): SpecificationOutputItem {
 
 export async function collectSpecificationOutputData(
   db: SqlServerDatabase,
-  specificationIdOrSlug: string | number,
+  specificationId: number,
 ): Promise<SpecificationOutputData> {
-  const specification = await resolveSpecification(db, specificationIdOrSlug)
+  const specification = await resolveSpecification(db, specificationId)
   const [libraryRows, localRows] = await Promise.all([
     db.query(
       `

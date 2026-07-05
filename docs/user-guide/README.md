@@ -241,7 +241,7 @@ Filtrera kravunderlag genom att skriva i sökrutan. Listan uppdateras i realtid.
 ### Skapa nytt kravunderlag
 
 Klicka på **"Nytt kravunderlag"** för att öppna dialogrutan för nytt
-kravunderlag. Ange ett namn — ett unikt ID (slug) genereras automatiskt.
+kravunderlag. Ange ett namn. En kravunderlagskod genereras automatiskt.
 Kravunderlag används för att samla krav som hör till ett specifikt projekt eller
 leverans.
 
@@ -768,7 +768,7 @@ kravversion som är kopplad till kravunderlaget.
 **Åtkomst:** Rapportknappen i kravunderlagsdetaljvyns verktygsfält när
 underlaget har en livscykelstatus med rapportprofil.
 
-**Rutt:** `/specifications/[slug]/reports/pdf/[profile]`
+**Rutt:** `/specifications/[specificationId]/reports/pdf/[profile]`
 
 ### Förbättringsförslagshistorik
 

@@ -61,8 +61,8 @@ describe('fetchDeviationForReport', () => {
               isReviewRequested: 1,
               motivation: 'Needs review',
               requirementVersionId: 9,
+              specificationCode: 'SPEC',
               specificationName: 'Spec',
-              specificationUniqueId: 'SPEC',
             },
           ],
         })

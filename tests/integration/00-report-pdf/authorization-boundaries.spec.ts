@@ -132,7 +132,7 @@ test('REQ-10/LIFE-11/SPEC-10d/AUTH-10/AUTH-11: report PDFs enforce published and
     await expectStatus(
       await getAfterReportRouteReady(
         noRoles,
-        '/sv/specifications/ETJANST-UPP-2026/reports/pdf/procurement',
+        '/sv/specifications/8/reports/pdf/procurement',
         'unassigned specification profile PDF',
       ),
       403,

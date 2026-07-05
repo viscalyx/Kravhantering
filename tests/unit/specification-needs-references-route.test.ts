@@ -11,10 +11,10 @@ import { conflictError } from '@/lib/requirements/errors'
 const mockDb = {}
 
 const mocks = {
+  createRequirementsRestRuntime: vi.fn(),
   createSpecificationNeedsReference: vi.fn(),
   deleteSpecificationNeedsReference: vi.fn(),
   getSpecificationById: vi.fn(),
-  getSpecificationBySlug: vi.fn(),
   listSpecificationNeedsReferences: vi.fn(),
   updateSpecificationNeedsReference: vi.fn(),
 }
@@ -44,8 +44,6 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mocks.deleteSpecificationNeedsReference(...args),
   getSpecificationById: (...args: unknown[]) =>
     mocks.getSpecificationById(...args),
-  getSpecificationBySlug: (...args: unknown[]) =>
-    mocks.getSpecificationBySlug(...args),
   listSpecificationNeedsReferences: (...args: unknown[]) =>
     mocks.listSpecificationNeedsReferences(...args),
   updateSpecificationNeedsReference: (...args: unknown[]) =>
@@ -62,6 +60,11 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
   }
 })
 
+vi.mock('@/lib/requirements/server', () => ({
+  createRequirementsRestRuntime: (...args: unknown[]) =>
+    mocks.createRequirementsRestRuntime(...args),
+}))
+
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
 }
@@ -71,7 +74,7 @@ function makeMutationRequest(
   body: unknown,
 ) {
   return new NextRequest(
-    'http://localhost/api/requirements-specifications/spec/needs-references',
+    'http://localhost/api/requirements-specifications/5/needs-references',
     {
       body: JSON.stringify(body),
       headers: { 'Content-Type': 'application/json' },
@@ -83,14 +86,18 @@ function makeMutationRequest(
 describe('requirements-specifications/[id]/needs-references route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.createRequirementsRestRuntime.mockResolvedValue({
+      authorization: { assertAuthorized: vi.fn() },
+      context: mockContext,
+      db: mockDb,
+    })
     mocks.createSpecificationNeedsReference.mockResolvedValue({
       description: 'For IAM work',
       id: 11,
       text: 'IAM-42',
     })
     mocks.deleteSpecificationNeedsReference.mockResolvedValue(true)
-    mocks.getSpecificationById.mockResolvedValue(null)
-    mocks.getSpecificationBySlug.mockResolvedValue({ id: 5 })
+    mocks.getSpecificationById.mockResolvedValue({ id: 5 })
     mocks.listSpecificationNeedsReferences.mockResolvedValue([
       {
         description: 'For IAM work',
@@ -110,9 +117,9 @@ describe('requirements-specifications/[id]/needs-references route', () => {
   it('lists specification needs references', async () => {
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/spec/needs-references',
+        'http://localhost/api/requirements-specifications/5/needs-references',
       ),
-      makeParams('spec'),
+      makeParams('5'),
     )
 
     expect(response.status).toBe(200)
@@ -138,7 +145,7 @@ describe('requirements-specifications/[id]/needs-references route', () => {
         description: 'For IAM work',
         text: 'IAM-42',
       }),
-      makeParams('spec'),
+      makeParams('5'),
     )
 
     expect(response.status).toBe(201)
@@ -158,7 +165,7 @@ describe('requirements-specifications/[id]/needs-references route', () => {
 
     const response = await POST(
       makeMutationRequest('POST', { text: 'IAM-42' }),
-      makeParams('spec'),
+      makeParams('5'),
     )
 
     expect(response.status).toBe(409)
@@ -175,7 +182,7 @@ describe('requirements-specifications/[id]/needs-references route', () => {
         id: 11,
         text: 'IAM-43',
       }),
-      makeParams('spec'),
+      makeParams('5'),
     )
 
     expect(response.status).toBe(200)
@@ -200,7 +207,7 @@ describe('requirements-specifications/[id]/needs-references route', () => {
 
     const response = await DELETE(
       makeMutationRequest('DELETE', { id: 11 }),
-      makeParams('spec'),
+      makeParams('5'),
     )
 
     expect(response.status).toBe(409)
@@ -209,7 +216,7 @@ describe('requirements-specifications/[id]/needs-references route', () => {
   it('deletes unused needs references', async () => {
     const response = await DELETE(
       makeMutationRequest('DELETE', { id: 11 }),
-      makeParams('spec'),
+      makeParams('5'),
     )
 
     expect(response.status).toBe(200)

@@ -34,7 +34,6 @@ const mocks = vi.hoisted(() => ({
   listSpecifications: vi.fn(),
   listSpecificationsForActor: vi.fn(),
   listSpecificationCoAuthorHsaIdsBySpecification: vi.fn(),
-  getSpecificationBySlug: vi.fn(),
   listSpecificationItems: vi.fn(),
   getPublishedVersionIdForRequirement: vi.fn(),
   getOrCreateSpecificationNeedsReference: vi.fn(),
@@ -104,7 +103,6 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mocks.graduateSpecificationLocalRequirementToLibrary,
   getOrCreateSpecificationNeedsReference:
     mocks.getOrCreateSpecificationNeedsReference,
-  getSpecificationBySlug: mocks.getSpecificationBySlug,
   getSpecificationLocalRequirementDetail:
     mocks.getSpecificationLocalRequirementDetail,
   getPublishedVersionIdForRequirement:
@@ -344,10 +342,6 @@ describe('createRequirementsService', () => {
       },
     )
     mocks.getOrCreateSpecificationNeedsReference.mockResolvedValue(44)
-    mocks.getSpecificationBySlug.mockResolvedValue({
-      id: 7,
-      uniqueId: 'IAM-SPECIFICATION',
-    })
     mocks.getSpecificationLocalRequirementDetail.mockResolvedValue({
       id: 12,
       itemRef: 'local:12',
@@ -1306,7 +1300,7 @@ describe('createRequirementsService', () => {
         name: 'IAM Specification',
         governanceObjectType: null,
         responsibleHsaId: 'SE5560000001-alice1',
-        uniqueId: 'IAM-SPECIFICATION',
+        specificationCode: 'IAM-SPECIFICATION',
       },
     ])
     mocks.listSpecificationCoAuthorHsaIdsBySpecification.mockResolvedValue(
@@ -1347,7 +1341,7 @@ describe('createRequirementsService', () => {
     const service = createTestRequirementsService()
 
     await expect(
-      service.getSpecificationItems(makeContext(), {}),
+      service.getSpecificationItems(makeContext(), {} as never),
     ).rejects.toMatchObject({
       code: 'validation',
       message: 'Missing specification reference',
@@ -1360,7 +1354,6 @@ describe('createRequirementsService', () => {
       message: 'Missing specification reference',
       status: 400,
     })
-    expect(mocks.getSpecificationBySlug).not.toHaveBeenCalled()
     expect(mocks.listSpecificationItems).not.toHaveBeenCalled()
     expect(mocks.listDeviationsForSpecification).not.toHaveBeenCalled()
   })
@@ -1393,7 +1386,7 @@ describe('createRequirementsService', () => {
 
     const result = await service.getSpecificationItems(makeContext(), {
       locale: 'sv',
-      specificationSlug: 'IAM-SPECIFICATION',
+      specificationId: 7,
       responseFormat: 'json',
     })
 
@@ -1421,7 +1414,7 @@ describe('createRequirementsService', () => {
 
     const result = await service.addToSpecification(makeContext(), {
       locale: 'en',
-      specificationSlug: 'IAM-SPECIFICATION',
+      specificationId: 7,
       requirementIds: [10, 11],
       responseFormat: 'json',
     })
@@ -1437,7 +1430,7 @@ describe('createRequirementsService', () => {
     expect(result.addedCount).toBe(1)
     expect(result.skippedCount).toBe(0)
     expect(JSON.parse(result.message)).toMatchObject({
-      lines: ['Added 1 requirement to specification IAM-SPECIFICATION.'],
+      lines: ['Added 1 requirement to specification 7.'],
       title: 'Requirements Added to Specification',
     })
   })
@@ -1448,14 +1441,14 @@ describe('createRequirementsService', () => {
 
     const result = await service.removeFromSpecification(makeContext(), {
       locale: 'en',
-      specificationSlug: 'IAM-SPECIFICATION',
+      specificationId: 7,
       requirementIds: [10, 11],
       responseFormat: 'json',
     })
 
     expect(result.removedCount).toBe(1)
     expect(JSON.parse(result.message)).toMatchObject({
-      lines: ['Removed 1 requirement from specification IAM-SPECIFICATION.'],
+      lines: ['Removed 1 requirement from specification 7.'],
       title: 'Requirements Removed from Specification',
     })
   })
@@ -1475,7 +1468,7 @@ describe('createRequirementsService', () => {
     const result = await service.listGraduationTargetAreas(makeContext(), {
       localRequirementId: 12,
       responseFormat: 'json',
-      specificationSlug: 'IAM-SPECIFICATION',
+      specificationId: 7,
     })
 
     expect(mocks.canAuthorSpecification).not.toHaveBeenCalled()
@@ -1499,7 +1492,7 @@ describe('createRequirementsService', () => {
     const result = await service.listGraduationTargetAreas(makeContext(), {
       localRequirementId: 12,
       responseFormat: 'json',
-      specificationSlug: 'IAM-SPECIFICATION',
+      specificationId: 7,
     })
 
     expect(mocks.canAuthorSpecification).not.toHaveBeenCalled()
@@ -1523,7 +1516,7 @@ describe('createRequirementsService', () => {
       service.listGraduationTargetAreas(makeContext(), {
         localRequirementId: 12,
         responseFormat: 'json',
-        specificationSlug: 'IAM-SPECIFICATION',
+        specificationId: 7,
       }),
     ).rejects.toMatchObject({
       code: 'not_found',
@@ -1592,7 +1585,7 @@ describe('createRequirementsService', () => {
         localRequirementId: 12,
         requirementAreaId: 2,
         responseFormat: 'json',
-        specificationSlug: 'IAM-SPECIFICATION',
+        specificationId: 7,
       },
     )
 
@@ -1628,7 +1621,6 @@ describe('createRequirementsService', () => {
           newRequirementUniqueId: 'SEC0001',
           operation: 'graduate_specification_local_requirement',
           specificationId: 7,
-          specificationSlug: 'IAM-SPECIFICATION',
           targetRequirementAreaId: 2,
         }),
         event: 'requirements.sensitive_mutation.succeeded',
@@ -1657,7 +1649,7 @@ describe('createRequirementsService', () => {
       service.graduateSpecificationLocalRequirement(context, {
         localRequirementId: 12,
         requirementAreaId: 2,
-        specificationSlug: 'IAM-SPECIFICATION',
+        specificationId: 7,
       }),
     ).rejects.toMatchObject({
       code: 'forbidden',
@@ -1672,7 +1664,7 @@ describe('createRequirementsService', () => {
     const service = createTestRequirementsService()
 
     await service.addToSpecification(makeContext(), {
-      specificationSlug: 'IAM-SPECIFICATION',
+      specificationId: 7,
       requirementIds: [10],
     })
 
@@ -1757,7 +1749,7 @@ describe('createRequirementsService', () => {
     const service = createTestRequirementsService()
 
     await service.removeFromSpecification(makeContext(), {
-      specificationSlug: 'IAM-SPECIFICATION',
+      specificationId: 7,
       requirementIds: [10, 11, 12],
     })
 
@@ -1769,7 +1761,6 @@ describe('createRequirementsService', () => {
           removedCount: 2,
           requirementCount: 3,
           specificationId: 7,
-          specificationSlug: 'IAM-SPECIFICATION',
         }),
         event: 'requirements.sensitive_mutation.succeeded',
       }),
@@ -1785,7 +1776,7 @@ describe('createRequirementsService', () => {
 
     await service.addToSpecification(makeContext(), {
       locale: 'sv',
-      specificationSlug: 'IAM-SPECIFICATION',
+      specificationId: 7,
       requirementIds: [10, 11],
     })
 
@@ -1800,7 +1791,6 @@ describe('createRequirementsService', () => {
           requirementIds: [10, 11],
           requestSource: 'rest',
           specificationId: 7,
-          specificationSlug: 'IAM-SPECIFICATION',
         }),
         event: 'requirements.sensitive_mutation.succeeded',
       }),

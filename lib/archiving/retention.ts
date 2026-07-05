@@ -540,7 +540,7 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
           N'requirements_specifications.obsolete' AS source_key,
           N'requirements_specifications' AS subject_table,
           CAST(specification.id AS nvarchar(120)) AS subject_id,
-          CONCAT(specification.unique_id, N' ', specification.name) AS reference,
+          CONCAT(specification.specification_code, N' ', specification.name) AS reference,
           specification.name AS current_display_value,
           specification.updated_at AS age_basis
         FROM requirements_specifications specification
@@ -1370,7 +1370,7 @@ async function exportSpecification(
   const specificationRows = (await db.query(
     `SELECT TOP (1)
         specification.id,
-        specification.unique_id AS uniqueId,
+        specification.specification_code AS specificationCode,
         specification.name,
         specification.business_needs_reference AS businessNeedsReference,
         specification.created_at AS createdAt,

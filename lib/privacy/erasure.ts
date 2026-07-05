@@ -251,7 +251,7 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
     affectedReferencesSql: `/* privacy:affected:deviations.created_by */
       SELECT CONCAT(
         COALESCE(req.unique_id, CONCAT(N'Deviation ', deviation.id)),
-        CASE WHEN spec.unique_id IS NULL THEN N'' ELSE CONCAT(N' / ', spec.unique_id) END
+        CASE WHEN spec.specification_code IS NULL THEN N'' ELSE CONCAT(N' / ', spec.specification_code) END
       ) AS value
       FROM deviations deviation
       LEFT JOIN requirements_specification_items item ON item.id = deviation.specification_item_id
@@ -278,7 +278,7 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
     affectedReferencesSql: `/* privacy:affected:deviations.decided_by */
       SELECT CONCAT(
         COALESCE(req.unique_id, CONCAT(N'Deviation ', deviation.id)),
-        CASE WHEN spec.unique_id IS NULL THEN N'' ELSE CONCAT(N' / ', spec.unique_id) END
+        CASE WHEN spec.specification_code IS NULL THEN N'' ELSE CONCAT(N' / ', spec.specification_code) END
       ) AS value
       FROM deviations deviation
       LEFT JOIN requirements_specification_items item ON item.id = deviation.specification_item_id
@@ -303,14 +303,14 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   },
   {
     affectedReferencesSql: `/* privacy:affected:specification_local_requirement_deviations.created_by */
-      SELECT CONCAT(spec.unique_id, N' / ', local_requirement.unique_id) AS value
+      SELECT CONCAT(spec.specification_code, N' / ', local_requirement.unique_id) AS value
       FROM specification_local_requirement_deviations deviation
       INNER JOIN specification_local_requirements local_requirement
         ON local_requirement.id = deviation.specification_local_requirement_id
       INNER JOIN requirements_specifications spec
         ON spec.id = local_requirement.specification_id
       WHERE deviation.created_by_hsa_id = @0
-      ORDER BY spec.unique_id ASC, local_requirement.unique_id ASC, deviation.id ASC`,
+      ORDER BY spec.specification_code ASC, local_requirement.unique_id ASC, deviation.id ASC`,
     allowedActions: ['anonymize', 'switch', 'skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM specification_local_requirement_deviations WHERE created_by_hsa_id = @0',
@@ -328,14 +328,14 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   },
   {
     affectedReferencesSql: `/* privacy:affected:specification_local_requirement_deviations.decided_by */
-      SELECT CONCAT(spec.unique_id, N' / ', local_requirement.unique_id) AS value
+      SELECT CONCAT(spec.specification_code, N' / ', local_requirement.unique_id) AS value
       FROM specification_local_requirement_deviations deviation
       INNER JOIN specification_local_requirements local_requirement
         ON local_requirement.id = deviation.specification_local_requirement_id
       INNER JOIN requirements_specifications spec
         ON spec.id = local_requirement.specification_id
       WHERE deviation.decided_by_hsa_id = @0
-      ORDER BY spec.unique_id ASC, local_requirement.unique_id ASC, deviation.id ASC`,
+      ORDER BY spec.specification_code ASC, local_requirement.unique_id ASC, deviation.id ASC`,
     allowedActions: ['anonymize', 'switch', 'skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM specification_local_requirement_deviations WHERE decided_by_hsa_id = @0',
@@ -409,10 +409,10 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   },
   {
     affectedReferencesSql: `/* privacy:affected:requirements_specifications.responsible */
-      SELECT CONCAT(unique_id, N' ', name) AS value
-      FROM requirements_specifications
-      WHERE responsible_hsa_id = @0
-      ORDER BY unique_id ASC, id ASC`,
+      SELECT CONCAT(spec.specification_code, N' ', spec.name) AS value
+      FROM requirements_specifications spec
+      WHERE spec.responsible_hsa_id = @0
+      ORDER BY spec.specification_code ASC, spec.id ASC`,
     allowedActions: ['switch', 'anonymize', 'skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM requirements_specifications WHERE responsible_hsa_id = @0',
@@ -481,11 +481,11 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   },
   {
     affectedReferencesSql: `/* privacy:affected:specification_co_authors.hsa_id */
-      SELECT CONCAT(spec.unique_id, N' ', spec.name) AS value
+      SELECT CONCAT(spec.specification_code, N' ', spec.name) AS value
       FROM specification_co_authors co_author
       INNER JOIN requirements_specifications spec ON spec.id = co_author.specification_id
       WHERE co_author.hsa_id = @0
-      ORDER BY spec.unique_id ASC, spec.id ASC`,
+      ORDER BY spec.specification_code ASC, spec.id ASC`,
     allowedActions: ['switch', 'delete', 'skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM specification_co_authors WHERE hsa_id = @0',
@@ -506,11 +506,11 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   },
   {
     affectedReferencesSql: `/* privacy:affected:specification_co_authors.created_by */
-      SELECT CONCAT(spec.unique_id, N' ', spec.name) AS value
+      SELECT CONCAT(spec.specification_code, N' ', spec.name) AS value
       FROM specification_co_authors co_author
       INNER JOIN requirements_specifications spec ON spec.id = co_author.specification_id
       WHERE co_author.created_by_hsa_id = @0
-      ORDER BY spec.unique_id ASC, spec.id ASC`,
+      ORDER BY spec.specification_code ASC, spec.id ASC`,
     allowedActions: ['anonymize', 'switch', 'skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM specification_co_authors WHERE created_by_hsa_id = @0',

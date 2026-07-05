@@ -159,9 +159,9 @@ export interface AuthorizationFixture {
   areaPrefix: string
   packageId: number
   packageName: string
+  specificationCode: string
   specificationId: number
   specificationName: string
-  specificationSlug: string
 }
 
 export interface AuthMeResponse {
@@ -212,14 +212,14 @@ export interface SpecificationResponse {
     canReviewDecisions: boolean
     canUseAi: boolean
   }
-  uniqueId: string
+  specificationCode: string
 }
 
 export interface SpecificationListResponse {
   collectionPermissions: {
     canCreateSpecification: boolean
   }
-  specifications: { id: number; uniqueId: string }[]
+  specifications: { id: number; specificationCode: string }[]
 }
 
 export interface DataSubjectExportResponse {
@@ -419,7 +419,7 @@ export async function createAuthorizationFixture(
   )
   const uniqueStamp = stamp()
   const areaPrefix = `AZ${uniqueStamp.slice(-8)}`
-  const specificationSlug = `AUTHZ-${uniqueStamp}`
+  const specificationCode = `AUTHZ-${uniqueStamp}`
   const specificationName = `Behörighetsmatris ${uniqueStamp}`
   const packageName = `Behörighetspaket ${uniqueStamp}`
 
@@ -465,7 +465,7 @@ export async function createAuthorizationFixture(
           name: specificationName,
           specificationLifecycleStatusId:
             SPECIFICATION_LIFECYCLE_STATUS_MANAGEMENT_ID,
-          uniqueId: specificationSlug,
+          specificationCode,
         },
       },
     )
@@ -484,7 +484,7 @@ export async function createAuthorizationFixture(
     })
     await expectOk(
       await specificationResponsible.put(
-        `/api/requirements-specifications/${specificationSlug}/co-authors`,
+        `/api/requirements-specifications/${specification.id}/co-authors`,
         {
           data: { coAuthorHsaIds: [HSA.specificationCoauthor] },
         },
@@ -538,9 +538,9 @@ export async function createAuthorizationFixture(
       areaPrefix,
       packageId: requirementPackage.id,
       packageName,
+      specificationCode,
       specificationId: specification.id,
       specificationName,
-      specificationSlug,
     }
   } finally {
     await Promise.all([admin.dispose(), specificationResponsible.dispose()])

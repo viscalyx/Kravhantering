@@ -218,21 +218,20 @@ Transitions a requirement through the lifecycle using `toStatusId`.
 ### `requirements_list_specifications`
 
 Lists all requirements specifications with optional name filtering. Returns the
-numeric `id` and `uniqueId` (slug, e.g. `SAKLYFT-INFOR-Q2`) for each specification.
-Clients should copy these values into later specification-tool inputs:
+numeric `specificationId` and display `specificationCode` (e.g.
+`SAKLYFT-INFOR-Q2`) for each specification. Clients should copy the numeric id
+into later specification-tool inputs:
 
 ```text
-requirements_list_specifications.specifications[].id -> specificationId
-requirements_list_specifications.specifications[].uniqueId -> specificationSlug
+requirements_list_specifications.specifications[].specificationId -> specificationId
 ```
 
 ### `requirements_get_specification_items`
 
 Lists requirement applications linked to a specific specification. Accepts
-`specificationId` (numeric) or `specificationSlug`
-(e.g. `SAKLYFT-INFOR-Q2`). Supports optional `descriptionSearch` for
-client-side filtering. Use the specification copy paths above. Returned linked
-requirement IDs can be copied into removal inputs:
+numeric `specificationId`. Supports optional `descriptionSearch` for client-side
+filtering. Use the specification copy path above. Returned linked requirement
+IDs can be copied into removal inputs:
 
 ```text
 requirements_get_specification_items.items[].id -> requirementIds
@@ -240,8 +239,8 @@ requirements_get_specification_items.items[].id -> requirementIds
 
 ### `requirements_add_to_specification`
 
-Links requirements to a specification. Accepts `specificationId` (numeric) or
-`specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). Requirements without a published
+Links requirements to a specification. Accepts numeric `specificationId`.
+Requirements without a published
 version are skipped and returned in `skippedIds` rather than causing an error —
 this lets an agent batch-add requirements without needing to pre-filter by
 publish state. `needsReferenceId` links the added items to an existing
@@ -259,8 +258,8 @@ requirements_query_catalog.items[].id -> requirementIds
 
 Lists requirement areas the actor may use as targets when graduating a specific
 specification-local requirement. The caller passes the same source fields used
-by `requirements_graduate_local_requirement`: `specificationId` or
-`specificationSlug`, plus `localRequirementId`. The service enforces source
+by `requirements_graduate_local_requirement`: `specificationId`, plus
+`localRequirementId`. The service enforces source
 specification authorship before confirming the local requirement exists, then
 returns only areas owned or co-authored by the actor. Clients should use one
 returned `areas[].id` as `requirementAreaId` for graduation.
@@ -276,11 +275,10 @@ specification authorship before calling the transactional DAL copy operation.
 
 ### `requirements_remove_from_specification`
 
-Unlinks requirements from a specification. Accepts `specificationId` (numeric) or
-`specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). The requirements themselves are not
-deleted. The operation is idempotent — removing an ID that is not in the
-specification produces no error. Use the specification copy paths above, and copy
-linked requirement IDs from:
+Unlinks requirements from a specification. Accepts numeric `specificationId`.
+The requirements themselves are not deleted. The operation is idempotent —
+removing an ID that is not in the specification produces no error. Use the
+specification copy path above, and copy linked requirement IDs from:
 
 ```text
 requirements_get_specification_items.items[].id -> requirementIds

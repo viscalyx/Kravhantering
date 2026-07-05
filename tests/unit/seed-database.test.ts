@@ -430,7 +430,7 @@ describe('seed profiles', () => {
         expect.objectContaining({
           id: 910400,
           responsible_hsa_id: 'SE5560000001-specresp1',
-          unique_id: 'AUTHZ-SPEC-2026',
+          specification_code: 'AUTHZ-SPEC-2026',
         }),
       ]),
     )

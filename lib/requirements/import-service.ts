@@ -29,7 +29,6 @@ import {
   createSpecificationLocalRequirementsBatch,
   createSpecificationLocalRequirementsBatchWithExecutor,
   getSpecificationById,
-  getSpecificationBySlug,
   listSpecificationsForActor,
   type SpecificationLocalRequirementMutationInput,
 } from '@/lib/dal/requirements-specifications'
@@ -185,8 +184,8 @@ export type McpImportDestination =
   | {
       kind: 'requirements_specification'
       name: string
+      specificationCode: string
       specificationId: number
-      uniqueId: string
     }
 
 export type McpImportDestinationRef =
@@ -1260,16 +1259,15 @@ function previewFromReferenceData(args: {
   }
 }
 
-async function resolveSpecificationId(
+async function assertSpecificationExists(
   db: SqlServerDatabase,
-  idOrSlug: string,
+  specificationId: number,
 ): Promise<number> {
-  const specification = /^\d+$/.test(idOrSlug)
-    ? await getSpecificationById(db, Number(idOrSlug))
-    : await getSpecificationBySlug(db, idOrSlug)
+  const specification = await getSpecificationById(db, specificationId)
   if (!specification) {
     throw validationError('Specification was not found', {
       reason: 'specification_not_found',
+      specificationId,
     })
   }
   return specification.id
@@ -1446,13 +1444,13 @@ function areaToDestination(area: RequirementAreaRow): McpImportDestination {
 function specificationToDestination(specification: {
   id: number
   name: string
-  uniqueId: string
+  specificationCode: string
 }): McpImportDestination {
   return {
     kind: 'requirements_specification',
     name: specification.name,
+    specificationCode: specification.specificationCode,
     specificationId: specification.id,
-    uniqueId: specification.uniqueId,
   }
 }
 
@@ -1465,8 +1463,11 @@ function compareMcpImportDestinations(
   return (
     leftKindRank - rightKindRank ||
     left.name.localeCompare(right.name, 'sv') ||
-    ('uniqueId' in left ? left.uniqueId : left.prefix).localeCompare(
-      'uniqueId' in right ? right.uniqueId : right.prefix,
+    ('specificationCode' in left
+      ? left.specificationCode
+      : left.prefix
+    ).localeCompare(
+      'specificationCode' in right ? right.specificationCode : right.prefix,
       'sv',
     )
   )
@@ -1519,8 +1520,8 @@ function findDestinationMatch(
     {
       kind: destination.kind,
       name: destination.name,
+      specificationCode: destination.specificationCode,
       specificationId: destination.specificationId,
-      uniqueId: destination.uniqueId,
     },
     search,
   )
@@ -2825,12 +2826,12 @@ export function createRequirementsImportWorkflow({
     async executeSpecificationLocalImport(
       context: RequestContext,
       input: Omit<ImportExecuteBody, 'areaId'> & {
-        specificationIdOrSlug: string
+        specificationId: number
       },
     ): Promise<RequirementsImportExecuteResult> {
-      const specificationId = await resolveSpecificationId(
+      const specificationId = await assertSpecificationExists(
         db,
-        input.specificationIdOrSlug,
+        input.specificationId,
       )
       await authorization.assertAuthorized(
         {
@@ -2940,12 +2941,12 @@ export function createRequirementsImportWorkflow({
       input: {
         locale: 'en' | 'sv'
         payload: ImportRequirementsPayload
-        specificationIdOrSlug: string
+        specificationId: number
       },
     ): Promise<RequirementsImportPreview> {
-      const specificationId = await resolveSpecificationId(
+      const specificationId = await assertSpecificationExists(
         db,
-        input.specificationIdOrSlug,
+        input.specificationId,
       )
       await authorization.assertAuthorized(
         {

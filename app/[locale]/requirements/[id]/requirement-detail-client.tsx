@@ -82,14 +82,14 @@ interface RequirementDetailClientPropsBase {
 
 interface RequirementDetailClientStandalone
   extends RequirementDetailClientPropsBase {
+  specificationId?: undefined
   specificationItemId?: undefined
-  specificationSlug?: undefined
 }
 
 interface RequirementDetailClientSpecificationItem
   extends RequirementDetailClientPropsBase {
+  specificationId: number
   specificationItemId: number
-  specificationSlug: string
 }
 
 type RequirementDetailClientProps =
@@ -103,7 +103,7 @@ export default function RequirementDetailClient({
   onClose,
   specificationPermissions,
   specificationItemId,
-  specificationSlug,
+  specificationId,
   requirementId,
 }: RequirementDetailClientProps) {
   useHelpContent(inline ? null : REQUIREMENT_DETAIL_HELP)
@@ -126,7 +126,7 @@ export default function RequirementDetailClient({
   const { isSpecificationItemContext, specificationItemDetail } =
     useSpecificationItemContext({
       specificationItemId,
-      specificationSlug,
+      specificationId,
     })
 
   const [isTransitioning, setIsTransitioning] = useState(false)
@@ -1028,7 +1028,7 @@ export default function RequirementDetailClient({
 
               {isSpecificationItemContext &&
               specificationItemId != null &&
-              specificationSlug ? (
+              specificationId ? (
                 <SpecificationDeviationRail
                   canManageDeviationDrafts={
                     specificationPermissions?.canEditContent === true
@@ -1040,8 +1040,8 @@ export default function RequirementDetailClient({
                   locale={locale}
                   priorityLevel={priorityLevelForDeviation}
                   requirementId={requirementId}
+                  specificationId={specificationId}
                   specificationItemId={specificationItemId}
-                  specificationSlug={specificationSlug}
                   workflow={deviationWorkflow}
                 />
               ) : (

@@ -30,10 +30,10 @@ export interface DeviationRow {
   requirementDescription: string | null
   requirementUniqueId: string | null
   requirementVersionId: number | null
+  specificationCode: string | null
   specificationItemId: number | null
   specificationLocalRequirementId?: number | null
   specificationName: string | null
-  specificationUniqueId: string | null
   updatedAt: string | null
 }
 
@@ -107,10 +107,8 @@ function mapSqlServerDeviationRow(row: Record<string, unknown>): DeviationRow {
     specificationLocalRequirementId,
     specificationName:
       row.specificationName == null ? null : String(row.specificationName),
-    specificationUniqueId:
-      row.specificationUniqueId == null
-        ? null
-        : String(row.specificationUniqueId),
+    specificationCode:
+      row.specificationCode == null ? null : String(row.specificationCode),
     requirementDescription:
       row.requirementDescription == null
         ? null
@@ -288,7 +286,7 @@ export async function listDeviationsForSpecificationItem(
         requirement_version.description AS requirementDescription,
         specification_item.requirement_version_id AS requirementVersionId,
         specification_record.name AS specificationName,
-        specification_record.unique_id AS specificationUniqueId,
+        specification_record.specification_code AS specificationCode,
         CAST(0 AS int) AS isSpecificationLocal,
         CAST(NULL AS int) AS specificationLocalRequirementId
       FROM deviations deviation
@@ -333,7 +331,7 @@ export async function listDeviationsForSpecification(
         requirement_version.description AS requirementDescription,
         specification_item.requirement_version_id AS requirementVersionId,
         specification_record.name AS specificationName,
-        specification_record.unique_id AS specificationUniqueId,
+        specification_record.specification_code AS specificationCode,
         CAST(0 AS int) AS isSpecificationLocal,
         CAST(NULL AS int) AS specificationLocalRequirementId
       FROM deviations deviation
@@ -367,7 +365,7 @@ export async function listDeviationsForSpecification(
         specification_local_requirement.description AS requirementDescription,
         CAST(NULL AS int) AS requirementVersionId,
         specification_record.name AS specificationName,
-        specification_record.unique_id AS specificationUniqueId,
+        specification_record.specification_code AS specificationCode,
         CAST(1 AS int) AS isSpecificationLocal,
         specification_local_requirement.id AS specificationLocalRequirementId
       FROM specification_local_requirement_deviations deviation
@@ -409,7 +407,7 @@ export async function getDeviation(
         requirement_version.description AS requirementDescription,
         specification_item.requirement_version_id AS requirementVersionId,
         specification_record.name AS specificationName,
-        specification_record.unique_id AS specificationUniqueId,
+        specification_record.specification_code AS specificationCode,
         CAST(0 AS int) AS isSpecificationLocal,
         CAST(NULL AS int) AS specificationLocalRequirementId
       FROM deviations deviation
@@ -510,7 +508,7 @@ export async function listDeviationsForSpecificationLocalRequirement(
         specification_local_requirement.description AS requirementDescription,
         CAST(NULL AS int) AS requirementVersionId,
         specification_record.name AS specificationName,
-        specification_record.unique_id AS specificationUniqueId,
+        specification_record.specification_code AS specificationCode,
         CAST(1 AS int) AS isSpecificationLocal,
         specification_local_requirement.id AS specificationLocalRequirementId
       FROM specification_local_requirement_deviations deviation
@@ -635,7 +633,7 @@ export async function getSpecificationLocalDeviation(
         specification_local_requirement.description AS requirementDescription,
         CAST(NULL AS int) AS requirementVersionId,
         specification_record.name AS specificationName,
-        specification_record.unique_id AS specificationUniqueId,
+        specification_record.specification_code AS specificationCode,
         CAST(1 AS int) AS isSpecificationLocal,
         specification_local_requirement.id AS specificationLocalRequirementId
       FROM specification_local_requirement_deviations deviation

@@ -14,8 +14,8 @@ interface SpecificationDeviationRailProps {
   locale: string
   priorityLevel: { color: string; name: string | null } | null
   requirementId: number | string
+  specificationId: number
   specificationItemId: number
-  specificationSlug: string
   workflow: UseDeviationWorkflowResult
 }
 
@@ -25,7 +25,7 @@ export default function SpecificationDeviationRail({
   detailContext,
   locale,
   specificationItemId,
-  specificationSlug,
+  specificationId,
   requirementId,
   priorityLevel,
   workflow,
@@ -40,8 +40,8 @@ export default function SpecificationDeviationRail({
         deviationStep={workflow.deviationStep}
         locale={locale}
         requirementId={requirementId}
+        specificationId={specificationId}
         specificationItemId={specificationItemId}
-        specificationSlug={specificationSlug}
         variant="specification"
       />
       {workflow.deviationError && (

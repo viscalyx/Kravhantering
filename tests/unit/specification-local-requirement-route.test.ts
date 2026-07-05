@@ -26,7 +26,6 @@ const mocks = {
   createSpecificationLocalRequirement: vi.fn(),
   deleteSpecificationLocalRequirement: vi.fn(),
   getSpecificationById: vi.fn(),
-  getSpecificationBySlug: vi.fn(),
   updateSpecificationLocalRequirement: vi.fn(),
 }
 
@@ -62,8 +61,6 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mocks.deleteSpecificationLocalRequirement(...args),
   getSpecificationById: (...args: unknown[]) =>
     mocks.getSpecificationById(...args),
-  getSpecificationBySlug: (...args: unknown[]) =>
-    mocks.getSpecificationBySlug(...args),
   getSpecificationLocalRequirementDetail: vi.fn(),
   updateSpecificationLocalRequirement: (...args: unknown[]) =>
     mocks.updateSpecificationLocalRequirement(...args),
@@ -106,7 +103,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
     authState.assertAuthorized.mockResolvedValue(undefined)
     authState.createRequestContext.mockResolvedValue(mockContext)
     authState.getRequestSqlServerDataSource.mockResolvedValue(mockDb)
-    mocks.getSpecificationBySlug.mockResolvedValue({ id: 5 })
+    mocks.getSpecificationById.mockResolvedValue({ id: 5 })
   })
 
   it('returns a JSON 500 when deleting a specification-local requirement fails', async () => {
@@ -120,9 +117,9 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
     try {
       const response = await DELETE(
         new NextRequest(
-          'http://localhost/api/requirements-specifications/spec/local-requirements/41',
+          'http://localhost/api/requirements-specifications/5/local-requirements/41',
         ),
-        makeParams('spec', '41'),
+        makeParams('5', '41'),
       )
 
       expect(response.status).toBe(500)
@@ -158,9 +155,9 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
     try {
       const response = await DELETE(
         new NextRequest(
-          'http://localhost/api/requirements-specifications/spec/local-requirements/41',
+          'http://localhost/api/requirements-specifications/5/local-requirements/41',
         ),
-        makeParams('spec', '41'),
+        makeParams('5', '41'),
       )
 
       expect(response.status).toBe(409)
@@ -182,7 +179,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
   it('rejects requirement package links when updating a specification-local requirement', async () => {
     const response = await PUT(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/spec/local-requirements/41',
+        'http://localhost/api/requirements-specifications/5/local-requirements/41',
         {
           body: JSON.stringify({
             description: 'Updated local requirement',
@@ -192,7 +189,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
           method: 'PUT',
         },
       ),
-      makeParams('spec', '41'),
+      makeParams('5', '41'),
     )
 
     expect(response.status).toBe(400)
@@ -213,7 +210,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
 
     const response = await postLocalRequirement(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/spec/local-requirements',
+        'http://localhost/api/requirements-specifications/5/local-requirements',
         {
           body: JSON.stringify({
             description: 'New local requirement',
@@ -223,7 +220,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
           method: 'POST',
         },
       ),
-      { params: Promise.resolve({ id: 'spec' }) },
+      { params: Promise.resolve({ id: '5' }) },
     )
 
     expect(response.status).toBe(201)
@@ -235,12 +232,11 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
       {
         kind: 'manage_specification_local_requirement',
         operation: 'create',
-        specificationId: undefined,
-        specificationSlug: 'spec',
+        specificationId: 5,
       },
       expect.objectContaining({ requestId: 'request-1' }),
     )
-    expect(mocks.getSpecificationBySlug).toHaveBeenCalledWith(mockDb, 'spec')
+    expect(mocks.getSpecificationById).toHaveBeenCalledWith(mockDb, 5)
     expect(mocks.createSpecificationLocalRequirement).toHaveBeenCalledWith(
       mockDb,
       5,
@@ -255,7 +251,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
   it('rejects requirement package links when creating a specification-local requirement', async () => {
     const response = await postLocalRequirement(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/spec/local-requirements',
+        'http://localhost/api/requirements-specifications/5/local-requirements',
         {
           body: JSON.stringify({
             description: 'New local requirement',
@@ -265,7 +261,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
           method: 'POST',
         },
       ),
-      { params: Promise.resolve({ id: 'spec' }) },
+      { params: Promise.resolve({ id: '5' }) },
     )
 
     expect(response.status).toBe(400)
@@ -276,9 +272,9 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
   it('returns 400 when localRequirementId is not a positive integer', async () => {
     const response = await DELETE(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/spec/local-requirements/abc',
+        'http://localhost/api/requirements-specifications/5/local-requirements/abc',
       ),
-      makeParams('spec', 'abc'),
+      makeParams('5', 'abc'),
     )
 
     expect(response.status).toBe(400)
@@ -286,14 +282,14 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
     expect(mocks.deleteSpecificationLocalRequirement).not.toHaveBeenCalled()
   })
 
-  it('returns 404 when the specification slug does not resolve', async () => {
-    mocks.getSpecificationBySlug.mockResolvedValueOnce(null)
+  it('returns 404 when the specification id does not resolve', async () => {
+    mocks.getSpecificationById.mockResolvedValueOnce(null)
 
     const response = await DELETE(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/missing/local-requirements/41',
+        'http://localhost/api/requirements-specifications/404/local-requirements/41',
       ),
-      makeParams('missing', '41'),
+      makeParams('404', '41'),
     )
 
     expect(response.status).toBe(404)
@@ -306,9 +302,9 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
 
     const response = await DELETE(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/spec/local-requirements/41',
+        'http://localhost/api/requirements-specifications/5/local-requirements/41',
       ),
-      makeParams('spec', '41'),
+      makeParams('5', '41'),
     )
 
     expect(response.status).toBe(404)
@@ -327,9 +323,9 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
 
     const response = await DELETE(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/spec/local-requirements/41',
+        'http://localhost/api/requirements-specifications/5/local-requirements/41',
       ),
-      makeParams('spec', '41'),
+      makeParams('5', '41'),
     )
 
     expect(response.status).toBe(403)
@@ -342,8 +338,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
         kind: 'manage_specification_local_requirement',
         localRequirementId: 41,
         operation: 'delete',
-        specificationId: undefined,
-        specificationSlug: 'spec',
+        specificationId: 5,
       },
       expect.objectContaining({ requestId: 'request-1' }),
     )
@@ -364,9 +359,9 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
 
     const response = await DELETE(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/spec/local-requirements/41',
+        'http://localhost/api/requirements-specifications/5/local-requirements/41',
       ),
-      makeParams('spec', '41'),
+      makeParams('5', '41'),
     )
 
     expect(response.status).toBe(200)
@@ -376,8 +371,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
         kind: 'manage_specification_local_requirement',
         localRequirementId: 41,
         operation: 'delete',
-        specificationId: undefined,
-        specificationSlug: 'spec',
+        specificationId: 5,
       },
       expect.objectContaining({ requestId: 'request-1' }),
     )

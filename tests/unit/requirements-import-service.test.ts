@@ -27,7 +27,6 @@ import {
   createSpecificationLocalRequirementsBatch,
   createSpecificationLocalRequirementsBatchWithExecutor,
   getSpecificationById,
-  getSpecificationBySlug,
   listSpecificationsForActor,
 } from '@/lib/dal/requirements-specifications'
 import type { RequestContext } from '@/lib/requirements/auth'
@@ -84,7 +83,6 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   createSpecificationLocalRequirementsBatch: vi.fn(),
   createSpecificationLocalRequirementsBatchWithExecutor: vi.fn(),
   getSpecificationById: vi.fn(),
-  getSpecificationBySlug: vi.fn(),
   listSpecificationsForActor: vi.fn(),
 }))
 
@@ -231,7 +229,6 @@ describe('requirements import service', () => {
     vi.mocked(createRequirementsBatchWithExecutor).mockReset()
     vi.mocked(createSpecificationLocalRequirementsBatch).mockReset()
     vi.mocked(createSpecificationLocalRequirementsBatchWithExecutor).mockReset()
-    vi.mocked(getSpecificationBySlug).mockReset()
   })
 
   it('carries proposed norm reference form fields into preview', async () => {
@@ -1107,7 +1104,7 @@ describe('requirements import service', () => {
         updatedAt: '2026-06-01T00:00:00.000Z',
       },
     ])
-    vi.mocked(getSpecificationBySlug).mockResolvedValue({ id: 42 } as never)
+    vi.mocked(getSpecificationById).mockResolvedValue({ id: 42 } as never)
     vi.mocked(createSpecificationLocalRequirementsBatch).mockResolvedValue([
       { id: 101, uniqueId: 'REQ0001' },
     ] as never)
@@ -1131,7 +1128,7 @@ describe('requirements import service', () => {
       {
         locale: 'sv',
         payload,
-        specificationIdOrSlug: 'upphandling',
+        specificationId: 7,
       },
     )
     const row = preview.rows[0]
@@ -1157,7 +1154,7 @@ describe('requirements import service', () => {
           sourceIndex: row.sourceIndex,
         },
       ],
-      specificationIdOrSlug: 'upphandling',
+      specificationId: 7,
     })
 
     const mutationRows = vi.mocked(createSpecificationLocalRequirementsBatch)

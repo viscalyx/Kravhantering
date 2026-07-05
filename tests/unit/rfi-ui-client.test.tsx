@@ -99,7 +99,7 @@ const rfiSuggestions = [
     reviewRequestedAt: null,
     rfiQuestionId: null,
     sourceSpecificationName: 'Integration platform procurement',
-    sourceSpecificationUniqueId: 'INTPLATT-UPP-2026',
+    sourceSpecificationCode: 'INTPLATT-UPP-2026',
     specificationId: 5,
     updatedAt: '2026-06-21T09:00:00.000Z',
   },
@@ -121,7 +121,7 @@ const rfiSuggestions = [
     reviewRequestedAt: null,
     rfiQuestionId: 11,
     sourceSpecificationName: 'Integration platform procurement',
-    sourceSpecificationUniqueId: 'INTPLATT-UPP-2026',
+    sourceSpecificationCode: 'INTPLATT-UPP-2026',
     specificationId: 5,
     updatedAt: '2026-06-21T09:05:00.000Z',
   },
@@ -143,7 +143,7 @@ const rfiSuggestions = [
     reviewRequestedAt: '2026-06-21T10:00:00.000Z',
     rfiQuestionId: 11,
     sourceSpecificationName: 'Integration platform procurement',
-    sourceSpecificationUniqueId: 'INTPLATT-UPP-2026',
+    sourceSpecificationCode: 'INTPLATT-UPP-2026',
     specificationId: 5,
     updatedAt: '2026-06-21T10:00:00.000Z',
   },
@@ -165,7 +165,7 @@ const rfiSuggestions = [
     reviewRequestedAt: '2026-06-21T09:00:00.000Z',
     rfiQuestionId: 11,
     sourceSpecificationName: 'Integration platform procurement',
-    sourceSpecificationUniqueId: 'INTPLATT-UPP-2026',
+    sourceSpecificationCode: 'INTPLATT-UPP-2026',
     specificationId: 5,
     updatedAt: '2026-06-21T11:00:00.000Z',
   },
@@ -187,7 +187,7 @@ const rfiSuggestions = [
     reviewRequestedAt: '2026-06-21T10:30:00.000Z',
     rfiQuestionId: 22,
     sourceSpecificationName: 'Operations sourcing',
-    sourceSpecificationUniqueId: 'OPS-UPP-2026',
+    sourceSpecificationCode: 'OPS-UPP-2026',
     specificationId: 6,
     updatedAt: '2026-06-21T10:30:00.000Z',
   },
@@ -209,7 +209,7 @@ const rfiSuggestions = [
     reviewRequestedAt: '2026-06-21T08:00:00.000Z',
     rfiQuestionId: null,
     sourceSpecificationName: 'Operations sourcing',
-    sourceSpecificationUniqueId: 'OPS-UPP-2026',
+    sourceSpecificationCode: 'OPS-UPP-2026',
     specificationId: 6,
     updatedAt: '2026-06-21T08:30:00.000Z',
   },
@@ -640,7 +640,7 @@ describe('RFI client UI states', () => {
       ],
       lockedAt: null,
       lockedByDisplayName: null,
-      specificationId: 5,
+      specificationId: 1,
     }
     const initialSuggestions = [
       {
@@ -650,7 +650,7 @@ describe('RFI client UI states', () => {
         isReviewRequested: false,
         resolution: null,
         rfiQuestionId: 11,
-        specificationId: 5,
+        specificationId: 1,
       },
       {
         areaId: 1,
@@ -659,7 +659,7 @@ describe('RFI client UI states', () => {
         isReviewRequested: true,
         resolution: null,
         rfiQuestionId: 11,
-        specificationId: 5,
+        specificationId: 1,
       },
       {
         areaId: 1,
@@ -668,17 +668,17 @@ describe('RFI client UI states', () => {
         isReviewRequested: true,
         resolution: 1,
         rfiQuestionId: 11,
-        specificationId: 5,
+        specificationId: 1,
       },
     ]
     fetchMock.mockImplementation(
       (url: RequestInfo | URL, init?: RequestInit) => {
         const href = String(url)
-        if (href === '/api/requirements-specifications/SPEC-1/rfi-list') {
+        if (href === '/api/requirements-specifications/1/rfi-list') {
           return Promise.resolve(okJson({ list: rfiList }))
         }
         if (
-          href === '/api/rfi-question-suggestions?areaId=1&specificationId=5'
+          href === '/api/rfi-question-suggestions?areaId=1&specificationId=1'
         ) {
           return Promise.resolve(okJson({ suggestions: initialSuggestions }))
         }
@@ -695,7 +695,7 @@ describe('RFI client UI states', () => {
                 isReviewRequested: false,
                 resolution: null,
                 rfiQuestionId: 11,
-                specificationId: 5,
+                specificationId: 1,
               },
             }),
           )
@@ -710,16 +710,12 @@ describe('RFI client UI states', () => {
       },
     )
     const { default: SpecificationRfiListPanel } = await import(
-      '@/app/[locale]/specifications/[slug]/specification-rfi-list-panel'
+      '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
     )
 
     render(
       <ConfirmModalProvider>
-        <SpecificationRfiListPanel
-          canEdit
-          specificationId={5}
-          specificationSlug="SPEC-1"
-        />
+        <SpecificationRfiListPanel canEdit specificationId={1} />
       </ConfirmModalProvider>,
     )
 
@@ -731,7 +727,7 @@ describe('RFI client UI states', () => {
     )
 
     const viewButton = await screen.findByRole('button', {
-      name: 'specificationRfiList.viewQuestionSuggestions',
+      name: /^specificationRfiList\.viewQuestionSuggestions/u,
     })
     expect(viewButton).toHaveTextContent('3')
     await userEvent.click(viewButton)
@@ -792,7 +788,7 @@ describe('RFI client UI states', () => {
       areaId: 1,
       content: 'Add a question about log exports.',
       rfiQuestionId: 11,
-      specificationId: 5,
+      specificationId: 1,
     })
     expect(
       screen.getByText('specificationRfiList.suggestionCreated'),
@@ -845,7 +841,7 @@ describe('RFI client UI states', () => {
       ],
       lockedAt: null,
       lockedByDisplayName: null,
-      specificationId: 5,
+      specificationId: 1,
     }
     const updatedList = {
       ...initialList,
@@ -857,17 +853,17 @@ describe('RFI client UI states', () => {
     fetchMock.mockImplementation(
       (url: RequestInfo | URL, init?: RequestInit) => {
         const href = String(url)
-        if (href === '/api/requirements-specifications/SPEC-1/rfi-list') {
+        if (href === '/api/requirements-specifications/1/rfi-list') {
           return Promise.resolve(okJson({ list: initialList }))
         }
         if (
-          href === '/api/rfi-question-suggestions?areaId=1&specificationId=5' ||
-          href === '/api/rfi-question-suggestions?areaId=2&specificationId=5'
+          href === '/api/rfi-question-suggestions?areaId=1&specificationId=1' ||
+          href === '/api/rfi-question-suggestions?areaId=2&specificationId=1'
         ) {
           return Promise.resolve(okJson({ suggestions: [] }))
         }
         if (
-          href === '/api/requirements-specifications/SPEC-1/rfi-list/areas/1' &&
+          href === '/api/requirements-specifications/1/rfi-list/areas/1' &&
           init?.method === 'PATCH'
         ) {
           return Promise.resolve(okJson({ list: updatedList }))
@@ -876,16 +872,12 @@ describe('RFI client UI states', () => {
       },
     )
     const { default: SpecificationRfiListPanel } = await import(
-      '@/app/[locale]/specifications/[slug]/specification-rfi-list-panel'
+      '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
     )
 
     render(
       <ConfirmModalProvider>
-        <SpecificationRfiListPanel
-          canEdit
-          specificationId={5}
-          specificationSlug="SPEC-1"
-        />
+        <SpecificationRfiListPanel canEdit specificationId={1} />
       </ConfirmModalProvider>,
     )
 
@@ -937,14 +929,13 @@ describe('RFI client UI states', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements-specifications/SPEC-1/rfi-list/areas/1',
+        '/api/requirements-specifications/1/rfi-list/areas/1',
         expect.objectContaining({ method: 'PATCH' }),
       )
     })
     const areaUpdateCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        String(url) ===
-          '/api/requirements-specifications/SPEC-1/rfi-list/areas/1' &&
+        String(url) === '/api/requirements-specifications/1/rfi-list/areas/1' &&
         init?.method === 'PATCH',
     )
     expect(JSON.parse(String(areaUpdateCall?.[1]?.body))).toEqual({
@@ -994,7 +985,7 @@ describe('RFI client UI states', () => {
       ],
       lockedAt: null,
       lockedByDisplayName: null,
-      specificationId: 5,
+      specificationId: 1,
     }
     const lockedList = {
       ...unlockedList,
@@ -1005,16 +996,16 @@ describe('RFI client UI states', () => {
     fetchMock.mockImplementation(
       (url: RequestInfo | URL, init?: RequestInit) => {
         const href = String(url)
-        if (href === '/api/requirements-specifications/SPEC-1/rfi-list') {
+        if (href === '/api/requirements-specifications/1/rfi-list') {
           return Promise.resolve(okJson({ list: unlockedList }))
         }
         if (
-          href === '/api/rfi-question-suggestions?areaId=1&specificationId=5'
+          href === '/api/rfi-question-suggestions?areaId=1&specificationId=1'
         ) {
           return Promise.resolve(okJson({ suggestions: [] }))
         }
         if (
-          href === '/api/requirements-specifications/SPEC-1/rfi-list/lock' &&
+          href === '/api/requirements-specifications/1/rfi-list/lock' &&
           init?.method === 'POST'
         ) {
           return Promise.resolve(okJson({ list: lockedList }))
@@ -1023,16 +1014,12 @@ describe('RFI client UI states', () => {
       },
     )
     const { default: SpecificationRfiListPanel } = await import(
-      '@/app/[locale]/specifications/[slug]/specification-rfi-list-panel'
+      '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
     )
 
     render(
       <ConfirmModalProvider>
-        <SpecificationRfiListPanel
-          canEdit
-          specificationId={5}
-          specificationSlug="SPEC-1"
-        />
+        <SpecificationRfiListPanel canEdit specificationId={1} />
       </ConfirmModalProvider>,
     )
 

@@ -9,7 +9,6 @@ import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import {
   type SpecificationImportPreviewBody as Body,
   specificationImportPreviewBodySchema as bodySchema,
-  specificationActionTarget,
 } from '../_shared'
 
 export const POST = secureMutationRoute({
@@ -17,7 +16,7 @@ export const POST = secureMutationRoute({
   policy: requirementsMutationPolicy<Body>(({ body }) => ({
     kind: 'manage_specification_local_requirement',
     operation: 'create',
-    ...specificationActionTarget(body.specificationIdOrSlug),
+    specificationId: body.specificationId,
   })),
   handler: async ({ body, context, request }) => {
     try {
@@ -27,7 +26,7 @@ export const POST = secureMutationRoute({
       const preview = await service.previewSpecificationLocalImport(context, {
         locale: body.locale,
         payload: body.payload,
-        specificationIdOrSlug: body.specificationIdOrSlug,
+        specificationId: body.specificationId,
       })
       return NextResponse.json(preview, {
         headers: { 'Cache-Control': 'no-store' },

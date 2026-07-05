@@ -8,10 +8,7 @@ import {
   recordDecision,
   updateDeviation,
 } from '@/lib/dal/deviations'
-import {
-  type GraduatedRequirementResult,
-  getSpecificationBySlug,
-} from '@/lib/dal/requirements-specifications'
+import type { GraduatedRequirementResult } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   type AuthorizationService,
@@ -20,7 +17,7 @@ import {
   type RequirementsAction,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
-import { notFoundError, validationError } from '@/lib/requirements/errors'
+import { validationError } from '@/lib/requirements/errors'
 import type {
   ImportExecuteBody,
   ImportRequirementsPayload,
@@ -51,6 +48,7 @@ import { createRequirementWorkflow } from '@/lib/requirements/service-requiremen
 import {
   authorize,
   createServiceMessage,
+  resolveSpecificationIdOrThrow,
   withLogging,
 } from '@/lib/requirements/service-shared'
 import { createSpecificationWorkflow } from '@/lib/requirements/service-specifications'
@@ -195,8 +193,7 @@ export interface TransitionRequirementInput extends RequirementRefInput {
 }
 
 export interface SpecificationRefInput {
-  specificationId?: number
-  specificationSlug?: string
+  specificationId: number
 }
 
 export interface ListSpecificationsInput {
@@ -275,10 +272,10 @@ export interface ListSpecificationsOutput {
     responsibleDisplayName?: string | null
     responsibleHsaId?: string
     governanceObjectType: { id?: number; nameSv: string; nameEn: string } | null
+    specificationCode: string
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
     specificationGovernanceObjectTypeId?: number | null
-    uniqueId: string
     updatedAt?: string
   }[]
 }
@@ -383,7 +380,7 @@ export interface RequirementsService {
   executeSpecificationLocalImport(
     context: RequestContext,
     input: Omit<ImportExecuteBody, 'areaId'> & {
-      specificationIdOrSlug: string
+      specificationId: number
     },
   ): Promise<RequirementsImportExecuteResult>
 
@@ -421,7 +418,6 @@ export interface RequirementsService {
     input: {
       locale?: ResponseLocale
       specificationId?: number
-      specificationSlug?: string
       responseFormat?: ResponseFormat
     },
   ): Promise<ListDeviationsOutput>
@@ -508,7 +504,7 @@ export interface RequirementsService {
     input: {
       locale: ResponseLocale
       payload: ImportRequirementsPayload
-      specificationIdOrSlug: string
+      specificationId: number
     },
   ): Promise<RequirementsImportPreview>
   queryCatalog(
@@ -527,34 +523,6 @@ export interface RequirementsService {
     message: string
     version: RequirementVersionDetail
   }>
-}
-
-async function resolveSpecificationIdOrThrow(
-  db: SqlServerDatabase,
-  input: SpecificationRefInput,
-) {
-  if (input.specificationId == null && input.specificationSlug == null) {
-    throw validationError('Missing specification reference', {
-      specificationId: input.specificationId,
-      specificationSlug: input.specificationSlug,
-    })
-  }
-
-  const specificationId =
-    input.specificationId != null
-      ? input.specificationId
-      : input.specificationSlug
-        ? (await getSpecificationBySlug(db, input.specificationSlug))?.id
-        : undefined
-
-  if (specificationId == null) {
-    throw notFoundError('Specification not found.', {
-      specificationId: input.specificationId,
-      specificationSlug: input.specificationSlug,
-    })
-  }
-
-  return specificationId
 }
 
 export function createRequirementsService(
@@ -584,7 +552,6 @@ export function createRequirementsService(
         {
           kind: 'list_deviations',
           specificationId: input.specificationId,
-          specificationSlug: input.specificationSlug,
         } as RequirementsAction,
         context,
       )
@@ -595,10 +562,16 @@ export function createRequirementsService(
         'requirements.list_deviations',
         {
           specification_id: input.specificationId ?? null,
-          specification_slug: input.specificationSlug ?? null,
         },
         async () => {
-          const specificationId = await resolveSpecificationIdOrThrow(db, input)
+          if (input.specificationId == null) {
+            throw validationError('Missing specification reference', {
+              reason: 'missing_specification_id',
+            })
+          }
+          const specificationId = await resolveSpecificationIdOrThrow({
+            specificationId: input.specificationId,
+          })
           const rows = await listDeviationsForSpecification(db, specificationId)
           const counts = await countDeviationsBySpecification(
             db,

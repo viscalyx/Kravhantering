@@ -3,11 +3,9 @@ import { z } from 'zod'
 import {
   deleteSpecificationLocalRequirement,
   getSpecificationById,
-  getSpecificationBySlug,
   getSpecificationLocalRequirementDetail,
   updateSpecificationLocalRequirement,
 } from '@/lib/dal/requirements-specifications'
-import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
@@ -16,9 +14,9 @@ import {
 } from '@/lib/http/secure-mutation-route'
 import { specificationLocalRequirementSchema } from '@/lib/http/specification-local-requirement-validation'
 import {
+  idParamSchema,
   parseRouteParams,
   positiveIntegerStringSchema,
-  specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import type { RequirementsAction } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
@@ -30,7 +28,7 @@ type Params = Promise<{ id: string; localRequirementId: string }>
 
 const specificationLocalRequirementParamSchema = z
   .object({
-    id: specificationIdOrSlugSchema,
+    id: idParamSchema.shape.id,
     localRequirementId: positiveIntegerStringSchema,
   })
   .strict()
@@ -46,28 +44,12 @@ function specificationLocalRequirementAction(
   operation: string,
   params: SpecificationLocalRequirementParams,
 ): RequirementsAction {
-  const specificationId = /^\d+$/.test(params.id)
-    ? Number(params.id)
-    : undefined
-
   return {
     kind: 'manage_specification_local_requirement',
     localRequirementId: params.localRequirementId,
     operation,
-    specificationId,
-    specificationSlug: specificationId === undefined ? params.id : undefined,
+    specificationId: params.id,
   }
-}
-
-async function resolveSpecificationId(
-  db: SqlServerDatabase,
-  idOrSlug: string,
-): Promise<number | null> {
-  if (/^\d+$/.test(idOrSlug)) {
-    return (await getSpecificationById(db, Number(idOrSlug)))?.id ?? null
-  }
-
-  return (await getSpecificationBySlug(db, idOrSlug))?.id ?? null
 }
 
 export async function GET(
@@ -84,14 +66,14 @@ export async function GET(
   const { id, localRequirementId: numericLocalRequirementId } =
     parsedParams.data
   const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolveSpecificationId(db, id)
-  if (specificationId === null) {
+  const specification = await getSpecificationById(db, id)
+  if (!specification) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const requirement = await getSpecificationLocalRequirementDetail(
     db,
-    specificationId,
+    specification.id,
     numericLocalRequirementId,
   )
   if (!requirement) {
@@ -113,15 +95,15 @@ export const PUT = secureMutationRoute<
   handler: async ({ body, db: authorizationDb, params }) => {
     const { id, localRequirementId: numericLocalRequirementId } = params
     const db = authorizationDb ?? (await getRequestSqlServerDataSource())
-    const specificationId = await resolveSpecificationId(db, id)
-    if (specificationId === null) {
+    const specification = await getSpecificationById(db, id)
+    if (!specification) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     try {
       const localRequirement = await updateSpecificationLocalRequirement(
         db,
-        specificationId,
+        specification.id,
         numericLocalRequirementId,
         {
           acceptanceCriteria: body.acceptanceCriteria ?? null,
@@ -167,15 +149,15 @@ export const DELETE = secureMutationRoute<
   handler: async ({ db: authorizationDb, params }) => {
     const { id, localRequirementId: numericLocalRequirementId } = params
     const db = authorizationDb ?? (await getRequestSqlServerDataSource())
-    const specificationId = await resolveSpecificationId(db, id)
-    if (specificationId === null) {
+    const specification = await getSpecificationById(db, id)
+    if (!specification) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     try {
       const deleted = await deleteSpecificationLocalRequirement(
         db,
-        specificationId,
+        specification.id,
         numericLocalRequirementId,
       )
       if (!deleted) {

@@ -5,7 +5,6 @@ import {
   rfiQuestionSuggestionQuerySchema,
 } from '@/app/api/rfi-questions/_schemas'
 import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
-import { resolveSpecificationId } from '@/lib/dal/requirement-selection-questions'
 import {
   createRfiQuestionSuggestion,
   listRfiQuestionSuggestions,
@@ -133,7 +132,6 @@ const createPolicy = {
     kind: 'manage_rfi_question_suggestion',
     operation: 'create',
     specificationId: body.specificationId,
-    specificationSlug: body.specificationSlug,
   }),
   kind: 'requirements',
 } satisfies MutationPolicy<RfiQuestionSuggestionCreateBody, undefined>
@@ -144,24 +142,13 @@ export const POST = secureMutationRoute({
   handler: async ({ body, context, db }) => {
     const activeDb = db ?? (await getRequestSqlServerDataSource())
     const actor = requireHumanActorSnapshot(context)
-    const specificationId =
-      body.specificationId ??
-      (body.specificationSlug
-        ? await resolveSpecificationId(activeDb, body.specificationSlug)
-        : null)
-    if (body.specificationSlug && !specificationId) {
-      return NextResponse.json(
-        { error: 'Specification not found' },
-        { status: 404 },
-      )
-    }
     const suggestion = await createRfiQuestionSuggestion(
       activeDb,
       {
         areaId: body.areaId,
         content: body.content,
         rfiQuestionId: body.rfiQuestionId ?? null,
-        specificationId,
+        specificationId: body.specificationId ?? null,
       },
       actor,
     )

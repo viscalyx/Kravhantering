@@ -203,7 +203,7 @@ const ImportDestinationOutputSchema = z
     SpecificationDestinationRefSchema.extend({
       match: McpSearchMatchOutputSchema.optional(),
       name: z.string(),
-      uniqueId: z.string(),
+      specificationCode: z.string(),
     }).strict(),
   ])
   .describe(
@@ -1365,26 +1365,9 @@ function createGraduationTargetAreasSchema() {
         .number()
         .int()
         .positive()
-        .optional()
         .describe('Numeric ID of the source requirements specification.'),
-      specificationSlug: z
-        .string()
-        .optional()
-        .describe(
-          'Slug (uniqueId) of the source requirements specification, e.g. "SAKLYFT-INFOR-Q2".',
-        ),
     })
     .strict()
-    .superRefine((val, ctx) => {
-      if ((val.specificationId == null) === (val.specificationSlug == null)) {
-        ctx.addIssue({
-          code: 'custom',
-          message:
-            'Provide exactly one of specificationId or specificationSlug.',
-          path: ['specificationId'],
-        })
-      }
-    })
 }
 
 function createGraduateLocalRequirementSchema() {
@@ -1410,26 +1393,9 @@ function createGraduateLocalRequirementSchema() {
         .number()
         .int()
         .positive()
-        .optional()
         .describe('Numeric ID of the source requirements specification.'),
-      specificationSlug: z
-        .string()
-        .optional()
-        .describe(
-          'Slug (uniqueId) of the source requirements specification, e.g. "SAKLYFT-INFOR-Q2".',
-        ),
     })
     .strict()
-    .superRefine((val, ctx) => {
-      if ((val.specificationId == null) === (val.specificationSlug == null)) {
-        ctx.addIssue({
-          code: 'custom',
-          message:
-            'Provide exactly one of specificationId or specificationSlug.',
-          path: ['specificationId'],
-        })
-      }
-    })
 }
 
 function toCatalogInput(
@@ -1508,7 +1474,6 @@ function toGraduationTargetAreasInput(
     localRequirementId: input.localRequirementId,
     responseFormat: toResponseFormat(input.responseFormat),
     specificationId: input.specificationId,
-    specificationSlug: input.specificationSlug,
   }
 }
 
@@ -1521,7 +1486,6 @@ function toGraduateLocalRequirementInput(
     requirementAreaId: input.requirementAreaId,
     responseFormat: toResponseFormat(input.responseFormat),
     specificationId: input.specificationId,
-    specificationSlug: input.specificationSlug,
   }
 }
 
@@ -1572,10 +1536,7 @@ export function createKravhanteringMcpServer(
   )
 
   const specificationIdCopyPath =
-    'Copy requirements_list_specifications.specifications[].id -> specificationId.'
-  const specificationSlugCopyPath =
-    'Copy requirements_list_specifications.specifications[].uniqueId -> specificationSlug.'
-  const specificationIdentifierCopyPaths = `${specificationIdCopyPath} ${specificationSlugCopyPath}`
+    'Copy requirements_list_specifications.specifications[].specificationId -> specificationId.'
   const addRequirementIdsCopyPath =
     'Copy requirements_query_catalog.items[].id -> requirementIds.'
   const removeRequirementIdsCopyPath =
@@ -2046,7 +2007,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: true,
       },
-      description: `List all requirements specifications, optionally filtered by name. Returns id, uniqueId (slug), names, item count, governance object type, and implementation type for each specification. ${specificationIdentifierCopyPaths}`,
+      description: `List all requirements specifications, optionally filtered by name. Returns specificationId, specificationCode, names, item count, governance object type, and implementation type for each specification. ${specificationIdCopyPath}`,
       inputSchema: z
         .object({
           locale: ResponseLocaleSchema,
@@ -2066,7 +2027,8 @@ export function createKravhanteringMcpServer(
             z
               .object({
                 businessNeedsReference: z.string().nullable(),
-                id: z.number(),
+                specificationId: z.number(),
+                specificationCode: z.string(),
                 implementationType: z
                   .object({ nameEn: z.string(), nameSv: z.string() })
                   .nullable(),
@@ -2075,7 +2037,6 @@ export function createKravhanteringMcpServer(
                 governanceObjectType: z
                   .object({ nameEn: z.string(), nameSv: z.string() })
                   .nullable(),
-                uniqueId: z.string(),
               })
               .strict(),
           ),
@@ -2093,9 +2054,21 @@ export function createKravhanteringMcpServer(
             responseFormat: toResponseFormat(input.responseFormat),
           },
         )
+        const structuredPayload = {
+          ...payload,
+          specifications: payload.specifications.map(
+            ({ id, ...specification }) => ({
+              ...specification,
+              specificationId: id,
+            }),
+          ),
+        }
         return {
           content: [{ text: payload.message, type: 'text' }],
-          structuredContent: payload as unknown as Record<string, unknown>,
+          structuredContent: structuredPayload as unknown as Record<
+            string,
+            unknown
+          >,
         }
       } catch (error) {
         return formatError(error)
@@ -2112,7 +2085,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: true,
       },
-      description: `List requirements (krav) linked to a specific requirements specification, with optional description search. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2") from requirements_list_specifications. ${specificationIdentifierCopyPaths}`,
+      description: `List requirements (krav) linked to a specific requirements specification, with optional description search. Identify the specification with specificationId from requirements_list_specifications. ${specificationIdCopyPath}`,
       inputSchema: z
         .object({
           descriptionSearch: z
@@ -2126,31 +2099,12 @@ export function createKravhanteringMcpServer(
             .number()
             .int()
             .positive()
-            .optional()
             .describe(
               `Numeric ID of the requirements specification. ${specificationIdCopyPath}`,
             ),
-          specificationSlug: z
-            .string()
-            .optional()
-            .describe(
-              `Slug (uniqueId) of the requirements specification, e.g. "SAKLYFT-INFOR-Q2". ${specificationSlugCopyPath}`,
-            ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
-        .strict()
-        .superRefine((val, ctx) => {
-          if (
-            (val.specificationId == null) ===
-            (val.specificationSlug == null)
-          ) {
-            ctx.addIssue({
-              code: 'custom',
-              message:
-                'Provide exactly one of specificationId or specificationSlug.',
-            })
-          }
-        }),
+        .strict(),
       outputSchema: z
         .object({
           items: z.array(
@@ -2181,7 +2135,6 @@ export function createKravhanteringMcpServer(
             descriptionSearch: input.descriptionSearch,
             locale: toResponseLocale(input.locale),
             specificationId: input.specificationId,
-            specificationSlug: input.specificationSlug,
             responseFormat: toResponseFormat(input.responseFormat),
           },
         )
@@ -2205,7 +2158,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List the requirement areas this actor may use as targets when copying a unique requirement into the library, regardless of its usage status. Use requirements_list_specifications and requirements_get_specification_items to identify the source, pass the same specificationId or specificationSlug plus localRequirementId here, then use one returned areas[].id value as requirements_graduate_local_requirement requirementAreaId.',
+        'List the requirement areas this actor may use as targets when copying a unique requirement into the library, regardless of its usage status. Use requirements_list_specifications and requirements_get_specification_items to identify the source, pass the same specificationId plus localRequirementId here, then use one returned areas[].id value as requirements_graduate_local_requirement requirementAreaId.',
       inputSchema: createGraduationTargetAreasSchema(),
       outputSchema: GraduationTargetAreasOutputSchema,
       title: 'List Graduation Target Requirement Areas',
@@ -2284,7 +2237,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: false,
       },
-      description: `Link one or more requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach an existing needsReferenceId or create a new needsReferenceText plus needsReferenceDescription for all added items. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2"). ${specificationIdentifierCopyPaths} ${addRequirementIdsCopyPath}`,
+      description: `Link one or more requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach an existing needsReferenceId or create a new needsReferenceText plus needsReferenceDescription for all added items. Identify the specification with specificationId. ${specificationIdCopyPath} ${addRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
           locale: ResponseLocaleSchema,
@@ -2312,15 +2265,8 @@ export function createKravhanteringMcpServer(
             .number()
             .int()
             .positive()
-            .optional()
             .describe(
               `Numeric ID of the requirements specification. ${specificationIdCopyPath}`,
-            ),
-          specificationSlug: z
-            .string()
-            .optional()
-            .describe(
-              `Slug (uniqueId) of the requirements specification, e.g. "SAKLYFT-INFOR-Q2". ${specificationSlugCopyPath}`,
             ),
           requirementIds: z
             .array(z.number().int().positive())
@@ -2332,16 +2278,6 @@ export function createKravhanteringMcpServer(
         })
         .strict()
         .superRefine((val, ctx) => {
-          if (
-            (val.specificationId == null) ===
-            (val.specificationSlug == null)
-          ) {
-            ctx.addIssue({
-              code: 'custom',
-              message:
-                'Provide exactly one of specificationId or specificationSlug.',
-            })
-          }
           if (val.needsReferenceId != null && val.needsReferenceText != null) {
             ctx.addIssue({
               code: 'custom',
@@ -2381,7 +2317,6 @@ export function createKravhanteringMcpServer(
             needsReferenceId: input.needsReferenceId,
             needsReferenceText: input.needsReferenceText,
             specificationId: input.specificationId,
-            specificationSlug: input.specificationSlug,
             requirementIds: input.requirementIds,
             responseFormat: toResponseFormat(input.responseFormat),
           },
@@ -2405,7 +2340,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: false,
       },
-      description: `Unlink one or more requirements from a requirements specification. The requirements themselves are not deleted. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2"). ${specificationIdentifierCopyPaths} ${removeRequirementIdsCopyPath}`,
+      description: `Unlink one or more requirements from a requirements specification. The requirements themselves are not deleted. Identify the specification with specificationId. ${specificationIdCopyPath} ${removeRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
           locale: ResponseLocaleSchema,
@@ -2413,15 +2348,8 @@ export function createKravhanteringMcpServer(
             .number()
             .int()
             .positive()
-            .optional()
             .describe(
               `Numeric ID of the requirements specification. ${specificationIdCopyPath}`,
-            ),
-          specificationSlug: z
-            .string()
-            .optional()
-            .describe(
-              `Slug (uniqueId) of the requirements specification, e.g. "SAKLYFT-INFOR-Q2". ${specificationSlugCopyPath}`,
             ),
           requirementIds: z
             .array(z.number().int().positive())
@@ -2431,19 +2359,7 @@ export function createKravhanteringMcpServer(
             ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
-        .strict()
-        .superRefine((val, ctx) => {
-          if (
-            (val.specificationId == null) ===
-            (val.specificationSlug == null)
-          ) {
-            ctx.addIssue({
-              code: 'custom',
-              message:
-                'Provide exactly one of specificationId or specificationSlug.',
-            })
-          }
-        }),
+        .strict(),
       outputSchema: z
         .object({
           message: z.string(),
@@ -2462,7 +2378,6 @@ export function createKravhanteringMcpServer(
           {
             locale: toResponseLocale(input.locale),
             specificationId: input.specificationId,
-            specificationSlug: input.specificationSlug,
             requirementIds: input.requirementIds,
             responseFormat: toResponseFormat(input.responseFormat),
           },

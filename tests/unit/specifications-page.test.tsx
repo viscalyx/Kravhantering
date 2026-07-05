@@ -5,6 +5,9 @@ const navigationMocks = vi.hoisted(() => ({
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')
   }),
+  redirect: vi.fn((url: string) => {
+    throw new Error(`NEXT_REDIRECT:${url}`)
+  }),
 }))
 
 vi.mock('next-intl/server', () => ({
@@ -13,6 +16,7 @@ vi.mock('next-intl/server', () => ({
 
 vi.mock('next/navigation', () => ({
   notFound: navigationMocks.notFound,
+  redirect: navigationMocks.redirect,
 }))
 
 vi.mock('@/i18n/routing', () => ({
@@ -33,16 +37,16 @@ vi.mock('@/app/[locale]/specifications/specifications-client', () => ({
 }))
 
 vi.mock(
-  '@/app/[locale]/specifications/[slug]/requirements-specification-detail-client',
+  '@/app/[locale]/specifications/[specificationId]/requirements-specification-detail-client',
   () => ({
     default: ({
       initialData,
-      specificationSlug,
+      specificationId,
     }: {
       initialData: { specificationItems: unknown[] }
-      specificationSlug: string
+      specificationId: number
     }) => (
-      <div>{`RequirementsSpecificationDetailClient mounted: ${specificationSlug} (${initialData.specificationItems.length})`}</div>
+      <div>{`RequirementsSpecificationDetailClient mounted: ${specificationId} (${initialData.specificationItems.length})`}</div>
     ),
   }),
 )
@@ -54,6 +58,9 @@ vi.mock('@/lib/specifications/preload', () => ({
   loadRequirementsSpecificationsInitialData: vi.fn(async () => ({
     specifications: [{ id: 1 }],
   })),
+  resolveRequirementsSpecificationRouteParam: vi.fn(async (value: string) =>
+    value === 'MISSING' ? null : { fromCode: false, id: Number(value) },
+  ),
 }))
 
 describe('specifications pages', () => {
@@ -78,35 +85,60 @@ describe('specifications pages', () => {
     expect(loadRequirementsSpecificationsInitialData).toHaveBeenCalledWith()
   })
 
-  it('RequirementsSpecificationDetailPage passes the slug to RequirementsSpecificationDetailClient', async () => {
+  it('RequirementsSpecificationDetailPage passes the numeric id to RequirementsSpecificationDetailClient', async () => {
     const { default: RequirementsSpecificationDetailPage } = await import(
-      '@/app/[locale]/specifications/[slug]/page'
+      '@/app/[locale]/specifications/[specificationId]/page'
     )
     const { loadRequirementsSpecificationDetailInitialData } = await import(
       '@/lib/specifications/preload'
     )
 
     const element = await RequirementsSpecificationDetailPage({
-      params: Promise.resolve({ locale: 'en', slug: 'ETJANST-UPP-2026' }),
+      params: Promise.resolve({ locale: 'en', specificationId: '8' }),
     })
 
     render(element)
     expect(
-      screen.getByText(
-        'RequirementsSpecificationDetailClient mounted: ETJANST-UPP-2026 (1)',
-      ),
+      screen.getByText('RequirementsSpecificationDetailClient mounted: 8 (1)'),
     ).toBeInTheDocument()
     expect(loadRequirementsSpecificationDetailInitialData).toHaveBeenCalledWith(
       {
         locale: 'en',
-        slug: 'ETJANST-UPP-2026',
+        specificationId: 8,
       },
+    )
+  })
+
+  it('RequirementsSpecificationDetailPage redirects specification-code aliases to the numeric URL', async () => {
+    const { default: RequirementsSpecificationDetailPage } = await import(
+      '@/app/[locale]/specifications/[specificationId]/page'
+    )
+    const { resolveRequirementsSpecificationRouteParam } = await import(
+      '@/lib/specifications/preload'
+    )
+    vi.mocked(resolveRequirementsSpecificationRouteParam).mockResolvedValueOnce(
+      {
+        fromCode: true,
+        id: 8,
+      },
+    )
+
+    await expect(
+      RequirementsSpecificationDetailPage({
+        params: Promise.resolve({
+          locale: 'sv',
+          specificationId: 'ETJANST-UPP-2026',
+        }),
+      }),
+    ).rejects.toThrow('NEXT_REDIRECT:/sv/specifications/8')
+    expect(navigationMocks.redirect).toHaveBeenCalledWith(
+      '/sv/specifications/8',
     )
   })
 
   it('RequirementsSpecificationDetailPage renders a localized forbidden surface with responsible contact', async () => {
     const { default: RequirementsSpecificationDetailPage } = await import(
-      '@/app/[locale]/specifications/[slug]/page'
+      '@/app/[locale]/specifications/[specificationId]/page'
     )
     const { loadRequirementsSpecificationDetailInitialData } = await import(
       '@/lib/specifications/preload'
@@ -122,14 +154,14 @@ describe('specifications pages', () => {
         },
         specification: {
           name: 'E-tjänstupphandling',
-          uniqueId: 'ETJANST-UPP-2026',
+          specificationCode: 'ETJANST-UPP-2026',
         },
       },
       specificationItems: [],
     } as never)
 
     const element = await RequirementsSpecificationDetailPage({
-      params: Promise.resolve({ locale: 'sv', slug: 'ETJANST-UPP-2026' }),
+      params: Promise.resolve({ locale: 'sv', specificationId: '8' }),
     })
 
     render(element)
@@ -143,21 +175,11 @@ describe('specifications pages', () => {
 
   it('RequirementsSpecificationDetailPage delegates missing specifications to notFound', async () => {
     const { default: RequirementsSpecificationDetailPage } = await import(
-      '@/app/[locale]/specifications/[slug]/page'
+      '@/app/[locale]/specifications/[specificationId]/page'
     )
-    const { loadRequirementsSpecificationDetailInitialData } = await import(
-      '@/lib/specifications/preload'
-    )
-    vi.mocked(
-      loadRequirementsSpecificationDetailInitialData,
-    ).mockResolvedValueOnce({
-      notFound: true,
-      specificationItems: [],
-    } as never)
-
     await expect(
       RequirementsSpecificationDetailPage({
-        params: Promise.resolve({ locale: 'sv', slug: 'MISSING' }),
+        params: Promise.resolve({ locale: 'sv', specificationId: 'MISSING' }),
       }),
     ).rejects.toThrow('NEXT_NOT_FOUND')
     expect(navigationMocks.notFound).toHaveBeenCalled()

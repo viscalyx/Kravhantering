@@ -3,25 +3,25 @@ import { z } from 'zod'
 import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
 import {
   replaceSpecificationRequirementSelectionAnswers,
-  resolveSpecificationId,
   type SpecificationRequirementSelectionQuestionRow,
 } from '@/lib/dal/requirement-selection-questions'
+import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
+  idParamSchema,
   positiveIntegerSchema,
   positiveIntegerStringSchema,
-  specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import { DELETED_USER_INTERNAL_NAME } from '@/lib/privacy/display-name'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 const paramsSchema = z
   .object({
-    id: specificationIdOrSlugSchema,
+    id: idParamSchema.shape.id,
     questionId: positiveIntegerStringSchema,
   })
   .strict()
@@ -41,10 +41,11 @@ export const PUT = secureMutationRoute({
   ),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const specificationId = await resolveSpecificationId(db, params.id)
-    if (!specificationId) {
+    const specification = await getSpecificationById(db, params.id)
+    if (!specification) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
+    const specificationId = specification.id
     let questions: SpecificationRequirementSelectionQuestionRow[]
     try {
       questions = await replaceSpecificationRequirementSelectionAnswers(

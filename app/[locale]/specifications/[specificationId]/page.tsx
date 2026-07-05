@@ -1,9 +1,12 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { routing } from '@/i18n/routing'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
-import { loadRequirementsSpecificationDetailInitialData } from '@/lib/specifications/preload'
+import {
+  loadRequirementsSpecificationDetailInitialData,
+  resolveRequirementsSpecificationRouteParam,
+} from '@/lib/specifications/preload'
 import RequirementsSpecificationDetailClient from './requirements-specification-detail-client'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -11,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t('specifications') }
 }
 
-type Params = Promise<{ locale: string; slug: string }>
+type Params = Promise<{ locale: string; specificationId: string }>
 
 function resolveLocale(requestedLocale: string): 'sv' | 'en' {
   return routing.locales.includes(requestedLocale as 'sv' | 'en')
@@ -24,11 +27,23 @@ export default async function RequirementsSpecificationDetailPage({
 }: {
   params: Params
 }) {
-  const { locale: requestedLocale, slug } = await params
+  const { locale: requestedLocale, specificationId: specificationIdParam } =
+    await params
   const locale = resolveLocale(requestedLocale)
+  const resolvedSpecification =
+    await resolveRequirementsSpecificationRouteParam(specificationIdParam)
+  if (!resolvedSpecification) {
+    notFound()
+  }
+  if (
+    resolvedSpecification.fromCode ||
+    specificationIdParam !== String(resolvedSpecification.id)
+  ) {
+    redirect(`/${locale}/specifications/${resolvedSpecification.id}`)
+  }
   const initialData = await loadRequirementsSpecificationDetailInitialData({
     locale,
-    slug,
+    specificationId: resolvedSpecification.id,
   })
   if (initialData.notFound) {
     notFound()
@@ -58,7 +73,8 @@ export default async function RequirementsSpecificationDetailPage({
             <p className="mt-3 text-sm leading-6">
               {t('forbiddenBody', {
                 name: initialData.forbidden.specification.name,
-                uniqueId: initialData.forbidden.specification.uniqueId,
+                specificationCode:
+                  initialData.forbidden.specification.specificationCode,
               })}
             </p>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -82,7 +98,7 @@ export default async function RequirementsSpecificationDetailPage({
   return (
     <RequirementsSpecificationDetailClient
       initialData={initialData}
-      specificationSlug={slug}
+      specificationId={resolvedSpecification.id}
     />
   )
 }

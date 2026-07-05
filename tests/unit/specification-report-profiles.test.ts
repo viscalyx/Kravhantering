@@ -24,7 +24,7 @@ function outputData(): SpecificationOutputData {
       specificationGovernanceObjectTypeId: 1,
       specificationImplementationTypeId: 2,
       specificationLifecycleStatusId: 1,
-      uniqueId: 'SPEC-1',
+      specificationCode: 'SPEC-1',
       updatedAt: '2026-06-02T00:00:00.000Z',
     },
     items: [

@@ -164,7 +164,7 @@ async function gotoSeededSpecification(
   page: Page,
   testInfo: TestInfo,
 ): Promise<void> {
-  const path = `/sv/specifications/${fixture.specificationSlug}`
+  const path = `/sv/specifications/${fixture.specificationId}`
   const startedAt = Date.now()
 
   try {
@@ -256,14 +256,14 @@ test('AUTHZ-01/AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or ass
 
     await expectStatus(
       await noRoles.get(
-        `/api/requirements-specifications/${fixture.specificationSlug}`,
+        `/api/requirements-specifications/${fixture.specificationId}`,
       ),
       403,
       'no-role direct existing specification read',
     )
     await expectStatus(
       await noRoles.put(
-        `/api/requirements-specifications/${fixture.specificationSlug}`,
+        `/api/requirements-specifications/${fixture.specificationId}`,
         {
           data: {
             businessNeedsReference:
@@ -276,7 +276,7 @@ test('AUTHZ-01/AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or ass
     )
     await expectStatus(
       await noRoles.get(
-        `/api/requirements-specifications/${fixture.specificationSlug}-MISSING`,
+        `/api/requirements-specifications/${fixture.specificationId + 1_000_000}`,
       ),
       404,
       'no-role missing specification read',
@@ -312,7 +312,7 @@ test('AUTHZ-01/AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or ass
 })
 
 async function assertForbiddenSpecificationSurface(page: Page): Promise<void> {
-  await page.goto(`/sv/specifications/${fixture.specificationSlug}`)
+  await page.goto(`/sv/specifications/${fixture.specificationId}`)
 
   await expect(
     page.getByRole('heading', {

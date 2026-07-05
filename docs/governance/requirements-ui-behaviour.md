@@ -573,7 +573,7 @@ down.
 - Report routes always cover the whole specification. They do not accept row
   selection query parameters.
 - PDF routes use
-  `/[locale]/specifications/[slug]/reports/pdf/[profile]`.
+  `/[locale]/specifications/[specificationId]/reports/pdf/[profile]`.
 - Both routes authorize read access to the specification before report data is
   collected.
 - Report data uses the requirement version linked to each specification item,

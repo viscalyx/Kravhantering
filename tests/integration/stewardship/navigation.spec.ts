@@ -73,7 +73,7 @@ function pwtRfiSuggestion(overrides: {
       : null,
     rfiQuestionId: overrides.rfiQuestionId ?? null,
     sourceSpecificationName: 'PWT-MANUAL RFI workflow',
-    sourceSpecificationUniqueId: 'PWT-RFI-WORKFLOW-2026',
+    sourceSpecificationCode: 'PWT-RFI-WORKFLOW-2026',
     specificationId: 920007,
     updatedAt: '2026-04-24T09:00:00.000Z',
   }

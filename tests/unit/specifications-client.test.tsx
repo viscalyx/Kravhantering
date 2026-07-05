@@ -83,7 +83,7 @@ const sampleSpecifications = [
   {
     id: 1,
     name: 'Kravunderlag sv',
-    uniqueId: 'KRAVUNDERLAG-SV',
+    specificationCode: 'KRAVUNDERLAG-SV',
     specificationGovernanceObjectTypeId: 1,
     specificationImplementationTypeId: 1,
     specificationLifecycleStatusId: 1,
@@ -361,13 +361,13 @@ describe('RequirementsSpecificationsClient', () => {
                 ...sampleSpecifications[0],
                 id: 1,
                 name: 'Upphandling av e-tjänstplattform',
-                uniqueId: 'ETJANST-UPP-2026',
+                specificationCode: 'ETJANST-UPP-2026',
               },
               {
                 ...sampleSpecifications[0],
                 id: 2,
                 name: 'Införande av säkerhetslyft Q2',
-                uniqueId: 'SAKLYFT-INFOR-Q2',
+                specificationCode: 'SAKLYFT-INFOR-Q2',
               },
             ],
           }),
@@ -431,7 +431,7 @@ describe('RequirementsSpecificationsClient', () => {
                 ...sampleSpecifications[0],
                 id: 1,
                 name: 'Upphandling av e-tjänstplattform',
-                uniqueId: 'ETJANST-UPP-2026',
+                specificationCode: 'ETJANST-UPP-2026',
               },
             ],
           }),
@@ -652,9 +652,7 @@ describe('RequirementsSpecificationsClient', () => {
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
         return Promise.resolve(okJson({ statuses: sampleStatuses }))
-      if (
-        url === '/api/requirements-specifications/KRAVUNDERLAG-SV/co-authors'
-      ) {
+      if (url === '/api/requirements-specifications/1/co-authors') {
         return Promise.resolve(okJson({ coAuthors: [] }))
       }
       return Promise.resolve(okJson({}))
@@ -687,7 +685,7 @@ describe('RequirementsSpecificationsClient', () => {
       }),
     ).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/requirements-specifications/KRAVUNDERLAG-SV/co-authors',
+      '/api/requirements-specifications/1/co-authors',
       expect.any(Object),
     )
   })
@@ -900,7 +898,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     for (const field of [
       screen.getByRole('textbox', { name: /specification\.name/ }),
-      screen.getByRole('textbox', { name: /specification\.uniqueId/ }),
+      screen.getByRole('textbox', { name: /specification\.specificationCode/ }),
       screen.getByRole('combobox', {
         name: /specification\.governanceObjectType/,
       }),
@@ -1168,13 +1166,13 @@ describe('RequirementsSpecificationsClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements-specifications/KRAVUNDERLAG-SV',
+        '/api/requirements-specifications/1',
         expect.objectContaining({ method: 'PUT' }),
       )
     })
     const putCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url === '/api/requirements-specifications/KRAVUNDERLAG-SV' &&
+        url === '/api/requirements-specifications/1' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     )
     expect(
@@ -1237,14 +1235,13 @@ describe('RequirementsSpecificationsClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements-specifications/KRAVUNDERLAG-SV/responsible',
+        '/api/requirements-specifications/1/responsible',
         expect.objectContaining({ method: 'PUT' }),
       )
     })
     const putCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url ===
-          '/api/requirements-specifications/KRAVUNDERLAG-SV/responsible' &&
+        url === '/api/requirements-specifications/1/responsible' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     )
     expect(
@@ -1378,13 +1375,13 @@ describe('RequirementsSpecificationsClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements-specifications/KRAVUNDERLAG-SV',
+        '/api/requirements-specifications/1',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })
   })
 
-  it('marks slug conflicts as alerts and clears stale errors when auto-generating a new slug', async () => {
+  it('marks specification code conflicts as alerts and clears stale errors when auto-generating a new specification code', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
@@ -1415,8 +1412,8 @@ describe('RequirementsSpecificationsClient', () => {
     const nameInput = screen.getByRole('textbox', {
       name: /specification\.name/,
     })
-    const uniqueIdInput = screen.getByRole('textbox', {
-      name: /specification\.uniqueId/,
+    const specificationCodeInput = screen.getByRole('textbox', {
+      name: /specification\.specificationCode/,
     })
 
     fireEvent.change(nameInput, { target: { value: 'Kravunderlag sv' } })
@@ -1424,13 +1421,16 @@ describe('RequirementsSpecificationsClient', () => {
     selectLifecycleStatus()
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
-    const slugError = await screen.findByRole('alert')
-    expect(uniqueIdInput).toHaveAttribute(
+    const specificationCodeError = await screen.findByRole('alert')
+    expect(specificationCodeInput).toHaveAttribute(
       'aria-describedby',
-      'spec-unique-id-error',
+      'spec-specification-code-error',
     )
-    expect(uniqueIdInput).toHaveAttribute('aria-invalid', 'true')
-    expect(slugError).toHaveAttribute('id', 'spec-unique-id-error')
+    expect(specificationCodeInput).toHaveAttribute('aria-invalid', 'true')
+    expect(specificationCodeError).toHaveAttribute(
+      'id',
+      'spec-specification-code-error',
+    )
 
     fireEvent.change(nameInput, { target: { value: 'Nytt kravunderlag' } })
     fireEvent.blur(nameInput)
@@ -1438,11 +1438,11 @@ describe('RequirementsSpecificationsClient', () => {
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
-    expect(uniqueIdInput).toHaveValue('NYTT-KRAVUNDERLAG')
-    expect(uniqueIdInput).not.toHaveAttribute('aria-invalid', 'true')
+    expect(specificationCodeInput).toHaveValue('NYTT-KRAVUNDERLAG')
+    expect(specificationCodeInput).not.toHaveAttribute('aria-invalid', 'true')
   })
 
-  it('keeps the previous slug and shows an inline error when slug generation returns empty', async () => {
+  it('keeps the previous specification code and shows an inline error when specification code generation returns empty', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
@@ -1453,22 +1453,22 @@ describe('RequirementsSpecificationsClient', () => {
     const nameInput = screen.getByRole('textbox', {
       name: /specification\.name/,
     })
-    const uniqueIdInput = screen.getByRole('textbox', {
-      name: /specification\.uniqueId/,
+    const specificationCodeInput = screen.getByRole('textbox', {
+      name: /specification\.specificationCode/,
     })
 
     fireEvent.change(nameInput, { target: { value: 'Nytt kravunderlag' } })
     fireEvent.blur(nameInput)
-    expect(uniqueIdInput).toHaveValue('NYTT-KRAVUNDERLAG')
+    expect(specificationCodeInput).toHaveValue('NYTT-KRAVUNDERLAG')
 
     fireEvent.change(nameInput, { target: { value: 'och i' } })
     fireEvent.blur(nameInput)
 
-    const slugError = await screen.findByRole('alert')
-    expect(slugError).toHaveTextContent(
-      'specification.uniqueIdGenerationFailed',
+    const specificationCodeError = await screen.findByRole('alert')
+    expect(specificationCodeError).toHaveTextContent(
+      'specification.specificationCodeGenerationFailed',
     )
-    expect(uniqueIdInput).toHaveValue('NYTT-KRAVUNDERLAG')
+    expect(specificationCodeInput).toHaveValue('NYTT-KRAVUNDERLAG')
   })
 
   it('shows saving state and keeps cancel disabled while submitting', async () => {

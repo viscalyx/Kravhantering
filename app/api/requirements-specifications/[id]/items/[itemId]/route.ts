@@ -1,25 +1,22 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
-  getSpecificationById,
-  getSpecificationBySlug,
   getSpecificationItemByRef,
   listSpecificationItems,
   updateSpecificationItemFieldsByItemRef,
 } from '@/lib/dal/requirements-specifications'
-import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
+  idParamSchema,
   nullableBusinessTextSchema,
   parseRouteParams,
   positiveIntegerSchema,
   positiveIntegerStringSchema,
   routeSegmentSchema,
-  specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
@@ -29,14 +26,14 @@ type Params = Promise<{ id: string; itemId: string }>
 
 const specificationItemParamSchema = z
   .object({
-    id: specificationIdOrSlugSchema,
+    id: idParamSchema.shape.id,
     itemId: positiveIntegerStringSchema,
   })
   .strict()
 
 const specificationItemRefParamSchema = z
   .object({
-    id: specificationIdOrSlugSchema,
+    id: idParamSchema.shape.id,
     itemId: routeSegmentSchema,
   })
   .strict()
@@ -59,20 +56,6 @@ const patchSpecificationItemSchema = z
     },
   )
 
-async function resolveSpecificationId(idOrSlug: string, db: SqlServerDatabase) {
-  const bySlug = await getSpecificationBySlug(db, idOrSlug)
-  if (bySlug) {
-    return bySlug.id
-  }
-
-  if (/^\d+$/.test(idOrSlug)) {
-    const byId = await getSpecificationById(db, Number(idOrSlug))
-    return byId?.id ?? null
-  }
-
-  return null
-}
-
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
@@ -86,13 +69,8 @@ export async function GET(
   }
   const { id, itemId: numericItemId } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolveSpecificationId(id, db)
 
-  if (specificationId === null) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-
-  const items = await listSpecificationItems(db, specificationId)
+  const items = await listSpecificationItems(db, id)
   const item = items.find(
     candidate =>
       candidate.specificationItemId === numericItemId &&
@@ -126,10 +104,6 @@ export const PATCH = secureMutationRoute({
   handler: async ({ body, params }) => {
     const { id, itemId } = params
     const db = await getRequestSqlServerDataSource()
-    const specificationId = await resolveSpecificationId(id, db)
-    if (specificationId === null) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
     let decodedItemRef: string
     try {
       decodedItemRef = decodeURIComponent(itemId)
@@ -139,11 +113,7 @@ export const PATCH = secureMutationRoute({
       }
       throw decodeError
     }
-    const item = await getSpecificationItemByRef(
-      db,
-      specificationId,
-      decodedItemRef,
-    )
+    const item = await getSpecificationItemByRef(db, id, decodedItemRef)
     if (!item) {
       return NextResponse.json(
         { error: 'Item not found in specification' },
@@ -151,12 +121,7 @@ export const PATCH = secureMutationRoute({
       )
     }
     try {
-      await updateSpecificationItemFieldsByItemRef(
-        db,
-        specificationId,
-        decodedItemRef,
-        body,
-      )
+      await updateSpecificationItemFieldsByItemRef(db, id, decodedItemRef, body)
     } catch (error) {
       if (isRequirementsServiceError(error) && error.code === 'not_found') {
         return NextResponse.json(

@@ -36,7 +36,7 @@ const routeState = vi.hoisted(() => ({
     source: 'rest',
   },
   createRequirementsRestRuntime: vi.fn(),
-  getSpecificationBySlug: vi.fn(),
+  getSpecificationById: vi.fn(),
   getSpecificationItemById: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   authorization: {
@@ -71,7 +71,7 @@ vi.mock('@/lib/reports/data/specification-output', () => ({
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
-  getSpecificationBySlug: routeState.getSpecificationBySlug,
+  getSpecificationById: routeState.getSpecificationById,
   getSpecificationItemById: routeState.getSpecificationItemById,
   parseSpecificationItemRef: routeState.parseSpecificationItemRef,
 }))
@@ -254,10 +254,11 @@ describe('requirement PDF routes', () => {
         lifecycleStatus: null,
         specificationLifecycleStatusId: 1,
         name: 'Specification',
-        uniqueId: 'SPEC-1',
+        specificationCode: 'SPEC-1',
       },
     })
-    routeState.getSpecificationBySlug.mockResolvedValue({
+    routeState.getSpecificationById.mockResolvedValue({
+      id: 42,
       specificationLifecycleStatusId: 1,
     })
     routeState.getSpecificationItemById.mockResolvedValue({
@@ -500,7 +501,8 @@ describe('requirement PDF routes', () => {
   })
 
   it('returns localized PDF filenames for history, deviation, suggestion, and specification reports', async () => {
-    routeState.getSpecificationBySlug.mockResolvedValueOnce({
+    routeState.getSpecificationById.mockResolvedValueOnce({
+      id: 42,
       specificationLifecycleStatusId: 3,
     })
     routeState.collectSpecificationOutputData.mockResolvedValueOnce({
@@ -512,7 +514,7 @@ describe('requirement PDF routes', () => {
         lifecycleStatus: null,
         specificationLifecycleStatusId: 3,
         name: 'Införande',
-        uniqueId: 'SPEC-2',
+        specificationCode: 'SPEC-2',
       },
     })
 
@@ -526,7 +528,7 @@ describe('requirement PDF routes', () => {
       '@/app/[locale]/requirements/reports/pdf/suggestion-history/[id]/route'
     )
     const { GET: specificationGET } = await import(
-      '@/app/[locale]/specifications/[slug]/reports/pdf/[profile]/route'
+      '@/app/[locale]/specifications/[specificationId]/reports/pdf/[profile]/route'
     )
 
     await historyGET(
@@ -547,13 +549,13 @@ describe('requirement PDF routes', () => {
     )
     await specificationGET(
       new NextRequest(
-        'http://localhost/sv/specifications/SPEC-2/reports/pdf/progress',
+        'http://localhost/sv/specifications/42/reports/pdf/progress',
       ),
       {
         params: Promise.resolve({
           locale: 'sv',
           profile: 'progress',
-          slug: 'SPEC-2',
+          specificationId: '42',
         }),
       },
     )
@@ -626,18 +628,18 @@ describe('requirement PDF routes', () => {
 
   it('authorizes specification profile PDFs before collecting report data', async () => {
     const { GET } = await import(
-      '@/app/[locale]/specifications/[slug]/reports/pdf/[profile]/route'
+      '@/app/[locale]/specifications/[specificationId]/reports/pdf/[profile]/route'
     )
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/en/specifications/SPEC-1/reports/pdf/procurement',
+        'http://localhost/en/specifications/42/reports/pdf/procurement',
       ),
       {
         params: Promise.resolve({
           locale: 'en',
           profile: 'procurement',
-          slug: 'SPEC-1',
+          specificationId: '42',
         }),
       },
     )
@@ -649,15 +651,42 @@ describe('requirement PDF routes', () => {
     )
     expect(routeState.collectSpecificationOutputData).toHaveBeenCalledWith(
       { db: true },
-      'SPEC-1',
+      42,
     )
     expect(routeState.buildSpecificationProfileReport).toHaveBeenCalledWith(
       expect.objectContaining({
-        specification: expect.objectContaining({ uniqueId: 'SPEC-1' }),
+        specification: expect.objectContaining({ specificationCode: 'SPEC-1' }),
       }),
       'procurement',
       'en',
     )
+  })
+
+  it('rejects oversized specification profile PDF ids before lookup', async () => {
+    const { GET } = await import(
+      '@/app/[locale]/specifications/[specificationId]/reports/pdf/[profile]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/specifications/2147483648/reports/pdf/procurement',
+      ),
+      {
+        params: Promise.resolve({
+          locale: 'en',
+          profile: 'procurement',
+          specificationId: '2147483648',
+        }),
+      },
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Specification not found: 2147483648',
+    })
+    expect(routeState.getSpecificationById).not.toHaveBeenCalled()
+    expect(routeState.authorization.assertAuthorized).not.toHaveBeenCalled()
+    expect(routeState.collectSpecificationOutputData).not.toHaveBeenCalled()
   })
 
   it('rejects deviation review PDFs before collecting report data when specification authorization is denied', async () => {

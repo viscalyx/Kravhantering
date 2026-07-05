@@ -279,7 +279,7 @@ export async function collectDeviationForReport(
     },
     requirementUniqueId: requirement.uniqueId,
     specificationName: inReview.specificationName,
-    specificationUniqueId: inReview.specificationUniqueId,
+    specificationCode: inReview.specificationCode,
     version: mapDeviationVersion(version, locale),
   }
 }

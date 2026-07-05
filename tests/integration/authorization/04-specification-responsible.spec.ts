@@ -40,7 +40,7 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
     const coAuthorLoadGate: { release?: () => void } = {}
     const coAuthorLoadStarted = new Promise<void>(resolve => {
       void page.route(
-        `**/api/requirements-specifications/${fixture.specificationSlug}/co-authors`,
+        `**/api/requirements-specifications/${fixture.specificationId}/co-authors`,
         async route => {
           if (
             route.request().method() === 'GET' &&
@@ -56,7 +56,7 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
       )
     })
 
-    await page.goto(`/sv/specifications/${fixture.specificationSlug}`)
+    await page.goto(`/sv/specifications/${fixture.specificationId}`)
     await expect(
       page.getByRole('heading', { level: 1, name: fixture.specificationName }),
     ).toBeVisible()
@@ -126,7 +126,7 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
     await expect(coAuthorsDialog).toBeHidden()
 
     const readResponse = await specificationResponsible.get(
-      `/api/requirements-specifications/${fixture.specificationSlug}`,
+      `/api/requirements-specifications/${fixture.specificationId}`,
       { timeout: 30_000 },
     )
     await expectOk(readResponse, 'specification responsible read')
@@ -140,7 +140,7 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
 
     await expectOk(
       await specificationResponsible.put(
-        `/api/requirements-specifications/${fixture.specificationSlug}`,
+        `/api/requirements-specifications/${fixture.specificationId}`,
         {
           data: {
             businessNeedsReference: updatedPurpose,
@@ -151,7 +151,7 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
     )
 
     const coAuthorsResponse = await specificationResponsible.get(
-      `/api/requirements-specifications/${fixture.specificationSlug}/co-authors`,
+      `/api/requirements-specifications/${fixture.specificationId}/co-authors`,
       { timeout: 30_000 },
     )
     await expectOk(
@@ -173,7 +173,7 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
   } finally {
     await specificationResponsible
       .put(
-        `/api/requirements-specifications/${fixture.specificationSlug}/co-authors`,
+        `/api/requirements-specifications/${fixture.specificationId}/co-authors`,
         {
           data: { coAuthorHsaIds: originalCoAuthors },
         },

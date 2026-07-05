@@ -15,10 +15,11 @@ import {
   newRoleContext,
 } from '../authorization/authorization-test-helpers'
 
-const specificationSlug = 'ETJANST-UPP-2026'
-const editSpecificationSlug = 'PWT-SPEC-EDIT-2026'
+const specificationId = 8
+const specificationCode = 'ETJANST-UPP-2026'
+const editSpecificationId = 920001
 const rfiSpecificationId = 920007
-const rfiSpecificationSlug = 'PWT-RFI-WORKFLOW-2026'
+const rfiSpecificationCode = 'PWT-RFI-WORKFLOW-2026'
 const rfiAreaId = 920001
 const rfiPrimaryQuestionId = 920001
 const rfiSecondaryQuestionId = 920002
@@ -35,7 +36,7 @@ type Spec15RfiMutationDiagnosticOptions = {
   operation: 'lock' | 'unlock'
   questionText?: string
   request: APIRequestContext
-  slug: string
+  specificationCode: string
   specificationId: number
   testInfo: TestInfo
 }
@@ -125,7 +126,6 @@ async function attachSpec15RfiMutationDiagnostics(
   const failed = await summarizeResponse(response)
   const mutationPaths = {
     byId: `/api/requirements-specifications/${options.specificationId}/rfi-list/${options.operation}`,
-    bySlug: `/api/requirements-specifications/${options.slug}/rfi-list/${options.operation}`,
   }
   const diagnostics = {
     createdQuestion: options.createdQuestion ?? null,
@@ -145,24 +145,16 @@ async function attachSpec15RfiMutationDiagnostics(
         options.request,
         `/api/requirements-specifications/${options.specificationId}/rfi-list`,
       ),
-      rfiListBySlug: await summarizeGetDiagnostic(
-        options.request,
-        `/api/requirements-specifications/${options.slug}/rfi-list`,
-      ),
       specificationById: await summarizeGetDiagnostic(
         options.request,
         `/api/requirements-specifications/${options.specificationId}`,
-      ),
-      specificationBySlug: await summarizeGetDiagnostic(
-        options.request,
-        `/api/requirements-specifications/${options.slug}`,
       ),
     },
     label: options.label,
     mutation: {
       expectedSpecification: {
+        code: options.specificationCode,
         id: options.specificationId,
-        slug: options.slug,
       },
       operation: options.operation,
       paths: mutationPaths,
@@ -172,10 +164,6 @@ async function attachSpec15RfiMutationDiagnostics(
       mutationByIdGet: await summarizeGetDiagnostic(
         options.request,
         mutationPaths.byId,
-      ),
-      mutationBySlugGet: await summarizeGetDiagnostic(
-        options.request,
-        mutationPaths.bySlug,
       ),
     },
     test: {
@@ -219,10 +207,10 @@ async function expectSpec15RfiMutationOk(
 
 async function gotoSpecificationDetail(
   page: Page,
-  slug = specificationSlug,
+  id = specificationId,
 ): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page.goto(`/sv/specifications/${slug}`, {
+    await page.goto(`/sv/specifications/${id}`, {
       timeout: 45_000,
       waitUntil: 'domcontentloaded',
     })
@@ -243,7 +231,7 @@ async function gotoSpecificationDetail(
     }
   }
 
-  throw new Error(`Specification detail ${slug} did not load`)
+  throw new Error(`Specification detail ${id} did not load`)
 }
 
 function requirementSelectionQuestions(answerIds: number[]) {
@@ -392,7 +380,7 @@ async function mockRfiList(
   let suggestions = options?.suggestions ?? []
 
   await page.route(
-    `**/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list`,
+    `**/api/requirements-specifications/${rfiSpecificationId}/rfi-list`,
     async route => {
       await route.fulfill({
         contentType: 'application/json',
@@ -401,7 +389,7 @@ async function mockRfiList(
     },
   )
   await page.route(
-    `**/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/lock`,
+    `**/api/requirements-specifications/${rfiSpecificationId}/rfi-list/lock`,
     async route => {
       list = rfiListResponse({
         isLocked: true,
@@ -415,7 +403,7 @@ async function mockRfiList(
     },
   )
   await page.route(
-    `**/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/unlock`,
+    `**/api/requirements-specifications/${rfiSpecificationId}/rfi-list/unlock`,
     async route => {
       list = rfiListResponse({ isLocked: false, primaryRelevance: null })
       await route.fulfill({
@@ -425,7 +413,7 @@ async function mockRfiList(
     },
   )
   await page.route(
-    `**/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/items/*`,
+    `**/api/requirements-specifications/${rfiSpecificationId}/rfi-list/items/*`,
     async route => {
       const questionId = Number(route.request().url().split('/').at(-1))
       const body = route.request().postDataJSON() as {
@@ -456,7 +444,7 @@ async function mockRfiList(
     },
   )
   await page.route(
-    `**/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/areas/*`,
+    `**/api/requirements-specifications/${rfiSpecificationId}/rfi-list/areas/*`,
     async route => {
       const areaId = Number(route.request().url().split('/').at(-1))
       const body = route.request().postDataJSON() as { isIncluded?: boolean }
@@ -534,38 +522,41 @@ function reportTable(model: StructuredReportModel) {
 
 async function getStructuredReport(
   request: APIRequestContext,
-  slug: string,
+  reportSpecificationId: number,
   profile: 'management' | 'procurement' | 'progress',
 ) {
   const response = await requestWithRetry(
-    `structured ${profile} report for ${slug}`,
+    `structured ${profile} report for specification ${reportSpecificationId}`,
     () =>
       request.get(
-        `/api/requirements-specifications/${slug}/report-output?profile=${profile}&locale=sv`,
+        `/api/requirements-specifications/${reportSpecificationId}/report-output?profile=${profile}&locale=sv`,
         { timeout: 30_000 },
       ),
   )
   await expectApiResponseOk(
     response,
-    `structured ${profile} report for ${slug}`,
+    `structured ${profile} report for specification ${reportSpecificationId}`,
   )
   return (await response.json()) as StructuredReportModel
 }
 
 async function getCsvExport(
   request: APIRequestContext,
-  slug: string,
+  exportSpecificationId: number,
   profile: 'full' | 'procurement',
 ) {
   const response = await requestWithRetry(
-    `${profile} CSV export for ${slug}`,
+    `${profile} CSV export for specification ${exportSpecificationId}`,
     () =>
       request.get(
-        `/api/requirements-specifications/${slug}/exports?profile=${profile}&locale=sv`,
+        `/api/requirements-specifications/${exportSpecificationId}/exports?profile=${profile}&locale=sv`,
         { timeout: 30_000 },
       ),
   )
-  await expectApiResponseOk(response, `${profile} CSV export for ${slug}`)
+  await expectApiResponseOk(
+    response,
+    `${profile} CSV export for specification ${exportSpecificationId}`,
+  )
   expect(response.headers()['content-type']).toContain('text/csv')
   return response.text()
 }
@@ -1072,7 +1063,7 @@ for (const viewport of viewports) {
         const saveRequests: unknown[] = []
 
         await page.route(
-          `**/api/requirements-specifications/${specificationSlug}/requirement-selection-answers`,
+          `**/api/requirements-specifications/${specificationId}/requirement-selection-answers`,
           async (route: Route) => {
             resolveInitialQuestionsRequested()
             await initialQuestionsCanResolve
@@ -1085,7 +1076,7 @@ for (const viewport of viewports) {
           },
         )
         await page.route(
-          `**/api/requirements-specifications/${specificationSlug}/requirement-selection-answers/901`,
+          `**/api/requirements-specifications/${specificationId}/requirement-selection-answers/901`,
           async route => {
             const body = route.request().postDataJSON() as {
               answerIds?: number[]
@@ -1131,7 +1122,7 @@ for (const viewport of viewports) {
         page,
       }) => {
         await mockRfiList(page)
-        await gotoSpecificationDetail(page, rfiSpecificationSlug)
+        await gotoSpecificationDetail(page, rfiSpecificationId)
 
         await test.step('open the RFI question list tab', async () => {
           await openDetailTab(page, 'RFI-frågelista')
@@ -1308,7 +1299,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     }
     await page.route(
-      `**/api/requirements-specifications/${editSpecificationSlug}/items`,
+      `**/api/requirements-specifications/${editSpecificationId}/items`,
       async route => {
         const method = route.request().method()
         if (method === 'GET') {
@@ -1367,7 +1358,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     )
 
-    await gotoSpecificationDetail(page, editSpecificationSlug)
+    await gotoSpecificationDetail(page, editSpecificationId)
 
     await filterAvailableRequirementById(page, 'PWT-REPORT-A')
     await page.getByRole('checkbox', { name: 'Markera PWT-REPORT-A' }).check()
@@ -1483,7 +1474,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     }
     await page.route(
-      `**/api/requirements-specifications/${editSpecificationSlug}/local-requirements`,
+      `**/api/requirements-specifications/${editSpecificationId}/local-requirements`,
       async route => {
         createRequests.push(route.request().postDataJSON())
         localRequirementCreated = true
@@ -1501,7 +1492,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     )
     await page.route(
-      `**/api/requirements-specifications/${editSpecificationSlug}/local-requirements/920099`,
+      `**/api/requirements-specifications/${editSpecificationId}/local-requirements/920099`,
       async route => {
         await route.fulfill({
           contentType: 'application/json',
@@ -1544,7 +1535,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     )
     await page.route(
-      `**/api/requirements-specifications/${editSpecificationSlug}/local-requirements/920099/graduation-target-areas`,
+      `**/api/requirements-specifications/${editSpecificationId}/local-requirements/920099/graduation-target-areas`,
       async route => {
         await route.fulfill({
           contentType: 'application/json',
@@ -1561,7 +1552,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     )
     await page.route(
-      `**/api/requirements-specifications/${editSpecificationSlug}/items`,
+      `**/api/requirements-specifications/${editSpecificationId}/items`,
       async route => {
         const response = await route.fetch()
         const data = (await response.json()) as { items?: unknown[] }
@@ -1585,7 +1576,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     )
 
-    await gotoSpecificationDetail(page, editSpecificationSlug)
+    await gotoSpecificationDetail(page, editSpecificationId)
     await clickMenuItem(page, 'Lägg till unika krav', 'Nytt unikt krav')
     const dialog = page.getByRole('dialog').filter({
       hasText: 'Nytt unikt krav',
@@ -1677,7 +1668,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     ]
     await page.route(
-      `**/api/requirements-specifications/${editSpecificationSlug}/needs-references`,
+      `**/api/requirements-specifications/${editSpecificationId}/needs-references`,
       async route => {
         const method = route.request().method()
         if (method === 'GET') {
@@ -1741,7 +1732,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     )
 
-    await gotoSpecificationDetail(page, editSpecificationSlug)
+    await gotoSpecificationDetail(page, editSpecificationId)
     await openDetailTab(page, 'Behovsreferenser')
     const newNeedsReferenceButton = page.getByRole('button', {
       name: 'Ny behovsreferens',
@@ -1824,13 +1815,13 @@ test.describe('Requirements specification deterministic manual cases', () => {
   }) => {
     const downloadRequests = await mockReportDownloads(page)
 
-    await gotoSpecificationDetail(page, specificationSlug)
+    await gotoSpecificationDetail(page, specificationId)
     await clickMenuItem(page, 'Rapporter', 'Kravbilaga för upphandling')
     await expect
       .poll(() =>
         downloadRequests.some(url =>
           url.includes(
-            '/sv/specifications/ETJANST-UPP-2026/reports/pdf/procurement',
+            `/sv/specifications/${specificationId}/reports/pdf/procurement`,
           ),
         ),
       )
@@ -1838,7 +1829,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
     const procurementReport = await getStructuredReport(
       request,
-      specificationSlug,
+      specificationId,
       'procurement',
     )
     expect(procurementReport.orientation).toBe('portrait')
@@ -1847,7 +1838,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
         section => section.type === 'specification-cover',
       ),
     ).toMatchObject({
-      uniqueId: specificationSlug,
+      specificationCode,
       variant: 'minimal',
     })
     const procurementTable = reportTable(procurementReport)
@@ -1867,14 +1858,14 @@ test.describe('Requirements specification deterministic manual cases', () => {
         downloadRequests.some(
           url =>
             url.includes(
-              '/api/requirements-specifications/ETJANST-UPP-2026/exports',
+              `/api/requirements-specifications/${specificationId}/exports`,
             ) && url.includes('profile=procurement'),
         ),
       )
       .toBe(true)
     const procurementCsv = await getCsvExport(
       request,
-      specificationSlug,
+      specificationId,
       'procurement',
     )
     expect(procurementCsv).toContain(
@@ -1889,12 +1880,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
         downloadRequests.some(
           url =>
             url.includes(
-              '/api/requirements-specifications/ETJANST-UPP-2026/exports',
+              `/api/requirements-specifications/${specificationId}/exports`,
             ) && url.includes('profile=full'),
         ),
       )
       .toBe(true)
-    const fullCsv = await getCsvExport(request, specificationSlug, 'full')
+    const fullCsv = await getCsvExport(request, specificationId, 'full')
     expect(fullCsv).toContain(
       'Krav-ID;Kravtext;Kravområde;Kategori;Typ;Kvalitetsegenskap;Prioritet',
     )
@@ -1907,19 +1898,21 @@ test.describe('Requirements specification deterministic manual cases', () => {
   }) => {
     const downloadRequests = await mockReportDownloads(page)
 
-    for (const slug of ['PWT-SPEC-REPORT-INFOR', 'PWT-SPEC-REPORT-UTV']) {
-      await gotoSpecificationDetail(page, slug)
+    for (const reportSpecificationId of [920002, 920003]) {
+      await gotoSpecificationDetail(page, reportSpecificationId)
       await clickMenuItem(page, 'Rapporter', 'Genomföranderapport')
       await expect
         .poll(() =>
           downloadRequests.some(url =>
-            url.includes(`/sv/specifications/${slug}/reports/pdf/progress`),
+            url.includes(
+              `/sv/specifications/${reportSpecificationId}/reports/pdf/progress`,
+            ),
           ),
         )
         .toBe(true)
       const progressReport = await getStructuredReport(
         request,
-        slug,
+        reportSpecificationId,
         'progress',
       )
       expect(progressReport.orientation).toBe('landscape')
@@ -1951,12 +1944,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
           downloadRequests.some(
             url =>
               url.includes(
-                `/api/requirements-specifications/${slug}/exports`,
+                `/api/requirements-specifications/${reportSpecificationId}/exports`,
               ) && url.includes('profile=full'),
           ),
         )
         .toBe(true)
-      const fullCsv = await getCsvExport(request, slug, 'full')
+      const fullCsv = await getCsvExport(request, reportSpecificationId, 'full')
       expect(fullCsv).toContain('Krav-ID;Kravtext;Kravområde')
       expect(fullCsv).toContain('Användningsstatus')
     }
@@ -1968,21 +1961,19 @@ test.describe('Requirements specification deterministic manual cases', () => {
   }) => {
     const downloadRequests = await mockReportDownloads(page)
 
-    await gotoSpecificationDetail(page, 'PWT-SPEC-REPORT-FORV')
+    await gotoSpecificationDetail(page, 920004)
     await clickMenuItem(page, 'Rapporter', 'Förvaltningsrapport')
 
     await expect
       .poll(() =>
         downloadRequests.some(url =>
-          url.includes(
-            '/sv/specifications/PWT-SPEC-REPORT-FORV/reports/pdf/management',
-          ),
+          url.includes('/sv/specifications/920004/reports/pdf/management'),
         ),
       )
       .toBe(true)
     const managementReport = await getStructuredReport(
       request,
-      'PWT-SPEC-REPORT-FORV',
+      920004,
       'management',
     )
     expect(managementReport.orientation).toBe('landscape')
@@ -2002,16 +1993,13 @@ test.describe('Requirements specification deterministic manual cases', () => {
   }) => {
     const downloadRequests = await mockReportDownloads(page)
 
-    await gotoSpecificationDetail(page, 'PWT-SPEC-TRACE-200')
+    await gotoSpecificationDetail(page, 920005)
     const itemsResponse = await requestWithRetry(
       'traceability source items',
       () =>
-        request.get(
-          '/api/requirements-specifications/PWT-SPEC-TRACE-200/items',
-          {
-            timeout: 30_000,
-          },
-        ),
+        request.get('/api/requirements-specifications/920005/items', {
+          timeout: 30_000,
+        }),
     )
     await expectApiResponseOk(itemsResponse, 'traceability source items')
     const itemsData = (await itemsResponse.json()) as {
@@ -2027,9 +2015,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect
       .poll(() =>
         downloadRequests.some(url =>
-          url.includes(
-            '/sv/specifications/PWT-SPEC-TRACE-200/reports/pdf/traceability',
-          ),
+          url.includes('/sv/specifications/920005/reports/pdf/traceability'),
         ),
       )
       .toBe(true)
@@ -2037,7 +2023,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       'traceability items for filtered refs',
       () =>
         request.get(
-          `/api/requirements-specifications/PWT-SPEC-TRACE-200/traceability-items?refs=${filteredRefs.map(encodeURIComponent).join(',')}`,
+          `/api/requirements-specifications/920005/traceability-items?refs=${filteredRefs.map(encodeURIComponent).join(',')}`,
           { timeout: 30_000 },
         ),
     )
@@ -2052,9 +2038,11 @@ test.describe('Requirements specification deterministic manual cases', () => {
         uniqueId: string
         verificationMethod: string | null
       }>
-      specification?: { uniqueId?: string }
+      specification?: { specificationCode?: string }
     }
-    expect(traceabilityData.specification?.uniqueId).toBe('PWT-SPEC-TRACE-200')
+    expect(traceabilityData.specification?.specificationCode).toBe(
+      'PWT-SPEC-TRACE-200',
+    )
     expect(traceabilityData.items?.map(item => item.itemRef)).toEqual(
       filteredRefs,
     )
@@ -2064,7 +2052,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     expect(traceabilityData.items?.[0]).toHaveProperty('needsReference')
     expect(traceabilityData.items?.[0]).toHaveProperty('verificationMethod')
 
-    await gotoSpecificationDetail(page, 'PWT-SPEC-TRACE-201')
+    await gotoSpecificationDetail(page, 920006)
     await page.getByRole('button', { name: 'Rapporter' }).click()
     await expect(
       page.getByText('Tillämpningsspårbarhet', { exact: true }),
@@ -2073,9 +2061,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect
       .poll(() =>
         downloadRequests.some(url =>
-          url.includes(
-            '/sv/specifications/PWT-SPEC-TRACE-201/reports/pdf/progress',
-          ),
+          url.includes('/sv/specifications/920006/reports/pdf/progress'),
         ),
       )
       .toBe(true)
@@ -2223,7 +2209,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     )
 
-    await gotoSpecificationDetail(page, editSpecificationSlug)
+    await gotoSpecificationDetail(page, editSpecificationId)
     await clickMenuItem(page, 'Lägg till unika krav', 'Importera unika krav')
 
     const dialog = page.getByRole('dialog', { name: /Importera krav för/ })
@@ -2261,7 +2247,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     expect(previewRequests[0]).toMatchObject({
       locale: 'sv',
       payload: importPayload,
-      specificationIdOrSlug: editSpecificationSlug,
+      specificationId: editSpecificationId,
     })
     await expect.poll(() => executeRequests.length).toBe(1)
     expect(executeRequests[0]).toMatchObject({
@@ -2277,7 +2263,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
           verificationMethod: 'Dokumentgranskning',
         }),
       ],
-      specificationIdOrSlug: editSpecificationSlug,
+      specificationId: editSpecificationId,
     })
     await expect(page.getByText(/Importerade rader: 1/)).toBeVisible()
   })
@@ -2314,7 +2300,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       }
 
       const resetResponse = await specificationResponsibleRequest.post(
-        `/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/unlock`,
+        `/api/requirements-specifications/${rfiSpecificationId}/rfi-list/unlock`,
         { timeout: 30_000 },
       )
       await expectSpec15RfiMutationOk(resetResponse, {
@@ -2323,12 +2309,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
         operation: 'unlock',
         questionText,
         request: specificationResponsibleRequest,
-        slug: rfiSpecificationSlug,
+        specificationCode: rfiSpecificationCode,
         specificationId: rfiSpecificationId,
         testInfo,
       })
 
-      await gotoSpecificationDetail(page, rfiSpecificationSlug)
+      await gotoSpecificationDetail(page, rfiSpecificationId)
       await openDetailTab(page, 'RFI-frågelista')
       const initialLockSwitch = page.getByRole('switch', { name: 'Låst' })
       await expect(initialLockSwitch).not.toBeChecked()
@@ -2339,7 +2325,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       ).toContainText(questionText, { timeout: 30_000 })
 
       const lockResponse = await specificationResponsibleRequest.post(
-        `/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/lock`,
+        `/api/requirements-specifications/${rfiSpecificationId}/rfi-list/lock`,
         { timeout: 30_000 },
       )
       await expectSpec15RfiMutationOk(lockResponse, {
@@ -2348,11 +2334,11 @@ test.describe('Requirements specification deterministic manual cases', () => {
         operation: 'lock',
         questionText,
         request: specificationResponsibleRequest,
-        slug: rfiSpecificationSlug,
+        specificationCode: rfiSpecificationCode,
         specificationId: rfiSpecificationId,
         testInfo,
       })
-      await gotoSpecificationDetail(page, rfiSpecificationSlug)
+      await gotoSpecificationDetail(page, rfiSpecificationId)
       await openDetailTab(page, 'RFI-frågelista')
       await expect(page.getByRole('switch', { name: 'Låst' })).toBeChecked()
 
@@ -2381,7 +2367,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       await expect(editDialog).toBeHidden({ timeout: 30_000 })
       await expect(stewardshipRow).toContainText('v2', { timeout: 30_000 })
 
-      await gotoSpecificationDetail(page, rfiSpecificationSlug)
+      await gotoSpecificationDetail(page, rfiSpecificationId)
       await openDetailTab(page, 'RFI-frågelista')
       const staleQuestion = page.locator('article').filter({
         hasText: createdQuestion.questionCode,
@@ -2406,7 +2392,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     } finally {
       const cleanupResponse = await specificationResponsibleRequest
         .post(
-          `/api/requirements-specifications/${rfiSpecificationSlug}/rfi-list/unlock`,
+          `/api/requirements-specifications/${rfiSpecificationId}/rfi-list/unlock`,
           { timeout: 30_000 },
         )
         .catch(async error => {
@@ -2433,7 +2419,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
           operation: 'unlock',
           questionText,
           request: specificationResponsibleRequest,
-          slug: rfiSpecificationSlug,
+          specificationCode: rfiSpecificationCode,
           specificationId: rfiSpecificationId,
           testInfo,
         })
@@ -2479,7 +2465,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       })
     })
 
-    await gotoSpecificationDetail(page, rfiSpecificationSlug)
+    await gotoSpecificationDetail(page, rfiSpecificationId)
     await openDetailTab(page, 'RFI-frågelista')
 
     await page
@@ -2578,7 +2564,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       })
     })
 
-    await gotoSpecificationDetail(page, rfiSpecificationSlug)
+    await gotoSpecificationDetail(page, rfiSpecificationId)
     await openDetailTab(page, 'RFI-frågelista')
 
     await page

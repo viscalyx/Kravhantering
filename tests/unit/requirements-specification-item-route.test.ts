@@ -17,9 +17,6 @@ const mockContext = {
 }
 
 const mocks = {
-  getSpecificationById: vi.fn(),
-  getSpecificationByRef: vi.fn(),
-  getSpecificationBySlug: vi.fn(),
   getSpecificationItemByRef: vi.fn(),
   listSpecificationItems: vi.fn(),
   updateSpecificationItemFieldsByItemRef: vi.fn(),
@@ -30,10 +27,6 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
-  getSpecificationById: (...args: unknown[]) =>
-    mocks.getSpecificationById(...args),
-  getSpecificationBySlug: (...args: unknown[]) =>
-    mocks.getSpecificationBySlug(...args),
   getSpecificationItemByRef: (...args: unknown[]) =>
     mocks.getSpecificationItemByRef(...args),
   listSpecificationItems: (...args: unknown[]) =>
@@ -81,7 +74,6 @@ async function expectInvalidRequest(
 describe('requirements-specifications/[id]/items/[itemId] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.getSpecificationBySlug.mockResolvedValue({ id: 5 })
   })
 
   it('returns specification-specific metadata for a library requirement item', async () => {
@@ -99,10 +91,10 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     ])
 
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/ETJANST-UPP-2026/items/31',
+      'http://localhost/api/requirements-specifications/5/items/31',
     )
 
-    const response = await GET(request, makeParams('ETJANST-UPP-2026', '31'))
+    const response = await GET(request, makeParams('5', '31'))
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
@@ -119,7 +111,6 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
   })
 
   it('updates usage status by item ref within the specification', async () => {
-    mocks.getSpecificationBySlug.mockResolvedValue({ id: 7 })
     mocks.getSpecificationItemByRef.mockResolvedValue({
       itemRef: 'lib:31',
       specificationId: 7,
@@ -127,7 +118,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     })
 
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31',
+      'http://localhost/api/requirements-specifications/7/items/lib%3A31',
       {
         body: JSON.stringify({ specificationItemStatusId: 5 }),
         headers: { 'Content-Type': 'application/json' },
@@ -135,10 +126,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
       },
     )
 
-    const response = await PATCH(
-      request,
-      makeParams('ETJANST-UPP-2026', 'lib%3A31'),
-    )
+    const response = await PATCH(request, makeParams('7', 'lib%3A31'))
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
@@ -163,7 +151,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     '2',
   ])('rejects malformed usage status id %s', async specificationItemStatusId => {
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31',
+      'http://localhost/api/requirements-specifications/7/items/lib%3A31',
       {
         body: JSON.stringify({ specificationItemStatusId }),
         headers: { 'Content-Type': 'application/json' },
@@ -171,19 +159,14 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
       },
     )
 
-    const response = await PATCH(
-      request,
-      makeParams('ETJANST-UPP-2026', 'lib%3A31'),
-    )
+    const response = await PATCH(request, makeParams('7', 'lib%3A31'))
 
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'specificationItemStatusId')
-    expect(mocks.getSpecificationBySlug).not.toHaveBeenCalled()
     expect(mocks.updateSpecificationItemFieldsByItemRef).not.toHaveBeenCalled()
   })
 
   it('allows note-only item updates without a status field', async () => {
-    mocks.getSpecificationBySlug.mockResolvedValue({ id: 7 })
     mocks.getSpecificationItemByRef.mockResolvedValue({
       itemRef: 'lib:31',
       specificationId: 7,
@@ -191,7 +174,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     })
 
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31',
+      'http://localhost/api/requirements-specifications/7/items/lib%3A31',
       {
         body: JSON.stringify({ note: 'Follow-up' }),
         headers: { 'Content-Type': 'application/json' },
@@ -199,10 +182,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
       },
     )
 
-    const response = await PATCH(
-      request,
-      makeParams('ETJANST-UPP-2026', 'lib%3A31'),
-    )
+    const response = await PATCH(request, makeParams('7', 'lib%3A31'))
 
     expect(response.status).toBe(200)
     expect(mocks.updateSpecificationItemFieldsByItemRef).toHaveBeenCalledWith(
@@ -215,7 +195,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
 
   it('rejects empty patch payloads before resolving the specification', async () => {
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31',
+      'http://localhost/api/requirements-specifications/7/items/lib%3A31',
       {
         body: JSON.stringify({}),
         headers: { 'Content-Type': 'application/json' },
@@ -223,10 +203,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
       },
     )
 
-    const response = await PATCH(
-      request,
-      makeParams('ETJANST-UPP-2026', 'lib%3A31'),
-    )
+    const response = await PATCH(request, makeParams('7', 'lib%3A31'))
     const body = (await response.json()) as {
       error: string
       issues: Array<{ message: string }>
@@ -242,7 +219,6 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
         }),
       ]),
     )
-    expect(mocks.getSpecificationBySlug).not.toHaveBeenCalled()
     expect(mocks.updateSpecificationItemFieldsByItemRef).not.toHaveBeenCalled()
   })
 })

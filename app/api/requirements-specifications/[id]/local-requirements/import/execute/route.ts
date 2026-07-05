@@ -1,20 +1,16 @@
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
+import type { z } from 'zod'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { specificationIdOrSlugSchema } from '@/lib/http/validation'
+import { idParamSchema } from '@/lib/http/validation'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { importExecuteBodySchema } from '@/lib/requirements/import-schema'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 
-const paramsSchema = z
-  .object({
-    id: specificationIdOrSlugSchema,
-  })
-  .strict()
+const paramsSchema = idParamSchema
 const bodySchema = importExecuteBodySchema.omit({ areaId: true })
 
 type Body = z.infer<typeof bodySchema>
@@ -26,8 +22,7 @@ export const POST = secureMutationRoute({
   policy: requirementsMutationPolicy<Body, Params>(({ params }) => ({
     kind: 'manage_specification_local_requirement',
     operation: 'create',
-    specificationId: /^\d+$/.test(params.id) ? Number(params.id) : undefined,
-    specificationSlug: /^\d+$/.test(params.id) ? undefined : params.id,
+    specificationId: params.id,
   })),
   handler: async ({ body, context, params, request }) => {
     try {
@@ -36,7 +31,7 @@ export const POST = secureMutationRoute({
       })
       const result = await service.executeSpecificationLocalImport(context, {
         ...body,
-        specificationIdOrSlug: params.id,
+        specificationId: params.id,
       })
       return NextResponse.json(result, {
         headers: { 'Cache-Control': 'no-store' },

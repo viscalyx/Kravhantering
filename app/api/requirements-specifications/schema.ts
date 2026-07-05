@@ -20,13 +20,13 @@ const optionalNullableResponsibleHsaIdSchema = z.preprocess(
   responsibleHsaIdSchema.nullable().optional(),
 )
 
-export const specificationSlugSchema = boundedDbStringSchema
+export const specificationCodeSchema = boundedDbStringSchema
   .regex(/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/, {
     message:
       'Expected uppercase letters, digits, and single hyphens between segments',
   })
   .refine(value => !/^\d+$/.test(value), {
-    message: 'Expected a non-numeric specification slug',
+    message: 'Expected a non-numeric specification code',
   })
 
 export const createSpecificationSchema = z
@@ -41,7 +41,7 @@ export const createSpecificationSchema = z
       .nullable()
       .optional(),
     responsibleHsaId: optionalNullableResponsibleHsaIdSchema,
-    uniqueId: specificationSlugSchema,
+    specificationCode: specificationCodeSchema,
   })
   .strict()
 
@@ -56,6 +56,6 @@ export const updateSpecificationSchema = z
     specificationGovernanceObjectTypeId: positiveIntegerSchema
       .nullable()
       .optional(),
-    uniqueId: specificationSlugSchema.optional(),
+    specificationCode: specificationCodeSchema.optional(),
   })
   .strict()

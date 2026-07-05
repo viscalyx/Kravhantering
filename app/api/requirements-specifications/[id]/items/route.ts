@@ -4,11 +4,9 @@ import { countDeviationsPerItemRef } from '@/lib/dal/deviations'
 import {
   deleteSpecificationItemsByRefs,
   getSpecificationById,
-  getSpecificationBySlug,
   listSpecificationItems,
   updateSpecificationItemFieldsByItemRefs,
 } from '@/lib/dal/requirements-specifications'
-import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
@@ -18,12 +16,12 @@ import {
 } from '@/lib/http/secure-mutation-route'
 import {
   ARRAY_INPUT_MAX_ITEMS,
+  idParamSchema,
   nullableBoundedDbStringSchema,
   nullableBusinessTextSchema,
   parseRouteParams,
   positiveIntegerSchema,
   routeSegmentSchema,
-  specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
@@ -36,11 +34,7 @@ type Params = Promise<{ id: string }>
 
 const ADD_REQUIREMENTS_ERROR = 'Failed to add requirements'
 
-const specificationParamSchema = z
-  .object({
-    id: specificationIdOrSlugSchema,
-  })
-  .strict()
+const specificationParamSchema = idParamSchema
 
 const requirementIdsSchema = z
   .array(positiveIntegerSchema)
@@ -108,22 +102,6 @@ const deleteItemsSchema = z.union([
     .strict(),
 ])
 
-async function resolveSpecificationId(db: SqlServerDatabase, idOrSlug: string) {
-  const bySlug = await getSpecificationBySlug(db, idOrSlug)
-  if (bySlug) return bySlug.id
-  if (/^\d+$/.test(idOrSlug)) {
-    const byId = await getSpecificationById(db, Number(idOrSlug))
-    return byId?.id ?? null
-  }
-  return null
-}
-
-function specificationActionReference(idOrSlug: string) {
-  return /^\d+$/.test(idOrSlug)
-    ? { specificationId: Number(idOrSlug) }
-    : { specificationSlug: idOrSlug }
-}
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Params },
@@ -135,8 +113,8 @@ export async function GET(
   try {
     const { id } = parsedParams.data
     const db = await getRequestSqlServerDataSource()
-    const specificationId = await resolveSpecificationId(db, id)
-    if (specificationId === null)
+    const specification = await getSpecificationById(db, id)
+    if (!specification)
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     const { authorization, context } = await createRequirementsRestRuntime(
       request,
@@ -146,13 +124,15 @@ export async function GET(
       authorization,
       {
         kind: 'get_specification_items',
-        specificationId,
-        specificationSlug: /^\d+$/.test(id) ? undefined : id,
+        specificationId: specification.id,
       },
       context,
     )
-    const items = await listSpecificationItems(db, specificationId)
-    const deviationCounts = await countDeviationsPerItemRef(db, specificationId)
+    const items = await listSpecificationItems(db, specification.id)
+    const deviationCounts = await countDeviationsPerItemRef(
+      db,
+      specification.id,
+    )
     const enrichedItems = items.map(item => {
       const dc = item.itemRef ? deviationCounts.get(item.itemRef) : undefined
       return {
@@ -178,14 +158,14 @@ export const POST = secureMutationRoute({
   >(({ body, params }) => ({
     kind: 'add_to_specification',
     requirementIds: body.requirementIds,
-    ...specificationActionReference(params.id),
+    specificationId: params.id,
   })),
   handler: async ({ body, context, params, request }) => {
     const { id } = params
     const db = await getRequestSqlServerDataSource()
 
-    const specificationId = await resolveSpecificationId(db, id)
-    if (specificationId === null)
+    const specification = await getSpecificationById(db, id)
+    if (!specification)
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const { requirementIds, needsReferenceId, needsReferenceText } = body
@@ -196,7 +176,7 @@ export const POST = secureMutationRoute({
         db,
       })
       const payload = await service.addToSpecification(context, {
-        specificationId,
+        specificationId: specification.id,
         requirementIds,
         needsReferenceDescription: body.needsReferenceDescription,
         needsReferenceId,
@@ -235,20 +215,20 @@ export const PATCH = secureMutationRoute({
     kind: 'manage_specification_needs_reference',
     needsReferenceId: body.needsReferenceId ?? undefined,
     operation: 'assign',
-    ...specificationActionReference(params.id),
+    specificationId: params.id,
   })),
   handler: async ({ body, params }) => {
     const { id } = params
     const db = await getRequestSqlServerDataSource()
 
-    const specificationId = await resolveSpecificationId(db, id)
-    if (specificationId === null) {
+    const specification = await getSpecificationById(db, id)
+    if (!specification) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     const updatedCount = await updateSpecificationItemFieldsByItemRefs(
       db,
-      specificationId,
+      specification.id,
       body.itemRefs,
       { needsReferenceId: body.needsReferenceId },
     )
@@ -265,8 +245,8 @@ export const DELETE = secureMutationRoute({
     const { id } = params
     const db = await getRequestSqlServerDataSource()
 
-    const specificationId = await resolveSpecificationId(db, id)
-    if (specificationId === null)
+    const specification = await getSpecificationById(db, id)
+    if (!specification)
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     if ('itemRefs' in body) {
@@ -274,7 +254,7 @@ export const DELETE = secureMutationRoute({
         const { deletedLibraryCount, deletedSpecificationLocalCount } =
           await deleteSpecificationItemsByRefs(
             db,
-            specificationId,
+            specification.id,
             body.itemRefs,
           )
         return NextResponse.json({
@@ -306,7 +286,7 @@ export const DELETE = secureMutationRoute({
         db,
       })
       const payload = await service.removeFromSpecification(context, {
-        specificationId,
+        specificationId: specification.id,
         requirementIds: body.requirementIds,
         responseFormat: 'json',
       })

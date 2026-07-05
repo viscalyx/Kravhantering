@@ -194,8 +194,9 @@ for (const viewport of viewports) {
           .slice(2, 8)
           .toUpperCase()
         const viewportPrefix = viewport.name === 'mobile' ? 'M' : 'D'
-        const createdSlug = `PWT-SPEC02-${viewportPrefix}-${randomSuffix}`
+        const createdSpecificationCode = `PWT-SPEC02-${viewportPrefix}-${randomSuffix}`
         const createdName = `PWT SPEC-02 skapat kravunderlag ${viewport.name} ${randomSuffix}`
+        let createdSpecificationId: number | null = null
 
         try {
           await createButton.click()
@@ -207,13 +208,13 @@ for (const viewport of viewports) {
             'form#requirement-specification-form',
           )
           const nameInput = createForm.getByRole('textbox', { name: 'Namn *' })
-          const slugInput = createForm.getByRole('textbox', {
-            name: /Kravunderlag-ID/u,
+          const codeInput = createForm.getByRole('textbox', {
+            name: 'Kravunderlagskod *',
           })
           await nameInput.fill(createdName)
           await nameInput.blur()
-          await slugInput.fill(createdSlug)
-          await expect(slugInput).toHaveValue(createdSlug)
+          await codeInput.fill(createdSpecificationCode)
+          await expect(codeInput).toHaveValue(createdSpecificationCode)
           await createForm
             .getByRole('textbox', { name: 'Underlagssyfte' })
             .fill('Playwright SPEC-02 verifierar komplett create-flöde.')
@@ -222,7 +223,31 @@ for (const viewport of viewports) {
               name: /Kravunderlagets livscykelstatus/u,
             })
             .selectOption('1')
+          const createResponsePromise = page.waitForResponse(
+            response =>
+              response.url().endsWith('/api/requirements-specifications') &&
+              response.request().method() === 'POST',
+          )
           await createForm.getByRole('button', { name: 'Spara' }).click()
+          const createdResponse = await createResponsePromise
+          await expectApiResponseOk(
+            createdResponse,
+            'POST created requirement specification',
+          )
+          const createdPayload = (await createdResponse.json()) as {
+            id?: unknown
+          }
+          expect(createdPayload).toMatchObject({
+            name: createdName,
+            responsibleHsaId: 'SE5560000001-admin1',
+            specificationLifecycleStatusId: 1,
+            specificationCode: createdSpecificationCode,
+          })
+          expect(typeof createdPayload.id).toBe('number')
+          if (typeof createdPayload.id !== 'number') {
+            throw new Error('Created requirement specification id is missing')
+          }
+          createdSpecificationId = createdPayload.id
           await expect(createDialog).toBeHidden({ timeout: 30_000 })
 
           const createdRow = page.getByRole('row', {
@@ -231,23 +256,14 @@ for (const viewport of viewports) {
           await expect(createdRow).toBeVisible({ timeout: 30_000 })
           await expect(createdRow).toContainText('Ada Admin')
           await expect(createdRow).toContainText('Upphandling')
-          const createdResponse = await request.get(
-            `/api/requirements-specifications/${createdSlug}`,
-          )
-          await expectApiResponseOk(
-            createdResponse,
-            'GET created requirement specification',
-          )
-          expect(await createdResponse.json()).toMatchObject({
-            name: createdName,
-            responsibleHsaId: 'SE5560000001-admin1',
-            specificationLifecycleStatusId: 1,
-            uniqueId: createdSlug,
-          })
         } finally {
-          await request
-            .delete(`/api/requirements-specifications/${createdSlug}`)
-            .catch(() => undefined)
+          if (createdSpecificationId !== null) {
+            await request
+              .delete(
+                `/api/requirements-specifications/${createdSpecificationId}`,
+              )
+              .catch(() => undefined)
+          }
           await page.reload()
         }
       })
@@ -451,14 +467,14 @@ test.describe('Requirements specifications destructive manual cases', () => {
                   requirementAreas: [],
                   responsibleDisplayName: 'Petra specresp',
                   responsibleHsaId: 'SE5560000001-specresp1',
-                  uniqueId: 'PWT-SPEC-EDIT-2026',
+                  specificationCode: 'PWT-SPEC-EDIT-2026',
                 },
               ],
         },
       })
     })
     await page.route(
-      '**/api/requirements-specifications/PWT-SPEC-EDIT-2026',
+      '**/api/requirements-specifications/920001',
       async route => {
         if (route.request().method() === 'DELETE') {
           deleteRequests.push(route.request().url())

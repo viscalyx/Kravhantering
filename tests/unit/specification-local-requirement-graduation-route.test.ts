@@ -45,7 +45,7 @@ function makeParams(id: string, localRequirementId: string) {
 
 function makePostRequest(body: unknown) {
   return new NextRequest(
-    'http://localhost/api/requirements-specifications/spec/local-requirements/41/graduate',
+    'http://localhost/api/requirements-specifications/5/local-requirements/41/graduate',
     {
       body: JSON.stringify(body),
       headers: {
@@ -90,9 +90,9 @@ describe('specification-local requirement graduation routes', () => {
   it('lists graduation target requirement areas through the shared service', async () => {
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/spec/local-requirements/41/graduation-target-areas',
+        'http://localhost/api/requirements-specifications/5/local-requirements/41/graduation-target-areas',
       ),
-      makeParams('spec', '41'),
+      makeParams('5', '41'),
     )
 
     expect(response.status).toBe(200)
@@ -103,14 +103,14 @@ describe('specification-local requirement graduation routes', () => {
     expect(mocks.listGraduationTargetAreas).toHaveBeenCalledWith(mockContext, {
       localRequirementId: 41,
       responseFormat: 'json',
-      specificationSlug: 'spec',
+      specificationId: 5,
     })
   })
 
   it('creates a draft library requirement through the shared service', async () => {
     const response = await POST(
       makePostRequest({ requirementAreaId: 2 }),
-      makeParams('spec', '41'),
+      makeParams('5', '41'),
     )
 
     expect(response.status).toBe(201)
@@ -130,7 +130,7 @@ describe('specification-local requirement graduation routes', () => {
         localRequirementId: 41,
         requirementAreaId: 2,
         responseFormat: 'json',
-        specificationSlug: 'spec',
+        specificationId: 5,
       },
     )
   })
@@ -146,7 +146,7 @@ describe('specification-local requirement graduation routes', () => {
 
     const response = await POST(
       makePostRequest({ requirementAreaId: 2 }),
-      makeParams('spec', '41'),
+      makeParams('5', '41'),
     )
 
     expect(response.status).toBe(400)
@@ -160,7 +160,7 @@ describe('specification-local requirement graduation routes', () => {
   it('returns 400 for invalid graduation bodies', async () => {
     const response = await POST(
       makePostRequest({ requirementAreaId: 0 }),
-      makeParams('spec', '41'),
+      makeParams('5', '41'),
     )
 
     expect(response.status).toBe(400)
@@ -179,7 +179,7 @@ describe('specification-local requirement graduation routes', () => {
 
     const response = await POST(
       makePostRequest({ requirementAreaId: 2 }),
-      makeParams('spec', '41'),
+      makeParams('5', '41'),
     )
 
     expect(response.status).toBe(403)

@@ -34,8 +34,8 @@ export interface DeviationReportVersion {
 export interface DeviationReportData {
   deviation: DeviationReportDeviation
   requirementUniqueId: string
+  specificationCode: string | null
   specificationName: string | null
-  specificationUniqueId: string | null
   version: DeviationReportVersion
 }
 
@@ -114,8 +114,8 @@ export async function fetchDeviationForReport(
       id: number
       isReviewRequested: number
       motivation: string
+      specificationCode: string | null
       specificationName: string | null
-      specificationUniqueId: string | null
       requirementVersionId: number
     }[]
   }
@@ -147,7 +147,7 @@ export async function fetchDeviationForReport(
   return {
     requirementUniqueId: requirement.uniqueId,
     specificationName: inReview.specificationName,
-    specificationUniqueId: inReview.specificationUniqueId,
+    specificationCode: inReview.specificationCode,
     deviation: {
       motivation: inReview.motivation,
       createdBy: inReview.createdBy,

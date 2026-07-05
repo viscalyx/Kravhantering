@@ -12,7 +12,7 @@ export interface SpecificationCoverInfo {
   implementationType: string | null
   lifecycleStatus: string | null
   name: string
-  uniqueId: string
+  specificationCode: string
 }
 
 export interface RequirementSelectionContextRow {

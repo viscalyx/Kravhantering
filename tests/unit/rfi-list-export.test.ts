@@ -53,7 +53,7 @@ const list: SpecificationRfiListRow = {
 describe('RFI list export', () => {
   it('exports locked RFI question versions with Swedish scope and relevance labels', () => {
     const csv = buildSpecificationRfiListCsv(
-      { name: 'E-arkiv', uniqueId: 'SPEC-004' },
+      { name: 'E-arkiv', specificationCode: 'SPEC-004' },
       list,
       'sv',
     )

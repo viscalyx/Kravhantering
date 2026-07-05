@@ -8,8 +8,9 @@ import {
 import { listAreas } from '@/lib/dal/requirement-areas'
 import { listRequirementPackages } from '@/lib/dal/requirement-packages'
 import {
-  getSpecificationBySlug,
-  getSpecificationForbiddenSummaryBySlug,
+  getSpecificationByCode,
+  getSpecificationById,
+  getSpecificationForbiddenSummaryById,
   listSpecificationCoAuthorHsaIds,
   listSpecificationCoAuthorHsaIdsBySpecification,
   listSpecificationItems,
@@ -22,6 +23,7 @@ import { listSpecificationItemStatuses } from '@/lib/dal/specification-item-stat
 import { listSpecificationLifecycleStatuses } from '@/lib/dal/specification-lifecycle-statuses'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { positiveIntegerStringSchema } from '@/lib/http/validation'
 import { forbiddenError } from '@/lib/requirements/errors'
 import { queryRequirementList } from '@/lib/requirements/list-query'
 import {
@@ -176,20 +178,23 @@ function emptyDetailInitialData(
 
 export async function loadRequirementsSpecificationDetailInitialData({
   locale,
-  slug,
+  specificationId,
 }: {
   locale: 'en' | 'sv'
-  slug: string
+  specificationId: number
 }): Promise<RequirementsSpecificationDetailInitialData> {
   const db = await getRequestSqlServerDataSource()
   const context = await createServerComponentRequestContext({
-    path: `/specifications/${slug}`,
+    path: `/specifications/${specificationId}`,
   })
   const specResult = await capture<SpecificationMeta | null>(
     'specification',
     null,
     async () =>
-      (await getSpecificationBySlug(db, slug)) as SpecificationMeta | null,
+      (await getSpecificationById(
+        db,
+        specificationId,
+      )) as SpecificationMeta | null,
   )
 
   if (!specResult.value) {
@@ -219,11 +224,13 @@ export async function loadRequirementsSpecificationDetailInitialData({
       {
         kind: 'get_specification_items',
         specificationId: specResult.value.id,
-        specificationSlug: slug,
       },
       denied,
     )
-    const summary = await getSpecificationForbiddenSummaryBySlug(db, slug)
+    const summary = await getSpecificationForbiddenSummaryById(
+      db,
+      specResult.value.id,
+    )
     return emptyDetailInitialData(
       null,
       specResult.error ? [specResult.error] : [],
@@ -233,7 +240,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
               responsible: summary.responsible,
               specification: {
                 name: summary.name,
-                uniqueId: summary.uniqueId,
+                specificationCode: summary.specificationCode,
               },
             }
           : undefined,
@@ -348,6 +355,21 @@ export async function loadRequirementsSpecificationDetailInitialData({
     specificationGovernanceObjectTypes:
       specificationGovernanceObjectTypes.value,
   }
+}
+
+export async function resolveRequirementsSpecificationRouteParam(
+  value: string,
+): Promise<{ fromCode: boolean; id: number } | null> {
+  const db = await getRequestSqlServerDataSource()
+  if (/^\d+$/.test(value)) {
+    const parsedId = positiveIntegerStringSchema.safeParse(value)
+    if (!parsedId.success) return null
+    const specification = await getSpecificationById(db, parsedId.data)
+    return specification ? { fromCode: false, id: specification.id } : null
+  }
+
+  const specification = await getSpecificationByCode(db, value)
+  return specification ? { fromCode: true, id: specification.id } : null
 }
 
 export async function loadRequirementsSpecificationsInitialData(): Promise<RequirementsSpecificationsInitialData> {

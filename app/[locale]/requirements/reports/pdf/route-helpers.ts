@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { getSpecificationById } from '@/lib/dal/requirements-specifications'
+import { positiveIntegerStringSchema } from '@/lib/http/validation'
 import { ReportDataError } from '@/lib/reports/data/server'
 import type {
   AuthorizationService,
@@ -66,6 +68,29 @@ export async function authorizeSpecificationReportRead(
     },
     context,
   )
+}
+
+export async function resolveReportSpecification(
+  db: ReportRuntime['db'],
+  specificationId: string,
+): Promise<NonNullable<Awaited<ReturnType<typeof getSpecificationById>>>> {
+  const parsedId = positiveIntegerStringSchema.safeParse(specificationId)
+  if (!parsedId.success) {
+    throw new ReportDataError(
+      `Specification not found: ${specificationId}`,
+      404,
+    )
+  }
+
+  const specification = await getSpecificationById(db, parsedId.data)
+  if (!specification) {
+    throw new ReportDataError(
+      `Specification not found: ${specificationId}`,
+      404,
+    )
+  }
+
+  return specification
 }
 
 export function reportErrorResponse(error: unknown): NextResponse {

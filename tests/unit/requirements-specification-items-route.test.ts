@@ -12,7 +12,6 @@ const mocks = {
   createRequirementsRestRuntime: vi.fn(),
   deleteSpecificationItemsByRefs: vi.fn(),
   getSpecificationById: vi.fn(),
-  getSpecificationBySlug: vi.fn(),
   linkRequirementsToSpecificationAtomically: vi.fn(),
   listSpecificationItems: vi.fn(),
   removeFromSpecification: vi.fn(),
@@ -43,8 +42,6 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mocks.deleteSpecificationItemsByRefs(...args),
   getSpecificationById: (...args: unknown[]) =>
     mocks.getSpecificationById(...args),
-  getSpecificationBySlug: (...args: unknown[]) =>
-    mocks.getSpecificationBySlug(...args),
   linkRequirementsToSpecificationAtomically: (...args: unknown[]) =>
     mocks.linkRequirementsToSpecificationAtomically(...args),
   listSpecificationItems: (...args: unknown[]) =>
@@ -130,7 +127,7 @@ describe('requirements-specifications/[id]/items route', () => {
         },
       }),
     )
-    mocks.getSpecificationBySlug.mockResolvedValue({ id: 5 })
+    mocks.getSpecificationById.mockResolvedValue({ id: 5 })
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(1)
     mocks.removeFromSpecification.mockResolvedValue({
       message: 'ok',
@@ -148,7 +145,7 @@ describe('requirements-specifications/[id]/items route', () => {
     )
 
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/spec/items',
+      'http://localhost/api/requirements-specifications/5/items',
       {
         body: JSON.stringify({
           needsReferenceId: 99,
@@ -159,7 +156,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     )
 
-    const response = await POST(request, makeParams('spec'))
+    const response = await POST(request, makeParams('5'))
 
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toEqual({
@@ -178,7 +175,7 @@ describe('requirements-specifications/[id]/items route', () => {
   })
 
   it('returns requirement applications with merged deviation counts', async () => {
-    mocks.getSpecificationBySlug.mockResolvedValue({ id: 7 })
+    mocks.getSpecificationById.mockResolvedValue({ id: 7 })
     mocks.listSpecificationItems.mockResolvedValue([
       {
         id: 31,
@@ -203,9 +200,9 @@ describe('requirements-specifications/[id]/items route', () => {
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/spec/items',
+        'http://localhost/api/requirements-specifications/5/items',
       ),
-      makeParams('spec'),
+      makeParams('5'),
     )
 
     expect(response.status).toBe(200)
@@ -231,7 +228,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
   it('delegates requirement linking to the requirements service', async () => {
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/spec/items',
+      'http://localhost/api/requirements-specifications/5/items',
       {
         body: JSON.stringify({
           needsReferenceDescription: 'Shared description',
@@ -243,7 +240,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     )
 
-    const response = await POST(request, makeParams('spec'))
+    const response = await POST(request, makeParams('5'))
 
     expect(response.status).toBe(201)
     expect(mocks.createRequirementsRestRuntime).toHaveBeenCalledWith(request, {
@@ -269,7 +266,7 @@ describe('requirements-specifications/[id]/items route', () => {
     })
 
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/spec/items',
+      'http://localhost/api/requirements-specifications/5/items',
       {
         body: JSON.stringify({
           needsReferenceText: 'Shared need',
@@ -280,7 +277,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     )
 
-    const response = await POST(request, makeParams('spec'))
+    const response = await POST(request, makeParams('5'))
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ addedCount: 0, ok: true })
@@ -296,7 +293,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
   it('rejects malformed requirementIds before any database work runs', async () => {
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/spec/items',
+      'http://localhost/api/requirements-specifications/5/items',
       {
         body: JSON.stringify({
           requirementIds: [1, '2'],
@@ -306,7 +303,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     )
 
-    const response = await POST(request, makeParams('spec'))
+    const response = await POST(request, makeParams('5'))
 
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'requirementIds.1')
@@ -315,7 +312,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
   it('rejects duplicate requirementIds before any database work runs', async () => {
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/spec/items',
+      'http://localhost/api/requirements-specifications/5/items',
       {
         body: JSON.stringify({
           requirementIds: [1, 1],
@@ -325,7 +322,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     )
 
-    const response = await POST(request, makeParams('spec'))
+    const response = await POST(request, makeParams('5'))
 
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'requirementIds')
@@ -334,7 +331,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
   it('rejects ambiguous needs-reference payloads', async () => {
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/spec/items',
+      'http://localhost/api/requirements-specifications/5/items',
       {
         body: JSON.stringify({
           needsReferenceId: 7,
@@ -346,7 +343,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     )
 
-    const response = await POST(request, makeParams('spec'))
+    const response = await POST(request, makeParams('5'))
 
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'needsReferenceText')
@@ -355,7 +352,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
   it('rejects needs-reference descriptions without new needs-reference text', async () => {
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/spec/items',
+      'http://localhost/api/requirements-specifications/5/items',
       {
         body: JSON.stringify({
           needsReferenceDescription: 'Context without a reference',
@@ -366,7 +363,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     )
 
-    const response = await POST(request, makeParams('spec'))
+    const response = await POST(request, makeParams('5'))
 
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'needsReferenceDescription')
@@ -386,7 +383,7 @@ describe('requirements-specifications/[id]/items route', () => {
     )
 
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/spec/items',
+      'http://localhost/api/requirements-specifications/5/items',
       {
         body: JSON.stringify({
           requirementIds: [1],
@@ -396,7 +393,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     )
 
-    const response = await POST(request, makeParams('spec'))
+    const response = await POST(request, makeParams('5'))
 
     expect(response.status).toBe(422)
     await expect(response.json()).resolves.toEqual({
@@ -408,7 +405,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
   it('rejects malformed delete payloads before unlinking items', async () => {
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/spec/items',
+      'http://localhost/api/requirements-specifications/5/items',
       {
         body: JSON.stringify({
           requirementIds: [0],
@@ -418,7 +415,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     )
 
-    const response = await DELETE(request, makeParams('spec'))
+    const response = await DELETE(request, makeParams('5'))
 
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'requirementIds.0')
@@ -435,7 +432,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
     try {
       const request = new NextRequest(
-        'http://localhost/api/requirements-specifications/spec/items',
+        'http://localhost/api/requirements-specifications/5/items',
         {
           body: JSON.stringify({
             needsReferenceText: 'Shared need',
@@ -446,7 +443,7 @@ describe('requirements-specifications/[id]/items route', () => {
         },
       )
 
-      const response = await POST(request, makeParams('spec'))
+      const response = await POST(request, makeParams('5'))
 
       expect(response.status).toBe(500)
       await expect(response.json()).resolves.toEqual({
@@ -475,7 +472,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
   it('unlinks requirement items for valid delete payloads', async () => {
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/spec/items',
+      'http://localhost/api/requirements-specifications/5/items',
       {
         body: JSON.stringify({
           requirementIds: [1, 2],
@@ -485,7 +482,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     )
 
-    const response = await DELETE(request, makeParams('spec'))
+    const response = await DELETE(request, makeParams('5'))
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
@@ -502,7 +499,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
   it('bulk-updates needs references by item refs', async () => {
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/spec/items',
+      'http://localhost/api/requirements-specifications/5/items',
       {
         body: JSON.stringify({
           itemRefs: ['lib:31', 'local:41'],
@@ -513,7 +510,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     )
 
-    const response = await PATCH(request, makeParams('spec'))
+    const response = await PATCH(request, makeParams('5'))
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
@@ -538,7 +535,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
     try {
       const request = new NextRequest(
-        'http://localhost/api/requirements-specifications/spec/items',
+        'http://localhost/api/requirements-specifications/5/items',
         {
           body: JSON.stringify({
             requirementIds: [1, 2],
@@ -548,7 +545,7 @@ describe('requirements-specifications/[id]/items route', () => {
         },
       )
 
-      const response = await DELETE(request, makeParams('spec'))
+      const response = await DELETE(request, makeParams('5'))
 
       expect(response.status).toBe(500)
       await expect(response.json()).resolves.toEqual({
@@ -574,7 +571,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
   it('deletes mixed requirement applications by itemRef when itemRefs are supplied', async () => {
     const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/spec/items',
+      'http://localhost/api/requirements-specifications/5/items',
       {
         body: JSON.stringify({
           itemRefs: ['lib:31', 'local:2'],
@@ -584,7 +581,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     )
 
-    const response = await DELETE(request, makeParams('spec'))
+    const response = await DELETE(request, makeParams('5'))
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({

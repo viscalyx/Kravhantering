@@ -69,8 +69,9 @@ Viktiga seedade ytor:
 - Kravbibliotek: `/sv/requirements`.
 - Nytt krav: `/sv/requirements/new`.
 - Kravunderlag: `/sv/specifications`.
-- Seedat kravunderlag: `/sv/specifications/AUTHZ-SPEC-2026`.
-- Avsteg/livscykel: `/sv/specifications/PLAYWRIGHT-LIFECYCLE-2026`.
+- Seedat kravunderlag: `/sv/specifications/910400` eller
+  `/sv/specifications/AUTHZ-SPEC-2026`.
+- Avsteg/livscykel: `/sv/specifications/11` eller `/sv/specifications/PLAYWRIGHT-LIFECYCLE-2026`.
 - Admincenter: `/sv/admin`.
 - Dataskydd: `/sv/privacy`.
 - Seedat kravområde för behörighet: `AUTHZ-AREA-2026` med prefix `AUTHZ`.
@@ -225,7 +226,7 @@ ansvarstilldelning.
 
 1. Logga in som `noah.noroles`.
 1. Öppna `/sv/admin`.
-1. Öppna `/sv/specifications/AUTHZ-SPEC-2026`.
+1. Öppna `/sv/specifications/` eller `/sv/specifications/AUTHZ-SPEC-2026`.
 1. Försök nå API:er för Admin, AI-generering och ändring av kravunderlag med
    `scripts/dev-curl.sh`.
 
@@ -326,7 +327,7 @@ AUTHZ-fixtures.
 
 1. Logga in som `ada.admin`.
 1. Öppna `/sv/admin` och kontrollera att applikationen fungerar efter seed.
-1. Öppna `/sv/specifications/AUTHZ-SPEC-2026`.
+1. Öppna `/sv/specifications/910400` eller `/sv/specifications/AUTHZ-SPEC-2026`.
 1. Öppna `/sv/requirements` och sök efter kravområde eller prefix `AUTHZ`.
 1. Öppna `Kravbiblioteksförvaltning` och sök efter `AUTHZ kravpaket`.
 
@@ -344,7 +345,7 @@ arbete.
 **Steg:**
 
 1. Logga in som `noah.noroles`.
-1. Öppna `/sv/specifications/AUTHZ-SPEC-2026`.
+1. Öppna `/sv/specifications/910400` eller `/sv/specifications/AUTHZ-SPEC-2026`.
 1. Kontrollera att sidan inte visar redigerings- eller AI-kontroller.
 1. Försök öppna `/sv/admin`.
 1. Kör API-kontroll för att uppdatera `AUTHZ-SPEC-2026`.
@@ -430,7 +431,7 @@ inte delegera ansvar.
 **Steg:**
 
 1. Logga in som `signe.speccoauthor`.
-1. Öppna `/sv/specifications/AUTHZ-SPEC-2026`.
+1. Öppna `/sv/specifications/910400` eller `/sv/specifications/AUTHZ-SPEC-2026`.
 1. Gör en liten tillåten innehållsändring.
 1. Ladda om sidan och verifiera att ändringen finns kvar.
 1. Öppna kravunderlagslistan och försök hitta radåtgärden för att hantera
@@ -1148,7 +1149,7 @@ Krav och föreslagna normreferenser visas i separata flikar. Kravpaket visas
 inte som val för kravunderlagslokala krav, och importerade
 `requirementPackageIds` eller `requirementPackageNames` visas som diskret
 information om att kravpaketen inte används. Execute-anropet skickar
-`specificationIdOrSlug`, vald behovsreferens, normreferens-ID och
+`specificationId`, vald behovsreferens, normreferens-ID och
 verifieringsmetod.
 
 ## Avsteg

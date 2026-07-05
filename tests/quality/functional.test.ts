@@ -304,7 +304,7 @@ const specificationDetailClientPath = join(
   'app',
   '[locale]',
   'specifications',
-  '[slug]',
+  '[specificationId]',
   'requirements-specification-detail-client.tsx',
 )
 const specificationOutputDataPath = join(
@@ -361,7 +361,7 @@ const specificationTraceabilityPdfRoutePath = join(
   'app',
   '[locale]',
   'specifications',
-  '[slug]',
+  '[specificationId]',
   'reports',
   'pdf',
   'traceability',
@@ -1025,7 +1025,7 @@ function createSpecificationMcpContractService() {
         itemCount: 1,
         name: 'IAM Specification',
         governanceObjectType: null,
-        uniqueId: 'IAM-SPECIFICATION',
+        specificationCode: 'IAM-SPECIFICATION',
       },
     ],
   }))
@@ -1628,7 +1628,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       name: 'Scenario specification',
       specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
-      uniqueId: 'SCENARIO-SPECIFICATION',
+      specificationCode: 'SCENARIO-SPECIFICATION',
     })
 
     await linkRequirementsToSpecificationAtomically(appDb(), spec.id, {
@@ -1717,7 +1717,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       name: 'Status clearing specification',
       specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
-      uniqueId: 'STATUS-CLEARING-SPECIFICATION',
+      specificationCode: 'STATUS-CLEARING-SPECIFICATION',
     })
 
     await linkRequirementsToSpecificationAtomically(appDb(), spec.id, {
@@ -1819,17 +1819,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
           client,
           tool,
           baseArgs,
-          'Provide exactly one of specificationId or specificationSlug.',
-        )
-        await expectMcpToolError(
-          client,
-          tool,
-          {
-            ...baseArgs,
-            specificationId: 7,
-            specificationSlug: 'IAM-SPECIFICATION',
-          },
-          'Provide exactly one of specificationId or specificationSlug.',
+          'Invalid input: expected number, received undefined',
         )
       }
 
@@ -1967,7 +1957,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
           descriptionSearch: 'published',
           locale: 'sv',
           responseFormat: 'json',
-          specificationSlug: 'IAM-SPECIFICATION',
+          specificationId: 7,
         },
         name: 'requirements_get_specification_items',
       })
@@ -1977,7 +1967,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
           descriptionSearch: 'published',
           locale: 'sv',
           responseFormat: 'json',
-          specificationSlug: 'IAM-SPECIFICATION',
+          specificationId: 7,
         }),
       )
       await client.callTool({
@@ -1985,7 +1975,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
           locale: 'sv',
           localRequirementId: 12,
           responseFormat: 'json',
-          specificationSlug: 'IAM-SPECIFICATION',
+          specificationId: 7,
         },
         name: 'requirements_list_graduation_target_areas',
       })
@@ -1995,7 +1985,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
           locale: 'sv',
           localRequirementId: 12,
           responseFormat: 'json',
-          specificationSlug: 'IAM-SPECIFICATION',
+          specificationId: 7,
         }),
       )
       await client.callTool({
@@ -2004,7 +1994,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
           localRequirementId: 12,
           requirementAreaId: 2,
           responseFormat: 'json',
-          specificationSlug: 'IAM-SPECIFICATION',
+          specificationId: 7,
         },
         name: 'requirements_graduate_local_requirement',
       })
@@ -2017,7 +2007,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
           localRequirementId: 12,
           requirementAreaId: 2,
           responseFormat: 'json',
-          specificationSlug: 'IAM-SPECIFICATION',
+          specificationId: 7,
         }),
       )
       await client.callTool({
@@ -2026,7 +2016,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
           needsReferenceText: 'IAM-42',
           requirementIds: [10, 11],
           responseFormat: 'json',
-          specificationSlug: 'IAM-SPECIFICATION',
+          specificationId: 7,
         },
         name: 'requirements_add_to_specification',
       })
@@ -2037,7 +2027,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
           needsReferenceText: 'IAM-42',
           requirementIds: [10, 11],
           responseFormat: 'json',
-          specificationSlug: 'IAM-SPECIFICATION',
+          specificationId: 7,
         }),
       )
       await client.callTool({
@@ -2045,7 +2035,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
           locale: 'sv',
           requirementIds: [10, 11],
           responseFormat: 'json',
-          specificationSlug: 'IAM-SPECIFICATION',
+          specificationId: 7,
         },
         name: 'requirements_remove_from_specification',
       })
@@ -2055,7 +2045,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
           locale: 'sv',
           requirementIds: [10, 11],
           responseFormat: 'json',
-          specificationSlug: 'IAM-SPECIFICATION',
+          specificationId: 7,
         }),
       )
 
@@ -2089,7 +2079,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       name: 'Scenario 17 specification',
       specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
-      uniqueId: 'SCENARIO-17-SPECIFICATION',
+      specificationCode: 'SCENARIO-17-SPECIFICATION',
     })
     const service = createRequirementsService(appDb())
 
@@ -2152,7 +2142,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       name: 'Graduation specification',
       specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
-      uniqueId: 'GRADUATION-SPECIFICATION',
+      specificationCode: 'GRADUATION-SPECIFICATION',
     })
     const localItem = await createSpecificationLocalRequirement(
       appDb(),
@@ -2306,7 +2296,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       name: 'Link specification',
       specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
-      uniqueId: 'LINK-SPECIFICATION',
+      specificationCode: 'LINK-SPECIFICATION',
     })
 
     await linkRequirementsToSpecificationAtomically(appDb(), spec.id, {
@@ -2392,7 +2382,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       name: 'Decision specification',
       specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
-      uniqueId: 'DECISION-SPECIFICATION',
+      specificationCode: 'DECISION-SPECIFICATION',
     })
 
     await linkRequirementsToSpecificationAtomically(appDb(), spec.id, {

@@ -38,8 +38,8 @@ describe('RequirementReportMenu', () => {
         deviationStep={null}
         locale="sv"
         requirementId={123}
+        specificationId={1}
         specificationItemId={31}
-        specificationSlug="ETJANST-UPP-2026"
         variant="specification"
       />,
     )
@@ -84,8 +84,8 @@ describe('RequirementReportMenu', () => {
         deviationStep="review_requested"
         locale="sv"
         requirementId={123}
+        specificationId={1}
         specificationItemId={31}
-        specificationSlug="ETJANST-UPP-2026"
         variant="specification"
       />,
     )

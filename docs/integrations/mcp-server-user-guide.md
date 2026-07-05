@@ -64,19 +64,18 @@ agents can use it reliably.
 #### Requirements specifications (Kravunderlag)
 
 - `requirements_list_specifications`
-  List all requirements specifications, optionally filtered by name. Returns id,
-  `uniqueId` (slug), Swedish and English names, item count, governance object
-  type, and implementation type for each specification. Copy paths:
+  List all requirements specifications, optionally filtered by name. Returns
+  `specificationId`, `specificationCode`, Swedish and English names, item count,
+  governance object type, and implementation type for each specification. Copy
+  path:
 
   ```text
-  requirements_list_specifications.specifications[].id -> specificationId
-  requirements_list_specifications.specifications[].uniqueId -> specificationSlug
+  requirements_list_specifications.specifications[].specificationId -> specificationId
   ```
 
 - `requirements_get_specification_items`
   List requirement applications linked to a specific specification, with
-  optional description search. Use `specificationId` (numeric) or
-  `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`) from
+  optional description search. Use the numeric `specificationId` from
   `requirements_list_specifications`. Copy linked requirement IDs from:
 
   ```text
@@ -93,8 +92,8 @@ agents can use it reliably.
   Optionally attach an existing `needsReferenceId`, or create a new
   `needsReferenceText` with an optional `needsReferenceDescription`, for all
   added items. New needs-reference text must be unique inside the
-  specification. Use `specificationId` or `specificationSlug` to identify the
-  specification. Copy requirement IDs from:
+  specification. Use `specificationId` to identify the specification. Copy
+  requirement IDs from:
 
   ```text
   requirements_query_catalog.items[].id -> requirementIds
@@ -107,8 +106,7 @@ agents can use it reliably.
   that source row.
 - `requirements_remove_from_specification`
   Unlink one or more requirements from a specification. The requirements themselves
-  are not deleted. Use `specificationId` or `specificationSlug` to identify the
-  specification.
+  are not deleted. Use `specificationId` to identify the specification.
 
 #### Improvement Suggestions
 
@@ -616,12 +614,12 @@ unchanged status fields.
 - `Graduate unique requirement 41 from specification SAKLYFT-INFOR-Q2 into requirement area 3.` <!-- markdownlint-disable-line MD013 -->
 - `Remove requirement INT0003 from specification SAKLYFT-INFOR-Q2.`
 
-> **Note:** Specifications can be identified by `specificationId` (numeric) or
-> `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`) — use whichever is available from
-> `requirements_list_specifications`: copy
-> `requirements_list_specifications.specifications[].id` -> `specificationId`
-> or `requirements_list_specifications.specifications[].uniqueId` ->
-> `specificationSlug`. For `requirements_add_to_specification`, copy
+> **Note:** Specifications are identified in MCP tools by numeric
+> `specificationId`. Copy
+> `requirements_list_specifications.specifications[].specificationId` ->
+> `specificationId`. `specificationCode` is returned for display and lookup by a
+> human, but not as the MCP identifier. For `requirements_add_to_specification`,
+> copy
 > `requirements_query_catalog.items[].id` -> `requirementIds`; use
 > `needsReferenceId` only when it comes from that specification's existing
 > needs-reference register, or use new `needsReferenceText` plus optional

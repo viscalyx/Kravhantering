@@ -4,13 +4,11 @@ import { collectSpecificationTraceabilityData } from '@/lib/reports/data/specifi
 
 const dalState = vi.hoisted(() => ({
   getSpecificationById: vi.fn(),
-  getSpecificationBySlug: vi.fn(),
   listSpecificationTraceabilityItems: vi.fn(),
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   getSpecificationById: dalState.getSpecificationById,
-  getSpecificationBySlug: dalState.getSpecificationBySlug,
   listSpecificationTraceabilityItems:
     dalState.listSpecificationTraceabilityItems,
 }))
@@ -29,7 +27,7 @@ function specification() {
     specificationGovernanceObjectTypeId: null,
     specificationImplementationTypeId: null,
     specificationLifecycleStatusId: 3,
-    uniqueId: 'SPEC-1',
+    specificationCode: 'SPEC-1',
     updatedAt: '2026-06-02T00:00:00.000Z',
   }
 }
@@ -43,7 +41,6 @@ function createDb() {
 describe('collectSpecificationTraceabilityData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    dalState.getSpecificationBySlug.mockResolvedValue(specification())
     dalState.getSpecificationById.mockResolvedValue(specification())
     dalState.listSpecificationTraceabilityItems.mockResolvedValue([
       { itemRef: 'lib:31', uniqueId: 'BEH0001' },
@@ -54,12 +51,12 @@ describe('collectSpecificationTraceabilityData', () => {
   it('resolves the specification and preserves requested item order', async () => {
     const db = createDb()
 
-    const result = await collectSpecificationTraceabilityData(db, 'SPEC-1', [
+    const result = await collectSpecificationTraceabilityData(db, 10, [
       'local:41',
       'lib:31',
     ])
 
-    expect(dalState.getSpecificationBySlug).toHaveBeenCalledWith(db, 'SPEC-1')
+    expect(dalState.getSpecificationById).toHaveBeenCalledWith(db, 10)
     expect(dalState.listSpecificationTraceabilityItems).toHaveBeenCalledWith(
       db,
       10,
@@ -69,7 +66,7 @@ describe('collectSpecificationTraceabilityData', () => {
       'local:41',
       'lib:31',
     ])
-    expect(result.specification.uniqueId).toBe('SPEC-1')
+    expect(result.specification.specificationCode).toBe('SPEC-1')
   })
 
   it('uses a pre-resolved specification without resolving it again', async () => {
@@ -86,7 +83,6 @@ describe('collectSpecificationTraceabilityData', () => {
     )
 
     expect(dalState.getSpecificationById).not.toHaveBeenCalled()
-    expect(dalState.getSpecificationBySlug).not.toHaveBeenCalled()
     expect(dalState.listSpecificationTraceabilityItems).toHaveBeenCalledWith(
       db,
       10,
@@ -102,20 +98,17 @@ describe('collectSpecificationTraceabilityData', () => {
     ])
 
     await expect(
-      collectSpecificationTraceabilityData(db, 'SPEC-1', [
-        'lib:31',
-        'local:41',
-      ]),
+      collectSpecificationTraceabilityData(db, 10, ['lib:31', 'local:41']),
     ).rejects.toMatchObject({
       message: 'One or more item refs were not found in this specification',
       status: 404,
     })
   })
 
-  it('resolves numeric specification identifiers by id', async () => {
+  it('resolves specification identifiers by id', async () => {
     const db = createDb()
 
-    await collectSpecificationTraceabilityData(db, '10', ['lib:31', 'local:41'])
+    await collectSpecificationTraceabilityData(db, 10, ['lib:31', 'local:41'])
 
     expect(dalState.getSpecificationById).toHaveBeenCalledWith(db, 10)
   })

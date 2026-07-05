@@ -1,9 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { specificationRfiListParamsSchema } from '@/app/api/rfi-questions/_schemas'
-import {
-  getSpecificationById,
-  getSpecificationBySlug,
-} from '@/lib/dal/requirements-specifications'
+import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { getSpecificationRfiList } from '@/lib/dal/rfi-questions'
 import { parseRouteParams } from '@/lib/http/validation'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
@@ -14,15 +11,6 @@ import { authorize } from '@/lib/requirements/service-shared'
 export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
-
-async function resolveSpecification(
-  runtime: Awaited<ReturnType<typeof createRequirementsRestRuntime>>,
-  id: string,
-) {
-  return /^\d+$/.test(id)
-    ? getSpecificationById(runtime.db, Number(id))
-    : getSpecificationBySlug(runtime.db, id)
-}
 
 function errorResponse(error: unknown) {
   const { body, status } = toHttpErrorPayload(error)
@@ -44,8 +32,8 @@ export async function GET(
 
   const runtime = await createRequirementsRestRuntime(request)
   try {
-    const specification = await resolveSpecification(
-      runtime,
+    const specification = await getSpecificationById(
+      runtime.db,
       parsedParams.data.id,
     )
     if (!specification) {
@@ -72,7 +60,7 @@ export async function GET(
           specification: {
             id: specification.id,
             name: specification.name,
-            uniqueId: specification.uniqueId,
+            specificationCode: specification.specificationCode,
           },
         },
         { headers: { 'Cache-Control': 'no-store' } },

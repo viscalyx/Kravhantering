@@ -4,10 +4,7 @@ import {
   rfiListExportQuerySchema,
   specificationRfiListParamsSchema,
 } from '@/app/api/rfi-questions/_schemas'
-import {
-  getSpecificationById,
-  getSpecificationBySlug,
-} from '@/lib/dal/requirements-specifications'
+import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { getSpecificationRfiList } from '@/lib/dal/rfi-questions'
 import { parseRouteParams, parseSearchParams } from '@/lib/http/validation'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
@@ -26,15 +23,6 @@ export const dynamic = 'force-dynamic'
 type Params = Promise<{ id: string }>
 
 const RESERVED_FILENAME_CHARS = /[/\\:*?"<>|]+/g
-
-async function resolveSpecification(
-  runtime: Awaited<ReturnType<typeof createRequirementsRestRuntime>>,
-  id: string,
-) {
-  return /^\d+$/.test(id)
-    ? getSpecificationById(runtime.db, Number(id))
-    : getSpecificationBySlug(runtime.db, id)
-}
 
 function csvContentDisposition(filename: string): string {
   const sanitized = filename
@@ -74,8 +62,8 @@ export async function GET(
 
   const runtime = await createRequirementsRestRuntime(request)
   try {
-    const specification = await resolveSpecification(
-      runtime,
+    const specification = await getSpecificationById(
+      runtime.db,
       parsedParams.data.id,
     )
     if (!specification) {
@@ -97,11 +85,11 @@ export async function GET(
     const list = await getSpecificationRfiList(runtime.db, specification.id)
     const exportMeta = {
       name: specification.name,
-      uniqueId: specification.uniqueId,
+      specificationCode: specification.specificationCode,
     }
     const label =
       parsedQuery.data.locale === 'sv' ? 'RFI-frågelista' : 'RFI question list'
-    const baseFilename = `${label} ${specification.name} ${specification.uniqueId}`
+    const baseFilename = `${label} ${specification.name} ${specification.specificationCode}`
 
     if (parsedQuery.data.format === 'pdf') {
       const response = await renderPdfResponse(

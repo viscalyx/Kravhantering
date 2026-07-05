@@ -496,7 +496,7 @@ export default function RequirementsSpecificationsClient({
 
     try {
       const res = await apiFetch(
-        `/api/requirements-specifications/${spec.uniqueId}`,
+        `/api/requirements-specifications/${spec.id}`,
         {
           method: 'DELETE',
         },
@@ -622,14 +622,14 @@ export default function RequirementsSpecificationsClient({
           }}
           open={showForm}
           spec={editSpec}
-          specificationSlug={editSpec?.uniqueId}
+          specificationId={editSpec?.id}
         />
 
         {coAuthorsSpec ? (
           <CoAuthorsManagementModal
             description={t('coAuthorsHelp')}
             developerModeValue="manage specification co-authors"
-            endpoint={`/api/requirements-specifications/${coAuthorsSpec.uniqueId}/co-authors`}
+            endpoint={`/api/requirements-specifications/${coAuthorsSpec.id}/co-authors`}
             hsaIdHelp={t('coAuthorHsaIdHelp')}
             hsaIdLabel={t('coAuthorHsaId')}
             loadErrorMessage={t('loadCoAuthorsFailed')}
@@ -764,7 +764,7 @@ export default function RequirementsSpecificationsClient({
                       <td className="py-3 px-4 font-medium">
                         <Link
                           className="text-primary-700 dark:text-primary-300 hover:underline"
-                          href={`/specifications/${spec.uniqueId}`}
+                          href={`/specifications/${spec.id}`}
                         >
                           {getName(spec)}
                         </Link>
@@ -799,7 +799,7 @@ export default function RequirementsSpecificationsClient({
                         {spec.itemCount > 0 ? (
                           <Link
                             className="text-primary-700 dark:text-primary-300 hover:underline font-medium"
-                            href={`/specifications/${spec.uniqueId}`}
+                            href={`/specifications/${spec.id}`}
                           >
                             {spec.itemCount}
                           </Link>

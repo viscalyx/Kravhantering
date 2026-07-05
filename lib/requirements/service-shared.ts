@@ -8,9 +8,14 @@ import type {
   RequestContext,
   RequirementsAction,
 } from '@/lib/requirements/auth'
+import { validationError } from '@/lib/requirements/errors'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
-import type { ResponseFormat, ResponseLocale } from '@/lib/requirements/service'
+import type {
+  ResponseFormat,
+  ResponseLocale,
+  SpecificationRefInput,
+} from '@/lib/requirements/service'
 import enMessages from '@/messages/en.json'
 import svMessages from '@/messages/sv.json'
 
@@ -138,6 +143,18 @@ export function getSpecificationServiceTitle(
     default:
       return 'Requirements specifications'
   }
+}
+
+export async function resolveSpecificationIdOrThrow(
+  input: SpecificationRefInput,
+): Promise<number> {
+  if (!Number.isInteger(input.specificationId) || input.specificationId < 1) {
+    throw validationError('Missing specification reference', {
+      specificationId: input.specificationId,
+    })
+  }
+
+  return input.specificationId
 }
 
 function getServiceMessageTemplate(

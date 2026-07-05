@@ -537,7 +537,11 @@ test.describe('MCP seeded HTTP security gate', () => {
         arrayField(specifications, 'specifications', 'specifications'),
         'specifications',
       )
-      const specificationId = numberField(specification, 'id', 'specification')
+      const specificationId = numberField(
+        specification,
+        'specificationId',
+        'specification',
+      )
 
       const created = await callToolOk(
         client,

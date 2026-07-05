@@ -7,7 +7,7 @@ import { exportToCsv } from '@/lib/export-csv'
 
 export interface RfiListSpecificationExportMeta {
   name: string
-  uniqueId: string
+  specificationCode: string
 }
 
 const labels = {
@@ -171,7 +171,7 @@ export function buildSpecificationRfiListCsv(
       [t.relevance]: relevanceLabel(item.relevance, locale),
       [t.scope]: scopeLabel(item.isIncluded, locale),
       [t.version]: String(item.versionNumber),
-      specification: `${specification.name} ${specification.uniqueId}`,
+      specification: `${specification.name} ${specification.specificationCode}`,
     })),
   )
 }
@@ -202,7 +202,7 @@ export default function SpecificationRfiListPdfRenderer({
       <Page size="A4" style={styles.page}>
         <Text style={styles.title}>{t.title}</Text>
         <Text style={styles.meta}>
-          {specification.name} ({specification.uniqueId})
+          {specification.name} ({specification.specificationCode})
         </Text>
         <MetadataRow
           label={t.mode}

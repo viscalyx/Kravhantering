@@ -58,7 +58,7 @@ interface HiddenSelectionImpact {
 
 interface Props {
   onChanged: () => void
-  specificationSlug: string
+  specificationId: number
 }
 
 const SPECIFICATION_REQUIREMENT_SELECTION_HELP: HelpContent = {
@@ -129,12 +129,12 @@ function conditionGroupMatches(
 
 export default function SpecificationRequirementSelectionPanel({
   onChanged,
-  specificationSlug,
+  specificationId,
 }: Props) {
   useHelpContent(SPECIFICATION_REQUIREMENT_SELECTION_HELP)
   const { confirm } = useConfirmModal()
   const t = useTranslations('specificationRequirementSelection')
-  const encodedSpecificationSlug = encodeURIComponent(specificationSlug)
+  const encodedSpecificationId = encodeURIComponent(String(specificationId))
   const copy = {
     allAreas: t('allAreas'),
     answered: t('answered'),
@@ -172,7 +172,7 @@ export default function SpecificationRequirementSelectionPanel({
     setError(null)
     try {
       const response = await apiFetch(
-        `/api/requirements-specifications/${encodedSpecificationSlug}/requirement-selection-answers`,
+        `/api/requirements-specifications/${encodedSpecificationId}/requirement-selection-answers`,
       )
       if (!response.ok) {
         setError((await readResponseMessage(response)) ?? copy.error)
@@ -187,7 +187,7 @@ export default function SpecificationRequirementSelectionPanel({
     } finally {
       setLoading(false)
     }
-  }, [copy.error, encodedSpecificationSlug])
+  }, [copy.error, encodedSpecificationId])
 
   useEffect(() => {
     void reload()
@@ -239,7 +239,7 @@ export default function SpecificationRequirementSelectionPanel({
     )
     try {
       const response = await apiFetch(
-        `/api/requirements-specifications/${encodedSpecificationSlug}/requirement-selection-answers/${question.id}`,
+        `/api/requirements-specifications/${encodedSpecificationId}/requirement-selection-answers/${question.id}`,
         {
           body: JSON.stringify({ answerIds, confirmHiddenAnswerClear }),
           headers: { 'Content-Type': 'application/json' },

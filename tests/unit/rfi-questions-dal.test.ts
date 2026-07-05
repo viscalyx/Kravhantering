@@ -545,7 +545,7 @@ describe('RFI questions DAL', () => {
     const query = createQuery([
       [{ id: 2 }],
       [{ areaId: 2 }],
-      [{ id: 4, name: 'E-arkiv', uniqueId: 'SPEC-004' }],
+      [{ id: 4, name: 'E-arkiv', specificationCode: 'SPEC-004' }],
       [{ id: 77 }],
       [
         {
@@ -566,7 +566,7 @@ describe('RFI questions DAL', () => {
           reviewRequestedAt: null,
           rfiQuestionId: 12,
           sourceSpecificationName: 'E-arkiv',
-          sourceSpecificationUniqueId: 'SPEC-004',
+          sourceSpecificationCode: 'SPEC-004',
           specificationId: 4,
           updatedAt: null,
         },
@@ -602,7 +602,31 @@ describe('RFI questions DAL', () => {
     expect(result).toMatchObject({
       content: 'Ny fråga om loggning',
       sourceSpecificationName: 'E-arkiv',
-      sourceSpecificationUniqueId: 'SPEC-004',
+      sourceSpecificationCode: 'SPEC-004',
+    })
+  })
+
+  it('reports unknown suggestion specification ids as not found', async () => {
+    const query = createQuery([[{ id: 2 }], []])
+    const db = { query }
+
+    await expect(
+      createRfiQuestionSuggestion(
+        db as unknown as Parameters<typeof createRfiQuestionSuggestion>[0],
+        {
+          areaId: 2,
+          content: 'Ny fråga om loggning',
+          specificationId: 404,
+        },
+        actor,
+      ),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      details: {
+        reason: 'specification_not_found',
+        specificationId: 404,
+      },
+      status: 404,
     })
   })
 
@@ -627,7 +651,7 @@ describe('RFI questions DAL', () => {
           reviewRequestedAt: null,
           rfiQuestionId: 12,
           sourceSpecificationName: 'E-arkiv',
-          sourceSpecificationUniqueId: 'SPEC-004',
+          sourceSpecificationCode: 'SPEC-004',
           specificationId: 4,
           updatedAt: null,
         },

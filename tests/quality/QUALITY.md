@@ -773,7 +773,7 @@ defines the Included default. Library item linking sets the default in
 creation does the same in
 `lib/dal/requirements-specifications.ts:1316-1388`. The status picker sends
 only numeric status IDs from
-`app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:722-752`,
+`app/[locale]/specifications/[specificationId]/requirements-specification-detail-client.tsx:722-752`,
 and the PATCH schema accepts only positive integer status IDs in
 `app/api/requirements-specifications/[id]/items/[itemId]/route.ts:44-57`. DAL updates
 validate allowed status IDs in
@@ -828,17 +828,19 @@ to the shared service, while
 `lib/requirements/service-specifications.ts:146-705` owns the service behavior
 for listing specifications, reading linked items, graduation target lookup,
 graduation, adding links, and removing links. If these layers drift, an MCP
-client can send an ambiguous specification identifier, receive an unlocalized
-or unexpected response shape, or believe a requirement was linked or removed
-when the database state says otherwise.
+client could send a kravunderlag code where a numeric `specificationId` is
+required, receive an unlocalized or unexpected response shape, or believe a
+requirement was linked or removed when the database state says otherwise.
 
 **The requirement:** Requirements specification MCP tools must reject malformed
-locale, response format, identifier, and ID-array inputs before service
-delegation. Valid calls must pass default and explicit locale/response format
-values through to the matching service method. Add/remove tools must report
-actual mutation outcomes: unpublished requirements are skipped and returned in
-`skippedIds`, removed counts reflect actual unlinks, and unlinking never deletes
-the underlying requirements.
+locale, response format, non-numeric `specificationId`, and ID-array inputs
+before service delegation. `specificationCode` is display/search metadata, not
+an accepted identifier for mutations or item lookup. Valid calls must pass
+default and explicit locale/response format values through to the matching
+service method. Add/remove tools must report actual mutation outcomes:
+unpublished requirements are skipped and returned in `skippedIds`, removed
+counts reflect actual unlinks, and unlinking never deletes the underlying
+requirements.
 
 **How to verify:**
 
@@ -1011,10 +1013,10 @@ implementation ranges:
 
 <!-- markdownlint-disable MD013 -->
 ```text
-app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:1395-1479
-app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:2426-2508
-app/[locale]/specifications/[slug]/reports/pdf/[profile]/route.ts:22-78
-app/[locale]/specifications/[slug]/reports/pdf/traceability/route.ts:1-85
+app/[locale]/specifications/[specificationId]/requirements-specification-detail-client.tsx:1395-1479
+app/[locale]/specifications/[specificationId]/requirements-specification-detail-client.tsx:2426-2508
+app/[locale]/specifications/[specificationId]/reports/pdf/[profile]/route.ts:22-78
+app/[locale]/specifications/[specificationId]/reports/pdf/traceability/route.ts:1-85
 app/api/requirements-specifications/[id]/report-output/route.ts:35-120
 app/api/requirements-specifications/[id]/traceability-items/route.ts:1-120
 app/api/requirements-specifications/[id]/exports/route.ts:37-160

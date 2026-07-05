@@ -134,7 +134,7 @@ interface SpecificationLocalRequirementDetailClientProps {
     canEditContent: boolean
     canReviewDecisions: boolean
   }
-  specificationSlug: string
+  specificationId: number
   usageStatus?: SpecificationLocalRequirementUsageStatusSnapshot
 }
 
@@ -458,7 +458,7 @@ export default function SpecificationLocalRequirementDetailClient({
   needsReferences,
   onChange,
   permissions,
-  specificationSlug,
+  specificationId,
   usageStatus,
 }: SpecificationLocalRequirementDetailClientProps) {
   const t = useTranslations('requirement')
@@ -539,7 +539,7 @@ export default function SpecificationLocalRequirementDetailClient({
 
     try {
       const response = await apiFetch(
-        `/api/requirements-specifications/${specificationSlug}/local-requirements/${localRequirementId}`,
+        `/api/requirements-specifications/${specificationId}/local-requirements/${localRequirementId}`,
       )
 
       if (!response.ok) {
@@ -562,7 +562,7 @@ export default function SpecificationLocalRequirementDetailClient({
     } finally {
       setLoading(false)
     }
-  }, [localRequirementId, specificationSlug, tc, tp])
+  }, [localRequirementId, specificationId, tc, tp])
 
   const fetchDeviations = useCallback(
     async (signal?: AbortSignal) => {
@@ -614,7 +614,7 @@ export default function SpecificationLocalRequirementDetailClient({
       setGraduationTargetAreasLoaded(false)
       try {
         const response = await apiFetch(
-          `/api/requirements-specifications/${specificationSlug}/local-requirements/${localRequirementId}/graduation-target-areas`,
+          `/api/requirements-specifications/${specificationId}/local-requirements/${localRequirementId}/graduation-target-areas`,
           signal ? { signal } : undefined,
         )
 
@@ -654,7 +654,7 @@ export default function SpecificationLocalRequirementDetailClient({
         }
       }
     },
-    [localRequirementId, requirement, specificationSlug],
+    [localRequirementId, requirement, specificationId],
   )
 
   useEffect(() => {
@@ -708,7 +708,7 @@ export default function SpecificationLocalRequirementDetailClient({
   const handleEditSubmit = useCallback(
     async (payload: SpecificationLocalRequirementSubmitPayload) => {
       const response = await apiFetch(
-        `/api/requirements-specifications/${specificationSlug}/local-requirements/${localRequirementId}`,
+        `/api/requirements-specifications/${specificationId}/local-requirements/${localRequirementId}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -724,7 +724,7 @@ export default function SpecificationLocalRequirementDetailClient({
       setShowEditForm(false)
       await refreshAll()
     },
-    [localRequirementId, specificationSlug, refreshAll, tc],
+    [localRequirementId, specificationId, refreshAll, tc],
   )
 
   const handleDelete = useCallback(
@@ -747,7 +747,7 @@ export default function SpecificationLocalRequirementDetailClient({
       setIsDeleting(true)
       try {
         const response = await apiFetch(
-          `/api/requirements-specifications/${specificationSlug}/local-requirements/${localRequirementId}`,
+          `/api/requirements-specifications/${specificationId}/local-requirements/${localRequirementId}`,
           {
             method: 'DELETE',
           },
@@ -773,7 +773,7 @@ export default function SpecificationLocalRequirementDetailClient({
       isDeleting,
       localRequirementId,
       onChange,
-      specificationSlug,
+      specificationId,
       tc,
       tp,
     ],
@@ -789,7 +789,7 @@ export default function SpecificationLocalRequirementDetailClient({
 
     try {
       const response = await apiFetch(
-        `/api/requirements-specifications/${specificationSlug}/local-requirements/${localRequirementId}/graduate`,
+        `/api/requirements-specifications/${specificationId}/local-requirements/${localRequirementId}/graduate`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -858,7 +858,7 @@ export default function SpecificationLocalRequirementDetailClient({
     onChange,
     router,
     selectedGraduationAreaId,
-    specificationSlug,
+    specificationId,
     tp,
   ])
 

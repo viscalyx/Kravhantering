@@ -276,8 +276,7 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mockReplaceSpecificationCoAuthors(...a),
   deleteSpecification: (...a: unknown[]) => mockDeletePkg(...a),
   getSpecificationById: async (_db: unknown, id: number) => ({ id }),
-  getSpecificationBySlug: async () => null,
-  isSlugTaken: async () => false,
+  isSpecificationCodeTaken: async () => false,
 }))
 
 const mockCreateRequirementPackage = vi.fn(async (..._args: unknown[]) => ({
@@ -470,7 +469,7 @@ function specificationCreateBody(overrides: Record<string, unknown> = {}) {
   return {
     name: 'A',
     specificationLifecycleStatusId: 4,
-    uniqueId: 'A',
+    specificationCode: 'A',
     ...overrides,
   }
 }
@@ -1273,7 +1272,7 @@ describe('requirement-specifications routes', () => {
       jsonReq('POST', {
         name: 'A',
         specificationLifecycleStatusId: 4,
-        uniqueId: 'A',
+        specificationCode: 'A',
       }),
     )
 
@@ -1294,13 +1293,13 @@ describe('requirement-specifications routes', () => {
       }),
     )
   })
-  it('POST accepts long existing-style specification slugs', async () => {
+  it('POST accepts long existing-style specification codes', async () => {
     const r = await postPkg(
       jsonReq(
         'POST',
         specificationCreateBody({
           name: 'Playwright lifecycle',
-          uniqueId: 'PLAYWRIGHT-LIFECYCLE-2026',
+          specificationCode: 'PLAYWRIGHT-LIFECYCLE-2026',
         }),
       ),
     )
@@ -1309,7 +1308,7 @@ describe('requirement-specifications routes', () => {
     expect(mockCreatePkg).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        uniqueId: 'PLAYWRIGHT-LIFECYCLE-2026',
+        specificationCode: 'PLAYWRIGHT-LIFECYCLE-2026',
       }),
     )
   })
@@ -1336,13 +1335,13 @@ describe('requirement-specifications routes', () => {
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })
   it.each([
-    ['missing', { name: 'A', uniqueId: 'A' }],
+    ['missing', { name: 'A', specificationCode: 'A' }],
     [
       'null',
       {
         name: 'A',
         specificationLifecycleStatusId: null,
-        uniqueId: 'A',
+        specificationCode: 'A',
       },
     ],
   ])('POST rejects %s specification lifecycle status', async (_label, body) => {
@@ -1356,7 +1355,7 @@ describe('requirement-specifications routes', () => {
   it.each([
     [
       'missing name',
-      { specificationLifecycleStatusId: 4, uniqueId: 'VALID-SLUG' },
+      { specificationLifecycleStatusId: 4, specificationCode: 'VALID-CODE' },
       'name',
     ],
     [
@@ -1364,14 +1363,14 @@ describe('requirement-specifications routes', () => {
       {
         name: '',
         specificationLifecycleStatusId: 4,
-        uniqueId: 'VALID-SLUG',
+        specificationCode: 'VALID-CODE',
       },
       'name',
     ],
     [
-      'empty uniqueId',
-      { name: 'A', specificationLifecycleStatusId: 4, uniqueId: '' },
-      'uniqueId',
+      'empty specificationCode',
+      { name: 'A', specificationLifecycleStatusId: 4, specificationCode: '' },
+      'specificationCode',
     ],
   ])('POST rejects %s', async (_label, body, path) => {
     const r = await postPkg(jsonReq('POST', body))
@@ -1390,13 +1389,13 @@ describe('requirement-specifications routes', () => {
     ['trailing hyphen', 'VALID-SLUG-'],
     ['numeric only', '123'],
     ['oversize', 'A'.repeat(451)],
-  ])('POST rejects invalid uniqueId: %s', async (_label, uniqueId) => {
+  ])('POST rejects invalid specificationCode: %s', async (_label, code) => {
     const r = await postPkg(
-      jsonReq('POST', specificationCreateBody({ uniqueId })),
+      jsonReq('POST', specificationCreateBody({ specificationCode: code })),
     )
 
     expect(r.status).toBe(400)
-    await expectInvalidRequest(r, 'uniqueId')
+    await expectInvalidRequest(r, 'specificationCode')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })
@@ -1474,11 +1473,14 @@ describe('requirement-specifications routes', () => {
     const r = await putPkg(jsonReq('PUT', { name: 'X' }), makeParams('1'))
     await expect(r.json()).resolves.toEqual({ id: 1 })
   })
-  it('PUT rejects invalid updated uniqueId before persistence', async () => {
-    const r = await putPkg(jsonReq('PUT', { uniqueId: '123' }), makeParams('1'))
+  it('PUT rejects invalid updated specificationCode before persistence', async () => {
+    const r = await putPkg(
+      jsonReq('PUT', { specificationCode: '123' }),
+      makeParams('1'),
+    )
 
     expect(r.status).toBe(400)
-    await expectInvalidRequest(r, 'uniqueId')
+    await expectInvalidRequest(r, 'specificationCode')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockUpdatePkg).not.toHaveBeenCalled()
   })

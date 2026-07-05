@@ -88,8 +88,8 @@ export interface RfiQuestionSuggestionRow {
   resolvedByHsaId: string | null
   reviewRequestedAt: string | null
   rfiQuestionId: number | null
+  sourceSpecificationCode: string | null
   sourceSpecificationName: string | null
-  sourceSpecificationUniqueId: string | null
   specificationId: number | null
   updatedAt: string | null
 }
@@ -147,7 +147,7 @@ type RfiQuestionSuggestionDbRow = {
   reviewRequestedAt: Date | string | null
   rfiQuestionId: number | null
   sourceSpecificationName: string | null
-  sourceSpecificationUniqueId: string | null
+  sourceSpecificationCode: string | null
   specificationId: number | null
   updatedAt: Date | string | null
 }
@@ -251,7 +251,7 @@ function mapRfiQuestionSuggestionRow(
       row.reviewRequestedAt == null ? null : toIsoString(row.reviewRequestedAt),
     rfiQuestionId: row.rfiQuestionId,
     sourceSpecificationName: row.sourceSpecificationName,
-    sourceSpecificationUniqueId: row.sourceSpecificationUniqueId,
+    sourceSpecificationCode: row.sourceSpecificationCode,
     specificationId: row.specificationId,
     updatedAt: row.updatedAt == null ? null : toIsoString(row.updatedAt),
   }
@@ -1303,14 +1303,14 @@ export async function createRfiQuestionSuggestion(
       ? []
       : ((await db.query(
           `
-            SELECT TOP (1) id, unique_id AS uniqueId, name
+            SELECT TOP (1) id, specification_code AS specificationCode, name
             FROM requirements_specifications
             WHERE id = @0
           `,
           [data.specificationId],
-        )) as Array<{ id: number; name: string; uniqueId: string }>)
+        )) as Array<{ id: number; name: string; specificationCode: string }>)
   if (data.specificationId != null && !specificationRows[0]) {
-    throw validationError('Specification not found', {
+    throw notFoundError('Specification not found', {
       reason: 'specification_not_found',
       specificationId: data.specificationId,
     })
@@ -1323,7 +1323,7 @@ export async function createRfiQuestionSuggestion(
           area_id,
           rfi_question_id,
           specification_id,
-          source_specification_unique_id,
+          source_specification_code,
           source_specification_name,
           content,
           created_by_hsa_id,
@@ -1337,7 +1337,7 @@ export async function createRfiQuestionSuggestion(
       data.areaId,
       data.rfiQuestionId ?? null,
       data.specificationId ?? null,
-      specification?.uniqueId ?? null,
+      specification?.specificationCode ?? null,
       specification?.name ?? null,
       content,
       actor.hsaId,
@@ -1391,7 +1391,7 @@ export async function listRfiQuestionSuggestions(
         suggestion.rfi_question_id AS rfiQuestionId,
         question.question_code AS questionCode,
         suggestion.specification_id AS specificationId,
-        suggestion.source_specification_unique_id AS sourceSpecificationUniqueId,
+        suggestion.source_specification_code AS sourceSpecificationCode,
         suggestion.source_specification_name AS sourceSpecificationName,
         suggestion.content AS content,
         suggestion.is_review_requested AS isReviewRequested,
