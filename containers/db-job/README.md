@@ -35,10 +35,9 @@ manual runs pass the admin command as arguments:
 - `wait` polls SQL Server until it responds.
 
 A production-like empty database is bootstrap, migration, and
-`seed:required`. The image intentionally includes `typeorm/seed-required.mjs`
-and excludes
-`typeorm/seed.mjs`, dogfood seed, archiving-retention demo seed, tests, and
-documentation.
+`seed:required`. The image intentionally includes `typeorm/seed-required.mjs`,
+its required seed helper modules, and excludes `typeorm/seed.mjs`, dogfood
+seed, archiving-retention demo seed, tests, and documentation.
 
 The image installs only the dependency subset needed by the one-shot job:
 `mssql`, `typeorm`, and `reflect-metadata`. It deliberately does not include

@@ -1,5 +1,5 @@
 ---
-applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,docs/reference/database-schema.md}"
+applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,typeorm/*seed*.mjs,docs/reference/database-schema.md}"
 ---
 
 # Database Schema Changes
@@ -9,8 +9,9 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,doc
 - The sole database stack is SQL Server + TypeORM.
 - Schema is defined by TypeORM entities under `lib/typeorm/entities/`.
 - Migrations live in `typeorm/migrations/` (one `.mjs` file per migration).
-- Seed data lives in `typeorm/seed.mjs` and is applied by the explicit
-  `npm run db:seed:required` and `npm run db:seed:demo` profiles.
+- Seed data lives in `typeorm/seed.mjs`, `typeorm/seed-required.mjs`, or
+  directly imported seed helper modules under `typeorm/`, and is applied by
+  the explicit `npm run db:seed:required` and `npm run db:seed:demo` profiles.
 - Preserve current seed-data meaning and identifiers wherever possible. Document unavoidable drift explicitly.
 
 ## Standard
@@ -72,6 +73,14 @@ ALTER TABLE [<table>]
 - Update the affected TypeORM entity, the new migration in
   `typeorm/migrations/`, `typeorm/seed.mjs`, the affected DAL/tests, and
   `docs/reference/database-schema.md` in the same change.
+- When adding a new seed-data module under `typeorm/`, update every runtime and
+  release surface that must carry the file. At minimum, review imports from
+  `typeorm/seed-required.mjs` and `typeorm/seed.mjs`, container copy lists in
+  `containers/app/Dockerfile`, release relevance in
+  `scripts/release/container-release.mjs`, image/release contract tests, and
+  container contract documentation. Do not rely on local Node imports alone;
+  verify that the built `db-job` or `demo-seed` image includes every imported
+  seed module it executes.
 - Review and update JSON Schema artifacts for database-backed payloads in the
   same change. When a database field is represented in the requirement import
   JSON Schema, update that schema and its artifact-generation/tests whenever
