@@ -402,12 +402,11 @@ describe('POST /api/ai/generate-requirement-import', () => {
         (securityEvent.detail as Record<string, unknown>).eventId,
       )
       expect(forensicEvent).toMatchObject({
-        detail: expect.objectContaining({
-          blockedStep: 'final_model_output',
-          safetyRuleDirection: 'output',
-        }),
+        blockedStep: 'final_model_output',
         event: 'ai.output_safety.blocked_content_captured',
+        safetyRuleDirection: 'output',
       })
+      expect(forensicEvent).not.toHaveProperty('detail')
       expect(JSON.stringify(forensicEvent)).toContain('unsafe-output-secret')
     } finally {
       consoleInfoSpy.mockRestore()

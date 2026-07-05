@@ -593,19 +593,24 @@ function textLengthBucket(textLength: number): string {
 function requestForForensicEvent(
   context: RequestContext,
   request: Request,
-): SecurityEventRequest {
-  if (context.request) return context.request
+): Omit<SecurityEventRequest, 'requestId'> {
+  const omitRequestId = ({
+    requestId: _requestId,
+    ...transportRequest
+  }: SecurityEventRequest): Omit<SecurityEventRequest, 'requestId'> =>
+    transportRequest
+  if (context.request) return omitRequestId(context.request)
   let path = ''
   try {
     path = new URL(request.url).pathname
   } catch {
     path = request.url.split(/[?#]/, 1)[0] ?? ''
   }
-  return {
+  return omitRequestId({
     method: request.method,
     path,
     requestId: context.requestId,
-  }
+  })
 }
 
 function forensicEventName(
@@ -621,6 +626,37 @@ function forensicEventName(
 
 function safeForensicLogString(value: unknown): string {
   return value instanceof Error ? value.message : String(value)
+}
+
+interface AiSafetyForensicEventPayload {
+  actor: {
+    source: RequestContext['actor']['source']
+    sub?: string
+  }
+  blockedStep: AiSafetyBlockedStep
+  categories: readonly string[]
+  channel: 'security-forensics'
+  content: readonly AiSafetyScreenPart[]
+  correlationId: string
+  decision: 'blocked'
+  event: ReturnType<typeof forensicEventName>
+  eventId: string
+  evidence: readonly AiSafetyForensicEvidence[]
+  model?: string
+  operation: string
+  outcome: 'failure'
+  primaryRuleId: AiSafetyRuleId | null
+  primaryRuleType: string | null
+  provider?: string
+  reason: typeof AI_SAFETY_BLOCK_REASON
+  request: Omit<SecurityEventRequest, 'requestId'>
+  requestId: string
+  ruleIds: readonly AiSafetyRuleId[]
+  ruleTypes: readonly string[]
+  safetyRuleDirection: AiSafetyDirection
+  source: RequestContext['source']
+  textLengthBucket: string
+  ts: string
 }
 
 export function recordAiSafetyDecision(args: {
@@ -690,53 +726,38 @@ function recordAiSafetyForensicEvent(args: {
 }): void {
   try {
     const request = requestForForensicEvent(args.context, args.request)
+    const payload: AiSafetyForensicEventPayload = {
+      actor: {
+        source: args.context.actor.source,
+        ...(args.context.actor.id ? { sub: args.context.actor.id } : {}),
+      },
+      blockedStep: args.blockedStep,
+      categories: args.screening.decision.categories,
+      channel: 'security-forensics',
+      content: args.screening.contentParts,
+      correlationId: args.context.correlationId,
+      decision: 'blocked',
+      event: forensicEventName(args.event),
+      eventId: args.eventId,
+      evidence: args.screening.forensicEvidence,
+      operation: args.operation,
+      outcome: 'failure',
+      primaryRuleId: args.screening.decision.primaryRuleId,
+      primaryRuleType: args.screening.decision.primaryRuleType,
+      reason: AI_SAFETY_BLOCK_REASON,
+      request,
+      requestId: args.context.requestId,
+      ruleIds: args.screening.decision.ruleIds,
+      ruleTypes: args.screening.decision.ruleTypes,
+      safetyRuleDirection: args.direction,
+      source: args.context.source,
+      textLengthBucket: textLengthBucket(args.screening.decision.textLength),
+      ts: new Date().toISOString(),
+      ...(args.model ? { model: args.model } : {}),
+      ...(args.provider ? { provider: args.provider } : {}),
+    }
     // eslint-disable-next-line no-console
-    console.info(
-      JSON.stringify({
-        actor: {
-          source: args.context.actor.source,
-          ...(args.context.actor.id ? { sub: args.context.actor.id } : {}),
-        },
-        blockedStep: args.blockedStep,
-        channel: 'security-forensics',
-        content: args.screening.contentParts,
-        correlationId: args.context.correlationId,
-        detail: {
-          blockedStep: args.blockedStep,
-          categories: args.screening.decision.categories,
-          correlationId: args.context.correlationId,
-          decision: 'blocked',
-          eventId: args.eventId,
-          operation: args.operation,
-          primaryRuleId: args.screening.decision.primaryRuleId,
-          primaryRuleType: args.screening.decision.primaryRuleType,
-          reason: AI_SAFETY_BLOCK_REASON,
-          requestId: args.context.requestId,
-          ruleIds: args.screening.decision.ruleIds,
-          ruleTypes: args.screening.decision.ruleTypes,
-          safetyRuleDirection: args.direction,
-          source: args.context.source,
-          textLengthBucket: textLengthBucket(
-            args.screening.decision.textLength,
-          ),
-          ...(args.model ? { model: args.model } : {}),
-          ...(args.provider ? { provider: args.provider } : {}),
-        },
-        event: forensicEventName(args.event),
-        eventId: args.eventId,
-        evidence: args.screening.forensicEvidence,
-        operation: args.operation,
-        outcome: 'failure',
-        primaryRuleId: args.screening.decision.primaryRuleId,
-        primaryRuleType: args.screening.decision.primaryRuleType,
-        request,
-        requestId: args.context.requestId,
-        ruleIds: args.screening.decision.ruleIds,
-        ruleTypes: args.screening.decision.ruleTypes,
-        safetyRuleDirection: args.direction,
-        ts: new Date().toISOString(),
-      }),
-    )
+    console.info(JSON.stringify(payload))
   } catch (error) {
     try {
       // eslint-disable-next-line no-console

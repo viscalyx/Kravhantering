@@ -252,12 +252,13 @@ During the current diagnostic phase, Admin Center seed data defaults
 `aiSafetyForensicLoggingEnabled` to enabled. When enabled, an AI safety block
 also writes a separate `security-forensics` JSON event named
 `ai.input_safety.blocked_content_captured` or
-`ai.output_safety.blocked_content_captured`. It uses the same request id,
-correlation id, and event id as the metadata event and contains the screened
-content parts for the blocked step plus matched evidence for handling/action,
-target, coding words, and direct markers. It still does not include system
-prompts, import instructions, response schemas, raw images, or unrelated
-request state.
+`ai.output_safety.blocked_content_captured`. It uses top-level request id,
+correlation id, and event id fields matching the metadata event, while its
+`request` object carries transport context such as method, path, IP address,
+and user agent. It contains the screened content parts for the blocked step
+plus matched evidence for handling/action, target, coding words, and direct
+markers. It still does not include system prompts, import instructions,
+response schemas, raw images, or unrelated request state.
 
 **Reference-data binding:** the import instruction includes current taxonomy
 and norm-reference data so the model can emit import JSON with stable IDs where

@@ -203,11 +203,13 @@ work.
 When an AI safety block happens, the metadata event is always written to
 `security-audit`. If forensic AI safety logging is enabled, the same block also
 writes a `security-forensics` JSON event with the same request id,
-correlation id, and event id. The forensic event includes actor/source
-metadata, blocked step, direction, operation, source, text-length bucket,
-decision/reason fields, category values, primary and matched rule IDs/types,
-optional model/provider values, the screened content parts for the blocked
-step, and matched rule evidence including configured terms and matched text.
+correlation id, and event id as top-level fields. Its `request` object carries
+transport context such as method, path, IP address, and user agent. The
+forensic event includes actor/source metadata, blocked step, direction,
+operation, source, text-length bucket, decision/reason fields, category values,
+primary and matched rule IDs/types, optional model/provider values, the
+screened content parts for the blocked step, and matched rule evidence including
+configured terms and matched text.
 
 ## Precedence Rules
 

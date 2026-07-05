@@ -11,12 +11,14 @@ diagnostikfasen, men är avsedd att kunna bli avstängd som standard i en senare
 
 Den forensiska händelsen använder samma request-id, korrelations-id och
 event-id som metadatahändelsen så att loggströmmar kan korreleras även när de
-routas till olika loggmål. Metadatahändelsen skrivs alltid till
-`security-audit` och innehåller inte rå prompt, modellutdata, reparations-JSON,
-bilddata eller matchade regeltermer. Den forensiska händelsen skrivs till
-`security-forensics` och begränsas till de textdelar som faktiskt screenades i
-det blockerade steget, till exempel behov/context, reparationsinput, streamad
-resonering eller slutligt modellutdata.
+routas till olika loggmål. I den forensiska händelsen ligger dessa identiteter
+och beslutsmetadata på toppnivå. `request` används för transportmetadata som
+metod, sökväg, IP-adress och user agent. Metadatahändelsen skrivs alltid till
+`security-audit` och innehåller inte rå prompt, modellutdata,
+reparations-JSON, bilddata eller matchade regeltermer. Den forensiska
+händelsen skrivs till `security-forensics` och begränsas till de textdelar som
+faktiskt screenades i det blockerade steget, till exempel behov/context,
+reparationsinput, streamad resonering eller slutligt modellutdata.
 
 Inställningen påverkar bara den forensiska JSON-loggen. Den aktiverar eller
 stänger inte av AI-säkerhetsfiltret, metadatahändelsen, blockeringsbeteendet

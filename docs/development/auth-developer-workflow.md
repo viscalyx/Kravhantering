@@ -705,8 +705,9 @@ Use `jq 'select(.event=="auth.login.failed")'` to filter by event, or
 verifiers, `state`, `nonce`, and `code` values are stripped before emit.
 
 AI safety forensic events use `"channel":"security-forensics"` instead. They
-can include raw screened blocked content and matched rule terms, so only tail
-them in environments where that exposure is acceptable:
+can include raw screened blocked content and matched rule terms. Forensic
+metadata is emitted at top level, while `request` carries transport context, so
+only tail them in environments where that exposure is acceptable:
 
 ```bash
 npm run dev | grep '"channel":"security-forensics"' | jq .

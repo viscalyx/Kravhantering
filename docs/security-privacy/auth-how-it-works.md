@@ -299,8 +299,11 @@ sequenceDiagram
 - AI safety blocks can also emit a separate `security-forensics` JSON line when
   Admin Center enables forensic AI safety logging. That forensic stream is not
   metadata-only: it contains raw screened blocked content and matched rule
-  evidence, and it uses the same request id, correlation id, and event id as
-  the metadata event so logging pipelines can correlate separate sinks.
+  evidence. It keeps request id, correlation id, event id, operation, blocked
+  step, direction, rule metadata, and model/provider at top level, while
+  `request` carries transport context. Logging pipelines can correlate the
+  forensic record with the metadata event even when streams route to separate
+  sinks.
 - Application action-log rows in `action_audit_events` are separate from
   this stream. They are database records for successful app-owned mutations and
   authorization denials, include request/correlation IDs and optional validated

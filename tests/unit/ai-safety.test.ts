@@ -365,8 +365,30 @@ describe('AI safety screening', () => {
       })
       expect(JSON.stringify(auditEvent)).not.toContain('unsafe-output-secret')
       expect(forensicEvent).toMatchObject({
+        actor: { source: 'oidc', sub: 'ai-user' },
+        blockedStep: 'final_model_output',
+        categories: ['backend_leakage'],
         channel: 'security-forensics',
+        correlationId: 'corr-ai',
+        decision: 'blocked',
         event: 'ai.output_safety.blocked_content_captured',
+        operation: 'ai.generate-requirement-import',
+        outcome: 'failure',
+        primaryRuleId: 'sensitive_backend_leak',
+        primaryRuleType: 'System-adjacent content leakage',
+        reason: 'ai_safety_rule_match',
+        requestId: 'req-ai',
+        ruleIds: ['sensitive_backend_leak'],
+        ruleTypes: ['System-adjacent content leakage'],
+        safetyRuleDirection: 'output',
+        source: 'rest',
+        textLengthBucket: '0-1k',
+        content: [
+          {
+            label: 'thinking',
+            text: 'Authorization: Bearer unsafe-output-secret',
+          },
+        ],
         evidence: [
           expect.objectContaining({
             partLabel: 'thinking',
@@ -381,6 +403,12 @@ describe('AI safety screening', () => {
           }),
         ],
       })
+      expect(forensicEvent).not.toHaveProperty('detail')
+      expect(forensicEvent?.request).toEqual({
+        method: 'POST',
+        path: '/api/ai/generate-requirement-import',
+      })
+      expect(forensicEvent?.request).not.toHaveProperty('requestId')
       expect(forensicEvent?.eventId).toBe(
         (auditEvent?.detail as Record<string, unknown>).eventId,
       )
