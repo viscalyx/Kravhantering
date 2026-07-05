@@ -294,27 +294,28 @@ because JSON Schema describes top-level object fields under `properties`; the
 actual import JSON still places `schemaVersion` at the root.
 
 The authenticated schema endpoint returns only the raw schema. The authenticated
-AI prompt endpoint returns Markdown containing the schema plus current taxonomy
-and norm references so an AI system can produce valid JSON without guessing
-reference data. The schema and prompt are shared for library imports and
-specification-local imports; they include requirement-package reference data
-and the same `requirementPackageIds` field. `requirementPackageIds` and
+import instruction endpoint returns Markdown containing the schema plus current
+taxonomy and norm references so an AI system can produce valid JSON without
+guessing reference data. The schema and import instruction are shared for
+library imports and specification-local imports; they include
+requirement-package reference data and the same `requirementPackageIds` field.
+`requirementPackageIds` and
 `requirementPackageNames` are used for library imports and ignored for
 specification-local imports. Specification-local preview surfaces that as a
-row-level information message, not a warning. The prompt artifact intentionally
-has no frontmatter and no examples. Its `types` reference data nests the
-selectable child `qualityCharacteristics` allowed for that type, such as
+row-level information message, not a warning. The import instruction artifact
+intentionally has no frontmatter and no examples. Its `types` reference data
+nests the selectable child `qualityCharacteristics` allowed for that type, such as
 functional `3.1.x` values under the functional type. Top-level grouping rows
 such as `3.1` are omitted. Taxonomy rows in the prompt are localized to the
 requested artifact language and expose a single `name` field instead of both
 `nameEn` and `nameSv`.
-The prompt includes concise field-selection rules for functional versus
-non-functional type choice, type-scoped quality characteristics, norm-reference
-links, priority, requirement packages and verification fields. It tells the AI
-to prefer ID fields from the reference data. Free-text values such as
-`description`, `acceptanceCriteria`, `verificationMethod` and proposed norm
-references use the requested application locale by default: Swedish for `sv`
-artifacts and English for `en` artifacts, unless the user's own input
+The import instruction includes concise field-selection rules for functional
+versus non-functional type choice, type-scoped quality characteristics,
+norm-reference links, priority, requirement packages and verification fields.
+It tells the AI to prefer ID fields from the reference data. Free-text values
+such as `description`, `acceptanceCriteria`, `verificationMethod` and proposed
+norm references use the requested application locale by default: Swedish for
+`sv` artifacts and English for `en` artifacts, unless the user's own input
 explicitly requests another language. JSON Schema still controls field names
 and data shape. It also includes a conflict rule: user input controls factual
 need, scope, requirement content and factual values; JSON Schema controls
@@ -343,7 +344,7 @@ links the normreferens, the affected rows receive the resolved
 ### Human-Facing Import Examples
 
 These examples are documentation samples for users. They are intentionally not
-included in the schema artifact or AI prompt/reference artifact. Both
+included in the schema artifact or import instruction artifact. Both
 kravbiblioteksimport and kravunderlagsimport use the same file format; the
 target kravområde or current kravunderlag is selected in the UI/API outside the
 JSON content.
