@@ -372,10 +372,12 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
 - **Spec:** `docs/integrations/mcp-server-contributor-guide.md`,
   `docs/integrations/mcp-server-user-guide.md`, and issue #166.
 - **Req tag:** `[Req: formal — issue #166 specification MCP tools]`
-- **Question:** Do the specification MCP tools reject ambiguous identifiers and
-  malformed input before service delegation, pass locale/response format
-  through consistently, map service errors to MCP `isError` responses, and
-  report real add/remove outcomes without deleting underlying requirements?
+- **Question:** Do the specification MCP tools accept only numeric
+  `specificationId` values for kravunderlag operations, keep
+  `specificationCode` as display/search metadata, reject malformed input before
+  service delegation, pass locale/response format through consistently, map
+  service errors to MCP `isError` responses, and report real add/remove
+  outcomes without deleting underlying requirements?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes"`
 

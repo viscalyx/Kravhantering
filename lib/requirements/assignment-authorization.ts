@@ -33,7 +33,6 @@ export interface DeviationTarget {
 
 export interface SpecificationReference {
   specificationId?: number
-  specificationSlug?: string
 }
 
 export interface RequirementReference {
@@ -65,7 +64,6 @@ export interface AssignmentLookup {
   resolveSpecificationId(input: SpecificationReference): Promise<number>
   resolveSpecificationIdForLocalRequirement(
     localRequirementId?: number,
-    specificationSlug?: string,
   ): Promise<number>
   resolveSuggestionRequirementArea(
     action:
@@ -172,34 +170,14 @@ export class SqlAssignmentLookup implements AssignmentLookup {
 
   async resolveSpecificationId(input: SpecificationReference): Promise<number> {
     if (input.specificationId != null) return input.specificationId
-    if (!input.specificationSlug) {
-      throw validationError('Missing specification reference', {
-        reason: 'missing_specification_reference',
-      })
-    }
-    const db = await this.getDb()
-    const rows = (await db.query(
-      `
-        SELECT TOP (1) id
-        FROM requirements_specifications
-        WHERE unique_id = @0
-      `,
-      [input.specificationSlug],
-    )) as Array<Record<string, unknown>>
-    const id = firstNumber(rows, 'id')
-    if (id != null) return id
-    throw notFoundError('Specification not found.', {
-      specificationSlug: input.specificationSlug,
+    throw validationError('Missing specification reference', {
+      reason: 'missing_specification_reference',
     })
   }
 
   async resolveSpecificationIdForLocalRequirement(
     localRequirementId?: number,
-    specificationSlug?: string,
   ): Promise<number> {
-    if (specificationSlug) {
-      return this.resolveSpecificationId({ specificationSlug })
-    }
     if (!localRequirementId) {
       throw validationError('Missing local requirement reference', {
         reason: 'missing_local_requirement_reference',
@@ -497,7 +475,6 @@ export class AssignmentBasedAuthorizationService
           action.specificationId ??
           (await this.lookup.resolveSpecificationIdForLocalRequirement(
             action.localRequirementId,
-            action.specificationSlug,
           ))
         return this.assertSpecificationAuthor(context, specificationId)
       }
@@ -704,7 +681,7 @@ export class AssignmentBasedAuthorizationService
     >,
   ): Promise<void> {
     if (action.operation === 'create') {
-      if (action.specificationId != null || action.specificationSlug) {
+      if (action.specificationId != null) {
         const specificationId = await this.lookup.resolveSpecificationId(action)
         await this.assertSpecificationAuthor(context, specificationId)
       }

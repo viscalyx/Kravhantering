@@ -199,7 +199,7 @@ interface RequirementsImportDialogProps {
   needsReferences?: NeedsReferenceOption[]
   onClose: (importSucceeded: boolean) => void
   open: boolean
-  specificationSlug?: string
+  specificationId?: number
 }
 
 type ImportPayloadValidation =
@@ -638,7 +638,7 @@ export default function RequirementsImportDialog({
   needsReferences = [],
   onClose,
   open,
-  specificationSlug,
+  specificationId,
 }: RequirementsImportDialogProps) {
   const locale = useLocale() === 'sv' ? 'sv' : 'en'
   const text = TEXT[locale]
@@ -942,9 +942,7 @@ export default function RequirementsImportDialog({
           {
             body: JSON.stringify({
               ...(isLibrary ? { areaId: initial.areaId } : {}),
-              ...(!isLibrary
-                ? { specificationIdOrSlug: specificationSlug ?? '' }
-                : {}),
+              ...(!isLibrary ? { specificationId } : {}),
               locale,
               payload: initial.payload,
             }),
@@ -981,7 +979,7 @@ export default function RequirementsImportDialog({
     mode,
     open,
     revalidateEditableRow,
-    specificationSlug,
+    specificationId,
     text.error,
     text.tooManyRows,
   ])
@@ -1377,9 +1375,7 @@ export default function RequirementsImportDialog({
       {
         body: JSON.stringify({
           ...(isLibrary ? { areaId: Number(selectedAreaId) } : {}),
-          ...(!isLibrary
-            ? { specificationIdOrSlug: specificationSlug ?? '' }
-            : {}),
+          ...(!isLibrary ? { specificationId } : {}),
           locale,
           payload,
         }),
@@ -1564,9 +1560,7 @@ export default function RequirementsImportDialog({
         {
           body: JSON.stringify({
             ...(isLibrary ? { areaId: Number(selectedAreaId) } : {}),
-            ...(!isLibrary
-              ? { specificationIdOrSlug: specificationSlug ?? '' }
-              : {}),
+            ...(!isLibrary ? { specificationId } : {}),
             locale,
             payload: schemaResult.data,
           }),
@@ -1622,9 +1616,7 @@ export default function RequirementsImportDialog({
         {
           body: JSON.stringify({
             ...(isLibrary ? { areaId: Number(selectedAreaId) } : {}),
-            ...(!isLibrary
-              ? { specificationIdOrSlug: specificationSlug ?? '' }
-              : {}),
+            ...(!isLibrary ? { specificationId } : {}),
             locale,
             previewToken,
             rows: selectedRows.map(row => ({

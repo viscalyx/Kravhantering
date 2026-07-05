@@ -448,9 +448,9 @@ describe('handleRequirementsMcpRequest', () => {
       expect(JSON.stringify(importTool?.inputSchema)).toContain(
         'inspect_validation',
       )
-      expect(JSON.stringify(importTool?.outputSchema)).toContain(
-        'validationToken',
-      )
+      const importOutputSchemaText = JSON.stringify(importTool?.outputSchema)
+      expect(importOutputSchemaText).toContain('validationToken')
+      expect(importOutputSchemaText).toContain('specificationCode')
 
       expect(normTool).toBeDefined()
       expect(normTool?.description).toContain('Archived norm references')
@@ -460,9 +460,7 @@ describe('handleRequirementsMcpRequest', () => {
 
     it('describes specification copy paths for MCP clients', async () => {
       const specificationIdCopyPath =
-        'requirements_list_specifications.specifications[].id -> specificationId'
-      const specificationSlugCopyPath =
-        'requirements_list_specifications.specifications[].uniqueId -> specificationSlug'
+        'requirements_list_specifications.specifications[].specificationId -> specificationId'
       const addRequirementIdsCopyPath =
         'requirements_query_catalog.items[].id -> requirementIds'
       const removeRequirementIdsCopyPath =
@@ -484,20 +482,11 @@ describe('handleRequirementsMcpRequest', () => {
       expect(listSpecificationsTool?.description).toContain(
         specificationIdCopyPath,
       )
-      expect(listSpecificationsTool?.description).toContain(
-        specificationSlugCopyPath,
-      )
       expect(getSpecificationItemsTool?.description).toContain(
         specificationIdCopyPath,
       )
-      expect(getSpecificationItemsTool?.description).toContain(
-        specificationSlugCopyPath,
-      )
       expect(addToSpecificationTool?.description).toContain(
         specificationIdCopyPath,
-      )
-      expect(addToSpecificationTool?.description).toContain(
-        specificationSlugCopyPath,
       )
       expect(addToSpecificationTool?.description).toContain(
         addRequirementIdsCopyPath,
@@ -510,9 +499,6 @@ describe('handleRequirementsMcpRequest', () => {
       )
       expect(removeFromSpecificationTool?.description).toContain(
         specificationIdCopyPath,
-      )
-      expect(removeFromSpecificationTool?.description).toContain(
-        specificationSlugCopyPath,
       )
       expect(removeFromSpecificationTool?.description).toContain(
         removeRequirementIdsCopyPath,
@@ -531,14 +517,8 @@ describe('handleRequirementsMcpRequest', () => {
       expect(getSpecificationItemsInputSchemaText).toContain(
         specificationIdCopyPath,
       )
-      expect(getSpecificationItemsInputSchemaText).toContain(
-        specificationSlugCopyPath,
-      )
       expect(addToSpecificationInputSchemaText).toContain(
         specificationIdCopyPath,
-      )
-      expect(addToSpecificationInputSchemaText).toContain(
-        specificationSlugCopyPath,
       )
       expect(addToSpecificationInputSchemaText).toContain(
         addRequirementIdsCopyPath,
@@ -549,9 +529,6 @@ describe('handleRequirementsMcpRequest', () => {
       )
       expect(removeFromSpecificationInputSchemaText).toContain(
         specificationIdCopyPath,
-      )
-      expect(removeFromSpecificationInputSchemaText).toContain(
-        specificationSlugCopyPath,
       )
       expect(removeFromSpecificationInputSchemaText).toContain(
         removeRequirementIdsCopyPath,
@@ -1261,7 +1238,7 @@ describe('handleRequirementsMcpRequest', () => {
     expect(serviceState.getService).toHaveBeenCalledOnce()
   })
 
-  it('rejects specification tools unless exactly one specification identifier is provided', async () => {
+  it('rejects specification tools without a numeric specification id', async () => {
     const { client, transport } = await createClient()
 
     const missingIdentifier = await client.callTool({
@@ -1273,25 +1250,24 @@ describe('handleRequirementsMcpRequest', () => {
       expect.arrayContaining([
         expect.objectContaining({
           text: expect.stringContaining(
-            'Provide exactly one of specificationId or specificationSlug.',
+            'Invalid input: expected number, received undefined',
           ),
         }),
       ]),
     )
 
-    const duplicateIdentifier = await client.callTool({
+    const nonNumericIdentifier = await client.callTool({
       arguments: {
-        specificationId: 7,
-        specificationSlug: 'IAM-SPECIFICATION',
+        specificationId: 'IAM-SPECIFICATION',
       },
       name: 'requirements_get_specification_items',
     })
-    expect(duplicateIdentifier.isError).toBe(true)
-    expect(duplicateIdentifier.content).toEqual(
+    expect(nonNumericIdentifier.isError).toBe(true)
+    expect(nonNumericIdentifier.content).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           text: expect.stringContaining(
-            'Provide exactly one of specificationId or specificationSlug.',
+            'Invalid input: expected number, received string',
           ),
         }),
       ]),

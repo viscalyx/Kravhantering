@@ -545,7 +545,7 @@ describe('RFI questions DAL', () => {
     const query = createQuery([
       [{ id: 2 }],
       [{ areaId: 2 }],
-      [{ id: 4, name: 'E-arkiv', uniqueId: 'SPEC-004' }],
+      [{ id: 4, name: 'E-arkiv', specificationCode: 'SPEC-004' }],
       [{ id: 77 }],
       [
         {
@@ -566,7 +566,7 @@ describe('RFI questions DAL', () => {
           reviewRequestedAt: null,
           rfiQuestionId: 12,
           sourceSpecificationName: 'E-arkiv',
-          sourceSpecificationUniqueId: 'SPEC-004',
+          sourceSpecificationCode: 'SPEC-004',
           specificationId: 4,
           updatedAt: null,
         },
@@ -602,7 +602,7 @@ describe('RFI questions DAL', () => {
     expect(result).toMatchObject({
       content: 'Ny fråga om loggning',
       sourceSpecificationName: 'E-arkiv',
-      sourceSpecificationUniqueId: 'SPEC-004',
+      sourceSpecificationCode: 'SPEC-004',
     })
   })
 
@@ -627,7 +627,7 @@ describe('RFI questions DAL', () => {
           reviewRequestedAt: null,
           rfiQuestionId: 12,
           sourceSpecificationName: 'E-arkiv',
-          sourceSpecificationUniqueId: 'SPEC-004',
+          sourceSpecificationCode: 'SPEC-004',
           specificationId: 4,
           updatedAt: null,
         },

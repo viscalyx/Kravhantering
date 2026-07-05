@@ -640,7 +640,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
     expect(scopeBody.issues).toEqual([
       expect.objectContaining({
         message:
-          'Biblioteksläge kräver areaId och kravunderlagslokalt läge kräver specificationIdOrSlug.',
+          'Biblioteksläge kräver areaId och kravunderlagslokalt läge kräver specificationId.',
         path: 'mode',
       }),
     ])

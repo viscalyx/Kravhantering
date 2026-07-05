@@ -127,7 +127,7 @@ function emptySeed() {
         'created_at',
         'updated_at',
         'business_needs_reference',
-        'unique_id',
+        'specification_code',
         'name',
         'specification_lifecycle_status_id',
         'local_requirement_next_sequence',
@@ -368,7 +368,7 @@ function emptySeed() {
         'area_id',
         'rfi_question_id',
         'specification_id',
-        'source_specification_unique_id',
+        'source_specification_code',
         'source_specification_name',
         'content',
         'is_review_requested',
@@ -661,10 +661,10 @@ describe('appendDogfoodSeed', () => {
       ]),
     )
 
-    const specificationUniqueIds = new Set(
+    const specificationCodes = new Set(
       seed.requirements_specifications.rows.map(row => row[6]),
     )
-    expect([...specificationUniqueIds]).toEqual(
+    expect([...specificationCodes]).toEqual(
       expect.arrayContaining([
         'PWT-SPEC-EDIT-2026',
         'PWT-SPEC-REPORT-INFOR',

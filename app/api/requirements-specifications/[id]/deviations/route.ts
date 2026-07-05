@@ -1,41 +1,17 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
 import {
   countDeviationsBySpecification,
   listDeviationsForSpecification,
 } from '@/lib/dal/deviations'
-import {
-  getSpecificationById,
-  getSpecificationBySlug,
-} from '@/lib/dal/requirements-specifications'
-import type { SqlServerDatabase } from '@/lib/db'
+import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import {
-  parseRouteParams,
-  specificationIdOrSlugSchema,
-} from '@/lib/http/validation'
+import { idParamSchema, parseRouteParams } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
 
-const specificationParamSchema = z
-  .object({
-    id: specificationIdOrSlugSchema,
-  })
-  .strict()
-
-async function resolveSpecificationId(
-  db: SqlServerDatabase,
-  idOrSlug: string,
-): Promise<number | null> {
-  if (/^\d+$/.test(idOrSlug)) {
-    const spec = await getSpecificationById(db, Number(idOrSlug))
-    return spec?.id ?? null
-  }
-  const spec = await getSpecificationBySlug(db, idOrSlug)
-  return spec?.id ?? null
-}
+const specificationParamSchema = idParamSchema
 
 export async function GET(
   _request: NextRequest,
@@ -48,13 +24,13 @@ export async function GET(
   const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
 
-  const specificationId = await resolveSpecificationId(db, id)
-  if (specificationId === null) {
+  const specification = await getSpecificationById(db, id)
+  if (!specification) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const deviations = await listDeviationsForSpecification(db, specificationId)
-  const counts = await countDeviationsBySpecification(db, specificationId)
+  const deviations = await listDeviationsForSpecification(db, specification.id)
+  const counts = await countDeviationsBySpecification(db, specification.id)
 
   return NextResponse.json({ counts, deviations })
 }

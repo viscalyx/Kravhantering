@@ -3,10 +3,11 @@ import { z } from 'zod'
 import {
   getExistingSpecificationRequirementIds,
   getRequirementSelectionFilterForSpecification,
-  resolveSpecificationId,
 } from '@/lib/dal/requirement-selection-questions'
+import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
+  idParamSchema,
   nonNegativeIntegerStringSchema,
   optionalQueryArraySchema,
   optionalSearchStringSchema,
@@ -14,7 +15,6 @@ import {
   parseSearchParams,
   positiveIntegerStringSchema,
   queryBooleanStringSchema,
-  specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import { queryRequirementList } from '@/lib/requirements/list-query'
 import {
@@ -28,7 +28,7 @@ import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 type Params = Promise<{ id: string }>
 
-const paramsSchema = z.object({ id: specificationIdOrSlugSchema }).strict()
+const paramsSchema = idParamSchema
 
 const querySchema = z
   .object({
@@ -74,21 +74,16 @@ export async function GET(
   try {
     const { authorization, context, db } =
       await createRequirementsRestRuntime(request)
-    const specificationId = await resolveSpecificationId(
-      db,
-      parsedParams.data.id,
-    )
-    if (!specificationId) {
+    const specification = await getSpecificationById(db, parsedParams.data.id)
+    if (!specification) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
+    const specificationId = specification.id
     await authorize(
       authorization,
       {
         kind: 'get_specification_items',
         specificationId,
-        specificationSlug: /^\d+$/.test(parsedParams.data.id)
-          ? undefined
-          : parsedParams.data.id,
       },
       context,
     )
@@ -192,7 +187,7 @@ export async function GET(
         '[API] Failed to list available requirements for specification',
         error,
         {
-          specificationIdOrSlug: parsedParams.data.id,
+          specificationId: parsedParams.data.id,
         },
       )
     }

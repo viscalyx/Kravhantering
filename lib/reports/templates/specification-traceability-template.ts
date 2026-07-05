@@ -33,7 +33,7 @@ function buildCoverSection(
     ),
     locale,
     name: specification.name,
-    uniqueId: specification.uniqueId,
+    specificationCode: specification.specificationCode,
   }
 }
 
@@ -252,7 +252,7 @@ export function buildSpecificationTraceabilityReport(
       {
         type: 'header',
         generatedAt: new Date().toISOString(),
-        requirementId: data.specification.uniqueId,
+        requirementId: data.specification.specificationCode,
         subtitle,
         title,
       },

@@ -9,7 +9,6 @@ import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import {
   type SpecificationImportExecuteBody as Body,
   specificationImportExecuteBodySchema as bodySchema,
-  specificationActionTarget,
 } from '../_shared'
 
 export const POST = secureMutationRoute({
@@ -17,7 +16,7 @@ export const POST = secureMutationRoute({
   policy: requirementsMutationPolicy<Body>(({ body }) => ({
     kind: 'manage_specification_local_requirement',
     operation: 'create',
-    ...specificationActionTarget(body.specificationIdOrSlug),
+    specificationId: body.specificationId,
   })),
   handler: async ({ body, context, request }) => {
     try {
@@ -28,7 +27,7 @@ export const POST = secureMutationRoute({
         locale: body.locale,
         previewToken: body.previewToken,
         rows: body.rows,
-        specificationIdOrSlug: body.specificationIdOrSlug,
+        specificationId: body.specificationId,
       })
       return NextResponse.json(result, {
         headers: { 'Cache-Control': 'no-store' },

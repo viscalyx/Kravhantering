@@ -1,14 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import {
-  getSpecificationById,
-  getSpecificationBySlug,
-} from '@/lib/dal/requirements-specifications'
-import {
+  idParamSchema,
   localeSchema,
   parseRouteParams,
   parseSearchParams,
-  specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { ReportDataError } from '@/lib/reports/data/server'
@@ -23,11 +20,7 @@ export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
 
-const specificationParamSchema = z
-  .object({
-    id: specificationIdOrSlugSchema,
-  })
-  .strict()
+const specificationParamSchema = idParamSchema
 
 const reportOutputQuerySchema = z
   .object({
@@ -35,15 +28,6 @@ const reportOutputQuerySchema = z
     profile: z.enum(['procurement', 'progress', 'management']),
   })
   .strict()
-
-async function resolveSpecification(
-  runtime: Awaited<ReturnType<typeof createRequirementsRestRuntime>>,
-  id: string,
-) {
-  return /^\d+$/.test(id)
-    ? getSpecificationById(runtime.db, Number(id))
-    : getSpecificationBySlug(runtime.db, id)
-}
 
 function errorResponse(error: unknown) {
   if (error instanceof ReportDataError) {
@@ -81,7 +65,7 @@ export async function GET(
 
   const runtime = await createRequirementsRestRuntime(request)
   try {
-    const specification = await resolveSpecification(runtime, id)
+    const specification = await getSpecificationById(runtime.db, id)
     if (!specification) {
       throw new ReportDataError(`Specification not found: ${id}`, 404)
     }
@@ -103,7 +87,10 @@ export async function GET(
       )
     }
 
-    const data = await collectSpecificationOutputData(runtime.db, id)
+    const data = await collectSpecificationOutputData(
+      runtime.db,
+      specification.id,
+    )
     const response = NextResponse.json(
       buildSpecificationProfileReport(data, profile, parsedQuery.data.locale),
       { headers: { 'Cache-Control': 'no-store' } },

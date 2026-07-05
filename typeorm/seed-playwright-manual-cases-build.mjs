@@ -411,47 +411,47 @@ function addSpecifications(seedData) {
       id: PWT_MANUAL_SEED.specification.edit,
       lifecycle: 3,
       name: 'PWT-MANUAL redigerbart kravunderlag',
-      uniqueId: 'PWT-SPEC-EDIT-2026',
+      specificationCode: 'PWT-SPEC-EDIT-2026',
     },
     {
       id: PWT_MANUAL_SEED.specification.reportInforande,
       lifecycle: 2,
       name: 'PWT-MANUAL införanderapport',
-      uniqueId: 'PWT-SPEC-REPORT-INFOR',
+      specificationCode: 'PWT-SPEC-REPORT-INFOR',
     },
     {
       id: PWT_MANUAL_SEED.specification.reportUtveckling,
       lifecycle: 3,
       name: 'PWT-MANUAL utvecklingsrapport',
-      uniqueId: 'PWT-SPEC-REPORT-UTV',
+      specificationCode: 'PWT-SPEC-REPORT-UTV',
     },
     {
       id: PWT_MANUAL_SEED.specification.reportForvaltning,
       lifecycle: 4,
       name: 'PWT-MANUAL förvaltningsrapport',
-      uniqueId: 'PWT-SPEC-REPORT-FORV',
+      specificationCode: 'PWT-SPEC-REPORT-FORV',
     },
     {
       id: PWT_MANUAL_SEED.specification.trace200,
       lifecycle: 3,
       name: 'PWT-MANUAL spårbarhet 200',
-      uniqueId: 'PWT-SPEC-TRACE-200',
+      specificationCode: 'PWT-SPEC-TRACE-200',
     },
     {
       id: PWT_MANUAL_SEED.specification.trace201,
       lifecycle: 3,
       name: 'PWT-MANUAL spårbarhet 201',
-      uniqueId: 'PWT-SPEC-TRACE-201',
+      specificationCode: 'PWT-SPEC-TRACE-201',
     },
     {
       id: PWT_MANUAL_SEED.specification.rfiWorkflow,
       lifecycle: 1,
       name: 'PWT-MANUAL RFI-arbetsflöde',
-      uniqueId: 'PWT-RFI-WORKFLOW-2026',
+      specificationCode: 'PWT-RFI-WORKFLOW-2026',
     },
   ]) {
     addRow(seedData, 'requirements_specifications', {
-      business_needs_reference: `${spec.uniqueId}: deterministic Playwright fixture.`,
+      business_needs_reference: `${spec.specificationCode}: deterministic Playwright fixture.`,
       created_at: SEED_TS,
       id: spec.id,
       local_requirement_next_sequence: 2,
@@ -459,7 +459,7 @@ function addSpecifications(seedData) {
       specification_governance_object_type_id: 2,
       specification_implementation_type_id: 2,
       specification_lifecycle_status_id: spec.lifecycle,
-      unique_id: spec.uniqueId,
+      specification_code: spec.specificationCode,
       updated_at: SEED_TS,
     })
     addRow(seedData, 'specification_co_authors', {
@@ -705,7 +705,7 @@ function addRfi(seedData) {
       review_requested_at: suggestion.isReviewRequested ? SEED_TS : null,
       rfi_question_id: suggestion.rfiQuestionId,
       source_specification_name: 'PWT-MANUAL RFI-arbetsflöde',
-      source_specification_unique_id: 'PWT-RFI-WORKFLOW-2026',
+      source_specification_code: 'PWT-RFI-WORKFLOW-2026',
       specification_id: PWT_MANUAL_SEED.specification.rfiWorkflow,
       updated_at: SEED_TS,
     })

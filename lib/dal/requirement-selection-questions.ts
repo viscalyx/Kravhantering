@@ -1,7 +1,3 @@
-import {
-  getSpecificationById,
-  getSpecificationBySlug,
-} from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { conflictError, validationError } from '@/lib/requirements/errors'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
@@ -1596,16 +1592,6 @@ async function getQuestionWithExecutor(
   await hydrateVisibilityGroups(executor, [question])
   await hydrateAnswers(executor, [question])
   return question
-}
-
-export async function resolveSpecificationId(
-  db: SqlServerDatabase,
-  idOrSlug: string,
-): Promise<number | null> {
-  if (/^\d+$/.test(idOrSlug)) {
-    return (await getSpecificationById(db, Number(idOrSlug)))?.id ?? null
-  }
-  return (await getSpecificationBySlug(db, idOrSlug))?.id ?? null
 }
 
 async function loadSpecificationRequirementSelectionQuestionsForVisibility(

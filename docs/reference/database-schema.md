@@ -432,7 +432,7 @@ erDiagram
 
     requirements_specifications {
         integer id PK
-        text unique_id UK
+        text specification_code UK
         text name
         integer local_requirement_next_sequence
         integer specification_governance_object_type_id FK
@@ -1290,7 +1290,7 @@ handle the suggestion without receiving full specification access.
 | `area_id` | integer FK → `requirement_areas.id` | Target requirement area |
 | `rfi_question_id` | integer FK → `rfi_questions.id` | Optional existing RFI question |
 | `specification_id` | integer FK → `requirements_specifications.id` | Optional source specification |
-| `source_specification_unique_id` | text | Minimal source snapshot |
+| `source_specification_code` | text | Minimal source snapshot |
 | `source_specification_name` | text | Minimal source snapshot |
 | `content` | text | Suggestion content |
 | `is_review_requested` | integer | Whether review has been requested |
@@ -1786,7 +1786,7 @@ specific procurement or project.
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
-| `unique_id` | text, unique | Stable specification identifier used in URLs and APIs |
+| `specification_code` | text, unique | Stable human-readable specification code |
 | `name` | text | Display name for the specification |
 | `local_requirement_next_sequence` | integer NOT NULL DEFAULT 1 | Next sequence number reserved for specification-local requirement IDs such as `KRAV0001` |
 | `specification_governance_object_type_id` | integer FK → `specification_governance_object_types.id` | Governance object type classification (nullable) |
@@ -1798,12 +1798,12 @@ specific procurement or project.
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
-`unique_id` is the stable slug used in specification URLs and API
-payloads. New and updated values must be uppercase ASCII letters,
-digits, and single hyphens between segments, for example
+`specification_code` is the stable human-readable code for a
+requirements specification. New and updated values must be uppercase
+ASCII letters, digits, and single hyphens between segments, for example
 `ETJANST-UPP-2026`. Leading, trailing, or repeated hyphens are invalid,
-and numeric-only values are rejected because numeric URL segments are
-reserved for database-ID lookups.
+and numeric-only values are rejected because browser URLs and REST APIs
+use numeric database IDs as their canonical specification identifiers.
 
 **Seed note:** Specification `ETJANST-UPP-2026` has
 `local_requirement_next_sequence = 3` because the seed
@@ -2426,7 +2426,7 @@ its purpose and the table/column(s) it covers.
 | `uq_specification_lifecycle_statuses_name_en` | `specification_lifecycle_statuses` | `name_en` | Prevents duplicate English specification lifecycle status names |
 | `uq_specification_item_statuses_name_sv` | `specification_item_statuses` | `name_sv` | Prevents duplicate Swedish usage status names |
 | `uq_specification_item_statuses_name_en` | `specification_item_statuses` | `name_en` | Prevents duplicate English usage status names |
-| `uq_requirements_specifications_unique_id` | `requirements_specifications` | `unique_id` | Ensures each specification has a stable unique identifier |
+| `uq_requirements_specifications_specification_code` | `requirements_specifications` | `specification_code` | Ensures each specification has a stable human-readable code |
 | `uq_specification_needs_references_specification_text` | `specification_needs_references` | `(specification_id, text)` | Prevents duplicate needs-reference texts inside the same specification |
 | `uq_specification_needs_references_specification_id_id` | `specification_needs_references` | `(specification_id, id)` | Supports composite foreign-key validation for specification-scoped needs references |
 | `uq_specification_local_requirements_specification_id_unique_id` | `specification_local_requirements` | `(specification_id, unique_id)` | Ensures each specification-local requirement display ID stays unique within its specification while allowing duplicates across specifications |
@@ -2756,7 +2756,7 @@ graph LR
     RS -- "uq_..._name_sv / name_en" --> RS
     RL -- "uq_..._name_sv / name_en" --> RL
 
-    RP -- "uq_requirements_specifications_unique_id\n(unique_id)" --> RP
+    RP -- "uq_requirements_specifications_specification_code\n(specification_code)" --> RP
     RP -- "FK responsible_hsa_id" --> RRP
     RP -- "idx_..._responsible_hsa_id\n(responsible_hsa_id)" --> RRP
     SCA -- "FK specification_id" --> RP

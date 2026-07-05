@@ -5,21 +5,16 @@ import {
   canAuthorSpecification,
   deleteSpecification,
   getSpecificationById,
-  getSpecificationBySlug,
-  isSlugTaken,
+  isSpecificationCodeTaken,
   listSpecificationCoAuthorHsaIds,
   updateSpecification,
 } from '@/lib/dal/requirements-specifications'
-import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import {
-  parseRouteParams,
-  specificationIdOrSlugSchema,
-} from '@/lib/http/validation'
+import { idParamSchema, parseRouteParams } from '@/lib/http/validation'
 import {
   createDefaultAuthorizationService,
   createRequestContext,
@@ -34,15 +29,8 @@ export const dynamic = 'force-dynamic'
 type Params = Promise<{ id: string }>
 
 const specificationParamSchema = z
-  .object({
-    id: specificationIdOrSlugSchema,
-  })
+  .object({ id: idParamSchema.shape.id })
   .strict()
-
-async function resolveSpecification(db: SqlServerDatabase, idOrSlug: string) {
-  if (/^\d+$/.test(idOrSlug)) return getSpecificationById(db, Number(idOrSlug))
-  return getSpecificationBySlug(db, idOrSlug)
-}
 
 function isAdmin(roles: readonly string[]): boolean {
   return roles.includes('Admin')
@@ -60,14 +48,13 @@ export async function GET(
     const { id } = parsedParams.data
     const db = await getRequestSqlServerDataSource()
     const context = await createRequestContext(request, 'rest')
-    const spec = await resolveSpecification(db, id)
+    const spec = await getSpecificationById(db, id)
     if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     await authorize(
       createDefaultAuthorizationService(db),
       {
         kind: 'get_specification_items',
         specificationId: spec.id,
-        specificationSlug: /^\d+$/.test(id) ? undefined : id,
       },
       context,
     )
@@ -93,7 +80,7 @@ export const PUT = secureMutationRoute({
     async ({ context, params }) => {
       const db = await getRequestSqlServerDataSource()
       const { id } = params as z.infer<typeof specificationParamSchema>
-      const spec = await resolveSpecification(db, id)
+      const spec = await getSpecificationById(db, id)
       if (!spec) return
 
       const allowed = await canAuthorSpecification(
@@ -113,11 +100,17 @@ export const PUT = secureMutationRoute({
     const { id } = params
     const db = await getRequestSqlServerDataSource()
 
-    const spec = await resolveSpecification(db, id)
+    const spec = await getSpecificationById(db, id)
     if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    if (body.uniqueId && (await isSlugTaken(db, body.uniqueId, spec.id))) {
-      return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
+    if (
+      body.specificationCode &&
+      (await isSpecificationCodeTaken(db, body.specificationCode, spec.id))
+    ) {
+      return NextResponse.json(
+        { error: 'specification_code_taken' },
+        { status: 409 },
+      )
     }
 
     const updated = await updateSpecification(db, spec.id, body)
@@ -132,7 +125,7 @@ export const DELETE = secureMutationRoute({
     async ({ context, params }) => {
       const db = await getRequestSqlServerDataSource()
       const { id } = params as z.infer<typeof specificationParamSchema>
-      const spec = await resolveSpecification(db, id)
+      const spec = await getSpecificationById(db, id)
       if (!spec) return
 
       const allowed = await canAuthorSpecification(
@@ -151,7 +144,7 @@ export const DELETE = secureMutationRoute({
   handler: async ({ params }) => {
     const { id } = params
     const db = await getRequestSqlServerDataSource()
-    const spec = await resolveSpecification(db, id)
+    const spec = await getSpecificationById(db, id)
     if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     await deleteSpecification(db, spec.id)
     return NextResponse.json({ ok: true })

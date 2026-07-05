@@ -94,7 +94,7 @@ function extractTableColumns(table: string): Set<string> {
   // Include both directions so this offline parser can still verify current
   // entity columns without trying to simulate the full migration state machine.
   const columnRenamePattern = new RegExp(
-    `EXEC sp_rename N'${table}\\.([a-z_][a-z0-9_]*)',\\s*N'([a-z_][a-z0-9_]*)',\\s*N'COLUMN'`,
+    `EXEC\\s+sp_rename\\s+N'${table}\\.([a-z_][a-z0-9_]*)',\\s*N'([a-z_][a-z0-9_]*)',\\s*N'COLUMN'`,
     'g',
   )
   for (const match of migrationSource.matchAll(columnRenamePattern)) {

@@ -46,7 +46,6 @@ export interface SensitiveMutationAuditDetail {
   resolution?: number
   restoredVersionNumber?: number
   specificationId?: number
-  specificationSlug?: string
   suggestionId?: number
   targetRequirementAreaId?: number
   toStatusId?: number
@@ -106,7 +105,6 @@ function actionAuditDetail(
       return {
         actionKind: action.kind,
         specificationId: action.specificationId,
-        specificationSlug: action.specificationSlug,
       }
     case 'add_to_specification':
     case 'remove_from_specification':
@@ -114,21 +112,18 @@ function actionAuditDetail(
         actionKind: action.kind,
         requirementCount: action.requirementIds.length,
         specificationId: action.specificationId,
-        specificationSlug: action.specificationSlug,
       }
     case 'list_graduation_target_areas':
       return {
         actionKind: action.kind,
         localRequirementId: action.localRequirementId,
         specificationId: action.specificationId,
-        specificationSlug: action.specificationSlug,
       }
     case 'graduate_specification_local_requirement':
       return {
         actionKind: action.kind,
         localRequirementId: action.localRequirementId,
         specificationId: action.specificationId,
-        specificationSlug: action.specificationSlug,
         targetRequirementAreaId: action.requirementAreaId,
       }
     case 'manage_specification_local_requirement':
@@ -137,7 +132,6 @@ function actionAuditDetail(
         localRequirementId: action.localRequirementId,
         operation: action.operation,
         specificationId: action.specificationId,
-        specificationSlug: action.specificationSlug,
       }
     case 'manage_specification_needs_reference':
       return {
@@ -145,7 +139,6 @@ function actionAuditDetail(
         needsReferenceId: action.needsReferenceId,
         operation: action.operation,
         specificationId: action.specificationId,
-        specificationSlug: action.specificationSlug,
       }
     case 'get_requirement':
       return {
@@ -200,7 +193,6 @@ function actionAuditDetail(
         actionKind: action.kind,
         operation: action.operation,
         specificationId: action.specificationId,
-        specificationSlug: action.specificationSlug,
       }
     case 'manage_rfi_question_suggestion':
       return {
@@ -208,7 +200,6 @@ function actionAuditDetail(
         areaId: action.areaId,
         operation: action.operation,
         specificationId: action.specificationId,
-        specificationSlug: action.specificationSlug,
         suggestionId: action.suggestionId,
       }
     case 'generate_requirements':
@@ -264,7 +255,7 @@ function targetForAuthorizationDenied(action: RequirementsAction): {
     case 'get_specification_items':
     case 'list_deviations':
       return {
-        targetId: action.specificationId ?? action.specificationSlug,
+        targetId: action.specificationId,
         targetKind: 'RequirementsSpecification',
       }
     case 'graduate_specification_local_requirement':
@@ -276,10 +267,7 @@ function targetForAuthorizationDenied(action: RequirementsAction): {
       }
     case 'manage_specification_needs_reference':
       return {
-        targetId:
-          action.needsReferenceId ??
-          action.specificationId ??
-          action.specificationSlug,
+        targetId: action.needsReferenceId ?? action.specificationId,
         targetKind: 'SpecificationNeedsReference',
       }
     case 'get_requirement':
@@ -317,16 +305,13 @@ function targetForAuthorizationDenied(action: RequirementsAction): {
       }
     case 'manage_specification_rfi':
       return {
-        targetId: action.specificationId ?? action.specificationSlug,
+        targetId: action.specificationId,
         targetKind: 'SpecificationRfiList',
       }
     case 'manage_rfi_question_suggestion':
       return {
         targetId:
-          action.suggestionId ??
-          action.specificationId ??
-          action.specificationSlug ??
-          action.areaId,
+          action.suggestionId ?? action.specificationId ?? action.areaId,
         targetKind: 'RfiQuestionSuggestion',
       }
     case 'generate_requirements':
@@ -386,9 +371,9 @@ function targetForSensitiveMutation(detail: SensitiveMutationAuditDetail): {
       targetKind: 'SpecificationLocalRequirement',
     }
   }
-  if (detail.specificationId != null || detail.specificationSlug) {
+  if (detail.specificationId != null) {
     return {
-      targetId: detail.specificationId ?? detail.specificationSlug,
+      targetId: detail.specificationId,
       targetKind: 'RequirementsSpecification',
     }
   }

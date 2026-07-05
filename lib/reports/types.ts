@@ -98,7 +98,7 @@ export type ReportSection =
   | {
       type: 'specification-cover'
       name: string
-      uniqueId: string
+      specificationCode: string
       governanceObjectType: string | null
       implementationType: string | null
       lifecycleStatus: string | null
@@ -164,7 +164,7 @@ export type ReportSection =
       createdBy: string | null
       createdAt: string
       specificationName: string | null
-      specificationUniqueId: string | null
+      specificationCode: string | null
       priorityLevel: {
         color?: string | null
         iconName?: string | null

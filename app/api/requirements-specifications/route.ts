@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createSpecificationSchema } from '@/app/api/requirements-specifications/schema'
 import {
   createSpecification,
-  isSlugTaken,
+  isSpecificationCodeTaken,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
@@ -55,8 +55,11 @@ export const POST = secureMutationRoute({
     }
 
     const db = await getRequestSqlServerDataSource()
-    if (await isSlugTaken(db, body.uniqueId)) {
-      return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
+    if (await isSpecificationCodeTaken(db, body.specificationCode)) {
+      return NextResponse.json(
+        { error: 'specification_code_taken' },
+        { status: 409 },
+      )
     }
 
     const responsiblePerson =

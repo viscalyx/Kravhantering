@@ -5,14 +5,14 @@ import {
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { specificationIdOrSlugSchema } from '@/lib/http/validation'
+import { idParamSchema } from '@/lib/http/validation'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { importPreviewBodySchema } from '@/lib/requirements/import-schema'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 
 const paramsSchema = z
   .object({
-    id: specificationIdOrSlugSchema,
+    id: idParamSchema.shape.id,
   })
   .strict()
 const bodySchema = importPreviewBodySchema.omit({ areaId: true })
@@ -26,8 +26,7 @@ export const POST = secureMutationRoute({
   policy: requirementsMutationPolicy<Body, Params>(({ params }) => ({
     kind: 'manage_specification_local_requirement',
     operation: 'create',
-    specificationId: /^\d+$/.test(params.id) ? Number(params.id) : undefined,
-    specificationSlug: /^\d+$/.test(params.id) ? undefined : params.id,
+    specificationId: params.id,
   })),
   handler: async ({ body, context, params, request }) => {
     try {
@@ -37,7 +36,7 @@ export const POST = secureMutationRoute({
       const preview = await service.previewSpecificationLocalImport(context, {
         locale: body.locale,
         payload: body.payload,
-        specificationIdOrSlug: params.id,
+        specificationId: params.id,
       })
       return NextResponse.json(preview, {
         headers: { 'Cache-Control': 'no-store' },

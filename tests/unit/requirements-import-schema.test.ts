@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  specificationActionTarget,
   specificationImportExecuteBodySchema,
   specificationImportPreviewBodySchema,
 } from '@/app/api/specification-local-requirements/import/_shared'
@@ -99,7 +98,7 @@ describe('requirements import schema', () => {
         ],
         schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
       },
-      specificationIdOrSlug: 'UPPHANDLING-2026',
+      specificationId: 7,
     })
 
     expect(result.success).toBe(true)
@@ -113,7 +112,7 @@ describe('requirements import schema', () => {
           ],
           schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
         },
-        specificationIdOrSlug: 'UPPHANDLING-2026',
+        specificationId: 7,
       }).success,
     ).toBe(false)
   })
@@ -130,7 +129,7 @@ describe('requirements import schema', () => {
         locale: 'sv',
         previewToken: 'token',
         rows: [row],
-        specificationIdOrSlug: 'UPPHANDLING-2026',
+        specificationId: 7,
       }).success,
     ).toBe(true)
     expect(
@@ -139,16 +138,23 @@ describe('requirements import schema', () => {
         locale: 'sv',
         previewToken: 'token',
         rows: [row],
-        specificationIdOrSlug: 'UPPHANDLING-2026',
+        specificationId: 7,
       }).success,
     ).toBe(false)
   })
 
-  it('maps specification action targets from numeric ids and slugs', () => {
-    expect(specificationActionTarget('42')).toEqual({ specificationId: 42 })
-    expect(specificationActionTarget('UPPHANDLING-2026')).toEqual({
-      specificationSlug: 'UPPHANDLING-2026',
-    })
+  it('requires numeric specification ids for specification-local imports', () => {
+    expect(
+      specificationImportPreviewBodySchema.safeParse({
+        locale: 'sv',
+        payload: {
+          requirements: [
+            { description: 'Systemet ska logga viktiga händelser.' },
+          ],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        },
+      }).success,
+    ).toBe(false)
   })
 
   it('emits a strict JSON Schema for the shared file format', () => {

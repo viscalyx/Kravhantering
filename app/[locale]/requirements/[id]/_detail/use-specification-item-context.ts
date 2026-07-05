@@ -3,8 +3,8 @@ import { apiFetch } from '@/lib/http/api-fetch'
 import type { SpecificationItemDetailContext } from './types'
 
 interface UseSpecificationItemContextOptions {
+  specificationId?: number
   specificationItemId?: number
-  specificationSlug?: string
 }
 
 interface UseSpecificationItemContextResult {
@@ -15,10 +15,9 @@ interface UseSpecificationItemContextResult {
 
 export function useSpecificationItemContext({
   specificationItemId,
-  specificationSlug,
+  specificationId,
 }: UseSpecificationItemContextOptions): UseSpecificationItemContextResult {
-  const isSpecificationItemContext =
-    !!specificationItemId && !!specificationSlug
+  const isSpecificationItemContext = !!specificationItemId && !!specificationId
   const [specificationItemDetail, setSpecificationItemDetail] =
     useState<SpecificationItemDetailContext | null>(null)
   const specificationItemDetailAbortRef = useRef<AbortController | null>(null)
@@ -29,7 +28,7 @@ export function useSpecificationItemContext({
     if (
       !isSpecificationItemContext ||
       !specificationItemId ||
-      !specificationSlug
+      !specificationId
     ) {
       setSpecificationItemDetail(null)
       return
@@ -42,7 +41,7 @@ export function useSpecificationItemContext({
     try {
       const res = await apiFetch(
         `/api/requirements-specifications/${encodeURIComponent(
-          specificationSlug,
+          String(specificationId),
         )}/items/${specificationItemId}`,
         { signal: controller.signal },
       )
@@ -62,7 +61,7 @@ export function useSpecificationItemContext({
         setSpecificationItemDetail(null)
       }
     }
-  }, [isSpecificationItemContext, specificationItemId, specificationSlug])
+  }, [isSpecificationItemContext, specificationItemId, specificationId])
 
   useEffect(() => {
     void refreshSpecificationItemDetail()

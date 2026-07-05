@@ -1,7 +1,7 @@
 import { expect, type Page, type Route, test } from '@playwright/test'
 import { getAiSettings, putAiSettings } from '../ai-settings-test-helpers'
 
-const specificationSlug = 'ETJANST-UPP-2026'
+const specificationId = 8
 const generatedDescription =
   'Systemet ska låta behöriga lärare registrera betyg för en elev.'
 const generatedPayload = {
@@ -264,7 +264,7 @@ test('SPEC-17: AI-assisted authoring hands kravunderlag candidates to local impo
     'spec-preview',
   )
 
-  await page.goto(`/sv/specifications/${specificationSlug}`)
+  await page.goto(`/sv/specifications/${specificationId}`)
   await page.getByRole('button', { name: 'Lägg till unika krav' }).click()
   await page
     .getByRole('menuitem', { name: 'AI-assisterat författande' })
@@ -282,6 +282,6 @@ test('SPEC-17: AI-assisted authoring hands kravunderlag candidates to local impo
   expect(preview.callCount).toBe(1)
   expect(preview.bodies[preview.bodies.length - 1]).toMatchObject({
     payload: generatedPayload,
-    specificationIdOrSlug: specificationSlug,
+    specificationId,
   })
 })

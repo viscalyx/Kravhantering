@@ -451,14 +451,14 @@ test.describe('Requirements specifications destructive manual cases', () => {
                   requirementAreas: [],
                   responsibleDisplayName: 'Petra specresp',
                   responsibleHsaId: 'SE5560000001-specresp1',
-                  uniqueId: 'PWT-SPEC-EDIT-2026',
+                  specificationCode: 'PWT-SPEC-EDIT-2026',
                 },
               ],
         },
       })
     })
     await page.route(
-      '**/api/requirements-specifications/PWT-SPEC-EDIT-2026',
+      '**/api/requirements-specifications/920001',
       async route => {
         if (route.request().method() === 'DELETE') {
           deleteRequests.push(route.request().url())

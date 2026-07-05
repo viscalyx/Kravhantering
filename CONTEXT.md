@@ -619,6 +619,14 @@ förvaltning eller annat användningssammanhang.
 
 _Avoid_: Kravspecifikation som huvudterm.
 
+**Kravunderlagskod**:
+Den verksamhetsnära koden som identifierar ett kravunderlag på ett sätt som
+människor kan känna igen, söka efter och hänvisa till.
+
+- `en`: Specification code
+
+_Avoid_: Kravunderlags-ID, Kravunderlags-Id, uniqueId, specificationId.
+
 **Underlagssyfte**:
 En beskrivning av varför hela kravunderlaget finns, till exempel förmågan som
 ska realiseras eller vad ett IT-stöd som ska upphandlas ska göra.

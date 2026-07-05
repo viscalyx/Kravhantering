@@ -27,8 +27,8 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
-import SpecificationRequirementSelectionPanel from '@/app/[locale]/specifications/[slug]/specification-requirement-selection-panel'
-import SpecificationRfiListPanel from '@/app/[locale]/specifications/[slug]/specification-rfi-list-panel'
+import SpecificationRequirementSelectionPanel from '@/app/[locale]/specifications/[specificationId]/specification-requirement-selection-panel'
+import SpecificationRfiListPanel from '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
 import SpecificationFormModal from '@/app/[locale]/specifications/specification-form-modal'
 import AiRequirementGenerator from '@/components/AiRequirementGenerator'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
@@ -47,7 +47,7 @@ import SpecificationLocalRequirementForm, {
 } from '@/components/SpecificationLocalRequirementForm'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
-import { Link, useRouter } from '@/i18n/routing'
+import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -238,17 +238,16 @@ function buildNormReferenceOptionsPath(statuses: number[] | undefined) {
 
 export default function KravunderlagDetailClient({
   initialData,
-  specificationSlug,
+  specificationId,
 }: {
   initialData: RequirementsSpecificationDetailInitialData
-  specificationSlug: string
+  specificationId: number
 }) {
   useHelpContent(REQUIREMENT_SPECIFICATION_DETAIL_HELP)
   const t = useTranslations('specification')
   const tc = useTranslations('common')
   const td = useTranslations('deviation')
   const locale = useLocale()
-  const router = useRouter()
   const { confirm } = useConfirmModal()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
   const searchParams = useSearchParams()
@@ -384,6 +383,7 @@ export default function KravunderlagDetailClient({
   const [addModalLoading, setAddModalLoading] = useState(false)
   const [addModalError, setAddModalError] = useState<string | null>(null)
   const pdfDownload = useServerPdfDownload()
+  const specificationPathId = String(specificationId)
 
   const availableRequirementsParams = useMemo(() => {
     const params = buildRequirementListParams({
@@ -402,7 +402,7 @@ export default function KravunderlagDetailClient({
   const specResource = useAsyncResource<SpecificationMeta | null>({
     fetcher: async signal => {
       const response = await apiFetch(
-        `/api/requirements-specifications/${specificationSlug}`,
+        `/api/requirements-specifications/${specificationId}`,
         {
           signal,
         },
@@ -416,14 +416,14 @@ export default function KravunderlagDetailClient({
     getErrorMessage: error =>
       error instanceof Error ? error.message : t('loadSpecificationFailed'),
     initialData: initialData.spec,
-    key: `specification:${specificationSlug}`,
+    key: `specification:${specificationId}`,
     loadOnMount: false,
   })
 
   const specificationItemsResource = useAsyncResource<SpecificationListItem[]>({
     fetcher: async signal => {
       const response = await apiFetch(
-        `/api/requirements-specifications/${specificationSlug}/items`,
+        `/api/requirements-specifications/${specificationId}/items`,
         { signal },
       )
       const data = await readJsonOrThrow<{ items?: SpecificationListItem[] }>(
@@ -437,7 +437,7 @@ export default function KravunderlagDetailClient({
         ? error.message
         : t('loadSpecificationItemsFailed'),
     initialData: initialData.specificationItems,
-    key: `specification-items:${specificationSlug}`,
+    key: `specification-items:${specificationId}`,
     loadOnMount: false,
   })
 
@@ -445,7 +445,7 @@ export default function KravunderlagDetailClient({
     useAsyncResource<AvailableRequirementsData>({
       fetcher: async signal => {
         const response = await apiFetch(
-          `/api/requirements-specifications/${specificationSlug}/available-requirements?${availableRequirementsParams}`,
+          `/api/requirements-specifications/${specificationId}/available-requirements?${availableRequirementsParams}`,
           { signal },
         )
         const data = await readJsonOrThrow<{
@@ -473,7 +473,7 @@ export default function KravunderlagDetailClient({
   >({
     fetcher: async signal => {
       const response = await apiFetch(
-        `/api/requirements-specifications/${specificationSlug}/needs-references`,
+        `/api/requirements-specifications/${specificationId}/needs-references`,
         { signal },
       )
       const data = await readJsonOrThrow<{
@@ -484,7 +484,7 @@ export default function KravunderlagDetailClient({
     getErrorMessage: error =>
       error instanceof Error ? error.message : t('failedToLoadNeedsReferences'),
     initialData: initialData.availableNeedsRefs,
-    key: `specification-needs-references:${specificationSlug}`,
+    key: `specification-needs-references:${specificationId}`,
     loadOnMount: false,
   })
 
@@ -784,7 +784,7 @@ export default function KravunderlagDetailClient({
         pagination?: { hasMore?: boolean }
       }>(
         await apiFetch(
-          `/api/requirements-specifications/${specificationSlug}/available-requirements?${params}`,
+          `/api/requirements-specifications/${specificationId}/available-requirements?${params}`,
         ),
         t('loadAvailableRequirementsFailed'),
       )
@@ -811,7 +811,7 @@ export default function KravunderlagDetailClient({
     rightHasMore,
     rightLoadingMore,
     rightSort,
-    specificationSlug,
+    specificationId,
     t,
   ])
 
@@ -886,7 +886,7 @@ export default function KravunderlagDetailClient({
         body.needsReferenceDescription = addNeedsRefDescription.trim() || null
       }
       const res = await apiFetch(
-        `/api/requirements-specifications/${specificationSlug}/items`,
+        `/api/requirements-specifications/${specificationId}/items`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -921,7 +921,7 @@ export default function KravunderlagDetailClient({
     fetchAvailableRequirements,
     fetchSpecificationItems,
     needsReferencesResource,
-    specificationSlug,
+    specificationId,
     pendingAddIds,
     tc,
   ])
@@ -929,7 +929,7 @@ export default function KravunderlagDetailClient({
   const handleCreateLocalRequirement = useCallback(
     async (payload: SpecificationLocalRequirementSubmitPayload) => {
       const response = await apiFetch(
-        `/api/requirements-specifications/${specificationSlug}/local-requirements`,
+        `/api/requirements-specifications/${specificationId}/local-requirements`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -948,7 +948,7 @@ export default function KravunderlagDetailClient({
       setShowCreateLocalRequirementModal(false)
       await fetchSpecificationItems({ throwOnError: true })
     },
-    [fetchSpecificationItems, specificationSlug, tc],
+    [fetchSpecificationItems, specificationId, tc],
   )
 
   const handleImportLocalRequirementsClose = useCallback(
@@ -986,7 +986,7 @@ export default function KravunderlagDetailClient({
     setNeedsReferenceError(null)
     try {
       const response = await apiFetch(
-        `/api/requirements-specifications/${specificationSlug}/needs-references`,
+        `/api/requirements-specifications/${specificationId}/needs-references`,
         {
           method: needsReferenceForm.id == null ? 'POST' : 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -1023,7 +1023,7 @@ export default function KravunderlagDetailClient({
     fetchSpecificationItems,
     needsReferenceForm,
     needsReferenceFormDirty,
-    specificationSlug,
+    specificationId,
     tc,
   ])
 
@@ -1046,7 +1046,7 @@ export default function KravunderlagDetailClient({
       if (!confirmed) return
 
       const response = await apiFetch(
-        `/api/requirements-specifications/${specificationSlug}/needs-references`,
+        `/api/requirements-specifications/${specificationId}/needs-references`,
         {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
@@ -1065,7 +1065,7 @@ export default function KravunderlagDetailClient({
       )
       await fetchNeedsReferences({ throwOnError: true })
     },
-    [confirm, fetchNeedsReferences, specificationSlug, t, tc],
+    [confirm, fetchNeedsReferences, specificationId, t, tc],
   )
 
   const handleNeedsReferenceAssignment = useCallback(
@@ -1098,7 +1098,7 @@ export default function KravunderlagDetailClient({
 
       try {
         const response = await apiFetch(
-          `/api/requirements-specifications/${specificationSlug}/items/${encodeURIComponent(
+          `/api/requirements-specifications/${specificationId}/items/${encodeURIComponent(
             itemRef,
           )}`,
           {
@@ -1121,7 +1121,7 @@ export default function KravunderlagDetailClient({
       fetchNeedsReferences,
       fetchSpecificationItems,
       specificationItems,
-      specificationSlug,
+      specificationId,
     ],
   )
 
@@ -1137,7 +1137,7 @@ export default function KravunderlagDetailClient({
 
     try {
       const response = await apiFetch(
-        `/api/requirements-specifications/${specificationSlug}/items`,
+        `/api/requirements-specifications/${specificationId}/items`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -1165,7 +1165,7 @@ export default function KravunderlagDetailClient({
     fetchNeedsReferences,
     fetchSpecificationItems,
     selectedSpecificationItems,
-    specificationSlug,
+    specificationId,
     tc,
   ])
 
@@ -1273,7 +1273,7 @@ export default function KravunderlagDetailClient({
 
       try {
         const response = await apiFetch(
-          `/api/requirements-specifications/${specificationSlug}/items`,
+          `/api/requirements-specifications/${specificationId}/items`,
           {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
@@ -1340,7 +1340,7 @@ export default function KravunderlagDetailClient({
       fetchAvailableRequirements,
       fetchSpecificationItems,
       specificationItems,
-      specificationSlug,
+      specificationId,
       selectedSpecificationItems,
       t,
       tc,
@@ -1579,7 +1579,7 @@ export default function KravunderlagDetailClient({
       try {
         const response = await fetch(
           `/api/requirements-specifications/${encodeURIComponent(
-            specificationSlug,
+            specificationId,
           )}/exports?profile=${encodeURIComponent(
             profile,
           )}&locale=${encodeURIComponent(locale)}`,
@@ -1592,7 +1592,7 @@ export default function KravunderlagDetailClient({
 
         const blob = await response.blob()
         const label = exportProfileLabel(profile)
-        const fallbackFilename = `${label} ${spec.name} ${spec.uniqueId}.csv`
+        const fallbackFilename = `${label} ${spec.name} ${spec.specificationCode}.csv`
         const url = URL.createObjectURL(blob)
         try {
           const a = document.createElement('a')
@@ -1606,7 +1606,7 @@ export default function KravunderlagDetailClient({
         console.error(error)
       }
     },
-    [exportProfileLabel, locale, spec, specificationSlug, tc],
+    [exportProfileLabel, locale, spec, specificationId, tc],
   )
 
   const handleDownloadPdf = useCallback(
@@ -1614,22 +1614,22 @@ export default function KravunderlagDetailClient({
       if (!spec) return
       const label = reportProfileLabel(profile)
       void pdfDownload.download({
-        fallbackFilename: `${label} ${spec.name} ${spec.uniqueId}.pdf`,
+        fallbackFilename: `${label} ${spec.name} ${spec.specificationCode}.pdf`,
         url: `/${locale}/specifications/${encodeURIComponent(
-          specificationSlug,
+          specificationPathId,
         )}/reports/pdf/${profile}`,
       })
     },
-    [locale, pdfDownload, reportProfileLabel, specificationSlug, spec],
+    [locale, pdfDownload, reportProfileLabel, specificationPathId, spec],
   )
 
   const handleDownloadTraceabilityPdf = useCallback(() => {
     if (!spec || !hasTraceabilityReportActions) return
     const label = t('reportProfiles.traceability')
     void pdfDownload.download({
-      fallbackFilename: `${label} ${spec.name} ${spec.uniqueId}.pdf`,
+      fallbackFilename: `${label} ${spec.name} ${spec.specificationCode}.pdf`,
       url: `/${locale}/specifications/${encodeURIComponent(
-        specificationSlug,
+        specificationPathId,
       )}/reports/pdf/traceability?refs=${encodeURIComponent(
         traceabilityItemRefsParam,
       )}`,
@@ -1638,7 +1638,7 @@ export default function KravunderlagDetailClient({
     locale,
     pdfDownload,
     hasTraceabilityReportActions,
-    specificationSlug,
+    specificationPathId,
     spec,
     t,
     traceabilityItemRefsParam,
@@ -2698,8 +2698,7 @@ export default function KravunderlagDetailClient({
                   </div>
                   <SpecificationRfiListPanel
                     canEdit={canEditContent}
-                    specificationId={spec.id}
-                    specificationSlug={specificationSlug}
+                    specificationId={specificationId}
                   />
                 </div>
               ) : specificationItems.length === 0 ? (
@@ -2892,7 +2891,7 @@ export default function KravunderlagDetailClient({
                             canReviewDecisions:
                               permissions.canReviewDecisions === true,
                           }}
-                          specificationSlug={specificationSlug}
+                          specificationId={specificationId}
                           usageStatus={{
                             specificationItemStatusColor:
                               item.specificationItemStatusColor ?? null,
@@ -2913,13 +2912,13 @@ export default function KravunderlagDetailClient({
                             await fetchSpecificationItems()
                           }}
                           requirementId={id}
+                          specificationId={specificationId}
                           specificationItemId={item.specificationItemId}
                           specificationPermissions={{
                             canEditContent,
                             canReviewDecisions:
                               permissions.canReviewDecisions === true,
                           }}
-                          specificationSlug={specificationSlug}
                         />
                       ) : (
                         <RequirementDetailClient
@@ -3164,7 +3163,7 @@ export default function KravunderlagDetailClient({
                         }
                         void availableRequirementsResource.reload()
                       }}
-                      specificationSlug={specificationSlug}
+                      specificationId={specificationId}
                     />
                   </>
                 )}
@@ -3191,17 +3190,13 @@ export default function KravunderlagDetailClient({
               : current,
           )
         }}
-        onSaved={async result => {
+        onSaved={async () => {
           setShowEditSpecificationForm(false)
-          if (result.newUniqueId && result.newUniqueId !== specificationSlug) {
-            router.replace(`/specifications/${result.newUniqueId}`)
-          } else {
-            await fetchSpecificationMeta()
-          }
+          await fetchSpecificationMeta()
         }}
         open={showEditSpecificationForm}
         spec={spec}
-        specificationSlug={specificationSlug}
+        specificationId={specificationId}
       />
       {addModal}
       {createLocalRequirementModal}
@@ -3219,8 +3214,7 @@ export default function KravunderlagDetailClient({
           setShowImportLocalRequirementsModal(true)
         }}
         open={showAiLocalRequirementsModal}
-        specificationId={spec.id}
-        specificationSlug={specificationSlug}
+        specificationId={specificationId}
       />
       <RequirementsImportDialog
         destinationName={spec.name}
@@ -3232,7 +3226,7 @@ export default function KravunderlagDetailClient({
           void handleImportLocalRequirementsClose(importSucceeded)
         }}
         open={showImportLocalRequirementsModal}
-        specificationSlug={specificationSlug}
+        specificationId={specificationId}
       />
       {needsReferenceFormModal}
       {pdfDownload.dialog}

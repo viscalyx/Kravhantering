@@ -34,7 +34,7 @@ test('AUTHZ-05/AUTH-10/AUTH-11: specification co-authors can edit content but no
   const updatedPurpose = `Updated by co-author ${Date.now()}`
 
   try {
-    await page.goto(`/sv/specifications/${fixture.specificationSlug}`)
+    await page.goto(`/sv/specifications/${fixture.specificationId}`)
     await expect(
       page.getByRole('heading', { level: 1, name: fixture.specificationName }),
     ).toBeVisible()
@@ -60,7 +60,7 @@ test('AUTHZ-05/AUTH-10/AUTH-11: specification co-authors can edit content but no
     await expect(page.getByText(updatedPurpose)).toBeVisible()
 
     const readResponse = await specificationCoauthor.get(
-      `/api/requirements-specifications/${fixture.specificationSlug}`,
+      `/api/requirements-specifications/${fixture.specificationId}`,
     )
     await expectOk(readResponse, 'specification co-author read')
     const specification = (await readResponse.json()) as SpecificationResponse
@@ -73,7 +73,7 @@ test('AUTHZ-05/AUTH-10/AUTH-11: specification co-authors can edit content but no
 
     await expectOk(
       await specificationCoauthor.put(
-        `/api/requirements-specifications/${fixture.specificationSlug}`,
+        `/api/requirements-specifications/${fixture.specificationId}`,
         {
           data: {
             businessNeedsReference: updatedPurpose,
@@ -84,7 +84,7 @@ test('AUTHZ-05/AUTH-10/AUTH-11: specification co-authors can edit content but no
     )
     await expectStatus(
       await specificationCoauthor.put(
-        `/api/requirements-specifications/${fixture.specificationSlug}/co-authors`,
+        `/api/requirements-specifications/${fixture.specificationId}/co-authors`,
         {
           data: { coAuthorHsaIds: [HSA.areaCoauthor] },
         },
@@ -94,7 +94,7 @@ test('AUTHZ-05/AUTH-10/AUTH-11: specification co-authors can edit content but no
     )
     await expectStatus(
       await specificationCoauthor.put(
-        `/api/requirements-specifications/${fixture.specificationSlug}/responsible`,
+        `/api/requirements-specifications/${fixture.specificationId}/responsible`,
         {
           data: { responsibleHsaId: HSA.specificationResponsible },
         },

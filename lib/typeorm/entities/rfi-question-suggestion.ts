@@ -20,8 +20,8 @@ export interface RfiQuestionSuggestionEntity {
   resolvedByHsaId: string | null
   reviewRequestedAt: Date | null
   rfiQuestionId: number | null
+  sourceSpecificationCode: string | null
   sourceSpecificationName: string | null
-  sourceSpecificationUniqueId: string | null
   specification: RequirementsSpecificationEntity | null
   specificationId: number | null
   updatedAt: Date | null
@@ -45,9 +45,9 @@ export const rfiQuestionSuggestionEntity =
         nullable: true,
         type: 'int',
       },
-      sourceSpecificationUniqueId: {
+      sourceSpecificationCode: {
         length: 450,
-        name: 'source_specification_unique_id',
+        name: 'source_specification_code',
         nullable: true,
         type: 'nvarchar',
       },

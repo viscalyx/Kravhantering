@@ -23,7 +23,7 @@ export function buildDeviationReviewReport(
       type: 'notice',
       message: formatReportTemplate(labels.notices.specificationPrefix, {
         name: data.specificationName,
-        uniqueId: data.specificationUniqueId ?? '',
+        specificationCode: data.specificationCode ?? '',
       }),
       severity: 'info',
     })
@@ -69,7 +69,7 @@ export function buildDeviationReviewReport(
     createdBy: data.deviation.createdBy,
     createdAt: data.deviation.createdAt,
     specificationName: data.specificationName,
-    specificationUniqueId: data.specificationUniqueId,
+    specificationCode: data.specificationCode,
     priorityLevel: v.priorityLevel,
     locale,
   })

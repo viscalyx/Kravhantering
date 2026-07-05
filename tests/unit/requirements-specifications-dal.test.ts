@@ -11,7 +11,7 @@ import {
   getSpecificationById,
   getSpecificationLocalRequirementDetail,
   graduateSpecificationLocalRequirementToLibrary,
-  isSlugTaken,
+  isSpecificationCodeTaken,
   linkRequirementsToSpecificationAtomically,
   listSpecificationItems,
   listSpecificationNeedsReferences,
@@ -61,7 +61,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         {
           id: 1,
-          uniqueId: 'PKG-001',
+          specificationCode: 'PKG-001',
           name: 'Specification A',
           specificationGovernanceObjectTypeId: 4,
           specificationImplementationTypeId: 2,
@@ -110,7 +110,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(result).toEqual([
       {
         id: 1,
-        uniqueId: 'PKG-001',
+        specificationCode: 'PKG-001',
         name: 'Specification A',
         specificationGovernanceObjectTypeId: 4,
         specificationImplementationTypeId: 2,
@@ -146,7 +146,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     query.mockResolvedValueOnce([
       {
         id: 2,
-        uniqueId: 'PKG-002',
+        specificationCode: 'PKG-002',
         name: 'Specification B',
         specificationGovernanceObjectTypeId: 1,
         specificationImplementationTypeId: 5,
@@ -174,7 +174,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
     expect(result).toEqual({
       id: 2,
-      uniqueId: 'PKG-002',
+      specificationCode: 'PKG-002',
       name: 'Specification B',
       specificationGovernanceObjectTypeId: 1,
       specificationImplementationTypeId: 5,
@@ -198,12 +198,14 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     })
   })
 
-  it('checks slug collisions on the SQL Server path', async () => {
+  it('checks specification code collisions on the SQL Server path', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([{ id: 9 }]).mockResolvedValueOnce([])
 
-    await expect(isSlugTaken(db, 'PKG-009')).resolves.toBe(true)
-    await expect(isSlugTaken(db, 'PKG-009', 9)).resolves.toBe(false)
+    await expect(isSpecificationCodeTaken(db, 'PKG-009')).resolves.toBe(true)
+    await expect(isSpecificationCodeTaken(db, 'PKG-009', 9)).resolves.toBe(
+      false,
+    )
   })
 
   it('lists specification needs references on the SQL Server path', async () => {
@@ -268,7 +270,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         {
           id: 11,
-          uniqueId: 'SPEC-011',
+          specificationCode: 'SPEC-011',
           name: 'Specification Eleven',
           specificationGovernanceObjectTypeId: 2,
           specificationImplementationTypeId: null,
@@ -284,7 +286,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         {
           id: 11,
-          uniqueId: 'SPEC-011',
+          specificationCode: 'SPEC-011',
           name: 'Specification Eleven Updated',
           specificationGovernanceObjectTypeId: 2,
           specificationImplementationTypeId: null,
@@ -298,7 +300,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         {
           id: 11,
-          uniqueId: 'SPEC-011',
+          specificationCode: 'SPEC-011',
           name: 'Specification Eleven Updated',
           specificationGovernanceObjectTypeId: 2,
           specificationImplementationTypeId: null,
@@ -315,7 +317,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([])
 
     const created = await createSpecification(db, {
-      uniqueId: 'SPEC-011',
+      specificationCode: 'SPEC-011',
       name: 'Specification Eleven',
       specificationGovernanceObjectTypeId: 2,
       specificationLifecycleStatusId: 4,
@@ -344,7 +346,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
     expect(created).toMatchObject({
       id: 11,
-      uniqueId: 'SPEC-011',
+      specificationCode: 'SPEC-011',
       name: 'Specification Eleven',
       specificationGovernanceObjectTypeId: 2,
       specificationLifecycleStatusId: 4,
@@ -403,7 +405,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
     await expect(
       createSpecification(db, {
-        uniqueId: 'SPEC-012',
+        specificationCode: 'SPEC-012',
         name: 'Specification Twelve',
         specificationLifecycleStatusId: 4,
         responsibleHsaId: ' ',
@@ -425,7 +427,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         {
           id: 11,
-          uniqueId: 'SPEC-011',
+          specificationCode: 'SPEC-011',
           name: 'Specification Eleven',
           specificationGovernanceObjectTypeId: 2,
           specificationImplementationTypeId: null,
@@ -439,7 +441,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         {
           id: 11,
-          uniqueId: 'SPEC-011',
+          specificationCode: 'SPEC-011',
           name: 'Specification Eleven',
           specificationGovernanceObjectTypeId: 2,
           specificationImplementationTypeId: null,
@@ -539,7 +541,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         {
           id: 11,
-          uniqueId: 'SPEC-011',
+          specificationCode: 'SPEC-011',
           name: 'Specification Eleven Updated',
           specificationGovernanceObjectTypeId: 2,
           specificationImplementationTypeId: null,
@@ -553,7 +555,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         {
           id: 11,
-          uniqueId: 'SPEC-011',
+          specificationCode: 'SPEC-011',
           name: 'Specification Eleven Updated',
           specificationGovernanceObjectTypeId: 2,
           specificationImplementationTypeId: null,

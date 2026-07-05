@@ -776,7 +776,7 @@ describe('RequirementsImportDialog', () => {
         mode="specification-local"
         onClose={vi.fn()}
         open
-        specificationSlug="spec"
+        specificationId={1}
       />,
     )
 
@@ -814,7 +814,7 @@ describe('RequirementsImportDialog', () => {
     expect(apiFetch).toHaveBeenCalledWith(
       '/api/specification-local-requirements/import/preview',
       expect.objectContaining({
-        body: expect.stringContaining('"specificationIdOrSlug":"spec"'),
+        body: expect.stringContaining('"specificationId":1'),
       }),
     )
   })

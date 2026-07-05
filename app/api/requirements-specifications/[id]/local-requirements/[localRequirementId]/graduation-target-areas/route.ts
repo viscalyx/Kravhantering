@@ -2,9 +2,9 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
+  idParamSchema,
   parseRouteParams,
   positiveIntegerStringSchema,
-  specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
@@ -16,7 +16,7 @@ type Params = Promise<{ id: string; localRequirementId: string }>
 
 const graduationTargetAreasParamSchema = z
   .object({
-    id: specificationIdOrSlugSchema,
+    id: idParamSchema.shape.id,
     localRequirementId: positiveIntegerStringSchema,
   })
   .strict()
@@ -40,7 +40,7 @@ export async function GET(
     const payload = await service.listGraduationTargetAreas(context, {
       localRequirementId,
       responseFormat: 'json',
-      specificationSlug: id,
+      specificationId: id,
     })
 
     return NextResponse.json({

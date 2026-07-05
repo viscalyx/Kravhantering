@@ -223,7 +223,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
         localRequirementId={1}
         needsReferences={[]}
         permissions={editablePermissions}
-        specificationSlug="ETJANST-UPP-2026"
+        specificationId={1}
       />,
     )
 
@@ -313,7 +313,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
         localRequirementId={1}
         needsReferences={[]}
         permissions={editablePermissions}
-        specificationSlug="ETJANST-UPP-2026"
+        specificationId={1}
       />,
     )
 
@@ -392,7 +392,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
         localRequirementId={1}
         needsReferences={[]}
         permissions={editablePermissions}
-        specificationSlug="ETJANST-UPP-2026"
+        specificationId={1}
       />,
     )
 
@@ -474,7 +474,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
         needsReferences={[]}
         onChange={onChange}
         permissions={editablePermissions}
-        specificationSlug="ETJANST-UPP-2026"
+        specificationId={1}
       />,
     )
 
@@ -553,7 +553,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
         localRequirementId={1}
         needsReferences={[]}
         permissions={editablePermissions}
-        specificationSlug="ETJANST-UPP-2026"
+        specificationId={1}
       />,
     )
 
@@ -622,7 +622,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
         localRequirementId={1}
         needsReferences={[]}
         permissions={editablePermissions}
-        specificationSlug="ETJANST-UPP-2026"
+        specificationId={1}
         usageStatus={{
           specificationItemStatusColor: '#94a3b8',
           specificationItemStatusIconName: null,
@@ -651,7 +651,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
         localRequirementId={1}
         needsReferences={[]}
         permissions={editablePermissions}
-        specificationSlug="ETJANST-UPP-2026"
+        specificationId={1}
         usageStatus={{
           specificationItemStatusColor: '#f59e0b',
           specificationItemStatusIconName: 'Play',
@@ -726,7 +726,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
         localRequirementId={1}
         needsReferences={[]}
         permissions={editablePermissions}
-        specificationSlug="ETJANST-UPP-2026"
+        specificationId={1}
       />,
     )
 

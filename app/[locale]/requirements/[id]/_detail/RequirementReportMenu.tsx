@@ -20,7 +20,7 @@ type RequirementReportMenuProps =
   | (RequirementReportMenuBaseProps & {
       deviationStep: DeviationStep | null
       specificationItemId: number
-      specificationSlug: string
+      specificationId: number
       variant: 'specification'
     })
   | (RequirementReportMenuBaseProps & {
@@ -105,7 +105,7 @@ export default function RequirementReportMenu(
                 })}
                 onClick={() =>
                   downloadPdf(
-                    `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?spec=${props.specificationSlug}&item=${props.specificationItemId}`,
+                    `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?spec=${props.specificationId}&item=${props.specificationItemId}`,
                     `deviation-review-report-${requirementId}.pdf`,
                   )
                 }

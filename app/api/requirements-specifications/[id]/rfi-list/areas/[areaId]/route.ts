@@ -5,7 +5,7 @@ import {
   specificationRfiListAreaParamsSchema,
 } from '@/app/api/rfi-questions/_schemas'
 import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
-import { resolveSpecificationId } from '@/lib/dal/requirement-selection-questions'
+import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { updateSpecificationRfiAreaScope } from '@/lib/dal/rfi-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
@@ -21,7 +21,7 @@ const policy = {
   action: ({ params }) => ({
     kind: 'manage_specification_rfi',
     operation: 'update_area',
-    specificationSlug: params.id,
+    specificationId: params.id,
   }),
   kind: 'requirements',
 } satisfies MutationPolicy<RfiListAreaBody, RfiListAreaParams>
@@ -32,10 +32,11 @@ export const PATCH = secureMutationRoute({
   policy,
   handler: async ({ body, context, db, params }) => {
     const activeDb = db ?? (await getRequestSqlServerDataSource())
-    const specificationId = await resolveSpecificationId(activeDb, params.id)
-    if (!specificationId) {
+    const specification = await getSpecificationById(activeDb, params.id)
+    if (!specification) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
+    const specificationId = specification.id
     const actor = requireHumanActorSnapshot(context)
     const list = await updateSpecificationRfiAreaScope(
       activeDb,

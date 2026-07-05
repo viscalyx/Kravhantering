@@ -26,9 +26,9 @@ interface DeviationData {
   motivation: string
 }
 
-const SPECIFICATION_SLUG = 'PLAYWRIGHT-LIFECYCLE-2026'
+const SPECIFICATION_ID = 11
 const SPECIFICATION_HEADING = 'Playwright lifecycle fixtures'
-const MANUAL_SPECIFICATION_SLUG = 'PWT-SPEC-EDIT-2026'
+const MANUAL_SPECIFICATION_ID = 920001
 const MANUAL_SPECIFICATION_HEADING = 'PWT-MANUAL redigerbart kravunderlag'
 
 const viewports = [
@@ -169,10 +169,10 @@ async function openSpecificationFixtureRow(
   uniqueId: string,
   options: {
     heading?: string
-    slug?: string
+    specificationId?: number
   } = {},
 ) {
-  const slug = options.slug ?? SPECIFICATION_SLUG
+  const specificationId = options.specificationId ?? SPECIFICATION_ID
   const heading = options.heading ?? SPECIFICATION_HEADING
 
   const itemsPanel = page.locator(
@@ -184,7 +184,7 @@ async function openSpecificationFixtureRow(
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      await page.goto(`/sv/specifications/${slug}`, {
+      await page.goto(`/sv/specifications/${specificationId}`, {
         waitUntil: 'commit',
       })
       await expect(
@@ -481,7 +481,7 @@ for (const viewport of viewports) {
             fixture.uniqueId,
             {
               heading: MANUAL_SPECIFICATION_HEADING,
-              slug: MANUAL_SPECIFICATION_SLUG,
+              specificationId: MANUAL_SPECIFICATION_ID,
             },
           )
 
@@ -509,7 +509,7 @@ for (const viewport of viewports) {
             fixture.uniqueId,
             {
               heading: MANUAL_SPECIFICATION_HEADING,
-              slug: MANUAL_SPECIFICATION_SLUG,
+              specificationId: MANUAL_SPECIFICATION_ID,
             },
           )
           await detailPane.getByRole('button', { name: 'Granskning ↗' }).click()

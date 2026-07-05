@@ -136,7 +136,8 @@ const AI_GUIDE_PAYLOAD = {
   ],
   schemaVersion: 'requirement-import.v2',
 }
-const GUIDE_SPECIFICATION_SLUG = 'ETJANST-UPP-2026'
+const GUIDE_SPECIFICATION_ID = 8
+const GUIDE_SPECIFICATION_CODE = 'ETJANST-UPP-2026'
 const GUIDE_SPECIFICATION_NAME = 'Upphandling av e-tjänstplattform'
 const GUIDE_SPECIFICATION_IMPORT_TITLE = `Importera krav för ${GUIDE_SPECIFICATION_NAME}`
 const GUIDE_DEVIATION_REQUIREMENT_ID = 'BEH0002'
@@ -1614,7 +1615,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           'skapa-kravunderlag',
           'Skapa nytt kravunderlag',
           'Klicka på **"Nytt kravunderlag"** för att öppna dialogrutan för nytt\n' +
-            'kravunderlag. Ange ett namn — ett unikt ID (slug) genereras automatiskt.\n' +
+            'kravunderlag. Ange ett namn. En kravunderlagskod genereras automatiskt.\n' +
             'Kravunderlag används för att samla krav som hör till ett specifikt projekt eller\n' +
             'leverans.',
           { fullPage: false },
@@ -1627,9 +1628,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
     await guideStep(page, 'Kravunderlagsdetalj', async () => {
       await warmGuideApi(
         page,
-        `/api/requirements-specifications/${GUIDE_SPECIFICATION_SLUG}/available-requirements?limit=5&locale=sv&sortBy=uniqueId&sortDirection=asc`,
+        `/api/requirements-specifications/${GUIDE_SPECIFICATION_ID}/available-requirements?limit=5&locale=sv&sortBy=uniqueId&sortDirection=asc`,
       )
-      await guideGoto(page, `/sv/specifications/${GUIDE_SPECIFICATION_SLUG}`)
+      await guideGoto(page, `/sv/specifications/${GUIDE_SPECIFICATION_ID}`)
       await expect(
         page.getByText(/^Det gick inte att läsa in tillgängliga krav:/),
       ).toBeHidden({ timeout: 10_000 })
@@ -1727,7 +1728,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
     )
 
     await guideStep(page, 'Kravunderlag med kravtillämpningar', async () => {
-      await guideGoto(page, `/sv/specifications/${GUIDE_SPECIFICATION_SLUG}`)
+      await guideGoto(page, `/sv/specifications/${GUIDE_SPECIFICATION_ID}`)
 
       await snap(
         page,
@@ -1744,7 +1745,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       const itemsPanel = page.locator(SPECIFICATION_ITEMS_PANEL_SELECTOR)
       await expect(
         itemsPanel,
-        `Guide generation requires seeded specification ${GUIDE_SPECIFICATION_SLUG} with the items panel ${SPECIFICATION_ITEMS_PANEL_SELECTOR}. Run npm run generate:guide or npm run db:setup before generating the guide.`,
+        `Guide generation requires seeded specification ${GUIDE_SPECIFICATION_CODE} with the items panel ${SPECIFICATION_ITEMS_PANEL_SELECTOR}. Run npm run generate:guide or npm run db:setup before generating the guide.`,
       ).toBeVisible({ timeout: 15_000 })
 
       // Scope to the left panel (items in specification) — right panel is "available" requirements
@@ -1752,7 +1753,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       const rowCount = await allRows.count()
       expect(
         rowCount,
-        `Guide generation requires at least one item row in ${SPECIFICATION_ITEMS_PANEL_SELECTOR} for seeded specification ${GUIDE_SPECIFICATION_SLUG}.`,
+        `Guide generation requires at least one item row in ${SPECIFICATION_ITEMS_PANEL_SELECTOR} for seeded specification ${GUIDE_SPECIFICATION_CODE}.`,
       ).toBeGreaterThan(0)
 
       // BEH0002 is seeded without deviations — locate it by identifier text.
@@ -1761,7 +1762,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       })
       await expect(
         firstRow,
-        `Guide generation requires seeded requirement ${GUIDE_DEVIATION_REQUIREMENT_ID} in specification ${GUIDE_SPECIFICATION_SLUG} so the deviation walkthrough can run.`,
+        `Guide generation requires seeded requirement ${GUIDE_DEVIATION_REQUIREMENT_ID} in specification ${GUIDE_SPECIFICATION_CODE} so the deviation walkthrough can run.`,
       ).toHaveCount(1)
       await firstRow
         .first()
@@ -2382,7 +2383,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
     })
 
     await guideStep(page, 'Kravunderlagsimport — importfil', async () => {
-      await guideGoto(page, `/sv/specifications/${GUIDE_SPECIFICATION_SLUG}`)
+      await guideGoto(page, `/sv/specifications/${GUIDE_SPECIFICATION_ID}`)
       await expect(
         page.getByText(/^Det gick inte att läsa in tillgängliga krav:/),
       ).toBeHidden({ timeout: 10_000 })
@@ -2723,7 +2724,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'Kravunderlagsrapporter',
         'Genererar hela kravunderlaget med den rapportprofil som passar underlagets livscykelstatus. `Kravbilaga för upphandling` visas för upphandling, `Genomföranderapport` för införande och utveckling, och `Förvaltningsrapport` för förvaltning. Alla profiler sorterar kraven på Krav-ID och använder den kravversion som är kopplad till kravunderlaget.\n\n' +
           '**Åtkomst:** Rapportknappen i kravunderlagsdetaljvyns verktygsfält när underlaget har en livscykelstatus med rapportprofil.\n\n' +
-          '**Rutt:** `/specifications/[slug]/reports/pdf/[profile]`',
+          '**Rutt:** `/specifications/[specificationId]/reports/pdf/[profile]`',
       )
 
       textEntry(

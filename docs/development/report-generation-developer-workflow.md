@@ -21,7 +21,7 @@ Server PDF Engine
   components/reports/pdf/              PdfReportRenderer
   lib/pdf/server-response.tsx          React-PDF Node response helper
   app/[locale]/requirements/reports/pdf/       Route handlers
-  app/[locale]/specifications/[slug]/reports/pdf/[profile]
+  app/[locale]/specifications/[specificationId]/reports/pdf/[profile]
                                        Specification route handler
   components/reports/pdf/useServerPdfDownload.tsx
                                        Delayed client download UX
@@ -55,7 +55,7 @@ PDF routes live under `.../reports/pdf/`.
 All routes above are prefixed with `/[locale]/requirements/reports`.
 
 Requirements specification reports use a separate prefix
-`/[locale]/specifications/[slug]/reports`:
+`/[locale]/specifications/[specificationId]/reports`:
 
 - **Procurement requirements appendix**:
   `.../pdf/procurement`

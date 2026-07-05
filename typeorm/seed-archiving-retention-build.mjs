@@ -414,26 +414,26 @@ function addRetentionSpecifications(seedData) {
       id: RETENTION_SEED.specification.obsolete,
       lifecycle: 1,
       name: 'RETENTION-SEED kravunderlag utanför förvaltning',
-      uniqueId: 'RETENTION-SEED-OBSOLETE-SPEC',
+      specificationCode: 'RETENTION-SEED-OBSOLETE-SPEC',
       updatedAt: OLD_730_TS,
     },
     {
       id: RETENTION_SEED.specification.management,
       lifecycle: 4,
       name: 'RETENTION-SEED kravunderlag i förvaltning',
-      uniqueId: 'RETENTION-SEED-MANAGEMENT-SPEC',
+      specificationCode: 'RETENTION-SEED-MANAGEMENT-SPEC',
       updatedAt: OLD_730_TS,
     },
     {
       id: RETENTION_SEED.specification.freshObsolete,
       lifecycle: 1,
       name: 'RETENTION-SEED nytt kravunderlag utanför förvaltning',
-      uniqueId: 'RETENTION-SEED-FRESH-SPEC',
+      specificationCode: 'RETENTION-SEED-FRESH-SPEC',
       updatedAt: NEW_TS,
     },
   ]) {
     addRow(seedData, 'requirements_specifications', {
-      business_needs_reference: `${spec.uniqueId}: deterministisk fixture för Admin > Arkivering.`,
+      business_needs_reference: `${spec.specificationCode}: deterministisk fixture för Admin > Arkivering.`,
       created_at: spec.updatedAt,
       id: spec.id,
       local_requirement_next_sequence: 2,
@@ -441,7 +441,7 @@ function addRetentionSpecifications(seedData) {
       specification_implementation_type_id: 1,
       specification_lifecycle_status_id: spec.lifecycle,
       specification_governance_object_type_id: 2,
-      unique_id: spec.uniqueId,
+      specification_code: spec.specificationCode,
       updated_at: spec.updatedAt,
     })
   }
@@ -925,7 +925,7 @@ function addRetentionRfi(seedData) {
     review_requested_at: OLD_730_TS,
     rfi_question_id: RETENTION_SEED.rfiQuestion.archivedBlockedSuggestion,
     source_specification_name: 'RETENTION-SEED kravunderlag i förvaltning',
-    source_specification_unique_id: 'RETENTION-SEED-MANAGEMENT-SPEC',
+    source_specification_code: 'RETENTION-SEED-MANAGEMENT-SPEC',
     specification_id: RETENTION_SEED.specification.management,
     updated_at: OLD_730_TS,
   })

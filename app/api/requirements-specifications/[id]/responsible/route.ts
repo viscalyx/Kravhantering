@@ -4,26 +4,20 @@ import { HSA_ID_MAX_LENGTH, isHsaId } from '@/lib/auth/hsa-id'
 import {
   canManageSpecificationAssignments,
   getSpecificationById,
-  getSpecificationBySlug,
   updateSpecificationResponsible,
 } from '@/lib/dal/requirements-specifications'
-import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { specificationIdOrSlugSchema } from '@/lib/http/validation'
+import { idParamSchema } from '@/lib/http/validation'
 import { forbiddenError } from '@/lib/requirements/errors'
 import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
 
-const specificationParamSchema = z
-  .object({
-    id: specificationIdOrSlugSchema,
-  })
-  .strict()
+const specificationParamSchema = idParamSchema
 
 const hsaIdSchema = z.string().trim().max(HSA_ID_MAX_LENGTH).refine(isHsaId, {
   message:
@@ -35,11 +29,6 @@ const updateSpecificationResponsibleSchema = z
     responsibleHsaId: hsaIdSchema,
   })
   .strict()
-
-async function resolveSpecification(db: SqlServerDatabase, idOrSlug: string) {
-  if (/^\d+$/.test(idOrSlug)) return getSpecificationById(db, Number(idOrSlug))
-  return getSpecificationBySlug(db, idOrSlug)
-}
 
 function isAdmin(roles: readonly string[]): boolean {
   return roles.includes('Admin')
@@ -53,7 +42,7 @@ export const PUT = secureMutationRoute({
     async ({ context, params }) => {
       const db = await getRequestSqlServerDataSource()
       const { id } = params as z.infer<typeof specificationParamSchema>
-      const spec = await resolveSpecification(db, id)
+      const spec = await getSpecificationById(db, id)
       if (!spec) return
 
       const allowed = await canManageSpecificationAssignments(
@@ -72,7 +61,7 @@ export const PUT = secureMutationRoute({
   ),
   handler: async ({ body, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const spec = await resolveSpecification(db, params.id)
+    const spec = await getSpecificationById(db, params.id)
     if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const responsiblePerson =

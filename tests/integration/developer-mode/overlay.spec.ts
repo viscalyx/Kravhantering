@@ -106,7 +106,7 @@ for (const viewport of viewports) {
     test('DEVTOOLS-03: exposes specification report controls in developer mode', async ({
       page,
     }) => {
-      await page.goto('/sv/specifications/ETJANST-UPP-2026')
+      await page.goto('/sv/specifications/8')
 
       const itemPanel = page.locator(
         '[data-specification-detail-list-panel="items"]',

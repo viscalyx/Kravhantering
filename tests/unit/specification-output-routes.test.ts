@@ -9,7 +9,6 @@ const routeState = vi.hoisted(() => ({
   collectSpecificationOutputData: vi.fn(),
   createRequirementsRestRuntime: vi.fn(),
   getSpecificationById: vi.fn(),
-  getSpecificationBySlug: vi.fn(),
 }))
 
 vi.mock('@/lib/requirements/server', () => ({
@@ -22,7 +21,6 @@ vi.mock('@/lib/requirements/service-shared', () => ({
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   getSpecificationById: routeState.getSpecificationById,
-  getSpecificationBySlug: routeState.getSpecificationBySlug,
 }))
 
 vi.mock('@/lib/reports/data/specification-output', () => ({
@@ -46,8 +44,8 @@ function specification(lifecycleStatusId = 1) {
   return {
     id: 42,
     name: 'IAM',
+    specificationCode: 'SPEC-1',
     specificationLifecycleStatusId: lifecycleStatusId,
-    uniqueId: 'SPEC-1',
   }
 }
 
@@ -78,7 +76,7 @@ describe('specification output routes', () => {
       db: { db: true },
     })
     routeState.authorize.mockResolvedValue(undefined)
-    routeState.getSpecificationBySlug.mockResolvedValue(specification())
+    routeState.getSpecificationById.mockResolvedValue(specification())
     routeState.collectSpecificationOutputData.mockResolvedValue(outputData())
     routeState.collectSpecificationTraceabilityData.mockResolvedValue({
       items: [{ itemRef: 'lib:31', uniqueId: 'BEH0001' }],
@@ -97,9 +95,9 @@ describe('specification output routes', () => {
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/SPEC-1/report-output?profile=procurement&locale=sv',
+        'http://localhost/api/requirements-specifications/42/report-output?profile=procurement&locale=sv',
       ),
-      { params: Promise.resolve({ id: 'SPEC-1' }) },
+      { params: Promise.resolve({ id: '42' }) },
     )
 
     expect(response.status).toBe(200)
@@ -113,7 +111,7 @@ describe('specification output routes', () => {
     )
     expect(routeState.collectSpecificationOutputData).toHaveBeenCalledWith(
       { db: true },
-      'SPEC-1',
+      42,
     )
     expect(routeState.buildSpecificationProfileReport).toHaveBeenCalledWith(
       outputData(),
@@ -123,7 +121,7 @@ describe('specification output routes', () => {
   })
 
   it('returns full CSV export for every lifecycle status', async () => {
-    routeState.getSpecificationBySlug.mockResolvedValueOnce(specification(3))
+    routeState.getSpecificationById.mockResolvedValueOnce(specification(3))
     routeState.collectSpecificationOutputData.mockResolvedValueOnce(
       outputData(3),
     )
@@ -133,9 +131,9 @@ describe('specification output routes', () => {
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/SPEC-1/exports?profile=full&locale=sv',
+        'http://localhost/api/requirements-specifications/42/exports?profile=full&locale=sv',
       ),
-      { params: Promise.resolve({ id: 'SPEC-1' }) },
+      { params: Promise.resolve({ id: '42' }) },
     )
 
     expect(response.status).toBe(200)
@@ -151,16 +149,16 @@ describe('specification output routes', () => {
   })
 
   it('blocks tender CSV outside procurement before collecting export data', async () => {
-    routeState.getSpecificationBySlug.mockResolvedValueOnce(specification(3))
+    routeState.getSpecificationById.mockResolvedValueOnce(specification(3))
     const { GET } = await import(
       '@/app/api/requirements-specifications/[id]/exports/route'
     )
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/SPEC-1/exports?profile=procurement&locale=en',
+        'http://localhost/api/requirements-specifications/42/exports?profile=procurement&locale=en',
       ),
-      { params: Promise.resolve({ id: 'SPEC-1' }) },
+      { params: Promise.resolve({ id: '42' }) },
     )
 
     expect(response.status).toBe(409)
@@ -174,9 +172,9 @@ describe('specification output routes', () => {
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/SPEC-1/traceability-items?refs=lib:31,local:41',
+        'http://localhost/api/requirements-specifications/42/traceability-items?refs=lib:31,local:41',
       ),
-      { params: Promise.resolve({ id: 'SPEC-1' }) },
+      { params: Promise.resolve({ id: '42' }) },
     )
 
     expect(response.status).toBe(200)
@@ -204,9 +202,9 @@ describe('specification output routes', () => {
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/SPEC-1/traceability-items?refs=lib:0',
+        'http://localhost/api/requirements-specifications/42/traceability-items?refs=lib:0',
       ),
-      { params: Promise.resolve({ id: 'SPEC-1' }) },
+      { params: Promise.resolve({ id: '42' }) },
     )
 
     expect(response.status).toBe(400)

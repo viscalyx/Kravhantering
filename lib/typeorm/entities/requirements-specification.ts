@@ -12,10 +12,10 @@ export interface RequirementsSpecificationEntity {
   name: string
   responsibleHsaId: string
   responsiblePerson: RequirementResponsibilityPersonEntity
+  specificationCode: string
   specificationGovernanceObjectType: SpecificationGovernanceObjectTypeEntity | null
   specificationImplementationType: SpecificationImplementationTypeEntity | null
   specificationLifecycleStatus: SpecificationLifecycleStatusEntity
-  uniqueId: string
   updatedAt: Date
 }
 
@@ -38,8 +38,8 @@ export const requirementsSpecificationEntity =
         length: 'MAX',
         nullable: true,
       },
-      uniqueId: {
-        name: 'unique_id',
+      specificationCode: {
+        name: 'specification_code',
         type: 'nvarchar',
         length: 450,
         default: '',
@@ -63,8 +63,8 @@ export const requirementsSpecificationEntity =
     },
     uniques: [
       {
-        name: 'uq_requirements_specifications_unique_id',
-        columns: ['uniqueId'],
+        name: 'uq_requirements_specifications_specification_code',
+        columns: ['specificationCode'],
       },
     ],
     indices: [

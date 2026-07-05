@@ -57,7 +57,7 @@ function renderModal(onChanged = vi.fn()) {
     <CoAuthorsManagementModal
       description="Manage the co-authors."
       developerModeValue="manage specification co-authors"
-      endpoint="/api/requirements-specifications/ETJANST-UPP-2026/co-authors"
+      endpoint="/api/requirements-specifications/1/co-authors"
       hsaIdHelp="specification.help.coAuthorHsaId"
       hsaIdLabel="specification.coAuthorHsaId"
       loadErrorMessage="specification.loadCoAuthorsFailed"
@@ -100,9 +100,7 @@ describe('CoAuthorsManagementModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
-      if (
-        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
-      ) {
+      if (url === '/api/requirements-specifications/1/co-authors') {
         return coAuthorsRequest.promise
       }
       return Promise.resolve(okJson({}))
@@ -133,9 +131,7 @@ describe('CoAuthorsManagementModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
-      if (
-        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
-      ) {
+      if (url === '/api/requirements-specifications/1/co-authors') {
         if (opts?.method === 'PUT') return Promise.resolve(okJson({ ok: true }))
         return Promise.resolve(okJson({ coAuthors: [] }))
       }
@@ -181,7 +177,7 @@ describe('CoAuthorsManagementModal', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements-specifications/ETJANST-UPP-2026/co-authors',
+        '/api/requirements-specifications/1/co-authors',
         expect.objectContaining({ method: 'PUT' }),
       )
     })
@@ -195,8 +191,7 @@ describe('CoAuthorsManagementModal', () => {
     })
     const putCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url ===
-          '/api/requirements-specifications/ETJANST-UPP-2026/co-authors' &&
+        url === '/api/requirements-specifications/1/co-authors' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     ) as [string, RequestInit]
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
@@ -218,9 +213,7 @@ describe('CoAuthorsManagementModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
-      if (
-        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
-      ) {
+      if (url === '/api/requirements-specifications/1/co-authors') {
         if (opts?.method === 'PUT') {
           return Promise.resolve(
             errJson(
@@ -288,9 +281,7 @@ describe('CoAuthorsManagementModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
-      if (
-        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
-      ) {
+      if (url === '/api/requirements-specifications/1/co-authors') {
         return Promise.resolve(
           okJson({
             coAuthors: [
@@ -341,9 +332,7 @@ describe('CoAuthorsManagementModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
-      if (
-        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
-      ) {
+      if (url === '/api/requirements-specifications/1/co-authors') {
         if (opts?.method === 'PUT') return Promise.resolve(okJson({ ok: true }))
         return Promise.resolve(
           okJson({
@@ -378,14 +367,13 @@ describe('CoAuthorsManagementModal', () => {
         }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements-specifications/ETJANST-UPP-2026/co-authors',
+        '/api/requirements-specifications/1/co-authors',
         expect.objectContaining({ method: 'PUT' }),
       )
     })
     const putCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url ===
-          '/api/requirements-specifications/ETJANST-UPP-2026/co-authors' &&
+        url === '/api/requirements-specifications/1/co-authors' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     ) as [string, RequestInit]
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
@@ -399,9 +387,7 @@ describe('CoAuthorsManagementModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
-      if (
-        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
-      ) {
+      if (url === '/api/requirements-specifications/1/co-authors') {
         if (opts?.method === 'PUT') {
           return Promise.resolve(
             errJson(
@@ -443,8 +429,7 @@ describe('CoAuthorsManagementModal', () => {
     expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
     const putCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url ===
-          '/api/requirements-specifications/ETJANST-UPP-2026/co-authors' &&
+        url === '/api/requirements-specifications/1/co-authors' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     ) as [string, RequestInit]
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({

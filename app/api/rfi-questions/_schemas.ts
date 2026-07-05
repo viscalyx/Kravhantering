@@ -1,14 +1,13 @@
 import { z } from 'zod'
 import {
-  boundedDbStringSchema,
   businessTextSchema,
+  idParamSchema,
   localeSchema,
   nonNegativeIntegerSchema,
   optionalBusinessTextSchema,
   positiveIntegerSchema,
   positiveIntegerStringSchema,
   queryBooleanSchema,
-  specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 
 const idArraySchema = z.array(positiveIntegerSchema).max(200).optional()
@@ -64,22 +63,18 @@ export const rfiListAreaUpdateSchema = z
   })
   .strict()
 
-export const specificationRfiListParamsSchema = z
-  .object({
-    id: specificationIdOrSlugSchema,
-  })
-  .strict()
+export const specificationRfiListParamsSchema = idParamSchema
 
 export const specificationRfiListAreaParamsSchema = z
   .object({
     areaId: positiveIntegerStringSchema,
-    id: specificationIdOrSlugSchema,
+    id: idParamSchema.shape.id,
   })
   .strict()
 
 export const specificationRfiListItemParamsSchema = z
   .object({
-    id: specificationIdOrSlugSchema,
+    id: idParamSchema.shape.id,
     questionId: positiveIntegerStringSchema,
   })
   .strict()
@@ -97,18 +92,8 @@ export const rfiQuestionSuggestionCreateSchema = z
     content: businessTextSchema,
     rfiQuestionId: positiveIntegerSchema.nullable().optional(),
     specificationId: positiveIntegerSchema.optional(),
-    specificationSlug: boundedDbStringSchema.optional(),
   })
   .strict()
-  .refine(
-    value =>
-      value.specificationId === undefined ||
-      value.specificationSlug === undefined,
-    {
-      message: 'Use either specificationId or specificationSlug',
-      path: ['specificationId'],
-    },
-  )
 
 export const rfiQuestionSuggestionQuerySchema = z
   .object({

@@ -393,10 +393,10 @@ function PdfSpecificationCover({
       <View style={styles.metadataGrid}>
         <View style={styles.metadataItem}>
           <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
-            {getSpecificationCoverLabel(section.locale, 'specificationId')}
+            {getSpecificationCoverLabel(section.locale, 'specificationCode')}
           </Text>
           <Text style={[styles.fieldValue, { fontFamily: 'Helvetica-Bold' }]}>
-            {section.uniqueId}
+            {section.specificationCode}
           </Text>
         </View>
         {section.variant !== 'minimal' && (

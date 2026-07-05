@@ -5,9 +5,9 @@ import {
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
+  idParamSchema,
   positiveIntegerSchema,
   positiveIntegerStringSchema,
-  specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic'
 
 const graduateParamSchema = z
   .object({
-    id: specificationIdOrSlugSchema,
+    id: idParamSchema.shape.id,
     localRequirementId: positiveIntegerStringSchema,
   })
   .strict()
@@ -46,7 +46,7 @@ export const POST = secureMutationRoute({
         localRequirementId: params.localRequirementId,
         requirementAreaId: body.requirementAreaId,
         responseFormat: 'json',
-        specificationSlug: params.id,
+        specificationId: params.id,
       },
     )
 

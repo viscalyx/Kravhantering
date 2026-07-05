@@ -75,8 +75,6 @@ export const refOrPositiveIntegerSegmentSchema = routeSegmentSchema.refine(
 
 export const requirementRefSchema = refOrPositiveIntegerSegmentSchema
 
-export const specificationIdOrSlugSchema = refOrPositiveIntegerSegmentSchema
-
 export const optionalBoundedDbStringSchema = z
   .string()
   .trim()

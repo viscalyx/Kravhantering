@@ -66,7 +66,6 @@ interface AiRequirementGeneratorProps {
   ) => void
   open: boolean
   specificationId?: number
-  specificationSlug?: string
 }
 
 interface OpenRouterModel {
@@ -495,7 +494,6 @@ export default function AiRequirementGenerator({
   onImportPreview,
   open,
   specificationId,
-  specificationSlug,
 }: AiRequirementGeneratorProps) {
   const t = useTranslations('ai')
   const tc = useTranslations('common')
@@ -1012,8 +1010,7 @@ export default function AiRequirementGenerator({
           : {
               locale,
               payload: normalizedPayload,
-              specificationIdOrSlug:
-                specificationSlug ?? String(specificationId ?? ''),
+              specificationId,
             }
       const response = await apiFetch(endpoint, {
         body: JSON.stringify(body),
@@ -1042,7 +1039,7 @@ export default function AiRequirementGenerator({
       )
       setPreviewTab(preview.rows.length > 0 ? 'requirements' : 'normReferences')
     },
-    [locale, mode, specificationId, specificationSlug, t, targetAreaId],
+    [locale, mode, specificationId, t, targetAreaId],
   )
 
   const handleToggleFilter = useCallback((filter: string) => {

@@ -121,8 +121,8 @@ describe('report data server helpers', () => {
         isReviewRequested: 1,
         motivation: 'Needs review',
         requirementVersionId: 999,
+        specificationCode: 'SPEC',
         specificationName: 'Spec',
-        specificationUniqueId: 'SPEC',
       },
     ])
 

@@ -66,8 +66,8 @@ interface RfiSuggestion {
   resolvedByHsaId: string | null
   reviewRequestedAt: string | null
   rfiQuestionId: number | null
+  sourceSpecificationCode: string | null
   sourceSpecificationName: string | null
-  sourceSpecificationUniqueId: string | null
   specificationId: number | null
   updatedAt: string | null
 }
@@ -458,7 +458,7 @@ export default function RfiQuestionsClient() {
           suggestion.areaName,
           suggestion.content,
           suggestion.sourceSpecificationName ?? '',
-          suggestion.sourceSpecificationUniqueId ?? '',
+          suggestion.sourceSpecificationCode ?? '',
           suggestion.createdByDisplayName ?? '',
           suggestion.createdByHsaId ?? '',
         ]),
@@ -789,7 +789,7 @@ export default function RfiQuestionsClient() {
 
   const getSourceText = (suggestion: RfiSuggestion) =>
     suggestion.sourceSpecificationName
-      ? `${suggestion.sourceSpecificationName} (${suggestion.sourceSpecificationUniqueId ?? '-'})`
+      ? `${suggestion.sourceSpecificationName} (${suggestion.sourceSpecificationCode ?? '-'})`
       : copy.noSource
 
   const getCreatorText = (suggestion: RfiSuggestion) => {

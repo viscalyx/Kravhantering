@@ -172,9 +172,10 @@ test.describe('Requirement collaboration', () => {
       'specificationResponsible',
     )
     const uniqueSuffix = `${Date.now()}`
-    const specificationSlug = `PWT-COL-01-${uniqueSuffix}`
+    const specificationCode = `PWT-COL-01-${uniqueSuffix}`
     const specificationName = `PWT COL-01 testunderlag ${uniqueSuffix}`
-    let createdSpecification: { id: number; uniqueId: string } | null = null
+    let createdSpecification: { id: number; specificationCode: string } | null =
+      null
 
     try {
       const createResponse = await specificationResponsible.post(
@@ -185,14 +186,14 @@ test.describe('Requirement collaboration', () => {
               'Playwright COL-01 verifierar tillagt krav i kravunderlag.',
             name: specificationName,
             specificationLifecycleStatusId: 1,
-            uniqueId: specificationSlug,
+            specificationCode,
           },
         },
       )
       await expectApiResponseOk(createResponse, 'create COL-01 kravunderlag')
       createdSpecification = (await createResponse.json()) as {
         id: number
-        uniqueId: string
+        specificationCode: string
       }
       const specification = createdSpecification
 
@@ -240,7 +241,7 @@ test.describe('Requirement collaboration', () => {
         dialog.getByText('Kravet har lagts till i kravunderlaget.'),
       ).toHaveCount(1)
 
-      await page.goto(`/sv/specifications/${specification.uniqueId}`)
+      await page.goto(`/sv/specifications/${specification.id}`)
       await expect(
         page.getByRole('heading', { level: 1, name: specificationName }),
       ).toBeVisible({ timeout: 30_000 })
@@ -250,9 +251,7 @@ test.describe('Requirement collaboration', () => {
     } finally {
       if (createdSpecification) {
         await specificationResponsible
-          .delete(
-            `/api/requirements-specifications/${createdSpecification.uniqueId}`,
-          )
+          .delete(`/api/requirements-specifications/${createdSpecification.id}`)
           .catch(() => undefined)
       }
       await specificationResponsible.dispose()

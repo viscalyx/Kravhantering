@@ -81,7 +81,7 @@ const spec = {
   specificationImplementationTypeId: 2,
   specificationLifecycleStatusId: 3,
   specificationGovernanceObjectTypeId: 1,
-  uniqueId: 'ETJANST-UPP-2026',
+  specificationCode: 'ETJANST-UPP-2026',
 }
 
 function renderEditModal(
@@ -98,7 +98,7 @@ function renderEditModal(
       onSaved={() => {}}
       open
       spec={spec}
-      specificationSlug="ETJANST-UPP-2026"
+      specificationId={1}
       {...props}
     />,
   )
@@ -476,7 +476,7 @@ describe('SpecificationFormModal', () => {
       { target: { value: 'Specification without lifecycle status' } },
     )
     fireEvent.change(
-      screen.getByRole('textbox', { name: /specification\.uniqueId/ }),
+      screen.getByRole('textbox', { name: /specification\.specificationCode/ }),
       { target: { value: 'SPEC-WITHOUT-LIFECYCLE' } },
     )
 
@@ -582,15 +582,14 @@ describe('SpecificationFormModal', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements-specifications/ETJANST-UPP-2026/responsible',
+        '/api/requirements-specifications/1/responsible',
         expect.objectContaining({ method: 'PUT' }),
       )
     })
 
     const [, requestInit] = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url ===
-          '/api/requirements-specifications/ETJANST-UPP-2026/responsible' &&
+        url === '/api/requirements-specifications/1/responsible' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     ) as [string, RequestInit]
     const body = JSON.parse((requestInit.body as string) ?? '{}')
@@ -624,8 +623,7 @@ describe('SpecificationFormModal', () => {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
       if (
-        url ===
-          '/api/requirements-specifications/ETJANST-UPP-2026/responsible' &&
+        url === '/api/requirements-specifications/1/responsible' &&
         opts?.method === 'PUT'
       ) {
         return Promise.resolve(
@@ -670,7 +668,7 @@ describe('SpecificationFormModal', () => {
   })
 
   it('submits the updated specification information', async () => {
-    const onSaved = vi.fn((_result: { newUniqueId: string }) => {})
+    const onSaved = vi.fn((_result: { newSpecificationCode: string }) => {})
 
     renderEditModal({ onSaved })
 
@@ -685,15 +683,15 @@ describe('SpecificationFormModal', () => {
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
     expect(onSaved).toHaveBeenCalledWith(
-      expect.objectContaining({ newUniqueId: expect.any(String) }),
+      expect.objectContaining({ newSpecificationCode: expect.any(String) }),
     )
 
     const [url, requestInit] = fetchMock.mock.calls.find(
       ([calledUrl, init]) =>
-        calledUrl === '/api/requirements-specifications/ETJANST-UPP-2026' &&
+        calledUrl === '/api/requirements-specifications/1' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     ) as [string, RequestInit]
-    expect(url).toBe('/api/requirements-specifications/ETJANST-UPP-2026')
+    expect(url).toBe('/api/requirements-specifications/1')
     expect(requestInit?.method).toBe('PUT')
     expect(
       Object.fromEntries(new Headers(requestInit?.headers).entries()),
@@ -707,7 +705,7 @@ describe('SpecificationFormModal', () => {
       specificationImplementationTypeId: 2,
       specificationLifecycleStatusId: 3,
       specificationGovernanceObjectTypeId: 1,
-      uniqueId: 'ETJANST-UPP-2026',
+      specificationCode: 'ETJANST-UPP-2026',
     })
     expect(
       JSON.parse((requestInit?.body as string) ?? '{}'),
@@ -829,7 +827,7 @@ describe('SpecificationFormModal', () => {
       expect(
         fetchMock.mock.calls.filter(
           ([url, init]) =>
-            url === '/api/requirements-specifications/ETJANST-UPP-2026' &&
+            url === '/api/requirements-specifications/1' &&
             (init as RequestInit | undefined)?.method === 'PUT',
         ),
       ).toHaveLength(1)

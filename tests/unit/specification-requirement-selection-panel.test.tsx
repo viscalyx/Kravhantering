@@ -7,7 +7,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import SpecificationRequirementSelectionPanel from '@/app/[locale]/specifications/[slug]/specification-requirement-selection-panel'
+import SpecificationRequirementSelectionPanel from '@/app/[locale]/specifications/[specificationId]/specification-requirement-selection-panel'
 
 const translate = Object.assign(
   (key: string, params?: Record<string, unknown>) => {
@@ -41,7 +41,6 @@ function okJson(body: unknown) {
 }
 
 const fetchMock = vi.fn()
-const encodedSpecificationSlug = encodeURIComponent('SPEC/with space')
 
 function baselineQuestion() {
   return {
@@ -80,7 +79,7 @@ describe('SpecificationRequirementSelectionPanel', () => {
       const method = init?.method ?? 'GET'
       if (
         url ===
-          `/api/requirements-specifications/${encodedSpecificationSlug}/requirement-selection-answers` &&
+          '/api/requirements-specifications/1/requirement-selection-answers' &&
         method === 'GET'
       ) {
         return Promise.resolve(
@@ -91,7 +90,7 @@ describe('SpecificationRequirementSelectionPanel', () => {
       }
       if (
         url ===
-          `/api/requirements-specifications/${encodedSpecificationSlug}/requirement-selection-answers/11` &&
+          '/api/requirements-specifications/1/requirement-selection-answers/11' &&
         method === 'PUT'
       ) {
         return Promise.resolve(okJson({ questions: [] }))
@@ -120,7 +119,7 @@ describe('SpecificationRequirementSelectionPanel', () => {
     render(
       <SpecificationRequirementSelectionPanel
         onChanged={onChanged}
-        specificationSlug="SPEC/with space"
+        specificationId={1}
       />,
     )
 
@@ -134,26 +133,26 @@ describe('SpecificationRequirementSelectionPanel', () => {
     expect(await screen.findByText('progress: 0/1')).toBeInTheDocument()
   })
 
-  it('encodes specification slugs as path segments for loading and saving answers', async () => {
+  it('uses the numeric specification id path segment for loading and saving answers', async () => {
     const onChanged = vi.fn()
 
     render(
       <SpecificationRequirementSelectionPanel
         onChanged={onChanged}
-        specificationSlug="SPEC/with space"
+        specificationId={1}
       />,
     )
 
     expect(await screen.findByText('Use baseline')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(
-      `/api/requirements-specifications/${encodedSpecificationSlug}/requirement-selection-answers`,
+      '/api/requirements-specifications/1/requirement-selection-answers',
     )
 
     fireEvent.click(screen.getByLabelText(/Use baseline/))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        `/api/requirements-specifications/${encodedSpecificationSlug}/requirement-selection-answers/11`,
+        '/api/requirements-specifications/1/requirement-selection-answers/11',
         expect.objectContaining({
           method: 'PUT',
         }),

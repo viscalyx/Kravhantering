@@ -9,7 +9,6 @@ import {
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
 import {
   getSpecificationById,
-  getSpecificationBySlug,
   parseSpecificationItemRef,
   type SpecificationItemRef,
 } from '@/lib/dal/requirements-specifications'
@@ -42,29 +41,32 @@ function validateItemRefs(refs: string[]): SpecificationItemRef[] {
   return refs as SpecificationItemRef[]
 }
 
-async function resolveSpecification(
-  runtime: Awaited<ReturnType<typeof createReportRuntime>>,
-  id: string,
-) {
-  return /^\d+$/.test(id)
-    ? getSpecificationById(runtime.db, Number(id))
-    : getSpecificationBySlug(runtime.db, id)
-}
-
 export async function GET(
   request: NextRequest,
-  { params }: { params: ReportRouteParams<{ slug: string }> },
+  { params }: { params: ReportRouteParams<{ specificationId: string }> },
 ) {
-  const { locale, slug } = await params
+  const { locale, specificationId } = await params
 
   try {
     const itemRefs = validateItemRefs(
       splitCsvParam(request.nextUrl.searchParams.get('refs')),
     )
+    if (!/^\d+$/.test(specificationId)) {
+      throw new ReportDataError(
+        `Specification not found: ${specificationId}`,
+        404,
+      )
+    }
     const runtime = await createReportRuntime(request)
-    const specification = await resolveSpecification(runtime, slug)
+    const specification = await getSpecificationById(
+      runtime.db,
+      Number(specificationId),
+    )
     if (!specification) {
-      throw new ReportDataError(`Specification not found: ${slug}`, 404)
+      throw new ReportDataError(
+        `Specification not found: ${specificationId}`,
+        404,
+      )
     }
 
     await authorizeSpecificationReportRead(
@@ -82,7 +84,7 @@ export async function GET(
     return renderReportModelPdfResponse(
       buildSpecificationTraceabilityReport(data, locale),
       locale,
-      `${label} ${data.specification.name} ${data.specification.uniqueId}.pdf`,
+      `${label} ${data.specification.name} ${data.specification.specificationCode}.pdf`,
     )
   } catch (error) {
     return reportErrorResponse(error)
