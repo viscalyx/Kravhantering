@@ -199,3 +199,7 @@ After rollout, MCP clients can discover two additional requirements-import tools
 <!-- operator-upgrade:source pr-406 start -->
 After upgrade, review the Admin Center MCP limits before enabling high-volume imports. The release adds database-backed, short-lived MCP import validation sessions and new operator-tunable limits for request/session size, import row count, and validation-token lifetime. The defaults are 10 MiB, 500 rows, and 60 minutes; adjust them to match production capacity and client retry behavior.
 <!-- operator-upgrade:source pr-406 end -->
+
+<!-- operator-upgrade:source pr-409 start -->
+Before or immediately after upgrade, route the new AI safety forensic log stream separately from metadata security audit logs, with stricter access, retention, and masking controls, or disable forensic AI safety logging in Admin Center until that routing is ready. The forensic stream is enabled by default during this diagnostic phase and can contain raw blocked AI content, model reasoning, repair payloads, matched rule terms, personal data, or secrets.
+<!-- operator-upgrade:source pr-409 end -->
