@@ -123,47 +123,61 @@ test.describe('Admin AI settings', () => {
 
       await test.step('shows AI security between AI assistance and MCP controls', async () => {
         await page.goto('/sv/admin?tab=ai')
+        const aiPanel = page.locator('#ai-panel')
+        await expect(aiPanel).toHaveCount(1)
         await expect(page.getByRole('tab', { name: 'AI' })).toHaveAttribute(
           'aria-selected',
           'true',
         )
         await expect(
-          page.getByRole('checkbox', { name: /Kravgenerering/ }),
+          aiPanel.getByRole('checkbox', { name: /Kravgenerering/ }),
         ).toBeVisible()
         await expect(
-          page.getByRole('heading', { name: 'AI-assistering' }),
+          aiPanel.getByRole('heading', {
+            exact: true,
+            name: 'AI-assistering',
+          }),
         ).toHaveCount(1)
         await expect(
-          page.getByRole('heading', { name: 'AI-säkerhet' }),
+          aiPanel.getByRole('heading', { exact: true, name: 'AI-säkerhet' }),
         ).toHaveCount(1)
         await expect(
-          page.getByRole('checkbox', {
+          aiPanel.getByRole('checkbox', {
             name: /Logga forensisk AI-säkerhetsdata/,
           }),
         ).toBeVisible()
         await expect(
-          page.getByRole('heading', { name: 'MCP-gränssnitt' }),
+          aiPanel.getByRole('heading', {
+            exact: true,
+            name: 'AI-säkerhetsregler',
+          }),
         ).toHaveCount(1)
         await expect(
-          page.getByRole('spinbutton', { name: 'MCP-anropsgräns' }),
+          aiPanel.getByRole('heading', {
+            exact: true,
+            name: 'MCP-gränssnitt',
+          }),
         ).toHaveCount(1)
         await expect(
-          page.getByText('Tillåtet intervall: 1 MiB till 10 MiB. Steg: 1 MiB.'),
+          aiPanel.getByRole('spinbutton', { name: 'MCP-anropsgräns' }),
+        ).toHaveCount(1)
+        await expect(
+          aiPanel.getByText(
+            'Tillåtet intervall: 1 MiB till 10 MiB. Steg: 1 MiB.',
+          ),
         ).toHaveCount(1)
 
-        const panelTextOrder = await page
-          .locator('#ai-panel')
-          .evaluate(panel => {
-            const text = panel.textContent ?? ''
-            return {
-              aiAssistance: text.indexOf('AI-assistering'),
-              aiSecurity: text.indexOf('AI-säkerhet'),
-              forensicLogging: text.indexOf('Logga forensisk AI-säkerhetsdata'),
-              limit: text.indexOf('MCP-anropsgräns'),
-              mcpInterface: text.indexOf('MCP-gränssnitt'),
-              requirementGeneration: text.indexOf('Kravgenerering'),
-            }
-          })
+        const panelTextOrder = await aiPanel.evaluate(panel => {
+          const text = panel.textContent ?? ''
+          return {
+            aiAssistance: text.indexOf('AI-assistering'),
+            aiSecurity: text.indexOf('AI-säkerhet'),
+            forensicLogging: text.indexOf('Logga forensisk AI-säkerhetsdata'),
+            limit: text.indexOf('MCP-anropsgräns'),
+            mcpInterface: text.indexOf('MCP-gränssnitt'),
+            requirementGeneration: text.indexOf('Kravgenerering'),
+          }
+        })
         expect(panelTextOrder.requirementGeneration).toBeGreaterThanOrEqual(0)
         expect(panelTextOrder.requirementGeneration).toBeGreaterThan(
           panelTextOrder.aiAssistance,
