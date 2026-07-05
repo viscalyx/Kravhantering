@@ -149,7 +149,6 @@ describe('RequirementsImportDialog', () => {
     expect(
       screen.queryByText('Ladda ner JSON-instruktion'),
     ).not.toBeInTheDocument()
-    expect(screen.queryByText('Ladda ner AI-prompt')).not.toBeInTheDocument()
     expect(
       screen.getByText(
         /Importinstruktionen är bara formatdelen och referensdata för import för AI-arbete/,

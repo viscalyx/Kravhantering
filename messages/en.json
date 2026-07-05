@@ -2536,7 +2536,7 @@
     },
     "errors": {
       "failedToLoadModels": "Failed to load models",
-      "failedToLoadSystemPrompt": "Failed to load system prompt"
+      "failedToLoadImportInstruction": "Failed to load import instruction"
     },
     "rawOutput": "Raw Output",
     "showDetails": "Show details",

@@ -257,7 +257,7 @@ correlation id, and event id fields matching the metadata event, while its
 `request` object carries transport context such as method, path, IP address,
 and user agent. It contains the screened content parts for the blocked step
 plus matched evidence for handling/action, target, coding words, and direct
-markers. It still does not include system prompts, import instructions,
+markers. It still does not include system prompts, import instruction text,
 response schemas, raw images, or unrelated request state.
 
 **Reference-data binding:** the import instruction includes current taxonomy
@@ -276,11 +276,11 @@ editable import review surface as uploaded import files. Invalid output is
 reported as schema issues, logged without raw prompt/content, and can be sent
 to the repair route together with a generated repair prompt and selected model.
 
-## 5 — Requirement Import Schema and AI Reference Prompt
+## 5 — Requirement Import Schema and Import Instruction
 
 Sources: `lib/requirements/import-schema.ts`,
 `lib/requirements/import-service.ts`, `app/api/requirements/import/schema`,
-`app/api/requirements/import/ai-prompt`.
+`app/api/requirements/import/instruction`.
 
 Requirement import publishes a strict shared JSON Schema whose top-level
 `schemaVersion` is `requirement-import.v2`. The version applies to the whole

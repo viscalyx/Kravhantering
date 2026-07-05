@@ -226,9 +226,9 @@ const TEXT = {
     confirmWarnings:
       'Selected rows contain warnings. Unresolved optional metadata will be omitted. Continue?',
     dropJsonFile: 'Drop a JSON file here, or click to browse.',
-    downloadAiPrompt: 'Download import instructions',
+    downloadImportInstruction: 'Download import instruction',
     downloadArtifactsHelp:
-      'Use the schema to validate the file. The import instructions are only the output-format and import-reference part for AI work; combine them with your own prompt describing the requirements and text content to produce.',
+      'Use the schema to validate the file. The import instruction is only the output-format and import-reference part for AI work; combine it with your own prompt describing the requirements and text content to produce.',
     downloadCsv: 'Download CSV receipt',
     downloadSchema: 'Download schema',
     error: 'Something went wrong',
@@ -276,7 +276,7 @@ const TEXT = {
     proposalUsedByRows: 'Used by rows',
     proposedNormReferences: 'Proposed norm references',
     qualityCharacteristic: 'Quality characteristic',
-    promptFile: 'requirement-import-instructions.md',
+    instructionFile: 'requirement-import-instruction.md',
     rawJson: 'Import JSON',
     rawJsonPlaceholder: 'Paste import JSON here.',
     remove: 'Remove from import',
@@ -325,7 +325,7 @@ const TEXT = {
     confirmWarnings:
       'Valda rader innehåller varningar. Olöst frivillig metadata utelämnas. Fortsätta?',
     dropJsonFile: 'Släpp en JSON-fil här, eller klicka för att välja fil.',
-    downloadAiPrompt: 'Ladda ner importinstruktion',
+    downloadImportInstruction: 'Ladda ner importinstruktion',
     downloadArtifactsHelp:
       'Använd schemat för att validera filen. Importinstruktionen är bara formatdelen och referensdata för import för AI-arbete; kombinera den med en egen prompt som beskriver vilka krav och texter som ska tas fram.',
     downloadCsv: 'Ladda ner CSV-kvitto',
@@ -374,7 +374,7 @@ const TEXT = {
     proposalUsedByRows: 'Används av rader',
     proposedNormReferences: 'Föreslagna normreferenser',
     qualityCharacteristic: 'Kvalitetsegenskap',
-    promptFile: 'kravimport-instruktion.md',
+    instructionFile: 'kravimport-instruktion.md',
     rawJson: 'Import-JSON',
     rawJsonPlaceholder: 'Klistra in import-JSON här.',
     remove: 'Ta bort från import',
@@ -1485,11 +1485,11 @@ export default function RequirementsImportDialog({
     setNormRefForm(EMPTY_NORM_REFERENCE_FORM)
   }
 
-  const downloadArtifact = async (kind: 'schema' | 'ai-prompt') => {
+  const downloadArtifact = async (kind: 'schema' | 'instruction') => {
     const path =
       kind === 'schema'
         ? `/api/requirements/import/schema?locale=${locale}`
-        : `/api/requirements/import/ai-prompt?locale=${locale}`
+        : `/api/requirements/import/instruction?locale=${locale}`
     const response = await fetch(path)
     if (!response.ok) {
       setErrorMessage(await readResponseMessage(response))
@@ -1497,7 +1497,7 @@ export default function RequirementsImportDialog({
     }
     downloadBlob(
       await response.blob(),
-      kind === 'schema' ? text.schemaFile : text.promptFile,
+      kind === 'schema' ? text.schemaFile : text.instructionFile,
     )
   }
 
@@ -1854,11 +1854,11 @@ export default function RequirementsImportDialog({
                     <button
                       aria-describedby="requirements-import-download-help"
                       className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-secondary-50 dark:border-secondary-700 dark:hover:bg-secondary-900"
-                      onClick={() => void downloadArtifact('ai-prompt')}
+                      onClick={() => void downloadArtifact('instruction')}
                       type="button"
                     >
                       <FileJson aria-hidden="true" className="h-4 w-4" />
-                      {text.downloadAiPrompt}
+                      {text.downloadImportInstruction}
                     </button>
                   </div>
                   <p

@@ -87,7 +87,8 @@ Deferred from this contract:
   duplicate, cleanup, and filter-calculation behavior rather than broad fuzzing
   in this first contract slice.
 - Requirement import preview/execute routes and the authenticated import schema
-  and AI-prompt routes remain outside the OpenAPI/Schemathesis v1 contract.
+  and import-instruction routes remain outside the OpenAPI/Schemathesis v1
+  contract.
   They accept large user-authored JSON documents, use workflow-specific
   stateless preview tokens, and are covered by strict schema/unit tests,
   secure-route coverage, authorization policies, and manual workflow cases

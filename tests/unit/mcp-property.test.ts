@@ -160,7 +160,7 @@ function createService() {
       skippedCount: 0,
       skippedIds: [],
     })),
-    buildImportAiPrompt: vi.fn(async () => ''),
+    buildImportInstruction: vi.fn(async () => ''),
     executeLibraryImport: vi.fn(async () => ({
       createdRows: [],
       mode: 'library' as const,

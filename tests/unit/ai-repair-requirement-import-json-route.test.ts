@@ -28,7 +28,7 @@ vi.mock('@/lib/requirements/server', async importOriginal => {
     ...original,
     createRequirementsRuntime: vi.fn(() => ({
       service: {
-        buildImportAiPrompt: vi.fn(async () => '# Import contract'),
+        buildImportInstruction: vi.fn(async () => '# Import instruction'),
       },
     })),
   }

@@ -84,8 +84,8 @@ ALTER TABLE [<table>]
   - Served schema artifact:
     `app/api/requirements/import/schema/route.ts`
     (`GET /api/requirements/import/schema`).
-  - AI prompt/reference artifact using the same schema:
-    `app/api/requirements/import/ai-prompt/route.ts` and
+  - Import instruction artifact using the same schema:
+    `app/api/requirements/import/instruction/route.ts` and
     `lib/requirements/import-service.ts`.
   - Schema tests:
     `tests/unit/requirements-import-schema.test.ts`.

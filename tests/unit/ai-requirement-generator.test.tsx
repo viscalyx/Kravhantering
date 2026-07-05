@@ -320,7 +320,7 @@ describe('AiRequirementGenerator', () => {
       }
       if (
         typeof url === 'string' &&
-        url.startsWith('/api/requirements/import/ai-prompt')
+        url.startsWith('/api/requirements/import/instruction')
       ) {
         return {
           ok: true,

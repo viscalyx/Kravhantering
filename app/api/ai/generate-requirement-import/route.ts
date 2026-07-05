@@ -282,9 +282,14 @@ export const POST = secureMutationRoute({
     let importInstruction: string
     try {
       importInstruction =
-        await createRequirementsRuntime(db).service.buildImportAiPrompt(locale)
+        await createRequirementsRuntime(db).service.buildImportInstruction(
+          locale,
+        )
     } catch (error) {
-      logSanitizedError('AI requirement import prompt loading failed', error)
+      logSanitizedError(
+        'AI requirement import instruction loading failed',
+        error,
+      )
       return createUnavailableAiStreamResponse(context, () =>
         recordStreamEvent('failure', 503),
       )

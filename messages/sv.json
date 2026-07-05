@@ -2536,7 +2536,7 @@
     },
     "errors": {
       "failedToLoadModels": "Kunde inte läsa in modeller",
-      "failedToLoadSystemPrompt": "Kunde inte läsa in systemprompt"
+      "failedToLoadImportInstruction": "Kunde inte läsa in importinstruktion"
     },
     "rawOutput": "Rådata från modell",
     "showDetails": "Visa detaljer",

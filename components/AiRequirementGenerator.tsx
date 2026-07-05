@@ -980,7 +980,7 @@ export default function AiRequirementGenerator({
     setImportInstructionLoading(true)
     try {
       const instructionResponse = await apiFetch(
-        `/api/requirements/import/ai-prompt?locale=${locale}`,
+        `/api/requirements/import/instruction?locale=${locale}`,
       )
       const instruction = await instructionResponse.text()
       setImportInstruction(instruction)
@@ -988,7 +988,7 @@ export default function AiRequirementGenerator({
       setError(
         contractError instanceof Error
           ? contractError.message
-          : t('errors.failedToLoadSystemPrompt'),
+          : t('errors.failedToLoadImportInstruction'),
       )
     } finally {
       setImportInstructionLoading(false)
