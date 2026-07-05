@@ -25,13 +25,26 @@ agents can use it reliably.
 - `requirements_query_catalog`
   List or search requirements and fetch lookup catalogs such as areas,
   categories, types, quality characteristics, priority levels, statuses,
-  usage statuses, requirement packages, and transitions.
+  usage statuses, requirement packages, and transitions. For `categories`,
+  `types`, `quality_characteristics`, `priority_levels`, and
+  `requirement_packages`, use `operation: "list"` or `operation: "search"` to
+  receive unpaginated lookup rows in `structuredContent.result`.
 - `requirements_get_import_schema`
   Retrieve the canonical JSON Schema for a `Kravimportfil`. Use this as the
-  mandatory file-format contract for generated import JSON.
+  mandatory file-format contract for generated import JSON. The schema tool is
+  locale-free.
 - `requirements_get_import_instruction`
   Retrieve the canonical `Importinstruktion` Markdown for a `Kravimportfil`.
   This is Kravhantering guidance and does not override or replace the JSON Schema.
+- `requirements_manage_norm_reference`
+  List, search, or create Normbibliotek norm references. Use it to resolve
+  `normReferenceIds` before import validation; archived norm references are not
+  valid for import.
+- `requirements_manage_import`
+  List/search import destinations, validate a `Kravimportfil`, execute a
+  persisted validation session, or inspect full validation details. Validation
+  returns a bearer-style `validationToken`; execution imports every unconsumed
+  row without errors. Warning rows are importable.
 - `requirements_get_requirement`
   Fetch the current requirement detail, a specific version, or full version
   history.
@@ -116,6 +129,77 @@ agents can use it reliably.
   Read-only HTML view for MCP Apps-capable clients.
 
 Add `?version=<number>` to either URI to target a specific version.
+
+## MCP Requirement Import Flow
+
+```mermaid
+flowchart TD
+  A[List or search destinations] --> B[Get import schema and instruction]
+  B --> C[Resolve lookup IDs and norm references]
+  C --> D[Validate Kravimportfil]
+  D -->|validationToken, warnings only| E[Execute validationToken]
+  D -->|missing norm reference| F[List/search/create norm reference]
+  F --> C
+  D -->|debug needed| G[Inspect validation]
+  E --> H[Requirements persisted]
+```
+
+`requirements_manage_import.validate` stores a SQL-backed validation session for
+the configured TTL. Later `execute` and `inspect_validation` calls accept only
+the `validationToken`; they do not accept locale, destination, row selectors, or
+payload patches. Validation sessions are immutable after `validate`.
+Reference-data changes make a session stale and require a new validation call.
+If `execute` fails because the stored destination no longer exists or can no
+longer accept imported krav, choose a current destination and run `validate`
+again.
+
+Use `inspect_validation` when the execute response is lost or uncertain. Build a
+corrected `Kravimportfil` only from rows that were not successfully imported,
+then run `validate` and `execute` with the new token. Do not copy successfully
+imported rows into the corrected payload; the server does not do generic
+duplicate detection across validation sessions.
+
+### Recover When The Agent Session Is Lost
+
+If the MCP client, chat, or agent process loses its own session after
+`validate` returns but before `execute` runs, treat the `validationToken` as the
+handoff state. The persisted validation session is not discoverable by
+destination, payload, actor, or row content; `execute` and `inspect_validation`
+can recover it only by token.
+
+If the token is still available in the transcript, logs, or user-provided
+notes, call `requirements_manage_import.inspect_validation` first. Confirm that
+the destination still matches the intended import, `referenceData.isStale` is
+`false`, the row set is the expected one, and no expected row already has
+`imported: true`. If the inspection is fresh and the rows are unimported, call
+`execute` with the same token. If any row is already imported, stop or build a
+new `Kravimportfil` from only the unimported rows.
+
+If the token is unavailable, expired, stale, or points at an invalid
+destination, the agent cannot execute that persisted validation session. Recover
+the original `Kravimportfil` or regenerate it from the source material, refresh
+destinations and lookup IDs, validate again, and execute the new
+`validationToken`.
+
+```mermaid
+flowchart TD
+  A[Agent reconnects after validate] --> B{validationToken available?}
+  B -->|yes| C[Inspect validationToken]
+  C --> D{Session valid and reference data fresh?}
+  D -->|yes| E{Any expected row already imported?}
+  E -->|no| F[Execute same validationToken]
+  E -->|yes| G[Stop or rebuild payload from unimported rows only]
+  D -->|no| H[Refresh destination and lookup data]
+  B -->|no| I[Recover or regenerate original Kravimportfil]
+  I --> H
+  H --> J[Validate payload again]
+  J --> K{Validation has errors?}
+  K -->|yes| L[Fix payload or norm references]
+  L --> H
+  K -->|warnings only or clean| M[Execute new validationToken]
+  F --> N[Requirements persisted]
+  M --> N
+```
 
 ## Current Security Status
 

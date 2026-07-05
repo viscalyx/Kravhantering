@@ -11,7 +11,6 @@ const pageState = vi.hoisted(() => ({
   resolveAiGenerationAvailability: vi.fn(() => ({
     disabledByEnvironment: false,
     effectiveRequirementGenerationEnabled: true,
-    mcpMaxRequestBytes: 1024 * 1024,
     requirementGenerationEnabled: true,
   })),
 }))
@@ -60,7 +59,6 @@ describe('requirements page', () => {
     pageState.getAiGenerationAvailability.mockResolvedValue({
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: true,
-      mcpMaxRequestBytes: 1024 * 1024,
       requirementGenerationEnabled: true,
     })
   })
@@ -69,7 +67,6 @@ describe('requirements page', () => {
     const disabledAvailability = {
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: false,
-      mcpMaxRequestBytes: 1024 * 1024,
       requirementGenerationEnabled: false,
     }
     const consoleErrorSpy = vi

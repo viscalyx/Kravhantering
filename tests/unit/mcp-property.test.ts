@@ -91,6 +91,11 @@ const TOOL_CASES: ToolCase[] = [
     valid: { requirementId: 1 },
   },
   {
+    acceptsResponseFormat: false,
+    name: 'requirements_manage_import',
+    valid: { operation: 'list_destinations' },
+  },
+  {
     acceptsResponseFormat: true,
     name: 'requirements_manage_improvement_suggestion',
     valid: {
@@ -98,6 +103,11 @@ const TOOL_CASES: ToolCase[] = [
       operation: 'create',
       requirementId: 1,
     },
+  },
+  {
+    acceptsResponseFormat: false,
+    name: 'requirements_manage_norm_reference',
+    valid: { operation: 'list' },
   },
 ]
 
@@ -226,6 +236,8 @@ function createService() {
       suggestions: [],
     })),
     manageDeviation: vi.fn(),
+    manageImport: vi.fn(async () => ({ result: [] })),
+    manageNormReference: vi.fn(async () => ({ result: [] })),
     manageRequirement: vi.fn(async () => ({
       detail: createDetail(),
       message: 'Requirement updated',

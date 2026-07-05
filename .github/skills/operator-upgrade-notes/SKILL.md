@@ -1,41 +1,58 @@
 ---
 name: operator-upgrade-notes
 description: >-
-  Review a local branch diff against main for pull request operator upgrade
-  impact. Use when Codex must decide whether a PR needs operator upgrade notes,
-  detect breaking or removed behavior, deployment/configuration/data migration
+  Review a local branch and worktree diff against main for pull request
+  operator upgrade impact. Use when Codex must decide whether committed,
+  staged, unstaged, or untracked PR changes need operator upgrade notes, detect
+  breaking or removed behavior, deployment/configuration/data migration
   impacts, or draft standalone high-level operator notes for the PR template.
 ---
 
 # Operator Upgrade Notes
 
-Assess whether a branch introduces upgrade impact that production operators
-must prepare for before rollout.
+Assess whether local PR changes introduce upgrade impact that production
+operators must prepare for before rollout.
 
 ## Workflow
 
-1. Interpret the task as changes introduced by `HEAD` relative to the target
-   branch. Prefer local `main`; use `origin/main` only when local `main` is not
-   available or is clearly stale.
+1. Interpret the task as all local changes intended for the PR relative to the
+   target branch: committed changes in `HEAD`, staged changes, unstaged changes,
+   and untracked files. Prefer local `main`; use `origin/main` only when local
+   `main` is not available or is clearly stale. If the user explicitly asks for
+   committed changes only, limit the assessment to `HEAD` relative to the target
+   branch.
 2. Run focused diff discovery before judging impact:
 
 ```bash
 git rev-parse --verify main
 git log --oneline main..HEAD
+git status --short
 git diff --name-status main...HEAD
 git diff --stat main...HEAD
+git diff --cached --name-status
+git diff --cached --stat
+git diff --name-status
+git diff --stat
+git ls-files --others --exclude-standard
 ```
 
-3. Keep the diff direction focused on branch changes. Operator notes should
-   describe the branch's upgrade impact, not unrelated changes present only on
-   `main`.
-4. Read changed files that affect runtime, deployment, schema, data, roles,
+3. Treat `main...HEAD` as committed branch changes, `git diff --cached` as
+   staged changes, plain `git diff` as unstaged changes, and
+   `git ls-files --others --exclude-standard` as untracked files that require
+   direct content inspection. If a file has both staged and unstaged changes,
+   judge the final worktree content unless the user asks for a staged-only or
+   committed-only assessment.
+4. Keep the diff direction focused on local branch/worktree changes. Operator
+   notes should describe the proposed PR's upgrade impact, not unrelated changes
+   present only on `main`. If unrelated dirty worktree changes are present and
+   the user asked for committed-only assessment, call out that they were ignored.
+5. Read changed files that affect runtime, deployment, schema, data, roles,
    APIs, release artifacts, operational docs, or compatibility.
-5. Inspect enough adjacent code, tests, docs, and migrations to understand the
+6. Inspect enough adjacent code, tests, docs, and migrations to understand the
    deployed behavior. Do not infer impact from file names alone.
-6. Decide whether operators need pre-upgrade preparation, rollout awareness, or
+7. Decide whether operators need pre-upgrade preparation, rollout awareness, or
    post-upgrade checks.
-7. Return either `No operator notes needed` or a paste-ready notes block.
+8. Return either `No operator notes needed` or a paste-ready notes block.
 
 ## Note Triggers
 

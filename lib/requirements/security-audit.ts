@@ -92,6 +92,9 @@ function actionAuditDetail(
     case 'get_import_schema':
     case 'get_import_instruction':
       return { actionKind: action.kind }
+    case 'manage_import':
+    case 'manage_norm_reference':
+      return { actionKind: action.kind, operation: action.operation }
     case 'list_specifications':
       return { actionKind: action.kind }
     case 'get_specification_items':

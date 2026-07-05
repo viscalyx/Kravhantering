@@ -466,6 +466,8 @@ export class AssignmentBasedAuthorizationService
       case 'query_catalog':
       case 'get_import_schema':
       case 'get_import_instruction':
+      case 'manage_import':
+      case 'manage_norm_reference':
         return
       case 'list_specifications':
         return this.assertCanListSpecifications(context)

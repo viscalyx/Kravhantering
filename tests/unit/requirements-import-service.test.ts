@@ -1,16 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getCachedMcpRuntimeSettings } from '@/lib/dal/ai-settings'
 import {
   listNormReferences,
   type NormReferenceRow,
 } from '@/lib/dal/norm-references'
 import { listPriorityLevels } from '@/lib/dal/priority-levels'
+import {
+  getAreaById,
+  listAreasActorCanAuthor,
+} from '@/lib/dal/requirement-areas'
 import { listCategories } from '@/lib/dal/requirement-categories'
+import {
+  createRequirementImportValidationSession,
+  getRequirementImportValidationSessionByTokenHash,
+  purgeExpiredRequirementImportValidationSessions,
+  type RequirementImportValidationSessionRecord,
+  updateRequirementImportValidationSessionExecutionResult,
+} from '@/lib/dal/requirement-import-validation-sessions'
 import { listRequirementPackages } from '@/lib/dal/requirement-packages'
 import { listTypes } from '@/lib/dal/requirement-types'
-import { createRequirementsBatch } from '@/lib/dal/requirements'
+import {
+  createRequirementsBatch,
+  createRequirementsBatchWithExecutor,
+} from '@/lib/dal/requirements'
 import {
   createSpecificationLocalRequirementsBatch,
+  createSpecificationLocalRequirementsBatchWithExecutor,
+  getSpecificationById,
   getSpecificationBySlug,
+  listSpecificationsForActor,
 } from '@/lib/dal/requirements-specifications'
 import type { RequestContext } from '@/lib/requirements/auth'
 import {
@@ -40,14 +58,33 @@ vi.mock('@/lib/dal/priority-levels', () => ({
   listPriorityLevels: vi.fn(),
 }))
 
+vi.mock('@/lib/dal/ai-settings', () => ({
+  getCachedMcpRuntimeSettings: vi.fn(),
+}))
+
+vi.mock('@/lib/dal/requirement-areas', () => ({
+  getAreaById: vi.fn(),
+  listAreasActorCanAuthor: vi.fn(),
+}))
+
+vi.mock('@/lib/dal/requirement-import-validation-sessions', () => ({
+  createRequirementImportValidationSession: vi.fn(),
+  getRequirementImportValidationSessionByTokenHash: vi.fn(),
+  purgeExpiredRequirementImportValidationSessions: vi.fn(),
+  updateRequirementImportValidationSessionExecutionResult: vi.fn(),
+}))
+
 vi.mock('@/lib/dal/requirements', () => ({
   createRequirementsBatch: vi.fn(),
+  createRequirementsBatchWithExecutor: vi.fn(),
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   createSpecificationLocalRequirementsBatch: vi.fn(),
+  createSpecificationLocalRequirementsBatchWithExecutor: vi.fn(),
   getSpecificationById: vi.fn(),
   getSpecificationBySlug: vi.fn(),
+  listSpecificationsForActor: vi.fn(),
 }))
 
 function extractReferenceData(prompt: string) {
@@ -100,6 +137,54 @@ function makeContext(toolName: string): RequestContext {
   }
 }
 
+function makeSessionRecord(
+  data: {
+    destinationId: number
+    destinationKind: string
+    destinationSnapshotJson: string
+    executionResultJson?: string | null
+    expiresAt: Date
+    payloadHash: string
+    referenceDataFingerprint: string
+    submittedPayloadJson: string
+    tokenHash: string
+    validationResultJson: string
+  },
+  id = 101,
+): RequirementImportValidationSessionRecord {
+  return {
+    createdAt: '2026-07-05T10:00:00.000Z',
+    destinationId: data.destinationId,
+    destinationKind: data.destinationKind,
+    destinationSnapshotJson: data.destinationSnapshotJson,
+    executionResultJson: data.executionResultJson ?? null,
+    expiresAt: data.expiresAt.toISOString(),
+    id,
+    payloadHash: data.payloadHash,
+    referenceDataFingerprint: data.referenceDataFingerprint,
+    submittedPayloadJson: data.submittedPayloadJson,
+    tokenHash: data.tokenHash,
+    updatedAt: '2026-07-05T10:00:00.000Z',
+    validationResultJson: data.validationResultJson,
+  }
+}
+
+function makeManageImportDb() {
+  const manager = { query: vi.fn() }
+  return {
+    db: {
+      query: vi.fn(),
+      transaction: vi.fn(
+        async (
+          _isolation: string,
+          callback: (executor: typeof manager) => Promise<unknown>,
+        ) => callback(manager),
+      ),
+    },
+    manager,
+  }
+}
+
 describe('requirements import service', () => {
   beforeEach(() => {
     vi.mocked(listCategories).mockResolvedValue([])
@@ -107,8 +192,40 @@ describe('requirements import service', () => {
     vi.mocked(listPriorityLevels).mockResolvedValue([])
     vi.mocked(listTypes).mockResolvedValue([])
     vi.mocked(listNormReferences).mockResolvedValue([])
+    vi.mocked(getCachedMcpRuntimeSettings).mockResolvedValue({
+      mcpImportMaxRows: 500,
+      mcpImportValidationTtlMinutes: 60,
+      mcpMaxRequestBytes: 10 * 1024 * 1024,
+    })
+    vi.mocked(getAreaById).mockResolvedValue({
+      createdAt: '2026-07-05T10:00:00.000Z',
+      description: null,
+      id: 7,
+      name: 'Clinical systems',
+      nextSequence: 1,
+      ownerHsaId: 'SE5560000001-owner1',
+      prefix: 'TEST',
+      updatedAt: '2026-07-05T10:00:00.000Z',
+    })
+    vi.mocked(listAreasActorCanAuthor).mockResolvedValue([])
+    vi.mocked(listSpecificationsForActor).mockResolvedValue([])
+    vi.mocked(getSpecificationById).mockReset()
+    vi.mocked(getSpecificationById).mockResolvedValue(null)
+    vi.mocked(createRequirementImportValidationSession).mockReset()
+    vi.mocked(createRequirementImportValidationSession).mockImplementation(
+      async (_db, data) => makeSessionRecord(data),
+    )
+    vi.mocked(getRequirementImportValidationSessionByTokenHash).mockReset()
+    vi.mocked(
+      purgeExpiredRequirementImportValidationSessions,
+    ).mockResolvedValue(undefined)
+    vi.mocked(
+      updateRequirementImportValidationSessionExecutionResult,
+    ).mockResolvedValue(undefined)
     vi.mocked(createRequirementsBatch).mockReset()
+    vi.mocked(createRequirementsBatchWithExecutor).mockReset()
     vi.mocked(createSpecificationLocalRequirementsBatch).mockReset()
+    vi.mocked(createSpecificationLocalRequirementsBatchWithExecutor).mockReset()
     vi.mocked(getSpecificationBySlug).mockReset()
   })
 
@@ -233,6 +350,343 @@ describe('requirements import service', () => {
         tool_name: 'requirements_get_import_instruction',
       }),
     )
+  })
+
+  it('maps MCP import schema failures to the public issue-code set', async () => {
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: makeManageImportDb().db as never,
+    })
+    const context = makeContext('requirements_manage_import')
+
+    const invalidShape = await workflow.manageImport(context, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        requirements: [{ description: 123, unexpected: true }],
+        schemaVersion: 'wrong-version',
+      },
+    })
+
+    expect(invalidShape).toMatchObject({
+      hasErrors: true,
+      hasWarnings: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: 'import_schema_invalid_enum',
+          path: '/schemaVersion',
+        }),
+        expect.objectContaining({
+          code: 'import_schema_invalid_type',
+          path: '/requirements/0/description',
+        }),
+        expect.objectContaining({
+          code: 'import_schema_unrecognized_field',
+          path: '/requirements/0',
+        }),
+      ]),
+    })
+
+    const missingRequired = await workflow.manageImport(context, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: { schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION },
+    })
+
+    expect(missingRequired).toMatchObject({
+      issues: [
+        expect.objectContaining({
+          code: 'import_schema_missing_required',
+          path: '/requirements',
+        }),
+      ],
+    })
+    expect(createRequirementImportValidationSession).not.toHaveBeenCalled()
+  })
+
+  it('returns pinned MCP import cap codes and JSON Pointer paths', async () => {
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: makeManageImportDb().db as never,
+    })
+    const context = makeContext('requirements_manage_import')
+
+    vi.mocked(getCachedMcpRuntimeSettings).mockResolvedValueOnce({
+      mcpImportMaxRows: 1,
+      mcpImportValidationTtlMinutes: 60,
+      mcpMaxRequestBytes: 10 * 1024 * 1024,
+    })
+    const rowCap = await workflow.manageImport(context, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        requirements: [{ description: 'One' }, { description: 'Two' }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+
+    expect(rowCap).toMatchObject({
+      issues: [
+        expect.objectContaining({
+          code: 'import_row_count_cap_exceeded',
+          path: '/requirements',
+        }),
+      ],
+    })
+
+    vi.mocked(getCachedMcpRuntimeSettings).mockResolvedValueOnce({
+      mcpImportMaxRows: 500,
+      mcpImportValidationTtlMinutes: 60,
+      mcpMaxRequestBytes: 120,
+    })
+    const payloadCap = await workflow.manageImport(context, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        requirements: [{ description: 'A'.repeat(500) }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+
+    expect(payloadCap).toMatchObject({
+      issues: [
+        expect.objectContaining({
+          code: 'import_payload_size_cap_exceeded',
+          path: '',
+        }),
+      ],
+    })
+  })
+
+  it('validates type and quality characteristic compatibility before MCP execute', async () => {
+    vi.mocked(listTypes).mockResolvedValue([
+      {
+        id: 1,
+        nameEn: 'Functional',
+        nameSv: 'Funktionellt',
+        qualityCharacteristics: [
+          {
+            chapterId: '3.1.1',
+            id: 11,
+            nameEn: 'Functional completeness',
+            nameSv: 'Funktionell fullständighet',
+            parentId: 10,
+            requirementTypeId: 1,
+          },
+        ],
+      },
+      {
+        id: 2,
+        nameEn: 'Non-functional',
+        nameSv: 'Icke-funktionellt',
+        qualityCharacteristics: [
+          {
+            chapterId: '3.2.1',
+            id: 21,
+            nameEn: 'Time behaviour',
+            nameSv: 'Tidsbeteende',
+            parentId: 20,
+            requirementTypeId: 2,
+          },
+        ],
+      },
+    ])
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: makeManageImportDb().db as never,
+    })
+
+    const result = await workflow.manageImport(
+      makeContext('requirements_manage_import'),
+      {
+        destination: { areaId: 7, kind: 'requirements_library' },
+        operation: 'validate',
+        payload: {
+          requirements: [
+            {
+              description: 'Systemet ska stödja inloggning.',
+              qualityCharacteristicId: 21,
+              typeId: 1,
+              verifiable: false,
+              verificationMethod: 'Inspection',
+            },
+          ],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        },
+      },
+    )
+
+    expect(result).toMatchObject({
+      hasErrors: true,
+      hasWarnings: true,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: 'import_quality_characteristic_type_mismatch',
+          path: '/requirements/0/qualityCharacteristicId',
+          severity: 'error',
+        }),
+        expect.objectContaining({
+          code: 'import_verification_method_ignored_for_non_verifiable',
+          path: '/requirements/0/verificationMethod',
+          severity: 'warning',
+        }),
+      ]),
+    })
+    const createData = vi
+      .mocked(createRequirementImportValidationSession)
+      .mock.calls.at(-1)?.[1]
+    expect(createData).toBeDefined()
+    const validation = JSON.parse(createData?.validationResultJson ?? '{}') as {
+      referenceData?: { includes?: string[] }
+      rows?: Array<{
+        resolvedRow: Record<string, unknown>
+        submittedRow?: unknown
+      }>
+    }
+    expect(validation.referenceData?.includes).toEqual([
+      'categories',
+      'normReferences',
+      'priorityLevels',
+      'qualityCharacteristics',
+      'requirementPackages',
+      'types',
+    ])
+    expect(validation.rows?.[0]).not.toHaveProperty('submittedRow')
+    expect(validation.rows?.[0]?.resolvedRow).toMatchObject({
+      acceptanceCriteria: null,
+      description: 'Systemet ska stödja inloggning.',
+      normReferenceIds: [],
+      requirementPackageIds: [],
+      typeId: 1,
+      verifiable: false,
+    })
+    expect(validation.rows?.[0]?.resolvedRow).not.toHaveProperty(
+      'qualityCharacteristicId',
+    )
+    expect(validation.rows?.[0]?.resolvedRow).not.toHaveProperty(
+      'verificationMethod',
+    )
+    expect(validation.rows?.[0]?.resolvedRow).not.toHaveProperty(
+      'needsReferenceId',
+    )
+  })
+
+  it('logs a safe diagnostic when MCP execute sees stale reference data', async () => {
+    const { db } = makeManageImportDb()
+    const authorization = { assertAuthorized: vi.fn() }
+    const logger = { error: vi.fn(), info: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: db as never,
+      logger,
+    })
+    const context = makeContext('requirements_manage_import')
+    await workflow.manageImport(context, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        requirements: [
+          { description: 'Systemet ska logga viktiga händelser.' },
+        ],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+    const createData = vi
+      .mocked(createRequirementImportValidationSession)
+      .mock.calls.at(-1)?.[1]
+    if (!createData) throw new Error('Expected validation session data')
+    const session = makeSessionRecord(createData)
+    vi.mocked(
+      getRequirementImportValidationSessionByTokenHash,
+    ).mockResolvedValue(session)
+    vi.mocked(listCategories).mockResolvedValue([
+      { id: 3, nameEn: 'Supplier', nameSv: 'Leverantör' },
+    ])
+
+    const result = await workflow.manageImport(context, {
+      operation: 'execute',
+      validationToken: 'opaque-validation-token',
+    })
+
+    expect(result).toMatchObject({
+      hasErrors: true,
+      issues: [
+        expect.objectContaining({
+          code: 'import_reference_data_stale',
+          path: '',
+        }),
+      ],
+    })
+    expect(logger.error).toHaveBeenCalledWith(
+      'requirements.manage_import.validation_session_diagnostic',
+      expect.objectContaining({
+        consumed_row_count: 0,
+        destination_id: 7,
+        issue_codes: null,
+        reason: 'reference_data_stale',
+        row_count: 1,
+        token_hash_prefix: expect.any(String),
+      }),
+    )
+    expect(JSON.stringify(logger.error.mock.calls[0]?.[1])).not.toContain(
+      'Systemet ska logga viktiga händelser.',
+    )
+    expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
+  })
+
+  it('re-checks the stored destination before MCP execute imports rows', async () => {
+    const { db } = makeManageImportDb()
+    const authorization = { assertAuthorized: vi.fn() }
+    const logger = { error: vi.fn(), info: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: db as never,
+      logger,
+    })
+    const context = makeContext('requirements_manage_import')
+    await workflow.manageImport(context, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        requirements: [{ description: 'Systemet ska vara spårbart.' }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+    const createData = vi
+      .mocked(createRequirementImportValidationSession)
+      .mock.calls.at(-1)?.[1]
+    if (!createData) throw new Error('Expected validation session data')
+    const session = makeSessionRecord(createData)
+    vi.mocked(
+      getRequirementImportValidationSessionByTokenHash,
+    ).mockResolvedValue(session)
+    vi.mocked(getAreaById).mockResolvedValue(null)
+
+    const result = await workflow.manageImport(context, {
+      operation: 'execute',
+      validationToken: 'opaque-validation-token',
+    })
+
+    expect(result).toMatchObject({
+      hasErrors: true,
+      issues: [
+        expect.objectContaining({
+          code: 'import_destination_invalid',
+          path: '/destination',
+        }),
+      ],
+    })
+    expect(logger.error).toHaveBeenCalledWith(
+      'requirements.manage_import.validation_session_diagnostic',
+      expect.objectContaining({
+        reason: 'destination_invalid',
+        row_count: 1,
+      }),
+    )
+    expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
   })
 
   it('resolves proposed norm references by key when norm reference id is omitted', async () => {

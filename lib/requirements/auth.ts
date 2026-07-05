@@ -96,6 +96,19 @@ export type RequirementsAction =
       kind: 'get_import_instruction'
     }
   | {
+      kind: 'manage_import'
+      operation:
+        | 'execute'
+        | 'inspect_validation'
+        | 'list_destinations'
+        | 'search_destinations'
+        | 'validate'
+    }
+  | {
+      kind: 'manage_norm_reference'
+      operation: 'create' | 'list' | 'search'
+    }
+  | {
       kind: 'list_specifications'
       nameSearch?: string
     }

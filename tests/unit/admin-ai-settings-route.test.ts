@@ -1,7 +1,10 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  ADMIN_AI_SETTINGS_CONSTRAINTS,
   AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+  MCP_IMPORT_MAX_ROWS_DEFAULT,
+  MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
 } from '@/lib/ai/generation-availability'
 import { RequirementsServiceError } from '@/lib/requirements/errors'
@@ -43,7 +46,7 @@ const routeState = vi.hoisted(() => ({
     requestId: 'request-ai',
     source: 'rest',
   })),
-  getAiGenerationAvailability: vi.fn(),
+  getAdminAiSettings: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   patchAiGenerationSettings: vi.fn(),
   recordAdminPrivilegedActionSucceeded: vi.fn(),
@@ -65,7 +68,7 @@ vi.mock('@/lib/dal/ai-settings', () => ({
   formatAiSettingsLoadError: (error: unknown) => ({
     message: error instanceof Error ? error.message : String(error),
   }),
-  getAiGenerationAvailability: routeState.getAiGenerationAvailability,
+  getAdminAiSettings: routeState.getAdminAiSettings,
   patchAiGenerationSettings: routeState.patchAiGenerationSettings,
   updateAiGenerationSettings: routeState.updateAiGenerationSettings,
 }))
@@ -81,8 +84,11 @@ import { GET, PATCH, PUT } from '@/app/api/admin/ai-settings/route'
 
 const enabledResponse = {
   aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+  constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
   disabledByEnvironment: false,
   effectiveRequirementGenerationEnabled: true,
+  mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+  mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
   requirementGenerationEnabled: true,
 }
@@ -90,14 +96,17 @@ const enabledResponse = {
 describe('admin AI settings route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    routeState.getAiGenerationAvailability.mockResolvedValue(enabledResponse)
+    routeState.getAdminAiSettings.mockResolvedValue(enabledResponse)
     routeState.updateAiGenerationSettings.mockImplementation(
       async (_db, values, options) => {
         await options?.audit?.({ query: vi.fn() })
         return {
           aiSafetyRuleCacheTtlSeconds: values.aiSafetyRuleCacheTtlSeconds,
+          constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
           disabledByEnvironment: true,
           effectiveRequirementGenerationEnabled: false,
+          mcpImportMaxRows: values.mcpImportMaxRows,
+          mcpImportValidationTtlMinutes: values.mcpImportValidationTtlMinutes,
           mcpMaxRequestBytes: values.mcpMaxRequestBytes,
           requirementGenerationEnabled: values.requirementGenerationEnabled,
         }
@@ -122,7 +131,7 @@ describe('admin AI settings route', () => {
     await expect(response.json()).resolves.toEqual(enabledResponse)
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
-    expect(routeState.getAiGenerationAvailability).toHaveBeenCalledWith({
+    expect(routeState.getAdminAiSettings).toHaveBeenCalledWith({
       db: true,
     })
   })
@@ -154,7 +163,7 @@ describe('admin AI settings route', () => {
 
     expect(response.status).toBe(403)
     expect(body.error).toBe('Forbidden')
-    expect(routeState.getAiGenerationAvailability).not.toHaveBeenCalled()
+    expect(routeState.getAdminAiSettings).not.toHaveBeenCalled()
   })
 
   it('validates PUT payloads before saving', async () => {
@@ -174,6 +183,9 @@ describe('admin AI settings route', () => {
       new NextRequest('https://example.test/api/admin/ai-settings', {
         body: JSON.stringify({
           aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+          mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+          mcpImportValidationTtlMinutes:
+            MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
           mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES + 1,
           requirementGenerationEnabled: false,
         }),
@@ -190,6 +202,9 @@ describe('admin AI settings route', () => {
       new NextRequest('https://example.test/api/admin/ai-settings', {
         body: JSON.stringify({
           aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+          mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+          mcpImportValidationTtlMinutes:
+            MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
           mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
           requirementGenerationEnabled: false,
         }),
@@ -202,8 +217,11 @@ describe('admin AI settings route', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(body).toEqual({
       aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+      constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
       disabledByEnvironment: true,
       effectiveRequirementGenerationEnabled: false,
+      mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+      mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
       mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
       requirementGenerationEnabled: false,
     })
@@ -211,6 +229,9 @@ describe('admin AI settings route', () => {
       { db: true },
       {
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+        mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+        mcpImportValidationTtlMinutes:
+          MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
         mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
         requirementGenerationEnabled: false,
       },
@@ -224,6 +245,8 @@ describe('admin AI settings route', () => {
         changedFields: [
           'requirementGenerationEnabled',
           'mcpMaxRequestBytes',
+          'mcpImportMaxRows',
+          'mcpImportValidationTtlMinutes',
           'aiSafetyRuleCacheTtlSeconds',
         ],
         operation: 'save',
@@ -245,6 +268,9 @@ describe('admin AI settings route', () => {
       new NextRequest('https://example.test/api/admin/ai-settings', {
         body: JSON.stringify({
           aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+          mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+          mcpImportValidationTtlMinutes:
+            MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
           mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
           requirementGenerationEnabled: false,
         }),

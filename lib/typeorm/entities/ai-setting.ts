@@ -4,6 +4,8 @@ export interface AiSettingEntity {
   aiSafetyRuleCacheTtlSeconds: number
   createdAt: Date
   id: number
+  mcpImportMaxRows: number
+  mcpImportValidationTtlMinutes: number
   mcpMaxRequestBytes: number
   requirementGenerationEnabled: boolean
   updatedAt: Date
@@ -25,8 +27,18 @@ export const aiSettingEntity = new EntitySchema<AiSettingEntity>({
       type: 'bit',
     },
     mcpMaxRequestBytes: {
-      default: 1048576,
+      default: 10485760,
       name: 'mcp_max_request_bytes',
+      type: 'int',
+    },
+    mcpImportMaxRows: {
+      default: 500,
+      name: 'mcp_import_max_rows',
+      type: 'int',
+    },
+    mcpImportValidationTtlMinutes: {
+      default: 60,
+      name: 'mcp_import_validation_ttl_minutes',
       type: 'int',
     },
     aiSafetyRuleCacheTtlSeconds: {
@@ -40,8 +52,18 @@ export const aiSettingEntity = new EntitySchema<AiSettingEntity>({
   checks: [
     {
       expression:
-        '[mcp_max_request_bytes] >= 104858 AND [mcp_max_request_bytes] <= 5242880 AND [mcp_max_request_bytes] = ((1048576 * ((([mcp_max_request_bytes] * 10) + 524288) / 1048576)) + 5) / 10',
+        '[mcp_max_request_bytes] >= 1048576 AND [mcp_max_request_bytes] <= 10485760 AND [mcp_max_request_bytes] % 1048576 = 0',
       name: 'chk_ai_settings_mcp_max_request_bytes',
+    },
+    {
+      expression:
+        '[mcp_import_max_rows] >= 1 AND [mcp_import_max_rows] <= 5000',
+      name: 'chk_ai_settings_mcp_import_max_rows',
+    },
+    {
+      expression:
+        '[mcp_import_validation_ttl_minutes] >= 1 AND [mcp_import_validation_ttl_minutes] <= 1440',
+      name: 'chk_ai_settings_mcp_import_validation_ttl_minutes',
     },
     {
       expression:

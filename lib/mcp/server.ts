@@ -3,6 +3,12 @@ import {
   ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as z from 'zod'
+import {
+  MCP_IMPORT_MAX_ROWS_DEFAULT,
+  MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+  MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+} from '@/lib/ai/generation-availability'
+import type { McpRuntimeSettings } from '@/lib/dal/ai-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   createRequestContext,
@@ -18,6 +24,8 @@ import {
   type GetRequirementInput,
   type GraduateSpecificationLocalRequirementInput,
   type ListGraduationTargetAreasInput,
+  type ManageImportInput,
+  type ManageNormReferenceInput,
   type ManageRequirementInput,
   type QueryCatalogInput,
   type RequirementsService,
@@ -32,6 +40,12 @@ const HTML_BASE_MESSAGES = {
   en: enMessages,
   sv: svMessages,
 } satisfies Record<'en' | 'sv', Record<string, unknown>>
+
+const DEFAULT_MCP_RUNTIME_SETTINGS: McpRuntimeSettings = Object.freeze({
+  mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+  mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+  mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+})
 
 const READABLE_MCP_ERROR_CODES = new Set<RequirementsErrorCode>([
   'not_found',
@@ -51,6 +65,19 @@ const PaginationSchema = z
     total: z.number(),
   })
   .strict()
+
+const QueryCatalogKindSchema = z.enum([
+  'requirements',
+  'areas',
+  'categories',
+  'types',
+  'quality_characteristics',
+  'priority_levels',
+  'specification_item_statuses',
+  'statuses',
+  'requirement_packages',
+  'transitions',
+])
 
 const ResponseFormatSchema = z
   .enum(['json', 'markdown'])
@@ -79,29 +106,231 @@ const ImportSchemaOutputSchema = z
 
 const QueryCatalogOutputSchema = z
   .object({
-    catalog: z
-      .enum([
-        'requirements',
-        'areas',
-        'categories',
-        'types',
-        'quality_characteristics',
-        'priority_levels',
-        'specification_item_statuses',
-        'statuses',
-        'requirement_packages',
-        'transitions',
-      ])
-      .describe('Catalog that was returned.'),
+    catalog: QueryCatalogKindSchema.optional().describe(
+      'Catalog that was returned for the legacy paginated shape.',
+    ),
     items: z
       .array(z.record(z.string(), z.unknown()))
+      .optional()
       .describe('Catalog rows. Shape depends on the selected catalog.'),
-    message: z.string(),
-    pagination: PaginationSchema.nullable().describe(
-      'Pagination metadata for catalog "requirements"; null for lookup catalogs.',
-    ),
+    message: z.string().optional(),
+    pagination: PaginationSchema.nullable()
+      .optional()
+      .describe(
+        'Pagination metadata for catalog "requirements"; null for lookup catalogs.',
+      ),
+    result: z
+      .array(z.record(z.string(), z.unknown()))
+      .optional()
+      .describe(
+        'Unpaginated lookup catalog rows for operation "list" or "search". Search rows include match metadata.',
+      ),
   })
   .strict()
+  .superRefine((val, ctx) => {
+    if (Object.hasOwn(val, 'result')) {
+      rejectUnexpectedFields(ctx, val, ['result'])
+      return
+    }
+    for (const field of [
+      'catalog',
+      'items',
+      'message',
+      'pagination',
+    ] as const) {
+      requireField(ctx, val, field)
+    }
+  })
+  .describe(
+    'Legacy catalog output, or lean lookup output when operation is "list" or "search".',
+  )
+
+const McpSearchMatchOutputSchema = z
+  .object({
+    matchedFields: z.array(z.string()),
+    quality: z.enum(['exact', 'normalizedExact', 'startsWith', 'contains']),
+  })
+  .strict()
+
+const McpIssueOutputSchema = z
+  .object({
+    code: z.string(),
+    details: z.record(z.string(), z.unknown()).optional(),
+    message: z.string(),
+    path: z.string(),
+    severity: z.enum(['error', 'warning']),
+  })
+  .strict()
+
+const LibraryDestinationRefSchema = z
+  .object({
+    areaId: z
+      .number()
+      .int()
+      .positive()
+      .describe(
+        'Requirement area ID from requirements_manage_import list_destinations/search_destinations result[].areaId.',
+      ),
+    kind: z.literal('requirements_library'),
+  })
+  .strict()
+
+const SpecificationDestinationRefSchema = z
+  .object({
+    kind: z.literal('requirements_specification'),
+    specificationId: z
+      .number()
+      .int()
+      .positive()
+      .describe(
+        'Requirements specification ID from requirements_manage_import list_destinations/search_destinations result[].specificationId.',
+      ),
+  })
+  .strict()
+
+const ImportDestinationRefSchema = z.discriminatedUnion('kind', [
+  LibraryDestinationRefSchema,
+  SpecificationDestinationRefSchema,
+])
+
+const ImportDestinationOutputSchema = z
+  .union([
+    LibraryDestinationRefSchema.extend({
+      match: McpSearchMatchOutputSchema.optional(),
+      name: z.string(),
+      prefix: z.string(),
+    }).strict(),
+    SpecificationDestinationRefSchema.extend({
+      match: McpSearchMatchOutputSchema.optional(),
+      name: z.string(),
+      uniqueId: z.string(),
+    }).strict(),
+  ])
+  .describe(
+    'Import destination. Pass exactly kind plus areaId or specificationId back to validate.',
+  )
+
+const ManageImportOutputSchema = z
+  .object({
+    destination: ImportDestinationOutputSchema.optional(),
+    expiresAt: z.string().optional(),
+    hasErrors: z.boolean().optional(),
+    hasWarnings: z.boolean().optional(),
+    importedRows: z.array(z.record(z.string(), z.unknown())).optional(),
+    issues: z.array(McpIssueOutputSchema).optional(),
+    notImportedRows: z.array(z.record(z.string(), z.unknown())).optional(),
+    payloadHash: z.string().optional(),
+    proposals: z.array(z.record(z.string(), z.unknown())).optional(),
+    referenceData: z.record(z.string(), z.unknown()).optional(),
+    result: z.array(ImportDestinationOutputSchema).optional(),
+    rows: z.array(z.record(z.string(), z.unknown())).optional(),
+    submittedPayload: z.record(z.string(), z.unknown()).optional(),
+    summary: z
+      .object({
+        importedCount: z.number(),
+        notImportedCount: z.number(),
+        totalRowCount: z.number(),
+      })
+      .strict()
+      .optional(),
+    validationToken: z.string().optional(),
+  })
+  .strict()
+  .superRefine((val, ctx) => {
+    if (Object.hasOwn(val, 'result')) {
+      rejectUnexpectedFields(ctx, val, ['result'])
+      return
+    }
+    if (Object.hasOwn(val, 'submittedPayload')) {
+      for (const field of [
+        'destination',
+        'expiresAt',
+        'payloadHash',
+        'proposals',
+        'referenceData',
+        'rows',
+        'submittedPayload',
+      ] as const) {
+        requireField(ctx, val, field)
+      }
+      rejectUnexpectedFields(ctx, val, [
+        'destination',
+        'expiresAt',
+        'payloadHash',
+        'proposals',
+        'referenceData',
+        'rows',
+        'submittedPayload',
+      ])
+      return
+    }
+    if (
+      Object.hasOwn(val, 'importedRows') ||
+      Object.hasOwn(val, 'notImportedRows') ||
+      Object.hasOwn(val, 'summary')
+    ) {
+      for (const field of [
+        'destination',
+        'importedRows',
+        'notImportedRows',
+        'summary',
+      ] as const) {
+        requireField(ctx, val, field)
+      }
+      rejectUnexpectedFields(ctx, val, [
+        'destination',
+        'importedRows',
+        'notImportedRows',
+        'summary',
+      ])
+      return
+    }
+
+    for (const field of ['hasErrors', 'hasWarnings', 'issues'] as const) {
+      requireField(ctx, val, field)
+    }
+    rejectUnexpectedFields(ctx, val, [
+      'expiresAt',
+      'hasErrors',
+      'hasWarnings',
+      'issues',
+      'validationToken',
+    ])
+  })
+  .describe('Import management result. Shape depends on operation.')
+
+const NormReferenceOutputSchema = z
+  .object({
+    createdAt: z.string(),
+    id: z.number(),
+    isArchived: z.boolean(),
+    issuer: z.string(),
+    match: McpSearchMatchOutputSchema.optional(),
+    name: z.string(),
+    normReferenceId: z.string(),
+    reference: z.string(),
+    type: z.string(),
+    updatedAt: z.string(),
+    uri: z.string().nullable(),
+    version: z.string().nullable(),
+  })
+  .strict()
+
+const ManageNormReferenceOutputSchema = z
+  .object({
+    normReference: NormReferenceOutputSchema.optional(),
+    result: z.array(NormReferenceOutputSchema).optional(),
+  })
+  .strict()
+  .superRefine((val, ctx) => {
+    if (Object.hasOwn(val, 'result')) {
+      rejectUnexpectedFields(ctx, val, ['result'])
+      return
+    }
+    requireField(ctx, val, 'normReference')
+    rejectUnexpectedFields(ctx, val, ['normReference'])
+  })
+  .describe('Normbibliotek management result. Shape depends on operation.')
 
 const RequirementVersionOutputSchema = z
   .record(z.string(), z.unknown())
@@ -566,6 +795,12 @@ function createQueryCatalogSchema() {
         .describe(
           'Norm reference IDs. Applies only to catalog "requirements".',
         ),
+      operation: z
+        .enum(['list', 'search'])
+        .optional()
+        .describe(
+          'For lookup catalogs categories, types, quality_characteristics, priority_levels, and requirement_packages only. "list" returns all rows in structuredContent.result. "search" returns matching rows with match metadata.',
+        ),
       offset: z
         .number()
         .int()
@@ -613,6 +848,13 @@ function createQueryCatalogSchema() {
         .describe(
           'Sort direction for catalog "requirements". Defaults to asc.',
         ),
+      search: z
+        .string()
+        .max(200)
+        .optional()
+        .describe(
+          'Search text for lookup catalog operation "search". Matches exact, normalized exact, starts-with, and contains across stable lookup fields.',
+        ),
       statuses: z
         .array(z.number().int().positive())
         .optional()
@@ -648,6 +890,191 @@ function createQueryCatalogSchema() {
         ),
     })
     .strict()
+    .superRefine((val, ctx) => {
+      if (val.operation === 'search' && !val.search?.trim()) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'search is required for operation "search".',
+          path: ['search'],
+        })
+      }
+    })
+}
+
+function requireField(
+  ctx: z.RefinementCtx,
+  val: Record<string, unknown>,
+  field: string,
+): void {
+  if (!Object.hasOwn(val, field) || val[field] === undefined) {
+    ctx.addIssue({
+      code: 'custom',
+      message: `${field} is required for this operation.`,
+      path: [field],
+    })
+  }
+}
+
+function rejectUnexpectedFields(
+  ctx: z.RefinementCtx,
+  val: Record<string, unknown>,
+  allowedFields: readonly string[],
+): void {
+  const allowed = new Set(allowedFields)
+  for (const field of Object.keys(val)) {
+    if (!allowed.has(field)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `${field} is not allowed for this operation.`,
+        path: [field],
+      })
+    }
+  }
+}
+
+function createManageImportSchema() {
+  return z
+    .object({
+      destination: ImportDestinationRefSchema.optional().describe(
+        'Exact destination object. Use {kind:"requirements_library", areaId} or {kind:"requirements_specification", specificationId} from list_destinations/search_destinations.',
+      ),
+      kind: z
+        .enum(['requirements_library', 'requirements_specification'])
+        .optional()
+        .describe('Optional destination-kind filter.'),
+      operation: z
+        .enum([
+          'list_destinations',
+          'search_destinations',
+          'validate',
+          'execute',
+          'inspect_validation',
+        ])
+        .describe('Import management operation.'),
+      payload: z
+        .unknown()
+        .optional()
+        .describe(
+          'Kravimportfil JSON object that should follow requirements_get_import_schema. The service validates this raw payload and creates a persisted validation session when the schema is valid.',
+        ),
+      search: z
+        .string()
+        .trim()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe(
+          'Destination search text. Matches names, IDs, prefixes, and slugs with exact, normalized exact, starts-with, and contains metadata.',
+        ),
+      validationToken: z
+        .string()
+        .trim()
+        .min(1)
+        .max(512)
+        .optional()
+        .describe(
+          'Opaque validationToken returned by operation "validate". Execute imports every unconsumed row without errors; warnings do not block execution.',
+        ),
+    })
+    .strict()
+    .superRefine((val, ctx) => {
+      if (val.operation === 'list_destinations') {
+        rejectUnexpectedFields(ctx, val, ['kind', 'operation'])
+        return
+      }
+      if (val.operation === 'search_destinations') {
+        requireField(ctx, val, 'search')
+        rejectUnexpectedFields(ctx, val, ['kind', 'operation', 'search'])
+        return
+      }
+      if (val.operation === 'validate') {
+        requireField(ctx, val, 'destination')
+        requireField(ctx, val, 'payload')
+        rejectUnexpectedFields(ctx, val, [
+          'destination',
+          'operation',
+          'payload',
+        ])
+        return
+      }
+      if (val.operation === 'execute') {
+        requireField(ctx, val, 'validationToken')
+        rejectUnexpectedFields(ctx, val, ['operation', 'validationToken'])
+        return
+      }
+
+      requireField(ctx, val, 'validationToken')
+      rejectUnexpectedFields(ctx, val, ['operation', 'validationToken'])
+    })
+}
+
+function createManageNormReferenceSchema() {
+  return z
+    .object({
+      includeArchived: z
+        .boolean()
+        .optional()
+        .describe(
+          'Defaults to false. Archived norm references are listed/searchable only for diagnostics and are not valid import references.',
+        ),
+      issuer: z.string().trim().min(1).max(255).optional(),
+      name: z.string().trim().min(1).max(255).optional(),
+      normReferenceId: z
+        .string()
+        .trim()
+        .min(1)
+        .max(255)
+        .optional()
+        .describe(
+          'Stable norm reference business ID. If omitted, the server assigns one using the existing REST creation rules.',
+        ),
+      operation: z
+        .enum(['list', 'search', 'create'])
+        .describe('Norm reference management operation.'),
+      reference: z.string().trim().min(1).max(255).optional(),
+      search: z
+        .string()
+        .trim()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe(
+          'Norm reference search text. Matches ID, issuer, name, reference, type, URI, and version with match metadata.',
+        ),
+      type: z.string().trim().min(1).max(255).optional(),
+      uri: z.string().trim().max(4000).nullable().optional(),
+      version: z.string().trim().max(4000).nullable().optional(),
+    })
+    .strict()
+    .superRefine((val, ctx) => {
+      if (val.operation === 'list') {
+        rejectUnexpectedFields(ctx, val, ['includeArchived', 'operation'])
+        return
+      }
+      if (val.operation === 'search') {
+        requireField(ctx, val, 'search')
+        rejectUnexpectedFields(ctx, val, [
+          'includeArchived',
+          'operation',
+          'search',
+        ])
+        return
+      }
+
+      for (const field of ['issuer', 'name', 'reference', 'type'] as const) {
+        requireField(ctx, val, field)
+      }
+      rejectUnexpectedFields(ctx, val, [
+        'issuer',
+        'name',
+        'normReferenceId',
+        'operation',
+        'reference',
+        'type',
+        'uri',
+        'version',
+      ])
+    })
 }
 
 function createGetRequirementSchema() {
@@ -1017,9 +1444,11 @@ function toCatalogInput(
     limit: input.limit,
     locale: toResponseLocale(input.locale),
     normReferenceIds: input.normReferenceIds,
+    operation: input.operation,
     offset: input.offset,
     verifiable: input.verifiable,
     responseFormat: toResponseFormat(input.responseFormat),
+    search: input.search,
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
     statuses: input.statuses,
@@ -1118,9 +1547,17 @@ function getRequirementLinkPayload(
   }
 }
 
+function formatBytes(bytes: number): string {
+  const mib = bytes / (1024 * 1024)
+  return Number.isInteger(mib)
+    ? `${mib} MiB (${bytes} bytes)`
+    : `${bytes} bytes`
+}
+
 export function createKravhanteringMcpServer(
   service: RequirementsService,
   request: Request,
+  mcpSettings: McpRuntimeSettings = DEFAULT_MCP_RUNTIME_SETTINGS,
 ): McpServer {
   const server = new McpServer(
     {
@@ -1260,11 +1697,14 @@ export function createKravhanteringMcpServer(
         return {
           content: [
             {
-              text: payload.message,
+              text:
+                'result' in payload
+                  ? 'Structured result returned in structuredContent.result.'
+                  : payload.message,
               type: 'text',
             },
           ],
-          structuredContent: payload,
+          structuredContent: payload as unknown as Record<string, unknown>,
         }
       } catch (error) {
         return formatError(error)
@@ -1282,21 +1722,17 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'Return the canonical JSON Schema for producing a Kravimportfil (requirement import file). Use this schema as the mandatory contract for generated import JSON. The only input is locale, with supported values "en" and "sv".',
-      inputSchema: z
-        .object({
-          locale: ResponseLocaleSchema,
-        })
-        .strict(),
+        'Return the canonical JSON Schema for producing a Kravimportfil (requirement import file). Use this locale-free schema as the mandatory machine contract for generated import JSON before calling requirements_manage_import validate.',
+      inputSchema: z.object({}).strict(),
       outputSchema: ImportSchemaOutputSchema,
       title: 'Get Requirement Import Schema',
     },
-    async input => {
+    async () => {
       try {
         const payload = await service.getImportSchema(
           await getBaseContext(request, 'requirements_get_import_schema'),
           {
-            locale: toResponseLocale(input.locale),
+            locale: 'en',
           },
         )
         return {
@@ -1345,6 +1781,83 @@ export function createKravhanteringMcpServer(
           content: [
             {
               text: 'Requirement import instruction returned in structuredContent.importInstruction.',
+              type: 'text',
+            },
+          ],
+          structuredContent: payload,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    'requirements_manage_import',
+    {
+      annotations: {
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+        readOnlyHint: false,
+      },
+      description: `Manage MCP requirement import. Normal flow: call list_destinations or search_destinations; call requirements_get_import_schema; create a Kravimportfil payload; call validate with exactly {kind:"requirements_library", areaId} or {kind:"requirements_specification", specificationId}; optionally resolve missing norm references with requirements_manage_norm_reference; then call execute with validationToken. Validation sessions are immutable after validate, and execute accepts only validationToken. Use inspect_validation to troubleshoot full row/proposal detail or recover row state after a lost or uncertain execute response. To retry, build a corrected Kravimportfil from rows that were not successfully imported, then run validate and execute the new token. Do not copy successfully imported rows into the corrected payload because the server does not do generic duplicate detection across validation sessions. validate accepts at most ${mcpSettings.mcpImportMaxRows} rows and ${formatBytes(mcpSettings.mcpMaxRequestBytes)} per request/session. validationToken expires after ${mcpSettings.mcpImportValidationTtlMinutes} minute(s). execute imports all unconsumed rows without errors; warning rows are importable.`,
+      inputSchema: createManageImportSchema(),
+      outputSchema: ManageImportOutputSchema,
+      title: 'Manage Requirement Import',
+    },
+    async input => {
+      try {
+        const payload = await service.manageImport(
+          await getBaseContext(request, 'requirements_manage_import'),
+          input as ManageImportInput,
+        )
+        const text =
+          'result' in payload
+            ? 'Structured result returned in structuredContent.result.'
+            : 'validationToken' in payload || 'hasErrors' in payload
+              ? 'Requirement import validation result returned in structuredContent.'
+              : 'submittedPayload' in payload
+                ? 'Requirement import validation inspection returned in structuredContent.'
+                : 'Requirement import execution receipt returned in structuredContent.'
+        return {
+          content: [{ text, type: 'text' }],
+          structuredContent: payload,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    'requirements_manage_norm_reference',
+    {
+      annotations: {
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+        readOnlyHint: false,
+      },
+      description:
+        'List, search, or create Normbibliotek norm references used by requirement import. Use list/search to resolve normReferenceIds before generating a Kravimportfil. Archived norm references are excluded by default and are not valid for import.',
+      inputSchema: createManageNormReferenceSchema(),
+      outputSchema: ManageNormReferenceOutputSchema,
+      title: 'Manage Norm Reference',
+    },
+    async input => {
+      try {
+        const payload = await service.manageNormReference(
+          await getBaseContext(request, 'requirements_manage_norm_reference'),
+          input as ManageNormReferenceInput,
+        )
+        return {
+          content: [
+            {
+              text:
+                'result' in payload
+                  ? 'Structured result returned in structuredContent.result.'
+                  : 'Norm reference returned in structuredContent.normReference.',
               type: 'text',
             },
           ],

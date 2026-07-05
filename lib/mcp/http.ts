@@ -2,10 +2,9 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import {
   formatMcpRequestPayloadKiB,
   MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
-  MCP_REQUEST_PAYLOAD_MAX_BYTES,
 } from '@/lib/ai/generation-availability'
 import { McpAuthError, verifyMcpBearerToken } from '@/lib/auth/mcp-token'
-import { getCachedMcpMaxRequestBytes } from '@/lib/dal/ai-settings'
+import { getCachedMcpRuntimeSettings } from '@/lib/dal/ai-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
@@ -15,7 +14,6 @@ export const MCP_DEFAULT_REQUEST_BYTES = MCP_REQUEST_PAYLOAD_DEFAULT_BYTES
 
 interface RequestPayloadSize {
   contentLength?: number
-  exceededAbsoluteMax: boolean
   measuredBytes?: number
 }
 
@@ -67,33 +65,23 @@ function parseContentLength(request: Request): number | undefined {
 async function inspectRequestPayloadSize(
   request: Request,
 ): Promise<RequestPayloadSize> {
-  if (request.method !== 'POST') return { exceededAbsoluteMax: false }
+  if (request.method !== 'POST') return {}
   const contentLength = parseContentLength(request)
   if (contentLength !== undefined) {
-    return {
-      contentLength,
-      exceededAbsoluteMax: contentLength > MCP_REQUEST_PAYLOAD_MAX_BYTES,
-    }
+    return { contentLength }
   }
-  if (!request.body) return { exceededAbsoluteMax: false }
+  if (!request.body) return {}
 
   const reader = request.clone().body?.getReader()
-  if (!reader) return { exceededAbsoluteMax: false }
+  if (!reader) return {}
 
   let totalBytes = 0
   while (true) {
     const { done, value } = await reader.read()
     if (done) {
-      return {
-        exceededAbsoluteMax: false,
-        measuredBytes: totalBytes,
-      }
+      return { measuredBytes: totalBytes }
     }
     totalBytes += value.byteLength
-    if (totalBytes > MCP_REQUEST_PAYLOAD_MAX_BYTES) {
-      await reader.cancel().catch(() => undefined)
-      return { exceededAbsoluteMax: true }
-    }
   }
 }
 
@@ -112,17 +100,6 @@ export async function handleRequirementsMcpRequest(
 ): Promise<Response> {
   if (!['DELETE', 'GET', 'POST'].includes(request.method)) {
     return createMethodNotAllowedResponse()
-  }
-
-  const payloadSize = await inspectRequestPayloadSize(request)
-  if (payloadSize.exceededAbsoluteMax) {
-    return createPayloadTooLargeResponse(MCP_REQUEST_PAYLOAD_MAX_BYTES)
-  }
-  if (request.method === 'POST') {
-    const maxRequestBytes = await getCachedMcpMaxRequestBytes(db)
-    if (requestPayloadExceedsLimit(payloadSize, maxRequestBytes)) {
-      return createPayloadTooLargeResponse(maxRequestBytes)
-    }
   }
 
   try {
@@ -148,8 +125,18 @@ export async function handleRequirementsMcpRequest(
     throw err
   }
 
+  const mcpSettings = await getCachedMcpRuntimeSettings(db)
+  if (request.method === 'POST') {
+    const payloadSize = await inspectRequestPayloadSize(request)
+    if (
+      requestPayloadExceedsLimit(payloadSize, mcpSettings.mcpMaxRequestBytes)
+    ) {
+      return createPayloadTooLargeResponse(mcpSettings.mcpMaxRequestBytes)
+    }
+  }
+
   const { service } = createRequirementsRuntime(db)
-  const server = createKravhanteringMcpServer(service, request)
+  const server = createKravhanteringMcpServer(service, request, mcpSettings)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
   })

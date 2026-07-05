@@ -51,6 +51,11 @@ import {
 import { isRequirementPublishedStatus } from '@/lib/requirements/lifecycle'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import {
+  compareMcpSearchMatches,
+  findMcpSearchMatch,
+  type McpSearchMatch,
+} from '@/lib/requirements/mcp-search'
+import {
   recordSensitiveMutationSucceededWithExecutor,
   type SensitiveMutationAuditDetail,
 } from '@/lib/requirements/security-audit'
@@ -59,6 +64,7 @@ import type {
   GetRequirementInput,
   ManageRequirementInput,
   QueryCatalogInput,
+  QueryCatalogOutput,
   RequirementRefInput,
   RequirementsService,
   TransitionRequirementInput,
@@ -100,6 +106,122 @@ const CATALOG_TITLE_KEYS: Record<CatalogKind, ServiceMessageKey> = {
 
 function getCatalogTitle(catalog: CatalogKind, locale: 'en' | 'sv') {
   return translateServiceMessage(locale, CATALOG_TITLE_KEYS[catalog])
+}
+
+type McpLookupCatalogKind =
+  | 'categories'
+  | 'priority_levels'
+  | 'quality_characteristics'
+  | 'requirement_packages'
+  | 'types'
+
+type McpLookupCatalogRow = Record<string, unknown> & {
+  match?: McpSearchMatch
+}
+
+function isMcpLookupCatalog(
+  catalog: CatalogKind,
+): catalog is McpLookupCatalogKind {
+  return (
+    catalog === 'categories' ||
+    catalog === 'types' ||
+    catalog === 'quality_characteristics' ||
+    catalog === 'priority_levels' ||
+    catalog === 'requirement_packages'
+  )
+}
+
+function lookupSortValue(row: Record<string, unknown>): string {
+  const candidate =
+    row.name ?? row.nameSv ?? row.nameEn ?? row.code ?? row.id ?? ''
+  return String(candidate)
+}
+
+function compareLookupRows(
+  left: Record<string, unknown>,
+  right: Record<string, unknown>,
+): number {
+  return (
+    lookupSortValue(left).localeCompare(lookupSortValue(right), 'sv') ||
+    String(left.id ?? '').localeCompare(String(right.id ?? ''), 'sv')
+  )
+}
+
+async function listMcpLookupCatalogRows(
+  db: SqlServerDatabase,
+  catalog: McpLookupCatalogKind,
+  input: QueryCatalogInput,
+): Promise<Record<string, unknown>[]> {
+  if (catalog === 'categories') {
+    return (await listCategories(db)) as unknown as Record<string, unknown>[]
+  }
+  if (catalog === 'types') {
+    return (await listTypes(db)) as unknown as Record<string, unknown>[]
+  }
+  if (catalog === 'quality_characteristics') {
+    return (await listQualityCharacteristics(
+      db,
+      input.typeId,
+    )) as unknown as Record<string, unknown>[]
+  }
+  if (catalog === 'priority_levels') {
+    return (await listPriorityLevels(db)) as unknown as Record<
+      string,
+      unknown
+    >[]
+  }
+  return (await listRequirementPackages(db)) as unknown as Record<
+    string,
+    unknown
+  >[]
+}
+
+function lookupSearchFields(
+  catalog: McpLookupCatalogKind,
+  row: Record<string, unknown>,
+): Record<string, unknown> {
+  if (catalog === 'priority_levels') {
+    return {
+      assessmentCriteriaEn: row.assessmentCriteriaEn,
+      assessmentCriteriaSv: row.assessmentCriteriaSv,
+      code: row.code,
+      descriptionEn: row.descriptionEn,
+      descriptionSv: row.descriptionSv,
+      id: row.id,
+      nameEn: row.nameEn,
+      nameSv: row.nameSv,
+    }
+  }
+  if (catalog === 'requirement_packages') {
+    return {
+      id: row.id,
+      leadDisplayName: row.leadDisplayName,
+      name: row.name,
+      purposeAndScope: row.purposeAndScope,
+    }
+  }
+  if (catalog === 'types') {
+    const qualityCharacteristics = Array.isArray(row.qualityCharacteristics)
+      ? (row.qualityCharacteristics as Array<Record<string, unknown>>)
+      : []
+    return {
+      id: row.id,
+      nameEn: row.nameEn,
+      nameSv: row.nameSv,
+      qualityCharacteristicNamesEn: qualityCharacteristics
+        .map(item => item.nameEn)
+        .join(' '),
+      qualityCharacteristicNamesSv: qualityCharacteristics
+        .map(item => item.nameSv)
+        .join(' '),
+    }
+  }
+  return {
+    chapterId: row.chapterId,
+    id: row.id,
+    nameEn: row.nameEn,
+    nameSv: row.nameSv,
+  }
 }
 
 export function formatRequirementListItem(
@@ -407,6 +529,48 @@ export function createRequirementWorkflow({
         'requirements.query_catalog',
         { catalog },
         async () => {
+          if (input.operation != null) {
+            if (!isMcpLookupCatalog(catalog)) {
+              throw validationError(
+                'Catalog operation list/search is available only for lookup catalogs',
+                { catalog, operation: input.operation },
+              )
+            }
+
+            const rows = (
+              await listMcpLookupCatalogRows(db, catalog, input)
+            ).sort(compareLookupRows)
+
+            if (input.operation === 'list') {
+              return { result: rows } as unknown as QueryCatalogOutput
+            }
+
+            const search = input.search?.trim()
+            if (!search) {
+              throw validationError('Search text is required')
+            }
+
+            const result = rows
+              .flatMap(
+                (
+                  row,
+                ): Array<McpLookupCatalogRow & { match: McpSearchMatch }> => {
+                  const match = findMcpSearchMatch(
+                    lookupSearchFields(catalog, row),
+                    search,
+                  )
+                  return match ? [{ ...row, match }] : []
+                },
+              )
+              .sort(
+                (left, right) =>
+                  compareMcpSearchMatches(left.match, right.match) ||
+                  compareLookupRows(left, right),
+              )
+
+            return { result } as unknown as QueryCatalogOutput
+          }
+
           if (catalog === 'requirements') {
             const limit = clampLimit(input.limit)
             const offset = clampOffset(input.offset)

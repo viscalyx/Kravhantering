@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  ADMIN_AI_SETTINGS_CONSTRAINTS,
   AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
   addMcpMaxRequestBytesSteps,
+  MCP_IMPORT_MAX_ROWS_DEFAULT,
+  MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
 } from '@/lib/ai/generation-availability'
 import {
@@ -10,6 +13,7 @@ import {
   getAiGenerationAvailability,
   getAiGenerationSettings,
   getCachedMcpMaxRequestBytes,
+  getCachedMcpRuntimeSettings,
   resolveAiGenerationAvailability,
   updateAiGenerationSettings,
 } from '@/lib/dal/ai-settings'
@@ -38,6 +42,8 @@ describe('AI settings DAL', () => {
   it('loads the default enabled setting when the singleton row is absent', async () => {
     await expect(getAiGenerationSettings(db)).resolves.toEqual({
       aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+      mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+      mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
       mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
       requirementGenerationEnabled: true,
     })
@@ -57,6 +63,9 @@ describe('AI settings DAL', () => {
     try {
       await expect(getAiGenerationSettings(db)).resolves.toEqual({
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+        mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+        mcpImportValidationTtlMinutes:
+          MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
         mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
         requirementGenerationEnabled: false,
       })
@@ -79,6 +88,9 @@ describe('AI settings DAL', () => {
     try {
       await expect(getAiGenerationSettings(db)).resolves.toEqual({
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+        mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+        mcpImportValidationTtlMinutes:
+          MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
         mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
         requirementGenerationEnabled: true,
       })
@@ -130,6 +142,9 @@ describe('AI settings DAL', () => {
     )
     query.mockResolvedValueOnce([
       {
+        mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+        mcpImportValidationTtlMinutes:
+          MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
         mcpMaxRequestBytes: configuredLimit,
         requirementGenerationEnabled: 0,
       },
@@ -141,7 +156,6 @@ describe('AI settings DAL', () => {
       aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: false,
-      mcpMaxRequestBytes: configuredLimit,
       requirementGenerationEnabled: false,
     })
   })
@@ -151,6 +165,9 @@ describe('AI settings DAL', () => {
       resolveAiGenerationAvailability(
         {
           aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+          mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+          mcpImportValidationTtlMinutes:
+            MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
           mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
           requirementGenerationEnabled: true,
         },
@@ -160,7 +177,6 @@ describe('AI settings DAL', () => {
       aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
       disabledByEnvironment: true,
       effectiveRequirementGenerationEnabled: false,
-      mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
       requirementGenerationEnabled: true,
     })
   })
@@ -173,6 +189,9 @@ describe('AI settings DAL', () => {
         db,
         {
           aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+          mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+          mcpImportValidationTtlMinutes:
+            MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
           mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
           requirementGenerationEnabled: false,
         },
@@ -180,8 +199,11 @@ describe('AI settings DAL', () => {
       ),
     ).resolves.toEqual({
       aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+      constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: false,
+      mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+      mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
       mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
       requirementGenerationEnabled: false,
     })
@@ -191,6 +213,8 @@ describe('AI settings DAL', () => {
       expect.stringContaining('UPDATE ai_settings'),
       [
         AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+        MCP_IMPORT_MAX_ROWS_DEFAULT,
+        MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
         MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
         false,
         expect.any(String),
@@ -203,6 +227,9 @@ describe('AI settings DAL', () => {
     await expect(
       updateAiGenerationSettings(db, {
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+        mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+        mcpImportValidationTtlMinutes:
+          MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
         mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES + 1,
         requirementGenerationEnabled: true,
       }),
@@ -221,6 +248,9 @@ describe('AI settings DAL', () => {
     )
     query.mockResolvedValueOnce([
       {
+        mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+        mcpImportValidationTtlMinutes:
+          MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
         mcpMaxRequestBytes: configuredLimit,
         requirementGenerationEnabled: 1,
       },
@@ -232,11 +262,11 @@ describe('AI settings DAL', () => {
     expect(query).toHaveBeenCalledTimes(1)
   })
 
-  it('falls back to the default MCP request payload limit when loading fails', async () => {
+  it('fails closed when runtime MCP settings cannot be loaded', async () => {
     query.mockRejectedValueOnce(new Error('settings unavailable'))
 
-    await expect(getCachedMcpMaxRequestBytes(db)).resolves.toBe(
-      MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+    await expect(getCachedMcpRuntimeSettings(db)).rejects.toThrow(
+      'settings unavailable',
     )
   })
 })

@@ -1331,27 +1331,37 @@
     },
     "ai": {
       "title": "AI",
-      "description": "Styr om användare kan generera kravutkast med AI-stöd.",
+      "description": "Styr övergripande AI-inställningar för hela systemet.",
       "adminPreferenceDisabled": "Avstängt",
       "adminPreferenceEnabled": "Påslaget",
       "disabledTooltip": "Du behöver rollen Administratör.",
       "environmentOverrideNotice": "Driftkonfigurationen stänger för närvarande av AI-kravgenerering. Du kan spara inställningen i Administrationscenter, men generering är fortsatt avstängd tills driftöverskrivningen tas bort.",
       "decreaseMcpMaxRequestLimit": "Sänk MCP-anropsgränsen",
       "fieldHelp": {
-        "mcpMaxRequestLimit": "Största tillåtna MCP POST-nyttolast. Standardvärdet är 1024 KiB. Värden ändras i steg om 102,4 KiB, så tio steg motsvarar 1 MiB, och hålls inom intervallet 102,4 KiB till 5 MiB.",
-        "requirementGenerationEnabled": "Stäng av AI-kravgenerering för alla användare. Inställningen påverkar knappen i kravbiblioteket, genereringsdialogen och REST-rutten för generering.",
+        "mcpImportMaxRows": "Högsta antal rader som accepteras i en MCP-valideringssession för import. Använd detta för att hålla importvalidering på en hanterbar nivå.",
+        "mcpImportValidationTtl": "Hur länge en sparad MCP-valideringstoken för import kan användas för inspektion eller körning innan den upphör att gälla.",
+        "mcpMaxRequestLimit": "Största tillåtna MCP POST-nyttolast och sparad MCP-importsession. Använd detta för att styra hur stora MCP-anrop och valideringssessioner får bli.",
+        "requirementGenerationEnabled": "Styr om användare kan generera kravutkast med AI-stöd. När detta är avstängt kan användare fortfarande se AI-kontrollerna, men inte starta ny kravgenerering. Inställningen påverkar knappen i kravbiblioteket, genereringsdialogen och REST-rutten för generering.",
         "safetyRuleCacheTtl": "Hur länge en process får använda den senast lästa regeluppsättningen innan den hämtas från databasen igen. Ändringar i denna process börjar gälla direkt när en administratör sparar en regel.",
         "safetyRules": "Varje expanderbar rad är en säkerhetsregel. Lägg till egna ord med ordtyp och riktning. Standardord kan inaktiveras eller få annan riktning, och markeras då med en varningsikon."
       },
       "increaseMcpMaxRequestLimit": "Höj MCP-anropsgränsen",
       "loadError": "Kunde inte läsa AI-inställningar.",
+      "minutes": "min",
+      "mcpImportMaxRows": "Radgräns för MCP-import",
+      "mcpImportValidationTtl": "TTL för MCP-validering",
+      "mcpInterfaceDescription": "Styr MCP-transport, sparade MCP-importsessioner och valideringsgränser för importflöden.",
+      "mcpInterfaceTitle": "MCP-gränssnitt",
+      "mcpImportMaxRowsConstraint": "Tillåtet intervall: {min} till {max} rader. Steg: {step}.",
       "mcpMaxRequestLimit": "MCP-anropsgräns",
+      "mcpImportValidationTtlConstraint": "Tillåtet intervall: {min} till {max} min. Steg: {step}.",
+      "mcpMaxRequestLimitConstraint": "Tillåtet intervall: {min} till {max}. Steg: {step}.",
       "mcpMaxRequestLimitCurrent": "Aktuell gräns: {value}",
-      "requirementGenerationDescription": "När detta är avstängt kan användare fortfarande se AI-kontrollerna, men inte starta ny kravgenerering.",
       "requirementGenerationEnabled": "Kravgenerering",
       "saveError": "Kunde inte spara AI-inställningar.",
-      "securityDescription": "Styr MCP-transportskydd och de ord som används av AI-säkerhetsfiltret.",
-      "securityTitle": "AI- och MCP-säkerhet",
+      "securityDescription": "Styr AI-assisterad kravgenerering, säkerhetsregelcache och AI-säkerhetsfilter.",
+      "securityTitle": "AI-assistering",
+      "rows": "rader",
       "active": "Aktiv",
       "activeTermCount": "{activeCount}/{totalCount} aktiva",
       "addTerm": "Lägg till",
@@ -1389,6 +1399,7 @@
       "seconds": "sek",
       "selectTerm": "Markera ord",
       "selectTermNamed": "Markera {term}",
+      "safetyRuleCacheTtlConstraint": "Tillåtet intervall: {min} till {max} sek. Steg: {step}.",
       "standard": "Standard",
       "standardDeviation": "Avviker från standard",
       "status": "Status",
@@ -2085,18 +2096,18 @@
       "title": "AI",
       "overview": {
         "heading": "Syfte",
-        "body": "AI-fliken styr hur AI-assisterad kravgenerering och AI-nära MCP-anrop får användas i hela systemet. Inställningarna gäller globalt och påverkar både kravlistan, kravunderlag och importflöden som använder AI."
+        "body": "AI-fliken styr hur AI-assisterad kravgenerering samt AI-nära MCP-anrop och MCP-import får användas i hela systemet. Inställningarna gäller globalt och påverkar kravlistan, kravunderlag och importflöden som använder AI eller MCP."
       },
       "settings": {
         "heading": "Vad kan ställas in",
-        "body": "Du kan slå på eller av AI-assisterad kravgenerering, styra hur länge den aktiva säkerhetsregeluppsättningen får ligga i servercache, sätta högsta tillåtna MCP-begäran och förvalta orden som AI- och MCP-säkerhetskontrollen använder. Alla ändringar på AI-fliken sparas direkt när du ändrar ett fält eller en rad."
+        "body": "Du kan slå på eller av AI-assisterad kravgenerering, styra hur länge den aktiva säkerhetsregeluppsättningen får ligga i servercache, förvalta orden som AI-säkerhetskontrollen använder samt sätta gränser för MCP-begäran, MCP-sessioner och MCP-import. Alla ändringar på AI-fliken sparas direkt när du ändrar ett fält eller en rad."
       },
       "precedence": {
         "heading": "Prioritet",
         "body": "Driftvariabeln AI_REQUIREMENT_GENERATION_DISABLED har högre prioritet. När den är aktiv är generering avstängd även om den sparade inställningen i Administrationscenter är påslagen."
       },
       "safetyRules": {
-        "heading": "AI- och MCP-säkerhet",
+        "heading": "AI-assistering",
         "body": "Säkerhetsreglerna granskar text innan den skickas till en AI-modell och efter att modellen har svarat. Om regeluppsättningen inte kan läsas från databasen stoppas AI-assisteringen. Reglerna är avsedda att fånga instruktioner som försöker ta över prompten, begäran om interna instruktioner, kodade försök att kringgå skydd, hemligheter, skadligt innehåll och systemnära innehåll."
       },
       "ruleTypes": {

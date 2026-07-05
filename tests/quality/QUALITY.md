@@ -1042,6 +1042,60 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 23: specifi
 ```
 <!-- markdownlint-enable MD013 -->
 
+### Scenario 24: MCP requirement import keeps token-bound validation execution narrow
+
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: inferred — docs/integrations/mcp-server-user-guide.md "MCP Requirement Import Flow"]`
+
+**What happened:** MCP import lets an agent validate and later execute a
+`Kravimportfil` without resending the full payload. If execution accepted
+destination overrides, row patches, or replayed previous receipts, a token leak
+or stale reference-data change could create duplicate or misplaced krav. If
+validation sessions stored raw tokens, database read access could become import
+session takeover.
+
+**Covered code line ranges:** This scenario covers the public MCP import tool
+contract, persisted validation-session implementation, and Admin Center caps in
+these implementation ranges:
+
+<!-- markdownlint-disable MD013 -->
+```text
+lib/mcp/server.ts:935-1009
+lib/mcp/server.ts:1795-1825
+lib/requirements/import-service.ts:201-290
+lib/requirements/import-service.ts:1583-1785
+lib/requirements/import-service.ts:2100-2553
+lib/dal/requirement-import-validation-sessions.ts:1-170
+lib/ai/generation-availability.ts:1-79
+lib/dal/ai-settings.ts:438-529
+app/api/admin/ai-settings/route.ts:26-150
+```
+<!-- markdownlint-enable MD013 -->
+
+**The requirement:** `requirements_manage_import` must expose
+`list_destinations`, `search_destinations`, `validate`, `execute`, and
+`inspect_validation`. `validate` must create a persisted SQL-backed validation
+session with only a hashed validation token stored. `execute` and
+`inspect_validation` must accept only `validationToken`, re-authorize the stored
+destination at call time, and reject stale reference data. Execution must
+re-check that the stored destination still exists, import only unconsumed rows
+without errors, and update the session in the same transaction as requirement
+creation. Validation-session diagnostics must log hashes, counts, fingerprints,
+and issue codes without raw row text, raw payload JSON, or raw tokens.
+Validation responses must use the closed public MCP import issue-code set and
+store immutable resolved rows separately from the submitted payload and
+execution receipts. Admin Center MCP settings must include request/session
+bytes, max import rows, and validation TTL without leaking those fields through
+ordinary requirement-generation availability.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 24: MCP requirement import keeps token-bound validation execution narrow"
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,

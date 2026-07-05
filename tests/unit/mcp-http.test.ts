@@ -9,7 +9,11 @@ import {
 } from 'vitest'
 
 const serviceState = vi.hoisted(() => ({
-  getCachedMcpMaxRequestBytes: vi.fn(async () => 1024 * 1024),
+  getCachedMcpRuntimeSettings: vi.fn(async () => ({
+    mcpImportMaxRows: 500,
+    mcpImportValidationTtlMinutes: 60,
+    mcpMaxRequestBytes: 1024 * 1024,
+  })),
   getService: vi.fn(),
 }))
 
@@ -48,16 +52,13 @@ vi.mock('@/lib/auth/mcp-token', () => ({
 }))
 
 vi.mock('@/lib/dal/ai-settings', () => ({
-  getCachedMcpMaxRequestBytes: serviceState.getCachedMcpMaxRequestBytes,
+  getCachedMcpRuntimeSettings: serviceState.getCachedMcpRuntimeSettings,
 }))
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import {
-  addMcpMaxRequestBytesSteps,
-  MCP_REQUEST_PAYLOAD_MAX_BYTES,
-} from '@/lib/ai/generation-availability'
+import { addMcpMaxRequestBytesSteps } from '@/lib/ai/generation-availability'
 import { McpAuthError, verifyMcpBearerToken } from '@/lib/auth/mcp-token'
 import {
   handleRequirementsMcpRequest,
@@ -258,6 +259,12 @@ function createFakeService(
       message: 'Specifications',
       specifications: [],
     }),
+    manageImport: vi.fn().mockResolvedValue({
+      result: [],
+    }),
+    manageNormReference: vi.fn().mockResolvedValue({
+      result: [],
+    }),
     removeFromSpecification: vi.fn().mockResolvedValue({
       message: 'Requirement removed from specification',
       removedCount: 1,
@@ -320,9 +327,11 @@ async function createInMemoryClient(
 describe('handleRequirementsMcpRequest', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    serviceState.getCachedMcpMaxRequestBytes.mockResolvedValue(
-      MCP_DEFAULT_REQUEST_BYTES,
-    )
+    serviceState.getCachedMcpRuntimeSettings.mockResolvedValue({
+      mcpImportMaxRows: 500,
+      mcpImportValidationTtlMinutes: 60,
+      mcpMaxRequestBytes: MCP_DEFAULT_REQUEST_BYTES,
+    })
     serviceState.getService.mockReturnValue(createFakeService())
   })
 
@@ -365,8 +374,10 @@ describe('handleRequirementsMcpRequest', () => {
           'requirements_list_improvement_suggestions',
           'requirements_list_graduation_target_areas',
           'requirements_list_specifications',
+          'requirements_manage_import',
           'requirements_manage_requirement',
           'requirements_manage_improvement_suggestion',
+          'requirements_manage_norm_reference',
           'requirements_query_catalog',
           'requirements_remove_from_specification',
           'requirements_transition_requirement',
@@ -374,16 +385,20 @@ describe('handleRequirementsMcpRequest', () => {
       )
     })
 
-    it('describes requirements_query_catalog filters and pagination', async () => {
+    it('describes requirements_query_catalog filters, lookup lists, and pagination', async () => {
       const queryTool = getTool('requirements_query_catalog')
 
       expect(queryTool).toBeDefined()
       expect(queryTool?.description).toContain('priority_levels')
+      expect(queryTool?.description).toContain('quality_characteristics')
       const queryInputSchemaText = JSON.stringify(queryTool?.inputSchema)
       expect(queryInputSchemaText).toContain('priority_levels')
+      expect(queryInputSchemaText).toContain('operation')
+      expect(queryInputSchemaText).toContain('search')
       expect(queryInputSchemaText).toContain('normReferenceIds')
       expect(queryInputSchemaText).toContain('requirementPackageIds')
       expect(queryInputSchemaText).toContain('sortBy')
+      expect(JSON.stringify(queryTool?.outputSchema)).toContain('result')
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('pagination')
     })
 
@@ -392,13 +407,9 @@ describe('handleRequirementsMcpRequest', () => {
       const instructionTool = getTool('requirements_get_import_instruction')
 
       expect(schemaTool).toBeDefined()
-      expect(schemaTool?.description).toContain('mandatory contract')
+      expect(schemaTool?.description).toContain('mandatory machine contract')
       expect(schemaTool?.description).toContain('Kravimportfil')
-      expect(JSON.stringify(schemaTool?.inputSchema)).toContain(
-        'Supported values',
-      )
-      expect(JSON.stringify(schemaTool?.inputSchema)).toContain('"en"')
-      expect(JSON.stringify(schemaTool?.inputSchema)).toContain('"sv"')
+      expect(JSON.stringify(schemaTool?.inputSchema)).not.toContain('locale')
       expect(JSON.stringify(schemaTool?.outputSchema)).toContain(
         'Canonical requirement import JSON Schema object',
       )
@@ -414,6 +425,37 @@ describe('handleRequirementsMcpRequest', () => {
       expect(JSON.stringify(instructionTool?.outputSchema)).toContain(
         'importInstruction',
       )
+    })
+
+    it('describes MCP import and norm reference management workflows', async () => {
+      const importTool = getTool('requirements_manage_import')
+      const normTool = getTool('requirements_manage_norm_reference')
+
+      expect(importTool).toBeDefined()
+      expect(importTool?.description).toContain('list_destinations')
+      expect(importTool?.description).toContain('validationToken')
+      expect(importTool?.description).toContain(
+        'Validation sessions are immutable after validate',
+      )
+      expect(importTool?.description).toContain('corrected Kravimportfil')
+      expect(importTool?.description).toContain(
+        'does not do generic duplicate detection',
+      )
+      expect(importTool?.description).toContain('warning rows are importable')
+      expect(JSON.stringify(importTool?.inputSchema)).toContain(
+        'search_destinations',
+      )
+      expect(JSON.stringify(importTool?.inputSchema)).toContain(
+        'inspect_validation',
+      )
+      expect(JSON.stringify(importTool?.outputSchema)).toContain(
+        'validationToken',
+      )
+
+      expect(normTool).toBeDefined()
+      expect(normTool?.description).toContain('Archived norm references')
+      expect(JSON.stringify(normTool?.inputSchema)).toContain('create')
+      expect(JSON.stringify(normTool?.outputSchema)).toContain('match')
     })
 
     it('describes specification copy paths for MCP clients', async () => {
@@ -718,6 +760,8 @@ describe('handleRequirementsMcpRequest', () => {
         catalog: 'requirements',
         normReferenceIds: [4],
         priorityLevelIds: [2],
+        locale: 'en',
+        responseFormat: 'json',
         sortBy: 'priorityLevel',
         sortDirection: 'desc',
         requirementPackageIds: [3],
@@ -746,7 +790,7 @@ describe('handleRequirementsMcpRequest', () => {
     const fakeService = serviceState.getService.mock.results[0]?.value
 
     const result = await client.callTool({
-      arguments: { locale: 'sv' },
+      arguments: {},
       name: 'requirements_get_import_schema',
     })
 
@@ -765,7 +809,7 @@ describe('handleRequirementsMcpRequest', () => {
         },
       },
       required: ['schemaVersion', 'requirements'],
-      title: 'Kravimport',
+      title: 'Requirements import',
     })
     const schemaProperties = (
       result.structuredContent as { properties?: Record<string, unknown> }
@@ -774,7 +818,7 @@ describe('handleRequirementsMcpRequest', () => {
     expect(schemaProperties).not.toHaveProperty('specificationId')
     expect(fakeService.getImportSchema).toHaveBeenCalledWith(
       expect.anything(),
-      { locale: 'sv' },
+      { locale: 'en' },
     )
 
     await client.close()
@@ -1044,108 +1088,7 @@ describe('handleRequirementsMcpRequest', () => {
     expect(serviceState.getService).not.toHaveBeenCalled()
   })
 
-  it('returns 413 and skips auth for oversized MCP request payloads', async () => {
-    const response = await handleRequirementsMcpRequest(
-      new Request('https://example.test/api/mcp', {
-        body: JSON.stringify({
-          id: 1,
-          jsonrpc: '2.0',
-          method: 'tools/list',
-        }),
-        headers: {
-          'content-length': String(MCP_DEFAULT_REQUEST_BYTES + 1),
-          'content-type': 'application/json',
-        },
-        method: 'POST',
-      }),
-      {} as never,
-    )
-
-    expect(response.status).toBe(413)
-    expect(await response.json()).toEqual({
-      error: {
-        code: -32000,
-        message: 'MCP request payload exceeds the 1024 KiB size limit.',
-      },
-      id: null,
-      jsonrpc: '2.0',
-    })
-    expect(serviceState.getCachedMcpMaxRequestBytes).toHaveBeenCalledOnce()
-    expect(verifyMcpBearerToken).not.toHaveBeenCalled()
-    expect(serviceState.getService).not.toHaveBeenCalled()
-  })
-
-  it('returns 413 before DB or auth for payloads above the absolute MCP cap', async () => {
-    const response = await handleRequirementsMcpRequest(
-      new Request('https://example.test/api/mcp', {
-        body: JSON.stringify({
-          id: 1,
-          jsonrpc: '2.0',
-          method: 'tools/list',
-        }),
-        headers: {
-          'content-length': String(MCP_REQUEST_PAYLOAD_MAX_BYTES + 1),
-          'content-type': 'application/json',
-        },
-        method: 'POST',
-      }),
-      {} as never,
-    )
-
-    expect(response.status).toBe(413)
-    expect(await response.json()).toEqual({
-      error: {
-        code: -32000,
-        message: 'MCP request payload exceeds the 5120 KiB size limit.',
-      },
-      id: null,
-      jsonrpc: '2.0',
-    })
-    expect(serviceState.getCachedMcpMaxRequestBytes).not.toHaveBeenCalled()
-    expect(verifyMcpBearerToken).not.toHaveBeenCalled()
-    expect(serviceState.getService).not.toHaveBeenCalled()
-  })
-
-  it('uses a lowered configured MCP request payload limit before auth', async () => {
-    const loweredLimit = addMcpMaxRequestBytesSteps(
-      MCP_DEFAULT_REQUEST_BYTES,
-      -1,
-    )
-    serviceState.getCachedMcpMaxRequestBytes.mockResolvedValueOnce(loweredLimit)
-
-    const response = await handleRequirementsMcpRequest(
-      new Request('https://example.test/api/mcp', {
-        body: JSON.stringify({
-          id: 1,
-          jsonrpc: '2.0',
-          method: 'tools/list',
-        }),
-        headers: {
-          'content-length': String(MCP_DEFAULT_REQUEST_BYTES),
-          'content-type': 'application/json',
-        },
-        method: 'POST',
-      }),
-      {} as never,
-    )
-
-    expect(response.status).toBe(413)
-    expect(await response.json()).toEqual({
-      error: {
-        code: -32000,
-        message: 'MCP request payload exceeds the 921.6 KiB size limit.',
-      },
-      id: null,
-      jsonrpc: '2.0',
-    })
-    expect(serviceState.getCachedMcpMaxRequestBytes).toHaveBeenCalledOnce()
-    expect(verifyMcpBearerToken).not.toHaveBeenCalled()
-    expect(serviceState.getService).not.toHaveBeenCalled()
-  })
-
-  it('allows payloads under a raised configured MCP request payload limit', async () => {
-    const raisedLimit = addMcpMaxRequestBytesSteps(MCP_DEFAULT_REQUEST_BYTES, 1)
-    serviceState.getCachedMcpMaxRequestBytes.mockResolvedValueOnce(raisedLimit)
+  it('returns 401 before payload size inspection when MCP auth fails', async () => {
     vi.mocked(verifyMcpBearerToken).mockRejectedValueOnce(
       new McpAuthError('Missing Bearer token.', 401),
     )
@@ -1167,9 +1110,110 @@ describe('handleRequirementsMcpRequest', () => {
     )
 
     expect(response.status).toBe(401)
-    expect(serviceState.getCachedMcpMaxRequestBytes).toHaveBeenCalledOnce()
+    expect(await response.json()).toEqual({
+      error: { code: -32000, message: 'Missing Bearer token.' },
+      id: null,
+      jsonrpc: '2.0',
+    })
+    expect(serviceState.getCachedMcpRuntimeSettings).not.toHaveBeenCalled()
     expect(verifyMcpBearerToken).toHaveBeenCalledOnce()
     expect(serviceState.getService).not.toHaveBeenCalled()
+  })
+
+  it('returns 413 after auth for oversized MCP request payloads', async () => {
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp', {
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'tools/list',
+        }),
+        headers: {
+          'content-length': String(MCP_DEFAULT_REQUEST_BYTES + 1),
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      }),
+      {} as never,
+    )
+
+    expect(response.status).toBe(413)
+    expect(await response.json()).toEqual({
+      error: {
+        code: -32000,
+        message: 'MCP request payload exceeds the 10240 KiB size limit.',
+      },
+      id: null,
+      jsonrpc: '2.0',
+    })
+    expect(serviceState.getCachedMcpRuntimeSettings).toHaveBeenCalledOnce()
+    expect(verifyMcpBearerToken).toHaveBeenCalledOnce()
+    expect(serviceState.getService).not.toHaveBeenCalled()
+  })
+
+  it('uses a lowered configured MCP request payload limit after auth', async () => {
+    const loweredLimit = addMcpMaxRequestBytesSteps(
+      MCP_DEFAULT_REQUEST_BYTES,
+      -1,
+    )
+    serviceState.getCachedMcpRuntimeSettings.mockResolvedValueOnce({
+      mcpImportMaxRows: 500,
+      mcpImportValidationTtlMinutes: 60,
+      mcpMaxRequestBytes: loweredLimit,
+    })
+
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp', {
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'tools/list',
+        }),
+        headers: {
+          'content-length': String(MCP_DEFAULT_REQUEST_BYTES),
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      }),
+      {} as never,
+    )
+
+    expect(response.status).toBe(413)
+    expect(await response.json()).toEqual({
+      error: {
+        code: -32000,
+        message: 'MCP request payload exceeds the 9216 KiB size limit.',
+      },
+      id: null,
+      jsonrpc: '2.0',
+    })
+    expect(serviceState.getCachedMcpRuntimeSettings).toHaveBeenCalledOnce()
+    expect(verifyMcpBearerToken).toHaveBeenCalledOnce()
+    expect(serviceState.getService).not.toHaveBeenCalled()
+  })
+
+  it('allows payloads under the configured MCP request payload limit', async () => {
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp', {
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'tools/list',
+        }),
+        headers: {
+          accept: 'application/json, text/event-stream',
+          'content-length': String(MCP_DEFAULT_REQUEST_BYTES - 1),
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      }),
+      {} as never,
+    )
+
+    expect(response.status).toBe(200)
+    expect(serviceState.getCachedMcpRuntimeSettings).toHaveBeenCalledOnce()
+    expect(verifyMcpBearerToken).toHaveBeenCalledOnce()
+    expect(serviceState.getService).toHaveBeenCalledOnce()
   })
 
   it('rejects specification tools unless exactly one specification identifier is provided', async () => {

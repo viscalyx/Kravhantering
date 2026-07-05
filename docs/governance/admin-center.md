@@ -126,10 +126,12 @@ installation starts without organization-specific prefix policy.
 ## AI
 
 The `AI` tab manages AI-assisted requirement generation directly in the AI
-panel. Its `AI and MCP security` section contains the safety-rule cache time,
-MCP request payload limit, and editable AI safety-rule terms. The AI tab has no
-shared Save button; controls save directly when changed, with per-control or
-per-row status.
+panel. Its `AI assistance` section contains the requirement-generation toggle,
+safety-rule cache time and editable AI safety-rule terms. Its `MCP interface`
+section contains the MCP request/session payload limit and MCP import row/TTL
+limits. The AI tab has no shared Save button; controls save directly when
+changed, with per-control or per-row status. Numeric controls show their
+allowed range and step directly under the control.
 
 The source of truth is:
 
@@ -148,6 +150,9 @@ Admin-managed AI settings include:
 
 - whether requirement generation is enabled as an administrator preference
 - the maximum MCP request payload size, sent as `mcpMaxRequestBytes`
+- the maximum MCP import validation row count, sent as `mcpImportMaxRows`
+- the MCP import validation-session lifetime, sent as
+  `mcpImportValidationTtlMinutes`
 - the AI safety-rule cache time, sent as `aiSafetyRuleCacheTtlSeconds`
 - active AI safety-rule terms, their direction, and whether standard terms have
   been disabled
@@ -164,15 +169,13 @@ visible but disabled with an explanatory tooltip. An already-open generator
 dialog disables its Generate button. The REST generation path also fails before
 taxonomy, model-catalog, or provider calls.
 
-The MCP payload limit defaults to exactly `1 MiB` (`1048576` bytes). Admins can
-raise or lower it in `102.4 KiB` increments, modelled as ten steps per MiB.
-The database stores the resulting integer byte value, so the default is stored
-as `1048576` and ten increases from the default store `2097152` (`2 MiB`).
-The configured range is approximately `102.4 KiB` through `5 MiB`, with no
-unlimited value. `/api/mcp` applies an absolute `5 MiB` cap before
-authentication or database work, then applies the configured value from the
-process-local AI settings cache before bearer-token verification and service
-creation.
+The MCP payload/session limit defaults to exactly `10 MiB` (`10485760` bytes).
+Admins can raise or lower it in `1 MiB` increments within the `1 MiB` to
+`10 MiB` range. `/api/mcp` verifies the bearer token first, then loads the
+runtime MCP settings and applies the configured payload cap before creating the
+MCP server. MCP import validation also uses this byte cap for persisted session
+data. MCP import validation additionally defaults to `500` rows per session and
+a `60` minute validation-token TTL.
 
 AI safety rules are shown as expandable rows. Each row contains term groups for
 actions, targets, direct phrases/markers, and coding words. Term rows show the

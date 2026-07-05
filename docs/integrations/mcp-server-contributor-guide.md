@@ -21,7 +21,7 @@ For admin-managed default column settings, see
 - Primary public identifier: `uniqueId`
 - Read response formats: `markdown`, `json`
 - Supported locales: `en`, `sv`
-- Exposed MCP tools: 14
+- Exposed MCP tools: 16
 - Exposed MCP resources:
   - `requirements://requirement/{uniqueId}`
   - `ui://requirements/requirement-detail/{uniqueId}`
@@ -36,7 +36,7 @@ For admin-managed default column settings, see
   Creates a fresh `WebStandardStreamableHTTPServerTransport` for each request
   and connects the server instance.
 - `lib/mcp/server.ts`
-  Registers the fourteen tools, the JSON resource, and the HTML UI resource.
+  Registers the sixteen tools, the JSON resource, and the HTML UI resource.
 - `lib/dal/ui-settings.ts`
   Loads default column settings.
 - `messages/en.json` and `messages/sv.json`
@@ -81,9 +81,10 @@ keeps lifecycle behavior aligned between REST and MCP.
 
 ## Tool Design
 
-The MCP surface is split into four areas: import contracts (two tools),
-individual requirements (four tools), requirements specifications (six tools),
-and improvement suggestions (two tools).
+The MCP surface is split into five areas: import contracts and execution (four
+tools), individual requirements (four tools), requirements specifications (six
+tools), improvement suggestions (two tools), and Normbibliotek management
+through the import support tool.
 
 ### `requirements_query_catalog`
 
@@ -104,6 +105,12 @@ nullable `iconName` fields. Requirement list/detail version output also carries
 status icon data and priority-level icon data as additive fields so older
 clients can keep using the existing status and priority-level names.
 
+For `categories`, `types`, `quality_characteristics`, `priority_levels`, and
+`requirement_packages`, `operation: "list"` and `operation: "search"` return the
+lean MCP lookup contract `{ result: [...] }`. Search rows include
+`match.quality` and `match.matchedFields` metadata. These operations do not use
+pagination wrappers.
+
 This avoids a larger set of narrowly scoped read tools.
 
 ### `requirements_get_import_schema`
@@ -111,7 +118,7 @@ This avoids a larger set of narrowly scoped read tools.
 Returns the canonical JSON Schema for producing a `Kravimportfil`. The returned
 schema is the mandatory contract for generated import JSON.
 
-- **Inputs:** `locale` (`en` | `sv`, default `en`)
+- **Inputs:** none
 - **Output:** the JSON Schema object directly in `structuredContent`
 - **Text content:** short status text that points to `structuredContent`
 - **Grouping:** import contracts
@@ -127,6 +134,44 @@ or replace the JSON Schema.
 - **Text content:** short status text that points to
   `structuredContent.importInstruction`
 - **Grouping:** import contracts
+
+### `requirements_manage_norm_reference`
+
+Lists, searches, or creates Normbibliotek rows used by import. List/search
+default to active rows only. `includeArchived` exists for diagnostics, but
+archived norm references are rejected by import validation. Create delegates to
+the existing audited norm-reference mutation workflow and returns
+`structuredContent.normReference`.
+
+### `requirements_manage_import`
+
+Manages persisted MCP import validation sessions.
+
+- `list_destinations` and `search_destinations` return import destinations the
+  actor can write to.
+- `validate` accepts `{kind:"requirements_library", areaId}` or
+  `{kind:"requirements_specification", specificationId}` plus a raw
+  `Kravimportfil` payload. Schema-valid payloads create a SQL-backed validation
+  session even when individual rows have errors.
+- Validation sessions are immutable after `validate`.
+- `execute` accepts only `validationToken`. It imports all unconsumed rows
+  without errors in the same transaction that marks the session rows consumed,
+  after re-checking that the stored destination still exists.
+- `inspect_validation` accepts only `validationToken` and returns full
+  submitted/resolved row details, proposals, reference-data freshness, and
+  imported state.
+- If a caller needs to recover after a lost or uncertain execute response,
+  `inspect_validation` is the row-state recovery path. Build a corrected
+  `Kravimportfil` from rows that were not successfully imported, then run
+  `validate` and `execute` with a new token. Do not copy successfully imported
+  rows into the corrected payload because cross-session duplicate detection is
+  not generic.
+
+Validation tokens are random 32-byte base64url values. Only SHA-256 token hashes
+are stored. `validation_result_json` stores resolved row state, issues,
+proposal metadata, and reference-data include names; the submitted payload and
+execution receipts are stored separately. Session TTL, row cap, and byte cap
+come from `ai_settings`.
 
 ### `requirements_get_requirement`
 

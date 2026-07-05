@@ -184,6 +184,8 @@ function createService() {
     listSpecifications,
     listSuggestions,
     manageDeviation: vi.fn(),
+    manageImport: vi.fn(async () => ({ result: [] })),
+    manageNormReference: vi.fn(async () => ({ result: [] })),
     manageRequirement,
     manageSuggestion,
     previewLibraryImport: vi.fn(async () => ({
@@ -212,6 +214,8 @@ function createService() {
     getRequirement,
     graduateSpecificationLocalRequirement,
     listGraduationTargetAreas,
+    manageImport: service.manageImport,
+    manageNormReference: service.manageNormReference,
     manageRequirement,
     manageSuggestion,
     queryCatalog,
@@ -331,6 +335,14 @@ describe('MCP authorization seams', () => {
       },
       name: 'requirements_manage_improvement_suggestion',
     })
+    await client.callTool({
+      arguments: { operation: 'list_destinations' },
+      name: 'requirements_manage_import',
+    })
+    await client.callTool({
+      arguments: { operation: 'list' },
+      name: 'requirements_manage_norm_reference',
+    })
     expectContext(service.queryCatalog, 'requirements_query_catalog')
     expectContext(service.getImportSchema, 'requirements_get_import_schema')
     expectContext(
@@ -357,6 +369,11 @@ describe('MCP authorization seams', () => {
     expectContext(
       service.manageSuggestion,
       'requirements_manage_improvement_suggestion',
+    )
+    expectContext(service.manageImport, 'requirements_manage_import')
+    expectContext(
+      service.manageNormReference,
+      'requirements_manage_norm_reference',
     )
     await Promise.allSettled([client.close(), server.close()])
   })
