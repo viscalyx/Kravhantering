@@ -88,6 +88,7 @@ COPY --chown=node:node package.json package-lock.json ./
 COPY --chown=node:node scripts/db-sqlserver-admin.mjs ./scripts/db-sqlserver-admin.mjs
 COPY --chown=node:node typeorm/migrations ./typeorm/migrations
 COPY --chown=node:node typeorm/seed-required.mjs ./typeorm/seed-required.mjs
+COPY --chown=node:node typeorm/ai-safety-seed-data.mjs ./typeorm/ai-safety-seed-data.mjs
 COPY --chown=node:node typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
 
 USER node
@@ -107,6 +108,7 @@ COPY --chown=node:node package.json package-lock.json ./
 COPY --chown=node:node scripts/db-sqlserver-admin.mjs ./scripts/db-sqlserver-admin.mjs
 COPY --chown=node:node typeorm/migrations ./typeorm/migrations
 COPY --chown=node:node typeorm/seed-required.mjs ./typeorm/seed-required.mjs
+COPY --chown=node:node typeorm/ai-safety-seed-data.mjs ./typeorm/ai-safety-seed-data.mjs
 COPY --chown=node:node typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
 COPY --chown=node:node typeorm/seed.mjs ./typeorm/seed.mjs
 COPY --chown=node:node typeorm/seed-dogfood.mjs ./typeorm/seed-dogfood.mjs

@@ -115,6 +115,7 @@ describe('container image contract', () => {
     expect(target).toContain('scripts/db-sqlserver-admin.mjs')
     expect(target).toContain('typeorm/migrations')
     expect(target).toContain('typeorm/seed-required.mjs')
+    expect(target).toContain('typeorm/ai-safety-seed-data.mjs')
     expect(target).toContain('typeorm/seed-runner.mjs')
     expect(target).toContain('ENV KRAVHANTERING_DB_ADMIN_IMAGE=db-job')
     expect(target).toContain('USER node')
@@ -148,6 +149,7 @@ describe('container image contract', () => {
     expect(target).toContain('scripts/db-sqlserver-admin.mjs')
     expect(target).toContain('typeorm/migrations')
     expect(target).toContain('typeorm/seed-required.mjs')
+    expect(target).toContain('typeorm/ai-safety-seed-data.mjs')
     expect(target).toContain('typeorm/seed-runner.mjs')
     expect(target).toContain('typeorm/seed.mjs')
     expect(target).toContain('typeorm/seed-dogfood.mjs')
@@ -183,6 +185,7 @@ describe('container image contract', () => {
       'typeorm/seed-archiving-retention-build.mjs',
     )
     expect(dockerignore).not.toContain('typeorm/seed-required.mjs')
+    expect(dockerignore).not.toContain('typeorm/ai-safety-seed-data.mjs')
   })
 
   it('declares Docker outside-of-Docker with Buildx in both devcontainers', () => {

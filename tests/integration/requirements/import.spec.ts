@@ -55,13 +55,16 @@ test.describe('Requirements import', () => {
         schema: 'requirement-import.v2',
       })
     })
-    await page.route('**/api/requirements/import/ai-prompt?*', async route => {
-      artifactDownloads.push('ai-prompt')
-      await route.fulfill({
-        body: 'Importinstruktion för kravimport.',
-        contentType: 'text/markdown;charset=utf-8',
-      })
-    })
+    await page.route(
+      '**/api/requirements/import/instruction?*',
+      async route => {
+        artifactDownloads.push('instruction')
+        await route.fulfill({
+          body: 'Importinstruktion för kravimport.',
+          contentType: 'text/markdown;charset=utf-8',
+        })
+      },
+    )
     await page.route('**/api/requirements/import/preview', async route => {
       previewRequests.push(route.request().postDataJSON())
       await fulfillJson(route, {
@@ -183,7 +186,7 @@ test.describe('Requirements import', () => {
         .click()
       await expect
         .poll(() => artifactDownloads.sort())
-        .toEqual(['ai-prompt', 'schema'])
+        .toEqual(['instruction', 'schema'])
       await expect(
         dialog.getByText(
           /Importinstruktionen är bara formatdelen och referensdata för import/,

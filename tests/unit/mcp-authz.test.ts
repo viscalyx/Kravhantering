@@ -163,7 +163,7 @@ function createService() {
   }))
   const service = {
     addToSpecification,
-    buildImportAiPrompt: vi.fn(async () => ''),
+    buildImportInstruction: vi.fn(async () => ''),
     executeLibraryImport: vi.fn(async () => ({
       createdRows: [],
       mode: 'library' as const,

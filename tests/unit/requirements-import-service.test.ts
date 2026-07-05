@@ -88,8 +88,8 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   listSpecificationsForActor: vi.fn(),
 }))
 
-function extractReferenceData(prompt: string) {
-  const referenceDataJson = prompt.match(
+function extractReferenceData(instruction: string) {
+  const referenceDataJson = instruction.match(
     /## Reference Data\n\n```json\n([\s\S]*?)\n```/,
   )?.[1]
   expect(referenceDataJson).toBeTruthy()
@@ -960,96 +960,96 @@ describe('requirements import service', () => {
     )
   })
 
-  it('instructs AI prompts to avoid EN DASH in JSON values', async () => {
+  it('builds the import instruction without EN DASH in JSON values', async () => {
     const authorization = { assertAuthorized: vi.fn() }
     const workflow = createRequirementsImportWorkflow({
       authorization,
       db: {} as never,
     })
 
-    const promptEn = await workflow.buildImportAiPrompt('en')
-    const promptSv = await workflow.buildImportAiPrompt('sv')
+    const instructionEn = await workflow.buildImportInstruction('en')
+    const instructionSv = await workflow.buildImportInstruction('sv')
 
-    expect(promptEn).toContain('Do not use U+2013 EN DASH in JSON values')
-    expect(promptSv).toContain('Använd inte U+2013 EN DASH i JSON-värden')
-    expect(promptEn).toContain(
+    expect(instructionEn).toContain('Do not use U+2013 EN DASH in JSON values')
+    expect(instructionSv).toContain('Använd inte U+2013 EN DASH i JSON-värden')
+    expect(instructionEn).toContain(
       "Write free-text values, such as `description`, `acceptanceCriteria`, `verificationMethod`, and proposed norm references, in English unless the user's input explicitly requests another language.",
     )
-    expect(promptSv).toContain(
+    expect(instructionSv).toContain(
       'Skriv fria textvärden, till exempel `description`, `acceptanceCriteria`, `verificationMethod` och föreslagna normreferenser på svenska om inte användarens indata uttryckligen anger ett annat språk.',
     )
-    expect(promptEn).toContain(
+    expect(instructionEn).toContain(
       '- Choose `typeId` before `qualityCharacteristicId`:\n  - Use the functional type for required system behavior or capability',
     )
-    expect(promptSv).toContain(
+    expect(instructionSv).toContain(
       '- Välj `typeId` innan `qualityCharacteristicId`:\n  - Använd funktionell typ för krav på systembeteende eller förmåga',
     )
-    expect(promptEn).toContain(
+    expect(instructionEn).toContain(
       "Choose `qualityCharacteristicId` only from the selected type's `qualityCharacteristics`",
     )
-    expect(promptSv).toContain(
+    expect(instructionSv).toContain(
       'Välj bara `qualityCharacteristicId` från den valda typens `qualityCharacteristics`',
     )
-    expect(promptEn).toContain(
+    expect(instructionEn).toContain(
       'Use `acceptanceCriteria` for the conditions and fulfillment level that must be met',
     )
-    expect(promptSv).toContain(
+    expect(instructionSv).toContain(
       'Använd `acceptanceCriteria` för villkor och nivå av uppfyllelse som måste vara uppnådda',
     )
-    expect(promptEn).toContain(
+    expect(instructionEn).toContain(
       'Use ID fields from the reference data: `categoryId`, `typeId`, `qualityCharacteristicId`, `priorityLevelId`, and `requirementPackageIds`',
     )
-    expect(promptEn).toContain('## Conflicts')
-    expect(promptSv).toContain('## Konflikter')
-    expect(promptEn).toContain(
+    expect(instructionEn).toContain('## Conflicts')
+    expect(instructionSv).toContain('## Konflikter')
+    expect(instructionEn).toContain(
       "Follow the user's input for factual need, scope, requirement content, and factual values.",
     )
-    expect(promptSv).toContain(
+    expect(instructionSv).toContain(
       'Följ användarens indata för sakligt behov, omfattning, kravinnehåll och sakvärden.',
     )
-    expect(promptEn).toContain(
+    expect(instructionEn).toContain(
       'Follow JSON Schema for allowed fields, data types, required fields, and result format.',
     )
-    expect(promptSv).toContain(
+    expect(instructionSv).toContain(
       'Följ JSON Schema för tillåtna fält, datatyper, obligatoriska fält och resultatformat.',
     )
-    expect(promptEn).toContain(
+    expect(instructionEn).toContain(
       'Follow reference data for requirement structure, classification, IDs, and labels.',
     )
-    expect(promptSv).toContain(
+    expect(instructionSv).toContain(
       'Följ referensdata för kravstruktur, klassificering, ID:n och benämningar.',
     )
-    expect(promptEn).toContain(
+    expect(instructionEn).toContain(
       'Choose `priorityLevelId` from `priorityLevels[].id`; compare the requirement with `priorityLevels[].assessmentCriteria` and choose the best match',
     )
-    expect(promptSv).toContain(
+    expect(instructionSv).toContain(
       'Välj `priorityLevelId` från `priorityLevels[].id`; jämför kravet med `priorityLevels[].assessmentCriteria` och välj bästa matchning',
     )
-    expect(promptEn).toContain(
+    expect(instructionEn).toContain(
       'Return only a JSON object that follows the separate JSON Schema sent as the mandatory response format',
     )
-    expect(promptSv).toContain(
+    expect(instructionSv).toContain(
       'Returnera endast ett JSON-objekt som följer det separata JSON Schema som skickas som tvingande svarsformat',
     )
-    expect(promptEn).not.toContain('## JSON Schema')
-    expect(promptSv).not.toContain('## JSON Schema')
-    expect(promptEn).not.toContain('"$schema"')
-    expect(promptSv).not.toContain('"$schema"')
-    expect(promptEn).toContain(
+    expect(instructionEn).not.toContain('## JSON Schema')
+    expect(instructionSv).not.toContain('## JSON Schema')
+    expect(instructionEn).not.toContain('"$schema"')
+    expect(instructionSv).not.toContain('"$schema"')
+    expect(instructionEn).toContain(
       `Set the top-level \`schemaVersion\` field to \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\``,
     )
-    expect(promptSv).toContain(
+    expect(instructionSv).toContain(
       `Sätt toppnivåfältet \`schemaVersion\` till \`${REQUIREMENTS_IMPORT_SCHEMA_VERSION}\``,
     )
-    expect(promptSv).toContain(
+    expect(instructionSv).toContain(
       'Använd `normReferenceIds` med värden från `normReferences[].normReferenceId`',
     )
-    expect(promptEn).toContain(
+    expect(instructionEn).toContain(
       'Set `verifiable` to `true` when the requirement version has objective conditions that can be checked; then provide `verificationMethod`',
     )
   })
 
-  it('keeps requirement package guidance in the shared AI prompt', async () => {
+  it('keeps requirement package guidance in the shared import instruction', async () => {
     vi.mocked(listRequirementPackages).mockResolvedValue([
       {
         coAuthors: [],
@@ -1070,16 +1070,16 @@ describe('requirements import service', () => {
       db: {} as never,
     })
 
-    const prompt = await workflow.buildImportAiPrompt('en')
-    const referenceData = extractReferenceData(prompt)
+    const instruction = await workflow.buildImportInstruction('en')
+    const referenceData = extractReferenceData(instruction)
 
-    expect(prompt).toContain(
+    expect(instruction).toContain(
       "Choose `requirementPackageIds` from the reference data by comparing the requirement's need, requirement text, and acceptance criteria with `requirementPackages[].purposeAndScope`",
     )
-    expect(prompt).toContain(
+    expect(instruction).toContain(
       'Omit `requirementPackageIds` or use `[]` when no requirement package clearly fits; weak keyword matches against package names are not enough.',
     )
-    expect(prompt).toContain(
+    expect(instruction).toContain(
       'When importing specification-local requirements, `requirementPackageIds` is ignored.',
     )
     expect(referenceData.requirementPackages).toEqual([
@@ -1293,7 +1293,7 @@ describe('requirements import service', () => {
     expect(createRequirementsBatch).not.toHaveBeenCalled()
   })
 
-  it('nests selectable quality characteristics under their allowed type in AI prompt reference data', async () => {
+  it('nests selectable quality characteristics under their allowed type in import instruction reference data', async () => {
     vi.mocked(listTypes).mockResolvedValue([
       {
         id: 1,
@@ -1349,7 +1349,7 @@ describe('requirements import service', () => {
     })
 
     const referenceData = extractReferenceData(
-      await workflow.buildImportAiPrompt('en'),
+      await workflow.buildImportInstruction('en'),
     )
 
     expect(referenceData).not.toHaveProperty('qualityCharacteristics')
@@ -1371,7 +1371,7 @@ describe('requirements import service', () => {
     ])
   })
 
-  it('localizes AI prompt taxonomy reference names to the requested language', async () => {
+  it('localizes import instruction taxonomy reference names to the requested language', async () => {
     vi.mocked(listCategories).mockResolvedValue([
       { id: 3, nameEn: 'Supplier requirement', nameSv: 'Leverantörskrav' },
     ])
@@ -1422,7 +1422,7 @@ describe('requirements import service', () => {
     })
 
     const referenceData = extractReferenceData(
-      await workflow.buildImportAiPrompt('sv'),
+      await workflow.buildImportInstruction('sv'),
     )
     const referenceDataText = JSON.stringify(referenceData)
 

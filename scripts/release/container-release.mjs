@@ -81,6 +81,7 @@ const RELEVANT_PATH_PREFIXES = [
   'typeorm/seed-dogfood-build.mjs',
   'typeorm/migrations/',
   'typeorm/seed-required.mjs',
+  'typeorm/ai-safety-seed-data.mjs',
   'typeorm/seed-runner.mjs',
 ]
 

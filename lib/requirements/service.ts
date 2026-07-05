@@ -373,7 +373,7 @@ export interface RequirementsService {
     input: AddToSpecificationInput,
   ): Promise<AddToSpecificationOutput>
 
-  buildImportAiPrompt(locale: ResponseLocale): Promise<string>
+  buildImportInstruction(locale: ResponseLocale): Promise<string>
 
   executeLibraryImport(
     context: RequestContext,

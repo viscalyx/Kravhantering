@@ -11,7 +11,7 @@ import { parseSecurityAuditEvents } from '@/tests/helpers/security-audit-events'
 import { parseSecurityForensicsEvents } from '@/tests/helpers/security-forensics-events'
 
 const routeState = vi.hoisted(() => ({
-  buildImportAiPrompt: vi.fn(),
+  buildImportInstruction: vi.fn(),
   generateChatStream: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   query: vi.fn(),
@@ -29,7 +29,7 @@ vi.mock('@/lib/requirements/server', async importOriginal => {
     ...original,
     createRequirementsRuntime: vi.fn(() => ({
       service: {
-        buildImportAiPrompt: routeState.buildImportAiPrompt,
+        buildImportInstruction: routeState.buildImportInstruction,
       },
     })),
   }
@@ -85,7 +85,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
       query: routeState.query,
     })
     routeState.query.mockResolvedValue([])
-    routeState.buildImportAiPrompt.mockResolvedValue('# Import contract')
+    routeState.buildImportInstruction.mockResolvedValue('# Import instruction')
     routeState.resolveOpenRouterModelCapabilities.mockResolvedValue({
       contextLength: 200000,
       id: 'anthropic/claude-sonnet-4',
@@ -221,12 +221,12 @@ describe('POST /api/ai/generate-requirement-import', () => {
     expect(text).toContain('Generated JSON did not match')
   })
 
-  it('streams provider unavailable when prompt loading fails before generation starts', async () => {
+  it('streams provider unavailable when import instruction loading fails before generation starts', async () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
-    routeState.buildImportAiPrompt.mockRejectedValueOnce(
-      new Error('prompt service unavailable'),
+    routeState.buildImportInstruction.mockRejectedValueOnce(
+      new Error('import instruction service unavailable'),
     )
 
     try {
@@ -250,7 +250,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
     }
   })
 
-  it('blocks unsafe input before prompt loading or provider use', async () => {
+  it('blocks unsafe input before import instruction loading or provider use', async () => {
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)
@@ -274,7 +274,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
         error:
           'The AI request was blocked by the AI safety filter: Prompt injection: instruction override. Revise the need or context and try again.',
       })
-      expect(routeState.buildImportAiPrompt).not.toHaveBeenCalled()
+      expect(routeState.buildImportInstruction).not.toHaveBeenCalled()
       expect(routeState.generateChatStream).not.toHaveBeenCalled()
       expect(parseCapacityEvents(consoleErrorSpy)[0]).toMatchObject({
         event: 'capacity.operation.failed',
@@ -667,7 +667,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
         path: 'images.0.dataUrl',
       }),
     ])
-    expect(routeState.buildImportAiPrompt).not.toHaveBeenCalled()
+    expect(routeState.buildImportInstruction).not.toHaveBeenCalled()
     expect(routeState.generateChatStream).not.toHaveBeenCalled()
   })
 })

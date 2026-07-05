@@ -2626,12 +2626,14 @@ export function createRequirementsImportWorkflow({
         'requirements.get_import_instruction',
         { locale: input.locale },
         async () => ({
-          importInstruction: await workflow.buildImportAiPrompt(input.locale),
+          importInstruction: await workflow.buildImportInstruction(
+            input.locale,
+          ),
         }),
       )
     },
 
-    async buildImportAiPrompt(locale: 'en' | 'sv') {
+    async buildImportInstruction(locale: 'en' | 'sv') {
       const referenceData = await loadImportReferenceData(db)
       const isSv = locale === 'sv'
       return [

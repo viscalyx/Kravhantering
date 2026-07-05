@@ -291,6 +291,7 @@ describe('trusted container release helpers', () => {
         'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
       ),
     ).toBe(true)
+    expect(isReleaseRelevantPath('typeorm/ai-safety-seed-data.mjs')).toBe(true)
     expect(isReleaseRelevantPath('typeorm/seed-dogfood.mjs')).toBe(true)
     expect(isReleaseRelevantPath('scripts/keycloak-demo-users.mjs')).toBe(true)
     expect(

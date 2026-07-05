@@ -202,7 +202,7 @@ export const POST = secureMutationRoute({
       )
       const importInstruction = await createRequirementsRuntime(
         db,
-      ).service.buildImportAiPrompt(body.locale)
+      ).service.buildImportInstruction(body.locale)
       const systemPrompt = buildRequirementImportSystemPrompt(
         importInstruction,
         body.locale,

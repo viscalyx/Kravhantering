@@ -12,8 +12,10 @@ export async function GET(request: Request) {
     }
     const locale =
       new URL(request.url).searchParams.get('locale') === 'sv' ? 'sv' : 'en'
-    const markdown = await service.buildImportAiPrompt(locale)
-    return new NextResponse(withUtf8Bom(markdown), {
+    const { importInstruction } = await service.getImportInstruction(context, {
+      locale,
+    })
+    return new NextResponse(withUtf8Bom(importInstruction), {
       headers: {
         'Cache-Control': 'no-store',
         'Content-Type': 'text/markdown; charset=utf-8',
