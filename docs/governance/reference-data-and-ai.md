@@ -304,11 +304,11 @@ requirement-package reference data and the same `requirementPackageIds` field.
 specification-local imports. Specification-local preview surfaces that as a
 row-level information message, not a warning. The import instruction artifact
 intentionally has no frontmatter and no examples. Its `types` reference data
-nests the selectable child `qualityCharacteristics` allowed for that type, such as
-functional `3.1.x` values under the functional type. Top-level grouping rows
-such as `3.1` are omitted. Taxonomy rows in the prompt are localized to the
-requested artifact language and expose a single `name` field instead of both
-`nameEn` and `nameSv`.
+nests the selectable child `qualityCharacteristics` allowed for that type,
+such as functional `3.1.x` values under the functional type. Top-level
+grouping rows such as `3.1` are omitted. Taxonomy rows in the import
+instruction are localized to the requested artifact language and expose a
+single `name` field instead of both `nameEn` and `nameSv`.
 The import instruction includes concise field-selection rules for functional
 versus non-functional type choice, type-scoped quality characteristics,
 norm-reference links, priority, requirement packages and verification fields.
@@ -321,8 +321,8 @@ and data shape. It also includes a conflict rule: user input controls factual
 need, scope, requirement content and factual values; JSON Schema controls
 allowed fields, data types, required fields and result format; reference data
 controls requirement structure, classification, IDs and labels.
-For requirement packages, the AI instruction tells the model to compare the
-requirement need, requirement text and acceptance criteria with
+For requirement packages, the import instruction tells the model to compare
+the requirement need, requirement text and acceptance criteria with
 `requirementPackages[].purposeAndScope` and only choose packages where the
 requirement clearly belongs within the package purpose and scope. The schema
 still accepts name and code fallback fields so
