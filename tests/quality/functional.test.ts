@@ -850,6 +850,9 @@ it('Scenario 25: requirements query catalog stays structured-first', () => {
   )
 
   expect(outputSchemaSource).toContain('result:')
+  expect(outputSchemaSource).toContain(
+    'Search rows include top-level match metadata.',
+  )
   expect(outputSchemaSource).not.toContain('items:')
   expect(outputSchemaSource).not.toContain('pagination')
   expect(outputSchemaSource).not.toContain('message:')
@@ -857,6 +860,9 @@ it('Scenario 25: requirements query catalog stays structured-first', () => {
   expect(inputSchemaSource).toContain('operation: z')
   expect(inputSchemaSource).toContain(".enum(['list', 'search'])")
   expect(inputSchemaSource).toContain('search:')
+  expect(inputSchemaSource).toContain(
+    '"search" returns matching rows with top-level match metadata.',
+  )
   expect(inputSchemaSource).not.toContain('responseFormat')
   expect(inputSchemaSource).not.toContain('descriptionSearch')
   expect(inputSchemaSource).not.toContain('uniqueIdSearch')
@@ -873,11 +879,18 @@ it('Scenario 25: requirements query catalog stays structured-first', () => {
   expect(queryCatalogServiceSource).toContain('return { result: rows }')
   expect(queryCatalogServiceSource).toContain('return { result }')
   expect(queryCatalogServiceSource).toContain('requirementSearchFields')
+  expect(queryCatalogServiceSource).toContain('findMcpSearchMatch')
+  expect(queryCatalogServiceSource).toContain('match: McpSearchMatch')
+  expect(queryCatalogServiceSource).toContain('{ ...row, match }')
   expect(queryCatalogServiceSource).not.toContain('countRequirements')
   expect(queryCatalogServiceSource).not.toContain('clampLimit')
   expect(queryCatalogServiceSource).not.toContain('descriptionSearch')
   expect(queryCatalogServiceSource).not.toContain('uniqueIdSearch')
 
+  expect(userGuideSource).toContain('search rows include `match` metadata')
+  expect(contributorGuideSource).toContain(
+    'Search rows include `match.quality`',
+  )
   expect(userGuideSource).toContain(
     'requirements_query_catalog.result[].id -> requirementIds',
   )
@@ -890,6 +903,7 @@ it('Scenario 25: requirements query catalog stays structured-first', () => {
   expect(contributorGuideSource).not.toContain(
     'requirements_query_catalog.items[].id -> requirementIds',
   )
+  expect(seededCatalogCases).toHaveLength(1)
   for (const testCase of seededCatalogCases) {
     expect(testCase.arguments).toMatchObject({
       catalog: expect.any(String),

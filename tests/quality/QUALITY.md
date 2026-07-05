@@ -1131,11 +1131,10 @@ tests/fixtures/mcp-requests/seeded-cases.json
 
 **The requirement:** `requirements_query_catalog` requires explicit `catalog`
 and `operation`, supports `list` and `search` for every catalog, and always
-returns `{ "result": [...] }` in `structuredContent`. Catalog calls do not
-accept `responseFormat`, `limit`, `offset`, `descriptionSearch`, or
-`uniqueIdSearch`, and they do not return legacy `items`, `message`, or
-pagination metadata. Requirement search uses the single `search` field against
-`id`, `uniqueId`, `version.description`, and `version.acceptanceCriteria`.
+returns `{ "result": [...] }` in `structuredContent`. Search rows include
+top-level `match` metadata. Requirement search
+uses the single `search` field against `id`, `uniqueId`,
+`version.description`, and `version.acceptanceCriteria`.
 
 **How to verify:**
 
