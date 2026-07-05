@@ -674,6 +674,7 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
   expect(adminClientSource).toContain('admin-ai-mcp-max-request-kib')
   expect(adminClientSource).toContain('/api/admin/ai-safety-rules')
   expect(adminClientSource).toContain("ta('ai.securityTitle')")
+  expect(adminClientSource).toContain("ta('ai.mcpInterfaceTitle')")
   expect(requirementsPageSource).toContain('getAiGenerationAvailability')
   expect(requirementsClientSource).toContain('aiGenerationAvailability')
   expect(requirementsClientSource).toContain('aiGenerateDisabledByAdmin')
@@ -684,8 +685,14 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
     'The `AI` tab manages AI-assisted requirement generation directly in the AI',
   )
   expect(adminCenterDoc).toContain(
-    'Its `AI and MCP security` section contains the safety-rule cache time',
+    'Its `AI assistance` section contains the requirement-generation toggle',
   )
+  expect(adminCenterDoc).toContain('safety-rule cache time and editable')
+  expect(adminCenterDoc).toContain('Its `MCP interface`')
+  expect(adminCenterDoc).toContain('section contains the MCP')
+  expect(adminCenterDoc).toContain('request/session payload limit and MCP')
+  expect(adminCenterDoc).toContain('import row/TTL')
+  expect(adminCenterDoc).toContain('limits. The AI tab')
   expect(adminCenterDoc).toContain('AI safety rules are shown as expandable')
   expect(adminCenterDoc).toContain('AI_REQUIREMENT_GENERATION_DISABLED')
   expect(databaseSchemaDoc).toContain('ai_settings')
@@ -2822,5 +2829,78 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     expect(committedRows[0]?.detailsJson).toContain('/quality/functional')
     expect(committedRows[0]?.detailsJson).not.toContain('must not be persisted')
+  })
+
+  it('Scenario 24: MCP requirement import keeps token-bound validation execution narrow', () => {
+    const serverSource = readFileSync(
+      join(process.cwd(), 'lib/mcp/server.ts'),
+      'utf8',
+    )
+    const importServiceSource = readFileSync(
+      join(process.cwd(), 'lib/requirements/import-service.ts'),
+      'utf8',
+    )
+    const sessionDalSource = readFileSync(
+      join(process.cwd(), 'lib/dal/requirement-import-validation-sessions.ts'),
+      'utf8',
+    )
+    const aiAvailabilitySource = readFileSync(
+      join(process.cwd(), 'lib/ai/generation-availability.ts'),
+      'utf8',
+    )
+    const aiSettingsSource = readFileSync(
+      join(process.cwd(), 'lib/dal/ai-settings.ts'),
+      'utf8',
+    )
+    const adminRouteSource = readFileSync(
+      join(process.cwd(), 'app/api/admin/ai-settings/route.ts'),
+      'utf8',
+    )
+
+    expect(serverSource).toContain('requirements_manage_import')
+    expect(serverSource).toContain('requirements_manage_norm_reference')
+    expect(serverSource).toContain("'validate'")
+    expect(serverSource).toContain("'execute'")
+    expect(serverSource).toContain("'inspect_validation'")
+    expect(serverSource).toContain("if (val.operation === 'validate')")
+    expect(serverSource).toContain("requireField(ctx, val, 'destination')")
+    expect(serverSource).toContain("requireField(ctx, val, 'payload')")
+    expect(serverSource).toContain("if (val.operation === 'execute')")
+    expect(serverSource).toContain('validationToken')
+
+    expect(importServiceSource).toContain(
+      "randomBytes(32).toString('base64url')",
+    )
+    expect(importServiceSource).toContain('tokenHash: hashString')
+    expect(importServiceSource).toContain('referenceDataFingerprint')
+    expect(importServiceSource).toContain('createRequirementsBatchWithExecutor')
+    expect(importServiceSource).toContain(
+      'createSpecificationLocalRequirementsBatchWithExecutor',
+    )
+    expect(importServiceSource).toContain(
+      'currentFingerprint !== lockedSession.referenceDataFingerprint',
+    )
+    expect(importServiceSource).toContain('MCP_IMPORT_ISSUE_CODES')
+    expect(importServiceSource).toContain('import_row_count_cap_exceeded')
+    expect(importServiceSource).toContain('import_payload_size_cap_exceeded')
+    expect(importServiceSource).toContain('import_destination_invalid')
+    expect(importServiceSource).toContain(
+      'requirements.manage_import.validation_session_diagnostic',
+    )
+    expect(importServiceSource).toContain(
+      'resolveImportableDestinationSnapshot',
+    )
+    expect(importServiceSource).not.toContain('submittedRow:')
+
+    expect(sessionDalSource).toContain('WITH (UPDLOCK, HOLDLOCK)')
+    expect(sessionDalSource).toContain('expires_at > SYSUTCDATETIME()')
+
+    expect(aiAvailabilitySource).toContain('export interface AdminAiSettings')
+    expect(aiSettingsSource).toContain('resolveAiGenerationAvailability')
+    expect(aiSettingsSource).toContain('adminAiSettingsFromSettings')
+
+    expect(adminRouteSource).toContain('mcpMaxRequestBytes')
+    expect(adminRouteSource).toContain('mcpImportMaxRows')
+    expect(adminRouteSource).toContain('mcpImportValidationTtlMinutes')
   })
 })

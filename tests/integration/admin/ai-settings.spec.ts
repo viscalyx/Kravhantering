@@ -7,7 +7,8 @@ import {
 } from '@playwright/test'
 import {
   addMcpMaxRequestBytesSteps,
-  MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+  MCP_REQUEST_PAYLOAD_MAX_BYTES,
+  MCP_REQUEST_PAYLOAD_MIN_BYTES,
 } from '@/lib/ai/generation-availability'
 import { expectApiResponseOk } from '../api-response-assertions'
 
@@ -15,6 +16,8 @@ interface AiGenerationAvailability {
   aiSafetyRuleCacheTtlSeconds: number
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
+  mcpImportMaxRows: number
+  mcpImportValidationTtlMinutes: number
   mcpMaxRequestBytes: number
   requirementGenerationEnabled: boolean
 }
@@ -32,6 +35,8 @@ async function putAiSettings(
   settings: Pick<
     AiGenerationAvailability,
     | 'aiSafetyRuleCacheTtlSeconds'
+    | 'mcpImportMaxRows'
+    | 'mcpImportValidationTtlMinutes'
     | 'mcpMaxRequestBytes'
     | 'requirementGenerationEnabled'
   >,
@@ -99,25 +104,21 @@ test.describe('Admin AI settings', () => {
     request,
   }) => {
     const original = await getAiSettings(request)
-    const oneStepLimit = addMcpMaxRequestBytesSteps(
-      MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
-      1,
-    )
-    const tenStepLimit = addMcpMaxRequestBytesSteps(
-      MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
-      10,
-    )
+    const initialLimit = MCP_REQUEST_PAYLOAD_MIN_BYTES
+    const oneStepLimit = addMcpMaxRequestBytesSteps(initialLimit, 1)
     let shouldRestoreSettings = false
 
     try {
       await putAiSettings(request, {
         aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
-        mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+        mcpImportMaxRows: original.mcpImportMaxRows,
+        mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
+        mcpMaxRequestBytes: initialLimit,
         requirementGenerationEnabled: original.requirementGenerationEnabled,
       })
       shouldRestoreSettings = true
 
-      await test.step('shows requirement generation before MCP security controls', async () => {
+      await test.step('shows requirement generation inside the AI assistance section before MCP controls', async () => {
         await page.goto('/sv/admin?tab=ai')
         await expect(page.getByRole('tab', { name: 'AI' })).toHaveAttribute(
           'aria-selected',
@@ -127,38 +128,50 @@ test.describe('Admin AI settings', () => {
           page.getByRole('checkbox', { name: /Kravgenerering/ }),
         ).toBeVisible()
         await expect(
-          page.getByRole('heading', { name: 'AI- och MCP-säkerhet' }),
+          page.getByRole('heading', { name: 'AI-assistering' }),
+        ).toHaveCount(1)
+        await expect(
+          page.getByRole('heading', { name: 'MCP-gränssnitt' }),
         ).toHaveCount(1)
         await expect(
           page.getByRole('spinbutton', { name: 'MCP-anropsgräns' }),
-        ).toBeVisible()
+        ).toHaveCount(1)
+        await expect(
+          page.getByText('Tillåtet intervall: 1 MiB till 10 MiB. Steg: 1 MiB.'),
+        ).toHaveCount(1)
 
         const panelTextOrder = await page
           .locator('#ai-panel')
           .evaluate(panel => {
             const text = panel.textContent ?? ''
             return {
+              aiAssistance: text.indexOf('AI-assistering'),
               limit: text.indexOf('MCP-anropsgräns'),
+              mcpInterface: text.indexOf('MCP-gränssnitt'),
               requirementGeneration: text.indexOf('Kravgenerering'),
-              security: text.indexOf('AI- och MCP-säkerhet'),
             }
           })
         expect(panelTextOrder.requirementGeneration).toBeGreaterThanOrEqual(0)
-        expect(panelTextOrder.security).toBeGreaterThan(
+        expect(panelTextOrder.requirementGeneration).toBeGreaterThan(
+          panelTextOrder.aiAssistance,
+        )
+        expect(panelTextOrder.mcpInterface).toBeGreaterThan(
           panelTextOrder.requirementGeneration,
         )
-        expect(panelTextOrder.limit).toBeGreaterThan(panelTextOrder.security)
+        expect(panelTextOrder.limit).toBeGreaterThan(
+          panelTextOrder.mcpInterface,
+        )
       })
 
       await test.step('keeps MCP guidance behind the field help button', async () => {
         await expect(
-          page.getByText('Största tillåtna MCP POST-nyttolast.'),
+          page.getByText('Största tillåtna MCP POST-nyttolast och sparad'),
         ).toHaveCount(0)
         await page
           .getByRole('button', { name: 'Hjälp: MCP-anropsgräns' })
           .click()
         await expect(
-          page.getByText('Största tillåtna MCP POST-nyttolast.'),
+          page.getByText('Största tillåtna MCP POST-nyttolast och sparad'),
         ).toHaveCount(1)
       })
 
@@ -169,31 +182,33 @@ test.describe('Admin AI settings', () => {
 
       await test.step('commits a typed MCP limit on blur', async () => {
         await expect(mcpLimitInput).toHaveValue('1024')
-        await mcpLimitInput.fill('1080')
-        await expect(mcpLimitInput).toHaveValue('1080')
+        await mcpLimitInput.fill('1800')
+        await expect(mcpLimitInput).toHaveValue('1800')
         await expect(page.getByRole('button', { name: 'Spara' })).toHaveCount(0)
         await mcpLimitInput.blur()
-        await expect(mcpLimitInput).toHaveValue('1126.4')
+        await expect(mcpLimitInput).toHaveValue('2048')
 
         await expect
           .poll(async () => (await getAiSettings(request)).mcpMaxRequestBytes)
           .toBe(oneStepLimit)
       })
 
-      await test.step('ten increases from the default reach exactly 2 MiB', async () => {
-        for (let index = 0; index < 9; index += 1) {
+      await test.step('increases from 2 MiB reach exactly the 10 MiB cap', async () => {
+        for (let index = 0; index < 8; index += 1) {
           await increaseButton.click()
         }
-        await expect(mcpLimitInput).toHaveValue('2048')
+        await expect(mcpLimitInput).toHaveValue('10240')
 
         await expect
           .poll(async () => (await getAiSettings(request)).mcpMaxRequestBytes)
-          .toBe(tenStepLimit)
+          .toBe(MCP_REQUEST_PAYLOAD_MAX_BYTES)
       })
     } finally {
       if (shouldRestoreSettings) {
         await putAiSettings(request, {
           aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
+          mcpImportMaxRows: original.mcpImportMaxRows,
+          mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
           mcpMaxRequestBytes: original.mcpMaxRequestBytes,
           requirementGenerationEnabled: original.requirementGenerationEnabled,
         })
@@ -233,6 +248,8 @@ test.describe('Admin AI settings', () => {
 
       await putAiSettings(request, {
         aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
+        mcpImportMaxRows: original.mcpImportMaxRows,
+        mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
         mcpMaxRequestBytes: original.mcpMaxRequestBytes,
         requirementGenerationEnabled: true,
       })
@@ -292,6 +309,8 @@ test.describe('Admin AI settings', () => {
       if (shouldRestoreSettings) {
         await putAiSettings(request, {
           aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
+          mcpImportMaxRows: original.mcpImportMaxRows,
+          mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
           mcpMaxRequestBytes: original.mcpMaxRequestBytes,
           requirementGenerationEnabled: original.requirementGenerationEnabled,
         })

@@ -15,9 +15,7 @@
       "name": "read requirement import JSON Schema",
       "tool": "requirements_get_import_schema",
       "kind": "read",
-      "arguments": {
-        "locale": "sv"
-      }
+      "arguments": {}
     },
     {
       "name": "read requirement import instruction",
@@ -25,6 +23,22 @@
       "kind": "read",
       "arguments": {
         "locale": "en"
+      }
+    },
+    {
+      "name": "list import destinations",
+      "tool": "requirements_manage_import",
+      "kind": "read",
+      "arguments": {
+        "operation": "list_destinations"
+      }
+    },
+    {
+      "name": "list norm references",
+      "tool": "requirements_manage_norm_reference",
+      "kind": "read",
+      "arguments": {
+        "operation": "list"
       }
     },
     {

@@ -152,7 +152,20 @@ vi.mock('@/lib/dal/requirements', () => ({
   transitionStatus: mocks.transitionStatus,
 }))
 
-import { createRequirementsService } from '@/lib/requirements/service'
+import {
+  createRequirementsService,
+  type QueryCatalogListOutput,
+  type QueryCatalogOutput,
+} from '@/lib/requirements/service'
+
+function expectCatalogListOutput(
+  output: QueryCatalogOutput,
+): QueryCatalogListOutput {
+  if ('result' in output) {
+    throw new Error('Expected full catalog output')
+  }
+  return output
+}
 
 function makeRequirementRecord() {
   return {
@@ -494,11 +507,13 @@ describe('createRequirementsService', () => {
     mocks.countRequirements.mockResolvedValue(3)
 
     const service = createTestRequirementsService()
-    const result = await service.queryCatalog(makeContext(), {
-      catalog: 'requirements',
-      limit: 1,
-      offset: 0,
-    })
+    const result = expectCatalogListOutput(
+      await service.queryCatalog(makeContext(), {
+        catalog: 'requirements',
+        limit: 1,
+        offset: 0,
+      }),
+    )
 
     expect(result.items).toHaveLength(1)
     expect(result.pagination).toEqual({
@@ -552,9 +567,11 @@ describe('createRequirementsService', () => {
     mocks.countRequirements.mockResolvedValue(1)
 
     const service = createTestRequirementsService()
-    const result = await service.queryCatalog(makeContext(), {
-      catalog: 'requirements',
-    })
+    const result = expectCatalogListOutput(
+      await service.queryCatalog(makeContext(), {
+        catalog: 'requirements',
+      }),
+    )
 
     expect(result.items[0]).toMatchObject({
       hasPendingVersion: true,
@@ -612,10 +629,12 @@ describe('createRequirementsService', () => {
 
     const service = createTestRequirementsService()
 
-    const result = await service.queryCatalog(makeContext(), {
-      catalog: 'statuses',
-      locale: 'en',
-    })
+    const result = expectCatalogListOutput(
+      await service.queryCatalog(makeContext(), {
+        catalog: 'statuses',
+        locale: 'en',
+      }),
+    )
 
     expect(result.message).toContain('Requirement version statuses')
     expect(result.message).toContain('Published')
@@ -789,9 +808,11 @@ describe('createRequirementsService', () => {
   it('queries areas catalog', async () => {
     mocks.listAreas.mockResolvedValue([{ id: 1, prefix: 'A', name: 'Area A' }])
     const service = createTestRequirementsService()
-    const result = await service.queryCatalog(makeContext(), {
-      catalog: 'areas',
-    })
+    const result = expectCatalogListOutput(
+      await service.queryCatalog(makeContext(), {
+        catalog: 'areas',
+      }),
+    )
     expect(result.catalog).toBe('areas')
     expect(result.items).toHaveLength(1)
     expect(result.pagination).toBeNull()
@@ -802,9 +823,11 @@ describe('createRequirementsService', () => {
       { id: 1, nameSv: 'Kat', nameEn: 'Cat' },
     ])
     const service = createTestRequirementsService()
-    const result = await service.queryCatalog(makeContext(), {
-      catalog: 'categories',
-    })
+    const result = expectCatalogListOutput(
+      await service.queryCatalog(makeContext(), {
+        catalog: 'categories',
+      }),
+    )
     expect(result.catalog).toBe('categories')
     expect(result.items).toHaveLength(1)
   })
@@ -814,9 +837,11 @@ describe('createRequirementsService', () => {
       { id: 1, nameSv: 'Typ', nameEn: 'Type' },
     ])
     const service = createTestRequirementsService()
-    const result = await service.queryCatalog(makeContext(), {
-      catalog: 'types',
-    })
+    const result = expectCatalogListOutput(
+      await service.queryCatalog(makeContext(), {
+        catalog: 'types',
+      }),
+    )
     expect(result.catalog).toBe('types')
     expect(result.items).toHaveLength(1)
   })
@@ -826,12 +851,73 @@ describe('createRequirementsService', () => {
       { id: 1, nameSv: 'TK', nameEn: 'TC' },
     ])
     const service = createTestRequirementsService()
-    const result = await service.queryCatalog(makeContext(), {
-      catalog: 'quality_characteristics',
-      typeId: 1,
-    })
+    const result = expectCatalogListOutput(
+      await service.queryCatalog(makeContext(), {
+        catalog: 'quality_characteristics',
+        typeId: 1,
+      }),
+    )
     expect(result.catalog).toBe('quality_characteristics')
     expect(result.items).toHaveLength(1)
+  })
+
+  it('returns the lookup result shape for MCP lookup list operations', async () => {
+    const category = { id: 1, nameSv: 'Kat', nameEn: 'Cat' }
+    mocks.listCategories.mockResolvedValue([category])
+    const service = createTestRequirementsService()
+
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'categories',
+      operation: 'list',
+    })
+
+    expect(result).toEqual({ result: [category] })
+  })
+
+  it('uses catalog-specific lookup fields for categories and quality characteristics', async () => {
+    mocks.listCategories.mockResolvedValue([
+      {
+        chapterId: '3.1',
+        id: 1,
+        nameEn: 'Supplier requirement',
+        nameSv: 'Leverantörskrav',
+      } as never,
+    ])
+    mocks.listQualityCharacteristics.mockResolvedValue([
+      {
+        chapterId: '3.1.1',
+        id: 11,
+        nameEn: 'Functional completeness',
+        nameSv: 'Funktionell fullständighet',
+        parentId: 10,
+        requirementTypeId: 1,
+      },
+    ])
+    const service = createTestRequirementsService()
+
+    await expect(
+      service.queryCatalog(makeContext(), {
+        catalog: 'categories',
+        operation: 'search',
+        search: '3.1',
+      }),
+    ).resolves.toEqual({ result: [] })
+    await expect(
+      service.queryCatalog(makeContext(), {
+        catalog: 'quality_characteristics',
+        operation: 'search',
+        search: '3.1.1',
+      }),
+    ).resolves.toMatchObject({
+      result: [
+        expect.objectContaining({
+          chapterId: '3.1.1',
+          match: expect.objectContaining({
+            matchedFields: ['chapterId'],
+          }),
+        }),
+      ],
+    })
   })
 
   it('queries statuses catalog', async () => {
@@ -839,9 +925,11 @@ describe('createRequirementsService', () => {
       { id: 1, nameSv: 'Utkast', nameEn: 'Draft' },
     ])
     const service = createTestRequirementsService()
-    const result = await service.queryCatalog(makeContext(), {
-      catalog: 'statuses',
-    })
+    const result = expectCatalogListOutput(
+      await service.queryCatalog(makeContext(), {
+        catalog: 'statuses',
+      }),
+    )
     expect(result.catalog).toBe('statuses')
     expect(result.items).toHaveLength(1)
   })
@@ -860,9 +948,11 @@ describe('createRequirementsService', () => {
       },
     ])
     const service = createTestRequirementsService()
-    const result = await service.queryCatalog(makeContext(), {
-      catalog: 'requirement_packages',
-    })
+    const result = expectCatalogListOutput(
+      await service.queryCatalog(makeContext(), {
+        catalog: 'requirement_packages',
+      }),
+    )
     expect(result.catalog).toBe('requirement_packages')
     expect(result.items).toHaveLength(1)
     expect(result.items[0]).toMatchObject({
@@ -880,9 +970,11 @@ describe('createRequirementsService', () => {
       },
     ])
     const service = createTestRequirementsService()
-    const result = await service.queryCatalog(makeContext(), {
-      catalog: 'transitions',
-    })
+    const result = expectCatalogListOutput(
+      await service.queryCatalog(makeContext(), {
+        catalog: 'transitions',
+      }),
+    )
     expect(result.catalog).toBe('transitions')
     expect(result.items).toHaveLength(1)
   })
@@ -1057,10 +1149,12 @@ describe('createRequirementsService', () => {
       { id: 1, nameSv: 'Utkast', nameEn: 'Draft' },
     ])
     const service = createTestRequirementsService()
-    const result = await service.queryCatalog(makeContext(), {
-      catalog: 'statuses',
-      locale: 'sv',
-    })
+    const result = expectCatalogListOutput(
+      await service.queryCatalog(makeContext(), {
+        catalog: 'statuses',
+        locale: 'sv',
+      }),
+    )
     expect(result.message).toContain('Utkast')
   })
 
@@ -1069,10 +1163,12 @@ describe('createRequirementsService', () => {
       { id: 1, nameSv: 'Utkast', nameEn: 'Draft' },
     ])
     const service = createTestRequirementsService()
-    const result = await service.queryCatalog(makeContext(), {
-      catalog: 'statuses',
-      responseFormat: 'json',
-    })
+    const result = expectCatalogListOutput(
+      await service.queryCatalog(makeContext(), {
+        catalog: 'statuses',
+        responseFormat: 'json',
+      }),
+    )
     const parsed = JSON.parse(result.message)
     expect(parsed).toHaveProperty('title')
     expect(parsed).toHaveProperty('lines')

@@ -219,23 +219,33 @@ export async function withLogging<T>(
   } catch (error) {
     const durationMs = Date.now() - startedAt
     const statusCode = getErrorStatusCode(error)
-    logger.error(`${event}.failed`, {
+    const isClientError = isClientErrorStatusCode(statusCode)
+    const logFields = {
       actor_id: context.actor.id,
       correlation_id: context.correlationId,
       request_id: context.requestId,
       source: context.source,
       tool_name: context.toolName,
       duration_ms: durationMs,
+      status_code: statusCode,
       error:
         error instanceof Error
           ? redactSensitiveText(error.message)
           : 'Unknown requirements error',
       ...metadata,
-    })
+    }
+
+    if (isClientError) {
+      logger.info(`${event}.failed`, logFields)
+    } else {
+      logger.error(`${event}.failed`, logFields)
+    }
+
     recordCapacityEvent({
       correlationId: context.correlationId,
       durationMs,
       event: 'capacity.operation.failed',
+      level: isClientError ? 'warn' : 'error',
       operation: event,
       outcome: 'failure',
       requestId: context.requestId,
@@ -250,6 +260,10 @@ export async function withLogging<T>(
 function getErrorStatusCode(error: unknown): number {
   const status = (error as { status?: unknown })?.status
   return typeof status === 'number' && Number.isInteger(status) ? status : 500
+}
+
+function isClientErrorStatusCode(statusCode: number): boolean {
+  return statusCode >= 400 && statusCode < 500
 }
 
 function extractCapacityMetrics(value: unknown): CapacityMetrics | undefined {

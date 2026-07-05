@@ -17,6 +17,7 @@ import { requirementEntity } from '@/lib/typeorm/entities/requirement'
 import { requirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
 import { requirementAreaCoAuthorEntity } from '@/lib/typeorm/entities/requirement-area-co-author'
 import { requirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
+import { requirementImportValidationSessionEntity } from '@/lib/typeorm/entities/requirement-import-validation-session'
 import { requirementListColumnDefaultEntity } from '@/lib/typeorm/entities/requirement-list-column-default'
 import { requirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
 import { requirementPackageCoAuthorEntity } from '@/lib/typeorm/entities/requirement-package-co-author'
@@ -100,6 +101,7 @@ export const sqlServerEntities = [
   specificationRfiQuestionItemEntity,
   rfiQuestionSuggestionEntity,
   requirementCategoryEntity,
+  requirementImportValidationSessionEntity,
   requirementListColumnDefaultEntity,
   requirementsSpecificationEntity,
   requirementsSpecificationItemEntity,
@@ -135,6 +137,7 @@ export type { RequirementEntity } from '@/lib/typeorm/entities/requirement'
 export type { RequirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
 export type { RequirementAreaCoAuthorEntity } from '@/lib/typeorm/entities/requirement-area-co-author'
 export type { RequirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
+export type { RequirementImportValidationSessionEntity } from '@/lib/typeorm/entities/requirement-import-validation-session'
 export type { RequirementListColumnDefaultEntity } from '@/lib/typeorm/entities/requirement-list-column-default'
 export type { RequirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
 export type { RequirementPackageCoAuthorEntity } from '@/lib/typeorm/entities/requirement-package-co-author'
@@ -194,6 +197,7 @@ export {
   requirementAreaEntity,
   requirementCategoryEntity,
   requirementEntity,
+  requirementImportValidationSessionEntity,
   requirementListColumnDefaultEntity,
   requirementPackageCoAuthorEntity,
   requirementPackageEntity,

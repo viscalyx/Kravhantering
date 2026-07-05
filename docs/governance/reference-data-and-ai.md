@@ -216,7 +216,7 @@ AISVS evidence for AI-assisted authoring is tracked in
 Generation and repair use the local deterministic safety screen in
 `lib/ai/safety.ts`. The rule patterns are code-owned, while rule terms are
 required seed data stored in `ai_safety_rules` and `ai_safety_rule_terms` and
-administered from the Admin Center `AI and MCP security` section. There is no
+administered from the Admin Center `AI assistance` section. There is no
 runtime fallback list in code; if the active rule set cannot be read from the
 database, AI-assisted authoring fails closed before provider work. Input
 screening runs after AI availability is confirmed and before model-catalog or

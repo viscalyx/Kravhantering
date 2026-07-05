@@ -185,7 +185,25 @@ erDiagram
         integer id PK
         bit requirement_generation_enabled
         integer mcp_max_request_bytes
+        integer mcp_import_max_rows
+        integer mcp_import_validation_ttl_minutes
         integer ai_safety_rule_cache_ttl_seconds
+        datetime2 created_at
+        datetime2 updated_at
+    }
+
+    requirement_import_validation_sessions {
+        integer id PK
+        text token_hash UK
+        text payload_hash
+        text destination_kind
+        integer destination_id
+        text reference_data_fingerprint
+        text destination_snapshot_json
+        text submitted_payload_json
+        text validation_result_json
+        text execution_result_json "nullable"
+        datetime2 expires_at
         datetime2 created_at
         datetime2 updated_at
     }
@@ -1432,7 +1450,9 @@ request payload security.
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key; constrained to singleton row `1` |
 | `requirement_generation_enabled` | bit | Admin preference for AI requirement generation |
-| `mcp_max_request_bytes` | integer | Maximum MCP request payload size in bytes |
+| `mcp_max_request_bytes` | integer | Maximum MCP request payload and persisted MCP import session size in bytes |
+| `mcp_import_max_rows` | integer | Maximum rows accepted in one MCP import validation session |
+| `mcp_import_validation_ttl_minutes` | integer | TTL for persisted MCP import validation sessions |
 | `ai_safety_rule_cache_ttl_seconds` | integer | Process-local active AI safety rule-set cache time in seconds |
 | `created_at` | datetime2 | Creation timestamp |
 | `updated_at` | datetime2 | Last-modified timestamp |
@@ -1442,24 +1462,59 @@ request payload security.
 
 - organization-wide Admin Center preference for AI requirement generation
 - persisted default used by the requirements UI and REST generation route
-- organization-wide MCP request payload limit used by `/api/mcp` before
-  bearer-token verification and service creation
+- organization-wide MCP request payload and import-session byte limit used by
+  `/api/mcp` and MCP import validation
+- organization-wide MCP import row cap and validation-session TTL
 - process-local cache time for DB-backed AI safety rules
 - input to effective availability together with the deployment guard
   `AI_REQUIREMENT_GENERATION_DISABLED`
 
 **Seed value:** Required and demo seed data create row `id = 1` with
-`requirement_generation_enabled = 1`, `mcp_max_request_bytes = 1048576`, and
+`requirement_generation_enabled = 1`, `mcp_max_request_bytes = 10485760`,
+`mcp_import_max_rows = 500`, `mcp_import_validation_ttl_minutes = 60`, and
 `ai_safety_rule_cache_ttl_seconds = 600`, so migrated installations stay
-enabled with the exact `1 MiB` MCP default and ten-minute AI safety rule cache.
+enabled with the exact `10 MiB` MCP default, 500-row import cap, 60-minute
+validation TTL, and ten-minute AI safety rule cache.
 
 **Check constraints:** `chk_ai_settings_id` enforces the singleton row ID.
 `chk_ai_settings_mcp_max_request_bytes` enforces integer byte values on a
-ten-steps-per-MiB grid from approximately `102.4 KiB` through `5 MiB`, with no
-unlimited value. The grid keeps exact MiB anchors, so `1048576` is `1 MiB` and
-ten increases from the default become `2097152` (`2 MiB`).
+`1 MiB` grid from `1 MiB` through `10 MiB`, with no unlimited value.
+`chk_ai_settings_mcp_import_max_rows` enforces values from `1` through `5000`.
+`chk_ai_settings_mcp_import_validation_ttl_minutes` enforces values from `1`
+through `1440`.
 `chk_ai_settings_ai_safety_rule_cache_ttl_seconds` enforces cache values from
 `30` to `3600` seconds.
+
+### `requirement_import_validation_sessions`
+
+Transient MCP import validation sessions. Rows are created by
+`requirements_manage_import.validate`, inspected by `inspect_validation`, and
+consumed by `execute`. No foreign keys are used because `destination_id` points
+to either a requirement area or a requirements specification depending on
+`destination_kind`.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `token_hash` | nvarchar(64) | SHA-256 hash of the opaque validation token; raw tokens are never stored |
+| `payload_hash` | nvarchar(64) | SHA-256 hash of the canonical submitted import payload JSON |
+| `destination_kind` | nvarchar(64) | `requirements_library` or `requirements_specification` |
+| `destination_id` | integer | Requirement area ID or requirements specification ID, depending on `destination_kind` |
+| `reference_data_fingerprint` | nvarchar(64) | Reference-data fingerprint captured at validation time |
+| `destination_snapshot_json` | nvarchar(max) | JSON snapshot of the resolved destination |
+| `submitted_payload_json` | nvarchar(max) | Submitted `Kravimportfil` payload JSON |
+| `validation_result_json` | nvarchar(max) | Immutable resolved rows, issues, proposal metadata, and reference-data include names |
+| `execution_result_json` | nvarchar(max), nullable | Imported-row consumption state and receipt identifiers |
+| `expires_at` | datetime2 | Expiration timestamp checked on token lookup |
+| `created_at` | datetime2 | Creation timestamp |
+| `updated_at` | datetime2 | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes and constraints:** `uq_requirement_import_validation_sessions_token_hash`
+enforces unique token hashes. `idx_requirement_import_validation_sessions_expires_at`
+supports opportunistic expiry cleanup. JSON columns have `ISJSON` checks, and
+scalar checks constrain token/payload/fingerprint length and destination kind.
 
 ### `ai_safety_rules`
 
@@ -2370,6 +2425,7 @@ its purpose and the table/column(s) it covers.
 | `uq_specification_local_requirements_specification_id_sequence_number` | `specification_local_requirements` | `(specification_id, sequence_number)` | Prevents sequence reuse inside a specification |
 | `uq_requirements_specification_items_specification_requirement` | `requirements_specification_items` | `(requirements_specification_id, requirement_id)` | Prevents linking the same requirement into a specification more than once |
 | `uq_norm_references_norm_reference_id` | `norm_references` | `norm_reference_id` | Ensures each norm reference has a distinct external identifier |
+| `uq_requirement_import_validation_sessions_token_hash` | `requirement_import_validation_sessions` | `token_hash` | Ensures each hashed MCP import validation token identifies one session |
 <!-- markdownlint-enable MD013 -->
 
 ### Non-Unique Indexes
@@ -2446,6 +2502,7 @@ its purpose and the table/column(s) it covers.
 | `idx_archiving_retention_runs_started_at` | `archiving_retention_runs` | `started_at` | Speed up retention execution history ordering |
 | `idx_archiving_retention_exceptions_policy_source` | `archiving_retention_exceptions` | `(policy_id, source_key)` | Speed up filtering legal-hold exceptions during preview |
 | `idx_ai_safety_rule_terms_rule_id` | `ai_safety_rule_terms` | `rule_id` | Speed up loading safety terms per rule |
+| `idx_requirement_import_validation_sessions_expires_at` | `requirement_import_validation_sessions` | `expires_at` | Speed up expired MCP import validation-session cleanup |
 <!-- markdownlint-enable MD013 -->
 
 ### Named Foreign Key Constraints

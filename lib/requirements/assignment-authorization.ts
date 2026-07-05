@@ -466,7 +466,11 @@ export class AssignmentBasedAuthorizationService
       case 'query_catalog':
       case 'get_import_schema':
       case 'get_import_instruction':
+      case 'manage_import':
         return
+      case 'manage_norm_reference':
+        if (action.operation !== 'create') return
+        return this.assertAdmin(context)
       case 'list_specifications':
         return this.assertCanListSpecifications(context)
       case 'get_specification_items':
@@ -548,6 +552,15 @@ export class AssignmentBasedAuthorizationService
       actorRoles: context.actor.roles,
       reason: 'reviewer_required',
       requiredRoles: ['Reviewer'],
+    })
+  }
+
+  private assertAdmin(context: RequestContext): void {
+    if (hasRole(context, 'Admin')) return
+    throw forbiddenError('Admin role is required for this operation', {
+      actorRoles: context.actor.roles,
+      reason: 'admin_required',
+      requiredRoles: ['Admin'],
     })
   }
 

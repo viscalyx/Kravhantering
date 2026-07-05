@@ -2311,6 +2311,108 @@ export interface CreateSpecificationLocalRequirementsBatchOptions {
   batchAudit?: (executor: SqlExecutor, createdIds: number[]) => Promise<void>
 }
 
+export interface CreatedSpecificationLocalRequirementRow {
+  id: number
+  uniqueId: string
+}
+
+export async function createSpecificationLocalRequirementsBatchWithExecutor(
+  executor: SqlExecutor,
+  specificationId: number,
+  inputs: SpecificationLocalRequirementMutationInput[],
+  options: CreateSpecificationLocalRequirementsBatchOptions = {},
+): Promise<CreatedSpecificationLocalRequirementRow[]> {
+  const created: CreatedSpecificationLocalRequirementRow[] = []
+
+  for (const data of inputs) {
+    const normalized = await normalizeSpecificationLocalRequirementInput(
+      executor,
+      specificationId,
+      data,
+    )
+
+    const sequenceRows = (await executor.query(
+      `
+        UPDATE requirements_specifications
+        SET local_requirement_next_sequence = local_requirement_next_sequence + 1
+        OUTPUT INSERTED.local_requirement_next_sequence AS nextSequence
+        WHERE id = @0
+      `,
+      [specificationId],
+    )) as Array<{ nextSequence: number }>
+
+    const sequenceRow = sequenceRows[0]
+    if (!sequenceRow) {
+      throw notFoundError(
+        `Requirements specification ${specificationId} not found`,
+      )
+    }
+
+    const sequenceNumber = Math.max(1, Number(sequenceRow.nextSequence) - 1)
+    const uniqueId = formatSpecificationLocalRequirementUniqueId(sequenceNumber)
+    const now = new Date()
+
+    const insertedRows = (await executor.query(
+      `
+        INSERT INTO specification_local_requirements (
+          specification_id,
+          unique_id,
+          sequence_number,
+          description,
+          acceptance_criteria,
+          requirement_category_id,
+          requirement_type_id,
+          quality_characteristic_id,
+          priority_level_id,
+          is_verifiable,
+          verification_method,
+          needs_reference_id,
+          specification_item_status_id,
+          created_at,
+          updated_at
+        )
+        OUTPUT INSERTED.id AS id
+        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, @13, @13)
+      `,
+      [
+        specificationId,
+        uniqueId,
+        sequenceNumber,
+        normalized.description,
+        normalized.acceptanceCriteria,
+        normalized.requirementCategoryId,
+        normalized.requirementTypeId,
+        normalized.qualityCharacteristicId,
+        normalized.priorityLevelId,
+        normalized.verifiable ? 1 : 0,
+        normalized.verificationMethod,
+        normalized.needsReferenceId,
+        DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+        now,
+      ],
+    )) as Array<{ id: number }>
+
+    const insertedRow = insertedRows[0]
+    if (!insertedRow) {
+      throw new Error('Failed to insert specification-local requirement')
+    }
+
+    const createdId = Number(insertedRow.id)
+    await insertSpecificationLocalRequirementJoins(
+      executor,
+      createdId,
+      normalized,
+    )
+    created.push({ id: createdId, uniqueId })
+  }
+
+  await options.batchAudit?.(
+    executor,
+    created.map(row => row.id),
+  )
+  return created
+}
+
 export async function createSpecificationLocalRequirementsBatch(
   db: SqlServerDatabase,
   specificationId: number,
@@ -2319,97 +2421,17 @@ export async function createSpecificationLocalRequirementsBatch(
 ): Promise<SpecificationLocalRequirementDetail[]> {
   if (inputs.length === 0) return []
 
-  const createdIds: number[] = []
-
-  await db.transaction(async (manager: SqlExecutor) => {
-    for (const data of inputs) {
-      const normalized = await normalizeSpecificationLocalRequirementInput(
-        manager,
-        specificationId,
-        data,
-      )
-
-      const sequenceRows = (await manager.query(
-        `
-          UPDATE requirements_specifications
-          SET local_requirement_next_sequence = local_requirement_next_sequence + 1
-          OUTPUT INSERTED.local_requirement_next_sequence AS nextSequence
-          WHERE id = @0
-        `,
-        [specificationId],
-      )) as Array<{ nextSequence: number }>
-
-      const sequenceRow = sequenceRows[0]
-      if (!sequenceRow) {
-        throw notFoundError(
-          `Requirements specification ${specificationId} not found`,
-        )
-      }
-
-      const sequenceNumber = Math.max(1, Number(sequenceRow.nextSequence) - 1)
-      const uniqueId =
-        formatSpecificationLocalRequirementUniqueId(sequenceNumber)
-      const now = new Date()
-
-      const insertedRows = (await manager.query(
-        `
-          INSERT INTO specification_local_requirements (
-            specification_id,
-            unique_id,
-            sequence_number,
-            description,
-            acceptance_criteria,
-            requirement_category_id,
-            requirement_type_id,
-            quality_characteristic_id,
-            priority_level_id,
-            is_verifiable,
-            verification_method,
-            needs_reference_id,
-            specification_item_status_id,
-            created_at,
-            updated_at
-          )
-          OUTPUT INSERTED.id AS id
-          VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, @13, @13)
-        `,
-        [
-          specificationId,
-          uniqueId,
-          sequenceNumber,
-          normalized.description,
-          normalized.acceptanceCriteria,
-          normalized.requirementCategoryId,
-          normalized.requirementTypeId,
-          normalized.qualityCharacteristicId,
-          normalized.priorityLevelId,
-          normalized.verifiable ? 1 : 0,
-          normalized.verificationMethod,
-          normalized.needsReferenceId,
-          DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
-          now,
-        ],
-      )) as Array<{ id: number }>
-
-      const insertedRow = insertedRows[0]
-      if (!insertedRow) {
-        throw new Error('Failed to insert specification-local requirement')
-      }
-
-      const createdId = Number(insertedRow.id)
-      await insertSpecificationLocalRequirementJoins(
-        manager,
-        createdId,
-        normalized,
-      )
-      createdIds.push(createdId)
-    }
-
-    await options.batchAudit?.(manager, createdIds)
-  })
+  const created = await db.transaction(async (manager: SqlExecutor) =>
+    createSpecificationLocalRequirementsBatchWithExecutor(
+      manager,
+      specificationId,
+      inputs,
+      options,
+    ),
+  )
 
   const details: SpecificationLocalRequirementDetail[] = []
-  for (const createdId of createdIds) {
+  for (const { id: createdId } of created) {
     const created = await getSpecificationLocalRequirementDetail(
       db,
       specificationId,

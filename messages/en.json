@@ -1331,27 +1331,37 @@
     },
     "ai": {
       "title": "AI",
-      "description": "Control whether users can generate draft requirements with AI assistance.",
+      "description": "Control system-wide AI settings.",
       "adminPreferenceDisabled": "Disabled",
       "adminPreferenceEnabled": "Enabled",
       "disabledTooltip": "You need the Administrator role.",
       "environmentOverrideNotice": "Deployment configuration currently disables AI requirement generation. You can save the Admin Center preference, but generation stays disabled until the deployment override is removed.",
       "decreaseMcpMaxRequestLimit": "Decrease MCP request limit",
       "fieldHelp": {
-        "mcpMaxRequestLimit": "Maximum accepted MCP POST payload. The default is 1024 KiB. Values move in 102.4 KiB steps, so ten steps equal 1 MiB, and stay within the 102.4 KiB to 5 MiB range.",
-        "requirementGenerationEnabled": "Turn off AI requirement generation for all users. The setting affects the requirements library button, the generator modal, and the REST generation route.",
+        "mcpImportMaxRows": "Maximum number of rows accepted in one MCP import validation session. Use this to keep import validation work within an operationally manageable size.",
+        "mcpImportValidationTtl": "How long a persisted MCP import validation token remains usable for inspection or execution before it expires.",
+        "mcpMaxRequestLimit": "Maximum accepted MCP POST payload and persisted MCP import session size. Use this to control how large MCP requests and validation sessions may become.",
+        "requirementGenerationEnabled": "Control whether users can generate draft requirements with AI assistance. When disabled, users can still view the AI controls but cannot start new requirement generation. The setting affects the requirements library button, the generator modal, and the REST generation route.",
         "safetyRuleCacheTtl": "How long a process may use the last loaded rule set before reading it from the database again. Changes in this process apply immediately when an administrator saves a rule.",
         "safetyRules": "Each expandable row is a safety rule. Add custom words with word type and direction. Standard words can be deactivated or given another direction, and are then marked with a warning icon."
       },
       "increaseMcpMaxRequestLimit": "Increase MCP request limit",
       "loadError": "Could not load AI settings.",
+      "minutes": "min",
+      "mcpImportMaxRows": "MCP import row limit",
+      "mcpImportValidationTtl": "MCP validation TTL",
+      "mcpInterfaceDescription": "Control MCP transport, persisted MCP import sessions, and validation limits for import flows.",
+      "mcpInterfaceTitle": "MCP interface",
+      "mcpImportMaxRowsConstraint": "Allowed range: {min} to {max} rows. Step: {step}.",
       "mcpMaxRequestLimit": "MCP request limit",
+      "mcpImportValidationTtlConstraint": "Allowed range: {min} to {max} min. Step: {step}.",
+      "mcpMaxRequestLimitConstraint": "Allowed range: {min} to {max}. Step: {step}.",
       "mcpMaxRequestLimitCurrent": "Current limit: {value}",
-      "requirementGenerationDescription": "When disabled, users can still view the AI controls but cannot start new requirement generation.",
       "requirementGenerationEnabled": "Requirement generation",
       "saveError": "Could not save AI settings.",
-      "securityDescription": "Control MCP transport guardrails and the words used by the AI safety filter.",
-      "securityTitle": "AI and MCP security",
+      "securityDescription": "Control AI-assisted requirement generation, the safety-rule cache, and the AI safety filter.",
+      "securityTitle": "AI assistance",
+      "rows": "rows",
       "active": "Active",
       "activeTermCount": "{activeCount}/{totalCount} active",
       "addTerm": "Add",
@@ -1389,6 +1399,7 @@
       "seconds": "sec",
       "selectTerm": "Select word",
       "selectTermNamed": "Select {term}",
+      "safetyRuleCacheTtlConstraint": "Allowed range: {min} to {max} sec. Step: {step}.",
       "standard": "Standard",
       "standardDeviation": "Deviates from standard",
       "status": "Status",
@@ -2085,18 +2096,18 @@
       "title": "AI",
       "overview": {
         "heading": "Purpose",
-        "body": "The AI tab controls how AI-assisted requirement authoring and AI-adjacent MCP requests may be used across the system. The settings are global and affect requirement lists, specifications, and import flows that use AI."
+        "body": "The AI tab controls how AI-assisted requirement authoring and AI-adjacent MCP requests and imports may be used across the system. The settings are global and affect requirement lists, specifications, and import flows that use AI or MCP."
       },
       "settings": {
         "heading": "Available settings",
-        "body": "You can enable or disable AI-assisted requirement generation, control how long the active safety rule set may stay in the server cache, set the maximum allowed MCP request size, and maintain the words used by the AI and MCP safety screen. Every change on the AI tab is saved immediately when a field or row changes."
+        "body": "You can enable or disable AI-assisted requirement generation, control how long the active safety rule set may stay in the server cache, maintain the words used by the AI safety screen, and set MCP request/session and import limits. Every change on the AI tab is saved immediately when a field or row changes."
       },
       "precedence": {
         "heading": "Precedence",
         "body": "The deployment variable AI_REQUIREMENT_GENERATION_DISABLED has higher precedence. When it is active, generation remains disabled even if the saved Admin Center preference is enabled."
       },
       "safetyRules": {
-        "heading": "AI and MCP safety",
+        "heading": "AI assistance",
         "body": "The safety rules screen text before it is sent to an AI model and after the model responds. If the rule set cannot be read from the database, AI assistance is stopped. The rules are intended to catch attempts to take over the prompt, requests for internal instructions, encoded bypasses, secrets, harmful content, and system-adjacent content."
       },
       "ruleTypes": {

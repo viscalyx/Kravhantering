@@ -67,14 +67,22 @@ import type {
   AccessReviewRunDetail,
 } from '@/lib/access-review/types'
 import {
+  type AdminAiSettings,
   AI_SAFETY_RULE_CACHE_TTL_MAX_SECONDS,
   AI_SAFETY_RULE_CACHE_TTL_MIN_SECONDS,
-  type AiRequirementGenerationAvailability,
   addMcpMaxRequestBytesSteps,
   coerceAiSafetyRuleCacheTtlSeconds,
+  coerceMcpImportMaxRows,
+  coerceMcpImportValidationTtlMinutes,
   coerceMcpMaxRequestBytes,
-  DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
+  DEFAULT_ADMIN_AI_SETTINGS,
   formatMcpRequestPayloadKiB,
+  MCP_IMPORT_MAX_ROWS_DEFAULT,
+  MCP_IMPORT_MAX_ROWS_MAX,
+  MCP_IMPORT_MAX_ROWS_MIN,
+  MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+  MCP_IMPORT_VALIDATION_TTL_MAX_MINUTES,
+  MCP_IMPORT_VALIDATION_TTL_MIN_MINUTES,
   MCP_REQUEST_PAYLOAD_MAX_BYTES,
   MCP_REQUEST_PAYLOAD_MIN_BYTES,
   MCP_REQUEST_PAYLOAD_STEP_KIB,
@@ -600,15 +608,39 @@ function formatMcpRequestLimit(bytes: number, locale: string): string {
   return `${formatter.format(kib)} KiB`
 }
 
+function formatMcpRequestConstraintValue(
+  bytes: number,
+  locale: string,
+): string {
+  const mebibyte = 1024 * 1024
+  if (bytes % mebibyte === 0) return `${bytes / mebibyte} MiB`
+  return formatMcpRequestLimit(bytes, locale)
+}
+
+function normalizeAdminAiSettings(
+  payload: Partial<AdminAiSettings>,
+  fallback: AdminAiSettings = DEFAULT_ADMIN_AI_SETTINGS,
+): AdminAiSettings {
+  return {
+    ...fallback,
+    ...payload,
+    constraints: payload.constraints ?? fallback.constraints,
+  }
+}
+
 type AiSettingSaveKey =
   | 'aiSafetyRuleCacheTtlSeconds'
+  | 'mcpImportMaxRows'
+  | 'mcpImportValidationTtlMinutes'
   | 'mcpMaxRequestBytes'
   | 'requirementGenerationEnabled'
 
 type AiSettingsPatch = Partial<
   Pick<
-    AiRequirementGenerationAvailability,
+    AdminAiSettings,
     | 'aiSafetyRuleCacheTtlSeconds'
+    | 'mcpImportMaxRows'
+    | 'mcpImportValidationTtlMinutes'
     | 'mcpMaxRequestBytes'
     | 'requirementGenerationEnabled'
   >
@@ -627,6 +659,8 @@ interface AiSafetyTermForm {
 const AI_SETTING_SAVE_KEYS: readonly AiSettingSaveKey[] = [
   'requirementGenerationEnabled',
   'mcpMaxRequestBytes',
+  'mcpImportMaxRows',
+  'mcpImportValidationTtlMinutes',
   'aiSafetyRuleCacheTtlSeconds',
 ]
 
@@ -735,8 +769,8 @@ function AiSettingsPanel() {
   const ta = useTranslations('admin')
   const tc = useTranslations('common')
   const { confirm } = useConfirmModal()
-  const [settings, setSettings] = useState<AiRequirementGenerationAvailability>(
-    DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
+  const [settings, setSettings] = useState<AdminAiSettings>(
+    DEFAULT_ADMIN_AI_SETTINGS,
   )
   const [settingSaveStates, setSettingSaveStates] = useState(
     initialAiSettingSaveStates,
@@ -763,10 +797,14 @@ function AiSettingsPanel() {
   >({})
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [isMcpLimitHelpOpen, setIsMcpLimitHelpOpen] = useState(false)
+  const [isMcpImportRowsHelpOpen, setIsMcpImportRowsHelpOpen] = useState(false)
+  const [isMcpImportTtlHelpOpen, setIsMcpImportTtlHelpOpen] = useState(false)
   const [isCacheTtlHelpOpen, setIsCacheTtlHelpOpen] = useState(false)
   const [isRulesHelpOpen, setIsRulesHelpOpen] = useState(false)
   const settingSaveTokensRef = useRef<Record<AiSettingSaveKey, number>>({
     aiSafetyRuleCacheTtlSeconds: 0,
+    mcpImportMaxRows: 0,
+    mcpImportValidationTtlMinutes: 0,
     mcpMaxRequestBytes: 0,
     requirementGenerationEnabled: 0,
   })
@@ -777,17 +815,68 @@ function AiSettingsPanel() {
   const helpId = `${toggleId}-help`
   const mcpLimitId = 'admin-ai-mcp-max-request-kib'
   const mcpLimitHelpId = `${mcpLimitId}-help`
+  const mcpImportRowsId = 'admin-ai-mcp-import-max-rows'
+  const mcpImportRowsHelpId = `${mcpImportRowsId}-help`
+  const mcpImportTtlId = 'admin-ai-mcp-import-validation-ttl-minutes'
+  const mcpImportTtlHelpId = `${mcpImportTtlId}-help`
   const cacheTtlId = 'admin-ai-safety-rule-cache-ttl-seconds'
   const cacheTtlHelpId = `${cacheTtlId}-help`
+  const cacheTtlConstraintId = `${cacheTtlId}-constraint`
   const rulesHelpId = 'admin-ai-safety-rules-help'
+  const mcpLimitConstraintId = `${mcpLimitId}-constraint`
+  const mcpImportRowsConstraintId = `${mcpImportRowsId}-constraint`
+  const mcpImportTtlConstraintId = `${mcpImportTtlId}-constraint`
   const committedMcpLimitKiB = formatMcpRequestLimitInputKiB(
     settings.mcpMaxRequestBytes,
   )
   const [mcpLimitInputKiB, setMcpLimitInputKiB] = useState(committedMcpLimitKiB)
+  const currentMcpImportMaxRows =
+    settings.mcpImportMaxRows ?? MCP_IMPORT_MAX_ROWS_DEFAULT
+  const committedMcpImportRows = String(currentMcpImportMaxRows)
+  const [mcpImportRowsInput, setMcpImportRowsInput] = useState(
+    committedMcpImportRows,
+  )
+  const committedMcpImportTtlMinutes = String(
+    settings.mcpImportValidationTtlMinutes ??
+      MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+  )
+  const [mcpImportTtlInputMinutes, setMcpImportTtlInputMinutes] = useState(
+    committedMcpImportTtlMinutes,
+  )
   const committedCacheTtlSeconds = String(settings.aiSafetyRuleCacheTtlSeconds)
   const [cacheTtlInputSeconds, setCacheTtlInputSeconds] = useState(
     committedCacheTtlSeconds,
   )
+  const constraints = settings.constraints
+  const cacheTtlConstraintText = ta('ai.safetyRuleCacheTtlConstraint', {
+    max: constraints.aiSafetyRuleCacheTtlSeconds.max,
+    min: constraints.aiSafetyRuleCacheTtlSeconds.min,
+    step: constraints.aiSafetyRuleCacheTtlSeconds.step,
+  })
+  const mcpLimitConstraintText = ta('ai.mcpMaxRequestLimitConstraint', {
+    max: formatMcpRequestConstraintValue(
+      constraints.mcpMaxRequestBytes.max,
+      locale,
+    ),
+    min: formatMcpRequestConstraintValue(
+      constraints.mcpMaxRequestBytes.min,
+      locale,
+    ),
+    step: formatMcpRequestConstraintValue(
+      constraints.mcpMaxRequestBytes.step,
+      locale,
+    ),
+  })
+  const mcpImportRowsConstraintText = ta('ai.mcpImportMaxRowsConstraint', {
+    max: constraints.mcpImportMaxRows.max,
+    min: constraints.mcpImportMaxRows.min,
+    step: constraints.mcpImportMaxRows.step,
+  })
+  const mcpImportTtlConstraintText = ta('ai.mcpImportValidationTtlConstraint', {
+    max: constraints.mcpImportValidationTtlMinutes.max,
+    min: constraints.mcpImportValidationTtlMinutes.min,
+    step: constraints.mcpImportValidationTtlMinutes.step,
+  })
 
   function setSettingSaveState(key: AiSettingSaveKey, state: SaveState) {
     setSettingSaveStates(current => ({ ...current, [key]: state }))
@@ -800,9 +889,7 @@ function AiSettingsPanel() {
   async function saveSettingsPatch(
     key: AiSettingSaveKey,
     patch: AiSettingsPatch,
-    optimistic: (
-      current: AiRequirementGenerationAvailability,
-    ) => AiRequirementGenerationAvailability,
+    optimistic: (current: AdminAiSettings) => AdminAiSettings,
   ) {
     const requestToken = settingSaveTokensRef.current[key] + 1
     settingSaveTokensRef.current[key] = requestToken
@@ -829,10 +916,9 @@ function AiSettingsPanel() {
         return
       }
 
-      const payload =
-        (await response.json()) as AiRequirementGenerationAvailability
+      const payload = (await response.json()) as Partial<AdminAiSettings>
       if (requestToken !== settingSaveTokensRef.current[key]) return
-      setSettings(payload)
+      setSettings(current => normalizeAdminAiSettings(payload, current))
       setSettingSaveState(key, 'saved')
     } catch {
       if (requestToken !== settingSaveTokensRef.current[key]) return
@@ -869,6 +955,58 @@ function AiSettingsPanel() {
     updateMcpMaxRequestBytes(parsed * 1024)
   }
 
+  function updateMcpImportMaxRows(nextValue: number) {
+    const next = coerceMcpImportMaxRows(nextValue)
+    setMcpImportRowsInput(String(next))
+    if (next === currentMcpImportMaxRows) return
+    void saveSettingsPatch(
+      'mcpImportMaxRows',
+      { mcpImportMaxRows: next },
+      current => ({ ...current, mcpImportMaxRows: next }),
+    )
+  }
+
+  function commitMcpImportMaxRowsInput(rawValue = mcpImportRowsInput) {
+    const trimmed = rawValue.trim()
+    if (trimmed === '') {
+      setMcpImportRowsInput(committedMcpImportRows)
+      return
+    }
+    const parsed = Number(trimmed)
+    if (!Number.isFinite(parsed)) {
+      setMcpImportRowsInput(committedMcpImportRows)
+      return
+    }
+    updateMcpImportMaxRows(parsed)
+  }
+
+  function updateMcpImportValidationTtlMinutes(nextValue: number) {
+    const next = coerceMcpImportValidationTtlMinutes(nextValue)
+    setMcpImportTtlInputMinutes(String(next))
+    if (next === Number(committedMcpImportTtlMinutes)) return
+    void saveSettingsPatch(
+      'mcpImportValidationTtlMinutes',
+      { mcpImportValidationTtlMinutes: next },
+      current => ({ ...current, mcpImportValidationTtlMinutes: next }),
+    )
+  }
+
+  function commitMcpImportValidationTtlInput(
+    rawValue = mcpImportTtlInputMinutes,
+  ) {
+    const trimmed = rawValue.trim()
+    if (trimmed === '') {
+      setMcpImportTtlInputMinutes(committedMcpImportTtlMinutes)
+      return
+    }
+    const parsed = Number(trimmed)
+    if (!Number.isFinite(parsed)) {
+      setMcpImportTtlInputMinutes(committedMcpImportTtlMinutes)
+      return
+    }
+    updateMcpImportValidationTtlMinutes(parsed)
+  }
+
   function updateAiSafetyRuleCacheTtlSeconds(nextValue: number) {
     const next = coerceAiSafetyRuleCacheTtlSeconds(nextValue)
     setCacheTtlInputSeconds(String(next))
@@ -903,9 +1041,8 @@ function AiSettingsPanel() {
         setMessage((await readResponseMessage(response)) ?? loadErrorMessage)
         return
       }
-      const payload =
-        (await response.json()) as AiRequirementGenerationAvailability
-      setSettings(payload)
+      const payload = (await response.json()) as Partial<AdminAiSettings>
+      setSettings(normalizeAdminAiSettings(payload))
       setSettingSaveStates(initialAiSettingSaveStates())
     } catch {
       setMessage(loadErrorMessage)
@@ -948,6 +1085,14 @@ function AiSettingsPanel() {
   useEffect(() => {
     setMcpLimitInputKiB(committedMcpLimitKiB)
   }, [committedMcpLimitKiB])
+
+  useEffect(() => {
+    setMcpImportRowsInput(committedMcpImportRows)
+  }, [committedMcpImportRows])
+
+  useEffect(() => {
+    setMcpImportTtlInputMinutes(committedMcpImportTtlMinutes)
+  }, [committedMcpImportTtlMinutes])
 
   useEffect(() => {
     setCacheTtlInputSeconds(committedCacheTtlSeconds)
@@ -1205,6 +1350,15 @@ function AiSettingsPanel() {
 
       <div className="mt-6 grid gap-4">
         <div className="grid gap-4">
+          <div>
+            <h3 className="text-base font-semibold text-secondary-950 dark:text-secondary-50">
+              {ta('ai.securityTitle')}
+            </h3>
+            <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+              {ta('ai.securityDescription')}
+            </p>
+          </div>
+
           <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
@@ -1229,9 +1383,6 @@ function AiSettingsPanel() {
                 <AnimatedHelpPanel id={helpId} isOpen={isHelpOpen}>
                   {ta('ai.fieldHelp.requirementGenerationEnabled')}
                 </AnimatedHelpPanel>
-                <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-                  {ta('ai.requirementGenerationDescription')}
-                </p>
                 {settings.disabledByEnvironment ? (
                   <p
                     className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100"
@@ -1281,16 +1432,7 @@ function AiSettingsPanel() {
             ) : null}
           </div>
 
-          <div>
-            <h3 className="text-base font-semibold text-secondary-950 dark:text-secondary-50">
-              {ta('ai.securityTitle')}
-            </h3>
-            <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-              {ta('ai.securityDescription')}
-            </p>
-          </div>
-
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid gap-4">
             <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -1319,38 +1461,53 @@ function AiSettingsPanel() {
                     {ta('ai.fieldHelp.safetyRuleCacheTtl')}
                   </AnimatedHelpPanel>
                 </div>
-                <div className="flex min-h-11 items-center overflow-hidden rounded-full border border-secondary-200 bg-white text-sm font-medium text-secondary-800 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100">
-                  <input
-                    aria-describedby={cacheTtlHelpId}
-                    className="h-11 w-28 border-0 bg-transparent px-3 text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    disabled={
-                      isLoading ||
-                      isSettingSaving('aiSafetyRuleCacheTtlSeconds')
-                    }
-                    id={cacheTtlId}
-                    inputMode="numeric"
-                    max={AI_SAFETY_RULE_CACHE_TTL_MAX_SECONDS}
-                    min={AI_SAFETY_RULE_CACHE_TTL_MIN_SECONDS}
-                    onBlur={event => {
-                      commitAiSafetyRuleCacheTtlInput(event.currentTarget.value)
-                    }}
-                    onChange={event => {
-                      setCacheTtlInputSeconds(event.target.value)
-                      setSettingSaveState('aiSafetyRuleCacheTtlSeconds', 'idle')
-                      setMessage(null)
-                    }}
-                    onKeyDown={event => {
-                      if (event.key !== 'Enter') return
-                      event.preventDefault()
-                      commitAiSafetyRuleCacheTtlInput(event.currentTarget.value)
-                    }}
-                    step={30}
-                    type="number"
-                    value={cacheTtlInputSeconds}
-                  />
-                  <span className="px-3 text-xs text-secondary-500 dark:text-secondary-400">
-                    {ta('ai.seconds')}
-                  </span>
+                <div className="flex flex-col items-start gap-2 sm:items-end">
+                  <div className="flex min-h-11 items-center overflow-hidden rounded-full border border-secondary-200 bg-white text-sm font-medium text-secondary-800 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100">
+                    <input
+                      aria-describedby={`${cacheTtlHelpId} ${cacheTtlConstraintId}`}
+                      className="h-11 w-28 border-0 bg-transparent px-3 text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      disabled={
+                        isLoading ||
+                        isSettingSaving('aiSafetyRuleCacheTtlSeconds')
+                      }
+                      id={cacheTtlId}
+                      inputMode="numeric"
+                      max={AI_SAFETY_RULE_CACHE_TTL_MAX_SECONDS}
+                      min={AI_SAFETY_RULE_CACHE_TTL_MIN_SECONDS}
+                      onBlur={event => {
+                        commitAiSafetyRuleCacheTtlInput(
+                          event.currentTarget.value,
+                        )
+                      }}
+                      onChange={event => {
+                        setCacheTtlInputSeconds(event.target.value)
+                        setSettingSaveState(
+                          'aiSafetyRuleCacheTtlSeconds',
+                          'idle',
+                        )
+                        setMessage(null)
+                      }}
+                      onKeyDown={event => {
+                        if (event.key !== 'Enter') return
+                        event.preventDefault()
+                        commitAiSafetyRuleCacheTtlInput(
+                          event.currentTarget.value,
+                        )
+                      }}
+                      step={1}
+                      type="number"
+                      value={cacheTtlInputSeconds}
+                    />
+                    <span className="px-3 text-xs text-secondary-500 dark:text-secondary-400">
+                      {ta('ai.seconds')}
+                    </span>
+                  </div>
+                  <p
+                    className="max-w-xs text-xs text-secondary-500 dark:text-secondary-400 sm:text-right"
+                    id={cacheTtlConstraintId}
+                  >
+                    {cacheTtlConstraintText}
+                  </p>
                 </div>
               </div>
               {settingSaveStates.aiSafetyRuleCacheTtlSeconds !== 'idle' ? (
@@ -1358,130 +1515,6 @@ function AiSettingsPanel() {
                   {settingSaveStates.aiSafetyRuleCacheTtlSeconds === 'saving'
                     ? tc('saving')
                     : settingSaveStates.aiSafetyRuleCacheTtlSeconds === 'saved'
-                      ? ta('saved')
-                      : ta('ai.rowSaveError')}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1">
-                    <label
-                      className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
-                      htmlFor={mcpLimitId}
-                    >
-                      {ta('ai.mcpMaxRequestLimit')}
-                    </label>
-                    <button
-                      aria-controls={mcpLimitHelpId}
-                      aria-expanded={isMcpLimitHelpOpen}
-                      aria-label={`${tc('help')}: ${ta('ai.mcpMaxRequestLimit')}`}
-                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
-                      onClick={() => setIsMcpLimitHelpOpen(open => !open)}
-                      type="button"
-                    >
-                      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <AnimatedHelpPanel
-                    id={mcpLimitHelpId}
-                    isOpen={isMcpLimitHelpOpen}
-                  >
-                    {ta('ai.fieldHelp.mcpMaxRequestLimit')}
-                  </AnimatedHelpPanel>
-                  <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
-                    {ta('ai.mcpMaxRequestLimitCurrent', {
-                      value: formatMcpRequestLimit(
-                        settings.mcpMaxRequestBytes,
-                        locale,
-                      ),
-                    })}
-                  </p>
-                </div>
-                <div className="flex min-h-11 items-center overflow-hidden rounded-full border border-secondary-200 bg-white text-sm font-medium text-secondary-800 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100">
-                  <button
-                    aria-label={ta('ai.decreaseMcpMaxRequestLimit')}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center border-r border-secondary-200 transition-colors hover:bg-secondary-100 disabled:opacity-50 dark:border-secondary-700 dark:hover:bg-secondary-800"
-                    disabled={
-                      isLoading ||
-                      isSettingSaving('mcpMaxRequestBytes') ||
-                      settings.mcpMaxRequestBytes <=
-                        MIN_ALLOWED_MCP_REQUEST_BYTES
-                    }
-                    onClick={() =>
-                      updateMcpMaxRequestBytes(
-                        addMcpMaxRequestBytesSteps(
-                          settings.mcpMaxRequestBytes,
-                          -1,
-                        ),
-                      )
-                    }
-                    type="button"
-                  >
-                    <CircleMinus aria-hidden="true" className="h-4 w-4" />
-                  </button>
-                  <input
-                    aria-describedby={mcpLimitHelpId}
-                    className="h-11 w-24 border-0 bg-transparent px-3 text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    disabled={
-                      isLoading || isSettingSaving('mcpMaxRequestBytes')
-                    }
-                    id={mcpLimitId}
-                    inputMode="numeric"
-                    max={MAX_ALLOWED_MCP_REQUEST_BYTES / 1024}
-                    min={Number(
-                      formatMcpRequestPayloadKiB(MIN_ALLOWED_MCP_REQUEST_BYTES),
-                    )}
-                    onBlur={event => {
-                      commitMcpMaxRequestBytesInput(event.currentTarget.value)
-                    }}
-                    onChange={event => {
-                      setMcpLimitInputKiB(event.target.value)
-                      setSettingSaveState('mcpMaxRequestBytes', 'idle')
-                      setMessage(null)
-                    }}
-                    onKeyDown={event => {
-                      if (event.key !== 'Enter') return
-                      event.preventDefault()
-                      commitMcpMaxRequestBytesInput(event.currentTarget.value)
-                    }}
-                    step={MCP_REQUEST_PAYLOAD_STEP_KIB}
-                    type="number"
-                    value={mcpLimitInputKiB}
-                  />
-                  <span className="px-2 text-xs text-secondary-500 dark:text-secondary-400">
-                    KiB
-                  </span>
-                  <button
-                    aria-label={ta('ai.increaseMcpMaxRequestLimit')}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center border-l border-secondary-200 transition-colors hover:bg-secondary-100 disabled:opacity-50 dark:border-secondary-700 dark:hover:bg-secondary-800"
-                    disabled={
-                      isLoading ||
-                      isSettingSaving('mcpMaxRequestBytes') ||
-                      settings.mcpMaxRequestBytes >=
-                        MAX_ALLOWED_MCP_REQUEST_BYTES
-                    }
-                    onClick={() =>
-                      updateMcpMaxRequestBytes(
-                        addMcpMaxRequestBytesSteps(
-                          settings.mcpMaxRequestBytes,
-                          1,
-                        ),
-                      )
-                    }
-                    type="button"
-                  >
-                    <Plus aria-hidden="true" className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              {settingSaveStates.mcpMaxRequestBytes !== 'idle' ? (
-                <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
-                  {settingSaveStates.mcpMaxRequestBytes === 'saving'
-                    ? tc('saving')
-                    : settingSaveStates.mcpMaxRequestBytes === 'saved'
                       ? ta('saved')
                       : ta('ai.rowSaveError')}
                 </p>
@@ -1859,6 +1892,320 @@ function AiSettingsPanel() {
                   </div>
                 )
               })}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-base font-semibold text-secondary-950 dark:text-secondary-50">
+              {ta('ai.mcpInterfaceTitle')}
+            </h3>
+            <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+              {ta('ai.mcpInterfaceDescription')}
+            </p>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1">
+                    <label
+                      className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
+                      htmlFor={mcpLimitId}
+                    >
+                      {ta('ai.mcpMaxRequestLimit')}
+                    </label>
+                    <button
+                      aria-controls={mcpLimitHelpId}
+                      aria-expanded={isMcpLimitHelpOpen}
+                      aria-label={`${tc('help')}: ${ta('ai.mcpMaxRequestLimit')}`}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                      onClick={() => setIsMcpLimitHelpOpen(open => !open)}
+                      type="button"
+                    >
+                      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <AnimatedHelpPanel
+                    id={mcpLimitHelpId}
+                    isOpen={isMcpLimitHelpOpen}
+                  >
+                    {ta('ai.fieldHelp.mcpMaxRequestLimit')}
+                  </AnimatedHelpPanel>
+                  <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                    {ta('ai.mcpMaxRequestLimitCurrent', {
+                      value: formatMcpRequestLimit(
+                        settings.mcpMaxRequestBytes,
+                        locale,
+                      ),
+                    })}
+                  </p>
+                </div>
+                <div className="flex flex-col items-start gap-2 sm:items-end">
+                  <div className="flex min-h-11 items-center overflow-hidden rounded-full border border-secondary-200 bg-white text-sm font-medium text-secondary-800 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100">
+                    <button
+                      aria-label={ta('ai.decreaseMcpMaxRequestLimit')}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center border-r border-secondary-200 transition-colors hover:bg-secondary-100 disabled:opacity-50 dark:border-secondary-700 dark:hover:bg-secondary-800"
+                      disabled={
+                        isLoading ||
+                        isSettingSaving('mcpMaxRequestBytes') ||
+                        settings.mcpMaxRequestBytes <=
+                          MIN_ALLOWED_MCP_REQUEST_BYTES
+                      }
+                      onClick={() =>
+                        updateMcpMaxRequestBytes(
+                          addMcpMaxRequestBytesSteps(
+                            settings.mcpMaxRequestBytes,
+                            -1,
+                          ),
+                        )
+                      }
+                      type="button"
+                    >
+                      <CircleMinus aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                    <input
+                      aria-describedby={`${mcpLimitHelpId} ${mcpLimitConstraintId}`}
+                      className="h-11 w-24 border-0 bg-transparent px-3 text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      disabled={
+                        isLoading || isSettingSaving('mcpMaxRequestBytes')
+                      }
+                      id={mcpLimitId}
+                      inputMode="numeric"
+                      max={MAX_ALLOWED_MCP_REQUEST_BYTES / 1024}
+                      min={Number(
+                        formatMcpRequestPayloadKiB(
+                          MIN_ALLOWED_MCP_REQUEST_BYTES,
+                        ),
+                      )}
+                      onBlur={event => {
+                        commitMcpMaxRequestBytesInput(event.currentTarget.value)
+                      }}
+                      onChange={event => {
+                        setMcpLimitInputKiB(event.target.value)
+                        setSettingSaveState('mcpMaxRequestBytes', 'idle')
+                        setMessage(null)
+                      }}
+                      onKeyDown={event => {
+                        if (event.key !== 'Enter') return
+                        event.preventDefault()
+                        commitMcpMaxRequestBytesInput(event.currentTarget.value)
+                      }}
+                      step={MCP_REQUEST_PAYLOAD_STEP_KIB}
+                      type="number"
+                      value={mcpLimitInputKiB}
+                    />
+                    <span className="px-2 text-xs text-secondary-500 dark:text-secondary-400">
+                      KiB
+                    </span>
+                    <button
+                      aria-label={ta('ai.increaseMcpMaxRequestLimit')}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center border-l border-secondary-200 transition-colors hover:bg-secondary-100 disabled:opacity-50 dark:border-secondary-700 dark:hover:bg-secondary-800"
+                      disabled={
+                        isLoading ||
+                        isSettingSaving('mcpMaxRequestBytes') ||
+                        settings.mcpMaxRequestBytes >=
+                          MAX_ALLOWED_MCP_REQUEST_BYTES
+                      }
+                      onClick={() =>
+                        updateMcpMaxRequestBytes(
+                          addMcpMaxRequestBytesSteps(
+                            settings.mcpMaxRequestBytes,
+                            1,
+                          ),
+                        )
+                      }
+                      type="button"
+                    >
+                      <Plus aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p
+                    className="max-w-xs text-xs text-secondary-500 dark:text-secondary-400 sm:text-right"
+                    id={mcpLimitConstraintId}
+                  >
+                    {mcpLimitConstraintText}
+                  </p>
+                </div>
+              </div>
+              {settingSaveStates.mcpMaxRequestBytes !== 'idle' ? (
+                <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                  {settingSaveStates.mcpMaxRequestBytes === 'saving'
+                    ? tc('saving')
+                    : settingSaveStates.mcpMaxRequestBytes === 'saved'
+                      ? ta('saved')
+                      : ta('ai.rowSaveError')}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1">
+                    <label
+                      className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
+                      htmlFor={mcpImportRowsId}
+                    >
+                      {ta('ai.mcpImportMaxRows')}
+                    </label>
+                    <button
+                      aria-controls={mcpImportRowsHelpId}
+                      aria-expanded={isMcpImportRowsHelpOpen}
+                      aria-label={`${tc('help')}: ${ta('ai.mcpImportMaxRows')}`}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                      onClick={() => setIsMcpImportRowsHelpOpen(open => !open)}
+                      type="button"
+                    >
+                      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <AnimatedHelpPanel
+                    id={mcpImportRowsHelpId}
+                    isOpen={isMcpImportRowsHelpOpen}
+                  >
+                    {ta('ai.fieldHelp.mcpImportMaxRows')}
+                  </AnimatedHelpPanel>
+                </div>
+                <div className="flex flex-col items-start gap-2 sm:items-end">
+                  <div className="flex min-h-11 items-center overflow-hidden rounded-full border border-secondary-200 bg-white text-sm font-medium text-secondary-800 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100">
+                    <input
+                      aria-describedby={`${mcpImportRowsHelpId} ${mcpImportRowsConstraintId}`}
+                      className="h-11 w-28 border-0 bg-transparent px-3 text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      disabled={
+                        isLoading || isSettingSaving('mcpImportMaxRows')
+                      }
+                      id={mcpImportRowsId}
+                      inputMode="numeric"
+                      max={MCP_IMPORT_MAX_ROWS_MAX}
+                      min={MCP_IMPORT_MAX_ROWS_MIN}
+                      onBlur={event => {
+                        commitMcpImportMaxRowsInput(event.currentTarget.value)
+                      }}
+                      onChange={event => {
+                        setMcpImportRowsInput(event.target.value)
+                        setSettingSaveState('mcpImportMaxRows', 'idle')
+                        setMessage(null)
+                      }}
+                      onKeyDown={event => {
+                        if (event.key !== 'Enter') return
+                        event.preventDefault()
+                        commitMcpImportMaxRowsInput(event.currentTarget.value)
+                      }}
+                      step={1}
+                      type="number"
+                      value={mcpImportRowsInput}
+                    />
+                    <span className="px-3 text-xs text-secondary-500 dark:text-secondary-400">
+                      {ta('ai.rows')}
+                    </span>
+                  </div>
+                  <p
+                    className="max-w-xs text-xs text-secondary-500 dark:text-secondary-400 sm:text-right"
+                    id={mcpImportRowsConstraintId}
+                  >
+                    {mcpImportRowsConstraintText}
+                  </p>
+                </div>
+              </div>
+              {settingSaveStates.mcpImportMaxRows !== 'idle' ? (
+                <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                  {settingSaveStates.mcpImportMaxRows === 'saving'
+                    ? tc('saving')
+                    : settingSaveStates.mcpImportMaxRows === 'saved'
+                      ? ta('saved')
+                      : ta('ai.rowSaveError')}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1">
+                    <label
+                      className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
+                      htmlFor={mcpImportTtlId}
+                    >
+                      {ta('ai.mcpImportValidationTtl')}
+                    </label>
+                    <button
+                      aria-controls={mcpImportTtlHelpId}
+                      aria-expanded={isMcpImportTtlHelpOpen}
+                      aria-label={`${tc('help')}: ${ta('ai.mcpImportValidationTtl')}`}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                      onClick={() => setIsMcpImportTtlHelpOpen(open => !open)}
+                      type="button"
+                    >
+                      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <AnimatedHelpPanel
+                    id={mcpImportTtlHelpId}
+                    isOpen={isMcpImportTtlHelpOpen}
+                  >
+                    {ta('ai.fieldHelp.mcpImportValidationTtl')}
+                  </AnimatedHelpPanel>
+                </div>
+                <div className="flex flex-col items-start gap-2 sm:items-end">
+                  <div className="flex min-h-11 items-center overflow-hidden rounded-full border border-secondary-200 bg-white text-sm font-medium text-secondary-800 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100">
+                    <input
+                      aria-describedby={`${mcpImportTtlHelpId} ${mcpImportTtlConstraintId}`}
+                      className="h-11 w-28 border-0 bg-transparent px-3 text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      disabled={
+                        isLoading ||
+                        isSettingSaving('mcpImportValidationTtlMinutes')
+                      }
+                      id={mcpImportTtlId}
+                      inputMode="numeric"
+                      max={MCP_IMPORT_VALIDATION_TTL_MAX_MINUTES}
+                      min={MCP_IMPORT_VALIDATION_TTL_MIN_MINUTES}
+                      onBlur={event => {
+                        commitMcpImportValidationTtlInput(
+                          event.currentTarget.value,
+                        )
+                      }}
+                      onChange={event => {
+                        setMcpImportTtlInputMinutes(event.target.value)
+                        setSettingSaveState(
+                          'mcpImportValidationTtlMinutes',
+                          'idle',
+                        )
+                        setMessage(null)
+                      }}
+                      onKeyDown={event => {
+                        if (event.key !== 'Enter') return
+                        event.preventDefault()
+                        commitMcpImportValidationTtlInput(
+                          event.currentTarget.value,
+                        )
+                      }}
+                      step={1}
+                      type="number"
+                      value={mcpImportTtlInputMinutes}
+                    />
+                    <span className="px-3 text-xs text-secondary-500 dark:text-secondary-400">
+                      {ta('ai.minutes')}
+                    </span>
+                  </div>
+                  <p
+                    className="max-w-xs text-xs text-secondary-500 dark:text-secondary-400 sm:text-right"
+                    id={mcpImportTtlConstraintId}
+                  >
+                    {mcpImportTtlConstraintText}
+                  </p>
+                </div>
+              </div>
+              {settingSaveStates.mcpImportValidationTtlMinutes !== 'idle' ? (
+                <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                  {settingSaveStates.mcpImportValidationTtlMinutes === 'saving'
+                    ? tc('saving')
+                    : settingSaveStates.mcpImportValidationTtlMinutes ===
+                        'saved'
+                      ? ta('saved')
+                      : ta('ai.rowSaveError')}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>

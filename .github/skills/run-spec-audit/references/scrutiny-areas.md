@@ -455,3 +455,22 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   filter?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 22: package filters keep archived history out of specifications but available in the library"`
+
+## 31. Scenario 24: MCP requirement import keeps token-bound validation execution narrow
+
+- **Code:** `lib/mcp/server.ts`, `lib/requirements/import-service.ts`,
+  `lib/dal/requirement-import-validation-sessions.ts`,
+  `lib/dal/ai-settings.ts`, and `app/api/admin/ai-settings/route.ts`.
+- **Spec:** `docs/integrations/mcp-server-user-guide.md`,
+  `docs/integrations/mcp-server-contributor-guide.md`,
+  `docs/governance/admin-center.md`, and
+  `docs/reference/database-schema.md`.
+- **Req tag:** `[Req: inferred — docs/integrations/mcp-server-user-guide.md "MCP Requirement Import Flow"]`
+- **Question:** Does MCP import keep validation sessions token-bound, store only
+  token hashes, restrict execute/inspect to `validationToken`, re-authorize the
+  stored destination, reject stale reference data with safe diagnostics, use the
+  closed import issue-code set, keep validation state separate from submitted
+  payload and execution receipts, and keep Admin Center import caps visible
+  without leaking them into ordinary requirement-generation availability?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 24: MCP requirement import keeps token-bound validation execution narrow"`

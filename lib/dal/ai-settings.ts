@@ -1,8 +1,14 @@
 import {
+  ADMIN_AI_SETTINGS_CONSTRAINTS,
+  type AdminAiSettings,
   AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
   type AiRequirementGenerationAvailability,
   isValidAiSafetyRuleCacheTtlSeconds,
+  isValidMcpImportMaxRows,
+  isValidMcpImportValidationTtlMinutes,
   isValidMcpMaxRequestBytes,
+  MCP_IMPORT_MAX_ROWS_DEFAULT,
+  MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
 } from '@/lib/ai/generation-availability'
 import { isAiRequirementGenerationDisabled } from '@/lib/ai/scan-guard'
@@ -12,14 +18,24 @@ import { toBoolean } from '@/lib/typeorm/value-mappers'
 
 export interface AiGenerationSettings {
   aiSafetyRuleCacheTtlSeconds: number
+  mcpImportMaxRows: number
+  mcpImportValidationTtlMinutes: number
   mcpMaxRequestBytes: number
   requirementGenerationEnabled: boolean
 }
 
 export type AiGenerationSettingsPatch = Partial<AiGenerationSettings>
 
+export interface McpRuntimeSettings {
+  mcpImportMaxRows: number
+  mcpImportValidationTtlMinutes: number
+  mcpMaxRequestBytes: number
+}
+
 interface AiSettingsRow {
   aiSafetyRuleCacheTtlSeconds?: number | string
+  mcpImportMaxRows?: number | string
+  mcpImportValidationTtlMinutes?: number | string
   mcpMaxRequestBytes?: number | string
   requirementGenerationEnabled: boolean | number | string
 }
@@ -49,16 +65,24 @@ interface AiSettingsWriteOptions {
 export const DEFAULT_AI_GENERATION_SETTINGS: AiGenerationSettings =
   Object.freeze({
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+    mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+    mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
     mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
     requirementGenerationEnabled: true,
   })
 
-const MCP_MAX_REQUEST_BYTES_CACHE_TTL_MS = 30_000
+const DEFAULT_MCP_RUNTIME_SETTINGS: McpRuntimeSettings = Object.freeze({
+  mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+  mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+  mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+})
 
-let cachedMcpMaxRequestBytes:
+const MCP_RUNTIME_SETTINGS_CACHE_TTL_MS = 30_000
+
+let cachedMcpRuntimeSettings:
   | {
       expiresAt: number
-      value: number
+      value: McpRuntimeSettings
     }
   | undefined
 
@@ -90,7 +114,6 @@ export function resolveAiGenerationAvailability(
     aiSafetyRuleCacheTtlSeconds: settings.aiSafetyRuleCacheTtlSeconds,
     effectiveRequirementGenerationEnabled:
       settings.requirementGenerationEnabled && !disabledByEnvironment,
-    mcpMaxRequestBytes: settings.mcpMaxRequestBytes,
     requirementGenerationEnabled: settings.requirementGenerationEnabled,
   }
 }
@@ -100,6 +123,20 @@ function readMcpMaxRequestBytes(value: unknown): number {
   return isValidMcpMaxRequestBytes(numeric)
     ? numeric
     : MCP_REQUEST_PAYLOAD_DEFAULT_BYTES
+}
+
+function readMcpImportMaxRows(value: unknown): number {
+  const numeric = Number(value ?? MCP_IMPORT_MAX_ROWS_DEFAULT)
+  return isValidMcpImportMaxRows(numeric)
+    ? numeric
+    : MCP_IMPORT_MAX_ROWS_DEFAULT
+}
+
+function readMcpImportValidationTtlMinutes(value: unknown): number {
+  const numeric = Number(value ?? MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES)
+  return isValidMcpImportValidationTtlMinutes(numeric)
+    ? numeric
+    : MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES
 }
 
 function readAiSafetyRuleCacheTtlSeconds(value: unknown): number {
@@ -117,6 +154,22 @@ function assertMcpMaxRequestBytes(value: number): void {
   }
 }
 
+function assertMcpImportMaxRows(value: number): void {
+  if (!isValidMcpImportMaxRows(value)) {
+    throw validationError('Invalid AI settings', {
+      reason: 'invalid_mcp_import_max_rows',
+    })
+  }
+}
+
+function assertMcpImportValidationTtlMinutes(value: number): void {
+  if (!isValidMcpImportValidationTtlMinutes(value)) {
+    throw validationError('Invalid AI settings', {
+      reason: 'invalid_mcp_import_validation_ttl_minutes',
+    })
+  }
+}
+
 function assertAiSafetyRuleCacheTtlSeconds(value: number): void {
   if (!isValidAiSafetyRuleCacheTtlSeconds(value)) {
     throw validationError('Invalid AI settings', {
@@ -125,10 +178,30 @@ function assertAiSafetyRuleCacheTtlSeconds(value: number): void {
   }
 }
 
-function cacheMcpMaxRequestBytes(value: number): void {
-  cachedMcpMaxRequestBytes = {
-    expiresAt: Date.now() + MCP_MAX_REQUEST_BYTES_CACHE_TTL_MS,
+function assertMcpRuntimeSettings(values: McpRuntimeSettings): void {
+  assertMcpMaxRequestBytes(values.mcpMaxRequestBytes)
+  assertMcpImportMaxRows(values.mcpImportMaxRows)
+  assertMcpImportValidationTtlMinutes(values.mcpImportValidationTtlMinutes)
+}
+
+function cacheMcpRuntimeSettings(value: McpRuntimeSettings): void {
+  cachedMcpRuntimeSettings = {
+    expiresAt: Date.now() + MCP_RUNTIME_SETTINGS_CACHE_TTL_MS,
     value,
+  }
+}
+
+function adminAiSettingsFromSettings(
+  settings: AiGenerationSettings,
+  env: NodeJS.ProcessEnv = process.env,
+): AdminAiSettings {
+  return {
+    ...resolveAiGenerationAvailability(settings, env),
+    aiSafetyRuleCacheTtlSeconds: settings.aiSafetyRuleCacheTtlSeconds,
+    constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
+    mcpImportMaxRows: settings.mcpImportMaxRows,
+    mcpImportValidationTtlMinutes: settings.mcpImportValidationTtlMinutes,
+    mcpMaxRequestBytes: settings.mcpMaxRequestBytes,
   }
 }
 
@@ -188,7 +261,7 @@ function isExpectedLegacyAiSettingsReadError(error: unknown): boolean {
   const joinedMessages = collectErrorMessages(error).join(' ')
   return (
     /\b207\b/.test(joinedMessages) &&
-    /(?:mcp_max_request_bytes|ai_safety_rule_cache_ttl_seconds)/i.test(
+    /(?:mcp_max_request_bytes|mcp_import_max_rows|mcp_import_validation_ttl_minutes|ai_safety_rule_cache_ttl_seconds)/i.test(
       joinedMessages,
     )
   )
@@ -229,12 +302,14 @@ async function getLegacyAiGenerationSettings(
 
   return {
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+    mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+    mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
     mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
     requirementGenerationEnabled: toBoolean(row.requirementGenerationEnabled),
   }
 }
 
-async function getAiGenerationSettingsWithoutCacheTtl(
+async function getAiGenerationSettingsWithLegacyMcpDefaults(
   db: SqlServerDatabase,
 ): Promise<AiGenerationSettings> {
   const rows = (await db.query(`
@@ -252,33 +327,60 @@ async function getAiGenerationSettingsWithoutCacheTtl(
 
   return {
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+    mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+    mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
     mcpMaxRequestBytes: readMcpMaxRequestBytes(row.mcpMaxRequestBytes),
     requirementGenerationEnabled: toBoolean(row.requirementGenerationEnabled),
   }
 }
 
 export function clearMcpMaxRequestBytesCacheForTests(): void {
-  cachedMcpMaxRequestBytes = undefined
+  cachedMcpRuntimeSettings = undefined
+}
+
+export function clearMcpRuntimeSettingsCacheForTests(): void {
+  cachedMcpRuntimeSettings = undefined
+}
+
+export async function getCachedMcpRuntimeSettings(
+  db: SqlServerDatabase,
+): Promise<McpRuntimeSettings> {
+  if (
+    cachedMcpRuntimeSettings &&
+    cachedMcpRuntimeSettings.expiresAt > Date.now()
+  ) {
+    return cachedMcpRuntimeSettings.value
+  }
+
+  const rows = (await db.query(`
+    SELECT TOP (1)
+      mcp_import_max_rows AS mcpImportMaxRows,
+      mcp_import_validation_ttl_minutes AS mcpImportValidationTtlMinutes,
+      mcp_max_request_bytes AS mcpMaxRequestBytes
+    FROM ai_settings
+    WHERE id = 1
+  `)) as AiSettingsRow[]
+
+  const row = rows[0]
+  if (!row) {
+    cacheMcpRuntimeSettings(DEFAULT_MCP_RUNTIME_SETTINGS)
+    return DEFAULT_MCP_RUNTIME_SETTINGS
+  }
+
+  const settings = {
+    mcpImportMaxRows: Number(row.mcpImportMaxRows),
+    mcpImportValidationTtlMinutes: Number(row.mcpImportValidationTtlMinutes),
+    mcpMaxRequestBytes: Number(row.mcpMaxRequestBytes),
+  }
+  assertMcpRuntimeSettings(settings)
+  cacheMcpRuntimeSettings(settings)
+  return settings
 }
 
 export async function getCachedMcpMaxRequestBytes(
   db: SqlServerDatabase,
 ): Promise<number> {
-  if (
-    cachedMcpMaxRequestBytes &&
-    cachedMcpMaxRequestBytes.expiresAt > Date.now()
-  ) {
-    return cachedMcpMaxRequestBytes.value
-  }
-
-  try {
-    const settings = await getAiGenerationSettings(db)
-    cacheMcpMaxRequestBytes(settings.mcpMaxRequestBytes)
-    return settings.mcpMaxRequestBytes
-  } catch {
-    cacheMcpMaxRequestBytes(MCP_REQUEST_PAYLOAD_DEFAULT_BYTES)
-    return MCP_REQUEST_PAYLOAD_DEFAULT_BYTES
-  }
+  return (await getCachedMcpRuntimeSettings(db)).mcpMaxRequestBytes
 }
 
 export async function getAiGenerationSettings(
@@ -288,6 +390,8 @@ export async function getAiGenerationSettings(
     const rows = (await db.query(`
       SELECT TOP (1)
         ai_safety_rule_cache_ttl_seconds AS aiSafetyRuleCacheTtlSeconds,
+        mcp_import_max_rows AS mcpImportMaxRows,
+        mcp_import_validation_ttl_minutes AS mcpImportValidationTtlMinutes,
         mcp_max_request_bytes AS mcpMaxRequestBytes,
         requirement_generation_enabled AS requirementGenerationEnabled
       FROM ai_settings
@@ -303,6 +407,10 @@ export async function getAiGenerationSettings(
       aiSafetyRuleCacheTtlSeconds: readAiSafetyRuleCacheTtlSeconds(
         row.aiSafetyRuleCacheTtlSeconds,
       ),
+      mcpImportMaxRows: readMcpImportMaxRows(row.mcpImportMaxRows),
+      mcpImportValidationTtlMinutes: readMcpImportValidationTtlMinutes(
+        row.mcpImportValidationTtlMinutes,
+      ),
       mcpMaxRequestBytes: readMcpMaxRequestBytes(row.mcpMaxRequestBytes),
       requirementGenerationEnabled: toBoolean(row.requirementGenerationEnabled),
     }
@@ -313,10 +421,10 @@ export async function getAiGenerationSettings(
     try {
       return isExpectedMissingAiSettingsColumnError(
         error,
-        'ai_safety_rule_cache_ttl_seconds',
+        'mcp_max_request_bytes',
       )
-        ? await getAiGenerationSettingsWithoutCacheTtl(db)
-        : await getLegacyAiGenerationSettings(db)
+        ? await getLegacyAiGenerationSettings(db)
+        : await getAiGenerationSettingsWithLegacyMcpDefaults(db)
     } catch (fallbackError) {
       try {
         return await getLegacyAiGenerationSettings(db)
@@ -339,12 +447,21 @@ export async function getAiGenerationAvailability(
   return resolveAiGenerationAvailability(await getAiGenerationSettings(db), env)
 }
 
+export async function getAdminAiSettings(
+  db: SqlServerDatabase,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<AdminAiSettings> {
+  return adminAiSettingsFromSettings(await getAiGenerationSettings(db), env)
+}
+
 export async function updateAiGenerationSettings(
   db: SqlServerDatabase,
   values: AiGenerationSettings,
   options: AiSettingsWriteOptions = {},
-): Promise<AiRequirementGenerationAvailability> {
+): Promise<AdminAiSettings> {
   assertMcpMaxRequestBytes(values.mcpMaxRequestBytes)
+  assertMcpImportMaxRows(values.mcpImportMaxRows)
+  assertMcpImportValidationTtlMinutes(values.mcpImportValidationTtlMinutes)
   assertAiSafetyRuleCacheTtlSeconds(values.aiSafetyRuleCacheTtlSeconds)
   const now = new Date().toISOString()
 
@@ -354,9 +471,11 @@ export async function updateAiGenerationSettings(
         UPDATE ai_settings
         SET
           ai_safety_rule_cache_ttl_seconds = @0,
-          mcp_max_request_bytes = @1,
-          requirement_generation_enabled = @2,
-          updated_at = @3
+          mcp_import_max_rows = @1,
+          mcp_import_validation_ttl_minutes = @2,
+          mcp_max_request_bytes = @3,
+          requirement_generation_enabled = @4,
+          updated_at = @5
         WHERE id = 1;
 
         IF @@ROWCOUNT = 0
@@ -366,18 +485,22 @@ export async function updateAiGenerationSettings(
           INSERT INTO ai_settings (
             id,
             ai_safety_rule_cache_ttl_seconds,
+            mcp_import_max_rows,
+            mcp_import_validation_ttl_minutes,
             mcp_max_request_bytes,
             requirement_generation_enabled,
             created_at,
             updated_at
           )
-          VALUES (1, @0, @1, @2, @3, @3);
+          VALUES (1, @0, @1, @2, @3, @4, @5, @5);
 
           SET IDENTITY_INSERT ai_settings OFF;
         END
       `,
       [
         values.aiSafetyRuleCacheTtlSeconds,
+        values.mcpImportMaxRows,
+        values.mcpImportValidationTtlMinutes,
         values.mcpMaxRequestBytes,
         values.requirementGenerationEnabled,
         now,
@@ -386,15 +509,19 @@ export async function updateAiGenerationSettings(
     await options.audit?.(manager)
   })
 
-  cacheMcpMaxRequestBytes(values.mcpMaxRequestBytes)
-  return resolveAiGenerationAvailability(values, options.env)
+  cacheMcpRuntimeSettings({
+    mcpImportMaxRows: values.mcpImportMaxRows,
+    mcpImportValidationTtlMinutes: values.mcpImportValidationTtlMinutes,
+    mcpMaxRequestBytes: values.mcpMaxRequestBytes,
+  })
+  return adminAiSettingsFromSettings(values, options.env)
 }
 
 export async function patchAiGenerationSettings(
   db: SqlServerDatabase,
   patch: AiGenerationSettingsPatch,
   options: AiSettingsWriteOptions = {},
-): Promise<AiRequirementGenerationAvailability> {
+): Promise<AdminAiSettings> {
   const current = await getAiGenerationSettings(db)
   return updateAiGenerationSettings(
     db,

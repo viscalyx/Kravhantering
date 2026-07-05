@@ -10,12 +10,16 @@ import {
   type SecurityEventRequest,
 } from '@/lib/auth/audit'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { redactSensitiveText } from '@/lib/http/safe-errors'
 import type {
   ActorContext,
   RequestContext,
   RequirementsAction,
 } from '@/lib/requirements/auth'
-import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import {
+  isRequirementsServiceError,
+  type RequirementsServiceError,
+} from '@/lib/requirements/errors'
 
 type SecurityAuditDetailInput = Record<
   string,
@@ -92,6 +96,9 @@ function actionAuditDetail(
     case 'get_import_schema':
     case 'get_import_instruction':
       return { actionKind: action.kind }
+    case 'manage_import':
+    case 'manage_norm_reference':
+      return { actionKind: action.kind, operation: action.operation }
     case 'list_specifications':
       return { actionKind: action.kind }
     case 'get_specification_items':
@@ -388,6 +395,68 @@ function targetForSensitiveMutation(detail: SensitiveMutationAuditDetail): {
   return { targetKind: 'RequirementMutation' }
 }
 
+function safeAuditFailureMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return redactSensitiveText(error.message)
+  }
+  if (typeof error === 'string') {
+    return redactSensitiveText(error)
+  }
+
+  try {
+    return redactSensitiveText(JSON.stringify(error))
+  } catch {
+    return 'Unknown audit failure'
+  }
+}
+
+async function recordDeniedActionAuditEventBestEffort(
+  context: RequestContext,
+  action: RequirementsAction,
+  authorizationError: RequirementsServiceError,
+  requiredRoles: readonly string[] | undefined,
+  reason: string | undefined,
+): Promise<void> {
+  try {
+    const db = await getRequestSqlServerDataSource()
+    await recordDeniedActionAuditEvent(db, context, {
+      action: actionNameForAuthorizationDenied(action),
+      denialReason: reason ?? authorizationError.code,
+      details: compactDetail({
+        ...actionAuditDetail(action),
+        errorCode: authorizationError.code,
+        reason,
+        requestSource: context.source,
+        requiredRoles,
+        toolName: context.toolName,
+      }),
+      ...targetForAuthorizationDenied(action),
+    })
+  } catch (auditError) {
+    recordSecurityEvent({
+      actor: securityActorFromContext(context.actor),
+      detail: compactDetail({
+        ...actionAuditDetail(action),
+        auditFailure: 'denied_action_audit_write_failed',
+        auditFailureMessage: safeAuditFailureMessage(auditError),
+        auditFailureName:
+          auditError instanceof Error ? auditError.name : undefined,
+        errorCode: authorizationError.code,
+        reason,
+        requestSource: context.source,
+        requiredRoles,
+        toolName: context.toolName,
+      }),
+      event: 'auth.authorization.denied.audit_failed',
+      outcome: 'failure',
+      request: securityRequestFromContext(
+        context,
+        '/requirements/authorization',
+      ),
+    })
+  }
+}
+
 export async function recordAuthorizationDenied(
   context: RequestContext,
   action: RequirementsAction,
@@ -403,21 +472,6 @@ export async function recordAuthorizationDenied(
   const requiredRoles = stringArrayDetail(error.details?.requiredRoles)
   const reason =
     typeof error.details?.reason === 'string' ? error.details.reason : undefined
-  const db = await getRequestSqlServerDataSource()
-  await recordDeniedActionAuditEvent(db, context, {
-    action: actionNameForAuthorizationDenied(action),
-    denialReason: reason ?? error.code,
-    details: compactDetail({
-      ...actionAuditDetail(action),
-      errorCode: error.code,
-      reason,
-      requestSource: context.source,
-      requiredRoles,
-      toolName: context.toolName,
-    }),
-    ...targetForAuthorizationDenied(action),
-  })
-
   recordSecurityEvent({
     actor: securityActorFromContext(context.actor),
     detail: compactDetail({
@@ -432,6 +486,14 @@ export async function recordAuthorizationDenied(
     outcome: 'failure',
     request: securityRequestFromContext(context, '/requirements/authorization'),
   })
+
+  await recordDeniedActionAuditEventBestEffort(
+    context,
+    action,
+    error,
+    requiredRoles,
+    reason,
+  )
 }
 
 export async function recordSensitiveMutationSucceeded(

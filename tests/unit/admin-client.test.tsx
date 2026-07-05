@@ -634,6 +634,10 @@ describe('AdminClient', () => {
 
   it('loads and saves AI settings from the AI tab', async () => {
     searchParamsMock.current = new URLSearchParams('tab=ai')
+    const initialMcpLimitBytes = addMcpMaxRequestBytesSteps(
+      MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+      -1,
+    )
     fetchMock.mockImplementation(
       (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input)
@@ -644,7 +648,7 @@ describe('AdminClient', () => {
               aiSafetyRuleCacheTtlSeconds: 600,
               disabledByEnvironment: true,
               effectiveRequirementGenerationEnabled: false,
-              mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+              mcpMaxRequestBytes: initialMcpLimitBytes,
               requirementGenerationEnabled: true,
             }),
           )
@@ -662,8 +666,7 @@ describe('AdminClient', () => {
               disabledByEnvironment: true,
               effectiveRequirementGenerationEnabled: false,
               mcpMaxRequestBytes:
-                requestBody.mcpMaxRequestBytes ??
-                MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+                requestBody.mcpMaxRequestBytes ?? initialMcpLimitBytes,
               requirementGenerationEnabled:
                 requestBody.requirementGenerationEnabled ?? true,
             }),
@@ -731,9 +734,37 @@ describe('AdminClient', () => {
       'admin.ai.requirementGenerationEnabled',
     )
     const securityHeading = screen.getByText('admin.ai.securityTitle')
+    const mcpInterfaceHeading = screen.getByText('admin.ai.mcpInterfaceTitle')
     const mcpLimitLabel = screen.getByText('admin.ai.mcpMaxRequestLimit')
     expect(securityHeading).toBeVisible()
+    expect(mcpInterfaceHeading).toBeVisible()
     expect(mcpLimitLabel).toBeVisible()
+    expect(
+      screen.getByText('admin.ai.safetyRuleCacheTtlConstraint'),
+    ).toBeVisible()
+    expect(
+      screen.getByText('admin.ai.mcpMaxRequestLimitConstraint'),
+    ).toBeVisible()
+    expect(
+      screen.getByText('admin.ai.mcpImportMaxRowsConstraint'),
+    ).toBeVisible()
+    expect(
+      screen.getByText('admin.ai.mcpImportValidationTtlConstraint'),
+    ).toBeVisible()
+    expect(
+      screen.queryByText('admin.ai.requirementGenerationDescription'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('admin.ai.fieldHelp.requirementGenerationEnabled'),
+    ).not.toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'common.help: admin.ai.requirementGenerationEnabled',
+      }),
+    )
+    expect(
+      screen.getByText('admin.ai.fieldHelp.requirementGenerationEnabled'),
+    ).toBeVisible()
     expect(
       screen.queryByText('admin.ai.fieldHelp.mcpMaxRequestLimit'),
     ).not.toBeInTheDocument()
@@ -746,7 +777,7 @@ describe('AdminClient', () => {
       screen.getByText('admin.ai.fieldHelp.mcpMaxRequestLimit'),
     ).toBeVisible()
     expect(
-      requirementGenerationLabel.compareDocumentPosition(securityHeading) &
+      securityHeading.compareDocumentPosition(requirementGenerationLabel) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
@@ -755,11 +786,15 @@ describe('AdminClient', () => {
       ) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
-      environmentOverrideNotice.compareDocumentPosition(securityHeading) &
+      securityHeading.compareDocumentPosition(environmentOverrideNotice) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
-      securityHeading.compareDocumentPosition(mcpLimitLabel) &
+      environmentOverrideNotice.compareDocumentPosition(mcpInterfaceHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      mcpInterfaceHeading.compareDocumentPosition(mcpLimitLabel) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
 
@@ -768,13 +803,13 @@ describe('AdminClient', () => {
     )
     const mcpLimitInput = screen.getByLabelText('admin.ai.mcpMaxRequestLimit')
     await waitFor(() => expect(toggle).toBeChecked())
-    expect(mcpLimitInput).toHaveValue(1024)
+    expect(mcpLimitInput).toHaveValue(9216)
     expect(screen.queryByRole('button', { name: 'common.save' })).toBeNull()
 
-    fireEvent.change(mcpLimitInput, { target: { value: '1080' } })
-    expect(mcpLimitInput).toHaveValue(1080)
+    fireEvent.change(mcpLimitInput, { target: { value: '10000' } })
+    expect(mcpLimitInput).toHaveValue(10000)
     fireEvent.keyDown(mcpLimitInput, { key: 'Enter' })
-    expect(mcpLimitInput).toHaveValue(1126.4)
+    expect(mcpLimitInput).toHaveValue(10240)
     fireEvent.click(toggle)
     expect(toggle).not.toBeChecked()
 
@@ -795,10 +830,7 @@ describe('AdminClient', () => {
     expect(
       JSON.parse(((mcpPatchCall?.[1] as RequestInit)?.body as string) ?? '{}'),
     ).toEqual({
-      mcpMaxRequestBytes: addMcpMaxRequestBytesSteps(
-        MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
-        1,
-      ),
+      mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
     })
     const togglePatchCall = fetchMock.mock.calls.find(
       ([url, init]) =>

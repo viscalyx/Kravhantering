@@ -151,6 +151,39 @@ describe('AssignmentBasedAuthorizationService', () => {
     expect(lookup.resolveRequirementTarget).not.toHaveBeenCalled()
   })
 
+  it.each<RequirementsAction>([
+    { kind: 'manage_norm_reference', operation: 'list' },
+    { kind: 'manage_norm_reference', operation: 'search' },
+  ])('allows read-only norm-reference MCP operation %s', async action => {
+    const { lookup, service } = makeService()
+
+    await expect(
+      service.assertAuthorized(action, makeContext([], '')),
+    ).resolves.toBeUndefined()
+    expect(lookup.resolveRequirementTarget).not.toHaveBeenCalled()
+  })
+
+  it('requires Admin for MCP norm-reference creation', async () => {
+    const action: RequirementsAction = {
+      kind: 'manage_norm_reference',
+      operation: 'create',
+    }
+
+    await expect(
+      makeService().service.assertAuthorized(action, makeContext(['Reviewer'])),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: {
+        reason: 'admin_required',
+        requiredRoles: ['Admin'],
+      },
+    })
+
+    await expect(
+      makeService().service.assertAuthorized(action, makeContext(['Admin'])),
+    ).resolves.toBeUndefined()
+  })
+
   it('allows ordinary actors with a verified HSA-id to list assigned specifications', async () => {
     const { lookup, service } = makeService()
 

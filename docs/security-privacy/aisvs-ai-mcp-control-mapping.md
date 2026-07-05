@@ -56,11 +56,12 @@ operation, decision, rule IDs, categories, source, request/correlation IDs,
 and model/provider when available. They do not contain the prompt, model
 output, repair JSON, image data, or actor HSA-id in event detail.
 
-MCP requests default to a `1 MiB` HTTP payload limit that Admins can tune from
-the Admin Center `AI` tab in `102.4 KiB` steps, giving ten steps per MiB while
-the database stores integer bytes. `/api/mcp` still enforces an absolute
-`5 MiB` cap before database or authentication work, then applies the cached
-configured limit before bearer-token verification or service creation.
+MCP requests and persisted import-validation sessions default to a `10 MiB`
+payload/session limit that Admins can tune from the Admin Center `AI` tab in
+`1 MiB` steps within the `1 MiB` to `10 MiB` range. `/api/mcp` verifies the
+bearer token first, then loads the runtime MCP settings and applies the
+configured cap before MCP server creation. MCP import validation also enforces
+the configured row cap and validation-token TTL.
 
 ## Control Mapping
 
@@ -82,7 +83,7 @@ configured limit before bearer-token verification or service creation.
 | C10 MCP token validation | L1 | Implemented | JWT signature, issuer, audience, expiry, HSA-id, and role parsing tests | None |
 | C10 MCP token non-persistence | L1 | Implemented | Bearer token is verified per request and not stored in app state or logs | None |
 | C10 strict MCP tool schemas | L1 | Implemented | Zod schemas and MCP unit/property tests | None |
-| C10 MCP payload limit | L2 | Implemented | `mcpMaxRequestBytes`, absolute `5 MiB` cap, JSON-RPC `413` tests | None |
+| C10 MCP payload/session and import limits | L2 | Implemented | `mcpMaxRequestBytes`, `mcpImportMaxRows`, `mcpImportValidationTtlMinutes`, JSON-RPC `413` tests, persisted validation-session tests | None |
 | C10 MCP per-invocation authorization | L2 | Implemented | Tool calls pass verified `RequestContext` into requirements service authorization | None |
 | C10 MCP Host/Origin validation | L2 | Deferred | Bearer auth is enforced; Host/Origin topology rules are not yet explicit | Deployment topology and validation decision: #388 |
 | C10 MCP tool-discovery filtering | L2 | Deferred | Tool allowlist is static and authenticated; discovery is not actor/scope-filtered | Discovery filtering decision: #389 |

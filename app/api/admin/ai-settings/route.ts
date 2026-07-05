@@ -3,12 +3,14 @@ import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   isValidAiSafetyRuleCacheTtlSeconds,
+  isValidMcpImportMaxRows,
+  isValidMcpImportValidationTtlMinutes,
   isValidMcpMaxRequestBytes,
 } from '@/lib/ai/generation-availability'
 import { clearAiSafetyRuleSetCache } from '@/lib/dal/ai-safety-rules'
 import {
   formatAiSettingsLoadError,
-  getAiGenerationAvailability,
+  getAdminAiSettings,
   patchAiGenerationSettings,
   updateAiGenerationSettings,
 } from '@/lib/dal/ai-settings'
@@ -29,7 +31,18 @@ const aiSettingsPayloadSchema = z
     mcpMaxRequestBytes: z
       .number()
       .int()
-      .refine(isValidMcpMaxRequestBytes, 'Invalid MCP request payload limit.'),
+      .refine(isValidMcpMaxRequestBytes, 'Invalid MCP payload/session limit.'),
+    mcpImportMaxRows: z
+      .number()
+      .int()
+      .refine(isValidMcpImportMaxRows, 'Invalid MCP import row limit.'),
+    mcpImportValidationTtlMinutes: z
+      .number()
+      .int()
+      .refine(
+        isValidMcpImportValidationTtlMinutes,
+        'Invalid MCP import validation session TTL.',
+      ),
     requirementGenerationEnabled: z.boolean(),
     aiSafetyRuleCacheTtlSeconds: z
       .number()
@@ -67,7 +80,7 @@ export async function GET(request: Request) {
   try {
     await assertAdmin(request)
     const db = await getRequestSqlServerDataSource()
-    return noStore(NextResponse.json(await getAiGenerationAvailability(db)))
+    return noStore(NextResponse.json(await getAdminAiSettings(db)))
   } catch (error) {
     if (isRequirementsServiceError(error)) {
       const { body, status } = toHttpErrorPayload(error)
@@ -100,6 +113,8 @@ export const PUT = secureMutationRoute({
               changedFields: [
                 'requirementGenerationEnabled',
                 'mcpMaxRequestBytes',
+                'mcpImportMaxRows',
+                'mcpImportValidationTtlMinutes',
                 'aiSafetyRuleCacheTtlSeconds',
               ],
               operation: 'save',

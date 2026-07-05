@@ -28,6 +28,8 @@ import type {
 } from '@/lib/requirements/import-schema'
 import {
   createRequirementsImportWorkflow,
+  type ManageImportInput,
+  type ManageImportOutput,
   type RequirementsImportExecuteResult,
   type RequirementsImportPreview,
 } from '@/lib/requirements/import-service'
@@ -40,6 +42,11 @@ import {
   type RequirementsLogger,
 } from '@/lib/requirements/logging'
 import { recordSensitiveMutationSucceeded } from '@/lib/requirements/security-audit'
+import {
+  createNormReferenceWorkflow,
+  type ManageNormReferenceInput,
+  type ManageNormReferenceOutput,
+} from '@/lib/requirements/service-norm-references'
 import { createRequirementWorkflow } from '@/lib/requirements/service-requirements'
 import {
   authorize,
@@ -55,7 +62,14 @@ import type {
 import type { SpecificationPermissions } from '@/lib/specifications/permissions'
 
 export { toHttpErrorPayload } from '@/lib/requirements/http-errors'
-
+export type {
+  ManageImportInput,
+  ManageImportOutput,
+} from '@/lib/requirements/import-service'
+export type {
+  ManageNormReferenceInput,
+  ManageNormReferenceOutput,
+} from '@/lib/requirements/service-norm-references'
 export type { RequirementListItem } from '@/lib/requirements/service-requirements'
 
 export {
@@ -114,10 +128,12 @@ export interface QueryCatalogInput {
   locale?: ResponseLocale
   normReferenceIds?: number[]
   offset?: number
+  operation?: 'list' | 'search'
   priorityLevelIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementPackageIds?: number[]
   responseFormat?: ResponseFormat
+  search?: string
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
@@ -126,6 +142,28 @@ export interface QueryCatalogInput {
   uniqueIdSearch?: string
   verifiable?: boolean[]
 }
+
+export interface QueryCatalogListOutput {
+  catalog: CatalogKind
+  items: unknown[]
+  message: string
+  pagination: {
+    count: number
+    hasMore: boolean
+    limit: number
+    nextOffset: number | null
+    offset: number
+    total: number
+  } | null
+}
+
+export interface QueryCatalogLookupOutput {
+  result: unknown[]
+}
+
+export type QueryCatalogOutput =
+  | QueryCatalogListOutput
+  | QueryCatalogLookupOutput
 
 export interface GetRequirementInput extends RequirementRefInput {
   locale?: ResponseLocale
@@ -417,6 +455,14 @@ export interface RequirementsService {
       responseFormat?: ResponseFormat
     },
   ): Promise<ManageDeviationOutput>
+  manageImport(
+    context: RequestContext,
+    input: ManageImportInput,
+  ): Promise<ManageImportOutput>
+  manageNormReference(
+    context: RequestContext,
+    input: ManageNormReferenceInput,
+  ): Promise<ManageNormReferenceOutput>
   manageRequirement(
     context: RequestContext,
     input: ManageRequirementInput,
@@ -468,19 +514,7 @@ export interface RequirementsService {
   queryCatalog(
     context: RequestContext,
     input: QueryCatalogInput,
-  ): Promise<{
-    catalog: CatalogKind
-    items: unknown[]
-    message: string
-    pagination: {
-      count: number
-      hasMore: boolean
-      limit: number
-      nextOffset: number | null
-      offset: number
-      total: number
-    } | null
-  }>
+  ): Promise<QueryCatalogOutput>
   removeFromSpecification(
     context: RequestContext,
     input: RemoveFromSpecificationInput,
@@ -535,6 +569,7 @@ export function createRequirementsService(
 ): RequirementsService {
   return {
     ...createRequirementsImportWorkflow({ authorization, db, logger }),
+    ...createNormReferenceWorkflow({ authorization, db, logger }),
     ...createRequirementWorkflow({ authorization, db, logger }),
 
     ...createSpecificationWorkflow({ authorization, db, logger }),

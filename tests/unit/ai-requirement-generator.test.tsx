@@ -259,7 +259,6 @@ async function renderOpenGenerator(overrides?: {
     aiSafetyRuleCacheTtlSeconds: number
     disabledByEnvironment: boolean
     effectiveRequirementGenerationEnabled: boolean
-    mcpMaxRequestBytes: number
     requirementGenerationEnabled: boolean
   }
   areas?: Array<{
@@ -407,7 +406,6 @@ describe('AiRequirementGenerator', () => {
         aiSafetyRuleCacheTtlSeconds: 600,
         disabledByEnvironment: false,
         effectiveRequirementGenerationEnabled: false,
-        mcpMaxRequestBytes: 1024 * 1024,
         requirementGenerationEnabled: false,
       },
       loadModels: false,

@@ -544,8 +544,8 @@ export interface CreateRequirementsBatchOptions {
   ) => Promise<void>
 }
 
-export async function createRequirementsBatch(
-  db: SqlServerDatabase,
+export async function createRequirementsBatchWithExecutor(
+  executor: SqlServerTxExecutor,
   inputs: RequirementMutationData[],
   options: CreateRequirementsBatchOptions = {},
 ): Promise<CreateRequirementResult[]> {
@@ -553,79 +553,90 @@ export async function createRequirementsBatch(
 
   const results: CreateRequirementResult[] = []
 
-  await db.transaction(async manager => {
+  for (const [index, data] of inputs.entries()) {
+    const references = await validateRequirementTaxonomyReferences(
+      executor,
+      data,
+    )
+    if (references.requirementAreaId == null) {
+      throw validationError('requirementAreaId must be a positive integer')
+    }
+    const now = new Date()
+    const verificationMethod = data.verifiable
+      ? (data.verificationMethod ?? null)
+      : null
+    const { sequenceNumber, uniqueId } = await reserveSequenceSqlServer(
+      executor,
+      references.requirementAreaId,
+    )
+    const reqRows = (await executor.query(
+      `INSERT INTO requirements (unique_id, requirement_area_id, sequence_number, is_archived, created_at)
+        ${REQUIREMENT_OUTPUT}
+        VALUES (@0, @1, @2, 0, @3)`,
+      [uniqueId, references.requirementAreaId, sequenceNumber, now],
+    )) as Array<Record<string, unknown>>
+    const requirement = mapRequirement(reqRows[0] ?? {})
+
+    const verRows = (await executor.query(
+      `INSERT INTO requirement_versions (
+        requirement_id, version_number, description, acceptance_criteria,
+        requirement_category_id, requirement_type_id, quality_characteristic_id,
+        priority_level_id, requirement_status_id, is_verifiable,
+        verification_method, created_at, edited_at, published_at,
+        archived_at, archive_initiated_at, created_by, created_by_hsa_id,
+        status_updated_at, has_specification_item_history
+      )
+        ${VERSION_OUTPUT}
+        VALUES (@0, 1, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, NULL, NULL, NULL, @12, @13, @14, 0)`,
+      [
+        requirement.id,
+        data.description,
+        data.acceptanceCriteria ?? null,
+        references.requirementCategoryId,
+        references.requirementTypeId,
+        references.qualityCharacteristicId,
+        references.priorityLevelId,
+        STATUS_DRAFT,
+        data.verifiable ? 1 : 0,
+        verificationMethod,
+        now,
+        now,
+        data.createdBy ?? null,
+        data.createdByHsaId ?? null,
+        now,
+      ],
+    )) as Array<Record<string, unknown>>
+    const version = mapVersion(verRows[0] ?? {})
+
+    await insertVersionJoinsSqlServer(
+      executor,
+      version.id,
+      references.requirementPackageIds,
+      references.normReferenceIds,
+    )
+
+    const result = { requirement, version }
+    results.push(result)
+    await options.audit?.(executor, result, index)
+  }
+
+  await options.batchAudit?.(executor, results)
+  return results
+}
+
+export async function createRequirementsBatch(
+  db: SqlServerDatabase,
+  inputs: RequirementMutationData[],
+  options: CreateRequirementsBatchOptions = {},
+): Promise<CreateRequirementResult[]> {
+  if (inputs.length === 0) return []
+
+  return db.transaction(async manager => {
     const tx: SqlServerTxExecutor = {
       query: (sql, params) => manager.query(sql, params),
     }
-
-    for (const [index, data] of inputs.entries()) {
-      const references = await validateRequirementTaxonomyReferences(tx, data)
-      if (references.requirementAreaId == null) {
-        throw validationError('requirementAreaId must be a positive integer')
-      }
-      const now = new Date()
-      const verificationMethod = data.verifiable
-        ? (data.verificationMethod ?? null)
-        : null
-      const { sequenceNumber, uniqueId } = await reserveSequenceSqlServer(
-        tx,
-        references.requirementAreaId,
-      )
-      const reqRows = (await tx.query(
-        `INSERT INTO requirements (unique_id, requirement_area_id, sequence_number, is_archived, created_at)
-          ${REQUIREMENT_OUTPUT}
-          VALUES (@0, @1, @2, 0, @3)`,
-        [uniqueId, references.requirementAreaId, sequenceNumber, now],
-      )) as Array<Record<string, unknown>>
-      const requirement = mapRequirement(reqRows[0] ?? {})
-
-      const verRows = (await tx.query(
-        `INSERT INTO requirement_versions (
-          requirement_id, version_number, description, acceptance_criteria,
-          requirement_category_id, requirement_type_id, quality_characteristic_id,
-          priority_level_id, requirement_status_id, is_verifiable,
-          verification_method, created_at, edited_at, published_at,
-          archived_at, archive_initiated_at, created_by, created_by_hsa_id,
-          status_updated_at, has_specification_item_history
-        )
-          ${VERSION_OUTPUT}
-          VALUES (@0, 1, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, NULL, NULL, NULL, @12, @13, @14, 0)`,
-        [
-          requirement.id,
-          data.description,
-          data.acceptanceCriteria ?? null,
-          references.requirementCategoryId,
-          references.requirementTypeId,
-          references.qualityCharacteristicId,
-          references.priorityLevelId,
-          STATUS_DRAFT,
-          data.verifiable ? 1 : 0,
-          verificationMethod,
-          now,
-          now,
-          data.createdBy ?? null,
-          data.createdByHsaId ?? null,
-          now,
-        ],
-      )) as Array<Record<string, unknown>>
-      const version = mapVersion(verRows[0] ?? {})
-
-      await insertVersionJoinsSqlServer(
-        tx,
-        version.id,
-        references.requirementPackageIds,
-        references.normReferenceIds,
-      )
-
-      const result = { requirement, version }
-      results.push(result)
-      await options.audit?.(tx, result, index)
-    }
-
-    await options.batchAudit?.(tx, results)
+    return createRequirementsBatchWithExecutor(tx, inputs, options)
   })
-
-  return results
 }
 
 interface VersionLite {
