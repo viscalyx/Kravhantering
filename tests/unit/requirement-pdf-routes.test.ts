@@ -662,6 +662,33 @@ describe('requirement PDF routes', () => {
     )
   })
 
+  it('rejects oversized specification profile PDF ids before lookup', async () => {
+    const { GET } = await import(
+      '@/app/[locale]/specifications/[specificationId]/reports/pdf/[profile]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/specifications/2147483648/reports/pdf/procurement',
+      ),
+      {
+        params: Promise.resolve({
+          locale: 'en',
+          profile: 'procurement',
+          specificationId: '2147483648',
+        }),
+      },
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Specification not found: 2147483648',
+    })
+    expect(routeState.getSpecificationById).not.toHaveBeenCalled()
+    expect(routeState.authorization.assertAuthorized).not.toHaveBeenCalled()
+    expect(routeState.collectSpecificationOutputData).not.toHaveBeenCalled()
+  })
+
   it('rejects deviation review PDFs before collecting report data when specification authorization is denied', async () => {
     routeState.authorization.assertAuthorized.mockRejectedValueOnce(
       Object.assign(new Error('Forbidden'), {

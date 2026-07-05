@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
+import type { z } from 'zod'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
@@ -10,11 +10,7 @@ import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { importExecuteBodySchema } from '@/lib/requirements/import-schema'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 
-const paramsSchema = z
-  .object({
-    id: idParamSchema.shape.id,
-  })
-  .strict()
+const paramsSchema = idParamSchema
 const bodySchema = importExecuteBodySchema.omit({ areaId: true })
 
 type Body = z.infer<typeof bodySchema>

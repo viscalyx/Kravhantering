@@ -276,7 +276,6 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mockReplaceSpecificationCoAuthors(...a),
   deleteSpecification: (...a: unknown[]) => mockDeletePkg(...a),
   getSpecificationById: async (_db: unknown, id: number) => ({ id }),
-  getSpecificationByCode: async () => null,
   isSpecificationCodeTaken: async () => false,
 }))
 

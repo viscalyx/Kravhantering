@@ -872,26 +872,28 @@ function mapSpecificationForbiddenSummaryRow(
   }
 }
 
+const SPECIFICATION_FORBIDDEN_SUMMARY_SELECT = `
+  SELECT TOP (1)
+    specification_record.id AS id,
+    specification_record.specification_code AS specificationCode,
+    specification_record.name AS name,
+    specification_record.responsible_hsa_id AS responsibleHsaId,
+    responsible_person.given_name AS responsibleGivenName,
+    responsible_person.middle_name AS responsibleMiddleName,
+    responsible_person.surname AS responsibleSurname,
+    responsible_person.email AS responsibleEmail
+  FROM requirements_specifications specification_record
+  LEFT JOIN requirement_responsibility_people responsible_person
+    ON responsible_person.hsa_id = specification_record.responsible_hsa_id
+`
+
 export async function getSpecificationForbiddenSummaryById(
   db: SqlServerDatabase,
   specificationId: number,
 ): Promise<SpecificationForbiddenSummary | null> {
   const rows = (await db.query(
-    `
-      SELECT TOP (1)
-        specification_record.id AS id,
-        specification_record.specification_code AS specificationCode,
-        specification_record.name AS name,
-        specification_record.responsible_hsa_id AS responsibleHsaId,
-        responsible_person.given_name AS responsibleGivenName,
-        responsible_person.middle_name AS responsibleMiddleName,
-        responsible_person.surname AS responsibleSurname,
-        responsible_person.email AS responsibleEmail
-      FROM requirements_specifications specification_record
-      LEFT JOIN requirement_responsibility_people responsible_person
-        ON responsible_person.hsa_id = specification_record.responsible_hsa_id
-      WHERE specification_record.id = @0
-    `,
+    `${SPECIFICATION_FORBIDDEN_SUMMARY_SELECT}
+      WHERE specification_record.id = @0`,
     [specificationId],
   )) as Row[]
   return mapSpecificationForbiddenSummaryRow(rows[0])
@@ -902,21 +904,8 @@ export async function getSpecificationForbiddenSummaryByCode(
   specificationCode: string,
 ): Promise<SpecificationForbiddenSummary | null> {
   const rows = (await db.query(
-    `
-      SELECT TOP (1)
-        specification_record.id AS id,
-        specification_record.specification_code AS specificationCode,
-        specification_record.name AS name,
-        specification_record.responsible_hsa_id AS responsibleHsaId,
-        responsible_person.given_name AS responsibleGivenName,
-        responsible_person.middle_name AS responsibleMiddleName,
-        responsible_person.surname AS responsibleSurname,
-        responsible_person.email AS responsibleEmail
-      FROM requirements_specifications specification_record
-      LEFT JOIN requirement_responsibility_people responsible_person
-        ON responsible_person.hsa_id = specification_record.responsible_hsa_id
-      WHERE specification_record.specification_code = @0
-    `,
+    `${SPECIFICATION_FORBIDDEN_SUMMARY_SELECT}
+      WHERE specification_record.specification_code = @0`,
     [specificationCode],
   )) as Row[]
   return mapSpecificationForbiddenSummaryRow(rows[0])

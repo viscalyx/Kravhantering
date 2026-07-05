@@ -606,6 +606,30 @@ describe('RFI questions DAL', () => {
     })
   })
 
+  it('reports unknown suggestion specification ids as not found', async () => {
+    const query = createQuery([[{ id: 2 }], []])
+    const db = { query }
+
+    await expect(
+      createRfiQuestionSuggestion(
+        db as unknown as Parameters<typeof createRfiQuestionSuggestion>[0],
+        {
+          areaId: 2,
+          content: 'Ny fråga om loggning',
+          specificationId: 404,
+        },
+        actor,
+      ),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      details: {
+        reason: 'specification_not_found',
+        specificationId: 404,
+      },
+      status: 404,
+    })
+  })
+
   it('lists RFI question suggestions scoped to an area and specification', async () => {
     const query = createQuery([
       [

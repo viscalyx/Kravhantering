@@ -155,6 +155,18 @@ describe('requirements import schema', () => {
         },
       }).success,
     ).toBe(false)
+    expect(
+      specificationImportPreviewBodySchema.safeParse({
+        locale: 'sv',
+        payload: {
+          requirements: [
+            { description: 'Systemet ska logga viktiga händelser.' },
+          ],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        },
+        specificationId: '7',
+      }).success,
+    ).toBe(false)
   })
 
   it('emits a strict JSON Schema for the shared file format', () => {

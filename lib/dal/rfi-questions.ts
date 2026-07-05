@@ -1310,7 +1310,7 @@ export async function createRfiQuestionSuggestion(
           [data.specificationId],
         )) as Array<{ id: number; name: string; specificationCode: string }>)
   if (data.specificationId != null && !specificationRows[0]) {
-    throw validationError('Specification not found', {
+    throw notFoundError('Specification not found', {
       reason: 'specification_not_found',
       specificationId: data.specificationId,
     })

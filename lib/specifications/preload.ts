@@ -23,6 +23,7 @@ import { listSpecificationItemStatuses } from '@/lib/dal/specification-item-stat
 import { listSpecificationLifecycleStatuses } from '@/lib/dal/specification-lifecycle-statuses'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { positiveIntegerStringSchema } from '@/lib/http/validation'
 import { forbiddenError } from '@/lib/requirements/errors'
 import { queryRequirementList } from '@/lib/requirements/list-query'
 import {
@@ -361,7 +362,9 @@ export async function resolveRequirementsSpecificationRouteParam(
 ): Promise<{ fromCode: boolean; id: number } | null> {
   const db = await getRequestSqlServerDataSource()
   if (/^\d+$/.test(value)) {
-    const specification = await getSpecificationById(db, Number(value))
+    const parsedId = positiveIntegerStringSchema.safeParse(value)
+    if (!parsedId.success) return null
+    const specification = await getSpecificationById(db, parsedId.data)
     return specification ? { fromCode: false, id: specification.id } : null
   }
 

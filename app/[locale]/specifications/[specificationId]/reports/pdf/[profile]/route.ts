@@ -4,9 +4,9 @@ import {
   createReportRuntime,
   type ReportRouteParams,
   reportErrorResponse,
+  resolveReportSpecification,
 } from '@/app/[locale]/requirements/reports/pdf/route-helpers'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
-import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { ReportDataError } from '@/lib/reports/data/server'
 import { collectSpecificationOutputData } from '@/lib/reports/data/specification-output'
 import { getReportLabels } from '@/lib/reports/report-labels'
@@ -33,24 +33,12 @@ export async function GET(
     if (!profile) {
       throw new ReportDataError('Invalid report profile', 400)
     }
-    if (!/^\d+$/.test(specificationId)) {
-      throw new ReportDataError(
-        `Specification not found: ${specificationId}`,
-        404,
-      )
-    }
 
     const runtime = await createReportRuntime(request)
-    const specification = await getSpecificationById(
+    const specification = await resolveReportSpecification(
       runtime.db,
-      Number(specificationId),
+      specificationId,
     )
-    if (!specification) {
-      throw new ReportDataError(
-        `Specification not found: ${specificationId}`,
-        404,
-      )
-    }
 
     await authorizeSpecificationReportRead(
       runtime.authorization,

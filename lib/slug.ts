@@ -34,6 +34,10 @@ function transliterate(str: string): string {
     .join('')
 }
 
+function rejectNumericOnlySpecificationCode(code: string): string {
+  return /^\d+$/.test(code) ? '' : code
+}
+
 /**
  * Generate a stable uppercase specification code from a Swedish specification name.
  * Max 20 characters. Example: "Säkerhetslyft Q2" → "SAKERHETSLYFT-Q2"
@@ -52,12 +56,14 @@ export function generateSpecificationCode(nameSv: string): string {
 
   const joined = words.join('-')
 
-  if (joined.length <= 20) return joined
+  if (joined.length <= 20) return rejectNumericOnlySpecificationCode(joined)
 
   // Truncate at hyphen boundary
   const truncated = joined.slice(0, 20)
   const lastHyphen = truncated.lastIndexOf('-')
-  return lastHyphen > 0 ? truncated.slice(0, lastHyphen) : truncated
+  return rejectNumericOnlySpecificationCode(
+    lastHyphen > 0 ? truncated.slice(0, lastHyphen) : truncated,
+  )
 }
 
 /**
@@ -65,10 +71,11 @@ export function generateSpecificationCode(nameSv: string): string {
  * uppercase, replace invalid chars with hyphen, collapse hyphens, trim.
  */
 export function normalizeSpecificationCodeInput(raw: string): string {
-  return transliterate(raw)
+  const normalized = transliterate(raw)
     .toUpperCase()
     .replace(/[^A-Z0-9-]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 20)
+  return rejectNumericOnlySpecificationCode(normalized)
 }

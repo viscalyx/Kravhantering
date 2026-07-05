@@ -69,7 +69,8 @@ Viktiga seedade ytor:
 - Kravbibliotek: `/sv/requirements`.
 - Nytt krav: `/sv/requirements/new`.
 - Kravunderlag: `/sv/specifications`.
-- Seedat kravunderlag: `/sv/specifications/910400` or `/sv/specifications/AUTHZ-SPEC-2026`.
+- Seedat kravunderlag: `/sv/specifications/910400` eller
+  `/sv/specifications/AUTHZ-SPEC-2026`.
 - Avsteg/livscykel: `/sv/specifications/11` eller `/sv/specifications/PLAYWRIGHT-LIFECYCLE-2026`.
 - Admincenter: `/sv/admin`.
 - Dataskydd: `/sv/privacy`.

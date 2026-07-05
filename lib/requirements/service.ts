@@ -48,6 +48,7 @@ import { createRequirementWorkflow } from '@/lib/requirements/service-requiremen
 import {
   authorize,
   createServiceMessage,
+  resolveSpecificationIdOrThrow,
   withLogging,
 } from '@/lib/requirements/service-shared'
 import { createSpecificationWorkflow } from '@/lib/requirements/service-specifications'
@@ -522,16 +523,6 @@ export interface RequirementsService {
     message: string
     version: RequirementVersionDetail
   }>
-}
-
-async function resolveSpecificationIdOrThrow(input: SpecificationRefInput) {
-  if (!Number.isInteger(input.specificationId) || input.specificationId < 1) {
-    throw validationError('Missing specification reference', {
-      specificationId: input.specificationId,
-    })
-  }
-
-  return input.specificationId
 }
 
 export function createRequirementsService(

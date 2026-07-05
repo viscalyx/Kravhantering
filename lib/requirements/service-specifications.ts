@@ -21,11 +21,7 @@ import {
   type RequirementsAction,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
-import {
-  forbiddenError,
-  notFoundError,
-  validationError,
-} from '@/lib/requirements/errors'
+import { forbiddenError, notFoundError } from '@/lib/requirements/errors'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import {
   recordAuthorizationDenied,
@@ -52,6 +48,7 @@ import {
   getSpecificationServiceTitle,
   getSpecificationWord,
   localizeName,
+  resolveSpecificationIdOrThrow,
   translateServiceMessage,
   withLogging,
 } from '@/lib/requirements/service-shared'
@@ -64,16 +61,6 @@ interface SpecificationWorkflowDependencies {
   authorization: AuthorizationService
   db: SqlServerDatabase
   logger: RequirementsLogger
-}
-
-async function resolveSpecificationIdOrThrow(input: SpecificationRefInput) {
-  if (!Number.isInteger(input.specificationId) || input.specificationId < 1) {
-    throw validationError('Missing specification reference', {
-      specificationId: input.specificationId,
-    })
-  }
-
-  return input.specificationId
 }
 
 function getSpecificationReferenceLabel(

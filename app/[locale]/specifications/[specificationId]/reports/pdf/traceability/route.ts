@@ -4,11 +4,11 @@ import {
   createReportRuntime,
   type ReportRouteParams,
   reportErrorResponse,
+  resolveReportSpecification,
   splitCsvParam,
 } from '@/app/[locale]/requirements/reports/pdf/route-helpers'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
 import {
-  getSpecificationById,
   parseSpecificationItemRef,
   type SpecificationItemRef,
 } from '@/lib/dal/requirements-specifications'
@@ -51,23 +51,11 @@ export async function GET(
     const itemRefs = validateItemRefs(
       splitCsvParam(request.nextUrl.searchParams.get('refs')),
     )
-    if (!/^\d+$/.test(specificationId)) {
-      throw new ReportDataError(
-        `Specification not found: ${specificationId}`,
-        404,
-      )
-    }
     const runtime = await createReportRuntime(request)
-    const specification = await getSpecificationById(
+    const specification = await resolveReportSpecification(
       runtime.db,
-      Number(specificationId),
+      specificationId,
     )
-    if (!specification) {
-      throw new ReportDataError(
-        `Specification not found: ${specificationId}`,
-        404,
-      )
-    }
 
     await authorizeSpecificationReportRead(
       runtime.authorization,
