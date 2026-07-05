@@ -1,7 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  recordAiSafetyBlock,
   recordAiSafetyDecision,
   screenAiInputWithRuleSet,
+  screenAiOutputDetailedWithRuleSet,
   screenAiOutputWithRuleSet,
 } from '@/lib/ai/safety'
 import type {
@@ -9,6 +11,10 @@ import type {
   ActiveAiSafetyRuleTerm,
   AiSafetyTermType,
 } from '@/lib/dal/ai-safety-rules'
+import { clearAiSafetyRuntimeSettingsCacheForTests } from '@/lib/dal/ai-settings'
+import type { SqlServerDatabase } from '@/lib/db'
+import { parseSecurityAuditEvents } from '@/tests/helpers/security-audit-events'
+import { parseSecurityForensicsEvents } from '@/tests/helpers/security-forensics-events'
 
 function term(
   termType: AiSafetyTermType,
@@ -98,6 +104,10 @@ function screenAiOutput(textParts: readonly string[]) {
 }
 
 describe('AI safety screening', () => {
+  beforeEach(() => {
+    clearAiSafetyRuntimeSettingsCacheForTests()
+  })
+
   it('allows ordinary requirement-authoring input', () => {
     const decision = screenAiInput([
       'Create requirements for security audit logging and retention.',
@@ -135,6 +145,54 @@ describe('AI safety screening', () => {
 
     expect(decision.allowed).toBe(false)
     expect(decision.ruleIds).toContain('instruction_override')
+  })
+
+  it('caps pair matching windows before building safety regexes', () => {
+    const ruleSet: ActiveAiSafetyRuleSet = {
+      rules: [
+        {
+          category: 'prompt_injection',
+          patternKind: 'paired_terms',
+          ruleId: 'instruction_override',
+          terms: [term('action', 'ignore'), term('target', 'previous')],
+          windowChars: 5000,
+        },
+      ],
+    }
+
+    const nearGapDecision = screenAiInputWithRuleSet(ruleSet, [
+      `ignore ${'x'.repeat(998)} previous`,
+    ])
+    const farGapDecision = screenAiInputWithRuleSet(ruleSet, [
+      `ignore ${'x'.repeat(999)} previous`,
+    ])
+
+    expect(nearGapDecision.allowed).toBe(false)
+    expect(farGapDecision.allowed).toBe(true)
+  })
+
+  it('treats negative pair matching windows as zero-length gaps', () => {
+    const ruleSet: ActiveAiSafetyRuleSet = {
+      rules: [
+        {
+          category: 'prompt_injection',
+          patternKind: 'paired_terms',
+          ruleId: 'instruction_override',
+          terms: [term('action', '<ignore>'), term('target', '<previous>')],
+          windowChars: -1,
+        },
+      ],
+    }
+
+    const adjacentDecision = screenAiInputWithRuleSet(ruleSet, [
+      '<ignore><previous>',
+    ])
+    const spacedDecision = screenAiInputWithRuleSet(ruleSet, [
+      '<ignore> <previous>',
+    ])
+
+    expect(adjacentDecision.allowed).toBe(false)
+    expect(spacedDecision.allowed).toBe(true)
   })
 
   it('allows requests for the AI request text that the UI already exposes', () => {
@@ -245,6 +303,116 @@ describe('AI safety screening', () => {
       })
       expect(serialized).not.toContain(unsafePrompt)
       expect(serialized).not.toContain('SE5560000001-ai1')
+    } finally {
+      infoSpy.mockRestore()
+    }
+  })
+
+  it('records raw blocked content and trigger evidence only on the forensic channel', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const db = {
+      query: vi.fn().mockResolvedValue([
+        {
+          aiSafetyForensicLoggingEnabled: 1,
+        },
+      ]),
+    } as unknown as SqlServerDatabase
+    const screening = screenAiOutputDetailedWithRuleSet(TEST_RULE_SET, [
+      {
+        label: 'thinking',
+        text: 'Authorization: Bearer unsafe-output-secret',
+      },
+    ])
+
+    try {
+      await recordAiSafetyBlock({
+        blockedStep: 'final_model_output',
+        context: {
+          actor: {
+            displayName: 'AI User',
+            hsaId: 'SE5560000001-ai1',
+            id: 'ai-user',
+            isAuthenticated: true,
+            roles: ['Admin'],
+            source: 'oidc',
+          },
+          correlationId: 'corr-ai',
+          request: {
+            method: 'POST',
+            path: '/api/ai/generate-requirement-import',
+            requestId: 'req-ai',
+          },
+          requestId: 'req-ai',
+          source: 'rest',
+        },
+        db,
+        direction: 'output',
+        event: 'ai.output_safety.blocked',
+        operation: 'ai.generate-requirement-import',
+        request: new Request(
+          'https://example.test/api/ai/generate-requirement-import',
+          { method: 'POST' },
+        ),
+        screening,
+      })
+
+      const auditEvent = parseSecurityAuditEvents(infoSpy)[0]
+      const forensicEvent = parseSecurityForensicsEvents(infoSpy)[0]
+
+      expect(auditEvent).toMatchObject({
+        channel: 'security-audit',
+        event: 'ai.output_safety.blocked',
+      })
+      expect(JSON.stringify(auditEvent)).not.toContain('unsafe-output-secret')
+      expect(forensicEvent).toMatchObject({
+        actor: { source: 'oidc', sub: 'ai-user' },
+        blockedStep: 'final_model_output',
+        categories: ['backend_leakage'],
+        channel: 'security-forensics',
+        correlationId: 'corr-ai',
+        decision: 'blocked',
+        event: 'ai.output_safety.blocked_content_captured',
+        operation: 'ai.generate-requirement-import',
+        outcome: 'failure',
+        primaryRuleId: 'sensitive_backend_leak',
+        primaryRuleType: 'System-adjacent content leakage',
+        reason: 'ai_safety_rule_match',
+        requestId: 'req-ai',
+        ruleIds: ['sensitive_backend_leak'],
+        ruleTypes: ['System-adjacent content leakage'],
+        safetyRuleDirection: 'output',
+        source: 'rest',
+        textLengthBucket: '0-1k',
+        content: [
+          {
+            label: 'thinking',
+            text: 'Authorization: Bearer unsafe-output-secret',
+          },
+        ],
+        evidence: [
+          expect.objectContaining({
+            partLabel: 'thinking',
+            ruleId: 'sensitive_backend_leak',
+            terms: [
+              expect.objectContaining({
+                configuredTerm: 'authorization: bearer',
+                matchedText: 'Authorization: Bearer',
+                termType: 'direct_marker',
+              }),
+            ],
+          }),
+        ],
+      })
+      expect(forensicEvent).not.toHaveProperty('detail')
+      expect(forensicEvent?.request).toEqual({
+        method: 'POST',
+        path: '/api/ai/generate-requirement-import',
+      })
+      expect(forensicEvent?.request).not.toHaveProperty('requestId')
+      expect(forensicEvent?.eventId).toBe(
+        (auditEvent?.detail as Record<string, unknown>).eventId,
+      )
+      expect(JSON.stringify(forensicEvent)).toContain('unsafe-output-secret')
     } finally {
       infoSpy.mockRestore()
     }

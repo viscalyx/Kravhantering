@@ -85,4 +85,18 @@ export function mockAiSafetyScreening(aiSafety: AiSafetyModule): void {
     async (_db: SqlServerDatabase, textParts: readonly string[]) =>
       aiSafety.screenAiOutputWithRuleSet(TEST_AI_SAFETY_RULE_SET, textParts),
   )
+  vi.spyOn(aiSafety, 'screenAiInputDetailed').mockImplementation(
+    async (_db: SqlServerDatabase, textParts) =>
+      aiSafety.screenAiInputDetailedWithRuleSet(
+        TEST_AI_SAFETY_RULE_SET,
+        textParts,
+      ),
+  )
+  vi.spyOn(aiSafety, 'screenAiOutputDetailed').mockImplementation(
+    async (_db: SqlServerDatabase, textParts) =>
+      aiSafety.screenAiOutputDetailedWithRuleSet(
+        TEST_AI_SAFETY_RULE_SET,
+        textParts,
+      ),
+  )
 }

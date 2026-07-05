@@ -939,17 +939,18 @@ provider calls could proceed without the expected filter.
 If Admin Center could override the environment guard, security scans and
 operator-driven shutdowns would lose their fail-closed behavior.
 
-**The requirement:** The `ai_settings` table must be a singleton with a default
-enabled row, exact `1 MiB` MCP payload limit, and default
-`aiSafetyRuleCacheTtlSeconds = 600` so migrations preserve current behavior.
-Required seed data must populate `ai_safety_rules` and
-`ai_safety_rule_terms`. Admin Center may save the global
-`requirementGenerationEnabled`, `mcpMaxRequestBytes`, and
-`aiSafetyRuleCacheTtlSeconds` through Admin-only `adminMutationPolicy()` routes
-and privileged audit events. Safety-rule terms are administered through
-separate Admin-only routes and AI-assisted authoring fails closed if the active
-rule set cannot be read from the database. Effective generation availability is
-false when either the admin preference is disabled or
+**The requirement:** The `ai_settings` table must be a singleton with
+AI-assisted generation and forensic AI safety logging enabled in required and
+demo seed insertions, exact `1 MiB` MCP payload limit, and default
+`aiSafetyRuleCacheTtlSeconds = 600`. Required seed data must populate
+`ai_safety_rules` and `ai_safety_rule_terms`. Admin Center may save the global
+`requirementGenerationEnabled`, `aiSafetyForensicLoggingEnabled`,
+`mcpMaxRequestBytes`, and `aiSafetyRuleCacheTtlSeconds` through Admin-only
+`adminMutationPolicy()` routes and privileged audit events. Safety-rule terms
+are administered through separate Admin-only routes and AI-assisted authoring
+fails closed if the active rule set cannot be read from the database.
+Effective generation availability is false when either the admin preference is
+disabled or
 `AI_REQUIREMENT_GENERATION_DISABLED` is `1` or `true`; the environment guard
 has highest precedence. REST AI-assisted authoring must check effective
 availability before model-catalog or chat-provider work. `/api/mcp` must reject
@@ -963,8 +964,10 @@ generation.
 `typeorm/migrations/0037_ai_settings.mjs:1-25` creates and seeds the singleton
 table, and `typeorm/migrations/0041_ai_mcp_payload_limit.mjs` adds the MCP
 payload column and check constraint. `typeorm/migrations/0042_ai_safety_rules.mjs`
-adds the cache TTL column and safety-rule tables. Demo and required seed
-defaults are in `typeorm/seed.mjs`, `typeorm/seed-required.mjs`, and
+adds the cache TTL column and safety-rule tables.
+`typeorm/migrations/0045_ai_safety_forensic_logging.mjs` adds the forensic
+logging setting column. Demo and required seed defaults are in
+`typeorm/seed.mjs`, `typeorm/seed-required.mjs`, and
 `typeorm/ai-safety-seed-data.mjs`. Environment parsing is in
 `lib/ai/scan-guard.ts:1-10`; persisted availability, MCP-limit validation, and
 cache fallback logic are in `lib/dal/ai-settings.ts`. Safety-rule loading,

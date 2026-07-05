@@ -629,6 +629,7 @@ function normalizeAdminAiSettings(
 }
 
 type AiSettingSaveKey =
+  | 'aiSafetyForensicLoggingEnabled'
   | 'aiSafetyRuleCacheTtlSeconds'
   | 'mcpImportMaxRows'
   | 'mcpImportValidationTtlMinutes'
@@ -638,6 +639,7 @@ type AiSettingSaveKey =
 type AiSettingsPatch = Partial<
   Pick<
     AdminAiSettings,
+    | 'aiSafetyForensicLoggingEnabled'
     | 'aiSafetyRuleCacheTtlSeconds'
     | 'mcpImportMaxRows'
     | 'mcpImportValidationTtlMinutes'
@@ -658,6 +660,7 @@ interface AiSafetyTermForm {
 
 const AI_SETTING_SAVE_KEYS: readonly AiSettingSaveKey[] = [
   'requirementGenerationEnabled',
+  'aiSafetyForensicLoggingEnabled',
   'mcpMaxRequestBytes',
   'mcpImportMaxRows',
   'mcpImportValidationTtlMinutes',
@@ -799,9 +802,12 @@ function AiSettingsPanel() {
   const [isMcpLimitHelpOpen, setIsMcpLimitHelpOpen] = useState(false)
   const [isMcpImportRowsHelpOpen, setIsMcpImportRowsHelpOpen] = useState(false)
   const [isMcpImportTtlHelpOpen, setIsMcpImportTtlHelpOpen] = useState(false)
+  const [isForensicLoggingHelpOpen, setIsForensicLoggingHelpOpen] =
+    useState(false)
   const [isCacheTtlHelpOpen, setIsCacheTtlHelpOpen] = useState(false)
   const [isRulesHelpOpen, setIsRulesHelpOpen] = useState(false)
   const settingSaveTokensRef = useRef<Record<AiSettingSaveKey, number>>({
+    aiSafetyForensicLoggingEnabled: 0,
     aiSafetyRuleCacheTtlSeconds: 0,
     mcpImportMaxRows: 0,
     mcpImportValidationTtlMinutes: 0,
@@ -819,6 +825,8 @@ function AiSettingsPanel() {
   const mcpImportRowsHelpId = `${mcpImportRowsId}-help`
   const mcpImportTtlId = 'admin-ai-mcp-import-validation-ttl-minutes'
   const mcpImportTtlHelpId = `${mcpImportTtlId}-help`
+  const forensicLoggingId = 'admin-ai-safety-forensic-logging-enabled'
+  const forensicLoggingHelpId = `${forensicLoggingId}-help`
   const cacheTtlId = 'admin-ai-safety-rule-cache-ttl-seconds'
   const cacheTtlHelpId = `${cacheTtlId}-help`
   const cacheTtlConstraintId = `${cacheTtlId}-constraint`
@@ -1352,10 +1360,10 @@ function AiSettingsPanel() {
         <div className="grid gap-4">
           <div>
             <h3 className="text-base font-semibold text-secondary-950 dark:text-secondary-50">
-              {ta('ai.securityTitle')}
+              {ta('ai.assistanceTitle')}
             </h3>
             <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-              {ta('ai.securityDescription')}
+              {ta('ai.assistanceDescription')}
             </p>
           </div>
 
@@ -1426,6 +1434,82 @@ function AiSettingsPanel() {
                 {settingSaveStates.requirementGenerationEnabled === 'saving'
                   ? tc('saving')
                   : settingSaveStates.requirementGenerationEnabled === 'saved'
+                    ? ta('saved')
+                    : ta('ai.rowSaveError')}
+              </p>
+            ) : null}
+          </div>
+
+          <div>
+            <h3 className="text-base font-semibold text-secondary-950 dark:text-secondary-50">
+              {ta('ai.aiSecurityTitle')}
+            </h3>
+            <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+              {ta('ai.aiSecurityDescription')}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  <label
+                    className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
+                    htmlFor={forensicLoggingId}
+                  >
+                    {ta('ai.aiSafetyForensicLogging')}
+                  </label>
+                  <button
+                    aria-controls={forensicLoggingHelpId}
+                    aria-expanded={isForensicLoggingHelpOpen}
+                    aria-label={`${tc('help')}: ${ta('ai.aiSafetyForensicLogging')}`}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                    onClick={() => setIsForensicLoggingHelpOpen(open => !open)}
+                    type="button"
+                  >
+                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <AnimatedHelpPanel
+                  id={forensicLoggingHelpId}
+                  isOpen={isForensicLoggingHelpOpen}
+                >
+                  {ta('ai.fieldHelp.aiSafetyForensicLogging')}
+                </AnimatedHelpPanel>
+              </div>
+              <label className="inline-flex min-h-11 items-center gap-3 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200">
+                <input
+                  checked={settings.aiSafetyForensicLoggingEnabled}
+                  disabled={
+                    isLoading ||
+                    isSettingSaving('aiSafetyForensicLoggingEnabled')
+                  }
+                  id={forensicLoggingId}
+                  onChange={event => {
+                    const checked = event.target.checked
+                    void saveSettingsPatch(
+                      'aiSafetyForensicLoggingEnabled',
+                      { aiSafetyForensicLoggingEnabled: checked },
+                      current => ({
+                        ...current,
+                        aiSafetyForensicLoggingEnabled: checked,
+                      }),
+                    )
+                  }}
+                  type="checkbox"
+                />
+                <span>
+                  {settings.aiSafetyForensicLoggingEnabled
+                    ? ta('ai.adminPreferenceEnabled')
+                    : ta('ai.adminPreferenceDisabled')}
+                </span>
+              </label>
+            </div>
+            {settingSaveStates.aiSafetyForensicLoggingEnabled !== 'idle' ? (
+              <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                {settingSaveStates.aiSafetyForensicLoggingEnabled === 'saving'
+                  ? tc('saving')
+                  : settingSaveStates.aiSafetyForensicLoggingEnabled === 'saved'
                     ? ta('saved')
                     : ta('ai.rowSaveError')}
               </p>

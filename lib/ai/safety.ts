@@ -1,25 +1,112 @@
-import { recordSecurityEvent, type SecurityEventName } from '@/lib/auth/audit'
+import {
+  recordSecurityEvent,
+  type SecurityEventName,
+  type SecurityEventRequest,
+} from '@/lib/auth/audit'
 import {
   type ActiveAiSafetyRule,
   type ActiveAiSafetyRuleSet,
   type ActiveAiSafetyRuleTerm,
   type AiSafetyRuleId,
+  type AiSafetyTermType,
   getCachedAiSafetyRuleSet,
 } from '@/lib/dal/ai-safety-rules'
+import { getCachedAiSafetyRuntimeSettings } from '@/lib/dal/ai-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import type { RequestContext } from '@/lib/requirements/auth'
 
 export type { AiSafetyRuleId } from '@/lib/dal/ai-safety-rules'
 
+export type AiSafetyDirection = 'input' | 'output'
+
+export type AiSafetyBlockedStep =
+  | 'ai_request_input'
+  | 'final_model_output'
+  | 'repair_input'
+  | 'repaired_model_output'
+  | 'streamed_reasoning'
+
 export interface AiSafetyDecision {
   allowed: boolean
   categories: readonly string[]
+  primaryRuleId: AiSafetyRuleId | null
+  primaryRuleType: string | null
   ruleIds: readonly AiSafetyRuleId[]
+  ruleTypes: readonly string[]
   textLength: number
+}
+
+export interface AiSafetyScreenPart {
+  label: string
+  text: string
+}
+
+export interface AiSafetyForensicTriggerTerm {
+  configuredTerm: string
+  matchedText: string
+  termType: AiSafetyTermType
+}
+
+export interface AiSafetyForensicEvidence {
+  partLabel: string
+  patternKind: ActiveAiSafetyRule['patternKind']
+  ruleId: AiSafetyRuleId
+  terms: readonly AiSafetyForensicTriggerTerm[]
+}
+
+export interface AiSafetyScreeningResult {
+  contentParts: readonly AiSafetyScreenPart[]
+  decision: AiSafetyDecision
+  forensicEvidence: readonly AiSafetyForensicEvidence[]
 }
 
 const ZERO_WIDTH_CHARS = /[\u200B-\u200D\uFEFF]/g
 const UNICODE_WORD_CHAR = String.raw`[\p{L}\p{N}_]`
+const AI_SAFETY_BLOCK_REASON = 'ai_safety_rule_match'
+const COMBINED_PART_LABEL = 'combined'
+const DEFAULT_PAIR_WINDOW_CHARS = 80
+const MAX_PAIR_WINDOW_CHARS = 1000
+
+type PairRegexCache = Map<string, RegExp>
+
+const AI_SAFETY_RULE_PRIORITY: readonly AiSafetyRuleId[] = [
+  'instruction_override',
+  'system_prompt_extraction',
+  'encoded_smuggling',
+  'secret_extraction_request',
+  'harmful_generation_request',
+  'sensitive_backend_leak',
+]
+
+const AI_SAFETY_RULE_TYPE_NAMES: Record<
+  AiSafetyRuleId,
+  Record<'en' | 'sv', string>
+> = {
+  encoded_smuggling: {
+    en: 'Prompt injection via encoding and obfuscation',
+    sv: 'Promptinjektion via kodning och maskering',
+  },
+  harmful_generation_request: {
+    en: 'Harmful content generation request',
+    sv: 'Begäran om skadligt innehåll',
+  },
+  instruction_override: {
+    en: 'Prompt injection: instruction override',
+    sv: 'Promptinjektion: instruktionsövertagande',
+  },
+  secret_extraction_request: {
+    en: 'Sensitive information disclosure: secrets',
+    sv: 'Känslig informationsutläsning: hemligheter',
+  },
+  sensitive_backend_leak: {
+    en: 'System-adjacent content leakage',
+    sv: 'Läckage av systemnära innehåll',
+  },
+  system_prompt_extraction: {
+    en: 'System prompt leakage',
+    sv: 'Läckage av systemprompt',
+  },
+}
 
 function normalizeSafetyText(text: string): string {
   return text
@@ -41,13 +128,9 @@ function termPattern(termText: string): string {
   return `(?<!${UNICODE_WORD_CHAR})${pattern}(?!${UNICODE_WORD_CHAR})`
 }
 
-function alternationPattern(terms: readonly ActiveAiSafetyRuleTerm[]): string {
-  return terms.map(term => termPattern(term.termText)).join('|')
-}
-
 function termsByType(
   rule: ActiveAiSafetyRule,
-  direction: 'input' | 'output',
+  direction: AiSafetyDirection,
   termType: ActiveAiSafetyRuleTerm['termType'],
 ): readonly ActiveAiSafetyRuleTerm[] {
   return rule.terms.filter(
@@ -57,39 +140,183 @@ function termsByType(
   )
 }
 
-function directMatch(
+function matchTerm(
   text: string,
-  terms: readonly ActiveAiSafetyRuleTerm[],
-): boolean {
-  const alternation = alternationPattern(terms)
-  return alternation.length > 0
-    ? new RegExp(`(?:${alternation})`, 'iu').test(text)
-    : false
+  term: ActiveAiSafetyRuleTerm,
+): readonly string[] {
+  const regex = new RegExp(termPattern(term.termText), 'giu')
+  return [...text.matchAll(regex)].map(match => match[0])
 }
 
-function pairedMatch(
+function safePairWindowChars(windowChars: number | null | undefined): number {
+  const numeric =
+    typeof windowChars === 'number' && Number.isFinite(windowChars)
+      ? Math.trunc(windowChars)
+      : DEFAULT_PAIR_WINDOW_CHARS
+  return Math.min(MAX_PAIR_WINDOW_CHARS, Math.max(0, numeric))
+}
+
+function pairRegexCacheKey(
+  rule: ActiveAiSafetyRule,
+  firstTerm: ActiveAiSafetyRuleTerm,
+  secondTerm: ActiveAiSafetyRuleTerm,
+  windowChars: number,
+): string {
+  return JSON.stringify([
+    rule.ruleId,
+    rule.patternKind,
+    windowChars,
+    firstTerm.direction,
+    firstTerm.termType,
+    firstTerm.termText,
+    secondTerm.direction,
+    secondTerm.termType,
+    secondTerm.termText,
+  ])
+}
+
+function getPairRegex(args: {
+  cache: PairRegexCache
+  firstTerm: ActiveAiSafetyRuleTerm
+  rule: ActiveAiSafetyRule
+  secondTerm: ActiveAiSafetyRuleTerm
+  windowChars: number
+}): RegExp {
+  const key = pairRegexCacheKey(
+    args.rule,
+    args.firstTerm,
+    args.secondTerm,
+    args.windowChars,
+  )
+  const cached = args.cache.get(key)
+  if (cached) return cached
+
+  const gap = String.raw`[\s\S]{0,${args.windowChars}}`
+  const regex = new RegExp(
+    `(${termPattern(args.firstTerm.termText)})${gap}(${termPattern(
+      args.secondTerm.termText,
+    )})`,
+    'giu',
+  )
+  args.cache.set(key, regex)
+  return regex
+}
+
+function directEvidence(
   text: string,
+  rule: ActiveAiSafetyRule,
+  terms: readonly ActiveAiSafetyRuleTerm[],
+  partLabel: string,
+): AiSafetyForensicEvidence[] {
+  const evidence: AiSafetyForensicEvidence[] = []
+  for (const term of terms) {
+    for (const matchedText of matchTerm(text, term)) {
+      evidence.push({
+        partLabel,
+        patternKind: rule.patternKind,
+        ruleId: rule.ruleId,
+        terms: [
+          {
+            configuredTerm: term.termText,
+            matchedText,
+            termType: term.termType,
+          },
+        ],
+      })
+    }
+  }
+  return evidence
+}
+
+function pairedEvidenceOneWay(
+  text: string,
+  rule: ActiveAiSafetyRule,
   firstTerms: readonly ActiveAiSafetyRuleTerm[],
   secondTerms: readonly ActiveAiSafetyRuleTerm[],
   windowChars: number,
-  bidirectional = false,
-): boolean {
-  const first = alternationPattern(firstTerms)
-  const second = alternationPattern(secondTerms)
-  if (!first || !second) return false
-  const gap = String.raw`[\s\S]{0,${windowChars}}`
-  const forward = new RegExp(`(?:${first})${gap}(?:${second})`, 'iu')
-  if (forward.test(text)) return true
-  if (!bidirectional) return false
-  return new RegExp(`(?:${second})${gap}(?:${first})`, 'iu').test(text)
+  partLabel: string,
+  pairRegexCache: PairRegexCache,
+): AiSafetyForensicEvidence[] {
+  const evidence: AiSafetyForensicEvidence[] = []
+  for (const firstTerm of firstTerms) {
+    for (const secondTerm of secondTerms) {
+      const regex = getPairRegex({
+        cache: pairRegexCache,
+        firstTerm,
+        rule,
+        secondTerm,
+        windowChars,
+      })
+      regex.lastIndex = 0
+      for (const match of text.matchAll(regex)) {
+        const firstMatchedText = match[1]
+        const secondMatchedText = match[2]
+        if (!firstMatchedText || !secondMatchedText) continue
+        evidence.push({
+          partLabel,
+          patternKind: rule.patternKind,
+          ruleId: rule.ruleId,
+          terms: [
+            {
+              configuredTerm: firstTerm.termText,
+              matchedText: firstMatchedText,
+              termType: firstTerm.termType,
+            },
+            {
+              configuredTerm: secondTerm.termText,
+              matchedText: secondMatchedText,
+              termType: secondTerm.termType,
+            },
+          ],
+        })
+      }
+    }
+  }
+  return evidence
 }
 
-function ruleMatches(
+function pairedEvidence(
+  text: string,
+  rule: ActiveAiSafetyRule,
+  firstTerms: readonly ActiveAiSafetyRuleTerm[],
+  secondTerms: readonly ActiveAiSafetyRuleTerm[],
+  windowChars: number,
+  partLabel: string,
+  pairRegexCache: PairRegexCache,
+  bidirectional = false,
+): AiSafetyForensicEvidence[] {
+  const evidence = pairedEvidenceOneWay(
+    text,
+    rule,
+    firstTerms,
+    secondTerms,
+    windowChars,
+    partLabel,
+    pairRegexCache,
+  )
+  if (!bidirectional) return evidence
+  return [
+    ...evidence,
+    ...pairedEvidenceOneWay(
+      text,
+      rule,
+      secondTerms,
+      firstTerms,
+      windowChars,
+      partLabel,
+      pairRegexCache,
+    ),
+  ]
+}
+
+function ruleEvidence(
   rule: ActiveAiSafetyRule,
   text: string,
-  direction: 'input' | 'output',
-): boolean {
-  const windowChars = rule.windowChars ?? 80
+  direction: AiSafetyDirection,
+  partLabel: string,
+  pairRegexCache: PairRegexCache,
+): AiSafetyForensicEvidence[] {
+  const windowChars = safePairWindowChars(rule.windowChars)
   const actions = termsByType(rule, direction, 'action')
   const targets = termsByType(rule, direction, 'target')
   const coding = termsByType(rule, direction, 'coding')
@@ -97,40 +324,191 @@ function ruleMatches(
 
   switch (rule.ruleId) {
     case 'instruction_override':
-      return (
-        directMatch(text, directMarkers) ||
-        pairedMatch(text, actions, targets, windowChars)
-      )
+      return [
+        ...directEvidence(text, rule, directMarkers, partLabel),
+        ...pairedEvidence(
+          text,
+          rule,
+          actions,
+          targets,
+          windowChars,
+          partLabel,
+          pairRegexCache,
+        ),
+      ]
     case 'encoded_smuggling':
-      return pairedMatch(text, coding, targets, windowChars, true)
+      return pairedEvidence(
+        text,
+        rule,
+        coding,
+        targets,
+        windowChars,
+        partLabel,
+        pairRegexCache,
+        true,
+      )
     case 'sensitive_backend_leak':
-      return directMatch(text, directMarkers)
+      return directEvidence(text, rule, directMarkers, partLabel)
     case 'harmful_generation_request':
     case 'secret_extraction_request':
     case 'system_prompt_extraction':
-      return pairedMatch(text, actions, targets, windowChars)
+      return pairedEvidence(
+        text,
+        rule,
+        actions,
+        targets,
+        windowChars,
+        partLabel,
+        pairRegexCache,
+      )
   }
 }
 
-function uniqueSorted<T extends string>(values: Iterable<T>): readonly T[] {
-  return [...new Set(values)].sort()
+function unique<T extends string>(values: Iterable<T>): readonly T[] {
+  return [...new Set(values)]
 }
 
-function screenTextParts(
-  ruleSet: ActiveAiSafetyRuleSet,
-  direction: 'input' | 'output',
-  textParts: readonly string[],
-): AiSafetyDecision {
-  const text = normalizeSafetyText(textParts.filter(Boolean).join('\n\n'))
-  const matches = ruleSet.rules.filter(rule =>
-    ruleMatches(rule, text, direction),
+function rulePriority(ruleId: AiSafetyRuleId): number {
+  const index = AI_SAFETY_RULE_PRIORITY.indexOf(ruleId)
+  return index === -1 ? AI_SAFETY_RULE_PRIORITY.length : index
+}
+
+function sortRuleIdsByPriority(
+  ruleIds: Iterable<AiSafetyRuleId>,
+): readonly AiSafetyRuleId[] {
+  return [...new Set(ruleIds)].sort(
+    (left, right) => rulePriority(left) - rulePriority(right),
   )
-  const ruleIds = uniqueSorted(matches.map(match => match.ruleId))
+}
+
+export function getAiSafetyRuleTypeName(
+  ruleId: AiSafetyRuleId,
+  locale: 'en' | 'sv',
+): string {
+  return AI_SAFETY_RULE_TYPE_NAMES[ruleId][locale]
+}
+
+function forensicEvidenceKey(evidence: AiSafetyForensicEvidence): string {
+  return JSON.stringify({
+    partLabel: evidence.partLabel,
+    ruleId: evidence.ruleId,
+    terms: evidence.terms,
+  })
+}
+
+function dedupeForensicEvidence(
+  evidence: readonly AiSafetyForensicEvidence[],
+): readonly AiSafetyForensicEvidence[] {
+  const seen = new Set<string>()
+  const out: AiSafetyForensicEvidence[] = []
+  for (const item of evidence) {
+    const key = forensicEvidenceKey(item)
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(item)
+  }
+  return out
+}
+
+function normalizeScreenParts(
+  parts: readonly AiSafetyScreenPart[],
+): readonly AiSafetyScreenPart[] {
+  return parts
+    .filter(part => part.text.length > 0)
+    .map(part => ({
+      label: part.label,
+      text: normalizeSafetyText(part.text),
+    }))
+}
+
+function labeledPartsFromStrings(
+  textParts: readonly string[],
+): readonly AiSafetyScreenPart[] {
+  return textParts.map((text, index) => ({
+    label: `part${index + 1}`,
+    text,
+  }))
+}
+
+function collectEvidence(
+  ruleSet: ActiveAiSafetyRuleSet,
+  direction: AiSafetyDirection,
+  normalizedParts: readonly AiSafetyScreenPart[],
+): readonly AiSafetyForensicEvidence[] {
+  const evidence: AiSafetyForensicEvidence[] = []
+  const pairRegexCache: PairRegexCache = new Map()
+  for (const part of normalizedParts) {
+    for (const rule of ruleSet.rules) {
+      evidence.push(
+        ...ruleEvidence(rule, part.text, direction, part.label, pairRegexCache),
+      )
+    }
+  }
+
+  if (normalizedParts.length > 1) {
+    const matchedRuleIds = new Set(evidence.map(item => item.ruleId))
+    const combinedText = normalizedParts.map(part => part.text).join('\n\n')
+    for (const rule of ruleSet.rules) {
+      if (matchedRuleIds.has(rule.ruleId)) continue
+      evidence.push(
+        ...ruleEvidence(
+          rule,
+          combinedText,
+          direction,
+          COMBINED_PART_LABEL,
+          pairRegexCache,
+        ),
+      )
+    }
+  }
+
+  return dedupeForensicEvidence(evidence)
+}
+
+function decisionFromEvidence(args: {
+  evidence: readonly AiSafetyForensicEvidence[]
+  ruleSet: ActiveAiSafetyRuleSet
+  textLength: number
+}): AiSafetyDecision {
+  const rulesById = new Map(args.ruleSet.rules.map(rule => [rule.ruleId, rule]))
+  const ruleIds = sortRuleIdsByPriority(args.evidence.map(item => item.ruleId))
+  const primaryRuleId = ruleIds[0] ?? null
+  const ruleTypes = ruleIds.map(ruleId => getAiSafetyRuleTypeName(ruleId, 'en'))
   return {
     allowed: ruleIds.length === 0,
-    categories: uniqueSorted(matches.map(match => match.category)),
+    categories: unique(
+      ruleIds.flatMap(ruleId => {
+        const category = rulesById.get(ruleId)?.category
+        return category ? [category] : []
+      }),
+    ),
+    primaryRuleId,
+    primaryRuleType: primaryRuleId
+      ? getAiSafetyRuleTypeName(primaryRuleId, 'en')
+      : null,
     ruleIds,
-    textLength: text.length,
+    ruleTypes,
+    textLength: args.textLength,
+  }
+}
+
+function screenLabeledTextParts(
+  ruleSet: ActiveAiSafetyRuleSet,
+  direction: AiSafetyDirection,
+  textParts: readonly AiSafetyScreenPart[],
+): AiSafetyScreeningResult {
+  const contentParts = textParts.filter(part => part.text.length > 0)
+  const normalizedParts = normalizeScreenParts(contentParts)
+  const normalizedText = normalizedParts.map(part => part.text).join('\n\n')
+  const forensicEvidence = collectEvidence(ruleSet, direction, normalizedParts)
+  return {
+    contentParts,
+    decision: decisionFromEvidence({
+      evidence: forensicEvidence,
+      ruleSet,
+      textLength: normalizedText.length,
+    }),
+    forensicEvidence,
   }
 }
 
@@ -138,14 +516,34 @@ export function screenAiInputWithRuleSet(
   ruleSet: ActiveAiSafetyRuleSet,
   textParts: readonly string[],
 ): AiSafetyDecision {
-  return screenTextParts(ruleSet, 'input', textParts)
+  return screenAiInputDetailedWithRuleSet(
+    ruleSet,
+    labeledPartsFromStrings(textParts),
+  ).decision
 }
 
 export function screenAiOutputWithRuleSet(
   ruleSet: ActiveAiSafetyRuleSet,
   textParts: readonly string[],
 ): AiSafetyDecision {
-  return screenTextParts(ruleSet, 'output', textParts)
+  return screenAiOutputDetailedWithRuleSet(
+    ruleSet,
+    labeledPartsFromStrings(textParts),
+  ).decision
+}
+
+export function screenAiInputDetailedWithRuleSet(
+  ruleSet: ActiveAiSafetyRuleSet,
+  textParts: readonly AiSafetyScreenPart[],
+): AiSafetyScreeningResult {
+  return screenLabeledTextParts(ruleSet, 'input', textParts)
+}
+
+export function screenAiOutputDetailedWithRuleSet(
+  ruleSet: ActiveAiSafetyRuleSet,
+  textParts: readonly AiSafetyScreenPart[],
+): AiSafetyScreeningResult {
+  return screenLabeledTextParts(ruleSet, 'output', textParts)
 }
 
 export async function screenAiInput(
@@ -153,6 +551,16 @@ export async function screenAiInput(
   textParts: readonly string[],
 ): Promise<AiSafetyDecision> {
   return screenAiInputWithRuleSet(await getCachedAiSafetyRuleSet(db), textParts)
+}
+
+export async function screenAiInputDetailed(
+  db: SqlServerDatabase,
+  textParts: readonly AiSafetyScreenPart[],
+): Promise<AiSafetyScreeningResult> {
+  return screenAiInputDetailedWithRuleSet(
+    await getCachedAiSafetyRuleSet(db),
+    textParts,
+  )
 }
 
 export async function screenAiOutput(
@@ -165,6 +573,16 @@ export async function screenAiOutput(
   )
 }
 
+export async function screenAiOutputDetailed(
+  db: SqlServerDatabase,
+  textParts: readonly AiSafetyScreenPart[],
+): Promise<AiSafetyScreeningResult> {
+  return screenAiOutputDetailedWithRuleSet(
+    await getCachedAiSafetyRuleSet(db),
+    textParts,
+  )
+}
+
 function textLengthBucket(textLength: number): string {
   if (textLength <= 1000) return '0-1k'
   if (textLength <= 4000) return '1k-4k'
@@ -172,9 +590,81 @@ function textLengthBucket(textLength: number): string {
   return '16k+'
 }
 
+function requestForForensicEvent(
+  context: RequestContext,
+  request: Request,
+): Omit<SecurityEventRequest, 'requestId'> {
+  const omitRequestId = ({
+    requestId: _requestId,
+    ...transportRequest
+  }: SecurityEventRequest): Omit<SecurityEventRequest, 'requestId'> =>
+    transportRequest
+  if (context.request) return omitRequestId(context.request)
+  let path = ''
+  try {
+    path = new URL(request.url).pathname
+  } catch {
+    path = request.url.split(/[?#]/, 1)[0] ?? ''
+  }
+  return omitRequestId({
+    method: request.method,
+    path,
+    requestId: context.requestId,
+  })
+}
+
+function forensicEventName(
+  event: Extract<
+    SecurityEventName,
+    'ai.input_safety.blocked' | 'ai.output_safety.blocked'
+  >,
+) {
+  return event === 'ai.input_safety.blocked'
+    ? 'ai.input_safety.blocked_content_captured'
+    : 'ai.output_safety.blocked_content_captured'
+}
+
+function safeForensicLogString(value: unknown): string {
+  return value instanceof Error ? value.message : String(value)
+}
+
+interface AiSafetyForensicEventPayload {
+  actor: {
+    source: RequestContext['actor']['source']
+    sub?: string
+  }
+  blockedStep: AiSafetyBlockedStep
+  categories: readonly string[]
+  channel: 'security-forensics'
+  content: readonly AiSafetyScreenPart[]
+  correlationId: string
+  decision: 'blocked'
+  event: ReturnType<typeof forensicEventName>
+  eventId: string
+  evidence: readonly AiSafetyForensicEvidence[]
+  model?: string
+  operation: string
+  outcome: 'failure'
+  primaryRuleId: AiSafetyRuleId | null
+  primaryRuleType: string | null
+  provider?: string
+  reason: typeof AI_SAFETY_BLOCK_REASON
+  request: Omit<SecurityEventRequest, 'requestId'>
+  requestId: string
+  ruleIds: readonly AiSafetyRuleId[]
+  ruleTypes: readonly string[]
+  safetyRuleDirection: AiSafetyDirection
+  source: RequestContext['source']
+  textLengthBucket: string
+  ts: string
+}
+
 export function recordAiSafetyDecision(args: {
+  blockedStep?: AiSafetyBlockedStep
   context: RequestContext
   decision: AiSafetyDecision
+  direction?: AiSafetyDirection
+  eventId?: string
   event: Extract<
     SecurityEventName,
     'ai.input_safety.blocked' | 'ai.output_safety.blocked'
@@ -183,19 +673,30 @@ export function recordAiSafetyDecision(args: {
   operation: string
   provider?: string
   request: Request
-}): void {
+}): string {
+  const eventId = args.eventId ?? crypto.randomUUID()
+  const direction =
+    args.direction ??
+    (args.event === 'ai.input_safety.blocked' ? 'input' : 'output')
   recordSecurityEvent({
     actor: {
       source: args.context.actor.source,
       ...(args.context.actor.id ? { sub: args.context.actor.id } : {}),
     },
     detail: {
+      eventId,
+      blockedStep: args.blockedStep ?? 'ai_request_input',
       categories: args.decision.categories,
       correlationId: args.context.correlationId,
       decision: 'blocked',
       operation: args.operation,
+      primaryRuleId: args.decision.primaryRuleId ?? '',
+      primaryRuleType: args.decision.primaryRuleType ?? '',
+      reason: AI_SAFETY_BLOCK_REASON,
       requestId: args.context.requestId,
       ruleIds: args.decision.ruleIds,
+      ruleTypes: args.decision.ruleTypes,
+      safetyRuleDirection: direction,
       source: args.context.source,
       textLengthBucket: textLengthBucket(args.decision.textLength),
       ...(args.model ? { model: args.model } : {}),
@@ -205,6 +706,124 @@ export function recordAiSafetyDecision(args: {
     outcome: 'failure',
     request: args.context.request ?? args.request,
   })
+  return eventId
+}
+
+function recordAiSafetyForensicEvent(args: {
+  blockedStep: AiSafetyBlockedStep
+  context: RequestContext
+  direction: AiSafetyDirection
+  event: Extract<
+    SecurityEventName,
+    'ai.input_safety.blocked' | 'ai.output_safety.blocked'
+  >
+  eventId: string
+  model?: string
+  operation: string
+  provider?: string
+  request: Request
+  screening: AiSafetyScreeningResult
+}): void {
+  try {
+    const request = requestForForensicEvent(args.context, args.request)
+    const payload: AiSafetyForensicEventPayload = {
+      actor: {
+        source: args.context.actor.source,
+        ...(args.context.actor.id ? { sub: args.context.actor.id } : {}),
+      },
+      blockedStep: args.blockedStep,
+      categories: args.screening.decision.categories,
+      channel: 'security-forensics',
+      content: args.screening.contentParts,
+      correlationId: args.context.correlationId,
+      decision: 'blocked',
+      event: forensicEventName(args.event),
+      eventId: args.eventId,
+      evidence: args.screening.forensicEvidence,
+      operation: args.operation,
+      outcome: 'failure',
+      primaryRuleId: args.screening.decision.primaryRuleId,
+      primaryRuleType: args.screening.decision.primaryRuleType,
+      reason: AI_SAFETY_BLOCK_REASON,
+      request,
+      requestId: args.context.requestId,
+      ruleIds: args.screening.decision.ruleIds,
+      ruleTypes: args.screening.decision.ruleTypes,
+      safetyRuleDirection: args.direction,
+      source: args.context.source,
+      textLengthBucket: textLengthBucket(args.screening.decision.textLength),
+      ts: new Date().toISOString(),
+      ...(args.model ? { model: args.model } : {}),
+      ...(args.provider ? { provider: args.provider } : {}),
+    }
+    // eslint-disable-next-line no-console
+    console.info(JSON.stringify(payload))
+  } catch (error) {
+    try {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[security-forensics] failed to record AI safety blocked content',
+        safeForensicLogString(error),
+      )
+    } catch {
+      /* best-effort forensic logging must not break the request */
+    }
+  }
+}
+
+export async function recordAiSafetyBlock(args: {
+  blockedStep: AiSafetyBlockedStep
+  context: RequestContext
+  db: SqlServerDatabase
+  direction: AiSafetyDirection
+  event: Extract<
+    SecurityEventName,
+    'ai.input_safety.blocked' | 'ai.output_safety.blocked'
+  >
+  model?: string
+  operation: string
+  provider?: string
+  request: Request
+  screening: AiSafetyScreeningResult
+}): Promise<void> {
+  const eventId = recordAiSafetyDecision({
+    blockedStep: args.blockedStep,
+    context: args.context,
+    decision: args.screening.decision,
+    direction: args.direction,
+    event: args.event,
+    model: args.model,
+    operation: args.operation,
+    provider: args.provider,
+    request: args.request,
+  })
+
+  try {
+    const settings = await getCachedAiSafetyRuntimeSettings(args.db)
+    if (!settings.aiSafetyForensicLoggingEnabled) return
+    recordAiSafetyForensicEvent({
+      blockedStep: args.blockedStep,
+      context: args.context,
+      direction: args.direction,
+      event: args.event,
+      eventId,
+      model: args.model,
+      operation: args.operation,
+      provider: args.provider,
+      request: args.request,
+      screening: args.screening,
+    })
+  } catch (error) {
+    try {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[security-forensics] failed to load AI safety runtime settings',
+        safeForensicLogString(error),
+      )
+    } catch {
+      /* best-effort forensic logging must not break the request */
+    }
+  }
 }
 
 export function recordAiSafetyFilterFailure(args: {

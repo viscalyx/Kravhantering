@@ -18,7 +18,8 @@ surfaces that exist in the product:
 - AI-assisted requirement authoring and JSON repair.
 - OpenRouter model invocation and model capability resolution.
 - The `/api/mcp` Streamable HTTP endpoint and documented MCP tools.
-- Metadata-only AI, MCP, auth, capacity, and security audit logging.
+- Metadata-only AI, MCP, auth, capacity, and security audit logging, plus the
+  separately controlled AI safety forensic log stream.
 
 Out of scope until the product adds those capabilities:
 
@@ -52,9 +53,14 @@ validation and response serialization.
 
 AI safety decisions use the JSON `security-audit` log stream through
 `lib/auth/audit.ts`, not the database action log. Events are metadata only:
-operation, decision, rule IDs, categories, source, request/correlation IDs,
-and model/provider when available. They do not contain the prompt, model
-output, repair JSON, image data, or actor HSA-id in event detail.
+operation, decision, blocked step, direction, rule IDs/types, categories,
+source, request/correlation IDs, and model/provider when available. They do not
+contain the prompt, model output, repair JSON, image data, matched terms, or
+actor HSA-id in event detail. Admin Center also controls a separate
+`security-forensics` stream for AI safety blocks. That stream is enabled by
+default during the diagnostic phase and writes the screened raw blocked content
+and matched rule terms with the same request id, correlation id, and event id
+as the metadata event.
 
 MCP requests and persisted import-validation sessions default to a `10 MiB`
 payload/session limit that Admins can tune from the Admin Center `AI` tab in
@@ -88,7 +94,7 @@ the configured row cap and validation-token TTL.
 | C10 MCP Host/Origin validation | L2 | Deferred | Bearer auth is enforced; Host/Origin topology rules are not yet explicit | Deployment topology and validation decision: #388 |
 | C10 MCP tool-discovery filtering | L2 | Deferred | Tool allowlist is static and authenticated; discovery is not actor/scope-filtered | Discovery filtering decision: #389 |
 | C12 AI interaction metadata logging | L1 | Implemented | Capacity events record operation metrics without prompts or content | None |
-| C12 AI safety decision logging | L2 | Implemented | `ai.input_safety.blocked`, `ai.output_safety.blocked`, `ai.safety_filter.failed` security events | None |
+| C12 AI safety decision logging | L2 | Implemented | Metadata events `ai.input_safety.blocked`, `ai.output_safety.blocked`, `ai.safety_filter.failed`; optional forensic events `ai.input_safety.blocked_content_captured`, `ai.output_safety.blocked_content_captured` | None |
 | C12 prompt-injection alerting | L1 | Partial | Security audit events can be selected by the platform log pipeline | Alert routing/SIEM policy: #390 |
 
 <!-- markdownlint-enable MD013 -->

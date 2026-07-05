@@ -127,11 +127,12 @@ installation starts without organization-specific prefix policy.
 
 The `AI` tab manages AI-assisted requirement generation directly in the AI
 panel. Its `AI assistance` section contains the requirement-generation toggle,
-safety-rule cache time and editable AI safety-rule terms. Its `MCP interface`
-section contains the MCP request/session payload limit and MCP import row/TTL
-limits. The AI tab has no shared Save button; controls save directly when
-changed, with per-control or per-row status. Numeric controls show their
-allowed range and step directly under the control.
+its `AI security` section contains the forensic AI safety JSON logging toggle,
+safety-rule cache time and editable AI safety-rule terms, and its
+`MCP interface` section contains the MCP request/session payload limit and MCP
+import row/TTL limits. The AI tab has no shared Save button; controls save
+directly when changed, with per-control or per-row status. Numeric controls
+show their allowed range and step directly under the control.
 
 The source of truth is:
 
@@ -149,6 +150,8 @@ The source of truth is:
 Admin-managed AI settings include:
 
 - whether requirement generation is enabled as an administrator preference
+- whether AI safety blocks emit separate raw-content forensic JSON events, sent
+  as `aiSafetyForensicLoggingEnabled`
 - the maximum MCP request payload size, sent as `mcpMaxRequestBytes`
 - the maximum MCP import validation row count, sent as `mcpImportMaxRows`
 - the MCP import validation-session lifetime, sent as
@@ -156,6 +159,15 @@ Admin-managed AI settings include:
 - the AI safety-rule cache time, sent as `aiSafetyRuleCacheTtlSeconds`
 - active AI safety-rule terms, their direction, and whether standard terms have
   been disabled
+
+The forensic AI safety logging setting only controls the separate
+`security-forensics` JSON output. It does not enable or disable the AI safety
+filter, the metadata-only `security-audit` event, blocking behavior, or
+user-facing error messages. When an admin saves
+this setting, the saving process clears `cachedAiSafetyRuntimeSettings` in the
+local process immediately; other app processes can continue to use their cached
+value until
+`AI_SAFETY_RUNTIME_SETTINGS_CACHE_TTL_MS` expires after 30 seconds.
 
 The effective setting is disabled when either the Admin Center preference is
 off or the deployment environment has `AI_REQUIREMENT_GENERATION_DISABLED=1` or
@@ -187,6 +199,17 @@ standard terms whose active state or direction differs from the seeded
 standard. The safety filter reads active terms from the database only; if the
 rule set cannot be loaded, AI-assisted authoring fails closed before provider
 work.
+
+When an AI safety block happens, the metadata event is always written to
+`security-audit`. If forensic AI safety logging is enabled, the same block also
+writes a `security-forensics` JSON event with the same request id,
+correlation id, and event id as top-level fields. Its `request` object carries
+transport context such as method, path, IP address, and user agent. The
+forensic event includes actor/source metadata, blocked step, direction,
+operation, source, text-length bucket, decision/reason fields, category values,
+primary and matched rule IDs/types, optional model/provider values, the
+screened content parts for the blocked step, and matched rule evidence including
+configured terms and matched text.
 
 ## Precedence Rules
 

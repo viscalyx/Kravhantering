@@ -806,6 +806,7 @@ describe('RequirementsClient', () => {
 
   it('disables AI generation when availability is disabled by Admin Center', async () => {
     const aiGenerationAvailability = {
+      aiSafetyForensicLoggingEnabled: true,
       aiSafetyRuleCacheTtlSeconds: 600,
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: false,

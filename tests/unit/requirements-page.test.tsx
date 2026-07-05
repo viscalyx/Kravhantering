@@ -9,6 +9,8 @@ const pageState = vi.hoisted(() => ({
   getRequestSqlServerDataSource: vi.fn(),
   getRequirementListColumnDefaults: vi.fn(),
   resolveAiGenerationAvailability: vi.fn(() => ({
+    aiSafetyForensicLoggingEnabled: true,
+    aiSafetyRuleCacheTtlSeconds: 600,
     disabledByEnvironment: false,
     effectiveRequirementGenerationEnabled: true,
     requirementGenerationEnabled: true,
@@ -57,6 +59,8 @@ describe('requirements page', () => {
       DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
     )
     pageState.getAiGenerationAvailability.mockResolvedValue({
+      aiSafetyForensicLoggingEnabled: true,
+      aiSafetyRuleCacheTtlSeconds: 600,
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: true,
       requirementGenerationEnabled: true,
@@ -65,6 +69,8 @@ describe('requirements page', () => {
 
   it('keeps AI availability when requirement column defaults fail to load', async () => {
     const disabledAvailability = {
+      aiSafetyForensicLoggingEnabled: true,
+      aiSafetyRuleCacheTtlSeconds: 600,
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: false,
       requirementGenerationEnabled: false,

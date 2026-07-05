@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { POST } from '@/app/api/ai/generate-requirement-import/route'
 import * as aiSafety from '@/lib/ai/safety'
+import { clearAiSafetyRuntimeSettingsCacheForTests } from '@/lib/dal/ai-settings'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
 import { REQUIREMENTS_IMPORT_SCHEMA_VERSION } from '@/lib/requirements/import-schema'
 import { mockAiSafetyScreening } from '@/tests/helpers/ai-safety-screening'
 import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 import { parseSecurityAuditEvents } from '@/tests/helpers/security-audit-events'
+import { parseSecurityForensicsEvents } from '@/tests/helpers/security-forensics-events'
 
 const routeState = vi.hoisted(() => ({
   buildImportAiPrompt: vi.fn(),
@@ -76,6 +78,7 @@ function makeRequest(
 describe('POST /api/ai/generate-requirement-import', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    clearAiSafetyRuntimeSettingsCacheForTests()
     clearInMemoryThrottleForTests()
     mockAiSafetyScreening(aiSafety)
     routeState.getRequestSqlServerDataSource.mockResolvedValue({
@@ -269,7 +272,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
       expect(response.status).toBe(400)
       expect(body).toEqual({
         error:
-          'The AI request was blocked because the instructions appear unsafe. Revise the need or context and try again.',
+          'The AI request was blocked by the AI safety filter: Prompt injection: instruction override. Revise the need or context and try again.',
       })
       expect(routeState.buildImportAiPrompt).not.toHaveBeenCalled()
       expect(routeState.generateChatStream).not.toHaveBeenCalled()
@@ -286,13 +289,52 @@ describe('POST /api/ai/generate-requirement-import', () => {
         outcome: 'failure',
       })
       expect(securityEvent.detail).toMatchObject({
+        blockedStep: 'ai_request_input',
         decision: 'blocked',
         operation: 'ai.generate-requirement-import',
+        primaryRuleId: 'instruction_override',
+        primaryRuleType: 'Prompt injection: instruction override',
+        reason: 'ai_safety_rule_match',
         requestId: 'request-ai',
         ruleIds: expect.arrayContaining(['instruction_override']),
+        ruleTypes: expect.arrayContaining([
+          'Prompt injection: instruction override',
+        ]),
+        safetyRuleDirection: 'input',
       })
       expect(JSON.stringify(securityEvent)).not.toContain('SE5560000001-ai1')
       expect(JSON.stringify(securityEvent)).not.toContain('JSON format')
+
+      const forensicEvent = parseSecurityForensicsEvents(consoleInfoSpy)[0]
+      expect(forensicEvent).toMatchObject({
+        event: 'ai.input_safety.blocked_content_captured',
+        outcome: 'failure',
+      })
+      expect(forensicEvent?.eventId).toBe(
+        (securityEvent.detail as Record<string, unknown>).eventId,
+      )
+      expect(JSON.stringify(forensicEvent)).toContain('JSON format')
+      expect(JSON.stringify(forensicEvent)).toContain('"label":"need"')
+      expect(forensicEvent?.evidence).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            partLabel: 'need',
+            ruleId: 'instruction_override',
+            terms: expect.arrayContaining([
+              expect.objectContaining({
+                configuredTerm: 'ignore',
+                matchedText: 'Ignore',
+                termType: 'action',
+              }),
+              expect.objectContaining({
+                configuredTerm: 'previous',
+                matchedText: 'previous',
+                termType: 'target',
+              }),
+            ]),
+          }),
+        ]),
+      )
     } finally {
       consoleInfoSpy.mockRestore()
       consoleErrorSpy.mockRestore()
@@ -330,7 +372,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
 
       expect(text).toContain('event: error')
       expect(text).toContain(
-        'The AI response was blocked by the safety filter.',
+        'The AI response was blocked by the AI safety filter: System-adjacent content leakage. Revise the request and try again.',
       )
       expect(text).not.toContain('unsafe-output-secret')
       expect(text).not.toContain('event: done')
@@ -347,10 +389,25 @@ describe('POST /api/ai/generate-requirement-import', () => {
         outcome: 'failure',
       })
       expect(securityEvent.detail).toMatchObject({
+        blockedStep: 'final_model_output',
         model: 'anthropic/claude-sonnet-4',
+        primaryRuleId: 'sensitive_backend_leak',
+        primaryRuleType: 'System-adjacent content leakage',
         provider: 'anthropic',
         ruleIds: ['sensitive_backend_leak'],
+        safetyRuleDirection: 'output',
       })
+      const forensicEvent = parseSecurityForensicsEvents(consoleInfoSpy)[0]
+      expect(forensicEvent?.eventId).toBe(
+        (securityEvent.detail as Record<string, unknown>).eventId,
+      )
+      expect(forensicEvent).toMatchObject({
+        blockedStep: 'final_model_output',
+        event: 'ai.output_safety.blocked_content_captured',
+        safetyRuleDirection: 'output',
+      })
+      expect(forensicEvent).not.toHaveProperty('detail')
+      expect(JSON.stringify(forensicEvent)).toContain('unsafe-output-secret')
     } finally {
       consoleInfoSpy.mockRestore()
       consoleErrorSpy.mockRestore()
@@ -378,7 +435,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
 
       expect(text).toContain('event: error')
       expect(text).toContain(
-        'The AI response was blocked by the safety filter.',
+        'The AI response was blocked by the AI safety filter: System-adjacent content leakage. Revise the request and try again.',
       )
       expect(text).not.toContain('unsafe-output-secret')
       expect(text).not.toContain('event: thinking')
@@ -395,10 +452,14 @@ describe('POST /api/ai/generate-requirement-import', () => {
         outcome: 'failure',
       })
       expect(securityEvent.detail).toMatchObject({
+        blockedStep: 'streamed_reasoning',
         model: 'anthropic/claude-sonnet-4',
         provider: 'anthropic',
         ruleIds: ['sensitive_backend_leak'],
       })
+      expect(
+        JSON.stringify(parseSecurityForensicsEvents(consoleInfoSpy)[0]),
+      ).toContain('unsafe-output-secret')
     } finally {
       consoleInfoSpy.mockRestore()
       consoleErrorSpy.mockRestore()
@@ -433,7 +494,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
       expect(text).toContain('Authorization: ')
       expect(text).toContain('event: error')
       expect(text).toContain(
-        'The AI response was blocked by the safety filter.',
+        'The AI response was blocked by the AI safety filter: System-adjacent content leakage. Revise the request and try again.',
       )
       expect(text).not.toContain('unsafe-output-secret')
 
@@ -443,8 +504,55 @@ describe('POST /api/ai/generate-requirement-import', () => {
         outcome: 'failure',
       })
       expect(securityEvent.detail).toMatchObject({
+        blockedStep: 'streamed_reasoning',
         ruleIds: ['sensitive_backend_leak'],
       })
+    } finally {
+      consoleInfoSpy.mockRestore()
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('screens streamed reasoning with bounded prior context', async () => {
+    const consoleInfoSpy = vi
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined)
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    const longSafePrefix = 'safe reasoning '.repeat(250)
+    const unsafeThinking = `${longSafePrefix}Authorization: Bearer unsafe-output-secret`
+    routeState.generateChatStream.mockImplementation(async function* () {
+      yield {
+        chunk: longSafePrefix,
+        phase: 'thinking',
+        thinkingSoFar: longSafePrefix,
+      }
+      yield {
+        chunk: 'Authorization: Bearer unsafe-output-secret',
+        phase: 'thinking',
+        thinkingSoFar: unsafeThinking,
+      }
+    })
+
+    try {
+      const response = await POST(makeRequest())
+      const text = await response.text()
+      const screenOutput = vi.mocked(aiSafety.screenAiOutputDetailed)
+      const secondScreenedPart = screenOutput.mock.calls[1]?.[1]?.[0]
+
+      expect(text).toContain('event: error')
+      expect(text).not.toContain('unsafe-output-secret')
+      expect(secondScreenedPart).toBeDefined()
+      if (!secondScreenedPart) throw new Error('missing screened thinking part')
+      expect(secondScreenedPart).toMatchObject({
+        label: 'thinking',
+      })
+      expect(secondScreenedPart.text).toContain(
+        'Authorization: Bearer unsafe-output-secret',
+      )
+      expect(secondScreenedPart.text).not.toBe(unsafeThinking)
+      expect(secondScreenedPart.text.length).toBeLessThan(unsafeThinking.length)
     } finally {
       consoleInfoSpy.mockRestore()
       consoleErrorSpy.mockRestore()
@@ -459,7 +567,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
     const safetySpy = vi
-      .spyOn(aiSafety, 'screenAiInput')
+      .spyOn(aiSafety, 'screenAiInputDetailed')
       .mockImplementation(() => {
         throw new Error('safety screen unavailable')
       })

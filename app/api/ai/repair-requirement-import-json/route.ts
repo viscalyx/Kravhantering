@@ -9,10 +9,10 @@ import {
   getPromptMessage,
 } from '@/lib/ai/requirement-prompt'
 import {
-  recordAiSafetyDecision,
+  recordAiSafetyBlock,
   recordAiSafetyFilterFailure,
-  screenAiInput,
-  screenAiOutput,
+  screenAiInputDetailed,
+  screenAiOutputDetailed,
 } from '@/lib/ai/safety'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -35,6 +35,7 @@ import {
   aiRequirementImportBaseBodySchema,
   checkAiRequirementImportThrottle,
   createAiRequirementImportThrottleResponse,
+  formatAiSafetyBlockedMessage,
   MAX_AI_INSTRUCTION_LENGTH,
   requirementImportScopeAction,
   validateRequirementImportScope,
@@ -148,11 +149,14 @@ export const POST = secureMutationRoute({
       )
     }
 
-    let inputSafetyDecision: Awaited<ReturnType<typeof screenAiInput>>
+    let inputSafetyScreening: Awaited<ReturnType<typeof screenAiInputDetailed>>
     try {
-      inputSafetyDecision = await screenAiInput(db, [
-        body.rawJson,
-        ...body.errors,
+      inputSafetyScreening = await screenAiInputDetailed(db, [
+        { label: 'rawJson', text: body.rawJson },
+        ...body.errors.map((error, index) => ({
+          label: `errors.${index}`,
+          text: error,
+        })),
       ])
     } catch (error) {
       recordSafetyFilterFailure(error)
@@ -165,19 +169,26 @@ export const POST = secureMutationRoute({
         context,
       )
     }
-    if (!inputSafetyDecision.allowed) {
-      recordAiSafetyDecision({
+    if (!inputSafetyScreening.decision.allowed) {
+      await recordAiSafetyBlock({
+        blockedStep: 'repair_input',
         context,
-        decision: inputSafetyDecision,
+        db,
+        direction: 'input',
         event: 'ai.input_safety.blocked',
         operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
         request,
+        screening: inputSafetyScreening,
       })
       recordRepairEvent('failure', 400)
       return applyResponseCorrelationHeaders(
         Response.json(
           {
-            error: getPromptMessage(body.locale, ['ai', 'inputSafetyBlocked']),
+            error: formatAiSafetyBlockedMessage(
+              body.locale,
+              'inputSafetyBlocked',
+              inputSafetyScreening.decision,
+            ),
           },
           { status: 400 },
         ),
@@ -216,11 +227,13 @@ export const POST = secureMutationRoute({
         signal: request.signal,
         supportedParameters: modelCapabilities.supportedParameters,
       })
-      let outputSafetyDecision: Awaited<ReturnType<typeof screenAiOutput>>
+      let outputSafetyScreening: Awaited<
+        ReturnType<typeof screenAiOutputDetailed>
+      >
       try {
-        outputSafetyDecision = await screenAiOutput(db, [
-          JSON.stringify(result.content),
-          result.thinking,
+        outputSafetyScreening = await screenAiOutputDetailed(db, [
+          { label: 'rawContent', text: JSON.stringify(result.content) },
+          { label: 'thinking', text: result.thinking },
         ])
       } catch (error) {
         recordSafetyFilterFailure(error)
@@ -233,24 +246,28 @@ export const POST = secureMutationRoute({
           context,
         )
       }
-      if (!outputSafetyDecision.allowed) {
-        recordAiSafetyDecision({
+      if (!outputSafetyScreening.decision.allowed) {
+        await recordAiSafetyBlock({
+          blockedStep: 'repaired_model_output',
           context,
-          decision: outputSafetyDecision,
+          db,
+          direction: 'output',
           event: 'ai.output_safety.blocked',
           model: modelCapabilities.id,
           operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
           provider: modelCapabilities.provider,
           request,
+          screening: outputSafetyScreening,
         })
         recordRepairEvent('failure', 422, result.stats)
         return applyResponseCorrelationHeaders(
           Response.json(
             {
-              error: getPromptMessage(body.locale, [
-                'ai',
+              error: formatAiSafetyBlockedMessage(
+                body.locale,
                 'outputSafetyBlocked',
-              ]),
+                outputSafetyScreening.decision,
+              ),
             },
             { status: 422 },
           ),

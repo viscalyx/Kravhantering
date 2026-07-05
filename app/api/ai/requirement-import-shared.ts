@@ -6,6 +6,7 @@ import {
   MAX_REQUIREMENT_CANDIDATE_COUNT,
   MIN_REQUIREMENT_CANDIDATE_COUNT,
 } from '@/lib/ai/requirement-prompt'
+import { type AiSafetyDecision, getAiSafetyRuleTypeName } from '@/lib/ai/safety'
 import { AI_PROVIDER_UNAVAILABLE_MESSAGE } from '@/lib/http/safe-errors'
 import { localeSchema, positiveIntegerSchema } from '@/lib/http/validation'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
@@ -31,6 +32,22 @@ export const MAX_AI_NEED_LENGTH = 4000
 export const AI_GENERATE_RATE_LIMIT = 5
 export const AI_GENERATE_RATE_WINDOW_MS = 60_000
 export const AI_GENERATE_SLOW_THRESHOLD_MS = 30_000
+
+export function formatAiSafetyBlockedMessage(
+  locale: RequirementImportLocale,
+  messageKey: 'inputSafetyBlocked' | 'outputSafetyBlocked',
+  decision: AiSafetyDecision,
+): string {
+  const ruleType = decision.primaryRuleId
+    ? getAiSafetyRuleTypeName(decision.primaryRuleId, locale)
+    : locale === 'sv'
+      ? 'AI-säkerhetsregel'
+      : 'AI safety rule'
+  return getPromptMessage(locale, ['ai', messageKey]).replace(
+    '{ruleType}',
+    ruleType,
+  )
+}
 
 export const providerPreferencesSchema = z
   .object({
