@@ -13,6 +13,7 @@ import {
 import { expectApiResponseOk } from '../api-response-assertions'
 
 interface AiGenerationAvailability {
+  aiSafetyForensicLoggingEnabled: boolean
   aiSafetyRuleCacheTtlSeconds: number
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
@@ -34,6 +35,7 @@ async function putAiSettings(
   request: APIRequestContext,
   settings: Pick<
     AiGenerationAvailability,
+    | 'aiSafetyForensicLoggingEnabled'
     | 'aiSafetyRuleCacheTtlSeconds'
     | 'mcpImportMaxRows'
     | 'mcpImportValidationTtlMinutes'
@@ -111,6 +113,7 @@ test.describe('Admin AI settings', () => {
     try {
       await putAiSettings(request, {
         aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
+        aiSafetyForensicLoggingEnabled: original.aiSafetyForensicLoggingEnabled,
         mcpImportMaxRows: original.mcpImportMaxRows,
         mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
         mcpMaxRequestBytes: initialLimit,
@@ -118,7 +121,7 @@ test.describe('Admin AI settings', () => {
       })
       shouldRestoreSettings = true
 
-      await test.step('shows requirement generation inside the AI assistance section before MCP controls', async () => {
+      await test.step('shows AI security between AI assistance and MCP controls', async () => {
         await page.goto('/sv/admin?tab=ai')
         await expect(page.getByRole('tab', { name: 'AI' })).toHaveAttribute(
           'aria-selected',
@@ -130,6 +133,14 @@ test.describe('Admin AI settings', () => {
         await expect(
           page.getByRole('heading', { name: 'AI-assistering' }),
         ).toHaveCount(1)
+        await expect(
+          page.getByRole('heading', { name: 'AI-säkerhet' }),
+        ).toHaveCount(1)
+        await expect(
+          page.getByRole('checkbox', {
+            name: /Logga forensisk AI-säkerhetsdata/,
+          }),
+        ).toBeVisible()
         await expect(
           page.getByRole('heading', { name: 'MCP-gränssnitt' }),
         ).toHaveCount(1)
@@ -146,6 +157,8 @@ test.describe('Admin AI settings', () => {
             const text = panel.textContent ?? ''
             return {
               aiAssistance: text.indexOf('AI-assistering'),
+              aiSecurity: text.indexOf('AI-säkerhet'),
+              forensicLogging: text.indexOf('Logga forensisk AI-säkerhetsdata'),
               limit: text.indexOf('MCP-anropsgräns'),
               mcpInterface: text.indexOf('MCP-gränssnitt'),
               requirementGeneration: text.indexOf('Kravgenerering'),
@@ -155,8 +168,14 @@ test.describe('Admin AI settings', () => {
         expect(panelTextOrder.requirementGeneration).toBeGreaterThan(
           panelTextOrder.aiAssistance,
         )
-        expect(panelTextOrder.mcpInterface).toBeGreaterThan(
+        expect(panelTextOrder.aiSecurity).toBeGreaterThan(
           panelTextOrder.requirementGeneration,
+        )
+        expect(panelTextOrder.forensicLogging).toBeGreaterThan(
+          panelTextOrder.aiSecurity,
+        )
+        expect(panelTextOrder.mcpInterface).toBeGreaterThan(
+          panelTextOrder.forensicLogging,
         )
         expect(panelTextOrder.limit).toBeGreaterThan(
           panelTextOrder.mcpInterface,
@@ -207,6 +226,8 @@ test.describe('Admin AI settings', () => {
       if (shouldRestoreSettings) {
         await putAiSettings(request, {
           aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
+          aiSafetyForensicLoggingEnabled:
+            original.aiSafetyForensicLoggingEnabled,
           mcpImportMaxRows: original.mcpImportMaxRows,
           mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
           mcpMaxRequestBytes: original.mcpMaxRequestBytes,
@@ -248,6 +269,7 @@ test.describe('Admin AI settings', () => {
 
       await putAiSettings(request, {
         aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
+        aiSafetyForensicLoggingEnabled: original.aiSafetyForensicLoggingEnabled,
         mcpImportMaxRows: original.mcpImportMaxRows,
         mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
         mcpMaxRequestBytes: original.mcpMaxRequestBytes,
@@ -309,6 +331,8 @@ test.describe('Admin AI settings', () => {
       if (shouldRestoreSettings) {
         await putAiSettings(request, {
           aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
+          aiSafetyForensicLoggingEnabled:
+            original.aiSafetyForensicLoggingEnabled,
           mcpImportMaxRows: original.mcpImportMaxRows,
           mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
           mcpMaxRequestBytes: original.mcpMaxRequestBytes,

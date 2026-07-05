@@ -311,6 +311,7 @@ const initialAvailableRequirement = {
 function createInitialData(): RequirementsSpecificationDetailInitialData {
   return {
     aiGenerationAvailability: {
+      aiSafetyForensicLoggingEnabled: true,
       aiSafetyRuleCacheTtlSeconds: 600,
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: true,

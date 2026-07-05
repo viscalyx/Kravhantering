@@ -160,6 +160,16 @@ sak som åtgärdsloggen och hör hemma i plattformens logg- och SIEM-flöde.
 _Avoid_: Säkerhetsaudit, säkerhetsrevision när loggströmmen avses,
 Åtgärdslogg, vanlig applikationslogg, tillämpningsspårbarhet.
 
+**AI-säkerhet**:
+Område för kontroller som skyddar AI-relaterade flöden mot
+instruktionsövertagande, läckage av systemnära innehåll, hemligheter och andra
+AI-nära säkerhetsrisker.
+
+- `en`: AI security
+
+_Avoid_: AI-assistering när säkerhetskontrollerna avses, MCP-säkerhet när
+kontrollerna gäller alla AI-säkerhetsblockeringar.
+
 **AI-säkerhetsregel**:
 En regel som bedömer om text i AI-relaterade flöden ska tillåtas eller
 blockeras för att skydda instruktioner, hemligheter, uppgifter i bakomliggande

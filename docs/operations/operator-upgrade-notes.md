@@ -146,6 +146,12 @@ the disposable single-node demo path.
 Releases with DB-backed AI safety rules require the `seed:required` step to
 complete after migration.
 
+Releases with AI safety forensic logging add
+`ai_settings.ai_safety_forensic_logging_enabled` with default `1`. Review the
+Admin Center `AI` tab after migration and either route
+`channel == "security-forensics"` logs with stricter access/retention controls
+or disable `Log forensic AI security data` until that routing is ready.
+
 Review Admin Center > Identity and confirm the visible/default HSA-id-prefix
 values are correct for the organization. The migration seeds prefixes from
 existing assignment data where possible, but clean or sparse environments may

@@ -101,7 +101,7 @@ Apply these rules to all schema objects.
 | 4 | RFI join tables and `specification_rfi_question_items` use composite PKs | These rows are natural links between a question version and advisory target, or between a specification and an RFI question. A surrogate `id` would not improve identity. |
 | Localized columns | `norm_references.name`, `norm_references.type`, `norm_references.issuer` are single-language columns | Norm references are external legal/regulatory documents (e.g. laws, ISO standards) with proper names in their source language. Localizing them would be factually incorrect — "SFS 2018:218" and "Riksdagen" do not have per-locale translations. |
 | Versioning | `requirement_version_norm_references` stores only FK IDs, not snapshots of mutable `norm_references` fields (`name`, `type`, `reference`, `version`, `issuer`, `uri`, `is_archived`) | Norm references are shared external documents whose metadata should reflect the latest known state across all requirement versions. Snapshotting would create stale duplicates of external metadata that the system does not own. If point-in-time fidelity is needed in the future, a dedicated snapshot table can be added without breaking the current schema. |
-| Boolean columns | `ai_settings.requirement_generation_enabled` omits the `is_` prefix | The column names the positive feature preference exposed by Admin Center and the REST response field `requirementGenerationEnabled`; `is_requirement_generation_enabled` would read as state rather than administrator preference. |
+| Boolean columns | `ai_settings.requirement_generation_enabled` and `ai_settings.ai_safety_forensic_logging_enabled` omit the `is_` prefix | These columns name positive feature preferences exposed by Admin Center and REST response fields; `is_*` names would read as observed state rather than administrator preference. |
 <!-- markdownlint-enable MD013 -->
 
 ---
@@ -184,6 +184,7 @@ erDiagram
     ai_settings {
         integer id PK
         bit requirement_generation_enabled
+        bit ai_safety_forensic_logging_enabled
         integer mcp_max_request_bytes
         integer mcp_import_max_rows
         integer mcp_import_validation_ttl_minutes
@@ -1442,14 +1443,15 @@ defaults used by the app.
 
 ### `ai_settings`
 
-Singleton Admin Center settings for AI-assisted requirement generation and MCP
-request payload security.
+Singleton Admin Center settings for AI-assisted requirement generation, AI
+security, and MCP request payload security.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key; constrained to singleton row `1` |
 | `requirement_generation_enabled` | bit | Admin preference for AI requirement generation |
+| `ai_safety_forensic_logging_enabled` | bit | Admin preference for separate raw-content AI safety forensic JSON logging |
 | `mcp_max_request_bytes` | integer | Maximum MCP request payload and persisted MCP import session size in bytes |
 | `mcp_import_max_rows` | integer | Maximum rows accepted in one MCP import validation session |
 | `mcp_import_validation_ttl_minutes` | integer | TTL for persisted MCP import validation sessions |
@@ -1462,6 +1464,8 @@ request payload security.
 
 - organization-wide Admin Center preference for AI requirement generation
 - persisted default used by the requirements UI and REST generation route
+- organization-wide preference for emitting separate `security-forensics` JSON
+  events with raw blocked AI safety content and matched rule evidence
 - organization-wide MCP request payload and import-session byte limit used by
   `/api/mcp` and MCP import validation
 - organization-wide MCP import row cap and validation-session TTL
@@ -1470,11 +1474,14 @@ request payload security.
   `AI_REQUIREMENT_GENERATION_DISABLED`
 
 **Seed value:** Required and demo seed data create row `id = 1` with
-`requirement_generation_enabled = 1`, `mcp_max_request_bytes = 10485760`,
-`mcp_import_max_rows = 500`, `mcp_import_validation_ttl_minutes = 60`, and
+`requirement_generation_enabled = 1`,
+`ai_safety_forensic_logging_enabled = 1`,
+`mcp_max_request_bytes = 1048576`, `mcp_import_max_rows = 500`,
+`mcp_import_validation_ttl_minutes = 60`, and
 `ai_safety_rule_cache_ttl_seconds = 600`, so migrated installations stay
-enabled with the exact `10 MiB` MCP default, 500-row import cap, 60-minute
-validation TTL, and ten-minute AI safety rule cache.
+enabled with forensic AI safety logging on, the existing `1 MiB` seeded MCP
+limit, 500-row import cap, 60-minute validation TTL, and ten-minute AI safety
+rule cache.
 
 **Check constraints:** `chk_ai_settings_id` enforces the singleton row ID.
 `chk_ai_settings_mcp_max_request_bytes` enforces integer byte values on a

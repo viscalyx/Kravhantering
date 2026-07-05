@@ -1,6 +1,7 @@
 import { EntitySchema } from 'typeorm'
 
 export interface AiSettingEntity {
+  aiSafetyForensicLoggingEnabled: boolean
   aiSafetyRuleCacheTtlSeconds: number
   createdAt: Date
   id: number
@@ -24,6 +25,11 @@ export const aiSettingEntity = new EntitySchema<AiSettingEntity>({
     requirementGenerationEnabled: {
       default: true,
       name: 'requirement_generation_enabled',
+      type: 'bit',
+    },
+    aiSafetyForensicLoggingEnabled: {
+      default: true,
+      name: 'ai_safety_forensic_logging_enabled',
       type: 'bit',
     },
     mcpMaxRequestBytes: {

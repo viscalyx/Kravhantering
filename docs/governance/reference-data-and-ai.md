@@ -216,7 +216,7 @@ AISVS evidence for AI-assisted authoring is tracked in
 Generation and repair use the local deterministic safety screen in
 `lib/ai/safety.ts`. The rule patterns are code-owned, while rule terms are
 required seed data stored in `ai_safety_rules` and `ai_safety_rule_terms` and
-administered from the Admin Center `AI assistance` section. There is no
+administered from the Admin Center `AI security` section. There is no
 runtime fallback list in code; if the active rule set cannot be read from the
 database, AI-assisted authoring fails closed before provider work. Input
 screening runs after AI availability is confirmed and before model-catalog or
@@ -243,9 +243,21 @@ uses the same output screen before validating or returning repaired JSON.
 Safety decisions are written to the JSON `security-audit` log stream with
 metadata only. The event names are `ai.input_safety.blocked`,
 `ai.output_safety.blocked`, and `ai.safety_filter.failed`. Details include
-operation, decision, rule IDs, categories, source, request/correlation IDs,
-and model/provider when available. They do not include prompts, raw model
-output, repair JSON, image data, or actor HSA-id values.
+operation, decision, blocked step, direction, reason, primary rule id/type,
+all rule IDs/types, categories, source, request/correlation IDs, and
+model/provider when available. The metadata event does not include prompts, raw
+model output, repair JSON, image data, matched terms, or actor HSA-id values.
+
+During the current diagnostic phase, Admin Center defaults
+`aiSafetyForensicLoggingEnabled` to enabled. When enabled, an AI safety block
+also writes a separate `security-forensics` JSON event named
+`ai.input_safety.blocked_content_captured` or
+`ai.output_safety.blocked_content_captured`. It uses the same request id,
+correlation id, and event id as the metadata event and contains the screened
+content parts for the blocked step plus matched evidence for handling/action,
+target, coding words, and direct markers. It still does not include system
+prompts, import instructions, response schemas, raw images, or unrelated
+request state.
 
 **Reference-data binding:** the import instruction includes current taxonomy
 and norm-reference data so the model can emit import JSON with stable IDs where

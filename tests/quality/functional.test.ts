@@ -636,14 +636,20 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
   expect(requiredSeedSource).toContain('seedAiSafetyRules')
   expect(seedSource).toContain("'requirement_generation_enabled'")
   expect(requiredSeedSource).toContain("'requirement_generation_enabled'")
+  expect(seedSource).toContain("'ai_safety_forensic_logging_enabled'")
+  expect(requiredSeedSource).toContain("'ai_safety_forensic_logging_enabled'")
   expect(seedSource).toContain("'mcp_max_request_bytes'")
   expect(requiredSeedSource).toContain("'mcp_max_request_bytes'")
+  expect(seedSource).toContain("'mcp_import_max_rows'")
+  expect(requiredSeedSource).toContain("'mcp_import_max_rows'")
+  expect(seedSource).toContain("'mcp_import_validation_ttl_minutes'")
+  expect(requiredSeedSource).toContain("'mcp_import_validation_ttl_minutes'")
   expect(requiredSeedSource).toContain("'ai_safety_rule_cache_ttl_seconds'")
   expect(seedSource).toMatch(
-    /rows: \[\s*\[\s*1,\s*1,\s*1048576,\s*600,\s*'[^']+',\s*'[^']+',?\s*\]\s*,?\s*\]/u,
+    /rows: \[\s*\[\s*1,\s*1,\s*1,\s*1048576,\s*500,\s*60,\s*600,\s*'[^']+',\s*'[^']+',?\s*\]\s*,?\s*\]/u,
   )
   expect(requiredSeedSource).toMatch(
-    /rows: \[\s*\[\s*1,\s*1,\s*1048576,\s*600,\s*'[^']+',\s*'[^']+',?\s*\]\s*,?\s*\]/u,
+    /rows: \[\s*\[\s*1,\s*1,\s*1,\s*1048576,\s*500,\s*60,\s*600,\s*'[^']+',\s*'[^']+',?\s*\]\s*,?\s*\]/u,
   )
 
   expect(scanGuardSource).toContain('AI_REQUIREMENT_GENERATION_DISABLED')
@@ -670,10 +676,12 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
   expect(adminClientSource).toContain('/api/admin/ai-settings')
   expect(adminClientSource).toContain('disabledByEnvironment')
   expect(adminClientSource).toContain('mcpMaxRequestBytes')
+  expect(adminClientSource).toContain('aiSafetyForensicLoggingEnabled')
   expect(adminClientSource).toContain('aiSafetyRuleCacheTtlSeconds')
   expect(adminClientSource).toContain('admin-ai-mcp-max-request-kib')
   expect(adminClientSource).toContain('/api/admin/ai-safety-rules')
-  expect(adminClientSource).toContain("ta('ai.securityTitle')")
+  expect(adminClientSource).toContain("ta('ai.assistanceTitle')")
+  expect(adminClientSource).toContain("ta('ai.aiSecurityTitle')")
   expect(adminClientSource).toContain("ta('ai.mcpInterfaceTitle')")
   expect(requirementsPageSource).toContain('getAiGenerationAvailability')
   expect(requirementsClientSource).toContain('aiGenerationAvailability')
@@ -687,9 +695,11 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
   expect(adminCenterDoc).toContain(
     'Its `AI assistance` section contains the requirement-generation toggle',
   )
+  expect(adminCenterDoc).toContain(
+    'its `AI security` section contains the forensic AI safety JSON logging toggle',
+  )
   expect(adminCenterDoc).toContain('safety-rule cache time and editable')
-  expect(adminCenterDoc).toContain('Its `MCP interface`')
-  expect(adminCenterDoc).toContain('section contains the MCP')
+  expect(adminCenterDoc).toContain('`MCP interface` section contains the MCP')
   expect(adminCenterDoc).toContain('request/session payload limit and MCP')
   expect(adminCenterDoc).toContain('import row/TTL')
   expect(adminCenterDoc).toContain('limits. The AI tab')
@@ -699,6 +709,7 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
   expect(databaseSchemaDoc).toContain('ai_safety_rules')
   expect(databaseSchemaDoc).toContain('ai_safety_rule_terms')
   expect(databaseSchemaDoc).toContain('requirement_generation_enabled')
+  expect(databaseSchemaDoc).toContain('ai_safety_forensic_logging_enabled')
   expect(databaseSchemaDoc).toContain('mcp_max_request_bytes')
   expect(databaseSchemaDoc).toContain('ai_safety_rule_cache_ttl_seconds')
 })

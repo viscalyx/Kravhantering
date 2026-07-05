@@ -13,10 +13,11 @@ import {
   parseJsonObject,
 } from '@/lib/ai/requirement-prompt'
 import {
-  recordAiSafetyDecision,
+  type AiSafetyScreenPart,
+  recordAiSafetyBlock,
   recordAiSafetyFilterFailure,
-  screenAiInput,
-  screenAiOutput,
+  screenAiInputDetailed,
+  screenAiOutputDetailed,
 } from '@/lib/ai/safety'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -45,6 +46,7 @@ import {
   countImageBytes,
   createAiRequirementImportThrottleResponse,
   createUnavailableAiStreamResponse,
+  formatAiSafetyBlockedMessage,
   imageDataUrlSchema,
   MAX_AI_IMAGES,
   MAX_AI_NEED_LENGTH,
@@ -171,12 +173,15 @@ function parseAndValidatePayload(
 
 function imageMetadataForSafety(
   images: GenerateRequirementImportBody['images'],
-): readonly string[] {
+): readonly AiSafetyScreenPart[] {
   return images.map((image, index) => {
     const commaIndex = image.dataUrl.indexOf(',')
     const header =
       commaIndex >= 0 ? image.dataUrl.slice(0, commaIndex) : 'data-url'
-    return `image ${index + 1}: ${header}`
+    return {
+      label: `images.${index}.metadata`,
+      text: `image ${index + 1}: ${header}`,
+    }
   })
 }
 
@@ -234,10 +239,10 @@ export const POST = secureMutationRoute({
       )
     }
 
-    let inputSafetyDecision: Awaited<ReturnType<typeof screenAiInput>>
+    let inputSafetyScreening: Awaited<ReturnType<typeof screenAiInputDetailed>>
     try {
-      inputSafetyDecision = await screenAiInput(db, [
-        body.need,
+      inputSafetyScreening = await screenAiInputDetailed(db, [
+        { label: 'need', text: body.need },
         ...imageMetadataForSafety(images),
       ])
     } catch (error) {
@@ -246,19 +251,26 @@ export const POST = secureMutationRoute({
         recordStreamEvent('failure', 503),
       )
     }
-    if (!inputSafetyDecision.allowed) {
-      recordAiSafetyDecision({
+    if (!inputSafetyScreening.decision.allowed) {
+      await recordAiSafetyBlock({
+        blockedStep: 'ai_request_input',
         context,
-        decision: inputSafetyDecision,
+        db,
+        direction: 'input',
         event: 'ai.input_safety.blocked',
         operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
         request,
+        screening: inputSafetyScreening,
       })
       recordStreamEvent('failure', 400)
       return applyResponseCorrelationHeaders(
         Response.json(
           {
-            error: getPromptMessage(locale, ['ai', 'inputSafetyBlocked']),
+            error: formatAiSafetyBlockedMessage(
+              locale,
+              'inputSafetyBlocked',
+              inputSafetyScreening.decision,
+            ),
           },
           { status: 400 },
         ),
@@ -322,12 +334,15 @@ export const POST = secureMutationRoute({
           })) {
             switch (event.phase) {
               case 'thinking': {
-                let progressSafetyDecision: Awaited<
-                  ReturnType<typeof screenAiOutput>
+                let progressSafetyScreening: Awaited<
+                  ReturnType<typeof screenAiOutputDetailed>
                 >
                 try {
-                  progressSafetyDecision = await screenAiOutput(db, [
-                    event.thinkingSoFar || event.chunk,
+                  progressSafetyScreening = await screenAiOutputDetailed(db, [
+                    {
+                      label: 'thinking',
+                      text: event.thinkingSoFar || event.chunk,
+                    },
                   ])
                 } catch (error) {
                   recordSafetyFilterFailure(error)
@@ -335,21 +350,25 @@ export const POST = secureMutationRoute({
                   recordStreamEvent('failure', 503)
                   return
                 }
-                if (!progressSafetyDecision.allowed) {
-                  recordAiSafetyDecision({
+                if (!progressSafetyScreening.decision.allowed) {
+                  await recordAiSafetyBlock({
+                    blockedStep: 'streamed_reasoning',
                     context,
-                    decision: progressSafetyDecision,
+                    db,
+                    direction: 'output',
                     event: 'ai.output_safety.blocked',
                     model: resolvedModel,
                     operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
                     provider: modelCapabilities.provider,
                     request,
+                    screening: progressSafetyScreening,
                   })
                   send('error', {
-                    message: getPromptMessage(body.locale, [
-                      'ai',
+                    message: formatAiSafetyBlockedMessage(
+                      body.locale,
                       'outputSafetyBlocked',
-                    ]),
+                      progressSafetyScreening.decision,
+                    ),
                     model: resolvedModel,
                   })
                   recordStreamEvent('failure', 422)
@@ -365,13 +384,13 @@ export const POST = secureMutationRoute({
                 }
                 break
               case 'done': {
-                let outputSafetyDecision: Awaited<
-                  ReturnType<typeof screenAiOutput>
+                let outputSafetyScreening: Awaited<
+                  ReturnType<typeof screenAiOutputDetailed>
                 >
                 try {
-                  outputSafetyDecision = await screenAiOutput(db, [
-                    event.rawContent,
-                    event.thinking,
+                  outputSafetyScreening = await screenAiOutputDetailed(db, [
+                    { label: 'rawContent', text: event.rawContent },
+                    { label: 'thinking', text: event.thinking },
                   ])
                 } catch (error) {
                   recordSafetyFilterFailure(error)
@@ -379,21 +398,25 @@ export const POST = secureMutationRoute({
                   recordStreamEvent('failure', 503, event.stats)
                   return
                 }
-                if (!outputSafetyDecision.allowed) {
-                  recordAiSafetyDecision({
+                if (!outputSafetyScreening.decision.allowed) {
+                  await recordAiSafetyBlock({
+                    blockedStep: 'final_model_output',
                     context,
-                    decision: outputSafetyDecision,
+                    db,
+                    direction: 'output',
                     event: 'ai.output_safety.blocked',
                     model: resolvedModel,
                     operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
                     provider: modelCapabilities.provider,
                     request,
+                    screening: outputSafetyScreening,
                   })
                   send('error', {
-                    message: getPromptMessage(body.locale, [
-                      'ai',
+                    message: formatAiSafetyBlockedMessage(
+                      body.locale,
                       'outputSafetyBlocked',
-                    ]),
+                      outputSafetyScreening.decision,
+                    ),
                     model: resolvedModel,
                     stats: event.stats,
                   })

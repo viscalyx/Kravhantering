@@ -685,9 +685,9 @@ discovery URL above and exchange a code manually.
 Security events (`auth.login.succeeded`, `auth.login.failed`, `auth.logout`,
 `auth.session.rejected`, `auth.token.rejected`, `auth.mcp.token.accepted`,
 `auth.roles.changed`, `auth.csrf.rejected`, `auth.authorization.denied`, and
-`requirements.sensitive_mutation.succeeded`) are emitted as single-line JSON
-to `console.info` and tagged with `"channel":"security-audit"`. To watch them
-locally:
+`requirements.sensitive_mutation.succeeded`) and AI safety metadata events are
+emitted as single-line JSON to `console.info` and tagged with
+`"channel":"security-audit"`. To watch them locally:
 
 ```bash
 npm run dev | grep '"channel":"security-audit"' | jq .
@@ -703,6 +703,15 @@ npm run start:prodlike | grep '"channel":"security-audit"' | jq .
 Use `jq 'select(.event=="auth.login.failed")'` to filter by event, or
 `select(.outcome=="failure")` to surface only rejections. Tokens, PKCE
 verifiers, `state`, `nonce`, and `code` values are stripped before emit.
+
+AI safety forensic events use `"channel":"security-forensics"` instead. They
+can include raw screened blocked content and matched rule terms, so only tail
+them in environments where that exposure is acceptable:
+
+```bash
+npm run dev | grep '"channel":"security-forensics"' | jq .
+```
+
 When a valid `X-Forwarded-For` header is present, audit events may include
 `request.ip`; treat it as authoritative only in reverse-proxy paths that own or
 strip the inbound header.

@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { POST } from '@/app/api/ai/repair-requirement-import-json/route'
 import * as aiSafety from '@/lib/ai/safety'
+import { clearAiSafetyRuntimeSettingsCacheForTests } from '@/lib/dal/ai-settings'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
 import { REQUIREMENTS_IMPORT_SCHEMA_VERSION } from '@/lib/requirements/import-schema'
 import { mockAiSafetyScreening } from '@/tests/helpers/ai-safety-screening'
 import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 import { parseSecurityAuditEvents } from '@/tests/helpers/security-audit-events'
+import { parseSecurityForensicsEvents } from '@/tests/helpers/security-forensics-events'
 
 const routeState = vi.hoisted(() => ({
   generateChat: vi.fn(),
@@ -76,6 +78,7 @@ function makeRequest(
 describe('POST /api/ai/repair-requirement-import-json', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    clearAiSafetyRuntimeSettingsCacheForTests()
     clearInMemoryThrottleForTests()
     mockAiSafetyScreening(aiSafety)
     routeState.getRequestSqlServerDataSource.mockResolvedValue({
@@ -212,7 +215,7 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
       expect(response.status).toBe(400)
       expect(body).toEqual({
         error:
-          'The AI request was blocked because the instructions appear unsafe. Revise the need or context and try again.',
+          'The AI request was blocked by the AI safety filter: Prompt injection: instruction override. Revise the need or context and try again.',
       })
       expect(
         routeState.resolveOpenRouterModelCapabilities,
@@ -231,11 +234,21 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
         outcome: 'failure',
       })
       expect(securityEvent.detail).toMatchObject({
+        blockedStep: 'repair_input',
         operation: 'ai.repair-requirement-import-json',
+        primaryRuleId: 'instruction_override',
+        primaryRuleType: 'Prompt injection: instruction override',
         ruleIds: expect.arrayContaining(['instruction_override']),
+        safetyRuleDirection: 'input',
       })
       expect(JSON.stringify(securityEvent)).not.toContain('SE5560000001-ai1')
       expect(JSON.stringify(securityEvent)).not.toContain('JSON format')
+      const forensicEvent = parseSecurityForensicsEvents(consoleInfoSpy)[0]
+      expect(forensicEvent?.eventId).toBe(
+        (securityEvent.detail as Record<string, unknown>).eventId,
+      )
+      expect(JSON.stringify(forensicEvent)).toContain('JSON format')
+      expect(JSON.stringify(forensicEvent)).toContain('"label":"rawJson"')
     } finally {
       consoleInfoSpy.mockRestore()
       consoleErrorSpy.mockRestore()
@@ -273,7 +286,7 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
       expect(response.status).toBe(422)
       expect(body).toEqual({
         error:
-          'The AI response was blocked by the safety filter. Revise the request and try again.',
+          'The AI response was blocked by the AI safety filter: System-adjacent content leakage. Revise the request and try again.',
       })
       expect(JSON.stringify(body)).not.toContain('unsafe-repair-secret')
       expect(parseCapacityEvents(consoleErrorSpy)[0]).toMatchObject({
@@ -289,10 +302,19 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
         outcome: 'failure',
       })
       expect(securityEvent.detail).toMatchObject({
+        blockedStep: 'repaired_model_output',
         model: 'anthropic/claude-sonnet-4',
+        primaryRuleId: 'sensitive_backend_leak',
+        primaryRuleType: 'System-adjacent content leakage',
         provider: 'anthropic',
         ruleIds: ['sensitive_backend_leak'],
+        safetyRuleDirection: 'output',
       })
+      const forensicEvent = parseSecurityForensicsEvents(consoleInfoSpy)[0]
+      expect(forensicEvent?.eventId).toBe(
+        (securityEvent.detail as Record<string, unknown>).eventId,
+      )
+      expect(JSON.stringify(forensicEvent)).toContain('unsafe-repair-secret')
     } finally {
       consoleInfoSpy.mockRestore()
       consoleErrorSpy.mockRestore()
@@ -307,7 +329,7 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
     const safetySpy = vi
-      .spyOn(aiSafety, 'screenAiInput')
+      .spyOn(aiSafety, 'screenAiInputDetailed')
       .mockImplementation(() => {
         throw new Error('safety screen unavailable')
       })

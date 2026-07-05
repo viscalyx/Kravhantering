@@ -1,4 +1,5 @@
 export interface AiRequirementGenerationAvailability {
+  aiSafetyForensicLoggingEnabled: boolean
   aiSafetyRuleCacheTtlSeconds: number
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
@@ -64,6 +65,7 @@ export interface AdminAiSettings extends AiRequirementGenerationAvailability {
 
 export const DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY: AiRequirementGenerationAvailability =
   Object.freeze({
+    aiSafetyForensicLoggingEnabled: true,
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
     disabledByEnvironment: false,
     effectiveRequirementGenerationEnabled: true,

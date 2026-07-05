@@ -23,6 +23,7 @@ const generatedPayload = {
 }
 
 interface AiGenerationAvailability {
+  aiSafetyForensicLoggingEnabled: boolean
   aiSafetyRuleCacheTtlSeconds: number
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
@@ -44,6 +45,7 @@ async function putAiSettings(
   request: APIRequestContext,
   settings: Pick<
     AiGenerationAvailability,
+    | 'aiSafetyForensicLoggingEnabled'
     | 'aiSafetyRuleCacheTtlSeconds'
     | 'mcpImportMaxRows'
     | 'mcpImportValidationTtlMinutes'
@@ -245,6 +247,7 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
   try {
     await putAiSettings(request, {
       aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
+      aiSafetyForensicLoggingEnabled: original.aiSafetyForensicLoggingEnabled,
       mcpImportMaxRows: original.mcpImportMaxRows,
       mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
       mcpMaxRequestBytes: original.mcpMaxRequestBytes,
@@ -274,7 +277,7 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
 
     await expect(
       dialog.getByText(
-        'AI-anropet blockerades eftersom instruktionerna verkar osäkra. Ändra behovet eller sammanhanget och försök igen.',
+        'AI-anropet blockerades av AI-säkerhetsfiltret: Promptinjektion: instruktionsövertagande. Ändra behovet eller sammanhanget och försök igen.',
       ),
     ).toBeVisible()
     await expect(dialog.getByText(generatedDescription)).toHaveCount(0)
@@ -285,6 +288,7 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
     if (shouldRestoreSettings) {
       await putAiSettings(request, {
         aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
+        aiSafetyForensicLoggingEnabled: original.aiSafetyForensicLoggingEnabled,
         mcpImportMaxRows: original.mcpImportMaxRows,
         mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
         mcpMaxRequestBytes: original.mcpMaxRequestBytes,

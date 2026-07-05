@@ -256,6 +256,7 @@ function previewResponse(
 
 async function renderOpenGenerator(overrides?: {
   aiGenerationAvailability?: {
+    aiSafetyForensicLoggingEnabled: boolean
     aiSafetyRuleCacheTtlSeconds: number
     disabledByEnvironment: boolean
     effectiveRequirementGenerationEnabled: boolean
@@ -403,6 +404,7 @@ describe('AiRequirementGenerator', () => {
     const user = userEvent.setup()
     await renderOpenGenerator({
       aiGenerationAvailability: {
+        aiSafetyForensicLoggingEnabled: true,
         aiSafetyRuleCacheTtlSeconds: 600,
         disabledByEnvironment: false,
         effectiveRequirementGenerationEnabled: false,

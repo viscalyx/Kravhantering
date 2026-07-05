@@ -291,9 +291,16 @@ sequenceDiagram
   action names only; free-text requirement content, motivations, and suggestion
   text are not emitted.
 - AI safety events use the same stream. Their `detail` payloads carry
-  operation, decision, rule IDs, categories, source, request/correlation IDs,
-  and model/provider when available. Prompts, model output, repair JSON, image
-  data, and actor HSA-id values are not emitted in AI safety details.
+  operation, decision, blocked step, direction, reason, primary rule id/type,
+  all rule IDs/types, categories, source, request/correlation IDs, and
+  model/provider when available. Prompts, model output, repair JSON, image
+  data, matched terms, and actor HSA-id values are not emitted in AI safety
+  details.
+- AI safety blocks can also emit a separate `security-forensics` JSON line when
+  Admin Center enables forensic AI safety logging. That forensic stream is not
+  metadata-only: it contains raw screened blocked content and matched rule
+  evidence, and it uses the same request id, correlation id, and event id as
+  the metadata event so logging pipelines can correlate separate sinks.
 - Application action-log rows in `action_audit_events` are separate from
   this stream. They are database records for successful app-owned mutations and
   authorization denials, include request/correlation IDs and optional validated
@@ -305,6 +312,8 @@ sequenceDiagram
   log pipeline to select records where `channel == "security-audit"` and
   forward them to the desired sink, for example a centralized log store, a
   SIEM, a message queue, or a dedicated audit pipeline.
+- Route records where `channel == "security-forensics"` with stricter access,
+  retention, and masking policy than metadata-only audit records.
 - This routing can be done with whatever logging mechanism the platform
   already provides, such as a container log driver, a host or node log agent,
   a sidecar collector, or a managed platform log-forwarding service.
