@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getCachedMcpRuntimeSettings } from '@/lib/dal/ai-settings'
 import {
   listNormReferences,
@@ -187,6 +187,10 @@ function makeManageImportDb() {
 }
 
 describe('requirements import service', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   beforeEach(() => {
     vi.mocked(listCategories).mockResolvedValue([])
     vi.mocked(listRequirementPackages).mockResolvedValue([])
@@ -354,6 +358,13 @@ describe('requirements import service', () => {
   })
 
   it('authorizes MCP validate destinations before resolving destination existence', async () => {
+    vi.stubEnv('DATABASE_URL', '')
+    vi.stubEnv('DB_HOST', '')
+    vi.stubEnv('DB_NAME', '')
+    vi.stubEnv('DB_USER', '')
+    vi.stubEnv('DB_PASSWORD', '')
+    vi.stubEnv('MSSQL_SA_PASSWORD', '')
+
     const denied = forbiddenError('Blocked by policy', {
       reason: 'policy_missing',
     })

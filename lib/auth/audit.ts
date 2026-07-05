@@ -39,6 +39,7 @@ export type SecurityEventName =
   | 'auth.roles.changed'
   | 'auth.csrf.rejected'
   | 'auth.authorization.denied'
+  | 'auth.authorization.denied.audit_failed'
   | 'privacy.data_subject_export.generated'
   | 'privacy.erasure.executed'
   | 'privacy.erasure.previewed'

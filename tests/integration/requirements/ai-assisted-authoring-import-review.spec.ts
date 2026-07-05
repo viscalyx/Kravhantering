@@ -26,6 +26,8 @@ interface AiGenerationAvailability {
   aiSafetyRuleCacheTtlSeconds: number
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
+  mcpImportMaxRows: number
+  mcpImportValidationTtlMinutes: number
   mcpMaxRequestBytes: number
   requirementGenerationEnabled: boolean
 }
@@ -43,6 +45,8 @@ async function putAiSettings(
   settings: Pick<
     AiGenerationAvailability,
     | 'aiSafetyRuleCacheTtlSeconds'
+    | 'mcpImportMaxRows'
+    | 'mcpImportValidationTtlMinutes'
     | 'mcpMaxRequestBytes'
     | 'requirementGenerationEnabled'
   >,
@@ -241,6 +245,8 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
   try {
     await putAiSettings(request, {
       aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
+      mcpImportMaxRows: original.mcpImportMaxRows,
+      mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
       mcpMaxRequestBytes: original.mcpMaxRequestBytes,
       requirementGenerationEnabled: true,
     })
@@ -279,6 +285,8 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
     if (shouldRestoreSettings) {
       await putAiSettings(request, {
         aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
+        mcpImportMaxRows: original.mcpImportMaxRows,
+        mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
         mcpMaxRequestBytes: original.mcpMaxRequestBytes,
         requirementGenerationEnabled: original.requirementGenerationEnabled,
       })
