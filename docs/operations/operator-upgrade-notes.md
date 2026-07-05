@@ -189,3 +189,7 @@ Update automated requirement-import producers and API/MCP integrations before ro
 <!-- operator-upgrade:source pr-399 start -->
 After rollout, MCP clients can discover two additional requirements-import tools for retrieving the canonical import schema and import instruction. Existing MCP clients should continue to work, but operators or support staff should notify teams that maintain strict MCP tool inventories, allowlists, or client-side assertions so they can refresh their expected tool count after upgrade.
 <!-- operator-upgrade:source pr-399 end -->
+
+<!-- operator-upgrade:source pr-406 start -->
+After upgrade, review the Admin Center MCP limits before enabling high-volume imports. The release adds database-backed, short-lived MCP import validation sessions and new operator-tunable limits for request/session size, import row count, and validation-token lifetime. The defaults are 10 MiB, 500 rows, and 60 minutes; adjust them to match production capacity and client retry behavior.
+<!-- operator-upgrade:source pr-406 end -->
