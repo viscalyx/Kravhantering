@@ -274,6 +274,37 @@ describe('privacy erasure service', () => {
     )
   })
 
+  it('labels affected requirement specifications by specification code', async () => {
+    const { db, query } = createPrivacyDb({
+      'requirements_specifications.responsible': {
+        affectedValues: ['SPEC-1 Kravunderlag'],
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+
+    const preview = await previewPrivacyErasure(db, {
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(preview.groups).toEqual([
+      expect.objectContaining({
+        affectedReferences: ['SPEC-1 Kravunderlag'],
+        key: 'requirements_specifications.responsible',
+      }),
+    ])
+
+    const affectedSql = query.mock.calls
+      .map(([sql]) => String(sql))
+      .find(sql =>
+        sql.includes(
+          'privacy:affected:requirements_specifications.responsible',
+        ),
+      )
+    expect(affectedSql).toContain('spec.specification_code')
+    expect(affectedSql).not.toContain('unique_id')
+  })
+
   it('allows only skip for a requirement area owner when no replacement exists', async () => {
     const { db } = createPrivacyDb({
       'requirement_areas.owner': {

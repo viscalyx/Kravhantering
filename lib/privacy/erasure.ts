@@ -409,10 +409,10 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   },
   {
     affectedReferencesSql: `/* privacy:affected:requirements_specifications.responsible */
-      SELECT CONCAT(unique_id, N' ', name) AS value
-      FROM requirements_specifications
-      WHERE responsible_hsa_id = @0
-      ORDER BY unique_id ASC, id ASC`,
+      SELECT CONCAT(spec.specification_code, N' ', spec.name) AS value
+      FROM requirements_specifications spec
+      WHERE spec.responsible_hsa_id = @0
+      ORDER BY spec.specification_code ASC, spec.id ASC`,
     allowedActions: ['switch', 'anonymize', 'skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM requirements_specifications WHERE responsible_hsa_id = @0',
