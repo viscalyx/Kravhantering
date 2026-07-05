@@ -17,12 +17,10 @@ import {
   listQualityCharacteristics,
   listTypes,
   type QualityCharacteristicRow,
-  type RequirementTypeWithQualityCharacteristics,
 } from '@/lib/dal/requirement-types'
 import {
   approveArchiving,
   cancelArchiving,
-  countRequirements,
   createRequirement,
   deleteDraftVersion,
   editRequirement,
@@ -70,12 +68,8 @@ import type {
 } from '@/lib/requirements/service'
 import {
   authorize,
-  clampLimit,
-  clampOffset,
   createServiceMessage,
   getVersionDisplayName,
-  type ServiceMessageKey,
-  translateServiceMessage,
   withLogging,
 } from '@/lib/requirements/service-shared'
 import type {
@@ -90,44 +84,10 @@ interface RequirementWorkflowDependencies {
   logger: RequirementsLogger
 }
 
-const CATALOG_TITLE_KEYS: Record<CatalogKind, ServiceMessageKey> = {
-  areas: 'requirements.catalogTitles.areas',
-  categories: 'requirements.catalogTitles.categories',
-  quality_characteristics: 'requirements.catalogTitles.qualityCharacteristics',
-  requirement_packages: 'requirements.catalogTitles.requirementPackages',
-  requirements: 'requirements.catalogTitles.requirements',
-  priority_levels: 'requirements.catalogTitles.priorityLevels',
-  specification_item_statuses: 'requirements.catalogTitles.usageStatuses',
-  statuses: 'requirements.catalogTitles.statuses',
-  transitions: 'requirements.catalogTitles.transitions',
-  types: 'requirements.catalogTitles.types',
-}
-
-function getCatalogTitle(catalog: CatalogKind, locale: 'en' | 'sv') {
-  return translateServiceMessage(locale, CATALOG_TITLE_KEYS[catalog])
-}
-
-type McpLookupCatalogKind =
-  | 'categories'
-  | 'priority_levels'
-  | 'quality_characteristics'
-  | 'requirement_packages'
-  | 'types'
+type McpLookupCatalogKind = Exclude<CatalogKind, 'requirements'>
 
 type McpLookupCatalogRow = Record<string, unknown> & {
   match?: McpSearchMatch
-}
-
-function isMcpLookupCatalog(
-  catalog: CatalogKind,
-): catalog is McpLookupCatalogKind {
-  return (
-    catalog === 'categories' ||
-    catalog === 'types' ||
-    catalog === 'quality_characteristics' ||
-    catalog === 'priority_levels' ||
-    catalog === 'requirement_packages'
-  )
 }
 
 function lookupSortValue(row: Record<string, unknown>): string {
@@ -151,6 +111,9 @@ async function listMcpLookupCatalogRows(
   catalog: McpLookupCatalogKind,
   input: QueryCatalogInput,
 ): Promise<Record<string, unknown>[]> {
+  if (catalog === 'areas') {
+    return (await listAreas(db)) as unknown as Record<string, unknown>[]
+  }
   if (catalog === 'categories') {
     return (await listCategories(db)) as unknown as Record<string, unknown>[]
   }
@@ -169,16 +132,38 @@ async function listMcpLookupCatalogRows(
       unknown
     >[]
   }
-  return (await listRequirementPackages(db)) as unknown as Record<
-    string,
-    unknown
-  >[]
+  if (catalog === 'requirement_packages') {
+    return (await listRequirementPackages(db)) as unknown as Record<
+      string,
+      unknown
+    >[]
+  }
+  if (catalog === 'specification_item_statuses') {
+    return (await listSpecificationItemStatuses(db)) as unknown as Record<
+      string,
+      unknown
+    >[]
+  }
+  if (catalog === 'statuses') {
+    return (await listStatuses(db)) as unknown as Record<string, unknown>[]
+  }
+  return (await listTransitions(db)) as unknown as Record<string, unknown>[]
 }
 
 function lookupSearchFields(
   catalog: McpLookupCatalogKind,
   row: Record<string, unknown>,
 ): Record<string, unknown> {
+  if (catalog === 'areas') {
+    const area = row as unknown as RequirementAreaRow
+    return {
+      description: area.description,
+      id: area.id,
+      name: area.name,
+      ownerHsaId: area.ownerHsaId,
+      prefix: area.prefix,
+    }
+  }
   if (catalog === 'priority_levels') {
     return {
       assessmentCriteriaEn: row.assessmentCriteriaEn,
@@ -232,10 +217,50 @@ function lookupSearchFields(
       nameSv: qualityCharacteristic.nameSv,
     }
   }
+  if (catalog === 'specification_item_statuses') {
+    return {
+      descriptionEn: row.descriptionEn,
+      descriptionSv: row.descriptionSv,
+      id: row.id,
+      nameEn: row.nameEn,
+      nameSv: row.nameSv,
+    }
+  }
+  if (catalog === 'statuses') {
+    const status = row as unknown as RequirementStatusRecord
+    return {
+      id: status.id,
+      nameEn: status.nameEn,
+      nameSv: status.nameSv,
+    }
+  }
+  if (catalog === 'transitions') {
+    const transition = row as unknown as RequirementStatusTransitionDetail
+    return {
+      fromStatusId: transition.fromStatusId,
+      fromStatusNameEn: transition.fromStatus.nameEn,
+      fromStatusNameSv: transition.fromStatus.nameSv,
+      id: transition.id,
+      toStatusId: transition.toStatusId,
+      toStatusNameEn: transition.toStatus.nameEn,
+      toStatusNameSv: transition.toStatus.nameSv,
+    }
+  }
   return {
     id: row.id,
     nameEn: row.nameEn,
     nameSv: row.nameSv,
+  }
+}
+
+function requirementSearchFields(
+  row: RequirementListItem,
+): Record<string, unknown> {
+  return {
+    id: row.id,
+    uniqueId: row.uniqueId,
+    'version.acceptanceCriteria': row.version.acceptanceCriteria,
+    'version.description': row.version.description,
   }
 }
 
@@ -528,9 +553,15 @@ export function createRequirementWorkflow({
 > {
   return {
     async queryCatalog(context, input: QueryCatalogInput) {
-      const responseFormat = input.responseFormat ?? 'markdown'
       const locale = input.locale ?? 'en'
-      const catalog: CatalogKind = input.catalog ?? 'requirements'
+      const catalog = input.catalog
+      const operation = input.operation
+      if (!catalog) {
+        throw validationError('Catalog is required')
+      }
+      if (!operation) {
+        throw validationError('Catalog operation is required')
+      }
 
       await authorize(
         authorization,
@@ -544,59 +575,12 @@ export function createRequirementWorkflow({
         'requirements.query_catalog',
         { catalog },
         async () => {
-          if (input.operation != null) {
-            if (!isMcpLookupCatalog(catalog)) {
-              throw validationError(
-                'Catalog operation list/search is available only for lookup catalogs',
-                { catalog, operation: input.operation },
-              )
-            }
-
-            const rows = (
-              await listMcpLookupCatalogRows(db, catalog, input)
-            ).sort(compareLookupRows)
-
-            if (input.operation === 'list') {
-              return { result: rows }
-            }
-
-            const search = input.search?.trim()
-            if (!search) {
-              throw validationError('Search text is required')
-            }
-
-            const result = rows
-              .flatMap(
-                (
-                  row,
-                ): Array<McpLookupCatalogRow & { match: McpSearchMatch }> => {
-                  const match = findMcpSearchMatch(
-                    lookupSearchFields(catalog, row),
-                    search,
-                  )
-                  return match ? [{ ...row, match }] : []
-                },
-              )
-              .sort(
-                (left, right) =>
-                  compareMcpSearchMatches(left.match, right.match) ||
-                  compareLookupRows(left, right),
-              )
-
-            return { result }
-          }
-
           if (catalog === 'requirements') {
-            const limit = clampLimit(input.limit)
-            const offset = clampOffset(input.offset)
             const query = {
               areaIds: input.areaIds,
               categoryIds: input.categoryIds,
-              descriptionSearch: input.descriptionSearch,
               includeArchived: input.includeArchived,
-              limit,
               locale,
-              offset,
               verifiable: input.verifiable,
               priorityLevelIds: input.priorityLevelIds,
               sortBy: input.sortBy,
@@ -605,198 +589,64 @@ export function createRequirementWorkflow({
               qualityCharacteristicIds: input.qualityCharacteristicIds,
               normReferenceIds: input.normReferenceIds,
               typeIds: input.typeIds,
-              uniqueIdSearch: input.uniqueIdSearch,
               requirementPackageIds: input.requirementPackageIds,
               ...(await resolveCatalogRequirementVisibility(db, context)),
             }
-            const [rows, total] = await Promise.all([
-              listRequirements(db, query),
-              countRequirements(db, query),
-            ])
-            const items = rows.map(formatRequirementListItem)
-            const hasMore = offset + items.length < total
-
-            return {
-              catalog,
-              items,
-              message: createServiceMessage(
-                getCatalogTitle('requirements', locale),
-                items.map(item => {
-                  const statusName =
-                    locale === 'sv'
-                      ? (item.version.statusNameSv ?? 'Okand')
-                      : (item.version.statusNameEn ?? 'Unknown')
-                  return `${item.uniqueId}: ${item.version.description} (${statusName}, v${item.version.versionNumber})`
-                }),
-                responseFormat,
-              ),
-              pagination: {
-                count: items.length,
-                hasMore,
-                limit,
-                nextOffset: hasMore ? offset + items.length : null,
-                offset,
-                total,
-              },
-            }
-          }
-
-          if (catalog === 'areas') {
-            const areas = await listAreas(db)
-            return {
-              catalog,
-              items: areas,
-              message: createServiceMessage(
-                getCatalogTitle('areas', locale),
-                areas.map(
-                  (area: RequirementAreaRow) => `${area.prefix}: ${area.name}`,
-                ),
-                responseFormat,
-              ),
-              pagination: null,
-            }
-          }
-
-          if (catalog === 'categories') {
-            const categories = await listCategories(db)
-            return {
-              catalog,
-              items: categories,
-              message: createServiceMessage(
-                getCatalogTitle('categories', locale),
-                categories.map((category: RequirementCategoryRow) =>
-                  locale === 'sv' ? category.nameSv : category.nameEn,
-                ),
-                responseFormat,
-              ),
-              pagination: null,
-            }
-          }
-
-          if (catalog === 'types') {
-            const types = await listTypes(db)
-            return {
-              catalog,
-              items: types,
-              message: createServiceMessage(
-                getCatalogTitle('types', locale),
-                types.map((type: RequirementTypeWithQualityCharacteristics) =>
-                  locale === 'sv' ? type.nameSv : type.nameEn,
-                ),
-                responseFormat,
-              ),
-              pagination: null,
-            }
-          }
-
-          if (catalog === 'quality_characteristics') {
-            const qualityCharacteristics = await listQualityCharacteristics(
-              db,
-              input.typeId,
+            const rows = (await listRequirements(db, query)).map(
+              formatRequirementListItem,
             )
-            return {
-              catalog,
-              items: qualityCharacteristics,
-              message: createServiceMessage(
-                getCatalogTitle('quality_characteristics', locale),
-                qualityCharacteristics.map(
-                  (category: QualityCharacteristicRow) =>
-                    locale === 'sv' ? category.nameSv : category.nameEn,
-                ),
-                responseFormat,
-              ),
-              pagination: null,
+
+            if (operation === 'list') {
+              return { result: rows }
             }
+
+            const search = input.search?.trim()
+            if (!search) {
+              throw validationError('Search text is required')
+            }
+
+            const result = rows.flatMap(
+              (row): Array<RequirementListItem & { match: McpSearchMatch }> => {
+                const match = findMcpSearchMatch(
+                  requirementSearchFields(row),
+                  search,
+                )
+                return match ? [{ ...row, match }] : []
+              },
+            )
+            return { result }
           }
 
-          if (catalog === 'priority_levels') {
-            const levels = await listPriorityLevels(db)
-            return {
-              catalog,
-              items: levels,
-              message: createServiceMessage(
-                getCatalogTitle('priority_levels', locale),
-                levels.map(level => {
-                  const name = locale === 'sv' ? level.nameSv : level.nameEn
-                  return `${level.code} - ${name}`
-                }),
-                responseFormat,
-              ),
-              pagination: null,
-            }
+          const rows = (
+            await listMcpLookupCatalogRows(db, catalog, input)
+          ).sort(compareLookupRows)
+
+          if (operation === 'list') {
+            return { result: rows }
           }
 
-          if (catalog === 'specification_item_statuses') {
-            const statuses = await listSpecificationItemStatuses(db)
-            return {
-              catalog,
-              items: statuses,
-              message: createServiceMessage(
-                getCatalogTitle('specification_item_statuses', locale),
-                statuses.map(status =>
-                  locale === 'sv' ? status.nameSv : status.nameEn,
-                ),
-                responseFormat,
-              ),
-              pagination: null,
-            }
+          const search = input.search?.trim()
+          if (!search) {
+            throw validationError('Search text is required')
           }
 
-          if (catalog === 'statuses') {
-            const statuses = await listStatuses(db)
-            return {
-              catalog,
-              items: statuses,
-              message: createServiceMessage(
-                getCatalogTitle('statuses', locale),
-                statuses.map((status: RequirementStatusRecord) =>
-                  locale === 'sv' ? status.nameSv : status.nameEn,
-                ),
-                responseFormat,
-              ),
-              pagination: null,
-            }
-          }
+          const result = rows
+            .flatMap(
+              (row): Array<McpLookupCatalogRow & { match: McpSearchMatch }> => {
+                const match = findMcpSearchMatch(
+                  lookupSearchFields(catalog, row),
+                  search,
+                )
+                return match ? [{ ...row, match }] : []
+              },
+            )
+            .sort(
+              (left, right) =>
+                compareMcpSearchMatches(left.match, right.match) ||
+                compareLookupRows(left, right),
+            )
 
-          if (catalog === 'requirement_packages') {
-            const requirementPackages = await listRequirementPackages(db)
-            return {
-              catalog,
-              items: requirementPackages,
-              message: createServiceMessage(
-                getCatalogTitle('requirement_packages', locale),
-                requirementPackages.map(
-                  requirementPackage => requirementPackage.name,
-                ),
-                responseFormat,
-              ),
-              pagination: null,
-            }
-          }
-
-          const transitions = await listTransitions(db)
-          return {
-            catalog,
-            items: transitions,
-            message: createServiceMessage(
-              getCatalogTitle('transitions', locale),
-              transitions.map(
-                (transition: RequirementStatusTransitionDetail) => {
-                  const fromName =
-                    locale === 'sv'
-                      ? transition.fromStatus.nameSv
-                      : transition.fromStatus.nameEn
-                  const toName =
-                    locale === 'sv'
-                      ? transition.toStatus.nameSv
-                      : transition.toStatus.nameEn
-                  return `${fromName} -> ${toName}`
-                },
-              ),
-              responseFormat,
-            ),
-            pagination: null,
-          }
+          return { result }
         },
       )
     },

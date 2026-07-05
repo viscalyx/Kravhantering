@@ -450,19 +450,19 @@ test.describe('MCP seeded HTTP security gate', () => {
 
       const areas = await callToolOk(client, 'requirements_query_catalog', {
         catalog: 'areas',
-        responseFormat: 'json',
+        operation: 'list',
       })
       const areaId = numberField(
-        firstRecord(arrayField(areas, 'items', 'areas'), 'areas'),
+        firstRecord(arrayField(areas, 'result', 'areas'), 'areas'),
         'id',
         'area',
       )
 
       const statuses = await callToolOk(client, 'requirements_query_catalog', {
         catalog: 'statuses',
-        responseFormat: 'json',
+        operation: 'list',
       })
-      const statusItems = arrayField(statuses, 'items', 'statuses').map(item =>
+      const statusItems = arrayField(statuses, 'result', 'statuses').map(item =>
         asRecord(item, 'status'),
       )
       const draftStatus = statusItems.find(item => item.nameEn === 'Draft')
@@ -479,12 +479,12 @@ test.describe('MCP seeded HTTP security gate', () => {
         'requirements_query_catalog',
         {
           catalog: 'transitions',
-          responseFormat: 'json',
+          operation: 'list',
         },
       )
       const transitionItems = arrayField(
         transitions,
-        'items',
+        'result',
         'transitions',
       ).map(item => asRecord(item, 'transition'))
       const draftToReview = transitionItems.find(
@@ -505,13 +505,13 @@ test.describe('MCP seeded HTTP security gate', () => {
         'requirements_query_catalog',
         {
           catalog: 'requirements',
-          limit: 10,
-          responseFormat: 'json',
+          operation: 'search',
+          search: 'INT0001',
           statuses: [numberField(publishedStatus ?? {}, 'id', 'published')],
         },
       )
       const publishedRequirement = firstRecord(
-        arrayField(publishedRequirements, 'items', 'published requirements'),
+        arrayField(publishedRequirements, 'result', 'published requirements'),
         'published requirements',
       )
       const publishedRequirementUniqueId = stringField(

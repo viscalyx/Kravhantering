@@ -7,8 +7,7 @@
       "kind": "read",
       "arguments": {
         "catalog": "requirements",
-        "limit": 1,
-        "responseFormat": "json"
+        "operation": "list"
       }
     },
     {

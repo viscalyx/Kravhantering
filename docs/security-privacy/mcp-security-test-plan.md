@@ -61,11 +61,12 @@ Use only disposable local services and non-production credentials.
 3. Open MCP Inspector or another MCP client that supports Streamable HTTP.
 4. Configure the server URL as `http://localhost:3000/api/mcp`.
 5. Add the header `Authorization: Bearer <non-production-token>`.
-6. Confirm that the server lists exactly 12 tools.
+6. Confirm that the server lists exactly 16 tools.
 7. Confirm that an unauthenticated request returns `401` and
    `WWW-Authenticate: Bearer`.
-8. Call `requirements_query_catalog` and `requirements_get_requirement` with
-   safe read-only inputs.
+8. Call `requirements_query_catalog` with `catalog: "statuses"` and
+   `operation: "list"`, then call `requirements_get_requirement` with safe
+   read-only inputs.
 9. Call one disposable mutation only against seeded/local data, then restore or
    recreate the local database with `npm run db:setup` if needed.
 

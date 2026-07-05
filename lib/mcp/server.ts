@@ -55,17 +55,6 @@ const READABLE_MCP_ERROR_CODES = new Set<RequirementsErrorCode>([
   'forbidden',
 ])
 
-const PaginationSchema = z
-  .object({
-    count: z.number(),
-    hasMore: z.boolean(),
-    limit: z.number(),
-    nextOffset: z.number().nullable(),
-    offset: z.number(),
-    total: z.number(),
-  })
-  .strict()
-
 const QueryCatalogKindSchema = z.enum([
   'requirements',
   'areas',
@@ -106,44 +95,14 @@ const ImportSchemaOutputSchema = z
 
 const QueryCatalogOutputSchema = z
   .object({
-    catalog: QueryCatalogKindSchema.optional().describe(
-      'Catalog that was returned for the legacy paginated shape.',
-    ),
-    items: z
-      .array(z.record(z.string(), z.unknown()))
-      .optional()
-      .describe('Catalog rows. Shape depends on the selected catalog.'),
-    message: z.string().optional(),
-    pagination: PaginationSchema.nullable()
-      .optional()
-      .describe(
-        'Pagination metadata for catalog "requirements"; null for lookup catalogs.',
-      ),
     result: z
       .array(z.record(z.string(), z.unknown()))
-      .optional()
       .describe(
-        'Unpaginated lookup catalog rows for operation "list" or "search". Search rows include match metadata.',
+        'Catalog rows for operation "list" or "search". Search rows include top-level match metadata.',
       ),
   })
   .strict()
-  .superRefine((val, ctx) => {
-    if (Object.hasOwn(val, 'result')) {
-      rejectUnexpectedFields(ctx, val, ['result'])
-      return
-    }
-    for (const field of [
-      'catalog',
-      'items',
-      'message',
-      'pagination',
-    ] as const) {
-      requireField(ctx, val, field)
-    }
-  })
-  .describe(
-    'Legacy catalog output, or lean lookup output when operation is "list" or "search".',
-  )
+  .describe('Structured catalog output. Rows are always in result.')
 
 const McpSearchMatchOutputSchema = z
   .object({
@@ -745,35 +704,14 @@ function createQueryCatalogSchema() {
         .describe(
           'Requirement area IDs. Applies only to catalog "requirements".',
         ),
-      catalog: z
-        .enum([
-          'requirements',
-          'areas',
-          'categories',
-          'types',
-          'quality_characteristics',
-          'priority_levels',
-          'specification_item_statuses',
-          'statuses',
-          'requirement_packages',
-          'transitions',
-        ])
-        .default('requirements')
-        .describe(
-          'Catalog to return. Use "requirements" for paged requirement search; lookup catalogs ignore requirement filters.',
-        ),
+      catalog: QueryCatalogKindSchema.describe(
+        'Catalog to list or search. Use "requirements" for requirement rows or a lookup catalog for reference rows.',
+      ),
       categoryIds: z
         .array(z.number().int().positive())
         .optional()
         .describe(
           'Requirement category IDs. Applies only to catalog "requirements".',
-        ),
-      descriptionSearch: z
-        .string()
-        .max(200)
-        .optional()
-        .describe(
-          'Case-insensitive substring filter on requirement description. Applies only to catalog "requirements".',
         ),
       includeArchived: z
         .boolean()
@@ -781,13 +719,6 @@ function createQueryCatalogSchema() {
         .describe(
           'Whether archived requirements are included. Applies only to catalog "requirements".',
         ),
-      limit: z
-        .number()
-        .int()
-        .min(1)
-        .max(50)
-        .default(20)
-        .describe('Page size for catalog "requirements"; maximum 50.'),
       locale: ResponseLocaleSchema,
       normReferenceIds: z
         .array(z.number().int().positive())
@@ -797,16 +728,9 @@ function createQueryCatalogSchema() {
         ),
       operation: z
         .enum(['list', 'search'])
-        .optional()
         .describe(
-          'For lookup catalogs categories, types, quality_characteristics, priority_levels, and requirement_packages only. "list" returns all rows in structuredContent.result. "search" returns matching rows with match metadata.',
+          '"list" returns all matching rows in structuredContent.result. "search" returns matching rows with top-level match metadata.',
         ),
-      offset: z
-        .number()
-        .int()
-        .min(0)
-        .default(0)
-        .describe('Zero-based offset for catalog "requirements".'),
       qualityCharacteristicIds: z
         .array(z.number().int().positive())
         .optional()
@@ -819,7 +743,6 @@ function createQueryCatalogSchema() {
         .describe(
           'Filter by verifiability. Applies only to catalog "requirements".',
         ),
-      responseFormat: ResponseFormatSchema,
       priorityLevelIds: z
         .array(z.number().int().positive())
         .optional()
@@ -850,10 +773,12 @@ function createQueryCatalogSchema() {
         ),
       search: z
         .string()
+        .trim()
+        .min(1)
         .max(200)
         .optional()
         .describe(
-          'Search text for lookup catalog operation "search". Matches exact, normalized exact, starts-with, and contains across stable lookup fields.',
+          'Search text for operation "search". Requirement search matches id, uniqueId, version.description, and version.acceptanceCriteria; lookup search matches stable lookup fields.',
         ),
       statuses: z
         .array(z.number().int().positive())
@@ -875,13 +800,6 @@ function createQueryCatalogSchema() {
         .describe(
           'Requirement type IDs. Applies only to catalog "requirements".',
         ),
-      uniqueIdSearch: z
-        .string()
-        .max(100)
-        .optional()
-        .describe(
-          'Case-insensitive substring filter on requirement uniqueId. Applies only to catalog "requirements".',
-        ),
       requirementPackageIds: z
         .array(z.number().int().positive())
         .optional()
@@ -895,6 +813,13 @@ function createQueryCatalogSchema() {
         ctx.addIssue({
           code: 'custom',
           message: 'search is required for operation "search".',
+          path: ['search'],
+        })
+      }
+      if (val.operation === 'list' && val.search != null) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'search is allowed only for operation "search".',
           path: ['search'],
         })
       }
@@ -1329,7 +1254,7 @@ function createTransitionRequirementSchema() {
         .int()
         .positive()
         .describe(
-          'Target requirement version status ID. Use requirements_query_catalog with catalog "transitions" or "statuses" before choosing this value.',
+          'Target requirement version status ID. Use requirements_query_catalog with operation "list" and catalog "transitions" or "statuses" before choosing this value.',
         ),
       uniqueId: z
         .string()
@@ -1405,15 +1330,11 @@ function toCatalogInput(
     areaIds: input.areaIds,
     catalog: input.catalog,
     categoryIds: input.categoryIds,
-    descriptionSearch: input.descriptionSearch,
     includeArchived: input.includeArchived,
-    limit: input.limit,
     locale: toResponseLocale(input.locale),
     normReferenceIds: input.normReferenceIds,
     operation: input.operation,
-    offset: input.offset,
     verifiable: input.verifiable,
-    responseFormat: toResponseFormat(input.responseFormat),
     search: input.search,
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
@@ -1422,7 +1343,6 @@ function toCatalogInput(
     priorityLevelIds: input.priorityLevelIds,
     typeId: input.typeId,
     typeIds: input.typeIds,
-    uniqueIdSearch: input.uniqueIdSearch,
     requirementPackageIds: input.requirementPackageIds,
   }
 }
@@ -1538,7 +1458,7 @@ export function createKravhanteringMcpServer(
   const specificationIdCopyPath =
     'Copy requirements_list_specifications.specifications[].specificationId -> specificationId.'
   const addRequirementIdsCopyPath =
-    'Copy requirements_query_catalog.items[].id -> requirementIds.'
+    'Copy requirements_query_catalog.result[].id -> requirementIds.'
   const removeRequirementIdsCopyPath =
     'Copy requirements_get_specification_items.items[].id -> requirementIds.'
 
@@ -1644,7 +1564,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List/search paginated requirements in the requirements library or fetch lookup catalogs: areas, categories, types, quality_characteristics, priority_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Requirement filters, sorting, limit, and offset apply only when catalog is "requirements".',
+        'List or search the requirements library and lookup catalogs: requirements, areas, categories, types, quality_characteristics, priority_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Requirement filters and sorting apply when catalog is "requirements"; typeId filters quality_characteristics.',
       inputSchema: createQueryCatalogSchema(),
       outputSchema: QueryCatalogOutputSchema,
       title: 'Query Requirements Library',
@@ -1658,10 +1578,7 @@ export function createKravhanteringMcpServer(
         return {
           content: [
             {
-              text:
-                'result' in payload
-                  ? 'Structured result returned in structuredContent.result.'
-                  : payload.message,
+              text: 'Structured result returned in structuredContent.result.',
               type: 'text',
             },
           ],

@@ -185,8 +185,7 @@ function createFakeService(
       },
     }),
     queryCatalog: vi.fn().mockResolvedValue({
-      catalog: 'requirements',
-      items: [
+      result: [
         {
           uniqueId: 'INT0001',
           version: {
@@ -196,15 +195,6 @@ function createFakeService(
           },
         },
       ],
-      message: 'Requirements Library',
-      pagination: {
-        count: 1,
-        hasMore: false,
-        limit: 20,
-        nextOffset: null,
-        offset: 0,
-        total: 1,
-      },
     }),
     getSpecificationItems: vi.fn().mockResolvedValue({
       items: [],
@@ -385,7 +375,7 @@ describe('handleRequirementsMcpRequest', () => {
       )
     })
 
-    it('describes requirements_query_catalog filters, lookup lists, and pagination', async () => {
+    it('describes requirements_query_catalog filters and structured list/search output', async () => {
       const queryTool = getTool('requirements_query_catalog')
 
       expect(queryTool).toBeDefined()
@@ -399,7 +389,10 @@ describe('handleRequirementsMcpRequest', () => {
       expect(queryInputSchemaText).toContain('requirementPackageIds')
       expect(queryInputSchemaText).toContain('sortBy')
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('result')
-      expect(JSON.stringify(queryTool?.outputSchema)).toContain('pagination')
+      expect(JSON.stringify(queryTool?.outputSchema)).not.toContain(
+        'pagination',
+      )
+      expect(queryInputSchemaText).not.toContain('responseFormat')
     })
 
     it('describes import schema and instruction artifacts', async () => {
@@ -462,7 +455,7 @@ describe('handleRequirementsMcpRequest', () => {
       const specificationIdCopyPath =
         'requirements_list_specifications.specifications[].specificationId -> specificationId'
       const addRequirementIdsCopyPath =
-        'requirements_query_catalog.items[].id -> requirementIds'
+        'requirements_query_catalog.result[].id -> requirementIds'
       const removeRequirementIdsCopyPath =
         'requirements_get_specification_items.items[].id -> requirementIds'
       const needsReferenceIdText = 'needsReferenceId'
@@ -736,9 +729,9 @@ describe('handleRequirementsMcpRequest', () => {
       arguments: {
         catalog: 'requirements',
         normReferenceIds: [4],
+        operation: 'list',
         priorityLevelIds: [2],
         locale: 'en',
-        responseFormat: 'json',
         sortBy: 'priorityLevel',
         sortDirection: 'desc',
         requirementPackageIds: [3],
@@ -751,6 +744,7 @@ describe('handleRequirementsMcpRequest', () => {
       expect.anything(),
       expect.objectContaining({
         normReferenceIds: [4],
+        operation: 'list',
         priorityLevelIds: [2],
         sortBy: 'priorityLevel',
         sortDirection: 'desc',

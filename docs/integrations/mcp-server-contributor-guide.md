@@ -44,7 +44,7 @@ For admin-managed default column settings, see
   output.
 - `lib/requirements/service.ts`
   Shared application service used by both MCP and REST routes. Holds lookup,
-  detail, mutation, transition, pagination, logging, and auth hook logic.
+  detail, mutation, transition, logging, and auth hook logic.
 - `lib/requirements/errors.ts`
   Typed domain errors and error-code-to-HTTP-status mapping.
 - `lib/requirements/logging.ts`
@@ -95,21 +95,23 @@ Combines:
 - lookup tables for areas, categories, types, quality characteristics,
   priority levels, statuses, usage statuses, requirement packages, and transitions
 
-Requirement search supports pagination, sorting, archive inclusion, taxonomy
-filters, status filters, verifiability filters, norm-reference filters, and
-requirement-package filters. Lookup catalogs ignore requirement-only filters except
-`typeId`, which filters the `quality_characteristics` catalog.
+Requirement list/search requires both `catalog` and `operation`. It supports
+sorting, archive inclusion, taxonomy filters, status filters, verifiability
+filters, norm-reference filters, and requirement-package filters. Lookup
+catalogs ignore requirement-only filters except `typeId`, which filters the
+`quality_characteristics` catalog.
 
 Requirement version status, usage status, and priority-level catalog rows expose
 nullable `iconName` fields. Requirement list/detail version output also carries
 status icon data and priority-level icon data as additive fields so older
 clients can keep using the existing status and priority-level names.
 
-For `categories`, `types`, `quality_characteristics`, `priority_levels`, and
-`requirement_packages`, `operation: "list"` and `operation: "search"` return the
-lean MCP lookup contract `{ result: [...] }`. Search rows include
-`match.quality` and `match.matchedFields` metadata. These operations do not use
-pagination wrappers.
+Every `requirements_query_catalog` list/search operation returns the structured
+MCP contract `{ result: [...] }`. Requirement search uses `search` against `id`,
+`uniqueId`, `version.description`, and `version.acceptanceCriteria`. Lookup
+search uses stable lookup fields. Search rows include `match.quality` and
+`match.matchedFields` metadata. These operations do not accept `responseFormat`,
+`limit`, or `offset`, and they do not use pagination wrappers.
 
 This avoids a larger set of narrowly scoped read tools.
 
@@ -251,7 +253,7 @@ duplicate `needsReferenceText` values inside the same specification. Use the
 specification copy paths above, and copy requirement IDs from:
 
 ```text
-requirements_query_catalog.items[].id -> requirementIds
+requirements_query_catalog.result[].id -> requirementIds
 ```
 
 ### `requirements_list_graduation_target_areas`
@@ -341,7 +343,7 @@ before adding transport-specific logic.
 It owns:
 
 - catalog listing and search
-- pagination metadata
+- catalog list/search result arrays
 - detail and version-history lookup
 - create, edit, archive, delete draft, reactivate, and restore flows
 - lifecycle transitions

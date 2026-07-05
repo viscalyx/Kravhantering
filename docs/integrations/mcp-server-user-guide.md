@@ -23,12 +23,11 @@ agents can use it reliably.
 #### Requirements
 
 - `requirements_query_catalog`
-  List or search requirements and fetch lookup catalogs such as areas,
-  categories, types, quality characteristics, priority levels, statuses,
-  usage statuses, requirement packages, and transitions. For `categories`,
-  `types`, `quality_characteristics`, `priority_levels`, and
-  `requirement_packages`, use `operation: "list"` or `operation: "search"` to
-  receive unpaginated lookup rows in `structuredContent.result`.
+  List or search requirements and lookup catalogs such as areas, categories,
+  types, quality characteristics, priority levels, statuses, usage statuses,
+  requirement packages, and transitions. Pass both `catalog` and `operation`
+  (`"list"` or `"search"`). Rows are always returned in
+  `structuredContent.result`; search rows include `match` metadata.
 - `requirements_get_import_schema`
   Retrieve the canonical JSON Schema for a `Kravimportfil`. Use this as the
   mandatory file-format contract for generated import JSON. The schema tool is
@@ -96,7 +95,7 @@ agents can use it reliably.
   requirement IDs from:
 
   ```text
-  requirements_query_catalog.items[].id -> requirementIds
+  requirements_query_catalog.result[].id -> requirementIds
   ```
 
 - `requirements_graduate_local_requirement`
@@ -554,15 +553,22 @@ Examples:
 }
 ```
 
-### 4. Use `query_catalog` For Search And Pagination
+### 4. Use `query_catalog` For Structured List And Search
 
 The server combines requirement search and lookup catalog reads into the same
-tool. For requirement lists, it supports:
+tool. Every call requires `catalog` and `operation`. `operation: "list"` returns
+all matching rows, and `operation: "search"` requires `search` and returns only
+matching rows with top-level `match` metadata. MCP text content is only a short
+status message; consume `structuredContent.result`.
 
-- `limit`
-- `offset`
-- `uniqueIdSearch`
-- `descriptionSearch`
+`requirements_query_catalog` does not accept `responseFormat`, `limit`, or
+`offset`, and it does not return pagination metadata. For requirement rows,
+search matches `id`, `uniqueId`, `version.description`, and
+`version.acceptanceCriteria`.
+
+For requirement lists and searches, it supports:
+
+- `search` for `operation: "search"`
 - `includeArchived`
 - `areaIds`
 - `categoryIds`
@@ -576,6 +582,8 @@ tool. For requirement lists, it supports:
 - `sortBy`
 - `sortDirection`
 
+For `quality_characteristics`, `typeId` filters rows to one requirement type.
+
 Lookup rows for statuses, priority levels, and usage statuses include
 `iconName` when an admin has configured an allowed icon. Requirement list and
 detail versions also include status fields such as `statusIconName`,
@@ -588,7 +596,7 @@ unchanged status fields.
 
 ### Read-Only
 
-- `List the first 10 requirements that mention login.`
+- `Search requirements that mention login.`
 - `Show the version history for SEC0012.`
 - `List available requirement transitions.`
 - `Show all requirement packages and then tell me which ones are linked to INT0001.`
@@ -620,7 +628,7 @@ unchanged status fields.
 > `specificationId`. `specificationCode` is returned for display and lookup by a
 > human, but not as the MCP identifier. For `requirements_add_to_specification`,
 > copy
-> `requirements_query_catalog.items[].id` -> `requirementIds`; use
+> `requirements_query_catalog.result[].id` -> `requirementIds`; use
 > `needsReferenceId` only when it comes from that specification's existing
 > needs-reference register, or use new `needsReferenceText` plus optional
 > `needsReferenceDescription`. For

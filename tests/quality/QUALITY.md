@@ -1101,6 +1101,50 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 24: MCP req
 ```
 <!-- markdownlint-enable MD013 -->
 
+### Scenario 25: requirements query catalog stays structured-first
+
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — issue #404 requirements_query_catalog cleanup]`
+
+**What happened:** `requirements_query_catalog` used to expose both a legacy
+`items`/`pagination` response shape and a newer `result` lookup shape. It also
+accepted catalog-local response formatting and requirement pagination inputs.
+That made agent calls branch on historical compatibility instead of a single
+structured contract.
+
+**Covered code line ranges:** This scenario covers the public MCP schema,
+transport text, service implementation, docs, and seeded MCP request fixture in
+these implementation ranges:
+
+<!-- markdownlint-disable MD013 -->
+```text
+lib/mcp/server.ts:96-105
+lib/mcp/server.ts:724-827
+lib/mcp/server.ts:1557-1590
+lib/requirements/service-requirements.ts:87-254
+lib/requirements/service-requirements.ts:555-649
+docs/integrations/mcp-server-user-guide.md
+docs/integrations/mcp-server-contributor-guide.md
+tests/fixtures/mcp-requests/seeded-cases.json
+```
+<!-- markdownlint-enable MD013 -->
+
+**The requirement:** `requirements_query_catalog` requires explicit `catalog`
+and `operation`, supports `list` and `search` for every catalog, and always
+returns `{ "result": [...] }` in `structuredContent`. Catalog calls do not
+accept `responseFormat`, `limit`, `offset`, `descriptionSearch`, or
+`uniqueIdSearch`, and they do not return legacy `items`, `message`, or
+pagination metadata. Requirement search uses the single `search` field against
+`id`, `uniqueId`, `version.description`, and `version.acceptanceCriteria`.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 25: requirements query catalog stays structured-first"
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,
