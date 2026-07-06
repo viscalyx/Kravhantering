@@ -59,7 +59,7 @@ function stackLock() {
       service(
         'nginx',
         'docker.io/library/nginx',
-        '1.31.1-alpine',
+        '1.31.2-alpine',
         'sha256:nginx',
       ),
       service(
