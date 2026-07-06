@@ -139,11 +139,27 @@ or replace the JSON Schema.
 
 ### `requirements_manage_norm_reference`
 
-Lists, searches, or creates Normbibliotek rows used by import. List/search
-default to active rows only. `includeArchived` exists for diagnostics, but
-archived norm references are rejected by import validation. Create delegates to
-the existing audited norm-reference mutation workflow and returns
-`structuredContent.normReference`.
+Lists, searches, gets, or creates Normbibliotek rows used by import, and lists
+connected library Krav IDs for one row. List/search default to active rows only.
+`includeArchived` exists for diagnostics, but archived norm references are
+rejected by import validation.
+
+List/search return full canonical Normbibliotek row properties in
+`structuredContent.result`; search rows may add `match` metadata. These normal
+discovery operations must not include connected krav rows, IDs, or counts. Keep
+that usage data behind `operation: "list_connected_requirement_ids"` so agents
+do not receive usage projections unless they ask for them.
+
+Exact read operations accept exactly one selector: numeric `id` or stable
+`normReferenceId`. `operation: "get"` returns
+`structuredContent.normReference` and includes archived rows. The
+`operation: "list_connected_requirement_ids"` call returns
+`structuredContent.requirements[]` with `{ id, uniqueId }` for connected
+library Krav, deduplicated across linked kravversioner and sorted by `uniqueId`.
+It does not include kravunderlagslokala krav.
+
+Create delegates to the existing audited norm-reference mutation workflow and
+returns `structuredContent.normReference`.
 
 ### `requirements_manage_import`
 

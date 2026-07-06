@@ -1031,7 +1031,7 @@ describe('trusted container release helpers', () => {
       'NGINX_IMAGE_REF=docker.io/library/nginx:1.31.1-alpine',
     )
     expect(releaseEnv).toContain(
-      'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.10.0.8-20260210-ubuntu',
+      'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.15.0.0-20260702-ubuntu',
     )
     expect(releaseEnv).toContain(
       'HSA_DIRECTORY_MOCK_IMAGE_REF=ghcr.io/viscalyx/kravhantering-hsa-directory-mock:replace-with-release-tag',

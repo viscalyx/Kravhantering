@@ -106,7 +106,12 @@ export type RequirementsAction =
     }
   | {
       kind: 'manage_norm_reference'
-      operation: 'create' | 'list' | 'search'
+      operation:
+        | 'create'
+        | 'get'
+        | 'list'
+        | 'list_connected_requirement_ids'
+        | 'search'
     }
   | {
       kind: 'list_specifications'

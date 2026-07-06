@@ -110,6 +110,7 @@ import {
 
 const repoRoot = process.cwd()
 const mcpServerPath = join(repoRoot, 'lib', 'mcp', 'server.ts')
+const normReferencesDalPath = join(repoRoot, 'lib', 'dal', 'norm-references.ts')
 const statusIconAllowlistPath = join(
   repoRoot,
   'lib',
@@ -254,6 +255,12 @@ const requirementsServicePath = join(
   'lib',
   'requirements',
   'service-requirements.ts',
+)
+const normReferenceServicePath = join(
+  repoRoot,
+  'lib',
+  'requirements',
+  'service-norm-references.ts',
 )
 const contributorGuidePath = join(
   repoRoot,
@@ -913,6 +920,86 @@ it('Scenario 25: requirements query catalog stays structured-first', () => {
     expect(testCase.arguments).not.toHaveProperty('limit')
     expect(testCase.arguments).not.toHaveProperty('offset')
   }
+})
+
+it('Scenario 26: norm-reference MCP discovery keeps connected krav IDs separate', () => {
+  const serverSource = readFileSync(mcpServerPath, 'utf8')
+  const serviceSource = readFileSync(normReferenceServicePath, 'utf8')
+  const dalSource = readFileSync(normReferencesDalPath, 'utf8')
+  const contributorGuideSource = readFileSync(contributorGuidePath, 'utf8')
+  const userGuideSource = readFileSync(userGuidePath, 'utf8')
+
+  const outputSchemaSource = sourceSlice(
+    serverSource,
+    'const NormReferenceOutputSchema',
+    'const RequirementVersionOutputSchema',
+  )
+  const inputSchemaSource = sourceSlice(
+    serverSource,
+    'function createManageNormReferenceSchema()',
+    'function createGetRequirementSchema()',
+  )
+  const normToolSource = sourceSlice(
+    serverSource,
+    "server.registerTool(\n    'requirements_manage_norm_reference'",
+    "server.registerTool(\n    'requirements_get_requirement'",
+  )
+  const connectedRequirementDalSource = sourceSlice(
+    dalSource,
+    'export async function listConnectedLibraryRequirementIds',
+    'export async function getNormReferenceUsage',
+  )
+
+  expect(inputSchemaSource).toContain("'get'")
+  expect(inputSchemaSource).toContain("'list_connected_requirement_ids'")
+  expect(inputSchemaSource).toContain('Provide exactly one of id')
+  expect(inputSchemaSource).toContain('normReferenceId')
+
+  expect(outputSchemaSource).toContain(
+    'ConnectedNormReferenceRequirementSchema',
+  )
+  expect(outputSchemaSource).toContain('requirements:')
+  expect(outputSchemaSource).toContain('uniqueId: z.string()')
+  expect(outputSchemaSource).toContain('result:')
+  expect(outputSchemaSource).toContain('normReference:')
+
+  expect(normToolSource).toContain('no connected krav rows')
+  expect(normToolSource).toContain('structuredContent.requirements')
+  expect(normToolSource).toContain(
+    'Connected requirement IDs returned in structuredContent.requirements.',
+  )
+
+  expect(serviceSource).toContain('toMcpNormReferenceRow')
+  expect(serviceSource).toContain('resolveNormReference')
+  expect(serviceSource).toContain('listConnectedLibraryRequirementIds')
+  expect(serviceSource).toContain('return { result: rows.map')
+  expect(serviceSource).not.toContain('linkedRequirementCount')
+  expect(serviceSource).not.toContain('countLinkedRequirements')
+  expect(serviceSource).not.toContain('getLinkedRequirements')
+
+  expect(connectedRequirementDalSource).toContain('SELECT DISTINCT')
+  expect(connectedRequirementDalSource).toContain(
+    'requirement_version_norm_references',
+  )
+  expect(connectedRequirementDalSource).toContain('INNER JOIN requirements')
+  expect(connectedRequirementDalSource).toContain(
+    'ORDER BY requirements.unique_id ASC',
+  )
+  expect(connectedRequirementDalSource).not.toContain(
+    'specification_local_requirement_norm_references',
+  )
+
+  expect(userGuideSource).toContain('Norm Reference Discovery')
+  expect(userGuideSource).toContain('list_connected_requirement_ids')
+  expect(userGuideSource).toContain(
+    'They intentionally do not include connected krav rows, IDs, or',
+  )
+  expect(contributorGuideSource).toContain(
+    'discovery operations must not include connected krav rows',
+  )
+  expect(contributorGuideSource).toContain(
+    'It does not include kravunderlagslokala krav.',
+  )
 })
 
 function resolveFunctionalTestsUrl(): string | null {
