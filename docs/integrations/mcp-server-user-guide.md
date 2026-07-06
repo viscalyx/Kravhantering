@@ -36,7 +36,8 @@ agents can use it reliably.
   Retrieve the canonical `Importinstruktion` Markdown for a `Kravimportfil`.
   This is Kravhantering guidance and does not override or replace the JSON Schema.
 - `requirements_manage_norm_reference`
-  List, search, or create Normbibliotek norm references. Use it to resolve
+  List, search, get, or create Normbibliotek norm references, and list the
+  connected library Krav IDs for one norm reference. Use list/search to resolve
   `normReferenceIds` before import validation; archived norm references are not
   valid for import.
 - `requirements_manage_import`
@@ -126,6 +127,44 @@ agents can use it reliably.
   Read-only HTML view for MCP Apps-capable clients.
 
 Add `?version=<number>` to either URI to target a specific version.
+
+## Norm Reference Discovery
+
+Use `requirements_manage_norm_reference` with `operation: "list"` or
+`operation: "search"` for normal discovery. These operations return full
+Normbibliotek row properties in `structuredContent.result`; search rows may add
+`match` metadata. They intentionally do not include connected krav rows, IDs, or
+usage counts.
+
+For an exact row, including an archived norm reference, call
+`operation: "get"` with exactly one selector:
+
+```json
+{ "operation": "get", "id": 7 }
+```
+
+or:
+
+```json
+{ "operation": "get", "normReferenceId": "ISO-27001" }
+```
+
+To inspect connected library Krav, call
+`operation: "list_connected_requirement_ids"` with the same selector shape.
+The response is:
+
+```json
+{
+  "requirements": [
+    { "id": 2, "uniqueId": "REQ-0002" },
+    { "id": 10, "uniqueId": "REQ-0010" }
+  ]
+}
+```
+
+`uniqueId` is the stable Krav-ID. The connected-ID operation includes only
+library Krav, deduplicated across linked kravversioner and sorted by `uniqueId`;
+kravunderlagslokala krav are not included.
 
 ## MCP Requirement Import Flow
 

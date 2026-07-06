@@ -492,3 +492,20 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   inputs, wrapper fields, and copy paths?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 25: requirements query catalog stays structured-first"`
+
+## 33. Scenario 26: norm-reference MCP discovery keeps connected krav IDs separate
+
+- **Code:** `lib/mcp/server.ts`,
+  `lib/requirements/service-norm-references.ts`,
+  `lib/dal/norm-references.ts`, and the MCP integration docs.
+- **Spec:** `docs/integrations/mcp-server-user-guide.md`,
+  `docs/integrations/mcp-server-contributor-guide.md`, and issue #405.
+- **Req tag:**
+  `[Req: formal — issue #405 norm-reference MCP connected krav discovery]`
+- **Question:** Do norm-reference list/search operations return canonical
+  Normbibliotek properties without connected krav rows, IDs, or counts, while
+  exact `get` and `list_connected_requirement_ids` operations require exactly
+  one selector and keep connected library Krav IDs in the separate
+  `requirements` output?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 26: norm-reference MCP discovery keeps connected krav IDs separate"`
