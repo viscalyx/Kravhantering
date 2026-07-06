@@ -87,7 +87,9 @@ export const IMAGE_CONFIGS = {
       '.devcontainer/docker-compose.yml',
       '.devcontainer/elevated/docker-compose.yml',
       'containers/production/env/release.env.template',
+      'scripts/__tests__/container-release.test.mjs',
     ],
+    dependentLockPaths: ['container-hsa-integration-support.lock.json'],
     image: 'docker.io/kong/kong-gateway',
     laneDescription: lane => `Kong Gateway ${lane}.x`,
     laneFromVersion: version => String(version.major),
@@ -238,6 +240,45 @@ function readJson(filePath) {
 
 function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`)
+}
+
+export function updateDependentServiceLock(lock, serviceRecord) {
+  if (!Array.isArray(lock?.services)) {
+    throw new Error('Dependent image lock must contain services[].')
+  }
+
+  let found = false
+  const services = lock.services.map(service => {
+    if (service?.name !== serviceRecord.name) return service
+    found = true
+    return {
+      ...service,
+      image: serviceRecord.image,
+      imageId: serviceRecord.imageId,
+      manifestDigest: serviceRecord.manifestDigest,
+      role: serviceRecord.role,
+      source: serviceRecord.source,
+      tag: serviceRecord.tag,
+    }
+  })
+
+  if (!found) {
+    throw new Error(
+      `Dependent image lock is missing service "${serviceRecord.name}".`,
+    )
+  }
+
+  return {
+    ...lock,
+    services,
+  }
+}
+
+function updateDependentLockFile(filePath, serviceRecord) {
+  writeJson(
+    filePath,
+    updateDependentServiceLock(readJson(filePath), serviceRecord),
+  )
 }
 
 function branchName(config, lane) {
@@ -672,6 +713,10 @@ function updateFiles(config, currentLock, candidate, identity) {
     tag: candidate.version.tag,
   }
   writeJson(config.lockPath, nextLock)
+
+  for (const filePath of config.dependentLockPaths ?? []) {
+    updateDependentLockFile(filePath, nextLock)
+  }
 
   for (const filePath of config.companionFiles) {
     replaceImageRef(

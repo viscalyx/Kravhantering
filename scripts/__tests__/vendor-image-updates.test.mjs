@@ -4,6 +4,7 @@ import {
   IMAGE_CONFIGS,
   parseArgs,
   parseKongTag,
+  updateDependentServiceLock,
 } from '../../.github/workflows/vendor-image-updates.mjs'
 
 describe('vendor image updater policy', () => {
@@ -31,6 +32,12 @@ describe('vendor image updater policy', () => {
     )
     expect(IMAGE_CONFIGS.kong.companionFiles).toContain(
       'containers/production/env/release.env.template',
+    )
+    expect(IMAGE_CONFIGS.kong.companionFiles).toContain(
+      'scripts/__tests__/container-release.test.mjs',
+    )
+    expect(IMAGE_CONFIGS.kong.dependentLockPaths).toContain(
+      'container-hsa-integration-support.lock.json',
     )
     expect(parseArgs(['--image', 'kong'], {})).toMatchObject({
       image: 'kong',
@@ -65,5 +72,54 @@ describe('vendor image updater policy', () => {
         identity,
       ),
     ).toBe('docker.io/kong/kong-gateway:3.11.1.0-20260601-ubuntu')
+  })
+
+  it('updates dependent service locks from the primary vendor lock', () => {
+    const lock = {
+      schemaVersion: 1,
+      services: [
+        {
+          image: 'docker.io/kong/kong-gateway',
+          imageId: 'sha256:old-image',
+          manifestDigest: 'sha256:old-manifest',
+          name: 'kong',
+          role: 'api-management',
+          source: 'https://hub.docker.com/r/kong/kong-gateway',
+          tag: '3.10.0.8-20260210-ubuntu',
+        },
+        {
+          image: 'ghcr.io/viscalyx/kravhantering-hsa-person-lookup-adapter',
+          imageId: 'sha256:adapter-image',
+          manifestDigest: 'sha256:adapter-manifest',
+          name: 'hsa-person-lookup-adapter',
+          role: 'hsa-person-lookup-adapter',
+          source: 'ghcr-release',
+          tag: '1.2.3',
+        },
+      ],
+    }
+
+    const updated = updateDependentServiceLock(lock, {
+      image: 'docker.io/kong/kong-gateway',
+      imageId: 'sha256:new-image',
+      manifestDigest: 'sha256:new-manifest',
+      name: 'kong',
+      role: 'api-management',
+      source: 'https://hub.docker.com/r/kong/kong-gateway',
+      tag: '3.15.0.0-20260702-ubuntu',
+    })
+
+    expect(updated.services).toEqual([
+      {
+        image: 'docker.io/kong/kong-gateway',
+        imageId: 'sha256:new-image',
+        manifestDigest: 'sha256:new-manifest',
+        name: 'kong',
+        role: 'api-management',
+        source: 'https://hub.docker.com/r/kong/kong-gateway',
+        tag: '3.15.0.0-20260702-ubuntu',
+      },
+      lock.services[1],
+    ])
   })
 })
