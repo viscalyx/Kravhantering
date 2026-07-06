@@ -2,7 +2,7 @@ name: kravhantering-sqlserver-dev
 
 services:
   db:
-    image: mcr.microsoft.com/mssql/server:2025-CU5-ubuntu-24.04
+    image: mcr.microsoft.com/mssql/server:2025-CU6-ubuntu-24.04
     environment:
       ACCEPT_EULA: ${ACCEPT_EULA:-Y}
       MSSQL_PID: ${MSSQL_PID:-Developer}

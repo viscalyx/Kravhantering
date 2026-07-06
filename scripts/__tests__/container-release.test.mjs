@@ -1031,6 +1031,9 @@ describe('trusted container release helpers', () => {
       'NGINX_IMAGE_REF=docker.io/library/nginx:1.31.1-alpine',
     )
     expect(releaseEnv).toContain(
+      'SQLSERVER_IMAGE_REF=mcr.microsoft.com/mssql/server:2025-CU6-ubuntu-24.04',
+    )
+    expect(releaseEnv).toContain(
       'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.15.0.0-20260702-ubuntu',
     )
     expect(releaseEnv).toContain(
@@ -1101,7 +1104,7 @@ describe('trusted container release helpers', () => {
             name: 'sqlserver',
             role: 'database',
             source: 'mcr',
-            tag: '2025-CU5-ubuntu-24.04',
+            tag: '2025-CU6-ubuntu-24.04',
           },
           {
             imageId: 'sha256:keycloak-image',
