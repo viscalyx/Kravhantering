@@ -446,9 +446,18 @@ describe('handleRequirementsMcpRequest', () => {
       expect(importOutputSchemaText).toContain('specificationCode')
 
       expect(normTool).toBeDefined()
+      expect(normTool?.description).toContain('list_connected_requirement_ids')
+      expect(normTool?.description).toContain('no connected krav rows')
       expect(normTool?.description).toContain('Archived norm references')
-      expect(JSON.stringify(normTool?.inputSchema)).toContain('create')
-      expect(JSON.stringify(normTool?.outputSchema)).toContain('match')
+      const normInputSchemaText = JSON.stringify(normTool?.inputSchema)
+      expect(normInputSchemaText).toContain('create')
+      expect(normInputSchemaText).toContain('get')
+      expect(normInputSchemaText).toContain('list_connected_requirement_ids')
+      expect(normInputSchemaText).toContain('normReferenceId')
+      const normOutputSchemaText = JSON.stringify(normTool?.outputSchema)
+      expect(normOutputSchemaText).toContain('match')
+      expect(normOutputSchemaText).toContain('requirements')
+      expect(normOutputSchemaText).toContain('uniqueId')
     })
 
     it('describes specification copy paths for MCP clients', async () => {
@@ -819,6 +828,131 @@ describe('handleRequirementsMcpRequest', () => {
       expect.anything(),
       { locale: 'en' },
     )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('gets a norm reference through MCP by numeric id', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+    fakeService.manageNormReference.mockResolvedValueOnce({
+      normReference: {
+        createdAt: '2026-01-01T00:00:00.000Z',
+        id: 7,
+        isArchived: true,
+        issuer: 'ISO',
+        name: 'ISO 27001',
+        normReferenceId: 'ISO-27001',
+        reference: 'ISO/IEC 27001:2022',
+        type: 'Standard',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        uri: null,
+        version: '2022',
+      },
+    })
+
+    const result = await client.callTool({
+      arguments: {
+        id: 7,
+        operation: 'get',
+      },
+      name: 'requirements_manage_norm_reference',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(result.content).toEqual([
+      expect.objectContaining({
+        text: 'Norm reference returned in structuredContent.normReference.',
+        type: 'text',
+      }),
+    ])
+    expect(result.structuredContent).toMatchObject({
+      normReference: {
+        id: 7,
+        isArchived: true,
+        normReferenceId: 'ISO-27001',
+      },
+    })
+    expect(fakeService.manageNormReference).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        id: 7,
+        operation: 'get',
+      },
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('lists connected library requirement IDs through MCP', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+    fakeService.manageNormReference.mockResolvedValueOnce({
+      requirements: [
+        { id: 2, uniqueId: 'REQ-0002' },
+        { id: 10, uniqueId: 'REQ-0010' },
+      ],
+    })
+
+    const result = await client.callTool({
+      arguments: {
+        normReferenceId: 'ISO-27001',
+        operation: 'list_connected_requirement_ids',
+      },
+      name: 'requirements_manage_norm_reference',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(result.content).toEqual([
+      expect.objectContaining({
+        text: 'Connected requirement IDs returned in structuredContent.requirements.',
+        type: 'text',
+      }),
+    ])
+    expect(result.structuredContent).toEqual({
+      requirements: [
+        { id: 2, uniqueId: 'REQ-0002' },
+        { id: 10, uniqueId: 'REQ-0010' },
+      ],
+    })
+    expect(fakeService.manageNormReference).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        normReferenceId: 'ISO-27001',
+        operation: 'list_connected_requirement_ids',
+      },
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('rejects ambiguous norm-reference selectors before service delegation', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    const result = await client.callTool({
+      arguments: {
+        id: 7,
+        normReferenceId: 'ISO-27001',
+        operation: 'get',
+      },
+      name: 'requirements_manage_norm_reference',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          text: expect.stringContaining(
+            'Provide exactly one of id or normReferenceId',
+          ),
+        }),
+      ]),
+    )
+    expect(fakeService.manageNormReference).not.toHaveBeenCalled()
 
     await client.close()
     await transport.close()
