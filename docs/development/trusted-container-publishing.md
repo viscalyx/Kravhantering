@@ -99,9 +99,11 @@ platform manifest digest and the image config digest in the matching
 `containers/<image>/image.lock.json` file. Keycloak updates also keep
 `docker-compose.idp.yml`, both devcontainer Compose files and the developer
 auth documentation on the same tag. Kong updates keep both devcontainer
-Compose files digest-pinned and keep the public direct-pull example in
-`containers/production/env/release.env.template` aligned with the lock. SQL
-Server updates keep
+Compose files digest-pinned, keep
+`container-hsa-integration-support.lock.json` synchronized with
+`containers/kong/image.lock.json`, and keep the public direct-pull example in
+`containers/production/env/release.env.template` plus its release-helper test
+assertion aligned with the lock. SQL Server updates keep
 `docker-compose.sqlserver.yml` and both devcontainer Compose files on the same
 tag. nginx updates keep the public direct-pull example in
 `containers/production/env/release.env.template` aligned with the lock; nginx
