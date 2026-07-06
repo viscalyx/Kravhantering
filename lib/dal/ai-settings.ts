@@ -220,14 +220,12 @@ function adminAiSettingsFromSettings(
   settings: AiGenerationSettings,
   env: NodeJS.ProcessEnv = process.env,
 ): AdminAiSettings {
-  const disabledByEnvironment = isAiRequirementGenerationDisabled(env)
+  const availability = resolveAiGenerationAvailability(settings, env)
   return {
     aiSafetyForensicLoggingEnabled: settings.aiSafetyForensicLoggingEnabled,
     aiSafetyRuleCacheTtlSeconds: settings.aiSafetyRuleCacheTtlSeconds,
     constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
-    disabledByEnvironment,
-    effectiveRequirementGenerationEnabled:
-      settings.requirementGenerationEnabled && !disabledByEnvironment,
+    ...availability,
     mcpImportMaxRows: settings.mcpImportMaxRows,
     mcpImportValidationTtlMinutes: settings.mcpImportValidationTtlMinutes,
     mcpMaxRequestBytes: settings.mcpMaxRequestBytes,
