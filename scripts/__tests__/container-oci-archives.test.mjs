@@ -65,13 +65,13 @@ function stackLock() {
       service(
         'sqlserver',
         'mcr.microsoft.com/mssql/server',
-        '2025-CU5-ubuntu-24.04',
+        '2025-CU6-ubuntu-24.04',
         'sha256:sqlserver',
       ),
       service(
         'keycloak',
         'quay.io/keycloak/keycloak',
-        '26.6.3-0',
+        '26.6.4-1',
         'sha256:keycloak',
       ),
     ],

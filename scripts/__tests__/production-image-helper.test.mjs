@@ -74,14 +74,14 @@ function writeLockFile(dir) {
       service(
         'sqlserver',
         'registry.example/sqlserver',
-        '2025-CU5-ubuntu-24.04',
+        '2025-CU6-ubuntu-24.04',
         'sha256:sql-manifest',
         'sha256:sql-image',
       ),
       service(
         'keycloak',
         'registry.example/keycloak',
-        '26.6.3-0',
+        '26.6.4-1',
         'sha256:keycloak-manifest',
         'sha256:keycloak-image',
       ),
@@ -115,7 +115,7 @@ function writeHsaIntegrationLockFile(dir) {
       service(
         'kong',
         'registry.example/kong',
-        '3.10.0.8-20260210-ubuntu',
+        '3.15.0.0-20260702-ubuntu',
         'sha256:kong-manifest',
         'sha256:kong-image',
       ),
@@ -138,10 +138,10 @@ function writeEnvFile(dir, overrides = {}) {
     HSA_DIRECTORY_MOCK_IMAGE_REF: 'registry.example/hsa-directory-mock:1.2.3',
     HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF:
       'registry.example/hsa-person-lookup-adapter:1.2.3',
-    KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.6.3-0',
-    KONG_IMAGE_REF: 'registry.example/kong:3.10.0.8-20260210-ubuntu',
+    KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.6.4-1',
+    KONG_IMAGE_REF: 'registry.example/kong:3.15.0.0-20260702-ubuntu',
     NGINX_IMAGE_REF: 'registry.example/nginx:1.31.2-alpine',
-    SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025-CU5-ubuntu-24.04',
+    SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025-CU6-ubuntu-24.04',
     ...overrides,
   }
   const envPath = path.join(dir, 'release.env')
@@ -308,7 +308,7 @@ describe('production image helper', () => {
     expect(result.stdout).toContain('Verified hsa-person-lookup-adapter')
     expect(result.stdout).toContain('Verified hsa-directory-mock')
     expect(result.log).toContain(
-      'image inspect registry.example/kong:3.10.0.8-20260210-ubuntu --format {{.Id}}',
+      'image inspect registry.example/kong:3.15.0.0-20260702-ubuntu --format {{.Id}}',
     )
     expect(result.log).toContain(
       'image inspect registry.example/hsa-directory-mock:1.2.3 --format {{.Id}}',

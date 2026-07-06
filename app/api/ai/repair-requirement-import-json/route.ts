@@ -11,7 +11,6 @@ import {
 import {
   recordAiSafetyBlock,
   recordAiSafetyFilterFailure,
-  screenAiInputDetailed,
   screenAiOutputDetailed,
 } from '@/lib/ai/safety'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
@@ -36,6 +35,7 @@ import {
   checkAiRequirementImportThrottle,
   createAiRequirementImportThrottleResponse,
   formatAiSafetyBlockedMessage,
+  guardAiInput,
   MAX_AI_INSTRUCTION_LENGTH,
   requirementImportScopeAction,
   validateRequirementImportScope,
@@ -149,52 +149,34 @@ export const POST = secureMutationRoute({
       )
     }
 
-    let inputSafetyScreening: Awaited<ReturnType<typeof screenAiInputDetailed>>
-    try {
-      inputSafetyScreening = await screenAiInputDetailed(db, [
+    const inputGuardResponse = await guardAiInput({
+      blockedStep: 'repair_input',
+      context,
+      db,
+      locale: body.locale,
+      onBlockedInput: () => recordRepairEvent('failure', 400),
+      onSafetyFilterFailure: error => {
+        recordSafetyFilterFailure(error)
+        recordRepairEvent('failure', 503)
+        return applyResponseCorrelationHeaders(
+          Response.json(
+            { error: AI_PROVIDER_UNAVAILABLE_MESSAGE },
+            { status: 503 },
+          ),
+          context,
+        )
+      },
+      operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
+      parts: [
         { label: 'rawJson', text: body.rawJson },
         ...body.errors.map((error, index) => ({
           label: `errors.${index}`,
           text: error,
         })),
-      ])
-    } catch (error) {
-      recordSafetyFilterFailure(error)
-      recordRepairEvent('failure', 503)
-      return applyResponseCorrelationHeaders(
-        Response.json(
-          { error: AI_PROVIDER_UNAVAILABLE_MESSAGE },
-          { status: 503 },
-        ),
-        context,
-      )
-    }
-    if (!inputSafetyScreening.decision.allowed) {
-      await recordAiSafetyBlock({
-        blockedStep: 'repair_input',
-        context,
-        db,
-        direction: 'input',
-        event: 'ai.input_safety.blocked',
-        operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
-        request,
-        screening: inputSafetyScreening,
-      })
-      recordRepairEvent('failure', 400)
-      return applyResponseCorrelationHeaders(
-        Response.json(
-          {
-            error: formatAiSafetyBlockedMessage(
-              body.locale,
-              'inputSafetyBlocked',
-              inputSafetyScreening.decision,
-            ),
-          },
-          { status: 400 },
-        ),
-        context,
-      )
-    }
+      ],
+      request,
+    })
+    if (inputGuardResponse) return inputGuardResponse
 
     try {
       const modelCapabilities = await resolveOpenRouterModelCapabilities(

@@ -1031,7 +1031,10 @@ describe('trusted container release helpers', () => {
       'NGINX_IMAGE_REF=docker.io/library/nginx:1.31.2-alpine',
     )
     expect(releaseEnv).toContain(
-      'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.10.0.8-20260210-ubuntu',
+      'SQLSERVER_IMAGE_REF=mcr.microsoft.com/mssql/server:2025-CU6-ubuntu-24.04',
+    )
+    expect(releaseEnv).toContain(
+      'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.15.0.0-20260702-ubuntu',
     )
     expect(releaseEnv).toContain(
       'HSA_DIRECTORY_MOCK_IMAGE_REF=ghcr.io/viscalyx/kravhantering-hsa-directory-mock:replace-with-release-tag',
@@ -1101,7 +1104,7 @@ describe('trusted container release helpers', () => {
             name: 'sqlserver',
             role: 'database',
             source: 'mcr',
-            tag: '2025-CU5-ubuntu-24.04',
+            tag: '2025-CU6-ubuntu-24.04',
           },
           {
             imageId: 'sha256:keycloak-image',
@@ -1110,7 +1113,7 @@ describe('trusted container release helpers', () => {
             name: 'keycloak',
             role: 'identity-provider',
             source: 'quay',
-            tag: '26.6.3-0',
+            tag: '26.6.4-1',
           },
         ],
       }
@@ -1138,7 +1141,7 @@ describe('trusted container release helpers', () => {
             name: 'kong',
             role: 'api-management',
             source: 'docker-hub',
-            tag: '3.10.0.8-20260210-ubuntu',
+            tag: '3.15.0.0-20260702-ubuntu',
           },
           {
             imageId: 'sha256:adapter-image',

@@ -49,7 +49,7 @@ describe('container stack helpers', () => {
       name: 'kong',
       role: 'api-management',
       source: 'docker-hub',
-      tag: '3.10.0.8-20260210-ubuntu',
+      tag: '3.15.0.0-20260702-ubuntu',
     }
   }
 
@@ -145,7 +145,7 @@ describe('container stack helpers', () => {
             'sqlserver',
             'database',
             'mcr.microsoft.com/mssql/server',
-            '2025-CU5-ubuntu-24.04',
+            '2025-CU6-ubuntu-24.04',
             'sha256:sqlserver',
             'sha256:sqlserver-image',
           ),
@@ -156,7 +156,7 @@ describe('container stack helpers', () => {
             'keycloak',
             'identity-provider',
             'quay.io/keycloak/keycloak',
-            '26.6.3-0',
+            '26.6.4-1',
             'sha256:keycloak',
             'sha256:keycloak-image',
           ),

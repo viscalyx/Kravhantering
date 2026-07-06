@@ -275,9 +275,17 @@ const NormReferenceOutputSchema = z
   })
   .strict()
 
+const ConnectedNormReferenceRequirementSchema = z
+  .object({
+    id: z.number(),
+    uniqueId: z.string(),
+  })
+  .strict()
+
 const ManageNormReferenceOutputSchema = z
   .object({
     normReference: NormReferenceOutputSchema.optional(),
+    requirements: z.array(ConnectedNormReferenceRequirementSchema).optional(),
     result: z.array(NormReferenceOutputSchema).optional(),
   })
   .strict()
@@ -286,10 +294,16 @@ const ManageNormReferenceOutputSchema = z
       rejectUnexpectedFields(ctx, val, ['result'])
       return
     }
+    if (Object.hasOwn(val, 'requirements')) {
+      rejectUnexpectedFields(ctx, val, ['requirements'])
+      return
+    }
     requireField(ctx, val, 'normReference')
     rejectUnexpectedFields(ctx, val, ['normReference'])
   })
-  .describe('Normbibliotek management result. Shape depends on operation.')
+  .describe(
+    'Normbibliotek management result. Shape depends on operation: result, normReference, or requirements.',
+  )
 
 const RequirementVersionOutputSchema = z
   .record(z.string(), z.unknown())
@@ -936,6 +950,14 @@ function createManageImportSchema() {
 function createManageNormReferenceSchema() {
   return z
     .object({
+      id: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          'Numeric norm reference database ID. For get/list_connected_requirement_ids, provide exactly one of id or normReferenceId.',
+        ),
       includeArchived: z
         .boolean()
         .optional()
@@ -951,10 +973,16 @@ function createManageNormReferenceSchema() {
         .max(255)
         .optional()
         .describe(
-          'Stable norm reference business ID. If omitted, the server assigns one using the existing REST creation rules.',
+          'Stable norm reference business ID. If omitted for create, the server assigns one using the existing REST creation rules. For get/list_connected_requirement_ids, provide exactly one of id or normReferenceId.',
         ),
       operation: z
-        .enum(['list', 'search', 'create'])
+        .enum([
+          'list',
+          'search',
+          'create',
+          'get',
+          'list_connected_requirement_ids',
+        ])
         .describe('Norm reference management operation.'),
       reference: z.string().trim().min(1).max(255).optional(),
       search: z
@@ -983,6 +1011,25 @@ function createManageNormReferenceSchema() {
           'operation',
           'search',
         ])
+        return
+      }
+      if (
+        val.operation === 'get' ||
+        val.operation === 'list_connected_requirement_ids'
+      ) {
+        const hasId = Object.hasOwn(val, 'id') && val.id !== undefined
+        const hasNormReferenceId =
+          Object.hasOwn(val, 'normReferenceId') &&
+          val.normReferenceId !== undefined
+        if (hasId === hasNormReferenceId) {
+          ctx.addIssue({
+            code: 'custom',
+            message:
+              'Provide exactly one of id or normReferenceId for this operation.',
+            path: ['id'],
+          })
+        }
+        rejectUnexpectedFields(ctx, val, ['id', 'normReferenceId', 'operation'])
         return
       }
 
@@ -1718,7 +1765,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'List, search, or create Normbibliotek norm references used by requirement import. Use list/search to resolve normReferenceIds before generating a Kravimportfil. Archived norm references are excluded by default and are not valid for import.',
+        'List, search, get, create, or inspect connected library Krav IDs for Normbibliotek norm references. Use list/search to resolve normReferenceIds before generating a Kravimportfil; these discovery operations return full norm-reference properties but no connected krav rows, IDs, or counts. Use get with exactly one of id or normReferenceId for an exact lookup, including archived rows, and use list_connected_requirement_ids with the same selector to return connected library Krav IDs as {id, uniqueId}. Archived norm references are excluded from list/search by default and are not valid for import.',
       inputSchema: createManageNormReferenceSchema(),
       outputSchema: ManageNormReferenceOutputSchema,
       title: 'Manage Norm Reference',
@@ -1735,7 +1782,9 @@ export function createKravhanteringMcpServer(
               text:
                 'result' in payload
                   ? 'Structured result returned in structuredContent.result.'
-                  : 'Norm reference returned in structuredContent.normReference.',
+                  : 'requirements' in payload
+                    ? 'Connected requirement IDs returned in structuredContent.requirements.'
+                    : 'Norm reference returned in structuredContent.normReference.',
               type: 'text',
             },
           ],
