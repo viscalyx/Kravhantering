@@ -38,7 +38,7 @@ The devfile defines three containers in a single pod:
 | --------- | ------------------------------------------------------ | ---------------------------------------------------------------------------- |
 | `tools`   | `registry.redhat.io/devspaces/udi-rhel9:latest`        | Universal Developer Image with git, gh, zsh, podman, python3, ripgrep, nvm.  |
 | `db`      | `mcr.microsoft.com/mssql/rhel/server:2025-latest`      | SQL Server 2025 Developer edition for Red Hat environments.                  |
-| `idp`     | `quay.io/keycloak/keycloak:26.6.3-0`                   | Keycloak with the `kravhantering-dev` realm imported on every start.         |
+| `idp`     | `quay.io/keycloak/keycloak:26.6.4-1`                   | Keycloak with the `kravhantering-dev` realm imported on every start.         |
 
 <!-- markdownlint-enable MD013 -->
 

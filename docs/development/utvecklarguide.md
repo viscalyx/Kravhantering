@@ -288,7 +288,7 @@ används behöver motsvarande pipelines finnas där.
   release-smoke innan ändringen slås ihop.
 - `Vendor Image Updates` (`.github/workflows/vendor-image-updates.yml`) körs
   schemalagt och manuellt. Den kontrollerar låsta nginx-, SQL Server-,
-  Keycloak- och Kong-avbildningar och skapar eller uppdaterar PR:er.
+  Keycloak- och Kong-avbildningar och skapar versionsspecifika PR:er.
 
 #### Tests
 

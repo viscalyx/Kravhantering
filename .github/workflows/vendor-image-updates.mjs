@@ -293,8 +293,8 @@ function updateDependentLockFile(filePath, serviceRecord) {
   )
 }
 
-function branchName(config, lane) {
-  return `${BRANCH_PREFIX}/${config.name}-${lane}`
+export function branchName(config, version) {
+  return `${BRANCH_PREFIX}/${config.name}-${version.tag}`
 }
 
 function escapeRegExp(value) {
@@ -534,7 +534,7 @@ async function resolveImageIdentity(config, tag) {
   }
 }
 
-function selectCandidates(config, tags, currentLock, includeCurrent) {
+export function selectCandidates(config, tags, currentLock, includeCurrent) {
   const currentVersion = config.parseTag(currentLock.tag)
   if (!currentVersion) {
     throw new Error(
@@ -559,7 +559,7 @@ function selectCandidates(config, tags, currentLock, includeCurrent) {
     const previous = latestByLane.get(lane)
     if (!previous || compareVersions(config, version, previous.version) > 0) {
       latestByLane.set(lane, {
-        branch: branchName(config, lane),
+        branch: branchName(config, version),
         lane,
         version,
       })
@@ -571,6 +571,7 @@ function selectCandidates(config, tags, currentLock, includeCurrent) {
       compareLanes(config, left.lane, right.lane),
     ),
     currentLane,
+    currentVersion,
   }
 }
 
@@ -618,6 +619,29 @@ function configureGit() {
   run('git', ['fetch', 'origin', MAIN_BRANCH])
 }
 
+function remoteBranchExists(branch) {
+  const result = tryRun('git', [
+    'ls-remote',
+    '--exit-code',
+    '--heads',
+    'origin',
+    branch,
+  ])
+  if (result.ok) return true
+  if (result.error?.status === 2) return false
+  throw result.error
+}
+
+function updateBranchRemoteTrackingRef(branch) {
+  const remoteTrackingRef = `refs/remotes/origin/${branch}`
+  if (!remoteBranchExists(branch)) {
+    run('git', ['update-ref', '-d', remoteTrackingRef])
+    return
+  }
+
+  run('git', ['fetch', 'origin', `+refs/heads/${branch}:${remoteTrackingRef}`])
+}
+
 function gitStatusPorcelain() {
   return run('git', ['status', '--porcelain']).trim()
 }
@@ -628,11 +652,12 @@ function changedFiles() {
   return output.split(/\r?\n/u).filter(Boolean).sort()
 }
 
-function checkoutLaneBranch(branch) {
+export function checkoutUpdateBranch(branch) {
+  updateBranchRemoteTrackingRef(branch)
   run('git', ['switch', '--force-create', branch, `origin/${MAIN_BRANCH}`])
 }
 
-function pushLaneBranch(branch) {
+function pushUpdateBranch(branch) {
   run('git', ['push', '--force-with-lease', 'origin', `HEAD:${branch}`], {
     stdio: 'inherit',
   })
@@ -659,7 +684,7 @@ function listOpenAutomationPrs(config) {
   return JSON.parse(output).filter(pr => pr.headRefName?.startsWith(prefix))
 }
 
-function findOpenPr(branch) {
+export function findOpenPr(branch) {
   const output = run('gh', [
     'pr',
     'list',
@@ -680,6 +705,42 @@ function laneFromBranch(config, branch) {
   return readNonEmpty(lane) ?? null
 }
 
+export function stalePrClosure(
+  config,
+  currentVersion,
+  branch,
+  expectedBranches,
+) {
+  if (expectedBranches.has(branch)) return null
+
+  const suffix = laneFromBranch(config, branch)
+  if (!suffix) return null
+
+  const version = config.parseTag(suffix)
+  if (version) {
+    const comparison = compareVersions(config, version, currentVersion)
+    const reason =
+      comparison < 0
+        ? `${config.name} has already advanced past ${version.tag} on main.`
+        : `${config.name} on main already contains this update version, or the upstream tag is no longer selected.`
+    return {
+      reason,
+      summary: `${config.name} ${version.tag}: ${reason}`,
+    }
+  }
+
+  const currentLane = config.laneFromVersion(currentVersion)
+  const comparison = compareLanes(config, suffix, currentLane)
+  const reason =
+    comparison < 0
+      ? `${config.name} has already advanced past ${config.laneDescription(suffix)} on main.`
+      : `${config.name} automation branch ${branch} uses retired lane branch naming or an unsupported version tag.`
+  return {
+    reason,
+    summary: `${config.name} ${suffix}: ${reason}`,
+  }
+}
+
 function closePr(pr, branch, comment) {
   const result = tryRun(
     'gh',
@@ -694,18 +755,18 @@ function closePr(pr, branch, comment) {
   }
 }
 
-function closeStalePrs(config, currentLane, expectedBranches, results) {
+function closeStalePrs(config, currentVersion, expectedBranches, results) {
   for (const pr of listOpenAutomationPrs(config)) {
-    const lane = laneFromBranch(config, pr.headRefName)
-    if (!lane || expectedBranches.has(pr.headRefName)) continue
+    const closure = stalePrClosure(
+      config,
+      currentVersion,
+      pr.headRefName,
+      expectedBranches,
+    )
+    if (!closure) continue
 
-    const comparison = compareLanes(config, lane, currentLane)
-    const reason =
-      comparison < 0
-        ? `${config.name} has already advanced past ${config.laneDescription(lane)} on main.`
-        : `${config.name} on main already contains this update lane, or the upstream tag is no longer selected.`
-    closePr(pr, pr.headRefName, reason)
-    results.closed.push(`${config.name} ${lane}: ${reason}`)
+    closePr(pr, pr.headRefName, closure.reason)
+    results.closed.push(closure.summary)
   }
 }
 
@@ -832,9 +893,11 @@ export function renderVendorImagePrTemplate(template, details) {
 
 export function prBody(config, candidate, currentLock, identity, files) {
   const description = [
-    `### ${config.laneDescription(candidate.lane)}`,
+    `### ${config.name} ${candidate.version.tag}`,
     '',
-    `Updates the ${config.name} vendor image lock lane from main.`,
+    `Updates the ${config.name} vendor image lock from main to ${candidate.version.tag}.`,
+    '',
+    `Lane: \`${config.laneDescription(candidate.lane)}\``,
     '',
     '| Field | Previous | Proposed |',
     '| --- | --- | --- |',
@@ -908,39 +971,79 @@ function createOrUpdatePr(branch, title, body) {
   return 'created'
 }
 
-async function processCandidate(config, currentLock, candidate, results) {
-  const identity = await resolveImageIdentity(config, candidate.version.tag)
+const PROCESS_CANDIDATE_DEPENDENCIES = {
+  changedFiles,
+  checkoutUpdateBranch,
+  closePr,
+  createOrUpdatePr,
+  deleteRemoteBranch,
+  findOpenPr,
+  prBody,
+  prTitle,
+  pushUpdateBranch,
+  resolveImageIdentity,
+  run,
+  updateFiles,
+}
 
-  checkoutLaneBranch(candidate.branch)
-  updateFiles(config, currentLock, candidate, identity)
+export async function processCandidate(
+  config,
+  currentLock,
+  candidate,
+  results,
+  dependencies,
+) {
+  const deps = {
+    ...PROCESS_CANDIDATE_DEPENDENCIES,
+    ...dependencies,
+  }
+  const existingPr = deps.findOpenPr(candidate.branch)
+  if (existingPr) {
+    results.unchanged.push(
+      `${config.name}: ${candidate.version.tag} already has PR #${existingPr.number}`,
+    )
+    return
+  }
 
-  const files = changedFiles()
+  const identity = await deps.resolveImageIdentity(
+    config,
+    candidate.version.tag,
+  )
+
+  deps.checkoutUpdateBranch(candidate.branch)
+  deps.updateFiles(config, currentLock, candidate, identity)
+
+  const files = deps.changedFiles()
   if (files.length === 0) {
-    const pr = findOpenPr(candidate.branch)
+    const pr = deps.findOpenPr(candidate.branch)
     if (pr) {
-      closePr(
+      deps.closePr(
         pr,
         candidate.branch,
         `${config.name} on main already contains ${candidate.version.tag}.`,
       )
       results.closed.push(`${config.name} ${candidate.lane}: already on main`)
     } else {
-      deleteRemoteBranch(candidate.branch)
+      deps.deleteRemoteBranch(candidate.branch)
       results.unchanged.push(`${config.name} ${candidate.lane}`)
     }
     return
   }
 
-  run('git', ['add', ...files])
-  run('git', ['commit', '-m', prTitle(config, candidate, currentLock)], {
-    stdio: 'inherit',
-  })
-  pushLaneBranch(candidate.branch)
+  deps.run('git', ['add', ...files])
+  deps.run(
+    'git',
+    ['commit', '-m', deps.prTitle(config, candidate, currentLock)],
+    {
+      stdio: 'inherit',
+    },
+  )
+  deps.pushUpdateBranch(candidate.branch)
 
-  const body = prBody(config, candidate, currentLock, identity, files)
-  const action = createOrUpdatePr(
+  const body = deps.prBody(config, candidate, currentLock, identity, files)
+  const action = deps.createOrUpdatePr(
     candidate.branch,
-    prTitle(config, candidate, currentLock),
+    deps.prTitle(config, candidate, currentLock),
     body,
   )
   results[action].push(`${config.name}: ${candidate.version.tag}`)
@@ -949,7 +1052,7 @@ async function processCandidate(config, currentLock, candidate, results) {
 async function processImage(config, options, results) {
   const currentLock = readJson(config.lockPath)
   const tags = await config.listTags()
-  const { candidates, currentLane } = selectCandidates(
+  const { candidates, currentVersion } = selectCandidates(
     config,
     tags,
     currentLock,
@@ -959,7 +1062,7 @@ async function processImage(config, options, results) {
     candidates.map(candidate => candidate.branch),
   )
 
-  closeStalePrs(config, currentLane, expectedBranches, results)
+  closeStalePrs(config, currentVersion, expectedBranches, results)
 
   if (candidates.length === 0) {
     results.unchanged.push(config.name)
