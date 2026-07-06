@@ -131,11 +131,8 @@ export function resolveAiGenerationAvailability(
   const disabledByEnvironment = isAiRequirementGenerationDisabled(env)
   return {
     disabledByEnvironment,
-    aiSafetyForensicLoggingEnabled: settings.aiSafetyForensicLoggingEnabled,
-    aiSafetyRuleCacheTtlSeconds: settings.aiSafetyRuleCacheTtlSeconds,
     effectiveRequirementGenerationEnabled:
       settings.requirementGenerationEnabled && !disabledByEnvironment,
-    requirementGenerationEnabled: settings.requirementGenerationEnabled,
   }
 }
 
@@ -223,13 +220,16 @@ function adminAiSettingsFromSettings(
   settings: AiGenerationSettings,
   env: NodeJS.ProcessEnv = process.env,
 ): AdminAiSettings {
+  const availability = resolveAiGenerationAvailability(settings, env)
   return {
-    ...resolveAiGenerationAvailability(settings, env),
+    aiSafetyForensicLoggingEnabled: settings.aiSafetyForensicLoggingEnabled,
     aiSafetyRuleCacheTtlSeconds: settings.aiSafetyRuleCacheTtlSeconds,
     constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
+    ...availability,
     mcpImportMaxRows: settings.mcpImportMaxRows,
     mcpImportValidationTtlMinutes: settings.mcpImportValidationTtlMinutes,
     mcpMaxRequestBytes: settings.mcpMaxRequestBytes,
+    requirementGenerationEnabled: settings.requirementGenerationEnabled,
   }
 }
 
