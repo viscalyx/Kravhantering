@@ -619,6 +619,29 @@ function configureGit() {
   run('git', ['fetch', 'origin', MAIN_BRANCH])
 }
 
+function remoteBranchExists(branch) {
+  const result = tryRun('git', [
+    'ls-remote',
+    '--exit-code',
+    '--heads',
+    'origin',
+    branch,
+  ])
+  if (result.ok) return true
+  if (result.error?.status === 2) return false
+  throw result.error
+}
+
+function updateBranchRemoteTrackingRef(branch) {
+  const remoteTrackingRef = `refs/remotes/origin/${branch}`
+  if (!remoteBranchExists(branch)) {
+    run('git', ['update-ref', '-d', remoteTrackingRef])
+    return
+  }
+
+  run('git', ['fetch', 'origin', `+refs/heads/${branch}:${remoteTrackingRef}`])
+}
+
 function gitStatusPorcelain() {
   return run('git', ['status', '--porcelain']).trim()
 }
@@ -629,7 +652,8 @@ function changedFiles() {
   return output.split(/\r?\n/u).filter(Boolean).sort()
 }
 
-function checkoutUpdateBranch(branch) {
+export function checkoutUpdateBranch(branch) {
+  updateBranchRemoteTrackingRef(branch)
   run('git', ['switch', '--force-create', branch, `origin/${MAIN_BRANCH}`])
 }
 
@@ -660,7 +684,7 @@ function listOpenAutomationPrs(config) {
   return JSON.parse(output).filter(pr => pr.headRefName?.startsWith(prefix))
 }
 
-function findOpenPr(branch) {
+export function findOpenPr(branch) {
   const output = run('gh', [
     'pr',
     'list',
@@ -873,9 +897,10 @@ export function prBody(config, candidate, currentLock, identity, files) {
     '',
     `Updates the ${config.name} vendor image lock from main to ${candidate.version.tag}.`,
     '',
+    `Lane: \`${config.laneDescription(candidate.lane)}\``,
+    '',
     '| Field | Previous | Proposed |',
     '| --- | --- | --- |',
-    `| Lane | \`${config.laneDescription(candidate.lane)}\` | \`${config.laneDescription(candidate.lane)}\` |`,
     `| Tag | \`${currentLock.tag}\` | \`${candidate.version.tag}\` |`,
     `| Manifest digest | \`${currentLock.manifestDigest}\` | \`${identity.manifestDigest}\` |`,
     `| Image ID | \`${currentLock.imageId}\` | \`${identity.imageId}\` |`,
@@ -946,8 +971,33 @@ function createOrUpdatePr(branch, title, body) {
   return 'created'
 }
 
-async function processCandidate(config, currentLock, candidate, results) {
-  const existingPr = findOpenPr(candidate.branch)
+const PROCESS_CANDIDATE_DEPENDENCIES = {
+  changedFiles,
+  checkoutUpdateBranch,
+  closePr,
+  createOrUpdatePr,
+  deleteRemoteBranch,
+  findOpenPr,
+  prBody,
+  prTitle,
+  pushUpdateBranch,
+  resolveImageIdentity,
+  run,
+  updateFiles,
+}
+
+export async function processCandidate(
+  config,
+  currentLock,
+  candidate,
+  results,
+  dependencies,
+) {
+  const deps = {
+    ...PROCESS_CANDIDATE_DEPENDENCIES,
+    ...dependencies,
+  }
+  const existingPr = deps.findOpenPr(candidate.branch)
   if (existingPr) {
     results.unchanged.push(
       `${config.name}: ${candidate.version.tag} already has PR #${existingPr.number}`,
@@ -955,38 +1005,45 @@ async function processCandidate(config, currentLock, candidate, results) {
     return
   }
 
-  const identity = await resolveImageIdentity(config, candidate.version.tag)
+  const identity = await deps.resolveImageIdentity(
+    config,
+    candidate.version.tag,
+  )
 
-  checkoutUpdateBranch(candidate.branch)
-  updateFiles(config, currentLock, candidate, identity)
+  deps.checkoutUpdateBranch(candidate.branch)
+  deps.updateFiles(config, currentLock, candidate, identity)
 
-  const files = changedFiles()
+  const files = deps.changedFiles()
   if (files.length === 0) {
-    const pr = findOpenPr(candidate.branch)
+    const pr = deps.findOpenPr(candidate.branch)
     if (pr) {
-      closePr(
+      deps.closePr(
         pr,
         candidate.branch,
         `${config.name} on main already contains ${candidate.version.tag}.`,
       )
       results.closed.push(`${config.name} ${candidate.lane}: already on main`)
     } else {
-      deleteRemoteBranch(candidate.branch)
+      deps.deleteRemoteBranch(candidate.branch)
       results.unchanged.push(`${config.name} ${candidate.lane}`)
     }
     return
   }
 
-  run('git', ['add', ...files])
-  run('git', ['commit', '-m', prTitle(config, candidate, currentLock)], {
-    stdio: 'inherit',
-  })
-  pushUpdateBranch(candidate.branch)
+  deps.run('git', ['add', ...files])
+  deps.run(
+    'git',
+    ['commit', '-m', deps.prTitle(config, candidate, currentLock)],
+    {
+      stdio: 'inherit',
+    },
+  )
+  deps.pushUpdateBranch(candidate.branch)
 
-  const body = prBody(config, candidate, currentLock, identity, files)
-  const action = createOrUpdatePr(
+  const body = deps.prBody(config, candidate, currentLock, identity, files)
+  const action = deps.createOrUpdatePr(
     candidate.branch,
-    prTitle(config, candidate, currentLock),
+    deps.prTitle(config, candidate, currentLock),
     body,
   )
   results[action].push(`${config.name}: ${candidate.version.tag}`)

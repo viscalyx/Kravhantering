@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   branchName,
   companionImageReference,
@@ -6,6 +6,7 @@ import {
   parseArgs,
   parseKongTag,
   prBody,
+  processCandidate,
   renderVendorImagePrTemplate,
   selectCandidates,
   setTemplateChecklistState,
@@ -354,7 +355,8 @@ describe('vendor image updater policy', () => {
       '## SSDLC (Secure Software Development Life Cycle) Gate',
     )
     expect(body).toContain('### kong 3.15.0.0-20260702-ubuntu')
-    expect(body).toContain('| Lane | `Kong Gateway 3.x` | `Kong Gateway 3.x` |')
+    expect(body).toContain('Lane: `Kong Gateway 3.x`')
+    expect(body).not.toContain('| Lane |')
     expect(body).toContain(
       '| `3.10.0.8-20260210-ubuntu` | `3.15.0.0-20260702-ubuntu` |',
     )
@@ -381,5 +383,62 @@ describe('vendor image updater policy', () => {
     expect(body).toMatch(
       /^- \[x\].*<!-- DO NOT REMOVE: ssdlc:requirements -->$/mu,
     )
+  })
+
+  it('skips an existing candidate PR before checkout or push', async () => {
+    const candidate = {
+      branch: 'automation/vendor-image/keycloak-26.7.0',
+      lane: '26',
+      version: {
+        tag: '26.7.0',
+      },
+    }
+    const results = {
+      closed: [],
+      created: [],
+      failed: [],
+      unchanged: [],
+      updated: [],
+    }
+    const findOpenPr = vi.fn(() => ({
+      headRefName: candidate.branch,
+      number: 42,
+      title: 'chore: update keycloak container to 26.7.0',
+    }))
+    const resolveImageIdentity = vi.fn(() => {
+      throw new Error('resolveImageIdentity should not run')
+    })
+    const checkoutUpdateBranch = vi.fn(() => {
+      throw new Error('checkoutUpdateBranch should not run')
+    })
+    const pushUpdateBranch = vi.fn(() => {
+      throw new Error('pushUpdateBranch should not run')
+    })
+    const createOrUpdatePr = vi.fn(() => {
+      throw new Error('createOrUpdatePr should not run')
+    })
+
+    await processCandidate(
+      IMAGE_CONFIGS.keycloak,
+      KEYCLOAK_LOCK,
+      candidate,
+      results,
+      {
+        checkoutUpdateBranch,
+        createOrUpdatePr,
+        findOpenPr,
+        pushUpdateBranch,
+        resolveImageIdentity,
+      },
+    )
+
+    expect(findOpenPr).toHaveBeenCalledWith(candidate.branch)
+    expect(results.unchanged).toEqual(['keycloak: 26.7.0 already has PR #42'])
+    expect(results.created).toEqual([])
+    expect(results.updated).toEqual([])
+    expect(resolveImageIdentity).not.toHaveBeenCalled()
+    expect(checkoutUpdateBranch).not.toHaveBeenCalled()
+    expect(pushUpdateBranch).not.toHaveBeenCalled()
+    expect(createOrUpdatePr).not.toHaveBeenCalled()
   })
 })
