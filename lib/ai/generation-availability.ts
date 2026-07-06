@@ -1,9 +1,6 @@
 export interface AiRequirementGenerationAvailability {
-  aiSafetyForensicLoggingEnabled: boolean
-  aiSafetyRuleCacheTtlSeconds: number
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
-  requirementGenerationEnabled: boolean
 }
 
 export const MCP_REQUEST_PAYLOAD_DEFAULT_BYTES = 10 * 1024 * 1024
@@ -56,28 +53,34 @@ export const ADMIN_AI_SETTINGS_CONSTRAINTS = Object.freeze({
   },
 } satisfies Record<string, NumericSettingConstraint>)
 
-export interface AdminAiSettings extends AiRequirementGenerationAvailability {
+export interface AdminAiSettings {
+  aiSafetyForensicLoggingEnabled: boolean
+  aiSafetyRuleCacheTtlSeconds: number
   constraints: typeof ADMIN_AI_SETTINGS_CONSTRAINTS
+  disabledByEnvironment: boolean
+  effectiveRequirementGenerationEnabled: boolean
   mcpImportMaxRows: number
   mcpImportValidationTtlMinutes: number
   mcpMaxRequestBytes: number
+  requirementGenerationEnabled: boolean
 }
 
 export const DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY: AiRequirementGenerationAvailability =
   Object.freeze({
-    aiSafetyForensicLoggingEnabled: true,
-    aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
     disabledByEnvironment: false,
     effectiveRequirementGenerationEnabled: true,
-    requirementGenerationEnabled: true,
   })
 
 export const DEFAULT_ADMIN_AI_SETTINGS: AdminAiSettings = Object.freeze({
-  ...DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
+  aiSafetyForensicLoggingEnabled: true,
+  aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
   constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
+  disabledByEnvironment: false,
+  effectiveRequirementGenerationEnabled: true,
   mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
   mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+  requirementGenerationEnabled: true,
 })
 
 export function getMcpRequestPayloadBytesForStep(step: number): number {
