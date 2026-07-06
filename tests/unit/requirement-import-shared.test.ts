@@ -147,6 +147,66 @@ describe('guardAiInput', () => {
     expect(onSafetyFilterFailure).not.toHaveBeenCalled()
   })
 
+  it('still returns the blocked response when recording the safety block fails', async () => {
+    const context = makeContext()
+    const onBlockedInput = vi.fn()
+    const onSafetyFilterFailure = vi.fn(
+      () => new Response('unavailable', { status: 503 }),
+    )
+    const screening = makeScreening(
+      makeDecision({
+        allowed: false,
+        categories: ['prompt_injection'],
+        primaryRuleId: 'instruction_override',
+        primaryRuleType: 'Prompt injection: instruction override',
+        ruleIds: ['instruction_override'],
+        ruleTypes: ['Prompt injection: instruction override'],
+      }),
+    )
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    safetyState.screenAiInputDetailed.mockResolvedValue(screening)
+    safetyState.recordAiSafetyBlock.mockRejectedValue(
+      new Error('audit unavailable'),
+    )
+
+    try {
+      const response = await guardAiInput({
+        blockedStep: 'ai_request_input',
+        context,
+        db,
+        locale: 'en',
+        onBlockedInput,
+        onSafetyFilterFailure,
+        operation: 'ai.generate-requirement-import',
+        parts: screening.contentParts,
+        request,
+      })
+
+      expect(response?.status).toBe(400)
+      expect(response?.headers.get('X-Request-Id')).toBe('request-ai')
+      expect(response?.headers.get('X-Correlation-Id')).toBe('workflow-ai')
+      await expect(response?.json()).resolves.toEqual({
+        error:
+          'The AI request was blocked by the AI safety filter: Prompt injection: instruction override. Revise the need or context and try again.',
+      })
+      expect(safetyState.recordAiSafetyBlock).toHaveBeenCalledWith({
+        blockedStep: 'ai_request_input',
+        context,
+        db,
+        direction: 'input',
+        event: 'ai.input_safety.blocked',
+        operation: 'ai.generate-requirement-import',
+        request,
+        screening,
+      })
+      expect(onBlockedInput).toHaveBeenCalledOnce()
+      expect(onSafetyFilterFailure).not.toHaveBeenCalled()
+      expect(consoleError).toHaveBeenCalledOnce()
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
   it('returns the caller failure response when safety screening fails', async () => {
     const error = new Error('safety screen unavailable')
     const failureResponse = new Response('unavailable', { status: 503 })

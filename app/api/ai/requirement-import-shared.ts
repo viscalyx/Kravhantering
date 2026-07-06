@@ -15,7 +15,10 @@ import {
   screenAiInputDetailed,
 } from '@/lib/ai/safety'
 import type { SqlServerDatabase } from '@/lib/db'
-import { AI_PROVIDER_UNAVAILABLE_MESSAGE } from '@/lib/http/safe-errors'
+import {
+  AI_PROVIDER_UNAVAILABLE_MESSAGE,
+  logSanitizedError,
+} from '@/lib/http/safe-errors'
 import { localeSchema, positiveIntegerSchema } from '@/lib/http/validation'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
 import {
@@ -93,16 +96,23 @@ export async function guardAiInput(args: {
 
   if (inputSafetyScreening.decision.allowed) return null
 
-  await recordAiSafetyBlock({
-    blockedStep: args.blockedStep,
-    context: args.context,
-    db: args.db,
-    direction: 'input',
-    event: 'ai.input_safety.blocked',
-    operation: args.operation,
-    request: args.request,
-    screening: inputSafetyScreening,
-  })
+  try {
+    await recordAiSafetyBlock({
+      blockedStep: args.blockedStep,
+      context: args.context,
+      db: args.db,
+      direction: 'input',
+      event: 'ai.input_safety.blocked',
+      operation: args.operation,
+      request: args.request,
+      screening: inputSafetyScreening,
+    })
+  } catch (error) {
+    logSanitizedError(
+      'AI requirement import safety block logging failed',
+      error,
+    )
+  }
   args.onBlockedInput()
 
   return applyResponseCorrelationHeaders(
