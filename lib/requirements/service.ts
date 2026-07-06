@@ -118,50 +118,27 @@ export interface RequirementRefInput {
 
 export interface QueryCatalogInput {
   areaIds?: number[]
-  catalog?: CatalogKind
+  catalog: CatalogKind
   categoryIds?: number[]
-  descriptionSearch?: string
   includeArchived?: boolean
-  limit?: number
   locale?: ResponseLocale
   normReferenceIds?: number[]
-  offset?: number
-  operation?: 'list' | 'search'
+  operation: 'list' | 'search'
   priorityLevelIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementPackageIds?: number[]
-  responseFormat?: ResponseFormat
   search?: string
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
   typeId?: number
   typeIds?: number[]
-  uniqueIdSearch?: string
   verifiable?: boolean[]
 }
 
-export interface QueryCatalogListOutput {
-  catalog: CatalogKind
-  items: unknown[]
-  message: string
-  pagination: {
-    count: number
-    hasMore: boolean
-    limit: number
-    nextOffset: number | null
-    offset: number
-    total: number
-  } | null
-}
-
-export interface QueryCatalogLookupOutput {
+export interface QueryCatalogOutput {
   result: unknown[]
 }
-
-export type QueryCatalogOutput =
-  | QueryCatalogListOutput
-  | QueryCatalogLookupOutput
 
 export interface GetRequirementInput extends RequirementRefInput {
   locale?: ResponseLocale

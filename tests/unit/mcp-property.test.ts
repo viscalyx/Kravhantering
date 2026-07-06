@@ -18,9 +18,9 @@ interface ToolCase {
 
 const TOOL_CASES: ToolCase[] = [
   {
-    acceptsResponseFormat: true,
+    acceptsResponseFormat: false,
     name: 'requirements_query_catalog',
-    valid: { catalog: 'requirements' },
+    valid: { catalog: 'requirements', operation: 'list' },
   },
   {
     acceptsResponseFormat: false,
@@ -263,17 +263,7 @@ function createService() {
       summary: { errorCount: 0, rowCount: 0, warningCount: 0 },
     })),
     queryCatalog: vi.fn(async () => ({
-      catalog: 'requirements' as const,
-      items: [],
-      message: 'Requirements Library',
-      pagination: {
-        count: 0,
-        hasMore: false,
-        limit: 20,
-        nextOffset: null,
-        offset: 0,
-        total: 0,
-      },
+      result: [],
     })),
     removeFromSpecification: vi.fn(async () => ({
       message: 'Requirements removed',
@@ -414,7 +404,9 @@ describe('MCP property-based input validation', () => {
       )
 
       await expectInvalidToolCall(client, 'requirements_query_catalog', {
-        descriptionSearch: 'x'.repeat(201),
+        catalog: 'requirements',
+        operation: 'search',
+        search: 'x'.repeat(201),
       })
     } finally {
       await Promise.allSettled([client.close(), server.close()])

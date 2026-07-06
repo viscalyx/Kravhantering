@@ -150,20 +150,7 @@ vi.mock('@/lib/dal/requirements', () => ({
   transitionStatus: mocks.transitionStatus,
 }))
 
-import {
-  createRequirementsService,
-  type QueryCatalogListOutput,
-  type QueryCatalogOutput,
-} from '@/lib/requirements/service'
-
-function expectCatalogListOutput(
-  output: QueryCatalogOutput,
-): QueryCatalogListOutput {
-  if ('result' in output) {
-    throw new Error('Expected full catalog output')
-  }
-  return output
-}
+import { createRequirementsService } from '@/lib/requirements/service'
 
 function makeRequirementRecord() {
   return {
@@ -464,7 +451,7 @@ describe('createRequirementsService', () => {
       )
   }
 
-  it('returns paginated requirements library results', async () => {
+  it('returns structured requirements library list results', async () => {
     mocks.listRequirements.mockResolvedValue([
       {
         acceptanceCriteria: 'Must respond in 2s',
@@ -498,27 +485,14 @@ describe('createRequirementsService', () => {
         versionNumber: 1,
       },
     ])
-    mocks.countRequirements.mockResolvedValue(3)
-
     const service = createTestRequirementsService()
-    const result = expectCatalogListOutput(
-      await service.queryCatalog(makeContext(), {
-        catalog: 'requirements',
-        limit: 1,
-        offset: 0,
-      }),
-    )
-
-    expect(result.items).toHaveLength(1)
-    expect(result.pagination).toEqual({
-      count: 1,
-      hasMore: true,
-      limit: 1,
-      nextOffset: 1,
-      offset: 0,
-      total: 3,
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'requirements',
+      operation: 'list',
     })
-    expect(result.items[0]).toMatchObject({
+
+    expect(result.result).toHaveLength(1)
+    expect(result.result[0]).toMatchObject({
       hasPendingVersion: true,
       uniqueId: 'INT0001',
     })
@@ -558,16 +532,13 @@ describe('createRequirementsService', () => {
         versionNumber: 1,
       },
     ])
-    mocks.countRequirements.mockResolvedValue(1)
-
     const service = createTestRequirementsService()
-    const result = expectCatalogListOutput(
-      await service.queryCatalog(makeContext(), {
-        catalog: 'requirements',
-      }),
-    )
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'requirements',
+      operation: 'list',
+    })
 
-    expect(result.items[0]).toMatchObject({
+    expect(result.result[0]).toMatchObject({
       hasPendingVersion: true,
       isArchived: true,
       pendingVersionStatusId: 1,
@@ -587,6 +558,7 @@ describe('createRequirementsService', () => {
     await service.queryCatalog(makeContext(), {
       catalog: 'requirements',
       locale: 'sv',
+      operation: 'list',
       sortBy: 'status',
       sortDirection: 'desc',
     })
@@ -599,17 +571,62 @@ describe('createRequirementsService', () => {
         sortDirection: 'desc',
       }),
     )
-    expect(mocks.countRequirements).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        locale: 'sv',
-        sortBy: 'status',
-        sortDirection: 'desc',
-      }),
-    )
   })
 
-  it('uses static localized catalog titles in catalog messages', async () => {
+  it('searches requirements across id, uniqueId, description, and acceptance criteria', async () => {
+    mocks.listRequirements.mockResolvedValue([
+      {
+        acceptanceCriteria: 'Must respond in 2s',
+        areaName: 'Integration',
+        categoryNameEn: 'Business requirement',
+        categoryNameSv: 'Verksamhetskrav',
+        createdAt: '2026-03-08T00:00:00.000Z',
+        description: 'Support secure integration',
+        id: 10,
+        isArchived: false,
+        maxVersion: 1,
+        pendingVersionStatusColor: null,
+        pendingVersionStatusId: null,
+        requirementAreaId: 1,
+        requirementCategoryId: 1,
+        qualityCharacteristicId: 9,
+        requirementTypeId: 1,
+        verifiable: true,
+        revisionToken: '11111111-1111-4111-8111-111111111111',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        qualityCharacteristicNameEn: 'Security',
+        qualityCharacteristicNameSv: 'Sakerhet',
+        typeNameEn: 'Functional',
+        typeNameSv: 'Funktionellt',
+        uniqueId: 'INT0001',
+        versionCreatedAt: '2026-03-08T00:00:00.000Z',
+        versionId: 10,
+        versionNumber: 1,
+      },
+    ])
+
+    const service = createTestRequirementsService()
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'requirements',
+      operation: 'search',
+      search: '2s',
+    })
+
+    expect(result.result).toEqual([
+      expect.objectContaining({
+        match: {
+          matchedFields: ['version.acceptanceCriteria'],
+          quality: 'contains',
+        },
+        uniqueId: 'INT0001',
+      }),
+    ])
+  })
+
+  it('lists status catalog rows as structured results', async () => {
     mocks.listStatuses.mockResolvedValue([
       {
         color: '#22c55e',
@@ -623,15 +640,18 @@ describe('createRequirementsService', () => {
 
     const service = createTestRequirementsService()
 
-    const result = expectCatalogListOutput(
-      await service.queryCatalog(makeContext(), {
-        catalog: 'statuses',
-        locale: 'en',
-      }),
-    )
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'statuses',
+      locale: 'en',
+      operation: 'list',
+    })
 
-    expect(result.message).toContain('Requirement version statuses')
-    expect(result.message).toContain('Published')
+    expect(result.result).toEqual([
+      expect.objectContaining({
+        id: 3,
+        nameEn: 'Published',
+      }),
+    ])
   })
 
   it('creates a requirement and syncs references', async () => {
@@ -775,6 +795,7 @@ describe('createRequirementsService', () => {
     await expect(
       service.queryCatalog(makeContext(), {
         catalog: 'requirements',
+        operation: 'list',
       }),
     ).rejects.toMatchObject({
       code: 'forbidden',
@@ -802,14 +823,11 @@ describe('createRequirementsService', () => {
   it('queries areas catalog', async () => {
     mocks.listAreas.mockResolvedValue([{ id: 1, prefix: 'A', name: 'Area A' }])
     const service = createTestRequirementsService()
-    const result = expectCatalogListOutput(
-      await service.queryCatalog(makeContext(), {
-        catalog: 'areas',
-      }),
-    )
-    expect(result.catalog).toBe('areas')
-    expect(result.items).toHaveLength(1)
-    expect(result.pagination).toBeNull()
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'areas',
+      operation: 'list',
+    })
+    expect(result.result).toHaveLength(1)
   })
 
   it('queries categories catalog', async () => {
@@ -817,13 +835,11 @@ describe('createRequirementsService', () => {
       { id: 1, nameSv: 'Kat', nameEn: 'Cat' },
     ])
     const service = createTestRequirementsService()
-    const result = expectCatalogListOutput(
-      await service.queryCatalog(makeContext(), {
-        catalog: 'categories',
-      }),
-    )
-    expect(result.catalog).toBe('categories')
-    expect(result.items).toHaveLength(1)
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'categories',
+      operation: 'list',
+    })
+    expect(result.result).toHaveLength(1)
   })
 
   it('queries types catalog', async () => {
@@ -831,13 +847,11 @@ describe('createRequirementsService', () => {
       { id: 1, nameSv: 'Typ', nameEn: 'Type' },
     ])
     const service = createTestRequirementsService()
-    const result = expectCatalogListOutput(
-      await service.queryCatalog(makeContext(), {
-        catalog: 'types',
-      }),
-    )
-    expect(result.catalog).toBe('types')
-    expect(result.items).toHaveLength(1)
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'types',
+      operation: 'list',
+    })
+    expect(result.result).toHaveLength(1)
   })
 
   it('queries quality_characteristics catalog', async () => {
@@ -845,14 +859,12 @@ describe('createRequirementsService', () => {
       { id: 1, nameSv: 'TK', nameEn: 'TC' },
     ])
     const service = createTestRequirementsService()
-    const result = expectCatalogListOutput(
-      await service.queryCatalog(makeContext(), {
-        catalog: 'quality_characteristics',
-        typeId: 1,
-      }),
-    )
-    expect(result.catalog).toBe('quality_characteristics')
-    expect(result.items).toHaveLength(1)
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'quality_characteristics',
+      operation: 'list',
+      typeId: 1,
+    })
+    expect(result.result).toHaveLength(1)
   })
 
   it('returns the lookup result shape for MCP lookup list operations', async () => {
@@ -919,13 +931,11 @@ describe('createRequirementsService', () => {
       { id: 1, nameSv: 'Utkast', nameEn: 'Draft' },
     ])
     const service = createTestRequirementsService()
-    const result = expectCatalogListOutput(
-      await service.queryCatalog(makeContext(), {
-        catalog: 'statuses',
-      }),
-    )
-    expect(result.catalog).toBe('statuses')
-    expect(result.items).toHaveLength(1)
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'statuses',
+      operation: 'list',
+    })
+    expect(result.result).toHaveLength(1)
   })
 
   it('queries requirementPackages catalog', async () => {
@@ -942,14 +952,12 @@ describe('createRequirementsService', () => {
       },
     ])
     const service = createTestRequirementsService()
-    const result = expectCatalogListOutput(
-      await service.queryCatalog(makeContext(), {
-        catalog: 'requirement_packages',
-      }),
-    )
-    expect(result.catalog).toBe('requirement_packages')
-    expect(result.items).toHaveLength(1)
-    expect(result.items[0]).toMatchObject({
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'requirement_packages',
+      operation: 'list',
+    })
+    expect(result.result).toHaveLength(1)
+    expect(result.result[0]).toMatchObject({
       description: null,
       name: 'Mobil användning',
     })
@@ -964,13 +972,11 @@ describe('createRequirementsService', () => {
       },
     ])
     const service = createTestRequirementsService()
-    const result = expectCatalogListOutput(
-      await service.queryCatalog(makeContext(), {
-        catalog: 'transitions',
-      }),
-    )
-    expect(result.catalog).toBe('transitions')
-    expect(result.items).toHaveLength(1)
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'transitions',
+      operation: 'list',
+    })
+    expect(result.result).toHaveLength(1)
   })
 
   it('edits a requirement', async () => {
@@ -1138,34 +1144,38 @@ describe('createRequirementsService', () => {
     expect(result.message).toContain('History')
   })
 
-  it('uses sv locale in catalog messages', async () => {
+  it('searches lookup catalogs by localized names', async () => {
     mocks.listStatuses.mockResolvedValue([
       { id: 1, nameSv: 'Utkast', nameEn: 'Draft' },
     ])
     const service = createTestRequirementsService()
-    const result = expectCatalogListOutput(
-      await service.queryCatalog(makeContext(), {
-        catalog: 'statuses',
-        locale: 'sv',
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'statuses',
+      locale: 'sv',
+      operation: 'search',
+      search: 'Utkast',
+    })
+    expect(result.result).toEqual([
+      expect.objectContaining({
+        match: {
+          matchedFields: ['nameSv'],
+          quality: 'exact',
+        },
       }),
-    )
-    expect(result.message).toContain('Utkast')
+    ])
   })
 
-  it('returns json format message', async () => {
-    mocks.listStatuses.mockResolvedValue([
-      { id: 1, nameSv: 'Utkast', nameEn: 'Draft' },
-    ])
+  it('requires search text for search operations', async () => {
     const service = createTestRequirementsService()
-    const result = expectCatalogListOutput(
-      await service.queryCatalog(makeContext(), {
+    await expect(
+      service.queryCatalog(makeContext(), {
         catalog: 'statuses',
-        responseFormat: 'json',
+        operation: 'search',
       }),
-    )
-    const parsed = JSON.parse(result.message)
-    expect(parsed).toHaveProperty('title')
-    expect(parsed).toHaveProperty('lines')
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Search text is required',
+    })
   })
 
   it('rejects edit without description', async () => {

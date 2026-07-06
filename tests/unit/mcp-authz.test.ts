@@ -55,17 +55,7 @@ function createDetail(uniqueId = 'INT0001'): RequirementDetail {
 
 function createService() {
   const queryCatalog = vi.fn(async (_context: RequestContext) => ({
-    catalog: 'requirements' as const,
-    items: [],
-    message: 'Requirements Library',
-    pagination: {
-      count: 0,
-      hasMore: false,
-      limit: 20,
-      nextOffset: null,
-      offset: 0,
-      total: 0,
-    },
+    result: [],
   }))
   const getImportSchema = vi.fn(
     async (_context: RequestContext, _input: { locale: 'en' | 'sv' }) => ({
@@ -281,7 +271,7 @@ describe('MCP authorization seams', () => {
     const { client, server } = await createClient(service.service)
 
     await client.callTool({
-      arguments: { catalog: 'requirements' },
+      arguments: { catalog: 'requirements', operation: 'list' },
       name: 'requirements_query_catalog',
     })
     await client.callTool({

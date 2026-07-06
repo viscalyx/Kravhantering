@@ -94,8 +94,8 @@ import {
  * Scenario names here must match the QUALITY.md `vitest -t "Scenario N: ..."`
  * invocations verbatim so that spec-referenced commands keep working.
  *
- * Scenarios 10, 15, 18, 19, 23, and 24 are pure file-content checks and always
- * run as part of `npm run test`.
+ * Scenarios 10, 15, 18, 19, 23, 24, and 25 are pure file-content checks and
+ * always run as part of `npm run test`.
  *
  * Scenarios 1-9, 11-12, 14, 16, and 17 exercise lifecycle/audit/MCP invariants
  * that require a real SQL Server instance. The harness derives a connection URL automatically from
@@ -267,6 +267,13 @@ const userGuidePath = join(
   'integrations',
   'mcp-server-user-guide.md',
 )
+const mcpSeededCasesPath = join(
+  repoRoot,
+  'tests',
+  'fixtures',
+  'mcp-requests',
+  'seeded-cases.json',
+)
 const assignmentAuthorizationPath = join(
   repoRoot,
   'lib',
@@ -381,6 +388,14 @@ function countUserGuideToolBullets(source: string): number {
   return source
     .split(/\r?\n/)
     .filter(line => /^- `requirements_[a-z_]+`/.test(line)).length
+}
+
+function sourceSlice(source: string, start: string, end: string): string {
+  const startIndex = source.indexOf(start)
+  expect(startIndex, `Missing start marker ${start}`).toBeGreaterThanOrEqual(0)
+  const endIndex = source.indexOf(end, startIndex + start.length)
+  expect(endIndex, `Missing end marker ${end}`).toBeGreaterThan(startIndex)
+  return source.slice(startIndex, endIndex)
 }
 
 it('Scenario 10: MCP tool inventory matches documentation', () => {
@@ -793,6 +808,111 @@ it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selec
   expect(reportsDoc).toContain('Anbuds-CSV')
   expect(reportsDoc).toContain('Full CSV-export')
   expect(reportsDoc).toContain('requirement_version_id')
+})
+
+it('Scenario 25: requirements query catalog stays structured-first', () => {
+  const serverSource = readFileSync(mcpServerPath, 'utf8')
+  const serviceSource = readFileSync(requirementsServicePath, 'utf8')
+  const contributorGuideSource = readFileSync(contributorGuidePath, 'utf8')
+  const userGuideSource = readFileSync(userGuidePath, 'utf8')
+  const seededCasesSource = readFileSync(mcpSeededCasesPath, 'utf8')
+
+  const outputSchemaSource = sourceSlice(
+    serverSource,
+    'const QueryCatalogOutputSchema',
+    'const McpSearchMatchOutputSchema',
+  )
+  const inputSchemaSource = sourceSlice(
+    serverSource,
+    'function createQueryCatalogSchema()',
+    'function requireField',
+  )
+  const queryToolSource = sourceSlice(
+    serverSource,
+    "server.registerTool(\n    'requirements_query_catalog'",
+    "server.registerTool(\n    'requirements_get_import_schema'",
+  )
+  const toCatalogInputSource = sourceSlice(
+    serverSource,
+    'function toCatalogInput',
+    'function toGetInput',
+  )
+  const queryCatalogServiceSource = sourceSlice(
+    serviceSource,
+    'async queryCatalog',
+    'async getRequirement',
+  )
+  const seededCases = JSON.parse(seededCasesSource) as {
+    cases: Array<{ arguments?: Record<string, unknown>; tool: string }>
+  }
+  const seededCatalogCases = seededCases.cases.filter(
+    testCase => testCase.tool === 'requirements_query_catalog',
+  )
+
+  expect(outputSchemaSource).toContain('result:')
+  expect(outputSchemaSource).toContain(
+    'Search rows include top-level match metadata.',
+  )
+  expect(outputSchemaSource).not.toContain('items:')
+  expect(outputSchemaSource).not.toContain('pagination')
+  expect(outputSchemaSource).not.toContain('message:')
+  expect(inputSchemaSource).toContain('catalog: QueryCatalogKindSchema')
+  expect(inputSchemaSource).toContain('operation: z')
+  expect(inputSchemaSource).toContain(".enum(['list', 'search'])")
+  expect(inputSchemaSource).toContain('search:')
+  expect(inputSchemaSource).toContain(
+    '"search" returns matching rows with top-level match metadata.',
+  )
+  expect(inputSchemaSource).not.toContain('responseFormat')
+  expect(inputSchemaSource).not.toContain('descriptionSearch')
+  expect(inputSchemaSource).not.toContain('uniqueIdSearch')
+  expect(inputSchemaSource).not.toContain('limit:')
+  expect(inputSchemaSource).not.toContain('offset:')
+  expect(toCatalogInputSource).not.toContain('responseFormat')
+  expect(toCatalogInputSource).not.toContain('descriptionSearch')
+  expect(toCatalogInputSource).not.toContain('uniqueIdSearch')
+  expect(queryToolSource).toContain(
+    'Structured result returned in structuredContent.result.',
+  )
+  expect(queryToolSource).not.toContain('payload.message')
+
+  expect(queryCatalogServiceSource).toContain('return { result: rows }')
+  expect(queryCatalogServiceSource).toContain('return { result }')
+  expect(queryCatalogServiceSource).toContain('requirementSearchFields')
+  expect(queryCatalogServiceSource).toContain('findMcpSearchMatch')
+  expect(queryCatalogServiceSource).toContain('match: McpSearchMatch')
+  expect(queryCatalogServiceSource).toContain('{ ...row, match }')
+  expect(queryCatalogServiceSource).not.toContain('countRequirements')
+  expect(queryCatalogServiceSource).not.toContain('clampLimit')
+  expect(queryCatalogServiceSource).not.toContain('descriptionSearch')
+  expect(queryCatalogServiceSource).not.toContain('uniqueIdSearch')
+
+  expect(userGuideSource).toContain('search rows include `match` metadata')
+  expect(contributorGuideSource).toContain(
+    'Search rows include `match.quality`',
+  )
+  expect(userGuideSource).toContain(
+    'requirements_query_catalog.result[].id -> requirementIds',
+  )
+  expect(contributorGuideSource).toContain(
+    'requirements_query_catalog.result[].id -> requirementIds',
+  )
+  expect(userGuideSource).not.toContain(
+    'requirements_query_catalog.items[].id -> requirementIds',
+  )
+  expect(contributorGuideSource).not.toContain(
+    'requirements_query_catalog.items[].id -> requirementIds',
+  )
+  expect(seededCatalogCases).toHaveLength(1)
+  for (const testCase of seededCatalogCases) {
+    expect(testCase.arguments).toMatchObject({
+      catalog: expect.any(String),
+      operation: expect.any(String),
+    })
+    expect(testCase.arguments).not.toHaveProperty('responseFormat')
+    expect(testCase.arguments).not.toHaveProperty('limit')
+    expect(testCase.arguments).not.toHaveProperty('offset')
+  }
 })
 
 function resolveFunctionalTestsUrl(): string | null {

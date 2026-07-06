@@ -181,17 +181,7 @@ function createService() {
       summary: { errorCount: 0, rowCount: 0, warningCount: 0 },
     })),
     queryCatalog: vi.fn(async () => ({
-      catalog: 'requirements' as const,
-      items: [],
-      message: 'Requirements Library',
-      pagination: {
-        count: 0,
-        hasMore: false,
-        limit: 20,
-        nextOffset: null,
-        offset: 0,
-        total: 0,
-      },
+      result: [],
     })),
     removeFromSpecification: vi.fn(async () => ({
       message: 'Requirements removed',
