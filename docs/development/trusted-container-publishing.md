@@ -76,23 +76,25 @@ images, not vendor images. The container release workflow builds and publishes
 attestations and are excluded from the vendor-image updater because their
 source lives in this repository.
 
-The updater uses one branch and one ready-for-review PR per image lane. A lane
-is the image name plus the target major line, or the SQL Server product year:
+The updater selects the newest candidate tag in each current-or-newer image
+lane. A lane is the image name plus the target major line, or the SQL Server
+product year. Each selected tag gets an exact-version branch and PR:
 
-- `automation/vendor-image/keycloak-26`
-- `automation/vendor-image/keycloak-27`
-- `automation/vendor-image/nginx-1`
-- `automation/vendor-image/sqlserver-2025`
-- `automation/vendor-image/kong-3`
+- `automation/vendor-image/keycloak-26.6.4-1`
+- `automation/vendor-image/keycloak-27.0.0`
+- `automation/vendor-image/nginx-1.29.4-alpine`
+- `automation/vendor-image/sqlserver-2025-CU3-ubuntu-24.04`
+- `automation/vendor-image/kong-3.12.0.0-20260101-ubuntu`
 
-Within a lane, newer patch and minor releases update the existing PR instead
-of opening another PR. For example, a Keycloak `26.7.1` release updates the
-open `keycloak-26` PR, while a later `27.0.0` release opens or updates the
-separate `keycloak-27` PR. Each weekly run recreates the branch from current
-`main` and force-pushes the current proposal, keeping the PR conversation while
-removing stale commits. When `main` already contains the lane update, or when
-`main` has advanced past an older lane, the workflow closes the stale PR and
-deletes the branch.
+Within a lane, newer patch and minor releases create a new exact-version PR
+instead of updating the earlier version branch. For example, a Keycloak
+`26.7.1` release creates `automation/vendor-image/keycloak-26.7.1` instead of
+rewriting an open `automation/vendor-image/keycloak-26.6.4-1` PR. Later runs
+leave an already-open exact-version PR unchanged so reviewer-added tests,
+documentation, and other manually required companion changes are not
+force-pushed away by automation. When `main` already contains the version
+update, when `main` has advanced past an older version, or when an upstream tag
+is no longer selected, the workflow closes the stale PR and deletes the branch.
 
 The updater resolves `linux/amd64` registry manifests and records both the
 platform manifest digest and the image config digest in the matching

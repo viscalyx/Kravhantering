@@ -293,8 +293,8 @@ function updateDependentLockFile(filePath, serviceRecord) {
   )
 }
 
-function branchName(config, lane) {
-  return `${BRANCH_PREFIX}/${config.name}-${lane}`
+export function branchName(config, version) {
+  return `${BRANCH_PREFIX}/${config.name}-${version.tag}`
 }
 
 function escapeRegExp(value) {
@@ -534,7 +534,7 @@ async function resolveImageIdentity(config, tag) {
   }
 }
 
-function selectCandidates(config, tags, currentLock, includeCurrent) {
+export function selectCandidates(config, tags, currentLock, includeCurrent) {
   const currentVersion = config.parseTag(currentLock.tag)
   if (!currentVersion) {
     throw new Error(
@@ -559,7 +559,7 @@ function selectCandidates(config, tags, currentLock, includeCurrent) {
     const previous = latestByLane.get(lane)
     if (!previous || compareVersions(config, version, previous.version) > 0) {
       latestByLane.set(lane, {
-        branch: branchName(config, lane),
+        branch: branchName(config, version),
         lane,
         version,
       })
@@ -571,6 +571,7 @@ function selectCandidates(config, tags, currentLock, includeCurrent) {
       compareLanes(config, left.lane, right.lane),
     ),
     currentLane,
+    currentVersion,
   }
 }
 
@@ -628,11 +629,11 @@ function changedFiles() {
   return output.split(/\r?\n/u).filter(Boolean).sort()
 }
 
-function checkoutLaneBranch(branch) {
+function checkoutUpdateBranch(branch) {
   run('git', ['switch', '--force-create', branch, `origin/${MAIN_BRANCH}`])
 }
 
-function pushLaneBranch(branch) {
+function pushUpdateBranch(branch) {
   run('git', ['push', '--force-with-lease', 'origin', `HEAD:${branch}`], {
     stdio: 'inherit',
   })
@@ -680,6 +681,42 @@ function laneFromBranch(config, branch) {
   return readNonEmpty(lane) ?? null
 }
 
+export function stalePrClosure(
+  config,
+  currentVersion,
+  branch,
+  expectedBranches,
+) {
+  if (expectedBranches.has(branch)) return null
+
+  const suffix = laneFromBranch(config, branch)
+  if (!suffix) return null
+
+  const version = config.parseTag(suffix)
+  if (version) {
+    const comparison = compareVersions(config, version, currentVersion)
+    const reason =
+      comparison < 0
+        ? `${config.name} has already advanced past ${version.tag} on main.`
+        : `${config.name} on main already contains this update version, or the upstream tag is no longer selected.`
+    return {
+      reason,
+      summary: `${config.name} ${version.tag}: ${reason}`,
+    }
+  }
+
+  const currentLane = config.laneFromVersion(currentVersion)
+  const comparison = compareLanes(config, suffix, currentLane)
+  const reason =
+    comparison < 0
+      ? `${config.name} has already advanced past ${config.laneDescription(suffix)} on main.`
+      : `${config.name} automation branch ${branch} uses retired lane branch naming or an unsupported version tag.`
+  return {
+    reason,
+    summary: `${config.name} ${suffix}: ${reason}`,
+  }
+}
+
 function closePr(pr, branch, comment) {
   const result = tryRun(
     'gh',
@@ -694,18 +731,18 @@ function closePr(pr, branch, comment) {
   }
 }
 
-function closeStalePrs(config, currentLane, expectedBranches, results) {
+function closeStalePrs(config, currentVersion, expectedBranches, results) {
   for (const pr of listOpenAutomationPrs(config)) {
-    const lane = laneFromBranch(config, pr.headRefName)
-    if (!lane || expectedBranches.has(pr.headRefName)) continue
+    const closure = stalePrClosure(
+      config,
+      currentVersion,
+      pr.headRefName,
+      expectedBranches,
+    )
+    if (!closure) continue
 
-    const comparison = compareLanes(config, lane, currentLane)
-    const reason =
-      comparison < 0
-        ? `${config.name} has already advanced past ${config.laneDescription(lane)} on main.`
-        : `${config.name} on main already contains this update lane, or the upstream tag is no longer selected.`
-    closePr(pr, pr.headRefName, reason)
-    results.closed.push(`${config.name} ${lane}: ${reason}`)
+    closePr(pr, pr.headRefName, closure.reason)
+    results.closed.push(closure.summary)
   }
 }
 
@@ -832,12 +869,13 @@ export function renderVendorImagePrTemplate(template, details) {
 
 export function prBody(config, candidate, currentLock, identity, files) {
   const description = [
-    `### ${config.laneDescription(candidate.lane)}`,
+    `### ${config.name} ${candidate.version.tag}`,
     '',
-    `Updates the ${config.name} vendor image lock lane from main.`,
+    `Updates the ${config.name} vendor image lock from main to ${candidate.version.tag}.`,
     '',
     '| Field | Previous | Proposed |',
     '| --- | --- | --- |',
+    `| Lane | \`${config.laneDescription(candidate.lane)}\` | \`${config.laneDescription(candidate.lane)}\` |`,
     `| Tag | \`${currentLock.tag}\` | \`${candidate.version.tag}\` |`,
     `| Manifest digest | \`${currentLock.manifestDigest}\` | \`${identity.manifestDigest}\` |`,
     `| Image ID | \`${currentLock.imageId}\` | \`${identity.imageId}\` |`,
@@ -909,9 +947,17 @@ function createOrUpdatePr(branch, title, body) {
 }
 
 async function processCandidate(config, currentLock, candidate, results) {
+  const existingPr = findOpenPr(candidate.branch)
+  if (existingPr) {
+    results.unchanged.push(
+      `${config.name}: ${candidate.version.tag} already has PR #${existingPr.number}`,
+    )
+    return
+  }
+
   const identity = await resolveImageIdentity(config, candidate.version.tag)
 
-  checkoutLaneBranch(candidate.branch)
+  checkoutUpdateBranch(candidate.branch)
   updateFiles(config, currentLock, candidate, identity)
 
   const files = changedFiles()
@@ -935,7 +981,7 @@ async function processCandidate(config, currentLock, candidate, results) {
   run('git', ['commit', '-m', prTitle(config, candidate, currentLock)], {
     stdio: 'inherit',
   })
-  pushLaneBranch(candidate.branch)
+  pushUpdateBranch(candidate.branch)
 
   const body = prBody(config, candidate, currentLock, identity, files)
   const action = createOrUpdatePr(
@@ -949,7 +995,7 @@ async function processCandidate(config, currentLock, candidate, results) {
 async function processImage(config, options, results) {
   const currentLock = readJson(config.lockPath)
   const tags = await config.listTags()
-  const { candidates, currentLane } = selectCandidates(
+  const { candidates, currentVersion } = selectCandidates(
     config,
     tags,
     currentLock,
@@ -959,7 +1005,7 @@ async function processImage(config, options, results) {
     candidates.map(candidate => candidate.branch),
   )
 
-  closeStalePrs(config, currentLane, expectedBranches, results)
+  closeStalePrs(config, currentVersion, expectedBranches, results)
 
   if (candidates.length === 0) {
     results.unchanged.push(config.name)

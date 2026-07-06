@@ -1,16 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import {
+  branchName,
   companionImageReference,
   IMAGE_CONFIGS,
   parseArgs,
   parseKongTag,
   prBody,
   renderVendorImagePrTemplate,
+  selectCandidates,
   setTemplateChecklistState,
   setTemplateSectionBody,
+  stalePrClosure,
   templateChecklistRow,
   updateDependentServiceLock,
 } from '../../.github/workflows/vendor-image-updates.mjs'
+
+const KEYCLOAK_LOCK = {
+  imageId:
+    'sha256:0000000000000000000000000000000000000000000000000000000000000000',
+  manifestDigest:
+    'sha256:1111111111111111111111111111111111111111111111111111111111111111',
+  tag: '26.6.3',
+}
 
 describe('vendor image updater policy', () => {
   it('supports the Kong Gateway 3.x lane', () => {
@@ -77,6 +88,123 @@ describe('vendor image updater policy', () => {
         identity,
       ),
     ).toBe('docker.io/kong/kong-gateway:3.11.1.0-20260601-ubuntu')
+  })
+
+  it('uses exact image versions in automation branches', () => {
+    const config = IMAGE_CONFIGS.keycloak
+    const version = config.parseTag('26.6.4-1')
+
+    expect(branchName(config, version)).toBe(
+      'automation/vendor-image/keycloak-26.6.4-1',
+    )
+  })
+
+  it('selects the latest tag per lane with an exact-version branch', () => {
+    const { candidates, currentLane, currentVersion } = selectCandidates(
+      IMAGE_CONFIGS.keycloak,
+      ['25.0.6', '26.6.3', '26.6.4-1', '26.7.0', '27.0.0', '27.0.1'],
+      KEYCLOAK_LOCK,
+      false,
+    )
+
+    expect(currentLane).toBe('26')
+    expect(currentVersion.tag).toBe('26.6.3')
+    expect(
+      candidates.map(candidate => ({
+        branch: candidate.branch,
+        lane: candidate.lane,
+        tag: candidate.version.tag,
+      })),
+    ).toEqual([
+      {
+        branch: 'automation/vendor-image/keycloak-26.7.0',
+        lane: '26',
+        tag: '26.7.0',
+      },
+      {
+        branch: 'automation/vendor-image/keycloak-27.0.1',
+        lane: '27',
+        tag: '27.0.1',
+      },
+    ])
+  })
+
+  it('uses an exact-version branch when refreshing the current tag', () => {
+    const { candidates } = selectCandidates(
+      IMAGE_CONFIGS.keycloak,
+      ['26.6.3'],
+      KEYCLOAK_LOCK,
+      true,
+    )
+
+    expect(candidates).toHaveLength(1)
+    expect(candidates[0]).toMatchObject({
+      branch: 'automation/vendor-image/keycloak-26.6.3',
+      lane: '26',
+      version: { tag: '26.6.3' },
+    })
+  })
+
+  it('keeps the selected exact-version branch out of stale cleanup', () => {
+    const currentVersion = IMAGE_CONFIGS.keycloak.parseTag('26.6.3')
+    const expectedBranches = new Set([
+      'automation/vendor-image/keycloak-26.7.0',
+    ])
+
+    expect(
+      stalePrClosure(
+        IMAGE_CONFIGS.keycloak,
+        currentVersion,
+        'automation/vendor-image/keycloak-26.7.0',
+        expectedBranches,
+      ),
+    ).toBeNull()
+  })
+
+  it('closes superseded exact-version and retired lane branches', () => {
+    const currentVersion = IMAGE_CONFIGS.keycloak.parseTag('26.6.3')
+    const expectedBranches = new Set([
+      'automation/vendor-image/keycloak-26.7.0',
+    ])
+
+    expect(
+      stalePrClosure(
+        IMAGE_CONFIGS.keycloak,
+        currentVersion,
+        'automation/vendor-image/keycloak-26.6.4-1',
+        expectedBranches,
+      ),
+    ).toMatchObject({
+      summary:
+        'keycloak 26.6.4-1: keycloak on main already contains this update version, or the upstream tag is no longer selected.',
+    })
+
+    expect(
+      stalePrClosure(
+        IMAGE_CONFIGS.keycloak,
+        currentVersion,
+        'automation/vendor-image/keycloak-26',
+        expectedBranches,
+      ),
+    ).toMatchObject({
+      reason:
+        'keycloak automation branch automation/vendor-image/keycloak-26 uses retired lane branch naming or an unsupported version tag.',
+    })
+  })
+
+  it('closes exact-version branches that main has advanced past', () => {
+    const currentVersion = IMAGE_CONFIGS.keycloak.parseTag('27.0.0')
+
+    expect(
+      stalePrClosure(
+        IMAGE_CONFIGS.keycloak,
+        currentVersion,
+        'automation/vendor-image/keycloak-26.7.0',
+        new Set(),
+      ),
+    ).toMatchObject({
+      reason: 'keycloak has already advanced past 26.7.0 on main.',
+    })
   })
 
   it('updates dependent service locks from the primary vendor lock', () => {
@@ -202,7 +330,7 @@ describe('vendor image updater policy', () => {
     const body = prBody(
       IMAGE_CONFIGS.kong,
       {
-        branch: 'automation/vendor-image/kong-3',
+        branch: 'automation/vendor-image/kong-3.15.0.0-20260702-ubuntu',
         lane: '3',
         version: {
           tag: '3.15.0.0-20260702-ubuntu',
@@ -225,7 +353,8 @@ describe('vendor image updater policy', () => {
     expect(body).toContain(
       '## SSDLC (Secure Software Development Life Cycle) Gate',
     )
-    expect(body).toContain('### Kong Gateway 3.x')
+    expect(body).toContain('### kong 3.15.0.0-20260702-ubuntu')
+    expect(body).toContain('| Lane | `Kong Gateway 3.x` | `Kong Gateway 3.x` |')
     expect(body).toContain(
       '| `3.10.0.8-20260210-ubuntu` | `3.15.0.0-20260702-ubuntu` |',
     )

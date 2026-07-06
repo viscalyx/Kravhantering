@@ -66,7 +66,7 @@ function stackLock() {
         'keycloak',
         'identity-provider',
         'quay.io/keycloak/keycloak',
-        '26.6.3-0',
+        '26.6.4-1',
         'sha256:keycloak-manifest',
         'sha256:keycloak-image',
       ),
