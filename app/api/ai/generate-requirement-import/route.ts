@@ -16,7 +16,6 @@ import {
   type AiSafetyScreenPart,
   recordAiSafetyBlock,
   recordAiSafetyFilterFailure,
-  screenAiInputDetailed,
   screenAiOutputDetailed,
 } from '@/lib/ai/safety'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
@@ -47,6 +46,7 @@ import {
   createAiRequirementImportThrottleResponse,
   createUnavailableAiStreamResponse,
   formatAiSafetyBlockedMessage,
+  guardAiInput,
   imageDataUrlSchema,
   MAX_AI_IMAGES,
   MAX_AI_NEED_LENGTH,
@@ -240,44 +240,26 @@ export const POST = secureMutationRoute({
       )
     }
 
-    let inputSafetyScreening: Awaited<ReturnType<typeof screenAiInputDetailed>>
-    try {
-      inputSafetyScreening = await screenAiInputDetailed(db, [
+    const inputGuardResponse = await guardAiInput({
+      blockedStep: 'ai_request_input',
+      context,
+      db,
+      locale,
+      onBlockedInput: () => recordStreamEvent('failure', 400),
+      onSafetyFilterFailure: error => {
+        recordSafetyFilterFailure(error)
+        return createUnavailableAiStreamResponse(context, () =>
+          recordStreamEvent('failure', 503),
+        )
+      },
+      operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
+      parts: [
         { label: 'need', text: body.need },
         ...imageMetadataForSafety(images),
-      ])
-    } catch (error) {
-      recordSafetyFilterFailure(error)
-      return createUnavailableAiStreamResponse(context, () =>
-        recordStreamEvent('failure', 503),
-      )
-    }
-    if (!inputSafetyScreening.decision.allowed) {
-      await recordAiSafetyBlock({
-        blockedStep: 'ai_request_input',
-        context,
-        db,
-        direction: 'input',
-        event: 'ai.input_safety.blocked',
-        operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
-        request,
-        screening: inputSafetyScreening,
-      })
-      recordStreamEvent('failure', 400)
-      return applyResponseCorrelationHeaders(
-        Response.json(
-          {
-            error: formatAiSafetyBlockedMessage(
-              locale,
-              'inputSafetyBlocked',
-              inputSafetyScreening.decision,
-            ),
-          },
-          { status: 400 },
-        ),
-        context,
-      )
-    }
+      ],
+      request,
+    })
+    if (inputGuardResponse) return inputGuardResponse
 
     let importInstruction: string
     try {

@@ -6,7 +6,15 @@ import {
   MAX_REQUIREMENT_CANDIDATE_COUNT,
   MIN_REQUIREMENT_CANDIDATE_COUNT,
 } from '@/lib/ai/requirement-prompt'
-import { type AiSafetyDecision, getAiSafetyRuleTypeName } from '@/lib/ai/safety'
+import {
+  type AiSafetyBlockedStep,
+  type AiSafetyDecision,
+  type AiSafetyScreenPart,
+  getAiSafetyRuleTypeName,
+  recordAiSafetyBlock,
+  screenAiInputDetailed,
+} from '@/lib/ai/safety'
+import type { SqlServerDatabase } from '@/lib/db'
 import { AI_PROVIDER_UNAVAILABLE_MESSAGE } from '@/lib/http/safe-errors'
 import { localeSchema, positiveIntegerSchema } from '@/lib/http/validation'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
@@ -63,6 +71,53 @@ function requirementImportLocale(body: {
   locale?: RequirementImportLocale
 }): RequirementImportLocale {
   return body.locale ?? 'en'
+}
+
+export async function guardAiInput(args: {
+  blockedStep: AiSafetyBlockedStep
+  context: RequestContext
+  db: SqlServerDatabase
+  locale: RequirementImportLocale
+  onBlockedInput: () => void
+  onSafetyFilterFailure: (error: unknown) => Response
+  operation: string
+  parts: readonly AiSafetyScreenPart[]
+  request: Request
+}): Promise<Response | null> {
+  let inputSafetyScreening: Awaited<ReturnType<typeof screenAiInputDetailed>>
+  try {
+    inputSafetyScreening = await screenAiInputDetailed(args.db, args.parts)
+  } catch (error) {
+    return args.onSafetyFilterFailure(error)
+  }
+
+  if (inputSafetyScreening.decision.allowed) return null
+
+  await recordAiSafetyBlock({
+    blockedStep: args.blockedStep,
+    context: args.context,
+    db: args.db,
+    direction: 'input',
+    event: 'ai.input_safety.blocked',
+    operation: args.operation,
+    request: args.request,
+    screening: inputSafetyScreening,
+  })
+  args.onBlockedInput()
+
+  return applyResponseCorrelationHeaders(
+    Response.json(
+      {
+        error: formatAiSafetyBlockedMessage(
+          args.locale,
+          'inputSafetyBlocked',
+          inputSafetyScreening.decision,
+        ),
+      },
+      { status: 400 },
+    ),
+    args.context,
+  )
 }
 
 export const imageDataUrlSchema = z.string()
