@@ -8,10 +8,18 @@ import { fileURLToPath } from 'node:url'
 const MAIN_BRANCH = 'main'
 const BRANCH_PREFIX = 'automation/vendor-image'
 const OPEN_PR_LIST_LIMIT = '1000'
+const PR_TEMPLATE_PATH = '.github/pull_request_template.md'
 const PLATFORM = {
   architecture: 'amd64',
   os: 'linux',
 }
+
+const OPERATOR_NO_NOTES_MARKER = 'operator-upgrade:no-notes'
+const OPERATOR_NOTES_START_MARKER =
+  '<!-- DO NOT REMOVE: operator-upgrade:notes start -->'
+const OPERATOR_NOTES_END_MARKER =
+  '<!-- DO NOT REMOVE: operator-upgrade:notes end -->'
+const SSDLC_REQUIREMENTS_MARKER = 'ssdlc:requirements'
 
 const ACCEPT_MANIFESTS = [
   'application/vnd.oci.image.index.v1+json',
@@ -88,7 +96,9 @@ export const IMAGE_CONFIGS = {
       '.devcontainer/docker-compose.yml',
       '.devcontainer/elevated/docker-compose.yml',
       'containers/production/env/release.env.template',
+      'scripts/__tests__/container-release.test.mjs',
     ],
+    dependentLockPaths: ['container-hsa-integration-support.lock.json'],
     image: 'docker.io/kong/kong-gateway',
     laneDescription: lane => `Kong Gateway ${lane}.x`,
     laneFromVersion: version => String(version.major),
@@ -237,12 +247,55 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'))
 }
 
+function readText(filePath) {
+  return fs.readFileSync(filePath, 'utf8')
+}
+
 function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`)
 }
 
-function branchName(config, lane) {
-  return `${BRANCH_PREFIX}/${config.name}-${lane}`
+export function updateDependentServiceLock(lock, serviceRecord) {
+  if (!Array.isArray(lock?.services)) {
+    throw new Error('Dependent image lock must contain services[].')
+  }
+
+  let found = false
+  const services = lock.services.map(service => {
+    if (service?.name !== serviceRecord.name) return service
+    found = true
+    return {
+      ...service,
+      image: serviceRecord.image,
+      imageId: serviceRecord.imageId,
+      manifestDigest: serviceRecord.manifestDigest,
+      role: serviceRecord.role,
+      source: serviceRecord.source,
+      tag: serviceRecord.tag,
+    }
+  })
+
+  if (!found) {
+    throw new Error(
+      `Dependent image lock is missing service "${serviceRecord.name}".`,
+    )
+  }
+
+  return {
+    ...lock,
+    services,
+  }
+}
+
+function updateDependentLockFile(filePath, serviceRecord) {
+  writeJson(
+    filePath,
+    updateDependentServiceLock(readJson(filePath), serviceRecord),
+  )
+}
+
+export function branchName(config, version) {
+  return `${BRANCH_PREFIX}/${config.name}-${version.tag}`
 }
 
 function escapeRegExp(value) {
@@ -482,7 +535,7 @@ async function resolveImageIdentity(config, tag) {
   }
 }
 
-function selectCandidates(config, tags, currentLock, includeCurrent) {
+export function selectCandidates(config, tags, currentLock, includeCurrent) {
   const currentVersion = config.parseTag(currentLock.tag)
   if (!currentVersion) {
     throw new Error(
@@ -507,7 +560,7 @@ function selectCandidates(config, tags, currentLock, includeCurrent) {
     const previous = latestByLane.get(lane)
     if (!previous || compareVersions(config, version, previous.version) > 0) {
       latestByLane.set(lane, {
-        branch: branchName(config, lane),
+        branch: branchName(config, version),
         lane,
         version,
       })
@@ -519,6 +572,7 @@ function selectCandidates(config, tags, currentLock, includeCurrent) {
       compareLanes(config, left.lane, right.lane),
     ),
     currentLane,
+    currentVersion,
   }
 }
 
@@ -566,6 +620,29 @@ function configureGit() {
   run('git', ['fetch', 'origin', MAIN_BRANCH])
 }
 
+function remoteBranchExists(branch) {
+  const result = tryRun('git', [
+    'ls-remote',
+    '--exit-code',
+    '--heads',
+    'origin',
+    branch,
+  ])
+  if (result.ok) return true
+  if (result.error?.status === 2) return false
+  throw result.error
+}
+
+function updateBranchRemoteTrackingRef(branch) {
+  const remoteTrackingRef = `refs/remotes/origin/${branch}`
+  if (!remoteBranchExists(branch)) {
+    run('git', ['update-ref', '-d', remoteTrackingRef])
+    return
+  }
+
+  run('git', ['fetch', 'origin', `+refs/heads/${branch}:${remoteTrackingRef}`])
+}
+
 function gitStatusPorcelain() {
   return run('git', ['status', '--porcelain']).trim()
 }
@@ -576,11 +653,12 @@ function changedFiles() {
   return output.split(/\r?\n/u).filter(Boolean).sort()
 }
 
-function checkoutLaneBranch(branch) {
+export function checkoutUpdateBranch(branch) {
+  updateBranchRemoteTrackingRef(branch)
   run('git', ['switch', '--force-create', branch, `origin/${MAIN_BRANCH}`])
 }
 
-function pushLaneBranch(branch) {
+function pushUpdateBranch(branch) {
   run('git', ['push', '--force-with-lease', 'origin', `HEAD:${branch}`], {
     stdio: 'inherit',
   })
@@ -607,7 +685,7 @@ function listOpenAutomationPrs(config) {
   return JSON.parse(output).filter(pr => pr.headRefName?.startsWith(prefix))
 }
 
-function findOpenPr(branch) {
+export function findOpenPr(branch) {
   const output = run('gh', [
     'pr',
     'list',
@@ -628,6 +706,42 @@ function laneFromBranch(config, branch) {
   return readNonEmpty(lane) ?? null
 }
 
+export function stalePrClosure(
+  config,
+  currentVersion,
+  branch,
+  expectedBranches,
+) {
+  if (expectedBranches.has(branch)) return null
+
+  const suffix = laneFromBranch(config, branch)
+  if (!suffix) return null
+
+  const version = config.parseTag(suffix)
+  if (version) {
+    const comparison = compareVersions(config, version, currentVersion)
+    const reason =
+      comparison < 0
+        ? `${config.name} has already advanced past ${version.tag} on main.`
+        : `${config.name} on main already contains this update version, or the upstream tag is no longer selected.`
+    return {
+      reason,
+      summary: `${config.name} ${version.tag}: ${reason}`,
+    }
+  }
+
+  const currentLane = config.laneFromVersion(currentVersion)
+  const comparison = compareLanes(config, suffix, currentLane)
+  const reason =
+    comparison < 0
+      ? `${config.name} has already advanced past ${config.laneDescription(suffix)} on main.`
+      : `${config.name} automation branch ${branch} uses retired lane branch naming or an unsupported version tag.`
+  return {
+    reason,
+    summary: `${config.name} ${suffix}: ${reason}`,
+  }
+}
+
 function closePr(pr, branch, comment) {
   const result = tryRun(
     'gh',
@@ -642,18 +756,18 @@ function closePr(pr, branch, comment) {
   }
 }
 
-function closeStalePrs(config, currentLane, expectedBranches, results) {
+function closeStalePrs(config, currentVersion, expectedBranches, results) {
   for (const pr of listOpenAutomationPrs(config)) {
-    const lane = laneFromBranch(config, pr.headRefName)
-    if (!lane || expectedBranches.has(pr.headRefName)) continue
+    const closure = stalePrClosure(
+      config,
+      currentVersion,
+      pr.headRefName,
+      expectedBranches,
+    )
+    if (!closure) continue
 
-    const comparison = compareLanes(config, lane, currentLane)
-    const reason =
-      comparison < 0
-        ? `${config.name} has already advanced past ${config.laneDescription(lane)} on main.`
-        : `${config.name} on main already contains this update lane, or the upstream tag is no longer selected.`
-    closePr(pr, pr.headRefName, reason)
-    results.closed.push(`${config.name} ${lane}: ${reason}`)
+    closePr(pr, pr.headRefName, closure.reason)
+    results.closed.push(closure.summary)
   }
 }
 
@@ -674,6 +788,10 @@ function updateFiles(config, currentLock, candidate, identity) {
   }
   writeJson(config.lockPath, nextLock)
 
+  for (const filePath of config.dependentLockPaths ?? []) {
+    updateDependentLockFile(filePath, nextLock)
+  }
+
   for (const filePath of config.companionFiles) {
     replaceImageRef(
       filePath,
@@ -689,11 +807,98 @@ function prTitle(config, candidate, currentLock) {
   return `chore: ${action} ${config.name} container to ${candidate.version.tag}`
 }
 
-function prBody(config, candidate, currentLock, identity, files) {
-  return [
-    `## ${config.laneDescription(candidate.lane)}`,
+export function setTemplateSectionBody(template, heading, body) {
+  let found = false
+  const pattern = new RegExp(
+    `(^|\\r?\\n)(## ${escapeRegExp(heading)}\\r?\\n)[\\s\\S]*?(?=\\r?\\n## |$)`,
+    'u',
+  )
+  const updated = template.replace(
+    pattern,
+    (_match, leadingNewline, prefix) => {
+      found = true
+      const trimmedBody = body.trimEnd()
+      return trimmedBody
+        ? `${leadingNewline}${prefix}\n${trimmedBody}\n`
+        : `${leadingNewline}${prefix}\n`
+    },
+  )
+  if (!found) {
+    throw new Error(`Pull request template is missing section: ${heading}`)
+  }
+  return updated
+}
+
+export function setTemplateChecklistState(template, marker, checked) {
+  const pattern = new RegExp(
+    `^([ \\t]*- \\[)[ xX](\\].*${escapeRegExp(marker)}.*)$`,
+    'mu',
+  )
+  if (!pattern.test(template)) {
+    throw new Error(
+      `Pull request template is missing checklist row marker: ${marker}`,
+    )
+  }
+  return template.replace(
+    pattern,
+    (_match, prefix, suffix) => `${prefix}${checked ? 'x' : ' '}${suffix}`,
+  )
+}
+
+export function templateChecklistRow(template, marker, checked) {
+  const pattern = new RegExp(
+    `^([ \\t]*- \\[)[ xX](\\].*${escapeRegExp(marker)}.*)$`,
+    'mu',
+  )
+  const match = template.match(pattern)
+  if (!match) {
+    throw new Error(
+      `Pull request template is missing checklist row marker: ${marker}`,
+    )
+  }
+  return `${match[1]}${checked ? 'x' : ' '}${match[2]}`
+}
+
+export function renderVendorImagePrTemplate(template, details) {
+  let body = template
+  body = setTemplateSectionBody(body, 'Description', details.description)
+  body = setTemplateSectionBody(
+    body,
+    'Related Issues',
+    details.relatedIssues ?? 'Relates to automated vendor image maintenance.',
+  )
+  body = setTemplateSectionBody(body, 'Reviewer Notes', details.reviewerNotes)
+  body = setTemplateSectionBody(
+    body,
+    'Operator Upgrade Impact',
+    [
+      templateChecklistRow(template, OPERATOR_NO_NOTES_MARKER, true),
+      '',
+      OPERATOR_NOTES_START_MARKER,
+      'No operator notes needed for this vendor image lock update.',
+      OPERATOR_NOTES_END_MARKER,
+    ].join('\n'),
+  )
+  body = setTemplateSectionBody(
+    body,
+    'SSDLC (Secure Software Development Life Cycle) Gate',
+    [
+      templateChecklistRow(template, SSDLC_REQUIREMENTS_MARKER, true),
+      '',
+      'Automated vendor image maintenance was reviewed for security, data protection, threat-model, and security-testing impacts.',
+      'Normal pull request CI validates the generated lock and companion-file changes.',
+    ].join('\n'),
+  )
+  return `${body.trimEnd()}\n`
+}
+
+export function prBody(config, candidate, currentLock, identity, files) {
+  const description = [
+    `### ${config.name} ${candidate.version.tag}`,
     '',
-    `Updates the ${config.name} vendor image lock lane from main.`,
+    `Updates the ${config.name} vendor image lock from main to ${candidate.version.tag}.`,
+    '',
+    `Lane: \`${config.laneDescription(candidate.lane)}\``,
     '',
     '| Field | Previous | Proposed |',
     '| --- | --- | --- |',
@@ -703,13 +908,20 @@ function prBody(config, candidate, currentLock, identity, files) {
     '',
     `Branch: \`${candidate.branch}\``,
     `Platform: \`${PLATFORM.os}/${PLATFORM.architecture}\``,
-    '',
+  ].join('\n')
+
+  const reviewerNotes = [
     'Files changed by policy:',
+    '',
     ...files.map(file => `- \`${file}\``),
     '',
     'Normal pull request CI performs validation for this update.',
-    '',
   ].join('\n')
+
+  return renderVendorImagePrTemplate(readText(PR_TEMPLATE_PATH), {
+    description,
+    reviewerNotes,
+  })
 }
 
 function writeBodyFile(body) {
@@ -760,39 +972,79 @@ function createOrUpdatePr(branch, title, body) {
   return 'created'
 }
 
-async function processCandidate(config, currentLock, candidate, results) {
-  const identity = await resolveImageIdentity(config, candidate.version.tag)
+const PROCESS_CANDIDATE_DEPENDENCIES = {
+  changedFiles,
+  checkoutUpdateBranch,
+  closePr,
+  createOrUpdatePr,
+  deleteRemoteBranch,
+  findOpenPr,
+  prBody,
+  prTitle,
+  pushUpdateBranch,
+  resolveImageIdentity,
+  run,
+  updateFiles,
+}
 
-  checkoutLaneBranch(candidate.branch)
-  updateFiles(config, currentLock, candidate, identity)
+export async function processCandidate(
+  config,
+  currentLock,
+  candidate,
+  results,
+  dependencies,
+) {
+  const deps = {
+    ...PROCESS_CANDIDATE_DEPENDENCIES,
+    ...dependencies,
+  }
+  const existingPr = deps.findOpenPr(candidate.branch)
+  if (existingPr) {
+    results.unchanged.push(
+      `${config.name}: ${candidate.version.tag} already has PR #${existingPr.number}`,
+    )
+    return
+  }
 
-  const files = changedFiles()
+  const identity = await deps.resolveImageIdentity(
+    config,
+    candidate.version.tag,
+  )
+
+  deps.checkoutUpdateBranch(candidate.branch)
+  deps.updateFiles(config, currentLock, candidate, identity)
+
+  const files = deps.changedFiles()
   if (files.length === 0) {
-    const pr = findOpenPr(candidate.branch)
+    const pr = deps.findOpenPr(candidate.branch)
     if (pr) {
-      closePr(
+      deps.closePr(
         pr,
         candidate.branch,
         `${config.name} on main already contains ${candidate.version.tag}.`,
       )
       results.closed.push(`${config.name} ${candidate.lane}: already on main`)
     } else {
-      deleteRemoteBranch(candidate.branch)
+      deps.deleteRemoteBranch(candidate.branch)
       results.unchanged.push(`${config.name} ${candidate.lane}`)
     }
     return
   }
 
-  run('git', ['add', ...files])
-  run('git', ['commit', '-m', prTitle(config, candidate, currentLock)], {
-    stdio: 'inherit',
-  })
-  pushLaneBranch(candidate.branch)
+  deps.run('git', ['add', ...files])
+  deps.run(
+    'git',
+    ['commit', '-m', deps.prTitle(config, candidate, currentLock)],
+    {
+      stdio: 'inherit',
+    },
+  )
+  deps.pushUpdateBranch(candidate.branch)
 
-  const body = prBody(config, candidate, currentLock, identity, files)
-  const action = createOrUpdatePr(
+  const body = deps.prBody(config, candidate, currentLock, identity, files)
+  const action = deps.createOrUpdatePr(
     candidate.branch,
-    prTitle(config, candidate, currentLock),
+    deps.prTitle(config, candidate, currentLock),
     body,
   )
   results[action].push(`${config.name}: ${candidate.version.tag}`)
@@ -801,7 +1053,7 @@ async function processCandidate(config, currentLock, candidate, results) {
 async function processImage(config, options, results) {
   const currentLock = readJson(config.lockPath)
   const tags = await config.listTags()
-  const { candidates, currentLane } = selectCandidates(
+  const { candidates, currentVersion } = selectCandidates(
     config,
     tags,
     currentLock,
@@ -811,7 +1063,7 @@ async function processImage(config, options, results) {
     candidates.map(candidate => candidate.branch),
   )
 
-  closeStalePrs(config, currentLane, expectedBranches, results)
+  closeStalePrs(config, currentVersion, expectedBranches, results)
 
   if (candidates.length === 0) {
     results.unchanged.push(config.name)

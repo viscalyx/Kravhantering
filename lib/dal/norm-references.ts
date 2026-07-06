@@ -32,6 +32,11 @@ interface LinkedRequirementRow {
   versionNumber: number
 }
 
+interface ConnectedRequirementIdRow {
+  id: number
+  uniqueId: string
+}
+
 interface NormReferenceUsage {
   libraryRequirementCount: number
   localRequirementCount: number
@@ -76,7 +81,12 @@ interface LinkedRequirementDbRow
   archiveInitiatedAt: Date | string | null
 }
 
-export type { LinkedRequirementRow, NormReferenceRow, NormReferenceUsage }
+export type {
+  ConnectedRequirementIdRow,
+  LinkedRequirementRow,
+  NormReferenceRow,
+  NormReferenceUsage,
+}
 
 function map(row: NormReferenceEntity): NormReferenceRow {
   return {
@@ -161,6 +171,32 @@ export async function getNormReferenceById(
   return row ? map(row) : null
 }
 
+export async function getNormReferenceByNormReferenceId(
+  db: SqlServerDatabase,
+  normReferenceId: string,
+): Promise<NormReferenceRow | null> {
+  const rows = await db.query<NormReferenceDbRow[]>(
+    `
+      SELECT TOP (1)
+        normReferences.id AS id,
+        normReferences.norm_reference_id AS normReferenceId,
+        normReferences.name AS name,
+        normReferences.type AS type,
+        normReferences.reference AS reference,
+        normReferences.version AS version,
+        normReferences.issuer AS issuer,
+        normReferences.uri AS uri,
+        normReferences.is_archived AS isArchived,
+        normReferences.created_at AS createdAt,
+        normReferences.updated_at AS updatedAt
+      FROM norm_references AS normReferences
+      WHERE normReferences.norm_reference_id = @0
+    `,
+    [normReferenceId],
+  )
+  return rows[0] ? mapDbRow(rows[0]) : null
+}
+
 // Note: kept on raw SQL because this is a join/aggregation query against
 // requirement_versions; per the Query Decision Order, raw SQL is the right
 // tool for reporting-style reads that don't need full entity hydration.
@@ -243,6 +279,29 @@ export async function getLinkedRequirements(
         ? null
         : toIsoString(row.archiveInitiatedAt),
   }))
+}
+
+// Note: kept on raw SQL because the MCP contract intentionally exposes only
+// stable library Krav identifiers, not the broader REST/UI detail projection.
+export async function listConnectedLibraryRequirementIds(
+  db: SqlServerDatabase,
+  normReferenceDbId: number,
+): Promise<ConnectedRequirementIdRow[]> {
+  return db.query<ConnectedRequirementIdRow[]>(
+    `
+      SELECT DISTINCT
+        requirements.id AS id,
+        requirements.unique_id AS uniqueId
+      FROM requirement_version_norm_references AS links
+      INNER JOIN requirement_versions
+        ON links.requirement_version_id = requirement_versions.id
+      INNER JOIN requirements
+        ON requirement_versions.requirement_id = requirements.id
+      WHERE links.norm_reference_id = @0
+      ORDER BY requirements.unique_id ASC
+    `,
+    [normReferenceDbId],
+  )
 }
 
 export async function getNormReferenceUsage(
