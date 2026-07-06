@@ -8,10 +8,18 @@ import { fileURLToPath } from 'node:url'
 const MAIN_BRANCH = 'main'
 const BRANCH_PREFIX = 'automation/vendor-image'
 const OPEN_PR_LIST_LIMIT = '1000'
+const PR_TEMPLATE_PATH = '.github/pull_request_template.md'
 const PLATFORM = {
   architecture: 'amd64',
   os: 'linux',
 }
+
+const OPERATOR_NO_NOTES_MARKER = 'operator-upgrade:no-notes'
+const OPERATOR_NOTES_START_MARKER =
+  '<!-- DO NOT REMOVE: operator-upgrade:notes start -->'
+const OPERATOR_NOTES_END_MARKER =
+  '<!-- DO NOT REMOVE: operator-upgrade:notes end -->'
+const SSDLC_REQUIREMENTS_MARKER = 'ssdlc:requirements'
 
 const ACCEPT_MANIFESTS = [
   'application/vnd.oci.image.index.v1+json',
@@ -236,6 +244,10 @@ function compareLanes(config, left, right) {
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'))
+}
+
+function readText(filePath) {
+  return fs.readFileSync(filePath, 'utf8')
 }
 
 function writeJson(filePath, value) {
@@ -733,9 +745,94 @@ function prTitle(config, candidate, currentLock) {
   return `chore: ${action} ${config.name} container to ${candidate.version.tag}`
 }
 
-function prBody(config, candidate, currentLock, identity, files) {
-  return [
-    `## ${config.laneDescription(candidate.lane)}`,
+export function setTemplateSectionBody(template, heading, body) {
+  let found = false
+  const pattern = new RegExp(
+    `(^|\\r?\\n)(## ${escapeRegExp(heading)}\\r?\\n)[\\s\\S]*?(?=\\r?\\n## |$)`,
+    'u',
+  )
+  const updated = template.replace(
+    pattern,
+    (_match, leadingNewline, prefix) => {
+      found = true
+      const trimmedBody = body.trimEnd()
+      return trimmedBody
+        ? `${leadingNewline}${prefix}\n${trimmedBody}\n`
+        : `${leadingNewline}${prefix}\n`
+    },
+  )
+  if (!found) {
+    throw new Error(`Pull request template is missing section: ${heading}`)
+  }
+  return updated
+}
+
+export function setTemplateChecklistState(template, marker, checked) {
+  const pattern = new RegExp(
+    `^([ \\t]*- \\[)[ xX](\\].*${escapeRegExp(marker)}.*)$`,
+    'mu',
+  )
+  if (!pattern.test(template)) {
+    throw new Error(
+      `Pull request template is missing checklist row marker: ${marker}`,
+    )
+  }
+  return template.replace(
+    pattern,
+    (_match, prefix, suffix) => `${prefix}${checked ? 'x' : ' '}${suffix}`,
+  )
+}
+
+export function templateChecklistRow(template, marker, checked) {
+  const pattern = new RegExp(
+    `^([ \\t]*- \\[)[ xX](\\].*${escapeRegExp(marker)}.*)$`,
+    'mu',
+  )
+  const match = template.match(pattern)
+  if (!match) {
+    throw new Error(
+      `Pull request template is missing checklist row marker: ${marker}`,
+    )
+  }
+  return `${match[1]}${checked ? 'x' : ' '}${match[2]}`
+}
+
+export function renderVendorImagePrTemplate(template, details) {
+  let body = template
+  body = setTemplateSectionBody(body, 'Description', details.description)
+  body = setTemplateSectionBody(
+    body,
+    'Related Issues',
+    details.relatedIssues ?? 'Relates to automated vendor image maintenance.',
+  )
+  body = setTemplateSectionBody(body, 'Reviewer Notes', details.reviewerNotes)
+  body = setTemplateSectionBody(
+    body,
+    'Operator Upgrade Impact',
+    [
+      templateChecklistRow(template, OPERATOR_NO_NOTES_MARKER, true),
+      '',
+      OPERATOR_NOTES_START_MARKER,
+      'No operator notes needed for this vendor image lock update.',
+      OPERATOR_NOTES_END_MARKER,
+    ].join('\n'),
+  )
+  body = setTemplateSectionBody(
+    body,
+    'SSDLC (Secure Software Development Life Cycle) Gate',
+    [
+      templateChecklistRow(template, SSDLC_REQUIREMENTS_MARKER, true),
+      '',
+      'Automated vendor image maintenance was reviewed for security, data protection, threat-model, and security-testing impacts.',
+      'Normal pull request CI validates the generated lock and companion-file changes.',
+    ].join('\n'),
+  )
+  return `${body.trimEnd()}\n`
+}
+
+export function prBody(config, candidate, currentLock, identity, files) {
+  const description = [
+    `### ${config.laneDescription(candidate.lane)}`,
     '',
     `Updates the ${config.name} vendor image lock lane from main.`,
     '',
@@ -747,13 +844,20 @@ function prBody(config, candidate, currentLock, identity, files) {
     '',
     `Branch: \`${candidate.branch}\``,
     `Platform: \`${PLATFORM.os}/${PLATFORM.architecture}\``,
-    '',
+  ].join('\n')
+
+  const reviewerNotes = [
     'Files changed by policy:',
+    '',
     ...files.map(file => `- \`${file}\``),
     '',
     'Normal pull request CI performs validation for this update.',
-    '',
   ].join('\n')
+
+  return renderVendorImagePrTemplate(readText(PR_TEMPLATE_PATH), {
+    description,
+    reviewerNotes,
+  })
 }
 
 function writeBodyFile(body) {
