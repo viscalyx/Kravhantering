@@ -160,11 +160,8 @@ describe('AI settings DAL', () => {
     await expect(
       getAiGenerationAvailability(db, { NODE_ENV: 'test' }),
     ).resolves.toEqual({
-      aiSafetyForensicLoggingEnabled: false,
-      aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: false,
-      requirementGenerationEnabled: false,
     })
   })
 
@@ -183,15 +180,12 @@ describe('AI settings DAL', () => {
         { AI_REQUIREMENT_GENERATION_DISABLED: 'true', NODE_ENV: 'test' },
       ),
     ).toEqual({
-      aiSafetyForensicLoggingEnabled: true,
-      aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
       disabledByEnvironment: true,
       effectiveRequirementGenerationEnabled: false,
-      requirementGenerationEnabled: true,
     })
   })
 
-  it('updates the singleton row and returns effective availability', async () => {
+  it('updates the singleton row and returns full Admin settings', async () => {
     const audit = vi.fn()
 
     await expect(

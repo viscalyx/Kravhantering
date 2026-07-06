@@ -152,7 +152,12 @@ describe('AssignmentBasedAuthorizationService', () => {
   })
 
   it.each<RequirementsAction>([
+    { kind: 'manage_norm_reference', operation: 'get' },
     { kind: 'manage_norm_reference', operation: 'list' },
+    {
+      kind: 'manage_norm_reference',
+      operation: 'list_connected_requirement_ids',
+    },
     { kind: 'manage_norm_reference', operation: 'search' },
   ])('allows read-only norm-reference MCP operation %s', async action => {
     const { lookup, service } = makeService()

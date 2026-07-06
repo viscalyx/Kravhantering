@@ -1144,6 +1144,50 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 25: require
 ```
 <!-- markdownlint-enable MD013 -->
 
+### Scenario 26: norm-reference MCP discovery keeps connected krav IDs separate
+
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — issue #405 norm-reference MCP connected krav discovery]`
+
+**What happened:** Normbibliotek discovery is used as lookup data before import
+validation, while connected krav usage is a separate question. If list/search
+responses start carrying connected krav rows, IDs, or counts, agents can treat
+usage context as normal lookup state, receive noisy payloads, or accidentally
+mix library Krav with kravunderlagslokala krav.
+
+**Covered code line ranges:** This scenario covers the public MCP schema,
+transport text, norm-reference service behavior, DAL projection, and docs in
+these implementation ranges:
+
+<!-- markdownlint-disable MD013 -->
+```text
+lib/mcp/server.ts:261-306
+lib/mcp/server.ts:950-1044
+lib/mcp/server.ts:1760-1795
+lib/requirements/service-norm-references.ts:1-299
+lib/dal/norm-references.ts:174-198
+lib/dal/norm-references.ts:284-305
+docs/integrations/mcp-server-user-guide.md
+docs/integrations/mcp-server-contributor-guide.md
+```
+<!-- markdownlint-enable MD013 -->
+
+**The requirement:** `requirements_manage_norm_reference` list/search returns
+full canonical Normbibliotek properties in `structuredContent.result` and must
+not include connected krav rows, IDs, or counts. Exact `get` and
+`list_connected_requirement_ids` operations accept exactly one selector,
+numeric `id` or stable `normReferenceId`. The connected-ID operation returns
+only `{ id, uniqueId }` for connected library Krav, deduplicated across linked
+kravversioner, sorted by `uniqueId`, and excludes kravunderlagslokala krav.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 26: norm-reference MCP discovery keeps connected krav IDs separate"
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,
