@@ -86,6 +86,14 @@ function compareNormReferences(
 
 function toMcpNormReferenceRow(
   row: NormReferenceRow,
+  match: McpSearchMatch,
+): McpNormReferenceRow & { match: McpSearchMatch }
+function toMcpNormReferenceRow(
+  row: NormReferenceRow,
+  match?: McpSearchMatch,
+): McpNormReferenceRow
+function toMcpNormReferenceRow(
+  row: NormReferenceRow,
   match?: McpSearchMatch,
 ): McpNormReferenceRow {
   const result: McpNormReferenceRow = {
@@ -282,7 +290,7 @@ export function createNormReferenceWorkflow({
                 if (!match) {
                   return []
                 }
-                return [{ ...toMcpNormReferenceRow(row), match }]
+                return [toMcpNormReferenceRow(row, match)]
               },
             )
             .sort(
