@@ -74,7 +74,7 @@ function writeLockFile(dir) {
       service(
         'sqlserver',
         'registry.example/sqlserver',
-        '2025-CU5-ubuntu-24.04',
+        '2025-CU6-ubuntu-24.04',
         'sha256:sql-manifest',
         'sha256:sql-image',
       ),
@@ -141,7 +141,7 @@ function writeEnvFile(dir, overrides = {}) {
     KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.6.3-0',
     KONG_IMAGE_REF: 'registry.example/kong:3.10.0.8-20260210-ubuntu',
     NGINX_IMAGE_REF: 'registry.example/nginx:1.31.1-alpine',
-    SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025-CU5-ubuntu-24.04',
+    SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025-CU6-ubuntu-24.04',
     ...overrides,
   }
   const envPath = path.join(dir, 'release.env')

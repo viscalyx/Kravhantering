@@ -7,6 +7,21 @@ import {
 } from '../../.github/workflows/vendor-image-updates.mjs'
 
 describe('vendor image updater policy', () => {
+  it('covers SQL Server release and developer companion refs', () => {
+    expect(IMAGE_CONFIGS.sqlserver.companionFiles).toContain(
+      'docker-compose.sqlserver.yml',
+    )
+    expect(IMAGE_CONFIGS.sqlserver.companionFiles).toContain(
+      '.devcontainer/docker-compose.yml',
+    )
+    expect(IMAGE_CONFIGS.sqlserver.companionFiles).toContain(
+      '.devcontainer/elevated/docker-compose.yml',
+    )
+    expect(IMAGE_CONFIGS.sqlserver.companionFiles).toContain(
+      'containers/production/env/release.env.template',
+    )
+  })
+
   it('supports the Kong Gateway 3.x lane', () => {
     const parsed = parseKongTag('3.10.0.8-20260210-ubuntu')
 

@@ -42,6 +42,7 @@ export const IMAGE_CONFIGS = {
       'docker-compose.sqlserver.yml',
       '.devcontainer/docker-compose.yml',
       '.devcontainer/elevated/docker-compose.yml',
+      'containers/production/env/release.env.template',
     ],
     image: 'mcr.microsoft.com/mssql/server',
     laneDescription: lane => `SQL Server ${lane}`,
