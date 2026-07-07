@@ -1804,7 +1804,7 @@ describe('RequirementDetailClient', () => {
     expect(await screen.findByText('Review description')).toBeInTheDocument()
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'Send back to draft' }),
+      await screen.findByRole('button', { name: 'Send back to draft' }),
     )
     expect(screen.getByText('Send back to draft?')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
@@ -1819,7 +1819,9 @@ describe('RequirementDetailClient', () => {
       ),
     )
 
-    await userEvent.click(screen.getByRole('button', { name: 'Publish' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Publish' }),
+    )
     expect(screen.getByText('Publish this requirement?')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 

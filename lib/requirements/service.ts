@@ -27,6 +27,7 @@ import {
   createRequirementsImportWorkflow,
   type ManageImportInput,
   type ManageImportOutput,
+  type McpImportInstructionDestinationRef,
   type RequirementsImportExecuteResult,
   type RequirementsImportPreview,
 } from '@/lib/requirements/import-service'
@@ -39,6 +40,11 @@ import {
   type RequirementsLogger,
 } from '@/lib/requirements/logging'
 import { recordSensitiveMutationSucceeded } from '@/lib/requirements/security-audit'
+import {
+  createNeedsReferenceWorkflow,
+  type ManageNeedsReferenceInput,
+  type ManageNeedsReferenceOutput,
+} from '@/lib/requirements/service-needs-references'
 import {
   createNormReferenceWorkflow,
   type ManageNormReferenceInput,
@@ -64,6 +70,10 @@ export type {
   ManageImportInput,
   ManageImportOutput,
 } from '@/lib/requirements/import-service'
+export type {
+  ManageNeedsReferenceInput,
+  ManageNeedsReferenceOutput,
+} from '@/lib/requirements/service-needs-references'
 export type {
   ManageNormReferenceInput,
   ManageNormReferenceOutput,
@@ -347,7 +357,10 @@ export interface RequirementsService {
     input: AddToSpecificationInput,
   ): Promise<AddToSpecificationOutput>
 
-  buildImportInstruction(locale: ResponseLocale): Promise<string>
+  buildImportInstruction(
+    locale: ResponseLocale,
+    destination: McpImportInstructionDestinationRef,
+  ): Promise<string>
 
   executeLibraryImport(
     context: RequestContext,
@@ -363,7 +376,10 @@ export interface RequirementsService {
 
   getImportInstruction(
     context: RequestContext,
-    input: { locale: ResponseLocale },
+    input: {
+      destination: McpImportInstructionDestinationRef
+      locale: ResponseLocale
+    },
   ): Promise<{ importInstruction: string }>
 
   getImportSchema(
@@ -432,6 +448,10 @@ export interface RequirementsService {
     context: RequestContext,
     input: ManageImportInput,
   ): Promise<ManageImportOutput>
+  manageNeedsReference(
+    context: RequestContext,
+    input: ManageNeedsReferenceInput,
+  ): Promise<ManageNeedsReferenceOutput>
   manageNormReference(
     context: RequestContext,
     input: ManageNormReferenceInput,
@@ -514,6 +534,7 @@ export function createRequirementsService(
 ): RequirementsService {
   return {
     ...createRequirementsImportWorkflow({ authorization, db, logger }),
+    ...createNeedsReferenceWorkflow({ authorization, db, logger }),
     ...createNormReferenceWorkflow({ authorization, db, logger }),
     ...createRequirementWorkflow({ authorization, db, logger }),
 

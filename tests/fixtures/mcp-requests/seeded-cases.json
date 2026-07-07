@@ -21,6 +21,9 @@
       "tool": "requirements_get_import_instruction",
       "kind": "read",
       "arguments": {
+        "destination": {
+          "kind": "requirements_library"
+        },
         "locale": "en"
       }
     },
@@ -38,6 +41,15 @@
       "kind": "read",
       "arguments": {
         "operation": "list"
+      }
+    },
+    {
+      "name": "list needs references",
+      "tool": "requirements_manage_needs_reference",
+      "kind": "read",
+      "arguments": {
+        "operation": "list",
+        "specificationId": "${specification.id}"
       }
     },
     {

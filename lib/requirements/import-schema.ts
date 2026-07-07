@@ -6,7 +6,7 @@ import {
   SQL_SERVER_INT_MAX,
 } from '@/lib/http/validation'
 
-export const REQUIREMENTS_IMPORT_SCHEMA_VERSION = 'requirement-import.v2'
+export const REQUIREMENTS_IMPORT_SCHEMA_VERSION = 'requirement-import.v3'
 
 const optionalImportTextSchema = z.string().max(BUSINESS_TEXT_MAX_LENGTH)
 const optionalImportDbStringSchema = z.string().max(DB_STRING_MAX_LENGTH)
@@ -37,12 +37,22 @@ export const proposedNormReferenceSchema = z
   })
   .strict()
 
+export const proposedNeedsReferenceSchema = z
+  .object({
+    description: optionalNullableImportTextSchema,
+    key: z.string().trim().min(1).max(DB_STRING_MAX_LENGTH),
+    text: z.string().trim().min(1).max(DB_STRING_MAX_LENGTH),
+  })
+  .strict()
+
 export const importRequirementSchema = z
   .object({
     acceptanceCriteria: optionalNullableImportTextSchema,
     categoryId: positiveIntegerSchema.nullable().optional(),
     categoryName: optionalNullableImportDbStringSchema,
     description: z.string().trim().min(1).max(BUSINESS_TEXT_MAX_LENGTH),
+    needsReferenceId: positiveIntegerSchema.nullable().optional(),
+    needsReferenceKey: optionalNullableImportDbStringSchema,
     normReferenceIds: z.array(nonEmptyArrayStringSchema).optional(),
     proposedNormReferenceKeys: z.array(nonEmptyArrayStringSchema).optional(),
     qualityCharacteristicId: positiveIntegerSchema.nullable().optional(),
@@ -61,6 +71,7 @@ export const importRequirementSchema = z
 
 export const requirementsImportPayloadSchema = z
   .object({
+    proposedNeedsReferences: z.array(proposedNeedsReferenceSchema).optional(),
     proposedNormReferences: z.array(proposedNormReferenceSchema).optional(),
     requirements: z.array(importRequirementSchema).min(1),
     schemaVersion: z.literal(REQUIREMENTS_IMPORT_SCHEMA_VERSION),
@@ -79,6 +90,19 @@ export const requirementsImportPayloadSchema = z
         })
       }
       keys.add(proposal.key)
+    }
+    const needsReferenceKeys = new Set<string>()
+    for (const [index, proposal] of (
+      payload.proposedNeedsReferences ?? []
+    ).entries()) {
+      if (needsReferenceKeys.has(proposal.key)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Expected unique proposed needs reference keys',
+          path: ['proposedNeedsReferences', index, 'key'],
+        })
+      }
+      needsReferenceKeys.add(proposal.key)
     }
   })
 
@@ -197,6 +221,19 @@ export function buildRequirementsImportJsonSchema(
         },
         type: 'array',
       },
+      proposedNeedsReferences: {
+        items: {
+          additionalProperties: false,
+          properties: {
+            description: nullableOptionalStringSchema(),
+            key: requiredStringSchema(DB_STRING_MAX_LENGTH),
+            text: requiredStringSchema(DB_STRING_MAX_LENGTH),
+          },
+          required: ['key', 'text'],
+          type: 'object',
+        },
+        type: 'array',
+      },
       requirements: {
         items: {
           additionalProperties: false,
@@ -210,6 +247,18 @@ export function buildRequirementsImportJsonSchema(
               maxLength: BUSINESS_TEXT_MAX_LENGTH,
               minLength: 1,
               type: 'string',
+            },
+            needsReferenceId: {
+              anyOf: [positiveIntegerJsonSchema, { type: 'null' }],
+              description: isSv
+                ? 'Behovsreferens-ID används vid import till kravunderlag. Vid import till kravbiblioteket ignoreras fältet.'
+                : 'Needs reference ID is used when importing to a requirements specification. When importing to the requirements library, this field is ignored.',
+            },
+            needsReferenceKey: {
+              ...nullableOptionalStringSchema(DB_STRING_MAX_LENGTH),
+              description: isSv
+                ? 'Nyckel till proposedNeedsReferences. Används vid import till kravunderlag när en föreslagen behovsreferens ska lösas i granskningen. Vid import till kravbiblioteket ignoreras fältet.'
+                : 'Key into proposedNeedsReferences. Used when importing to a requirements specification and a proposed needs reference must be resolved in review. When importing to the requirements library, this field is ignored.',
             },
             normReferenceIds: stringArrayJsonSchema,
             proposedNormReferenceKeys: stringArrayJsonSchema,

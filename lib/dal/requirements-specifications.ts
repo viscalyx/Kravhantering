@@ -1582,7 +1582,7 @@ export async function listSpecificationNeedsReferences(
   return rows.map(mapSpecificationNeedsReferenceRow)
 }
 
-export async function getSpecificationNeedsReferenceById(
+export async function findSpecificationNeedsReferenceIdentity(
   db: SqlExecutor,
   specificationId: number,
   id: number,
@@ -1740,7 +1740,7 @@ async function assertSpecificationNeedsReferenceTextAvailable(
   }
 }
 
-async function getSpecificationNeedsReferenceDetailById(
+export async function getSpecificationNeedsReference(
   db: SqlExecutor,
   specificationId: number,
   id: number,
@@ -1835,12 +1835,12 @@ export async function updateSpecificationNeedsReference(
   id: number,
   data: SpecificationNeedsReferenceMutationInput,
 ): Promise<SpecificationNeedsReferenceSummary> {
-  const existing = await getSpecificationNeedsReferenceById(
+  const existingIdentity = await findSpecificationNeedsReferenceIdentity(
     db,
     specificationId,
     id,
   )
-  if (!existing) {
+  if (!existingIdentity) {
     throw notFoundError('Needs reference not found')
   }
 
@@ -1861,11 +1861,7 @@ export async function updateSpecificationNeedsReference(
     [normalized.text, normalized.description, new Date(), id, specificationId],
   )
 
-  const updated = await getSpecificationNeedsReferenceDetailById(
-    db,
-    specificationId,
-    id,
-  )
+  const updated = await getSpecificationNeedsReference(db, specificationId, id)
   if (!updated) {
     throw notFoundError('Needs reference not found after update')
   }
@@ -1877,20 +1873,20 @@ export async function deleteSpecificationNeedsReference(
   specificationId: number,
   id: number,
 ): Promise<boolean> {
-  const existing = await getSpecificationNeedsReferenceDetailById(
+  const existingSummary = await getSpecificationNeedsReference(
     db,
     specificationId,
     id,
   )
-  if (!existing) {
+  if (!existingSummary) {
     return false
   }
 
-  if (existing.linkedItemCount > 0) {
+  if (existingSummary.linkedItemCount > 0) {
     throw conflictError(
       'Needs reference is used by requirement applications or unique requirements',
       {
-        linkedItemCount: existing.linkedItemCount,
+        linkedItemCount: existingSummary.linkedItemCount,
         reason: 'needs_reference_in_use',
         specificationId,
       },
@@ -1914,7 +1910,7 @@ async function resolveExistingSpecificationNeedsReferenceForLinking(
   specificationId: number,
   needsReferenceId: number,
 ): Promise<number> {
-  const existingNeedsReference = await getSpecificationNeedsReferenceById(
+  const existingNeedsReference = await findSpecificationNeedsReferenceIdentity(
     db,
     specificationId,
     needsReferenceId,
@@ -1965,7 +1961,7 @@ async function normalizeSpecificationLocalRequirementInput(
 
   const needsReferenceId = normalizeOptionalForeignKeyId(data.needsReferenceId)
   if (needsReferenceId != null) {
-    const needsReference = await getSpecificationNeedsReferenceById(
+    const needsReference = await findSpecificationNeedsReferenceIdentity(
       db,
       specificationId,
       needsReferenceId,

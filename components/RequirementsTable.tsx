@@ -134,6 +134,8 @@ export type FloatingActionPillVariant = 'default' | 'primary' | 'warning'
 interface FloatingActionMenuItemBase {
   badge?: string | number
   description?: string
+  developerModeContext?: string
+  developerModeValue?: string
   disabled?: boolean
   icon?: ReactNode
   id: string
@@ -141,7 +143,12 @@ interface FloatingActionMenuItemBase {
   tooltip?: string
 }
 
-export type FloatingActionMenuItem =
+interface FloatingActionMenuSeparatorItem {
+  id: string
+  kind: 'separator'
+}
+
+type FloatingActionMenuActionItem =
   | (FloatingActionMenuItemBase & {
       href: string
       onClick?: never
@@ -151,16 +158,26 @@ export type FloatingActionMenuItem =
       onClick: () => void
     })
 
+export type FloatingActionMenuItem =
+  | FloatingActionMenuActionItem
+  | FloatingActionMenuSeparatorItem
+
+function isFloatingActionMenuSeparator(
+  item: FloatingActionMenuItem,
+): item is FloatingActionMenuSeparatorItem {
+  return 'kind' in item && item.kind === 'separator'
+}
+
 function isFloatingActionMenuLink(
   item: FloatingActionMenuItem,
-): item is FloatingActionMenuItemBase & { href: string } {
+): item is FloatingActionMenuActionItem & { href: string } {
   return typeof (item as { href?: unknown }).href === 'string'
 }
 
 function FloatingActionMenuItemContent({
   item,
 }: {
-  item: FloatingActionMenuItemBase
+  item: FloatingActionMenuActionItem
 }) {
   return (
     <>
@@ -241,7 +258,7 @@ function getFloatingPillClassName(
   return `${floatingPillBaseClassName} ${floatingPillVariantClassNames[variant]}`
 }
 
-function FloatingActionPill({ action }: { action: FloatingActionItem }) {
+export function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   const variant = action.variant ?? 'default'
   const hasMenu = (action.menuItems?.length ?? 0) > 0
   const developerModeContext = action.developerModeContext
@@ -260,6 +277,18 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   } | null>(null)
   const menuId = `floating-action-menu-${action.id}`
   const triggerId = `floating-action-trigger-${action.id}`
+  const menuDeveloperModeContext = developerModeValue
+    ? `${developerModeContext ?? 'requirements table'} > floating pill: ${developerModeValue}`
+    : developerModeContext
+  const menuItemDeveloperModeProps = (item: FloatingActionMenuActionItem) =>
+    item.developerModeValue
+      ? devMarker({
+          context: item.developerModeContext ?? menuDeveloperModeContext,
+          name: 'table action',
+          priority: 345,
+          value: item.developerModeValue,
+        })
+      : {}
   const menuMounted =
     open && menuPosition !== null && typeof document !== 'undefined'
   const getFocusableMenuItems = useCallback(
@@ -468,9 +497,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                   aria-labelledby={triggerId}
                   className="w-full overflow-y-auto rounded-2xl border border-secondary-200/80 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-secondary-700/70 dark:bg-secondary-900/95"
                   {...devMarker({
-                    context: developerModeValue
-                      ? `${developerModeContext ?? 'requirements table'} > floating pill: ${developerModeValue}`
-                      : developerModeContext,
+                    context: menuDeveloperModeContext,
                     name: 'floating pill menu',
                     priority: 350,
                     value: developerModeValue,
@@ -482,15 +509,48 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                   style={{ maxHeight: menuPosition.maxHeight }}
                 >
                   <ul className="space-y-1" role="none">
-                    {action.menuItems?.map(item => (
-                      <li key={item.id} role="none">
-                        {isFloatingActionMenuLink(item) ? (
-                          item.disabled ? (
+                    {action.menuItems?.map(item =>
+                      isFloatingActionMenuSeparator(item) ? (
+                        <li key={item.id} role="none">
+                          <hr className="my-1 border-0 border-t border-secondary-200/80 dark:border-secondary-700/80" />
+                        </li>
+                      ) : (
+                        <li key={item.id} role="none">
+                          {isFloatingActionMenuLink(item) ? (
+                            item.disabled ? (
+                              <span
+                                aria-disabled="true"
+                                className={
+                                  floatingActionMenuItemDisabledClassName
+                                }
+                                {...menuItemDeveloperModeProps(item)}
+                                role="menuitem"
+                                tabIndex={-1}
+                                title={item.tooltip}
+                              >
+                                <FloatingActionMenuItemContent item={item} />
+                              </span>
+                            ) : (
+                              <Link
+                                className={
+                                  floatingActionMenuItemEnabledClassName
+                                }
+                                href={item.href}
+                                onClick={() => setOpen(false)}
+                                {...menuItemDeveloperModeProps(item)}
+                                role="menuitem"
+                                title={item.tooltip}
+                              >
+                                <FloatingActionMenuItemContent item={item} />
+                              </Link>
+                            )
+                          ) : item.disabled ? (
                             <span
                               aria-disabled="true"
                               className={
                                 floatingActionMenuItemDisabledClassName
                               }
+                              {...menuItemDeveloperModeProps(item)}
                               role="menuitem"
                               tabIndex={-1}
                               title={item.tooltip}
@@ -498,42 +558,23 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               <FloatingActionMenuItemContent item={item} />
                             </span>
                           ) : (
-                            <Link
-                              className={floatingActionMenuItemEnabledClassName}
-                              href={item.href}
-                              onClick={() => setOpen(false)}
+                            <button
+                              className={`${floatingActionMenuItemBaseClassName} hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70`}
+                              {...menuItemDeveloperModeProps(item)}
+                              onClick={() => {
+                                item.onClick()
+                                setOpen(false)
+                              }}
                               role="menuitem"
                               title={item.tooltip}
+                              type="button"
                             >
                               <FloatingActionMenuItemContent item={item} />
-                            </Link>
-                          )
-                        ) : item.disabled ? (
-                          <span
-                            aria-disabled="true"
-                            className={floatingActionMenuItemDisabledClassName}
-                            role="menuitem"
-                            tabIndex={-1}
-                            title={item.tooltip}
-                          >
-                            <FloatingActionMenuItemContent item={item} />
-                          </span>
-                        ) : (
-                          <button
-                            className={`${floatingActionMenuItemBaseClassName} hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70`}
-                            onClick={() => {
-                              item.onClick()
-                              setOpen(false)
-                            }}
-                            role="menuitem"
-                            title={item.tooltip}
-                            type="button"
-                          >
-                            <FloatingActionMenuItemContent item={item} />
-                          </button>
-                        )}
-                      </li>
-                    ))}
+                            </button>
+                          )}
+                        </li>
+                      ),
+                    )}
                   </ul>
                 </div>
               </div>,

@@ -257,6 +257,8 @@ kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i
 rubriken byts när du växlar tabb: tabben för krav har kravtabellens verktyg,
 medan tabben för behovsreferenser har åtgärden för att skapa en ny referens.
 Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag.
+Knappen **"Fler åtgärder"** innehåller AI-assisterat författande, import,
+rapporter och exporter när de är tillgängliga.
 Klicka på en rad för att se kravets fullständiga detaljer.
 
 ![Kravunderlagsdetalj — delad vy](images/024-kravunderlagsdetalj.png)
@@ -363,12 +365,13 @@ som servergenererad PDF för dokumentation och revision.
 
 ## Import av krav
 
-Importfunktionen använder JSON enligt `requirement-import.v2`. **AI-assisterat
+Importfunktionen använder JSON enligt `requirement-import.v3`. **AI-assisterat
 författande** använder samma importkontrakt och samma redigerbara
 importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya
 utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt
 i ett kravunderlag. Importen laddar först en granskning där rader, metadata och
-föreslagna normreferenser kan kontrolleras innan något sparas.
+föreslagna normreferenser och föreslagna behovsreferenser kan kontrolleras
+innan något sparas.
 
 ### AI-assisterat författande — behov och modell
 
@@ -531,9 +534,9 @@ CSV-kvittot kan laddas ned vid behov.
 
 ### Kravunderlagsimport — importfil
 
-I ett kravunderlag använder knappen **"Importera unika krav"** samma
-importfilformat, men målet är det aktuella kravunderlaget. Därför väljs inget
-kravområde i dialogen.
+I ett kravunderlag öppnar du **"Fler åtgärder"** och väljer
+**"Importera unika krav"**. Importen använder samma importfilformat, men målet
+är det aktuella kravunderlaget. Därför väljs inget kravområde i dialogen.
 
 ![Kravunderlagsimport — importfil](images/055-import-kravunderlag-fil.png)
 

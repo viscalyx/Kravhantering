@@ -58,12 +58,18 @@ function createService() {
     result: [],
   }))
   const getImportSchema = vi.fn(
-    async (_context: RequestContext, _input: { locale: 'en' | 'sv' }) => ({
+    async (
+      _context: RequestContext,
+      _input: { destination?: unknown; locale: 'en' | 'sv' },
+    ) => ({
       $schema: 'https://json-schema.org/draft/2020-12/schema',
     }),
   )
   const getImportInstruction = vi.fn(
-    async (_context: RequestContext, _input: { locale: 'en' | 'sv' }) => ({
+    async (
+      _context: RequestContext,
+      _input: { destination?: unknown; locale: 'en' | 'sv' },
+    ) => ({
       importInstruction: '# Create JSON for requirements import',
     }),
   )
@@ -175,11 +181,13 @@ function createService() {
     listSuggestions,
     manageDeviation: vi.fn(),
     manageImport: vi.fn(async () => ({ result: [] })),
+    manageNeedsReference: vi.fn(async () => ({ result: [] })),
     manageNormReference: vi.fn(async () => ({ result: [] })),
     manageRequirement,
     manageSuggestion,
     previewLibraryImport: vi.fn(async () => ({
       mode: 'library' as const,
+      needsReferenceProposals: [],
       previewToken: 'token',
       proposals: [],
       rows: [],
@@ -187,6 +195,7 @@ function createService() {
     })),
     previewSpecificationLocalImport: vi.fn(async () => ({
       mode: 'specification-local' as const,
+      needsReferenceProposals: [],
       previewToken: 'token',
       proposals: [],
       rows: [],
@@ -205,6 +214,7 @@ function createService() {
     graduateSpecificationLocalRequirement,
     listGraduationTargetAreas,
     manageImport: service.manageImport,
+    manageNeedsReference: service.manageNeedsReference,
     manageNormReference: service.manageNormReference,
     manageRequirement,
     manageSuggestion,
@@ -279,7 +289,11 @@ describe('MCP authorization seams', () => {
       name: 'requirements_get_import_schema',
     })
     await client.callTool({
-      arguments: {},
+      arguments: {
+        destination: {
+          kind: 'requirements_library',
+        },
+      },
       name: 'requirements_get_import_instruction',
     })
     await client.callTool({
@@ -330,6 +344,10 @@ describe('MCP authorization seams', () => {
       name: 'requirements_manage_import',
     })
     await client.callTool({
+      arguments: { operation: 'list', specificationId: 7 },
+      name: 'requirements_manage_needs_reference',
+    })
+    await client.callTool({
       arguments: { operation: 'list' },
       name: 'requirements_manage_norm_reference',
     })
@@ -361,6 +379,10 @@ describe('MCP authorization seams', () => {
       'requirements_manage_improvement_suggestion',
     )
     expectContext(service.manageImport, 'requirements_manage_import')
+    expectContext(
+      service.manageNeedsReference,
+      'requirements_manage_needs_reference',
+    )
     expectContext(
       service.manageNormReference,
       'requirements_manage_norm_reference',

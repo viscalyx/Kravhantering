@@ -1188,6 +1188,46 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 26: norm-re
 ```
 <!-- markdownlint-enable MD013 -->
 
+### Scenario 27: needs-reference MCP management stays specification-scoped
+
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — issue #403 needs-reference import support]`
+
+**What happened:** Behovsreferenser belong to one kravunderlag. MCP clients
+need to list, search, get, and create those references before validating a
+kravunderlagsimport, but they must not treat needs references as global
+reference data or as part of kravbiblioteksimport.
+
+**Covered code line ranges:** This scenario covers the public MCP schema,
+transport text, service behavior, DAL calls, and docs in these implementation
+ranges:
+
+<!-- markdownlint-disable MD013 -->
+```text
+lib/mcp/server.ts
+lib/requirements/service-needs-references.ts
+lib/dal/requirements-specifications.ts
+docs/integrations/mcp-server-user-guide.md
+docs/integrations/mcp-server-contributor-guide.md
+```
+<!-- markdownlint-enable MD013 -->
+
+**The requirement:** `requirements_manage_needs_reference` must require a
+numeric `specificationId` for every operation and expose only `list`, `search`,
+`get`, and `create`. List/search return specification-scoped
+behovsreferenser in `structuredContent.result`; exact get/create return one
+row in `structuredContent.needsReference`. Tool descriptions and docs must
+state the copy paths from import destination discovery to `specificationId` and
+from returned needs-reference IDs to `requirements[].needsReferenceId`.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 27: needs-reference MCP management stays specification-scoped"
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,

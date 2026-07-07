@@ -48,7 +48,7 @@ import {
 import { createUtf8BomBlob } from '@/lib/text-export'
 
 type ImportMode = 'library' | 'specification-local'
-type ReviewTab = 'proposals' | 'requirements'
+type ReviewTab = 'needsReferenceProposals' | 'proposals' | 'requirements'
 type AssociationPickerKind = 'normReferences' | 'requirementPackages'
 
 interface AreaOption {
@@ -59,6 +59,7 @@ interface AreaOption {
 }
 
 interface NeedsReferenceOption {
+  description?: string | null
   id: number
   text: string
 }
@@ -112,6 +113,7 @@ interface ImportPreviewRow {
     qualityCharacteristic: string | null
     type: string | null
   }
+  proposedNeedsReferenceKey: string | null
   proposedNormReferenceKeys: string[]
   reviewRowId: string
   selected: boolean
@@ -148,7 +150,17 @@ interface ImportProposalPreview {
   warnings: ImportMessage[]
 }
 
+interface ImportNeedsReferenceProposalPreview {
+  description: string | null
+  key: string
+  referencedCount: number
+  resolvedNeedsReferenceId: number | null
+  text: string
+  warnings: ImportMessage[]
+}
+
 export interface ImportPreviewResponse {
+  needsReferenceProposals?: ImportNeedsReferenceProposalPreview[]
   previewToken: string
   proposals: ImportProposalPreview[]
   rows: ImportPreviewRow[]
@@ -237,6 +249,7 @@ const TEXT = {
     collapseAll: 'Collapse all',
     collapseRow: 'Collapse row',
     file: 'JSON file',
+    createNeedsReference: 'Create needs reference',
     createNormReference: 'Create norm reference',
     deselectRowForImport: (rowNumber: number) =>
       `Exclude row #${rowNumber} from import`,
@@ -245,20 +258,23 @@ const TEXT = {
     expandAll: 'Expand all',
     expandRow: 'Expand row',
     infoCount: (count: number) => `${count} info`,
-    invalidSchema:
-      'The JSON does not match requirement-import.v2. Fix the import file before previewing requirements.',
+    invalidSchema: `The JSON does not match ${REQUIREMENTS_IMPORT_SCHEMA_VERSION}. Fix the import file before previewing requirements.`,
     importTitleLibrary: 'Import requirements',
     importTitleSpecification: 'Import local requirements',
     importReviewTabs: 'Import review',
     ignoredRequirementPackagesInfo:
       'Requirement packages in the import file are not used for specification-local requirements.',
     linkExistingNormReference: 'Link existing norm reference',
+    linkExistingNeedsReference: 'Link existing needs reference',
     loadReview: 'Preview requirements',
     needsReference: 'Needs reference',
+    needsReferenceDescription: 'Description',
     noExistingNormReference: 'No linked norm reference',
+    noExistingNeedsReference: 'No linked needs reference',
     noNormReferenceIds: 'No norm reference IDs are selected.',
     noPackageIds: 'No requirement package IDs are selected.',
     noProposals: 'No proposed norm references are loaded.',
+    noNeedsReferenceProposals: 'No proposed needs references are loaded.',
     noRows: 'No rows are loaded.',
     noPickerMatches: 'No matches.',
     noPickerOptions: 'No options are available.',
@@ -271,9 +287,13 @@ const TEXT = {
     pickerSearchPlaceholder: 'Search...',
     pickerSelectedCount: (count: number) => `${count} selected`,
     proposalResolved: 'Resolved',
+    proposalImportKey: 'Import key',
     proposedNormReferenceUnresolved: (tabName: string) =>
       `Proposed norm reference is unresolved and will not be saved. Validate and create it in the ${tabName} tab.`,
+    proposedNeedsReferenceUnresolved: (tabName: string) =>
+      `Proposed needs reference is unresolved and will not be saved. Validate and create it in the ${tabName} tab.`,
     proposalUsedByRows: 'Used by rows',
+    proposedNeedsReferences: 'Proposed needs references',
     proposedNormReferences: 'Proposed norm references',
     qualityCharacteristic: 'Quality characteristic',
     instructionFile: 'requirement-import-instruction.md',
@@ -336,6 +356,7 @@ const TEXT = {
     collapseAll: 'Kollapsa alla',
     collapseRow: 'Kollapsa rad',
     file: 'JSON-fil',
+    createNeedsReference: 'Skapa behovsreferens',
     createNormReference: 'Skapa normreferens',
     deselectRowForImport: (rowNumber: number) =>
       `Välj inte rad #${rowNumber} för import`,
@@ -343,20 +364,23 @@ const TEXT = {
     expandAll: 'Expandera alla',
     expandRow: 'Expandera rad',
     infoCount: (count: number) => `${count} info`,
-    invalidSchema:
-      'JSON följer inte requirement-import.v2. Korrigera importfilen innan granskningen laddas.',
+    invalidSchema: `JSON följer inte ${REQUIREMENTS_IMPORT_SCHEMA_VERSION}. Korrigera importfilen innan granskningen laddas.`,
     importTitleLibrary: 'Importera krav',
     importTitleSpecification: 'Importera lokala krav',
     importReviewTabs: 'Importgranskning',
     ignoredRequirementPackagesInfo:
       'Kravpaket i importfilen används inte för kravunderlagslokala krav.',
     linkExistingNormReference: 'Länka befintlig normreferens',
+    linkExistingNeedsReference: 'Länka befintlig behovsreferens',
     loadReview: 'Förhandsgranska krav',
     needsReference: 'Behovsreferens',
+    needsReferenceDescription: 'Beskrivning',
     noExistingNormReference: 'Ingen länkad normreferens',
+    noExistingNeedsReference: 'Ingen länkad behovsreferens',
     noNormReferenceIds: 'Inga normreferens-ID:n är valda.',
     noPackageIds: 'Inga kravpakets-ID:n är valda.',
     noProposals: 'Inga föreslagna normreferenser är laddade.',
+    noNeedsReferenceProposals: 'Inga föreslagna behovsreferenser är laddade.',
     noRows: 'Inga rader är laddade.',
     noPickerMatches: 'Inga träffar.',
     noPickerOptions: 'Inga val är tillgängliga.',
@@ -369,9 +393,13 @@ const TEXT = {
     pickerSearchPlaceholder: 'Sök...',
     pickerSelectedCount: (count: number) => `${count} valda`,
     proposalResolved: 'Löst',
+    proposalImportKey: 'Importnyckel',
     proposedNormReferenceUnresolved: (tabName: string) =>
       `Föreslagen normreferens är inte löst och sparas inte. Kontrollera och skapa den i fliken ${tabName}.`,
+    proposedNeedsReferenceUnresolved: (tabName: string) =>
+      `Föreslagen behovsreferens är inte löst och sparas inte. Kontrollera och skapa den i fliken ${tabName}.`,
     proposalUsedByRows: 'Används av rader',
+    proposedNeedsReferences: 'Föreslagna behovsreferenser',
     proposedNormReferences: 'Föreslagna normreferenser',
     qualityCharacteristic: 'Kvalitetsegenskap',
     instructionFile: 'kravimport-instruktion.md',
@@ -422,6 +450,7 @@ const EDITABLE_ERROR_CODES = new Set([
 ])
 
 const PROPOSAL_RESOLUTION_WARNING_CODES = new Set([
+  'import_needs_reference_unresolved',
   'import_proposed_norm_reference_unresolved',
 ])
 
@@ -434,6 +463,9 @@ const EMPTY_NORM_REFERENCE_FORM: NormReferenceFormData = {
   uri: '',
   version: '',
 }
+
+const EMPTY_AREA_OPTIONS: AreaOption[] = []
+const EMPTY_NEEDS_REFERENCE_OPTIONS: NeedsReferenceOption[] = []
 
 const inputClass =
   'w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm text-secondary-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100'
@@ -631,11 +663,11 @@ function RequirementSummaryText({
 }
 
 export default function RequirementsImportDialog({
-  areas = [],
+  areas = EMPTY_AREA_OPTIONS,
   destinationName,
   initialImport = null,
   mode,
-  needsReferences = [],
+  needsReferences = EMPTY_NEEDS_REFERENCE_OPTIONS,
   onClose,
   open,
   specificationId,
@@ -651,7 +683,14 @@ export default function RequirementsImportDialog({
   const [jsonDropActive, setJsonDropActive] = useState(false)
   const [rows, setRows] = useState<ImportPreviewRow[]>([])
   const [proposals, setProposals] = useState<ImportProposalPreview[]>([])
+  const [needsReferenceProposals, setNeedsReferenceProposals] = useState<
+    ImportNeedsReferenceProposalPreview[]
+  >([])
   const [createdProposalKeys, setCreatedProposalKeys] = useState<string[]>([])
+  const [
+    createdNeedsReferenceProposalKeys,
+    setCreatedNeedsReferenceProposalKeys,
+  ] = useState<string[]>([])
   const [previewToken, setPreviewToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [initialImportLoading, setInitialImportLoading] = useState(false)
@@ -660,6 +699,9 @@ export default function RequirementsImportDialog({
   const [normReferences, setNormReferences] = useState<NormReferenceOption[]>(
     [],
   )
+  const [localNeedsReferences, setLocalNeedsReferences] =
+    useState<NeedsReferenceOption[]>(needsReferences)
+  const needsReferenceCreationInFlightRef = useRef(false)
   const [resolvingProposalKey, setResolvingProposalKey] = useState<
     string | null
   >(null)
@@ -742,6 +784,8 @@ export default function RequirementsImportDialog({
   }, [rawJson])
   const parsedImportPayload = importPayloadValidation.payload
   const hasRequiredImportTarget = mode !== 'library' || selectedAreaId !== ''
+  const canDownloadImportInstruction =
+    mode === 'library' || specificationId != null
   const canLoadPreview =
     !loading && parsedImportPayload !== null && hasRequiredImportTarget
   const startImportDisabledReason = useMemo(() => {
@@ -784,6 +828,8 @@ export default function RequirementsImportDialog({
   const selectedErrors = rows
     .filter(row => row.selected)
     .reduce((count, row) => count + row.errors.length, 0)
+  const showNeedsReferenceProposalsTab =
+    mode === 'specification-local' && needsReferenceProposals.length > 0
   const allRowsExpanded =
     rows.length > 0 && rows.every(row => expandedRowIds.has(row.reviewRowId))
   const allRowsCollapsed =
@@ -834,6 +880,27 @@ export default function RequirementsImportDialog({
     },
     [getEditableErrors],
   )
+
+  useEffect(() => {
+    setLocalNeedsReferences(current => {
+      const incomingIds = new Set(
+        needsReferences.map(reference => reference.id),
+      )
+      return [
+        ...needsReferences,
+        ...current.filter(reference => !incomingIds.has(reference.id)),
+      ]
+    })
+  }, [needsReferences])
+
+  useEffect(() => {
+    if (
+      activeReviewTab === 'needsReferenceProposals' &&
+      !showNeedsReferenceProposalsTab
+    ) {
+      setActiveReviewTab('requirements')
+    }
+  }, [activeReviewTab, showNeedsReferenceProposalsTab])
 
   useEffect(() => {
     if (!open) return
@@ -914,7 +981,9 @@ export default function RequirementsImportDialog({
       }
       const applyPreview = (preview: ImportPreviewResponse) => {
         setProposals(preview.proposals)
+        setNeedsReferenceProposals(preview.needsReferenceProposals ?? [])
         setCreatedProposalKeys([])
+        setCreatedNeedsReferenceProposalKeys([])
         setRows(preview.rows.map(revalidateEditableRow))
         setActiveReviewTab('requirements')
         setExpandedRowIds(new Set())
@@ -1342,7 +1411,9 @@ export default function RequirementsImportDialog({
     setSelectedAreaId('')
     setRows([])
     setProposals([])
+    setNeedsReferenceProposals([])
     setCreatedProposalKeys([])
+    setCreatedNeedsReferenceProposalKeys([])
     setActiveReviewTab('requirements')
     setExpandedRowIds(new Set())
     setExpandedSummaryRowIds(new Set())
@@ -1431,6 +1502,99 @@ export default function RequirementsImportDialog({
     )
   }
 
+  const resolveProposalWithNeedsReference = (
+    proposalKey: string,
+    needsReference: NeedsReferenceOption,
+  ) => {
+    setNeedsReferenceProposals(current =>
+      current.map(proposal =>
+        proposal.key === proposalKey
+          ? {
+              ...proposal,
+              resolvedNeedsReferenceId: needsReference.id,
+              warnings: [],
+            }
+          : proposal,
+      ),
+    )
+    setRows(current =>
+      current.map(row => {
+        if (row.proposedNeedsReferenceKey !== proposalKey) return row
+        return revalidateEditableRow({
+          ...row,
+          errors: row.errors.filter(
+            message =>
+              !(
+                PROPOSAL_RESOLUTION_WARNING_CODES.has(message.code) &&
+                message.originalValue === proposalKey
+              ),
+          ),
+          values: {
+            ...row.values,
+            needsReferenceId: needsReference.id,
+          },
+        })
+      }),
+    )
+  }
+
+  const createNeedsReferenceForProposal = async (
+    proposal: ImportNeedsReferenceProposalPreview,
+  ) => {
+    if (
+      needsReferenceCreationInFlightRef.current ||
+      mode !== 'specification-local' ||
+      !specificationId
+    )
+      return
+    needsReferenceCreationInFlightRef.current = true
+    setLoading(true)
+    setErrorMessage(null)
+    try {
+      const response = await apiFetch(
+        `/api/requirements-specifications/${specificationId}/needs-references`,
+        {
+          body: JSON.stringify({
+            description: proposal.description,
+            text: proposal.text,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      )
+      if (!response.ok) {
+        setErrorMessage(await readResponseMessage(response))
+        return
+      }
+      const data = (await response.json()) as {
+        needsReference?: NeedsReferenceOption
+      }
+      const created = data.needsReference
+      if (!created) {
+        setErrorMessage(text.error)
+        return
+      }
+      setLocalNeedsReferences(current => [
+        ...current.filter(reference => reference.id !== created.id),
+        created,
+      ])
+      resolveProposalWithNeedsReference(proposal.key, created)
+      setCreatedNeedsReferenceProposalKeys(current => [
+        ...new Set([...current, proposal.key]),
+      ])
+      await refreshPreviewToken()
+    } catch (error) {
+      console.error(
+        'Failed to create needs reference from import proposal',
+        error,
+      )
+      setErrorMessage(text.error)
+    } finally {
+      needsReferenceCreationInFlightRef.current = false
+      setLoading(false)
+    }
+  }
+
   const openCreateNormReference = (proposal: ImportProposalPreview) => {
     setResolvingProposalKey(proposal.key)
     setNormRefError(null)
@@ -1482,10 +1646,20 @@ export default function RequirementsImportDialog({
   }
 
   const downloadArtifact = async (kind: 'schema' | 'instruction') => {
+    const instructionParams = new URLSearchParams({ locale })
+    if (kind === 'instruction') {
+      if (mode === 'specification-local') {
+        if (specificationId == null) return
+        instructionParams.set('kind', 'requirements_specification')
+        instructionParams.set('specificationId', String(specificationId))
+      } else {
+        instructionParams.set('kind', 'requirements_library')
+      }
+    }
     const path =
       kind === 'schema'
         ? `/api/requirements/import/schema?locale=${locale}`
-        : `/api/requirements/import/instruction?locale=${locale}`
+        : `/api/requirements/import/instruction?${instructionParams}`
     const response = await fetch(path)
     if (!response.ok) {
       setErrorMessage(await readResponseMessage(response))
@@ -1574,7 +1748,9 @@ export default function RequirementsImportDialog({
       }
       const preview = (await response.json()) as ImportPreviewResponse
       setProposals(preview.proposals)
+      setNeedsReferenceProposals(preview.needsReferenceProposals ?? [])
       setCreatedProposalKeys([])
+      setCreatedNeedsReferenceProposalKeys([])
       setRows(preview.rows.map(revalidateEditableRow))
       setActiveReviewTab('requirements')
       setExpandedRowIds(new Set())
@@ -1689,6 +1865,16 @@ export default function RequirementsImportDialog({
           }))
           .filter(proposal => proposal.referencedCount > 0),
       )
+      setNeedsReferenceProposals(current =>
+        current
+          .map(proposal => ({
+            ...proposal,
+            referencedCount: remainingRows.filter(
+              row => row.proposedNeedsReferenceKey === proposal.key,
+            ).length,
+          }))
+          .filter(proposal => proposal.referencedCount > 0),
+      )
       setReceiptRows(result.createdRows)
       setNoticeMessage(null)
       setHadSuccessfulImport(true)
@@ -1704,7 +1890,7 @@ export default function RequirementsImportDialog({
   const title = titleDestination
     ? importText('importTitleWithDestination', {
         destination: titleDestination,
-        title: text.importTitleLibrary,
+        title: titleBase,
       })
     : titleBase
   const hasLoadedReview = previewToken !== null
@@ -1717,10 +1903,12 @@ export default function RequirementsImportDialog({
   const formatMessage = (message: ImportMessage) =>
     message.code === 'import_proposed_norm_reference_unresolved'
       ? text.proposedNormReferenceUnresolved(text.proposedNormReferences)
-      : message.code ===
-          'import_requirement_packages_ignored_for_specification_local'
-        ? text.ignoredRequirementPackagesInfo
-        : message.message
+      : message.code === 'import_needs_reference_unresolved'
+        ? text.proposedNeedsReferenceUnresolved(text.proposedNeedsReferences)
+        : message.code ===
+            'import_requirement_packages_ignored_for_specification_local'
+          ? text.ignoredRequirementPackagesInfo
+          : message.message
   const associationPickerRow = associationPicker
     ? rows.find(row => row.reviewRowId === associationPicker.reviewRowId)
     : null
@@ -1845,7 +2033,8 @@ export default function RequirementsImportDialog({
                     </button>
                     <button
                       aria-describedby="requirements-import-download-help"
-                      className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-secondary-50 dark:border-secondary-700 dark:hover:bg-secondary-900"
+                      className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-700 dark:hover:bg-secondary-900"
+                      disabled={!canDownloadImportInstruction}
                       onClick={() => void downloadArtifact('instruction')}
                       type="button"
                     >
@@ -2016,6 +2205,30 @@ export default function RequirementsImportDialog({
                         {proposals.length}
                       </span>
                     </button>
+                    {showNeedsReferenceProposalsTab ? (
+                      <button
+                        aria-controls="requirements-import-needs-reference-proposals-panel"
+                        aria-selected={
+                          activeReviewTab === 'needsReferenceProposals'
+                        }
+                        className={`inline-flex min-h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium ${
+                          activeReviewTab === 'needsReferenceProposals'
+                            ? 'border-primary-600 text-primary-700 dark:border-primary-300 dark:text-primary-200'
+                            : 'border-transparent text-secondary-600 hover:text-secondary-950 dark:text-secondary-300 dark:hover:text-secondary-50'
+                        }`}
+                        id="requirements-import-needs-reference-proposals-tab"
+                        onClick={() =>
+                          setActiveReviewTab('needsReferenceProposals')
+                        }
+                        role="tab"
+                        type="button"
+                      >
+                        {text.proposedNeedsReferences}
+                        <span className="rounded-full bg-secondary-100 px-2 py-0.5 text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                          {needsReferenceProposals.length}
+                        </span>
+                      </button>
+                    ) : null}
                   </div>
                 </div>
                 {(errorMessage || noticeMessage || receiptRows.length > 0) && (
@@ -2198,6 +2411,168 @@ export default function RequirementsImportDialog({
                     ) : (
                       <p className="rounded-lg border border-dashed border-secondary-300 p-6 text-center text-sm text-secondary-500 dark:border-secondary-700 dark:text-secondary-400">
                         {text.noProposals}
+                      </p>
+                    )}
+                  </section>
+                ) : null}
+                {activeReviewTab === 'needsReferenceProposals' ? (
+                  <section
+                    aria-labelledby="requirements-import-needs-reference-proposals-tab"
+                    className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
+                    id="requirements-import-needs-reference-proposals-panel"
+                    role="tabpanel"
+                  >
+                    {needsReferenceProposals.length > 0 ? (
+                      <div className="rounded-lg border border-secondary-200 bg-secondary-50/70 p-3 dark:border-secondary-800 dark:bg-secondary-900/50">
+                        <h3 className="text-sm font-semibold text-secondary-950 dark:text-secondary-50">
+                          {text.proposedNeedsReferences}
+                        </h3>
+                        <div className="mt-3 space-y-3">
+                          {needsReferenceProposals.map(proposal => {
+                            const wasCreatedFromProposal =
+                              createdNeedsReferenceProposalKeys.includes(
+                                proposal.key,
+                              )
+                            const linkedNeedsReference =
+                              proposal.resolvedNeedsReferenceId == null
+                                ? null
+                                : localNeedsReferences.find(
+                                    needsReference =>
+                                      needsReference.id ===
+                                      proposal.resolvedNeedsReferenceId,
+                                  )
+                            return (
+                              <article
+                                className={`rounded-lg border bg-white p-3 dark:bg-secondary-950 ${
+                                  proposal.resolvedNeedsReferenceId == null
+                                    ? 'border-amber-300 dark:border-amber-900/70'
+                                    : 'border-emerald-300 dark:border-emerald-900/70'
+                                }`}
+                                key={proposal.key}
+                              >
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <h4 className="wrap-break-word text-sm font-semibold text-secondary-950 dark:text-secondary-50">
+                                      {proposal.text}
+                                    </h4>
+                                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                                      <p className="wrap-break-word text-xs text-secondary-600 dark:text-secondary-300">
+                                        {text.proposalImportKey}: {proposal.key}
+                                      </p>
+                                      {proposal.resolvedNeedsReferenceId !=
+                                      null ? (
+                                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
+                                          <CheckCircle2
+                                            aria-hidden="true"
+                                            className="h-3.5 w-3.5"
+                                          />
+                                          {text.proposalResolved}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    {proposal.description ? (
+                                      <p className="mt-1 wrap-break-word text-xs text-secondary-600 dark:text-secondary-300">
+                                        {proposal.description}
+                                      </p>
+                                    ) : null}
+                                    {linkedNeedsReference ? (
+                                      <p className="mt-1 text-xs text-emerald-800 dark:text-emerald-200">
+                                        {linkedNeedsReference.text}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                  <button
+                                    className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-700 dark:hover:bg-secondary-900"
+                                    disabled={
+                                      loading ||
+                                      proposal.resolvedNeedsReferenceId != null
+                                    }
+                                    onClick={() =>
+                                      void createNeedsReferenceForProposal(
+                                        proposal,
+                                      )
+                                    }
+                                    type="button"
+                                  >
+                                    {text.createNeedsReference}
+                                  </button>
+                                </div>
+                                <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                                  <label
+                                    className={
+                                      wasCreatedFromProposal ? 'opacity-50' : ''
+                                    }
+                                  >
+                                    <span className="mb-1 block text-sm font-medium">
+                                      {text.linkExistingNeedsReference}
+                                    </span>
+                                    <select
+                                      className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-70`}
+                                      disabled={wasCreatedFromProposal}
+                                      onChange={event => {
+                                        const needsReference =
+                                          localNeedsReferences.find(
+                                            candidate =>
+                                              candidate.id ===
+                                              Number(event.target.value),
+                                          )
+                                        if (!needsReference) return
+                                        resolveProposalWithNeedsReference(
+                                          proposal.key,
+                                          needsReference,
+                                        )
+                                      }}
+                                      value={
+                                        proposal.resolvedNeedsReferenceId ?? ''
+                                      }
+                                    >
+                                      <option value="">
+                                        {text.noExistingNeedsReference}
+                                      </option>
+                                      {localNeedsReferences.map(
+                                        needsReference => (
+                                          <option
+                                            key={needsReference.id}
+                                            value={needsReference.id}
+                                          >
+                                            {needsReference.text}
+                                          </option>
+                                        ),
+                                      )}
+                                    </select>
+                                  </label>
+                                  <div className="text-sm text-secondary-600 dark:text-secondary-300 md:self-end md:pb-2">
+                                    {text.proposalUsedByRows}:{' '}
+                                    {proposal.referencedCount}
+                                  </div>
+                                </div>
+                                {proposal.warnings.length > 0 ? (
+                                  <ul className="mt-3 space-y-1 text-sm">
+                                    {proposal.warnings.map(message => (
+                                      <li
+                                        className="text-amber-800 dark:text-amber-200"
+                                        key={`${message.code}-${message.originalValue ?? ''}`}
+                                      >
+                                        <AlertTriangle
+                                          aria-hidden="true"
+                                          className="mr-1 inline h-4 w-4"
+                                        />
+                                        {formatMessage(message)}
+                                        {message.originalValue
+                                          ? ` (${message.originalValue})`
+                                          : ''}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : null}
+                              </article>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="rounded-lg border border-dashed border-secondary-300 p-6 text-center text-sm text-secondary-500 dark:border-secondary-700 dark:text-secondary-400">
+                        {text.noNeedsReferenceProposals}
                       </p>
                     )}
                   </section>
@@ -2663,7 +3038,7 @@ export default function RequirementsImportDialog({
                                           }
                                         >
                                           <option value="">-</option>
-                                          {needsReferences.map(option => (
+                                          {localNeedsReferences.map(option => (
                                             <option
                                               key={option.id}
                                               value={option.id}

@@ -1765,6 +1765,51 @@ describe('RequirementsTable', () => {
     })
   })
 
+  it('renders floating action menu separators without adding focusable menu items', async () => {
+    render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'manage',
+            icon: <span aria-hidden="true">M</span>,
+            id: 'manage',
+            menuItems: [
+              {
+                id: 'import',
+                label: 'Import',
+                onClick: vi.fn(),
+              },
+              {
+                id: 'separator-export',
+                kind: 'separator',
+              },
+              {
+                id: 'export',
+                label: 'Export',
+                onClick: vi.fn(),
+              },
+            ],
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'manage' }))
+
+    const importItem = await screen.findByRole('menuitem', { name: 'Import' })
+    const exportItem = screen.getByRole('menuitem', { name: 'Export' })
+    const separators = screen.getAllByRole('separator', { hidden: true })
+
+    expect(separators).toHaveLength(1)
+
+    await waitFor(() => expect(importItem).toHaveFocus())
+
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    expect(exportItem).toHaveFocus()
+  })
+
   it('supports keyboard navigation in floating action menus', async () => {
     render(
       <RequirementsTable

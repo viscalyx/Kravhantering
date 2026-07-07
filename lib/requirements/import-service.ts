@@ -29,8 +29,10 @@ import {
   createSpecificationLocalRequirementsBatch,
   createSpecificationLocalRequirementsBatchWithExecutor,
   getSpecificationById,
+  listSpecificationNeedsReferences,
   listSpecificationsForActor,
   type SpecificationLocalRequirementMutationInput,
+  type SpecificationNeedsReferenceSummary,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
@@ -70,6 +72,7 @@ export type RequirementsImportMode = 'library' | 'specification-local'
 
 interface ImportReferenceData {
   categories: Awaited<ReturnType<typeof listCategories>>
+  needsReferences: SpecificationNeedsReferenceSummary[]
   normReferences: Awaited<ReturnType<typeof listNormReferences>>
   priorityLevels: Awaited<ReturnType<typeof listPriorityLevels>>
   qualityCharacteristics: QualityCharacteristicRow[]
@@ -94,6 +97,7 @@ export interface RequirementsImportPreviewRow {
     qualityCharacteristic: string | null
     type: string | null
   }
+  proposedNeedsReferenceKey: string | null
   proposedNormReferenceKeys: string[]
   reviewRowId: string
   selected: boolean
@@ -129,8 +133,18 @@ export interface RequirementsImportProposalPreview {
   warnings: ImportMessage[]
 }
 
+export interface RequirementsImportNeedsReferenceProposalPreview {
+  description: string | null
+  key: string
+  referencedCount: number
+  resolvedNeedsReferenceId: number | null
+  text: string
+  warnings: ImportMessage[]
+}
+
 export interface RequirementsImportPreview {
   mode: RequirementsImportMode
+  needsReferenceProposals: RequirementsImportNeedsReferenceProposalPreview[]
   previewToken: string
   proposals: RequirementsImportProposalPreview[]
   rows: RequirementsImportPreviewRow[]
@@ -198,6 +212,15 @@ export type McpImportDestinationRef =
       specificationId: number
     }
 
+export type McpImportInstructionDestinationRef =
+  | {
+      kind: 'requirements_library'
+    }
+  | {
+      kind: 'requirements_specification'
+      specificationId: number
+    }
+
 export const MCP_IMPORT_ISSUE_CODES = [
   'import_destination_invalid',
   'import_duplicate_norm_references_collapsed',
@@ -211,7 +234,13 @@ export const MCP_IMPORT_ISSUE_CODES = [
   'import_name_unresolved',
   'import_norm_reference_archived',
   'import_norm_reference_unresolved',
+  'import_needs_reference_id_invalid',
+  'import_needs_reference_key_ignored_for_id',
+  'import_needs_reference_key_missing',
+  'import_needs_reference_unresolved',
+  'import_needs_references_ignored_for_library',
   'import_payload_size_cap_exceeded',
+  'import_proposed_needs_reference_unused',
   'import_proposed_norm_reference_archived',
   'import_proposed_norm_reference_business_id_unresolved',
   'import_proposed_norm_reference_key_missing',
@@ -263,6 +292,7 @@ interface McpResolvedImportRow {
   acceptanceCriteria?: string | null
   categoryId?: number | null
   description?: string
+  needsReferenceId?: number | null
   normReferenceIds?: string[]
   priorityLevelId?: number | null
   qualityCharacteristicId?: number | null
@@ -287,7 +317,17 @@ interface McpValidatedImportProposal {
   referencedSourceIndexes: number[]
 }
 
+interface McpValidatedNeedsReferenceProposal {
+  issues: McpImportIssue[]
+  key: string
+  path: string
+  proposalIndex: number
+  referencedSourceIndexes: number[]
+  resolvedNeedsReferenceId: number | null
+}
+
 interface McpImportValidationSessionJson {
+  needsReferenceProposals: McpValidatedNeedsReferenceProposal[]
   proposals: McpValidatedImportProposal[]
   referenceData: {
     includes: string[]
@@ -363,6 +403,7 @@ export type ManageImportOutput =
       destination: McpImportDestination
       expiresAt: string
       payloadHash: string
+      needsReferenceProposals: McpValidatedNeedsReferenceProposal[]
       proposals: McpValidatedImportProposal[]
       referenceData: {
         currentFingerprint: string
@@ -451,7 +492,10 @@ function createReviewToken(args: {
 
 async function loadImportReferenceData(
   db: SqlServerDatabase,
-  options: { includeArchivedNormReferences?: boolean } = {},
+  options: {
+    includeArchivedNormReferences?: boolean
+    specificationId?: number
+  } = {},
 ): Promise<ImportReferenceData> {
   const [
     categories,
@@ -459,6 +503,7 @@ async function loadImportReferenceData(
     priorityLevels,
     requirementPackages,
     normReferences,
+    needsReferences,
   ] = await Promise.all([
     listCategories(db),
     listTypes(db),
@@ -467,10 +512,14 @@ async function loadImportReferenceData(
     listNormReferences(db, {
       includeArchived: options.includeArchivedNormReferences ?? false,
     }),
+    options.specificationId == null
+      ? Promise.resolve([])
+      : listSpecificationNeedsReferences(db, options.specificationId),
   ])
 
   return {
     categories,
+    needsReferences,
     normReferences,
     qualityCharacteristics: types.flatMap(type => type.qualityCharacteristics),
     requirementPackages,
@@ -479,12 +528,32 @@ async function loadImportReferenceData(
   }
 }
 
+async function loadImportReferenceDataForDestination(
+  db: SqlServerDatabase,
+  destination: McpImportDestinationRef | McpImportInstructionDestinationRef,
+  options: { includeArchivedNormReferences?: boolean } = {},
+): Promise<ImportReferenceData> {
+  return loadImportReferenceData(db, {
+    ...options,
+    specificationId:
+      destination.kind === 'requirements_specification'
+        ? destination.specificationId
+        : undefined,
+  })
+}
+
 function referenceDataFingerprint(referenceData: ImportReferenceData): string {
   return hashStable({
     categories: referenceData.categories.map(item => ({
       id: item.id,
       nameEn: item.nameEn,
       nameSv: item.nameSv,
+    })),
+    needsReferences: referenceData.needsReferences.map(item => ({
+      description: item.description,
+      id: item.id,
+      text: item.text,
+      updatedAt: item.updatedAt,
     })),
     normReferences: referenceData.normReferences.map(item => ({
       id: item.id,
@@ -776,6 +845,136 @@ function hasRequirementPackageInput(row: ImportRequirement): boolean {
   )
 }
 
+function hasNeedsReferenceInput(row: ImportRequirement): boolean {
+  return (
+    row.needsReferenceId != null || compactText(row.needsReferenceKey) != null
+  )
+}
+
+function previewNeedsReferenceProposals(
+  payload: ImportRequirementsPayload,
+  referenceData: ImportReferenceData,
+  mode: RequirementsImportMode,
+): RequirementsImportNeedsReferenceProposalPreview[] {
+  if (mode === 'library') return []
+
+  const referencedCounts = new Map<string, number>()
+  for (const row of payload.requirements) {
+    const key = compactText(row.needsReferenceKey)
+    if (!key) continue
+    referencedCounts.set(key, (referencedCounts.get(key) ?? 0) + 1)
+  }
+
+  const needsReferenceByText = new Map(
+    referenceData.needsReferences.map(item => [normalizeName(item.text), item]),
+  )
+
+  return (payload.proposedNeedsReferences ?? []).map(proposal => {
+    const referencedCount = referencedCounts.get(proposal.key) ?? 0
+    const warnings: ImportMessage[] = []
+    if (mode === 'specification-local' && referencedCount === 0) {
+      warnings.push(
+        warning(
+          'import_proposed_needs_reference_unused',
+          'Proposed needs reference is not used by any imported row.',
+          { originalValue: proposal.key },
+        ),
+      )
+    }
+    const resolved = needsReferenceByText.get(normalizeName(proposal.text))
+    return {
+      description: compactText(proposal.description),
+      key: proposal.key,
+      referencedCount,
+      resolvedNeedsReferenceId: resolved?.id ?? null,
+      text: proposal.text,
+      warnings,
+    }
+  })
+}
+
+function resolveNeedsReferenceId(args: {
+  errors: ImportMessage[]
+  infos: ImportMessage[]
+  mode: RequirementsImportMode
+  needsReferenceProposalsByKey: Map<
+    string,
+    RequirementsImportNeedsReferenceProposalPreview
+  >
+  referenceData: ImportReferenceData
+  row: ImportRequirement
+}): number | null {
+  const key = compactText(args.row.needsReferenceKey)
+  if (args.mode === 'library') {
+    if (hasNeedsReferenceInput(args.row)) {
+      args.infos.push(
+        info(
+          'import_needs_references_ignored_for_library',
+          'Needs reference fields in the import file are not used for requirements-library import.',
+          { field: 'needsReferenceId' },
+        ),
+      )
+    }
+    return null
+  }
+
+  if (args.row.needsReferenceId != null) {
+    if (key != null) {
+      args.infos.push(
+        info(
+          'import_needs_reference_key_ignored_for_id',
+          'needsReferenceKey is ignored because needsReferenceId was supplied.',
+          { field: 'needsReferenceKey', originalValue: key },
+        ),
+      )
+    }
+    const match = args.referenceData.needsReferences.find(
+      item => item.id === args.row.needsReferenceId,
+    )
+    if (match) {
+      return match.id
+    }
+    args.errors.push(
+      error(
+        'import_needs_reference_id_invalid',
+        'needsReferenceId does not belong to the selected requirements specification.',
+        {
+          field: 'needsReferenceId',
+          originalValue: String(args.row.needsReferenceId),
+        },
+      ),
+    )
+    return null
+  }
+
+  if (key == null) return null
+
+  const proposal = args.needsReferenceProposalsByKey.get(key)
+  if (!proposal) {
+    args.errors.push(
+      error(
+        'import_needs_reference_key_missing',
+        'needsReferenceKey does not match proposedNeedsReferences.',
+        { field: 'needsReferenceKey', originalValue: key },
+      ),
+    )
+    return null
+  }
+
+  if (proposal.resolvedNeedsReferenceId != null) {
+    return proposal.resolvedNeedsReferenceId
+  }
+
+  args.errors.push(
+    error(
+      'import_needs_reference_unresolved',
+      'Proposed needs reference must be linked to an existing needs reference or created before import.',
+      { field: 'needsReferenceKey', originalValue: key },
+    ),
+  )
+  return null
+}
+
 function resolveNormReferenceIds(
   row: ImportRequirement,
   proposalsByKey: Map<string, RequirementsImportProposalPreview>,
@@ -902,7 +1101,7 @@ function previewProposals(
         warning(
           'import_proposed_norm_reference_unused',
           'Proposed norm reference is not used by any imported row.',
-          { field: 'proposedNormReferences', originalValue: proposal.key },
+          { originalValue: proposal.key },
         ),
       )
     }
@@ -951,6 +1150,7 @@ function previewProposals(
 function previewRows(args: {
   locale: 'en' | 'sv'
   mode: RequirementsImportMode
+  needsReferenceProposals: RequirementsImportNeedsReferenceProposalPreview[]
   payload: ImportRequirementsPayload
   proposals: RequirementsImportProposalPreview[]
   referenceData: ImportReferenceData
@@ -961,6 +1161,9 @@ function previewRows(args: {
     args.referenceData.priorityLevels,
   )
   const proposalsByKey = new Map(args.proposals.map(item => [item.key, item]))
+  const needsReferenceProposalsByKey = new Map(
+    args.needsReferenceProposals.map(item => [item.key, item]),
+  )
 
   return args.payload.requirements.map((row, sourceIndex) => {
     const warnings: ImportMessage[] = []
@@ -1038,7 +1241,14 @@ function previewRows(args: {
         warnings,
       }),
       description,
-      needsReferenceId: null,
+      needsReferenceId: resolveNeedsReferenceId({
+        errors,
+        infos,
+        mode: args.mode,
+        needsReferenceProposalsByKey,
+        referenceData: args.referenceData,
+        row,
+      }),
       normReferenceIds: resolveNormReferenceIds(
         row,
         proposalsByKey,
@@ -1128,6 +1338,7 @@ function previewRows(args: {
           (row.proposedNormReferenceKeys ?? []).map(key => key.trim()),
         ),
       ],
+      proposedNeedsReferenceKey: compactText(row.needsReferenceKey),
       reviewRowId: `row-${sourceIndex}`,
       selected: true,
       sourceIndex,
@@ -1143,6 +1354,9 @@ function validateExecuteRows(args: {
   rows: ImportReviewRowInput[]
 }) {
   const categories = new Set(args.referenceData.categories.map(item => item.id))
+  const needsReferences = new Set(
+    args.referenceData.needsReferences.map(item => item.id),
+  )
   const normReferences = new Set(
     args.referenceData.normReferences.map(item => item.id),
   )
@@ -1184,6 +1398,9 @@ function validateExecuteRows(args: {
     assertScalar('priorityLevelId', row.priorityLevelId, priorityLevels)
     assertScalar('typeId', row.typeId, types)
     assertArray('normReferenceIds', row.normReferenceIds, normReferences)
+    if (args.mode === 'specification-local') {
+      assertScalar('needsReferenceId', row.needsReferenceId, needsReferences)
+    }
     if (args.mode === 'library') {
       assertArray(
         'requirementPackageIds',
@@ -1226,9 +1443,15 @@ function previewFromReferenceData(args: {
   referenceData: ImportReferenceData
 }): RequirementsImportPreview {
   const proposals = previewProposals(args.payload, args.referenceData)
+  const needsReferenceProposals = previewNeedsReferenceProposals(
+    args.payload,
+    args.referenceData,
+    args.mode,
+  )
   const rows = previewRows({
     locale: args.locale,
     mode: args.mode,
+    needsReferenceProposals,
     payload: args.payload,
     proposals,
     referenceData: args.referenceData,
@@ -1241,8 +1464,13 @@ function previewFromReferenceData(args: {
     (count, row) => count + row.warnings.length,
     0,
   )
+  const needsReferenceProposalWarningCount = needsReferenceProposals.reduce(
+    (count, proposal) => count + proposal.warnings.length,
+    0,
+  )
   const errorCount = rows.reduce((count, row) => count + row.errors.length, 0)
   return {
+    needsReferenceProposals,
     mode: args.mode,
     previewToken: createReviewToken({
       destinationId: args.destinationId,
@@ -1254,7 +1482,10 @@ function previewFromReferenceData(args: {
     summary: {
       errorCount,
       rowCount: rows.length,
-      warningCount: proposalWarningCount + rowWarningCount,
+      warningCount:
+        proposalWarningCount +
+        rowWarningCount +
+        needsReferenceProposalWarningCount,
     },
   }
 }
@@ -1614,7 +1845,7 @@ function jsonPointer(segments: Array<string | number>): string {
 }
 
 function fieldPointer(
-  root: 'proposedNormReferences' | 'requirements',
+  root: 'proposedNeedsReferences' | 'proposedNormReferences' | 'requirements',
   index: number,
   field?: string,
 ): string {
@@ -1725,6 +1956,9 @@ const OMIT_RESOLVED_FIELD_CODES = new Set<McpImportIssueCode>([
   'import_invalid_id_omitted',
   'import_name_ambiguous',
   'import_name_unresolved',
+  'import_needs_reference_id_invalid',
+  'import_needs_reference_key_missing',
+  'import_needs_reference_unresolved',
   'import_quality_characteristic_type_mismatch',
   'import_verification_method_ignored_for_non_verifiable',
 ])
@@ -1745,6 +1979,11 @@ function resolvedRowFromPreviewRow(
   const resolvedRow: McpResolvedImportRow = {
     acceptanceCriteria: row.values.acceptanceCriteria,
     description: row.values.description,
+    needsReferenceId:
+      !hasOmittingIssue(row, 'needsReferenceId') &&
+      !hasOmittingIssue(row, 'needsReferenceKey')
+        ? row.values.needsReferenceId
+        : null,
     normReferenceIds: normReferenceBusinessIds(
       referenceData,
       row.values.normReferenceIds,
@@ -1784,6 +2023,15 @@ function proposalReferencedSourceIndexes(
       .includes(key)
       ? [sourceIndex]
       : [],
+  )
+}
+
+function needsReferenceProposalReferencedSourceIndexes(
+  payload: ImportRequirementsPayload,
+  key: string,
+): number[] {
+  return payload.requirements.flatMap((row, sourceIndex) =>
+    compactText(row.needsReferenceKey) === key ? [sourceIndex] : [],
   )
 }
 
@@ -1846,7 +2094,31 @@ function validationJsonFromPreview(args: {
     ),
   }))
 
+  const needsReferenceProposals = args.preview.needsReferenceProposals.map(
+    (proposal, proposalIndex) => ({
+      issues: proposal.warnings.map(message =>
+        messageToMcpIssue({
+          message,
+          path: fieldPointer(
+            'proposedNeedsReferences',
+            proposalIndex,
+            message.field,
+          ),
+        }),
+      ),
+      key: proposal.key,
+      path: fieldPointer('proposedNeedsReferences', proposalIndex),
+      proposalIndex,
+      referencedSourceIndexes: needsReferenceProposalReferencedSourceIndexes(
+        args.payload,
+        proposal.key,
+      ),
+      resolvedNeedsReferenceId: proposal.resolvedNeedsReferenceId,
+    }),
+  )
+
   return {
+    needsReferenceProposals,
     proposals,
     referenceData: {
       includes: Object.keys(currentReferenceDataIncludes(args.referenceData)),
@@ -1861,6 +2133,7 @@ function validationIssues(
 ): McpImportIssue[] {
   return [
     ...validation.rows.flatMap(row => row.issues),
+    ...validation.needsReferenceProposals.flatMap(proposal => proposal.issues),
     ...validation.proposals.flatMap(proposal => proposal.issues),
   ].sort((left, right) => left.path.localeCompare(right.path, 'sv'))
 }
@@ -1882,6 +2155,7 @@ function currentReferenceDataIncludes(
 ): Record<string, number> {
   return {
     categories: referenceData.categories.length,
+    needsReferences: referenceData.needsReferences.length,
     normReferences: referenceData.normReferences.length,
     priorityLevels: referenceData.priorityLevels.length,
     qualityCharacteristics: referenceData.qualityCharacteristics.length,
@@ -1901,6 +2175,9 @@ function issueCodeSummary(
     ...new Set(
       [
         ...validation.rows.flatMap(row => row.issues.map(issue => issue.code)),
+        ...validation.needsReferenceProposals.flatMap(proposal =>
+          proposal.issues.map(issue => issue.code),
+        ),
         ...validation.proposals.flatMap(proposal =>
           proposal.issues.map(issue => issue.code),
         ),
@@ -2013,7 +2290,10 @@ function importReviewRowFromValidationRow(
     acceptanceCriteria: row.resolvedRow.acceptanceCriteria ?? null,
     categoryId: row.resolvedRow.categoryId ?? null,
     description,
-    needsReferenceId: null,
+    needsReferenceId:
+      mode === 'specification-local'
+        ? (row.resolvedRow.needsReferenceId ?? null)
+        : null,
     normReferenceIds,
     priorityLevelId: row.resolvedRow.priorityLevelId ?? null,
     qualityCharacteristicId: row.resolvedRow.qualityCharacteristicId ?? null,
@@ -2237,9 +2517,13 @@ export function createRequirementsImportWorkflow({
               })
             }
 
-            const referenceData = await loadImportReferenceData(db, {
-              includeArchivedNormReferences: true,
-            })
+            const referenceData = await loadImportReferenceDataForDestination(
+              db,
+              input.destination,
+              {
+                includeArchivedNormReferences: true,
+              },
+            )
             const preview = previewFromReferenceData({
               destinationId: destinationId(input.destination),
               locale: 'en',
@@ -2302,9 +2586,13 @@ export function createRequirementsImportWorkflow({
           )
 
           if (input.operation === 'inspect_validation') {
-            const referenceData = await loadImportReferenceData(db, {
-              includeArchivedNormReferences: true,
-            })
+            const referenceData = await loadImportReferenceDataForDestination(
+              db,
+              destinationRefFromSnapshot(destination),
+              {
+                includeArchivedNormReferences: true,
+              },
+            )
             const currentFingerprint = referenceDataFingerprint(referenceData)
             const validation = parseSessionJson<McpImportValidationSessionJson>(
               session.validationResultJson,
@@ -2322,6 +2610,7 @@ export function createRequirementsImportWorkflow({
             return {
               destination,
               expiresAt: session.expiresAt,
+              needsReferenceProposals: validation.needsReferenceProposals,
               payloadHash: session.payloadHash,
               proposals: validation.proposals,
               referenceData: {
@@ -2373,8 +2662,9 @@ export function createRequirementsImportWorkflow({
                   'validation result',
                 )
               const execution = parseExecutionSession(lockedSession)
-              const referenceData = await loadImportReferenceData(
+              const referenceData = await loadImportReferenceDataForDestination(
                 manager as unknown as SqlServerDatabase,
+                destinationRefFromSnapshot(lockedDestination),
                 {
                   includeArchivedNormReferences: true,
                 },
@@ -2613,29 +2903,51 @@ export function createRequirementsImportWorkflow({
 
     async getImportInstruction(
       context: RequestContext,
-      input: { locale: 'en' | 'sv' },
+      input: {
+        destination: McpImportInstructionDestinationRef
+        locale: 'en' | 'sv'
+      },
     ): Promise<{ importInstruction: string }> {
       await authorize(
         authorization,
         { kind: 'get_import_instruction' },
         context,
       )
+      if (input.destination.kind === 'requirements_specification') {
+        await assertMcpImportDestinationAuthorized(
+          authorization,
+          context,
+          input.destination,
+        )
+      }
 
       return withLogging(
         logger,
         context,
         'requirements.get_import_instruction',
-        { locale: input.locale },
+        {
+          destination_kind: input.destination.kind,
+          locale: input.locale,
+        },
         async () => ({
           importInstruction: await workflow.buildImportInstruction(
             input.locale,
+            input.destination,
           ),
         }),
       )
     },
 
-    async buildImportInstruction(locale: 'en' | 'sv') {
-      const referenceData = await loadImportReferenceData(db)
+    async buildImportInstruction(
+      locale: 'en' | 'sv',
+      destination: McpImportInstructionDestinationRef,
+    ) {
+      const referenceData = await loadImportReferenceDataForDestination(
+        db,
+        destination,
+      )
+      const isSpecificationDestination =
+        destination.kind === 'requirements_specification'
       const isSv = locale === 'sv'
       return [
         isSv
@@ -2654,8 +2966,8 @@ export function createRequirementsImportWorkflow({
           ? '- Använd inte U+2013 EN DASH i JSON-värden; använd vanligt bindestreck (-) i stället.'
           : '- Do not use U+2013 EN DASH in JSON values; use a plain hyphen (-) instead.',
         isSv
-          ? '- Skriv fria textvärden, till exempel `description`, `acceptanceCriteria`, `verificationMethod` och föreslagna normreferenser på svenska om inte användarens indata uttryckligen anger ett annat språk.'
-          : "- Write free-text values, such as `description`, `acceptanceCriteria`, `verificationMethod`, and proposed norm references, in English unless the user's input explicitly requests another language.",
+          ? '- Skriv fria textvärden, till exempel `description`, `acceptanceCriteria`, `verificationMethod`, föreslagna normreferenser och föreslagna behovsreferenser på svenska om inte användarens indata uttryckligen anger ett annat språk.'
+          : "- Write free-text values, such as `description`, `acceptanceCriteria`, `verificationMethod`, proposed norm references, and proposed needs references, in English unless the user's input explicitly requests another language.",
         isSv
           ? '- Utelämna frivilliga fält eller sätt dem till `null` när värdet är osäkert.'
           : '- Omit optional fields or set them to `null` when the value is uncertain.',
@@ -2704,6 +3016,48 @@ export function createRequirementsImportWorkflow({
         isSv
           ? '- Koppla saknade källor med `proposedNormReferences[].key` och radens `proposedNormReferenceKeys`.'
           : "- Link missing sources with `proposedNormReferences[].key` and the row's `proposedNormReferenceKeys`.",
+        isSpecificationDestination
+          ? isSv
+            ? '- Använd `needsReferenceId` med värden från `needsReferences[].id` bara när kravet har en tydlig saklig matchning mot en befintlig behovsreferens i kravunderlaget. Lös ordlikhet räcker inte.'
+            : '- Use `needsReferenceId` with values from `needsReferences[].id` only when the requirement has a clear factual match to an existing needs reference in the specification. Loose word similarity is not enough.'
+          : isSv
+            ? '- Ta inte fram behovsreferenser: sätt inte `needsReferenceId` eller `needsReferenceKey` och returnera `proposedNeedsReferences` som en tom lista.'
+            : '- Do not produce needs references: do not set `needsReferenceId` or `needsReferenceKey`, and return `proposedNeedsReferences` as an empty array.',
+        isSpecificationDestination
+          ? isSv
+            ? '- Föreslå ett fåtal `proposedNeedsReferences` när användarens indata ger tydliga mål, risker, förmågor, källor, ärenden eller scenarier som förklarar varför ett eller flera krav behövs i kravunderlaget.'
+            : '- Propose a small number of `proposedNeedsReferences` when the user input gives clear goals, risks, capabilities, sources, cases, or scenarios that explain why one or more requirements are needed in the specification.'
+          : null,
+        isSpecificationDestination
+          ? isSv
+            ? '  - Använd `proposedNeedsReferences[].text` som en kort återanvändbar behovsrubrik och `description` för att förklara kopplingen till verksamhetsbehovet, scenariot, risken eller källan.'
+            : '  - Use `proposedNeedsReferences[].text` as a short reusable need heading and `description` to explain the connection to the business need, scenario, risk, or source.'
+          : null,
+        isSpecificationDestination
+          ? isSv
+            ? '  - Syntetisera nya behovsreferenser bara från sakligt stöd i användarens indata. Hitta inte på affärsmål, externa källor, kundnamn eller ärendenummer.'
+            : "  - Synthesize new needs references only from factual support in the user's input. Do not invent business goals, external sources, customer names, or case numbers."
+          : null,
+        isSpecificationDestination
+          ? isSv
+            ? '  - Beskriv behovsreferenser utan namn eller andra uppgifter som identifierar en levande person. Använd ärendenummer bara om användarens indata uttryckligen anger dem och de inte identifierar en person.'
+            : "  - Describe needs references without names or other details that identify a living person. Use case numbers only if the user's input explicitly provides them and they do not identify a person."
+          : null,
+        isSpecificationDestination
+          ? isSv
+            ? '- Gruppera flera krav under samma behovsreferens när de delar samma behov, källa eller scenario. Skapa inte en behovsreferens per kravrad.'
+            : '- Group multiple requirements under the same needs reference when they share the same need, source, or scenario. Do not create one needs reference per requirement row.'
+          : null,
+        isSpecificationDestination
+          ? isSv
+            ? '- Använd `proposedNeedsReferences` och radens `needsReferenceKey` bara när en ny behovsreferens behöver lösas. Sätt `needsReferenceId` eller `needsReferenceKey` på en rad bara när kopplingen är tydlig; utelämna fälten när kopplingen vore en gissning.'
+            : "- Use `proposedNeedsReferences` and the row's `needsReferenceKey` only when a new needs reference must be resolved. Set `needsReferenceId` or `needsReferenceKey` on a row only when the connection is clear; omit the fields when the connection would be a guess."
+          : null,
+        isSpecificationDestination
+          ? isSv
+            ? '- Om både `needsReferenceId` och `needsReferenceKey` anges på samma rad används `needsReferenceId`.'
+            : '- If both `needsReferenceId` and `needsReferenceKey` are set on the same row, `needsReferenceId` is used.'
+          : null,
         isSv
           ? '- Välj `priorityLevelId` från `priorityLevels[].id`; jämför kravet med `priorityLevels[].assessmentCriteria` och välj bästa matchning. Använd `description` som stöd för verksamhetsmål, nytta, angelägenhet, kritikalitet, risker och intressenters behov.'
           : '- Choose `priorityLevelId` from `priorityLevels[].id`; compare the requirement with `priorityLevels[].assessmentCriteria` and choose the best match. Use `description` as context for business goals, benefit, urgency, criticality, risks, and stakeholder needs.',
@@ -2729,6 +3083,15 @@ export function createRequirementsImportWorkflow({
         JSON.stringify(
           {
             categories: importPromptCategories(referenceData, locale),
+            ...(isSpecificationDestination
+              ? {
+                  needsReferences: referenceData.needsReferences.map(item => ({
+                    description: item.description,
+                    id: item.id,
+                    text: item.text,
+                  })),
+                }
+              : {}),
             normReferences: referenceData.normReferences.map(item => ({
               issuer: item.issuer,
               name: item.name,
@@ -2752,7 +3115,9 @@ export function createRequirementsImportWorkflow({
           2,
         ),
         '```',
-      ].join('\n')
+      ]
+        .filter((line): line is string => line != null)
+        .join('\n')
     },
 
     async executeLibraryImport(
@@ -2841,7 +3206,9 @@ export function createRequirementsImportWorkflow({
         },
         context,
       )
-      const referenceData = await loadImportReferenceData(db)
+      const referenceData = await loadImportReferenceData(db, {
+        specificationId,
+      })
       const expectedToken = createReviewToken({
         destinationId: specificationId,
         mode: 'specification-local',
@@ -2956,7 +3323,9 @@ export function createRequirementsImportWorkflow({
         },
         context,
       )
-      const referenceData = await loadImportReferenceData(db)
+      const referenceData = await loadImportReferenceData(db, {
+        specificationId,
+      })
       return previewFromReferenceData({
         destinationId: specificationId,
         locale: input.locale,

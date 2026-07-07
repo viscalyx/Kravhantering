@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ChevronRight,
   Download,
+  Ellipsis,
   HelpCircle,
   Pencil,
   Plus,
@@ -39,7 +40,11 @@ import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/RequirementsImportDialog'
-import RequirementsTable from '@/components/RequirementsTable'
+import RequirementsTable, {
+  type FloatingActionItem,
+  type FloatingActionMenuItem,
+  FloatingActionPill,
+} from '@/components/RequirementsTable'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
 import SpecificationLocalRequirementForm, {
@@ -127,6 +132,22 @@ const DEFAULT_RIGHT_COLS: RequirementColumnId[] = [
   'area',
 ]
 type SpecificationDetailLeftTab = 'items' | 'needs-references' | 'rfi'
+
+function groupedFloatingActionMenuItems(
+  groups: Array<{ id: string; items: FloatingActionMenuItem[] }>,
+): FloatingActionMenuItem[] {
+  const menuItems: FloatingActionMenuItem[] = []
+
+  for (const group of groups) {
+    if (group.items.length === 0) continue
+    if (menuItems.length > 0) {
+      menuItems.push({ id: `separator-${group.id}`, kind: 'separator' })
+    }
+    menuItems.push(...group.items)
+  }
+
+  return menuItems
+}
 
 interface NeedsReferenceFormState {
   description: string
@@ -348,9 +369,6 @@ export default function KravunderlagDetailClient({
     aiLocalRequirementsInitialImport,
     setAiLocalRequirementsInitialImport,
   ] = useState<InitialRequirementsImport | null>(null)
-  const [localRequirementActionsOpen, setLocalRequirementActionsOpen] =
-    useState(false)
-  const localRequirementActionsRef = useRef<HTMLDivElement | null>(null)
   const [createLocalRequirementFormDirty, setCreateLocalRequirementFormDirty] =
     useState(false)
   const [pendingAddIds, setPendingAddIds] = useState<number[]>([])
@@ -597,31 +615,6 @@ export default function KravunderlagDetailClient({
   useEffect(() => {
     availableRequirementsKeyRef.current = availableRequirementsParams
   }, [availableRequirementsParams])
-
-  useEffect(() => {
-    if (!localRequirementActionsOpen) return
-
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target
-      if (!(target instanceof Node)) return
-      if (localRequirementActionsRef.current?.contains(target)) return
-      setLocalRequirementActionsOpen(false)
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setLocalRequirementActionsOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [localRequirementActionsOpen])
 
   const closeAddModal = useCallback(() => {
     if (addModalLoading) return
@@ -1675,6 +1668,97 @@ export default function KravunderlagDetailClient({
     setShowImportLocalRequirementsModal(true)
   }, [])
 
+  const buildMoreActionMenuItems = ({
+    includeAddActions,
+    includeOutputActions,
+  }: {
+    includeAddActions: boolean
+    includeOutputActions: boolean
+  }): FloatingActionMenuItem[] => {
+    const addActions: FloatingActionMenuItem[] = includeAddActions
+      ? [
+          {
+            developerModeValue: 'ai-assisted authoring',
+            disabled: !canOpenAiLocalRequirements,
+            icon: <Sparkles aria-hidden="true" className="h-4 w-4" />,
+            id: 'ai-assist-local',
+            label: t('aiGenerate'),
+            onClick: handleOpenAiLocalRequirements,
+            tooltip: aiLocalRequirementsDisabledTooltip ?? t('aiGenerate'),
+            ...(aiLocalRequirementsDisabledTooltip
+              ? { description: aiLocalRequirementsDisabledTooltip }
+              : {}),
+          },
+          {
+            developerModeValue: 'import local requirements',
+            icon: <Upload aria-hidden="true" className="h-4 w-4" />,
+            id: 'import-local',
+            label: t('importLocalRequirements'),
+            onClick: handleOpenImportLocalRequirements,
+          },
+        ]
+      : []
+    const reportActions: FloatingActionMenuItem[] = includeOutputActions
+      ? [
+          ...(specificationReportProfile
+            ? [
+                {
+                  developerModeValue: 'report',
+                  icon: <Printer aria-hidden="true" className="h-4 w-4" />,
+                  id: `pdf-${specificationReportProfile}`,
+                  label: t('downloadProfileReportPdf', {
+                    report: reportProfileLabel(specificationReportProfile),
+                  }),
+                  onClick: () =>
+                    void handleDownloadPdf(specificationReportProfile),
+                } satisfies FloatingActionMenuItem,
+              ]
+            : []),
+          ...(hasTraceabilityReportActions
+            ? [
+                {
+                  developerModeValue: 'report',
+                  icon: <Printer aria-hidden="true" className="h-4 w-4" />,
+                  id: 'pdf-traceability',
+                  label: t('downloadProfileReportPdf', {
+                    report: t('reportProfiles.traceability'),
+                  }),
+                  onClick: () => void handleDownloadTraceabilityPdf(),
+                } satisfies FloatingActionMenuItem,
+              ]
+            : []),
+        ]
+      : []
+    const exportActions: FloatingActionMenuItem[] = includeOutputActions
+      ? [
+          ...(showProcurementCsv
+            ? [
+                {
+                  developerModeValue: 'export',
+                  icon: <Download aria-hidden="true" className="h-4 w-4" />,
+                  id: 'export-procurement',
+                  label: exportProfileLabel('procurement'),
+                  onClick: () => void handleExportCsv('procurement'),
+                } satisfies FloatingActionMenuItem,
+              ]
+            : []),
+          {
+            developerModeValue: 'export',
+            icon: <Download aria-hidden="true" className="h-4 w-4" />,
+            id: 'export-full',
+            label: exportProfileLabel('full'),
+            onClick: () => void handleExportCsv('full'),
+          },
+        ]
+      : []
+
+    return groupedFloatingActionMenuItems([
+      { id: 'add-actions', items: addActions },
+      { id: 'report-actions', items: reportActions },
+      { id: 'export-actions', items: exportActions },
+    ])
+  }
+
   const localName = (obj: { nameSv: string; nameEn: string } | null) =>
     obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
 
@@ -2105,8 +2189,6 @@ export default function KravunderlagDetailClient({
   const specificationDetailPagePaddingClassName =
     'px-4 pb-8 pt-6 sm:px-6 sm:pb-10 sm:pt-7 lg:px-8 lg:pt-8'
   const splitPanelHeaderClassName = `sticky ${specificationDetailStickyTopOffsetClassName} z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80`
-  const leftPanelActionPillClassName =
-    'inline-flex h-11 w-11 items-center justify-center rounded-full border border-primary-600/80 bg-primary-700 text-white shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-primary-700 hover:bg-primary-800 hover:shadow-[0_14px_36px_-20px_rgba(67,56,202,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-primary-500/80 dark:bg-primary-600 dark:hover:border-primary-400 dark:hover:bg-primary-700 dark:focus-visible:ring-offset-secondary-950'
   const specificationDetailPageShellClassName = `${specificationDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-hidden`
   const specificationDetailContainerClassName =
     'container-custom max-w-none xl:flex xl:min-h-0 xl:flex-1 xl:flex-col'
@@ -2135,107 +2217,53 @@ export default function KravunderlagDetailClient({
         ? 'border-white bg-white text-secondary-900 shadow-sm dark:border-primary-500 dark:bg-primary-600 dark:text-white'
         : 'border-transparent text-secondary-700 hover:bg-white/70 hover:text-secondary-900 dark:text-secondary-300 dark:hover:bg-secondary-800/70 dark:hover:text-secondary-100'
     }`
-  const renderLocalRequirementActionFlyout = () => (
-    <div className="relative shrink-0" ref={localRequirementActionsRef}>
-      <button
-        aria-controls={
-          localRequirementActionsOpen
-            ? 'local-requirement-actions-menu'
-            : undefined
-        }
-        aria-expanded={localRequirementActionsOpen}
-        aria-haspopup="menu"
-        aria-label={t('localRequirementActions')}
-        className={leftPanelActionPillClassName}
-        {...devMarker({
-          context: 'requirements specification detail',
-          name: 'table action',
-          priority: 350,
-          value: 'local requirement actions',
-        })}
-        onClick={() => setLocalRequirementActionsOpen(open => !open)}
-        title={t('localRequirementActions')}
-        type="button"
-      >
-        <Plus aria-hidden="true" className="h-4 w-4" />
-        <span className="sr-only">{t('localRequirementActions')}</span>
-      </button>
-      {localRequirementActionsOpen ? (
-        <div
-          className="absolute right-0 z-30 mt-2 w-72 rounded-2xl border border-secondary-200/80 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-secondary-700/70 dark:bg-secondary-900/95"
-          id="local-requirement-actions-menu"
-          role="menu"
-          {...devMarker({
-            context:
-              'requirements specification detail > local requirement actions',
-            name: 'floating pill menu',
-            priority: 350,
-            value: 'local requirement actions',
-          })}
-        >
-          <button
-            className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-secondary-900 transition-colors hover:bg-secondary-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-100 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
-            onClick={() => {
-              setLocalRequirementActionsOpen(false)
-              void handleOpenCreateLocalRequirementModal()
-            }}
-            role="menuitem"
-            type="button"
-            {...devMarker({
-              context:
-                'requirements specification detail > local requirement actions',
-              name: 'table action',
-              priority: 350,
-              value: 'create local requirement',
-            })}
-          >
-            <Plus aria-hidden="true" className="h-4 w-4 shrink-0" />
-            {t('newLocalRequirement')}
-          </button>
-          <button
-            className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-secondary-900 transition-colors hover:bg-secondary-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent dark:text-secondary-100 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
-            disabled={!canOpenAiLocalRequirements}
-            onClick={() => {
-              setLocalRequirementActionsOpen(false)
-              handleOpenAiLocalRequirements()
-            }}
-            role="menuitem"
-            title={aiLocalRequirementsDisabledTooltip ?? t('aiGenerate')}
-            type="button"
-            {...devMarker({
-              context:
-                'requirements specification detail > local requirement actions',
-              name: 'table action',
-              priority: 350,
-              value: 'ai assist local requirements',
-            })}
-          >
-            <Sparkles aria-hidden="true" className="h-4 w-4 shrink-0" />
-            {t('aiGenerate')}
-          </button>
-          <button
-            className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-secondary-900 transition-colors hover:bg-secondary-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-100 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
-            onClick={() => {
-              setLocalRequirementActionsOpen(false)
-              handleOpenImportLocalRequirements()
-            }}
-            role="menuitem"
-            type="button"
-            {...devMarker({
-              context:
-                'requirements specification detail > local requirement actions',
-              name: 'table action',
-              priority: 350,
-              value: 'import local requirements',
-            })}
-          >
-            <Upload aria-hidden="true" className="h-4 w-4 shrink-0" />
-            {t('importLocalRequirements')}
-          </button>
-        </div>
-      ) : null}
-    </div>
-  )
+  const leftPanelActionPillClassName =
+    'inline-flex h-11 w-11 items-center justify-center rounded-full border border-primary-600/80 bg-primary-700 text-white shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-primary-700 hover:bg-primary-800 hover:shadow-[0_14px_36px_-20px_rgba(67,56,202,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-primary-500/80 dark:bg-primary-600 dark:hover:border-primary-400 dark:hover:bg-primary-700 dark:focus-visible:ring-offset-secondary-950'
+  const renderEmptySpecificationActions = () => {
+    const moreActionMenuItems = buildMoreActionMenuItems({
+      includeAddActions: canEditContent,
+      includeOutputActions: false,
+    })
+    const actions: FloatingActionItem[] = [
+      ...(canEditContent
+        ? [
+            {
+              ariaLabel: t('newLocalRequirement'),
+              developerModeContext: 'requirements specification detail',
+              developerModeValue: 'new local requirement',
+              icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+              id: 'create-local',
+              onClick: () => void handleOpenCreateLocalRequirementModal(),
+              tooltip: t('newLocalRequirement'),
+              variant: 'primary' as const,
+            },
+          ]
+        : []),
+      ...(moreActionMenuItems.length > 0
+        ? [
+            {
+              ariaLabel: tc('moreActions'),
+              developerModeContext: 'requirements specification detail',
+              developerModeValue: 'more actions',
+              icon: <Ellipsis aria-hidden="true" className="h-4 w-4" />,
+              id: 'more-actions',
+              menuItems: moreActionMenuItems,
+              tooltip: tc('moreActions'),
+            },
+          ]
+        : []),
+    ]
+
+    if (actions.length === 0) return null
+
+    return (
+      <div className="flex shrink-0 items-center gap-2">
+        {actions.map(action => (
+          <FloatingActionPill action={action} key={action.id} />
+        ))}
+      </div>
+    )
+  }
   const renderLeftPanelTabs = () => (
     <div
       aria-label={t('leftPanelTabs')}
@@ -2303,6 +2331,10 @@ export default function KravunderlagDetailClient({
       </button>
     </div>
   )
+  const leftPanelMoreActionMenuItems = buildMoreActionMenuItems({
+    includeAddActions: canEditContent,
+    includeOutputActions: specificationItems.length > 0,
+  })
 
   return (
     <>
@@ -2708,9 +2740,7 @@ export default function KravunderlagDetailClient({
                 >
                   <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
-                    {canEditContent
-                      ? renderLocalRequirementActionFlyout()
-                      : null}
+                    {renderEmptySpecificationActions()}
                   </div>
                   <div className="p-8 text-center text-sm text-secondary-500 dark:text-secondary-400">
                     {t('noItems')}
@@ -2723,7 +2753,7 @@ export default function KravunderlagDetailClient({
                 >
                   <RequirementsTable
                     areas={areas}
-                    columnPickerPlacement="end"
+                    columnPickerPlacement="betweenActions"
                     defaultVisibleColumns={DEFAULT_LEFT_COLS}
                     expandedId={leftExpandedId}
                     filterValues={leftFilters}
@@ -2732,122 +2762,34 @@ export default function KravunderlagDetailClient({
                       ...(canEditContent
                         ? [
                             {
-                              ariaLabel: t('localRequirementActions'),
+                              ariaLabel: t('newLocalRequirement'),
                               developerModeContext:
                                 'requirements specification detail',
-                              developerModeValue: 'local requirement actions',
+                              developerModeValue: 'new local requirement',
                               icon: (
                                 <Plus aria-hidden="true" className="h-4 w-4" />
                               ),
-                              id: 'local-requirement-actions',
-                              menuItems: [
-                                {
-                                  id: 'create-local',
-                                  icon: (
-                                    <Plus
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                  ),
-                                  label: t('newLocalRequirement'),
-                                  onClick: () =>
-                                    void handleOpenCreateLocalRequirementModal(),
-                                },
-                                {
-                                  description:
-                                    aiLocalRequirementsDisabledTooltip,
-                                  disabled: !canOpenAiLocalRequirements,
-                                  id: 'ai-assist-local',
-                                  icon: (
-                                    <Sparkles
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                  ),
-                                  label: t('aiGenerate'),
-                                  onClick: handleOpenAiLocalRequirements,
-                                },
-                                {
-                                  id: 'import-local',
-                                  icon: (
-                                    <Upload
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                  ),
-                                  label: t('importLocalRequirements'),
-                                  onClick: handleOpenImportLocalRequirements,
-                                },
-                              ],
+                              id: 'create-local',
+                              onClick: () =>
+                                void handleOpenCreateLocalRequirementModal(),
                               position: 'beforeColumns' as const,
-                              tooltip: t('localRequirementActions'),
+                              tooltip: t('newLocalRequirement'),
                               variant: 'primary' as const,
                             },
                           ]
                         : []),
                       {
-                        ariaLabel: tc('reports'),
-                        hidden:
-                          !specificationReportProfile &&
-                          !hasTraceabilityReportActions,
+                        ariaLabel: tc('moreActions'),
+                        developerModeContext:
+                          'requirements specification detail',
+                        developerModeValue: 'more actions',
+                        hidden: leftPanelMoreActionMenuItems.length === 0,
                         icon: (
-                          <Printer aria-hidden="true" className="h-4 w-4" />
+                          <Ellipsis aria-hidden="true" className="h-4 w-4" />
                         ),
-                        id: 'reports',
-                        menuItems: [
-                          ...(specificationReportProfile
-                            ? [
-                                {
-                                  id: `pdf-${specificationReportProfile}`,
-                                  label: t('downloadProfileReportPdf', {
-                                    report: reportProfileLabel(
-                                      specificationReportProfile,
-                                    ),
-                                  }),
-                                  onClick: () =>
-                                    void handleDownloadPdf(
-                                      specificationReportProfile,
-                                    ),
-                                },
-                              ]
-                            : []),
-                          ...(hasTraceabilityReportActions
-                            ? [
-                                {
-                                  id: 'pdf-traceability',
-                                  label: t('downloadProfileReportPdf', {
-                                    report: t('reportProfiles.traceability'),
-                                  }),
-                                  onClick: () =>
-                                    void handleDownloadTraceabilityPdf(),
-                                },
-                              ]
-                            : []),
-                        ],
-                      },
-                      {
-                        ariaLabel: tc('export'),
-                        icon: (
-                          <Download aria-hidden="true" className="h-4 w-4" />
-                        ),
-                        id: 'export',
-                        menuItems: [
-                          ...(showProcurementCsv
-                            ? [
-                                {
-                                  id: 'export-procurement',
-                                  label: exportProfileLabel('procurement'),
-                                  onClick: () =>
-                                    void handleExportCsv('procurement'),
-                                },
-                              ]
-                            : []),
-                          {
-                            id: 'export-full',
-                            label: exportProfileLabel('full'),
-                            onClick: () => void handleExportCsv('full'),
-                          },
-                        ],
+                        id: 'more-actions',
+                        menuItems: leftPanelMoreActionMenuItems,
+                        tooltip: tc('moreActions'),
                       },
                     ]}
                     getName={getName}

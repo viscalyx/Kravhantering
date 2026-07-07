@@ -27,6 +27,7 @@ import {
   createSpecificationLocalRequirementsBatch,
   createSpecificationLocalRequirementsBatchWithExecutor,
   getSpecificationById,
+  listSpecificationNeedsReferences,
   listSpecificationsForActor,
 } from '@/lib/dal/requirements-specifications'
 import type { RequestContext } from '@/lib/requirements/auth'
@@ -84,6 +85,7 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   createSpecificationLocalRequirementsBatchWithExecutor: vi.fn(),
   getSpecificationById: vi.fn(),
   listSpecificationsForActor: vi.fn(),
+  listSpecificationNeedsReferences: vi.fn(),
 }))
 
 function extractReferenceData(instruction: string) {
@@ -93,6 +95,11 @@ function extractReferenceData(instruction: string) {
   expect(referenceDataJson).toBeTruthy()
   return JSON.parse(referenceDataJson ?? '{}') as {
     categories: Array<{ id: number; name: string }>
+    needsReferences?: Array<{
+      description: string | null
+      id: number
+      text: string
+    }>
     qualityCharacteristics?: unknown
     priorityLevels: Array<{
       assessmentCriteria: string
@@ -195,6 +202,7 @@ describe('requirements import service', () => {
     vi.mocked(listPriorityLevels).mockResolvedValue([])
     vi.mocked(listTypes).mockResolvedValue([])
     vi.mocked(listNormReferences).mockResolvedValue([])
+    vi.mocked(listSpecificationNeedsReferences).mockResolvedValue([])
     vi.mocked(getCachedMcpRuntimeSettings).mockResolvedValue({
       mcpImportMaxRows: 500,
       mcpImportValidationTtlMinutes: 60,
@@ -290,6 +298,184 @@ describe('requirements import service', () => {
     })
   })
 
+  it('ignores needs-reference fields for library import preview', async () => {
+    const payload = requirementsImportPayloadSchema.parse({
+      proposedNeedsReferences: [
+        {
+          key: 'gdpr-need',
+          text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+        },
+      ],
+      requirements: [
+        {
+          description: 'Systemet ska skydda personuppgifter.',
+          needsReferenceId: 12,
+          needsReferenceKey: 'gdpr-need',
+        },
+      ],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    const preview = await workflow.previewLibraryImport({} as never, {
+      areaId: 7,
+      locale: 'sv',
+      payload,
+    })
+
+    expect(preview.needsReferenceProposals).toEqual([])
+    expect(preview.rows[0]).toMatchObject({
+      infos: [
+        expect.objectContaining({
+          code: 'import_needs_references_ignored_for_library',
+          field: 'needsReferenceId',
+          level: 'info',
+        }),
+      ],
+      values: { needsReferenceId: null },
+    })
+  })
+
+  it('resolves proposed needs references for specification-local import preview', async () => {
+    vi.mocked(getSpecificationById).mockResolvedValue({ id: 8 } as never)
+    vi.mocked(listSpecificationNeedsReferences).mockResolvedValue([
+      {
+        createdAt: '2026-07-05T10:00:00.000Z',
+        description: null,
+        id: 12,
+        libraryItemCount: 0,
+        linkedItemCount: 0,
+        specificationLocalRequirementCount: 0,
+        text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+        updatedAt: '2026-07-05T10:00:00.000Z',
+      },
+    ])
+    const payload = requirementsImportPayloadSchema.parse({
+      proposedNeedsReferences: [
+        {
+          key: 'gdpr-need',
+          text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+        },
+      ],
+      requirements: [
+        {
+          description: 'Systemet ska skydda personuppgifter.',
+          needsReferenceKey: 'gdpr-need',
+        },
+        {
+          description: 'Systemet ska logga åtkomst.',
+          needsReferenceId: 12,
+          needsReferenceKey: 'unknown-need',
+        },
+      ],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    const preview = await workflow.previewSpecificationLocalImport(
+      {} as never,
+      {
+        locale: 'sv',
+        payload,
+        specificationId: 8,
+      },
+    )
+
+    expect(preview.needsReferenceProposals).toEqual([
+      expect.objectContaining({
+        key: 'gdpr-need',
+        referencedCount: 1,
+        resolvedNeedsReferenceId: 12,
+      }),
+    ])
+    expect(preview.rows[0]).toMatchObject({
+      errors: [],
+      proposedNeedsReferenceKey: 'gdpr-need',
+      values: { needsReferenceId: 12 },
+    })
+    expect(preview.rows[1]).toMatchObject({
+      errors: [],
+      infos: [
+        expect.objectContaining({
+          code: 'import_needs_reference_key_ignored_for_id',
+          originalValue: 'unknown-need',
+        }),
+      ],
+      proposedNeedsReferenceKey: 'unknown-need',
+      values: { needsReferenceId: 12 },
+    })
+  })
+
+  it('blocks unresolved or invalid needs references for specification-local import preview', async () => {
+    vi.mocked(getSpecificationById).mockResolvedValue({ id: 8 } as never)
+    vi.mocked(listSpecificationNeedsReferences).mockResolvedValue([
+      {
+        createdAt: '2026-07-05T10:00:00.000Z',
+        description: null,
+        id: 12,
+        libraryItemCount: 0,
+        linkedItemCount: 0,
+        specificationLocalRequirementCount: 0,
+        text: 'Befintlig behovsreferens',
+        updatedAt: '2026-07-05T10:00:00.000Z',
+      },
+    ])
+    const payload = requirementsImportPayloadSchema.parse({
+      proposedNeedsReferences: [
+        {
+          key: 'new-need',
+          text: 'Ny behovsreferens',
+        },
+      ],
+      requirements: [
+        {
+          description: 'Systemet ska skydda personuppgifter.',
+          needsReferenceKey: 'new-need',
+        },
+        {
+          description: 'Systemet ska logga åtkomst.',
+          needsReferenceId: 99,
+        },
+      ],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    const preview = await workflow.previewSpecificationLocalImport(
+      {} as never,
+      {
+        locale: 'sv',
+        payload,
+        specificationId: 8,
+      },
+    )
+
+    expect(preview.rows[0]?.errors).toEqual([
+      expect.objectContaining({
+        code: 'import_needs_reference_unresolved',
+        originalValue: 'new-need',
+      }),
+    ])
+    expect(preview.rows[1]?.errors).toEqual([
+      expect.objectContaining({
+        code: 'import_needs_reference_id_invalid',
+        originalValue: '99',
+      }),
+    ])
+  })
+
   it('returns the import JSON Schema through the authorized service method', async () => {
     const authorization = { assertAuthorized: vi.fn() }
     const logger = { error: vi.fn(), info: vi.fn() }
@@ -331,6 +517,9 @@ describe('requirements import service', () => {
     const context = makeContext('requirements_get_import_instruction')
 
     const result = await workflow.getImportInstruction(context, {
+      destination: {
+        kind: 'requirements_library',
+      },
       locale: 'en',
     })
 
@@ -505,6 +694,74 @@ describe('requirements import service', () => {
     })
   })
 
+  it('keeps unused proposal warnings scoped to the proposal item path', async () => {
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: makeManageImportDb().db as never,
+    })
+    const context = makeContext('requirements_manage_import')
+
+    const libraryResult = await workflow.manageImport(context, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        proposedNormReferences: [
+          {
+            issuer: 'National Electrical Manufacturers Association (NEMA)',
+            key: 'DICOM-PS3.2',
+            name: 'Digital Imaging and Communications in Medicine Part 2',
+            normReferenceId: null,
+            reference: 'DICOM PS3.2',
+            type: 'Standard',
+            uri: 'https://dicom.nema.org/medical/dicom/current/output/html/part02.html',
+            version: null,
+          },
+        ],
+        requirements: [{ description: 'Systemet ska logga händelser.' }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+
+    if (!('issues' in libraryResult)) {
+      throw new Error('Expected validation issues')
+    }
+    expect(libraryResult.issues).toContainEqual(
+      expect.objectContaining({
+        code: 'import_proposed_norm_reference_unused',
+        path: '/proposedNormReferences/0',
+        severity: 'warning',
+      }),
+    )
+
+    vi.mocked(getSpecificationById).mockResolvedValue({ id: 8 } as never)
+    const specificationResult = await workflow.manageImport(context, {
+      destination: { kind: 'requirements_specification', specificationId: 8 },
+      operation: 'validate',
+      payload: {
+        proposedNeedsReferences: [
+          {
+            key: 'gdpr-need',
+            text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+          },
+        ],
+        requirements: [{ description: 'Systemet ska logga händelser.' }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+
+    if (!('issues' in specificationResult)) {
+      throw new Error('Expected validation issues')
+    }
+    expect(specificationResult.issues).toContainEqual(
+      expect.objectContaining({
+        code: 'import_proposed_needs_reference_unused',
+        path: '/proposedNeedsReferences/0',
+        severity: 'warning',
+      }),
+    )
+  })
+
   it('validates type and quality characteristic compatibility before MCP execute', async () => {
     vi.mocked(listTypes).mockResolvedValue([
       {
@@ -593,6 +850,7 @@ describe('requirements import service', () => {
     }
     expect(validation.referenceData?.includes).toEqual([
       'categories',
+      'needsReferences',
       'normReferences',
       'priorityLevels',
       'qualityCharacteristics',
@@ -614,8 +872,9 @@ describe('requirements import service', () => {
     expect(validation.rows?.[0]?.resolvedRow).not.toHaveProperty(
       'verificationMethod',
     )
-    expect(validation.rows?.[0]?.resolvedRow).not.toHaveProperty(
+    expect(validation.rows?.[0]?.resolvedRow).toHaveProperty(
       'needsReferenceId',
+      null,
     )
   })
 
@@ -964,16 +1223,20 @@ describe('requirements import service', () => {
       db: {} as never,
     })
 
-    const instructionEn = await workflow.buildImportInstruction('en')
-    const instructionSv = await workflow.buildImportInstruction('sv')
+    const instructionEn = await workflow.buildImportInstruction('en', {
+      kind: 'requirements_library',
+    })
+    const instructionSv = await workflow.buildImportInstruction('sv', {
+      kind: 'requirements_library',
+    })
 
     expect(instructionEn).toContain('Do not use U+2013 EN DASH in JSON values')
     expect(instructionSv).toContain('Använd inte U+2013 EN DASH i JSON-värden')
     expect(instructionEn).toContain(
-      "Write free-text values, such as `description`, `acceptanceCriteria`, `verificationMethod`, and proposed norm references, in English unless the user's input explicitly requests another language.",
+      "Write free-text values, such as `description`, `acceptanceCriteria`, `verificationMethod`, proposed norm references, and proposed needs references, in English unless the user's input explicitly requests another language.",
     )
     expect(instructionSv).toContain(
-      'Skriv fria textvärden, till exempel `description`, `acceptanceCriteria`, `verificationMethod` och föreslagna normreferenser på svenska om inte användarens indata uttryckligen anger ett annat språk.',
+      'Skriv fria textvärden, till exempel `description`, `acceptanceCriteria`, `verificationMethod`, föreslagna normreferenser och föreslagna behovsreferenser på svenska om inte användarens indata uttryckligen anger ett annat språk.',
     )
     expect(instructionEn).toContain(
       '- Choose `typeId` before `qualityCharacteristicId`:\n  - Use the functional type for required system behavior or capability',
@@ -1067,7 +1330,9 @@ describe('requirements import service', () => {
       db: {} as never,
     })
 
-    const instruction = await workflow.buildImportInstruction('en')
+    const instruction = await workflow.buildImportInstruction('en', {
+      kind: 'requirements_library',
+    })
     const referenceData = extractReferenceData(instruction)
 
     expect(instruction).toContain(
@@ -1087,6 +1352,100 @@ describe('requirements import service', () => {
         purposeAndScope: 'Integrationskrav.',
       },
     ])
+  })
+
+  it('adds needs-reference guidance and reference data for specification import instructions', async () => {
+    vi.mocked(listSpecificationNeedsReferences).mockResolvedValue([
+      {
+        createdAt: '2026-07-05T10:00:00.000Z',
+        description: 'Stödjer införande av GDPR artikel 32.',
+        id: 12,
+        libraryItemCount: 1,
+        linkedItemCount: 1,
+        specificationLocalRequirementCount: 0,
+        text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+        updatedAt: '2026-07-05T10:00:00.000Z',
+      },
+    ])
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    const instruction = await workflow.buildImportInstruction('sv', {
+      kind: 'requirements_specification',
+      specificationId: 8,
+    })
+    const referenceData = extractReferenceData(instruction)
+
+    expect(instruction).toContain(
+      'Använd `needsReferenceId` med värden från `needsReferences[].id` bara när kravet har en tydlig saklig matchning',
+    )
+    expect(instruction).toContain('Föreslå ett fåtal `proposedNeedsReferences`')
+    expect(instruction).toContain('Skapa inte en behovsreferens per kravrad.')
+    expect(instruction).toContain(
+      'Använd `proposedNeedsReferences[].text` som en kort återanvändbar behovsrubrik',
+    )
+    expect(instruction).toContain(
+      'utelämna fälten när kopplingen vore en gissning',
+    )
+    expect(instruction).toContain(
+      'Hitta inte på affärsmål, externa källor, kundnamn eller ärendenummer.',
+    )
+    expect(instruction).toContain(
+      'Beskriv behovsreferenser utan namn eller andra uppgifter som identifierar en levande person.',
+    )
+    expect(instruction).toContain(
+      'Om både `needsReferenceId` och `needsReferenceKey` anges på samma rad används `needsReferenceId`',
+    )
+    expect(referenceData.needsReferences).toEqual([
+      {
+        description: 'Stödjer införande av GDPR artikel 32.',
+        id: 12,
+        text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+      },
+    ])
+    expect(listSpecificationNeedsReferences).toHaveBeenCalledWith({}, 8)
+  })
+
+  it('includes an empty needsReferences array for specification import instructions without needs references', async () => {
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    const instruction = await workflow.buildImportInstruction('sv', {
+      kind: 'requirements_specification',
+      specificationId: 8,
+    })
+    const referenceData = extractReferenceData(instruction)
+
+    expect(referenceData).toHaveProperty('needsReferences')
+    expect(referenceData.needsReferences).toEqual([])
+    expect(listSpecificationNeedsReferences).toHaveBeenCalledWith({}, 8)
+  })
+
+  it('omits needs-reference reference data for library import instructions', async () => {
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+
+    const instruction = await workflow.buildImportInstruction('en', {
+      kind: 'requirements_library',
+    })
+    const referenceData = extractReferenceData(instruction)
+
+    expect(instruction).toContain(
+      'Do not produce needs references: do not set `needsReferenceId` or `needsReferenceKey`, and return `proposedNeedsReferences` as an empty array.',
+    )
+    expect(instruction).not.toContain(
+      'Propose a small number of `proposedNeedsReferences`',
+    )
+    expect(referenceData).not.toHaveProperty('needsReferences')
   })
 
   it('ignores requirement package ids for specification-local import execution', async () => {
@@ -1346,7 +1705,9 @@ describe('requirements import service', () => {
     })
 
     const referenceData = extractReferenceData(
-      await workflow.buildImportInstruction('en'),
+      await workflow.buildImportInstruction('en', {
+        kind: 'requirements_library',
+      }),
     )
 
     expect(referenceData).not.toHaveProperty('qualityCharacteristics')
@@ -1419,7 +1780,9 @@ describe('requirements import service', () => {
     })
 
     const referenceData = extractReferenceData(
-      await workflow.buildImportInstruction('sv'),
+      await workflow.buildImportInstruction('sv', {
+        kind: 'requirements_library',
+      }),
     )
     const referenceDataText = JSON.stringify(referenceData)
 

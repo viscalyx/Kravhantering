@@ -9,6 +9,16 @@ båda flödena utan att importfilen bär behörighets- eller placeringsdata.
 Importfilens toppnivåfält `schemaVersion` versionerar hela filformatet,
 inklusive kandidatkrav och stöddata som föreslagna normreferenser.
 
+Tillägg 2026-07-06: `requirement-import.v3` tillåter stöddata för
+behovsreferenser i `Kravimportfil`, eftersom behovsreferenser behöver kunna
+följa med i UI-, AI- och MCP-stödda kravunderlagsimporter. Destinationen väljs
+fortfarande utanför importfilen. Vid kravunderlagsimport kan rader peka på en
+befintlig behovsreferens med `needsReferenceId` eller på
+`proposedNeedsReferences` via `needsReferenceKey`. Vid kravbiblioteksimport
+ignoreras behovsreferensfält med informationsmeddelande. Version 3 ersätter
+version 2 som kanoniskt schema; äldre versioner behöver inte stödjas som
+inläsningsformat.
+
 Efter schemavalidering laddas importfilen till en redigerbar granskningsyta där
 användaren väljer rader, kompletterar obligatoriska sparvärden och löser eller
 accepterar varningar för frivillig metadata. Importen persisterar inte raw JSON

@@ -252,6 +252,9 @@ function createFakeService(
     manageImport: vi.fn().mockResolvedValue({
       result: [],
     }),
+    manageNeedsReference: vi.fn().mockResolvedValue({
+      result: [],
+    }),
     manageNormReference: vi.fn().mockResolvedValue({
       result: [],
     }),
@@ -365,6 +368,7 @@ describe('handleRequirementsMcpRequest', () => {
           'requirements_list_graduation_target_areas',
           'requirements_list_specifications',
           'requirements_manage_import',
+          'requirements_manage_needs_reference',
           'requirements_manage_requirement',
           'requirements_manage_improvement_suggestion',
           'requirements_manage_norm_reference',
@@ -412,20 +416,36 @@ describe('handleRequirementsMcpRequest', () => {
       expect(instructionTool?.description).toContain(
         'does not override or replace the schema',
       )
-      expect(JSON.stringify(instructionTool?.inputSchema)).toContain(
-        'Supported values',
+      expect(instructionTool?.description).toContain('destination is required')
+      const instructionInputSchemaText = JSON.stringify(
+        instructionTool?.inputSchema,
       )
+      expect(instructionInputSchemaText).toContain('destination')
+      expect(instructionInputSchemaText).toContain('requirements_library')
+      expect(instructionInputSchemaText).toContain('requirements_specification')
+      expect(instructionInputSchemaText).not.toContain('areaId')
       expect(JSON.stringify(instructionTool?.outputSchema)).toContain(
         'importInstruction',
       )
     })
 
-    it('describes MCP import and norm reference management workflows', async () => {
+    it('describes MCP import and reference management workflows', async () => {
       const importTool = getTool('requirements_manage_import')
+      const needsTool = getTool('requirements_manage_needs_reference')
       const normTool = getTool('requirements_manage_norm_reference')
 
       expect(importTool).toBeDefined()
       expect(importTool?.description).toContain('list_destinations')
+      expect(importTool?.description).toContain(
+        'requirements_manage_needs_reference',
+      )
+      expect(importTool?.description).toContain('needsReferenceId')
+      expect(importTool?.description).toContain(
+        'Ask the user before creating missing needs references',
+      )
+      expect(importTool?.description).toContain(
+        'MCP has no human import-review step',
+      )
       expect(importTool?.description).toContain('validationToken')
       expect(importTool?.description).toContain(
         'Validation sessions are immutable after validate',
@@ -444,6 +464,28 @@ describe('handleRequirementsMcpRequest', () => {
       const importOutputSchemaText = JSON.stringify(importTool?.outputSchema)
       expect(importOutputSchemaText).toContain('validationToken')
       expect(importOutputSchemaText).toContain('specificationCode')
+      expect(importOutputSchemaText).toContain('needsReferenceProposals')
+
+      expect(needsTool).toBeDefined()
+      expect(needsTool?.description).toContain('specificationId')
+      expect(needsTool?.description).toContain(
+        'requirements[].needsReferenceId',
+      )
+      expect(needsTool?.description).toContain(
+        'Ask the user before calling create',
+      )
+      expect(needsTool?.description).toContain(
+        'importing without the needs-reference link',
+      )
+      const needsInputSchemaText = JSON.stringify(needsTool?.inputSchema)
+      expect(needsInputSchemaText).toContain('create')
+      expect(needsInputSchemaText).toContain('get')
+      expect(needsInputSchemaText).toContain('needsReferenceId')
+      expect(needsInputSchemaText).toContain('specificationId')
+      const needsOutputSchemaText = JSON.stringify(needsTool?.outputSchema)
+      expect(needsOutputSchemaText).toContain('description')
+      expect(needsOutputSchemaText).toContain('linkedItemCount')
+      expect(needsOutputSchemaText).toContain('match')
 
       expect(normTool).toBeDefined()
       expect(normTool?.description).toContain('list_connected_requirement_ids')
@@ -810,7 +852,11 @@ describe('handleRequirementsMcpRequest', () => {
     const fakeService = serviceState.getService.mock.results[0]?.value
 
     const result = await client.callTool({
-      arguments: {},
+      arguments: {
+        destination: {
+          kind: 'requirements_library',
+        },
+      },
       name: 'requirements_get_import_instruction',
     })
 
@@ -826,7 +872,60 @@ describe('handleRequirementsMcpRequest', () => {
     })
     expect(fakeService.getImportInstruction).toHaveBeenCalledWith(
       expect.anything(),
-      { locale: 'en' },
+      {
+        destination: {
+          kind: 'requirements_library',
+        },
+        locale: 'en',
+      },
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('rejects import instruction calls without destination before service delegation', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    const result = await client.callTool({
+      arguments: {},
+      name: 'requirements_get_import_instruction',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(JSON.stringify(result.content)).toContain('destination')
+    expect(fakeService.getImportInstruction).not.toHaveBeenCalled()
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('passes destination to the canonical import instruction tool', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    const result = await client.callTool({
+      arguments: {
+        destination: {
+          kind: 'requirements_specification',
+          specificationId: 8,
+        },
+        locale: 'sv',
+      },
+      name: 'requirements_get_import_instruction',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(fakeService.getImportInstruction).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        destination: {
+          kind: 'requirements_specification',
+          specificationId: 8,
+        },
+        locale: 'sv',
+      },
     )
 
     await client.close()
@@ -953,6 +1052,54 @@ describe('handleRequirementsMcpRequest', () => {
       ]),
     )
     expect(fakeService.manageNormReference).not.toHaveBeenCalled()
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('creates a needs reference through MCP for a specification', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+    fakeService.manageNeedsReference.mockResolvedValueOnce({
+      needsReference: {
+        createdAt: '2026-07-05T10:00:00.000Z',
+        description: 'Access management work',
+        id: 12,
+        libraryItemCount: 0,
+        linkedItemCount: 0,
+        specificationLocalRequirementCount: 0,
+        text: 'IAM-42',
+        updatedAt: '2026-07-05T10:00:00.000Z',
+      },
+    })
+
+    const result = await client.callTool({
+      arguments: {
+        description: 'Access management work',
+        operation: 'create',
+        specificationId: 7,
+        text: 'IAM-42',
+      },
+      name: 'requirements_manage_needs_reference',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(result.structuredContent).toMatchObject({
+      needsReference: {
+        description: 'Access management work',
+        id: 12,
+        text: 'IAM-42',
+      },
+    })
+    expect(fakeService.manageNeedsReference).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        description: 'Access management work',
+        operation: 'create',
+        specificationId: 7,
+        text: 'IAM-42',
+      },
+    )
 
     await client.close()
     await transport.close()

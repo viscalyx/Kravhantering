@@ -390,6 +390,7 @@ test.describe('MCP seeded HTTP security gate', () => {
         client,
         'requirements_get_import_instruction',
         {
+          destination: { kind: 'requirements_library' },
           locale: 'en',
         },
       )
@@ -409,7 +410,11 @@ test.describe('MCP seeded HTTP security gate', () => {
           operation: 'list_destinations',
         },
       )
-      arrayField(importDestinations, 'result', 'import destinations')
+      const importDestinationRows = arrayField(
+        importDestinations,
+        'result',
+        'import destinations',
+      )
 
       const normReferences = await callToolOk(
         client,
@@ -419,6 +424,26 @@ test.describe('MCP seeded HTTP security gate', () => {
         },
       )
       arrayField(normReferences, 'result', 'norm references')
+
+      const specificationDestination = importDestinationRows
+        .map((row, index) =>
+          asRecord(row, `import destinations.result[${index}]`),
+        )
+        .find(row => row.kind === 'requirements_specification')
+      expect(specificationDestination).toBeDefined()
+      const needsReferences = await callToolOk(
+        client,
+        'requirements_manage_needs_reference',
+        {
+          operation: 'list',
+          specificationId: numberField(
+            specificationDestination as UnknownRecord,
+            'specificationId',
+            'specification import destination',
+          ),
+        },
+      )
+      arrayField(needsReferences, 'result', 'needs references')
 
       events.push('import-contracts:ok')
 

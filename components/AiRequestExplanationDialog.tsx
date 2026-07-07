@@ -185,10 +185,7 @@ export default function AiRequestExplanationDialog({
   }, [onLoadImportInstruction, open])
 
   const systemMessage = useMemo(
-    () =>
-      importInstruction
-        ? buildRequirementImportSystemPrompt(importInstruction, locale)
-        : '',
+    () => buildRequirementImportSystemPrompt(importInstruction, locale),
     [importInstruction, locale],
   )
   const userOrderText = useMemo(

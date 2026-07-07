@@ -21,7 +21,7 @@ For admin-managed default column settings, see
 - Primary public identifier: `uniqueId`
 - Read response formats: `markdown`, `json`
 - Supported locales: `en`, `sv`
-- Exposed MCP tools: 16
+- Exposed MCP tools: 17
 - Exposed MCP resources:
   - `requirements://requirement/{uniqueId}`
   - `ui://requirements/requirement-detail/{uniqueId}`
@@ -81,10 +81,10 @@ keeps lifecycle behavior aligned between REST and MCP.
 
 ## Tool Design
 
-The MCP surface is split into five areas: import contracts and execution (four
-tools), individual requirements (four tools), requirements specifications (six
-tools), improvement suggestions (two tools), and Normbibliotek management
-through the import support tool.
+The MCP surface is split into five areas: import contracts and execution,
+individual requirements, requirements specifications, improvement suggestions,
+and import support reference management for Normbibliotek rows and
+specification-scoped needs references.
 
 ### `requirements_query_catalog`
 
@@ -131,7 +131,13 @@ Returns the canonical `Importinstruktion` Markdown for producing a
 `Kravimportfil`. The instruction is Kravhantering guidance and does not override
 or replace the JSON Schema.
 
-- **Inputs:** `locale` (`en` | `sv`, default `en`)
+- **Inputs:** `locale` (`en` | `sv`, default `en`) and required `destination`.
+  Use `{kind:"requirements_library"}` for kravbiblioteksimport; no requirement
+  area is needed because the library import instruction does not vary by area.
+  Use `{kind:"requirements_specification", specificationId}` for
+  kravunderlagsimport. If an agent does not know which requirements
+  specification applies, it must ask the user and call `list_destinations` or
+  `search_destinations` to resolve `specificationId`.
 - **Output:** Markdown in `structuredContent.importInstruction`
 - **Text content:** short status text that points to
   `structuredContent.importInstruction`
@@ -160,6 +166,39 @@ It does not include kravunderlagslokala krav.
 
 Create delegates to the existing audited norm-reference mutation workflow and
 returns `structuredContent.normReference`.
+
+### `requirements_manage_needs_reference`
+
+Lists, searches, gets, or creates behovsreferenser for one requirements
+specification. The tool exists so MCP clients can resolve
+`requirements[].needsReferenceId` before validating a kravunderlagsimport.
+Inputs always include numeric `specificationId` from
+`requirements_manage_import` destination discovery.
+
+List/search return `structuredContent.result[]` with canonical
+specification-needs-reference row properties. Search rows may add `match`
+metadata. `operation: "get"` requires `needsReferenceId` and returns
+`structuredContent.needsReference`. `operation: "create"` accepts `text` and
+optional `description`, creates the row through the shared requirements service,
+and returns `structuredContent.needsReference`.
+
+Tool descriptions must tell agents to ask the user before `operation: "create"`
+for a missing behovsreferens. After approval, the agent creates the row and
+copies `needsReference.id` to `requirements[].needsReferenceId` before
+`requirements_manage_import` execute. If the user does not approve creation,
+the agent asks whether import without the needs-reference link is acceptable and
+stops when the missing link is central to why the row belongs in the
+specification. MCP has no human import-review step between validate and
+execute, so unresolved `proposedNeedsReferences` must not be treated as
+something a later MCP step resolves automatically.
+
+Document these copy paths in tool descriptions and tests:
+
+```text
+requirements_manage_import.result[].specificationId -> specificationId
+requirements_manage_needs_reference.result[].id -> requirements[].needsReferenceId
+requirements_manage_needs_reference.needsReference.id -> requirements[].needsReferenceId
+```
 
 ### `requirements_manage_import`
 

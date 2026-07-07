@@ -13,7 +13,7 @@ const generatedPayload = {
       typeId: 1,
     },
   ],
-  schemaVersion: 'requirement-import.v2',
+  schemaVersion: 'requirement-import.v3',
 }
 
 function jsonResponse(body: unknown) {
@@ -265,7 +265,7 @@ test('SPEC-17: AI-assisted authoring hands kravunderlag candidates to local impo
   )
 
   await page.goto(`/sv/specifications/${specificationId}`)
-  await page.getByRole('button', { name: 'Lägg till unika krav' }).click()
+  await page.getByRole('button', { name: 'Fler åtgärder' }).click()
   await page
     .getByRole('menuitem', { name: 'AI-assisterat författande' })
     .click()

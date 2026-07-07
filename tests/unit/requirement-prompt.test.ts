@@ -95,6 +95,15 @@ describe('getDefaultInstruction', () => {
   it('returns Swedish instruction for sv locale', () => {
     expect(getDefaultInstruction('sv')).toBe(DEFAULT_INSTRUCTION_SV)
   })
+
+  it('mentions needs references among import-instruction governed fields', () => {
+    expect(DEFAULT_INSTRUCTION_EN).toContain(
+      'norm references, and needs references only through the fields supported by the import instruction',
+    )
+    expect(DEFAULT_INSTRUCTION_SV).toContain(
+      'normreferenser och behovsreferenser endast genom fält som stöds av importinstruktionen',
+    )
+  })
 })
 
 describe('buildRequirementImportResponseFormatSchema', () => {
@@ -109,7 +118,12 @@ describe('buildRequirementImportResponseFormatSchema', () => {
     expect(schema).not.toHaveProperty('$schema')
     expect(schema).toMatchObject({
       additionalProperties: false,
-      required: ['proposedNormReferences', 'requirements', 'schemaVersion'],
+      required: [
+        'proposedNormReferences',
+        'proposedNeedsReferences',
+        'requirements',
+        'schemaVersion',
+      ],
       title: 'Kravimport',
       type: 'object',
     })
@@ -131,6 +145,16 @@ describe('buildRequirementImportResponseFormatSchema', () => {
       type: ['string', 'null'],
     })
 
+    const proposedNeedsReferences = properties.proposedNeedsReferences as {
+      items: { properties: Record<string, unknown>; required: string[] }
+    }
+    expect(proposedNeedsReferences.items.required).toEqual(
+      Object.keys(proposedNeedsReferences.items.properties),
+    )
+    expect(proposedNeedsReferences.items.properties.description).toMatchObject({
+      type: ['string', 'null'],
+    })
+
     const requirements = properties.requirements as {
       items: { properties: Record<string, unknown>; required: string[] }
     }
@@ -142,6 +166,12 @@ describe('buildRequirementImportResponseFormatSchema', () => {
     })
     expect(requirements.items.properties.verifiable).toMatchObject({
       type: ['boolean', 'null'],
+    })
+    expect(requirements.items.properties.needsReferenceId).toMatchObject({
+      type: ['integer', 'null'],
+    })
+    expect(requirements.items.properties.needsReferenceKey).toMatchObject({
+      type: ['string', 'null'],
     })
   })
 })
@@ -208,6 +238,9 @@ describe('buildRequirementImportRepairPrompt', () => {
 
     expect(prompt).toContain('Repair the JSON')
     expect(prompt).toContain('Preserve the requirement content')
+    expect(prompt).toContain(
+      'Do not add new proposed needs references or new needs-reference links',
+    )
     expect(prompt).toContain('requirements: must contain at least 1 item')
     expect(prompt).toContain('"invalidJsonPayload": "{\\"requirements\\":[]}"')
     expect(prompt).not.toContain('```json')

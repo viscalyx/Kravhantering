@@ -561,36 +561,32 @@ async function getCsvExport(
   return response.text()
 }
 
-async function clickMenuItem(page: Page, menuName: string, itemName: string) {
+async function openActionMenu(page: Page, menuName: string) {
   const actionId =
-    menuName === 'Rapporter'
-      ? 'reports'
-      : menuName === 'Exportera'
-        ? 'export'
-        : menuName === 'Lägg till unika krav'
-          ? 'local-requirement-actions'
-          : null
+    menuName === 'Rapporter' ||
+    menuName === 'Exportera' ||
+    menuName === 'Fler åtgärder'
+      ? 'more-actions'
+      : null
   const menuButton = actionId
     ? page
         .locator(`[data-floating-action-menu-trigger="${actionId}"]:visible`)
         .first()
     : page.getByRole('button', { name: menuName })
-  await expect(menuButton).toBeVisible({ timeout: 30_000 })
   const menu = actionId
     ? page.locator(`[data-floating-action-menu="${actionId}"]`)
     : page.getByRole('menu')
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    await menuButton.scrollIntoViewIfNeeded()
-    if (attempt === 1) {
-      await menuButton.press('Enter')
-    } else {
-      await menuButton.click({ force: attempt >= 2 })
-    }
-    if (await menu.isVisible({ timeout: 2_000 }).catch(() => false)) break
-  }
+  await menuButton.click()
   await expect(menu).toBeVisible({ timeout: 5_000 })
-  const menuItem = menu.getByText(itemName, { exact: true })
-  await expect(menuItem).toBeVisible({ timeout: 5_000 })
+  return menu
+}
+
+async function clickMenuItem(page: Page, menuName: string, itemName: string) {
+  const menu = await openActionMenu(page, menuName)
+  const menuItem = menu.getByRole('menuitem', {
+    exact: true,
+    name: itemName,
+  })
   await menuItem.click()
 }
 
@@ -698,7 +694,10 @@ for (const viewport of viewports) {
       )
       await expect(splitPanel).toBeVisible()
       await expect(
-        page.getByRole('button', { name: 'Lägg till unika krav' }),
+        page.getByRole('button', { name: 'Nytt unikt krav' }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('button', { name: 'Fler åtgärder' }),
       ).toBeVisible()
 
       const splitPanelClassesBefore = await splitPanel.getAttribute('class')
@@ -1577,7 +1576,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     )
 
     await gotoSpecificationDetail(page, editSpecificationId)
-    await clickMenuItem(page, 'Lägg till unika krav', 'Nytt unikt krav')
+    await page.getByRole('button', { name: 'Nytt unikt krav' }).click()
     const dialog = page.getByRole('dialog').filter({
       hasText: 'Nytt unikt krav',
     })
@@ -1850,9 +1849,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     ])
     expect(procurementTable.rows.length).toBeGreaterThan(0)
 
-    await page.getByRole('button', { name: 'Exportera' }).click()
-    await expect(page.getByText('Anbuds-CSV', { exact: true })).toBeVisible()
-    await page.getByText('Anbuds-CSV', { exact: true }).click()
+    await clickMenuItem(page, 'Exportera', 'Anbuds-CSV')
     await expect
       .poll(() =>
         downloadRequests.some(
@@ -1873,8 +1870,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     )
     expect(procurementCsv).not.toContain('Underlagssyfte')
 
-    await page.getByRole('button', { name: 'Exportera' }).click()
-    await page.getByText('Full CSV-export', { exact: true }).click()
+    await clickMenuItem(page, 'Exportera', 'Full CSV-export')
     await expect
       .poll(() =>
         downloadRequests.some(
@@ -1936,9 +1932,19 @@ test.describe('Requirements specification deterministic manual cases', () => {
         'normReferences',
       ])
 
-      await page.getByRole('button', { name: 'Exportera' }).click()
-      await expect(page.getByText('Anbuds-CSV', { exact: true })).toHaveCount(0)
-      await page.getByText('Full CSV-export', { exact: true }).click()
+      const exportMenu = await openActionMenu(page, 'Exportera')
+      await expect(
+        exportMenu.getByRole('menuitem', {
+          exact: true,
+          name: 'Anbuds-CSV',
+        }),
+      ).toHaveCount(0)
+      await exportMenu
+        .getByRole('menuitem', {
+          exact: true,
+          name: 'Full CSV-export',
+        })
+        .click()
       await expect
         .poll(() =>
           downloadRequests.some(
@@ -2053,11 +2059,19 @@ test.describe('Requirements specification deterministic manual cases', () => {
     expect(traceabilityData.items?.[0]).toHaveProperty('verificationMethod')
 
     await gotoSpecificationDetail(page, 920006)
-    await page.getByRole('button', { name: 'Rapporter' }).click()
+    const reportsMenu = await openActionMenu(page, 'Rapporter')
     await expect(
-      page.getByText('Tillämpningsspårbarhet', { exact: true }),
+      reportsMenu.getByRole('menuitem', {
+        exact: true,
+        name: 'Tillämpningsspårbarhet',
+      }),
     ).toHaveCount(0)
-    await page.getByText('Genomföranderapport', { exact: true }).click()
+    await reportsMenu
+      .getByRole('menuitem', {
+        exact: true,
+        name: 'Genomföranderapport',
+      })
+      .click()
     await expect
       .poll(() =>
         downloadRequests.some(url =>
@@ -2094,7 +2108,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
           typeId: 1,
         },
       ],
-      schemaVersion: 'requirement-import.v2',
+      schemaVersion: 'requirement-import.v3',
     }
     const previewRequests: unknown[] = []
     const executeRequests: unknown[] = []
@@ -2210,9 +2224,11 @@ test.describe('Requirements specification deterministic manual cases', () => {
     )
 
     await gotoSpecificationDetail(page, editSpecificationId)
-    await clickMenuItem(page, 'Lägg till unika krav', 'Importera unika krav')
+    await clickMenuItem(page, 'Fler åtgärder', 'Importera unika krav')
 
-    const dialog = page.getByRole('dialog', { name: /Importera krav för/ })
+    const dialog = page.getByRole('dialog', {
+      name: /Importera lokala krav för/,
+    })
     await expect(dialog).toBeVisible()
     await expect(dialog.getByLabel('Kravområde')).toHaveCount(0)
     await expect(

@@ -684,7 +684,7 @@ kravområde, generera en kravkandidat och välj
 `Förhandsgranska krav i import`.
 
 **Förväntat resultat:** Den genererade kandidaten skickas som
-`requirement-import.v2` till importgranskningen för valt kravområde.
+`requirement-import.v3` till importgranskningen för valt kravområde.
 Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
 `Import-JSON`-formuläret.
 
@@ -738,10 +738,11 @@ kravgenerering om reglaget inte ändras separat.
 
 **Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements`, välj
 importknappen i den flytande åtgärdsytan och ladda ner schema och
-importinstruktion. Klistra in `requirement-import.v2`-JSON med ett krav,
-föreslagen normreferens och ett först otillåtet destinationsfält. Välj
-kravområde, korrigera JSON, förhandsgranska, expandera raden, granska den
-föreslagna normreferensen, importera vald rad och ladda ner CSV-kvitto.
+importinstruktion. Klistra in `requirement-import.v3`-JSON med ett krav,
+föreslagen normreferens, behovsreferensfält som ska ignoreras och ett först
+otillåtet destinationsfält. Välj kravområde, korrigera JSON, förhandsgranska,
+expandera raden, granska den föreslagna normreferensen, importera vald rad och
+ladda ner CSV-kvitto.
 
 **Förväntat resultat:** JSON med destinationsfält stoppas före granskning.
 Kravområde måste väljas från användarens tilldelade områden, dialogrubriken
@@ -749,8 +750,10 @@ visar `Importera krav för {kravområde}` och importknappen ligger direkt före
 exportknappen medan kolumnväljaren ligger sist till höger. Granskningen delar
 upp `Krav` och `Föreslagna normreferenser`, rader är kollapsade från start,
 `Typ` visas före `Kvalitetsegenskap`, verifieringsmetod visas när
-`Verifierbar` är aktiv och löst förslag till normreferens visas som löst. Importen
-skickar vald rad och skapar CSV-kvitto med importerad kravrad.
+`Verifierbar` är aktiv, löst förslag till normreferens visas som löst och
+behovsreferensfält visas som diskret information om att de inte används för
+kravbiblioteksimport. Importen skickar vald rad och skapar CSV-kvitto med
+importerad kravrad.
 
 ## Skapa krav och livscykel
 
@@ -1134,23 +1137,25 @@ person.
 ### SPEC-17: importera unika krav till kravunderlag
 
 **Steg:** Logga in som `petra.specresp`, öppna ett kravunderlag där användaren
-är ansvarig, välj `Lägg till unika krav` och sedan `Importera unika krav`.
-Klistra in giltig `requirement-import.v2`-JSON med kravtext, föreslagen
-normreferens och fält för kravpaket som ska ignoreras för kravunderlagslokala
-krav. Komplettera `Behovsreferens` i granskningsformuläret. Testa även en rad
-med `verifiable: true` utan verifieringsmetod och fyll sedan i metoden
-innan import.
+är ansvarig, välj `Fler åtgärder` och sedan `Importera unika krav`.
+Klistra in giltig `requirement-import.v3`-JSON med kravtext, föreslagen
+normreferens, `proposedNeedsReferences` med radens `needsReferenceKey` och fält
+för kravpaket som ska ignoreras för kravunderlagslokala krav. Lös
+behovsreferensen i fliken `Föreslagna behovsreferenser` genom att skapa eller
+länka behovsreferensen. Testa även en rad med `verifiable: true` utan
+verifieringsmetod och fyll sedan i metoden innan import.
 
 **Förväntat resultat:** Importen kräver kravunderlagsbehörighet men inget
 kravområde. Rader skapas som kravunderlagslokala krav i aktuellt kravunderlag.
 Dialogrubriken visar `Importera krav för {kravunderlag}`.
 Verifierbara lokala krav utan verifieringsmetod blockeras tills värdet anges.
-Krav och föreslagna normreferenser visas i separata flikar. Kravpaket visas
-inte som val för kravunderlagslokala krav, och importerade
+Krav, föreslagna normreferenser och föreslagna behovsreferenser visas i
+separata flikar. Oupplöst `needsReferenceKey` blockerar raden tills förslaget
+är skapat eller länkat och raden får ett konkret `needsReferenceId`. Kravpaket
+visas inte som val för kravunderlagslokala krav, och importerade
 `requirementPackageIds` eller `requirementPackageNames` visas som diskret
 information om att kravpaketen inte används. Execute-anropet skickar
-`specificationId`, vald behovsreferens, normreferens-ID och
-verifieringsmetod.
+`specificationId`, löst behovsreferens-ID, normreferens-ID och verifieringsmetod.
 
 ## Avsteg
 
