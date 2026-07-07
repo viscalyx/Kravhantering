@@ -203,3 +203,7 @@ After upgrade, review the Admin Center MCP limits before enabling high-volume im
 <!-- operator-upgrade:source pr-409 start -->
 Before or immediately after upgrade, route the new AI safety forensic log stream separately from metadata security audit logs, with stricter access, retention, and masking controls, or disable forensic AI safety logging in Admin Center until that routing is ready. The forensic stream is enabled by default during this diagnostic phase and can contain raw blocked AI content, model reasoning, repair payloads, matched rule terms, personal data, or secrets.
 <!-- operator-upgrade:source pr-409 end -->
+
+<!-- operator-upgrade:source pr-430 start -->
+Notify teams that maintain MCP clients, strict tool allowlists, or import automation. The MCP requirements import surface now includes needs-reference management, and import-instruction retrieval is destination-aware instead of locale-only. Clients that prepare requirements-specification imports must resolve the target specification and any required needs-reference links before executing the import.
+<!-- operator-upgrade:source pr-430 end -->
