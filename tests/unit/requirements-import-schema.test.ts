@@ -37,9 +37,51 @@ describe('requirements import schema', () => {
       const unknownKeys = result.error.issues.flatMap(issue =>
         issue.code === 'unrecognized_keys' ? issue.keys : [],
       )
-      expect(unknownKeys).toEqual(
-        expect.arrayContaining(['areaId', 'needsReferenceId']),
-      )
+      expect(unknownKeys).toEqual(expect.arrayContaining(['areaId']))
+      expect(unknownKeys).not.toContain('needsReferenceId')
+    }
+  })
+
+  it('accepts needs reference fields in the shared v3 file format', () => {
+    const result = requirementsImportPayloadSchema.safeParse({
+      proposedNeedsReferences: [
+        {
+          description: 'Stödjer införande av GDPR artikel 32.',
+          key: 'gdpr-need',
+          text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+        },
+      ],
+      requirements: [
+        {
+          description: 'Systemet ska skydda personuppgifter.',
+          needsReferenceId: 2,
+          needsReferenceKey: 'gdpr-need',
+        },
+      ],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects duplicate proposed needs reference keys', () => {
+    const proposal = {
+      key: 'gdpr-need',
+      text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+    }
+    const result = requirementsImportPayloadSchema.safeParse({
+      proposedNeedsReferences: [proposal, proposal],
+      requirements: [{ description: 'Systemet ska vara säkert.' }],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0]?.path).toEqual([
+        'proposedNeedsReferences',
+        1,
+        'key',
+      ])
     }
   })
 
@@ -197,6 +239,17 @@ describe('requirements import schema', () => {
         required: ['key', 'name', 'type', 'reference', 'issuer'],
       },
     })
+    expect(properties.proposedNeedsReferences).toMatchObject({
+      items: {
+        additionalProperties: false,
+        properties: {
+          description: {},
+          key: { minLength: 1 },
+          text: { minLength: 1 },
+        },
+        required: ['key', 'text'],
+      },
+    })
     expect(properties.schemaVersion).toMatchObject({
       const: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
       description: 'Toppnivåfältet som versionerar hela kravimportfilen.',
@@ -204,6 +257,14 @@ describe('requirements import schema', () => {
     const requirements = properties.requirements as {
       items: { properties: Record<string, unknown> }
     }
+    expect(requirements.items.properties.needsReferenceId).toMatchObject({
+      description:
+        'Behovsreferens-ID används vid import till kravunderlag. Vid import till kravbiblioteket ignoreras fältet.',
+    })
+    expect(requirements.items.properties.needsReferenceKey).toMatchObject({
+      description:
+        'Nyckel till proposedNeedsReferences. Används vid import till kravunderlag när en föreslagen behovsreferens ska lösas i granskningen. Vid import till kravbiblioteket ignoreras fältet.',
+    })
     expect(requirements.items.properties.requirementPackageIds).toMatchObject({
       description:
         'Kravpakets-ID:n används vid import till kravbiblioteket. Vid import till kravunderlagslokala krav ignoreras fältet.',

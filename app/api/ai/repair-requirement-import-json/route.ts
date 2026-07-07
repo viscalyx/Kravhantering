@@ -37,6 +37,7 @@ import {
   formatAiSafetyBlockedMessage,
   guardAiInput,
   MAX_AI_INSTRUCTION_LENGTH,
+  requirementImportDestination,
   requirementImportScopeAction,
   validateRequirementImportScope,
 } from '../requirement-import-shared'
@@ -184,7 +185,10 @@ export const POST = secureMutationRoute({
       )
       const importInstruction = await createRequirementsRuntime(
         db,
-      ).service.buildImportInstruction(body.locale)
+      ).service.buildImportInstruction(
+        body.locale,
+        requirementImportDestination(body),
+      )
       const systemPrompt = buildRequirementImportSystemPrompt(
         importInstruction,
         body.locale,

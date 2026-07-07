@@ -54,11 +54,13 @@ The behaviors below apply to the requirement list rendered by:
 ## Requirement Import
 
 - Requirement import uses one strict JSON file format,
-  `requirement-import.v2`, for both kravbiblioteksimport and
+  `requirement-import.v3`, for both kravbiblioteksimport and
   kravunderlagsimport. The top-level `schemaVersion` versions the whole import
   file, including requirement candidates and support data such as proposed norm
-  references. Destination fields such as `areaId`, `specificationId` and
-  `needsReferenceId` are rejected by schema validation.
+  references and proposed needs references. Destination fields such as `areaId`
+  and `specificationId` are rejected by schema validation. Needs-reference
+  fields belong to the shared file format but only have effect for
+  kravunderlagsimport.
 - The import schema requires `schemaVersion` and non-empty `description` for
   each requirement. Other currently persisted requirement fields are optional
   in the file and become editable values in the review form.
@@ -66,10 +68,14 @@ The behaviors below apply to the requirement list rendered by:
   The user must choose one authorable kravområde before loading the review.
   That choice is locked for the dialog session and imported rows become draft
   requirements in the selected kravområde.
-- Kravunderlagsimport is started from the current kravunderlag, either from the
-  empty-list header or the `Krav i underlaget` action rail. Imported rows become
-  kravunderlagslokala krav in the current kravunderlag, and `Behovsreferens` is
-  assigned per row in the editable review form rather than from the file.
+- In kravunderlag detail, the blue plus action creates one new unique krav
+  directly. AI-assisted authoring and kravunderlagsimport are started from
+  `Fler åtgärder`, either from the empty-list header or the `Krav i underlaget`
+  action rail. Imported rows become kravunderlagslokala krav in the current
+  kravunderlag. `Behovsreferens` can be assigned from an existing
+  `needsReferenceId` in the import file, resolved from `proposedNeedsReferences`
+  through a row `needsReferenceKey`, or changed per row in the editable review
+  form.
 - The review form loads only after the JSON passes schema validation. Numeric
   IDs and uniquely matched names are resolved into editable IDs. Unresolved or
   ambiguous optional metadata is shown as warnings and is omitted if the user
@@ -79,7 +85,7 @@ The behaviors below apply to the requirement list rendered by:
   clickable drop target, or dropped onto that target. The paste field uses
   placeholder text so the instruction is not inserted into the JSON value.
   `Förhandsgranska krav` stays disabled until the JSON parses and passes
-  `requirement-import.v2` schema validation and, for kravbiblioteksimport, a
+  `requirement-import.v3` schema validation and, for kravbiblioteksimport, a
   kravområde is selected. When the action is disabled, a short warning above
   the button explains the current blocker, such as missing kravområde, missing
   JSON, parse errors, wrong `schemaVersion`, or schema validation errors.
@@ -87,8 +93,18 @@ The behaviors below apply to the requirement list rendered by:
   the user loads review, the setup panel collapses and the editable krav review
   uses the dialog body.
 - The loaded review is split into `Krav` and `Föreslagna normreferenser` tabs.
-  The `Krav` tab keeps its selection summary, CSV receipt action and
-  `Importera valda` action in a fixed toolbar above the scrollable krav rows.
+  For kravunderlagsimport, files with `proposedNeedsReferences` also show
+  `Föreslagna behovsreferenser`. The `Krav` tab keeps its selection summary,
+  CSV receipt action and `Importera valda` action in a fixed toolbar above the
+  scrollable krav rows.
+- In the `Föreslagna behovsreferenser` tab, each proposal shows `key`, `text`,
+  optional `description`, affected row count and resolution state. The user can
+  link a proposal to an existing behovsreferens or create a new one. Resolving a
+  proposal updates every row with the same `needsReferenceKey` to the concrete
+  `needsReferenceId`.
+- For kravbiblioteksimport, `needsReferenceId`, `needsReferenceKey` and
+  `proposedNeedsReferences` are ignored with information messages and no
+  needs-reference proposal tab is shown.
 - Krav rows start collapsed after review loading. A collapsed row shows the row
   number, an accessible on/off import switch, a three-line read-only kravtext
   summary, a remove action, any compact error/warning/info counts, and a

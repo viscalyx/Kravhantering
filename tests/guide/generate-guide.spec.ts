@@ -134,7 +134,7 @@ const AI_GUIDE_PAYLOAD = {
       verificationMethod: 'Säkerhetstest',
     },
   ],
-  schemaVersion: 'requirement-import.v2',
+  schemaVersion: 'requirement-import.v3',
 }
 const GUIDE_SPECIFICATION_ID = 8
 const GUIDE_SPECIFICATION_CODE = 'ETJANST-UPP-2026'
@@ -1638,7 +1638,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'kravunderlagsdetalj',
         'Kravunderlagsdetalj — delad vy',
-        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna **Krav i underlaget** och **Behovsreferenser** i listans rubrik, och **höger panel** har tabbarna **Tillgängliga krav** och **Kravurvalsfrågor** i samma typ av sticky rubrik. I tabben för krav visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i rubriken byts när du växlar tabb: tabben för krav har kravtabellens verktyg, medan tabben för behovsreferenser har åtgärden för att skapa en ny referens. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Klicka på en rad för att se kravets fullständiga detaljer.',
+        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna **Krav i underlaget** och **Behovsreferenser** i listans rubrik, och **höger panel** har tabbarna **Tillgängliga krav** och **Kravurvalsfrågor** i samma typ av sticky rubrik. I tabben för krav visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i rubriken byts när du växlar tabb: tabben för krav har kravtabellens verktyg, medan tabben för behovsreferenser har åtgärden för att skapa en ny referens. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Knappen **"Fler åtgärder"** innehåller AI-assisterat författande, import, rapporter och exporter när de är tillgängliga. Klicka på en rad för att se kravets fullständiga detaljer.',
         { fullPage: false },
       )
     })
@@ -1934,7 +1934,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
     // ── Sektion 7: Import av krav ─────────────────────────────────────────
     currentSection = 'Import av krav'
     setSectionIntro(
-      'Importfunktionen använder JSON enligt `requirement-import.v2`. **AI-assisterat författande** använder samma importkontrakt och samma redigerbara importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt i ett kravunderlag. Importen laddar först en granskning där rader, metadata och föreslagna normreferenser kan kontrolleras innan något sparas.',
+      'Importfunktionen använder JSON enligt `requirement-import.v3`. **AI-assisterat författande** använder samma importkontrakt och samma redigerbara importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt i ett kravunderlag. Importen laddar först en granskning där rader, metadata, föreslagna normreferenser och föreslagna behovsreferenser kan kontrolleras innan något sparas.',
     )
 
     let cleanupAiMocks: (() => Promise<void>) | null = null
@@ -2387,16 +2387,13 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await expect(
         page.getByText(/^Det gick inte att läsa in tillgängliga krav:/),
       ).toBeHidden({ timeout: 10_000 })
-      await page
-        .getByRole('button', { name: 'Lägg till unika krav' })
-        .first()
-        .click()
-      const localRequirementActionMenu = page.locator(
-        '[data-floating-action-menu="local-requirement-actions"]',
+      await page.getByRole('button', { name: 'Fler åtgärder' }).first().click()
+      const moreActionsMenu = page.locator(
+        '[data-floating-action-menu="more-actions"]',
       )
-      await expect(localRequirementActionMenu).toBeVisible({ timeout: 5_000 })
-      await localRequirementActionMenu
-        .getByRole('button', { name: 'Importera unika krav' })
+      await expect(moreActionsMenu).toBeVisible({ timeout: 5_000 })
+      await moreActionsMenu
+        .getByRole('menuitem', { name: 'Importera unika krav' })
         .click()
 
       const dialog = dialogWithHeading(page, GUIDE_SPECIFICATION_IMPORT_TITLE)
@@ -2407,7 +2404,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'import-kravunderlag-fil',
         'Kravunderlagsimport — importfil',
-        'I ett kravunderlag använder knappen **"Importera unika krav"** samma importfilformat, men målet är det aktuella kravunderlaget. Därför väljs inget kravområde i dialogen.',
+        'I ett kravunderlag öppnar du **"Fler åtgärder"** och väljer **"Importera unika krav"**. Importen använder samma importfilformat, men målet är det aktuella kravunderlaget. Därför väljs inget kravområde i dialogen.',
         { fullPage: false },
       )
 

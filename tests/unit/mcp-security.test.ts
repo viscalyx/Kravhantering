@@ -22,6 +22,7 @@ const EXPECTED_TOOLS = [
   'requirements_list_specifications',
   'requirements_manage_import',
   'requirements_manage_improvement_suggestion',
+  'requirements_manage_needs_reference',
   'requirements_manage_norm_reference',
   'requirements_manage_requirement',
   'requirements_query_catalog',
@@ -155,6 +156,7 @@ function createService() {
     })),
     manageDeviation: vi.fn(),
     manageImport: vi.fn(async () => ({ result: [] })),
+    manageNeedsReference: vi.fn(async () => ({ result: [] })),
     manageNormReference: vi.fn(async () => ({ result: [] })),
     manageRequirement: vi.fn(async () => ({
       detail: createDetail(),
@@ -168,6 +170,7 @@ function createService() {
     })),
     previewLibraryImport: vi.fn(async () => ({
       mode: 'library' as const,
+      needsReferenceProposals: [],
       previewToken: 'token',
       proposals: [],
       rows: [],
@@ -175,6 +178,7 @@ function createService() {
     })),
     previewSpecificationLocalImport: vi.fn(async () => ({
       mode: 'specification-local' as const,
+      needsReferenceProposals: [],
       previewToken: 'token',
       proposals: [],
       rows: [],

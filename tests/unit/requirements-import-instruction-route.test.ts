@@ -36,7 +36,7 @@ describe('GET /api/requirements/import/instruction', () => {
     })
   })
 
-  it('returns the authenticated import instruction as Markdown with no-store', async () => {
+  it('rejects import instruction requests without a destination', async () => {
     const context = makeContext(true)
     routeMocks.createRequirementsRestRuntime.mockResolvedValue({
       context,
@@ -51,6 +51,37 @@ describe('GET /api/requirements/import/instruction', () => {
       ),
     )
 
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body).toMatchObject({
+      code: 'validation',
+      error: expect.stringContaining('destination is required'),
+    })
+    expect(body).toMatchObject({
+      error: expect.stringContaining('requirements_manage_import'),
+    })
+    expect(body).toMatchObject({
+      error: expect.stringContaining('AI agents'),
+    })
+    expect(body.error).not.toContain('REST clients')
+    expect(routeMocks.getImportInstruction).not.toHaveBeenCalled()
+  })
+
+  it('returns the authenticated import instruction as Markdown with no-store', async () => {
+    const context = makeContext(true)
+    routeMocks.createRequirementsRestRuntime.mockResolvedValue({
+      context,
+      service: {
+        getImportInstruction: routeMocks.getImportInstruction,
+      },
+    })
+
+    const response = await GET(
+      new Request(
+        'http://localhost/api/requirements/import/instruction?locale=sv&kind=requirements_library',
+      ),
+    )
+
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(response.headers.get('Content-Type')).toBe(
@@ -60,6 +91,56 @@ describe('GET /api/requirements/import/instruction', () => {
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
     expect(new TextDecoder().decode(bytes.slice(3))).toBe('# Importinstruktion')
     expect(routeMocks.getImportInstruction).toHaveBeenCalledWith(context, {
+      destination: {
+        kind: 'requirements_library',
+      },
+      locale: 'sv',
+    })
+  })
+
+  it('passes a requirements specification destination from query parameters', async () => {
+    const context = makeContext(true)
+    routeMocks.createRequirementsRestRuntime.mockResolvedValue({
+      context,
+      service: {
+        getImportInstruction: routeMocks.getImportInstruction,
+      },
+    })
+
+    await GET(
+      new Request(
+        'http://localhost/api/requirements/import/instruction?locale=en&kind=requirements_specification&specificationId=8',
+      ),
+    )
+
+    expect(routeMocks.getImportInstruction).toHaveBeenCalledWith(context, {
+      destination: {
+        kind: 'requirements_specification',
+        specificationId: 8,
+      },
+      locale: 'en',
+    })
+  })
+
+  it('passes a requirements library destination from query parameters', async () => {
+    const context = makeContext(true)
+    routeMocks.createRequirementsRestRuntime.mockResolvedValue({
+      context,
+      service: {
+        getImportInstruction: routeMocks.getImportInstruction,
+      },
+    })
+
+    await GET(
+      new Request(
+        'http://localhost/api/requirements/import/instruction?locale=sv&kind=requirements_library',
+      ),
+    )
+
+    expect(routeMocks.getImportInstruction).toHaveBeenCalledWith(context, {
+      destination: {
+        kind: 'requirements_library',
+      },
       locale: 'sv',
     })
   })

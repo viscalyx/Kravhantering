@@ -34,6 +34,7 @@
     "columns": "Kolumner",
     "export": "Exportera",
     "reports": "Rapporter",
+    "moreActions": "Fler åtgärder",
     "yes": "Ja",
     "no": "Nej",
     "back": "Tillbaka",
@@ -1978,8 +1979,8 @@
         "body": "Varje kravtillämpning i underlaget kan ha en behovsreferens - en fritext som förklarar varför kravet behövs i just detta kravunderlag. Den kan också ge stöd när kravet ska verifieras. Ange den när du lägger till krav eller redigera den inline."
       },
       "export": {
-        "heading": "Exportera",
-        "body": "Använd rapportmenyn för den livscykelstyrda rapporten och exportmenyn för Anbuds-CSV eller Full CSV-export."
+        "heading": "Fler åtgärder",
+        "body": "Använd Nytt unikt krav för att skapa ett krav som bara hör till detta kravunderlag. Fler åtgärder innehåller AI-assisterat författande, import, rapporter och exporter när de är tillgängliga."
       },
       "specificationItemStatus": {
         "heading": "Användningsstatus",
@@ -2488,8 +2489,11 @@
     "continueToImport": "Förhandsgranska krav i import",
     "noCandidates": "Inga kravkandidater är laddade.",
     "noAnalysis": "Ingen AI-analys är laddad.",
+    "noNeedsReferenceProposals": "Inga föreslagna behovsreferenser är laddade.",
     "noProposals": "Inga föreslagna normreferenser är laddade.",
     "noRawResult": "Inget råresultat är laddat.",
+    "needsReferenceProposalRows": "{count, plural, one {# kravrad} other {# kravrader}}",
+    "needsReferenceProposals": "Föreslagna behovsreferenser",
     "proposalCount": "{count, plural, one {# föreslagen normreferens} other {# föreslagna normreferenser}}",
     "proposals": "Föreslagna normreferenser",
     "rawResultTab": "Råresultat",
@@ -2497,6 +2501,7 @@
     "repairPrompt": "Föreslagen reparationsprompt",
     "repairPromptLead": "Skicka ogiltig JSON och valideringsfel till vald modell och be den bevara innehållet men rätta importformatet.",
     "repairing": "Reparerar…",
+    "resolvedNeedsReferenceId": "Befintlig behovsreferens #{id}",
     "selectedCandidates": "{count, plural, one {# vald kravkandidat} other {# valda kravkandidater}}",
     "selectedProposals": "{count, plural, one {# valt förslag} other {# valda förslag}}",
     "validationErrors": "Genererad JSON kan inte importeras ännu.",
@@ -2512,7 +2517,7 @@
     "imageSchemaErrorSize": "Bilden överskrider gränsen på 10 MB.",
     "invalidRequirementImportScope": "Biblioteksläge kräver areaId och kravunderlagslokalt läge kräver specificationId.",
     "prompt": {
-      "defaultInstruction": "Skapa kravkandidater som kan importeras genom applikationens kravimportflöde.\n\nUtforma varje kandidat så att den:\n- Har en tydlig, entydig och verifierbar kravtext i linje med ISO/IEC/IEEE 29148:2018 §5.2.5 (kvalitetskriterier för enskilda krav) och §5.2.7 (språkliga riktlinjer för kravformulering).\n- Använder kravformulering som passar funktionella och icke-funktionella krav.\n- Inkluderar acceptanskriterier när de gör verifieringen tydligare.\n- Sätter verifiable och verificationMethod när kravversionen har objektiva villkor som kan kontrolleras.\n- Använder kategorier, kravtyper, kvalitetsegenskaper, prioritet, kravpaket och normreferenser endast genom fält som stöds av importinstruktionen.\n- Föredrar exakta namn när stabila ID:n är okända.\n- Håller varje kandidat fokuserad på en skyldighet.\n\nFör icke-funktionella krav, beakta relevanta kvalitetsegenskaper enligt ISO/IEC 25010:2023 och formulera kvalitetskrav med mätbara kvalitetsmål och verifierbara mått i linje med ISO/IEC 25030:2019 när behovet ger tillräckligt underlag, till exempel svarstid, tillgänglighet, kapacitet, noggrannhet eller felgränser.",
+      "defaultInstruction": "Skapa kravkandidater som kan importeras genom applikationens kravimportflöde.\n\nUtforma varje kandidat så att den:\n- Har en tydlig, entydig och verifierbar kravtext i linje med ISO/IEC/IEEE 29148:2018 §5.2.5 (kvalitetskriterier för enskilda krav) och §5.2.7 (språkliga riktlinjer för kravformulering).\n- Använder kravformulering som passar funktionella och icke-funktionella krav.\n- Inkluderar acceptanskriterier när de gör verifieringen tydligare.\n- Sätter verifiable och verificationMethod när kravversionen har objektiva villkor som kan kontrolleras.\n- Använder kategorier, kravtyper, kvalitetsegenskaper, prioritet, kravpaket, normreferenser och behovsreferenser endast genom fält som stöds av importinstruktionen.\n- Föredrar exakta namn när stabila ID:n är okända.\n- Håller varje kandidat fokuserad på en skyldighet.\n\nFör icke-funktionella krav, beakta relevanta kvalitetsegenskaper enligt ISO/IEC 25010:2023 och formulera kvalitetskrav med mätbara kvalitetsmål och verifierbara mått i linje med ISO/IEC 25030:2019 när behovet ger tillräckligt underlag, till exempel svarstid, tillgänglighet, kapacitet, noggrannhet eller felgränser.",
       "userHeader": "Behov och sammanhang",
       "countLabel": "Antal kravkandidater",
       "instructionHeader": "AI-instruktion",
@@ -2527,7 +2532,8 @@
           "Returnera endast korrigerad JSON som matchar importschemat.",
           "Bevara kravens innehåll så långt det går.",
           "Ändra bara det som krävs för att JSON ska bli giltig och importerbar.",
-          "Lägg inte till nya krav om det inte krävs för att reparera en trasig liststruktur."
+          "Lägg inte till nya krav om det inte krävs för att reparera en trasig liststruktur.",
+          "Lägg inte till nya föreslagna behovsreferenser eller nya behovsreferenskopplingar; bevara och korrigera bara befintliga behovsreferensfält."
         ],
         "errorHeading": "Valideringsfel",
         "jsonHeading": "Trasig JSON",

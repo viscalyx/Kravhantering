@@ -56,6 +56,60 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
 }))
 
 vi.mock('@/components/RequirementsTable', () => ({
+  FloatingActionPill: (props: {
+    action: {
+      ariaLabel: string
+      developerModeContext?: string
+      developerModeValue?: string
+      hidden?: boolean
+      icon: ReactNode
+      id: string
+      menuItems?: {
+        disabled?: boolean
+        id: string
+        kind?: 'separator'
+        label?: string
+        onClick?: () => void
+      }[]
+      onClick?: () => void
+    }
+  }) => {
+    const { action } = props
+    if (action.hidden) return null
+    return (
+      <div>
+        <button
+          aria-label={action.ariaLabel}
+          data-developer-mode-context={action.developerModeContext}
+          data-developer-mode-name="table action"
+          data-developer-mode-value={action.developerModeValue}
+          onClick={action.onClick}
+          type="button"
+        >
+          {action.icon}
+        </button>
+        {action.menuItems ? (
+          <div role="menu">
+            {action.menuItems.map(item =>
+              item.kind === 'separator' ? (
+                <hr key={item.id} />
+              ) : (
+                <button
+                  disabled={item.disabled}
+                  key={item.id}
+                  onClick={item.onClick}
+                  role="menuitem"
+                  type="button"
+                >
+                  {item.label}
+                </button>
+              ),
+            )}
+          </div>
+        ) : null}
+      </div>
+    )
+  },
   default: (props: {
     defaultVisibleColumns?: string[]
     columnPickerPlacement?: string
@@ -112,19 +166,21 @@ vi.mock('@/components/RequirementsTable', () => ({
         <div data-testid="requirements-table-sticky-title-actions">
           {props.stickyTitleActions}
         </div>
-        {props.floatingActions?.map(action => (
-          <button
-            aria-label={action.ariaLabel}
-            data-developer-mode-context={action.developerModeContext}
-            data-developer-mode-name="table action"
-            data-developer-mode-value={action.developerModeValue}
-            key={action.id}
-            onClick={action.onClick}
-            type="button"
-          >
-            {action.icon}
-          </button>
-        ))}
+        {props.floatingActions
+          ?.filter(action => !action.hidden)
+          .map(action => (
+            <button
+              aria-label={action.ariaLabel}
+              data-developer-mode-context={action.developerModeContext}
+              data-developer-mode-name="table action"
+              data-developer-mode-value={action.developerModeValue}
+              key={action.id}
+              onClick={action.onClick}
+              type="button"
+            >
+              {action.icon}
+            </button>
+          ))}
         {props.requirementPackages?.map(requirementPackage => {
           const current = props.filterValues?.requirementPackageIds ?? []
           const active = current.includes(requirementPackage.id)
@@ -725,24 +781,34 @@ describe('RequirementsSpecificationDetailClient', () => {
       id: string
       menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
     }>
-    const reportsAction = floatingActions.find(
-      action => action.id === 'reports',
+    const moreActions = floatingActions.find(
+      action => action.id === 'more-actions',
     )
-    const exportAction = floatingActions.find(action => action.id === 'export')
 
-    expect(reportsAction?.hidden).toBe(false)
-    expect(reportsAction?.menuItems).toEqual([
-      expect.objectContaining({ id: 'pdf-progress' }),
-      expect.objectContaining({ id: 'pdf-traceability' }),
-    ])
-    expect(exportAction?.menuItems?.map(item => item.id)).toEqual([
+    expect(moreActions?.hidden).toBe(false)
+    expect(moreActions?.menuItems?.map(item => item.id)).toEqual([
+      'ai-assist-local',
+      'import-local',
+      'separator-report-actions',
+      'pdf-progress',
+      'pdf-traceability',
+      'separator-export-actions',
       'export-full',
     ])
+    expect(moreActions?.menuItems).toEqual([
+      expect.objectContaining({ id: 'ai-assist-local' }),
+      expect.objectContaining({ id: 'import-local' }),
+      expect.objectContaining({ id: 'separator-report-actions' }),
+      expect.objectContaining({ id: 'pdf-progress' }),
+      expect.objectContaining({ id: 'pdf-traceability' }),
+      expect.objectContaining({ id: 'separator-export-actions' }),
+      expect.objectContaining({ id: 'export-full' }),
+    ])
 
-    reportsAction?.menuItems
+    moreActions?.menuItems
       ?.find(item => item.id === 'pdf-progress')
       ?.onClick?.()
-    reportsAction?.menuItems
+    moreActions?.menuItems
       ?.find(item => item.id === 'pdf-traceability')
       ?.onClick?.()
 
@@ -758,7 +824,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
   })
 
-  it('groups kravunderlag local requirement actions in one flyout before reports and export', async () => {
+  it('places kravunderlag create before columns and secondary actions after columns', async () => {
     renderRequirementsSpecificationDetailClient()
     await waitForInitialAvailableRequirementsRefresh()
 
@@ -769,32 +835,50 @@ describe('RequirementsSpecificationDetailClient', () => {
         disabled?: boolean
         icon?: ReactNode
         id: string
+        kind?: string
         label: string
       }>
+      onClick?: () => void
       position?: string
       variant?: string
     }>
-    const localRequirementActions = floatingActions.find(
-      action => action.id === 'local-requirement-actions',
+    const createLocalAction = floatingActions.find(
+      action => action.id === 'create-local',
+    )
+    const moreActions = floatingActions.find(
+      action => action.id === 'more-actions',
     )
 
-    expect(itemsTable.columnPickerPlacement).toBe('end')
+    expect(itemsTable.columnPickerPlacement).toBe('betweenActions')
     expect(floatingActions.map(action => action.id)).toEqual([
-      'local-requirement-actions',
-      'reports',
-      'export',
+      'create-local',
+      'more-actions',
     ])
     expect(
       floatingActions.map(action => action.position ?? 'afterColumns'),
-    ).toEqual(['beforeColumns', 'afterColumns', 'afterColumns'])
-    expect(localRequirementActions?.variant).toBe('primary')
-    expect(localRequirementActions?.menuItems).toEqual([
-      expect.objectContaining({ id: 'create-local' }),
+    ).toEqual(['beforeColumns', 'afterColumns'])
+    expect(createLocalAction?.variant).toBe('primary')
+    expect(createLocalAction?.menuItems).toBeUndefined()
+    expect(createLocalAction?.onClick).toEqual(expect.any(Function))
+    expect(moreActions?.menuItems).toEqual([
       expect.objectContaining({ disabled: false, id: 'ai-assist-local' }),
       expect.objectContaining({ id: 'import-local' }),
+      expect.objectContaining({
+        id: 'separator-report-actions',
+        kind: 'separator',
+      }),
+      expect.objectContaining({ id: 'pdf-progress' }),
+      expect.objectContaining({ id: 'pdf-traceability' }),
+      expect.objectContaining({
+        id: 'separator-export-actions',
+        kind: 'separator',
+      }),
+      expect.objectContaining({ id: 'export-full' }),
     ])
     expect(
-      localRequirementActions?.menuItems?.every(item => item.icon != null),
+      moreActions?.menuItems
+        ?.filter(item => item.kind !== 'separator')
+        .every(item => item.icon != null),
     ).toBe(true)
   })
 
@@ -808,16 +892,18 @@ describe('RequirementsSpecificationDetailClient', () => {
       id: string
       menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
     }>
-    const reportsAction = floatingActions.find(
-      action => action.id === 'reports',
+    const moreActions = floatingActions.find(
+      action => action.id === 'more-actions',
     )
 
-    expect(reportsAction?.menuItems).toEqual([
-      expect.objectContaining({ id: 'pdf-progress' }),
-      expect.objectContaining({ id: 'pdf-traceability' }),
-    ])
+    expect(moreActions?.menuItems?.map(item => item.id)).toContain(
+      'pdf-progress',
+    )
+    expect(moreActions?.menuItems?.map(item => item.id)).toContain(
+      'pdf-traceability',
+    )
 
-    reportsAction?.menuItems
+    moreActions?.menuItems
       ?.find(item => item.id === 'pdf-progress')
       ?.onClick?.()
 
@@ -870,14 +956,14 @@ describe('RequirementsSpecificationDetailClient', () => {
       id: string
       menuItems?: Array<{ href?: string; id: string }>
     }>
-    const reportsAction = floatingActions.find(
-      action => action.id === 'reports',
+    const moreActions = floatingActions.find(
+      action => action.id === 'more-actions',
     )
 
     expect(
       itemsTable.rows.map((row: { itemRef?: string }) => row.itemRef),
     ).toEqual(['lib:31'])
-    expect(reportsAction?.menuItems).toEqual(
+    expect(moreActions?.menuItems).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: 'pdf-traceability',
@@ -908,14 +994,17 @@ describe('RequirementsSpecificationDetailClient', () => {
       id: string
       menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
     }>
-    const reportsAction = floatingActions.find(
-      action => action.id === 'reports',
+    const moreActions = floatingActions.find(
+      action => action.id === 'more-actions',
     )
 
-    expect(reportsAction?.hidden).toBe(false)
-    expect(reportsAction?.menuItems).toEqual([
-      expect.objectContaining({ id: 'pdf-progress' }),
-    ])
+    expect(moreActions?.hidden).toBe(false)
+    expect(moreActions?.menuItems?.map(item => item.id)).toContain(
+      'pdf-progress',
+    )
+    expect(moreActions?.menuItems?.map(item => item.id)).not.toContain(
+      'pdf-traceability',
+    )
   })
 
   it('logs CSV export failures from discarded menu handlers', async () => {
@@ -932,11 +1021,11 @@ describe('RequirementsSpecificationDetailClient', () => {
         id: string
         menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
       }>
-      const exportAction = floatingActions.find(
-        action => action.id === 'export',
+      const moreActions = floatingActions.find(
+        action => action.id === 'more-actions',
       )
 
-      exportAction?.menuItems
+      moreActions?.menuItems
         ?.find(menuItem => menuItem.id === 'export-full')
         ?.onClick?.()
 
@@ -1285,6 +1374,82 @@ describe('RequirementsSpecificationDetailClient', () => {
       }),
     ).toBeInTheDocument()
     expect(screen.queryByText('specification.readOnlyNotice')).toBeNull()
+  })
+
+  it('hides create actions but keeps output actions for read-only kravunderlag detail users', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      spec: {
+        ...initialSpec,
+        permissions: {
+          canEditContent: false,
+          canManageAssignments: false,
+          canReviewDecisions: false,
+          canUseAi: false,
+        },
+      },
+    })
+    await waitForInitialAvailableRequirementsRefresh()
+
+    const itemsTable = latestItemsTableProps()
+    const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
+      hidden?: boolean
+      id: string
+      menuItems?: Array<{ id: string; kind?: string }>
+    }>
+
+    expect(floatingActions.map(action => action.id)).toEqual(['more-actions'])
+    expect(floatingActions[0]?.hidden).toBe(false)
+    expect(floatingActions[0]?.menuItems?.map(item => item.id)).toEqual([
+      'pdf-progress',
+      'pdf-traceability',
+      'separator-export-actions',
+      'export-full',
+    ])
+    expect(
+      floatingActions[0]?.menuItems?.some(
+        item => item.id === 'ai-assist-local',
+      ),
+    ).toBe(false)
+    expect(
+      floatingActions[0]?.menuItems?.some(item => item.id === 'import-local'),
+    ).toBe(false)
+  })
+
+  it('shows direct create and more actions but no columns action in the editable empty state', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItems: [],
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', {
+          name: 'specification.newLocalRequirement',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    expect(
+      screen.getByRole('button', { name: 'common.moreActions' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.columns' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.moreActions' }))
+
+    expect(
+      await screen.findByRole('menuitem', {
+        name: 'specification.aiGenerate',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', {
+        name: 'specification.importLocalRequirements',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument()
   })
 
   it('ignores stale and invalid stored detail column ids', async () => {
@@ -1757,7 +1922,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     )
   })
 
-  it('opens the specification-local requirement dialog from the left-panel action', async () => {
+  it('opens the specification-local requirement dialog directly from the left-panel create action', async () => {
     renderRequirementsSpecificationDetailClient()
 
     await waitFor(() => {
@@ -1769,36 +1934,24 @@ describe('RequirementsSpecificationDetailClient', () => {
       ).toBeInTheDocument()
     })
 
-    const localRequirementActionsButton = screen.getByRole('button', {
-      name: 'specification.localRequirementActions',
+    const createLocalRequirementButton = screen.getByRole('button', {
+      name: 'specification.newLocalRequirement',
     })
-    expect(localRequirementActionsButton).toHaveAttribute(
+    expect(createLocalRequirementButton).toHaveAttribute(
       'data-developer-mode-name',
       'table action',
     )
-    expect(localRequirementActionsButton).toHaveAttribute(
+    expect(createLocalRequirementButton).toHaveAttribute(
       'data-developer-mode-context',
       'requirements specification detail',
     )
-    expect(localRequirementActionsButton).toHaveAttribute(
+    expect(createLocalRequirementButton).toHaveAttribute(
       'data-developer-mode-value',
-      'local requirement actions',
-    )
-
-    const localRequirementActionItems = (latestItemsTableProps()
-      .floatingActions ?? []) as {
-      id: string
-      menuItems?: { id: string; onClick?: () => void }[]
-    }[]
-    const localRequirementActions = localRequirementActionItems.find(
-      action => action.id === 'local-requirement-actions',
-    )
-    const createItem = localRequirementActions?.menuItems?.find(
-      item => item.id === 'create-local',
+      'new local requirement',
     )
 
     await act(async () => {
-      createItem?.onClick?.()
+      fireEvent.click(createLocalRequirementButton)
     })
 
     await waitFor(() => {
@@ -1852,7 +2005,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
 
     expect(
-      screen.getByRole('button', { name: 'common.export' }),
+      screen.getByRole('button', { name: 'common.moreActions' }),
     ).toBeInTheDocument()
 
     fireEvent.click(
@@ -1864,7 +2017,7 @@ describe('RequirementsSpecificationDetailClient', () => {
       screen.getByRole('button', { name: 'specification.newNeedsReference' }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'common.export' }),
+      screen.queryByRole('button', { name: 'common.moreActions' }),
     ).not.toBeInTheDocument()
     expect(screen.getByText('IAM-42')).toBeInTheDocument()
     expect(

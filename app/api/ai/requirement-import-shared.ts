@@ -27,6 +27,7 @@ import {
 } from '@/lib/observability/request-ids'
 import { checkInMemoryThrottle } from '@/lib/observability/throttle'
 import type { RequestContext } from '@/lib/requirements/auth'
+import type { McpImportDestinationRef } from '@/lib/requirements/import-service'
 
 const ALLOWED_IMAGE_MIMES = [
   'image/png',
@@ -283,6 +284,23 @@ export function requirementImportScopeAction(body: {
         scopeId: body.specificationId,
         scopeType: 'specification' as const,
       }
+}
+
+export function requirementImportDestination(body: {
+  areaId?: number
+  mode: 'library' | 'specification-local'
+  specificationId?: number
+}): McpImportDestinationRef {
+  if (body.mode === 'library' && body.areaId != null) {
+    return { areaId: body.areaId, kind: 'requirements_library' }
+  }
+  if (body.mode === 'specification-local' && body.specificationId != null) {
+    return {
+      kind: 'requirements_specification',
+      specificationId: body.specificationId,
+    }
+  }
+  throw new Error('Invalid requirement import scope')
 }
 
 export function checkAiRequirementImportThrottle(

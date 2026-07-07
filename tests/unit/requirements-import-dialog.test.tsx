@@ -1,15 +1,10 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsImportDialog from '@/components/RequirementsImportDialog'
 import { apiFetch } from '@/lib/http/api-fetch'
 
 const confirmMock = vi.hoisted(() => vi.fn())
+const downloadBlobMock = vi.hoisted(() => vi.fn())
 const importDialogTranslate = vi.hoisted(() => {
   const messages: Record<string, string> = {
     descriptionRequired: 'Kravtext måste anges innan raden kan importeras.',
@@ -40,6 +35,10 @@ vi.mock('@/components/ConfirmModal', () => ({
 
 vi.mock('@/lib/http/api-fetch', () => ({
   apiFetch: vi.fn(),
+}))
+
+vi.mock('@/lib/browser-download', () => ({
+  downloadBlob: downloadBlobMock,
 }))
 
 function mockReferenceDataFetch(
@@ -89,24 +88,11 @@ function mockReferenceDataFetch(
   })
 }
 
-async function expandFirstImportRow() {
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Expandera rad #1' }),
-  )
-}
-
-function createDeferredResponse() {
-  let resolve!: (value: Response) => void
-  const promise = new Promise<Response>(promiseResolve => {
-    resolve = promiseResolve
-  })
-  return { promise, resolve }
-}
-
 describe('RequirementsImportDialog', () => {
   beforeEach(() => {
     confirmMock.mockReset()
     confirmMock.mockResolvedValue(true)
+    downloadBlobMock.mockReset()
     mockReferenceDataFetch()
   })
 
@@ -114,237 +100,23 @@ describe('RequirementsImportDialog', () => {
     vi.restoreAllMocks()
   })
 
-  it('requires valid import JSON and kravområde before previewing requirements', async () => {
+  it('uses the specification-local import title when a destination is shown', async () => {
     render(
       <RequirementsImportDialog
-        areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
-        mode="library"
+        destinationName="Upphandling av e-tjänstplattform"
+        mode="specification-local"
         onClose={vi.fn()}
         open
+        specificationId={8}
       />,
     )
 
-    const loadButton = screen.getByRole('button', {
-      name: 'Förhandsgranska krav',
-    })
-    const jsonField = screen.getByLabelText(/Import-JSON/)
-    const areaSelect = screen.getByLabelText(/Kravområde/)
-
-    expect(
-      screen.getByRole('heading', { name: 'Importera krav' }),
-    ).toBeInTheDocument()
-    expect(loadButton).toBeDisabled()
-    expect(
-      screen.getByText(
-        'Välj kravområde och lägg till import-JSON för att förhandsgranska kraven.',
-      ),
-    ).toBeInTheDocument()
-    expect(jsonField).toHaveAttribute(
-      'placeholder',
-      'Klistra in import-JSON här.',
-    )
-    expect(
-      screen.getByRole('button', { name: 'Ladda ner importinstruktion' }),
-    ).toHaveAttribute('aria-describedby', 'requirements-import-download-help')
-    expect(
-      screen.queryByText('Ladda ner JSON-instruktion'),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.getByText(
-        /Importinstruktionen är bara formatdelen och referensdata för import för AI-arbete/,
-      ),
-    ).toBeInTheDocument()
-
-    fireEvent.change(jsonField, { target: { value: '{' } })
-    expect(
-      screen.getByText(
-        'Välj kravområde för att förhandsgranska kraven. JSON kan inte läsas. Kontrollera syntaxen innan kraven förhandsgranskas.',
-      ),
-    ).toBeInTheDocument()
-
-    fireEvent.change(jsonField, { target: { value: '' } })
-    fireEvent.change(areaSelect, { target: { value: '7' } })
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(5))
     expect(
       screen.getByRole('heading', {
-        name: 'Importera krav för Bilddiagnostik',
+        name: 'Importera lokala krav för Upphandling av e-tjänstplattform',
       }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'Klistra in import-JSON eller välj en JSON-fil för att förhandsgranska kraven.',
-      ),
-    ).toBeInTheDocument()
-
-    fireEvent.change(jsonField, { target: { value: '{' } })
-    expect(loadButton).toBeDisabled()
-    expect(
-      screen.getByText(
-        'JSON kan inte läsas. Kontrollera syntaxen innan kraven förhandsgranskas.',
-      ),
-    ).toBeInTheDocument()
-
-    fireEvent.change(jsonField, { target: { value: '{}' } })
-    expect(loadButton).toBeDisabled()
-    expect(
-      screen.getByText('schemaVersion måste vara requirement-import.v2.'),
-    ).toBeInTheDocument()
-
-    fireEvent.change(jsonField, {
-      target: {
-        value: JSON.stringify({
-          schemaVersion: 'requirement-import.v2',
-        }),
-      },
-    })
-    expect(loadButton).toBeDisabled()
-    expect(
-      screen.getByText(
-        'JSON följer inte importschemat. Kontrollera obligatoriska fält och fältnamn.',
-      ),
-    ).toBeInTheDocument()
-
-    fireEvent.change(jsonField, {
-      target: {
-        value: JSON.stringify({
-          requirements: [{ description: 'Kravtext' }],
-          schemaVersion: 'requirement-import.v2',
-        }),
-      },
-    })
-
-    await waitFor(() => expect(loadButton).toBeEnabled())
-    expect(
-      screen.queryByText(
-        'Klistra in import-JSON eller välj en JSON-fil för att förhandsgranska kraven.',
-      ),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByText(
-        'JSON följer inte importschemat. Kontrollera obligatoriska fält och fältnamn.',
-      ),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByText('schemaVersion måste vara requirement-import.v2.'),
-    ).not.toBeInTheDocument()
-  })
-
-  it('clears selected kravområde when closing the dialog', async () => {
-    render(
-      <RequirementsImportDialog
-        areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
-        mode="library"
-        onClose={vi.fn()}
-        open
-      />,
-    )
-
-    const areaSelect = screen.getByLabelText(/Kravområde/)
-    fireEvent.change(areaSelect, { target: { value: '7' } })
-    expect(areaSelect).toHaveValue('7')
-
-    fireEvent.click(screen.getByLabelText('Stäng'))
-
-    await waitFor(() => expect(areaSelect).toHaveValue(''))
-  })
-
-  it('closes without discard confirmation when all loaded rows were imported', async () => {
-    vi.mocked(apiFetch)
-      .mockResolvedValueOnce({
-        json: async () => ({
-          previewToken: 'preview-token',
-          proposals: [],
-          rows: [
-            {
-              errors: [],
-              proposedNormReferenceKeys: [],
-              reviewRowId: 'row-0',
-              selected: true,
-              sourceIndex: 0,
-              values: {
-                acceptanceCriteria: null,
-                categoryId: null,
-                description: 'Kravtext',
-                needsReferenceId: null,
-                normReferenceIds: [],
-                qualityCharacteristicId: null,
-                requirementPackageIds: [],
-                verifiable: false,
-                priorityLevelId: null,
-                typeId: null,
-                verificationMethod: null,
-              },
-              warnings: [],
-            },
-          ],
-          summary: { errorCount: 0, rowCount: 1, warningCount: 0 },
-        }),
-        ok: true,
-      } as Response)
-      .mockResolvedValueOnce({
-        json: async () => ({
-          createdRows: [
-            {
-              acceptanceCriteria: null,
-              categoryName: null,
-              createdDatabaseId: 101,
-              createdVisibleId: 'REQ-001',
-              description: 'Kravtext',
-              importMode: 'library',
-              needsReferenceId: null,
-              normReferences: [],
-              priorityLevelName: null,
-              qualityCharacteristicName: null,
-              requirementPackageNames: [],
-              verifiable: false,
-              sourceIndex: 0,
-              targetAreaId: 7,
-              targetSpecificationId: null,
-              typeName: null,
-              verificationMethod: null,
-            },
-          ],
-          summary: { createdCount: 1 },
-        }),
-        ok: true,
-      } as Response)
-    const onClose = vi.fn()
-    render(
-      <RequirementsImportDialog
-        areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
-        mode="library"
-        onClose={onClose}
-        open
-      />,
-    )
-
-    fireEvent.change(screen.getByLabelText(/Kravområde/), {
-      target: { value: '7' },
-    })
-    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
-      target: {
-        value: JSON.stringify({
-          requirements: [{ description: 'Kravtext' }],
-          schemaVersion: 'requirement-import.v2',
-        }),
-      },
-    })
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-      ).toBeEnabled(),
-    )
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    )
-    await screen.findByText('Kravtext')
-    fireEvent.click(screen.getByRole('button', { name: 'Importera valda' }))
-    await screen.findByText('Inga rader är laddade.')
-
-    confirmMock.mockClear()
-    fireEvent.click(screen.getByLabelText('Stäng'))
-
-    await waitFor(() => expect(onClose).toHaveBeenCalledWith(true))
-    expect(confirmMock).not.toHaveBeenCalled()
   })
 
   it('loads JSON text from a dropped file', async () => {
@@ -359,7 +131,7 @@ describe('RequirementsImportDialog', () => {
 
     const payload = JSON.stringify({
       requirements: [{ description: 'Kravtext' }],
-      schemaVersion: 'requirement-import.v2',
+      schemaVersion: 'requirement-import.v3',
     })
     const file = new File([payload], 'requirements.json', {
       type: 'application/json',
@@ -379,372 +151,90 @@ describe('RequirementsImportDialog', () => {
     )
   })
 
-  it('hides the JSON file form while AI import preview is prepared', async () => {
-    const pendingPreview = createDeferredResponse()
-    vi.mocked(apiFetch).mockReturnValueOnce(pendingPreview.promise)
+  it('downloads the library-scoped import instruction before a requirement area is selected', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      const body = url.includes('requirement-packages')
+        ? { requirementPackages: [] }
+        : url.includes('norm-references')
+          ? { normReferences: [] }
+          : url.includes('requirement-types')
+            ? { types: [] }
+            : url.includes('priority-levels')
+              ? { priorityLevels: [] }
+              : { categories: [] }
+
+      return {
+        blob: async () => new Blob(['# Importinstruktion']),
+        json: async () => body,
+        ok: true,
+      } as Response
+    })
+    global.fetch = fetchMock
 
     render(
       <RequirementsImportDialog
-        areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
-        initialImport={{
-          areaId: 7,
-          key: 'ai-import-1',
-          payload: {
-            requirements: [{ description: 'Kravtext' }],
-            schemaVersion: 'requirement-import.v2',
+        areas={[
+          {
+            id: 7,
+            name: 'Bilddiagnostik',
+            permissions: {},
+            prefix: 'IMG',
           },
-        }}
+        ]}
         mode="library"
         onClose={vi.fn()}
         open
       />,
     )
 
-    expect(
-      screen.getByText('Förbereder importgranskning...'),
-    ).toBeInTheDocument()
-    expect(screen.queryByLabelText(/Import-JSON/)).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', {
-        name: 'Släpp en JSON-fil här, eller klicka för att välja fil.',
-      }),
-    ).not.toBeInTheDocument()
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5))
+    const instructionButton = screen.getByRole('button', {
+      name: 'Ladda ner importinstruktion',
+    })
 
-    pendingPreview.resolve({
-      json: async () => ({
-        previewToken: 'preview-token',
-        proposals: [],
-        rows: [
-          {
-            errors: [],
-            proposedNormReferenceKeys: [],
-            reviewRowId: 'row-0',
-            selected: true,
-            sourceIndex: 0,
-            values: {
-              acceptanceCriteria: null,
-              categoryId: null,
-              description: 'Kravtext',
-              needsReferenceId: null,
-              normReferenceIds: [],
-              priorityLevelId: null,
-              qualityCharacteristicId: null,
-              requirementPackageIds: [],
-              verifiable: false,
-              typeId: null,
-              verificationMethod: null,
-            },
-            warnings: [],
-          },
-        ],
-        summary: { errorCount: 0, rowCount: 1, warningCount: 0 },
-      }),
-      ok: true,
-    } as Response)
+    expect(instructionButton).toBeEnabled()
 
-    expect(await screen.findByText('Kravtext')).toBeInTheDocument()
+    fireEvent.click(instructionButton)
+
+    await waitFor(() => expect(downloadBlobMock).toHaveBeenCalledTimes(1))
+    expect(
+      fetchMock.mock.calls
+        .map(([input]) => String(input))
+        .filter(url => url.includes('/api/requirements/import/instruction')),
+    ).toEqual([
+      '/api/requirements/import/instruction?locale=sv&kind=requirements_library',
+    ])
   })
 
-  it('shows the JSON file form when AI import preview fails', async () => {
+  it('shows and resolves proposed needs references for specification-local import', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce({
-      text: async () => 'Preview failed',
-      ok: false,
-    } as Response)
-
-    render(
-      <RequirementsImportDialog
-        areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
-        initialImport={{
-          areaId: 7,
-          key: 'ai-import-error',
-          payload: {
-            requirements: [{ description: 'Kravtext' }],
-            schemaVersion: 'requirement-import.v2',
-          },
-        }}
-        mode="library"
-        onClose={vi.fn()}
-        open
-      />,
-    )
-
-    expect(
-      screen.getByText('Förbereder importgranskning...'),
-    ).toBeInTheDocument()
-
-    const jsonField = await screen.findByLabelText(/Import-JSON/)
-    expect(jsonField).toHaveValue(
-      JSON.stringify(
-        {
-          requirements: [{ description: 'Kravtext' }],
-          schemaVersion: 'requirement-import.v2',
-        },
-        null,
-        2,
-      ),
-    )
-    expect(screen.getByText('Preview failed')).toBeInTheDocument()
-  })
-
-  it('starts loaded rows collapsed with a switch and priority summary', async () => {
-    mockReferenceDataFetch({
-      priorityLevels: [
-        {
-          color: '#f97316',
-          id: 4,
-          nameEn: 'High',
-          nameSv: 'Hög',
-        },
-      ],
-    })
-    vi.mocked(apiFetch).mockResolvedValue({
       json: async () => ({
-        previewToken: 'preview-token',
-        proposals: [],
-        rows: [
+        needsReferenceProposals: [
           {
-            errors: [],
-            proposedNormReferenceKeys: [],
-            reviewRowId: 'row-0',
-            selected: true,
-            sourceIndex: 0,
-            values: {
-              acceptanceCriteria: null,
-              categoryId: null,
-              description: 'Kravtext',
-              needsReferenceId: null,
-              normReferenceIds: [],
-              qualityCharacteristicId: null,
-              requirementPackageIds: [],
-              verifiable: false,
-              priorityLevelId: 4,
-              typeId: null,
-              verificationMethod: null,
-            },
+            description: 'Stödjer införande av GDPR artikel 32.',
+            key: 'gdpr-need',
+            referencedCount: 1,
+            resolvedNeedsReferenceId: null,
+            text: 'Personuppgiftsbehandling behöver tekniskt skydd',
             warnings: [],
           },
         ],
-        summary: { errorCount: 0, rowCount: 1, warningCount: 0 },
-      }),
-      ok: true,
-    } as Response)
-
-    render(
-      <RequirementsImportDialog
-        areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
-        mode="library"
-        onClose={vi.fn()}
-        open
-      />,
-    )
-
-    fireEvent.change(screen.getByLabelText(/Kravområde/), {
-      target: { value: '7' },
-    })
-    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
-      target: {
-        value: JSON.stringify({
-          requirements: [{ description: 'Kravtext' }],
-          schemaVersion: 'requirement-import.v2',
-        }),
-      },
-    })
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-      ).toBeEnabled(),
-    )
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    )
-
-    const rowSwitch = await screen.findByRole('switch', {
-      name: 'Välj inte rad #1 för import',
-    })
-    expect(rowSwitch).toHaveAttribute('aria-checked', 'true')
-    expect(await screen.findByText('Hög')).toBeVisible()
-    expect(
-      screen.queryByRole('textbox', { name: /Kravtext/ }),
-    ).not.toBeInTheDocument()
-    const expandAllButton = screen.getByRole('button', {
-      name: 'Expandera alla',
-    })
-    const collapseAllButton = screen.getByRole('button', {
-      name: 'Kollapsa alla',
-    })
-    expect(expandAllButton).toBeEnabled()
-    expect(collapseAllButton).toBeDisabled()
-
-    fireEvent.click(rowSwitch)
-    expect(rowSwitch).toHaveAttribute('aria-checked', 'false')
-    expect(screen.getByText('0 valda')).toBeInTheDocument()
-
-    await expandFirstImportRow()
-    expect(expandAllButton).toBeDisabled()
-    expect(collapseAllButton).toBeEnabled()
-    expect(
-      await screen.findByRole('textbox', { name: /Kravtext/ }),
-    ).toBeVisible()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Kollapsa rad #1' }))
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('textbox', { name: /Kravtext/ }),
-      ).not.toBeInTheDocument(),
-    )
-    expect(expandAllButton).toBeEnabled()
-    expect(collapseAllButton).toBeDisabled()
-  })
-
-  it('uses compact resolved ID rows in the loaded review', async () => {
-    mockReferenceDataFetch({
-      normReferences: [
-        {
-          id: 910034,
-          name: 'Digital Imaging and Communications in Medicine Part 2',
-          normReferenceId: 'DICOM-PS3.2',
-        },
-      ],
-      requirementPackages: [{ id: 3, name: 'Integration med andra system' }],
-    })
-    vi.mocked(apiFetch).mockResolvedValue({
-      json: async () => ({
         previewToken: 'preview-token',
         proposals: [],
         rows: [
           {
-            errors: [],
-            proposedNormReferenceKeys: [],
-            reviewRowId: 'row-0',
-            selected: true,
-            sourceIndex: 0,
-            values: {
-              acceptanceCriteria: null,
-              categoryId: null,
-              description: 'Kravtext',
-              needsReferenceId: null,
-              normReferenceIds: [910034],
-              qualityCharacteristicId: null,
-              requirementPackageIds: [3],
-              verifiable: false,
-              priorityLevelId: null,
-              typeId: null,
-              verificationMethod: null,
-            },
-            warnings: [],
-          },
-        ],
-        summary: { errorCount: 0, rowCount: 1, warningCount: 0 },
-      }),
-      ok: true,
-    } as Response)
-
-    render(
-      <RequirementsImportDialog
-        areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
-        mode="library"
-        onClose={vi.fn()}
-        open
-      />,
-    )
-
-    const payload = JSON.stringify({
-      requirements: [{ description: 'Kravtext' }],
-      schemaVersion: 'requirement-import.v2',
-    })
-    fireEvent.change(screen.getByLabelText(/Kravområde/), {
-      target: { value: '7' },
-    })
-    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
-      target: { value: payload },
-    })
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-      ).toBeEnabled(),
-    )
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    )
-
-    expect(
-      await screen.findByRole('button', { name: 'Expandera rad #1' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByText('Integration med andra system'),
-    ).not.toBeInTheDocument()
-    await expandFirstImportRow()
-
-    const packageLabel = await screen.findByText('Integration med andra system')
-    const normReferenceLabel = await screen.findByText(
-      'DICOM-PS3.2 - Digital Imaging and Communications in Medicine Part 2',
-    )
-
-    expect(packageLabel.closest('div')?.className).toContain(
-      'grid-cols-[minmax(0,1fr)_2.75rem]',
-    )
-    expect(normReferenceLabel.closest('div')?.className).toContain(
-      'grid-cols-[minmax(0,1fr)_2.75rem]',
-    )
-    expect(
-      within(packageLabel.closest('div') as HTMLElement).queryByText('3'),
-    ).not.toBeInTheDocument()
-    expect(
-      within(normReferenceLabel.closest('div') as HTMLElement).queryByText(
-        '910034',
-      ),
-    ).not.toBeInTheDocument()
-    expect(
-      within(packageLabel.closest('div') as HTMLElement).queryByRole(
-        'spinbutton',
-      ),
-    ).not.toBeInTheDocument()
-    expect(
-      within(normReferenceLabel.closest('div') as HTMLElement).queryByRole(
-        'spinbutton',
-      ),
-    ).not.toBeInTheDocument()
-    const verifiableLabel = screen.getByText('Verifierbar')
-    const packageHeading = screen.getByText('Kravpakets-ID:n')
-    const normReferenceHeading = screen.getByText('Normreferens-ID:n')
-    const typeLabel = screen.getByText('Typ')
-    const qualityCharacteristicLabel = screen.getByText('Kvalitetsegenskap')
-
-    expect(
-      typeLabel.compareDocumentPosition(qualityCharacteristicLabel) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    expect(
-      verifiableLabel.compareDocumentPosition(packageHeading) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    expect(
-      verifiableLabel.compareDocumentPosition(normReferenceHeading) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-  })
-
-  it('hides requirement package controls for specification-local imports', async () => {
-    mockReferenceDataFetch({
-      requirementPackages: [{ id: 3, name: 'Integration med andra system' }],
-    })
-    vi.mocked(apiFetch).mockResolvedValue({
-      json: async () => ({
-        previewToken: 'preview-token',
-        proposals: [],
-        rows: [
-          {
-            errors: [],
-            infos: [
+            errors: [
               {
-                code: 'import_requirement_packages_ignored_for_specification_local',
-                field: 'requirementPackageIds',
-                level: 'info',
-                message:
-                  'Requirement packages in the import file are not used for specification-local requirements.',
+                code: 'import_needs_reference_unresolved',
+                field: 'needsReferenceKey',
+                level: 'error',
+                message: 'Needs reference is unresolved.',
+                originalValue: 'gdpr-need',
               },
             ],
+            infos: [],
+            proposedNeedsReferenceKey: 'gdpr-need',
             proposedNormReferenceKeys: [],
             reviewRowId: 'row-0',
             selected: true,
@@ -752,282 +242,79 @@ describe('RequirementsImportDialog', () => {
             values: {
               acceptanceCriteria: null,
               categoryId: null,
-              description: 'Lokalt krav',
+              description: 'Kravtext',
               needsReferenceId: null,
               normReferenceIds: [],
+              priorityLevelId: null,
               qualityCharacteristicId: null,
               requirementPackageIds: [],
               verifiable: false,
-              priorityLevelId: null,
               typeId: null,
               verificationMethod: null,
             },
             warnings: [],
           },
         ],
-        summary: { errorCount: 0, rowCount: 1, warningCount: 0 },
+        summary: { errorCount: 1, rowCount: 1, warningCount: 0 },
       }),
       ok: true,
     } as Response)
 
     render(
       <RequirementsImportDialog
-        destinationName="Elevbetyg 2026"
         mode="specification-local"
+        needsReferences={[
+          {
+            description: null,
+            id: 12,
+            text: 'Befintlig behovsreferens',
+          },
+        ]}
         onClose={vi.fn()}
         open
-        specificationId={1}
+        specificationId={8}
       />,
     )
-
-    expect(
-      screen.getByRole('heading', {
-        name: 'Importera krav för Elevbetyg 2026',
-      }),
-    ).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText(/Import-JSON/), {
       target: {
         value: JSON.stringify({
-          requirements: [{ description: 'Lokalt krav' }],
-          schemaVersion: 'requirement-import.v2',
-        }),
-      },
-    })
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-      ).toBeEnabled(),
-    )
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    )
-    await expandFirstImportRow()
-
-    expect(screen.queryByText('Kravpakets-ID:n')).not.toBeInTheDocument()
-    expect(screen.getByText('Normreferens-ID:n')).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'Kravpaket i importfilen används inte för kravunderlagslokala krav.',
-      ),
-    ).toBeInTheDocument()
-    expect(apiFetch).toHaveBeenCalledWith(
-      '/api/specification-local-requirements/import/preview',
-      expect.objectContaining({
-        body: expect.stringContaining('"specificationId":1'),
-      }),
-    )
-  })
-
-  it('groups quality characteristics by parent and clears them when type is emptied', async () => {
-    mockReferenceDataFetch({
-      types: [
-        {
-          id: 2,
-          nameEn: 'Non-functional',
-          nameSv: 'Icke-funktionellt',
-          qualityCharacteristics: [
+          proposedNeedsReferences: [
             {
-              id: 10,
-              nameEn: 'Compatibility',
-              nameSv: 'Kompatibilitet',
-              parentId: null,
-              requirementTypeId: 2,
-            },
-            {
-              id: 11,
-              nameEn: 'Interoperability',
-              nameSv: 'Interoperabilitet',
-              parentId: 10,
-              requirementTypeId: 2,
+              key: 'gdpr-need',
+              text: 'Personuppgiftsbehandling behöver tekniskt skydd',
             },
           ],
-        },
-      ],
-    })
-    vi.mocked(apiFetch).mockResolvedValue({
-      json: async () => ({
-        previewToken: 'preview-token',
-        proposals: [],
-        rows: [
-          {
-            errors: [],
-            proposedNormReferenceKeys: [],
-            reviewRowId: 'row-0',
-            selected: true,
-            sourceIndex: 0,
-            values: {
-              acceptanceCriteria: null,
-              categoryId: null,
+          requirements: [
+            {
               description: 'Kravtext',
-              needsReferenceId: null,
-              normReferenceIds: [],
-              qualityCharacteristicId: 11,
-              requirementPackageIds: [],
-              verifiable: false,
-              priorityLevelId: null,
-              typeId: 2,
-              verificationMethod: null,
+              needsReferenceKey: 'gdpr-need',
             },
-            warnings: [],
-          },
-        ],
-        summary: { errorCount: 0, rowCount: 1, warningCount: 0 },
-      }),
-      ok: true,
-    } as Response)
-
-    render(
-      <RequirementsImportDialog
-        areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
-        mode="library"
-        onClose={vi.fn()}
-        open
-      />,
-    )
-
-    fireEvent.change(screen.getByLabelText(/Kravområde/), {
-      target: { value: '7' },
-    })
-    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
-      target: {
-        value: JSON.stringify({
-          requirements: [{ description: 'Kravtext' }],
-          schemaVersion: 'requirement-import.v2',
+          ],
+          schemaVersion: 'requirement-import.v3',
         }),
       },
     })
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-      ).toBeEnabled(),
-    )
     fireEvent.click(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+      await screen.findByRole('button', { name: 'Förhandsgranska krav' }),
     )
-    await expandFirstImportRow()
 
-    const typeSelect = await screen.findByLabelText('Typ')
-    const qualityCharacteristicSelect =
-      screen.getByLabelText('Kvalitetsegenskap')
-
-    expect(qualityCharacteristicSelect).toHaveValue('11')
-    expect(
-      qualityCharacteristicSelect.querySelector(
-        'optgroup[label="Kompatibilitet"]',
-      ),
-    ).not.toBeNull()
-
-    fireEvent.change(typeSelect, { target: { value: '' } })
-
-    await waitFor(() =>
-      expect(screen.getByLabelText('Kvalitetsegenskap')).toBeDisabled(),
-    )
-    expect(screen.getByLabelText('Kvalitetsegenskap')).toHaveValue('')
-  })
-
-  it('selects requirement packages and norm references from overview modals', async () => {
-    mockReferenceDataFetch({
-      normReferences: [
-        {
-          id: 910034,
-          name: 'Digital Imaging and Communications in Medicine Part 2',
-          normReferenceId: 'DICOM-PS3.2',
-        },
-        {
-          id: 910035,
-          name: 'Digital Imaging and Communications in Medicine Part 3',
-          normReferenceId: 'DICOM-PS3.3',
-        },
-      ],
-      requirementPackages: [
-        { id: 3, name: 'Integration med andra system' },
-        { id: 1004, name: 'API och informationsutbyte' },
-      ],
-    })
-    vi.mocked(apiFetch).mockResolvedValue({
-      json: async () => ({
-        previewToken: 'preview-token',
-        proposals: [],
-        rows: [
-          {
-            errors: [],
-            proposedNormReferenceKeys: [],
-            reviewRowId: 'row-0',
-            selected: true,
-            sourceIndex: 0,
-            values: {
-              acceptanceCriteria: null,
-              categoryId: null,
-              description: 'Kravtext',
-              needsReferenceId: null,
-              normReferenceIds: [910034],
-              qualityCharacteristicId: null,
-              requirementPackageIds: [3],
-              verifiable: false,
-              priorityLevelId: null,
-              typeId: null,
-              verificationMethod: null,
-            },
-            warnings: [],
-          },
-        ],
-        summary: { errorCount: 0, rowCount: 1, warningCount: 0 },
+    fireEvent.click(
+      await screen.findByRole('tab', {
+        name: /Föreslagna behovsreferenser/,
       }),
-      ok: true,
-    } as Response)
-
-    render(
-      <RequirementsImportDialog
-        areas={[{ id: 7, name: 'Bilddiagnostik', permissions: {} }]}
-        mode="library"
-        onClose={vi.fn()}
-        open
-      />,
     )
-
-    fireEvent.change(screen.getByLabelText(/Kravområde/), {
-      target: { value: '7' },
-    })
-    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
-      target: {
-        value: JSON.stringify({
-          requirements: [{ description: 'Kravtext' }],
-          schemaVersion: 'requirement-import.v2',
-        }),
-      },
-    })
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-      ).toBeEnabled(),
-    )
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    )
-
-    await expandFirstImportRow()
-    await screen.findByText('Integration med andra system')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Välj kravpaket' }))
-    await screen.findByRole('dialog', { name: 'Välj kravpaket' })
-    fireEvent.click(screen.getByLabelText('API och informationsutbyte'))
-    fireEvent.click(screen.getByRole('button', { name: 'Använd val' }))
-    expect(await screen.findByText('API och informationsutbyte')).toBeVisible()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Välj normreferenser' }))
-    await screen.findByRole('dialog', { name: 'Välj normreferenser' })
-    fireEvent.click(
-      screen.getByLabelText(
-        /Digital Imaging and Communications in Medicine Part 3/,
-      ),
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'Använd val' }))
-
     expect(
-      await screen.findByText(
-        'DICOM-PS3.3 - Digital Imaging and Communications in Medicine Part 3',
-      ),
-    ).toBeVisible()
+      await screen.findByRole('heading', {
+        name: 'Personuppgiftsbehandling behöver tekniskt skydd',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Importnyckel: gdpr-need')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Länka befintlig behovsreferens'), {
+      target: { value: '12' },
+    })
+
+    expect(await screen.findByText('Löst')).toBeInTheDocument()
   })
 })

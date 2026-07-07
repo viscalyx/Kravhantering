@@ -28,7 +28,7 @@ const validImportPayload = {
       verificationMethod: 'Demonstration',
     },
   ],
-  schemaVersion: 'requirement-import.v2',
+  schemaVersion: 'requirement-import.v3',
 }
 
 async function fulfillJson(route: Route, body: unknown, status = 200) {
@@ -52,7 +52,7 @@ test.describe('Requirements import', () => {
     await page.route('**/api/requirements/import/schema?*', async route => {
       artifactDownloads.push('schema')
       await fulfillJson(route, {
-        schema: 'requirement-import.v2',
+        schema: 'requirement-import.v3',
       })
     })
     await page.route(

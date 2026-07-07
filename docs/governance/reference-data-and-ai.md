@@ -283,22 +283,27 @@ Sources: `lib/requirements/import-schema.ts`,
 `app/api/requirements/import/instruction`.
 
 Requirement import publishes a strict shared JSON Schema whose top-level
-`schemaVersion` is `requirement-import.v2`. The version applies to the whole
+`schemaVersion` is `requirement-import.v3`. The version applies to the whole
 import file, including requirement candidates and support data such as
-`proposedNormReferences`. The same file format is used for kravbiblioteksimport
-and kravunderlagsimport; destination context is selected in the UI/API outside
-the file. Unknown fields are rejected, including destination fields such as
-`areaId`, `specificationId` and `needsReferenceId`.
+`proposedNormReferences` and `proposedNeedsReferences`. Version 3 replaces
+version 2 as the canonical schema; automated producers must emit v3. The same
+file format is used for kravbiblioteksimport and kravunderlagsimport;
+destination context is selected in the UI/API outside the file. Unknown fields
+are rejected, including destination fields such as `areaId` and
+`specificationId`.
 In the schema artifact this is represented as `properties.schemaVersion`,
 because JSON Schema describes top-level object fields under `properties`; the
 actual import JSON still places `schemaVersion` at the root.
 
-The authenticated schema endpoint returns only the raw schema. The authenticated
-import instruction endpoint returns Markdown containing the schema plus current
-taxonomy and norm references so an AI system can produce valid JSON without
-guessing reference data. The schema and import instruction are shared for
-library imports and specification-local imports; they include
-requirement-package reference data and the same `requirementPackageIds` field.
+The authenticated schema endpoint returns only the raw global schema. The
+authenticated import instruction endpoint returns Markdown containing the
+schema plus current taxonomy and norm references so an AI system can produce
+valid JSON without guessing reference data. When the caller passes a
+kravunderlag destination, the instruction also includes that kravunderlag's
+existing `needsReferences` as `{id,text,description}` reference data. The schema
+and import instruction are shared for library imports and specification-local
+imports; they include requirement-package reference data and the same
+`requirementPackageIds` field.
 `requirementPackageIds` and
 `requirementPackageNames` are used for library imports and ignored for
 specification-local imports. Specification-local preview surfaces that as a
@@ -312,15 +317,45 @@ single `name` field instead of both `nameEn` and `nameSv`.
 The import instruction includes concise field-selection rules for functional
 versus non-functional type choice, type-scoped quality characteristics,
 norm-reference links, priority, requirement packages and verification fields.
-It tells the AI to prefer ID fields from the reference data. Free-text values
-such as `description`, `acceptanceCriteria`, `verificationMethod` and proposed
-norm references use the requested application locale by default: Swedish for
-`sv` artifacts and English for `en` artifacts, unless the user's own input
-explicitly requests another language. JSON Schema still controls field names
-and data shape. It also includes a conflict rule: user input controls factual
-need, scope, requirement content and factual values; JSON Schema controls
-allowed fields, data types, required fields and result format; reference data
-controls requirement structure, classification, IDs and labels.
+It tells the AI to prefer ID fields from the reference data. For
+specification-local imports, `needsReferenceId` may be selected only from
+`needsReferences[].id` when the need clearly matches an existing
+behovsreferens; loose word similarity is not enough. For specification-local
+imports, the instruction asks AI systems to propose a small number of
+`proposedNeedsReferences` only when the user's input gives clear goals, risks,
+capabilities, sources, cases or scenarios that explain why one or more
+requirements are needed in the kravunderlag. `proposedNeedsReferences[].text`
+is a short reusable need heading, while `description` explains the connection
+to the business need, scenario, risk or source. The instruction tells the AI to
+group rows under shared needs references instead of creating one needs
+reference per requirement row, and to leave row needs-reference fields empty
+when the connection would be a guess. If both `needsReferenceId` and
+`needsReferenceKey` are present on one row, `needsReferenceId` wins.
+
+The instruction permits AI systems to synthesize needs references only from
+factual support in the user's input. It forbids inventing business goals,
+external sources, customer names or case numbers, and tells the AI to avoid
+names or other details that identify a living person. Case numbers may be used
+only when the user input explicitly provides them and they do not identify a
+person. For kravbiblioteksimport, needs-reference fields are ignored with
+information messages and the destination-aware instruction tells AI systems to
+leave `needsReferenceId` and `needsReferenceKey` unset and return
+`proposedNeedsReferences` as an empty list. Import instructions are always
+destination-specific by import kind. Callers can request the
+kravbiblioteksimport instruction without a requirement area because it does not
+vary by area; kravunderlagsimport instructions require the specific
+requirements specification because needs-reference reference data is scoped to
+that specification.
+
+Free-text values such as `description`, `acceptanceCriteria`,
+`verificationMethod`, proposed norm references and proposed needs references
+use the requested application locale by default: Swedish for `sv` artifacts and
+English for `en` artifacts, unless the user's own input explicitly requests
+another language. JSON Schema still controls field names and data shape. It
+also includes a conflict rule: user input controls factual need, scope,
+requirement content and factual values; JSON Schema controls allowed fields,
+data types, required fields and result format; reference data controls
+requirement structure, classification, IDs and labels.
 For requirement packages, the import instruction tells the model to compare
 the requirement need, requirement text and acceptance criteria with
 `requirementPackages[].purposeAndScope` and only choose packages where the
@@ -340,6 +375,18 @@ norm references automatically. During import review, a proposal referenced by
 in the same normreferens form used by Normbiblioteket. When the user creates or
 links the normreferens, the affected rows receive the resolved
 `normReferenceIds` value before execute.
+For kravunderlagsimport, `needsReferenceId` is validated against the selected
+kravunderlag. A row with `needsReferenceKey` must match
+`proposedNeedsReferences[].key`; unresolved matches are blocking row errors
+until the user links the proposal to an existing behovsreferens or creates a new
+one in the import review. Execute receives only concrete `needsReferenceId`
+values. In UI import this is a human review step. In MCP import there is no
+human import-review step between validation and execute, so agents must ask the
+user before creating missing behovsreferenser with
+`requirements_manage_needs_reference`. If the user does not approve creation,
+the agent must ask whether importing without the needs-reference link is
+acceptable, and stop when the missing link is central to why the row belongs in
+the kravunderlag.
 
 ### Human-Facing Import Examples
 
@@ -353,7 +400,7 @@ Minimal valid import JSON:
 
 ```json
 {
-  "schemaVersion": "requirement-import.v2",
+  "schemaVersion": "requirement-import.v3",
   "requirements": [
     {
       "description": "Systemet ska logga säkerhetsrelevanta händelser."
@@ -362,11 +409,12 @@ Minimal valid import JSON:
 }
 ```
 
-Richer import JSON with optional metadata and proposed norm references:
+Richer import JSON with optional metadata, proposed norm references and proposed
+needs references:
 
 ```json
 {
-  "schemaVersion": "requirement-import.v2",
+  "schemaVersion": "requirement-import.v3",
   "proposedNormReferences": [
     {
       "key": "gdpr-article-32",
@@ -376,6 +424,13 @@ Richer import JSON with optional metadata and proposed norm references:
       "issuer": "Europeiska unionen",
       "normReferenceId": "GDPR-ART-32",
       "uri": "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+    }
+  ],
+  "proposedNeedsReferences": [
+    {
+      "key": "gdpr-need",
+      "text": "Personuppgiftsbehandling behöver tekniskt skydd",
+      "description": "Stödjer införande av GDPR artikel 32."
     }
   ],
   "requirements": [
@@ -389,6 +444,7 @@ Richer import JSON with optional metadata and proposed norm references:
       "requirementPackageNames": ["Integration med andra system"],
       "normReferenceIds": ["SFS 2018:218"],
       "proposedNormReferenceKeys": ["gdpr-article-32"],
+      "needsReferenceKey": "gdpr-need",
       "verifiable": true,
       "verificationMethod": "Verifieras med behörighetstest."
     },
@@ -411,4 +467,6 @@ must belong to the selected type. Optional unresolved metadata is shown as a
 warning in the import review and is omitted if the user continues. Proposed
 norm references include the fields needed by the normreferens form: `key`,
 `name`, `type`, `reference`, `issuer`, optional `normReferenceId`, optional
-`uri` and optional `version`.
+`uri` and optional `version`. Proposed needs references include `key`, `text`
+and optional `description`; rows connect to them through `needsReferenceKey`
+until the import review resolves the proposal to a concrete `needsReferenceId`.

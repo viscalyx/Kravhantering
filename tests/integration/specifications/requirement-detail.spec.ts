@@ -563,13 +563,11 @@ async function getCsvExport(
 
 async function clickMenuItem(page: Page, menuName: string, itemName: string) {
   const actionId =
-    menuName === 'Rapporter'
-      ? 'reports'
-      : menuName === 'Exportera'
-        ? 'export'
-        : menuName === 'Lägg till unika krav'
-          ? 'local-requirement-actions'
-          : null
+    menuName === 'Rapporter' ||
+    menuName === 'Exportera' ||
+    menuName === 'Fler åtgärder'
+      ? 'more-actions'
+      : null
   const menuButton = actionId
     ? page
         .locator(`[data-floating-action-menu-trigger="${actionId}"]:visible`)
@@ -698,7 +696,10 @@ for (const viewport of viewports) {
       )
       await expect(splitPanel).toBeVisible()
       await expect(
-        page.getByRole('button', { name: 'Lägg till unika krav' }),
+        page.getByRole('button', { name: 'Nytt unikt krav' }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('button', { name: 'Fler åtgärder' }),
       ).toBeVisible()
 
       const splitPanelClassesBefore = await splitPanel.getAttribute('class')
@@ -1577,7 +1578,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     )
 
     await gotoSpecificationDetail(page, editSpecificationId)
-    await clickMenuItem(page, 'Lägg till unika krav', 'Nytt unikt krav')
+    await page.getByRole('button', { name: 'Nytt unikt krav' }).click()
     const dialog = page.getByRole('dialog').filter({
       hasText: 'Nytt unikt krav',
     })
@@ -2094,7 +2095,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
           typeId: 1,
         },
       ],
-      schemaVersion: 'requirement-import.v2',
+      schemaVersion: 'requirement-import.v3',
     }
     const previewRequests: unknown[] = []
     const executeRequests: unknown[] = []
@@ -2210,7 +2211,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     )
 
     await gotoSpecificationDetail(page, editSpecificationId)
-    await clickMenuItem(page, 'Lägg till unika krav', 'Importera unika krav')
+    await clickMenuItem(page, 'Fler åtgärder', 'Importera unika krav')
 
     const dialog = page.getByRole('dialog', { name: /Importera krav för/ })
     await expect(dialog).toBeVisible()

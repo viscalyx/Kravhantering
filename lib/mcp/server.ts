@@ -25,6 +25,7 @@ import {
   type GraduateSpecificationLocalRequirementInput,
   type ListGraduationTargetAreasInput,
   type ManageImportInput,
+  type ManageNeedsReferenceInput,
   type ManageNormReferenceInput,
   type ManageRequirementInput,
   type QueryCatalogInput,
@@ -152,6 +153,17 @@ const ImportDestinationRefSchema = z.discriminatedUnion('kind', [
   SpecificationDestinationRefSchema,
 ])
 
+const LibraryImportInstructionDestinationRefSchema = z
+  .object({
+    kind: z.literal('requirements_library'),
+  })
+  .strict()
+
+const ImportInstructionDestinationRefSchema = z.discriminatedUnion('kind', [
+  LibraryImportInstructionDestinationRefSchema,
+  SpecificationDestinationRefSchema,
+])
+
 const ImportDestinationOutputSchema = z
   .union([
     LibraryDestinationRefSchema.extend({
@@ -177,6 +189,9 @@ const ManageImportOutputSchema = z
     hasWarnings: z.boolean().optional(),
     importedRows: z.array(z.record(z.string(), z.unknown())).optional(),
     issues: z.array(McpIssueOutputSchema).optional(),
+    needsReferenceProposals: z
+      .array(z.record(z.string(), z.unknown()))
+      .optional(),
     notImportedRows: z.array(z.record(z.string(), z.unknown())).optional(),
     payloadHash: z.string().optional(),
     proposals: z.array(z.record(z.string(), z.unknown())).optional(),
@@ -205,6 +220,7 @@ const ManageImportOutputSchema = z
         'destination',
         'expiresAt',
         'payloadHash',
+        'needsReferenceProposals',
         'proposals',
         'referenceData',
         'rows',
@@ -216,6 +232,7 @@ const ManageImportOutputSchema = z
         'destination',
         'expiresAt',
         'payloadHash',
+        'needsReferenceProposals',
         'proposals',
         'referenceData',
         'rows',
@@ -257,6 +274,38 @@ const ManageImportOutputSchema = z
     ])
   })
   .describe('Import management result. Shape depends on operation.')
+
+const NeedsReferenceOutputSchema = z
+  .object({
+    createdAt: z.string(),
+    description: z.string().nullable(),
+    id: z.number(),
+    libraryItemCount: z.number(),
+    linkedItemCount: z.number(),
+    match: McpSearchMatchOutputSchema.optional(),
+    specificationLocalRequirementCount: z.number(),
+    text: z.string(),
+    updatedAt: z.string(),
+  })
+  .strict()
+
+const ManageNeedsReferenceOutputSchema = z
+  .object({
+    needsReference: NeedsReferenceOutputSchema.optional(),
+    result: z.array(NeedsReferenceOutputSchema).optional(),
+  })
+  .strict()
+  .superRefine((val, ctx) => {
+    if (Object.hasOwn(val, 'result')) {
+      rejectUnexpectedFields(ctx, val, ['result'])
+      return
+    }
+    requireField(ctx, val, 'needsReference')
+    rejectUnexpectedFields(ctx, val, ['needsReference'])
+  })
+  .describe(
+    'Specification needs-reference management result. Shape depends on operation: result or needsReference.',
+  )
 
 const NormReferenceOutputSchema = z
   .object({
@@ -944,6 +993,90 @@ function createManageImportSchema() {
 
       requireField(ctx, val, 'validationToken')
       rejectUnexpectedFields(ctx, val, ['operation', 'validationToken'])
+    })
+}
+
+function createManageNeedsReferenceSchema() {
+  return z
+    .object({
+      description: z
+        .string()
+        .trim()
+        .max(4000)
+        .nullable()
+        .optional()
+        .describe(
+          'Optional description for a new needs reference. Allowed only for operation "create".',
+        ),
+      needsReferenceId: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          'Needs reference ID from this tool result[].id or needsReference.id. Required for operation "get".',
+        ),
+      operation: z
+        .enum(['list', 'search', 'get', 'create'])
+        .describe('Specification needs-reference management operation.'),
+      search: z
+        .string()
+        .trim()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe(
+          'Search text for operation "search". Matches id, text, and description with match metadata.',
+        ),
+      specificationId: z
+        .number()
+        .int()
+        .positive()
+        .describe(
+          'Requirements specification ID from requirements_manage_import list_destinations/search_destinations result[].specificationId.',
+        ),
+      text: z
+        .string()
+        .trim()
+        .min(1)
+        .max(255)
+        .optional()
+        .describe(
+          'Needs-reference text for operation "create". Returned id can be used as requirements[].needsReferenceId in a Kravimportfil.',
+        ),
+    })
+    .strict()
+    .superRefine((val, ctx) => {
+      if (val.operation === 'list') {
+        rejectUnexpectedFields(ctx, val, ['operation', 'specificationId'])
+        return
+      }
+      if (val.operation === 'search') {
+        requireField(ctx, val, 'search')
+        rejectUnexpectedFields(ctx, val, [
+          'operation',
+          'search',
+          'specificationId',
+        ])
+        return
+      }
+      if (val.operation === 'get') {
+        requireField(ctx, val, 'needsReferenceId')
+        rejectUnexpectedFields(ctx, val, [
+          'needsReferenceId',
+          'operation',
+          'specificationId',
+        ])
+        return
+      }
+
+      requireField(ctx, val, 'text')
+      rejectUnexpectedFields(ctx, val, [
+        'description',
+        'operation',
+        'specificationId',
+        'text',
+      ])
     })
 }
 
@@ -1685,9 +1818,12 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'Return the canonical Importinstruktion (import instruction) Markdown for producing a Kravimportfil. Use requirements_get_import_schema as the mandatory JSON contract; this instruction is Kravhantering guidance and does not override or replace the schema. The only input is locale, with supported values "en" (for English) and "sv" (for Swedish).',
+        'Return the canonical destination-specific Importinstruktion (import instruction) Markdown for producing a Kravimportfil. Use requirements_get_import_schema as the mandatory JSON contract; this instruction is Kravhantering guidance and does not override or replace the schema. destination is required. If the destination is unknown, ask the user whether the import targets a requirements library or a requirements specification. Use {kind:"requirements_library"} for requirements library imports. For requirements specification imports, use requirements_manage_import list_destinations/search_destinations to resolve the specificationId before calling this tool.',
       inputSchema: z
         .object({
+          destination: ImportInstructionDestinationRefSchema.describe(
+            'Required import-instruction destination object. Use {kind:"requirements_library"} for requirements library imports. Use {kind:"requirements_specification", specificationId} for requirements specification imports; resolve specificationId with requirements_manage_import list_destinations/search_destinations when needed.',
+          ),
           locale: ResponseLocaleSchema,
         })
         .strict(),
@@ -1699,6 +1835,7 @@ export function createKravhanteringMcpServer(
         const payload = await service.getImportInstruction(
           await getBaseContext(request, 'requirements_get_import_instruction'),
           {
+            destination: input.destination,
             locale: toResponseLocale(input.locale),
           },
         )
@@ -1726,7 +1863,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: false,
       },
-      description: `Manage MCP requirement import. Normal flow: call list_destinations or search_destinations; call requirements_get_import_schema; create a Kravimportfil payload; call validate with exactly {kind:"requirements_library", areaId} or {kind:"requirements_specification", specificationId}; optionally resolve missing norm references with requirements_manage_norm_reference; then call execute with validationToken. Validation sessions are immutable after validate, and execute accepts only validationToken. Use inspect_validation to troubleshoot full row/proposal detail or recover row state after a lost or uncertain execute response. To retry, build a corrected Kravimportfil from rows that were not successfully imported, then run validate and execute the new token. Do not copy successfully imported rows into the corrected payload because the server does not do generic duplicate detection across validation sessions. validate accepts at most ${mcpSettings.mcpImportMaxRows} rows and ${formatBytes(mcpSettings.mcpMaxRequestBytes)} per request/session. validationToken expires after ${mcpSettings.mcpImportValidationTtlMinutes} minute(s). execute imports all unconsumed rows without errors; warning rows are importable.`,
+      description: `Manage MCP requirement import. Normal flow: call list_destinations or search_destinations when an exact validate destination or specificationId is needed; call requirements_get_import_schema; call requirements_get_import_instruction with {kind:"requirements_library"} for library imports or {kind:"requirements_specification", specificationId} for specification imports; create a Kravimportfil payload; call validate with exactly {kind:"requirements_library", areaId} or {kind:"requirements_specification", specificationId}; optionally resolve missing norm references with requirements_manage_norm_reference and specification needs references with requirements_manage_needs_reference; then call execute with validationToken. For requirements_specification imports, use needsReferenceId from requirements_manage_needs_reference result[].id/needsReference.id when a row belongs to an existing or newly created needs reference. Ask the user before creating missing needs references; if the user does not approve creation, ask whether importing without the needs-reference link is acceptable and stop when the link is central to why the row belongs in the specification. Do not rely on unresolved proposedNeedsReferences being resolved after MCP execute; MCP has no human import-review step between validate and execute. Validation sessions are immutable after validate, and execute accepts only validationToken. Use inspect_validation to troubleshoot full row/proposal detail or recover row state after a lost or uncertain execute response. To retry, build a corrected Kravimportfil from rows that were not successfully imported, then run validate and execute the new token. Do not copy successfully imported rows into the corrected payload because the server does not do generic duplicate detection across validation sessions. validate accepts at most ${mcpSettings.mcpImportMaxRows} rows and ${formatBytes(mcpSettings.mcpMaxRequestBytes)} per request/session. validationToken expires after ${mcpSettings.mcpImportValidationTtlMinutes} minute(s). execute imports all unconsumed rows without errors; warning rows are importable.`,
       inputSchema: createManageImportSchema(),
       outputSchema: ManageImportOutputSchema,
       title: 'Manage Requirement Import',
@@ -1747,6 +1884,45 @@ export function createKravhanteringMcpServer(
                 : 'Requirement import execution receipt returned in structuredContent.'
         return {
           content: [{ text, type: 'text' }],
+          structuredContent: payload,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    'requirements_manage_needs_reference',
+    {
+      annotations: {
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+        readOnlyHint: false,
+      },
+      description:
+        'List, search, get, or create specification-scoped needs references for a requirements specification. First choose a requirements specification with requirements_manage_import list_destinations/search_destinations and copy result[].specificationId to specificationId. Use list/search/get before generating a Kravimportfil; copy result[].id or needsReference.id to requirements[].needsReferenceId. Ask the user before calling create. Use create only after approval, then copy needsReference.id to requirements[].needsReferenceId before execute. If creation is not approved, ask whether importing without the needs-reference link is acceptable; stop when the link is central to why the row belongs in the specification.',
+      inputSchema: createManageNeedsReferenceSchema(),
+      outputSchema: ManageNeedsReferenceOutputSchema,
+      title: 'Manage Needs Reference',
+    },
+    async input => {
+      try {
+        const payload = await service.manageNeedsReference(
+          await getBaseContext(request, 'requirements_manage_needs_reference'),
+          input as ManageNeedsReferenceInput,
+        )
+        return {
+          content: [
+            {
+              text:
+                'result' in payload
+                  ? 'Structured result returned in structuredContent.result.'
+                  : 'Needs reference returned in structuredContent.needsReference.',
+              type: 'text',
+            },
+          ],
           structuredContent: payload,
         }
       } catch (error) {

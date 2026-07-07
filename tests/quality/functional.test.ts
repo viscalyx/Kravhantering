@@ -262,6 +262,12 @@ const normReferenceServicePath = join(
   'requirements',
   'service-norm-references.ts',
 )
+const needsReferenceServicePath = join(
+  repoRoot,
+  'lib',
+  'requirements',
+  'service-needs-references.ts',
+)
 const contributorGuidePath = join(
   repoRoot,
   'docs',
@@ -999,6 +1005,66 @@ it('Scenario 26: norm-reference MCP discovery keeps connected krav IDs separate'
   )
   expect(contributorGuideSource).toContain(
     'It does not include kravunderlagslokala krav.',
+  )
+})
+
+it('Scenario 27: needs-reference MCP management stays specification-scoped', () => {
+  const serverSource = readFileSync(mcpServerPath, 'utf8')
+  const serviceSource = readFileSync(needsReferenceServicePath, 'utf8')
+  const contributorGuideSource = readFileSync(contributorGuidePath, 'utf8')
+  const userGuideSource = readFileSync(userGuidePath, 'utf8')
+
+  const outputSchemaSource = sourceSlice(
+    serverSource,
+    'const NeedsReferenceOutputSchema',
+    'const NormReferenceOutputSchema',
+  )
+  const inputSchemaSource = sourceSlice(
+    serverSource,
+    'function createManageNeedsReferenceSchema()',
+    'function createManageNormReferenceSchema()',
+  )
+  const toolSource = sourceSlice(
+    serverSource,
+    "server.registerTool(\n    'requirements_manage_needs_reference'",
+    "server.registerTool(\n    'requirements_manage_norm_reference'",
+  )
+
+  expect(inputSchemaSource).toContain("'list'")
+  expect(inputSchemaSource).toContain("'search'")
+  expect(inputSchemaSource).toContain("'get'")
+  expect(inputSchemaSource).toContain("'create'")
+  expect(inputSchemaSource).toContain('specificationId')
+  expect(inputSchemaSource).toContain('needsReferenceId')
+  expect(inputSchemaSource).toContain('requirements[].needsReferenceId')
+
+  expect(outputSchemaSource).toContain('NeedsReferenceOutputSchema')
+  expect(outputSchemaSource).toContain('linkedItemCount')
+  expect(outputSchemaSource).toContain('specificationLocalRequirementCount')
+  expect(outputSchemaSource).toContain('needsReference:')
+  expect(outputSchemaSource).toContain('result:')
+
+  expect(toolSource).toContain('requirements_manage_needs_reference')
+  expect(toolSource).toContain(
+    'requirements_manage_import list_destinations/search_destinations',
+  )
+  expect(toolSource).toContain('structuredContent.needsReference')
+
+  expect(serviceSource).toContain('createNeedsReferenceWorkflow')
+  expect(serviceSource).toContain('manage_specification_needs_reference')
+  expect(serviceSource).toContain('listSpecificationNeedsReferences')
+  expect(serviceSource).toContain('createSpecificationNeedsReference')
+  expect(serviceSource).toContain('findNeedsReferenceMatch')
+
+  expect(userGuideSource).toContain('Needs Reference Discovery')
+  expect(userGuideSource).toContain(
+    'requirements_manage_needs_reference.needsReference.id -> requirements[].needsReferenceId',
+  )
+  expect(contributorGuideSource).toContain(
+    '### `requirements_manage_needs_reference`',
+  )
+  expect(contributorGuideSource).toContain(
+    'requirements_manage_needs_reference.result[].id -> requirements[].needsReferenceId',
   )
 })
 
