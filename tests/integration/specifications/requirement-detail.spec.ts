@@ -573,19 +573,10 @@ async function openActionMenu(page: Page, menuName: string) {
         .locator(`[data-floating-action-menu-trigger="${actionId}"]:visible`)
         .first()
     : page.getByRole('button', { name: menuName })
-  await expect(menuButton).toBeVisible({ timeout: 30_000 })
   const menu = actionId
     ? page.locator(`[data-floating-action-menu="${actionId}"]`)
     : page.getByRole('menu')
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    await menuButton.scrollIntoViewIfNeeded()
-    if (attempt === 1) {
-      await menuButton.press('Enter')
-    } else {
-      await menuButton.click({ force: attempt >= 2 })
-    }
-    if (await menu.isVisible({ timeout: 2_000 }).catch(() => false)) break
-  }
+  await menuButton.click()
   await expect(menu).toBeVisible({ timeout: 5_000 })
   return menu
 }
@@ -596,8 +587,6 @@ async function clickMenuItem(page: Page, menuName: string, itemName: string) {
     exact: true,
     name: itemName,
   })
-  await expect(menuItem).toBeVisible({ timeout: 5_000 })
-  await expect(menuItem).toBeEnabled({ timeout: 5_000 })
   await menuItem.click()
 }
 
