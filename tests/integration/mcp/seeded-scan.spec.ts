@@ -390,6 +390,7 @@ test.describe('MCP seeded HTTP security gate', () => {
         client,
         'requirements_get_import_instruction',
         {
+          destination: { kind: 'requirements_library' },
           locale: 'en',
         },
       )
