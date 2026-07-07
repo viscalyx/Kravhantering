@@ -877,7 +877,7 @@ function previewNeedsReferenceProposals(
         warning(
           'import_proposed_needs_reference_unused',
           'Proposed needs reference is not used by any imported row.',
-          { field: 'proposedNeedsReferences', originalValue: proposal.key },
+          { originalValue: proposal.key },
         ),
       )
     }
@@ -1101,7 +1101,7 @@ function previewProposals(
         warning(
           'import_proposed_norm_reference_unused',
           'Proposed norm reference is not used by any imported row.',
-          { field: 'proposedNormReferences', originalValue: proposal.key },
+          { originalValue: proposal.key },
         ),
       )
     }

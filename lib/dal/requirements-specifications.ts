@@ -1740,7 +1740,7 @@ async function assertSpecificationNeedsReferenceTextAvailable(
   }
 }
 
-async function getSpecificationNeedsReferenceDetailById(
+export async function getSpecificationNeedsReference(
   db: SqlExecutor,
   specificationId: number,
   id: number,
@@ -1861,11 +1861,7 @@ export async function updateSpecificationNeedsReference(
     [normalized.text, normalized.description, new Date(), id, specificationId],
   )
 
-  const updated = await getSpecificationNeedsReferenceDetailById(
-    db,
-    specificationId,
-    id,
-  )
+  const updated = await getSpecificationNeedsReference(db, specificationId, id)
   if (!updated) {
     throw notFoundError('Needs reference not found after update')
   }
@@ -1877,11 +1873,7 @@ export async function deleteSpecificationNeedsReference(
   specificationId: number,
   id: number,
 ): Promise<boolean> {
-  const existing = await getSpecificationNeedsReferenceDetailById(
-    db,
-    specificationId,
-    id,
-  )
+  const existing = await getSpecificationNeedsReference(db, specificationId, id)
   if (!existing) {
     return false
   }

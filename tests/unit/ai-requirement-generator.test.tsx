@@ -524,6 +524,46 @@ describe('AiRequirementGenerator', () => {
     ])
   })
 
+  it('does not store failed import instruction responses as instruction text', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      if (
+        typeof url === 'string' &&
+        url.startsWith('/api/requirements/import/instruction')
+      ) {
+        return {
+          ok: false,
+          text: async () =>
+            '# Import instruction\n\nServer failure should not be stored.',
+        }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator({ selectArea: false })
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /How the AI request is built/ }),
+    )
+    await userEvent.click(screen.getByText('Show exact text sent'))
+
+    await waitFor(() => {
+      expect(
+        mockFetch.mock.calls.some(([url]) =>
+          String(url).includes('/api/requirements/import/instruction'),
+        ),
+      ).toBe(true)
+    })
+    expect(
+      screen.queryByText(/Server failure should not be stored/),
+    ).not.toBeInTheDocument()
+  })
+
   it('loads specification-local import instruction with destination-specific reference data', async () => {
     await renderOpenGenerator({
       mode: 'specification-local',

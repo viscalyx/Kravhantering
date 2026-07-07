@@ -88,8 +88,71 @@ function mockReferenceDataFetch(
   })
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(res => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
+function specificationLocalPreviewResponse(): Response {
+  return {
+    json: async () => ({
+      needsReferenceProposals: [
+        {
+          description: 'Stödjer införande av GDPR artikel 32.',
+          key: 'gdpr-need',
+          referencedCount: 1,
+          resolvedNeedsReferenceId: null,
+          text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+          warnings: [],
+        },
+      ],
+      previewToken: 'preview-token',
+      proposals: [],
+      rows: [
+        {
+          errors: [
+            {
+              code: 'import_needs_reference_unresolved',
+              field: 'needsReferenceKey',
+              level: 'error',
+              message: 'Needs reference is unresolved.',
+              originalValue: 'gdpr-need',
+            },
+          ],
+          infos: [],
+          proposedNeedsReferenceKey: 'gdpr-need',
+          proposedNormReferenceKeys: [],
+          reviewRowId: 'row-0',
+          selected: true,
+          sourceIndex: 0,
+          values: {
+            acceptanceCriteria: null,
+            categoryId: null,
+            description: 'Kravtext',
+            needsReferenceId: null,
+            normReferenceIds: [],
+            priorityLevelId: null,
+            qualityCharacteristicId: null,
+            requirementPackageIds: [],
+            verifiable: false,
+            typeId: null,
+            verificationMethod: null,
+          },
+          warnings: [],
+        },
+      ],
+      summary: { errorCount: 1, rowCount: 1, warningCount: 0 },
+    }),
+    ok: true,
+  } as Response
+}
+
 describe('RequirementsImportDialog', () => {
   beforeEach(() => {
+    vi.mocked(apiFetch).mockReset()
     confirmMock.mockReset()
     confirmMock.mockResolvedValue(true)
     downloadBlobMock.mockReset()
@@ -316,5 +379,181 @@ describe('RequirementsImportDialog', () => {
     })
 
     expect(await screen.findByText('Löst')).toBeInTheDocument()
+  })
+
+  it('creates a proposed needs reference once and keeps it across parent sync', async () => {
+    const createRequest = createDeferred<Response>()
+    vi.mocked(apiFetch).mockImplementation(input => {
+      const url = String(input)
+      if (url.includes('/needs-references')) {
+        return createRequest.promise
+      }
+      if (url === '/api/specification-local-requirements/import/preview') {
+        return Promise.resolve(specificationLocalPreviewResponse())
+      }
+      return Promise.resolve({ json: async () => ({}), ok: true } as Response)
+    })
+
+    const { rerender } = render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        needsReferences={[
+          {
+            description: null,
+            id: 12,
+            text: 'Befintlig behovsreferens',
+          },
+        ]}
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: {
+        value: JSON.stringify({
+          proposedNeedsReferences: [
+            {
+              key: 'gdpr-need',
+              text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+            },
+          ],
+          requirements: [
+            {
+              description: 'Kravtext',
+              needsReferenceKey: 'gdpr-need',
+            },
+          ],
+          schemaVersion: 'requirement-import.v3',
+        }),
+      },
+    })
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Förhandsgranska krav' }),
+    )
+    fireEvent.click(
+      await screen.findByRole('tab', {
+        name: /Föreslagna behovsreferenser/,
+      }),
+    )
+
+    const createButton = await screen.findByRole('button', {
+      name: 'Skapa behovsreferens',
+    })
+    fireEvent.click(createButton)
+    fireEvent.click(createButton)
+
+    expect(
+      vi
+        .mocked(apiFetch)
+        .mock.calls.filter(([input]) =>
+          String(input).includes('/needs-references'),
+        ),
+    ).toHaveLength(1)
+    expect(createButton).toBeDisabled()
+
+    createRequest.resolve({
+      json: async () => ({
+        needsReference: {
+          description: 'Skapad från importförslag.',
+          id: 31,
+          text: 'Skapad behovsreferens',
+        },
+      }),
+      ok: true,
+    } as Response)
+
+    expect(await screen.findByText('Löst')).toBeInTheDocument()
+
+    rerender(
+      <RequirementsImportDialog
+        mode="specification-local"
+        needsReferences={[
+          {
+            description: null,
+            id: 12,
+            text: 'Befintlig behovsreferens',
+          },
+          {
+            description: null,
+            id: 44,
+            text: 'Parent-synkad behovsreferens',
+          },
+        ]}
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    expect(
+      await screen.findByRole('option', { name: 'Skapad behovsreferens' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('option', { name: 'Parent-synkad behovsreferens' }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows an error when proposed needs reference creation fails', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {})
+    vi.mocked(apiFetch).mockImplementation(input => {
+      const url = String(input)
+      if (url.includes('/needs-references')) {
+        return Promise.reject(new Error('Network unavailable'))
+      }
+      if (url === '/api/specification-local-requirements/import/preview') {
+        return Promise.resolve(specificationLocalPreviewResponse())
+      }
+      return Promise.resolve({ json: async () => ({}), ok: true } as Response)
+    })
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: {
+        value: JSON.stringify({
+          proposedNeedsReferences: [
+            {
+              key: 'gdpr-need',
+              text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+            },
+          ],
+          requirements: [
+            {
+              description: 'Kravtext',
+              needsReferenceKey: 'gdpr-need',
+            },
+          ],
+          schemaVersion: 'requirement-import.v3',
+        }),
+      },
+    })
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Förhandsgranska krav' }),
+    )
+    fireEvent.click(
+      await screen.findByRole('tab', {
+        name: /Föreslagna behovsreferenser/,
+      }),
+    )
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Skapa behovsreferens' }),
+    )
+
+    expect(await screen.findByText('Något gick fel')).toBeInTheDocument()
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Failed to create needs reference from import proposal',
+      expect.any(Error),
+    )
   })
 })

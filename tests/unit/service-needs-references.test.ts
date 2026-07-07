@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createSpecificationNeedsReference,
+  getSpecificationNeedsReference,
   listSpecificationNeedsReferences,
   type SpecificationNeedsReferenceSummary,
 } from '@/lib/dal/requirements-specifications'
@@ -9,11 +10,13 @@ import { createNeedsReferenceWorkflow } from '@/lib/requirements/service-needs-r
 
 const mocks = vi.hoisted(() => ({
   createSpecificationNeedsReference: vi.fn(),
+  getSpecificationNeedsReference: vi.fn(),
   listSpecificationNeedsReferences: vi.fn(),
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   createSpecificationNeedsReference: mocks.createSpecificationNeedsReference,
+  getSpecificationNeedsReference: mocks.getSpecificationNeedsReference,
   listSpecificationNeedsReferences: mocks.listSpecificationNeedsReferences,
 }))
 
@@ -53,6 +56,7 @@ function needsReferenceRow(
 describe('needs reference service workflow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(getSpecificationNeedsReference).mockResolvedValue(null)
     vi.mocked(listSpecificationNeedsReferences).mockResolvedValue([])
   })
 
@@ -136,7 +140,7 @@ describe('needs reference service workflow', () => {
     const authorization = { assertAuthorized: vi.fn() }
     const logger = { error: vi.fn(), info: vi.fn() }
     const row = needsReferenceRow({ id: 12 })
-    vi.mocked(listSpecificationNeedsReferences).mockResolvedValue([row])
+    vi.mocked(getSpecificationNeedsReference).mockResolvedValue(row)
     const workflow = createNeedsReferenceWorkflow({
       authorization,
       db: {} as never,
@@ -150,6 +154,40 @@ describe('needs reference service workflow', () => {
     })
 
     expect(result).toEqual({ needsReference: row })
+    expect(getSpecificationNeedsReference).toHaveBeenCalledWith(
+      expect.anything(),
+      8,
+      12,
+    )
+    expect(listSpecificationNeedsReferences).not.toHaveBeenCalled()
+  })
+
+  it('uses the direct lookup not-found path for one needs reference', async () => {
+    const authorization = { assertAuthorized: vi.fn() }
+    const logger = { error: vi.fn(), info: vi.fn() }
+    const workflow = createNeedsReferenceWorkflow({
+      authorization,
+      db: {} as never,
+      logger,
+    })
+
+    await expect(
+      workflow.manageNeedsReference(makeContext(), {
+        needsReferenceId: 99,
+        operation: 'get',
+        specificationId: 8,
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      message: 'Needs reference not found',
+    })
+
+    expect(getSpecificationNeedsReference).toHaveBeenCalledWith(
+      expect.anything(),
+      8,
+      99,
+    )
+    expect(listSpecificationNeedsReferences).not.toHaveBeenCalled()
   })
 
   it('creates a needs reference in one specification', async () => {

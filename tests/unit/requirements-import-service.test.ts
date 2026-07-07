@@ -694,6 +694,74 @@ describe('requirements import service', () => {
     })
   })
 
+  it('keeps unused proposal warnings scoped to the proposal item path', async () => {
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: makeManageImportDb().db as never,
+    })
+    const context = makeContext('requirements_manage_import')
+
+    const libraryResult = await workflow.manageImport(context, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        proposedNormReferences: [
+          {
+            issuer: 'National Electrical Manufacturers Association (NEMA)',
+            key: 'DICOM-PS3.2',
+            name: 'Digital Imaging and Communications in Medicine Part 2',
+            normReferenceId: null,
+            reference: 'DICOM PS3.2',
+            type: 'Standard',
+            uri: 'https://dicom.nema.org/medical/dicom/current/output/html/part02.html',
+            version: null,
+          },
+        ],
+        requirements: [{ description: 'Systemet ska logga händelser.' }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+
+    if (!('issues' in libraryResult)) {
+      throw new Error('Expected validation issues')
+    }
+    expect(libraryResult.issues).toContainEqual(
+      expect.objectContaining({
+        code: 'import_proposed_norm_reference_unused',
+        path: '/proposedNormReferences/0',
+        severity: 'warning',
+      }),
+    )
+
+    vi.mocked(getSpecificationById).mockResolvedValue({ id: 8 } as never)
+    const specificationResult = await workflow.manageImport(context, {
+      destination: { kind: 'requirements_specification', specificationId: 8 },
+      operation: 'validate',
+      payload: {
+        proposedNeedsReferences: [
+          {
+            key: 'gdpr-need',
+            text: 'Personuppgiftsbehandling behöver tekniskt skydd',
+          },
+        ],
+        requirements: [{ description: 'Systemet ska logga händelser.' }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+
+    if (!('issues' in specificationResult)) {
+      throw new Error('Expected validation issues')
+    }
+    expect(specificationResult.issues).toContainEqual(
+      expect.objectContaining({
+        code: 'import_proposed_needs_reference_unused',
+        path: '/proposedNeedsReferences/0',
+        severity: 'warning',
+      }),
+    )
+  })
+
   it('validates type and quality characteristic compatibility before MCP execute', async () => {
     vi.mocked(listTypes).mockResolvedValue([
       {

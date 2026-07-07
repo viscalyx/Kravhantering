@@ -1,5 +1,6 @@
 import {
   createSpecificationNeedsReference,
+  getSpecificationNeedsReference,
   listSpecificationNeedsReferences,
   type SpecificationNeedsReferenceSummary,
 } from '@/lib/dal/requirements-specifications'
@@ -151,18 +152,11 @@ export function createNeedsReferenceWorkflow(
             throw validationError('Search text is required')
           }
 
-          const rows = await listNeedsReferences(
-            dependencies,
-            input.specificationId,
-          )
-
-          if (input.operation === 'list') {
-            return { result: rows.map(row => toMcpNeedsReferenceRow(row)) }
-          }
-
           if (input.operation === 'get') {
-            const row = rows.find(
-              candidate => candidate.id === input.needsReferenceId,
+            const row = await getSpecificationNeedsReference(
+              db,
+              input.specificationId,
+              input.needsReferenceId,
             )
             if (!row) {
               throw notFoundError('Needs reference not found', {
@@ -171,6 +165,15 @@ export function createNeedsReferenceWorkflow(
               })
             }
             return { needsReference: toMcpNeedsReferenceRow(row) }
+          }
+
+          const rows = await listNeedsReferences(
+            dependencies,
+            input.specificationId,
+          )
+
+          if (input.operation === 'list') {
+            return { result: rows.map(row => toMcpNeedsReferenceRow(row)) }
           }
 
           const matched = rows

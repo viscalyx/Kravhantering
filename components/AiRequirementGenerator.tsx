@@ -1026,6 +1026,12 @@ export default function AiRequirementGenerator({
       const instructionResponse = await apiFetch(
         `/api/requirements/import/instruction?${instructionParams}`,
       )
+      if (!instructionResponse.ok) {
+        throw new Error(
+          (await readResponseMessage(instructionResponse)) ??
+            t('errors.failedToLoadImportInstruction'),
+        )
+      }
       const instruction = await instructionResponse.text()
       setImportInstruction(instruction)
       setImportInstructionScopeKey(currentImportInstructionScopeKey)

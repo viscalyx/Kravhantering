@@ -701,6 +701,7 @@ export default function RequirementsImportDialog({
   )
   const [localNeedsReferences, setLocalNeedsReferences] =
     useState<NeedsReferenceOption[]>(needsReferences)
+  const needsReferenceCreationInFlightRef = useRef(false)
   const [resolvingProposalKey, setResolvingProposalKey] = useState<
     string | null
   >(null)
@@ -881,7 +882,15 @@ export default function RequirementsImportDialog({
   )
 
   useEffect(() => {
-    setLocalNeedsReferences(needsReferences)
+    setLocalNeedsReferences(current => {
+      const incomingIds = new Set(
+        needsReferences.map(reference => reference.id),
+      )
+      return [
+        ...needsReferences,
+        ...current.filter(reference => !incomingIds.has(reference.id)),
+      ]
+    })
   }, [needsReferences])
 
   useEffect(() => {
@@ -1532,7 +1541,13 @@ export default function RequirementsImportDialog({
   const createNeedsReferenceForProposal = async (
     proposal: ImportNeedsReferenceProposalPreview,
   ) => {
-    if (mode !== 'specification-local' || !specificationId) return
+    if (
+      needsReferenceCreationInFlightRef.current ||
+      mode !== 'specification-local' ||
+      !specificationId
+    )
+      return
+    needsReferenceCreationInFlightRef.current = true
     setLoading(true)
     setErrorMessage(null)
     try {
@@ -1559,13 +1574,23 @@ export default function RequirementsImportDialog({
         setErrorMessage(text.error)
         return
       }
-      setLocalNeedsReferences(current => [...current, created])
+      setLocalNeedsReferences(current => [
+        ...current.filter(reference => reference.id !== created.id),
+        created,
+      ])
       resolveProposalWithNeedsReference(proposal.key, created)
       setCreatedNeedsReferenceProposalKeys(current => [
         ...new Set([...current, proposal.key]),
       ])
       await refreshPreviewToken()
+    } catch (error) {
+      console.error(
+        'Failed to create needs reference from import proposal',
+        error,
+      )
+      setErrorMessage(text.error)
     } finally {
+      needsReferenceCreationInFlightRef.current = false
       setLoading(false)
     }
   }
@@ -2459,6 +2484,7 @@ export default function RequirementsImportDialog({
                                   <button
                                     className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-700 dark:hover:bg-secondary-900"
                                     disabled={
+                                      loading ||
                                       proposal.resolvedNeedsReferenceId != null
                                     }
                                     onClick={() =>
