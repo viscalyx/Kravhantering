@@ -985,7 +985,11 @@
     "unvalidated",
     "keyrings",
     "graphroot",
-    "rebuildable"
+    "rebuildable",
+    "deallocates",
+    "vnet",
+    "snet",
+    "computevm"
   ],
   "flagWords": [],
   "ignorePaths": [
