@@ -6,6 +6,9 @@ services:
     url: http://hsa-person-lookup-adapter:8080
     routes:
       - name: hsa-directory-person-lookup-rest
+        protocols:
+          - http
+          - https
         paths:
           - /hsa/person-records/lookup
         methods:
