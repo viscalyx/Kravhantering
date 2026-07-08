@@ -1,0 +1,31 @@
+[Unit]
+Description=Kravhantering SQL Server developer database
+Requires=krav-support-network.service krav-sqlserver-volume.service
+After=krav-support-network.service krav-sqlserver-volume.service
+
+[Container]
+ContainerName=db
+Image=mcr.microsoft.com/mssql/server:2025-CU6-ubuntu-24.04@sha256:2cd0aec4a3bfc3cf9205bed3f7922f4c6208f7c767dc62edcee308d0fd7d56d0
+Network=krav-support.network
+Volume=krav-sqlserver.volume:/var/opt/mssql:Z,U
+PublishPort=127.0.0.1:1433:1433
+EnvironmentFile=%h/.config/krav-dev/sqlserver.env
+Environment=HOME=/var/opt/mssql
+HealthCmd=/bin/bash -ec 'if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1"; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1"; else bash -c "</dev/tcp/127.0.0.1/1433"; fi'
+HealthInterval=5s
+HealthRetries=60
+HealthStartPeriod=120s
+HealthTimeout=10s
+
+[Service]
+Environment=HOME=%h
+Environment=XDG_CONFIG_HOME=%h/.config
+Environment=XDG_DATA_HOME=%h/.local/share
+Environment=XDG_RUNTIME_DIR=%t
+Environment=CONTAINERS_CONF=%h/.config/containers/containers.conf
+Environment=CONTAINERS_STORAGE_CONF=%h/.config/containers/storage.conf
+Restart=on-failure
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

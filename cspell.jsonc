@@ -979,7 +979,10 @@
     "kravområdesförvaltningen",
     "sessionstoken",
     "spinbutton",
-    "unvalidated"
+    "unvalidated",
+    "keyrings",
+    "graphroot",
+    "rebuildable"
   ],
   "flagWords": [],
   "ignorePaths": [

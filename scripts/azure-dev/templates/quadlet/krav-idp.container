@@ -1,0 +1,32 @@
+[Unit]
+Description=Kravhantering Keycloak developer IdP
+Requires=krav-support-network.service
+After=krav-support-network.service
+
+[Container]
+ContainerName=idp
+Image=quay.io/keycloak/keycloak:26.6.4-1@sha256:22c8cf9e79af88d320499c93994bb2c319ca255092d8ae7c7a45dd46d68192e2
+Network=krav-support.network
+PublishPort=127.0.0.1:8080:8080
+Volume=/workspace/dev/keycloak:/opt/keycloak/data/import:ro
+EnvironmentFile=%h/.config/krav-dev/keycloak.env
+Exec=start-dev --import-realm --http-port=8080
+HealthCmd=/bin/bash -ec '{ printf "GET /realms/kravhantering-dev/.well-known/openid-configuration HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3; grep -m 1 " 200 " <&3 >/dev/null; } 3<>/dev/tcp/localhost/8080 && { printf "GET /realms/kravhantering-dev/protocol/openid-connect/certs HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3; grep -m 1 " 200 " <&3 >/dev/null; } 3<>/dev/tcp/localhost/8080'
+HealthInterval=5s
+HealthRetries=30
+HealthStartPeriod=10s
+HealthTimeout=5s
+HealthOnFailure=kill
+
+[Service]
+Environment=HOME=%h
+Environment=XDG_CONFIG_HOME=%h/.config
+Environment=XDG_DATA_HOME=%h/.local/share
+Environment=XDG_RUNTIME_DIR=%t
+Environment=CONTAINERS_CONF=%h/.config/containers/containers.conf
+Environment=CONTAINERS_STORAGE_CONF=%h/.config/containers/storage.conf
+Restart=on-failure
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target
