@@ -1,4 +1,6 @@
 interface:
   display_name: "Grill with Docs"
-  short_description: "Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates documentation (CONTEXT.md, ADRs) inline as decisions crystallise."
-  default_prompt: "Use $grill-with-docs to challenge your plan against the existing domain model."
+  short_description: "Stress-test plans and update docs"
+  default_prompt: "Use $grill-with-docs to challenge this plan, then update the glossary or ADRs as decisions crystallize."
+policy:
+  allow_implicit_invocation: false

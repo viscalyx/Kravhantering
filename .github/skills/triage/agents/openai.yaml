@@ -1,0 +1,6 @@
+interface:
+  display_name: "Triage"
+  short_description: "Triage issues and PRs into agent briefs"
+  default_prompt: "Use $triage to inspect issue tracker items, recommend roles, and write agent-ready briefs when appropriate."
+policy:
+  allow_implicit_invocation: false
