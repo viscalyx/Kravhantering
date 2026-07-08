@@ -509,3 +509,18 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   `requirements` output?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 26: norm-reference MCP discovery keeps connected krav IDs separate"`
+
+## 34. Scenario 27: needs-reference MCP management stays specification-scoped
+
+- **Code:** `lib/mcp/server.ts`,
+  `lib/requirements/service-needs-references.ts`,
+  `lib/dal/requirements-specifications.ts`, and the MCP integration docs.
+- **Spec:** `docs/integrations/mcp-server-user-guide.md`,
+  `docs/integrations/mcp-server-contributor-guide.md`, and issue #403.
+- **Req tag:** `[Req: formal — issue #403 needs-reference import support]`
+- **Question:** Does `requirements_manage_needs_reference` require
+  `specificationId`, expose only list/search/get/create, return
+  specification-scoped rows through `result` or `needsReference`, and document
+  the copy paths into `requirements[].needsReferenceId`?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 27: needs-reference MCP management stays specification-scoped"`

@@ -15,7 +15,11 @@ const translate = Object.assign(
       analysisTab: 'AI analysis',
       candidateCount: 'Number of requirement candidates',
       continueToImport: 'Preview requirements in import',
+      needsReferenceProposalRows: '{count} requirement row',
+      needsReferenceProposals: 'Proposed needs references',
+      noNeedsReferenceProposals: 'No proposed needs references are loaded.',
       rawResultTab: 'Raw result',
+      resolvedNeedsReferenceId: 'Existing needs reference #{id}',
       'requestExplanation.aiInstructionLabel': 'AI instruction',
       'requestExplanation.aiInstructionValue':
         "The application's writing rules for requirement candidates",
@@ -183,7 +187,7 @@ function generatedImportPayload(description: string) {
         typeId: 1,
       },
     ],
-    schemaVersion: 'requirement-import.v2',
+    schemaVersion: 'requirement-import.v3',
   }
 }
 
@@ -199,6 +203,21 @@ function previewResponse(
     }
     priorityLevelId: number | null
     qualityCharacteristicId: number | null
+    needsReferenceProposals: Array<{
+      description: string | null
+      key: string
+      referencedCount: number
+      resolvedNeedsReferenceId: number | null
+      text: string
+      warnings: Array<{
+        code: string
+        field?: string
+        level: 'error' | 'info' | 'warning'
+        message: string
+        originalValue?: string
+      }>
+    }>
+    proposedNeedsReferenceKey: string | null
     reviewRowId: string
     typeId: number | null
     warnings: Array<{
@@ -212,6 +231,7 @@ function previewResponse(
 ) {
   return {
     json: async () => ({
+      needsReferenceProposals: overrides.needsReferenceProposals ?? [],
       previewToken: 'preview-token',
       proposals: [],
       rows: [
@@ -224,6 +244,8 @@ function previewResponse(
             qualityCharacteristic: null,
             type: 'Functional',
           },
+          proposedNeedsReferenceKey:
+            overrides.proposedNeedsReferenceKey ?? null,
           proposedNormReferenceKeys: [],
           reviewRowId: overrides.reviewRowId ?? 'row-1',
           selected: true,
@@ -266,20 +288,25 @@ async function renderOpenGenerator(overrides?: {
   }>
   expectedModelName?: string
   loadModels?: boolean
+  mode?: 'library' | 'specification-local'
   onClose?: () => void
   onImportPreview?: (
     payload: ImportRequirementsPayload,
     options: { areaId?: number; preview?: unknown },
   ) => void
   selectArea?: boolean
+  specificationId?: number
 }) {
+  const mode = overrides?.mode ?? 'library'
   render(
     <AiRequirementGenerator
       aiGenerationAvailability={overrides?.aiGenerationAvailability}
       areas={overrides?.areas ?? testAreas}
+      mode={mode}
       onClose={overrides?.onClose ?? vi.fn()}
       onImportPreview={overrides?.onImportPreview ?? vi.fn()}
       open
+      specificationId={overrides?.specificationId}
     />,
   )
 
@@ -287,7 +314,7 @@ async function renderOpenGenerator(overrides?: {
     overrides?.loadModels ??
     overrides?.aiGenerationAvailability
       ?.effectiveRequirementGenerationEnabled !== false
-  const selectArea = overrides?.selectArea ?? loadModels
+  const selectArea = overrides?.selectArea ?? (mode === 'library' && loadModels)
   if (selectArea) {
     await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '1')
   }
@@ -464,6 +491,99 @@ describe('AiRequirementGenerator', () => {
         String(url).startsWith('/api/requirements/import/schema'),
       ),
     ).toBe(false)
+  })
+
+  it('loads the library import instruction before a requirement area is selected', async () => {
+    await renderOpenGenerator({ selectArea: false })
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /How the AI request is built/ }),
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('dialog', {
+          name: 'How the AI request is built',
+        }),
+      ).toBeInTheDocument()
+    })
+    await userEvent.click(screen.getByText('Show exact text sent'))
+    expect(
+      screen.getByText(/experienced requirements engineer/),
+    ).toBeInTheDocument()
+    expect(screen.getAllByText(/Import instruction/).length).toBeGreaterThan(0)
+    await waitFor(() => {
+      expect(screen.getByText(/Use schemaVersion/)).toBeInTheDocument()
+    })
+    expect(
+      mockFetch.mock.calls
+        .map(([url]) => String(url))
+        .filter(url => url.includes('/api/requirements/import/instruction')),
+    ).toEqual([
+      '/api/requirements/import/instruction?locale=en&kind=requirements_library',
+    ])
+  })
+
+  it('does not store failed import instruction responses as instruction text', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      if (
+        typeof url === 'string' &&
+        url.startsWith('/api/requirements/import/instruction')
+      ) {
+        return {
+          ok: false,
+          text: async () =>
+            '# Import instruction\n\nServer failure should not be stored.',
+        }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator({ selectArea: false })
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /How the AI request is built/ }),
+    )
+    await userEvent.click(screen.getByText('Show exact text sent'))
+
+    await waitFor(() => {
+      expect(
+        mockFetch.mock.calls.some(([url]) =>
+          String(url).includes('/api/requirements/import/instruction'),
+        ),
+      ).toBe(true)
+    })
+    expect(
+      screen.queryByText(/Server failure should not be stored/),
+    ).not.toBeInTheDocument()
+  })
+
+  it('loads specification-local import instruction with destination-specific reference data', async () => {
+    await renderOpenGenerator({
+      mode: 'specification-local',
+      specificationId: 8,
+    })
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /How the AI request is built/ }),
+    )
+    await userEvent.click(screen.getByText('Show exact text sent'))
+
+    await waitFor(() => {
+      expect(
+        mockFetch.mock.calls.some(
+          ([url]) =>
+            String(url) ===
+            '/api/requirements/import/instruction?locale=en&kind=requirements_specification&specificationId=8',
+        ),
+      ).toBe(true)
+    })
   })
 
   it('traps focus in the AI request explanation dialog and restores focus on close', async () => {
@@ -1396,6 +1516,83 @@ describe('AiRequirementGenerator', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('shows proposed needs references in a tab before AI analysis', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/ai/generate-requirement-import'
+      ) {
+        const payload = generatedImportPayload('Generated security requirement')
+        return generationStreamResponse({
+          payload,
+          rawContent: JSON.stringify(payload),
+          stats: {
+            completionTokens: 12,
+            cost: 0,
+            promptTokens: 10,
+            reasoningTokens: 0,
+            totalTokens: 22,
+          },
+          thinking: 'Prior thinking trace',
+        })
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/requirements/import/preview'
+      ) {
+        return previewResponse('Generated security requirement', {
+          needsReferenceProposals: [
+            {
+              description: 'Access needs from the operational service.',
+              key: 'need-access',
+              referencedCount: 1,
+              resolvedNeedsReferenceId: null,
+              text: 'Operational access need',
+              warnings: [],
+            },
+          ],
+          proposedNeedsReferenceKey: 'need-access',
+        })
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Encrypt logs')
+    await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '1')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    expect(
+      await screen.findByText('Generated security requirement'),
+    ).toBeInTheDocument()
+
+    const needsReferenceTab = screen.getByRole('button', {
+      name: /Proposed needs references \(1\)/,
+    })
+    const analysisTab = screen.getByRole('button', { name: 'AI analysis' })
+    expect(
+      needsReferenceTab.compareDocumentPosition(analysisTab) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    await userEvent.click(needsReferenceTab)
+
+    expect(screen.getByText('Operational access need')).toBeInTheDocument()
+    expect(screen.getByText('need-access')).toBeInTheDocument()
+    expect(screen.getByText('1 requirement row')).toBeInTheDocument()
+    expect(
+      screen.getByText('Access needs from the operational service.'),
+    ).toBeInTheDocument()
+  })
+
   it('hands the generated preview payload to the import preview callback', async () => {
     const onImportPreview = vi.fn()
     mockFetch.mockImplementation(async (url: string) => {
@@ -1455,7 +1652,7 @@ describe('AiRequirementGenerator', () => {
             description: 'Generated security requirement',
           }),
         ],
-        schemaVersion: 'requirement-import.v2',
+        schemaVersion: 'requirement-import.v3',
       }),
       {
         areaId: 1,

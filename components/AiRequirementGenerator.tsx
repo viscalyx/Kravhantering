@@ -48,7 +48,12 @@ import type { ImportRequirementsPayload } from '@/lib/requirements/import-schema
 
 type AiImportMode = 'library' | 'specification-local'
 type Phase = 'done' | 'error' | 'generating' | 'idle' | 'thinking'
-type PreviewTab = 'analysis' | 'normReferences' | 'rawResult' | 'requirements'
+type PreviewTab =
+  | 'analysis'
+  | 'needsReferenceProposals'
+  | 'normReferences'
+  | 'rawResult'
+  | 'requirements'
 
 interface AiRequirementGeneratorProps {
   aiGenerationAvailability?: AiRequirementGenerationAvailability
@@ -125,6 +130,7 @@ interface PreviewRow {
     qualityCharacteristic: string | null
     type: string | null
   }
+  proposedNeedsReferenceKey: string | null
   proposedNormReferenceKeys: string[]
   reviewRowId: string
   selected: boolean
@@ -147,7 +153,17 @@ interface ProposalPreview {
   warnings: ImportMessage[]
 }
 
+interface NeedsReferenceProposalPreview {
+  description: string | null
+  key: string
+  referencedCount: number
+  resolvedNeedsReferenceId: number | null
+  text: string
+  warnings: ImportMessage[]
+}
+
 interface PreviewResponse {
+  needsReferenceProposals: NeedsReferenceProposalPreview[]
   previewToken: string
   proposals: ProposalPreview[]
   rows: PreviewRow[]
@@ -510,6 +526,9 @@ export default function AiRequirementGenerator({
   const [aiRequestExplanationOpen, setAiRequestExplanationOpen] =
     useState(false)
   const [importInstruction, setImportInstruction] = useState('')
+  const [importInstructionScopeKey, setImportInstructionScopeKey] = useState<
+    string | null
+  >(null)
   const [importInstructionLoading, setImportInstructionLoading] =
     useState(false)
   const [needHelpOpen, setNeedHelpOpen] = useState(false)
@@ -565,6 +584,8 @@ export default function AiRequirementGenerator({
     useState<ImportRequirementsPayload | null>(null)
   const [previewToken, setPreviewToken] = useState<string | null>(null)
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([])
+  const [previewNeedsReferenceProposals, setPreviewNeedsReferenceProposals] =
+    useState<NeedsReferenceProposalPreview[]>([])
   const [previewProposals, setPreviewProposals] = useState<ProposalPreview[]>(
     [],
   )
@@ -585,6 +606,16 @@ export default function AiRequirementGenerator({
   const selectedModel = models.find(item => item.id === model)
   const inProgress = phase === 'thinking' || phase === 'generating'
   const targetAreaId = mode === 'library' ? areaId : undefined
+  const currentImportInstructionScopeKey =
+    mode === 'library'
+      ? `${locale}:library`
+      : `${locale}:specification-local:${specificationId ?? ''}`
+  const canLoadScopedImportInstruction =
+    mode === 'library' || specificationId != null
+  const scopedImportInstruction =
+    importInstructionScopeKey === currentImportInstructionScopeKey
+      ? importInstruction
+      : ''
   const isVisionCapabilitySelected = activeFilters.includes('vision')
   const canUseVision = modelSupports(selectedModel, 'vision')
   const selectedModelPrice = selectedModel
@@ -934,6 +965,8 @@ export default function AiRequirementGenerator({
       setAreaId('')
       setCandidateCount(DEFAULT_REQUIREMENT_CANDIDATE_COUNT)
       setAiRequestExplanationOpen(false)
+      setImportInstruction('')
+      setImportInstructionScopeKey(null)
       setImportInstructionLoading(false)
       setNeedHelpOpen(false)
       setAreaHelpOpen(false)
@@ -955,6 +988,7 @@ export default function AiRequirementGenerator({
       setGeneratedPayload(null)
       setPreviewToken(null)
       setPreviewRows([])
+      setPreviewNeedsReferenceProposals([])
       setPreviewProposals([])
       setSelectedRows(new Set())
       setSelectedProposals(new Set())
@@ -974,14 +1008,33 @@ export default function AiRequirementGenerator({
   }, [open])
 
   const loadImportInstruction = useCallback(async () => {
-    if (importInstructionLoading || importInstruction) return
+    if (
+      importInstructionLoading ||
+      scopedImportInstruction ||
+      !canLoadScopedImportInstruction
+    )
+      return
+    const instructionParams = new URLSearchParams({ locale })
+    if (mode === 'specification-local' && specificationId) {
+      instructionParams.set('kind', 'requirements_specification')
+      instructionParams.set('specificationId', String(specificationId))
+    } else if (mode === 'library') {
+      instructionParams.set('kind', 'requirements_library')
+    }
     setImportInstructionLoading(true)
     try {
       const instructionResponse = await apiFetch(
-        `/api/requirements/import/instruction?locale=${locale}`,
+        `/api/requirements/import/instruction?${instructionParams}`,
       )
+      if (!instructionResponse.ok) {
+        throw new Error(
+          (await readResponseMessage(instructionResponse)) ??
+            t('errors.failedToLoadImportInstruction'),
+        )
+      }
       const instruction = await instructionResponse.text()
       setImportInstruction(instruction)
+      setImportInstructionScopeKey(currentImportInstructionScopeKey)
     } catch (contractError) {
       setError(
         contractError instanceof Error
@@ -991,7 +1044,16 @@ export default function AiRequirementGenerator({
     } finally {
       setImportInstructionLoading(false)
     }
-  }, [importInstruction, importInstructionLoading, locale, t])
+  }, [
+    canLoadScopedImportInstruction,
+    currentImportInstructionScopeKey,
+    importInstructionLoading,
+    locale,
+    mode,
+    scopedImportInstruction,
+    specificationId,
+    t,
+  ])
 
   const loadPreview = useCallback(
     async (payload: ImportRequirementsPayload) => {
@@ -1026,6 +1088,7 @@ export default function AiRequirementGenerator({
       setGeneratedPayload(normalizedPayload)
       setPreviewToken(preview.previewToken)
       setPreviewRows(preview.rows)
+      setPreviewNeedsReferenceProposals(preview.needsReferenceProposals ?? [])
       setPreviewProposals(preview.proposals)
       setSelectedRows(
         new Set(
@@ -1122,6 +1185,7 @@ export default function AiRequirementGenerator({
     setGeneratedPayload(null)
     setPreviewToken(null)
     setPreviewRows([])
+    setPreviewNeedsReferenceProposals([])
     setPreviewProposals([])
     setSelectedRows(new Set())
     setSelectedProposals(new Set())
@@ -1363,11 +1427,20 @@ export default function AiRequirementGenerator({
               selectedProposalKeys.has(key),
             ),
         }))
+      const selectedNeedsReferenceKeys = new Set(
+        requirements
+          .map(requirement => requirement.needsReferenceKey)
+          .filter((key): key is string => Boolean(key)),
+      )
 
       if (requirements.length === 0) return null
       return normalizePayloadForMode(
         {
           ...generatedPayload,
+          proposedNeedsReferences:
+            generatedPayload.proposedNeedsReferences?.filter(proposal =>
+              selectedNeedsReferenceKeys.has(proposal.key),
+            ) ?? [],
           proposedNormReferences:
             generatedPayload.proposedNormReferences?.filter(proposal =>
               selectedProposalKeys.has(proposal.key),
@@ -1398,9 +1471,19 @@ export default function AiRequirementGenerator({
           row.proposedNormReferenceKeys.includes(proposal.key),
         ).length,
       }))
+    const selectedPreviewNeedsReferenceProposals =
+      previewNeedsReferenceProposals
+        .map(proposal => ({
+          ...proposal,
+          referencedCount: selectedPreviewRows.filter(
+            row => row.proposedNeedsReferenceKey === proposal.key,
+          ).length,
+        }))
+        .filter(proposal => proposal.referencedCount > 0)
     const preview =
       previewToken != null
         ? {
+            needsReferenceProposals: selectedPreviewNeedsReferenceProposals,
             previewToken,
             proposals: selectedPreviewProposals,
             rows: selectedPreviewRows,
@@ -1418,6 +1501,10 @@ export default function AiRequirementGenerator({
                 selectedPreviewProposals.reduce(
                   (count, proposal) => count + proposal.warnings.length,
                   0,
+                ) +
+                selectedPreviewNeedsReferenceProposals.reduce(
+                  (count, proposal) => count + proposal.warnings.length,
+                  0,
                 ),
             },
           }
@@ -1430,6 +1517,7 @@ export default function AiRequirementGenerator({
     buildSelectedPayload,
     mode,
     onImportPreview,
+    previewNeedsReferenceProposals,
     previewProposals,
     previewRows,
     previewToken,
@@ -2321,6 +2409,23 @@ export default function AiRequirementGenerator({
                     </button>
                     <button
                       aria-current={
+                        previewTab === 'needsReferenceProposals'
+                          ? 'page'
+                          : undefined
+                      }
+                      className={`min-h-11 px-3 text-sm font-medium ${
+                        previewTab === 'needsReferenceProposals'
+                          ? 'border-b-2 border-primary-600 text-primary-700 dark:text-primary-300'
+                          : 'text-secondary-600 hover:text-secondary-900 dark:text-secondary-400 dark:hover:text-secondary-100'
+                      }`}
+                      onClick={() => setPreviewTab('needsReferenceProposals')}
+                      type="button"
+                    >
+                      {t('needsReferenceProposals')} (
+                      {previewNeedsReferenceProposals.length})
+                    </button>
+                    <button
+                      aria-current={
                         previewTab === 'analysis' ? 'page' : undefined
                       }
                       className={`min-h-11 px-3 text-sm font-medium ${
@@ -2555,6 +2660,67 @@ export default function AiRequirementGenerator({
                     </div>
                   ) : null}
 
+                  {previewTab === 'needsReferenceProposals' ? (
+                    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
+                      {previewNeedsReferenceProposals.length === 0 ? (
+                        <p className="rounded-lg border border-secondary-200 p-4 text-sm text-secondary-600 dark:border-secondary-800 dark:text-secondary-300">
+                          {t('noNeedsReferenceProposals')}
+                        </p>
+                      ) : (
+                        previewNeedsReferenceProposals.map(proposal => (
+                          <article
+                            className="rounded-lg border border-secondary-200 bg-white p-4 dark:border-secondary-800 dark:bg-secondary-950"
+                            key={proposal.key}
+                          >
+                            <div className="min-w-0">
+                              <p className="wrap-break-word font-medium text-secondary-900 dark:text-secondary-50">
+                                {proposal.text}
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-2 text-xs text-secondary-600 dark:text-secondary-300">
+                                <span className="rounded-full bg-secondary-100 px-2 py-1 dark:bg-secondary-800">
+                                  {proposal.key}
+                                </span>
+                                <span className="rounded-full bg-secondary-100 px-2 py-1 dark:bg-secondary-800">
+                                  {t('needsReferenceProposalRows', {
+                                    count: proposal.referencedCount,
+                                  })}
+                                </span>
+                                {proposal.resolvedNeedsReferenceId != null ? (
+                                  <span className="rounded-full bg-secondary-100 px-2 py-1 dark:bg-secondary-800">
+                                    {t('resolvedNeedsReferenceId', {
+                                      id: proposal.resolvedNeedsReferenceId,
+                                    })}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {proposal.description ? (
+                                <p className="mt-3 whitespace-pre-wrap text-sm text-secondary-600 dark:text-secondary-300">
+                                  {proposal.description}
+                                </p>
+                              ) : null}
+                              {proposal.warnings.length > 0 ? (
+                                <ul className="mt-3 space-y-1 text-xs text-amber-700 dark:text-amber-300">
+                                  {proposal.warnings.map(warning => (
+                                    <li
+                                      className="flex gap-1"
+                                      key={`${proposal.key}-${warning.code}-${warning.message}`}
+                                    >
+                                      <AlertTriangle
+                                        aria-hidden
+                                        className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                                      />
+                                      <span>{warning.message}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                            </div>
+                          </article>
+                        ))
+                      )}
+                    </div>
+                  ) : null}
+
                   {previewTab === 'analysis' ? (
                     <pre className="min-h-0 flex-1 overflow-auto rounded-lg bg-secondary-950 p-4 font-mono text-xs leading-6 text-secondary-50 whitespace-pre-wrap">
                       {thinking || t('noAnalysis')}
@@ -2619,7 +2785,7 @@ export default function AiRequirementGenerator({
           candidateCount={candidateCount}
           dataPolicyLabels={selectedDataPolicyLabels}
           imageCount={images.length}
-          importInstruction={importInstruction}
+          importInstruction={scopedImportInstruction}
           importInstructionLoading={importInstructionLoading}
           locale={locale}
           modelName={selectedModelName}

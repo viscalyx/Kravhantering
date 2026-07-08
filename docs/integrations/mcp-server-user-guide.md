@@ -34,12 +34,24 @@ agents can use it reliably.
   locale-free.
 - `requirements_get_import_instruction`
   Retrieve the canonical `Importinstruktion` Markdown for a `Kravimportfil`.
-  This is Kravhantering guidance and does not override or replace the JSON Schema.
+  `destination` is required. For kravbiblioteksimport, pass
+  `{kind:"requirements_library"}`; no requirement area is needed because the
+  instruction does not vary by area. For kravunderlagsimport, pass
+  `{kind:"requirements_specification", specificationId}`. If the specification
+  is unknown, ask the user and use `requirements_manage_import`
+  `list_destinations` or `search_destinations` to resolve it before requesting
+  the instruction. This is Kravhantering guidance and does not override or
+  replace the JSON Schema.
 - `requirements_manage_norm_reference`
   List, search, get, or create Normbibliotek norm references, and list the
   connected library Krav IDs for one norm reference. Use list/search to resolve
   `normReferenceIds` before import validation; archived norm references are not
   valid for import.
+- `requirements_manage_needs_reference`
+  List, search, get, or create needs references for one requirements
+  specification. Use list/search/get to resolve `needsReferenceId` values before
+  validating a kravunderlagsimport. Ask the user before creating missing needs
+  references.
 - `requirements_manage_import`
   List/search import destinations, validate a `Kravimportfil`, execute a
   persisted validation session, or inspect full validation details. Validation
@@ -166,16 +178,65 @@ The response is:
 library Krav, deduplicated across linked kravversioner and sorted by `uniqueId`;
 kravunderlagslokala krav are not included.
 
+## Needs Reference Discovery
+
+Use `requirements_manage_needs_reference` for kravunderlagsimport when rows
+should point to existing or newly created behovsreferenser. First select a
+requirements specification with `requirements_manage_import` destination
+discovery, then copy:
+
+```text
+requirements_manage_import.result[].specificationId -> specificationId
+```
+
+Call `operation: "list"` or `operation: "search"` to discover existing rows.
+Search rows may add `match` metadata. For an exact row, call:
+
+```json
+{
+  "operation": "get",
+  "specificationId": 8,
+  "needsReferenceId": 12
+}
+```
+
+If a row needs a new behovsreferens, ask the user before creating it. After
+approval, call:
+
+```json
+{
+  "operation": "create",
+  "specificationId": 8,
+  "text": "Personuppgiftsbehandling behöver tekniskt skydd",
+  "description": "Stödjer införande av GDPR artikel 32."
+}
+```
+
+Then copy the returned ID into the import file:
+
+```text
+requirements_manage_needs_reference.result[].id -> requirements[].needsReferenceId
+requirements_manage_needs_reference.needsReference.id -> requirements[].needsReferenceId
+```
+
+If the user does not approve creation, ask whether importing without the
+needs-reference link is acceptable. Stop when the missing link is central to
+why the row belongs in the requirements specification. Do not rely on
+unresolved `proposedNeedsReferences` being resolved after MCP execute; MCP has
+no human import-review step between `validate` and `execute`.
+
 ## MCP Requirement Import Flow
 
 ```mermaid
 flowchart TD
-  A[List or search destinations] --> B[Get import schema and instruction]
-  B --> C[Resolve lookup IDs and norm references]
+  A[List or search destinations] --> B[Get import schema and destination-aware instruction]
+  B --> C[Resolve lookup IDs, norm references and needs references]
   C --> D[Validate Kravimportfil]
   D -->|validationToken, warnings only| E[Execute validationToken]
   D -->|missing norm reference| F[List/search/create norm reference]
+  D -->|missing needs reference| I[Ask user, then create or omit link]
   F --> C
+  I --> C
   D -->|debug needed| G[Inspect validation]
   E --> H[Requirements persisted]
 ```

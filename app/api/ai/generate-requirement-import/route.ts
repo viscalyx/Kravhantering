@@ -51,6 +51,7 @@ import {
   MAX_AI_IMAGES,
   MAX_AI_NEED_LENGTH,
   requirementCandidateCountSchema,
+  requirementImportDestination,
   requirementImportScopeAction,
   validateRequirementImportImages,
   validateRequirementImportScope,
@@ -263,10 +264,12 @@ export const POST = secureMutationRoute({
 
     let importInstruction: string
     try {
-      importInstruction =
-        await createRequirementsRuntime(db).service.buildImportInstruction(
-          locale,
-        )
+      importInstruction = await createRequirementsRuntime(
+        db,
+      ).service.buildImportInstruction(
+        locale,
+        requirementImportDestination(body),
+      )
     } catch (error) {
       logSanitizedError(
         'AI requirement import instruction loading failed',

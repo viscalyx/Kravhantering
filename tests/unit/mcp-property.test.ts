@@ -30,7 +30,7 @@ const TOOL_CASES: ToolCase[] = [
   {
     acceptsResponseFormat: false,
     name: 'requirements_get_import_instruction',
-    valid: {},
+    valid: { destination: { kind: 'requirements_library' } },
   },
   {
     acceptsResponseFormat: true,
@@ -94,6 +94,11 @@ const TOOL_CASES: ToolCase[] = [
     acceptsResponseFormat: false,
     name: 'requirements_manage_import',
     valid: { operation: 'list_destinations' },
+  },
+  {
+    acceptsResponseFormat: false,
+    name: 'requirements_manage_needs_reference',
+    valid: { operation: 'list', specificationId: 7 },
   },
   {
     acceptsResponseFormat: true,
@@ -237,6 +242,7 @@ function createService() {
     })),
     manageDeviation: vi.fn(),
     manageImport: vi.fn(async () => ({ result: [] })),
+    manageNeedsReference: vi.fn(async () => ({ result: [] })),
     manageNormReference: vi.fn(async () => ({ result: [] })),
     manageRequirement: vi.fn(async () => ({
       detail: createDetail(),
@@ -250,6 +256,7 @@ function createService() {
     })),
     previewLibraryImport: vi.fn(async () => ({
       mode: 'library' as const,
+      needsReferenceProposals: [],
       previewToken: 'token',
       proposals: [],
       rows: [],
@@ -257,6 +264,7 @@ function createService() {
     })),
     previewSpecificationLocalImport: vi.fn(async () => ({
       mode: 'specification-local' as const,
+      needsReferenceProposals: [],
       previewToken: 'token',
       proposals: [],
       rows: [],

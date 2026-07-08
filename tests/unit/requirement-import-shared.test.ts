@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { guardAiInput } from '@/app/api/ai/requirement-import-shared'
+import {
+  guardAiInput,
+  requirementImportDestination,
+} from '@/app/api/ai/requirement-import-shared'
 import type { AiSafetyDecision, AiSafetyScreeningResult } from '@/lib/ai/safety'
 import type { SqlServerDatabase } from '@/lib/db'
 import type { RequestContext } from '@/lib/requirements/auth'
@@ -230,5 +233,28 @@ describe('guardAiInput', () => {
     expect(onSafetyFilterFailure).toHaveBeenCalledWith(error)
     expect(safetyState.recordAiSafetyBlock).not.toHaveBeenCalled()
     expect(onBlockedInput).not.toHaveBeenCalled()
+  })
+})
+
+describe('requirementImportDestination', () => {
+  it('maps valid AI import scopes to import destinations', () => {
+    expect(
+      requirementImportDestination({
+        areaId: 7,
+        mode: 'library',
+      }),
+    ).toEqual({
+      areaId: 7,
+      kind: 'requirements_library',
+    })
+    expect(
+      requirementImportDestination({
+        mode: 'specification-local',
+        specificationId: 8,
+      }),
+    ).toEqual({
+      kind: 'requirements_specification',
+      specificationId: 8,
+    })
   })
 })

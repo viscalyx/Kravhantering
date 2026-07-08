@@ -1102,7 +1102,13 @@ describe('RequirementsClient', () => {
     expect(reportsAction?.badge).toBeUndefined()
     expect(reportsAction?.variant).toBeUndefined()
     expect(pdfListItem).toBeTruthy()
-    pdfListItem?.onClick?.()
+    if (
+      pdfListItem &&
+      !('kind' in pdfListItem) &&
+      typeof pdfListItem.onClick === 'function'
+    ) {
+      pdfListItem.onClick()
+    }
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename: 'requirements-list.pdf',
       url: '/sv/requirements/reports/pdf/list?locale=sv&sortBy=uniqueId&sortDirection=asc&statuses=3',
@@ -1137,7 +1143,13 @@ describe('RequirementsClient', () => {
       label: 'downloadCombinedReportPdf',
     })
     expect(reviewPdfItem).toBeTruthy()
-    reviewPdfItem?.onClick?.()
+    if (
+      reviewPdfItem &&
+      !('kind' in reviewPdfItem) &&
+      typeof reviewPdfItem.onClick === 'function'
+    ) {
+      reviewPdfItem.onClick()
+    }
     expect(pdfDownloadState.download).toHaveBeenLastCalledWith({
       fallbackFilename: 'combined-review-report.pdf',
       url: '/sv/requirements/reports/pdf/review-combined?ids=1',

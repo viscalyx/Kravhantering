@@ -11,6 +11,7 @@
     "requirements_list_specifications",
     "requirements_manage_import",
     "requirements_manage_improvement_suggestion",
+    "requirements_manage_needs_reference",
     "requirements_manage_norm_reference",
     "requirements_manage_requirement",
     "requirements_query_catalog",

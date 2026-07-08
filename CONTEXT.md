@@ -972,9 +972,11 @@ kravet i kravbiblioteket.
 _Avoid_: Kravunderlagsrad, kopia av krav.
 
 **Behovsreferens**:
-En underlagsspecifik hänvisning som förklarar varför en kravtillämpning behövs
-i kravunderlaget. Behovsreferensen ger också sammanhang när kravtillämpningen
-ska verifieras.
+En underlagsspecifik hänvisning som förklarar varför ett krav behövs i
+kravunderlaget. En behovsreferens hör till exakt ett kravunderlag, kan höra
+till en kravtillämpning eller ett kravunderlagslokalt krav och ger också
+sammanhang när kravet ska verifieras. Samma behovsreferens kan användas för
+flera krav i samma kravunderlag när de delar samma behov, källa eller scenario.
 
 - `en`: Needs reference
 
