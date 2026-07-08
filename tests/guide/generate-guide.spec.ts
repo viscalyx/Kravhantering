@@ -477,11 +477,23 @@ async function installAiGuideMocks(page: Page): Promise<() => Promise<void>> {
         reasoningTokens: 410,
         totalTokens: 2210,
       },
-      thinking:
-        'Jag delar upp behovet i betygsregistrering, spårbar ändringshistorik och skydd av elevuppgifter. Först behövs ett funktionellt krav som beskriver lärarens huvudflöde: välja kurs, elev och betygsvärde samt fastställa betyget. Därefter behövs ett spårbarhetskrav eftersom ändringar av betyg är känsliga och måste kunna granskas i efterhand.\n\nDen fiktiva riktlinjen EDU-GRADE-TRACE-2026 föreslås som normreferens för ändringsloggning och spårbarhet. Jag lägger den som föreslagen normreferens, inte som befintlig normreferens, eftersom den inte finns i normbiblioteket ännu.\n\nSlutligen behövs ett icke-funktionellt krav för skydd av elevuppgifter. Det ska handla om rollbaserad åtkomst och säkra felmeddelanden så att känsliga elevuppgifter inte exponeras av misstag.',
+      thinking: [
+        '# Analys av betygskrav',
+        '',
+        'Jag delar upp behovet i betygsregistrering, spårbar ändringshistorik och skydd av elevuppgifter.',
+        '',
+        '- Först behövs ett funktionellt krav som beskriver lärarens huvudflöde.',
+        '- Därefter behövs ett spårbarhetskrav eftersom ändringar av betyg är känsliga.',
+        '- Slutligen behövs ett icke-funktionellt krav för skydd av elevuppgifter.',
+        '',
+        'Den fiktiva riktlinjen `EDU-GRADE-TRACE-2026` föreslås som normreferens för ändringsloggning och spårbarhet.',
+      ].join('\n'),
     }
     await route.fulfill({
-      body: `event: done\ndata: ${JSON.stringify(body)}\n\n`,
+      body: [
+        `event: thinking\ndata: ${JSON.stringify({ thinkingSoFar: body.thinking })}\n\n`,
+        `event: done\ndata: ${JSON.stringify(body)}\n\n`,
+      ].join(''),
       contentType: 'text/event-stream',
     })
   }
@@ -2032,14 +2044,14 @@ test.describe('Kravhantering — Guidegenerering', () => {
       })
       await aiDialog.getByRole('button', { name: 'AI-analys' }).click()
       await expect(
-        aiDialog.locator('pre').filter({ hasText: 'spårbar ändringshistorik' }),
+        aiDialog.getByRole('heading', { name: 'Analys av betygskrav' }),
       ).toBeVisible({ timeout: 5_000 })
 
       await snap(
         page,
         'ai-analys',
         'AI-assisterat författande — AI-analys',
-        'Fliken **AI-analys** visar modellens resonemang som en separat loggyta. Den är till för granskning och förbättring av prompten, inte som en del av de krav som importeras.',
+        'Fliken **AI-analys** visar modellens stödjande resonemang med säker, begränsad Markdown-formatering, till exempel rubriker, listor och kodblock. Den är till för granskning och förbättring av prompten, inte som en del av de krav som importeras.',
         { fullPage: false },
       )
     })

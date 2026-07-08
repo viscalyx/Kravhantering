@@ -174,6 +174,30 @@ function toNullableTypeSchema(
   }
 }
 
+function hasIntegerType(schema: Record<string, unknown>) {
+  const { type } = schema
+  return (
+    type === 'integer' ||
+    (Array.isArray(type) && type.some(item => item === 'integer'))
+  )
+}
+
+function toProviderStringFallbackSchema(
+  schema: Record<string, unknown>,
+): Record<string, unknown> {
+  const { type } = schema
+  if (
+    Array.isArray(type) &&
+    type.length === 2 &&
+    type.includes('string') &&
+    type.includes('null') &&
+    schema.minLength === undefined
+  ) {
+    return { ...schema, type: 'string' }
+  }
+  return schema
+}
+
 function toStructuredOutputStrictSchema(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(item => toStructuredOutputStrictSchema(item))
@@ -181,11 +205,15 @@ function toStructuredOutputStrictSchema(value: unknown): unknown {
   if (!isJsonSchemaRecord(value)) return value
 
   const nullableSchema = toNullableTypeSchema(value)
-  const schema = nullableSchema ?? value
+  const schema = toProviderStringFallbackSchema(nullableSchema ?? value)
   const result: Record<string, unknown> = {}
+  const stripIntegerRange = hasIntegerType(schema)
 
   for (const [key, item] of Object.entries(schema)) {
     if (key === '$schema') continue
+    if (stripIntegerRange && (key === 'maximum' || key === 'minimum')) {
+      continue
+    }
     if (key === 'const') {
       result.enum = [item]
       continue

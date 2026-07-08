@@ -20,6 +20,7 @@ const translate = Object.assign(
       noNeedsReferenceProposals: 'No proposed needs references are loaded.',
       rawResultTab: 'Raw result',
       resolvedNeedsReferenceId: 'Existing needs reference #{id}',
+      thinkingPhase: 'Analyzing need…',
       'requestExplanation.aiInstructionLabel': 'AI instruction',
       'requestExplanation.aiInstructionValue':
         "The application's writing rules for requirement candidates",
@@ -1672,6 +1673,7 @@ describe('AiRequirementGenerator', () => {
   it('streams analysis text in the right pane and follows appended content', async () => {
     const finishGeneration = createDeferred<void>()
     const scrollIntoView = vi.fn()
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
     const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
       configurable: true,
@@ -1695,7 +1697,7 @@ describe('AiRequirementGenerator', () => {
                 new TextEncoder().encode(
                   `event: thinking\ndata: ${JSON.stringify({
                     thinkingSoFar:
-                      'First analysis line.\nSecond analysis line.',
+                      '# First analysis\n\n- Second analysis line.',
                   })}\n\n`,
                 ),
               )
@@ -1715,7 +1717,7 @@ describe('AiRequirementGenerator', () => {
                       reasoningTokens: 0,
                       totalTokens: 22,
                     },
-                    thinking: 'First analysis line.\nSecond analysis line.',
+                    thinking: '# First analysis\n\n- Second analysis line.',
                   })}\n\n`,
                 ),
               )
@@ -1743,14 +1745,171 @@ describe('AiRequirementGenerator', () => {
       )
 
       expect(
-        await screen.findByText(/Second analysis line/u),
+        await screen.findByRole('heading', {
+          level: 3,
+          name: 'First analysis',
+        }),
       ).toBeInTheDocument()
+      expect(screen.queryByText('Analyzing need…')).not.toBeInTheDocument()
+      expect(screen.getByText('Second analysis line.')).toBeInTheDocument()
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 150)
       await waitFor(() => {
         expect(scrollIntoView).toHaveBeenCalled()
       })
       finishGeneration.resolve()
       expect(
         await screen.findByText('Generated analysis requirement'),
+      ).toBeInTheDocument()
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+        configurable: true,
+        value: originalScrollIntoView,
+      })
+      setTimeoutSpy.mockRestore()
+    }
+  })
+
+  it('pauses streamed analysis auto-follow until the user scrolls back to the bottom', async () => {
+    const sendSecondThinking = createDeferred<void>()
+    const sendThirdThinking = createDeferred<void>()
+    const finishGeneration = createDeferred<void>()
+    const scrollIntoView = vi.fn()
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    })
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/ai/generate-requirement-import'
+      ) {
+        return {
+          body: new ReadableStream({
+            async start(controller) {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `event: thinking\ndata: ${JSON.stringify({
+                    thinkingSoFar: '# First analysis',
+                  })}\n\n`,
+                ),
+              )
+              await sendSecondThinking.promise
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `event: thinking\ndata: ${JSON.stringify({
+                    thinkingSoFar: '# First analysis\n\nSecond analysis line.',
+                  })}\n\n`,
+                ),
+              )
+              await sendThirdThinking.promise
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `event: thinking\ndata: ${JSON.stringify({
+                    thinkingSoFar:
+                      '# First analysis\n\nSecond analysis line.\n\nThird analysis line.',
+                  })}\n\n`,
+                ),
+              )
+              await finishGeneration.promise
+              const payload = generatedImportPayload(
+                'Generated pinned-scroll requirement',
+              )
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `event: done\ndata: ${JSON.stringify({
+                    payload,
+                    rawContent: JSON.stringify(payload),
+                    stats: {
+                      completionTokens: 12,
+                      cost: 0,
+                      promptTokens: 10,
+                      reasoningTokens: 0,
+                      totalTokens: 22,
+                    },
+                    thinking:
+                      '# First analysis\n\nSecond analysis line.\n\nThird analysis line.',
+                  })}\n\n`,
+                ),
+              )
+              controller.close()
+            },
+          }),
+          ok: true,
+        }
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/requirements/import/preview'
+      ) {
+        return previewResponse('Generated pinned-scroll requirement')
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    try {
+      await renderOpenGenerator()
+      await userEvent.type(screen.getByLabelText('topicLabel'), 'Grade access')
+      await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '1')
+      await userEvent.click(
+        screen.getByRole('button', { name: /generateButton/i }),
+      )
+
+      expect(
+        await screen.findByRole('heading', {
+          level: 3,
+          name: 'First analysis',
+        }),
+      ).toBeInTheDocument()
+      await waitFor(() => {
+        expect(scrollIntoView).toHaveBeenCalled()
+      })
+
+      const scrollPane = screen
+        .getByRole('heading', { level: 3, name: 'First analysis' })
+        .closest('[aria-live="polite"]') as HTMLElement
+      let scrollTop = 20
+      Object.defineProperties(scrollPane, {
+        clientHeight: { configurable: true, get: () => 100 },
+        scrollHeight: { configurable: true, get: () => 400 },
+        scrollTop: {
+          configurable: true,
+          get: () => scrollTop,
+          set: value => {
+            scrollTop = Number(value)
+          },
+        },
+      })
+      fireEvent.scroll(scrollPane)
+
+      scrollIntoView.mockClear()
+      sendSecondThinking.resolve()
+      expect(
+        await screen.findByText('Second analysis line.'),
+      ).toBeInTheDocument()
+      expect(scrollIntoView).not.toHaveBeenCalled()
+
+      scrollTop = 276
+      fireEvent.scroll(scrollPane)
+
+      scrollIntoView.mockClear()
+      sendThirdThinking.resolve()
+      expect(
+        await screen.findByText('Third analysis line.'),
+      ).toBeInTheDocument()
+      await waitFor(() => {
+        expect(scrollIntoView).toHaveBeenCalled()
+      })
+
+      finishGeneration.resolve()
+      expect(
+        await screen.findByText('Generated pinned-scroll requirement'),
       ).toBeInTheDocument()
     } finally {
       Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {

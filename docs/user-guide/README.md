@@ -405,8 +405,9 @@ importgranskningen öppnas.
 
 ### AI-assisterat författande — AI-analys
 
-Fliken **AI-analys** visar modellens resonemang som en separat loggyta. Den är
-till för granskning och förbättring av prompten, inte som en del av de krav som
+Fliken **AI-analys** visar modellens stödjande resonemang med säker, begränsad
+Markdown-formatering, till exempel rubriker, listor och kodblock. Den är till
+för granskning och förbättring av prompten, inte som en del av de krav som
 importeras.
 
 ![AI-assisterat författande — AI-analys](images/039-ai-analys.png)
