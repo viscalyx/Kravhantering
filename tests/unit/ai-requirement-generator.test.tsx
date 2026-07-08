@@ -1673,6 +1673,7 @@ describe('AiRequirementGenerator', () => {
   it('streams analysis text in the right pane and follows appended content', async () => {
     const finishGeneration = createDeferred<void>()
     const scrollIntoView = vi.fn()
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
     const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
       configurable: true,
@@ -1751,6 +1752,7 @@ describe('AiRequirementGenerator', () => {
       ).toBeInTheDocument()
       expect(screen.queryByText('Analyzing need…')).not.toBeInTheDocument()
       expect(screen.getByText('Second analysis line.')).toBeInTheDocument()
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 150)
       await waitFor(() => {
         expect(scrollIntoView).toHaveBeenCalled()
       })
@@ -1763,6 +1765,7 @@ describe('AiRequirementGenerator', () => {
         configurable: true,
         value: originalScrollIntoView,
       })
+      setTimeoutSpy.mockRestore()
     }
   })
 

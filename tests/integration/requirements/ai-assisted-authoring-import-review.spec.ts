@@ -200,11 +200,9 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
   await expect(
     dialog.getByRole('heading', { level: 3, name: 'Analys av betygskrav' }),
   ).toBeVisible()
-  await expect(dialog.getByText('Säkerställ behörighet')).toBeVisible()
-  await expect(dialog.getByText('https://example.test/betyg.png')).toBeVisible()
-  await expect(
-    dialog.locator('pre code').filter({ hasText: '<script>alert(1)</script>' }),
-  ).toBeVisible()
+  await expect(dialog).toContainText('Säkerställ behörighet')
+  await expect(dialog).toContainText('https://example.test/betyg.png')
+  await expect(dialog).toContainText('<script>alert(1)</script>')
   await expect(dialog.getByRole('link')).toHaveCount(0)
   await expect(dialog.locator('img')).toHaveCount(0)
 

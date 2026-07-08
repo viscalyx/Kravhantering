@@ -326,6 +326,8 @@ export default function SafeMarkdown({
         allowedElements={ALLOWED_MARKDOWN_ELEMENTS}
         components={components}
         unwrapDisallowed
+        // Safe while link/image renderers stay display-only: they never pass
+        // raw href/src into DOM attributes. Revisit if those renderers change.
         urlTransform={value => value}
       >
         {prepared}
