@@ -1,0 +1,30 @@
+[Unit]
+Description=Kravhantering HSA directory SOAP mock
+Requires=krav-support-network.service krav-hsa-mtls-certs-volume.service krav-hsa-mtls-cert-generator.service
+After=krav-support-network.service krav-hsa-mtls-cert-generator.service
+
+[Container]
+ContainerName=hsa-directory-mock
+Image=localhost/kravhantering/hsa-directory-mock:local
+Network=krav-support.network
+Volume=krav-hsa-mtls-certs.volume:/run/hsa-mtls:ro,Z
+Environment=PORT=8443
+HealthCmd=node --input-type=module -e "process.env.NODE_TLS_REJECT_UNAUTHORIZED='0'; const response = await fetch('https://127.0.0.1:8443/health'); if (!response.ok) process.exit(1);"
+HealthInterval=10s
+HealthRetries=12
+HealthStartPeriod=10s
+HealthTimeout=5s
+HealthOnFailure=kill
+
+[Service]
+Environment=HOME=%h
+Environment=XDG_CONFIG_HOME=%h/.config
+Environment=XDG_DATA_HOME=%h/.local/share
+Environment=XDG_RUNTIME_DIR=%t
+Environment=CONTAINERS_CONF=%h/.config/containers/containers.conf
+Environment=CONTAINERS_STORAGE_CONF=%h/.config/containers/storage.conf
+Restart=on-failure
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

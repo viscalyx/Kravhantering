@@ -1,0 +1,11 @@
+[Network]
+NetworkName=krav-support
+Driver=bridge
+
+[Service]
+Environment=HOME=%h
+Environment=XDG_CONFIG_HOME=%h/.config
+Environment=XDG_DATA_HOME=%h/.local/share
+Environment=XDG_RUNTIME_DIR=%t
+Environment=CONTAINERS_CONF=%h/.config/containers/containers.conf
+Environment=CONTAINERS_STORAGE_CONF=%h/.config/containers/storage.conf

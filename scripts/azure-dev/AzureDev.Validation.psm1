@@ -1,0 +1,291 @@
+Set-StrictMode -Version Latest
+
+function Invoke-AzureDevSmokeValidation {
+  [CmdletBinding(SupportsShouldProcess = $true)]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context
+  )
+
+  $remoteScript = @'
+set -euo pipefail
+export HOME=/home/vscode
+export XDG_CONFIG_HOME="${HOME}/.config"
+export XDG_DATA_HOME="${HOME}/.local/share"
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+export CONTAINERS_CONF="${HOME}/.config/containers/containers.conf"
+export CONTAINERS_STORAGE_CONF="${HOME}/.config/containers/storage.conf"
+
+managed_units=(
+  krav-db.service
+  krav-idp.service
+  krav-kong.service
+  krav-hsa-directory-mock.service
+  krav-hsa-person-lookup-adapter.service
+)
+managed_containers=(
+  db
+  idp
+  kong
+  hsa-directory-mock
+  hsa-person-lookup-adapter
+)
+
+dump_smoke_diagnostics() {
+  printf '\nAzure VM smoke validation diagnostics\n'
+  printf '\nListening TCP sockets:\n'
+  ss -ltn || true
+  printf '\nUser systemd environment:\n'
+  systemctl --user show-environment || true
+  printf '\nFailed user services:\n'
+  systemctl --user --failed --no-pager || true
+
+  local unit
+  for unit in "${managed_units[@]}"; do
+    printf '\nService status for %s:\n' "${unit}"
+    systemctl --user status "${unit}" --no-pager || true
+    printf '\nService journal for %s:\n' "${unit}"
+    journalctl --user -u "${unit}" -n 80 --no-pager || true
+  done
+
+  printf '\nPodman containers:\n'
+  podman ps -a || true
+  printf '\nPodman store:\n'
+  podman info --format 'GraphRoot={{.Store.GraphRoot}} RunRoot={{.Store.RunRoot}}' || true
+  printf '\nPodman networks:\n'
+  podman network ls || true
+  printf '\nPodman volumes:\n'
+  podman volume ls || true
+
+  local container
+  for container in "${managed_containers[@]}"; do
+    printf '\nContainer logs for %s:\n' "${container}"
+    podman logs --tail 100 "${container}" || true
+  done
+}
+
+require_loopback_port() {
+  local name="$1"
+  local port="$2"
+  local attempt
+
+  for attempt in $(seq 1 24); do
+    if ss -ltn | grep -q "127.0.0.1:${port}"; then
+      return
+    fi
+    sleep 5
+  done
+
+  printf 'Missing loopback listener for %s on 127.0.0.1:%s\n' "${name}" "${port}"
+  dump_smoke_diagnostics
+  exit 1
+}
+
+wait_for_sql_server_login() {
+  local attempt
+  local wait_output
+
+  wait_output="$(mktemp)"
+  for attempt in $(seq 1 8); do
+    printf 'Waiting for SQL Server login readiness, attempt %s/8...\n' "${attempt}"
+    if node scripts/db-sqlserver-admin.mjs wait >"${wait_output}" 2>&1; then
+      cat "${wait_output}"
+      rm -f "${wait_output}"
+      return
+    fi
+
+    if [ "${attempt}" -lt 8 ]; then
+      sleep 10
+    fi
+  done
+
+  printf 'SQL Server did not become login-ready before database setup.\n'
+  printf '\nLast db:wait output:\n'
+  cat "${wait_output}" || true
+  rm -f "${wait_output}"
+  dump_smoke_diagnostics
+  exit 1
+}
+
+run_workspace_command_or_diagnose() {
+  local description="$1"
+  shift
+
+  if "$@"; then
+    return
+  fi
+
+  printf '%s failed.\n' "${description}"
+  dump_smoke_diagnostics
+  exit 1
+}
+
+python3 - <<'PY'
+from pathlib import Path
+import sys
+
+import yaml
+
+path = Path('/workspace/containers/kong/kong.yml')
+data = yaml.safe_load(path.read_text(encoding='utf-8')) or {}
+expected = {'http', 'https'}
+
+for service in data.get('services') or []:
+    for route in service.get('routes') or []:
+        if route.get('name') == 'hsa-directory-person-lookup-rest':
+            protocols = route.get('protocols')
+            if isinstance(protocols, list) and expected.issubset(set(protocols)):
+                sys.exit(0)
+            print('Kong HSA route must allow both http and https protocols')
+            sys.exit(1)
+
+print('Kong HSA route hsa-directory-person-lookup-rest not found')
+sys.exit(1)
+PY
+
+test -d /workspace
+test "$(stat -c '%U' /workspace)" = "vscode"
+test -d /workspace/.git
+findmnt /mnt/krav-azure-dev-data >/dev/null
+findmnt /workspace >/dev/null
+findmnt /var/lib/krav-azure-dev >/dev/null
+findmnt /home/vscode/.local/share/containers/storage >/dev/null
+data_device_real="$(readlink -f /dev/disk/azure/scsi1/lun0)"
+data_mount_source="$(findmnt -n -o SOURCE /mnt/krav-azure-dev-data)"
+data_mount_real="$(readlink -f "${data_mount_source}")"
+test "${data_mount_real}" = "${data_device_real}"
+data_device_number="$(stat -c '%d' /mnt/krav-azure-dev-data)"
+test "$(stat -c '%d' /workspace)" = "${data_device_number}"
+test "$(stat -c '%d' /var/lib/krav-azure-dev)" = "${data_device_number}"
+test "$(stat -c '%d' /home/vscode/.local/share/containers/storage)" = "${data_device_number}"
+grep -Fq 'graphroot = "/home/vscode/.local/share/containers/storage"' /home/vscode/.config/containers/storage.conf
+grep -Fq 'rootless_storage_path = "/home/vscode/.local/share/containers/storage"' /home/vscode/.config/containers/storage.conf
+test "$(podman info --format '{{.Store.GraphRoot}}')" = "/home/vscode/.local/share/containers/storage"
+podman network exists krav-support
+node --version 2>/dev/null | grep -Eq '^v24\.'
+npm --version >/dev/null 2>&1
+dotnet --version 2>/dev/null | grep -Eq '^8\.'
+git --version >/dev/null 2>&1
+gh --version >/dev/null 2>&1
+docker --version >/dev/null 2>&1
+docker compose version >/dev/null 2>&1
+docker buildx version >/dev/null 2>&1
+podman --version >/dev/null 2>&1
+podman-compose --version >/dev/null 2>&1
+python3 --version >/dev/null 2>&1
+dotenv-linter --version >/dev/null 2>&1
+test -x /workspace/node_modules/.bin/playwright
+/workspace/node_modules/.bin/playwright --version >/dev/null 2>&1
+loginctl show-user vscode -p Linger | grep -q 'Linger=yes'
+check_user_service() {
+  local unit="$1"
+  local container="${2:-}"
+  if systemctl --user is-active --quiet "${unit}"; then
+    return
+  fi
+
+  printf 'User service is not active: %s\n' "${unit}"
+  if [ -n "${container}" ]; then
+    printf '\nContainer logs for %s:\n' "${container}"
+    podman logs --tail 120 "${container}" || true
+  fi
+  dump_smoke_diagnostics
+  exit 1
+}
+check_user_service krav-db.service db
+check_user_service krav-idp.service idp
+check_user_service krav-kong.service kong
+check_user_service krav-hsa-directory-mock.service hsa-directory-mock
+check_user_service krav-hsa-person-lookup-adapter.service hsa-person-lookup-adapter
+require_loopback_port 'SQL Server' 1433
+require_loopback_port 'Keycloak' 8080
+require_loopback_port 'Kong HSA proxy' 18000
+if ! grep -Fq 'HSA_PERSON_LOOKUP_URL=http://127.0.0.1:18000/hsa/person-records/lookup' /workspace/.env.development.local; then
+  printf 'Missing managed HSA_PERSON_LOOKUP_URL in /workspace/.env.development.local\n'
+  dump_smoke_diagnostics
+  exit 1
+fi
+hsa_response="$(mktemp)"
+hsa_headers="$(mktemp)"
+hsa_exit=1
+hsa_status=000
+hsa_succeeded=false
+for attempt in $(seq 1 24); do
+  : > "${hsa_response}"
+  : > "${hsa_headers}"
+  set +e
+  hsa_status="$(curl -s -o "${hsa_response}" -D "${hsa_headers}" -w '%{http_code}' -X POST http://127.0.0.1:18000/hsa/person-records/lookup \
+    -H 'content-type: application/json' \
+    --data '{"hsaId":"SE5560000001-manualarea1"}')"
+  hsa_exit=$?
+  set -e
+  if [ "${hsa_exit}" -eq 0 ] && [ "${hsa_status}" = "200" ]; then
+    hsa_succeeded=true
+    break
+  fi
+  if [ "${attempt}" -lt 24 ]; then
+    sleep 5
+  fi
+done
+if [ "${hsa_succeeded}" != "true" ]; then
+  printf 'HSA smoke request failed. curl exit: %s HTTP status: %s\n' "${hsa_exit}" "${hsa_status:-unknown}"
+  printf '\nResponse headers:\n'
+  cat "${hsa_headers}" || true
+  printf '\nResponse body:\n'
+  cat "${hsa_response}" || true
+  printf '\nKong health:\n'
+  podman exec kong kong health || true
+  printf '\nKong root HTTP probe:\n'
+  curl -sv http://127.0.0.1:18000/ >/dev/null || true
+  dump_smoke_diagnostics
+  rm -f "${hsa_response}" "${hsa_headers}"
+  exit 1
+fi
+rm -f "${hsa_response}" "${hsa_headers}"
+cd /workspace
+wait_for_sql_server_login
+run_workspace_command_or_diagnose 'SQL Server database setup' npm run db:setup
+run_workspace_command_or_diagnose 'SQL Server health check' npm run db:health
+run_workspace_command_or_diagnose 'Playwright dry-run install check' ./node_modules/.bin/playwright install --dry-run chromium
+'@
+
+  $command = "bash -lc " + (
+    "'" + $remoteScript.Replace("'", "'\''") + "'"
+  )
+
+  if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Run smoke validation')) {
+    $result = Invoke-AzureDevNativeCommand `
+      -FilePath 'ssh' `
+      -Arguments @(
+        '-o',
+        'BatchMode=yes',
+        '-o',
+        'ClearAllForwardings=yes',
+        '-o',
+        'StrictHostKeyChecking=accept-new',
+        $Context.Config.SshHostAlias,
+        $command
+      )
+    if ($result.ExitCode -ne 0) {
+      throw "Azure VM smoke validation failed.`n$($result.Text.Trim())"
+    }
+  }
+}
+
+function Get-AzureDevValidationStatus {
+  [CmdletBinding()]
+  param(
+    [AllowNull()]
+    [object]$State
+  )
+
+  if ($null -eq $State -or $null -eq $State.lastValidationStatus) {
+    return 'not-run'
+  }
+  return $State.lastValidationStatus
+}
+
+Export-ModuleMember -Function `
+  Get-AzureDevValidationStatus, `
+  Invoke-AzureDevSmokeValidation

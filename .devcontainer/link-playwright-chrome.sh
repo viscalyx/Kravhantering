@@ -2,11 +2,16 @@
 set -euo pipefail
 
 browser_root="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
-chrome_bin="$(
-  find "$browser_root" -path '*/chrome-linux/chrome' -type f 2>/dev/null |
-    sort -V |
-    tail -n 1
-)"
+chrome_bin=""
+if [[ -d "$browser_root" ]]; then
+  chrome_bin="$(
+    find "$browser_root" \
+      \( -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' \) \
+      -type f 2>/dev/null |
+      sort -V |
+      tail -n 1
+  )"
+fi
 
 if [[ -z "$chrome_bin" ]]; then
   for candidate in chromium-browser chromium google-chrome chrome; do
