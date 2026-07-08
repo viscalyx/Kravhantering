@@ -103,7 +103,7 @@
     "test:integration:report:dev": "playwright show-report --host 0.0.0.0 playwright-report-dev",
     "test:integration:report:prodlike": "playwright show-report --host 0.0.0.0 playwright-report-prodlike",
     "test:release-smoke:report": "playwright show-report --host 0.0.0.0 playwright-report-release-smoke",
-    "type-check": "rimraf .next/dev/types && next typegen && tsc --noEmit",
+    "type-check": "cross-env-shell NODE_ENV=development BUILD_TARGET=dev \"rimraf .next/dev/types && next typegen && tsc --noEmit\"",
     "fix": "npm run format && npm run lint:fix && npm run lint:md:fix && npm run dotenv:fix && npm run spell:fix",
     "clean": "rimraf .next out",
     "perf:requirements-list": "node scripts/requirements-list-performance.mjs check",
