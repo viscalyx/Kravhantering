@@ -54,6 +54,7 @@ AzureDev.Podman.psm1
 
 Module responsibilities:
 
+<!-- markdownlint-disable MD013 -->
 | Module | Responsibility |
 | --- | --- |
 | `AzureDev.Config.psm1` | Strict dotenv parsing, defaults, precedence, config validation, and context creation. |
@@ -63,6 +64,7 @@ Module responsibilities:
 | `AzureDev.Bootstrap.psm1` | Uploads `bootstrap-host.sh` and Quadlet templates with `scp`, then invokes bootstrap over SSH with port forwarding disabled. |
 | `AzureDev.Validation.psm1` | Runs post-setup smoke validation over SSH and reports remote diagnostics on failure. |
 | `AzureDev.Podman.psm1` | Shared support-service unit and port metadata used by validation. |
+<!-- markdownlint-enable MD013 -->
 
 Keep parsing and planning logic separate from Azure and filesystem mutations.
 This is what makes `-WhatIf`, dry inspection, and future focused tests
@@ -473,6 +475,7 @@ When changing Azure VM Remote SSH behavior:
 
 The original design work is tracked in:
 
+<!-- markdownlint-disable MD013 -->
 - [Compare Ubuntu 24.04 and Rocky Linux for Azure VM base OS](https://github.com/viscalyx/Kravhantering/issues/432)
 - [Choose secure connectivity model for Azure Remote SSH](https://github.com/viscalyx/Kravhantering/issues/433)
 - [Choose Azure provisioning substrate and permissions model](https://github.com/viscalyx/Kravhantering/issues/434)
@@ -482,3 +485,4 @@ The original design work is tracked in:
 - [Define operator configuration, credentials, and SSH integration contract](https://github.com/viscalyx/Kravhantering/issues/438)
 - [Define idempotency, teardown, and state-safety contract](https://github.com/viscalyx/Kravhantering/issues/439)
 - [Define validation and acceptance checks for the Azure development environment](https://github.com/viscalyx/Kravhantering/issues/440)
+<!-- markdownlint-enable MD013 -->
