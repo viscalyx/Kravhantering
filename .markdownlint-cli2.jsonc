@@ -28,6 +28,7 @@
     "!playwright-report-dev/**",
     "!playwright-report-preview/**",
     "!tests/quality/spec_audits/**",
-    "!docs/operations/operator-upgrade-notes.md"
+    "!docs/operations/operator-upgrade-notes.md",
+    "!docs/agents/issue-tracker.md"
   ]
 }
