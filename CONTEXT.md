@@ -398,15 +398,14 @@ _Avoid_: Prompt när hela anropet avses, AI-instruktion när bara
 författarinstruktionen avses.
 
 **AI-analys**:
-Analys- eller resonemangstext som en AI-leverantör returnerar tillsammans med
-förslag i AI-assisterat författande. AI-analysen är stödjande kontext för
-användarens granskning och är inte en fullständig eller auktoritativ
-resonemangskedja.
+Modellens stödjande resonemang som visas tillsammans med förslag i
+AI-assisterat författande. AI-analys är granskningsstöd och blir inte
+auktoritativ kravtext eller sparat kravinnehåll.
 
 - `en`: AI analysis
 
-_Avoid_: Resonemangskedja, fullständig tankekedja, beslutsmotivering,
-granskningsprotokoll.
+_Avoid_: Råresultat, kravtext, kravkandidat, AI-logg, resonemangskedja,
+fullständig tankekedja, beslutsmotivering, granskningsprotokoll.
 
 **Råresultat**:
 Systemnära output från AI-assisterat författande eller kravbiblioteksimport som

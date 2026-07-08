@@ -31,6 +31,7 @@ import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { modalResizableTextareaRows4ClassName } from '@/components/modal-textarea-class'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
+import SafeMarkdown from '@/components/SafeMarkdown'
 import {
   type AiRequirementGenerationAvailability,
   DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
@@ -216,6 +217,7 @@ const REASONING_EFFORT_OPTIONS = [
 ] as const
 const MAX_IMAGES = 3
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+const SCROLL_FOLLOW_BOTTOM_TOLERANCE_PX = 24
 const ALLOWED_IMAGE_TYPES = [
   'image/png',
   'image/jpeg',
@@ -398,6 +400,13 @@ function modelSupports(model: OpenRouterModel | undefined, parameter: string) {
   return model?.supportedParameters.includes(parameter) ?? false
 }
 
+function isNearScrollBottom(element: HTMLElement) {
+  return (
+    element.scrollTop + element.clientHeight >=
+    element.scrollHeight - SCROLL_FOLLOW_BOTTOM_TOLERANCE_PX
+  )
+}
+
 function formatRawResult(value: string): string {
   if (!value) return ''
   try {
@@ -572,7 +581,9 @@ export default function AiRequirementGenerator({
   const modelButtonRef = useRef<HTMLButtonElement | null>(null)
   const modelMenuPanelRef = useRef<HTMLDivElement | null>(null)
   const selectedModelOptionRef = useRef<HTMLDivElement | null>(null)
+  const thinkingScrollRef = useRef<HTMLDivElement | null>(null)
   const thinkingEndRef = useRef<HTMLSpanElement | null>(null)
+  const shouldFollowThinkingRef = useRef(true)
 
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -756,6 +767,12 @@ export default function AiRequirementGenerator({
     setModelMenuOpen(false)
   }, [])
 
+  const handleThinkingScroll = useCallback(() => {
+    const element = thinkingScrollRef.current
+    if (!element) return
+    shouldFollowThinkingRef.current = isNearScrollBottom(element)
+  }, [])
+
   useEffect(() => {
     if (!open) return
     manualModelSelectionRef.current = false
@@ -838,6 +855,7 @@ export default function AiRequirementGenerator({
 
   useEffect(() => {
     if (!inProgress) return
+    if (!shouldFollowThinkingRef.current) return
     thinkingEndRef.current?.scrollIntoView?.({
       block: thinking ? 'end' : 'nearest',
     })
@@ -1207,6 +1225,7 @@ export default function AiRequirementGenerator({
     const controller = new AbortController()
     abortRef.current = controller
     resetGeneratedResult()
+    shouldFollowThinkingRef.current = true
     setPhase('thinking')
 
     try {
@@ -2243,17 +2262,14 @@ export default function AiRequirementGenerator({
 
               {inProgress ? (
                 <div className="absolute inset-6 flex min-h-0 flex-col">
-                  <p className="shrink-0 text-sm font-semibold text-secondary-900 dark:text-secondary-50">
-                    {phase === 'thinking'
-                      ? t('thinkingPhase')
-                      : t('generatingPhase')}
-                  </p>
                   <div
                     aria-live="polite"
-                    className="mt-4 min-h-0 flex-1 overflow-y-auto pr-2 text-sm leading-7 text-secondary-600 dark:text-secondary-300"
+                    className="min-h-0 flex-1 overflow-y-auto pr-2"
+                    onScroll={handleThinkingScroll}
+                    ref={thinkingScrollRef}
                   >
                     {thinking ? (
-                      <p className="whitespace-pre-wrap">{thinking}</p>
+                      <SafeMarkdown>{thinking}</SafeMarkdown>
                     ) : (
                       <p className="text-secondary-500 dark:text-secondary-400">
                         {phase === 'thinking'
@@ -2722,9 +2738,15 @@ export default function AiRequirementGenerator({
                   ) : null}
 
                   {previewTab === 'analysis' ? (
-                    <pre className="min-h-0 flex-1 overflow-auto rounded-lg bg-secondary-950 p-4 font-mono text-xs leading-6 text-secondary-50 whitespace-pre-wrap">
-                      {thinking || t('noAnalysis')}
-                    </pre>
+                    <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-secondary-200 bg-white p-4 dark:border-secondary-800 dark:bg-secondary-950/20">
+                      {thinking ? (
+                        <SafeMarkdown>{thinking}</SafeMarkdown>
+                      ) : (
+                        <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                          {t('noAnalysis')}
+                        </p>
+                      )}
+                    </div>
                   ) : null}
 
                   {previewTab === 'rawResult' ? (

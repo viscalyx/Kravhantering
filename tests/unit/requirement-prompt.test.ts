@@ -142,7 +142,13 @@ describe('buildRequirementImportResponseFormatSchema', () => {
     expect(
       proposedNormReferences.items.properties.normReferenceId,
     ).toMatchObject({
-      type: ['string', 'null'],
+      type: 'string',
+    })
+    expect(proposedNormReferences.items.properties.uri).toMatchObject({
+      type: 'string',
+    })
+    expect(proposedNormReferences.items.properties.version).toMatchObject({
+      type: 'string',
     })
 
     const proposedNeedsReferences = properties.proposedNeedsReferences as {
@@ -152,7 +158,7 @@ describe('buildRequirementImportResponseFormatSchema', () => {
       Object.keys(proposedNeedsReferences.items.properties),
     )
     expect(proposedNeedsReferences.items.properties.description).toMatchObject({
-      type: ['string', 'null'],
+      type: 'string',
     })
 
     const requirements = properties.requirements as {
@@ -164,15 +170,91 @@ describe('buildRequirementImportResponseFormatSchema', () => {
     expect(requirements.items.properties.categoryId).toMatchObject({
       type: ['integer', 'null'],
     })
+    expect(requirements.items.properties.categoryId).not.toHaveProperty(
+      'minimum',
+    )
+    expect(requirements.items.properties.categoryId).not.toHaveProperty(
+      'maximum',
+    )
+    expect(requirements.items.properties.acceptanceCriteria).toMatchObject({
+      type: 'string',
+    })
+    expect(requirements.items.properties.categoryName).toMatchObject({
+      type: 'string',
+    })
     expect(requirements.items.properties.verifiable).toMatchObject({
       type: ['boolean', 'null'],
     })
     expect(requirements.items.properties.needsReferenceId).toMatchObject({
       type: ['integer', 'null'],
     })
+    expect(requirements.items.properties.needsReferenceId).not.toHaveProperty(
+      'minimum',
+    )
+    expect(requirements.items.properties.needsReferenceId).not.toHaveProperty(
+      'maximum',
+    )
     expect(requirements.items.properties.needsReferenceKey).toMatchObject({
-      type: ['string', 'null'],
+      type: 'string',
     })
+    expect(
+      requirements.items.properties.qualityCharacteristicName,
+    ).toMatchObject({
+      type: 'string',
+    })
+    expect(requirements.items.properties.priorityLevelCode).toMatchObject({
+      type: 'string',
+    })
+    expect(requirements.items.properties.priorityLevelName).toMatchObject({
+      type: 'string',
+    })
+    expect(requirements.items.properties.typeName).toMatchObject({
+      type: 'string',
+    })
+    expect(requirements.items.properties.verificationMethod).toMatchObject({
+      type: 'string',
+    })
+    expect(requirements.items.properties.requirementPackageIds).toHaveProperty(
+      'items',
+      { type: 'integer' },
+    )
+    expect(
+      (
+        requirements.items.properties.requirementPackageIds as {
+          items: Record<string, unknown>
+        }
+      ).items,
+    ).not.toHaveProperty('minimum')
+    expect(
+      (
+        requirements.items.properties.requirementPackageIds as {
+          items: Record<string, unknown>
+        }
+      ).items,
+    ).not.toHaveProperty('maximum')
+  })
+
+  it('keeps the OpenRouter structured-output schema below provider union limits', () => {
+    const schema = buildRequirementImportResponseFormatSchema('sv')
+    let unionCount = 0
+
+    function countUnions(value: unknown) {
+      if (Array.isArray(value)) {
+        for (const item of value) countUnions(item)
+        return
+      }
+      if (typeof value !== 'object' || value === null) return
+
+      const record = value as Record<string, unknown>
+      if (Array.isArray(record.type) || Array.isArray(record.anyOf)) {
+        unionCount += 1
+      }
+      for (const item of Object.values(record)) countUnions(item)
+    }
+
+    countUnions(schema)
+
+    expect(unionCount).toBeLessThanOrEqual(16)
   })
 })
 

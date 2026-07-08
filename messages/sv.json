@@ -2584,5 +2584,8 @@
     "loadingInitialImport": "Förbereder importgranskning...",
     "descriptionRequired": "Kravtext måste anges innan raden kan importeras.",
     "verificationMethodRequired": "Verifieringsmetod måste anges för verifierbara krav."
+  },
+  "safeMarkdown": {
+    "imageOmitted": "Bild utelämnad"
   }
 }

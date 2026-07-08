@@ -15,6 +15,20 @@ const generatedPayload = {
   ],
   schemaVersion: 'requirement-import.v3',
 }
+const generatedAnalysis = [
+  '# Analys av betygskrav',
+  '',
+  '**Fokus:** spårbar betygshantering.',
+  '',
+  '- Säkerställ behörighet',
+  '- Bevara råresultat separat',
+  '',
+  '[Osäker länk](javascript:alert(1))',
+  '',
+  '![Betygsdiagram](https://example.test/betyg.png)',
+  '',
+  '<script>alert(1)</script>',
+].join('\n')
 
 function jsonResponse(body: unknown) {
   return {
@@ -110,10 +124,13 @@ async function mockAiAuthoring(page: Page) {
         reasoningTokens: 2,
         totalTokens: 24,
       },
-      thinking: 'AI-analys för betygskrav.',
+      thinking: generatedAnalysis,
     }
     await route.fulfill({
-      body: `event: done\ndata: ${JSON.stringify(body)}\n\n`,
+      body: [
+        `event: thinking\ndata: ${JSON.stringify({ thinkingSoFar: generatedAnalysis })}\n\n`,
+        `event: done\ndata: ${JSON.stringify(body)}\n\n`,
+      ].join(''),
       contentType: 'text/event-stream',
     })
   })
@@ -176,8 +193,22 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
 
   await generateCandidate(page)
 
-  await page
-    .getByRole('dialog', { name: 'AI-assisterat författande' })
+  const dialog = page.getByRole('dialog', {
+    name: 'AI-assisterat författande',
+  })
+  await dialog.getByRole('button', { name: 'AI-analys' }).click()
+  await expect(
+    dialog.getByRole('heading', { level: 3, name: 'Analys av betygskrav' }),
+  ).toBeVisible()
+  await expect(dialog.getByText('Säkerställ behörighet')).toBeVisible()
+  await expect(dialog.getByText('https://example.test/betyg.png')).toBeVisible()
+  await expect(
+    dialog.locator('pre code').filter({ hasText: '<script>alert(1)</script>' }),
+  ).toBeVisible()
+  await expect(dialog.getByRole('link')).toHaveCount(0)
+  await expect(dialog.locator('img')).toHaveCount(0)
+
+  await dialog
     .getByRole('button', { name: 'Förhandsgranska krav i import' })
     .click()
 

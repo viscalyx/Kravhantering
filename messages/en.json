@@ -2584,5 +2584,8 @@
     "loadingInitialImport": "Preparing import review...",
     "descriptionRequired": "Requirement text is required before this row can be imported.",
     "verificationMethodRequired": "Verification method is required for verifiable requirements."
+  },
+  "safeMarkdown": {
+    "imageOmitted": "Image omitted"
   }
 }

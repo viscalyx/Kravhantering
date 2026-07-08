@@ -680,13 +680,16 @@ livscykelåtgärder.
 ### REQ-15: AI-kravgenerator lämnar kandidater till importgranskning
 
 **Steg:** Öppna AI-assisterat författande från kravbiblioteket, välj
-kravområde, generera en kravkandidat och välj
-`Förhandsgranska krav i import`.
+kravområde och generera en kravkandidat. Öppna fliken `AI-analys` och
+kontrollera att modellens analys visas med formaterade rubriker och listor.
+Välj sedan `Förhandsgranska krav i import`.
 
 **Förväntat resultat:** Den genererade kandidaten skickas som
 `requirement-import.v3` till importgranskningen för valt kravområde.
 Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
-`Import-JSON`-formuläret.
+`Import-JSON`-formuläret. Fliken `AI-analys` visar analysen som säker
+formaterad text utan klickbara länkar, fjärrladdade bilder eller aktiv HTML.
+Råresultat visas fortfarande separat från analysen.
 
 ### REQ-15B: AI-assisterat författande blockerar osäkert AI-anrop
 
