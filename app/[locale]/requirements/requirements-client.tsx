@@ -1,11 +1,23 @@
 'use client'
 
-import { Download, Plus, Printer, Sparkles, Upload } from 'lucide-react'
+import { Card, Theme } from '@radix-ui/themes'
+import {
+  Download,
+  LibraryBig,
+  Plus,
+  Printer,
+  Sparkles,
+  Upload,
+} from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AiRequirementGenerator from '@/components/AiRequirementGenerator'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import {
+  RadixPrototypeModeSwitch,
+  useRadixPrototypeMode,
+} from '@/components/RadixPrototypeMode'
 import RequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/RequirementsImportDialog'
@@ -242,8 +254,11 @@ export default function RequirementsClient({
   useHelpContent(REQUIREMENTS_HELP)
   const tc = useTranslations('common')
   const t = useTranslations('requirement')
+  const tn = useTranslations('nav')
   const locale = useLocale()
   const pdfDownload = useServerPdfDownload()
+  const { mode: radixPrototypeMode } = useRadixPrototypeMode()
+  const isRadixThemesMode = radixPrototypeMode === 'themes'
   const normalizedColumnDefaults = useMemo(
     () => normalizeRequirementListColumnDefaults(initialColumnDefaults),
     [initialColumnDefaults],
@@ -915,181 +930,244 @@ export default function RequirementsClient({
     }
   }
 
+  const requirementsTableContent = shouldShowInitialLoadingState ? (
+    <div
+      aria-live="polite"
+      className={`flex min-h-80 flex-col items-center justify-center gap-3 px-6 py-16 ${
+        isRadixThemesMode ? 'text-(--gray-11)' : ''
+      }`}
+      data-testid="requirements-card-loading"
+    >
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600 dark:border-primary-700 dark:border-t-primary-400" />
+      <p
+        className={
+          isRadixThemesMode
+            ? 'text-(--gray-11)'
+            : 'text-secondary-600 dark:text-secondary-400'
+        }
+      >
+        {tc('loadingRequirements')}
+      </p>
+    </div>
+  ) : (
+    <RequirementsTable
+      areas={areas}
+      categories={categories}
+      columnDefaults={normalizedColumnDefaults}
+      columnPickerPlacement="end"
+      columnWidths={columnWidths}
+      excludeColumns={['needsReference', 'specificationItemStatus']}
+      expandedId={selectedId}
+      filterValues={filters}
+      floatingActionRailPlacement="inline-top"
+      floatingActions={[
+        {
+          developerModeContext: 'requirements table',
+          developerModeValue: 'new requirement',
+          ariaLabel: t('newRequirement'),
+          href: '/requirements/new',
+          icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+          id: 'create',
+          position: 'beforeColumns',
+          variant: 'primary',
+        },
+        {
+          developerModeContext: 'requirements table',
+          developerModeValue: 'ai generate',
+          ariaLabel: t('aiGenerate'),
+          disabled: !canOpenAiGeneration,
+          icon: <Sparkles aria-hidden="true" className="h-4 w-4" />,
+          id: 'ai-generate',
+          onClick: () => {
+            if (canOpenAiGeneration) setAiModalOpen(true)
+          },
+          position: 'beforeColumns',
+          tooltip: aiGenerationDisabledTooltip ?? t('aiGenerate'),
+        },
+        {
+          badge:
+            selectedIds.size > 0 && anySelectedIsReview
+              ? selectedIds.size
+              : undefined,
+          developerModeContext: 'requirements table',
+          developerModeValue: 'reports',
+          ariaLabel: tc('reports'),
+          icon: <Printer aria-hidden="true" className="h-4 w-4" />,
+          id: 'reports',
+          menuItems: [
+            {
+              id: 'pdf-list',
+              label: t('downloadListReportPdf'),
+              onClick: () =>
+                void pdfDownload.download({
+                  fallbackFilename: 'requirements-list.pdf',
+                  url: listReportPdfUrl,
+                }),
+            },
+            ...(selectedIds.size > 0 && anySelectedIsReview
+              ? [
+                  {
+                    badge: selectedIds.size,
+                    description: !allSelectedAreReview
+                      ? t('reviewReportAllMustBeReview')
+                      : undefined,
+                    disabled: !allSelectedAreReview,
+                    id: 'review-report-pdf',
+                    label: t('downloadCombinedReportPdf'),
+                    onClick: () =>
+                      void pdfDownload.download({
+                        fallbackFilename: 'combined-review-report.pdf',
+                        url: `/${locale}/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
+                      }),
+                    tooltip: !allSelectedAreReview
+                      ? t('reviewReportAllMustBeReview')
+                      : undefined,
+                  },
+                ]
+              : []),
+          ],
+          tooltip: tc('reports'),
+          variant:
+            selectedIds.size > 0 && anySelectedIsReview ? 'warning' : undefined,
+        },
+        {
+          developerModeContext: 'requirements table',
+          developerModeValue: 'import requirements',
+          ariaLabel: t('importRequirements'),
+          icon: <Upload aria-hidden="true" className="h-4 w-4" />,
+          id: 'import',
+          onClick: () => setImportDialogOpen(true),
+          position: 'afterColumns',
+          tooltip: t('importRequirements'),
+        },
+        {
+          developerModeContext: 'requirements table',
+          developerModeValue: 'export',
+          ariaLabel: tc('export'),
+          icon: <Download aria-hidden="true" className="h-4 w-4" />,
+          id: 'export',
+          onClick: handleExport,
+        },
+      ]}
+      getName={getName}
+      getStatusName={getStatusName}
+      hasMore={hasMore}
+      loading={loading}
+      loadingMore={loadingMore}
+      locale={locale}
+      normReferences={normReferenceOptions}
+      onColumnWidthsChange={setColumnWidths}
+      onFilterChange={val => {
+        setFilters(val)
+        selectedIdRef.current = null
+        setSelectedId(null)
+        setPinnedRow(null)
+        setSelectedIds(new Set())
+      }}
+      onLoadMore={loadMore}
+      onRowClick={id => {
+        const previousSelectedId = selectedIdRef.current
+        const nextSelectedId = previousSelectedId === id ? null : id
+        selectedIdRef.current = nextSelectedId
+        setSelectedId(nextSelectedId)
+        if (previousSelectedId !== id || nextSelectedId === null) {
+          setPinnedRow(null)
+        }
+      }}
+      onSelectionChange={setSelectedIds}
+      onSortChange={setSortState}
+      onVisibleColumnsChange={setVisibleColumns}
+      pinnedIds={pinnedIds}
+      priorityLevels={priorityLevels}
+      qualityCharacteristics={qualityCharacteristics}
+      renderExpanded={id => (
+        <RequirementDetailClient
+          inline
+          onChange={detail => handleRequirementChange(id, detail)}
+          onClose={() => {
+            selectedIdRef.current = null
+            setSelectedId(null)
+            setPinnedRow(null)
+            fetchData()
+          }}
+          requirementId={id}
+        />
+      )}
+      requirementPackages={requirementPackages}
+      rows={displayRows}
+      selectable
+      selectedIds={selectedIds}
+      sortState={sortState}
+      statusOptions={statusOptions}
+      stickyTitle={
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border shadow-sm ${
+              isRadixThemesMode
+                ? 'border-(--gray-a6) bg-(--accent-a3) text-(--accent-11)'
+                : 'border-secondary-950/10 bg-white text-secondary-900 dark:border-white/10 dark:bg-[#1c1c20] dark:text-white'
+            }`}
+          >
+            <LibraryBig aria-hidden="true" className="h-5 w-5" />
+          </span>
+          <span className="min-w-0">
+            <span
+              className={`block truncate text-sm font-semibold ${
+                isRadixThemesMode
+                  ? 'text-(--gray-12)'
+                  : 'text-secondary-950 dark:text-white'
+              }`}
+            >
+              {tn('catalog')}
+            </span>
+          </span>
+        </div>
+      }
+      types={types}
+      visibleColumns={visibleColumns}
+      visualMode={isRadixThemesMode ? 'radix-themes' : 'local'}
+    />
+  )
+
+  const requirementsWorkbench = isRadixThemesMode ? (
+    <Theme
+      accentColor="iris"
+      appearance="inherit"
+      className="contents"
+      grayColor="slate"
+      hasBackground={false}
+      panelBackground="solid"
+      radius="large"
+      scaling="105%"
+    >
+      <Card
+        className="mx-auto w-full max-w-[104rem] overflow-hidden border border-(--gray-a6) shadow-[0_24px_80px_-48px_var(--gray-a12)]"
+        data-radix-themes-workbench="true"
+        size="1"
+        variant="classic"
+      >
+        {requirementsTableContent}
+      </Card>
+    </Theme>
+  ) : (
+    <div className="mx-auto w-full max-w-384">
+      <div className="relative rounded-lg border border-secondary-950/10 bg-white shadow-[0_24px_70px_-52px_rgba(0,0,0,0.65)] dark:border-white/10 dark:bg-[#111113]">
+        {requirementsTableContent}
+      </div>
+    </div>
+  )
+
   return (
     <>
-      <div className="section-padding px-4 sm:px-6 lg:px-8">
-        <div className="container-custom">
-          <div className="relative rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:border-secondary-700 dark:bg-secondary-900/60">
-            {shouldShowInitialLoadingState ? (
-              <div
-                aria-live="polite"
-                className="flex min-h-80 flex-col items-center justify-center gap-3 px-6 py-16"
-                data-testid="requirements-card-loading"
-              >
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600 dark:border-primary-700 dark:border-t-primary-400" />
-                <p className="text-secondary-600 dark:text-secondary-400">
-                  {tc('loadingRequirements')}
-                </p>
-              </div>
-            ) : (
-              <RequirementsTable
-                areas={areas}
-                categories={categories}
-                columnDefaults={normalizedColumnDefaults}
-                columnPickerPlacement="end"
-                columnWidths={columnWidths}
-                excludeColumns={['needsReference', 'specificationItemStatus']}
-                expandedId={selectedId}
-                filterValues={filters}
-                floatingActions={[
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'new requirement',
-                    ariaLabel: t('newRequirement'),
-                    href: '/requirements/new',
-                    icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-                    id: 'create',
-                    position: 'beforeColumns',
-                    variant: 'primary',
-                  },
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'ai generate',
-                    ariaLabel: t('aiGenerate'),
-                    disabled: !canOpenAiGeneration,
-                    icon: <Sparkles aria-hidden="true" className="h-4 w-4" />,
-                    id: 'ai-generate',
-                    onClick: () => {
-                      if (canOpenAiGeneration) setAiModalOpen(true)
-                    },
-                    position: 'beforeColumns',
-                    tooltip: aiGenerationDisabledTooltip ?? t('aiGenerate'),
-                  },
-                  {
-                    badge:
-                      selectedIds.size > 0 && anySelectedIsReview
-                        ? selectedIds.size
-                        : undefined,
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'reports',
-                    ariaLabel: tc('reports'),
-                    icon: <Printer aria-hidden="true" className="h-4 w-4" />,
-                    id: 'reports',
-                    menuItems: [
-                      {
-                        id: 'pdf-list',
-                        label: t('downloadListReportPdf'),
-                        onClick: () =>
-                          void pdfDownload.download({
-                            fallbackFilename: 'requirements-list.pdf',
-                            url: listReportPdfUrl,
-                          }),
-                      },
-                      ...(selectedIds.size > 0 && anySelectedIsReview
-                        ? [
-                            {
-                              badge: selectedIds.size,
-                              description: !allSelectedAreReview
-                                ? t('reviewReportAllMustBeReview')
-                                : undefined,
-                              disabled: !allSelectedAreReview,
-                              id: 'review-report-pdf',
-                              label: t('downloadCombinedReportPdf'),
-                              onClick: () =>
-                                void pdfDownload.download({
-                                  fallbackFilename:
-                                    'combined-review-report.pdf',
-                                  url: `/${locale}/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
-                                }),
-                              tooltip: !allSelectedAreReview
-                                ? t('reviewReportAllMustBeReview')
-                                : undefined,
-                            },
-                          ]
-                        : []),
-                    ],
-                    tooltip: tc('reports'),
-                    variant:
-                      selectedIds.size > 0 && anySelectedIsReview
-                        ? 'warning'
-                        : undefined,
-                  },
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'import requirements',
-                    ariaLabel: t('importRequirements'),
-                    icon: <Upload aria-hidden="true" className="h-4 w-4" />,
-                    id: 'import',
-                    onClick: () => setImportDialogOpen(true),
-                    position: 'afterColumns',
-                    tooltip: t('importRequirements'),
-                  },
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'export',
-                    ariaLabel: tc('export'),
-                    icon: <Download aria-hidden="true" className="h-4 w-4" />,
-                    id: 'export',
-                    onClick: handleExport,
-                  },
-                ]}
-                getName={getName}
-                getStatusName={getStatusName}
-                hasMore={hasMore}
-                loading={loading}
-                loadingMore={loadingMore}
-                locale={locale}
-                normReferences={normReferenceOptions}
-                onColumnWidthsChange={setColumnWidths}
-                onFilterChange={val => {
-                  setFilters(val)
-                  selectedIdRef.current = null
-                  setSelectedId(null)
-                  setPinnedRow(null)
-                  setSelectedIds(new Set())
-                }}
-                onLoadMore={loadMore}
-                onRowClick={id => {
-                  const previousSelectedId = selectedIdRef.current
-                  const nextSelectedId = previousSelectedId === id ? null : id
-                  selectedIdRef.current = nextSelectedId
-                  setSelectedId(nextSelectedId)
-                  if (previousSelectedId !== id || nextSelectedId === null) {
-                    setPinnedRow(null)
-                  }
-                }}
-                onSelectionChange={setSelectedIds}
-                onSortChange={setSortState}
-                onVisibleColumnsChange={setVisibleColumns}
-                pinnedIds={pinnedIds}
-                priorityLevels={priorityLevels}
-                qualityCharacteristics={qualityCharacteristics}
-                renderExpanded={id => (
-                  <RequirementDetailClient
-                    inline
-                    onChange={detail => handleRequirementChange(id, detail)}
-                    onClose={() => {
-                      selectedIdRef.current = null
-                      setSelectedId(null)
-                      setPinnedRow(null)
-                      fetchData()
-                    }}
-                    requirementId={id}
-                  />
-                )}
-                requirementPackages={requirementPackages}
-                rows={displayRows}
-                selectable
-                selectedIds={selectedIds}
-                sortState={sortState}
-                statusOptions={statusOptions}
-                types={types}
-                visibleColumns={visibleColumns}
-              />
-            )}
-          </div>
-        </div>
+      <div
+        className={`min-h-[calc(100vh-3rem)] px-3 py-3 sm:px-5 lg:px-7 ${
+          isRadixThemesMode ? 'bg-(--gray-1)' : 'bg-[#fbfbfd] dark:bg-[#111113]'
+        }`}
+        data-radix-prototype-mode={radixPrototypeMode}
+      >
+        {requirementsWorkbench}
       </div>
+      <RadixPrototypeModeSwitch />
       {pdfDownload.dialog}
       <AiRequirementGenerator
         aiGenerationAvailability={aiGenerationAvailability}

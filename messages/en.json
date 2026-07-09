@@ -2585,6 +2585,12 @@
     "descriptionRequired": "Requirement text is required before this row can be imported.",
     "verificationMethodRequired": "Verification method is required for verifiable requirements."
   },
+  "radixPrototype": {
+    "badge": "Prototype",
+    "label": "Radix mode",
+    "local": "Local",
+    "themes": "Themes"
+  },
   "safeMarkdown": {
     "imageOmitted": "Image omitted"
   }

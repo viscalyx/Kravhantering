@@ -1,5 +1,8 @@
 'use client'
 
+import * as Collapsible from '@radix-ui/react-collapsible'
+import * as Dialog from '@radix-ui/react-dialog'
+import { Theme } from '@radix-ui/themes'
 import {
   BookOpen,
   ClipboardList,
@@ -15,13 +18,13 @@ import {
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import AuthMenu from '@/components/AuthMenu'
 import { useHelp } from '@/components/HelpPanel'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import Logo from '@/components/Logo'
+import { useRadixPrototypeMode } from '@/components/RadixPrototypeMode'
 import ThemeToggle from '@/components/ThemeToggle'
-import { useModalFocus } from '@/hooks/useModalFocus'
 import { Link, usePathname } from '@/i18n/routing'
 import type { BuildMetadata } from '@/lib/build-metadata'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -34,10 +37,10 @@ export type StewardshipTabParam =
 
 const NAV_RAIL_STORAGE_KEY = 'requirements.navigationRail.expanded.v1'
 const STEWARDSHIP_STORAGE_KEY = 'requirements.stewardship.tab'
-const NAV_RAIL_COLLAPSED_WIDTH = '4.5rem'
+const NAV_RAIL_COLLAPSED_WIDTH = '5.25rem'
 const NAV_RAIL_EXPANDED_WIDTH = '16.5rem'
 const mobileDrawerToggleButtonClassName =
-  'fixed left-3 top-3 z-50 inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-secondary-200/80 bg-white/92 text-secondary-700 shadow-lg backdrop-blur-xl transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white md:hidden dark:border-secondary-800 dark:bg-secondary-950/92 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950'
+  'fixed left-3 top-3 z-50 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-secondary-950/10 bg-white/94 text-secondary-800 shadow-[0_14px_36px_-24px_rgba(0,0,0,0.55)] backdrop-blur-xl transition-colors hover:bg-[#f6f5f8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white md:hidden dark:border-white/10 dark:bg-[#111113]/94 dark:text-secondary-100 dark:hover:bg-[#1c1c20] dark:focus-visible:ring-violet-400/60 dark:focus-visible:ring-offset-[#111113]'
 
 const workNavItems = [
   {
@@ -202,37 +205,114 @@ function parseDatabaseSchemaStatusResponse(
   }
 }
 
-function getNavigationLinkClassName(active: boolean, expanded: boolean) {
-  return `group inline-flex min-h-11 w-full min-w-11 items-center rounded-xl text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950 ${
+function getNavigationLinkClassName(
+  active: boolean,
+  expanded: boolean,
+  isThemesMode = false,
+) {
+  if (isThemesMode) {
+    return `group relative inline-flex min-h-11 w-full min-w-11 items-center rounded-lg border text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-a7) focus-visible:ring-offset-2 focus-visible:ring-offset-(--color-panel) ${
+      expanded ? 'justify-start gap-3 px-3 py-2' : 'justify-center px-0 py-2'
+    } ${
+      active
+        ? 'border-(--accent-a7) bg-(--accent-a4) text-(--accent-12) shadow-[0_14px_34px_-26px_var(--accent-a11)]'
+        : 'border-transparent text-(--gray-11) hover:border-(--gray-a6) hover:bg-(--accent-a2) hover:text-(--accent-12)'
+    }`
+  }
+
+  return `group relative inline-flex min-h-11 w-full min-w-11 items-center rounded-md border text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-violet-400/60 dark:focus-visible:ring-offset-[#111113] ${
     expanded ? 'justify-start gap-3 px-3 py-2' : 'justify-center px-0 py-2'
   } ${
     active
-      ? 'bg-primary-50 text-primary-700 shadow-sm dark:bg-primary-950/80 dark:text-primary-300'
-      : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800'
+      ? 'border-secondary-950 bg-secondary-950 text-white shadow-[0_12px_28px_-20px_rgba(0,0,0,0.75)] dark:border-white dark:bg-white dark:text-[#111113]'
+      : 'border-transparent text-secondary-700 hover:border-secondary-950/10 hover:bg-white dark:text-secondary-300 dark:hover:border-white/10 dark:hover:bg-[#1c1c20]'
   }`
+}
+
+function getNavigationIconClassName(active: boolean, isThemesMode = false) {
+  if (isThemesMode) {
+    return `flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
+      active
+        ? 'bg-(--accent-a5) text-(--accent-11)'
+        : 'bg-(--gray-a3) text-(--gray-11) group-hover:bg-(--accent-a3) group-hover:text-(--accent-11)'
+    }`
+  }
+
+  return `flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
+    active
+      ? 'bg-white/[0.12] text-white dark:bg-[#111113]/10 dark:text-[#111113]'
+      : 'bg-secondary-950/[0.03] text-secondary-600 group-hover:bg-violet-50 group-hover:text-violet-700 dark:bg-white/[0.04] dark:text-secondary-300 dark:group-hover:bg-violet-400/10 dark:group-hover:text-violet-200'
+  }`
+}
+
+function NavigationItemContent({
+  active,
+  expanded,
+  icon: Icon,
+  isThemesMode = false,
+  label,
+}: {
+  active: boolean
+  expanded: boolean
+  icon: typeof LibraryBig
+  isThemesMode?: boolean
+  label: string
+}) {
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        className={`absolute left-1 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full transition-opacity ${
+          active
+            ? isThemesMode
+              ? 'bg-(--accent-9) opacity-100'
+              : 'bg-violet-300 opacity-100 dark:bg-violet-700'
+            : 'opacity-0'
+        }`}
+      />
+      <span className={getNavigationIconClassName(active, isThemesMode)}>
+        <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
+      </span>
+      {expanded ? (
+        <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+      ) : null}
+    </>
+  )
 }
 
 function NavigationSection({
   children,
   expanded,
   hideCollapsedDivider = false,
+  isThemesMode = false,
   label,
 }: {
   children: React.ReactNode
   expanded: boolean
   hideCollapsedDivider?: boolean
+  isThemesMode?: boolean
   label: string
 }) {
   return (
     <section aria-label={label} className="space-y-2">
       {expanded ? (
-        <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
+        <p
+          className={`px-3 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+            isThemesMode
+              ? 'text-(--gray-10)'
+              : 'text-secondary-500 dark:text-secondary-500'
+          }`}
+        >
           {label}
         </p>
       ) : hideCollapsedDivider ? null : (
         <div
           aria-hidden="true"
-          className="mx-auto h-px w-8 bg-secondary-200 dark:bg-secondary-800"
+          className={`mx-auto h-px w-7 ${
+            isThemesMode
+              ? 'bg-(--gray-a6)'
+              : 'bg-secondary-950/10 dark:bg-white/10'
+          }`}
           data-testid="navigation-group-divider"
         />
       )}
@@ -247,14 +327,13 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   const ta = useTranslations('admin')
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const { mode: radixPrototypeMode } = useRadixPrototypeMode()
+  const isRadixThemesMode = radixPrototypeMode === 'themes'
   const [desktopExpanded, setDesktopExpanded] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [canOpenRequirementAreas, setCanOpenRequirementAreas] = useState(false)
   const [databaseSchemaStatus, setDatabaseSchemaStatus] =
     useState<DatabaseSchemaStatusResponse | null>(null)
-  const mobileCloseButtonRef = useRef<HTMLButtonElement>(null)
-  const mobileDrawerRef = useRef<HTMLDivElement>(null)
-  const mobileDrawerReturnFocusRef = useRef<HTMLButtonElement>(null)
   const {
     toggle: toggleHelp,
     content: helpContent,
@@ -304,19 +383,6 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   const closeMobileDrawer = useCallback(() => {
     setMobileOpen(false)
   }, [])
-
-  const openMobileDrawer = useCallback((trigger: HTMLButtonElement) => {
-    mobileDrawerReturnFocusRef.current = trigger
-    setMobileOpen(true)
-  }, [])
-
-  const { handleKeyDown: handleMobileDrawerKeyDown } = useModalFocus({
-    initialFocusRef: mobileCloseButtonRef,
-    modalRef: mobileDrawerRef,
-    onClose: closeMobileDrawer,
-    open: mobileOpen,
-    returnFocusRef: mobileDrawerReturnFocusRef,
-  })
 
   useEffect(() => {
     if (readStoredRailExpanded()) {
@@ -419,10 +485,6 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
     }
   }, [])
 
-  const toggleDesktopRail = () => {
-    setDesktopExpanded(expanded => !expanded)
-  }
-
   const renderNavigationLink = (
     item: NavigationLinkDefinition,
     expanded: boolean,
@@ -435,7 +497,11 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
       <Link
         aria-current={isActive ? 'page' : undefined}
         aria-label={expanded ? undefined : label}
-        className={getNavigationLinkClassName(isActive, expanded)}
+        className={getNavigationLinkClassName(
+          isActive,
+          expanded,
+          isRadixThemesMode,
+        )}
         href={item.href}
         key={item.id}
         onClick={() => {
@@ -451,10 +517,13 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           value: item.id,
         })}
       >
-        <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
-        {expanded ? (
-          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-        ) : null}
+        <NavigationItemContent
+          active={isActive}
+          expanded={expanded}
+          icon={Icon}
+          isThemesMode={isRadixThemesMode}
+          label={label}
+        />
       </Link>
     )
   }
@@ -470,7 +539,11 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
       <Link
         aria-current={isActive ? 'page' : undefined}
         aria-label={expanded ? undefined : label}
-        className={getNavigationLinkClassName(isActive, expanded)}
+        className={getNavigationLinkClassName(
+          isActive,
+          expanded,
+          isRadixThemesMode,
+        )}
         href="/requirement-areas"
         onClick={onNavigate}
         title={label}
@@ -480,10 +553,13 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           value: 'requirement-areas',
         })}
       >
-        <FolderTree aria-hidden="true" className="h-5 w-5 shrink-0" />
-        {expanded ? (
-          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-        ) : null}
+        <NavigationItemContent
+          active={isActive}
+          expanded={expanded}
+          icon={FolderTree}
+          isThemesMode={isRadixThemesMode}
+          label={label}
+        />
       </Link>
     )
   }
@@ -495,7 +571,11 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
       <button
         aria-label={expanded ? undefined : label}
         aria-pressed={helpOpen}
-        className={getNavigationLinkClassName(helpOpen, expanded)}
+        className={getNavigationLinkClassName(
+          helpOpen,
+          expanded,
+          isRadixThemesMode,
+        )}
         onClick={() => {
           toggleHelp()
           onClick?.()
@@ -508,10 +588,13 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           value: `help toggle ${helpOpen ? 'open' : 'closed'}`,
         })}
       >
-        <Info aria-hidden="true" className="h-5 w-5 shrink-0" />
-        {expanded ? (
-          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-        ) : null}
+        <NavigationItemContent
+          active={helpOpen}
+          expanded={expanded}
+          icon={Info}
+          isThemesMode={isRadixThemesMode}
+          label={label}
+        />
       </button>
     )
   }
@@ -523,7 +606,11 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
       <Link
         aria-current={isActive ? 'page' : undefined}
         aria-label={expanded ? undefined : label}
-        className={getNavigationLinkClassName(isActive, expanded)}
+        className={getNavigationLinkClassName(
+          isActive,
+          expanded,
+          isRadixThemesMode,
+        )}
         href="/admin"
         onClick={onNavigate}
         title={label}
@@ -533,10 +620,13 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           value: 'settings',
         })}
       >
-        <Settings2 aria-hidden="true" className="h-5 w-5 shrink-0" />
-        {expanded ? (
-          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-        ) : null}
+        <NavigationItemContent
+          active={isActive}
+          expanded={expanded}
+          icon={Settings2}
+          isThemesMode={isRadixThemesMode}
+          label={label}
+        />
       </Link>
     )
   }
@@ -550,23 +640,32 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   ) => {
     const close = closeOnNavigate ? closeMobileDrawer : undefined
     return (
-      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-3 py-4">
         <NavigationSection
           expanded={expanded}
           hideCollapsedDivider
+          isThemesMode={isRadixThemesMode}
           label={t('work')}
         >
           {workNavItems.map(item =>
             renderNavigationLink(item, expanded, close),
           )}
         </NavigationSection>
-        <NavigationSection expanded={expanded} label={t('stewardship')}>
+        <NavigationSection
+          expanded={expanded}
+          isThemesMode={isRadixThemesMode}
+          label={t('stewardship')}
+        >
           {renderRequirementAreasLink(expanded, close)}
           {stewardshipNavItems.map(item =>
             renderNavigationLink(item, expanded, close),
           )}
         </NavigationSection>
-        <NavigationSection expanded={expanded} label={t('utilities')}>
+        <NavigationSection
+          expanded={expanded}
+          isThemesMode={isRadixThemesMode}
+          label={t('utilities')}
+        >
           {renderHelpButton(expanded, mobile ? close : undefined)}
           {renderSettingsLink(expanded, close)}
           <LanguageSwitcher expanded={expanded} variant="rail" />
@@ -577,109 +676,37 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
     )
   }
 
-  return (
+  const mobileDrawerButtonClassName = isRadixThemesMode
+    ? 'fixed left-3 top-3 z-50 inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-(--gray-a6) bg-(--color-panel) text-(--gray-12) shadow-[0_14px_36px_-24px_var(--gray-a12)] backdrop-blur-xl transition-colors hover:bg-(--accent-a2) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-a7) focus-visible:ring-offset-2 focus-visible:ring-offset-(--color-panel) md:hidden'
+    : mobileDrawerToggleButtonClassName
+
+  const mobileDrawerPortalContent = (
     <>
-      <nav
-        aria-label={t('mainNavigation')}
-        className="fixed inset-y-0 left-0 z-50 hidden flex-col border-r border-secondary-200/80 bg-white/92 shadow-[12px_0_40px_-32px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-[width] duration-200 md:flex dark:border-secondary-800 dark:bg-secondary-950/92"
-        data-global-navigation-rail="desktop"
-        style={{
-          width: desktopExpanded
-            ? NAV_RAIL_EXPANDED_WIDTH
-            : NAV_RAIL_COLLAPSED_WIDTH,
-        }}
+      <Dialog.Overlay className="fixed inset-0 z-50 bg-secondary-950/35 backdrop-blur-sm md:hidden" />
+      <Dialog.Content
+        aria-describedby={undefined}
+        className={`fixed inset-y-0 left-0 z-50 flex w-[min(22rem,calc(100vw-2rem))] flex-col border-r shadow-2xl outline-none md:hidden ${
+          isRadixThemesMode
+            ? 'border-(--gray-a6) bg-(--color-panel)'
+            : 'border-secondary-950/10 bg-[#fbfbfd] dark:border-white/10 dark:bg-[#111113]'
+        }`}
         {...devMarker({
           name: 'navigation',
           priority: 320,
-          value: 'global side rail',
+          value: 'mobile drawer',
         })}
+        data-global-navigation-rail="mobile-drawer"
+        data-radix-prototype-mode={radixPrototypeMode}
+        data-radix-themes-navigation={isRadixThemesMode ? 'true' : undefined}
+        onOpenAutoFocus={event => {
+          event.preventDefault()
+        }}
       >
-        <div className="flex shrink-0 flex-col gap-3 border-b border-secondary-200/70 px-3 py-4 dark:border-secondary-800">
+        <Dialog.Title className="sr-only">{t('mainMenu')}</Dialog.Title>
+        <Dialog.Close asChild>
           <button
-            aria-label={desktopExpanded ? t('collapseRail') : t('expandRail')}
-            className="inline-flex min-h-11 w-12 min-w-11 items-center justify-center rounded-xl text-secondary-700 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
-            onClick={toggleDesktopRail}
-            title={desktopExpanded ? t('collapseRail') : t('expandRail')}
-            type="button"
-            {...devMarker({
-              context: 'navigation',
-              name: 'button',
-              value: desktopExpanded ? 'collapse rail' : 'expand rail',
-            })}
-          >
-            {desktopExpanded ? (
-              <PanelLeftClose aria-hidden="true" className="h-5 w-5" />
-            ) : (
-              <PanelLeftOpen aria-hidden="true" className="h-5 w-5" />
-            )}
-          </button>
-          <Link
-            aria-label={tc('appName')}
-            className={`inline-flex min-h-11 min-w-11 items-center rounded-xl font-bold text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-primary-300 dark:hover:bg-primary-950/60 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950 ${
-              desktopExpanded
-                ? 'justify-start gap-3 px-3'
-                : 'justify-center px-0'
-            }`}
-            href="/requirements"
-            title={buildVersionTitle}
-            {...devMarker({
-              context: 'navigation',
-              name: 'link',
-              value: 'app title',
-            })}
-          >
-            <Logo className="h-8 w-8 shrink-0" />
-            {desktopExpanded ? (
-              <span className="min-w-0 truncate text-base tracking-tight">
-                {tc('appName')}
-              </span>
-            ) : null}
-          </Link>
-        </div>
-        {renderRailContents(desktopExpanded)}
-      </nav>
-
-      {!mobileOpen ? (
-        <button
-          aria-expanded={mobileOpen}
-          aria-label={t('openMenu')}
-          className={mobileDrawerToggleButtonClassName}
-          onClick={event => openMobileDrawer(event.currentTarget)}
-          ref={mobileDrawerReturnFocusRef}
-          title={t('openMenu')}
-          type="button"
-          {...devMarker({
-            context: 'navigation',
-            name: 'button',
-            value: 'open mobile drawer',
-          })}
-        >
-          <PanelLeftOpen aria-hidden="true" className="h-5 w-5" />
-        </button>
-      ) : null}
-
-      {mobileOpen ? (
-        <div
-          aria-label={t('mainMenu')}
-          aria-modal="true"
-          className="fixed inset-0 z-50 md:hidden"
-          onKeyDown={handleMobileDrawerKeyDown}
-          ref={mobileDrawerRef}
-          role="dialog"
-        >
-          <button
-            aria-label={t('closeMenuBackdrop')}
-            className="absolute inset-0 h-full w-full bg-secondary-950/35 backdrop-blur-sm"
-            onClick={closeMobileDrawer}
-            tabIndex={-1}
-            type="button"
-          />
-          <button
-            aria-expanded={mobileOpen}
             aria-label={t('closeMenu')}
-            className={mobileDrawerToggleButtonClassName}
-            onClick={closeMobileDrawer}
-            ref={mobileCloseButtonRef}
+            className={mobileDrawerButtonClassName}
             title={t('closeMenu')}
             type="button"
             {...devMarker({
@@ -690,43 +717,191 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           >
             <PanelLeftClose aria-hidden="true" className="h-5 w-5" />
           </button>
-          <div className="relative flex h-full w-[min(20rem,calc(100vw-2rem))] flex-col border-r border-secondary-200 bg-white shadow-2xl dark:border-secondary-800 dark:bg-secondary-950">
-            <div className="flex shrink-0 items-center border-b border-secondary-200/70 py-3 pl-16 pr-4 dark:border-secondary-800">
-              <Link
-                className="inline-flex min-h-11 min-w-0 items-center gap-3 rounded-xl pr-3 font-bold text-primary-700 dark:text-primary-300"
-                href="/requirements"
-                onClick={closeMobileDrawer}
-                title={buildVersionTitle}
+        </Dialog.Close>
+        <div
+          className={`flex shrink-0 items-center border-b py-3 pl-16 pr-4 ${
+            isRadixThemesMode
+              ? 'border-(--gray-a6)'
+              : 'border-secondary-950/10 dark:border-white/10'
+          }`}
+        >
+          <Link
+            className={`inline-flex min-h-11 min-w-0 items-center gap-3 border px-3 font-bold ${
+              isRadixThemesMode
+                ? 'rounded-lg border-(--gray-a6) bg-(--gray-2) text-(--gray-12)'
+                : 'rounded-md border-secondary-950/10 bg-white text-secondary-950 dark:border-white/10 dark:bg-[#1c1c20] dark:text-white'
+            }`}
+            href="/requirements"
+            onClick={closeMobileDrawer}
+            title={buildVersionTitle}
+            {...devMarker({
+              context: 'navigation',
+              name: 'link',
+              value: 'app title',
+            })}
+          >
+            <Logo className="h-8 w-8 shrink-0" />
+            <span className="min-w-0 truncate text-base tracking-tight">
+              {tc('appName')}
+            </span>
+          </Link>
+        </div>
+        <nav
+          aria-label={t('mainNavigation')}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          {renderRailContents(true, {
+            closeOnNavigate: true,
+            mobile: true,
+          })}
+        </nav>
+      </Dialog.Content>
+    </>
+  )
+
+  const navigationShell = (
+    <>
+      <Collapsible.Root
+        asChild
+        onOpenChange={setDesktopExpanded}
+        open={desktopExpanded}
+      >
+        <nav
+          aria-label={t('mainNavigation')}
+          className={`fixed inset-y-0 left-0 z-50 hidden flex-col border-r shadow-[20px_0_50px_-38px_rgba(0,0,0,0.55)] backdrop-blur-xl transition-[width] duration-200 md:flex ${
+            isRadixThemesMode
+              ? 'border-(--gray-a6) bg-(--color-panel)'
+              : 'border-secondary-950/10 bg-[#fbfbfd]/95 dark:border-white/10 dark:bg-[#111113]/95'
+          }`}
+          data-global-navigation-rail="desktop"
+          data-radix-prototype-mode={radixPrototypeMode}
+          data-radix-themes-navigation={isRadixThemesMode ? 'true' : undefined}
+          style={{
+            width: desktopExpanded
+              ? NAV_RAIL_EXPANDED_WIDTH
+              : NAV_RAIL_COLLAPSED_WIDTH,
+          }}
+          {...devMarker({
+            name: 'navigation',
+            priority: 320,
+            value: 'global side rail',
+          })}
+        >
+          <div
+            className={`flex shrink-0 flex-col gap-3 border-b px-3 py-3 ${
+              isRadixThemesMode
+                ? 'border-(--gray-a6)'
+                : 'border-secondary-950/10 dark:border-white/10'
+            }`}
+          >
+            <Collapsible.Trigger asChild>
+              <button
+                aria-label={
+                  desktopExpanded ? t('collapseRail') : t('expandRail')
+                }
+                className={`inline-flex min-h-11 w-12 min-w-11 items-center justify-center border border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                  isRadixThemesMode
+                    ? 'rounded-lg text-(--gray-11) hover:border-(--gray-a6) hover:bg-(--accent-a2) hover:text-(--accent-12) focus-visible:ring-(--accent-a7) focus-visible:ring-offset-(--color-panel)'
+                    : 'rounded-md text-secondary-700 hover:border-secondary-950/10 hover:bg-white focus-visible:ring-violet-500/50 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:border-white/10 dark:hover:bg-[#1c1c20] dark:focus-visible:ring-violet-400/60 dark:focus-visible:ring-offset-[#111113]'
+                }`}
+                title={desktopExpanded ? t('collapseRail') : t('expandRail')}
+                type="button"
                 {...devMarker({
                   context: 'navigation',
-                  name: 'link',
-                  value: 'app title',
+                  name: 'button',
+                  value: desktopExpanded ? 'collapse rail' : 'expand rail',
                 })}
               >
-                <Logo className="h-8 w-8 shrink-0" />
+                {desktopExpanded ? (
+                  <PanelLeftClose aria-hidden="true" className="h-5 w-5" />
+                ) : (
+                  <PanelLeftOpen aria-hidden="true" className="h-5 w-5" />
+                )}
+              </button>
+            </Collapsible.Trigger>
+            <Link
+              aria-label={tc('appName')}
+              className={`inline-flex min-h-11 min-w-11 items-center border font-bold shadow-[0_12px_28px_-24px_rgba(0,0,0,0.5)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                isRadixThemesMode
+                  ? 'rounded-lg border-(--gray-a6) bg-(--gray-2) text-(--gray-12) hover:border-(--accent-a7) hover:bg-(--accent-a2) focus-visible:ring-(--accent-a7) focus-visible:ring-offset-(--color-panel)'
+                  : 'rounded-md border-secondary-950/10 bg-white text-secondary-950 hover:border-violet-500/40 focus-visible:ring-violet-500/50 focus-visible:ring-offset-white dark:border-white/10 dark:bg-[#1c1c20] dark:text-white dark:hover:border-violet-400/50 dark:focus-visible:ring-violet-400/60 dark:focus-visible:ring-offset-[#111113]'
+              } ${
+                desktopExpanded
+                  ? 'justify-start gap-3 px-3'
+                  : 'justify-center px-0'
+              }`}
+              href="/requirements"
+              title={buildVersionTitle}
+              {...devMarker({
+                context: 'navigation',
+                name: 'link',
+                value: 'app title',
+              })}
+            >
+              <Logo className="h-8 w-8 shrink-0" />
+              {desktopExpanded ? (
                 <span className="min-w-0 truncate text-base tracking-tight">
                   {tc('appName')}
                 </span>
-              </Link>
-            </div>
-            <nav
-              aria-label={t('mainNavigation')}
-              className="flex min-h-0 flex-1 flex-col"
-              data-global-navigation-rail="mobile-drawer"
-              {...devMarker({
-                name: 'navigation',
-                priority: 320,
-                value: 'mobile drawer',
-              })}
-            >
-              {renderRailContents(true, {
-                closeOnNavigate: true,
-                mobile: true,
-              })}
-            </nav>
+              ) : null}
+            </Link>
           </div>
-        </div>
-      ) : null}
+          {renderRailContents(desktopExpanded)}
+        </nav>
+      </Collapsible.Root>
+
+      <Dialog.Root onOpenChange={setMobileOpen} open={mobileOpen}>
+        <Dialog.Trigger asChild>
+          <button
+            aria-label={t('openMenu')}
+            className={mobileDrawerButtonClassName}
+            title={t('openMenu')}
+            type="button"
+            {...devMarker({
+              context: 'navigation',
+              name: 'button',
+              value: 'open mobile drawer',
+            })}
+          >
+            <PanelLeftOpen aria-hidden="true" className="h-5 w-5" />
+          </button>
+        </Dialog.Trigger>
+        <Dialog.Portal>
+          {isRadixThemesMode ? (
+            <Theme
+              accentColor="iris"
+              appearance="inherit"
+              className="contents"
+              grayColor="slate"
+              hasBackground={false}
+              panelBackground="solid"
+              radius="large"
+              scaling="105%"
+            >
+              {mobileDrawerPortalContent}
+            </Theme>
+          ) : (
+            mobileDrawerPortalContent
+          )}
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
+  )
+
+  return isRadixThemesMode ? (
+    <Theme
+      accentColor="iris"
+      appearance="inherit"
+      className="contents"
+      grayColor="slate"
+      hasBackground={false}
+      panelBackground="solid"
+      radius="large"
+      scaling="105%"
+    >
+      {navigationShell}
+    </Theme>
+  ) : (
+    navigationShell
   )
 }

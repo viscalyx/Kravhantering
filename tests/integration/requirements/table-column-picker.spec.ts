@@ -101,27 +101,35 @@ test.describe('Requirements table column picker', () => {
         })
         await expect(trigger).toBeVisible()
 
-        const triggerBox = await trigger.boundingBox()
+        const beforeScrollTriggerBox = await trigger.boundingBox()
         const scrollBox = await scrollContainer.boundingBox()
         const viewportSize = page.viewportSize()
 
-        expect(triggerBox).not.toBeNull()
+        expect(beforeScrollTriggerBox).not.toBeNull()
         expect(scrollBox).not.toBeNull()
         expect(viewportSize).not.toBeNull()
 
-        if (triggerBox && scrollBox && viewportSize) {
-          const railMargin = 8
-          const expectedLeft = Math.min(
-            Math.max(
-              Math.round(scrollBox.x + scrollBox.width + 12),
-              railMargin,
-            ),
-            viewportSize.width - Math.round(triggerBox.width) - railMargin,
-          )
+        if (beforeScrollTriggerBox && viewportSize) {
+          expect(beforeScrollTriggerBox.x).toBeGreaterThanOrEqual(0)
           expect(
-            Math.abs(Math.round(triggerBox.x) - expectedLeft),
+            beforeScrollTriggerBox.x + beforeScrollTriggerBox.width,
+          ).toBeLessThanOrEqual(viewportSize.width)
+        }
+
+        const afterHorizontalScrollTriggerBox = await trigger.boundingBox()
+        expect(afterHorizontalScrollTriggerBox).not.toBeNull()
+        if (beforeScrollTriggerBox && afterHorizontalScrollTriggerBox) {
+          expect(
+            Math.abs(
+              Math.round(afterHorizontalScrollTriggerBox.x) -
+                Math.round(beforeScrollTriggerBox.x),
+            ),
           ).toBeLessThanOrEqual(1)
         }
+
+        await expect(
+          page.locator('[data-floating-action-rail-placement="inline-top"]'),
+        ).toBeVisible()
 
         await trigger.click()
         await expect(popover).toBeVisible()
@@ -195,7 +203,7 @@ test.describe('Requirements table column picker', () => {
         expect(storedColumns).toContain('"version"')
       })
 
-      test('REQ-08: keeps the floating rail fixed and the header sticky during vertical scroll', async ({
+      test('REQ-08: keeps the inline command rail and header sticky during vertical scroll', async ({
         page,
       }) => {
         await openRequirementInlineDetail(page)
@@ -203,12 +211,10 @@ test.describe('Requirements table column picker', () => {
         const columnsTrigger = page.locator(
           '[data-column-picker-trigger="true"]',
         )
-        const scrollTopTrigger = page.locator(
-          '[data-scroll-top-trigger="true"]',
-        )
         const requirementPackageFilter = page.locator(
           '[data-requirement-package="1"]',
         )
+        const stickyChrome = page.locator('[data-sticky-table-chrome="true"]')
         const headerLabel = page
           .locator('[data-requirement-header-label="uniqueId"]')
           .first()
@@ -235,20 +241,20 @@ test.describe('Requirements table column picker', () => {
           .toBeGreaterThan(200)
         await expect(requirementPackageFilter).toBeVisible()
         await expect(headerLabel).toBeVisible()
-        await expect(scrollTopTrigger).toBeVisible()
+        await expect(stickyChrome).toBeVisible()
 
         const afterScrollBox = await columnsTrigger.boundingBox()
-        const scrollTopBox = await scrollTopTrigger.boundingBox()
+        const stickyChromeBox = await stickyChrome.boundingBox()
         expect(afterScrollBox).not.toBeNull()
-        expect(scrollTopBox).not.toBeNull()
+        expect(stickyChromeBox).not.toBeNull()
         if (!afterScrollBox) {
           throw new Error(
             'Column picker trigger lost its bounding box after vertical scroll.',
           )
         }
-        if (!scrollTopBox) {
+        if (!stickyChromeBox) {
           throw new Error(
-            'Scroll-to-top trigger did not expose a bounding box after vertical scroll.',
+            'Sticky table chrome did not expose a bounding box after vertical scroll.',
           )
         }
 
@@ -256,15 +262,10 @@ test.describe('Requirements table column picker', () => {
           Math.round(beforeScrollBox.y) + 1,
         )
         expect(Math.round(afterScrollBox.y)).toBeGreaterThanOrEqual(0)
-        expect(scrollTopBox.y).toBeGreaterThan(afterScrollBox.y)
-
-        const beforeReturnScrollY = await page.evaluate(() =>
-          Math.round(window.scrollY),
+        expect(Math.round(stickyChromeBox.y)).toBeGreaterThanOrEqual(0)
+        expect(Math.round(stickyChromeBox.y)).toBeLessThanOrEqual(
+          Math.round(beforeScrollBox.y) + 1,
         )
-        await scrollTopTrigger.click()
-        await expect
-          .poll(async () => page.evaluate(() => Math.round(window.scrollY)))
-          .toBeLessThan(beforeReturnScrollY)
       })
     })
   }

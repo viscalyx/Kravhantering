@@ -2585,6 +2585,12 @@
     "descriptionRequired": "Kravtext måste anges innan raden kan importeras.",
     "verificationMethodRequired": "Verifieringsmetod måste anges för verifierbara krav."
   },
+  "radixPrototype": {
+    "badge": "Prototyp",
+    "label": "Radix-läge",
+    "local": "Lokalt",
+    "themes": "Themes"
+  },
   "safeMarkdown": {
     "imageOmitted": "Bild utelämnad"
   }
