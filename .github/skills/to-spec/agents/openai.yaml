@@ -1,0 +1,6 @@
+interface:
+  display_name: "To Spec"
+  short_description: "Turn the current conversation into a spec and publish it to the project issue tracker"
+  default_prompt: "Use $to-spec to turn the current conversation into a spec (Problem Statement, Solution, User Stories, Implementation Decisions, Testing Decisions, Out of Scope, Further Notes) and publish it to the project's issue tracker with the ready-for-agent triage label. Do NOT interview the user — synthesize from the conversation and repo context."
+policy:
+  allow_implicit_invocation: false
