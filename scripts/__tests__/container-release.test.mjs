@@ -1595,8 +1595,25 @@ describe('trusted container release helpers', () => {
       "if: env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_IS_STABLE == 'true'",
     )
     expect(workflow).toContain(
-      'git switch --force-create operator-upgrade-notes-archive origin/main',
+      'archive_branch="automation/operator-upgrade-notes-archive-$' +
+        '{RELEASE_TAG_NAME}"',
     )
+    expect(workflow).toContain(
+      'GH_TOKEN: $' + '{{ secrets.OPERATOR_UPGRADE_NOTES_TOKEN }}',
+    )
+    expect(workflow).toContain(
+      'gh pr create --base main --head "$' + '{archive_branch}"',
+    )
+    expect(workflow).toContain("--jq '.published_at[0:10]'")
+    expect(workflow).toContain(
+      'git fetch origin "+$' +
+        '{archive_branch}:refs/remotes/origin/$' +
+        '{archive_branch}"',
+    )
+    expect(workflow).toMatch(
+      /gh\s+pr\s+merge\s+"\$\{pr_number\}"\s+--squash\s+--auto/u,
+    )
+    expect(workflow).not.toContain('git push origin HEAD:main')
     expect(workflow).toContain('npm run test:release-smoke')
     expect(workflow).not.toContain('pull_request_target')
   })

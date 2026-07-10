@@ -7,6 +7,8 @@ target version.
 
 ## Unreleased
 
+## v0.3.0 - 2026-07-09
+
 ### Requirements specifications need lifecycle status before upgrade
 
 The migration backfills requirements specifications without lifecycle status to
