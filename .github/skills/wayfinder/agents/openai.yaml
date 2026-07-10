@@ -2,3 +2,5 @@ interface:
   display_name: "Wayfinder"
   short_description: "Map large efforts into issue tickets"
   default_prompt: "Use $wayfinder to chart this large, unclear effort as an issue-tracker map and work one decision ticket at a time."
+policy:
+  allow_implicit_invocation: false
