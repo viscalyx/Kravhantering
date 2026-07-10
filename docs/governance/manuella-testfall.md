@@ -638,10 +638,13 @@ kravbiblioteket.
 
 ### REQ-13: detaljmenyer går att använda med tangentbord
 
-**Steg:** Öppna `Dela` och `Rapporter` i kravdetaljvyn med tangentbord, navigera
-med piltangenter och stäng med Escape.
+**Steg:** Öppna `Dela` och `Rapporter` i kravdetaljvyn med tangentbord. Navigera
+med uppåt- och nedåtpil samt Home och End. Stäng menyerna med Escape och prova
+även att klicka utanför dem.
 
-**Förväntat resultat:** Fokus hålls korrekt och kopiering annonseras.
+**Förväntat resultat:** Menyval, grupper och eventuella inaktiverade val är
+tydliga. Menyerna stängs på avsett sätt, fokus återgår till öppningsknappen och
+kopiering annonseras utan att fokus flyttas.
 
 ### REQ-14a: kravpaket i kravbiblioteksförvaltning
 

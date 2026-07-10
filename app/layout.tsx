@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { ThemeProvider } from 'next-themes'
-import '@radix-ui/themes/styles.css'
 import '@/app/globals.css'
 import ThemeRootSync from '@/components/ThemeRootSync'
 import { getRequestNonce, THEME_STORAGE_KEY } from '@/lib/theme'

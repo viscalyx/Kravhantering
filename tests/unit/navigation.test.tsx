@@ -353,7 +353,7 @@ describe('Navigation', () => {
     const navigation = screen.getByRole('navigation', {
       name: 'nav.mainNavigation',
     })
-    expect(navigation).toHaveStyle({ width: '4.5rem' })
+    expect(navigation).toHaveStyle({ width: '5.25rem' })
     const expandRailButton = screen.getByRole('button', {
       name: 'nav.expandRail',
     })

@@ -109,7 +109,8 @@ describe('RequirementReportMenu', () => {
     )
 
     const trigger = screen.getByRole('button', { name: 'Reports' })
-    await userEvent.click(trigger)
+    trigger.focus()
+    await userEvent.keyboard('{Enter}')
 
     const historyReport = screen.getByRole('menuitem', {
       name: 'History Report',

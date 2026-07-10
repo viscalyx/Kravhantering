@@ -957,10 +957,8 @@ describe('RequirementsClient', () => {
 
     const { container } = render(<RequirementsClient />)
 
-    const tableCard = Array.from(container.querySelectorAll('div')).find(node =>
-      node.className.includes(
-        'relative rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm',
-      ),
+    const tableCard = container.querySelector(
+      '[data-requirements-workbench="true"]',
     )
 
     expect(tableCard).toBeTruthy()

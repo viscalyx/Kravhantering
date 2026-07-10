@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsTable from '@/components/RequirementsTable'
@@ -371,17 +372,6 @@ describe('RequirementsTable', () => {
     )
   }
 
-  function getColumnPickerWrapper(container: HTMLElement) {
-    return (
-      (container.querySelector(
-        '[data-column-picker-wrapper="true"]',
-      ) as HTMLDivElement | null) ??
-      (document.querySelector(
-        '[data-column-picker-wrapper="true"]',
-      ) as HTMLDivElement | null)
-    )
-  }
-
   function getColumnPickerShell(container: HTMLElement) {
     return (
       (container.querySelector(
@@ -437,7 +427,7 @@ describe('RequirementsTable', () => {
 
   function getOpenPopover() {
     return document.body.querySelector(
-      'div.fixed.z-50',
+      '[data-filter-popover], [data-column-picker-popover="true"]',
     ) as HTMLDivElement | null
   }
 
@@ -950,7 +940,7 @@ describe('RequirementsTable', () => {
     }
   })
 
-  it('assigns unique locked-column description ids to each table instance', () => {
+  it('assigns unique locked-column description ids to each table instance', async () => {
     render(
       <>
         <RequirementsTable locale="sv" rows={[makeRow({ id: 1 })]} />
@@ -958,27 +948,32 @@ describe('RequirementsTable', () => {
       </>,
     )
 
-    for (const button of screen.getAllByRole('button', { name: 'columns' })) {
-      fireEvent.click(button)
-    }
+    const triggers = screen.getAllByRole('button', { name: 'columns' })
+    expect(
+      triggers.map(trigger => trigger.getAttribute('aria-controls')),
+    ).toEqual(expect.arrayContaining([expect.any(String), expect.any(String)]))
+    expect(
+      new Set(triggers.map(trigger => trigger.getAttribute('aria-controls')))
+        .size,
+    ).toBe(2)
 
-    const uniqueIdCheckboxes = screen.getAllByRole('checkbox', {
-      name: 'uniqueId',
-    })
-    const descriptionIds = uniqueIdCheckboxes
-      .map(checkbox => checkbox.getAttribute('aria-describedby'))
-      .filter((value): value is string => value !== null)
-
-    expect(descriptionIds).toHaveLength(2)
-    expect(new Set(descriptionIds).size).toBe(2)
-    for (const descriptionId of descriptionIds) {
+    const descriptionIds: string[] = []
+    for (const trigger of triggers) {
+      await userEvent.click(trigger)
+      const checkbox = screen.getByRole('checkbox', { name: 'uniqueId' })
+      const descriptionId = checkbox.getAttribute('aria-describedby')
       expect(descriptionId).toMatch(
         /column-picker-option-description-uniqueId$/,
       )
-      expect(document.getElementById(descriptionId)).toHaveTextContent(
-        'lockedColumn',
-      )
+      expect(
+        descriptionId ? document.getElementById(descriptionId) : null,
+      ).toHaveTextContent('lockedColumn')
+      if (descriptionId) descriptionIds.push(descriptionId)
+      await userEvent.click(trigger)
     }
+
+    expect(descriptionIds).toHaveLength(2)
+    expect(new Set(descriptionIds).size).toBe(2)
   })
 
   it('renders minimum hit areas in the columns popover', () => {
@@ -1063,7 +1058,7 @@ describe('RequirementsTable', () => {
     expect(screen.getByText('Testkrav')).toBeInTheDocument()
   })
 
-  it('renders the floating pill outside the table header and closes on outside click', () => {
+  it('renders the floating pill outside the table header and closes on outside click', async () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
@@ -1073,11 +1068,13 @@ describe('RequirementsTable', () => {
     ).toBeNull()
     expect(getColumnPickerTrigger(container)).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'columns' }))
+    await userEvent.click(screen.getByRole('button', { name: 'columns' }))
     expect(screen.getByRole('checkbox', { name: 'status' })).toBeTruthy()
 
-    fireEvent.mouseDown(document.body)
-    expect(screen.queryByRole('checkbox', { name: 'status' })).toBeNull()
+    await userEvent.click(document.body)
+    await waitFor(() =>
+      expect(screen.queryByRole('checkbox', { name: 'status' })).toBeNull(),
+    )
   })
 
   it('exposes developer-mode metadata for column picker options', () => {
@@ -1329,12 +1326,12 @@ describe('RequirementsTable', () => {
 
     expect(stickyTableChrome?.className).toContain('sticky')
     expect(stickyTableChrome?.className).toContain('top-0')
-    expect(stickyTableChrome?.className).toContain('rounded-t-2xl')
+    expect(stickyTableChrome?.className).toContain('rounded-t-lg')
     expect(stickyHeaderTable).toHaveAttribute('role', 'presentation')
     expect(stickyHeaderCells.length).toBeGreaterThan(1)
     expect(semanticHeaderCells.length).toBeGreaterThan(1)
     for (const cell of stickyHeaderCells) {
-      expect(cell.className).toContain('bg-secondary-50')
+      expect(cell.className).toContain('bg-[#f6f5f8]')
     }
   })
 
@@ -1368,14 +1365,12 @@ describe('RequirementsTable', () => {
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
 
-    const wrapper = getColumnPickerWrapper(container)
     const shell = getColumnPickerShell(container)
 
-    expect(wrapper).toBeTruthy()
     expect(shell).toBeTruthy()
     expect(shell?.className).toContain('h-11')
     expect(shell?.className).toContain('w-11')
-    expect(shell?.className).toContain('rounded-full')
+    expect(shell?.className).toContain('rounded-md')
   })
 
   it('renders custom floating actions around the columns pill in rail order', () => {
@@ -1695,22 +1690,11 @@ describe('RequirementsTable', () => {
       width: 44,
     })
 
-    fireEvent.click(trigger)
+    await userEvent.click(trigger)
 
-    await waitFor(() => {
-      const menu = document.querySelector(
-        '[data-floating-action-menu="manage"]',
-      ) as HTMLDivElement | null
-      const menuContainer = menu?.parentElement as HTMLDivElement | null
-      const left = Number.parseInt(menuContainer?.style.left ?? '0', 10)
-      const width = Number.parseInt(menuContainer?.style.width ?? '0', 10)
-
-      expect(menu).toBeTruthy()
-      expect(left).toBeGreaterThanOrEqual(8)
-      expect(left + width).toBeLessThanOrEqual(312)
-      expect(menuContainer?.style.width).toBe('288px')
-      expect(menu?.className).not.toContain('w-72')
-    })
+    const menu = await screen.findByRole('menu', { name: 'manage' })
+    expect(menu).toHaveClass('max-h-[min(calc(100vh-2rem),32rem)]', 'w-72')
+    expect(screen.getByRole('menuitem', { name: 'Admin' })).toBeInTheDocument()
   })
 
   it('renders floating action menus with menu semantics, native links, and touch-target classes', async () => {
@@ -1739,14 +1723,12 @@ describe('RequirementsTable', () => {
     const trigger = screen.getByRole('button', { name: 'manage' })
     expect(trigger).toHaveAttribute('aria-haspopup', 'menu')
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
-    expect(trigger).not.toHaveAttribute('aria-controls')
+    expect(trigger).toHaveAttribute('aria-controls')
 
-    fireEvent.click(trigger)
+    await userEvent.click(trigger)
 
     await waitFor(() => {
       const menu = screen.getByRole('menu', { name: 'manage' })
-      const list = menu.querySelector('ul')
-      const item = list?.querySelector('li')
       const link = screen.getByRole('menuitem', {
         name: /Admin/,
       }) as HTMLAnchorElement
@@ -1755,8 +1737,6 @@ describe('RequirementsTable', () => {
       expect(trigger).toHaveAttribute('aria-expanded', 'true')
       expect(trigger).toHaveAttribute('aria-controls', menu.id)
       expect(menu).toHaveAttribute('aria-labelledby', trigger.id)
-      expect(list).toBeTruthy()
-      expect(item).toBeTruthy()
       expect(link.tagName).toBe('A')
       expect(link).toHaveAttribute('href', '/sv/admin')
       expect(link.className).toContain('min-h-11')
@@ -1796,7 +1776,9 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'manage' }))
+    const trigger = screen.getByRole('button', { name: 'manage' })
+    trigger.focus()
+    await userEvent.keyboard('{Enter}')
 
     const importItem = await screen.findByRole('menuitem', { name: 'Import' })
     const exportItem = screen.getByRole('menuitem', { name: 'Export' })
@@ -1806,7 +1788,7 @@ describe('RequirementsTable', () => {
 
     await waitFor(() => expect(importItem).toHaveFocus())
 
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    await userEvent.keyboard('{ArrowDown}')
     expect(exportItem).toHaveFocus()
   })
 
@@ -1844,7 +1826,8 @@ describe('RequirementsTable', () => {
     )
 
     const trigger = screen.getByRole('button', { name: 'manage' })
-    fireEvent.click(trigger)
+    trigger.focus()
+    await userEvent.keyboard('{Enter}')
 
     const adminItem = await screen.findByRole('menuitem', { name: 'Admin' })
     const disabledItem = screen.getByRole('menuitem', { name: 'Disabled' })
@@ -1852,28 +1835,28 @@ describe('RequirementsTable', () => {
 
     await waitFor(() => expect(adminItem).toHaveFocus())
 
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    await userEvent.keyboard('{ArrowDown}')
     expect(exportItem).toHaveFocus()
     expect(disabledItem).not.toHaveFocus()
 
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    await userEvent.keyboard('{ArrowDown}')
     expect(adminItem).toHaveFocus()
 
-    fireEvent.keyDown(document, { key: 'ArrowUp' })
+    await userEvent.keyboard('{ArrowUp}')
     expect(exportItem).toHaveFocus()
 
-    fireEvent.keyDown(document, { key: 'Home' })
+    await userEvent.keyboard('{Home}')
     expect(adminItem).toHaveFocus()
 
-    fireEvent.keyDown(document, { key: 'End' })
+    await userEvent.keyboard('{End}')
     expect(exportItem).toHaveFocus()
 
-    fireEvent.keyDown(document, { key: 'Escape' })
+    await userEvent.keyboard('{Escape}')
 
     await waitFor(() => {
       expect(screen.queryByRole('menu', { name: 'manage' })).toBeNull()
       expect(trigger).toHaveAttribute('aria-expanded', 'false')
-      expect(trigger).not.toHaveAttribute('aria-controls')
+      expect(trigger).toHaveAttribute('aria-controls')
     })
     expect(trigger).toHaveFocus()
   })
@@ -1901,7 +1884,7 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'reports' }))
+    await userEvent.click(screen.getByRole('button', { name: 'reports' }))
 
     const reportItem = await screen.findByRole('menuitem', {
       name: /Kombinerad granskningsrapport/,
@@ -1947,7 +1930,7 @@ describe('RequirementsTable', () => {
 
     const trigger = screen.getByRole('button', { name: 'reports' })
 
-    fireEvent.click(trigger)
+    await userEvent.click(trigger)
 
     const reportLabel = await screen.findByText('Kombinerad granskningsrapport')
     const disabledItem = reportLabel.closest(
@@ -1990,7 +1973,7 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'manage' }))
+    await userEvent.click(screen.getByRole('button', { name: 'manage' }))
 
     const disabledItem = await screen.findByRole('menuitem', { name: /Admin/ })
 
@@ -1999,7 +1982,7 @@ describe('RequirementsTable', () => {
     expect(disabledItem.className).toContain('cursor-not-allowed')
     expect(disabledItem.className).toContain('opacity-50')
 
-    fireEvent.click(disabledItem)
+    await userEvent.click(disabledItem)
 
     expect(
       document.querySelector('[data-floating-action-menu="manage"]'),
@@ -2030,13 +2013,15 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'manage' }))
+    const trigger = screen.getByRole('button', { name: 'manage' })
+    trigger.focus()
+    await userEvent.keyboard('{Enter}')
 
     const actionButton = await screen.findByRole('menuitem', { name: 'Export' })
 
     await waitFor(() => expect(actionButton).toHaveFocus())
 
-    fireEvent.click(actionButton)
+    await userEvent.click(actionButton)
     expect(onExport).toHaveBeenCalledTimes(1)
   })
 
@@ -2270,7 +2255,7 @@ describe('RequirementsTable', () => {
     }
   })
 
-  it('applies 44px touch targets to standard filter popover actions', () => {
+  it('applies 44px touch targets to standard filter popover actions', async () => {
     render(
       <RequirementsTable
         filterValues={DEFAULT_FILTERS}
@@ -2295,7 +2280,7 @@ describe('RequirementsTable', () => {
     }
 
     setElementRect(statusFilterButton, { bottom: 40, left: 48, right: 92 })
-    fireEvent.click(statusFilterButton)
+    await userEvent.click(statusFilterButton)
 
     const popover = getOpenPopover()
     const clearButton = popover?.querySelector('button')
@@ -2305,7 +2290,7 @@ describe('RequirementsTable', () => {
     expect(optionRow?.className).toContain('min-h-11')
   })
 
-  it('applies 44px touch targets to grouped filter popover actions', () => {
+  it('applies 44px touch targets to grouped filter popover actions', async () => {
     render(
       <RequirementsTable
         filterValues={{ ...DEFAULT_FILTERS, qualityCharacteristicIds: [2] }}
@@ -2338,7 +2323,7 @@ describe('RequirementsTable', () => {
       left: 48,
       right: 92,
     })
-    fireEvent.click(qualityCharacteristicFilterButton)
+    await userEvent.click(qualityCharacteristicFilterButton)
 
     const popover = getOpenPopover()
     const clearButton = popover?.querySelector('button')
@@ -2405,7 +2390,7 @@ describe('RequirementsTable', () => {
     }
   })
 
-  it('clamps filter popovers inside the viewport near the right edge', () => {
+  it('keeps filter popovers usable near the viewport edge', async () => {
     render(
       <RequirementsTable
         filterValues={DEFAULT_FILTERS}
@@ -2441,12 +2426,18 @@ describe('RequirementsTable', () => {
     }
 
     setElementRect(uniqueIdFilterButton, { bottom: 40, left: 180, right: 224 })
-    fireEvent.click(uniqueIdFilterButton)
+    await userEvent.click(uniqueIdFilterButton)
 
     expect(screen.getByRole('textbox', { name: 'uniqueId' })).toBeTruthy()
-    expect(getOpenPopover()?.style.left).toBe('8px')
+    expect(getOpenPopover()).toHaveClass(
+      'max-h-(--radix-popover-content-available-height)',
+      'overflow-y-auto',
+    )
 
-    fireEvent.mouseDown(document.body)
+    await userEvent.click(document.body)
+    await waitFor(() =>
+      expect(screen.queryByRole('textbox', { name: 'uniqueId' })).toBeNull(),
+    )
 
     const statusFilterButton = getHeaderFilterButton('status')
     expect(statusFilterButton).toBeTruthy()
@@ -2455,30 +2446,14 @@ describe('RequirementsTable', () => {
     }
 
     setElementRect(statusFilterButton, { bottom: 40, left: 180, right: 224 })
-    fireEvent.click(statusFilterButton)
+    await userEvent.click(statusFilterButton)
 
-    expect(getOpenPopover()?.style.left).toBe('32px')
+    expect(
+      getOpenPopover()?.querySelector('input[type="checkbox"]'),
+    ).toBeTruthy()
 
-    fireEvent.mouseDown(document.body)
-
-    const qualityCharacteristicFilterButton = getHeaderFilterButton(
-      'qualityCharacteristic',
-    )
-    expect(qualityCharacteristicFilterButton).toBeTruthy()
-    if (!qualityCharacteristicFilterButton) {
-      throw new Error(
-        'Expected the quality characteristic filter button to be rendered.',
-      )
-    }
-
-    setElementRect(qualityCharacteristicFilterButton, {
-      bottom: 40,
-      left: 180,
-      right: 224,
-    })
-    fireEvent.click(qualityCharacteristicFilterButton)
-
-    expect(getOpenPopover()?.style.left).toBe('8px')
+    await userEvent.click(document.body)
+    await waitFor(() => expect(getOpenPopover()).toBeNull())
   })
 
   it('renders resize handles whenever column resizing is enabled', () => {
@@ -3456,8 +3431,8 @@ describe('RequirementsTable', () => {
     const { container } = render(<RequirementsTable locale="sv" rows={rows} />)
     const trs = container.querySelectorAll('tbody tr')
 
-    expect(trs[0]?.className).not.toContain('bg-secondary-50/40')
-    expect(trs[1]?.className).toContain('bg-secondary-50/40')
+    expect(trs[0]?.className).not.toContain('bg-[#fbfbfd]')
+    expect(trs[1]?.className).toContain('bg-[#fbfbfd]')
   })
 
   it('renders filter chips for all filterable columns when filter values are active', () => {

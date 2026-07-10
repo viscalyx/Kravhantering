@@ -1,6 +1,5 @@
 'use client'
 
-import { Card, Theme } from '@radix-ui/themes'
 import {
   Download,
   LibraryBig,
@@ -14,10 +13,6 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AiRequirementGenerator from '@/components/AiRequirementGenerator'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
-import {
-  RadixPrototypeModeSwitch,
-  useRadixPrototypeMode,
-} from '@/components/RadixPrototypeMode'
 import RequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/RequirementsImportDialog'
@@ -257,8 +252,6 @@ export default function RequirementsClient({
   const tn = useTranslations('nav')
   const locale = useLocale()
   const pdfDownload = useServerPdfDownload()
-  const { mode: radixPrototypeMode } = useRadixPrototypeMode()
-  const isRadixThemesMode = radixPrototypeMode === 'themes'
   const normalizedColumnDefaults = useMemo(
     () => normalizeRequirementListColumnDefaults(initialColumnDefaults),
     [initialColumnDefaults],
@@ -643,7 +636,6 @@ export default function RequirementsClient({
   // We also depend on hasResolvedInitialRows because the table is hidden behind
   // a loading spinner until that flag is true — without it the effect could fire
   // when rows/pinnedRow are set but before the table is actually rendered.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are intentional triggers to re-run scroll check when DOM updates
   useEffect(() => {
     const id = scrollToIdRef.current
     if (id == null) return
@@ -933,19 +925,11 @@ export default function RequirementsClient({
   const requirementsTableContent = shouldShowInitialLoadingState ? (
     <div
       aria-live="polite"
-      className={`flex min-h-80 flex-col items-center justify-center gap-3 px-6 py-16 ${
-        isRadixThemesMode ? 'text-(--gray-11)' : ''
-      }`}
+      className="flex min-h-80 flex-col items-center justify-center gap-3 px-6 py-16"
       data-testid="requirements-card-loading"
     >
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600 dark:border-primary-700 dark:border-t-primary-400" />
-      <p
-        className={
-          isRadixThemesMode
-            ? 'text-(--gray-11)'
-            : 'text-secondary-600 dark:text-secondary-400'
-        }
-      >
+      <p className="text-secondary-600 dark:text-secondary-400">
         {tc('loadingRequirements')}
       </p>
     </div>
@@ -1101,23 +1085,11 @@ export default function RequirementsClient({
       statusOptions={statusOptions}
       stickyTitle={
         <div className="flex min-w-0 items-center gap-3">
-          <span
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border shadow-sm ${
-              isRadixThemesMode
-                ? 'border-(--gray-a6) bg-(--accent-a3) text-(--accent-11)'
-                : 'border-secondary-950/10 bg-white text-secondary-900 dark:border-white/10 dark:bg-[#1c1c20] dark:text-white'
-            }`}
-          >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-secondary-950/10 bg-white text-secondary-900 shadow-sm dark:border-white/10 dark:bg-[#1c1c20] dark:text-white">
             <LibraryBig aria-hidden="true" className="h-5 w-5" />
           </span>
           <span className="min-w-0">
-            <span
-              className={`block truncate text-sm font-semibold ${
-                isRadixThemesMode
-                  ? 'text-(--gray-12)'
-                  : 'text-secondary-950 dark:text-white'
-              }`}
-            >
+            <span className="block truncate text-sm font-semibold text-secondary-950 dark:text-white">
               {tn('catalog')}
             </span>
           </span>
@@ -1125,33 +1097,15 @@ export default function RequirementsClient({
       }
       types={types}
       visibleColumns={visibleColumns}
-      visualMode={isRadixThemesMode ? 'radix-themes' : 'local'}
     />
   )
 
-  const requirementsWorkbench = isRadixThemesMode ? (
-    <Theme
-      accentColor="iris"
-      appearance="inherit"
-      className="contents"
-      grayColor="slate"
-      hasBackground={false}
-      panelBackground="solid"
-      radius="large"
-      scaling="105%"
-    >
-      <Card
-        className="mx-auto w-full max-w-[104rem] overflow-hidden border border-(--gray-a6) shadow-[0_24px_80px_-48px_var(--gray-a12)]"
-        data-radix-themes-workbench="true"
-        size="1"
-        variant="classic"
-      >
-        {requirementsTableContent}
-      </Card>
-    </Theme>
-  ) : (
+  const requirementsWorkbench = (
     <div className="mx-auto w-full max-w-384">
-      <div className="relative rounded-lg border border-secondary-950/10 bg-white shadow-[0_24px_70px_-52px_rgba(0,0,0,0.65)] dark:border-white/10 dark:bg-[#111113]">
+      <div
+        className="relative rounded-lg border border-secondary-950/10 bg-white shadow-[0_24px_70px_-52px_rgba(0,0,0,0.65)] dark:border-white/10 dark:bg-[#111113]"
+        data-requirements-workbench="true"
+      >
         {requirementsTableContent}
       </div>
     </div>
@@ -1159,15 +1113,9 @@ export default function RequirementsClient({
 
   return (
     <>
-      <div
-        className={`min-h-[calc(100vh-3rem)] px-3 py-3 sm:px-5 lg:px-7 ${
-          isRadixThemesMode ? 'bg-(--gray-1)' : 'bg-[#fbfbfd] dark:bg-[#111113]'
-        }`}
-        data-radix-prototype-mode={radixPrototypeMode}
-      >
+      <div className="min-h-[calc(100vh-3rem)] bg-[#fbfbfd] px-3 py-3 sm:px-5 lg:px-7 dark:bg-[#111113]">
         {requirementsWorkbench}
       </div>
-      <RadixPrototypeModeSwitch />
       {pdfDownload.dialog}
       <AiRequirementGenerator
         aiGenerationAvailability={aiGenerationAvailability}

@@ -1,11 +1,5 @@
 'use client'
 
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import * as Popover from '@radix-ui/react-popover'
-import {
-  DropdownMenu as ThemesDropdownMenu,
-  Popover as ThemesPopover,
-} from '@radix-ui/themes'
 import {
   AlertCircle,
   AlignLeft,
@@ -47,6 +41,19 @@ import {
 import { useColumnState } from '@/components/_requirements-table/useColumnState'
 import { useFloatingRailPosition } from '@/components/_requirements-table/useFloatingRailPosition'
 import { useResizeHandles } from '@/components/_requirements-table/useResizeHandles'
+import {
+  AppMenu,
+  AppMenuContent,
+  AppMenuItem,
+  AppMenuLinkItem,
+  AppMenuSeparator,
+  AppMenuTrigger,
+} from '@/components/primitives/AppMenu'
+import {
+  AppPopover,
+  AppPopoverContent,
+  AppPopoverTrigger,
+} from '@/components/primitives/AppPopover'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import StatusBadge from '@/components/StatusBadge'
 import StatusIcon from '@/components/StatusIcon'
@@ -132,11 +139,9 @@ export interface RequirementsTableProps {
   stickyTopOffsetClassName?: string
   types?: FilterOption[]
   visibleColumns?: RequirementColumnId[]
-  visualMode?: RequirementsTableVisualMode
   wrapDescription?: boolean
 }
 
-export type RequirementsTableVisualMode = 'local' | 'radix-themes'
 export type FloatingActionPillVariant = 'default' | 'primary' | 'warning'
 
 interface FloatingActionMenuItemBase {
@@ -184,43 +189,25 @@ function isFloatingActionMenuLink(
 
 function FloatingActionMenuItemContent({
   item,
-  visualMode = 'local',
 }: {
   item: FloatingActionMenuActionItem
-  visualMode?: RequirementsTableVisualMode
 }) {
-  const isThemesMode = visualMode === 'radix-themes'
-
   return (
     <>
       {item.icon ? (
         <span
           aria-hidden="true"
-          className={`flex h-5 w-5 shrink-0 items-center justify-center ${
-            isThemesMode
-              ? 'text-(--gray-11)'
-              : 'text-secondary-500 dark:text-secondary-300'
-          }`}
+          className="flex h-5 w-5 shrink-0 items-center justify-center text-secondary-500 dark:text-secondary-300"
         >
           {item.icon}
         </span>
       ) : null}
       <div className="min-w-0 flex-1">
-        <div
-          className={`flex items-center gap-2 text-sm font-medium ${
-            isThemesMode
-              ? 'text-(--gray-12)'
-              : 'text-secondary-900 dark:text-secondary-100'
-          }`}
-        >
+        <div className="flex items-center gap-2 text-sm font-medium text-secondary-900 dark:text-secondary-100">
           {item.label}
           {item.badge != null ? (
             <span
-              className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
-                isThemesMode
-                  ? 'bg-(--accent-9) text-(--accent-contrast)'
-                  : 'bg-primary-600 text-white'
-              }`}
+              className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[11px] font-bold text-white"
               data-floating-action-menu-item-badge="true"
             >
               {item.badge}
@@ -228,13 +215,7 @@ function FloatingActionMenuItemContent({
           ) : null}
         </div>
         {item.description ? (
-          <div
-            className={`mt-0.5 text-xs ${
-              isThemesMode
-                ? 'text-(--gray-11)'
-                : 'text-secondary-600 dark:text-secondary-400'
-            }`}
-          >
+          <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
             {item.description}
           </div>
         ) : null}
@@ -281,46 +262,20 @@ const floatingPillVariantClassNames: Record<FloatingActionPillVariant, string> =
       'border-amber-400/80 bg-amber-50 text-amber-800 hover:border-amber-500 hover:bg-amber-100 dark:border-amber-400/50 dark:bg-amber-400/10 dark:text-amber-300 dark:hover:border-amber-300 dark:hover:bg-amber-300/20 dark:hover:text-amber-200',
   }
 
-const floatingPillThemesVariantClassNames: Record<
-  FloatingActionPillVariant,
-  string
-> = {
-  default:
-    'border-(--gray-a6) bg-(--color-panel) text-(--gray-12) hover:border-(--accent-a7) hover:bg-(--accent-a3) hover:text-(--accent-12)',
-  primary:
-    'border-(--accent-9) bg-(--accent-9) text-(--accent-contrast) hover:border-(--accent-10) hover:bg-(--accent-10)',
-  warning:
-    'border-(--amber-a7) bg-(--amber-a3) text-(--amber-12) hover:border-(--amber-a8) hover:bg-(--amber-a4)',
-}
-
 function getFloatingPillClassName(
   variant: FloatingActionPillVariant = 'default',
-  visualMode: RequirementsTableVisualMode = 'local',
 ) {
-  if (visualMode === 'radix-themes') {
-    return `${floatingPillBaseClassName} ${floatingPillThemesVariantClassNames[variant]}`
-  }
-
   return `${floatingPillBaseClassName} ${floatingPillVariantClassNames[variant]}`
 }
 
-export function FloatingActionPill({
-  action,
-  visualMode = 'local',
-}: {
-  action: FloatingActionItem
-  visualMode?: RequirementsTableVisualMode
-}) {
+export function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   const variant = action.variant ?? 'default'
   const hasMenu = (action.menuItems?.length ?? 0) > 0
-  const isThemesMode = visualMode === 'radix-themes'
   const developerModeContext = action.developerModeContext
   const developerModeValue = action.developerModeValue
   const titleText = action.tooltip ?? action.ariaLabel
   const disabledClass = action.disabled ? ' opacity-60 cursor-not-allowed' : ''
   const [open, setOpen] = useState(false)
-  const menuId = `floating-action-menu-${action.id}`
-  const triggerId = `floating-action-trigger-${action.id}`
   const menuDeveloperModeContext = developerModeValue
     ? `${developerModeContext ?? 'requirements table'} > floating pill: ${developerModeValue}`
     : developerModeContext
@@ -339,7 +294,7 @@ export function FloatingActionPill({
   const triggerButton = (
     <button
       aria-label={action.ariaLabel}
-      className={`${getFloatingPillClassName(variant, visualMode)}${disabledClass}`}
+      className={`${getFloatingPillClassName(variant)}${disabledClass}`}
       {...devMarker({
         context: developerModeContext,
         name: 'floating pill',
@@ -350,9 +305,7 @@ export function FloatingActionPill({
       data-floating-action-item="true"
       data-floating-action-menu-trigger={hasMenu ? action.id : undefined}
       data-floating-action-variant={variant}
-      data-radix-themes-action={isThemesMode ? 'true' : undefined}
       disabled={action.disabled}
-      id={hasMenu ? triggerId : undefined}
       onClick={action.disabled || hasMenu ? undefined : action.onClick}
       style={action.customStyle}
       title={titleText}
@@ -371,158 +324,74 @@ export function FloatingActionPill({
   )
 
   if (hasMenu) {
-    if (isThemesMode) {
-      return (
-        <ThemesDropdownMenu.Root
-          modal={false}
-          onOpenChange={setOpen}
-          open={open}
-        >
-          <ThemesDropdownMenu.Trigger>
-            {triggerButton}
-          </ThemesDropdownMenu.Trigger>
-          <ThemesDropdownMenu.Content
-            align="end"
-            aria-labelledby={triggerId}
-            color="iris"
-            data-floating-action-menu={action.id}
-            data-radix-themes-menu="true"
-            id={menuId}
-            sideOffset={8}
-            size="2"
-            variant="soft"
-          >
-            {action.menuItems?.map(item => {
-              if (isFloatingActionMenuSeparator(item)) {
-                return <ThemesDropdownMenu.Separator key={item.id} />
-              }
-
-              if (item.disabled) {
-                return (
-                  <ThemesDropdownMenu.Item
-                    disabled
-                    key={item.id}
-                    {...menuItemDeveloperModeProps(item)}
-                    title={item.tooltip}
-                  >
-                    <FloatingActionMenuItemContent
-                      item={item}
-                      visualMode={visualMode}
-                    />
-                  </ThemesDropdownMenu.Item>
-                )
-              }
-
-              if (isFloatingActionMenuLink(item)) {
-                return (
-                  <ThemesDropdownMenu.Item
-                    asChild
-                    key={item.id}
-                    {...menuItemDeveloperModeProps(item)}
-                    title={item.tooltip}
-                  >
-                    <Link href={item.href}>
-                      <FloatingActionMenuItemContent
-                        item={item}
-                        visualMode={visualMode}
-                      />
-                    </Link>
-                  </ThemesDropdownMenu.Item>
-                )
-              }
-
-              return (
-                <ThemesDropdownMenu.Item
-                  key={item.id}
-                  onSelect={() => item.onClick()}
-                  {...menuItemDeveloperModeProps(item)}
-                  title={item.tooltip}
-                >
-                  <FloatingActionMenuItemContent
-                    item={item}
-                    visualMode={visualMode}
-                  />
-                </ThemesDropdownMenu.Item>
-              )
-            })}
-          </ThemesDropdownMenu.Content>
-        </ThemesDropdownMenu.Root>
-      )
-    }
-
     return (
-      <DropdownMenu.Root modal={false} onOpenChange={setOpen} open={open}>
-        <DropdownMenu.Trigger asChild>{triggerButton}</DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content
-            align="end"
-            aria-labelledby={triggerId}
-            className="z-50 max-h-[min(calc(100vh-2rem),32rem)] w-72 overflow-y-auto rounded-lg border border-secondary-950/10 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(0,0,0,0.55)] backdrop-blur-md dark:border-white/10 dark:bg-[#1c1c20]/95"
-            {...devMarker({
-              context: menuDeveloperModeContext,
-              name: 'floating pill menu',
-              priority: 350,
-              value: developerModeValue,
-            })}
-            data-floating-action-menu={action.id}
-            id={menuId}
-            sideOffset={8}
-          >
-            {action.menuItems?.map(item => {
-              if (isFloatingActionMenuSeparator(item)) {
-                return (
-                  <DropdownMenu.Separator
-                    className="my-1 h-px bg-secondary-200/80 dark:bg-secondary-700/80"
-                    key={item.id}
-                  />
-                )
-              }
-
-              if (item.disabled) {
-                return (
-                  <DropdownMenu.Item
-                    className={floatingActionMenuItemDisabledClassName}
-                    disabled
-                    key={item.id}
-                    {...menuItemDeveloperModeProps(item)}
-                    title={item.tooltip}
-                  >
-                    <FloatingActionMenuItemContent item={item} />
-                  </DropdownMenu.Item>
-                )
-              }
-
-              if (isFloatingActionMenuLink(item)) {
-                return (
-                  <DropdownMenu.Item
-                    asChild
-                    className={floatingActionMenuItemEnabledClassName}
-                    key={item.id}
-                    {...menuItemDeveloperModeProps(item)}
-                    title={item.tooltip}
-                  >
-                    <Link href={item.href}>
-                      <FloatingActionMenuItemContent item={item} />
-                    </Link>
-                  </DropdownMenu.Item>
-                )
-              }
-
+      <AppMenu onOpenChange={setOpen} open={open}>
+        <AppMenuTrigger>{triggerButton}</AppMenuTrigger>
+        <AppMenuContent
+          align="end"
+          className="z-50 max-h-[min(calc(100vh-2rem),32rem)] w-72 overflow-y-auto rounded-lg border border-secondary-950/10 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(0,0,0,0.55)] backdrop-blur-md dark:border-white/10 dark:bg-[#1c1c20]/95"
+          {...devMarker({
+            context: menuDeveloperModeContext,
+            name: 'floating pill menu',
+            priority: 350,
+            value: developerModeValue,
+          })}
+          data-floating-action-menu={action.id}
+          sideOffset={8}
+        >
+          {action.menuItems?.map(item => {
+            if (isFloatingActionMenuSeparator(item)) {
               return (
-                <DropdownMenu.Item
-                  className={floatingActionMenuItemEnabledClassName}
+                <AppMenuSeparator
+                  className="my-1 h-px bg-secondary-200/80 dark:bg-secondary-700/80"
                   key={item.id}
-                  onSelect={() => item.onClick()}
+                />
+              )
+            }
+
+            if (item.disabled) {
+              return (
+                <AppMenuItem
+                  className={floatingActionMenuItemDisabledClassName}
+                  disabled
+                  key={item.id}
                   {...menuItemDeveloperModeProps(item)}
                   title={item.tooltip}
                 >
                   <FloatingActionMenuItemContent item={item} />
-                </DropdownMenu.Item>
+                </AppMenuItem>
               )
-            })}
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
+            }
+
+            if (isFloatingActionMenuLink(item)) {
+              return (
+                <AppMenuLinkItem
+                  className={floatingActionMenuItemEnabledClassName}
+                  key={item.id}
+                  {...menuItemDeveloperModeProps(item)}
+                  title={item.tooltip}
+                >
+                  <Link href={item.href}>
+                    <FloatingActionMenuItemContent item={item} />
+                  </Link>
+                </AppMenuLinkItem>
+              )
+            }
+
+            return (
+              <AppMenuItem
+                className={floatingActionMenuItemEnabledClassName}
+                key={item.id}
+                onAction={() => item.onClick()}
+                {...menuItemDeveloperModeProps(item)}
+                title={item.tooltip}
+              >
+                <FloatingActionMenuItemContent item={item} />
+              </AppMenuItem>
+            )
+          })}
+        </AppMenuContent>
+      </AppMenu>
     )
   }
 
@@ -531,7 +400,7 @@ export function FloatingActionPill({
       return (
         <span
           aria-disabled="true"
-          className={`${getFloatingPillClassName(variant, visualMode)}${disabledClass}`}
+          className={`${getFloatingPillClassName(variant)}${disabledClass}`}
           {...devMarker({
             context: developerModeContext,
             name: 'floating pill',
@@ -555,7 +424,7 @@ export function FloatingActionPill({
     return (
       <Link
         aria-label={action.ariaLabel}
-        className={getFloatingPillClassName(variant, visualMode)}
+        className={getFloatingPillClassName(variant)}
         {...devMarker({
           context: developerModeContext,
           name: 'floating pill',
@@ -599,13 +468,11 @@ function SearchFilterPopover({
   developerModeValue,
   label,
   onChange,
-  visualMode = 'local',
 }: {
   activeValue: string
   developerModeValue: string
   label: string
   onChange: (v: string | undefined) => void
-  visualMode?: RequirementsTableVisualMode
 }) {
   const tc = useTranslations('common')
   const tt = useTranslations('requirementsTable')
@@ -613,7 +480,6 @@ function SearchFilterPopover({
   const [local, setLocal] = useState(activeValue)
   const inputRef = useRef<HTMLInputElement>(null)
   const isActive = !!activeValue
-  const isThemesMode = visualMode === 'radix-themes'
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const filterLabel = tc('filterBy', { label })
 
@@ -655,19 +521,14 @@ function SearchFilterPopover({
       aria-label={filterLabel}
       className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded p-2 transition-colors ${
         isActive
-          ? isThemesMode
-            ? 'text-(--accent-11)'
-            : 'text-primary-500'
-          : isThemesMode
-            ? 'text-(--gray-11) hover:text-(--accent-11)'
-            : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'
+          ? 'text-primary-500'
+          : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'
       }`}
       {...devMarker({
         name: 'filter button',
         priority: 300,
         value: developerModeValue,
       })}
-      data-radix-themes-filter-trigger={isThemesMode ? 'true' : undefined}
       onClick={event => {
         event.stopPropagation()
       }}
@@ -682,17 +543,11 @@ function SearchFilterPopover({
     <div className="relative">
       <Search
         aria-hidden="true"
-        className={`absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${
-          isThemesMode ? 'text-(--gray-10)' : 'text-secondary-400'
-        }`}
+        className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary-400"
       />
       <input
         aria-label={label}
-        className={`w-full rounded-lg border py-1.5 pl-7 pr-7 text-xs transition-all placeholder:text-secondary-400 focus:outline-none ${
-          isThemesMode
-            ? 'border-(--gray-a7) bg-(--color-panel) text-(--gray-12) focus:border-(--accent-8) focus:ring-1 focus:ring-(--accent-a6)'
-            : 'border-secondary-200 bg-white focus:border-primary-500 focus:ring-1 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50'
-        }`}
+        className="w-full rounded-lg border border-secondary-200 bg-white py-1.5 pl-7 pr-7 text-xs transition-all placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50"
         onChange={e => {
           setLocal(e.target.value)
           commit(e.target.value)
@@ -713,11 +568,7 @@ function SearchFilterPopover({
       {local && (
         <button
           aria-label={tt('clear')}
-          className={`absolute right-2 top-1/2 -translate-y-1/2 ${
-            isThemesMode
-              ? 'text-(--gray-10) hover:text-(--gray-12)'
-              : 'text-secondary-400 hover:text-secondary-600'
-          }`}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-secondary-400 hover:text-secondary-600"
           onClick={() => {
             setLocal('')
             clearPendingCommit()
@@ -731,48 +582,23 @@ function SearchFilterPopover({
     </div>
   )
 
-  if (isThemesMode) {
-    return (
-      <ThemesPopover.Root onOpenChange={setOpen} open={open}>
-        <ThemesPopover.Trigger>{trigger}</ThemesPopover.Trigger>
-        <ThemesPopover.Content
-          align="start"
-          data-filter-popover={developerModeValue}
-          data-radix-themes-popover="true"
-          maxHeight="var(--radix-popover-content-available-height)"
-          minWidth="12rem"
-          onOpenAutoFocus={event => {
-            event.preventDefault()
-            inputRef.current?.focus()
-          }}
-          sideOffset={4}
-          size="2"
-        >
-          {content}
-        </ThemesPopover.Content>
-      </ThemesPopover.Root>
-    )
-  }
-
   return (
-    <Popover.Root onOpenChange={setOpen} open={open}>
-      <Popover.Trigger asChild>{trigger}</Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          align="start"
-          className={`${filterPopoverContentClassName} min-w-48`}
-          collisionPadding={POPOVER_VIEWPORT_MARGIN}
-          data-filter-popover={developerModeValue}
-          onOpenAutoFocus={event => {
-            event.preventDefault()
-            inputRef.current?.focus()
-          }}
-          sideOffset={4}
-        >
-          {content}
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+    <AppPopover onOpenChange={setOpen} open={open}>
+      <AppPopoverTrigger>{trigger}</AppPopoverTrigger>
+      <AppPopoverContent
+        align="start"
+        className={`${filterPopoverContentClassName} min-w-48`}
+        collisionPadding={POPOVER_VIEWPORT_MARGIN}
+        data-filter-popover={developerModeValue}
+        onOpenAutoFocus={event => {
+          event.preventDefault()
+          inputRef.current?.focus()
+        }}
+        sideOffset={4}
+      >
+        {content}
+      </AppPopoverContent>
+    </AppPopover>
   )
 }
 
@@ -786,7 +612,6 @@ function MultiSelectFilterPopover({
   onChange,
   options,
   value,
-  visualMode = 'local',
 }: {
   activeCount: number
   developerModeValue: string
@@ -795,12 +620,10 @@ function MultiSelectFilterPopover({
   onChange: (ids: number[]) => void
   options: { id: number }[]
   value: number[]
-  visualMode?: RequirementsTableVisualMode
 }) {
   const tc = useTranslations('common')
   const tt = useTranslations('requirementsTable')
   const [open, setOpen] = useState(false)
-  const isThemesMode = visualMode === 'radix-themes'
   const filterLabel = tc('filterBy', { label })
 
   const toggle = (id: number) => {
@@ -815,19 +638,14 @@ function MultiSelectFilterPopover({
       aria-label={filterLabel}
       className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded p-2 transition-colors ${
         activeCount > 0
-          ? isThemesMode
-            ? 'text-(--accent-11)'
-            : 'text-primary-500'
-          : isThemesMode
-            ? 'text-(--gray-11) hover:text-(--accent-11)'
-            : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'
+          ? 'text-primary-500'
+          : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'
       }`}
       {...devMarker({
         name: 'filter button',
         priority: 300,
         value: developerModeValue,
       })}
-      data-radix-themes-filter-trigger={isThemesMode ? 'true' : undefined}
       onClick={event => {
         event.stopPropagation()
       }}
@@ -841,11 +659,7 @@ function MultiSelectFilterPopover({
         <Filter aria-hidden="true" className="h-3.5 w-3.5" />
         {activeCount > 0 && (
           <span
-            className={`pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full text-[8px] font-bold leading-none ${
-              isThemesMode
-                ? 'bg-(--accent-9) text-(--accent-contrast)'
-                : 'bg-primary-500 text-white'
-            }`}
+            className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold leading-none text-white"
             data-filter-count-badge="true"
           >
             {activeCount}
@@ -859,11 +673,7 @@ function MultiSelectFilterPopover({
     <>
       {value.length > 0 && (
         <button
-          className={`min-h-11 w-full border-b px-2.5 pb-1.5 pt-1.5 text-left text-xs ${
-            isThemesMode
-              ? 'border-(--gray-a5) text-(--gray-11) hover:text-(--red-11)'
-              : 'text-secondary-500 hover:text-red-600 dark:hover:text-red-400'
-          }`}
+          className="min-h-11 w-full border-b px-2.5 pb-1.5 pt-1.5 text-left text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400"
           onClick={() => onChange([])}
           type="button"
         >
@@ -873,11 +683,7 @@ function MultiSelectFilterPopover({
       )}
       {options.map(opt => (
         <label
-          className={`flex min-h-11 cursor-pointer items-center gap-2 px-2.5 py-1.5 text-xs ${
-            isThemesMode
-              ? 'text-(--gray-12) hover:bg-(--accent-a3)'
-              : 'hover:bg-secondary-50 dark:hover:bg-secondary-700/50'
-          }`}
+          className="flex min-h-11 cursor-pointer items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-secondary-50 dark:hover:bg-secondary-700/50"
           key={opt.id}
         >
           <input
@@ -892,40 +698,19 @@ function MultiSelectFilterPopover({
     </>
   )
 
-  if (isThemesMode) {
-    return (
-      <ThemesPopover.Root onOpenChange={setOpen} open={open}>
-        <ThemesPopover.Trigger>{trigger}</ThemesPopover.Trigger>
-        <ThemesPopover.Content
-          align="start"
-          data-filter-popover={developerModeValue}
-          data-radix-themes-popover="true"
-          maxHeight="var(--radix-popover-content-available-height)"
-          minWidth="10rem"
-          sideOffset={4}
-          size="2"
-        >
-          {content}
-        </ThemesPopover.Content>
-      </ThemesPopover.Root>
-    )
-  }
-
   return (
-    <Popover.Root onOpenChange={setOpen} open={open}>
-      <Popover.Trigger asChild>{trigger}</Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          align="start"
-          className={`${filterOptionListPopoverContentClassName} min-w-40`}
-          collisionPadding={POPOVER_VIEWPORT_MARGIN}
-          data-filter-popover={developerModeValue}
-          sideOffset={4}
-        >
-          {content}
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+    <AppPopover onOpenChange={setOpen} open={open}>
+      <AppPopoverTrigger>{trigger}</AppPopoverTrigger>
+      <AppPopoverContent
+        align="start"
+        className={`${filterOptionListPopoverContentClassName} min-w-40`}
+        collisionPadding={POPOVER_VIEWPORT_MARGIN}
+        data-filter-popover={developerModeValue}
+        sideOffset={4}
+      >
+        {content}
+      </AppPopoverContent>
+    </AppPopover>
   )
 }
 
@@ -939,7 +724,6 @@ function GroupedMultiSelectFilterPopover({
   onChange,
   options,
   value,
-  visualMode = 'local',
 }: {
   activeCount: number
   developerModeValue: string
@@ -948,12 +732,10 @@ function GroupedMultiSelectFilterPopover({
   onChange: (ids: number[]) => void
   options: QualityCharacteristicOption[]
   value: number[]
-  visualMode?: RequirementsTableVisualMode
 }) {
   const tc = useTranslations('common')
   const tt = useTranslations('requirementsTable')
   const [open, setOpen] = useState(false)
-  const isThemesMode = visualMode === 'radix-themes'
   const filterLabel = tc('filterBy', { label })
 
   const toggle = (id: number) => {
@@ -972,19 +754,14 @@ function GroupedMultiSelectFilterPopover({
       aria-label={filterLabel}
       className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded p-2 transition-colors ${
         activeCount > 0
-          ? isThemesMode
-            ? 'text-(--accent-11)'
-            : 'text-primary-500'
-          : isThemesMode
-            ? 'text-(--gray-11) hover:text-(--accent-11)'
-            : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'
+          ? 'text-primary-500'
+          : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'
       }`}
       {...devMarker({
         name: 'filter button',
         priority: 300,
         value: developerModeValue,
       })}
-      data-radix-themes-filter-trigger={isThemesMode ? 'true' : undefined}
       onClick={event => {
         event.stopPropagation()
       }}
@@ -998,11 +775,7 @@ function GroupedMultiSelectFilterPopover({
         <Filter aria-hidden="true" className="h-3.5 w-3.5" />
         {activeCount > 0 && (
           <span
-            className={`pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full text-[8px] font-bold leading-none ${
-              isThemesMode
-                ? 'bg-(--accent-9) text-(--accent-contrast)'
-                : 'bg-primary-500 text-white'
-            }`}
+            className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold leading-none text-white"
             data-filter-count-badge="true"
           >
             {activeCount}
@@ -1016,11 +789,7 @@ function GroupedMultiSelectFilterPopover({
     <>
       {value.length > 0 && (
         <button
-          className={`min-h-11 w-full border-b px-2.5 pb-1.5 pt-1.5 text-left text-xs ${
-            isThemesMode
-              ? 'border-(--gray-a5) text-(--gray-11) hover:text-(--red-11)'
-              : 'text-secondary-500 hover:text-red-600 dark:hover:text-red-400'
-          }`}
+          className="min-h-11 w-full border-b px-2.5 pb-1.5 pt-1.5 text-left text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400"
           onClick={() => onChange([])}
           type="button"
         >
@@ -1032,22 +801,12 @@ function GroupedMultiSelectFilterPopover({
         const children = childrenOf(parent.id)
         return (
           <div key={parent.id}>
-            <div
-              className={`px-2.5 pb-0.5 pt-2 text-[11px] font-semibold uppercase tracking-wide ${
-                isThemesMode
-                  ? 'text-(--gray-10)'
-                  : 'text-secondary-400 dark:text-secondary-500'
-              }`}
-            >
+            <div className="px-2.5 pb-0.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-secondary-400 dark:text-secondary-500">
               {getLabel(parent)}
             </div>
             {children.map(child => (
               <label
-                className={`flex min-h-11 cursor-pointer items-center gap-2 py-1.5 pl-5 pr-2.5 text-xs ${
-                  isThemesMode
-                    ? 'text-(--gray-12) hover:bg-(--accent-a3)'
-                    : 'hover:bg-secondary-50 dark:hover:bg-secondary-700/50'
-                }`}
+                className="flex min-h-11 cursor-pointer items-center gap-2 py-1.5 pl-5 pr-2.5 text-xs hover:bg-secondary-50 dark:hover:bg-secondary-700/50"
                 key={child.id}
               >
                 <input
@@ -1065,40 +824,19 @@ function GroupedMultiSelectFilterPopover({
     </>
   )
 
-  if (isThemesMode) {
-    return (
-      <ThemesPopover.Root onOpenChange={setOpen} open={open}>
-        <ThemesPopover.Trigger>{trigger}</ThemesPopover.Trigger>
-        <ThemesPopover.Content
-          align="start"
-          data-filter-popover={developerModeValue}
-          data-radix-themes-popover="true"
-          maxHeight="var(--radix-popover-content-available-height)"
-          minWidth="12rem"
-          sideOffset={4}
-          size="2"
-        >
-          {content}
-        </ThemesPopover.Content>
-      </ThemesPopover.Root>
-    )
-  }
-
   return (
-    <Popover.Root onOpenChange={setOpen} open={open}>
-      <Popover.Trigger asChild>{trigger}</Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          align="start"
-          className={`${filterOptionListPopoverContentClassName} min-w-48`}
-          collisionPadding={POPOVER_VIEWPORT_MARGIN}
-          data-filter-popover={developerModeValue}
-          sideOffset={4}
-        >
-          {content}
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+    <AppPopover onOpenChange={setOpen} open={open}>
+      <AppPopoverTrigger>{trigger}</AppPopoverTrigger>
+      <AppPopoverContent
+        align="start"
+        className={`${filterOptionListPopoverContentClassName} min-w-48`}
+        collisionPadding={POPOVER_VIEWPORT_MARGIN}
+        data-filter-popover={developerModeValue}
+        sideOffset={4}
+      >
+        {content}
+      </AppPopoverContent>
+    </AppPopover>
   )
 }
 
@@ -1107,7 +845,6 @@ function ColumnsPopover({
   columns,
   onReset,
   onToggle,
-  visualMode = 'local',
   visibleColumns,
 }: {
   badgeLabel?: string | null
@@ -1118,22 +855,19 @@ function ColumnsPopover({
   }[]
   onReset: () => void
   onToggle: (id: RequirementColumnId) => void
-  visualMode?: RequirementsTableVisualMode
   visibleColumns: RequirementColumnId[]
 }) {
   const tc = useTranslations('common')
   const tt = useTranslations('requirementsTable')
   const instanceId = useId()
   const [open, setOpen] = useState(false)
-  const isThemesMode = visualMode === 'radix-themes'
 
   const trigger = (
     <button
       aria-label={tc('columns')}
-      className={getFloatingPillClassName('default', visualMode)}
+      className={getFloatingPillClassName('default')}
       data-column-picker-shell="true"
       data-column-picker-trigger="true"
-      data-radix-themes-action={isThemesMode ? 'true' : undefined}
       {...devMarker({
         context: 'requirements table',
         name: 'floating pill',
@@ -1155,11 +889,7 @@ function ColumnsPopover({
       {badgeLabel ? (
         <span
           aria-hidden="true"
-          className={`absolute -right-1 -top-2 flex h-4 min-w-8 items-center justify-center rounded-full px-1.5 text-[9px] font-semibold leading-none shadow-sm ${
-            isThemesMode
-              ? 'bg-(--accent-9) text-(--accent-contrast)'
-              : 'bg-primary-600 text-white'
-          }`}
+          className="absolute -right-1 -top-2 flex h-4 min-w-8 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[9px] font-semibold leading-none text-white shadow-sm"
           data-column-picker-badge="true"
         >
           {badgeLabel}
@@ -1170,13 +900,9 @@ function ColumnsPopover({
 
   const content = (
     <>
-      <div className="mb-1 border-b border-(--gray-a5) pb-1">
+      <div className="mb-1 border-b border-secondary-200 pb-1 dark:border-secondary-700">
         <button
-          className={`min-h-11 min-w-11 w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium transition-colors ${
-            isThemesMode
-              ? 'text-(--gray-11) hover:bg-(--accent-a3) hover:text-(--gray-12)'
-              : 'text-secondary-500 hover:bg-secondary-50 hover:text-secondary-700 dark:hover:bg-secondary-700/50 dark:hover:text-secondary-200'
-          }`}
+          className="min-h-11 min-w-11 w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-secondary-500 transition-colors hover:bg-secondary-50 hover:text-secondary-700 dark:hover:bg-secondary-700/50 dark:hover:text-secondary-200"
           onClick={() => {
             onReset()
             setOpen(false)
@@ -1199,11 +925,7 @@ function ColumnsPopover({
             <div key={column.id}>
               <label
                 aria-disabled={!column.canHide}
-                className={`flex min-h-11 min-w-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
-                  isThemesMode
-                    ? 'text-(--gray-12) hover:bg-(--accent-a3)'
-                    : 'hover:bg-secondary-50 dark:hover:bg-secondary-700/50'
-                } ${!column.canHide ? 'cursor-not-allowed opacity-60' : ''}`}
+                className={`flex min-h-11 min-w-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-secondary-50 dark:hover:bg-secondary-700/50 ${!column.canHide ? 'cursor-not-allowed opacity-60' : ''}`}
                 data-column-picker-option={column.id}
                 {...devMarker({
                   context: 'requirements table > column picker: columns',
@@ -1235,52 +957,25 @@ function ColumnsPopover({
     </>
   )
 
-  if (isThemesMode) {
-    return (
-      <ThemesPopover.Root onOpenChange={setOpen} open={open}>
-        <ThemesPopover.Trigger>{trigger}</ThemesPopover.Trigger>
-        <ThemesPopover.Content
-          align="end"
-          data-column-picker-popover="true"
-          data-radix-themes-popover="true"
-          maxHeight="var(--radix-popover-content-available-height)"
-          minWidth="14rem"
-          {...devMarker({
-            context: 'requirements table',
-            name: 'column picker',
-            priority: 350,
-            value: 'columns',
-          })}
-          sideOffset={8}
-          size="2"
-        >
-          {content}
-        </ThemesPopover.Content>
-      </ThemesPopover.Root>
-    )
-  }
-
   return (
-    <Popover.Root onOpenChange={setOpen} open={open}>
-      <Popover.Trigger asChild>{trigger}</Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          align="end"
-          className={columnPickerPopoverContentClassName}
-          collisionPadding={POPOVER_VIEWPORT_MARGIN}
-          data-column-picker-popover="true"
-          {...devMarker({
-            context: 'requirements table',
-            name: 'column picker',
-            priority: 350,
-            value: 'columns',
-          })}
-          sideOffset={8}
-        >
-          {content}
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+    <AppPopover onOpenChange={setOpen} open={open}>
+      <AppPopoverTrigger>{trigger}</AppPopoverTrigger>
+      <AppPopoverContent
+        align="end"
+        className={columnPickerPopoverContentClassName}
+        collisionPadding={POPOVER_VIEWPORT_MARGIN}
+        data-column-picker-popover="true"
+        {...devMarker({
+          context: 'requirements table',
+          name: 'column picker',
+          priority: 350,
+          value: 'columns',
+        })}
+        sideOffset={8}
+      >
+        {content}
+      </AppPopoverContent>
+    </AppPopover>
   )
 }
 
@@ -1419,7 +1114,6 @@ export default function RequirementsTable({
   qualityCharacteristics = [],
   types = [],
   requirementPackages = [],
-  visualMode = 'local',
   visibleColumns = defaultVisibleColumns ??
     getDefaultVisibleRequirementColumns(columnDefaults),
   wrapDescription = false,
@@ -1429,7 +1123,6 @@ export default function RequirementsTable({
   const tc = useTranslations('common')
   const tfb = useTranslations('improvementSuggestion')
   const router = useRouter()
-  const isThemesMode = visualMode === 'radix-themes'
   const normalizedColumnDefaults =
     normalizeRequirementListColumnDefaults(columnDefaults)
   const effectiveExcludeColumns: RequirementColumnId[] = (
@@ -1933,7 +1626,6 @@ export default function RequirementsTable({
             developerModeValue={developerModeValue}
             label={t('uniqueId')}
             onChange={value => updateFilter({ uniqueIdSearch: value })}
-            visualMode={visualMode}
           />
         )
       case 'description':
@@ -1943,7 +1635,6 @@ export default function RequirementsTable({
             developerModeValue={developerModeValue}
             label={t('description')}
             onChange={value => updateFilter({ descriptionSearch: value })}
-            visualMode={visualMode}
           />
         )
       case 'area':
@@ -1958,7 +1649,6 @@ export default function RequirementsTable({
             }
             options={areas}
             value={fv.areaIds ?? []}
-            visualMode={visualMode}
           />
         )
       case 'category':
@@ -1973,7 +1663,6 @@ export default function RequirementsTable({
             }
             options={categories}
             value={fv.categoryIds ?? []}
-            visualMode={visualMode}
           />
         )
       case 'type':
@@ -1988,7 +1677,6 @@ export default function RequirementsTable({
             }
             options={types}
             value={fv.typeIds ?? []}
-            visualMode={visualMode}
           />
         )
       case 'qualityCharacteristic':
@@ -2005,7 +1693,6 @@ export default function RequirementsTable({
             }
             options={qualityCharacteristics}
             value={fv.qualityCharacteristicIds ?? []}
-            visualMode={visualMode}
           />
         )
       case 'priorityLevel':
@@ -2022,7 +1709,6 @@ export default function RequirementsTable({
             }
             options={priorityLevels}
             value={fv.priorityLevelIds ?? []}
-            visualMode={visualMode}
           />
         )
       case 'status':
@@ -2037,7 +1723,6 @@ export default function RequirementsTable({
             }
             options={statusOptions}
             value={fv.statuses ?? []}
-            visualMode={visualMode}
           />
         )
       case 'verifiable':
@@ -2052,7 +1737,6 @@ export default function RequirementsTable({
             onChange={setVerifiable}
             options={verifiableOptions}
             value={verifiableValue}
-            visualMode={visualMode}
           />
         )
       case 'needsReference':
@@ -2070,7 +1754,6 @@ export default function RequirementsTable({
             }
             options={needsReferenceOptions}
             value={fv.needsReferenceIds ?? []}
-            visualMode={visualMode}
           />
         )
       case 'specificationItemStatus':
@@ -2088,7 +1771,6 @@ export default function RequirementsTable({
             }
             options={specificationItemStatuses}
             value={fv.specificationItemStatusIds ?? []}
-            visualMode={visualMode}
           />
         )
       case 'requirementPackage':
@@ -2659,18 +2341,13 @@ export default function RequirementsTable({
     return () => observer.disconnect()
   }, [hasMore, onLoadMore, stableLoadMore])
 
-  const thBase = isThemesMode
-    ? 'relative px-3 font-semibold text-(--gray-12) align-top'
-    : 'relative px-2 font-semibold text-secondary-800 dark:text-secondary-200 align-top'
-  const headerCellSurfaceClassName = isThemesMode
-    ? 'bg-(--gray-3) shadow-[inset_0_-1px_0_var(--gray-a6)]'
-    : 'bg-[#f6f5f8] shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)] dark:bg-[#18181b] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,0.1)]'
-  const stickyTableChromeClassName = `sticky ${stickyTopOffsetClassName} z-20 overflow-hidden ${
-    isThemesMode ? 'rounded-t-2xl' : 'rounded-t-lg'
-  }`
-  const stickyTopBarClassName = isThemesMode
-    ? 'flex flex-wrap items-center justify-between gap-3 border-b border-(--gray-a6) bg-(--color-panel) px-5 py-4 shadow-[0_18px_42px_-34px_var(--gray-a12)] sm:flex-nowrap'
-    : 'flex flex-wrap items-center justify-between gap-3 border-b border-secondary-950/10 bg-[#fbfbfd]/95 px-4 py-3 backdrop-blur-sm sm:flex-nowrap dark:border-white/10 dark:bg-[#111113]/95'
+  const thBase =
+    'relative px-2 font-semibold text-secondary-800 dark:text-secondary-200 align-top'
+  const headerCellSurfaceClassName =
+    'bg-[#f6f5f8] shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)] dark:bg-[#18181b] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,0.1)]'
+  const stickyTableChromeClassName = `sticky ${stickyTopOffsetClassName} z-20 overflow-hidden rounded-t-lg`
+  const stickyTopBarClassName =
+    'flex flex-wrap items-center justify-between gap-3 border-b border-secondary-950/10 bg-[#fbfbfd]/95 px-4 py-3 backdrop-blur-sm sm:flex-nowrap dark:border-white/10 dark:bg-[#111113]/95'
   const resizeHandleBaseClassName =
     'group pointer-events-auto absolute left-0 z-20 m-0 min-w-11 -translate-x-1/2 cursor-ew-resize touch-none border-0 bg-transparent p-0 before:absolute before:bottom-0 before:left-1/2 before:top-0 before:w-px before:-translate-x-1/2 before:rounded-full before:bg-secondary-300/18 before:transition-colors dark:before:bg-secondary-600/25'
   const interactiveResizeHandleClassName = `${resizeHandleBaseClassName} focus-visible:outline-none hover:before:bg-primary-400 focus-visible:before:bg-primary-400 dark:hover:before:bg-primary-400 dark:focus-visible:before:bg-primary-400`
@@ -2697,25 +2374,16 @@ export default function RequirementsTable({
       onReset={resetColumnsView}
       onToggle={toggleColumn}
       visibleColumns={columnDefinitions.map(column => column.id)}
-      visualMode={visualMode}
     />
   )
   const floatingRailItems = (
     <>
       {actionsBeforeColumns.map(action => (
-        <FloatingActionPill
-          action={action}
-          key={action.id}
-          visualMode={visualMode}
-        />
+        <FloatingActionPill action={action} key={action.id} />
       ))}
       {columnPickerPlacement === 'betweenActions' ? columnsPopover : null}
       {actionsAfterColumns.map(action => (
-        <FloatingActionPill
-          action={action}
-          key={action.id}
-          visualMode={visualMode}
-        />
+        <FloatingActionPill action={action} key={action.id} />
       ))}
       {columnPickerPlacement === 'end' ? columnsPopover : null}
     </>
@@ -2728,7 +2396,7 @@ export default function RequirementsTable({
       >
         <button
           aria-label={tc('backToTop')}
-          className={getFloatingPillClassName('default', visualMode)}
+          className={getFloatingPillClassName('default')}
           {...devMarker({
             context: 'requirements table',
             name: 'table action',
@@ -2752,11 +2420,7 @@ export default function RequirementsTable({
     ) : null
   const inlineFloatingRail = shouldRenderInlineRail ? (
     <div
-      className={`min-w-0 flex flex-wrap items-center gap-2 sm:flex-nowrap ${
-        isThemesMode
-          ? 'rounded-2xl border border-(--gray-a5) bg-(--gray-a2) p-1.5'
-          : ''
-      }`}
+      className="min-w-0 flex flex-wrap items-center gap-2 sm:flex-nowrap"
       {...devMarker({
         context: 'requirements table',
         name: 'floating action rail',
@@ -2764,7 +2428,6 @@ export default function RequirementsTable({
       })}
       data-floating-action-rail="true"
       data-floating-action-rail-placement="inline-top"
-      data-radix-themes-rail={isThemesMode ? 'true' : undefined}
     >
       {floatingRailItems}
     </div>
@@ -3109,13 +2772,7 @@ export default function RequirementsTable({
   }
 
   return (
-    <div
-      className={`relative scroll-mt-20 ${
-        isThemesMode ? 'rounded-2xl bg-(--color-panel)' : ''
-      }`}
-      data-requirements-table-visual-mode={visualMode}
-      ref={tableRootRef}
-    >
+    <div className="relative scroll-mt-20" ref={tableRootRef}>
       {showSpinner && (
         <output
           aria-live="polite"
@@ -3145,20 +2802,8 @@ export default function RequirementsTable({
           </div>
         )}
         {requirementPackages.length > 0 && hasFilters && (
-          <div
-            className={`flex items-center gap-2 border-b px-4 py-2 text-sm ${
-              isThemesMode
-                ? 'border-(--gray-a5) bg-(--gray-2)'
-                : 'border-secondary-950/10 bg-white/95 backdrop-blur-sm dark:border-white/10 dark:bg-[#151518]/95'
-            }`}
-          >
-            <span
-              className={`shrink-0 text-xs font-semibold ${
-                isThemesMode
-                  ? 'text-(--gray-12)'
-                  : 'text-secondary-700 dark:text-secondary-300'
-              }`}
-            >
+          <div className="flex items-center gap-2 border-b border-secondary-950/10 bg-white/95 px-4 py-2 text-sm backdrop-blur-sm dark:border-white/10 dark:bg-[#151518]/95">
+            <span className="shrink-0 text-xs font-semibold text-secondary-700 dark:text-secondary-300">
               {t('requirementPackage')}:
             </span>
             <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto overflow-y-hidden py-0.5">
@@ -3177,12 +2822,8 @@ export default function RequirementsTable({
                       aria-pressed={active}
                       className={`inline-flex min-h-11 min-w-11 max-w-48 shrink-0 items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                         active
-                          ? isThemesMode
-                            ? 'bg-(--accent-9) text-(--accent-contrast)'
-                            : 'bg-secondary-950 text-white dark:bg-white dark:text-[#111113]'
-                          : isThemesMode
-                            ? 'bg-(--gray-a3) text-(--gray-12) hover:bg-(--accent-a3) hover:text-(--accent-12)'
-                            : 'bg-[#f6f5f8] text-secondary-700 hover:bg-violet-50 hover:text-violet-800 dark:bg-[#1c1c20] dark:text-secondary-300 dark:hover:bg-violet-400/10 dark:hover:text-violet-200'
+                          ? 'bg-secondary-950 text-white dark:bg-white dark:text-[#111113]'
+                          : 'bg-[#f6f5f8] text-secondary-700 hover:bg-violet-50 hover:text-violet-800 dark:bg-[#1c1c20] dark:text-secondary-300 dark:hover:bg-violet-400/10 dark:hover:text-violet-200'
                       }`}
                       data-requirement-package={s.id}
                       onClick={() => {
@@ -3221,20 +2862,8 @@ export default function RequirementsTable({
         )}
         {normReferences.length > 0 &&
           visibleColumnSet.has('normReferences') && (
-            <div
-              className={`flex items-center gap-2 border-b px-4 py-2 text-sm ${
-                isThemesMode
-                  ? 'border-(--gray-a5) bg-(--gray-2)'
-                  : 'border-secondary-950/10 bg-white/95 backdrop-blur-sm dark:border-white/10 dark:bg-[#151518]/95'
-              }`}
-            >
-              <span
-                className={`shrink-0 text-xs font-semibold ${
-                  isThemesMode
-                    ? 'text-(--gray-12)'
-                    : 'text-secondary-700 dark:text-secondary-300'
-                }`}
-              >
+            <div className="flex items-center gap-2 border-b border-secondary-950/10 bg-white/95 px-4 py-2 text-sm backdrop-blur-sm dark:border-white/10 dark:bg-[#151518]/95">
+              <span className="shrink-0 text-xs font-semibold text-secondary-700 dark:text-secondary-300">
                 {t('normReferences')}:
               </span>
               <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto">
@@ -3246,12 +2875,8 @@ export default function RequirementsTable({
                       aria-pressed={active}
                       className={`min-h-11 min-w-11 shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                         active
-                          ? isThemesMode
-                            ? 'bg-(--accent-9) text-(--accent-contrast)'
-                            : 'bg-secondary-950 text-white dark:bg-white dark:text-[#111113]'
-                          : isThemesMode
-                            ? 'bg-(--gray-a3) text-(--gray-12) hover:bg-(--accent-a3) hover:text-(--accent-12)'
-                            : 'bg-[#f6f5f8] text-secondary-700 hover:bg-violet-50 hover:text-violet-800 dark:bg-[#1c1c20] dark:text-secondary-300 dark:hover:bg-violet-400/10 dark:hover:text-violet-200'
+                          ? 'bg-secondary-950 text-white dark:bg-white dark:text-[#111113]'
+                          : 'bg-[#f6f5f8] text-secondary-700 hover:bg-violet-50 hover:text-violet-800 dark:bg-[#1c1c20] dark:text-secondary-300 dark:hover:bg-violet-400/10 dark:hover:text-violet-200'
                       }`}
                       key={nr.id}
                       onClick={() => {
@@ -3283,13 +2908,7 @@ export default function RequirementsTable({
               )}
             </div>
           )}
-        <div
-          className={`overflow-hidden border-b ${
-            isThemesMode
-              ? 'border-(--gray-a6) bg-(--gray-3)'
-              : 'border-secondary-950/10 bg-[#f6f5f8] dark:border-white/10 dark:bg-[#18181b]'
-          }`}
-        >
+        <div className="overflow-hidden border-b border-secondary-950/10 bg-[#f6f5f8] dark:border-white/10 dark:bg-[#18181b]">
           <div
             className="relative"
             data-sticky-table-header="true"
@@ -3319,9 +2938,7 @@ export default function RequirementsTable({
         </div>
       </div>
       <div
-        className={`relative overflow-x-auto ${
-          isThemesMode ? 'bg-(--color-panel)' : 'bg-white dark:bg-[#111113]'
-        }`}
+        className="relative overflow-x-auto bg-white dark:bg-[#111113]"
         {...devMarker({
           context: 'requirements table',
           name: 'table space',
@@ -3332,22 +2949,14 @@ export default function RequirementsTable({
       >
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-linear-to-r ${
-            isThemesMode
-              ? 'from-(--color-panel) via-(--gray-a3) to-transparent'
-              : 'from-white/90 via-white/55 to-transparent dark:from-[#111113]/90 dark:via-[#111113]/55'
-          } transition-opacity ${
+          className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-linear-to-r from-white/90 via-white/55 to-transparent transition-opacity dark:from-[#111113]/90 dark:via-[#111113]/55 ${
             scrollFadeState.left ? 'opacity-100' : 'opacity-0'
           }`}
           data-scroll-fade="left"
         />
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-linear-to-l ${
-            isThemesMode
-              ? 'from-(--color-panel) via-(--gray-a3) to-transparent'
-              : 'from-white/90 via-white/55 to-transparent dark:from-[#111113]/90 dark:via-[#111113]/55'
-          } transition-opacity ${
+          className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-linear-to-l from-white/90 via-white/55 to-transparent transition-opacity dark:from-[#111113]/90 dark:via-[#111113]/55 ${
             scrollFadeState.right ? 'opacity-100' : 'opacity-0'
           }`}
           data-scroll-fade="right"
@@ -3406,27 +3015,17 @@ export default function RequirementsTable({
                   return (
                     <Fragment key={row.id}>
                       <tr
-                        className={`cursor-pointer border-b transition-colors ${
-                          isThemesMode
-                            ? 'border-(--gray-a4) hover:bg-(--accent-a2)'
-                            : 'border-secondary-950/[0.07] hover:bg-[#f8f5ff] dark:border-white/8 dark:hover:bg-[#1b1624]'
-                        } ${
+                        className={`cursor-pointer border-b transition-colors ${'border-secondary-950/[0.07] hover:bg-[#f8f5ff] dark:border-white/8 dark:hover:bg-[#1b1624]'} ${
                           isExpanded
-                            ? isThemesMode
-                              ? 'border-l-4 border-l-(--accent-9) bg-(--accent-a3)'
-                              : 'border-l-2 border-l-violet-500 bg-[#f4efff] dark:bg-[#21172f]'
+                            ? 'border-l-2 border-l-violet-500 bg-[#f4efff] dark:bg-[#21172f]'
                             : ''
                         } ${
                           !isExpanded && isPinned
-                            ? isThemesMode
-                              ? 'border-l-4 border-l-dashed border-l-(--gray-a9) opacity-70'
-                              : 'border-l-2 border-l-dashed border-l-secondary-500 opacity-60 dark:border-l-secondary-500'
+                            ? 'border-l-2 border-l-dashed border-l-secondary-500 opacity-60 dark:border-l-secondary-500'
                             : ''
                         } ${
                           !isExpanded && !isPinned && idx % 2 === 1
-                            ? isThemesMode
-                              ? 'bg-(--gray-a2)'
-                              : 'bg-[#fbfbfd] dark:bg-[#151518]'
+                            ? 'bg-[#fbfbfd] dark:bg-[#151518]'
                             : ''
                         }`}
                         {...devMarker({

@@ -200,7 +200,8 @@ describe('RequirementActionRail', () => {
     expect(shareTrigger).toHaveAttribute('aria-controls')
 
     const menuId = shareTrigger.getAttribute('aria-controls')
-    await userEvent.click(shareTrigger)
+    shareTrigger.focus()
+    await userEvent.keyboard('{Enter}')
 
     expect(shareTrigger).toHaveAttribute('aria-expanded', 'true')
     const shareMenu = screen.getByRole('menu', { name: 'common.share' })

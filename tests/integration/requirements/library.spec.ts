@@ -240,10 +240,24 @@ test.describe('Requirements library', () => {
     await shareButton.focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('menu')).toBeVisible()
+    await expect(
+      page.getByRole('menuitem', { name: 'Kopiera länk (listvy)' }),
+    ).toBeFocused()
     await page.keyboard.press('ArrowDown')
-    await expect(page.locator(':focus')).toHaveText(/länk/i)
+    await expect(
+      page.getByRole('menuitem', { name: 'Kopiera länk (detaljsida)' }),
+    ).toBeFocused()
+    await page.keyboard.press('Home')
+    await expect(
+      page.getByRole('menuitem', { name: 'Kopiera länk (listvy)' }),
+    ).toBeFocused()
+    await page.keyboard.press('End')
+    await expect(
+      page.getByRole('menuitem', { name: 'Kopiera länk (detaljsida)' }),
+    ).toBeFocused()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('menu')).toBeHidden()
+    await expect(shareButton).toBeFocused()
 
     const reportsButton = detailPane.getByRole('button', { name: 'Rapporter' })
     await reportsButton.focus()
@@ -253,6 +267,7 @@ test.describe('Requirements library', () => {
     await expect(page.locator(':focus')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('menu')).toBeHidden()
+    await expect(reportsButton).toBeFocused()
   })
 
   test('ADMIN-11: status and priority badges show labels with configured icons', async ({

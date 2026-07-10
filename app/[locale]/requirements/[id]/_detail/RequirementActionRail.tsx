@@ -12,6 +12,12 @@ import {
 import { useTranslations } from 'next-intl'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import {
+  AppMenu,
+  AppMenuContent,
+  AppMenuItem,
+  AppMenuTrigger,
+} from '@/components/primitives/AppMenu'
 import StatusIcon from '@/components/StatusIcon'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -23,7 +29,6 @@ import {
 } from '@/lib/requirements/status-constants.mjs'
 import RequirementReportMenu from './RequirementReportMenu'
 import type { TransitionTarget } from './types'
-import { useDetailActionMenu } from './useDetailActionMenu'
 
 interface RequirementActionRailProps {
   allowedTransitionStatusIds: number[]
@@ -124,11 +129,6 @@ export default function RequirementActionRail({
   const [copied, setCopied] = useState<'inline' | 'page' | null>(null)
   const [showShareMenu, setShowShareMenu] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const shareMenu = useDetailActionMenu({
-    idPrefix: 'requirement-share-menu',
-    isOpen: showShareMenu,
-    setIsOpen: setShowShareMenu,
-  })
   const allowedTransitionIds = new Set(allowedTransitionStatusIds)
   const restoreDisabled =
     !canRestore || hasPendingWork || selectedVersionNumberForRestore == null
@@ -160,7 +160,6 @@ export default function RequirementActionRail({
     } catch {
       setCopied(null)
     }
-    shareMenu.closeMenu({ restoreFocus: true })
     if (copyTimeoutRef.current) {
       clearTimeout(copyTimeoutRef.current)
     }
@@ -196,84 +195,72 @@ export default function RequirementActionRail({
           {tp('addToSpecification')}
         </button>
       )}
-      <div className="relative" ref={shareMenu.rootRef}>
-        <button
-          aria-controls={shareMenu.menuId}
-          aria-expanded={showShareMenu}
-          aria-haspopup="menu"
-          className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11"
-          {...devMarker({
-            context: detailContext,
-            name: 'share toggle',
-            priority: 300,
-            value: 'share',
-          })}
-          id={shareMenu.triggerId}
-          onClick={() => setShowShareMenu(prev => !prev)}
-          ref={shareMenu.triggerRef}
-          title={tc('share')}
-          type="button"
-        >
-          {copied ? (
-            <Check aria-hidden="true" className="h-4 w-4 text-green-500" />
-          ) : (
-            <Share2 aria-hidden="true" className="h-4 w-4" />
-          )}
-          {copied ? tc('copied') : tc('share')}
-        </button>
+      <AppMenu onOpenChange={setShowShareMenu} open={showShareMenu}>
+        <AppMenuTrigger>
+          <button
+            className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11"
+            {...devMarker({
+              context: detailContext,
+              name: 'share toggle',
+              priority: 300,
+              value: 'share',
+            })}
+            title={tc('share')}
+            type="button"
+          >
+            {copied ? (
+              <Check aria-hidden="true" className="h-4 w-4 text-green-500" />
+            ) : (
+              <Share2 aria-hidden="true" className="h-4 w-4" />
+            )}
+            {copied ? tc('copied') : tc('share')}
+          </button>
+        </AppMenuTrigger>
         <span aria-live="polite" className="sr-only" role="status">
           {copied ? tc('copied') : ''}
         </span>
-        {showShareMenu && (
-          <div
-            aria-labelledby={shareMenu.triggerId}
-            className="absolute right-0 z-20 mt-1 w-full max-w-xs rounded-xl border border-secondary-200 bg-white py-1 text-secondary-900 shadow-lg dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-100"
-            id={shareMenu.menuId}
-            onKeyDown={shareMenu.handleMenuKeyDown}
-            ref={shareMenu.menuRef}
-            role="menu"
+        <AppMenuContent
+          align="end"
+          className="z-50 w-full max-w-xs rounded-xl border border-secondary-200 bg-white py-1 text-secondary-900 shadow-lg dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-100"
+          matchTriggerWidth
+          sideOffset={4}
+        >
+          <AppMenuItem
+            className="flex min-h-11 min-w-11 w-full items-center gap-2 px-3 py-2 text-left text-sm text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-700 dark:hover:text-white"
+            {...devMarker({
+              context: detailContext,
+              name: 'share option',
+              priority: 310,
+              value: 'share inline',
+            })}
+            onAction={() => void handleShare('inline')}
           >
-            <button
-              className="flex min-h-11 min-w-11 w-full items-center gap-2 px-3 py-2 text-left text-sm text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-700 dark:hover:text-white"
-              {...devMarker({
-                context: detailContext,
-                name: 'share option',
-                priority: 310,
-                value: 'share inline',
-              })}
-              onClick={() => void handleShare('inline')}
-              role="menuitem"
-              type="button"
-            >
-              {copied === 'inline' ? (
-                <Check aria-hidden="true" className="h-4 w-4 text-green-500" />
-              ) : (
-                <Share2 aria-hidden="true" className="h-4 w-4" />
-              )}
-              {t('shareLinkInline')}
-            </button>
-            <button
-              className="flex min-h-11 min-w-11 w-full items-center gap-2 px-3 py-2 text-left text-sm text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-700 dark:hover:text-white"
-              {...devMarker({
-                context: detailContext,
-                name: 'share option',
-                priority: 310,
-                value: 'share page',
-              })}
-              onClick={() => void handleShare('page')}
-              role="menuitem"
-              type="button"
-            >
-              {copied === 'page' ? (
-                <Check aria-hidden="true" className="h-4 w-4 text-green-500" />
-              ) : (
-                <Share2 aria-hidden="true" className="h-4 w-4" />
-              )}
-              {t('shareLinkPage')}
-            </button>
-          </div>
-        )}
-      </div>
+            {copied === 'inline' ? (
+              <Check aria-hidden="true" className="h-4 w-4 text-green-500" />
+            ) : (
+              <Share2 aria-hidden="true" className="h-4 w-4" />
+            )}
+            {t('shareLinkInline')}
+          </AppMenuItem>
+          <AppMenuItem
+            className="flex min-h-11 min-w-11 w-full items-center gap-2 px-3 py-2 text-left text-sm text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-700 dark:hover:text-white"
+            {...devMarker({
+              context: detailContext,
+              name: 'share option',
+              priority: 310,
+              value: 'share page',
+            })}
+            onAction={() => void handleShare('page')}
+          >
+            {copied === 'page' ? (
+              <Check aria-hidden="true" className="h-4 w-4 text-green-500" />
+            ) : (
+              <Share2 aria-hidden="true" className="h-4 w-4" />
+            )}
+            {t('shareLinkPage')}
+          </AppMenuItem>
+        </AppMenuContent>
+      </AppMenu>
       {isViewingHistory ? (
         <>
           {canRestore && (

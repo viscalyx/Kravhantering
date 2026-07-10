@@ -3,11 +3,17 @@
 import { Printer } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
+import {
+  AppMenu,
+  AppMenuContent,
+  AppMenuItem,
+  AppMenuSeparator,
+  AppMenuTrigger,
+} from '@/components/primitives/AppMenu'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { STATUS_REVIEW } from '@/lib/requirements/status-constants.mjs'
 import type { DeviationStep } from './types'
-import { useDetailActionMenu } from './useDetailActionMenu'
 
 interface RequirementReportMenuBaseProps {
   currentStatusId: number
@@ -37,18 +43,12 @@ export default function RequirementReportMenu(
   const td = useTranslations('deviation')
   const [showReportMenu, setShowReportMenu] = useState(false)
   const pdfDownload = useServerPdfDownload()
-  const reportMenu = useDetailActionMenu({
-    idPrefix: 'requirement-report-menu',
-    isOpen: showReportMenu,
-    setIsOpen: setShowReportMenu,
-  })
 
   if (variant === 'specification' && props.deviationStep === 'draft') {
     return null
   }
 
   const downloadPdf = (url: string, fallbackFilename: string) => {
-    reportMenu.closeMenu({ restoreFocus: true })
     void pdfDownload.download({ fallbackFilename, url })
   }
 
@@ -68,101 +68,46 @@ export default function RequirementReportMenu(
         })
 
   return (
-    <div className="relative" ref={reportMenu.rootRef}>
-      <button
-        aria-controls={reportMenu.menuId}
-        aria-expanded={showReportMenu}
-        aria-haspopup="menu"
-        className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11"
-        {...buttonMarker}
-        id={reportMenu.triggerId}
-        onClick={() => setShowReportMenu(prev => !prev)}
-        ref={reportMenu.triggerRef}
-        title={tc('reports')}
-        type="button"
-      >
-        <Printer aria-hidden="true" className="h-4 w-4" />
-        {tc('reports')}
-      </button>
-      {showReportMenu && (
-        <div
-          aria-labelledby={reportMenu.triggerId}
-          className="absolute right-0 z-20 mt-1 w-64 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1"
-          id={reportMenu.menuId}
-          onKeyDown={reportMenu.handleMenuKeyDown}
-          ref={reportMenu.menuRef}
-          role="menu"
+    <AppMenu onOpenChange={setShowReportMenu} open={showReportMenu}>
+      <AppMenuTrigger>
+        <button
+          className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11"
+          {...buttonMarker}
+          title={tc('reports')}
+          type="button"
         >
-          {variant === 'specification' ? (
-            props.deviationStep === 'review_requested' ? (
-              <button
-                className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                {...devMarker({
-                  context: detailContext,
-                  name: 'report option',
-                  priority: 296,
-                  value: 'deviation review report',
-                })}
-                onClick={() =>
-                  downloadPdf(
-                    `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?spec=${props.specificationId}&item=${props.specificationItemId}`,
-                    `deviation-review-report-${requirementId}.pdf`,
-                  )
-                }
-                role="menuitem"
-                type="button"
-              >
-                <Printer aria-hidden="true" className="h-4 w-4" />
-                {td('downloadDeviationReviewReportPdf')}
-              </button>
-            ) : (
-              <>
-                <button
-                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                  {...devMarker({
-                    context: detailContext,
-                    name: 'report option',
-                    priority: 296,
-                    value: 'history report',
-                  })}
-                  onClick={() =>
-                    downloadPdf(
-                      `/${locale}/requirements/reports/pdf/history/${requirementId}`,
-                      `history-report-${requirementId}.pdf`,
-                    )
-                  }
-                  role="menuitem"
-                  type="button"
-                >
-                  <Printer aria-hidden="true" className="h-4 w-4" />
-                  {t('downloadHistoryReportPdf')}
-                </button>
-                <hr className="my-1 border-0 border-t border-secondary-200 dark:border-secondary-700" />
-                <button
-                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                  {...devMarker({
-                    context: detailContext,
-                    name: 'report option',
-                    priority: 300,
-                    value: 'suggestion history report',
-                  })}
-                  onClick={() =>
-                    downloadPdf(
-                      `/${locale}/requirements/reports/pdf/suggestion-history/${requirementId}`,
-                      `suggestion-history-report-${requirementId}.pdf`,
-                    )
-                  }
-                  role="menuitem"
-                  type="button"
-                >
-                  <Printer aria-hidden="true" className="h-4 w-4" />
-                  {t('downloadSuggestionHistoryReportPdf')}
-                </button>
-              </>
-            )
+          <Printer aria-hidden="true" className="h-4 w-4" />
+          {tc('reports')}
+        </button>
+      </AppMenuTrigger>
+      <AppMenuContent
+        align="end"
+        className="z-50 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-secondary-200 bg-white py-1 text-secondary-900 shadow-lg dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-100"
+        sideOffset={4}
+      >
+        {variant === 'specification' ? (
+          props.deviationStep === 'review_requested' ? (
+            <AppMenuItem
+              className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+              {...devMarker({
+                context: detailContext,
+                name: 'report option',
+                priority: 296,
+                value: 'deviation review report',
+              })}
+              onAction={() =>
+                downloadPdf(
+                  `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?spec=${props.specificationId}&item=${props.specificationItemId}`,
+                  `deviation-review-report-${requirementId}.pdf`,
+                )
+              }
+            >
+              <Printer aria-hidden="true" className="h-4 w-4" />
+              {td('downloadDeviationReviewReportPdf')}
+            </AppMenuItem>
           ) : (
             <>
-              <button
+              <AppMenuItem
                 className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                 {...devMarker({
                   context: detailContext,
@@ -170,20 +115,18 @@ export default function RequirementReportMenu(
                   priority: 296,
                   value: 'history report',
                 })}
-                onClick={() =>
+                onAction={() =>
                   downloadPdf(
                     `/${locale}/requirements/reports/pdf/history/${requirementId}`,
                     `history-report-${requirementId}.pdf`,
                   )
                 }
-                role="menuitem"
-                type="button"
               >
                 <Printer aria-hidden="true" className="h-4 w-4" />
                 {t('downloadHistoryReportPdf')}
-              </button>
-              <hr className="my-1 border-0 border-t border-secondary-200 dark:border-secondary-700" />
-              <button
+              </AppMenuItem>
+              <AppMenuSeparator className="my-1 h-px bg-secondary-200 dark:bg-secondary-700" />
+              <AppMenuItem
                 className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                 {...devMarker({
                   context: detailContext,
@@ -191,48 +134,84 @@ export default function RequirementReportMenu(
                   priority: 300,
                   value: 'suggestion history report',
                 })}
-                onClick={() =>
+                onAction={() =>
                   downloadPdf(
                     `/${locale}/requirements/reports/pdf/suggestion-history/${requirementId}`,
                     `suggestion-history-report-${requirementId}.pdf`,
                   )
                 }
-                role="menuitem"
-                type="button"
               >
                 <Printer aria-hidden="true" className="h-4 w-4" />
                 {t('downloadSuggestionHistoryReportPdf')}
-              </button>
-              {currentStatusId === STATUS_REVIEW && (
-                <>
-                  <hr className="my-1 border-0 border-t border-secondary-200 dark:border-secondary-700" />
-                  <button
-                    className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                    {...devMarker({
-                      context: detailContext,
-                      name: 'report option',
-                      priority: 298,
-                      value: 'review report',
-                    })}
-                    onClick={() =>
-                      downloadPdf(
-                        `/${locale}/requirements/reports/pdf/review/${requirementId}`,
-                        `review-report-${requirementId}.pdf`,
-                      )
-                    }
-                    role="menuitem"
-                    type="button"
-                  >
-                    <Printer aria-hidden="true" className="h-4 w-4" />
-                    {t('downloadReviewReportPdf')}
-                  </button>
-                </>
-              )}
+              </AppMenuItem>
             </>
-          )}
-        </div>
-      )}
+          )
+        ) : (
+          <>
+            <AppMenuItem
+              className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+              {...devMarker({
+                context: detailContext,
+                name: 'report option',
+                priority: 296,
+                value: 'history report',
+              })}
+              onAction={() =>
+                downloadPdf(
+                  `/${locale}/requirements/reports/pdf/history/${requirementId}`,
+                  `history-report-${requirementId}.pdf`,
+                )
+              }
+            >
+              <Printer aria-hidden="true" className="h-4 w-4" />
+              {t('downloadHistoryReportPdf')}
+            </AppMenuItem>
+            <AppMenuSeparator className="my-1 h-px bg-secondary-200 dark:bg-secondary-700" />
+            <AppMenuItem
+              className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+              {...devMarker({
+                context: detailContext,
+                name: 'report option',
+                priority: 300,
+                value: 'suggestion history report',
+              })}
+              onAction={() =>
+                downloadPdf(
+                  `/${locale}/requirements/reports/pdf/suggestion-history/${requirementId}`,
+                  `suggestion-history-report-${requirementId}.pdf`,
+                )
+              }
+            >
+              <Printer aria-hidden="true" className="h-4 w-4" />
+              {t('downloadSuggestionHistoryReportPdf')}
+            </AppMenuItem>
+            {currentStatusId === STATUS_REVIEW && (
+              <>
+                <AppMenuSeparator className="my-1 h-px bg-secondary-200 dark:bg-secondary-700" />
+                <AppMenuItem
+                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'report option',
+                    priority: 298,
+                    value: 'review report',
+                  })}
+                  onAction={() =>
+                    downloadPdf(
+                      `/${locale}/requirements/reports/pdf/review/${requirementId}`,
+                      `review-report-${requirementId}.pdf`,
+                    )
+                  }
+                >
+                  <Printer aria-hidden="true" className="h-4 w-4" />
+                  {t('downloadReviewReportPdf')}
+                </AppMenuItem>
+              </>
+            )}
+          </>
+        )}
+      </AppMenuContent>
       {pdfDownload.dialog}
-    </div>
+    </AppMenu>
   )
 }

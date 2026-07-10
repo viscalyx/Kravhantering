@@ -1966,9 +1966,9 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByText('Copy link (list view)')).toBeInTheDocument()
     expect(screen.getByText('Copy link (detail page)')).toBeInTheDocument()
 
-    const inlineOption = screen
-      .getByText('Copy link (list view)')
-      .closest('button')
+    const inlineOption = screen.getByRole('menuitem', {
+      name: 'Copy link (list view)',
+    })
     expect(inlineOption).toHaveAttribute(
       'data-developer-mode-name',
       'share option',

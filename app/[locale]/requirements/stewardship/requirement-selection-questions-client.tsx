@@ -424,7 +424,6 @@ function useScrollOverflowHint<T extends HTMLElement>(contentKey: string) {
     }
   }, [scrollElement, updateScrollOverflow])
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: contentKey intentionally remeasures scroll overflow when list content changes without remounting the scroll element.
   useEffect(() => {
     updateScrollOverflow()
   }, [contentKey, updateScrollOverflow])

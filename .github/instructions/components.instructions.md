@@ -18,6 +18,20 @@ applyTo: 'components/**/*.tsx'
 - Keep them focused on interactivity. Data fetching and heavy processing belong in the server page.
 - Reference examples: `RequirementsClient`, `RequirementDetailClient`.
 
+## Radix Primitive Boundary
+
+- Direct `@radix-ui/*` imports belong only in local primitive wrappers under
+  `components/primitives/`.
+- Product components import local primitives such as `AppMenu`, `AppPopover`,
+  `AppDialog`, and `AppCollapsible`; Radix is not a product-facing API.
+- Local primitives own shared keyboard, focus, dismissal, portal, positioning,
+  and ARIA mechanics. Product components retain translations, workflow state,
+  Tailwind styling, icons, density, dark mode, reduced-motion policy, and
+  visible layout.
+- Test accessible roles, names, focus, keyboard and pointer behavior. Do not
+  assert generated Radix attributes, private DOM structure, or private classes.
+- `biome.json` enforces this boundary through `noRestrictedImports`.
+
 ## Required
 
 - `useTranslations('section')` for all UI text (client components only; server components use `getTranslations`)

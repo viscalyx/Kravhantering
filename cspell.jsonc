@@ -982,7 +982,17 @@
     "kravområdesförvaltningen",
     "sessionstoken",
     "spinbutton",
-    "unvalidated"
+    "unvalidated",
+    "exploitability",
+    "fokusförflyttning",
+    "fokusåtergång",
+    "kravdetaljens",
+    "misissued",
+    "nedåtpil",
+    "primitiver",
+    "primitiverna",
+    "tmpfs",
+    "utanförklick"
   ],
   "flagWords": [],
   "ignorePaths": [

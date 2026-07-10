@@ -249,7 +249,6 @@ export default function PdfReportRenderer({
     <Document>
       {pages.map((pageSections, pageIndex) => (
         <Page
-          // biome-ignore lint/suspicious/noArrayIndexKey: static report pages
           key={pageIndex}
           orientation={model.orientation ?? 'portrait'}
           size="A4"
@@ -257,7 +256,6 @@ export default function PdfReportRenderer({
         >
           {pageSections.map((section, sectionIndex) => (
             <PdfSectionRenderer
-              // biome-ignore lint/suspicious/noArrayIndexKey: static report sections
               key={sectionIndex}
               locale={locale}
               section={section}
@@ -639,7 +637,6 @@ function PdfDiff({
       <View style={styles.diffContainer}>
         <Text style={{ fontSize: 9, lineHeight: 1.6 }}>
           {section.segments.map((segment, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static diff segments
             <PdfDiffSegment key={i} segment={segment} />
           ))}
         </Text>
@@ -672,7 +669,6 @@ function PdfMetadataChanges({
         <Text style={[styles.tableHeaderCell, { width: '35%' }]}>New</Text>
       </View>
       {section.changes.map((change, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: static metadata rows
         <PdfMetadataChangeRow change={change} key={i} />
       ))}
     </View>
@@ -777,7 +773,6 @@ function PdfRequirementTable({
         ))}
       </View>
       {section.rows.map((row, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: static report rows
         <View key={i} style={styles.tableRow}>
           {section.columns.map(col => (
             <View
@@ -1242,7 +1237,6 @@ function PdfSuggestionList({
         </Text>
       )}
       {section.items.map((item, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: static report items
         <PdfSuggestionCard item={item} key={i} locale={locale} />
       ))}
     </View>
