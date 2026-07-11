@@ -317,6 +317,63 @@ describe('access review service', () => {
     ).toBe(false)
   })
 
+  it('uses ordered defaults for a review period', async () => {
+    const items = [accessReviewSnapshot(1)]
+    const { db, generatedAt, transactionQueries } = accessReviewCreateDb(items)
+
+    await createAccessReviewRun(
+      db as never,
+      {
+        generatedAt,
+        reviewer: {
+          displayName: 'Ada Admin',
+          hsaId: 'SE5560000001-admin1',
+        },
+      },
+      {
+        displayName: 'Ada Admin',
+        hsaId: 'SE5560000001-admin1',
+        roles: ['Admin'],
+      },
+    )
+
+    const runInsert = transactionQueries.find(query =>
+      query.sql.includes('INSERT INTO access_review_runs'),
+    )
+    expect(runInsert?.parameters?.slice(0, 3)).toEqual([
+      '2026-05-12T12:00:00.000Z',
+      '2027-05-12T12:00:00.000Z',
+      '2026-06-11T12:00:00.000Z',
+    ])
+  })
+
+  it('rejects a default-derived reversed review period before opening a transaction', async () => {
+    const db = { transaction: vi.fn() }
+
+    await expect(
+      createAccessReviewRun(
+        db as never,
+        {
+          generatedAt: new Date('2026-05-12T12:00:00.000Z'),
+          periodEnd: new Date('2026-05-12T11:59:59.999Z'),
+          reviewer: {
+            displayName: 'Ada Admin',
+            hsaId: 'SE5560000001-admin1',
+          },
+        },
+        {
+          displayName: 'Ada Admin',
+          hsaId: 'SE5560000001-admin1',
+          roles: ['Admin'],
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'access_review_period_out_of_order' },
+    })
+    expect(db.transaction).not.toHaveBeenCalled()
+  })
+
   it('creates review items in one parameterized bulk insert for small runs', async () => {
     const items = [accessReviewSnapshot(1), accessReviewSnapshot(2)]
     const { db, generatedAt, transactionQueries } = accessReviewCreateDb(items)

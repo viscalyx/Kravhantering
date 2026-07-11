@@ -1918,8 +1918,10 @@ reviewer, and external evidence reference for IdP/repository review records.
 **Indexes:** `idx_access_review_runs_status`,
 `idx_access_review_runs_due_at`, `idx_access_review_runs_reviewer_hsa_id`.
 
-**Check constraint:** `chk_access_review_runs_status` limits `status` to the
-review lifecycle values above.
+**Check constraints:** `chk_access_review_runs_status` limits `status` to the
+review lifecycle values above. `chk_access_review_runs_period_order` requires
+`period_start` to be earlier than or equal to `period_end`; `due_at` remains an
+independent deadline.
 
 **Seed note:** Local privacy seed data includes two completed access-review
 runs for `SE5560000001-linneab`: one where that HSA identity created the run
