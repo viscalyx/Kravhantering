@@ -1750,10 +1750,6 @@ export default function RequirementsImportDialog({
   }
 
   const loadPreview = async () => {
-    setLoading(true)
-    setErrorMessage(null)
-    setNoticeMessage(null)
-    setReceiptRows([])
     try {
       if (rows.length > 0) {
         const ok = await confirm({
@@ -1768,6 +1764,10 @@ export default function RequirementsImportDialog({
         })
         if (!ok) return
       }
+      setLoading(true)
+      setErrorMessage(null)
+      setNoticeMessage(null)
+      setReceiptRows([])
       let payload: unknown
       try {
         payload = JSON.parse(rawJson)
