@@ -1259,11 +1259,13 @@ taxonomiflik i Admincenter.
 ### ADMIN-06: ny normreferens använder responsiv formulärlayout
 
 **Steg:** Öppna Normbibliotek, klicka `Ny normreferens` och jämför layout på
-desktop respektive smal mobilbredd.
+desktop respektive smal mobilbredd. Spara sedan en normreferens med ett angivet
+Normreferens-ID och försök skapa samma ID igen.
 
 **Förväntat resultat:** Desktop visar formuläret i två kolumner med
 Normreferens-ID sist och fullbrett. Mobil visar samma fält i en kolumn utan
-överlapp.
+överlapp. Den andra sparningen behåller formuläret öppet och visar att
+Normreferens-ID:t redan finns i stället för ett generellt tekniskt fel.
 
 ### ADMIN-07: åtgärdslogg filtrerar och exporterar CSV
 

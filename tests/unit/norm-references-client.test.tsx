@@ -37,6 +37,10 @@ function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
 
+function errorJson(body: unknown) {
+  return { ok: false, json: async () => body }
+}
+
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
@@ -303,6 +307,47 @@ describe('NormReferencesClient', () => {
         expect.objectContaining({ method: 'POST' }),
       )
     })
+  })
+
+  it('keeps the create form open and announces an explicit duplicate ID', async () => {
+    render(<NormReferencesClient />)
+    await screen.findByText('BBR')
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /normReference\.newNormReference/i,
+      }),
+    )
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: /^normReference\.name/ }),
+      { target: { value: 'New norm' } },
+    )
+    fireEvent.change(
+      screen.getByRole('combobox', { name: /^normReference\.type/ }),
+      { target: { value: 'Standard' } },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /^normReference\.reference/ }),
+      { target: { value: 'Ref 1' } },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /^normReference\.issuer/ }),
+      { target: { value: 'Issuer' } },
+    )
+    const idInput = screen.getByRole('textbox', {
+      name: /^normReference\.normReferenceId/,
+    }) as HTMLInputElement
+    fireEvent.change(idInput, { target: { value: 'ISO-27001' } })
+    fetchMock.mockResolvedValueOnce(
+      errorJson({ error: 'Norm reference ID already exists' }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    const error = await screen.findByText('Norm reference ID already exists')
+    expect(error).toHaveAttribute('role', 'alert')
+    expect(idInput).toHaveValue('ISO-27001')
   })
 
   it('opens edit form and fetches linked requirements', async () => {

@@ -167,6 +167,17 @@ It does not include kravunderlagslokala krav.
 Create delegates to the existing audited norm-reference mutation workflow and
 returns `structuredContent.normReference`.
 
+When `normReferenceId` is omitted, create allocates the generated base ID then
+deterministic suffixes through `-999`. Concurrent calls retry the complete
+create-and-audit transaction after only the named
+`uq_norm_references_norm_reference_id` duplicate-key error. An explicit
+duplicate returns `isError: true` with
+`structuredContent.error` set to
+`{ code: "conflict", reason: "norm_reference_id_exists" }`.
+Generated-ID exhaustion instead uses reason
+`norm_reference_id_generation_exhausted`. Keep this error union in the MCP
+output schema, tool description, user guide, and MCP tests.
+
 ### `requirements_manage_needs_reference`
 
 Lists, searches, gets, or creates behovsreferenser for one requirements
@@ -627,4 +638,3 @@ for the full setup.
 ## Related Docs
 
 - [mcp-server-user-guide.md](./mcp-server-user-guide.md)
-- [requirements-mcp-evaluation.xml](./requirements-mcp-evaluation.xml)

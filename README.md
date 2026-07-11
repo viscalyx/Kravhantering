@@ -200,7 +200,7 @@ stack. See
 for setup, migrations, seeding, and the developer browse workflow.
 
 - **Framework:** [Next.js](https://nextjs.org/) 16 (React 19)
-- **Language:** TypeScript 5
+- **Language:** TypeScript 6
 - **Styling:** Tailwind CSS 4
 - **Database:** Microsoft SQL Server via TypeORM
 - **Internationalization:** next-intl (Swedish & English)
@@ -228,19 +228,6 @@ and restores the GitVersion local tool from `.config/dotnet-tools.json` with
 `npm run dev:https`, and prodlike builds write `public/build.json` with the
 GitVersion `SemVer` value when the local tool is available, so the header title
 tooltip shows the same semantic version locally.
-
-### Cloud development with Red Hat OpenShift Dev Spaces
-
-The repository ships a [`devfile.yaml`](devfile.yaml) for [Red Hat
-OpenShift Dev
-Spaces](https://developers.redhat.com/products/openshift-dev-spaces/overview).
-Create a workspace from this Git URL in your Dev Spaces dashboard and the
-same SQL Server + Keycloak stack is provisioned as sidecar containers in a
-single pod. See
-[docs/development/openshift-devspaces.md][openshift-devspaces-doc]
-for required secrets, editor selection, and SCC requirements.
-
-[openshift-devspaces-doc]: docs/development/openshift-devspaces.md
 
 ### Local development without devcontainers
 
