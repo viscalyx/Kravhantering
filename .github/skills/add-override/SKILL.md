@@ -29,8 +29,11 @@ Verification rule: never assume an issue is resolved only because a safe version
    - Check whether any parent dependency in that path has an available patch/minor update that would resolve the issue without an override.
    - If updating existing `dependencies`/`devDependencies` to same-major patch/minor versions resolves it, do that and do not add an override.
    - Only proceed with an override when no safe same-major patch/minor update higher in the tree removes the vulnerable version.
-3. Add or update the entry under `overrides` using an exact (unprefixed) version:
-   - `"package-name": "version"` (no `^` or `~`)
+3. Add or update the entry under `overrides`:
+   - Transitive package: use an exact unprefixed version:
+     `"package-name": "version"` (no `^` or `~`).
+   - Direct dependency: use a matching `$package-name` reference or an exactly
+     matching dependency spec to avoid npm `EOVERRIDE`.
 4. Add a matching human-readable explanation in the `//overrides` section.
    - Keep existing explanations.
    - Add one new line for the new override with concrete context (affected parent dependency, issue/CVE, and fixed version when known).
