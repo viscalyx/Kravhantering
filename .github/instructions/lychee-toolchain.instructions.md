@@ -4,6 +4,7 @@ applyTo: '{.devcontainer/Dockerfile,.github/workflows/quality-checks.yml,tests/u
 
 ## Lychee Toolchain
 
-- Change `LYCHEE_VERSION` and workflow `lycheeVersion` in the same change.
+- When changing Lychee, update `LYCHEE_VERSION`, workflow `lycheeVersion`, and
+  both architecture-specific `lychee_sha256` values in the Dockerfile.
 - Keep the version-alignment test passing.
 - Keep the Lychee action pinned to a full commit SHA with its release tag comment.
