@@ -9,16 +9,16 @@ See `package.json` for the full list of test-related scripts.
 ## Unit tests
 
 - Location: `tests/unit`
-- Start here: [tests/unit/test-helpers.ts](tests/unit/test-helpers.ts)
+- Start here: [unit/test-helpers.ts](unit/test-helpers.ts)
 - Run with: `npm run test`
 
 ## Integration tests
 
 - Location: `tests/integration`
-- Overview/specs: [tests/integration/smoke.md](tests/integration/smoke.md)
-- Error-boundary smoke tests and notes: [tests/integration/error-boundary-smoke.md](tests/integration/error-boundary-smoke.md)
-- Global Playwright setup: [tests/integration/global-setup.ts](tests/integration/global-setup.ts)
-- Chunk manifest: [tests/integration-chunks.manifest.json](tests/integration-chunks.manifest.json)
+- Overview/specs: [platform smoke test](integration/platform/smoke.spec.ts)
+- Error-boundary smoke tests: [error-boundary smoke test](integration/platform/error-boundary-smoke.spec.ts)
+- Global Playwright setup: [integration/global-setup.ts](integration/global-setup.ts)
+- Chunk manifest: [integration-chunks.manifest.json](integration-chunks.manifest.json)
 
 `npm run test:integration` and `npm run test:integration:prodlike` run the
 Playwright suite locally in deterministic chunks by default. Run a single
@@ -52,10 +52,10 @@ Test-only routes (used to exercise App Router error boundaries) are gated
 behind the `ENABLE_ERROR_BOUNDARY_TEST_ROUTE` environment variable. See
 these locations:
 
-- Gate in test pages: [app/[locale]/error-boundary-test/page.tsx](app/[locale]/error-boundary-test/page.tsx)
-  and [app/[locale]/admin/error-boundary-test/page.tsx](app/[locale]/admin/error-boundary-test/page.tsx)
-- Playwright/dev configs that enable the gate: [playwright.config.ts](playwright.config.ts)
-  and [playwright.prodlike.config.ts](playwright.prodlike.config.ts)
+- Gate in test pages: [app/[locale]/error-boundary-test/page.tsx](../app/[locale]/error-boundary-test/page.tsx)
+  and [app/[locale]/admin/error-boundary-test/page.tsx](../app/[locale]/admin/error-boundary-test/page.tsx)
+- Playwright/dev configs that enable the gate: [playwright.config.ts](../playwright.config.ts)
+  and [playwright.prodlike.config.ts](../playwright.prodlike.config.ts)
 - CI usage: [.github/workflows/integration-tests.yml](../.github/workflows/integration-tests.yml)
 
 > [!NOTE]
@@ -64,7 +64,7 @@ these locations:
 
 ## Quality / Spec audits
 
-- Quality spec guidance: [tests/quality/QUALITY.md](tests/quality/QUALITY.md)
+- Quality spec guidance: [quality/QUALITY.md](quality/QUALITY.md)
 
 ## Other notes
 
@@ -79,7 +79,7 @@ these locations:
 
 ## Release smoke tests
 
-- Location: [tests/release-smoke](tests/release-smoke)
+- Location: [release-smoke/release-smoke.md](release-smoke/release-smoke.md)
 - Config: [playwright.release-smoke.config.ts](../playwright.release-smoke.config.ts)
 - Run against a started container stack with:
 

@@ -35,7 +35,6 @@ Core setup docs:
 Alternative environments:
 
 - [GitHub Codespaces](docs/development/github-codespaces.md)
-- [OpenShift Dev Spaces](docs/development/openshift-devspaces.md)
 - [Remote SSH on RHEL 10](docs/development/remote-ssh-rhel10-development.md)
 
 ## Contributor Checklist
@@ -50,8 +49,8 @@ Before opening or updating a PR:
 - For user-facing functionality, roles/permissions, reports, lifecycle, privacy,
   admin behavior, or visible workflows, update
   [manual test cases](docs/governance/manuella-testfall.md).
-- Keep secrets out of commits. Use `.env.*.local`, Dev Spaces Secrets, or the
-  organization's secret manager.
+- Keep secrets out of commits. Use `.env.*.local` or the organization's secret
+  manager.
 - Follow the matching `.github/instructions/*.md` file for specialized areas
   such as schema changes, translations, reports, Developer Mode, auth, and tests.
 
@@ -70,6 +69,10 @@ Before opening or updating a PR:
 | `npm run fix` | Run formatting, lint, Markdown, dotenv, and spell fixers |
 | `npm run db:setup` | Reset, migrate, seed, and configure the local SQL Server database |
 <!-- markdownlint-enable MD013 -->
+
+`npm run check` also validates local Markdown links with Lychee. The pinned
+binary is installed when the development container is built. If it is absent,
+rebuild the development container before running the check.
 
 Use [dependency workflow](docs/development/dependency-workflow.md) for
 `npm run purge:install` and package-install recovery details.
