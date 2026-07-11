@@ -578,10 +578,13 @@ att fler krav visas.
 
 ### REQ-05: kolumnväljare sparar synliga kolumner
 
-**Steg:** Öppna kolumnväljaren, dölj en valfri kolumn, ladda om sidan och visa
-kolumnen igen.
+**Steg:** Öppna kolumnväljaren, visa kolumnen `Verifierbar` och kontrollera
+att verifierbara krav visar `SearchCheck` medan inte verifierbara krav visar
+`Minus`. Dölj därefter en valfri kolumn, ladda om sidan och visa kolumnen igen.
 
-**Förväntat resultat:** Valet ligger kvar efter omladdning och kan återställas.
+**Förväntat resultat:** Båda verifierbarhetslägena har separata ikoner med
+lokaliserade hjälptexter. Kolumnvalet ligger kvar efter omladdning och kan
+återställas.
 
 ### REQ-06: återställ lokala listinställningar
 

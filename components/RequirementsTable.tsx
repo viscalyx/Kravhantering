@@ -11,6 +11,7 @@ import {
   Columns3,
   DiamondPlus,
   Filter,
+  Minus,
   Search,
   SearchCheck,
   WrapText,
@@ -2551,11 +2552,30 @@ export default function RequirementsTable({
           <td
             className={`py-2 px-2 text-center ${archivedContentClass} ${dividerClass}`}
           >
-            {row.version?.verifiable && (
-              <SearchCheck
-                aria-label={t('verifiable')}
-                className="inline h-4 w-4 text-primary-700 dark:text-primary-300"
-              />
+            {row.version ? (
+              <span
+                aria-label={t(
+                  row.version.verifiable ? 'verifiable' : 'verifiableOff',
+                )}
+                role="img"
+                title={t(
+                  row.version.verifiable ? 'verifiable' : 'verifiableOff',
+                )}
+              >
+                {row.version.verifiable ? (
+                  <SearchCheck
+                    aria-hidden="true"
+                    className="inline h-4 w-4 text-primary-700 dark:text-primary-300"
+                  />
+                ) : (
+                  <Minus
+                    aria-hidden="true"
+                    className="inline h-4 w-4 text-secondary-600 dark:text-secondary-400"
+                  />
+                )}
+              </span>
+            ) : (
+              '—'
             )}
           </td>
         )

@@ -142,6 +142,14 @@ test.describe('Requirements table column picker', () => {
 
         await expect(verifiableHeaderLabel).toBeVisible()
         await expect(versionHeaderLabel).toBeVisible()
+        await expect(
+          page.getByRole('img', { exact: true, name: 'Verifierbar' }).first(),
+        ).toBeVisible()
+        await expect(
+          page
+            .getByRole('img', { exact: true, name: 'Inte verifierbar' })
+            .first(),
+        ).toBeVisible()
 
         const verifiableLabelBox = await verifiableHeaderLabel.boundingBox()
         const versionLabelBox = await versionHeaderLabel.boundingBox()
