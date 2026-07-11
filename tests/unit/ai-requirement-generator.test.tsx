@@ -19,6 +19,7 @@ const translate = Object.assign(
       imageErrorRead:
         'Failed to read one or more image files. Please try again.',
       generationFailed: 'Generation failed',
+      imageErrorCount: 'You can attach up to {max} images.',
       imageErrorSize: '{name} exceeds the 10 MB size limit.',
       imageErrorType: 'Unsupported file type: {name}.',
       needsReferenceProposalRows: '{count} requirement row',
