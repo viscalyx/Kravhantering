@@ -25,22 +25,32 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-const dateSchema = z
-  .string()
-  .trim()
-  .refine(value => !Number.isNaN(new Date(value).getTime()), {
-    message: 'Expected an ISO date-time string.',
-  })
+const isoDateTimeSchema = z.iso
+  .datetime({ offset: true })
   .transform(value => new Date(value))
 
 const createAccessReviewSchema = z
   .object({
-    dueAt: dateSchema.optional(),
+    dueAt: isoDateTimeSchema.optional(),
     externalEvidenceReference: nullableBoundedDbStringSchema.optional(),
-    periodEnd: dateSchema.optional(),
-    periodStart: dateSchema.optional(),
+    periodEnd: isoDateTimeSchema.optional(),
+    periodStart: isoDateTimeSchema.optional(),
   })
   .strict()
+  .superRefine((value, context) => {
+    if (
+      value.periodStart &&
+      value.periodEnd &&
+      value.periodStart.getTime() > value.periodEnd.getTime()
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Review period start must be earlier than or equal to its end.',
+        path: ['periodEnd'],
+      })
+    }
+  })
 
 export async function GET(request: NextRequest) {
   try {

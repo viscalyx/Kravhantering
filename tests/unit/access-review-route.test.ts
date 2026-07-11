@@ -269,6 +269,73 @@ describe('access review routes', () => {
     expect(routeState.createAccessReviewRun).not.toHaveBeenCalled()
   })
 
+  it('accepts ordered equal instants with offsets and an independent due date', async () => {
+    const { POST } = await import('@/app/api/admin/access-reviews/route')
+    const response = await POST(
+      jsonRequest('http://localhost/api/admin/access-reviews', {
+        dueAt: '2026-01-01T00:00:00.000Z',
+        periodEnd: '2026-05-12T12:00:00.000Z',
+        periodStart: '2026-05-12T14:00:00.000+02:00',
+      }) as never,
+    )
+
+    expect(response.status).toBe(201)
+    expect(routeState.createAccessReviewRun).toHaveBeenCalledWith(
+      { db: true },
+      expect.objectContaining({
+        dueAt: new Date('2026-01-01T00:00:00.000Z'),
+        periodEnd: new Date('2026-05-12T12:00:00.000Z'),
+        periodStart: new Date('2026-05-12T12:00:00.000Z'),
+      }),
+      expect.anything(),
+      expect.anything(),
+    )
+  })
+
+  it('rejects parser-coercible timestamps that are not ISO timestamps', async () => {
+    const parserCoercibleTimestamp = 'May 12, 2026 12:00:00 UTC'
+    expect(Number.isNaN(new Date(parserCoercibleTimestamp).getTime())).toBe(
+      false,
+    )
+
+    const { POST } = await import('@/app/api/admin/access-reviews/route')
+    const response = await POST(
+      jsonRequest('http://localhost/api/admin/access-reviews', {
+        periodStart: parserCoercibleTimestamp,
+      }) as never,
+    )
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({
+      error: 'Invalid request',
+      issues: [expect.objectContaining({ path: 'periodStart' })],
+    })
+    expect(routeState.createAccessReviewRun).not.toHaveBeenCalled()
+  })
+
+  it('rejects explicitly reversed review periods before creating a run', async () => {
+    const { POST } = await import('@/app/api/admin/access-reviews/route')
+    const response = await POST(
+      jsonRequest('http://localhost/api/admin/access-reviews', {
+        periodEnd: '2026-05-12T12:00:00.000Z',
+        periodStart: '2026-05-12T12:00:00.001Z',
+      }) as never,
+    )
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({
+      error: 'Invalid request',
+      issues: [
+        expect.objectContaining({
+          message:
+            'Review period start must be earlier than or equal to its end.',
+          path: 'periodEnd',
+        }),
+      ],
+    })
+    expect(routeState.createAccessReviewRun).not.toHaveBeenCalled()
+  })
+
   it('returns service authorization failures for forbidden create', async () => {
     routeState.createAccessReviewRun.mockRejectedValueOnce(
       forbiddenError('Admin or PrivacyOfficer role is required', {

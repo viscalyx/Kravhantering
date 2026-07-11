@@ -7,6 +7,19 @@ target version.
 
 ## Unreleased
 
+### Access-review periods must be ordered before upgrade
+
+Before running `db-job migrate`, confirm no access-review run has a
+`period_start` later than its `period_end`. The migration adds a checked
+constraint and stops rather than modifying historical review evidence when it
+finds an invalid row.
+
+```sql
+SELECT id, period_start, period_end
+FROM access_review_runs
+WHERE period_start > period_end;
+```
+
 ## v0.3.0 - 2026-07-09
 
 ### Requirements specifications need lifecycle status before upgrade

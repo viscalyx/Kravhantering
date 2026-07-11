@@ -106,4 +106,10 @@ export const accessReviewRunEntity = new EntitySchema<AccessReviewRunEntity>({
       name: 'idx_access_review_runs_reviewer_hsa_id',
     },
   ],
+  checks: [
+    {
+      expression: '[period_start] <= [period_end]',
+      name: 'chk_access_review_runs_period_order',
+    },
+  ],
 })

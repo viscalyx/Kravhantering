@@ -67,6 +67,13 @@ export interface DecideAccessReviewItemInput {
   decision: Exclude<AccessReviewDecision, 'pending'>
 }
 
+interface ResolvedAccessReviewRunDates {
+  dueAt: Date
+  generatedAt: Date
+  periodEnd: Date
+  periodStart: Date
+}
+
 const ADMIN_ROLE = 'Admin'
 const PRIVACY_OFFICER_ROLE = 'PrivacyOfficer'
 const ACCESS_REVIEW_ITEM_INSERT_BATCH_SIZE = 150
@@ -160,6 +167,41 @@ function numberValue(value: unknown): number {
 
 function dateParam(date: Date): string {
   return date.toISOString()
+}
+
+function assertValidAccessReviewDate(value: Date, field: string): void {
+  if (!Number.isNaN(value.getTime())) return
+
+  throw validationError('Access review dates must be valid', {
+    field,
+    reason: 'invalid_access_review_date',
+  })
+}
+
+function resolveAccessReviewRunDates(
+  input: CreateAccessReviewRunInput,
+  generatedAt: Date,
+): ResolvedAccessReviewRunDates {
+  assertValidAccessReviewDate(generatedAt, 'generatedAt')
+
+  const periodStart = input.periodStart ?? generatedAt
+  assertValidAccessReviewDate(periodStart, 'periodStart')
+
+  const periodEnd =
+    input.periodEnd ?? new Date(periodStart.getTime() + ONE_YEAR_MS)
+  assertValidAccessReviewDate(periodEnd, 'periodEnd')
+
+  const dueAt = input.dueAt ?? new Date(generatedAt.getTime() + THIRTY_DAYS_MS)
+  assertValidAccessReviewDate(dueAt, 'dueAt')
+
+  if (periodStart.getTime() > periodEnd.getTime()) {
+    throw validationError(
+      'Access review period start must not be later than its end',
+      { reason: 'access_review_period_out_of_order' },
+    )
+  }
+
+  return { dueAt, generatedAt, periodEnd, periodStart }
 }
 
 function summaryFromRows(rows: Row[]): AccessReviewRunSummary {
@@ -369,12 +411,8 @@ async function insertRun(
   db: QueryExecutor,
   input: CreateAccessReviewRunInput,
   createdBy: AccessReviewActor,
+  dates: ResolvedAccessReviewRunDates,
 ): Promise<number> {
-  const now = input.generatedAt ?? new Date()
-  const periodStart = input.periodStart ?? now
-  const periodEnd =
-    input.periodEnd ?? new Date(periodStart.getTime() + ONE_YEAR_MS)
-  const dueAt = input.dueAt ?? new Date(now.getTime() + THIRTY_DAYS_MS)
   const rows = (await db.query(
     `INSERT INTO access_review_runs (
         status,
@@ -404,10 +442,10 @@ async function insertRun(
         @8
       )`,
     [
-      dateParam(periodStart),
-      dateParam(periodEnd),
-      dateParam(dueAt),
-      dateParam(now),
+      dateParam(dates.periodStart),
+      dateParam(dates.periodEnd),
+      dateParam(dates.dueAt),
+      dateParam(dates.generatedAt),
       createdBy.hsaId,
       createdBy.displayName,
       input.reviewer.hsaId,
@@ -507,6 +545,7 @@ export async function createAccessReviewRun(
 ): Promise<AccessReviewRunDetail> {
   const createdBy = requireAccessReviewRole(actor)
   const generatedAt = input.generatedAt ?? new Date()
+  const dates = resolveAccessReviewRunDates(input, generatedAt)
   let runId = 0
 
   await db.transaction(async manager => {
@@ -522,8 +561,8 @@ export async function createAccessReviewRun(
       })
     }
     const items = await collectAccessReviewAssignments(tx)
-    runId = await insertRun(tx, { ...input, generatedAt }, createdBy)
-    await insertItems(tx, runId, generatedAt, items)
+    runId = await insertRun(tx, input, createdBy, dates)
+    await insertItems(tx, runId, dates.generatedAt, items)
     await options.audit?.(tx, {
       itemCount: items.length,
       runId,
