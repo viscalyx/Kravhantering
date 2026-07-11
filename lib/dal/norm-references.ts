@@ -1,4 +1,5 @@
 import type { SqlServerDatabase } from '@/lib/db'
+import { conflictError } from '@/lib/requirements/errors'
 import {
   type NormReferenceEntity,
   normReferenceEntity,
@@ -87,6 +88,8 @@ export type {
   NormReferenceRow,
   NormReferenceUsage,
 }
+
+export const MAX_GENERATED_NORM_REFERENCE_ID_ATTEMPTS = 999
 
 function map(row: NormReferenceEntity): NormReferenceRow {
   return {
@@ -396,7 +399,7 @@ async function resolveCollision(
     return base
   }
 
-  for (let i = 2; i <= 999; i++) {
+  for (let i = 2; i <= MAX_GENERATED_NORM_REFERENCE_ID_ATTEMPTS; i++) {
     const candidate = `${base}-${i}`
     const conflict = await repository.findOne({
       where: { normReferenceId: candidate },
@@ -406,7 +409,9 @@ async function resolveCollision(
     }
   }
 
-  return `${base}-${Date.now()}`
+  throw conflictError('Generated norm reference ID candidates are exhausted', {
+    reason: 'norm_reference_id_generation_exhausted',
+  })
 }
 
 export async function createNormReference(

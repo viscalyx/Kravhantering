@@ -21,6 +21,18 @@ interface SafeStaleEditHttpDetails {
   reason: 'stale_requirement_edit'
 }
 
+const SAFE_NORM_REFERENCE_ID_CONFLICT_REASONS = [
+  'norm_reference_id_exists',
+  'norm_reference_id_generation_exhausted',
+] as const
+
+type SafeNormReferenceIdConflictReason =
+  (typeof SAFE_NORM_REFERENCE_ID_CONFLICT_REASONS)[number]
+
+interface SafeNormReferenceIdConflictHttpDetails {
+  reason: SafeNormReferenceIdConflictReason
+}
+
 const SAFE_PRIVACY_ERASURE_REASONS = [
   'owner_area_references_blocking',
   'owner_references_blocking',
@@ -37,6 +49,7 @@ interface SafePrivacyErasureHttpDetails {
 }
 
 type SafeHttpErrorDetails =
+  | SafeNormReferenceIdConflictHttpDetails
   | SafePrivacyErasureHttpDetails
   | SafeStaleEditHttpDetails
 
@@ -91,6 +104,17 @@ function toSafeHttpErrorDetails(
     return {
       latest: toSafeLatestEditSummary(details.latest),
       reason: 'stale_requirement_edit',
+    }
+  }
+
+  if (
+    code === 'conflict' &&
+    SAFE_NORM_REFERENCE_ID_CONFLICT_REASONS.includes(
+      details?.reason as SafeNormReferenceIdConflictReason,
+    )
+  ) {
+    return {
+      reason: details?.reason as SafeNormReferenceIdConflictReason,
     }
   }
 

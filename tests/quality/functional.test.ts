@@ -67,6 +67,7 @@ import {
   type RequestContext,
 } from '@/lib/requirements/auth'
 import { RequirementsServiceError } from '@/lib/requirements/errors'
+import { createNormReferenceWithAudit } from '@/lib/requirements/norm-reference-mutations'
 import {
   createRequirementsService,
   type RequirementsService,
@@ -3103,6 +3104,54 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     expect(committedRows[0]?.detailsJson).toContain('/quality/functional')
     expect(committedRows[0]?.detailsJson).not.toContain('must not be persisted')
+  })
+
+  it('Scenario 28: generated norm-reference IDs remain atomic under concurrent creates', async () => {
+    const data = {
+      issuer: 'Riksdagen',
+      name: 'Concurrent norm reference',
+      reference: 'SFS 2026:529',
+      type: 'Lag',
+    }
+    const [firstContext, secondContext] = await Promise.all([
+      makeContext(),
+      makeContext(),
+    ])
+
+    const [first, second] = await Promise.all([
+      createNormReferenceWithAudit(appDb(), data, firstContext),
+      createNormReferenceWithAudit(appDb(), data, secondContext),
+    ])
+
+    expect([first.normReferenceId, second.normReferenceId].sort()).toEqual([
+      'SFS-2026-529',
+      'SFS-2026-529-2',
+    ])
+
+    const auditRows = (await appDb().query(
+      `SELECT COUNT(*) AS count
+       FROM action_audit_events
+       WHERE action = @0 AND target_kind = @1`,
+      ['norm_reference.create', 'norm_reference'],
+    )) as Array<{ count: number }>
+    expect(Number(auditRows[0]?.count ?? 0)).toBe(2)
+
+    const mutationSource = readFileSync(
+      join(repoRoot, 'lib', 'requirements', 'norm-reference-mutations.ts'),
+      'utf8',
+    )
+    const serverSource = readFileSync(mcpServerPath, 'utf8')
+    const userGuideSource = readFileSync(userGuidePath, 'utf8')
+    const contributorGuideSource = readFileSync(contributorGuidePath, 'utf8')
+
+    expect(mutationSource).toContain('uq_norm_references_norm_reference_id')
+    expect(mutationSource).toContain('norm_reference_id_exists')
+    expect(mutationSource).toContain('norm_reference_id_generation_exhausted')
+    expect(serverSource).toContain('NormReferenceManagementErrorOutputSchema')
+    expect(userGuideSource).toContain('norm_reference_id_exists')
+    expect(contributorGuideSource).toContain(
+      'norm_reference_id_generation_exhausted',
+    )
   })
 
   it('Scenario 24: MCP requirement import keeps token-bound validation execution narrow', () => {

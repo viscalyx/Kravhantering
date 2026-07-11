@@ -1228,6 +1228,31 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 27: needs-r
 ```
 <!-- markdownlint-enable MD013 -->
 
+### Scenario 28: generated norm-reference IDs remain atomic under concurrent creates
+
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — issue #529 generated norm-reference ID collision handling]`
+
+**What happened:** A generated norm-reference ID is selected before it is
+saved. Concurrent creates can therefore choose the same candidate. A generic
+database failure or a non-atomic retry leaves a caller without a durable norm
+reference or with untraceable action-log evidence.
+
+**The requirement:** Generated norm-reference creation must allocate the base
+ID then deterministic suffixes through `-999`, retrying only the named
+norm-reference unique constraint as a complete create-and-Åtgärdslogg
+transaction. Explicit duplicates and exhausted generated candidates must return
+the documented conflict reasons through REST and MCP without creating an
+Åtgärdslogg row.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 28: generated norm-reference IDs remain atomic under concurrent creates"
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,

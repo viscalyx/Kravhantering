@@ -500,6 +500,10 @@ describe('handleRequirementsMcpRequest', () => {
       expect(normOutputSchemaText).toContain('match')
       expect(normOutputSchemaText).toContain('requirements')
       expect(normOutputSchemaText).toContain('uniqueId')
+      expect(normOutputSchemaText).toContain('norm_reference_id_exists')
+      expect(normOutputSchemaText).toContain(
+        'norm_reference_id_generation_exhausted',
+      )
     })
 
     it('describes specification copy paths for MCP clients', async () => {
@@ -980,6 +984,47 @@ describe('handleRequirementsMcpRequest', () => {
         operation: 'get',
       },
     )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns a structured conflict for an explicit duplicate norm-reference ID', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+    fakeService.manageNormReference.mockRejectedValueOnce(
+      new RequirementsServiceError(
+        'conflict',
+        'Norm reference ID already exists',
+        { reason: 'norm_reference_id_exists' },
+      ),
+    )
+
+    const result = await client.callTool({
+      arguments: {
+        issuer: 'ISO',
+        name: 'ISO 27001',
+        normReferenceId: 'ISO-27001',
+        operation: 'create',
+        reference: 'ISO/IEC 27001:2022',
+        type: 'Standard',
+      },
+      name: 'requirements_manage_norm_reference',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content).toEqual([
+      expect.objectContaining({
+        text: 'Error: Norm reference ID already exists',
+        type: 'text',
+      }),
+    ])
+    expect(result.structuredContent).toEqual({
+      error: {
+        code: 'conflict',
+        reason: 'norm_reference_id_exists',
+      },
+    })
 
     await client.close()
     await transport.close()

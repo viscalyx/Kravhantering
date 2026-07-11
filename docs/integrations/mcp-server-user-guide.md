@@ -178,6 +178,24 @@ The response is:
 library Krav, deduplicated across linked kravversioner and sorted by `uniqueId`;
 kravunderlagslokala krav are not included.
 
+For `operation: "create"`, omit `normReferenceId` to let the service allocate
+the natural generated ID, then its deterministic suffixes through `-999` when
+needed. Concurrent creates therefore receive distinct IDs. A supplied ID is
+never rewritten: if it already exists, the tool returns `isError: true` with:
+
+```json
+{
+  "error": {
+    "code": "conflict",
+    "reason": "norm_reference_id_exists"
+  }
+}
+```
+
+If every generated candidate is unavailable, the response instead has reason
+`norm_reference_id_generation_exhausted`. Correct the supplied ID, or inspect
+the generated candidates before attempting a new create.
+
 ## Needs Reference Discovery
 
 Use `requirements_manage_needs_reference` for kravunderlagsimport when rows

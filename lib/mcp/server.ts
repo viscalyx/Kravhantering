@@ -331,14 +331,35 @@ const ConnectedNormReferenceRequirementSchema = z
   })
   .strict()
 
+const NormReferenceIdConflictReasonSchema = z.enum([
+  'norm_reference_id_exists',
+  'norm_reference_id_generation_exhausted',
+])
+
+const NormReferenceManagementErrorOutputSchema = z
+  .object({
+    error: z
+      .object({
+        code: z.literal('conflict'),
+        reason: NormReferenceIdConflictReasonSchema,
+      })
+      .strict(),
+  })
+  .strict()
+
 const ManageNormReferenceOutputSchema = z
   .object({
+    error: NormReferenceManagementErrorOutputSchema.shape.error.optional(),
     normReference: NormReferenceOutputSchema.optional(),
     requirements: z.array(ConnectedNormReferenceRequirementSchema).optional(),
     result: z.array(NormReferenceOutputSchema).optional(),
   })
   .strict()
   .superRefine((val, ctx) => {
+    if (Object.hasOwn(val, 'error')) {
+      rejectUnexpectedFields(ctx, val, ['error'])
+      return
+    }
     if (Object.hasOwn(val, 'result')) {
       rejectUnexpectedFields(ctx, val, ['result'])
       return
@@ -351,7 +372,7 @@ const ManageNormReferenceOutputSchema = z
     rejectUnexpectedFields(ctx, val, ['normReference'])
   })
   .describe(
-    'Normbibliotek management result. Shape depends on operation: result, normReference, or requirements.',
+    'Normbibliotek management result. Shape depends on operation: result, normReference, requirements, or error.',
   )
 
 const RequirementVersionOutputSchema = z
@@ -585,6 +606,33 @@ function formatError(error: unknown) {
       },
     ],
     isError: true,
+  }
+}
+
+function formatNormReferenceError(error: unknown) {
+  const reason =
+    isRequirementsServiceError(error) && error.code === 'conflict'
+      ? error.details?.reason
+      : undefined
+  const parsedReason = NormReferenceIdConflictReasonSchema.safeParse(reason)
+  if (!parsedReason.success || !isRequirementsServiceError(error)) {
+    return formatError(error)
+  }
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: `Error: ${error.message}`,
+      },
+    ],
+    isError: true,
+    structuredContent: {
+      error: {
+        code: 'conflict' as const,
+        reason: parsedReason.data,
+      },
+    },
   }
 }
 
@@ -1941,7 +1989,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'List, search, get, create, or inspect connected library Krav IDs for Normbibliotek norm references. Use list/search to resolve normReferenceIds before generating a Kravimportfil; these discovery operations return full norm-reference properties but no connected krav rows, IDs, or counts. Use get with exactly one of id or normReferenceId for an exact lookup, including archived rows, and use list_connected_requirement_ids with the same selector to return connected library Krav IDs as {id, uniqueId}. Archived norm references are excluded from list/search by default and are not valid for import.',
+        'List, search, get, create, or inspect connected library Krav IDs for Normbibliotek norm references. Use list/search to resolve normReferenceIds before generating a Kravimportfil; these discovery operations return full norm-reference properties but no connected krav rows, IDs, or counts. Use get with exactly one of id or normReferenceId for an exact lookup, including archived rows, and use list_connected_requirement_ids with the same selector to return connected library Krav IDs as {id, uniqueId}. Create allocates missing IDs as a deterministic base or suffix. An explicit duplicate or generated-ID exhaustion returns isError with structuredContent.error {code:"conflict", reason:"norm_reference_id_exists"|"norm_reference_id_generation_exhausted"}. Archived norm references are excluded from list/search by default and are not valid for import.',
       inputSchema: createManageNormReferenceSchema(),
       outputSchema: ManageNormReferenceOutputSchema,
       title: 'Manage Norm Reference',
@@ -1967,7 +2015,7 @@ export function createKravhanteringMcpServer(
           structuredContent: payload,
         }
       } catch (error) {
-        return formatError(error)
+        return formatNormReferenceError(error)
       }
     },
   )
