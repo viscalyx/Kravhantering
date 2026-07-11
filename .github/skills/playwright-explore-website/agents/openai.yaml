@@ -1,6 +1,6 @@
 interface:
   display_name: "Playwright Explore Website"
-  short_description: "Explore websites with Playwright to produce test scenarios and selectors"
-  default_prompt: "Use $playwright-explore-website to explore a website and produce Playwright test scenarios, selectors, and navigation steps."
+  short_description: "Explore sites for Playwright test design"
+  default_prompt: "Use $playwright-explore-website to explore this website and produce Playwright test scenarios, selectors, and navigation steps."
 policy:
   allow_implicit_invocation: false

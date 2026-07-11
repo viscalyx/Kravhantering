@@ -1,6 +1,4 @@
 interface:
   display_name: "Research"
-  short_description: "Research questions against primary sources"
-  default_prompt: "Use $research to investigate a question against high-trust primary sources and write a cited Markdown findings file in the repo."
-policy:
-  allow_implicit_invocation: false
+  short_description: "Research questions with primary sources"
+  default_prompt: "Use $research to research this question against primary sources and write a cited Markdown findings file in the repository."

@@ -1,6 +1,6 @@
 interface:
   display_name: "Riskanalys Informationsmängd"
-  short_description: "Analysera informationsrisker i offentlig sektor"
-  default_prompt: "Use $riskanalys-informationsmangd to create a Swedish risk analysis for an information set in public-sector context."
+  short_description: "Riskanalysera informationsmängder"
+  default_prompt: "Use $riskanalys-informationsmangd to create a Swedish risk analysis for this public-sector information asset."
 policy:
   allow_implicit_invocation: false

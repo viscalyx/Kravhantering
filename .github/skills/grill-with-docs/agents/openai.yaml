@@ -1,6 +1,6 @@
 interface:
   display_name: "Grill with Docs"
-  short_description: "Stress-test plans and update docs"
-  default_prompt: "Use $grill-with-docs to challenge this plan, then update the glossary or ADRs as decisions crystallize."
+  short_description: "A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go."
+  default_prompt: "Use $grill-with-docs to stress-test this plan and update the glossary or ADRs as decisions are made."
 policy:
   allow_implicit_invocation: false
