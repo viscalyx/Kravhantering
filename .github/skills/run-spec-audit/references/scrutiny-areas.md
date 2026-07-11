@@ -524,3 +524,19 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   the copy paths into `requirements[].needsReferenceId`?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 27: needs-reference MCP management stays specification-scoped"`
+
+## 35. Scenario 28: generated norm-reference IDs remain atomic under concurrent creates
+
+- **Code:** `lib/dal/norm-references.ts`,
+  `lib/requirements/norm-reference-mutations.ts`,
+  `lib/requirements/http-errors.ts`, and `lib/mcp/server.ts`.
+- **Spec:** `docs/integrations/mcp-server-user-guide.md` and
+  `docs/integrations/mcp-server-contributor-guide.md`.
+- **Req tag:**
+  `[Req: formal — issue #529 generated norm-reference ID collision handling]`
+- **Question:** Do concurrent generated-ID creates retain atomic action-log
+  evidence while allocating distinct deterministic suffixes, and do explicit
+  duplicates or exhausted candidates expose only the documented conflict
+  reasons?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 28: generated norm-reference IDs remain atomic under concurrent creates"`

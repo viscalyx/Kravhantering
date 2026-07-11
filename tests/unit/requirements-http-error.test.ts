@@ -93,6 +93,26 @@ describe('toHttpErrorPayload', () => {
     })
   })
 
+  it.each([
+    'norm_reference_id_exists',
+    'norm_reference_id_generation_exhausted',
+  ])('allowlists the safe norm-reference conflict reason %s', reason => {
+    expect(
+      toHttpErrorPayload(
+        conflictError('Norm reference ID conflict', {
+          reason,
+        }),
+      ),
+    ).toEqual({
+      body: {
+        code: 'conflict',
+        details: { reason },
+        error: 'Norm reference ID conflict',
+      },
+      status: 409,
+    })
+  })
+
   it('does not allowlist stale edit details on non-conflict errors', () => {
     const result = toHttpErrorPayload(
       validationError('Invalid stale edit payload', {
