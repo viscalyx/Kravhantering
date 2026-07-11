@@ -1,6 +1,9 @@
 ---
 name: add-override
-description: 'Add a package override in package.json and document why it exists'
+description: >-
+  Add a documented package override in `package.json`. Use when a direct or
+  transitive npm dependency needs a forced version, override rationale, or
+  override update.
 ---
 
 # Add Override

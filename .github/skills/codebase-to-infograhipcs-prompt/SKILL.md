@@ -1,6 +1,9 @@
 ---
 name: codebase-to-infographic-prompt
-description: Helps an AI analyze a complete software codebase and produce a high-quality prompt for another AI system that will generate a professional infographic.
+description: >-
+  Analyze a software codebase and create a professional infographic-generation
+  prompt. Use when the user wants a technical, executive, investor,
+  customer-facing, or onboarding infographic prompt derived from source code.
 ---
 
 # Codebase to Infographic Prompt

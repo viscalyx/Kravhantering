@@ -1,6 +1,9 @@
 ---
 name: playwright-explore-website
-description: 'Website exploration for testing using Playwright MCP'
+description: >-
+  Explore a website with Playwright MCP and produce test scenarios, selectors,
+  and navigation steps. Use when designing end-to-end coverage or preparing
+  inputs for `playwright-generate-test`.
 ---
 
 ## Website Exploration for Testing
