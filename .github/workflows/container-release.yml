@@ -621,13 +621,14 @@ jobs:
         run: |
           set -euo pipefail
           archive_branch="automation/operator-upgrade-notes-archive-${RELEASE_TAG_NAME}"
-          git fetch origin main
-          git switch --force-create "${archive_branch}" origin/main
-
           if [ -z "${GH_TOKEN}" ]; then
             echo "::error::OPERATOR_UPGRADE_NOTES_TOKEN is required."
             exit 1
           fi
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch origin main
+          git switch --force-create "${archive_branch}" origin/main
+
           gh api "repos/${GITHUB_REPOSITORY}" --jq '.full_name' >/dev/null
           release_date="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG_NAME}" --jq '.published_at[0:10]')"
           if [ -z "${release_date}" ]; then
@@ -648,7 +649,6 @@ jobs:
           git config user.email "viscalyxbot@viscalyx.se"
           git add "docs/operations/operator-upgrade-notes.md"
           git commit -m "docs: archive operator upgrade notes for ${RELEASE_TAG_NAME}"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           remote_branch_exists=false
           if git ls-remote --exit-code --heads origin "${archive_branch}" >/dev/null; then
