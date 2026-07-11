@@ -617,26 +617,87 @@ jobs:
       - name: Archive stable operator upgrade notes
         if: env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_IS_STABLE == 'true'
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.OPERATOR_UPGRADE_NOTES_TOKEN }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          archive_branch="automation/operator-upgrade-notes-archive-${RELEASE_TAG_NAME}"
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::OPERATOR_UPGRADE_NOTES_TOKEN is required."
+            exit 1
+          fi
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch origin main
-          git switch --force-create operator-upgrade-notes-archive origin/main
+          git switch --force-create "${archive_branch}" origin/main
+
+          gh api "repos/${GITHUB_REPOSITORY}" --jq '.full_name' >/dev/null
+          release_date="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG_NAME}" --jq '.published_at[0:10]')"
+          if [ -z "${release_date}" ]; then
+            echo "::error::Unable to read the publication date for ${RELEASE_TAG_NAME}."
+            exit 1
+          fi
+
           node scripts/release/operator-upgrade-notes.mjs archive-stable \
             --version "${RELEASE_TAG_NAME}" \
-            --date "$(date -u +%F)"
+            --date "${release_date}"
 
           if git diff --quiet -- "docs/operations/operator-upgrade-notes.md"; then
             echo "No stable operator upgrade notes archive changes to commit."
             exit 0
           fi
 
+          git config user.name "Viscalyxbot"
+          git config user.email "viscalyxbot@viscalyx.se"
           git add "docs/operations/operator-upgrade-notes.md"
           git commit -m "docs: archive operator upgrade notes for ${RELEASE_TAG_NAME}"
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push origin HEAD:main
+
+          remote_branch_exists=false
+          if git ls-remote --exit-code --heads origin "${archive_branch}" >/dev/null; then
+            git fetch origin "+${archive_branch}:refs/remotes/origin/${archive_branch}"
+            remote_branch_exists=true
+          fi
+          if [ "${remote_branch_exists}" = "true" ]; then
+            git push --force-with-lease origin HEAD:"refs/heads/${archive_branch}"
+          else
+            git push origin HEAD:"refs/heads/${archive_branch}"
+          fi
+
+          title="docs: archive operator upgrade notes for ${RELEASE_TAG_NAME}"
+          body_file="$(mktemp)"
+          {
+            echo "This automated PR archives the stable Operator Upgrade Notes for ${RELEASE_TAG_NAME}."
+            echo
+            echo "- Release: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG_NAME}"
+            echo "- Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo "Merge after the required checks pass."
+            echo
+            echo "## Operator Upgrade Impact"
+            echo
+            echo "- [x] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->"
+            echo
+            echo "## SSDLC (Secure Software Development Life Cycle) Gate"
+            echo
+            echo "- [x] I have reviewed SSDLC requirements for this change and addressed any security, data protection, threat-model, and security-testing impacts. <!-- DO NOT REMOVE: ssdlc:requirements -->"
+          } > "${body_file}"
+
+          pr_number="$(gh pr list --base main --head "${archive_branch}" --state open --json number --jq '.[0].number // empty')"
+          if [ -z "${pr_number}" ]; then
+            gh pr create --base main --head "${archive_branch}" --title "${title}" --body-file "${body_file}"
+            pr_number="$(gh pr list --base main --head "${archive_branch}" --state open --json number --jq '.[0].number // empty')"
+          else
+            gh pr edit "${pr_number}" --title "${title}" --body-file "${body_file}"
+          fi
+
+          if [ -z "${pr_number}" ]; then
+            echo "::error::Unable to find or create the operator upgrade notes archive pull request."
+            exit 1
+          fi
+
+          if gh pr merge "${pr_number}" --squash --auto --delete-branch; then
+            echo "Enabled auto-merge for operator upgrade notes archive PR #${pr_number}."
+          else
+            echo "::warning::Opened operator upgrade notes archive PR #${pr_number}, but auto-merge could not be enabled. Merge it after required checks pass."
+          fi
 
       - name: Upload release runtime artifacts
         if: always()
