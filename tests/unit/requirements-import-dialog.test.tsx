@@ -96,6 +96,82 @@ function createDeferred<T>() {
   return { promise, resolve }
 }
 
+function validImportPayload() {
+  return JSON.stringify({
+    requirements: [{ description: 'Kravtext' }],
+    schemaVersion: 'requirement-import.v3',
+  })
+}
+
+function importPreviewRow(sourceIndex = 0) {
+  return {
+    errors: [],
+    infos: [],
+    proposedNeedsReferenceKey: null,
+    proposedNormReferenceKeys: [],
+    reviewRowId: `row-${sourceIndex}`,
+    selected: true,
+    sourceIndex,
+    values: {
+      acceptanceCriteria: null,
+      categoryId: null,
+      description: `Kravtext ${sourceIndex + 1}`,
+      needsReferenceId: null,
+      normReferenceIds: [],
+      priorityLevelId: null,
+      qualityCharacteristicId: null,
+      requirementPackageIds: [],
+      typeId: null,
+      verifiable: false,
+      verificationMethod: null,
+    },
+    warnings: [],
+  }
+}
+
+function importPreviewResponse(rows = [importPreviewRow()]): Response {
+  return {
+    json: async () => ({
+      needsReferenceProposals: [],
+      previewToken: 'preview-token',
+      proposals: [],
+      rows,
+      summary: { errorCount: 0, rowCount: rows.length, warningCount: 0 },
+    }),
+    ok: true,
+  } as Response
+}
+
+function importExecuteResponse(): Response {
+  return {
+    json: async () => ({
+      createdRows: [
+        {
+          acceptanceCriteria: null,
+          categoryName: null,
+          createdDatabaseId: 9001,
+          createdVisibleId: 'KRAV9001',
+          description: 'Kravtext',
+          importMode: 'specification-local',
+          needsReferenceId: null,
+          normReferences: [],
+          priorityLevelName: null,
+          qualityCharacteristicName: null,
+          requirementPackageNames: [],
+          sourceIndex: 0,
+          targetAreaId: null,
+          targetSpecificationId: 8,
+          typeName: null,
+          verifiable: false,
+          verificationMethod: null,
+        },
+      ],
+      summary: { createdCount: 1 },
+    }),
+    ok: true,
+  } as Response
+}
+
 function specificationLocalPreviewResponse(): Response {
   return {
     json: async () => ({
@@ -180,6 +256,157 @@ describe('RequirementsImportDialog', () => {
         name: 'Importera lokala krav för Upphandling av e-tjänstplattform',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('announces repeated preview errors with alert semantics', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({
+      json: async () => ({ error: 'Förhandsgranskningen misslyckades.' }),
+      ok: false,
+    } as Response)
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    const previewButton = screen.getByRole('button', {
+      name: 'Förhandsgranska krav',
+    })
+
+    fireEvent.click(previewButton)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Förhandsgranskningen misslyckades.',
+    )
+
+    fireEvent.click(previewButton)
+    await waitFor(() => {
+      expect(screen.getAllByRole('alert')).toHaveLength(1)
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Förhandsgranskningen misslyckades.',
+      )
+    })
+  })
+
+  it('announces large-preview warnings with status semantics', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(
+      importPreviewResponse(
+        Array.from({ length: 200 }, (_, index) => importPreviewRow(index)),
+      ),
+    )
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Filen innehåller 200 eller fler krav.',
+    )
+  })
+
+  it('announces a successful import receipt with status semantics', async () => {
+    vi.mocked(apiFetch)
+      .mockResolvedValueOnce(importPreviewResponse())
+      .mockResolvedValueOnce(importExecuteResponse())
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Importera valda' }),
+    )
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Importerade rader: 1',
+    )
+  })
+
+  it('clears a previous receipt while a later import is in progress', async () => {
+    const secondImport = createDeferred<Response>()
+    let executeCalls = 0
+    vi.mocked(apiFetch).mockImplementation(input => {
+      const url = String(input)
+      if (url.includes('/import/preview')) {
+        return Promise.resolve(
+          importPreviewResponse([importPreviewRow(0), importPreviewRow(1)]),
+        )
+      }
+      executeCalls += 1
+      return executeCalls === 1
+        ? Promise.resolve(importExecuteResponse())
+        : secondImport.promise
+    })
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
+    await screen.findByRole('button', { name: 'Importera valda' })
+
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Välj inte rad #2 för import' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Importera valda' }))
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Importerade rader: 1',
+    )
+
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Välj rad #2 för import' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Importera valda' }))
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Importerade rader: 1'),
+      ).not.toBeInTheDocument(),
+    )
+
+    secondImport.resolve(importExecuteResponse())
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Importerade rader: 1',
+    )
   })
 
   it('loads JSON text from a dropped file', async () => {

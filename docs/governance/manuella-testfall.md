@@ -759,7 +759,10 @@ upp `Krav` och `Föreslagna normreferenser`, rader är kollapsade från start,
 `Verifierbar` är aktiv, löst förslag till normreferens visas som löst och
 behovsreferensfält visas som diskret information om att de inte används för
 kravbiblioteksimport. Importen skickar vald rad och skapar CSV-kvitto med
-importerad kravrad.
+importerad kravrad. Skärmläsare meddelar dynamiska importfel som felmeddelanden
+och icke-brådskande varningar samt CSV-kvittot som status utan att användaren
+flyttar fokus; en senare förhandsgranskning eller import meddelar bara det
+senaste resultatet.
 
 ## Skapa krav och livscykel
 
@@ -1162,6 +1165,10 @@ visas inte som val för kravunderlagslokala krav, och importerade
 `requirementPackageIds` eller `requirementPackageNames` visas som diskret
 information om att kravpaketen inte används. Execute-anropet skickar
 `specificationId`, löst behovsreferens-ID, normreferens-ID och verifieringsmetod.
+Skärmläsare meddelar dynamiska importfel som felmeddelanden och
+icke-brådskande varningar samt CSV-kvittot som status utan att användaren
+flyttar fokus; en senare förhandsgranskning eller import meddelar bara det
+senaste resultatet.
 
 ## Avsteg
 

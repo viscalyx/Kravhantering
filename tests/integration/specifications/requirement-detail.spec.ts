@@ -2282,6 +2282,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       specificationId: editSpecificationId,
     })
     await expect(page.getByText(/Importerade rader: 1/)).toBeVisible()
+    await expect(dialog.getByRole('status')).toHaveText('Importerade rader: 1')
   })
 
   // cSpell:ignore relocks

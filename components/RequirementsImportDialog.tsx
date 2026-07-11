@@ -38,6 +38,7 @@ import QualityCharacteristicSelectOptions from '@/components/QualityCharacterist
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import { downloadBlob } from '@/lib/browser-download'
+import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import {
@@ -659,6 +660,66 @@ function RequirementSummaryText({
         </button>
       ) : null}
     </div>
+  )
+}
+
+function ImportOutcomeFeedback({
+  errorMessage,
+  noticeMessage,
+  receiptCount = 0,
+  successLabel,
+}: {
+  errorMessage: string | null
+  noticeMessage: string | null
+  receiptCount?: number
+  successLabel: string
+}) {
+  return (
+    <>
+      {errorMessage ? (
+        <p
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+          role="alert"
+          {...devMarker({
+            context: 'requirements import',
+            name: 'error banner',
+            priority: 350,
+            value: 'import outcome',
+          })}
+        >
+          {errorMessage}
+        </p>
+      ) : null}
+      {noticeMessage ? (
+        <p
+          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+          role="status"
+          {...devMarker({
+            context: 'requirements import',
+            name: 'status banner',
+            priority: 350,
+            value: 'import notice',
+          })}
+        >
+          {noticeMessage}
+        </p>
+      ) : null}
+      {receiptCount > 0 ? (
+        <p
+          className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200"
+          role="status"
+          {...devMarker({
+            context: 'requirements import',
+            name: 'status banner',
+            priority: 350,
+            value: 'import receipt',
+          })}
+        >
+          <CheckCircle2 aria-hidden="true" className="mr-1 inline h-4 w-4" />
+          {successLabel}: {receiptCount}
+        </p>
+      ) : null}
+    </>
   )
 }
 
@@ -1692,6 +1753,7 @@ export default function RequirementsImportDialog({
     setLoading(true)
     setErrorMessage(null)
     setNoticeMessage(null)
+    setReceiptRows([])
     try {
       if (rows.length > 0) {
         const ok = await confirm({
@@ -1783,6 +1845,8 @@ export default function RequirementsImportDialog({
     }
     setLoading(true)
     setErrorMessage(null)
+    setNoticeMessage(null)
+    setReceiptRows([])
     try {
       const isLibrary = mode === 'library'
       const response = await apiFetch(
@@ -2131,8 +2195,14 @@ export default function RequirementsImportDialog({
                 </div>
                 {!canLoadPreview && startImportDisabledReason ? (
                   <p
-                    aria-live="polite"
                     className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+                    role="status"
+                    {...devMarker({
+                      context: 'requirements import',
+                      name: 'status banner',
+                      priority: 350,
+                      value: 'preview blocker',
+                    })}
                   >
                     <AlertTriangle
                       aria-hidden="true"
@@ -2149,16 +2219,11 @@ export default function RequirementsImportDialog({
                 >
                   {text.loadReview}
                 </button>
-                {errorMessage ? (
-                  <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
-                    {errorMessage}
-                  </p>
-                ) : null}
-                {noticeMessage ? (
-                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-                    {noticeMessage}
-                  </p>
-                ) : null}
+                <ImportOutcomeFeedback
+                  errorMessage={errorMessage}
+                  noticeMessage={noticeMessage}
+                  successLabel={text.success}
+                />
               </aside>
             ) : null}
             {hasLoadedReview ? (
@@ -2233,25 +2298,12 @@ export default function RequirementsImportDialog({
                 </div>
                 {(errorMessage || noticeMessage || receiptRows.length > 0) && (
                   <div className="space-y-2 border-b border-secondary-200 px-4 py-3 dark:border-secondary-800">
-                    {errorMessage ? (
-                      <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
-                        {errorMessage}
-                      </p>
-                    ) : null}
-                    {noticeMessage ? (
-                      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-                        {noticeMessage}
-                      </p>
-                    ) : null}
-                    {receiptRows.length > 0 ? (
-                      <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">
-                        <CheckCircle2
-                          aria-hidden="true"
-                          className="mr-1 inline h-4 w-4"
-                        />
-                        {text.success}: {receiptRows.length}
-                      </p>
-                    ) : null}
+                    <ImportOutcomeFeedback
+                      errorMessage={errorMessage}
+                      noticeMessage={noticeMessage}
+                      receiptCount={receiptRows.length}
+                      successLabel={text.success}
+                    />
                   </div>
                 )}
                 {activeReviewTab === 'proposals' ? (
