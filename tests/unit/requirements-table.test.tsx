@@ -633,6 +633,34 @@ describe('RequirementsTable', () => {
     expect(screen.queryByText('v2')).toBeNull()
   })
 
+  it('renders distinct, labelled icons for both verifiable states', () => {
+    render(
+      <RequirementsTable
+        locale="sv"
+        rows={[
+          makeRow(),
+          makeRow({
+            id: 2,
+            uniqueId: 'INT0002',
+            version: {
+              ...makeRow().version,
+              verifiable: false,
+            },
+          }),
+        ]}
+        visibleColumns={[...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS, 'verifiable']}
+      />,
+    )
+
+    const verifiable = screen.getByRole('img', { name: 'verifiable' })
+    const notVerifiable = screen.getByRole('img', { name: 'verifiableOff' })
+
+    expect(verifiable).toHaveAttribute('title', 'verifiable')
+    expect(verifiable.querySelector('svg')).toHaveClass('lucide-search-check')
+    expect(notVerifiable).toHaveAttribute('title', 'verifiableOff')
+    expect(notVerifiable.querySelector('svg')).toHaveClass('lucide-minus')
+  })
+
   it('renders the archiving review label when a Review row has archiveInitiatedAt set', () => {
     const rows = [
       makeRow({
