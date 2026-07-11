@@ -48,6 +48,7 @@ import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import type { ImportRequirementsPayload } from '@/lib/requirements/import-schema'
 
 type AiImportMode = 'library' | 'specification-local'
+type FailureKind = 'generation' | 'generation-retry' | 'repair'
 type Phase = 'done' | 'error' | 'generating' | 'idle' | 'thinking'
 type PreviewTab =
   | 'analysis'
@@ -575,7 +576,14 @@ export default function AiRequirementGenerator({
 
   const [images, setImages] = useState<AttachedImage[]>([])
   const [imageError, setImageError] = useState<string | null>(null)
+  const [errorAnnouncement, setErrorAnnouncement] = useState('')
+  const [statusAnnouncement, setStatusAnnouncement] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageSelectButtonRef = useRef<HTMLButtonElement>(null)
+  const errorSummaryHeadingRef = useRef<HTMLHeadingElement | null>(null)
+  const retryGenerateButtonRef = useRef<HTMLButtonElement | null>(null)
+  const repairButtonRef = useRef<HTMLButtonElement | null>(null)
+  const resultsHeadingRef = useRef<HTMLHeadingElement | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const favoriteModelsRef = useRef<Set<string>>(new Set())
   const manualModelSelectionRef = useRef(false)
@@ -592,6 +600,8 @@ export default function AiRequirementGenerator({
 
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [failureKind, setFailureKind] = useState<FailureKind | null>(null)
+  const [shouldFocusResults, setShouldFocusResults] = useState(false)
   const [repairing, setRepairing] = useState(false)
   const [thinking, setThinking] = useState('')
   const [rawResponse, setRawResponse] = useState('')
@@ -657,6 +667,17 @@ export default function AiRequirementGenerator({
   const formattedRawResponse = useMemo(
     () => formatRawResult(rawResponse),
     [rawResponse],
+  )
+  const reportTerminalFailure = useCallback(
+    (message: string, kind: FailureKind) => {
+      setError(message)
+      setFailureKind(kind)
+      setErrorAnnouncement(
+        `${t(kind === 'repair' ? 'repairFailed' : 'generationFailed')}: ${message}`,
+      )
+      setPhase('error')
+    },
+    [t],
   )
   const selectedRowCount = selectedRows.size
   const selectedProposalCount = selectedProposals.size
@@ -904,7 +925,37 @@ export default function AiRequirementGenerator({
     if (isVisionCapabilitySelected) return
     setImages([])
     setImageError(null)
+    setErrorAnnouncement('')
   }, [isVisionCapabilitySelected])
+
+  useEffect(() => {
+    if (phase !== 'error' || !error) return
+
+    const target =
+      failureKind === 'generation'
+        ? errorSummaryHeadingRef.current
+        : failureKind === 'generation-retry'
+          ? retryGenerateButtonRef.current
+          : repairButtonRef.current
+    if (!target) return
+
+    const timeout = window.setTimeout(() => {
+      target.focus()
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [error, failureKind, phase])
+
+  useEffect(() => {
+    if (phase !== 'done' || !shouldFocusResults) return
+
+    const timeout = window.setTimeout(() => {
+      resultsHeadingRef.current?.focus()
+      setShouldFocusResults(false)
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [phase, shouldFocusResults])
 
   useEffect(() => {
     if (!inProgress) return
@@ -1052,6 +1103,10 @@ export default function AiRequirementGenerator({
       setModelSearch('')
       setPhase('idle')
       setError(null)
+      setFailureKind(null)
+      setErrorAnnouncement('')
+      setStatusAnnouncement('')
+      setShouldFocusResults(false)
       setRepairing(false)
       applyThinkingImmediately('')
       setRawResponse('')
@@ -1214,42 +1269,61 @@ export default function AiRequirementGenerator({
     async (files: FileList | null) => {
       if (!files) return
       setImageError(null)
+      setErrorAnnouncement('')
       const remainingSlots = MAX_IMAGES - images.length
       if (remainingSlots <= 0) {
-        setImageError(t('imageErrorCount', { max: MAX_IMAGES }))
+        const message = t('imageErrorCount', { max: MAX_IMAGES })
+        setImageError(message)
+        setErrorAnnouncement(message)
+        imageSelectButtonRef.current?.focus()
         return
       }
       const selectedFiles = Array.from(files).slice(0, remainingSlots)
       const nextImages: AttachedImage[] = []
+      const rejectedImageMessages: string[] = []
       for (const file of selectedFiles) {
         if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-          setImageError(t('imageErrorType', { name: file.name }))
+          rejectedImageMessages.push(t('imageErrorType', { name: file.name }))
           continue
         }
         if (file.size > MAX_IMAGE_BYTES) {
-          setImageError(t('imageErrorSize', { name: file.name }))
+          rejectedImageMessages.push(t('imageErrorSize', { name: file.name }))
           continue
         }
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(String(reader.result))
-          reader.onerror = () => reject(reader.error)
-          reader.readAsDataURL(file)
-        })
-        nextImages.push({
-          dataUrl,
-          id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
-          name: file.name,
-        })
+        try {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(String(reader.result))
+            reader.onerror = () => reject(reader.error)
+            reader.readAsDataURL(file)
+          })
+          nextImages.push({
+            dataUrl,
+            id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
+            name: file.name,
+          })
+        } catch {
+          rejectedImageMessages.push(t('imageErrorRead'))
+        }
       }
       setImages(current => [...current, ...nextImages].slice(0, MAX_IMAGES))
+      if (rejectedImageMessages.length > 0) {
+        const message = rejectedImageMessages.join(' ')
+        setImageError(message)
+        setErrorAnnouncement(message)
+      }
       if (fileInputRef.current) fileInputRef.current.value = ''
+      imageSelectButtonRef.current?.focus()
     },
     [images.length, t],
   )
 
   const resetGeneratedResult = useCallback(() => {
     setError(null)
+    setFailureKind(null)
+    setErrorAnnouncement('')
+    setStatusAnnouncement('')
+    setShouldFocusResults(false)
     applyThinkingImmediately('')
     setRawResponse('')
     setStats(null)
@@ -1277,6 +1351,8 @@ export default function AiRequirementGenerator({
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
+    const nextFailureKind: FailureKind =
+      phase === 'error' ? 'generation-retry' : 'generation'
     resetGeneratedResult()
     shouldFollowThinkingRef.current = true
     setPhase('thinking')
@@ -1342,6 +1418,9 @@ export default function AiRequirementGenerator({
             setStats((payload.stats as GenerationStats | undefined) ?? null)
             await loadPreview(generated)
             setPhase('done')
+            if (nextFailureKind === 'generation-retry') {
+              setShouldFocusResults(true)
+            }
             return
           } else if (parsed.event === 'validation_error') {
             receivedTerminalEvent = true
@@ -1351,8 +1430,10 @@ export default function AiRequirementGenerator({
             setRawResponse(String(payload.rawContent ?? ''))
             applyThinkingImmediately(String(payload.thinking ?? ''))
             setStats((payload.stats as GenerationStats | undefined) ?? null)
-            setError(String(payload.message ?? t('validationErrors')))
-            setPhase('error')
+            reportTerminalFailure(
+              String(payload.message ?? t('validationErrors')),
+              nextFailureKind,
+            )
             return
           } else if (parsed.event === 'error') {
             receivedTerminalEvent = true
@@ -1370,12 +1451,12 @@ export default function AiRequirementGenerator({
         return
       }
       flushQueuedThinking()
-      setError(
+      reportTerminalFailure(
         generateError instanceof Error
           ? generateError.message
           : t('createError'),
+        nextFailureKind,
       )
-      setPhase('error')
     } finally {
       if (abortRef.current === controller) abortRef.current = null
     }
@@ -1389,10 +1470,12 @@ export default function AiRequirementGenerator({
     mode,
     model,
     need,
+    phase,
     applyThinkingImmediately,
     cancelQueuedThinking,
     flushQueuedThinking,
     queueThinkingUpdate,
+    reportTerminalFailure,
     reasoningEffort,
     resetGeneratedResult,
     specificationId,
@@ -1407,6 +1490,9 @@ export default function AiRequirementGenerator({
 
     setRepairing(true)
     setError(null)
+    setFailureKind(null)
+    setErrorAnnouncement('')
+    setStatusAnnouncement('')
     try {
       const response = await apiFetch(
         '/api/ai/repair-requirement-import-json',
@@ -1445,13 +1531,15 @@ export default function AiRequirementGenerator({
       setSchemaIssues([])
       await loadPreview(body.payload)
       setPhase('done')
+      setStatusAnnouncement(t('repairSucceeded'))
+      setShouldFocusResults(true)
     } catch (repairError) {
-      setError(
+      reportTerminalFailure(
         repairError instanceof Error
           ? repairError.message
           : t('validationErrors'),
+        'repair',
       )
-      setPhase('error')
     } finally {
       setRepairing(false)
     }
@@ -1464,6 +1552,7 @@ export default function AiRequirementGenerator({
     rawResponse,
     reasoningEffort,
     repairing,
+    reportTerminalFailure,
     schemaIssues,
     specificationId,
     targetAreaId,
@@ -1751,6 +1840,14 @@ export default function AiRequirementGenerator({
             value: 'ai-requirement-generator',
           })}
         >
+          <div className="sr-only">
+            <p aria-atomic="true" role="alert">
+              {errorAnnouncement}
+            </p>
+            <p aria-atomic="true" role="status">
+              {statusAnnouncement}
+            </p>
+          </div>
           <header className="flex items-start justify-between gap-4 border-b border-secondary-200 px-6 py-4 dark:border-secondary-800">
             <div className="min-w-0">
               <h2
@@ -1901,9 +1998,13 @@ export default function AiRequirementGenerator({
                       type="file"
                     />
                     <button
+                      aria-describedby={
+                        imageError ? 'ai-image-validation-error' : undefined
+                      }
                       className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-secondary-300 px-3 text-sm font-medium text-secondary-700 hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
                       disabled={!canUseVision || images.length >= MAX_IMAGES}
                       onClick={() => fileInputRef.current?.click()}
+                      ref={imageSelectButtonRef}
                       type="button"
                     >
                       <ImagePlus aria-hidden className="h-4 w-4" />
@@ -1913,7 +2014,10 @@ export default function AiRequirementGenerator({
                       {t('imageAttachHint')}
                     </p>
                     {imageError ? (
-                      <p className="text-xs text-red-700 dark:text-red-300">
+                      <p
+                        className="text-xs text-red-700 dark:text-red-300"
+                        id="ai-image-validation-error"
+                      >
                         {imageError}
                       </p>
                     ) : null}
@@ -2348,13 +2452,30 @@ export default function AiRequirementGenerator({
 
               {phase === 'error' ? (
                 <div className="space-y-4">
-                  <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
+                  <div
+                    className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+                    {...devMarker({
+                      context: 'ai-requirement-generator',
+                      name: 'error summary',
+                      priority: 350,
+                      value: 'generation outcome',
+                    })}
+                  >
                     <div className="flex items-start gap-2">
                       <AlertTriangle aria-hidden className="mt-0.5 h-5 w-5" />
                       <div>
-                        <p className="font-medium">
-                          {error ?? t('validationErrors')}
-                        </p>
+                        <h3
+                          className="font-medium"
+                          ref={errorSummaryHeadingRef}
+                          tabIndex={-1}
+                        >
+                          {t(
+                            failureKind === 'repair'
+                              ? 'repairFailed'
+                              : 'generationFailed',
+                          )}
+                        </h3>
+                        <p>{error ?? t('validationErrors')}</p>
                         {schemaIssues.length > 0 ? (
                           <ul className="mt-2 list-disc space-y-1 pl-5">
                             {schemaIssues.map(issue => (
@@ -2381,6 +2502,7 @@ export default function AiRequirementGenerator({
                         className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={repairing || !model}
                         onClick={handleRepair}
+                        ref={repairButtonRef}
                         type="button"
                       >
                         {repairing ? (
@@ -2412,10 +2534,14 @@ export default function AiRequirementGenerator({
                 <div className="absolute inset-6 flex min-h-0 flex-col gap-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-300">
+                      <h3
+                        className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-300"
+                        ref={resultsHeadingRef}
+                        tabIndex={-1}
+                      >
                         <CheckCircle2 aria-hidden className="h-4 w-4" />
                         {t('selectedCandidates', { count: selectedRowCount })}
-                      </p>
+                      </h3>
                       {stats ? (
                         <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
                           {t('tokensCount', { count: stats.totalTokens })} · $
@@ -2847,6 +2973,7 @@ export default function AiRequirementGenerator({
                   className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={generateDisabled}
                   onClick={handleGenerate}
+                  ref={retryGenerateButtonRef}
                   title={aiGenerationDisabledMessage ?? undefined}
                   type="button"
                   {...devMarker({

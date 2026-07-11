@@ -5,7 +5,7 @@
 # This profile keeps filesystem access scoped to the workspace while allowing
 # the local devcontainer service network.
 
-approval_policy = "on-request"
+approval_policy = "never"
 default_permissions = "kravhantering-devcontainer"
 
 [permissions.kravhantering-devcontainer]

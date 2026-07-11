@@ -79,7 +79,10 @@ function previewBody(token: string) {
   }
 }
 
-async function mockAiReferenceData(page: Page) {
+async function mockAiReferenceData(
+  page: Page,
+  options: { vision?: boolean } = {},
+) {
   await page.route('**/api/ai/models?*', async route => {
     await fulfillJson(route, {
       models: [
@@ -93,7 +96,12 @@ async function mockAiReferenceData(page: Page) {
             reasoning: '0.000015',
           },
           provider: 'anthropic',
-          supportedParameters: ['reasoning', 'stream', 'response_format'],
+          supportedParameters: [
+            'reasoning',
+            'stream',
+            'response_format',
+            ...(options.vision ? ['vision'] : []),
+          ],
         },
       ],
     })
@@ -263,6 +271,7 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
     await expect(
       dialog.getByText(
         'AI-anropet blockerades av AI-säkerhetsfiltret: Promptinjektion: instruktionsövertagande. Ändra behovet eller sammanhanget och försök igen.',
+        { exact: true },
       ),
     ).toBeVisible()
     await expect(dialog.getByText(generatedDescription)).toHaveCount(0)
@@ -281,6 +290,160 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
       })
     }
   }
+})
+
+test('REQ-15C: AI-assisted authoring announces failures and supports recovery', async ({
+  page,
+}) => {
+  await mockAiReferenceData(page, { vision: true })
+  await mockImportPreview(
+    page,
+    '**/api/requirements/import/preview',
+    'accessibility-preview',
+  )
+
+  let generationAttempts = 0
+  await page.route('**/api/ai/generate-requirement-import', async route => {
+    generationAttempts += 1
+    if (generationAttempts === 1) {
+      await route.fulfill({
+        body: [
+          'event: error',
+          `data: ${JSON.stringify({
+            message: 'AI-tjänsten är tillfälligt otillgänglig.',
+          })}`,
+          '',
+          '',
+        ].join('\n'),
+        contentType: 'text/event-stream',
+      })
+      return
+    }
+
+    await route.fulfill({
+      body: [
+        'event: validation_error',
+        `data: ${JSON.stringify({
+          issues: [
+            {
+              code: 'invalid_json',
+              message: 'Modellens svar var inte giltig JSON.',
+              path: '$',
+            },
+          ],
+          message: 'Genererad JSON matchade inte importens schema.',
+          rawContent: '{"requirements":',
+        })}`,
+        '',
+        '',
+      ].join('\n'),
+      contentType: 'text/event-stream',
+    })
+  })
+
+  let repairAttempts = 0
+  await page.route('**/api/ai/repair-requirement-import-json', async route => {
+    repairAttempts += 1
+    if (repairAttempts === 1) {
+      await route.fulfill({
+        body: JSON.stringify({
+          error: 'AI-tjänsten är tillfälligt otillgänglig.',
+        }),
+        contentType: 'application/json',
+        status: 503,
+      })
+      return
+    }
+
+    await fulfillJson(route, {
+      model: 'anthropic/claude-sonnet-4',
+      payload: generatedPayload,
+      rawContent: JSON.stringify(generatedPayload),
+      stats: {
+        completionTokens: 12,
+        cost: 0,
+        promptTokens: 10,
+        reasoningTokens: 2,
+        totalTokens: 24,
+      },
+      thinking: '',
+    })
+  })
+
+  await page.goto('/sv/requirements')
+  await page.getByRole('button', { name: 'AI-assistera' }).first().click()
+  const dialog = page.getByRole('dialog', {
+    name: 'AI-assisterat författande',
+  })
+  await dialog.getByLabel('Kravområde', { exact: true }).selectOption({
+    index: 1,
+  })
+  await dialog.getByLabel('Vision (bildinmatning)').check()
+
+  const imageButton = dialog.getByRole('button', { name: 'Välj bilder' })
+  await dialog.locator('input[type="file"]').setInputFiles([
+    {
+      buffer: Buffer.from('image'),
+      mimeType: 'image/png',
+      name: 'diagram.png',
+    },
+    {
+      buffer: Buffer.from('not an image'),
+      mimeType: 'text/plain',
+      name: 'notes.txt',
+    },
+  ])
+
+  await expect(dialog.getByText('diagram.png')).toBeVisible()
+  await expect(imageButton).toHaveAttribute(
+    'aria-describedby',
+    'ai-image-validation-error',
+  )
+  await expect(imageButton).toBeFocused()
+  await expect(dialog.getByRole('alert')).toContainText(
+    'Filtypen stöds inte: notes.txt.',
+  )
+
+  const need = dialog.getByRole('textbox', { name: 'Behov och sammanhang' })
+  await need.fill('Behöver säkra betygsunderlag.')
+  const generateButton = dialog.getByRole('button', {
+    name: 'Skapa kravkandidater',
+  })
+  await generateButton.click()
+
+  const generationFailure = dialog.getByRole('heading', {
+    name: 'Genereringen misslyckades',
+  })
+  await expect(dialog.getByRole('alert')).toContainText(
+    'AI-tjänsten är tillfälligt otillgänglig.',
+  )
+  await expect(generationFailure).toBeFocused()
+  await expect(need).toHaveValue('Behöver säkra betygsunderlag.')
+  await expect(dialog.getByText('diagram.png')).toBeVisible()
+
+  await generateButton.click()
+  await expect(
+    dialog.getByText('Genererad JSON matchade inte importens schema.', {
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(generateButton).toBeFocused()
+
+  const repairButton = dialog.getByRole('button', { name: 'Reparera JSON' })
+  await repairButton.click()
+  await expect(dialog.getByRole('alert')).toContainText(
+    'Reparationen misslyckades: AI-tjänsten är tillfälligt otillgänglig.',
+  )
+  await expect(repairButton).toBeFocused()
+
+  await repairButton.click()
+  const resultsHeading = dialog.getByRole('heading', {
+    name: '1 vald kravkandidat',
+  })
+  await expect(
+    dialog.getByText('Den genererade JSON:en reparerades.'),
+  ).toHaveAttribute('role', 'status')
+  await expect(resultsHeading).toBeFocused()
 })
 
 test('SPEC-17: AI-assisted authoring hands kravunderlag candidates to local import review', async ({
