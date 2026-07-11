@@ -319,6 +319,7 @@ test.describe('Requirements import', () => {
         ],
       })
       await expect(page.getByText(/Importerade rader: 1/)).toHaveCount(1)
+      await expect(page.getByRole('status')).toHaveText('Importerade rader: 1')
       const receiptDownloadPromise = page.waitForEvent('download')
       await page.getByRole('button', { name: 'Ladda ner CSV-kvitto' }).click()
       const receiptDownload = await receiptDownloadPromise
