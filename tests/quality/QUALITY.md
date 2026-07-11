@@ -1238,6 +1238,22 @@ saved. Concurrent creates can therefore choose the same candidate. A generic
 database failure or a non-atomic retry leaves a caller without a durable norm
 reference or with untraceable action-log evidence.
 
+**Covered code line ranges:** This scenario covers generated ID allocation,
+named-constraint retry, and atomic create-and-Åtgärdslogg behavior. The
+[matching Scenario 28 scrutiny area](../../.github/skills/run-spec-audit/references/scrutiny-areas.md#35-scenario-28-generated-norm-reference-ids-remain-atomic-under-concurrent-creates)
+tracks the same REST/MCP conflict contract and docs.
+
+<!-- markdownlint-disable MD013 -->
+```text
+lib/dal/norm-references.ts:343-442
+lib/requirements/norm-reference-mutations.ts:30-120
+lib/requirements/http-errors.ts:24-34,99-119
+lib/mcp/server.ts:334-337,1982-2021
+docs/integrations/mcp-server-user-guide.md:181-197
+docs/integrations/mcp-server-contributor-guide.md:170-179
+```
+<!-- markdownlint-enable MD013 -->
+
 **The requirement:** Generated norm-reference creation must allocate the base
 ID then deterministic suffixes through `-999`, retrying only the named
 norm-reference unique constraint as a complete create-and-Åtgärdslogg
