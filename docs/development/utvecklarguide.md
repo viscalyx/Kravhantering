@@ -21,7 +21,6 @@ En utvecklare bör ha ett av följande miljöalternativ:
 
 - VS Code med Dev Containers.
 - GitHub Codespaces.
-- Red Hat OpenShift Dev Spaces.
 - VS Code Remote SSH mot en förberedd RHEL-miljö.
 
 Devcontainer-miljön är den mest kompletta lokala standardmiljön. Den innehåller
@@ -54,7 +53,7 @@ Utvecklaren behöver kunna köra eller nå dessa tjänster:
   bakom adaptern.
 - OpenRouter-konto och API-nyckel om AI-stödet ska testas.
 
-I devcontainer, Codespaces och Dev Spaces hanteras SQL Server, Keycloak, Kong,
+I devcontainer och Codespaces hanteras SQL Server, Keycloak, Kong,
 HSA-personuppslagsadaptern och HSA-katalogmocken som sidotjänster. Vid
 host-baserad utveckling krävs lokal Docker Compose-körning.
 
@@ -154,8 +153,8 @@ Utvecklaren kan behöva:
 - Lokal administratörsbehörighet för Docker, Podman eller motsvarande
   containerkörning.
 
-Hemligheter ska ligga i lokala `.env.*.local`-filer, Dev Spaces-Secrets eller
-organisationens hemlighetshantering. De ska inte checkas in.
+Hemligheter ska ligga i lokala `.env.*.local`-filer eller organisationens
+hemlighetshantering. De ska inte checkas in.
 
 ## Agentic engineering
 

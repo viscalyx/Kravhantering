@@ -89,6 +89,13 @@ jobs:
       - name: Run markdown lint check
         run: npm run lint:md
 
+      - name: Run Lychee Markdown link check
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: --config .lychee.toml . .github
+          lycheeVersion: v0.24.2
+          jobSummary: true
+
       - name: Run type check
         run: npm run type-check
 

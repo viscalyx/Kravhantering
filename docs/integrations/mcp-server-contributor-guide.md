@@ -627,4 +627,3 @@ for the full setup.
 ## Related Docs
 
 - [mcp-server-user-guide.md](./mcp-server-user-guide.md)
-- [requirements-mcp-evaluation.xml](./requirements-mcp-evaluation.xml)

@@ -9,6 +9,11 @@ const yaml = require('js-yaml') as { load(source: string): unknown }
 const WORKFLOWS_DIR = path.join(process.cwd(), '.github', 'workflows')
 const ACTIONS_DIR = path.join(process.cwd(), '.github', 'actions')
 const ZAP_DIR = path.join(process.cwd(), '.github', 'zap')
+const DEVCONTAINER_DOCKERFILE = path.join(
+  process.cwd(),
+  '.devcontainer',
+  'Dockerfile',
+)
 const FULL_COMMIT_SHA = /^[a-f0-9]{40}$/iu
 const USES_LINE = /^\s*uses:\s*([^#\s]+)(?:\s+#\s*(.+))?\s*$/u
 const PERSIST_CREDENTIALS_FALSE_LINE =
@@ -154,6 +159,22 @@ describe('GitHub Actions workflow security', () => {
     }
 
     expect(unpinnedReferences).toEqual([])
+  })
+
+  it('keeps the development-container and quality-check workflow Lychee versions aligned', () => {
+    const dockerfile = readFileSync(DEVCONTAINER_DOCKERFILE, 'utf8')
+    const dockerfileVersion = dockerfile.match(
+      /^ARG LYCHEE_VERSION=(v\d+\.\d+\.\d+)$/mu,
+    )?.[1]
+    const workflow = readWorkflowYaml('quality-checks.yml')
+    const lycheeStep = workflow.jobs?.['quality-checks']?.steps?.find(
+      step => step.name === 'Run Lychee Markdown link check',
+    )
+
+    expect(dockerfileVersion).toBeDefined()
+    expect(lycheeStep).toBeDefined()
+    expect(lycheeStep?.with?.args).toBe('--config .lychee.toml . .github')
+    expect(lycheeStep?.with?.lycheeVersion).toBe(dockerfileVersion)
   })
 
   it('keeps Playwright integration CI consolidated on the pruned prodlike gate', () => {

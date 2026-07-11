@@ -1,0 +1,13 @@
+# Scan `./` while respecting repository ignore rules; `exclude_path` removes
+# intentionally out-of-scope Markdown sources.
+offline = true
+include_fragments = "anchor-only"
+extensions = ["md"]
+exclude = ['\.txt(?:#.*)?$']
+exclude_path = [
+  "(^|/)node_modules(/|$)",
+  "(^|/)(?:\\.next|\\.open-next|\\.wrangler|coverage|build|dist|out|bundled|playwright-report|playwright-report-dev|playwright-report-preview)(/|$)",
+  "^tmp(/|$)",
+  "^test-results(/|$)",
+]
+no_progress = true
