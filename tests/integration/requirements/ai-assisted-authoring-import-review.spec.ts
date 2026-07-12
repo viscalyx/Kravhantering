@@ -79,7 +79,10 @@ function previewBody(token: string) {
   }
 }
 
-async function mockAiReferenceData(page: Page, options?: { vision?: boolean }) {
+async function mockAiReferenceData(
+  page: Page,
+  options: { vision?: boolean } = {},
+) {
   await page.route('**/api/ai/models?*', async route => {
     await fulfillJson(route, {
       models: [
@@ -97,7 +100,7 @@ async function mockAiReferenceData(page: Page, options?: { vision?: boolean }) {
             'reasoning',
             'stream',
             'response_format',
-            ...(options?.vision ? ['vision'] : []),
+            ...(options.vision ? ['vision'] : []),
           ],
         },
       ],
@@ -268,6 +271,7 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
     await expect(
       dialog.getByText(
         'AI-anropet blockerades av AI-säkerhetsfiltret: Promptinjektion: instruktionsövertagande. Ändra behovet eller sammanhanget och försök igen.',
+        { exact: true },
       ),
     ).toBeVisible()
     await expect(dialog.getByText(generatedDescription)).toHaveCount(0)

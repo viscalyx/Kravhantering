@@ -316,11 +316,14 @@ test.describe('Admin AI settings', () => {
       await aiDialog
         .getByRole('button', { name: 'Skapa kravkandidater' })
         .click()
+      const generationError = aiDialog
+        .getByRole('heading', { name: 'Genereringen misslyckades' })
+        .locator('..')
       await expect(
-        aiDialog.getByText(
+        generationError.getByText(
           'AI-kravgenerering är avstängd i Administrationscenter.',
         ),
-      ).toHaveCount(1)
+      ).toBeVisible()
       await generatorPage.close()
     } finally {
       if (shouldRestoreSettings) {

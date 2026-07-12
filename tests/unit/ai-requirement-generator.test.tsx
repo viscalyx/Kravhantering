@@ -18,12 +18,15 @@ const translate = Object.assign(
       imageErrorCount: 'You can attach up to {max} images.',
       imageErrorRead:
         'Failed to read one or more image files. Please try again.',
+      generationFailed: 'Generation failed',
       imageErrorSize: '{name} exceeds the 10 MB size limit.',
       imageErrorType: 'Unsupported file type: {name}.',
       needsReferenceProposalRows: '{count} requirement row',
       needsReferenceProposals: 'Proposed needs references',
       noNeedsReferenceProposals: 'No proposed needs references are loaded.',
       rawResultTab: 'Raw result',
+      repairFailed: 'Repair failed',
+      repairSucceeded: 'The generated JSON was repaired successfully.',
       resolvedNeedsReferenceId: 'Existing needs reference #{id}',
       thinkingPhase: 'Analyzing need…',
       'requestExplanation.aiInstructionLabel': 'AI instruction',
@@ -201,6 +204,32 @@ function thinkingStreamResponse(thinkingSoFar: string) {
         controller.enqueue(
           new TextEncoder().encode(
             `event: thinking\ndata: ${JSON.stringify({ thinkingSoFar })}\n\n`,
+          ),
+        )
+        controller.close()
+      },
+    }),
+    ok: true,
+  }
+}
+
+function validationErrorStreamResponse() {
+  return {
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            `event: validation_error\ndata: ${JSON.stringify({
+              issues: [
+                {
+                  code: 'invalid_json',
+                  message: 'Generated response is not valid JSON.',
+                  path: '$',
+                },
+              ],
+              message: 'validationErrors',
+              rawContent: '{"requirements":',
+            })}\n\n`,
           ),
         )
         controller.close()
@@ -2217,7 +2246,140 @@ describe('AiRequirementGenerator', () => {
       screen.getByRole('button', { name: /generateButton/i }),
     )
 
-    expect(await screen.findByText('createError')).toBeInTheDocument()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Generation failed: createError')
+
+    const errorSummary = screen.getByRole('heading', {
+      name: 'Generation failed',
+    })
+    await waitFor(() => expect(errorSummary).toHaveFocus())
+  })
+
+  it('does not announce an error when an active generation is cancelled', async () => {
+    const onClose = vi.fn()
+    let generationSignal: AbortSignal | undefined
+    mockFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/ai/generate-requirement-import'
+      ) {
+        generationSignal = init?.signal ?? undefined
+        return {
+          body: new ReadableStream({
+            start() {
+              // Deliberately keep the stream open until the caller aborts it.
+            },
+          }),
+          ok: true,
+        }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator({ onClose })
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Grade access')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+    await waitFor(() => expect(generationSignal).toBeDefined())
+
+    await userEvent.click(screen.getByLabelText('close'))
+
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(generationSignal?.aborted).toBe(true)
+    expect(screen.getByRole('alert')).toBeEmptyDOMElement()
+  })
+
+  it('retains repair focus after failure and moves focus to repaired results', async () => {
+    let repairAttempt = 0
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      if (
+        typeof url === 'string' &&
+        url.startsWith('/api/requirements/import/instruction')
+      ) {
+        return {
+          ok: true,
+          text: async () => '# Import instruction\n\nUse schemaVersion.',
+        }
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/ai/generate-requirement-import'
+      ) {
+        return validationErrorStreamResponse()
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/ai/repair-requirement-import-json'
+      ) {
+        repairAttempt += 1
+        if (repairAttempt === 1) {
+          return {
+            json: async () => ({ error: 'Repair service unavailable.' }),
+            ok: false,
+          }
+        }
+        const payload = generatedImportPayload('Repaired requirement')
+        return {
+          json: async () => ({
+            payload,
+            rawContent: JSON.stringify(payload),
+            stats: {
+              completionTokens: 12,
+              cost: 0,
+              promptTokens: 10,
+              reasoningTokens: 2,
+              totalTokens: 24,
+            },
+            thinking: '',
+          }),
+          ok: true,
+        }
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/requirements/import/preview'
+      ) {
+        return previewResponse('Repaired requirement')
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Grade access')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    const repairButton = await screen.findByRole('button', { name: 'repair' })
+    await userEvent.click(repairButton)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Repair failed: Repair service unavailable.',
+    )
+    expect(screen.getByRole('button', { name: 'repair' })).toHaveFocus()
+
+    await userEvent.click(screen.getByRole('button', { name: 'repair' }))
+
+    const resultsHeading = await screen.findByRole('heading', {
+      name: 'selectedCandidates',
+    })
+    expect(
+      screen.getByText('The generated JSON was repaired successfully.'),
+    ).toHaveAttribute('role', 'status')
+    await waitFor(() => expect(resultsHeading).toHaveFocus())
   })
 
   it('styles generated priority badges from stable priority codes', async () => {
