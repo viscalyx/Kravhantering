@@ -153,7 +153,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.2",
+    "@biomejs/biome": "^2.5.3",
     "@cspell/dict-sv": "^2.3.2",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/node": "^4.3.2",
