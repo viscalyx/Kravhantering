@@ -566,9 +566,11 @@ läslig.
 ### REQ-03: filtrera på krav-id och rensa filter
 
 **Steg:** Sök efter `INT0001`, kontrollera träff, klicka `Rensa` och kontrollera
-att fler krav visas.
+att fler krav visas. Aktivera och avaktivera även ett filter för kravpaket.
 
 **Förväntat resultat:** Filter begränsar listan och rensning återställer den.
+Filtret för kravpaket och dess rensningsknapp har inte överlappande 24
+CSS-pixel-målcirklar.
 
 ### REQ-04: sortera på sorterbar kolumn
 
@@ -669,7 +671,8 @@ seedade kravurvalsfrågor och kravurvalsvar med respektive draghandtag.
 **Förväntat resultat:** Direktlänken tillbaka till
 `Kravbiblioteksförvaltning` öppnar den ihågkomna fliken utan att paketfliken
 blinkar till. Drag-och-släpp visar förhandsvisning, markör och sparad ny ordning
-för både frågor och svar.
+för både frågor och svar. Kryssrutorna för `Utan kravurval`, kravpaket och
+utlösande svar har inte överlappande 24 CSS-pixel-målcirklar.
 
 ### REQ-14c: kravurvalsförhandsvisning visar skrivskyddat krav
 
@@ -692,7 +695,8 @@ Välj sedan `Förhandsgranska krav i import`.
 Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
 `Import-JSON`-formuläret. Fliken `AI-analys` visar analysen som säker
 formaterad text utan klickbara länkar, fjärrladdade bilder eller aktiv HTML.
-Råresultat visas fortfarande separat från analysen.
+Råresultat visas fortfarande separat från analysen. Kandidat- och val av
+normreferens har inte överlappande 24 CSS-pixel-målcirklar.
 
 ### REQ-15B: AI-assisterat författande blockerar osäkert AI-anrop
 
@@ -715,7 +719,7 @@ matchade regeltermer.
 
 **Steg:** Öppna AI-assisterat författande från kravbiblioteket med en
 skärmläsare, välj en Vision-modell och välj giltiga bilder tillsammans med en
-fil av otillåten typ så att urvalet överskrider gränsen på tre bilder. Starta
+fil av otillåten typ så att urvalet överskrider gränsen på tre bilder.
 Kontrollera att knappen `Ta bort bild` har minst 24 gånger 24 CSS-pixlars
 klickbar yta och synlig tangentbordsfokus. Starta sedan en generering som får
 ett terminalt leverantörsfel. Starta en ny
@@ -725,11 +729,10 @@ generering genom att stänga dialogen.
 
 **Förväntat resultat:** De giltiga bilder som ryms ligger kvar och bildfelet
 är knutet till `Välj bilder`; skärmläsaren annonserar en sammanfattad feltext
-som både beskriver den otillåtna filtypen och gränsen på tre bilder. Vid det
-Knappen `Ta bort bild` har minst 24 gånger 24 CSS-pixlars klickbar yta och
+som både beskriver den otillåtna filtypen och gränsen på tre bilder.
 visar ett synligt fokusläge. Vid det första terminala felet flyttas fokus till rubriken
-`Genereringen misslyckades`, medan fel vid omförsök och reparation behåller
-fokus på åtgärdsknappen. Råresultat, valideringsfel, behov, modell och
+`Genereringen misslyckades`, medan fel vid ett nytt försök och reparation
+behåller fokus på åtgärdsknappen. Råresultat, valideringsfel, behov, modell och
 bifogade bilder ligger kvar tills användaren ändrar dem. En lyckad reparation
 annonserar status en gång och flyttar fokus till resultatets rubrik. Endast
 sanerade feltexter visas eller annonseras; rått modell- eller leverantörsinnehåll
@@ -754,15 +757,18 @@ sektionen `AI-säkerhet` visas efter `AI-assistering`, innehåller
 `Logga forensisk AI-säkerhetsdata`, `Cachetid för säkerhetsregler` och
 `AI-säkerhetsregler`, och att sektionen `MCP-gränssnitt` visas därefter med
 `MCP-anropsgräns` med synligt tillåtet intervall och steg. Notera aktuell
-gräns, ställ in `1 MiB` och spara. Höj därefter gränsen ett steg med
-plusknappen, kontrollera att den blir `2 MiB` och spara. Återställ därefter
-ursprungligt värde och spara.
+gräns, ställ in `1 MiB` och spara. Expandera en AI-säkerhetsregel och
+kontrollera att de två översta kryssrutorna för att markera regeltermer har
+så stort inbördes avstånd att 24 CSS-pixelcirklar inte överlappar. Höj därefter
+gränsen ett steg med plusknappen, kontrollera att den blir `2 MiB` och spara.
+Återställ därefter ursprungligt värde och spara.
 
 **Förväntat resultat:** Gränsen sparas i Admincenter och visas som aktuell
 gräns. Det tillåtna intervallet visas som `1 MiB` till `10 MiB` med steg
 `1 MiB`. Standardvärdet är `10 MiB`; den sparade teständringen visar `2 MiB`
 efter ett steg upp från minimum. Inställningen påverkar inte reglaget för
-kravgenerering om reglaget inte ändras separat.
+kravgenerering om reglaget inte ändras separat. De 24 CSS-pixelcirklar som
+omger kryssrutorna överlappar inte.
 
 ### REQ-17: importera krav till kravbiblioteket
 
@@ -1085,7 +1091,8 @@ valet direkt när svaret markeras.
 
 **Förväntat resultat:** Laddningstexten visas utan en tillfällig svarsräknare.
 När frågorna har laddats visas svarsräknaren, till exempel `Besvarade: 0/1`.
-Urvalet sparas och kravlistan uppdateras.
+Urvalet sparas och kravlistan uppdateras. `Endast obesvarade` och svarsalternativ
+har inte överlappande 24 CSS-pixel-målcirklar.
 
 ### SPEC-13: förvalta RFI-fråga och visa dynamisk RFI-lista
 

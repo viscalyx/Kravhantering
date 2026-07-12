@@ -79,7 +79,7 @@ function previewBody(token: string) {
   }
 }
 
-async function mockAiReferenceData(page: Page) {
+async function mockAiReferenceData(page: Page, options?: { vision?: boolean }) {
   await page.route('**/api/ai/models?*', async route => {
     await fulfillJson(route, {
       models: [
@@ -93,7 +93,12 @@ async function mockAiReferenceData(page: Page) {
             reasoning: '0.000015',
           },
           provider: 'anthropic',
-          supportedParameters: ['reasoning', 'stream', 'response_format'],
+          supportedParameters: [
+            'reasoning',
+            'stream',
+            'response_format',
+            ...(options?.vision ? ['vision'] : []),
+          ],
         },
       ],
     })
@@ -433,9 +438,11 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     await need.fill('Behöver säkra betygsunderlag.')
     await generateButton.click()
 
-    await expect(dialog.getByRole('alert')).toContainText(
-      'AI-tjänsten är tillfälligt otillgänglig.',
-    )
+    await expect(
+      dialog
+        .getByRole('alert')
+        .filter({ hasText: 'AI-tjänsten är tillfälligt otillgänglig.' }),
+    ).toContainText('AI-tjänsten är tillfälligt otillgänglig.')
     await expect(generationFailure).toBeFocused()
     await expect(need).toHaveValue('Behöver säkra betygsunderlag.')
     await expect(dialog.getByText('diagram.png')).toBeVisible()
@@ -453,7 +460,12 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
 
   await test.step('repair failure', async () => {
     await repairButton.click()
-    await expect(dialog.getByRole('alert')).toContainText(
+    await expect(
+      dialog.getByRole('alert').filter({
+        hasText:
+          'Reparationen misslyckades: AI-tjänsten är tillfälligt otillgänglig.',
+      }),
+    ).toContainText(
       'Reparationen misslyckades: AI-tjänsten är tillfälligt otillgänglig.',
     )
     await expect(repairButton).toBeFocused()

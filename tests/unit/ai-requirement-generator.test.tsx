@@ -15,6 +15,11 @@ const translate = Object.assign(
       analysisTab: 'AI analysis',
       candidateCount: 'Number of requirement candidates',
       continueToImport: 'Preview requirements in import',
+      imageErrorCount: 'You can attach up to {max} images.',
+      imageErrorRead:
+        'Failed to read one or more image files. Please try again.',
+      imageErrorSize: '{name} exceeds the 10 MB size limit.',
+      imageErrorType: 'Unsupported file type: {name}.',
       needsReferenceProposalRows: '{count} requirement row',
       needsReferenceProposals: 'Proposed needs references',
       noNeedsReferenceProposals: 'No proposed needs references are loaded.',
@@ -146,6 +151,33 @@ function modelResponse() {
   }
 }
 
+function visionModelResponse() {
+  return {
+    json: async () => ({
+      models: [
+        {
+          contextLength: 200000,
+          id: 'anthropic/claude-sonnet-4',
+          name: 'Claude Sonnet 4',
+          pricing: {
+            completion: '0.000015',
+            prompt: '0.000003',
+            reasoning: '0.000015',
+          },
+          provider: 'anthropic',
+          supportedParameters: [
+            'reasoning',
+            'stream',
+            'response_format',
+            'vision',
+          ],
+        },
+      ],
+    }),
+    ok: true,
+  }
+}
+
 function generationStreamResponse(payload: Record<string, unknown>) {
   return {
     body: new ReadableStream({
@@ -218,6 +250,24 @@ function previewResponse(
         originalValue?: string
       }>
     }>
+    proposals: Array<{
+      issuer: string
+      key: string
+      name: string
+      normReferenceId: string | null
+      reference: string
+      referencedCount: number
+      resolvedNormReferenceDbId: number | null
+      type: string
+      uri: string | null
+      warnings: Array<{
+        code: string
+        field?: string
+        level: 'error' | 'info' | 'warning'
+        message: string
+        originalValue?: string
+      }>
+    }>
     proposedNeedsReferenceKey: string | null
     reviewRowId: string
     typeId: number | null
@@ -234,7 +284,7 @@ function previewResponse(
     json: async () => ({
       needsReferenceProposals: overrides.needsReferenceProposals ?? [],
       previewToken: 'preview-token',
-      proposals: [],
+      proposals: overrides.proposals ?? [],
       rows: [
         {
           errors: [],
@@ -1767,7 +1817,22 @@ describe('AiRequirementGenerator', () => {
         typeof url === 'string' &&
         url === '/api/requirements/import/preview'
       ) {
-        return previewResponse('Generated security requirement')
+        return previewResponse('Generated security requirement', {
+          proposals: [
+            {
+              issuer: 'ISO',
+              key: 'iso-27001',
+              name: 'ISO 27001',
+              normReferenceId: null,
+              reference: 'ISO/IEC 27001:2022',
+              referencedCount: 1,
+              resolvedNormReferenceDbId: null,
+              type: 'Standard',
+              uri: null,
+              warnings: [],
+            },
+          ],
+        })
       }
       return { json: async () => ({}), ok: true }
     })
@@ -1781,6 +1846,18 @@ describe('AiRequirementGenerator', () => {
     expect(
       await screen.findByText('Generated security requirement'),
     ).toBeInTheDocument()
+    const candidateCheckbox = screen.getByRole('checkbox', {
+      name: 'selectRequirement',
+    })
+    expect(candidateCheckbox).toHaveClass('h-5', 'w-5')
+    expect(candidateCheckbox).not.toHaveClass('min-h-6', 'min-w-6')
+
+    await userEvent.click(screen.getByRole('button', { name: 'proposals (1)' }))
+    const proposalCheckbox = screen.getByRole('checkbox', {
+      name: 'ISO 27001 proposals',
+    })
+    expect(proposalCheckbox).toHaveClass('h-5', 'w-5')
+    expect(proposalCheckbox).not.toHaveClass('min-h-6', 'min-w-6')
 
     await userEvent.click(
       screen.getByRole('button', {

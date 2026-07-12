@@ -1366,6 +1366,29 @@ describe('RequirementsTable', () => {
     }
   })
 
+  it('keeps table selection checkboxes compact in separate header and body rows', () => {
+    render(
+      <RequirementsTable
+        locale="sv"
+        onSelectionChange={vi.fn()}
+        rows={[makeRow(), makeRow({ id: 2, uniqueId: 'INT0002' })]}
+        selectable
+        selectedIds={new Set()}
+      />,
+    )
+
+    const selectAll = screen.getByRole('checkbox', { name: 'selectAll' })
+    const rowSelections = screen.getAllByRole('checkbox', { name: 'selectRow' })
+    expect(selectAll).toHaveClass('h-4', 'w-4')
+    expect(selectAll).not.toHaveClass('min-h-6', 'min-w-6')
+    expect(rowSelections).toHaveLength(2)
+    for (const checkbox of rowSelections) {
+      expect(checkbox).toHaveClass('h-4', 'w-4')
+      expect(checkbox).not.toHaveClass('min-h-6', 'min-w-6')
+      expect(checkbox.parentElement).toHaveClass('py-2')
+    }
+  })
+
   it('supports overriding the sticky top offset classes for container-scrolled tables', () => {
     const { container } = render(
       <RequirementsTable
@@ -3554,9 +3577,16 @@ describe('RequirementsTable', () => {
     const removeIcons = container.querySelectorAll(
       '[data-developer-mode-name="header chip"] button svg',
     )
+    const removeButtons = container.querySelectorAll(
+      '[data-developer-mode-name="header chip"] button',
+    )
     expect(removeIcons.length).toBeGreaterThan(0)
+    expect(removeButtons.length).toBe(removeIcons.length)
     for (const icon of removeIcons) {
       expect(icon).toHaveAttribute('aria-hidden', 'true')
+    }
+    for (const button of removeButtons) {
+      expect(button).not.toHaveClass('min-h-6', 'min-w-6')
     }
   })
 
@@ -3662,6 +3692,13 @@ describe('RequirementsTable', () => {
       '1',
     )
     expect(requirementPackageFilter).toHaveAttribute('aria-pressed', 'true')
+    expect(requirementPackageFilter).toHaveClass('h-6', 'text-[10px]')
+    expect(requirementPackageFilter).not.toHaveClass('min-h-11', 'min-w-11')
+    const clearPackageFilters = screen.getByRole('button', {
+      name: 'clearFilters',
+    })
+    expect(clearPackageFilters).toHaveClass('h-6', 'w-6')
+    expect(clearPackageFilters).not.toHaveClass('min-h-11', 'min-w-11')
 
     fireEvent.click(requirementPackageFilter)
     expect(onFilterChange).toHaveBeenCalledWith({

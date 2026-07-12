@@ -21,10 +21,6 @@
       "issue": "https://github.com/viscalyx/Kravhantering/issues/547"
     },
     {
-      "fingerprint": "components/RequirementsTable.tsx|button|aria-label={tt('removeItem', { label })}",
-      "issue": "https://github.com/viscalyx/Kravhantering/issues/547"
-    },
-    {
       "fingerprint": "components/SuggestionResolutionModal.tsx|button|aria-label={`${tc('help')}: ${tf('resolutionMotivation')}`}",
       "issue": "https://github.com/viscalyx/Kravhantering/issues/548"
     },

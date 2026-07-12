@@ -152,6 +152,31 @@ test.describe('Admin AI settings', () => {
         )
       })
 
+      await test.step('keeps term-selection checkbox target circles separate', async () => {
+        const aiPanel = page.locator('#ai-panel')
+        const ruleButton = aiPanel.getByRole('button', {
+          name: 'Promptinjektion: instruktionsövertagande',
+        })
+        await ruleButton.click()
+        const termCheckboxes = aiPanel.getByRole('checkbox', {
+          name: /^Markera /,
+        })
+        expect(await termCheckboxes.count()).toBeGreaterThanOrEqual(2)
+
+        const boxes = await termCheckboxes.all()
+        for (let index = 1; index < boxes.length; index += 1) {
+          const [previousBox, currentBox] = await Promise.all([
+            boxes[index - 1].boundingBox(),
+            boxes[index].boundingBox(),
+          ])
+          expect(previousBox).not.toBeNull()
+          expect(currentBox).not.toBeNull()
+          expect(
+            Math.abs((currentBox?.y ?? 0) - (previousBox?.y ?? 0)),
+          ).toBeGreaterThanOrEqual(24)
+        }
+      })
+
       await test.step('keeps MCP guidance behind the field help button', async () => {
         await expect(
           page.getByText('Största tillåtna MCP POST-nyttolast och sparad'),

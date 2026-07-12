@@ -17,7 +17,15 @@ const EXCLUDED_DIRECTORIES = new Set([
   'node_modules',
   'test-results',
 ])
-const TARGET_TAGS = new Set(['a', 'button', 'Link', 'summary'])
+const TARGET_TAGS = new Set([
+  'a',
+  'button',
+  'input',
+  'Link',
+  'select',
+  'summary',
+  'textarea',
+])
 const TARGET_ROLES = new Set([
   'button',
   'checkbox',
@@ -38,6 +46,12 @@ const ALLOWED_EXCEPTIONS = new Set([
 ])
 const ANNOTATION_PREFIX = 'WCAG 2.5.8 target-size exception:'
 const IDENTITY_ATTRIBUTES = ['aria-label', 'data-testid', 'id', 'name', 'title']
+const CLASS_COMPOSITION_FUNCTIONS = new Set([
+  'classNames',
+  'clsx',
+  'cn',
+  'twMerge',
+])
 
 function isExcludedDirectoryName(name) {
   return EXCLUDED_DIRECTORIES.has(name) || name.startsWith('playwright-report')
@@ -148,16 +162,18 @@ function getStaticExpressionFragments(
 
   if (
     ts.isIdentifier(node) &&
-    bindings.has(node.text) &&
-    !seen.has(node.text)
+    getBinding(node, bindings) &&
+    !seen.has(getBinding(node, bindings))
   ) {
+    const binding = getBinding(node, bindings)
     const nextSeen = new Set(seen)
-    nextSeen.add(node.text)
-    return getStaticExpressionFragments(
-      bindings.get(node.text),
-      bindings,
-      sourceFile,
-      nextSeen,
+    nextSeen.add(binding)
+    return getStaticExpressionFragments(binding, bindings, sourceFile, nextSeen)
+  }
+
+  if (ts.isCallExpression(node) && isClassCompositionCall(node)) {
+    return node.arguments.flatMap(argument =>
+      getStaticExpressionFragments(argument, bindings, sourceFile, seen),
     )
   }
 
@@ -221,12 +237,18 @@ function isStaticClassExpression(node, bindings, seen = new Set()) {
   }
   if (
     ts.isIdentifier(node) &&
-    bindings.has(node.text) &&
-    !seen.has(node.text)
+    getBinding(node, bindings) &&
+    !seen.has(getBinding(node, bindings))
   ) {
+    const binding = getBinding(node, bindings)
     const nextSeen = new Set(seen)
-    nextSeen.add(node.text)
-    return isStaticClassExpression(bindings.get(node.text), bindings, nextSeen)
+    nextSeen.add(binding)
+    return isStaticClassExpression(binding, bindings, nextSeen)
+  }
+  if (ts.isCallExpression(node) && isClassCompositionCall(node)) {
+    return node.arguments.every(argument =>
+      isStaticClassExpression(argument, bindings, seen),
+    )
   }
   return false
 }
@@ -238,7 +260,74 @@ function hasUnresolvedClassExpression(node, bindings) {
   }
   if (!ts.isJsxExpression(attribute.initializer)) return true
   if (!attribute.initializer.expression) return false
+  return (
+    ts.isCallExpression(attribute.initializer.expression) &&
+    isClassCompositionCall(attribute.initializer.expression) &&
+    !isStaticClassExpression(attribute.initializer.expression, bindings)
+  )
+}
+
+function hasUnknownClassExpression(node, bindings) {
+  const attribute = getAttribute(node, 'className')
+  if (!attribute?.initializer || ts.isStringLiteral(attribute.initializer)) {
+    return false
+  }
+  if (!ts.isJsxExpression(attribute.initializer)) return true
+  if (!attribute.initializer.expression) return false
   return !isStaticClassExpression(attribute.initializer.expression, bindings)
+}
+
+function isClassCompositionCall(node) {
+  return (
+    ts.isIdentifier(node.expression) &&
+    CLASS_COMPOSITION_FUNCTIONS.has(node.expression.text)
+  )
+}
+
+function isLexicalScope(node) {
+  return (
+    ts.isBlock(node) ||
+    ts.isCaseBlock(node) ||
+    ts.isCatchClause(node) ||
+    ts.isForInStatement(node) ||
+    ts.isForOfStatement(node) ||
+    ts.isForStatement(node) ||
+    ts.isFunctionLike(node) ||
+    ts.isModuleBlock(node) ||
+    ts.isSourceFile(node)
+  )
+}
+
+function getDeclarationScope(declaration, sourceFile) {
+  const declarationList = declaration.parent
+  const isBlockScoped =
+    ts.isVariableDeclarationList(declarationList) &&
+    Boolean(declarationList.flags & ts.NodeFlags.BlockScoped)
+  let current = declaration.parent
+
+  while (current) {
+    if (
+      isBlockScoped
+        ? isLexicalScope(current)
+        : ts.isFunctionLike(current) || ts.isSourceFile(current)
+    ) {
+      return current
+    }
+    current = current.parent
+  }
+
+  return sourceFile
+}
+
+function getBinding(identifier, bindings) {
+  let current = identifier
+  while (current) {
+    const scopeBindings = bindings.get(current)
+    const binding = scopeBindings?.get(identifier.text)
+    if (binding) return binding
+    current = current.parent
+  }
+  return undefined
 }
 
 function buildBindings(sourceFile) {
@@ -250,7 +339,10 @@ function buildBindings(sourceFile) {
       ts.isIdentifier(node.name) &&
       node.initializer
     ) {
-      bindings.set(node.name.text, node.initializer)
+      const scope = getDeclarationScope(node, sourceFile)
+      const scopeBindings = bindings.get(scope) ?? new Map()
+      scopeBindings.set(node.name.text, node.initializer)
+      bindings.set(scope, scopeBindings)
     }
     ts.forEachChild(node, visit)
   }
@@ -291,9 +383,30 @@ function parseSizeToken(token) {
   }
 }
 
+function parsePaddingToken(token) {
+  const segments = token.split(':')
+  const utility = segments.pop()?.replace(/^!/u, '') ?? ''
+  const variant = segments.join(':')
+  const match = utility.match(/^p([xy]?)-(.+)$/u)
+  if (!match) return null
+
+  const pixels = parseTailwindPixels(match[2])
+  if (pixels === null) return null
+
+  return {
+    axes: match[1] === 'x' ? ['w'] : match[1] === 'y' ? ['h'] : ['h', 'w'],
+    pixels,
+    token,
+    variant,
+  }
+}
+
+function getClassTokens(classFragments) {
+  return classFragments.flatMap(fragment => fragment.split(/\s+/u))
+}
+
 function findCompactSizeTokens(classFragments) {
-  const sizes = classFragments
-    .flatMap(fragment => fragment.split(/\s+/u))
+  const sizes = getClassTokens(classFragments)
     .map(parseSizeToken)
     .filter(Boolean)
   const compact = []
@@ -317,9 +430,49 @@ function findCompactSizeTokens(classFragments) {
   return [...new Set(compact)]
 }
 
+function getBaseAxisSize(classFragments, axis) {
+  const sizes = getClassTokens(classFragments)
+    .map(parseSizeToken)
+    .filter(size => size && size.variant === '' && size.axes.includes(axis))
+  if (sizes.length === 0) return null
+  return Math.max(...sizes.map(size => size.pixels))
+}
+
+function getBaseAxisPadding(classFragments, axis) {
+  const padding = getClassTokens(classFragments)
+    .map(parsePaddingToken)
+    .filter(pad => pad && pad.variant === '')
+  const axisSpecific = padding.filter(
+    pad => pad.axes.length === 1 && pad.axes.includes(axis),
+  )
+  const general = padding.filter(pad => pad.axes.length === 2)
+  const applicable = axisSpecific.length > 0 ? axisSpecific : general
+  return applicable.length === 0
+    ? 0
+    : Math.min(...applicable.map(pad => pad.pixels))
+}
+
+function hasProvenIconHitArea(node, child, bindings, sourceFile) {
+  const targetClasses = getClassFragments(node, bindings, sourceFile)
+  const iconClasses = getClassFragments(child, bindings, sourceFile)
+
+  return ['h', 'w'].every(axis => {
+    const declaredSize = getBaseAxisSize(targetClasses, axis)
+    if (declaredSize !== null && declaredSize >= 24) return true
+
+    const iconSize = getBaseAxisSize(iconClasses, axis)
+    const padding = getBaseAxisPadding(targetClasses, axis)
+    return iconSize !== null && iconSize + padding * 2 >= 24
+  })
+}
+
 function isTargetNode(node, sourceFile) {
   const tagName = getTagName(node, sourceFile)
-  if (TARGET_TAGS.has(tagName)) return true
+  if (TARGET_TAGS.has(tagName)) {
+    if (tagName !== 'input') return true
+    const type = getAttributeSource(getAttribute(node, 'type'), sourceFile)
+    return type?.replace(/^['"]|['"]$/gu, '').toLowerCase() !== 'hidden'
+  }
 
   const role = getAttribute(node, 'role')
   const roleValue = getAttributeSource(role, sourceFile)?.replace(
@@ -345,16 +498,9 @@ function findIconOnlyCompactToken(node, bindings, sourceFile) {
   const childTag = getTagName(child, sourceFile)
   if (!/^\p{Lu}/u.test(childTag)) return null
 
-  if (hasUnresolvedClassExpression(node, bindings)) return null
+  if (hasUnknownClassExpression(node, bindings)) return null
 
-  const targetClasses = getClassFragments(node, bindings, sourceFile)
-  const hasDeclaredHitArea = targetClasses.some(fragment =>
-    /(?:^|\s)(?:[a-z]+:)*(?:min-h|min-w|h|w|size)-/u.test(fragment),
-  )
-  const hasPadding = targetClasses.some(fragment =>
-    /(?:^|\s)(?:[a-z]+:)*p[xy]?-/u.test(fragment),
-  )
-  if (hasDeclaredHitArea || hasPadding) return null
+  if (hasProvenIconHitArea(node, child, bindings, sourceFile)) return null
 
   const compactIconTokens = findCompactSizeTokens(
     getClassFragments(child, bindings, sourceFile),
@@ -376,13 +522,79 @@ function getLineAndColumn(sourceFile, offset) {
   return { column: position.character + 1, line: position.line + 1 }
 }
 
-function findNearbyAnnotation(source, targetStart) {
-  const before = source.slice(Math.max(0, targetStart - 700), targetStart)
-  const markerIndex = before.lastIndexOf(ANNOTATION_PREFIX)
-  if (markerIndex < 0) return null
+function getAssociatedComment(node, sourceFile) {
+  const source = sourceFile.text
+  const targetStart = node.getStart(sourceFile)
+  const targetElement = ts.isJsxOpeningElement(node) ? node.parent : node
 
-  const annotationSource = before.slice(markerIndex)
-  if (annotationSource.split('\n').length > 6) return null
+  if (
+    (ts.isJsxElement(targetElement) ||
+      ts.isJsxSelfClosingElement(targetElement)) &&
+    (ts.isJsxElement(targetElement.parent) ||
+      ts.isJsxFragment(targetElement.parent))
+  ) {
+    const siblings = targetElement.parent.children
+    let index = siblings.indexOf(targetElement) - 1
+    while (index >= 0) {
+      const sibling = siblings[index]
+      if (ts.isJsxText(sibling) && sibling.text.trim() === '') {
+        index -= 1
+        continue
+      }
+      if (!ts.isJsxExpression(sibling) || sibling.expression) return null
+      const commentSource = sibling.getText(sourceFile)
+      const comment = commentSource.match(/\/\*[\s\S]*?\*\//u)
+      if (!comment || comment.index === undefined) return null
+      const start = sibling.getStart(sourceFile) + comment.index
+      const end = start + comment[0].length
+      return { end, source: comment[0] }
+    }
+  }
+
+  const comments = ts.getLeadingCommentRanges(source, node.getFullStart()) ?? []
+  const comment = comments.at(-1)
+  if (!comment || source.slice(comment.end, targetStart).trim() !== '') {
+    return null
+  }
+  return {
+    end: comment.end,
+    source: source.slice(comment.pos, comment.end),
+  }
+}
+
+function hasTargetBetween(sourceFile, annotationEnd, targetStart) {
+  let found = false
+
+  function visit(node) {
+    if (found) return
+    if (
+      (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
+      node.getStart(sourceFile) >= annotationEnd &&
+      node.getStart(sourceFile) < targetStart &&
+      isTargetNode(node, sourceFile)
+    ) {
+      found = true
+      return
+    }
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return found
+}
+
+function findNearbyAnnotation(node, sourceFile) {
+  const comment = getAssociatedComment(node, sourceFile)
+  if (!comment) return null
+  const targetStart = node.getStart(sourceFile)
+  if (hasTargetBetween(sourceFile, comment.end, targetStart)) return null
+
+  const annotationSource = comment.source
+    .replace(/^\{?\s*\/\*\s*/u, '')
+    .replace(/\s*\*\/\s*\}?$/u, '')
+    .replace(/^\s*\*\s?/gmu, '')
+    .trim()
+  if (!annotationSource.startsWith(ANNOTATION_PREFIX)) return null
 
   const header = annotationSource.match(
     /^WCAG 2\.5\.8 target-size exception:\s*([a-z-]+)\s*(?:—|-)\s*/u,
@@ -390,12 +602,7 @@ function findNearbyAnnotation(source, targetStart) {
   if (!header) return { error: 'malformed target-size exception annotation' }
 
   const exception = header[1]
-  const evidence = normalizeWhitespace(
-    annotationSource
-      .slice(header[0].length)
-      .split('*/', 1)[0]
-      .replace(/^\s*\*\s?/gmu, ''),
-  )
+  const evidence = normalizeWhitespace(annotationSource.slice(header[0].length))
   if (!ALLOWED_EXCEPTIONS.has(exception)) {
     return { error: `unsupported target-size exception "${exception}"` }
   }
@@ -422,6 +629,15 @@ export function inspectSource(source, filePath) {
       (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
       isTargetNode(node, sourceFile)
     ) {
+      const start = node.getStart(sourceFile)
+      const annotation = findNearbyAnnotation(node, sourceFile)
+      const position = getLineAndColumn(sourceFile, start)
+      const tagName = getTagName(node, sourceFile)
+      const identity = getIdentity(node, sourceFile)
+      const unresolvedClassExpression = hasUnresolvedClassExpression(
+        node,
+        bindings,
+      )
       const compactTokens = findCompactSizeTokens(
         getClassFragments(node, bindings, sourceFile),
       )
@@ -430,24 +646,24 @@ export function inspectSource(source, filePath) {
           ? findIconOnlyCompactToken(node, bindings, sourceFile)
           : null
 
-      if (compactTokens.length > 0 || iconToken) {
-        const start = node.getStart(sourceFile)
-        const annotation = findNearbyAnnotation(source, start)
-        const position = getLineAndColumn(sourceFile, start)
-        const tagName = getTagName(node, sourceFile)
-        const identity = getIdentity(node, sourceFile)
-
+      if (unresolvedClassExpression || compactTokens.length > 0 || iconToken) {
         if (!annotation || annotation.error) {
           diagnostics.push({
             ...position,
             detail:
               annotation?.error ??
-              'missing WCAG 2.5.8 target-size exception annotation',
+              (unresolvedClassExpression
+                ? 'unresolved className needs a concrete target-size exception annotation'
+                : 'missing WCAG 2.5.8 target-size exception annotation'),
             filePath,
             fingerprint: `${filePath}|${tagName}|${identity}`,
             identity,
             tagName,
-            tokens: compactTokens.length > 0 ? compactTokens : [iconToken],
+            tokens: unresolvedClassExpression
+              ? ['className']
+              : compactTokens.length > 0
+                ? compactTokens
+                : [iconToken],
           })
         }
       }
@@ -510,9 +726,23 @@ export function applyBaseline(diagnostics, baseline) {
     }
   }
 
-  const diagnosticFingerprints = new Set(
-    diagnostics.map(diagnostic => diagnostic.fingerprint),
+  const diagnosticFingerprintCounts = new Map()
+  for (const diagnostic of diagnostics) {
+    const count = diagnosticFingerprintCounts.get(diagnostic.fingerprint) ?? 0
+    diagnosticFingerprintCounts.set(diagnostic.fingerprint, count + 1)
+  }
+  const ambiguousDiagnosticFingerprints = new Set(
+    [...diagnosticFingerprintCounts]
+      .filter(([, count]) => count > 1)
+      .map(([fingerprint]) => fingerprint),
   )
+  for (const fingerprint of ambiguousDiagnosticFingerprints) {
+    if (fingerprints.has(fingerprint)) {
+      baselineErrors.push(`${fingerprint}: diagnostic fingerprint is ambiguous`)
+    }
+  }
+
+  const diagnosticFingerprints = new Set(diagnosticFingerprintCounts.keys())
   for (const fingerprint of fingerprints) {
     if (!diagnosticFingerprints.has(fingerprint)) {
       baselineErrors.push(`${fingerprint}: stale baseline entry`)
@@ -520,12 +750,16 @@ export function applyBaseline(diagnostics, baseline) {
   }
 
   return {
-    activeBaseline: diagnostics.filter(diagnostic =>
-      fingerprints.has(diagnostic.fingerprint),
+    activeBaseline: diagnostics.filter(
+      diagnostic =>
+        fingerprints.has(diagnostic.fingerprint) &&
+        !ambiguousDiagnosticFingerprints.has(diagnostic.fingerprint),
     ),
     baselineErrors,
     diagnostics: diagnostics.filter(
-      diagnostic => !fingerprints.has(diagnostic.fingerprint),
+      diagnostic =>
+        !fingerprints.has(diagnostic.fingerprint) ||
+        ambiguousDiagnosticFingerprints.has(diagnostic.fingerprint),
     ),
   }
 }

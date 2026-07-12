@@ -17,7 +17,7 @@ applyTo: '{components,app}/**/*.tsx'
 
   ```tsx
   {/* WCAG 2.5.8 target-size exception: spacing —
-      24 CSS-pixel circles do not intersect; verified by <test reference>. */}
+      24 CSS-pixel circles do not intersect; verified by compact-target.spec.ts. */}
   ```
 
 - Require geometry tests for `spacing`, same-page alternative coverage for

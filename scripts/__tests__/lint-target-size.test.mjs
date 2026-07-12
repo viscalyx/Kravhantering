@@ -71,8 +71,10 @@ describe('lint-target-size.mjs', () => {
     ],
   ])('rejects invalid annotation %s', (annotation, detail) => {
     const diagnostics = inspectSource(
-      `{/* ${annotation} */}
-<button aria-label="Remove" className="size-5" />`,
+      `<>
+  {/* ${annotation} */}
+  <button aria-label="Remove" className="size-5" />
+</>`,
       'components/View.tsx',
     )
 
@@ -153,16 +155,21 @@ export function View() {
     })
   })
 
-  it('does not infer icon sizing when a shared dynamic class may provide the hit area', () => {
+  it('requires an annotation when a shared dynamic class cannot be resolved', () => {
     const dynamicClass = '$' + '{sharedTargetClassName}'
     const diagnostics = inspectSource(
-      `<button aria-label="Edit" className={\`${dynamicClass} text-primary-700\`}>
+      `<button aria-label="Edit" className={cn(\`${dynamicClass} text-primary-700\`)}>
   <Pencil className="h-4 w-4" />
 </button>`,
       'components/View.tsx',
     )
 
-    expect(diagnostics).toEqual([])
+    expect(diagnostics[0]).toMatchObject({
+      detail:
+        'unresolved className needs a concrete target-size exception annotation',
+      identity: 'aria-label="Edit"',
+      tokens: ['className'],
+    })
   })
 
   it('requires one uppercase icon child before inferring an unsized icon target', () => {
@@ -184,6 +191,85 @@ export function View() {
 
     expect(diagnostics).toHaveLength(1)
     expect(diagnostics[0]?.tagName).toBe('span')
+  })
+
+  it('checks native interactive form controls but ignores hidden inputs', () => {
+    const diagnostics = inspectSource(
+      `<input aria-label="Toggle" className="size-3" type="checkbox" />
+<input className="size-3" type="hidden" />
+<select aria-label="Choose" className="h-5" />
+<textarea aria-label="Describe" className="h-5" />`,
+      'components/View.tsx',
+    )
+
+    expect(diagnostics.map(diagnostic => diagnostic.tagName)).toEqual([
+      'input',
+      'select',
+      'textarea',
+    ])
+  })
+
+  it('requires padding to prove a 24px hit area on both axes', () => {
+    const diagnostics = inspectSource(
+      `<button aria-label="Pixel" className="p-px"><X className="size-3" /></button>
+<button aria-label="Horizontal" className="px-1"><X className="size-3" /></button>
+<button aria-label="Safe" className="p-2"><X className="size-3" /></button>`,
+      'components/View.tsx',
+    )
+
+    expect(diagnostics.map(diagnostic => diagnostic.identity)).toEqual([
+      'aria-label="Pixel"',
+      'aria-label="Horizontal"',
+    ])
+  })
+
+  it('resolves bindings in their lexical scope', () => {
+    const diagnostics = inspectSource(
+      `function First() {
+  const targetClass = 'size-5'
+  return <button aria-label="First" className={targetClass} />
+}
+function Second() {
+  const targetClass = 'min-h-6 min-w-6'
+  return <button aria-label="Second" className={targetClass} />
+}`,
+      'components/View.tsx',
+    )
+
+    expect(diagnostics).toHaveLength(1)
+    expect(diagnostics[0]?.identity).toBe('aria-label="First"')
+  })
+
+  it('resolves static class composition calls and reports unresolved calls', () => {
+    const diagnostics = inspectSource(
+      `<button aria-label="Static" className={cn('size-5')} />
+<button aria-label="Dynamic" className={cn(targetClass)} />`,
+      'components/View.tsx',
+    )
+
+    expect(diagnostics).toMatchObject([
+      { identity: 'aria-label="Static"', tokens: ['size-5'] },
+      {
+        detail:
+          'unresolved className needs a concrete target-size exception annotation',
+        identity: 'aria-label="Dynamic"',
+        tokens: ['className'],
+      },
+    ])
+  })
+
+  it('binds an annotation only to its directly following JSX target', () => {
+    const diagnostics = inspectSource(
+      `<>
+  {/* WCAG 2.5.8 target-size exception: spacing — verified by geometry test. */}
+  <button aria-label="Covered" className="size-5" />
+  <button aria-label="Uncovered" className="size-5" />
+</>`,
+      'components/View.tsx',
+    )
+
+    expect(diagnostics).toHaveLength(1)
+    expect(diagnostics[0]?.identity).toBe('aria-label="Uncovered"')
   })
 
   it('uses alternate identity attributes and a defined unlabelled fallback', () => {
@@ -250,6 +336,29 @@ export function View() {
         diagnostics: [],
       }),
     ).toContain('1 temporary issue-linked baseline entry active.')
+  })
+
+  it('does not let one baseline entry suppress duplicate diagnostics', () => {
+    const diagnostics = inspectSource(
+      `<button aria-label="Remove" className="size-5" />
+<button aria-label="Remove" className="size-5" />`,
+      'components/View.tsx',
+    )
+    const fingerprint = diagnostics[0].fingerprint
+    const result = applyBaseline(diagnostics, {
+      entries: [
+        {
+          fingerprint,
+          issue: 'https://github.com/viscalyx/Kravhantering/issues/999',
+        },
+      ],
+    })
+
+    expect(result.activeBaseline).toEqual([])
+    expect(result.diagnostics).toHaveLength(2)
+    expect(result.baselineErrors).toContain(
+      `${fingerprint}: diagnostic fingerprint is ambiguous`,
+    )
   })
 
   it('discovers JSX sources and skips generated directories', async () => {
