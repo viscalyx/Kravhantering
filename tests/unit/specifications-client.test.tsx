@@ -883,7 +883,7 @@ describe('RequirementsSpecificationsClient', () => {
     expect(screen.getByText('specification.help.name')).toBeInTheDocument()
   })
 
-  it('renders specification form controls with a 44px minimum height', async () => {
+  it('keeps specification form controls at their standard control height', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()

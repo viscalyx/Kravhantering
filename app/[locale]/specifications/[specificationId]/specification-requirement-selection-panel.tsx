@@ -456,6 +456,7 @@ export default function SpecificationRequirementSelectionPanel({
                 ))}
               </select>
               <label className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-sm dark:border-secondary-700">
+                {/* WCAG 2.5.8 target-size exception: spacing — the 40 CSS-pixel filter control keeps its 24 CSS-pixel target circle separate; verified by specification-requirement-selection-panel.test.tsx. */}
                 <input
                   checked={unansweredOnly}
                   className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
@@ -543,6 +544,7 @@ export default function SpecificationRequirementSelectionPanel({
                           className="flex min-h-10 items-start gap-2 rounded-lg px-2 py-2 hover:bg-secondary-50 dark:hover:bg-secondary-800/60"
                           key={answer.id}
                         >
+                          {/* WCAG 2.5.8 target-size exception: spacing — 40 CSS-pixel answer rows keep 24 CSS-pixel target circles separate; verified by specification-requirement-selection-panel.test.tsx. */}
                           <input
                             checked={question.selectedAnswerIds.includes(
                               answer.id,

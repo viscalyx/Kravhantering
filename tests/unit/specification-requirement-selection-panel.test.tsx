@@ -148,7 +148,18 @@ describe('SpecificationRequirementSelectionPanel', () => {
       '/api/requirements-specifications/1/requirement-selection-answers',
     )
 
-    fireEvent.click(screen.getByLabelText(/Use baseline/))
+    const unansweredOnly = screen.getByRole('checkbox', {
+      name: 'unansweredOnly',
+    })
+    expect(unansweredOnly).toHaveClass('h-4', 'w-4')
+    expect(unansweredOnly).not.toHaveClass('min-h-6', 'min-w-6')
+    expect(unansweredOnly.parentElement).toHaveClass('min-h-10')
+
+    const answer = screen.getByLabelText(/Use baseline/)
+    expect(answer).toHaveClass('h-4', 'w-4')
+    expect(answer).not.toHaveClass('min-h-6', 'min-w-6')
+    expect(answer.parentElement).toHaveClass('min-h-10')
+    fireEvent.click(answer)
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(

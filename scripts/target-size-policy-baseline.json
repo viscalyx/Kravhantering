@@ -1,0 +1,32 @@
+{
+  "entries": [
+    {
+      "fingerprint": "app/[locale]/requirements/stewardship/requirement-selection-questions-client.tsx|button|aria-label={`${copy.removePackage} ${pkg.name}`}",
+      "issue": "https://github.com/viscalyx/Kravhantering/issues/549"
+    },
+    {
+      "fingerprint": "app/[locale]/requirements/stewardship/requirement-selection-questions-client.tsx|button|aria-label={`${copy.removeRequirement} ${requirement.uniqueId}`}",
+      "issue": "https://github.com/viscalyx/Kravhantering/issues/549"
+    },
+    {
+      "fingerprint": "components/DeviationDecisionModal.tsx|button|aria-label={`${tc('help')}: ${td('decisionMotivation')}`}",
+      "issue": "https://github.com/viscalyx/Kravhantering/issues/548"
+    },
+    {
+      "fingerprint": "components/DeviationFormModal.tsx|button|aria-label={`${tc('help')}: ${td('motivation')}`}",
+      "issue": "https://github.com/viscalyx/Kravhantering/issues/548"
+    },
+    {
+      "fingerprint": "components/RequirementsTable.tsx|button|aria-label={tt('clear')}",
+      "issue": "https://github.com/viscalyx/Kravhantering/issues/547"
+    },
+    {
+      "fingerprint": "components/SuggestionResolutionModal.tsx|button|aria-label={`${tc('help')}: ${tf('resolutionMotivation')}`}",
+      "issue": "https://github.com/viscalyx/Kravhantering/issues/548"
+    },
+    {
+      "fingerprint": "components/SuggestionResolutionModal.tsx|button|aria-label={`${tc('help')}: ${tf('resolvedBy')}`}",
+      "issue": "https://github.com/viscalyx/Kravhantering/issues/548"
+    }
+  ]
+}

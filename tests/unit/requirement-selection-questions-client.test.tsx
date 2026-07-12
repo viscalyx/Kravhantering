@@ -677,6 +677,80 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(dialog.querySelector('svg > path[d^="M"]')).toBeTruthy()
   })
 
+  it('keeps visibility answer checkboxes compact within separate option rows', async () => {
+    const secondParentAnswer: TestAnswer = {
+      ...sampleAnswer,
+      id: 102,
+      text: 'Enhanced profile',
+    }
+    const parentQuestion: TestQuestion = {
+      ...sampleQuestion,
+      answers: [sampleAnswer, secondParentAnswer],
+    }
+    const childQuestion: TestQuestion = {
+      ...sampleQuestion,
+      answers: [],
+      id: 22,
+      questionCode: 'SEC-KUF002',
+      sortOrder: 1,
+      text: 'Which follow-up applies?',
+      visibilityGroups: [
+        {
+          conditions: [
+            {
+              answerId: sampleAnswer.id,
+              answerIsActive: true,
+              answerIsArchived: false,
+              answerText: sampleAnswer.text,
+              id: 1,
+              parentAreaName: parentQuestion.areaName,
+              parentQuestionCode: parentQuestion.questionCode,
+              parentQuestionId: parentQuestion.id,
+              parentQuestionIsActive: true,
+              parentQuestionIsArchived: false,
+              parentQuestionText: parentQuestion.text,
+            },
+          ],
+          id: 1,
+          sortOrder: 0,
+        },
+      ],
+    }
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [parentQuestion, childQuestion] })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(childQuestion.text)).toBeInTheDocument()
+    const childCard = expandQuestion(childQuestion.text)
+    fireEvent.click(
+      within(childCard).getByRole('button', { name: 'Visibility conditions' }),
+    )
+
+    const visibilityPanel = screen.getByRole('complementary', {
+      name: 'Visibility conditions',
+    })
+    const visibilityAnswerCheckboxes =
+      within(visibilityPanel).getAllByRole('checkbox')
+    expect(visibilityAnswerCheckboxes).toHaveLength(2)
+    for (const checkbox of visibilityAnswerCheckboxes) {
+      expect(checkbox).toHaveClass('h-4', 'w-4')
+      expect(checkbox).not.toHaveClass('min-h-6', 'min-w-6')
+      expect(checkbox.parentElement).toHaveClass('min-h-10')
+    }
+  })
+
   it('keeps multiple questions expanded and does not auto-expand answer search hits', async () => {
     const secondQuestion: TestQuestion = {
       ...sampleQuestion,
@@ -1307,6 +1381,9 @@ describe('RequirementSelectionQuestionsClient', () => {
       { name: samplePackage.name },
     )
     expect(packageCheckbox).toBeChecked()
+    expect(packageCheckbox).toHaveClass('h-4', 'w-4')
+    expect(packageCheckbox).not.toHaveClass('min-h-6', 'min-w-6')
+    expect(packageCheckbox.parentElement).toHaveClass('min-h-10')
     fireEvent.click(packageCheckbox)
     expect(packageCheckbox).not.toBeChecked()
     fireEvent.click(packageCheckbox)
@@ -1453,11 +1530,13 @@ describe('RequirementSelectionQuestionsClient', () => {
       within(dialog as HTMLElement).queryByRole('button', { name: 'Archive' }),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(
-      within(dialog as HTMLElement).getByRole('checkbox', {
-        name: 'No requirement selection',
-      }),
+    const noRequirementSelection = within(dialog as HTMLElement).getByRole(
+      'checkbox',
+      { name: 'No requirement selection' },
     )
+    expect(noRequirementSelection).toHaveClass('h-4', 'w-4')
+    expect(noRequirementSelection).not.toHaveClass('min-h-6', 'min-w-6')
+    fireEvent.click(noRequirementSelection)
     expect(packageSelector).toBeDisabled()
     expect(
       within(dialog as HTMLElement).getByRole('textbox', {
@@ -2409,7 +2488,7 @@ describe('RequirementSelectionQuestionsClient', () => {
     ])
   })
 
-  it('keeps answer action controls at 44px minimum touch targets', async () => {
+  it('keeps answer action controls at their standard action size', async () => {
     const questions = [{ ...sampleQuestion, answers: [sampleAnswer] }]
 
     fetchMock.mockImplementation(async (url: string) => {

@@ -2792,6 +2792,7 @@ export default function RequirementSelectionQuestionsClient() {
             />
           </div>
           <label className="flex items-center gap-2 text-sm">
+            {/* WCAG 2.5.8 target-size exception: spacing — controls in this form have separate 24 CSS-pixel target circles; verified by requirement-selection-questions-client.test.tsx. */}
             <input
               checked={answerForm.isNoRequirementSelection}
               className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
@@ -2939,6 +2940,7 @@ export default function RequirementSelectionQuestionsClient() {
                                 htmlFor={inputId}
                                 key={pkg.id}
                               >
+                                {/* WCAG 2.5.8 target-size exception: spacing — 40 CSS-pixel option rows keep 24 CSS-pixel target circles separate; verified by requirement-selection-questions-client.test.tsx. */}
                                 <input
                                   checked={answerForm.packageIds.includes(
                                     packageId,
@@ -5012,6 +5014,7 @@ export default function RequirementSelectionQuestionsClient() {
                                                                     answer.id
                                                                   }
                                                                 >
+                                                                  {/* WCAG 2.5.8 target-size exception: spacing — 40 CSS-pixel option rows keep 24 CSS-pixel target circles separate; verified by requirement-selection-questions-client.test.tsx. */}
                                                                   <input
                                                                     checked={condition.answerIds.includes(
                                                                       answerId,

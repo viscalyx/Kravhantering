@@ -1863,7 +1863,9 @@ function AiSettingsPanel() {
                                   </tr>,
                                   ...terms.map(term => (
                                     <tr key={term.id}>
-                                      <td className="px-3 py-2">
+                                      <td className="px-3 py-2 text-center align-middle">
+                                        {/* WCAG 2.5.8 target-size exception: spacing —
+                                            24 CSS-pixel circles around term-selection checkboxes do not intersect; verified by ai-settings.spec.ts. */}
                                         <input
                                           aria-label={ta('ai.selectTermNamed', {
                                             term: term.termText,
