@@ -2998,7 +2998,7 @@ export default function RequirementSelectionQuestionsClient() {
                         </RequirementPackagePurposeTooltip>
                         <button
                           aria-label={`${copy.removePackage} ${pkg.name}`}
-                          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-secondary-300 dark:hover:bg-secondary-700 dark:hover:text-secondary-50"
+                          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-secondary-300 dark:hover:bg-secondary-700 dark:hover:text-secondary-50"
                           disabled={answerForm.isNoRequirementSelection}
                           onClick={() =>
                             setAnswerForm(previous => ({
@@ -3122,7 +3122,7 @@ export default function RequirementSelectionQuestionsClient() {
                         </span>
                         <button
                           aria-label={`${copy.removeRequirement} ${requirement.uniqueId}`}
-                          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-primary-700 hover:bg-primary-100 hover:text-primary-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-primary-200 dark:hover:bg-primary-900/60 dark:hover:text-primary-50"
+                          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-primary-700 hover:bg-primary-100 hover:text-primary-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-primary-200 dark:hover:bg-primary-900/60 dark:hover:text-primary-50"
                           disabled={answerForm.isNoRequirementSelection}
                           onClick={() =>
                             setAnswerForm(previous => ({

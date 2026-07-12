@@ -1393,12 +1393,18 @@ describe('RequirementSelectionQuestionsClient', () => {
         name: 'Selected requirement packages',
       }),
     ).toHaveTextContent(samplePackage.name)
-
-    fireEvent.click(
+    expect(
       within(dialog as HTMLElement).getByRole('button', {
-        name: 'Remove requirement SEC-001',
+        name: `Remove package ${samplePackage.name}`,
       }),
+    ).toHaveClass('h-6', 'w-6')
+
+    const removeRequirementButton = within(dialog as HTMLElement).getByRole(
+      'button',
+      { name: 'Remove requirement SEC-001' },
     )
+    expect(removeRequirementButton).toHaveClass('h-6', 'w-6')
+    fireEvent.click(removeRequirementButton)
     expect(
       within(dialog as HTMLElement).queryByRole('group', {
         name: 'Selected Requirement IDs',

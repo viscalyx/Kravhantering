@@ -695,6 +695,17 @@ krav från svarets kravurvalsförhandsvisning.
 kravbibliotekets ordning med `Kravtext`, utan arkiverings- eller
 livscykelåtgärder.
 
+### REQ-14d: borttagningsknappar i kravurvalsvar är användbara
+
+**Steg:** Öppna en seedad kravurvalsfråga och redigera ett svar som har både
+valt kravpaket och valt Krav-ID. Tabbla till knapparna för att ta bort paketet
+respektive kravet och aktivera vardera knappen. Avbryt sedan redigeringen utan
+att spara.
+
+**Förväntat resultat:** Båda knapparna har tydliga tillgängliga namn, synlig
+fokusmarkering och går att använda med tangentbord. Valet tas bort från det
+aktuella svaret utan att kravpaketet eller kravet tas bort från kravbiblioteket.
+
 ### REQ-15: AI-kravgenerator lämnar kandidater till importgranskning
 
 **Steg:** Öppna AI-assisterat författande från kravbiblioteket, välj

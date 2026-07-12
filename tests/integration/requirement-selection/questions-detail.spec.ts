@@ -65,4 +65,47 @@ test.describe('Requirement selection question detail preview', () => {
       ).toHaveCount(0)
     })
   })
+
+  test('REQ-14d: keeps answer-editor removal controls at least 24 CSS pixels', async ({
+    page,
+  }) => {
+    for (const viewport of [
+      { height: 720, name: 'desktop', width: 1280 },
+      { height: 812, name: 'mobile', width: 375 },
+    ]) {
+      await test.step(`open the seeded answer at ${viewport.name} size`, async () => {
+        await page.setViewportSize(viewport)
+        await page.goto('/sv/requirements/stewardship?tab=questions')
+
+        await expect(
+          page.getByRole('heading', { level: 1, name: 'Kravurvalsfrågor' }),
+        ).toBeVisible()
+        await page.getByRole('button', { name: /SÄK-KUF001/ }).click()
+
+        const answerRow = page
+          .getByText('Grundskydd för intern information', { exact: true })
+          .locator('xpath=ancestor::li[1]')
+        await answerRow.getByRole('button', { name: 'Redigera' }).click()
+      })
+
+      await test.step(`measure both removal targets at ${viewport.name} size`, async () => {
+        const dialog = page.getByRole('dialog', {
+          name: 'Redigera kravurvalsvar',
+        })
+        const removalControls = [
+          dialog.getByRole('button', { name: /^Ta bort paket / }),
+          dialog.getByRole('button', { name: 'Ta bort krav SÄK0042' }),
+        ]
+
+        for (const control of removalControls) {
+          await control.scrollIntoViewIfNeeded()
+          await expect(control).toBeVisible()
+          const bounds = await control.boundingBox()
+          expect(bounds).not.toBeNull()
+          expect(bounds?.height).toBeGreaterThanOrEqual(24)
+          expect(bounds?.width).toBeGreaterThanOrEqual(24)
+        }
+      })
+    }
+  })
 })

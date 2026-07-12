@@ -1,12 +1,3 @@
 {
-  "entries": [
-    {
-      "fingerprint": "app/[locale]/requirements/stewardship/requirement-selection-questions-client.tsx|button|aria-label={`${copy.removePackage} ${pkg.name}`}",
-      "issue": "https://github.com/viscalyx/Kravhantering/issues/549"
-    },
-    {
-      "fingerprint": "app/[locale]/requirements/stewardship/requirement-selection-questions-client.tsx|button|aria-label={`${copy.removeRequirement} ${requirement.uniqueId}`}",
-      "issue": "https://github.com/viscalyx/Kravhantering/issues/549"
-    }
-  ]
+  "entries": []
 }
