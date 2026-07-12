@@ -3,7 +3,6 @@ import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
-  applyBaseline,
   discoverFiles,
   formatResults,
   inspectSource,
@@ -20,7 +19,7 @@ const createFakeProcess = () => ({
 })
 
 describe('lint-target-size.mjs', () => {
-  it('finds an explicit compact button and gives it a stable identity', () => {
+  it('finds an explicit compact button', () => {
     const diagnostics = inspectSource(
       `export function View() {
   return <button aria-label="Remove" className="inline-flex h-5 w-5" />
@@ -32,7 +31,6 @@ describe('lint-target-size.mjs', () => {
       {
         detail: 'missing WCAG 2.5.8 target-size exception annotation',
         filePath: 'components/View.tsx',
-        fingerprint: 'components/View.tsx|button|aria-label="Remove"',
         identity: 'aria-label="Remove"',
         tokens: ['h-5', 'w-5'],
       },
@@ -285,82 +283,6 @@ function Second() {
     ])
   })
 
-  it('applies valid issue-linked baselines and reports stale or invalid entries', () => {
-    const diagnostics = inspectSource(
-      '<button aria-label="Remove" className="size-5" />',
-      'components/View.tsx',
-    )
-    const fingerprint = diagnostics[0].fingerprint
-    const result = applyBaseline(diagnostics, {
-      entries: [
-        {
-          fingerprint,
-          issue: 'https://github.com/viscalyx/Kravhantering/issues/999',
-        },
-        {
-          fingerprint: 'components/Old.tsx|button|aria-label="Old"',
-          issue: 'not-an-issue',
-        },
-      ],
-    })
-
-    expect(result.diagnostics).toEqual([])
-    expect(result.activeBaseline).toHaveLength(1)
-    expect(result.baselineErrors).toEqual([
-      'components/Old.tsx|button|aria-label="Old": baseline entry needs an issue URL',
-      'components/Old.tsx|button|aria-label="Old": stale baseline entry',
-    ])
-  })
-
-  it('rejects duplicate or empty baseline fingerprints', () => {
-    const result = applyBaseline([], {
-      entries: [
-        { fingerprint: '', issue: '' },
-        { fingerprint: 'duplicate', issue: '' },
-        { fingerprint: 'duplicate', issue: '' },
-      ],
-    })
-
-    expect(result.baselineErrors).toContain(
-      'baseline entries need unique non-empty fingerprints',
-    )
-    expect(applyBaseline([], undefined)).toEqual({
-      activeBaseline: [],
-      baselineErrors: [],
-      diagnostics: [],
-    })
-    expect(
-      formatResults({
-        activeBaseline: [{ fingerprint: 'known' }],
-        baselineErrors: [],
-        diagnostics: [],
-      }),
-    ).toContain('1 temporary issue-linked baseline entry active.')
-  })
-
-  it('does not let one baseline entry suppress duplicate diagnostics', () => {
-    const diagnostics = inspectSource(
-      `<button aria-label="Remove" className="size-5" />
-<button aria-label="Remove" className="size-5" />`,
-      'components/View.tsx',
-    )
-    const fingerprint = diagnostics[0].fingerprint
-    const result = applyBaseline(diagnostics, {
-      entries: [
-        {
-          fingerprint,
-          issue: 'https://github.com/viscalyx/Kravhantering/issues/999',
-        },
-      ],
-    })
-
-    expect(result.activeBaseline).toEqual([])
-    expect(result.diagnostics).toHaveLength(2)
-    expect(result.baselineErrors).toContain(
-      `${fingerprint}: diagnostic fingerprint is ambiguous`,
-    )
-  })
-
   it('discovers JSX sources and skips generated directories', async () => {
     const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'target-size-lint-'))
     try {
@@ -393,18 +315,12 @@ function Second() {
     const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'target-size-run-'))
     try {
       await mkdir(path.join(tempRoot, 'components'))
-      await mkdir(path.join(tempRoot, 'scripts'))
       await writeFile(
         path.join(tempRoot, 'components', 'Compact.tsx'),
         '<button aria-label="Remove" className="size-5" />',
       )
-      await writeFile(
-        path.join(tempRoot, 'scripts', 'baseline.json'),
-        '{"entries":[]}',
-      )
 
       const result = await runTargetSizeLint({
-        baselinePath: 'scripts/baseline.json',
         cwd: tempRoot,
         roots: ['components'],
       })
@@ -416,21 +332,19 @@ function Second() {
     }
   })
 
-  it('exits cleanly and reports active baseline entries', async () => {
+  it('exits cleanly when no compact targets are found', async () => {
     const processObj = createFakeProcess()
     await expect(
       main([], {
         processObj,
         runLint: async () => ({
-          activeBaseline: [{ fingerprint: 'known' }],
-          baselineErrors: [],
           diagnostics: [],
         }),
       }),
     ).rejects.toThrow('exit:0')
 
     expect(processObj.stdout.write).toHaveBeenCalledWith(
-      'Target-size policy lint: no new issues found. 1 temporary issue-linked baseline entries remain.\n',
+      'Target-size policy lint: no new issues found.\n',
     )
   })
 
@@ -440,8 +354,6 @@ function Second() {
       main([], {
         processObj: diagnosticProcess,
         runLint: async () => ({
-          activeBaseline: [],
-          baselineErrors: [],
           diagnostics: [
             {
               column: 1,
