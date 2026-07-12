@@ -1,12 +1,12 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import { modalResizableTextareaRows3ClassName } from '@/components/modal-textarea-class'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
@@ -159,16 +159,12 @@ export default function SuggestionResolutionModal({
                   >
                     {tf('resolutionMotivation')} *
                   </label>
-                  <button
-                    aria-controls="help-resolution-motivation"
-                    aria-expanded={openHelp.has('motivation')}
-                    aria-label={`${tc('help')}: ${tf('resolutionMotivation')}`}
-                    className="inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  <FieldHelpButton
+                    controls="help-resolution-motivation"
+                    expanded={openHelp.has('motivation')}
+                    label={`${tc('help')}: ${tf('resolutionMotivation')}`}
                     onClick={() => toggleHelp('motivation')}
-                    type="button"
-                  >
-                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                  </button>
+                  />
                 </div>
                 <AnimatedHelpPanel
                   id="help-resolution-motivation"
@@ -195,16 +191,12 @@ export default function SuggestionResolutionModal({
                   >
                     {tf('resolvedBy')} *
                   </label>
-                  <button
-                    aria-controls="help-resolution-resolvedBy"
-                    aria-expanded={openHelp.has('resolvedBy')}
-                    aria-label={`${tc('help')}: ${tf('resolvedBy')}`}
-                    className="inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  <FieldHelpButton
+                    controls="help-resolution-resolvedBy"
+                    expanded={openHelp.has('resolvedBy')}
+                    label={`${tc('help')}: ${tf('resolvedBy')}`}
                     onClick={() => toggleHelp('resolvedBy')}
-                    type="button"
-                  >
-                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                  </button>
+                  />
                 </div>
                 <AnimatedHelpPanel
                   id="help-resolution-resolvedBy"

@@ -1,12 +1,12 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import { modalResizableTextareaRows4ClassName } from '@/components/modal-textarea-class'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
@@ -146,16 +146,12 @@ export default function SuggestionFormModal({
                   >
                     {tf('content')} *
                   </label>
-                  <button
-                    aria-controls="help-content"
-                    aria-expanded={openHelp.has('content')}
-                    aria-label={`${tc('help')}: ${tf('content')}`}
-                    className="min-h-11 min-w-11 inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  <FieldHelpButton
+                    controls="help-content"
+                    expanded={openHelp.has('content')}
+                    label={`${tc('help')}: ${tf('content')}`}
                     onClick={() => toggleHelp('content')}
-                    type="button"
-                  >
-                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                  </button>
+                  />
                 </div>
                 <AnimatedHelpPanel
                   id="help-content"
@@ -182,16 +178,12 @@ export default function SuggestionFormModal({
                   >
                     {tf('createdBy')}
                   </label>
-                  <button
-                    aria-controls="help-createdBy"
-                    aria-expanded={openHelp.has('createdBy')}
-                    aria-label={`${tc('help')}: ${tf('createdBy')}`}
-                    className="min-h-11 min-w-11 inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  <FieldHelpButton
+                    controls="help-createdBy"
+                    expanded={openHelp.has('createdBy')}
+                    label={`${tc('help')}: ${tf('createdBy')}`}
                     onClick={() => toggleHelp('createdBy')}
-                    type="button"
-                  >
-                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                  </button>
+                  />
                 </div>
                 <AnimatedHelpPanel
                   id="help-createdBy"
