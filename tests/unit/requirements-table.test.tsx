@@ -2272,6 +2272,33 @@ describe('RequirementsTable', () => {
     vi.useRealTimers()
   })
 
+  it('keeps the column-search clear control at 24 CSS pixels inside its textbox', () => {
+    render(
+      <RequirementsTable
+        filterValues={DEFAULT_FILTERS}
+        locale="sv"
+        onFilterChange={vi.fn()}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const [filterButton] = screen.getAllByRole('button', { name: 'filterBy' })
+    expect(filterButton).toBeDefined()
+    if (!filterButton) {
+      throw new Error('Expected filter button to be rendered.')
+    }
+
+    fireEvent.click(filterButton)
+    const textbox = screen.getByRole('textbox', { name: 'uniqueId' })
+    fireEvent.change(textbox, { target: { value: 'INT0001' } })
+
+    expect(textbox).toHaveClass('pr-8')
+    expect(screen.getByRole('button', { name: 'clear' })).toHaveClass(
+      'h-6',
+      'w-6',
+    )
+  })
+
   it('merges pending search commits with newer filter updates', () => {
     vi.useFakeTimers()
 

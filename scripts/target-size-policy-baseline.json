@@ -7,10 +7,6 @@
     {
       "fingerprint": "app/[locale]/requirements/stewardship/requirement-selection-questions-client.tsx|button|aria-label={`${copy.removeRequirement} ${requirement.uniqueId}`}",
       "issue": "https://github.com/viscalyx/Kravhantering/issues/549"
-    },
-    {
-      "fingerprint": "components/RequirementsTable.tsx|button|aria-label={tt('clear')}",
-      "issue": "https://github.com/viscalyx/Kravhantering/issues/547"
     }
   ]
 }

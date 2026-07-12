@@ -140,6 +140,33 @@ test.describe('Requirements library', () => {
     await filterRequirementId(page, 'INT0002')
   })
 
+  test('REQ-03: column-search clear control keeps a 24 CSS-pixel target at responsive widths', async ({
+    page,
+  }) => {
+    for (const viewport of [
+      { height: 720, width: 1280 },
+      { height: 720, width: 375 },
+    ]) {
+      await page.setViewportSize(viewport)
+      await page.goto('/sv/requirements')
+
+      await page.getByRole('button', { name: 'Filtrera efter Krav-ID' }).click()
+      const textbox = page.getByRole('textbox', { name: 'Krav-ID' })
+      await textbox.fill('INT0001')
+
+      const clearButton = page.getByRole('button', { name: 'Rensa' })
+      await expect(clearButton).toBeVisible()
+
+      const clearButtonBox = await clearButton.boundingBox()
+      expect(clearButtonBox).not.toBeNull()
+      expect(clearButtonBox?.height ?? 0).toBeGreaterThanOrEqual(24)
+      expect(clearButtonBox?.width ?? 0).toBeGreaterThanOrEqual(24)
+
+      await clearButton.click()
+      await expect(textbox).toHaveValue('')
+    }
+  })
+
   test('REQ-04: sortable requirement columns update the sort direction', async ({
     page,
   }) => {

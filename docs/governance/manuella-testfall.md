@@ -103,13 +103,11 @@ ihop navigeringen visar `panel-left-close` på samma övre vänstra placering so
 **Steg:** Öppna ett formulär med en hjälpknapp, till exempel ett nytt krav, och
 flytta fokus till hjälpknappen med tangentbordet. Aktivera den med Enter och
 kontrollera hjälppanelen. Upprepa i en avstegs- eller
-förbättringsförslagsmodal. Kontrollera i webbläsarens inspektionsverktyg att
-hjälpknappens klickbara yta är minst 24 gånger 24 CSS-pixlar.
+förbättringsförslagsmodal.
 
 **Förväntat resultat:** Hjälpknappen har ett begripligt tillgänglighetsnamn,
 synlig tangentbordsfokus och växlar hjälppanelen. När panelen är öppen är den
-kopplad till knappen för hjälpmedel. Hjälpknappens aktiveringsyta är minst
-24 gånger 24 CSS-pixlar i ljust och mörkt tema.
+kopplad till knappen för hjälpmedel.
 
 ## Autentisering och behörighet
 
@@ -581,12 +579,11 @@ läslig.
 
 ### REQ-03: filtrera på krav-id och rensa filter
 
-**Steg:** Sök efter `INT0001`, kontrollera träff, klicka `Rensa` och kontrollera
-att fler krav visas. Aktivera och avaktivera även ett filter för kravpaket.
+**Steg:** Öppna filtret för `Krav-ID`, skriv `INT0001`, kontrollera träff, öppna
+filtret igen och klicka `Rensa` i sökfältet. Kontrollera att fler krav visas.
+Aktivera och avaktivera även ett filter för kravpaket.
 
 **Förväntat resultat:** Filter begränsar listan och rensning återställer den.
-Filtret för kravpaket och dess rensningsknapp har inte överlappande 24
-CSS-pixel-målcirklar.
 
 ### REQ-04: sortera på sorterbar kolumn
 
@@ -687,8 +684,7 @@ seedade kravurvalsfrågor och kravurvalsvar med respektive draghandtag.
 **Förväntat resultat:** Direktlänken tillbaka till
 `Kravbiblioteksförvaltning` öppnar den ihågkomna fliken utan att paketfliken
 blinkar till. Drag-och-släpp visar förhandsvisning, markör och sparad ny ordning
-för både frågor och svar. Kryssrutorna för `Utan kravurval`, kravpaket och
-utlösande svar har inte överlappande 24 CSS-pixel-målcirklar.
+för både frågor och svar.
 
 ### REQ-14c: kravurvalsförhandsvisning visar skrivskyddat krav
 
@@ -711,8 +707,7 @@ Välj sedan `Förhandsgranska krav i import`.
 Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
 `Import-JSON`-formuläret. Fliken `AI-analys` visar analysen som säker
 formaterad text utan klickbara länkar, fjärrladdade bilder eller aktiv HTML.
-Råresultat visas fortfarande separat från analysen. Kandidat- och val av
-normreferens har inte överlappande 24 CSS-pixel-målcirklar.
+Råresultat visas fortfarande separat från analysen.
 
 ### REQ-15B: AI-assisterat författande blockerar osäkert AI-anrop
 
@@ -736,8 +731,8 @@ matchade regeltermer.
 **Steg:** Öppna AI-assisterat författande från kravbiblioteket med en
 skärmläsare, välj en Vision-modell och välj giltiga bilder tillsammans med en
 fil av otillåten typ så att urvalet överskrider gränsen på tre bilder.
-Kontrollera att knappen `Ta bort bild` har minst 24 gånger 24 CSS-pixlars
-klickbar yta och synlig tangentbordsfokus. Ta bort sedan en bifogad bild.
+Kontrollera synlig tangentbordsfokus för knappen `Ta bort bild`. Ta bort sedan
+en bifogad bild.
 Starta en generering som får ett terminalt leverantörsfel. Starta en ny
 generering som får ett valideringsfel, välj `Reparera JSON`, låt första
 reparationen misslyckas och låt nästa lyckas. Avbryt slutligen en pågående
@@ -775,17 +770,14 @@ sektionen `AI-säkerhet` visas efter `AI-assistering`, innehåller
 `AI-säkerhetsregler`, och att sektionen `MCP-gränssnitt` visas därefter med
 `MCP-anropsgräns` med synligt tillåtet intervall och steg. Notera aktuell
 gräns, ställ in `1 MiB` och spara. Expandera en AI-säkerhetsregel och
-kontrollera att de två översta kryssrutorna för att markera regeltermer har
-så stort inbördes avstånd att 24 CSS-pixelcirklar inte överlappar. Höj därefter
-gränsen ett steg med plusknappen, kontrollera att den blir `2 MiB` och spara.
-Återställ därefter ursprungligt värde och spara.
+höj därefter gränsen ett steg med plusknappen, kontrollera att den blir `2 MiB`
+och spara. Återställ därefter ursprungligt värde och spara.
 
 **Förväntat resultat:** Gränsen sparas i Admincenter och visas som aktuell
 gräns. Det tillåtna intervallet visas som `1 MiB` till `10 MiB` med steg
 `1 MiB`. Standardvärdet är `10 MiB`; den sparade teständringen visar `2 MiB`
 efter ett steg upp från minimum. Inställningen påverkar inte reglaget för
-kravgenerering om reglaget inte ändras separat. De 24 CSS-pixelcirklar som
-omger kryssrutorna överlappar inte.
+kravgenerering om reglaget inte ändras separat.
 
 ### REQ-17: importera krav till kravbiblioteket
 
@@ -1108,8 +1100,7 @@ valet direkt när svaret markeras.
 
 **Förväntat resultat:** Laddningstexten visas utan en tillfällig svarsräknare.
 När frågorna har laddats visas svarsräknaren, till exempel `Besvarade: 0/1`.
-Urvalet sparas och kravlistan uppdateras. `Endast obesvarade` och svarsalternativ
-har inte överlappande 24 CSS-pixel-målcirklar.
+Urvalet sparas och kravlistan uppdateras.
 
 ### SPEC-13: förvalta RFI-fråga och visa dynamisk RFI-lista
 
