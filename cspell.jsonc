@@ -1025,7 +1025,8 @@
     "wayfinder",
     "Wayfinding",
     "ägbar",
-    "unvalidated"
+    "unvalidated",
+    "fokusmarkering"
   ],
   "flagWords": [],
   "ignorePaths": [

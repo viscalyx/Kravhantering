@@ -44,10 +44,8 @@ av användaragenten behöver inte märkas vid varje förekomst.
 Policyn följs upp med en blockerande statisk kontroll som hittar uttryckligt
 små, egenutvecklade mål. Därutöver används avgränsade tester som verifierar den
 faktiska målytan eller det undantag som åberopas. Befintliga mål som behöver
-utredas tas tillfälligt upp i en baslinje där varje post hänvisar till ett
-ärende. På så sätt stoppas nya överträdelser av policyn utan att ändringen
-kräver en ombyggnad av hela produkten. En baslinjepost ska tas bort när
-motsvarande uppföljningsärende avslutas.
+utredas måste rättas innan kontrollen godkänns. På så sätt stoppar policyn
+nya och befintliga överträdelser utan ett separat undantagsregister.
 
 En kodgranskning kan inte ge dispens från kriteriet. Om ett mål varken
 uppfyller storlekskravet eller omfattas av ett normativt undantag krävs ett

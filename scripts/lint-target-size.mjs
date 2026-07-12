@@ -6,7 +6,6 @@ import { pathToFileURL } from 'node:url'
 import ts from 'typescript'
 
 const DEFAULT_ROOTS = ['app', 'components']
-const DEFAULT_BASELINE_PATH = 'scripts/target-size-policy-baseline.json'
 const SOURCE_EXTENSIONS = new Set(['.jsx', '.tsx'])
 const EXCLUDED_DIRECTORIES = new Set([
   '.git',
@@ -656,7 +655,6 @@ export function inspectSource(source, filePath) {
                 ? 'unresolved className needs a concrete target-size exception annotation'
                 : 'missing WCAG 2.5.8 target-size exception annotation'),
             filePath,
-            fingerprint: `${filePath}|${tagName}|${identity}`,
             identity,
             tagName,
             tokens: unresolvedClassExpression
@@ -704,66 +702,6 @@ export async function discoverFiles({
   return files.sort()
 }
 
-export function applyBaseline(diagnostics, baseline) {
-  const entries = baseline?.entries ?? []
-  const baselineErrors = []
-  const fingerprints = new Set()
-
-  for (const entry of entries) {
-    if (!entry?.fingerprint || fingerprints.has(entry.fingerprint)) {
-      baselineErrors.push('baseline entries need unique non-empty fingerprints')
-      continue
-    }
-    fingerprints.add(entry.fingerprint)
-    if (
-      !/^https:\/\/github\.com\/viscalyx\/Kravhantering\/issues\/\d+$/u.test(
-        entry.issue ?? '',
-      )
-    ) {
-      baselineErrors.push(
-        `${entry.fingerprint}: baseline entry needs an issue URL`,
-      )
-    }
-  }
-
-  const diagnosticFingerprintCounts = new Map()
-  for (const diagnostic of diagnostics) {
-    const count = diagnosticFingerprintCounts.get(diagnostic.fingerprint) ?? 0
-    diagnosticFingerprintCounts.set(diagnostic.fingerprint, count + 1)
-  }
-  const ambiguousDiagnosticFingerprints = new Set(
-    [...diagnosticFingerprintCounts]
-      .filter(([, count]) => count > 1)
-      .map(([fingerprint]) => fingerprint),
-  )
-  for (const fingerprint of ambiguousDiagnosticFingerprints) {
-    if (fingerprints.has(fingerprint)) {
-      baselineErrors.push(`${fingerprint}: diagnostic fingerprint is ambiguous`)
-    }
-  }
-
-  const diagnosticFingerprints = new Set(diagnosticFingerprintCounts.keys())
-  for (const fingerprint of fingerprints) {
-    if (!diagnosticFingerprints.has(fingerprint)) {
-      baselineErrors.push(`${fingerprint}: stale baseline entry`)
-    }
-  }
-
-  return {
-    activeBaseline: diagnostics.filter(
-      diagnostic =>
-        fingerprints.has(diagnostic.fingerprint) &&
-        !ambiguousDiagnosticFingerprints.has(diagnostic.fingerprint),
-    ),
-    baselineErrors,
-    diagnostics: diagnostics.filter(
-      diagnostic =>
-        !fingerprints.has(diagnostic.fingerprint) ||
-        ambiguousDiagnosticFingerprints.has(diagnostic.fingerprint),
-    ),
-  }
-}
-
 export function formatResults(result) {
   const lines = []
 
@@ -778,30 +716,13 @@ export function formatResults(result) {
     }
   }
 
-  if (result.baselineErrors.length > 0) {
-    lines.push('Target-size policy baseline errors:')
-    lines.push(...result.baselineErrors.map(error => `- ${error}`))
-  }
-
-  if (result.activeBaseline.length > 0) {
-    const baselineUnit =
-      result.activeBaseline.length === 1 ? 'entry' : 'entries'
-    lines.push(
-      `Target-size policy lint: ${result.activeBaseline.length} temporary issue-linked baseline ${baselineUnit} active.`,
-    )
-  }
-
   return `${lines.join('\n')}\n`
 }
 
 export async function runTargetSizeLint({
-  baselinePath = DEFAULT_BASELINE_PATH,
   cwd = process.cwd(),
   roots = DEFAULT_ROOTS,
 } = {}) {
-  const baseline = JSON.parse(
-    await fs.readFile(path.join(cwd, baselinePath), 'utf8'),
-  )
   const files = await discoverFiles({ cwd, roots })
   const diagnostics = []
 
@@ -810,7 +731,7 @@ export async function runTargetSizeLint({
     diagnostics.push(...inspectSource(source, filePath))
   }
 
-  return applyBaseline(diagnostics, baseline)
+  return { diagnostics }
 }
 
 export async function main(
@@ -828,18 +749,10 @@ export async function main(
     return
   }
 
-  const failed =
-    result.diagnostics.length > 0 || result.baselineErrors.length > 0
+  const failed = result.diagnostics.length > 0
   if (failed) processObj.stderr.write(formatResults(result))
-  else {
-    const baselineMessage =
-      result.activeBaseline.length > 0
-        ? ` ${result.activeBaseline.length} temporary issue-linked baseline entries remain.`
-        : ''
-    processObj.stdout.write(
-      `Target-size policy lint: no new issues found.${baselineMessage}\n`,
-    )
-  }
+  else
+    processObj.stdout.write('Target-size policy lint: no new issues found.\n')
   processObj.exit(failed ? 1 : 0)
 }
 
