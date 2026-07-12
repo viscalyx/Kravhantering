@@ -2281,7 +2281,7 @@ describe('RequirementsTable', () => {
     vi.useRealTimers()
   })
 
-  it('renders filter buttons with 44px touch targets', () => {
+  it('keeps filter buttons at the table action size', () => {
     render(
       <RequirementsTable
         filterValues={DEFAULT_FILTERS}
@@ -2298,7 +2298,7 @@ describe('RequirementsTable', () => {
     }
   })
 
-  it('applies 44px touch targets to standard filter popover actions', () => {
+  it('keeps standard filter popover actions at their row height', () => {
     render(
       <RequirementsTable
         filterValues={DEFAULT_FILTERS}
@@ -2333,7 +2333,7 @@ describe('RequirementsTable', () => {
     expect(optionRow?.className).toContain('min-h-11')
   })
 
-  it('applies 44px touch targets to grouped filter popover actions', () => {
+  it('keeps grouped filter popover actions at their row height', () => {
     render(
       <RequirementsTable
         filterValues={{ ...DEFAULT_FILTERS, qualityCharacteristicIds: [2] }}
@@ -2376,7 +2376,7 @@ describe('RequirementsTable', () => {
     expect(optionRow?.className).toContain('min-h-11')
   })
 
-  it('applies the minimum header touch target to the sortable button itself', () => {
+  it('sizes the sortable button instead of its header wrapper', () => {
     const { container } = render(
       <RequirementsTable
         filterValues={DEFAULT_FILTERS}
@@ -2805,7 +2805,7 @@ describe('RequirementsTable', () => {
     expect(bottomSegment?.style.height).toBe('48px')
   })
 
-  it('keeps clipped resize segments below 44px from expanding their hit area', () => {
+  it('keeps clipped resize segments within their visible height', () => {
     const { container } = render(<ControlledExpandedResizableTable />)
 
     syncResizeHandleMetrics(container)
@@ -3169,7 +3169,7 @@ describe('RequirementsTable', () => {
     ])
   })
 
-  it('applies the minimum touch target sizing to row action buttons', () => {
+  it('applies the table action size to row action buttons', () => {
     render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
 
     const action = screen.getByRole('button', { name: 'INT0001' })

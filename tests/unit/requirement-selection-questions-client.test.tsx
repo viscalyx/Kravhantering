@@ -2409,7 +2409,7 @@ describe('RequirementSelectionQuestionsClient', () => {
     ])
   })
 
-  it('keeps answer action controls at 44px minimum touch targets', async () => {
+  it('keeps answer action controls at their standard action size', async () => {
     const questions = [{ ...sampleQuestion, answers: [sampleAnswer] }]
 
     fetchMock.mockImplementation(async (url: string) => {

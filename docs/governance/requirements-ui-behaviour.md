@@ -538,7 +538,7 @@ down.
   appended in the same vertical rail.
 - That unique-requirement action rail also uses the same full-width button
   sizing rhythm as the library requirements specification-item rail, including
-  the shared 44px minimum touch target and stacked spacing.
+  the shared pointer-target policy and stacked spacing.
 - Edit and Delete for unique requirements are only enabled when
   **Användningsstatus** is **Inkluderad** and there is no pending deviation
   draft or review request. Otherwise the buttons stay disabled and expose a

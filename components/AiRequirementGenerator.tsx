@@ -1927,6 +1927,12 @@ export default function AiRequirementGenerator({
                             {image.name}
                             <button
                               aria-label={t('imageRemove')}
+                              className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-200 hover:text-secondary-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-secondary-400 dark:hover:bg-secondary-700 dark:hover:text-secondary-100"
+                              {...devMarker({
+                                context: 'ai-requirement-generator',
+                                name: 'button',
+                                value: 'remove image attachment',
+                              })}
                               onClick={() =>
                                 setImages(current =>
                                   current.filter(item => item.id !== image.id),

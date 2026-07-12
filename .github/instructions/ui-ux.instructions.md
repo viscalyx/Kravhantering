@@ -8,7 +8,32 @@ applyTo: '{components,app}/**/*.tsx'
 
 - Mobile-first: base styles for small screens, add `sm:`, `md:`, `lg:` for larger
 - All layouts must work from 320px to 1440px+ (single-column mobile, multi-column desktop)
-- Touch targets: buttons and links need `min-h-11 min-w-11` (44px) unless the target is inline in text, user-agent controls, or a particular size/presentation is essential
+- Pointer targets default to at least 24 by 24 CSS pixels, for example
+  `min-h-6 min-w-6`, under WCAG 2.2 SC 2.5.8.
+- Smaller custom targets are allowed only through a documented SC 2.5.8
+  `spacing`, `equivalent`, `inline`, `user-agent`, or `essential` exception.
+  Density preference is not an exception.
+- Put the exception and evidence immediately before the shared implementation:
+
+  ```tsx
+  {/* WCAG 2.5.8 target-size exception: spacing —
+      24 CSS-pixel circles do not intersect; verified by <test reference>. */}
+  ```
+
+- Require geometry tests for `spacing`, same-page alternative coverage for
+  `equivalent`, and an ADR or authoritative source for `essential`. Add focused
+  coverage for `inline` where practical. Confirm `user-agent` controls are
+  native and author-unmodified.
+- Ordinary inline text links and unmodified browser controls do not need
+  repetitive annotations. Annotate a shared custom component once, not every
+  rendered instance.
+- Do not use 44 CSS pixels as a product-wide minimum or recommendation. A
+  component may remain larger by design.
+- Code review cannot approve a target that satisfies neither size nor an
+  SC 2.5.8 exception. Link true nonconformance to the accountable operator's
+  legal and contractual decision; never label it WCAG-conforming.
+- `npm run lint:target-size` blocks new explicit sub-24 custom targets without
+  the canonical annotation. See ADR 0040.
 - Avoid fixed widths; use responsive/fluid sizing (`w-full`, `max-w-*`, `flex`, `grid`)
 - Fixed-format controls and data grids may use constrained or persisted widths
   when layout semantics require them.

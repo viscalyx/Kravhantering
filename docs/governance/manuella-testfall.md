@@ -711,6 +711,30 @@ HSA-id. När `Logga forensisk AI-säkerhetsdata` är på får
 `security-forensics` en matchande händelse med rått blockerat innehåll och
 matchade regeltermer.
 
+### REQ-15C: AI-assisterat författande annonserar och återhämtar fel
+
+**Steg:** Öppna AI-assisterat författande från kravbiblioteket med en
+skärmläsare, välj en Vision-modell och välj giltiga bilder tillsammans med en
+fil av otillåten typ så att urvalet överskrider gränsen på tre bilder. Starta
+Kontrollera att knappen `Ta bort bild` har minst 24 gånger 24 CSS-pixlars
+klickbar yta och synlig tangentbordsfokus. Starta sedan en generering som får
+ett terminalt leverantörsfel. Starta en ny
+generering som får ett valideringsfel, välj `Reparera JSON`, låt första
+reparationen misslyckas och låt nästa lyckas. Avbryt slutligen en pågående
+generering genom att stänga dialogen.
+
+**Förväntat resultat:** De giltiga bilder som ryms ligger kvar och bildfelet
+är knutet till `Välj bilder`; skärmläsaren annonserar en sammanfattad feltext
+som både beskriver den otillåtna filtypen och gränsen på tre bilder. Vid det
+Knappen `Ta bort bild` har minst 24 gånger 24 CSS-pixlars klickbar yta och
+visar ett synligt fokusläge. Vid det första terminala felet flyttas fokus till rubriken
+`Genereringen misslyckades`, medan fel vid omförsök och reparation behåller
+fokus på åtgärdsknappen. Råresultat, valideringsfel, behov, modell och
+bifogade bilder ligger kvar tills användaren ändrar dem. En lyckad reparation
+annonserar status en gång och flyttar fokus till resultatets rubrik. Endast
+sanerade feltexter visas eller annonseras; rått modell- eller leverantörsinnehåll
+visas inte. Att avbryta genom att stänga dialogen ger ingen felannonsering.
+
 ### REQ-16: Admin Center stänger av AI-kravgenerering
 
 **Steg:** Logga in som `Admin`, öppna `/sv/admin?tab=ai`, stäng av
