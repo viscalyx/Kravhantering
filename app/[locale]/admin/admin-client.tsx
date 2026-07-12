@@ -20,7 +20,6 @@ import {
   FileText,
   FolderTree,
   Gauge,
-  HelpCircle,
   Info,
   KeyRound,
   Layers,
@@ -57,6 +56,7 @@ import ActionAuditLogView, {
 } from '@/components/admin/ActionAuditLogView'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DirtyStateButton from '@/components/DirtyStateButton'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useDataSubjectExportDownload } from '@/components/privacy/useDataSubjectExportDownload'
 import { Link, useRouter } from '@/i18n/routing'
@@ -1377,16 +1377,12 @@ function AiSettingsPanel() {
                   >
                     {ta('ai.requirementGenerationEnabled')}
                   </label>
-                  <button
-                    aria-controls={helpId}
-                    aria-expanded={isHelpOpen}
-                    aria-label={`${tc('help')}: ${ta('ai.requirementGenerationEnabled')}`}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                  <FieldHelpButton
+                    controls={helpId}
+                    expanded={isHelpOpen}
+                    label={`${tc('help')}: ${ta('ai.requirementGenerationEnabled')}`}
                     onClick={() => setIsHelpOpen(open => !open)}
-                    type="button"
-                  >
-                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                  </button>
+                  />
                 </div>
                 <AnimatedHelpPanel id={helpId} isOpen={isHelpOpen}>
                   {ta('ai.fieldHelp.requirementGenerationEnabled')}
@@ -1459,16 +1455,12 @@ function AiSettingsPanel() {
                   >
                     {ta('ai.aiSafetyForensicLogging')}
                   </label>
-                  <button
-                    aria-controls={forensicLoggingHelpId}
-                    aria-expanded={isForensicLoggingHelpOpen}
-                    aria-label={`${tc('help')}: ${ta('ai.aiSafetyForensicLogging')}`}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                  <FieldHelpButton
+                    controls={forensicLoggingHelpId}
+                    expanded={isForensicLoggingHelpOpen}
+                    label={`${tc('help')}: ${ta('ai.aiSafetyForensicLogging')}`}
                     onClick={() => setIsForensicLoggingHelpOpen(open => !open)}
-                    type="button"
-                  >
-                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                  </button>
+                  />
                 </div>
                 <AnimatedHelpPanel
                   id={forensicLoggingHelpId}
@@ -1527,16 +1519,12 @@ function AiSettingsPanel() {
                     >
                       {ta('ai.safetyRuleCacheTtl')}
                     </label>
-                    <button
-                      aria-controls={cacheTtlHelpId}
-                      aria-expanded={isCacheTtlHelpOpen}
-                      aria-label={`${tc('help')}: ${ta('ai.safetyRuleCacheTtl')}`}
-                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                    <FieldHelpButton
+                      controls={cacheTtlHelpId}
+                      expanded={isCacheTtlHelpOpen}
+                      label={`${tc('help')}: ${ta('ai.safetyRuleCacheTtl')}`}
                       onClick={() => setIsCacheTtlHelpOpen(open => !open)}
-                      type="button"
-                    >
-                      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                    </button>
+                    />
                   </div>
                   <AnimatedHelpPanel
                     id={cacheTtlHelpId}
@@ -1613,16 +1601,12 @@ function AiSettingsPanel() {
                   <h4 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
                     {ta('ai.safetyRulesTitle')}
                   </h4>
-                  <button
-                    aria-controls={rulesHelpId}
-                    aria-expanded={isRulesHelpOpen}
-                    aria-label={`${tc('help')}: ${ta('ai.safetyRulesTitle')}`}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                  <FieldHelpButton
+                    controls={rulesHelpId}
+                    expanded={isRulesHelpOpen}
+                    label={`${tc('help')}: ${ta('ai.safetyRulesTitle')}`}
                     onClick={() => setIsRulesHelpOpen(open => !open)}
-                    type="button"
-                  >
-                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                  </button>
+                  />
                 </div>
                 <AnimatedHelpPanel id={rulesHelpId} isOpen={isRulesHelpOpen}>
                   {ta('ai.fieldHelp.safetyRules')}
@@ -2001,16 +1985,12 @@ function AiSettingsPanel() {
                     >
                       {ta('ai.mcpMaxRequestLimit')}
                     </label>
-                    <button
-                      aria-controls={mcpLimitHelpId}
-                      aria-expanded={isMcpLimitHelpOpen}
-                      aria-label={`${tc('help')}: ${ta('ai.mcpMaxRequestLimit')}`}
-                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                    <FieldHelpButton
+                      controls={mcpLimitHelpId}
+                      expanded={isMcpLimitHelpOpen}
+                      label={`${tc('help')}: ${ta('ai.mcpMaxRequestLimit')}`}
                       onClick={() => setIsMcpLimitHelpOpen(open => !open)}
-                      type="button"
-                    >
-                      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                    </button>
+                    />
                   </div>
                   <AnimatedHelpPanel
                     id={mcpLimitHelpId}
@@ -2135,16 +2115,12 @@ function AiSettingsPanel() {
                     >
                       {ta('ai.mcpImportMaxRows')}
                     </label>
-                    <button
-                      aria-controls={mcpImportRowsHelpId}
-                      aria-expanded={isMcpImportRowsHelpOpen}
-                      aria-label={`${tc('help')}: ${ta('ai.mcpImportMaxRows')}`}
-                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                    <FieldHelpButton
+                      controls={mcpImportRowsHelpId}
+                      expanded={isMcpImportRowsHelpOpen}
+                      label={`${tc('help')}: ${ta('ai.mcpImportMaxRows')}`}
                       onClick={() => setIsMcpImportRowsHelpOpen(open => !open)}
-                      type="button"
-                    >
-                      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                    </button>
+                    />
                   </div>
                   <AnimatedHelpPanel
                     id={mcpImportRowsHelpId}
@@ -2215,16 +2191,12 @@ function AiSettingsPanel() {
                     >
                       {ta('ai.mcpImportValidationTtl')}
                     </label>
-                    <button
-                      aria-controls={mcpImportTtlHelpId}
-                      aria-expanded={isMcpImportTtlHelpOpen}
-                      aria-label={`${tc('help')}: ${ta('ai.mcpImportValidationTtl')}`}
-                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                    <FieldHelpButton
+                      controls={mcpImportTtlHelpId}
+                      expanded={isMcpImportTtlHelpOpen}
+                      label={`${tc('help')}: ${ta('ai.mcpImportValidationTtl')}`}
                       onClick={() => setIsMcpImportTtlHelpOpen(open => !open)}
-                      type="button"
-                    >
-                      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                    </button>
+                    />
                   </div>
                   <AnimatedHelpPanel
                     id={mcpImportTtlHelpId}
@@ -2482,18 +2454,14 @@ function IdentitySettingsPanel() {
   }
 
   const inlineHelpButton = (key: string, label: string, controls: string) => (
-    <button
-      aria-controls={controls}
-      aria-expanded={openIdentityHelp === key}
-      aria-label={`${tc('help')}: ${label}`}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+    <FieldHelpButton
+      controls={controls}
+      expanded={openIdentityHelp === key}
+      label={`${tc('help')}: ${label}`}
       onClick={() =>
         setOpenIdentityHelp(current => (current === key ? null : key))
       }
-      type="button"
-    >
-      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-    </button>
+    />
   )
 
   const inlineHelpPanel = (
@@ -2513,19 +2481,14 @@ function IdentitySettingsPanel() {
     translationKey: Parameters<typeof ta>[0],
   ) => (
     <span className="relative inline-flex">
-      <button
-        aria-controls={id}
-        aria-describedby={openIdentityHelp === key ? id : undefined}
-        aria-expanded={openIdentityHelp === key}
-        aria-label={`${tc('help')}: ${label}`}
-        className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+      <FieldHelpButton
+        controls={id}
+        expanded={openIdentityHelp === key}
+        label={`${tc('help')}: ${label}`}
         onClick={() =>
           setOpenIdentityHelp(current => (current === key ? null : key))
         }
-        type="button"
-      >
-        <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-      </button>
+      />
       {openIdentityHelp === key ? (
         <span
           className="absolute right-0 top-full z-30 mt-2 w-64 max-w-[min(16rem,calc(100vw-2rem))] rounded-lg border border-secondary-200 bg-white px-3 py-2 text-left text-xs text-secondary-600 shadow-lg dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-300"
@@ -3024,16 +2987,12 @@ function PrivacyErasurePanel() {
   }
 
   const helpButton = (field: PrivacyHelpField, label: string) => (
-    <button
-      aria-controls={`privacy-help-${field}`}
-      aria-expanded={openHelp.has(field)}
-      aria-label={`${tc('help')}: ${label}`}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+    <FieldHelpButton
+      controls={`privacy-help-${field}`}
+      expanded={openHelp.has(field)}
+      label={`${tc('help')}: ${label}`}
       onClick={() => toggleHelp(field)}
-      type="button"
-    >
-      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-    </button>
+    />
   )
 
   const helpPanel = (field: PrivacyHelpField) => (
@@ -4721,21 +4680,12 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                 >
                   {ta('accessReview.externalEvidenceReference')}
                 </label>
-                <button
-                  aria-controls="access-review-external-evidence-help"
-                  aria-describedby={
-                    isExternalEvidenceHelpOpen
-                      ? 'access-review-external-evidence-help'
-                      : undefined
-                  }
-                  aria-expanded={isExternalEvidenceHelpOpen}
-                  aria-label={`${tc('help')}: ${ta('accessReview.externalEvidenceReference')}`}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                <FieldHelpButton
+                  controls="access-review-external-evidence-help"
+                  expanded={isExternalEvidenceHelpOpen}
+                  label={`${tc('help')}: ${ta('accessReview.externalEvidenceReference')}`}
                   onClick={() => setIsExternalEvidenceHelpOpen(open => !open)}
-                  type="button"
-                >
-                  <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                </button>
+                />
               </div>
               <AnimatedHelpPanel
                 id="access-review-external-evidence-help"

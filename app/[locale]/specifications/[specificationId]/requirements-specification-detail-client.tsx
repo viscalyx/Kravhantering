@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Download,
   Ellipsis,
-  HelpCircle,
   Pencil,
   Plus,
   Printer,
@@ -36,6 +35,7 @@ import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
 import DirtyStateButton from '@/components/DirtyStateButton'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementsImportDialog, {
   type InitialRequirementsImport,
@@ -667,17 +667,13 @@ export default function KravunderlagDetailClient({
     label: string,
     { disabled = false }: { disabled?: boolean } = {},
   ) => (
-    <button
-      aria-controls={`help-${field}`}
-      aria-expanded={openHelp.has(field)}
-      aria-label={`${tc('help')}: ${label}`}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-secondary-400 dark:hover:text-primary-400 dark:disabled:hover:text-secondary-400"
+    <FieldHelpButton
+      controls={`help-${field}`}
       disabled={disabled}
+      expanded={openHelp.has(field)}
+      label={`${tc('help')}: ${label}`}
       onClick={() => toggleHelp(field)}
-      type="button"
-    >
-      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-    </button>
+    />
   )
 
   const helpPanel = (helpKey: string, field: string) => (

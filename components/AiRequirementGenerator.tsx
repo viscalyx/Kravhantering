@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  HelpCircle,
   ImagePlus,
   Loader2,
   Lock,
@@ -29,6 +28,7 @@ import { createPortal } from 'react-dom'
 import AiRequestExplanationDialog from '@/components/AiRequestExplanationDialog'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import { modalResizableTextareaRows4ClassName } from '@/components/modal-textarea-class'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import SafeMarkdown from '@/components/SafeMarkdown'
@@ -1947,16 +1947,12 @@ export default function AiRequirementGenerator({
                     >
                       {t('topicLabel')}
                     </label>
-                    <button
-                      aria-controls="ai-need-help"
-                      aria-expanded={needHelpOpen}
-                      aria-label={`${tc('help')}: ${t('topicLabel')}`}
-                      className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                    <FieldHelpButton
+                      controls="ai-need-help"
+                      expanded={needHelpOpen}
+                      label={`${tc('help')}: ${t('topicLabel')}`}
                       onClick={() => setNeedHelpOpen(open => !open)}
-                      type="button"
-                    >
-                      <HelpCircle aria-hidden className="h-4 w-4" />
-                    </button>
+                    />
                   </div>
                   <AnimatedHelpPanel id="ai-need-help" isOpen={needHelpOpen}>
                     {t.rich('topicHelp', richTags)}
@@ -1974,16 +1970,12 @@ export default function AiRequirementGenerator({
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm font-medium text-secondary-800 dark:text-secondary-100">
                       <span>{t('imageAttachLabel')}</span>
-                      <button
-                        aria-controls="ai-image-help"
-                        aria-expanded={imageHelpOpen}
-                        aria-label={`${tc('help')}: ${t('imageAttachLabel')}`}
-                        className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                      <FieldHelpButton
+                        controls="ai-image-help"
+                        expanded={imageHelpOpen}
+                        label={`${tc('help')}: ${t('imageAttachLabel')}`}
                         onClick={() => setImageHelpOpen(open => !open)}
-                        type="button"
-                      >
-                        <HelpCircle aria-hidden className="h-4 w-4" />
-                      </button>
+                      />
                     </div>
                     <AnimatedHelpPanel
                       id="ai-image-help"
@@ -2085,16 +2077,12 @@ export default function AiRequirementGenerator({
                           {t('areaLabel')}
                           <RequiredFieldMarker />
                         </label>
-                        <button
-                          aria-controls="ai-area-help"
-                          aria-expanded={areaHelpOpen}
-                          aria-label={`${tc('help')}: ${t('areaLabel')}`}
-                          className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                        <FieldHelpButton
+                          controls="ai-area-help"
+                          expanded={areaHelpOpen}
+                          label={`${tc('help')}: ${t('areaLabel')}`}
                           onClick={() => setAreaHelpOpen(open => !open)}
-                          type="button"
-                        >
-                          <HelpCircle aria-hidden className="h-4 w-4" />
-                        </button>
+                        />
                       </div>
                       <AnimatedHelpPanel
                         id="ai-area-help"
@@ -2135,16 +2123,12 @@ export default function AiRequirementGenerator({
                       >
                         {t('candidateCount')}
                       </label>
-                      <button
-                        aria-controls="ai-candidate-count-help"
-                        aria-expanded={candidateCountHelpOpen}
-                        aria-label={t('candidateCountHelp')}
-                        className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                      <FieldHelpButton
+                        controls="ai-candidate-count-help"
+                        expanded={candidateCountHelpOpen}
+                        label={t('candidateCountHelp')}
                         onClick={() => setCandidateCountHelpOpen(open => !open)}
-                        type="button"
-                      >
-                        <HelpCircle aria-hidden className="h-4 w-4" />
-                      </button>
+                      />
                     </div>
                     <AnimatedHelpPanel
                       id="ai-candidate-count-help"
@@ -2184,16 +2168,12 @@ export default function AiRequirementGenerator({
                         <div className="flex min-w-0 items-center justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-secondary-800 dark:text-secondary-100">
                             <span className="truncate">{t('modelLabel')}</span>
-                            <button
-                              aria-controls="ai-model-help"
-                              aria-expanded={modelHelpOpen}
-                              aria-label={`${tc('help')}: ${t('modelLabel')}`}
-                              className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                            <FieldHelpButton
+                              controls="ai-model-help"
+                              expanded={modelHelpOpen}
+                              label={`${tc('help')}: ${t('modelLabel')}`}
                               onClick={() => setModelHelpOpen(open => !open)}
-                              type="button"
-                            >
-                              <HelpCircle aria-hidden className="h-4 w-4" />
-                            </button>
+                            />
                           </div>
                           {selectedModelPrice ? (
                             <output
@@ -2271,16 +2251,12 @@ export default function AiRequirementGenerator({
                         >
                           {t('reasoningEffortLabel')}
                         </label>
-                        <button
-                          aria-controls="ai-reasoning-help"
-                          aria-expanded={reasoningHelpOpen}
-                          aria-label={`${tc('help')}: ${t('reasoningEffortLabel')}`}
-                          className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                        <FieldHelpButton
+                          controls="ai-reasoning-help"
+                          expanded={reasoningHelpOpen}
+                          label={`${tc('help')}: ${t('reasoningEffortLabel')}`}
                           onClick={() => setReasoningHelpOpen(open => !open)}
-                          type="button"
-                        >
-                          <HelpCircle aria-hidden className="h-4 w-4" />
-                        </button>
+                        />
                       </div>
                       <AnimatedHelpPanel
                         id="ai-reasoning-help"

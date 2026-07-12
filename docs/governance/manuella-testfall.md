@@ -18,6 +18,7 @@ vanlig `curl` inte använder samma lokala autentiseringsstöd.
 - [Konfigurerade användare](#konfigurerade-användare)
 - [Allmän förberedelse](#allmän-förberedelse)
 - [Navigering](#navigering)
+- [Tillgänglighet](#tillgänglighet)
 - [Autentisering och behörighet](#autentisering-och-behörighet)
   - [AUTH-01 till AUTH-12](#auth-01-logga-in-via-keycloak)
   - [AUTHZ-00 till AUTHZ-10](#authz-00-fas-0-testdata-och-identiteter)
@@ -94,6 +95,21 @@ temaväxling och användarmeny har samma horisontella fotavtryck och linjerar me
 navigeringen visar `panel-left-open`, och knappen för att stänga eller fälla
 ihop navigeringen visar `panel-left-close` på samma övre vänstra placering som
 öppningsknappen.
+
+## Tillgänglighet
+
+### A11Y-01: enhetliga hjälpkontroller är åtkomliga
+
+**Steg:** Öppna ett formulär med en hjälpknapp, till exempel ett nytt krav, och
+flytta fokus till hjälpknappen med tangentbordet. Aktivera den med Enter och
+kontrollera hjälppanelen. Upprepa i en avstegs- eller
+förbättringsförslagsmodal. Kontrollera i webbläsarens inspektionsverktyg att
+hjälpknappens klickbara yta är minst 24 gånger 24 CSS-pixlar.
+
+**Förväntat resultat:** Hjälpknappen har ett begripligt tillgänglighetsnamn,
+synlig tangentbordsfokus och växlar hjälppanelen. När panelen är öppen är den
+kopplad till knappen för hjälpmedel. Hjälpknappens aktiveringsyta är minst
+24 gånger 24 CSS-pixlar i ljust och mörkt tema.
 
 ## Autentisering och behörighet
 

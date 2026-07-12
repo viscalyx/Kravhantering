@@ -1,6 +1,6 @@
 'use client'
 
-import { HelpCircle, ListChecks } from 'lucide-react'
+import { ListChecks } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   type CSSProperties,
@@ -12,6 +12,7 @@ import {
   useState,
 } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import FormModal from '@/components/FormModal'
 import QualityCharacteristicSelectOptions from '@/components/QualityCharacteristicSelectOptions'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
@@ -230,17 +231,13 @@ export default function RequirementFormFields({
     label: string,
     buttonRef?: Ref<HTMLButtonElement>,
   ) => (
-    <button
-      aria-controls={`help-${field}`}
-      aria-expanded={openHelp.has(field)}
-      aria-label={`${tc('help')}: ${label}`}
-      className="min-h-11 min-w-11 inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+    <FieldHelpButton
+      controls={`help-${field}`}
+      expanded={openHelp.has(field)}
+      label={`${tc('help')}: ${label}`}
       onClick={() => toggleHelp(field)}
       ref={buttonRef}
-      type="button"
-    >
-      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-    </button>
+    />
   )
 
   const helpPanel = (helpKey: string, field: string) => (
