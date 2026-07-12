@@ -581,10 +581,15 @@ läslig.
 
 ### REQ-03: filtrera på krav-id och rensa filter
 
-**Steg:** Sök efter `INT0001`, kontrollera träff, klicka `Rensa` och kontrollera
-att fler krav visas. Aktivera och avaktivera även ett filter för kravpaket.
+**Steg:** Öppna filtret för `Krav-ID`, skriv `INT0001`, kontrollera träff, öppna
+filtret igen och klicka `Rensa` i sökfältet. Kontrollera att fler krav visas.
+Upprepa med smal och bred viewport och kontrollera i webbläsarens
+inspektionsverktyg att knappen `Rensa` i sökfältet har en klickbar yta på minst
+24 gånger 24 CSS-pixlar. Aktivera och avaktivera även ett filter för kravpaket.
 
 **Förväntat resultat:** Filter begränsar listan och rensning återställer den.
+Sökfältets rensningsknapp har en klickbar yta på minst 24 gånger 24 CSS-pixlar
+vid både smal och bred viewport.
 Filtret för kravpaket och dess rensningsknapp har inte överlappande 24
 CSS-pixel-målcirklar.
 

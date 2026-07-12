@@ -826,7 +826,7 @@ function SearchFilterPopover({
               />
               <input
                 aria-label={label}
-                className="w-full pl-7 pr-7 py-1.5 text-xs rounded-lg border bg-white dark:bg-secondary-800/50 placeholder:text-secondary-400 focus:outline-none focus:ring-1 focus:ring-primary-400/50 focus:border-primary-500 transition-all"
+                className="w-full pl-7 pr-8 py-1.5 text-xs rounded-lg border bg-white dark:bg-secondary-800/50 placeholder:text-secondary-400 focus:outline-none focus:ring-1 focus:ring-primary-400/50 focus:border-primary-500 transition-all"
                 onChange={e => {
                   setLocal(e.target.value)
                   commit(e.target.value)
@@ -848,7 +848,7 @@ function SearchFilterPopover({
               {local && (
                 <button
                   aria-label={tt('clear')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-secondary-400 hover:text-secondary-600"
+                  className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center text-secondary-400 hover:text-secondary-600"
                   onClick={() => {
                     setLocal('')
                     clearPendingCommit()
