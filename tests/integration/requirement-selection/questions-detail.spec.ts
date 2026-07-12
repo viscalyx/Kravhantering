@@ -98,12 +98,51 @@ test.describe('Requirement selection question detail preview', () => {
         ]
 
         for (const control of removalControls) {
+          const pill = control.locator('xpath=parent::span')
+          const neighboringLabel = control.locator(
+            'xpath=preceding-sibling::span[1]',
+          )
+
           await control.scrollIntoViewIfNeeded()
-          await expect(control).toBeVisible()
-          const bounds = await control.boundingBox()
-          expect(bounds).not.toBeNull()
-          expect(bounds?.height).toBeGreaterThanOrEqual(24)
-          expect(bounds?.width).toBeGreaterThanOrEqual(24)
+          await expect
+            .poll(async () => (await control.boundingBox())?.height ?? 0)
+            .toBeGreaterThanOrEqual(24)
+          await expect
+            .poll(async () => (await control.boundingBox())?.width ?? 0)
+            .toBeGreaterThanOrEqual(24)
+          await expect
+            .poll(async () => {
+              const [controlBounds, pillBounds, neighboringLabelBounds] =
+                await Promise.all([
+                  control.boundingBox(),
+                  pill.boundingBox(),
+                  neighboringLabel.boundingBox(),
+                ])
+
+              if (!controlBounds || !pillBounds || !neighboringLabelBounds) {
+                return false
+              }
+
+              const controlIsInsidePill =
+                controlBounds.x >= pillBounds.x &&
+                controlBounds.y >= pillBounds.y &&
+                controlBounds.x + controlBounds.width <=
+                  pillBounds.x + pillBounds.width &&
+                controlBounds.y + controlBounds.height <=
+                  pillBounds.y + pillBounds.height
+              const overlapsNeighboringLabel =
+                controlBounds.x <
+                  neighboringLabelBounds.x + neighboringLabelBounds.width &&
+                controlBounds.x + controlBounds.width >
+                  neighboringLabelBounds.x &&
+                controlBounds.y <
+                  neighboringLabelBounds.y + neighboringLabelBounds.height &&
+                controlBounds.y + controlBounds.height >
+                  neighboringLabelBounds.y
+
+              return controlIsInsidePill && !overlapsNeighboringLabel
+            })
+            .toBe(true)
         }
       })
     }
