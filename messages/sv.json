@@ -2388,7 +2388,6 @@
     "createSelected": "Förhandsgranska krav i import ({count})",
     "createConfirm": "{count, plural, one {Skapa # krav i kravområde {area}?} other {Skapa # krav i kravområde {area}?}}",
     "createError": "Kunde inte skapa krav",
-    "generationFailed": "Genereringen misslyckades",
     "noModels": "Inga modeller tillgängliga",
     "noApiKey": "OpenRouter API-nyckel saknas",
     "insufficientCredits": "Otillräcklig kredit hos OpenRouter",

@@ -2388,7 +2388,6 @@
     "createSelected": "Preview requirements in import ({count})",
     "createConfirm": "{count, plural, one {Create # requirement in requirement area {area}?} other {Create # requirements in requirement area {area}?}}",
     "createError": "Failed to create requirements",
-    "generationFailed": "Generation failed",
     "noModels": "No models available",
     "noApiKey": "OpenRouter API key not configured",
     "insufficientCredits": "Insufficient OpenRouter credits",
