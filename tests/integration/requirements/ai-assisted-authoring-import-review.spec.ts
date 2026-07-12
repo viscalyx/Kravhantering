@@ -432,6 +432,8 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     await expect(dialog.getByRole('alert')).toContainText(
       'Du kan bifoga upp till 3 bilder.',
     )
+    await dialog.getByRole('button', { name: 'Ta bort bild' }).last().click()
+    await expect(dialog.locator('#ai-image-validation-error')).toHaveCount(0)
   })
 
   await test.step('initial generation failure', async () => {

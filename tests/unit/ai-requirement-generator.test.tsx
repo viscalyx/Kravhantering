@@ -1253,6 +1253,61 @@ describe('AiRequirementGenerator', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(imageError.textContent)
   })
 
+  it('clears the image capacity error after an attached image is removed', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return visionModelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.click(screen.getByLabelText('capabilityVision'))
+
+    const imageButton = await screen.findByRole('button', {
+      name: 'imageSelectButton',
+    })
+    const fileInput =
+      document.querySelector<HTMLInputElement>('input[type="file"]')
+    expect(fileInput).not.toBeNull()
+
+    fireEvent.change(fileInput as HTMLInputElement, {
+      target: {
+        files: [
+          new File(['image'], 'diagram.png', { type: 'image/png' }),
+          new File(['image'], 'diagram-2.png', { type: 'image/png' }),
+          new File(['image'], 'diagram-3.png', { type: 'image/png' }),
+        ],
+      },
+    })
+
+    const removeButtons = await screen.findAllByRole('button', {
+      name: 'imageRemove',
+    })
+    expect(removeButtons).toHaveLength(3)
+
+    await userEvent.click(imageButton)
+    expect(
+      await screen.findByText('You can attach up to 3 images.', {
+        selector: '#ai-image-validation-error',
+      }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(removeButtons[0])
+
+    await waitFor(() => {
+      expect(imageButton).not.toHaveAttribute('aria-describedby')
+      expect(
+        screen.queryByText('You can attach up to 3 images.', {
+          selector: '#ai-image-validation-error',
+        }),
+      ).not.toBeInTheDocument()
+    })
+  })
+
   it('provides a 24px target for removing an attached image', async () => {
     mockFetch.mockImplementation(async (url: string) => {
       if (typeof url === 'string' && url.startsWith('/api/ai/models')) {

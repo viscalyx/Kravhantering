@@ -2002,11 +2002,12 @@ export default function AiRequirementGenerator({
                                 name: 'button',
                                 value: 'remove image attachment',
                               })}
-                              onClick={() =>
+                              onClick={() => {
                                 setImages(current =>
                                   current.filter(item => item.id !== image.id),
                                 )
-                              }
+                                setImageError(null)
+                              }}
                               type="button"
                             >
                               <X aria-hidden className="h-3 w-3" />
