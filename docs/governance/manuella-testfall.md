@@ -703,7 +703,7 @@ respektive kravet och aktivera vardera knappen. Avbryt sedan redigeringen utan
 att spara.
 
 **Förväntat resultat:** Båda knapparna har tydliga tillgängliga namn, synlig
-fokus markering och går att använda med tangentbord. Valet tas bort från det
+fokusmarkering och går att använda med tangentbord. Valet tas bort från det
 aktuella svaret utan att kravpaketet eller kravet tas bort från kravbiblioteket.
 
 ### REQ-15: AI-kravgenerator lämnar kandidater till importgranskning
