@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { okResponse } from './test-helpers'
 
@@ -220,7 +221,9 @@ describe('PriorityLevelsClient', () => {
         url === '/api/priority-levels/1' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     )
-    const body = JSON.parse(String((putCall?.[1] as RequestInit).body)) as {
+    const body = JSON.parse(
+      String((putCall?.[1] as RequestInit | undefined)?.body),
+    ) as {
       sortOrder: number | null
     }
     expect(body.sortOrder).toBeNull()
@@ -283,6 +286,7 @@ describe('PriorityLevelsClient', () => {
   })
 
   it('closes edit form on cancel', async () => {
+    const user = userEvent.setup()
     render(<PriorityLevelsClient />)
     await waitFor(() => {
       expect(screen.getByText('Low')).toBeInTheDocument()
@@ -292,8 +296,10 @@ describe('PriorityLevelsClient', () => {
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
+    await user.click(screen.getByRole('button', { name: /common\.cancel/i }))
 
-    expect(screen.queryByLabelText(/priorityLevelAdmin\.name.+SV/)).toBeNull()
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/priorityLevelAdmin\.name.+SV/)).toBeNull()
+    })
   })
 })

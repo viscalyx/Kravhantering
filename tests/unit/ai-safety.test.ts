@@ -410,7 +410,7 @@ describe('AI safety screening', () => {
       })
       expect(forensicEvent?.request).not.toHaveProperty('requestId')
       expect(forensicEvent?.eventId).toBe(
-        (auditEvent?.detail as Record<string, unknown>).eventId,
+        (auditEvent?.detail as Record<string, unknown> | undefined)?.eventId,
       )
       expect(JSON.stringify(forensicEvent)).toContain('unsafe-output-secret')
     } finally {

@@ -363,7 +363,9 @@ describe('RequirementForm', () => {
         c[0] === '/api/requirements' &&
         (c[1] as RequestInit)?.method === 'POST',
     )
-    const body = JSON.parse((postCall?.[1] as RequestInit).body as string)
+    const body = JSON.parse(
+      (postCall?.[1] as RequestInit | undefined)?.body as string,
+    )
     expect(body).toHaveProperty('verifiable', false)
 
     await waitFor(() => {
@@ -424,7 +426,9 @@ describe('RequirementForm', () => {
         c[0] === '/api/requirements/5' &&
         (c[1] as RequestInit)?.method === 'PUT',
     )
-    const body = JSON.parse((putCall?.[1] as RequestInit).body as string)
+    const body = JSON.parse(
+      (putCall?.[1] as RequestInit | undefined)?.body as string,
+    )
     expect(body.baseRevisionToken).toBe('11111111-1111-4111-8111-111111111111')
     expect(body.baseVersionId).toBe(10)
   })

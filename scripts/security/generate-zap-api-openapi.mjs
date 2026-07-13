@@ -2,7 +2,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import yaml from 'js-yaml'
+import { load as loadYaml } from 'js-yaml'
 
 export const DEFAULT_SOURCE = 'openapi/requirements-api.yaml'
 export const DEFAULT_OUTPUT = 'test-results/security-dast-api/openapi.json'
@@ -112,7 +112,7 @@ export function generateZapApiOpenApi({
   source = DEFAULT_SOURCE,
 } = {}) {
   const raw = fsImpl.readFileSync(source, 'utf8')
-  const document = yaml.load(raw)
+  const document = loadYaml(raw)
   const filtered = filterOpenApiDocument(document, allowedOperations)
   fsImpl.mkdirSync(path.dirname(output), { recursive: true })
   fsImpl.writeFileSync(output, `${JSON.stringify(filtered, null, 2)}\n`)

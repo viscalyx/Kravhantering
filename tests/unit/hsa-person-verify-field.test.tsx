@@ -192,7 +192,9 @@ describe('HsaPersonVerifyField', () => {
       )
       expect(verifyCall).toBeTruthy()
       expect(
-        JSON.parse((verifyCall?.[1] as RequestInit).body as string),
+        JSON.parse(
+          (verifyCall?.[1] as RequestInit | undefined)?.body as string,
+        ),
       ).toEqual(expect.objectContaining({ hsaId: 'SE5560000001-new1' }))
     })
   })
@@ -275,7 +277,9 @@ describe('HsaPersonVerifyField', () => {
       )
       expect(verifyCall).toBeTruthy()
       expect(
-        JSON.parse((verifyCall?.[1] as RequestInit).body as string),
+        JSON.parse(
+          (verifyCall?.[1] as RequestInit | undefined)?.body as string,
+        ),
       ).toEqual(
         expect.objectContaining({
           hsaId: 'SE5560000001-new1',
