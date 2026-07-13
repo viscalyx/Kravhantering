@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, assert, describe, expect, it, vi } from 'vitest'
 import HsaPersonVerifyField from '@/components/HsaPersonVerifyField'
 
 vi.mock('next-intl', () => ({
@@ -190,10 +190,16 @@ describe('HsaPersonVerifyField', () => {
       const verifyCall = fetchMock.mock.calls.find(
         ([url]) => url === '/api/requirement-responsibility-people/verify',
       )
-      expect(verifyCall).toBeTruthy()
-      expect(
-        JSON.parse((verifyCall?.[1] as RequestInit).body as string),
-      ).toEqual(expect.objectContaining({ hsaId: 'SE5560000001-new1' }))
+      assert(verifyCall, 'Expected a verification request')
+      const verifyRequest = verifyCall[1]
+      assert(verifyRequest, 'Expected verification request options')
+      assert(
+        typeof verifyRequest.body === 'string',
+        'Expected verification request body to be a string',
+      )
+      expect(JSON.parse(verifyRequest.body)).toEqual(
+        expect.objectContaining({ hsaId: 'SE5560000001-new1' }),
+      )
     })
   })
 
@@ -273,10 +279,14 @@ describe('HsaPersonVerifyField', () => {
       const verifyCall = fetchMock.mock.calls.find(
         ([url]) => url === '/api/requirement-responsibility-people/verify',
       )
-      expect(verifyCall).toBeTruthy()
-      expect(
-        JSON.parse((verifyCall?.[1] as RequestInit).body as string),
-      ).toEqual(
+      assert(verifyCall, 'Expected a verification request')
+      const verifyRequest = verifyCall[1]
+      assert(verifyRequest, 'Expected verification request options')
+      assert(
+        typeof verifyRequest.body === 'string',
+        'Expected verification request body to be a string',
+      )
+      expect(JSON.parse(verifyRequest.body)).toEqual(
         expect.objectContaining({
           hsaId: 'SE5560000001-new1',
           mode: 'refresh',

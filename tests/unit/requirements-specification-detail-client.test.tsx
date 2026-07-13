@@ -2068,7 +2068,9 @@ describe('RequirementsSpecificationDetailClient', () => {
         url === '/api/requirements-specifications/8/needs-references' &&
         (init as RequestInit | undefined)?.method === 'POST',
     )
-    expect(JSON.parse(String((postCall?.[1] as RequestInit).body))).toEqual({
+    expect(
+      JSON.parse(String((postCall?.[1] as RequestInit | undefined)?.body)),
+    ).toEqual({
       description: 'Access management work',
       text: 'IAM-42',
     })

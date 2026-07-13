@@ -716,7 +716,7 @@ describe('RequirementPackagesClient', () => {
         url === '/api/requirement-packages/1' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     )
-    expect((putCall?.[1] as RequestInit).body).toBe(
+    expect((putCall?.[1] as RequestInit | undefined)?.body).toBe(
       JSON.stringify({
         name: 'Updated mobile use',
         purposeAndScope: 'Requirements for mobile access and responsive flows.',
