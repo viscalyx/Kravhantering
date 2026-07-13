@@ -1034,7 +1034,7 @@ describe('trusted container release helpers', () => {
       'SQLSERVER_IMAGE_REF=mcr.microsoft.com/mssql/server:2025-CU6-ubuntu-24.04',
     )
     expect(releaseEnv).toContain(
-      'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.15.0.0-20260702-ubuntu',
+      'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.15.0.1-20260708-ubuntu',
     )
     expect(releaseEnv).toContain(
       'HSA_DIRECTORY_MOCK_IMAGE_REF=ghcr.io/viscalyx/kravhantering-hsa-directory-mock:replace-with-release-tag',
