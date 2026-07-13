@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, assert, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const pushMock = vi.fn()
 const backMock = vi.fn()
@@ -363,9 +363,16 @@ describe('RequirementForm', () => {
         c[0] === '/api/requirements' &&
         (c[1] as RequestInit)?.method === 'POST',
     )
-    const body = JSON.parse(
-      (postCall?.[1] as RequestInit | undefined)?.body as string,
+    assert(postCall, 'Expected a POST request')
+    const postRequest = postCall[1]
+    assert(
+      typeof postRequest === 'object' &&
+        postRequest !== null &&
+        'body' in postRequest &&
+        typeof postRequest.body === 'string',
+      'Expected POST request body to be a string',
     )
+    const body = JSON.parse(postRequest.body)
     expect(body).toHaveProperty('verifiable', false)
 
     await waitFor(() => {
@@ -426,9 +433,16 @@ describe('RequirementForm', () => {
         c[0] === '/api/requirements/5' &&
         (c[1] as RequestInit)?.method === 'PUT',
     )
-    const body = JSON.parse(
-      (putCall?.[1] as RequestInit | undefined)?.body as string,
+    assert(putCall, 'Expected a PUT request')
+    const putRequest = putCall[1]
+    assert(
+      typeof putRequest === 'object' &&
+        putRequest !== null &&
+        'body' in putRequest &&
+        typeof putRequest.body === 'string',
+      'Expected PUT request body to be a string',
     )
+    const body = JSON.parse(putRequest.body)
     expect(body.baseRevisionToken).toBe('11111111-1111-4111-8111-111111111111')
     expect(body.baseVersionId).toBe(10)
   })
