@@ -60,6 +60,11 @@ manually with `workflow_dispatch`. Manual runs may select `all`, `nginx`,
 `sqlserver`, `keycloak` or `kong`; the `include-current` input also refreshes
 the immutable digest metadata for the current selected lane.
 
+Before writing a lock or companion file, the updater validates and prepares
+every file change for that image. A validation or update failure stops the run
+before later images are processed, so partial changes cannot enter another
+image's branch or PR.
+
 Kong is a vendor-updated HSA integration support image. Its lock under
 `containers/kong/` is copied into
 `container-hsa-integration-support.lock.json` during container releases and is

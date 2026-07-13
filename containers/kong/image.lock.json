@@ -2,8 +2,8 @@
   "name": "kong",
   "role": "api-management",
   "image": "docker.io/kong/kong-gateway",
-  "tag": "3.15.0.0-20260702-ubuntu",
-  "manifestDigest": "sha256:f0516241dd354e66a9a8b4151c884bf40df8f8d850cec892adb4446cd210491f",
-  "imageId": "sha256:0b5e3b7b4158e2f59849d1e51a89dd6137b65d373e1a124e515535185d42567a",
+  "tag": "3.15.0.1-20260708-ubuntu",
+  "manifestDigest": "sha256:5ec9d4b98b9e89b5ca60bc87a982d6246b5d941479cecf254f0e3e8064b85411",
+  "imageId": "sha256:a8dbc1c4c203044370acf8be6096b7fc55fc71d00939770c22692b310d48517c",
   "source": "https://hub.docker.com/r/kong/kong-gateway"
 }

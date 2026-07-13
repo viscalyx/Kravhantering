@@ -155,7 +155,7 @@ services:
       timeout: 5s
 
   kong:
-    image: docker.io/kong/kong-gateway:3.15.0.0-20260702-ubuntu@sha256:f0516241dd354e66a9a8b4151c884bf40df8f8d850cec892adb4446cd210491f
+    image: docker.io/kong/kong-gateway:3.15.0.1-20260708-ubuntu@sha256:5ec9d4b98b9e89b5ca60bc87a982d6246b5d941479cecf254f0e3e8064b85411
     depends_on:
       hsa-person-lookup-adapter:
         condition: service_healthy
