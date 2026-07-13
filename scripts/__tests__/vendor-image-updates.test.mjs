@@ -60,6 +60,7 @@ describe('vendor image updater policy', () => {
       '.devcontainer/elevated/docker-compose.yml',
       'containers/production/env/release.env.template',
       'docs/development/auth-developer-workflow.md',
+      'scripts/__tests__/container-release.test.mjs',
     ])
     expect(
       IMAGE_CONFIGS.keycloak.companionFiles.every(filePath =>

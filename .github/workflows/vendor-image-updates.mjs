@@ -71,6 +71,7 @@ export const IMAGE_CONFIGS = {
       '.devcontainer/elevated/docker-compose.yml',
       'containers/production/env/release.env.template',
       'docs/development/auth-developer-workflow.md',
+      'scripts/__tests__/container-release.test.mjs',
     ],
     image: 'quay.io/keycloak/keycloak',
     laneDescription: lane => `Keycloak ${lane}.x`,
