@@ -1930,11 +1930,11 @@ describe('AdminClient', () => {
       )
     })
     expect(createCall).toBeTruthy()
-    expect(JSON.parse((createCall?.[1] as RequestInit).body as string)).toEqual(
-      {
-        externalEvidenceReference: 'IDM-2026',
-      },
-    )
+    expect(
+      JSON.parse((createCall?.[1] as RequestInit | undefined)?.body as string),
+    ).toEqual({
+      externalEvidenceReference: 'IDM-2026',
+    })
   })
 
   it('loads access review runs under React Strict Mode', async () => {

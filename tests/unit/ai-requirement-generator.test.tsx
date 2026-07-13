@@ -1714,7 +1714,7 @@ describe('AiRequirementGenerator', () => {
       return url === '/api/ai/generate-requirement-import'
     })
     const generateBody = JSON.parse(
-      (generateCall?.[1] as { body: string }).body,
+      (generateCall?.[1] as { body: string } | undefined)?.body as string,
     ) as Record<string, unknown>
     expect(generateBody.reasoningEffort).toBe('xhigh')
   })
@@ -1765,7 +1765,7 @@ describe('AiRequirementGenerator', () => {
       return url === '/api/ai/generate-requirement-import'
     })
     const generateBody = JSON.parse(
-      (generateCall?.[1] as { body: string }).body,
+      (generateCall?.[1] as { body: string } | undefined)?.body as string,
     ) as Record<string, unknown>
     expect(generateBody).not.toHaveProperty('supportedParameters')
 
