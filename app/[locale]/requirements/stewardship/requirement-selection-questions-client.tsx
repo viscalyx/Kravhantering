@@ -1699,6 +1699,7 @@ export default function RequirementSelectionQuestionsClient() {
       const nextQuestionIds = new Set(
         nextQuestions.map(question => question.id),
       )
+      questionsRef.current = nextQuestions
       setQuestions(nextQuestions)
       setExpandedQuestionIds(current => {
         if (current.size === 0) return current
