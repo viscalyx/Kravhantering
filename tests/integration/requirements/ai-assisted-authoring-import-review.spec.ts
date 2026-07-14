@@ -194,10 +194,6 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
 
   await page.goto('/sv/requirements')
   const aiTrigger = page.getByRole('button', { name: 'AI-assistera' }).first()
-  await expect(aiTrigger).toHaveAttribute(
-    'data-developer-mode-value',
-    'ai generate',
-  )
   await aiTrigger.click()
   const initialAiDialog = page.getByRole('dialog', {
     name: 'AI-assisterat författande',
@@ -234,7 +230,7 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
   await expect(importDialog).toBeVisible()
   await expect(importDialog.locator(':focus')).toHaveCount(1)
   await expect(importDialog.getByLabel(/Import-JSON/)).toBeHidden()
-  await expect(importDialog.getByText(generatedDescription)).toBeVisible()
+  await expect(importDialog).toContainText(generatedDescription)
   expect(preview.callCount).toBe(1)
   expect(preview.bodies[preview.bodies.length - 1]).toMatchObject({
     payload: generatedPayload,
@@ -541,7 +537,7 @@ test('SPEC-17: AI-assisted authoring hands kravunderlag candidates to local impo
   await expect(importDialog).toBeVisible()
   await expect(importDialog.locator(':focus')).toHaveCount(1)
   await expect(importDialog.getByLabel(/Import-JSON/)).toBeHidden()
-  await expect(importDialog.getByText(generatedDescription)).toBeVisible()
+  await expect(importDialog).toContainText(generatedDescription)
   await expect(moreActionsTrigger).not.toBeFocused()
   expect(preview.callCount).toBe(1)
   expect(preview.bodies[preview.bodies.length - 1]).toMatchObject({

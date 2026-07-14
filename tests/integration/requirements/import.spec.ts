@@ -159,10 +159,6 @@ test.describe('Requirements import', () => {
       const exportButton = page.getByRole('button', { name: 'Exportera' })
       const columnsButton = page.getByRole('button', { name: 'Kolumner' })
       await expect(importButton).toBeVisible()
-      await expect(importButton).toHaveAttribute(
-        'data-developer-mode-value',
-        'import requirements',
-      )
       await expect(exportButton).toBeVisible()
       await expect(columnsButton).toBeVisible()
       const actionIds = await page

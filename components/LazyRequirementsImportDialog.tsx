@@ -7,6 +7,7 @@ import type {
   InitialRequirementsImport,
   RequirementsImportDialogProps,
 } from '@/components/RequirementsImportDialog'
+import { restoreFocus } from '@/lib/restore-focus'
 
 const RequirementsImportDialog = lazy(
   () => import('@/components/RequirementsImportDialog'),
@@ -18,12 +19,6 @@ interface LazyRequirementsImportDialogProps
   extends Omit<RequirementsImportDialogProps, 'embedded' | 'onClose'> {
   onClose: (importSucceeded: boolean) => void
   returnFocusTarget?: HTMLElement | null
-}
-
-function restoreFocus(target: HTMLElement | null | undefined) {
-  queueMicrotask(() => {
-    if (target?.isConnected) target.focus()
-  })
 }
 
 export default function LazyRequirementsImportDialog({

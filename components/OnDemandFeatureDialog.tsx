@@ -60,7 +60,7 @@ function FeatureStatePanel({
   closeLabel,
   description,
   featureId,
-  loadingLabel,
+  heading,
   onClose,
   reloadLabel,
   state,
@@ -71,7 +71,7 @@ function FeatureStatePanel({
   closeLabel: string
   description?: string
   featureId: OnDemandFeatureId
-  loadingLabel: string
+  heading: string
   onClose: () => void
   reloadLabel: string
   state: 'error' | 'loading'
@@ -127,7 +127,7 @@ function FeatureStatePanel({
               className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
               role="status"
             >
-              {loadingLabel}
+              {heading}
             </p>
           </>
         ) : (
@@ -137,7 +137,7 @@ function FeatureStatePanel({
               className="mx-auto h-8 w-8 text-red-600 dark:text-red-400"
             />
             <h3 className="mt-3 text-lg font-semibold text-red-800 dark:text-red-300">
-              {loadingLabel}
+              {heading}
             </h3>
             {description ? (
               <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-300">
@@ -220,7 +220,7 @@ class FeatureErrorBoundary extends Component<
         closeLabel={this.props.closeLabel}
         description={this.props.errorDescription}
         featureId={this.props.featureId}
-        loadingLabel={this.props.errorTitle}
+        heading={this.props.errorTitle}
         onClose={this.props.onErrorClose}
         reloadLabel={this.props.reloadLabel}
         state="error"
@@ -338,7 +338,7 @@ export default function OnDemandFeatureDialog({
             <FeatureStatePanel
               closeLabel={closeLabel}
               featureId={featureId}
-              loadingLabel={loadingLabel}
+              heading={loadingLabel}
               onClose={onErrorClose}
               reloadLabel={reloadLabel}
               state="loading"

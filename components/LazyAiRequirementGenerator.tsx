@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl'
 import { lazy } from 'react'
 import type { AiRequirementGeneratorProps } from '@/components/AiRequirementGenerator'
 import OnDemandFeatureDialog from '@/components/OnDemandFeatureDialog'
+import { restoreFocus } from '@/lib/restore-focus'
 
 const AiRequirementGenerator = lazy(
   () => import('@/components/AiRequirementGenerator'),
@@ -13,12 +14,6 @@ interface LazyAiRequirementGeneratorProps
   extends Omit<AiRequirementGeneratorProps, 'embedded' | 'onClose'> {
   onClose: () => void
   returnFocusTarget?: HTMLElement | null
-}
-
-function restoreFocus(target: HTMLElement | null | undefined) {
-  queueMicrotask(() => {
-    if (target?.isConnected) target.focus()
-  })
 }
 
 export default function LazyAiRequirementGenerator({
