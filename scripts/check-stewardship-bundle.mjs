@@ -6,6 +6,7 @@ import {
   createScenario,
   formatScenario,
   readClientBundleArtifacts,
+  runBundleCli,
 } from './lib/client-bundle-budget.mjs'
 
 const STEWARDSHIP_ROUTE_MODULE =
@@ -191,16 +192,7 @@ export function runStewardshipBundleCli({
   cwd = process.cwd(),
   runCheck = runStewardshipBundleCheck,
 } = {}) {
-  try {
-    runCheck({
-      projectRoot: resolve(cwd),
-      reportOnly: argv.includes('--report'),
-    })
-    return 0
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error))
-    return 1
-  }
+  return runBundleCli({ argv, cwd, runCheck })
 }
 
 const scriptPath = fileURLToPath(import.meta.url)

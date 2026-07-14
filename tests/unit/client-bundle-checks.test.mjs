@@ -30,6 +30,56 @@ describe('client bundle checks', () => {
     })
   })
 
+  it('runs both focused checks when one fails', () => {
+    const adminFailure = new Error('admin failed')
+    const runAdmin = vi.fn(() => {
+      throw adminFailure
+    })
+    const runStewardship = vi.fn(() => ({ surface: 'stewardship' }))
+
+    let thrown
+    try {
+      runClientBundleChecks({
+        projectRoot: '/workspace/project',
+        runAdmin,
+        runStewardship,
+      })
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(runAdmin).toHaveBeenCalledOnce()
+    expect(runStewardship).toHaveBeenCalledOnce()
+    expect(thrown).toBeInstanceOf(AggregateError)
+    expect(thrown.errors).toEqual([adminFailure])
+    expect(thrown.message).toContain('admin failed')
+  })
+
+  it('surfaces every focused check failure', () => {
+    const adminFailure = new Error('admin failed')
+    const stewardshipFailure = 'stewardship failed'
+
+    let thrown
+    try {
+      runClientBundleChecks({
+        projectRoot: '/workspace/project',
+        runAdmin: () => {
+          throw adminFailure
+        },
+        runStewardship: () => {
+          throw stewardshipFailure
+        },
+      })
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(AggregateError)
+    expect(thrown.errors).toEqual([adminFailure, stewardshipFailure])
+    expect(thrown.message).toContain('admin failed')
+    expect(thrown.message).toContain('stewardship failed')
+  })
+
   it('maps CLI options and failures to an exit code', () => {
     const runChecks = vi.fn()
     expect(

@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { lazy, useEffect, useState } from 'react'
+import { type ComponentType, lazy, useEffect, useState } from 'react'
 import type { StewardshipTabParam } from '@/components/Navigation'
 import { usePathname, useRouter } from '@/i18n/routing'
 import StewardshipLazyWorkspace, {
@@ -27,6 +27,13 @@ const WORKSPACE_LABEL_KEYS: Record<StewardshipWorkspaceId, string> = {
   packages: 'requirementPackages',
   questions: 'requirementSelectionQuestions',
   rfi: 'rfiQuestions',
+}
+
+const WORKSPACE_COMPONENTS: Record<StewardshipWorkspaceId, ComponentType> = {
+  norms: NormReferencesClient,
+  packages: RequirementPackagesClient,
+  questions: RequirementSelectionQuestionsClient,
+  rfi: RfiQuestionsClient,
 }
 
 const STORAGE_KEY = 'requirements.stewardship.tab'
@@ -107,21 +114,14 @@ export default function StewardshipClient() {
 
   if (activeTab == null) return null
 
-  const workspace = (() => {
-    if (activeTab === 'packages') return <RequirementPackagesClient />
-    if (activeTab === 'questions') {
-      return <RequirementSelectionQuestionsClient />
-    }
-    if (activeTab === 'rfi') return <RfiQuestionsClient />
-    return <NormReferencesClient />
-  })()
+  const Workspace = WORKSPACE_COMPONENTS[activeTab]
 
   return (
     <StewardshipLazyWorkspace
       workspaceId={activeTab}
       workspaceLabel={tNav(WORKSPACE_LABEL_KEYS[activeTab])}
     >
-      {workspace}
+      <Workspace />
     </StewardshipLazyWorkspace>
   )
 }

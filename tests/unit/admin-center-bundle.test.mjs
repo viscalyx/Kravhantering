@@ -15,18 +15,8 @@ import {
   runAdminBundleCheck,
   runAdminBundleCli,
 } from '../../scripts/check-admin-center-bundle.mjs'
-
-function deterministicBytes(length) {
-  const content = Buffer.alloc(length)
-  let state = 0x1a2b3c4d
-  for (let index = 0; index < length; index += 1) {
-    state ^= state << 13
-    state ^= state >>> 17
-    state ^= state << 5
-    content[index] = state >>> 24
-  }
-  return content
-}
+import { budgetFailures } from '../../scripts/lib/client-bundle-budget.mjs'
+import { deterministicBytes } from './helpers/bundle-test-helpers.mjs'
 
 function fixtureRoot() {
   return mkdtempSync(join(tmpdir(), 'admin-center-bundle-'))
@@ -132,6 +122,11 @@ describe('Admin Center bundle contract', () => {
         'Promise.all(["invalid.js"].map(i=>e.l(i))).then()',
       ),
     ).toThrow('unrecognized lazy chunk set')
+    expect(() =>
+      extractDynamicChunkGroups(
+        'Promise.all(["static/chunks/a.js",invalid].map(i=>e.l(i))).then()',
+      ),
+    ).toThrow('Admin Center contains an unrecognized lazy chunk set')
   })
 
   it('measures unique files and reports budget excess', () => {
@@ -159,6 +154,12 @@ describe('Admin Center bundle contract', () => {
       }),
     ).toEqual([])
     expect(formatScenario(scenario, 100)).toContain('example: 16 raw bytes')
+
+    for (const limit of [undefined, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => budgetFailures([{ ...scenario, limit }])).toThrow(
+        'Bundle budget limit for example must be a finite number',
+      )
+    }
   })
 
   it('matches every panel to an async non-entry chunk set', () => {

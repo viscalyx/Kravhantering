@@ -2,6 +2,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runAdminBundleCheck } from './check-admin-center-bundle.mjs'
 import { runStewardshipBundleCheck } from './check-stewardship-bundle.mjs'
+import { runBundleCli } from './lib/client-bundle-budget.mjs'
 
 export function runClientBundleChecks({
   projectRoot,
@@ -9,10 +10,32 @@ export function runClientBundleChecks({
   runAdmin = runAdminBundleCheck,
   runStewardship = runStewardshipBundleCheck,
 }) {
-  return {
-    admin: runAdmin({ projectRoot, reportOnly }),
-    stewardship: runStewardship({ projectRoot, reportOnly }),
+  const results = {}
+  const failures = []
+  const checks = [
+    ['admin', runAdmin],
+    ['stewardship', runStewardship],
+  ]
+
+  for (const [surface, runCheck] of checks) {
+    try {
+      results[surface] = runCheck({ projectRoot, reportOnly })
+    } catch (error) {
+      failures.push(error)
+    }
   }
+
+  if (failures.length > 0) {
+    const messages = failures.map(error =>
+      error instanceof Error ? error.message : String(error),
+    )
+    throw new AggregateError(
+      failures,
+      `Client bundle checks failed:\n${messages.join('\n')}`,
+    )
+  }
+
+  return results
 }
 
 export function runClientBundleCli({
@@ -20,16 +43,7 @@ export function runClientBundleCli({
   cwd = process.cwd(),
   runChecks = runClientBundleChecks,
 } = {}) {
-  try {
-    runChecks({
-      projectRoot: resolve(cwd),
-      reportOnly: argv.includes('--report'),
-    })
-    return 0
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error))
-    return 1
-  }
+  return runBundleCli({ argv, cwd, runCheck: runChecks })
 }
 
 const scriptPath = fileURLToPath(import.meta.url)

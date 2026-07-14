@@ -198,8 +198,9 @@ describe('StewardshipClient', () => {
 
     render(<StewardshipClient />)
 
+    expect(await screen.findByText('Package workspace loaded')).toBeVisible()
     expect(
-      screen.getByRole('heading', {
+      await screen.findByRole('heading', {
         level: 1,
         name: 'Requirements packages',
       }),
@@ -220,12 +221,12 @@ describe('StewardshipClient', () => {
     searchParamsState.value = new URLSearchParams('tab=norms')
     rerender(<StewardshipClient />)
 
+    expect(await screen.findByText('Norm workspace loaded')).toBeVisible()
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Norm library' }),
+      await screen.findByRole('heading', { level: 1, name: 'Norm library' }),
     ).toBeVisible()
     expect(
       screen.queryByText('Package workspace loaded'),
     ).not.toBeInTheDocument()
-    expect(await screen.findByText('Norm workspace loaded')).toBeVisible()
   })
 })

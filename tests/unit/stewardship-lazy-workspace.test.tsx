@@ -24,6 +24,7 @@ function BrokenWorkspace(): never {
 describe('StewardshipLazyWorkspace', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it.each<[StewardshipWorkspaceId, string]>([
@@ -98,6 +99,17 @@ describe('StewardshipLazyWorkspace', () => {
 
   it('uses a full-page reload as the default retry action', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const reload = vi.fn()
+    const originalWindow = window
+    vi.stubGlobal(
+      'window',
+      new Proxy(originalWindow, {
+        get(target, property) {
+          if (property === 'location') return { reload }
+          return Reflect.get(target, property, target)
+        },
+      }),
+    )
     const user = userEvent.setup()
 
     render(
@@ -114,5 +126,6 @@ describe('StewardshipLazyWorkspace', () => {
         name: 'stewardshipWorkspace.loadError.retry',
       }),
     )
+    expect(reload).toHaveBeenCalledOnce()
   })
 })

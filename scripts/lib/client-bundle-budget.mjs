@@ -1,5 +1,5 @@
 import { readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { gzipSync } from 'node:zlib'
 
 export const LOCALE_LAYOUT_MODULE = '[project]/app/[locale]/layout'
@@ -8,7 +8,14 @@ export function extractDynamicChunkGroups(source, surfaceName) {
   return Array.from(
     source.matchAll(/Promise\.all\(\[([^\]]*)\]\.map\(/gu),
     match => {
-      const chunks = JSON.parse(`[${match[1]}]`)
+      let chunks
+      try {
+        chunks = JSON.parse(`[${match[1]}]`)
+      } catch {
+        throw new Error(
+          `${surfaceName} contains an unrecognized lazy chunk set.`,
+        )
+      }
       if (
         !Array.isArray(chunks) ||
         chunks.some(
@@ -72,12 +79,33 @@ export function formatScenario(scenario, limit) {
 }
 
 export function budgetFailures(scenarios) {
+  for (const scenario of scenarios) {
+    if (!Number.isFinite(scenario.limit)) {
+      throw new Error(
+        `Bundle budget limit for ${scenario.name} must be a finite number.`,
+      )
+    }
+  }
+
   return scenarios
     .filter(scenario => scenario.gzipBytes > scenario.limit)
     .map(scenario => ({
       ...scenario,
       excessBytes: scenario.gzipBytes - scenario.limit,
     }))
+}
+
+export function runBundleCli({ argv, cwd, runCheck }) {
+  try {
+    runCheck({
+      projectRoot: resolve(cwd),
+      reportOnly: argv.includes('--report'),
+    })
+    return 0
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    return 1
+  }
 }
 
 export function readClientBundleArtifacts({

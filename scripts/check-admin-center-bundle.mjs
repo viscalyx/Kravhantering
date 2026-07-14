@@ -8,6 +8,7 @@ import {
   formatScenario,
   parseClientReferenceManifest as parseSharedClientReferenceManifest,
   readClientBundleArtifacts,
+  runBundleCli,
 } from './lib/client-bundle-budget.mjs'
 
 // 2026-07-14 production baseline 4,596 gzip bytes plus 5% headroom.
@@ -176,16 +177,7 @@ export function runAdminBundleCli({
   cwd = process.cwd(),
   runCheck = runAdminBundleCheck,
 } = {}) {
-  try {
-    runCheck({
-      projectRoot: resolve(cwd),
-      reportOnly: argv.includes('--report'),
-    })
-    return 0
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error))
-    return 1
-  }
+  return runBundleCli({ argv, cwd, runCheck })
 }
 
 const scriptPath = fileURLToPath(import.meta.url)
