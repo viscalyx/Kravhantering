@@ -1,4 +1,4 @@
-import { expect, type Route, test } from '@playwright/test'
+import { expect, type Page, type Route, test } from '@playwright/test'
 
 const pwtRfiArea = {
   id: 920001,
@@ -87,10 +87,56 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
   })
 }
 
+const stewardshipHeadings = new Set([
+  'Kravpaket',
+  'Kravurvalsfrågor',
+  'Normbibliotek',
+  'RFI-frågor',
+])
+
+async function resetStewardshipHeadingLog(page: Page) {
+  await page.evaluate(() => {
+    const win = window as typeof window & {
+      __stewardshipHeadingLog?: string[]
+    }
+    win.__stewardshipHeadingLog = []
+  })
+}
+
+async function assertWorkspaceNavigation({
+  navigate,
+  page,
+  title,
+  url,
+}: {
+  navigate: () => Promise<unknown>
+  page: Page
+  title: string
+  url: RegExp
+}) {
+  await resetStewardshipHeadingLog(page)
+  await navigate()
+  await expect(page).toHaveURL(url)
+  await expect(
+    page.getByRole('heading', { level: 1, name: title }),
+  ).toBeVisible()
+
+  const headingLog = await page.evaluate(() => {
+    const win = window as typeof window & {
+      __stewardshipHeadingLog?: string[]
+    }
+    return win.__stewardshipHeadingLog ?? []
+  })
+  const loggedWorkspaceHeadings = headingLog.filter(heading =>
+    stewardshipHeadings.has(heading),
+  )
+  expect(loggedWorkspaceHeadings.every(heading => heading === title)).toBe(true)
+}
+
 test.describe('Stewardship navigation memory', () => {
   test.use({ viewport: { height: 720, width: 1280 } })
 
-  test('REQ-14b: returns directly to the remembered question tab from specifications', async ({
+  test('REQ-14b: remembers and navigates stewardship workspaces without flashing another workspace', async ({
     page,
   }) => {
     await test.step('browse to the question stewardship tab', async () => {
@@ -128,14 +174,30 @@ test.describe('Stewardship navigation memory', () => {
           __stewardshipHeadingObserver?: MutationObserver
         }
         win.__stewardshipHeadingLog = []
-        const recordHeadings = () => {
-          const headings = Array.from(document.querySelectorAll('h1'))
-            .map(heading => heading.textContent?.trim())
-            .filter((text): text is string => Boolean(text))
-          win.__stewardshipHeadingLog?.push(...headings)
+        const recordHeading = (heading: Element | null) => {
+          const text = heading?.textContent?.trim()
+          if (text) win.__stewardshipHeadingLog?.push(text)
         }
-        recordHeadings()
-        win.__stewardshipHeadingObserver = new MutationObserver(recordHeadings)
+        win.__stewardshipHeadingObserver = new MutationObserver(mutations => {
+          for (const mutation of mutations) {
+            if (mutation.type === 'characterData') {
+              recordHeading(
+                mutation.target.parentElement?.closest('h1') ?? null,
+              )
+              continue
+            }
+            for (const node of mutation.addedNodes) {
+              if (!(node instanceof Element)) {
+                recordHeading(node.parentElement?.closest('h1') ?? null)
+                continue
+              }
+              if (node.matches('h1')) recordHeading(node)
+              for (const heading of node.querySelectorAll('h1')) {
+                recordHeading(heading)
+              }
+            }
+          }
+        })
         win.__stewardshipHeadingObserver.observe(document.body, {
           childList: true,
           subtree: true,
@@ -143,25 +205,60 @@ test.describe('Stewardship navigation memory', () => {
         })
       })
 
-      await page.getByRole('link', { name: 'Kravurvalsfrågor' }).click()
+      await assertWorkspaceNavigation({
+        navigate: () =>
+          page.getByRole('link', { name: 'Kravurvalsfrågor' }).click(),
+        page,
+        title: 'Kravurvalsfrågor',
+        url: /\/sv\/requirements\/stewardship\?tab=questions/,
+      })
+    })
 
-      await expect(page).toHaveURL(
-        /\/sv\/requirements\/stewardship\?tab=questions/,
-      )
-      await expect(
-        page.getByRole('heading', { level: 1, name: 'Kravurvalsfrågor' }),
-      ).toBeVisible()
+    await test.step('switch workspaces and traverse browser history without inactive headings', async () => {
+      await assertWorkspaceNavigation({
+        navigate: () => page.getByRole('link', { name: 'RFI-frågor' }).click(),
+        page,
+        title: 'RFI-frågor',
+        url: /\/sv\/requirements\/stewardship\?tab=information-requests/,
+      })
+      await assertWorkspaceNavigation({
+        navigate: () =>
+          page.getByRole('link', { name: 'Normbibliotek' }).click(),
+        page,
+        title: 'Normbibliotek',
+        url: /\/sv\/requirements\/stewardship\?tab=norms/,
+      })
+      await assertWorkspaceNavigation({
+        navigate: () => page.goBack(),
+        page,
+        title: 'RFI-frågor',
+        url: /\/sv\/requirements\/stewardship\?tab=information-requests/,
+      })
+      await assertWorkspaceNavigation({
+        navigate: () => page.goBack(),
+        page,
+        title: 'Kravurvalsfrågor',
+        url: /\/sv\/requirements\/stewardship\?tab=questions/,
+      })
+      await assertWorkspaceNavigation({
+        navigate: () => page.goForward(),
+        page,
+        title: 'RFI-frågor',
+        url: /\/sv\/requirements\/stewardship\?tab=information-requests/,
+      })
+      await assertWorkspaceNavigation({
+        navigate: () => page.goForward(),
+        page,
+        title: 'Normbibliotek',
+        url: /\/sv\/requirements\/stewardship\?tab=norms/,
+      })
 
-      const headingLog = await page.evaluate(() => {
+      await page.evaluate(() => {
         const win = window as typeof window & {
-          __stewardshipHeadingLog?: string[]
           __stewardshipHeadingObserver?: MutationObserver
         }
         win.__stewardshipHeadingObserver?.disconnect()
-        return win.__stewardshipHeadingLog ?? []
       })
-
-      expect(headingLog).not.toContain('Kravpaket')
     })
   })
 

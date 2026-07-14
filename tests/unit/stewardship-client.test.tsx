@@ -14,6 +14,19 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => searchParamsState.value,
 }))
 
+vi.mock('next-intl', () => ({
+  useTranslations: (namespace?: string) => (key: string) => {
+    if (namespace !== 'nav') return `${namespace}.${key}`
+    const labels: Record<string, string> = {
+      normLibrary: 'Norm library',
+      requirementPackages: 'Requirements packages',
+      requirementSelectionQuestions: 'Requirement selection questions',
+      rfiQuestions: 'RFI questions',
+    }
+    return labels[key] ?? key
+  },
+}))
+
 vi.mock('@/i18n/routing', () => ({
   usePathname: () => '/requirements/stewardship',
   useRouter: () => routerState,
@@ -22,23 +35,43 @@ vi.mock('@/i18n/routing', () => ({
 vi.mock(
   '@/app/[locale]/requirement-packages/requirement-packages-client',
   () => ({
-    default: () => <h1>Requirements packages</h1>,
+    default: () => (
+      <>
+        <h1>Requirements packages</h1>
+        <p>Package workspace loaded</p>
+      </>
+    ),
   }),
 )
 
 vi.mock(
   '@/app/[locale]/requirements/stewardship/requirement-selection-questions-client',
   () => ({
-    default: () => <h1>Requirement selection questions</h1>,
+    default: () => (
+      <>
+        <h1>Requirement selection questions</h1>
+        <p>Question workspace loaded</p>
+      </>
+    ),
   }),
 )
 
 vi.mock('@/app/[locale]/requirements/stewardship/rfi-questions-client', () => ({
-  default: () => <h1>RFI questions</h1>,
+  default: () => (
+    <>
+      <h1>RFI questions</h1>
+      <p>RFI workspace loaded</p>
+    </>
+  ),
 }))
 
 vi.mock('@/app/[locale]/norm-references/norm-references-client', () => ({
-  default: () => <h1>Norm library</h1>,
+  default: () => (
+    <>
+      <h1>Norm library</h1>
+      <p>Norm workspace loaded</p>
+    </>
+  ),
 }))
 
 describe('StewardshipClient', () => {
@@ -48,7 +81,7 @@ describe('StewardshipClient', () => {
     localStorage.clear()
   })
 
-  it('uses the package view title as the page heading by default', () => {
+  it('uses the package view title as the page heading by default', async () => {
     render(<StewardshipClient />)
 
     expect(
@@ -59,9 +92,10 @@ describe('StewardshipClient', () => {
         name: 'Requirements Library Stewardship',
       }),
     ).not.toBeInTheDocument()
+    expect(await screen.findByText('Package workspace loaded')).toBeVisible()
   })
 
-  it('uses the question view title as the page heading for the questions tab', () => {
+  it('uses the question view title as the page heading for the questions tab', async () => {
     searchParamsState.value = new URLSearchParams('tab=questions')
 
     render(<StewardshipClient />)
@@ -77,9 +111,10 @@ describe('StewardshipClient', () => {
         name: 'Requirements Library Stewardship',
       }),
     ).not.toBeInTheDocument()
+    expect(await screen.findByText('Question workspace loaded')).toBeVisible()
   })
 
-  it('uses the norm library view title for the norms tab', () => {
+  it('uses the norm library view title for the norms tab', async () => {
     searchParamsState.value = new URLSearchParams('tab=norms')
 
     render(<StewardshipClient />)
@@ -95,9 +130,10 @@ describe('StewardshipClient', () => {
         name: 'Requirements Library Stewardship',
       }),
     ).not.toBeInTheDocument()
+    expect(await screen.findByText('Norm workspace loaded')).toBeVisible()
   })
 
-  it('uses the RFI question view for the information requests tab', () => {
+  it('uses the RFI question view for the information requests tab', async () => {
     searchParamsState.value = new URLSearchParams('tab=information-requests')
 
     render(<StewardshipClient />)
@@ -108,6 +144,7 @@ describe('StewardshipClient', () => {
         name: 'RFI questions',
       }),
     ).toBeInTheDocument()
+    expect(await screen.findByText('RFI workspace loaded')).toBeVisible()
   })
 
   it('restores the remembered RFI tab with the canonical URL token', async () => {
@@ -154,5 +191,41 @@ describe('StewardshipClient', () => {
         { scroll: false },
       )
     })
+  })
+
+  it('canonicalizes an unknown tab to packages', async () => {
+    searchParamsState.value = new URLSearchParams('tab=unknown&variant=legacy')
+
+    render(<StewardshipClient />)
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Requirements packages',
+      }),
+    ).toBeVisible()
+    await waitFor(() => {
+      expect(routerState.replace).toHaveBeenCalledWith(
+        '/requirements/stewardship?tab=packages',
+        { scroll: false },
+      )
+    })
+  })
+
+  it('replaces the mounted workspace when the query changes', async () => {
+    searchParamsState.value = new URLSearchParams('tab=packages')
+    const { rerender } = render(<StewardshipClient />)
+    expect(await screen.findByText('Package workspace loaded')).toBeVisible()
+
+    searchParamsState.value = new URLSearchParams('tab=norms')
+    rerender(<StewardshipClient />)
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Norm library' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByText('Package workspace loaded'),
+    ).not.toBeInTheDocument()
+    expect(await screen.findByText('Norm workspace loaded')).toBeVisible()
   })
 })

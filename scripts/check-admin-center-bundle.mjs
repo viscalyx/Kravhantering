@@ -1,7 +1,14 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { gzipSync } from 'node:zlib'
+import {
+  budgetFailures,
+  createScenario,
+  extractDynamicChunkGroups as extractSharedDynamicChunkGroups,
+  formatScenario,
+  parseClientReferenceManifest as parseSharedClientReferenceManifest,
+  readClientBundleArtifacts,
+} from './lib/client-bundle-budget.mjs'
 
 // 2026-07-14 production baseline 4,596 gzip bytes plus 5% headroom.
 export const ADMIN_CENTER_ENTRY_GZIP_MAX_BYTES = 4_826
@@ -9,8 +16,9 @@ export const ADMIN_CENTER_ENTRY_GZIP_MAX_BYTES = 4_826
 export const ADMIN_CENTER_PANEL_GZIP_MAX_BYTES = 9_266
 
 const ADMIN_ROUTE_MODULE = '[project]/app/[locale]/admin/page'
-const LOCALE_LAYOUT_MODULE = '[project]/app/[locale]/layout'
 const ADMIN_CLIENT_MODULE = '[project]/app/[locale]/admin/admin-client.tsx'
+
+export { createScenario, formatScenario }
 
 export function discoverAdminPanelNames(panelDirectory) {
   return readdirSync(panelDirectory, { withFileTypes: true })
@@ -27,35 +35,11 @@ export function extractLazyPanelImportNames(source) {
 }
 
 export function extractDynamicChunkGroups(source) {
-  return Array.from(
-    source.matchAll(/Promise\.all\(\[([^\]]*)\]\.map\(/gu),
-    match => {
-      const chunks = JSON.parse(`[${match[1]}]`)
-      if (
-        !Array.isArray(chunks) ||
-        chunks.some(
-          chunk =>
-            typeof chunk !== 'string' ||
-            !/^static\/chunks\/.+\.js$/u.test(chunk),
-        )
-      ) {
-        throw new Error('Admin Center contains an unrecognized lazy chunk set.')
-      }
-      return chunks
-    },
-  )
+  return extractSharedDynamicChunkGroups(source, 'Admin Center')
 }
 
 export function parseClientReferenceManifest(source) {
-  const match = source.match(/=\s*(\{[^;]+\});\s*$/u)
-  if (!match) {
-    throw new Error('Could not parse the Admin Center client manifest.')
-  }
-  const manifest = JSON.parse(match[1])
-  if (!manifest || typeof manifest !== 'object' || !manifest.moduleLoading) {
-    throw new Error('Could not parse the Admin Center client manifest.')
-  }
-  return manifest
+  return parseSharedClientReferenceManifest(source, 'Admin Center')
 }
 
 function assertSameNames(discoveredNames, importedNames) {
@@ -77,25 +61,6 @@ function assertSameNames(discoveredNames, importedNames) {
         .filter(Boolean)
         .join(' '),
     )
-  }
-}
-
-export function createScenario(name, chunks, staticDirectory) {
-  const uniqueChunks = [...new Set(chunks)].sort()
-  const files = uniqueChunks.map(chunk => {
-    const path = join(staticDirectory, chunk.replace(/^static\//u, ''))
-    const content = readFileSync(path)
-    return {
-      chunk,
-      gzipBytes: gzipSync(content).byteLength,
-      rawBytes: statSync(path).size,
-    }
-  })
-  return {
-    chunks: files,
-    gzipBytes: files.reduce((total, file) => total + file.gzipBytes, 0),
-    name,
-    rawBytes: files.reduce((total, file) => total + file.rawBytes, 0),
   }
 }
 
@@ -145,19 +110,7 @@ export function bundleBudgetFailures(
     { ...report.entry, limit: entryLimit },
     ...report.panels.map(panel => ({ ...panel, limit: panelLimit })),
   ]
-  return scenarios
-    .filter(scenario => scenario.gzipBytes > scenario.limit)
-    .map(scenario => ({
-      ...scenario,
-      excessBytes: scenario.gzipBytes - scenario.limit,
-    }))
-}
-
-export function formatScenario(scenario, limit) {
-  const chunks = scenario.chunks
-    .map(file => `${file.chunk} (${file.rawBytes} raw, ${file.gzipBytes} gzip)`)
-    .join(', ')
-  return `${scenario.name}: ${scenario.rawBytes} raw bytes, ${scenario.gzipBytes} gzip bytes, limit ${limit}; chunks: ${chunks}`
+  return budgetFailures(scenarios)
 }
 
 export function readAdminBundleReport(projectRoot) {
@@ -178,53 +131,21 @@ export function readAdminBundleReport(projectRoot) {
     'admin',
     'page_client-reference-manifest.js',
   )
-  let manifestSource
-  try {
-    manifestSource = readFileSync(manifestPath, 'utf8')
-  } catch {
-    throw new Error(
-      'Admin Center bundle manifest is missing. Run an optimized production build first.',
-    )
-  }
-
-  const manifest = parseClientReferenceManifest(manifestSource)
-  const routeChunks = manifest.entryJSFiles?.[ADMIN_ROUTE_MODULE]
-  const layoutChunks = manifest.entryJSFiles?.[LOCALE_LAYOUT_MODULE]
-  const adminClientChunks =
-    manifest.clientModules?.[ADMIN_CLIENT_MODULE]?.chunks
-  if (!routeChunks || !layoutChunks || !adminClientChunks) {
-    throw new Error('Admin Center bundle manifest fields are incomplete.')
-  }
-  const layoutChunkSet = new Set(layoutChunks)
-  const entryChunks = routeChunks.filter(chunk => !layoutChunkSet.has(chunk))
-  if (entryChunks.length === 0) {
-    throw new Error('Admin Center has no route-specific entry chunk.')
-  }
-  const normalizedAdminClientChunks = adminClientChunks.map(chunk =>
-    chunk.replace(/^\/_next\//u, ''),
-  )
-  const shellChunks = normalizedAdminClientChunks.filter(chunk =>
-    entryChunks.includes(chunk),
-  )
-  if (shellChunks.length === 0) {
-    throw new Error('Could not identify the Admin Center shell chunk.')
-  }
-  const staticDirectory = join(projectRoot, '.next', 'static')
-  const shellSource = shellChunks
-    .map(chunk =>
-      readFileSync(
-        join(staticDirectory, chunk.replace(/^static\//u, '')),
-        'utf8',
-      ),
-    )
-    .join('\n')
+  const { entryChunks, lazyChunkGroups, staticDirectory } =
+    readClientBundleArtifacts({
+      clientModule: ADMIN_CLIENT_MODULE,
+      manifestPath,
+      projectRoot,
+      routeModule: ADMIN_ROUTE_MODULE,
+      surfaceName: 'Admin Center',
+    })
 
   return evaluateAdminBundle({
     entryChunks,
     importedPanelNames: extractLazyPanelImportNames(
       readFileSync(adminClientPath, 'utf8'),
     ),
-    lazyChunkGroups: extractDynamicChunkGroups(shellSource),
+    lazyChunkGroups,
     panelNames: discoverAdminPanelNames(panelDirectory),
     staticDirectory,
   })
@@ -250,15 +171,25 @@ export function runAdminBundleCheck({ projectRoot, reportOnly = false }) {
   return report
 }
 
-const scriptPath = fileURLToPath(import.meta.url)
-if (resolve(process.argv[1] ?? '') === scriptPath) {
+export function runAdminBundleCli({
+  argv = process.argv,
+  cwd = process.cwd(),
+  runCheck = runAdminBundleCheck,
+} = {}) {
   try {
-    runAdminBundleCheck({
-      projectRoot: resolve(process.cwd()),
-      reportOnly: process.argv.includes('--report'),
+    runCheck({
+      projectRoot: resolve(cwd),
+      reportOnly: argv.includes('--report'),
     })
+    return 0
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))
-    process.exitCode = 1
+    return 1
   }
+}
+
+const scriptPath = fileURLToPath(import.meta.url)
+/* v8 ignore next -- Direct execution delegates to the tested CLI adapter. */
+if (resolve(process.argv[1] ?? '') === scriptPath) {
+  process.exitCode = runAdminBundleCli()
 }

@@ -140,6 +140,14 @@
     "userInfoNoRoles": "No roles assigned",
     "dataExport": "My personal data"
   },
+  "stewardshipWorkspace": {
+    "loading": "Loading {workspace}…",
+    "loadError": {
+      "title": "Could not load {workspace}",
+      "description": "The workspace could not be loaded. Reload the page and try again.",
+      "retry": "Reload page"
+    }
+  },
   "specificationRequirementSelection": {
     "allAreas": "All requirement areas",
     "answered": "Answered",

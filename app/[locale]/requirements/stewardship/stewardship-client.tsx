@@ -1,15 +1,33 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
+import { lazy, useEffect, useState } from 'react'
 import type { StewardshipTabParam } from '@/components/Navigation'
 import { usePathname, useRouter } from '@/i18n/routing'
-import NormReferencesClient from '../../norm-references/norm-references-client'
-import RequirementPackagesClient from '../../requirement-packages/requirement-packages-client'
-import RequirementSelectionQuestionsClient from './requirement-selection-questions-client'
-import RfiQuestionsClient from './rfi-questions-client'
+import StewardshipLazyWorkspace, {
+  type StewardshipWorkspaceId,
+} from './stewardship-lazy-workspace'
 
-type StewardshipTab = 'packages' | 'questions' | 'norms' | 'rfi'
+const RequirementPackagesClient = lazy(
+  () => import('../../requirement-packages/requirement-packages-client'),
+)
+const RequirementSelectionQuestionsClient = lazy(
+  () => import('./requirement-selection-questions-client'),
+)
+const RfiQuestionsClient = lazy(() => import('./rfi-questions-client'))
+const NormReferencesClient = lazy(
+  () => import('../../norm-references/norm-references-client'),
+)
+
+type StewardshipTab = StewardshipWorkspaceId
+
+const WORKSPACE_LABEL_KEYS: Record<StewardshipWorkspaceId, string> = {
+  norms: 'normLibrary',
+  packages: 'requirementPackages',
+  questions: 'requirementSelectionQuestions',
+  rfi: 'rfiQuestions',
+}
 
 const STORAGE_KEY = 'requirements.stewardship.tab'
 
@@ -48,18 +66,22 @@ function getInitialTab(searchParams: URLSearchParams): StewardshipTab | null {
 }
 
 export default function StewardshipClient() {
+  const tNav = useTranslations('nav')
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState<StewardshipTab | null>(() =>
+  const [fallbackTab, setFallbackTab] = useState<StewardshipTab | null>(() =>
     getInitialTab(searchParams),
   )
+  const tabParam = searchParams.get('tab')
+  const queryTab = tabFromQueryValue(tabParam)
+  const activeTab = tabParam == null ? fallbackTab : (queryTab ?? 'packages')
 
   useEffect(() => {
     const tabParam = searchParams.get('tab')
     const fromQuery = tabFromQueryValue(tabParam)
     if (fromQuery) {
-      setActiveTab(fromQuery)
+      setFallbackTab(fromQuery)
       localStorage.setItem(STORAGE_KEY, fromQuery)
       const canonicalTabParam = tabParamFromTab(fromQuery)
       if (
@@ -76,7 +98,7 @@ export default function StewardshipClient() {
 
     const nextTab =
       tabParam == null ? (getStoredTab() ?? 'packages') : 'packages'
-    setActiveTab(nextTab)
+    setFallbackTab(nextTab)
     const params = new URLSearchParams(searchParams.toString())
     params.delete('variant')
     params.set('tab', tabParamFromTab(nextTab))
@@ -85,8 +107,21 @@ export default function StewardshipClient() {
 
   if (activeTab == null) return null
 
-  if (activeTab === 'packages') return <RequirementPackagesClient />
-  if (activeTab === 'questions') return <RequirementSelectionQuestionsClient />
-  if (activeTab === 'rfi') return <RfiQuestionsClient />
-  return <NormReferencesClient />
+  const workspace = (() => {
+    if (activeTab === 'packages') return <RequirementPackagesClient />
+    if (activeTab === 'questions') {
+      return <RequirementSelectionQuestionsClient />
+    }
+    if (activeTab === 'rfi') return <RfiQuestionsClient />
+    return <NormReferencesClient />
+  })()
+
+  return (
+    <StewardshipLazyWorkspace
+      workspaceId={activeTab}
+      workspaceLabel={tNav(WORKSPACE_LABEL_KEYS[activeTab])}
+    >
+      {workspace}
+    </StewardshipLazyWorkspace>
+  )
 }

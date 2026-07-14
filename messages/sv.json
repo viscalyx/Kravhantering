@@ -140,6 +140,14 @@
     "userInfoNoRoles": "Inga roller tilldelade",
     "dataExport": "Mina personuppgifter"
   },
+  "stewardshipWorkspace": {
+    "loading": "Laddar {workspace}…",
+    "loadError": {
+      "title": "Det gick inte att ladda {workspace}",
+      "description": "Arbetsytan kunde inte laddas. Ladda om sidan och försök igen.",
+      "retry": "Ladda om sidan"
+    }
+  },
   "specificationRequirementSelection": {
     "allAreas": "Alla kravområden",
     "answered": "Besvarad",

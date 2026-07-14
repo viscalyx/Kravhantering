@@ -682,12 +682,16 @@ kravpaketsansvarig verifierar HSA-id och visar namn och e-post som text.
 
 **Steg:** Öppna `Kravurvalsfrågor` via global navigering, gå vidare till
 `Kravunderlag` och återvänd till kravurvalsfrågorna. Ändra därefter ordning på
-seedade kravurvalsfrågor och kravurvalsvar med respektive draghandtag.
+seedade kravurvalsfrågor och kravurvalsvar med respektive draghandtag. Växla
+därefter mellan `Kravurvalsfrågor`, `RFI-frågor` och `Normbibliotek` och använd
+webbläsarens bakåt- och framåtknappar för att gå genom arbetsytorna. Kontrollera
+att den valda arbetsytans rubrik visas under varje navigeringssteg.
 
 **Förväntat resultat:** Direktlänken tillbaka till
 `Kravbiblioteksförvaltning` öppnar den ihågkomna fliken utan att paketfliken
 blinkar till. Drag-och-släpp visar förhandsvisning, markör och sparad ny ordning
-för både frågor och svar.
+för både frågor och svar. Rätt arbetsyta visas vid direktlänk, växling och varje
+historiksteg utan att en annan arbetsytas rubrik eller innehåll blinkar till.
 
 ### REQ-14c: kravurvalsförhandsvisning visar skrivskyddat krav
 
