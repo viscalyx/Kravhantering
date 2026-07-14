@@ -20,6 +20,9 @@ FROM access_review_runs
 WHERE period_start > period_end;
 ```
 
+<!-- operator-upgrade:source pr-572 start -->
+Before rollout, review identity-provider role assignments for Admin Center users. Access is now limited to users with the Admin or PrivacyOfficer role, and users who need both general administration and privacy or archiving work must have both roles. Users without either role will no longer see the Admin Center entry point, and direct links will show an access-denied page.
+<!-- operator-upgrade:source pr-572 end -->
 ## v0.3.0 - 2026-07-09
 
 ### Requirements specifications need lifecycle status before upgrade
