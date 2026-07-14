@@ -221,7 +221,8 @@ jobs:
         run: bash .devcontainer/trust-container-ca.sh
 
       - name: Report OCI export disk layout
-        run: "${RUNNER_TEMP}/report-disk-layout.sh" "before OCI export"
+        run: |
+          "${RUNNER_TEMP}/report-disk-layout.sh" "before OCI export"
 
       - name: Export OCI archives
         run: |
@@ -230,7 +231,8 @@ jobs:
           npm run container:oci:export -- --output-dir tmp/container-pr-artifacts/oci
 
       - name: Report OCI verification disk layout
-        run: "${RUNNER_TEMP}/report-disk-layout.sh" "before OCI verification"
+        run: |
+          "${RUNNER_TEMP}/report-disk-layout.sh" "before OCI verification"
 
       - name: Verify OCI archives
         run: |
