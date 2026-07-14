@@ -726,6 +726,12 @@ Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
 `Import-JSON`-formuläret. Fliken `AI-analys` visar analysen som säker
 formaterad text utan klickbara länkar, fjärrladdade bilder eller aktiv HTML.
 Råresultat visas fortfarande separat från analysen.
+När AI-assisterat författande aktiveras öppnas dialogen omedelbart med en
+översatt laddningsstatus tills innehållet är klart, och fokus stannar i
+dialogflödet. `Förhandsgranska krav i import` flyttar fokus direkt till
+importgranskningen utan att fokusera sidan emellan, behåller valt kravområde
+och den genererade `requirement-import.v3`-nyttolasten samt visar kandidaten
+utan formuläret `Import-JSON`.
 
 ### REQ-15B: AI-assisterat författande blockerar osäkert AI-anrop
 
@@ -822,6 +828,10 @@ importerad kravrad. Skärmläsare meddelar dynamiska importfel som felmeddelande
 och icke-brådskande varningar samt CSV-kvittot som status utan att användaren
 flyttar fokus; en senare förhandsgranskning eller import meddelar bara det
 senaste resultatet.
+När import aktiveras öppnas importgranskningen omedelbart med en översatt
+laddningsstatus tills innehållet är klart. Att stänga och öppna igen startar en
+ren importgranskning, och vanlig stängning återför fokus till importåtgärden.
+Efter en lyckad import uppdateras kravbiblioteket när dialogen stängs.
 
 ## Skapa krav och livscykel
 
@@ -1228,6 +1238,12 @@ Skärmläsare meddelar dynamiska importfel som felmeddelanden och
 icke-brådskande varningar samt CSV-kvittot som status utan att användaren
 flyttar fokus; en senare förhandsgranskning eller import meddelar bara det
 senaste resultatet.
+Både direkt lokal import och överlämning från AI-assisterat författande öppnar
+importgranskningen vid behov för aktuellt kravunderlag. Mottagarnamn och
+`specificationId` ändras inte. Vanlig stängning återför fokus till den stabila
+kontrollen `Fler åtgärder`, medan AI-till-import-överlämning flyttar fokus
+direkt mellan dialogerna. Lyckad import uppdaterar aktuellt kravunderlag.
+Developer Mode-markörer är tillgängliga före, under och efter inläsning.
 
 ## Avsteg
 

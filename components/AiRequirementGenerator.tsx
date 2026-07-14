@@ -57,13 +57,14 @@ type PreviewTab =
   | 'rawResult'
   | 'requirements'
 
-interface AiRequirementGeneratorProps {
+export interface AiRequirementGeneratorProps {
   aiGenerationAvailability?: AiRequirementGenerationAvailability
   areas?: Array<{
     id: number
     name: string
     permissions?: { canAuthor?: boolean }
   }>
+  embedded?: boolean
   mode?: AiImportMode
   onClose: () => void
   onCreated?: () => void
@@ -516,6 +517,7 @@ function previewFieldDisplay(
 export default function AiRequirementGenerator({
   aiGenerationAvailability = DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
   areas = [],
+  embedded = false,
   mode = 'library',
   onClose,
   onImportPreview,
@@ -864,7 +866,7 @@ export default function AiRequirementGenerator({
   }, [cancelQueuedThinking])
 
   useEffect(() => {
-    if (!open || typeof document === 'undefined') return
+    if (!open || embedded || typeof document === 'undefined') return
 
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -872,7 +874,7 @@ export default function AiRequirementGenerator({
     return () => {
       document.body.style.overflow = previousOverflow
     }
-  }, [open])
+  }, [embedded, open])
 
   useEffect(() => {
     if (!modelMenuOpen) return
@@ -1824,11 +1826,15 @@ export default function AiRequirementGenerator({
       </div>
     ) : null
 
-  return createPortal(
+  const content = (
     <AnimatePresence>
       <motion.div
-        {...fadeMotion(shouldReduceMotion)}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-secondary-900/60 p-4 backdrop-blur-sm"
+        {...(embedded ? {} : fadeMotion(shouldReduceMotion))}
+        className={
+          embedded
+            ? 'contents'
+            : 'fixed inset-0 z-50 flex items-center justify-center bg-secondary-900/60 p-4 backdrop-blur-sm'
+        }
         role="presentation"
       >
         <motion.div
@@ -3015,7 +3021,9 @@ export default function AiRequirementGenerator({
           reasoningEffortLabel={reasoningEffortLabel}
         />
       </motion.div>
-    </AnimatePresence>,
-    document.body,
+    </AnimatePresence>
   )
+
+  if (embedded) return content
+  return createPortal(content, document.body)
 }

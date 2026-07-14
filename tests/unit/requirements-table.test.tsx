@@ -2057,7 +2057,7 @@ describe('RequirementsTable', () => {
     ).toBeTruthy()
   })
 
-  it('focuses action-only floating menu items when the menu opens', async () => {
+  it('focuses action-only menu items and passes the stable trigger on activation', async () => {
     const onExport = vi.fn()
 
     render(
@@ -2081,7 +2081,8 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'manage' }))
+    const trigger = screen.getByRole('button', { name: 'manage' })
+    fireEvent.click(trigger)
 
     const actionButton = await screen.findByRole('menuitem', { name: 'Export' })
 
@@ -2089,6 +2090,7 @@ describe('RequirementsTable', () => {
 
     fireEvent.click(actionButton)
     expect(onExport).toHaveBeenCalledTimes(1)
+    expect(onExport).toHaveBeenCalledWith(trigger)
   })
 
   it('uses standard wrapping utilities when description wrapping is enabled', () => {

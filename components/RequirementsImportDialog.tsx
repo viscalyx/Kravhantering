@@ -204,9 +204,10 @@ export interface InitialRequirementsImport {
   preview?: ImportPreviewResponse
 }
 
-interface RequirementsImportDialogProps {
+export interface RequirementsImportDialogProps {
   areas?: AreaOption[]
   destinationName?: string
+  embedded?: boolean
   initialImport?: InitialRequirementsImport | null
   mode: ImportMode
   needsReferences?: NeedsReferenceOption[]
@@ -726,6 +727,7 @@ function ImportOutcomeFeedback({
 export default function RequirementsImportDialog({
   areas = EMPTY_AREA_OPTIONS,
   destinationName,
+  embedded = false,
   initialImport = null,
   mode,
   needsReferences = EMPTY_NEEDS_REFERENCE_OPTIONS,
@@ -1117,6 +1119,7 @@ export default function RequirementsImportDialog({
   useEffect(() => {
     if (
       !open ||
+      embedded ||
       typeof document === 'undefined' ||
       typeof window === 'undefined'
     ) {
@@ -1152,7 +1155,7 @@ export default function RequirementsImportDialog({
       html.style.overflow = previousHtmlOverflow
       window.scrollTo(scrollX, scrollY)
     }
-  }, [open])
+  }, [embedded, open])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -2027,14 +2030,30 @@ export default function RequirementsImportDialog({
     ]
       .filter(Boolean)
       .join(', ')
+  const backdropDialogProps = embedded
+    ? {}
+    : {
+        'aria-labelledby': titleId,
+        'aria-modal': true as const,
+        role: 'dialog' as const,
+      }
+  const panelDialogProps = embedded
+    ? {
+        'aria-labelledby': titleId,
+        'aria-modal': true as const,
+        role: 'dialog' as const,
+      }
+    : {}
 
-  return createPortal(
+  const content = (
     <>
       <div
-        aria-labelledby={titleId}
-        aria-modal="true"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-        role="dialog"
+        className={
+          embedded
+            ? 'contents'
+            : 'fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm'
+        }
+        {...backdropDialogProps}
       >
         <div
           className={`flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-secondary-950 ${
@@ -2042,6 +2061,7 @@ export default function RequirementsImportDialog({
               ? 'h-[calc(100dvh-2rem)] max-w-6xl'
               : 'max-w-xl'
           }`}
+          {...panelDialogProps}
         >
           <div className="flex items-center justify-between gap-3 border-b border-secondary-200 px-5 py-3 dark:border-secondary-800">
             <div className="min-w-0">
@@ -3668,7 +3688,9 @@ export default function RequirementsImportDialog({
           </div>
         </div>
       ) : null}
-    </>,
-    document.body,
+    </>
   )
+
+  if (embedded) return content
+  return createPortal(content, document.body)
 }

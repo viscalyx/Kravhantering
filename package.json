@@ -115,6 +115,8 @@
     "bundle:report": "node scripts/check-client-bundles.mjs --report",
     "admin:bundle:check": "node scripts/check-admin-center-bundle.mjs",
     "admin:bundle:report": "node scripts/check-admin-center-bundle.mjs --report",
+    "requirements:bundle:check": "node scripts/check-requirement-workflow-bundle.mjs",
+    "requirements:bundle:report": "node scripts/check-requirement-workflow-bundle.mjs --report",
     "stewardship:bundle:check": "node scripts/check-stewardship-bundle.mjs",
     "stewardship:bundle:report": "node scripts/check-stewardship-bundle.mjs --report",
     "perf:requirements-list:update": "node scripts/requirements-list-performance.mjs update-baseline",

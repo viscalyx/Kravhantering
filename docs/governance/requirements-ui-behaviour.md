@@ -53,6 +53,19 @@ The behaviors below apply to the requirement list rendered by:
 
 ## Requirement Import
 
+AI-assisted authoring and requirement import review are loaded on demand in
+both the Requirements Library and Kravunderlag detail workflows. Activating a
+feature opens its translated modal shell immediately while the feature body is
+loaded. The initial route payload does not include either feature
+implementation. AI-to-import handoff keeps the generated payload and
+destination context while focus moves directly from AI-assisted authoring to
+import review.
+
+A load failure remains inside the requested modal and offers Close and Reload
+page actions. Ordinary close restores focus to the stable activating control.
+Loading cannot be cancelled; activation resolves to the requested feature or
+an explicit in-modal error.
+
 - Requirement import uses one strict JSON file format,
   `requirement-import.v3`, for both kravbiblioteksimport and
   kravunderlagsimport. The top-level `schemaVersion` versions the whole import

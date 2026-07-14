@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runAdminBundleCheck } from './check-admin-center-bundle.mjs'
+import { runRequirementWorkflowBundleCheck } from './check-requirement-workflow-bundle.mjs'
 import { runStewardshipBundleCheck } from './check-stewardship-bundle.mjs'
 import { runBundleCli } from './lib/client-bundle-budget.mjs'
 
@@ -8,12 +9,14 @@ export function runClientBundleChecks({
   projectRoot,
   reportOnly = false,
   runAdmin = runAdminBundleCheck,
+  runRequirementWorkflow = runRequirementWorkflowBundleCheck,
   runStewardship = runStewardshipBundleCheck,
 }) {
   const results = {}
   const failures = []
   const checks = [
     ['admin', runAdmin],
+    ['requirementWorkflow', runRequirementWorkflow],
     ['stewardship', runStewardship],
   ]
 

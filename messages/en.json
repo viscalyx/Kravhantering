@@ -2612,6 +2612,22 @@
     "descriptionRequired": "Requirement text is required before this row can be imported.",
     "verificationMethodRequired": "Verification method is required for verifiable requirements."
   },
+  "onDemandFeature": {
+    "aiAuthoring": {
+      "loading": "Loading AI-assisted authoring…",
+      "loadErrorTitle": "AI-assisted authoring could not be loaded",
+      "loadErrorDescription": "The feature code could not be loaded. Reload the page and try again."
+    },
+    "importReview": {
+      "titleLibrary": "Import requirements",
+      "titleSpecification": "Import local requirements",
+      "titleWithDestination": "{title} for {destination}",
+      "loading": "Loading requirement import review…",
+      "loadErrorTitle": "Requirement import review could not be loaded",
+      "loadErrorDescription": "The feature code could not be loaded. Reload the page and try again."
+    },
+    "reloadPage": "Reload page"
+  },
   "safeMarkdown": {
     "imageOmitted": "Image omitted"
   }

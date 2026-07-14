@@ -2224,16 +2224,27 @@ test.describe('Requirements specification deterministic manual cases', () => {
     )
 
     await gotoSpecificationDetail(page, editSpecificationId)
+    const moreActionsTrigger = page
+      .locator('[data-floating-action-menu-trigger="more-actions"]:visible')
+      .first()
     await clickMenuItem(page, 'Fler åtgärder', 'Importera unika krav')
 
     const dialog = page.getByRole('dialog', {
       name: /Importera lokala krav för/,
     })
     await expect(dialog).toBeVisible()
+    await expect(dialog.locator(':focus')).toHaveCount(1)
     await expect(dialog.getByLabel('Kravområde')).toHaveCount(0)
     await expect(
       dialog.getByRole('button', { name: 'Förhandsgranska krav' }),
     ).toBeDisabled()
+
+    await dialog.getByRole('button', { name: 'Stäng' }).click()
+    await expect(dialog).toBeHidden()
+    await expect(moreActionsTrigger).toBeFocused()
+    await clickMenuItem(page, 'Fler åtgärder', 'Importera unika krav')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByLabel('Import-JSON')).toHaveValue('')
 
     await dialog.getByLabel('Import-JSON').fill(JSON.stringify(importPayload))
     await dialog.getByRole('button', { name: 'Förhandsgranska krav' }).click()
@@ -2283,6 +2294,19 @@ test.describe('Requirements specification deterministic manual cases', () => {
     })
     await expect(page.getByText(/Importerade rader: 1/)).toBeVisible()
     await expect(dialog.getByRole('status')).toHaveText('Importerade rader: 1')
+
+    const refreshedSpecificationItems = page.waitForRequest(request => {
+      const url = new URL(request.url())
+      return (
+        request.method() === 'GET' &&
+        url.pathname ===
+          `/api/requirements-specifications/${editSpecificationId}/items`
+      )
+    })
+    await dialog.getByRole('button', { name: 'Stäng' }).click()
+    await refreshedSpecificationItems
+    await expect(dialog).toBeHidden()
+    await expect(moreActionsTrigger).toBeFocused()
   })
 
   // cSpell:ignore relocks
