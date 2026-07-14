@@ -1,5 +1,5 @@
 import { act, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import IdentityPanel from '@/app/[locale]/admin/panels/identity-panel'
 import {
   expectAdminPanelContract,
@@ -31,6 +31,11 @@ describe('IdentityPanel', () => {
     fetchMock.mockReset()
     fetchMock.mockImplementation(pendingFetch)
     vi.stubGlobal('fetch', fetchMock)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('owns the identity tab panel contract', () => {

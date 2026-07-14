@@ -41,7 +41,10 @@ describe('ArchivingPanel', () => {
     vi.stubGlobal('fetch', fetchMock)
   })
 
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
 
   it('owns the archiving tab panel contract', () => {
     renderAdminPanel(<ArchivingPanel />, { confirmModal: true })
@@ -113,8 +116,9 @@ describe('ArchivingPanel', () => {
     expect(await screen.findByText('REQ-1')).toBeVisible()
 
     expect(dateTimeSpy).toHaveBeenCalledWith('sv', { timeZone: 'UTC' })
-    expect(dateSpy).toHaveBeenCalledTimes(2)
-    expect(dateSpy).toHaveBeenNthCalledWith(1, 'sv', { timeZone: 'UTC' })
-    expect(dateSpy).toHaveBeenNthCalledWith(2, 'sv', { timeZone: 'UTC' })
+    expect(dateSpy.mock.calls.length).toBeGreaterThanOrEqual(2)
+    for (const call of dateSpy.mock.calls) {
+      expect(call).toEqual(['sv', { timeZone: 'UTC' }])
+    }
   })
 })

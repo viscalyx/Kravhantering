@@ -163,19 +163,23 @@ test('ADMIN-08: retries the access review run list after a load failure', async 
 
   await page.goto('/sv/admin?tab=accessReview')
 
-  await expect(accessReviewAlert(page)).toContainText(
-    'Kunde inte läsa in testlistan',
-  )
-  await expect(
-    page.getByText('Kunde inte läsa in testlistan', { exact: true }),
-  ).toHaveCount(1)
+  await test.step('shows the initial run-list load error once', async () => {
+    await expect(accessReviewAlert(page)).toContainText(
+      'Kunde inte läsa in testlistan',
+    )
+    await expect(
+      page.getByText('Kunde inte läsa in testlistan', { exact: true }),
+    ).toHaveCount(1)
+  })
 
-  const failedAttemptCount = listAttempts
-  shouldFailListLoad = false
-  await page.getByRole('button', { name: 'Försök igen' }).click()
+  await test.step('retries and loads the access review run list', async () => {
+    const failedAttemptCount = listAttempts
+    shouldFailListLoad = false
+    await page.getByRole('button', { name: 'Försök igen' }).click()
 
-  await expect(page.getByText('Kalle Svensson')).toBeVisible()
-  expect(listAttempts).toBe(failedAttemptCount + 1)
+    await expect(page.getByText('Kalle Svensson')).toBeVisible()
+    expect(listAttempts).toBe(failedAttemptCount + 1)
+  })
 })
 
 test('ADMIN-08: admin can decide and export an access review run', async ({
