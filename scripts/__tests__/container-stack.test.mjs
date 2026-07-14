@@ -177,6 +177,7 @@ describe('container stack helpers', () => {
     })
     expect(testConfig).toMatchObject({
       networkName: 'kravhantering-internal',
+      pruneDockerAfterLoad: false,
       projectName: 'kravhantering-container-stack-test-abc123',
       sqlServerHostPort: '127.0.0.1:15433',
       sqlServerVolumeName:
@@ -210,6 +211,7 @@ describe('container stack helpers', () => {
         '--mode',
         'test',
         '--skip-build',
+        '--prune-docker-after-load',
         '--run-id',
         'run1',
         '--network-name',
@@ -221,6 +223,7 @@ describe('container stack helpers', () => {
       command: 'up',
       mode: 'test',
       networkName: 'kravhantering-test-network',
+      pruneDockerAfterLoad: true,
       runId: 'run1',
       skipBuild: true,
       sqlServerHostPort: '127.0.0.1:16000',
@@ -256,6 +259,10 @@ describe('container stack helpers', () => {
       DEMO_SEED_IMAGE: 'localhost/kravhantering/demo-seed',
       DEMO_SEED_SOURCE: 'pr-build',
       DEMO_SEED_TAG: 'pr-7-99-deadbeef',
+      HSA_PERSON_LOOKUP_ADAPTER_IMAGE:
+        'localhost/kravhantering/hsa-person-lookup-adapter',
+      HSA_PERSON_LOOKUP_ADAPTER_SOURCE: 'pr-build',
+      HSA_PERSON_LOOKUP_ADAPTER_TAG: 'pr-7-99-deadbeef',
     }
     const config = createLocalStackConfig({
       env,
@@ -270,6 +277,8 @@ describe('container stack helpers', () => {
       dbJobImageReference: 'localhost/kravhantering/db-job:pr-7-99-deadbeef',
       demoSeedImageReference:
         'localhost/kravhantering/demo-seed:pr-7-99-deadbeef',
+      hsaPersonLookupAdapterImageReference:
+        'localhost/kravhantering/hsa-person-lookup-adapter:pr-7-99-deadbeef',
       skipBuild: true,
     })
 
@@ -348,6 +357,7 @@ describe('container stack helpers', () => {
           '--run-id',
           '99',
           '--skip-build',
+          '--prune-docker-after-load',
           '--lock-file',
           'tmp/custom-stack.lock.json',
         ],
@@ -373,7 +383,14 @@ describe('container stack helpers', () => {
       'docker save localhost/kravhantering/hsa-directory-mock:local',
     )
     expect(spawned).toContain(
-      'docker save localhost/kravhantering/hsa-person-lookup-adapter:local',
+      'docker save localhost/kravhantering/hsa-person-lookup-adapter:pr-7-99-deadbeef',
+    )
+    expect(commands).toContain('docker buildx prune --all --force')
+    expect(commands).toContain('docker image prune --all --force')
+    expect(commands.indexOf('docker image prune --all --force')).toBeLessThan(
+      commands.findIndex(command =>
+        command.startsWith('podman compose -f container-stack.compose.yml'),
+      ),
     )
     expect(commandText).toContain(
       'generate-stack-lock.mjs generate --lock-file tmp/custom-stack.lock.json',

@@ -84,6 +84,38 @@ jobs:
           chmod +x "${RUNNER_TEMP}/report-disk-layout.sh"
           "${RUNNER_TEMP}/report-disk-layout.sh" "initial"
 
+      - name: Remove unused pre-installed runner toolchains
+        run: |
+          set -euo pipefail
+
+          unused_toolchains=(
+            /home/linuxbrew
+            /usr/local/lib/android
+            /usr/local/.ghcup
+            /usr/local/share/vcpkg
+            /opt/ghc
+            /opt/hostedtoolcache/CodeQL
+            /opt/hostedtoolcache/go
+            /opt/hostedtoolcache/ghc
+            /opt/hostedtoolcache/PyPy
+            /opt/hostedtoolcache/Python
+            /opt/hostedtoolcache/Ruby
+            /usr/share/dotnet
+            /usr/share/miniconda
+            /usr/share/swift
+          )
+
+          for toolchain in "${unused_toolchains[@]}"; do
+            if sudo test -e "${toolchain}"; then
+              sudo du -sh "${toolchain}" || true
+              sudo rm -rf -- "${toolchain}"
+            fi
+          done
+
+          sudo apt-get clean
+          docker image prune --all --force
+          "${RUNNER_TEMP}/report-disk-layout.sh" "after runner toolchain cleanup"
+
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -228,7 +260,8 @@ jobs:
           node scripts/containers/run-local-stack.mjs up \
             --mode release-smoke \
             --run-id "${CONTAINER_STACK_RUN_ID}" \
-            --skip-build
+            --skip-build \
+            --prune-docker-after-load
 
       - name: Trust generated CA for browser runner
         run: bash .devcontainer/trust-container-ca.sh
