@@ -11,13 +11,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import {
-  type MouseEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
+import { type MouseEvent, useCallback, useEffect, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useAccessReviewExportDownload } from '@/components/access-review/useAccessReviewExportDownload'
 import { useConfirmModal } from '@/components/ConfirmModal'
@@ -102,6 +96,10 @@ export default function AccessReviewPanel({
   const { confirm } = useConfirmModal()
   const [runs, setRuns] = useState<AccessReviewRun[]>([])
   const [hasLoadedRuns, setHasLoadedRuns] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [completedLoadAttempt, setCompletedLoadAttempt] = useState<
+    number | null
+  >(null)
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null)
   const [selectedDetail, setSelectedDetail] =
     useState<AccessReviewRunDetail | null>(null)
@@ -129,7 +127,6 @@ export default function AccessReviewPanel({
     reviewId: selectedRunId,
   })
   const loadErrorMessage = ta('accessReview.loadError')
-  const loadedRunsMessageRef = useRef<string | null>(null)
 
   const setDetail = useCallback(
     (
@@ -169,10 +166,10 @@ export default function AccessReviewPanel({
   )
 
   useEffect(() => {
-    if (loadedRunsMessageRef.current === loadErrorMessage) return
     let cancelled = false
     async function loadRuns() {
       setHasLoadedRuns(false)
+      setStatus('idle')
       setMessage(null)
       try {
         const response = await apiFetch('/api/admin/access-reviews')
@@ -185,7 +182,6 @@ export default function AccessReviewPanel({
         }
         const body = (await response.json()) as { runs?: AccessReviewRun[] }
         if (cancelled) return
-        loadedRunsMessageRef.current = loadErrorMessage
         const nextRuns = body.runs ?? []
         setRuns(nextRuns)
         setHasLoadedRuns(true)
@@ -193,18 +189,19 @@ export default function AccessReviewPanel({
         setSelectedRunId(current => current ?? nextRuns[0]?.id ?? null)
       } catch {
         if (!cancelled) {
-          loadedRunsMessageRef.current = loadErrorMessage
           setHasLoadedRuns(false)
           setStatus('error')
           setMessage(loadErrorMessage)
         }
+      } finally {
+        if (!cancelled) setCompletedLoadAttempt(loadAttempt)
       }
     }
     void loadRuns()
     return () => {
       cancelled = true
     }
-  }, [loadErrorMessage])
+  }, [loadAttempt, loadErrorMessage])
 
   useEffect(() => {
     let cancelled = false
@@ -403,6 +400,7 @@ export default function AccessReviewPanel({
   const hasOpenRun = runs.some(
     run => run.status === 'draft' || run.status === 'in_review',
   )
+  const isRunListLoading = completedLoadAttempt !== loadAttempt
   const isCreateDisabled = status === 'saving' || !hasLoadedRuns || hasOpenRun
   const accessReviewErrorMessage =
     status === 'error' && message
@@ -534,14 +532,10 @@ export default function AccessReviewPanel({
           </div>
         </div>
 
-        {message ? (
+        {message && status !== 'error' ? (
           <div
-            className={`mt-4 text-sm font-medium ${
-              status === 'error'
-                ? 'text-red-700 dark:text-red-300'
-                : 'text-emerald-700 dark:text-emerald-300'
-            }`}
-            role={status === 'error' ? undefined : 'status'}
+            className="mt-4 text-sm font-medium text-emerald-700 dark:text-emerald-300"
+            role="status"
           >
             {message}
           </div>
@@ -604,7 +598,7 @@ export default function AccessReviewPanel({
         ) : null}
 
         <div className="mt-6 grid gap-5 xl:grid-cols-[20rem_minmax(0,1fr)]">
-          <aside className="space-y-3">
+          <aside aria-busy={isRunListLoading} className="space-y-3">
             <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-secondary-700 dark:text-secondary-200">
               {ta('accessReview.runs')}
             </h3>
@@ -642,6 +636,14 @@ export default function AccessReviewPanel({
               <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/70 p-4 text-sm text-secondary-600 dark:border-secondary-700/60 dark:bg-secondary-950/40 dark:text-secondary-300">
                 {ta('accessReview.noRuns')}
               </div>
+            ) : status === 'error' && !isRunListLoading ? (
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                onClick={() => setLoadAttempt(current => current + 1)}
+                type="button"
+              >
+                {tc('retry')}
+              </button>
             ) : null}
           </aside>
 

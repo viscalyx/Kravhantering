@@ -64,6 +64,7 @@ export default function IdentitySettingsPanel() {
   const [prefixesBaseline, setPrefixesBaseline] = useState(() =>
     hsaIdPrefixSnapshot([]),
   )
+  const [isInitialLoadPending, setIsInitialLoadPending] = useState(true)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [message, setMessage] = useState<string | null>(null)
   const panelRef = useRef<HTMLElement | null>(null)
@@ -74,6 +75,7 @@ export default function IdentitySettingsPanel() {
   const prefixesDirty = prefixesBaseline !== hsaIdPrefixSnapshot(prefixes)
 
   const loadPrefixes = useCallback(async () => {
+    setIsInitialLoadPending(true)
     setSaveState('saving')
     setMessage(null)
     try {
@@ -100,6 +102,8 @@ export default function IdentitySettingsPanel() {
     } catch {
       setSaveState('error')
       setMessage(loadErrorMessage)
+    } finally {
+      setIsInitialLoadPending(false)
     }
   }, [loadErrorMessage])
 
@@ -390,7 +394,7 @@ export default function IdentitySettingsPanel() {
       </div>
 
       <div className="mt-6 space-y-3">
-        {prefixes.length === 0 ? (
+        {!isInitialLoadPending && prefixes.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-secondary-300 px-4 py-5 text-sm text-secondary-600 dark:border-secondary-700 dark:text-secondary-300">
             {ta('identity.emptyPrefixes')}
           </p>

@@ -468,8 +468,9 @@ async function expectLastCreatedBlobStartsWithUtf8Bom(): Promise<void> {
 describe('AdminClient', () => {
   beforeEach(() => {
     fetchMock.mockReset()
+    fetchMock.mockImplementation(() => new Promise(() => undefined))
     retentionPoliciesResponse = null
-    columnDefaultsResponse = null
+    columnDefaultsResponse = new Promise(() => undefined)
     createObjectURLMock.mockClear()
     revokeObjectURLMock.mockClear()
     anchorClickMock.mockClear()
@@ -506,6 +507,22 @@ describe('AdminClient', () => {
 
     expect(taxonomyTab).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'taxonomy-panel')
+  })
+
+  it('clears the fallback notice after the corrected URL is processed', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=missing')
+
+    const { rerender } = render(<AdminClient currentUserRoles={['Admin']} />)
+
+    expect(screen.getByText('admin.tabUnavailableFallback')).toBeVisible()
+    expect(routerReplace).toHaveBeenCalledWith('/admin', { scroll: false })
+
+    searchParamsMock.current = new URLSearchParams()
+    rerender(<AdminClient currentUserRoles={['Admin']} />)
+
+    await waitFor(() =>
+      expect(screen.queryByText('admin.tabUnavailableFallback')).toBeNull(),
+    )
   })
 
   it('opens the statuses and workflows tab from the admin tab query parameter', () => {
@@ -604,11 +621,7 @@ describe('AdminClient', () => {
   })
 
   it('renders the admin title without the reference data eyebrow', () => {
-    render(
-      <AdminClient
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-      />,
-    )
+    render(<AdminClient />)
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'admin.title',
@@ -1305,12 +1318,7 @@ describe('AdminClient', () => {
   ])('falls back from unauthorized admin tab URL %s', (query, roles, tabName) => {
     searchParamsMock.current = new URLSearchParams(query)
 
-    renderWithConfirmModal(
-      <AdminClient
-        currentUserRoles={roles}
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-      />,
-    )
+    renderWithConfirmModal(<AdminClient currentUserRoles={roles} />)
 
     expect(screen.getByRole('tab', { name: tabName })).toHaveAttribute(
       'aria-selected',
@@ -1323,11 +1331,7 @@ describe('AdminClient', () => {
   it('removes the admin tab query when returning to the default tab', () => {
     searchParamsMock.current = new URLSearchParams('tab=taxonomy')
 
-    render(
-      <AdminClient
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-      />,
-    )
+    render(<AdminClient />)
 
     fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
 

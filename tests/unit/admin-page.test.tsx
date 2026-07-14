@@ -109,4 +109,14 @@ describe('AdminPage authorization and initial data', () => {
     expect(adminPageMocks.getDataSource).toHaveBeenCalledOnce()
     expect(adminPageMocks.listActionAuditEvents).toHaveBeenCalledOnce()
   })
+
+  it('does not load action-log data when an Admin opens the default tab', async () => {
+    await renderAdminPage({ roles: ['Admin'] })
+
+    expect(screen.getByTestId('admin-client')).toHaveTextContent(
+      'Admin:no-audit',
+    )
+    expect(adminPageMocks.getDataSource).not.toHaveBeenCalled()
+    expect(adminPageMocks.listActionAuditEvents).not.toHaveBeenCalled()
+  })
 })

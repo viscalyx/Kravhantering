@@ -595,23 +595,27 @@ describe('Navigation', () => {
 
   it('keeps Admin Center navigation hidden for an ineligible role', async () => {
     authState.value = { authenticated: true, roles: ['Reviewer'] }
+    areasState.value = {
+      areas: [{ permissions: { canManageAssignments: true } }],
+    }
 
     render(<Navigation />)
 
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith('/api/auth/me', {
-        credentials: 'same-origin',
-      }),
-    )
+    expect(await screen.findByRole('link', { name: 'nav.areas' })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'admin.settings' })).toBeNull()
   })
 
   it('keeps Admin Center navigation hidden when role loading fails', async () => {
+    areasState.value = {
+      areas: [{ permissions: { canManageAssignments: true } }],
+    }
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input)
-        if (url.includes('/api/auth/me')) throw new Error('auth unavailable')
+        if (url.includes('/api/auth/me')) {
+          return { ok: false } as Response
+        }
         if (url.includes('/api/requirement-areas')) {
           return okJson(areasState.value)
         }
@@ -624,11 +628,7 @@ describe('Navigation', () => {
 
     render(<Navigation />)
 
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith('/api/auth/me', {
-        credentials: 'same-origin',
-      }),
-    )
+    expect(await screen.findByRole('link', { name: 'nav.areas' })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'admin.settings' })).toBeNull()
   })
 })

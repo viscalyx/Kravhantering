@@ -783,15 +783,17 @@ sektionen `AI-säkerhet` visas efter `AI-assistering`, innehåller
 `Logga forensisk AI-säkerhetsdata`, `Cachetid för säkerhetsregler` och
 `AI-säkerhetsregler`, och att sektionen `MCP-gränssnitt` visas därefter med
 `MCP-anropsgräns` med synligt tillåtet intervall och steg. Notera aktuell
-gräns, ställ in `1 MiB` och spara. Expandera en AI-säkerhetsregel och
-höj därefter gränsen ett steg med plusknappen, kontrollera att den blir `2 MiB`
-och spara. Återställ därefter ursprungligt värde och spara.
+gräns, ställ in `1 MiB` och spara. Expandera en AI-säkerhetsregel, välj
+`Återställ standard`, kontrollera bekräftelsedialogen och avbryt. Höj därefter
+gränsen ett steg med plusknappen, kontrollera att den blir `2 MiB` och spara.
+Återställ därefter ursprungligt värde och spara.
 
 **Förväntat resultat:** Gränsen sparas i Admincenter och visas som aktuell
 gräns. Det tillåtna intervallet visas som `1 MiB` till `10 MiB` med steg
 `1 MiB`. Standardvärdet är `10 MiB`; den sparade teständringen visar `2 MiB`
-efter ett steg upp från minimum. Inställningen påverkar inte reglaget för
-kravgenerering om reglaget inte ändras separat.
+efter ett steg upp från minimum. Återställningen visar en varningsdialog innan
+någon ändring skickas. Inställningen påverkar inte reglaget för kravgenerering
+om reglaget inte ändras separat.
 
 ### REQ-17: importera krav till kravbiblioteket
 
@@ -1346,11 +1348,13 @@ Admincenter. Filtrera på aktör eller händelse och exportera.
 ### ADMIN-08: åtkomstöversyn, beslut och export
 
 **Steg:** Öppna åtkomstöversyn, fatta ett testbeslut och exportera underlag.
-Upprepa med simulerat serverfel eller behörighetsfel vid beslut och export.
+Upprepa med simulerat serverfel eller behörighetsfel vid inläsning, beslut och
+export. Välj `Försök igen` efter inläsningsfelet.
 
 **Förväntat resultat:** Beslut sparas och exporten innehåller beslutet. Vid
-fel visas felmeddelande, beslutet ligger kvar som ej sparat och exportfel
-bryter inte sidan.
+inläsningsfel visas meddelandet en gång och `Försök igen` läser in listan.
+Beslutet ligger kvar som ej sparat efter beslutsfel och exportfel bryter inte
+sidan.
 
 ### ADMIN-09: åtkomstöversyn avvisar för långa kommentarer
 

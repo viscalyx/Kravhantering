@@ -11,12 +11,15 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { downloadBlob } from '@/lib/browser-download'
+import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { createUtf8BomBlob } from '@/lib/text-export'
 
 type SaveState = 'error' | 'idle' | 'saved' | 'saving'
+
+const ARCHIVING_TIME_ZONE = 'UTC'
 
 type ArchivingRetentionAction = 'delete'
 interface ArchivingRetentionPolicy {
@@ -304,9 +307,12 @@ export default function ArchivingPanel() {
     <section
       aria-labelledby="archiving-tab"
       className="rounded-4xl border border-secondary-200/70 bg-white/88 p-6 shadow-soft dark:border-secondary-800 dark:bg-secondary-950/70"
-      data-developer-mode-name="admin archiving panel"
-      data-developer-mode-priority="330"
-      data-developer-mode-value="retention and archive exports"
+      {...devMarker({
+        context: 'admin center',
+        name: 'tab panel',
+        priority: 340,
+        value: 'archiving',
+      })}
       id="archiving-panel"
       role="tabpanel"
     >
@@ -410,7 +416,9 @@ export default function ArchivingPanel() {
                   {selectedRetentionPolicy.lastRunAt
                     ? new Date(
                         selectedRetentionPolicy.lastRunAt,
-                      ).toLocaleString(locale)
+                      ).toLocaleString(locale, {
+                        timeZone: ARCHIVING_TIME_ZONE,
+                      })
                     : ta('privacy.notAvailable')}
                 </dd>
               </div>
@@ -457,6 +465,7 @@ export default function ArchivingPanel() {
                   {ta('archiving.retention.cutoff', {
                     date: new Date(retentionPreview.cutoff).toLocaleDateString(
                       locale,
+                      { timeZone: ARCHIVING_TIME_ZONE },
                     ),
                   })}
                 </div>
@@ -539,6 +548,7 @@ export default function ArchivingPanel() {
                       <td className="px-4 py-3">
                         {new Date(candidate.ageBasis).toLocaleDateString(
                           locale,
+                          { timeZone: ARCHIVING_TIME_ZONE },
                         )}
                       </td>
                       <td className="px-4 py-3">

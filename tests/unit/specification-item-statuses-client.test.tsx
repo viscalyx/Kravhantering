@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -268,7 +269,9 @@ describe('SpecificationItemStatusesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
+    })
     expect(
       screen.queryByRole('textbox', {
         name: /specificationItemStatusAdmin\.name.+SV/,

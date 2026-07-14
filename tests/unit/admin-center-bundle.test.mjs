@@ -161,6 +161,24 @@ describe('Admin Center bundle contract', () => {
       'a-panel',
       'b-panel',
     ])
+
+    const positionalReport = evaluateAdminBundle({
+      entryChunks: ['static/chunks/entry.js'],
+      importedPanelNames: ['b-panel', 'a-panel'],
+      lazyChunkGroups: [['static/chunks/a.js'], ['static/chunks/b.js']],
+      panelNames: ['a-panel', 'b-panel'],
+      staticDirectory: root,
+    })
+    expect(
+      positionalReport.panels.map(panel => ({
+        chunks: panel.chunks.map(file => file.chunk),
+        name: panel.name,
+      })),
+    ).toEqual([
+      { chunks: ['static/chunks/a.js'], name: 'b-panel' },
+      { chunks: ['static/chunks/b.js'], name: 'a-panel' },
+    ])
+
     expect(() =>
       evaluateAdminBundle({
         entryChunks: ['static/chunks/entry.js'],

@@ -1393,6 +1393,8 @@
       "removeSelectedTermsConfirmMessage": "{standardCount} standard words will be deactivated and {customCount} custom additions will be deleted.",
       "removeSelectedTermsConfirmTitle": "Remove selected words?",
       "restoreRuleDefaults": "Restore default",
+      "restoreRuleDefaultsConfirmMessage": "Standard words will be reactivated and restored to their default directions. Custom additions will remain unchanged.",
+      "restoreRuleDefaultsConfirmTitle": "Restore default words?",
       "rowSaveError": "Could not save",
       "safetyDirections": {
         "input": "Input",
@@ -2142,7 +2144,7 @@
       },
       "saving": {
         "heading": "Change and restore",
-        "body": "Add custom terms with the plus button inside a rule type. Remove selected terms with the minus button; custom additions are deleted while standard terms are deactivated. The word text itself is not edited: add the correct word and remove or deactivate the incorrect one. Restore standard on a rule activates the standard terms and restores their directions, but keeps custom additions."
+        "body": "Add custom terms with the plus button inside a rule type. Remove selected terms with the minus button; custom additions are deleted while standard terms are deactivated. The word text itself is not edited: add the correct word and remove or deactivate the incorrect one. Restore standard on a rule asks for confirmation before activating standard terms and restoring their directions; custom additions remain unchanged."
       }
     },
     "adminPrivacy": {
@@ -2188,7 +2190,7 @@
       "title": "Access review",
       "overview": {
         "heading": "Purpose",
-        "body": "Access review records who currently holds app-managed assignments, who reviewed them, and which decision was made for each row."
+        "body": "Access review records who currently holds app-managed assignments, who reviewed them, and which decision was made for each row. If the run list cannot be loaded, use Try again after the error is shown."
       },
       "scope": {
         "heading": "Scope",

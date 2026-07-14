@@ -210,11 +210,12 @@ actions, targets, direct phrases/markers, and coding words. Term rows show the
 word, direction (`Input`, `Output`, or `Input and output`), whether the row is
 standard, and whether it is active. Admins can add custom terms, change a term
 direction, deactivate standard terms, delete custom terms through the selected
-rows action, and restore standard terms for a single rule. A warning icon marks
-standard terms whose active state or direction differs from the seeded
-standard. The safety filter reads active terms from the database only; if the
-rule set cannot be loaded, AI-assisted authoring fails closed before provider
-work.
+rows action, and restore standard terms for a single rule. Restoring standard
+terms requires a danger confirmation before the optimistic update and API
+request begin. A warning icon marks standard terms whose active state or
+direction differs from the seeded standard. The safety filter reads active
+terms from the database only; if the rule set cannot be loaded, AI-assisted
+authoring fails closed before provider work.
 
 When an AI safety block happens, the metadata event is always written to
 `security-audit`. If forensic AI safety logging is enabled, the same block also
@@ -453,7 +454,8 @@ inventories app-managed assignments, stores a point-in-time review run, assigns
 newly created runs to the signed-in actor from the verified IdP session, lets
 authorized handlers decide each item, cancel mistaken pending runs without
 deleting evidence, and export the review evidence as structured JSON or a PDF
-rendering of the same payload.
+rendering of the same payload. A failed run-list request remains recoverable
+through the run list's retry control.
 
 The in-app scope is deliberately limited to permissions Kravhantering owns:
 

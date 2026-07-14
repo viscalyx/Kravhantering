@@ -177,6 +177,22 @@ test.describe('Admin AI settings', () => {
         }
       })
 
+      await test.step('confirms before restoring safety-rule defaults', async () => {
+        const aiPanel = page.locator('#ai-panel')
+        await aiPanel
+          .getByRole('button', { name: 'Återställ standard' })
+          .click()
+
+        const dialog = page.getByRole('alertdialog', {
+          name: 'Återställa standardord?',
+        })
+        await expect(dialog).toContainText(
+          'Standardord aktiveras och återställs till sina standardriktningar.',
+        )
+        await dialog.getByRole('button', { name: 'Avbryt' }).click()
+        await expect(dialog).toHaveCount(0)
+      })
+
       await test.step('keeps MCP guidance behind the field help button', async () => {
         await expect(
           page.getByText('Största tillåtna MCP POST-nyttolast och sparad'),
@@ -295,7 +311,12 @@ test.describe('Admin AI settings', () => {
         .fill('Skapa ett krav om spårbar import och verifierbarhet.')
 
       await page.goto('/sv/admin?tab=ai')
-      await page.locator('#admin-ai-requirement-generation-enabled').uncheck()
+      const refreshedGenerationToggle = page.locator(
+        '#admin-ai-requirement-generation-enabled',
+      )
+      await expect(refreshedGenerationToggle).toBeEnabled()
+      await expect(refreshedGenerationToggle).toBeChecked()
+      await refreshedGenerationToggle.uncheck()
       await expect
         .poll(
           async () =>

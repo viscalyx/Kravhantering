@@ -380,9 +380,9 @@ export default function AdminClient({
       currentUserRoles,
     )
     setActiveTab(resolution.tab)
+    setFallbackReason(resolution.reason)
 
     if (resolution.reason) {
-      setFallbackReason(resolution.reason)
       router.replace(
         getAdminTabHref(
           resolution.tab,

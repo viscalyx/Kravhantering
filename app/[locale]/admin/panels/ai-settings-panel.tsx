@@ -760,7 +760,20 @@ export default function AiSettingsPanel() {
     }
   }
 
-  async function restoreRuleDefaults(rule: AiSafetyRuleAdminItem) {
+  async function restoreRuleDefaults(
+    rule: AiSafetyRuleAdminItem,
+    event?: MouseEvent<HTMLButtonElement>,
+  ) {
+    const confirmed = await confirm({
+      anchorEl: event?.currentTarget,
+      confirmText: ta('ai.restoreRuleDefaults'),
+      icon: 'caution',
+      message: ta('ai.restoreRuleDefaultsConfirmMessage'),
+      title: ta('ai.restoreRuleDefaultsConfirmTitle'),
+      variant: 'danger',
+    })
+    if (!confirmed) return
+
     const previousRules = safetyRules
     setSafetyRules(current =>
       restoreSafetyRuleDefaultsInRules(current, rule.ruleId),
@@ -1257,7 +1270,9 @@ export default function AiSettingsPanel() {
                               disabled={
                                 ruleActionStates[rule.ruleId] === 'saving'
                               }
-                              onClick={() => void restoreRuleDefaults(rule)}
+                              onClick={event =>
+                                void restoreRuleDefaults(rule, event)
+                              }
                               type="button"
                             >
                               <RotateCcw
