@@ -157,7 +157,7 @@ test.describe('AUTHZ-08/AUTH-06/AUTH-11: Admin Center tab permissions for Admin-
     viewport: { height: 720, width: 1280 },
   })
 
-  test('AUTHZ-08/AUTH-06/AUTH-11: enables Admin tabs while PrivacyOfficer tabs stay disabled', async ({
+  test('AUTHZ-08/AUTH-06/AUTH-11: shows Admin tabs while PrivacyOfficer-only tabs stay hidden', async ({
     page,
   }, testInfo) => {
     referenceManualCases(testInfo, 'AUTHZ-08', 'AUTH-06', 'AUTH-11')
@@ -168,17 +168,19 @@ test.describe('AUTHZ-08/AUTH-06/AUTH-11: Admin Center tab permissions for Admin-
     const accessReviewTab = page.getByRole('tab', {
       name: 'Behörighetsöversyn',
     })
-    const archivingTab = page.getByRole('tab', { name: 'Arkivering' })
-    const privacyTab = page.getByRole('tab', { name: 'Dataskydd' })
     const actionLogTab = page.getByRole('tab', { name: 'Åtgärdslogg' })
 
     await expect(columnsTab).toHaveAttribute('aria-selected', 'true')
-    await expect(identityTab).not.toHaveAttribute('aria-disabled', 'true')
-    await expect(accessReviewTab).not.toHaveAttribute('aria-disabled', 'true')
-    await expect(actionLogTab).not.toHaveAttribute('aria-disabled', 'true')
-    await expect(archivingTab).toHaveAttribute('aria-disabled', 'true')
-    await expect(privacyTab).toHaveAttribute('aria-disabled', 'true')
-    await expect(privacyTab).toHaveAttribute('title', /Dataskyddshandläggare/)
+    await expect(identityTab).toBeVisible()
+    await expect(accessReviewTab).toBeVisible()
+    await expect(actionLogTab).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Arkivering' })).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: 'Dataskydd' })).toHaveCount(0)
+    await expect(
+      page.getByText(
+        'Du saknar behörighet till den begärda fliken. Kolumner visas i stället.',
+      ),
+    ).toBeVisible()
 
     await identityTab.click()
     await expect(identityTab).toHaveAttribute('aria-selected', 'true')
@@ -195,13 +197,5 @@ test.describe('AUTHZ-08/AUTH-06/AUTH-11: Admin Center tab permissions for Admin-
     await expect(
       page.getByRole('heading', { name: 'Åtgärdslogg' }),
     ).toBeVisible()
-
-    await archivingTab.click({ force: true })
-    await expect(actionLogTab).toHaveAttribute('aria-selected', 'true')
-    await expect(archivingTab).toHaveAttribute('aria-selected', 'false')
-
-    await privacyTab.click({ force: true })
-    await expect(actionLogTab).toHaveAttribute('aria-selected', 'true')
-    await expect(privacyTab).toHaveAttribute('aria-selected', 'false')
   })
 })

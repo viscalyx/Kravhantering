@@ -1292,6 +1292,18 @@
   "admin": {
     "title": "Administrationscenter",
     "loading": "Laddar administrationscenter...",
+    "accessDenied": {
+      "title": "Du saknar behörighet till Administrationscenter",
+      "description": "Administrationscenter kräver rollen Administratör eller Dataskyddshandläggare. Kontakta din behörighetsadministratör om du behöver åtkomst."
+    },
+    "panelLoading": "Laddar {tab}…",
+    "panelLoadError": {
+      "title": "Kunde inte läsa in {tab}",
+      "description": "Ladda om sidan och försök igen.",
+      "retry": "Försök igen"
+    },
+    "tabAccessFallback": "Du saknar behörighet till den begärda fliken. {tab} visas i stället.",
+    "tabUnavailableFallback": "Den begärda fliken är inte tillgänglig. {tab} visas i stället.",
     "description": "Hantera centrala administrationsinställningar för systemet, inklusive kolumner, taxonomi, statusar och arbetsflöden, behörighetsöversyner och integritetsrelaterade funktioner.",
     "settings": "Inställningar",
     "adminCenter": "Administrationscenter",
@@ -1381,6 +1393,8 @@
       "removeSelectedTermsConfirmMessage": "{standardCount} standardord inaktiveras och {customCount} egna tillägg tas bort.",
       "removeSelectedTermsConfirmTitle": "Ta bort markerade ord?",
       "restoreRuleDefaults": "Återställ standard",
+      "restoreRuleDefaultsConfirmMessage": "Standardord aktiveras och återställs till sina standardriktningar. Egna tillägg påverkas inte.",
+      "restoreRuleDefaultsConfirmTitle": "Återställa standardord?",
       "rowSaveError": "Kunde inte spara",
       "safetyDirections": {
         "input": "Input",
@@ -1701,6 +1715,7 @@
     "locked": "Låst",
     "saved": "Sparat",
     "columnsSaveError": "Det gick inte att spara kolumninställningarna.",
+    "columnsLoadError": "Det gick inte att läsa in kolumninställningarna.",
     "areasDescription": "Hantera kravområden och deras prefix.",
     "categoriesDescription": "Visa kategorier som används för att klassificera kravets perspektiv.",
     "typesDescription": "Visa typer och deras kvalitetsstruktur.",
@@ -2129,7 +2144,7 @@
       },
       "saving": {
         "heading": "Ändra och återställa",
-        "body": "Lägg till egna termer med plusknappen i en regeltyp. Ta bort markerade termer med minusknappen; egna tillägg tas bort medan standardtermer inaktiveras. Själva ordtexten redigeras inte: lägg till rätt ord och ta bort eller inaktivera det felaktiga. Återställ standard på en regel aktiverar standardtermerna och återställer deras riktning, men behåller egna tillägg."
+        "body": "Lägg till egna termer med plusknappen i en regeltyp. Ta bort markerade termer med minusknappen; egna tillägg tas bort medan standardtermer inaktiveras. Själva ordtexten redigeras inte: lägg till rätt ord och ta bort eller inaktivera det felaktiga. Återställ standard på en regel begär bekräftelse innan standardtermerna aktiveras och deras riktning återställs; egna tillägg påverkas inte."
       }
     },
     "adminPrivacy": {
@@ -2175,7 +2190,7 @@
       "title": "Behörighetsöversyn",
       "overview": {
         "heading": "Syfte",
-        "body": "Behörighetsöversynen dokumenterar vilka som har uppdrag som applikationen styr, vem som granskade dem och vilket beslut som fattades för varje rad."
+        "body": "Behörighetsöversynen dokumenterar vilka som har uppdrag som applikationen styr, vem som granskade dem och vilket beslut som fattades för varje rad. Om listan inte kan läsas in använder du Försök igen efter att felet har visats."
       },
       "scope": {
         "heading": "Omfattning",

@@ -20,7 +20,7 @@ workflows without changing route slugs, API field names, or MCP tool
 identifiers.
 
 The global side navigation contains the settings item that links to
-`/{locale}/admin`.
+`/{locale}/admin` after an `Admin` or `PrivacyOfficer` role is confirmed.
 
 Taxonomy and status links are grouped in the Admin Center.
 
@@ -39,8 +39,24 @@ The admin center currently has nine tabs for core administration:
 - `Action log`
 
 The `Action log` tab renders the action-log filters, table, pagination, and
-CSV export directly in the Admin Center. Unavailable tabs are dimmed, cannot be
-selected, and explain the missing prerequisite in a tooltip.
+CSV export directly in the Admin Center. The navigation only renders tabs that
+the current roles may use.
+
+## On-demand tab panels
+
+Admin Center loads a small shared shell for navigation, authorization, help
+content, and feedback. Each tab panel is delivered as a separate JavaScript
+module only after an authorized user activates the tab. Panels are not
+prefetched on hover or while idle, and only the active panel is mounted.
+
+A production-build check verifies that panels remain separate from the shell
+and that the shell and each panel stay within the project's compressed
+JavaScript budget. Raising a budget requires a current size report and an
+intentional implementation-value justification.
+
+Static client modules contain UI logic and public contracts, not database rows
+or secrets. Panel data is loaded after activation from APIs that verify the
+panel role on the server.
 
 ## Action Log
 
@@ -194,11 +210,12 @@ actions, targets, direct phrases/markers, and coding words. Term rows show the
 word, direction (`Input`, `Output`, or `Input and output`), whether the row is
 standard, and whether it is active. Admins can add custom terms, change a term
 direction, deactivate standard terms, delete custom terms through the selected
-rows action, and restore standard terms for a single rule. A warning icon marks
-standard terms whose active state or direction differs from the seeded
-standard. The safety filter reads active terms from the database only; if the
-rule set cannot be loaded, AI-assisted authoring fails closed before provider
-work.
+rows action, and restore standard terms for a single rule. Restoring standard
+terms requires a danger confirmation before the optimistic update and API
+request begin. A warning icon marks standard terms whose active state or
+direction differs from the seeded standard. The safety filter reads active
+terms from the database only; if the rule set cannot be loaded, AI-assisted
+authoring fails closed before provider work.
 
 When an AI safety block happens, the metadata event is always written to
 `security-audit`. If forensic AI safety logging is enabled, the same block also
@@ -437,7 +454,8 @@ inventories app-managed assignments, stores a point-in-time review run, assigns
 newly created runs to the signed-in actor from the verified IdP session, lets
 authorized handlers decide each item, cancel mistaken pending runs without
 deleting evidence, and export the review evidence as structured JSON or a PDF
-rendering of the same payload.
+rendering of the same payload. A failed run-list request remains recoverable
+through the run list's retry control.
 
 The in-app scope is deliberately limited to permissions Kravhantering owns:
 

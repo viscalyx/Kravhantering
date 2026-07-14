@@ -207,8 +207,8 @@ råa access-, refresh- eller id-tokenvärden.
 1. Försök öppna dataskydds- eller gallringsytor som kräver
    `PrivacyOfficer`.
 
-**Förväntat resultat:** Admin-ytor fungerar, men dataskyddsflikar saknas eller
-nekas.
+**Förväntat resultat:** Admin-ytor fungerar. Flikarna `Arkivering` och
+`Dataskydd` visas inte.
 
 <a id="auth-07-dataskyddshandlaggare-utan-adminbehorighet"></a>
 
@@ -221,11 +221,15 @@ nekas.
 **Steg:**
 
 1. Logga in som `disa.privacy`.
+1. Öppna `/sv/admin` och kontrollera vilken flik som väljs först.
 1. Öppna `/sv/admin?tab=privacy`.
 1. Kör en förhandsgranskning av personuppgifter för ett känt HSA-id.
 1. Försök öppna Admincenter-flikar som `Åtgärdslogg` eller `Taxonomi`.
 
-**Förväntat resultat:** Dataskyddsytor fungerar, men Admin-only-ytor nekas.
+**Förväntat resultat:** `Behörighetsöversyn` är startflik. `Arkivering` och
+`Dataskydd` visas och fungerar. Admin-only-flikar visas inte. En direktlänk
+till en Admin-only-flik ersätts med startfliken och visar att behörighet
+saknas.
 
 <a id="auth-08-anvandare-utan-roll-nekas-privilegierat-arbete"></a>
 
@@ -244,10 +248,9 @@ ansvarstilldelning.
 1. Försök nå API:er för Admin, AI-generering och ändring av kravunderlag med
    `scripts/dev-curl.sh`.
 
-**Förväntat resultat:** Admincenter kan visa read-only-flikar som `Kolumner`,
-`Taxonomi` och `Statusar och arbetsflöden`, men privilegierade flikar och
-kontroller är inaktiva eller saknas. API:erna svarar 403 för privilegierade
-åtgärder.
+**Förväntat resultat:** Länken till Admincenter visas inte. Direktlänken visar
+ett tydligt meddelande om att behörighet saknas, utan Admincenter-flikar eller
+data. API:erna svarar 403 för privilegierade åtgärder.
 
 ### AUTH-09: felaktig auth-callback visar webbläsarfel
 
@@ -780,15 +783,17 @@ sektionen `AI-säkerhet` visas efter `AI-assistering`, innehåller
 `Logga forensisk AI-säkerhetsdata`, `Cachetid för säkerhetsregler` och
 `AI-säkerhetsregler`, och att sektionen `MCP-gränssnitt` visas därefter med
 `MCP-anropsgräns` med synligt tillåtet intervall och steg. Notera aktuell
-gräns, ställ in `1 MiB` och spara. Expandera en AI-säkerhetsregel och
-höj därefter gränsen ett steg med plusknappen, kontrollera att den blir `2 MiB`
-och spara. Återställ därefter ursprungligt värde och spara.
+gräns, ställ in `1 MiB` och spara. Expandera en AI-säkerhetsregel, välj
+`Återställ standard`, kontrollera bekräftelsedialogen och avbryt. Höj därefter
+gränsen ett steg med plusknappen, kontrollera att den blir `2 MiB` och spara.
+Återställ därefter ursprungligt värde och spara.
 
 **Förväntat resultat:** Gränsen sparas i Admincenter och visas som aktuell
 gräns. Det tillåtna intervallet visas som `1 MiB` till `10 MiB` med steg
 `1 MiB`. Standardvärdet är `10 MiB`; den sparade teständringen visar `2 MiB`
-efter ett steg upp från minimum. Inställningen påverkar inte reglaget för
-kravgenerering om reglaget inte ändras separat.
+efter ett steg upp från minimum. Återställningen visar en varningsdialog innan
+någon ändring skickas. Inställningen påverkar inte reglaget för kravgenerering
+om reglaget inte ändras separat.
 
 ### REQ-17: importera krav till kravbiblioteket
 
@@ -1305,6 +1310,15 @@ knappar går att använda.
 
 **Förväntat resultat:** Kontrollerna överlappar inte och är klickbara.
 
+### ADMIN-04B: paneler laddas först när fliken väljs
+
+**Steg:** Öppna Admincenter som `ada.admin` med webbläsarens nätverkspanel
+öppen. Kontrollera första fliken och välj därefter `AI` och `Identitet`.
+
+**Förväntat resultat:** Endast den aktiva panelens JavaScript och dataanrop
+laddas. Vid panelbyte avmonteras den föregående panelen. Under laddning visas
+ett statusmeddelande utan att fliknavigationen blockeras.
+
 ### ADMIN-05: normbibliotek ligger under förvaltning
 
 **Steg:** Öppna `Kravbiblioteksförvaltning` och kontrollera normbibliotekets
@@ -1334,11 +1348,13 @@ Admincenter. Filtrera på aktör eller händelse och exportera.
 ### ADMIN-08: åtkomstöversyn, beslut och export
 
 **Steg:** Öppna åtkomstöversyn, fatta ett testbeslut och exportera underlag.
-Upprepa med simulerat serverfel eller behörighetsfel vid beslut och export.
+Upprepa med simulerat serverfel eller behörighetsfel vid inläsning, beslut och
+export. Välj `Försök igen` efter inläsningsfelet.
 
 **Förväntat resultat:** Beslut sparas och exporten innehåller beslutet. Vid
-fel visas felmeddelande, beslutet ligger kvar som ej sparat och exportfel
-bryter inte sidan.
+inläsningsfel visas meddelandet en gång och `Försök igen` läser in listan.
+Beslutet ligger kvar som ej sparat efter beslutsfel och exportfel bryter inte
+sidan.
 
 ### ADMIN-09: åtkomstöversyn avvisar för långa kommentarer
 

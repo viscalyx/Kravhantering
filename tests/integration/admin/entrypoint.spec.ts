@@ -179,6 +179,10 @@ async function getAdminColumnOrder(page: Page) {
 }
 
 async function setAdminColumnOrder(page: Page, targetOrder: string[]) {
+  await expect
+    .poll(() => getAdminColumnOrder(page))
+    .toHaveLength(targetOrder.length)
+
   for (
     let guard = 0;
     guard < targetOrder.length * targetOrder.length;
@@ -299,6 +303,9 @@ for (const { name, viewport } of viewportVariants) {
     }) => {
       await page.goto('/sv/admin')
 
+      await expect
+        .poll(() => getAdminColumnOrder(page))
+        .toHaveLength(DEFAULT_COLUMN_PAYLOAD.length)
       const originalOrder = await getAdminColumnOrder(page)
       const targetOrder = swapColumns(originalOrder, 'area', 'category')
       await expect(page.getByRole('button', { name: 'Spara' })).toBeDisabled()
@@ -350,7 +357,7 @@ for (const { name, viewport } of viewportVariants) {
       test.describe('admin-only permissions', () => {
         test.use({ storageState: 'test-results/auth/admin-only.json' })
 
-        test('AUTH-06: keeps Swedish admin tabs reachable while retention preview is disabled', async ({
+        test('AUTH-06: keeps Swedish Admin tabs reachable while privacy tabs are hidden', async ({
           page,
         }) => {
           await page.goto('/sv/admin')
@@ -361,29 +368,17 @@ for (const { name, viewport } of viewportVariants) {
           const accessReviewTab = page.getByRole('tab', {
             name: 'Behörighetsöversyn',
           })
-          const archivingTab = page.getByRole('tab', { name: 'Arkivering' })
-          const privacyTab = page.getByRole('tab', { name: 'Dataskydd' })
           const actionAuditLogTab = page.getByRole('tab', {
             name: 'Åtgärdslogg',
           })
-          await expect(accessReviewTab).not.toHaveAttribute(
-            'aria-disabled',
-            'true',
-          )
-          await expect(actionAuditLogTab).not.toHaveAttribute(
-            'aria-disabled',
-            'true',
-          )
-          await expect(archivingTab).toHaveAttribute('aria-disabled', 'true')
-          await expect(archivingTab).toHaveAttribute(
-            'title',
-            /Dataskyddshandläggare/,
-          )
-          await expect(privacyTab).toHaveAttribute('aria-disabled', 'true')
-          await expect(privacyTab).toHaveAttribute(
-            'title',
-            /Dataskyddshandläggare/,
-          )
+          await expect(accessReviewTab).toBeVisible()
+          await expect(actionAuditLogTab).toBeVisible()
+          await expect(
+            page.getByRole('tab', { name: 'Arkivering' }),
+          ).toHaveCount(0)
+          await expect(
+            page.getByRole('tab', { name: 'Dataskydd' }),
+          ).toHaveCount(0)
           const tablistMetrics = await tablist.evaluate(element => ({
             clientWidth: element.clientWidth,
             scrollWidth: element.scrollWidth,
@@ -424,7 +419,7 @@ for (const { name, viewport } of viewportVariants) {
           await adminOnlyPage.goto('/sv/admin?tab=archiving')
           await expect(
             adminOnlyPage.getByRole('tab', { name: 'Arkivering' }),
-          ).toHaveAttribute('aria-disabled', 'true')
+          ).toHaveCount(0)
           await expect(
             adminOnlyPage.getByRole('button', {
               name: 'Förhandsgranska gallring',
