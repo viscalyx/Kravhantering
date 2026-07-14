@@ -13,7 +13,10 @@ import {
   parseClientReferenceManifest,
   readAdminBundleReport,
   runAdminBundleCheck,
+  runAdminBundleCli,
 } from '../../scripts/check-admin-center-bundle.mjs'
+import { budgetFailures } from '../../scripts/lib/client-bundle-budget.mjs'
+import { deterministicBytes } from './helpers/bundle-test-helpers.mjs'
 
 function fixtureRoot() {
   return mkdtempSync(join(tmpdir(), 'admin-center-bundle-'))
@@ -109,10 +112,21 @@ describe('Admin Center bundle contract', () => {
       'Could not parse',
     )
     expect(() =>
+      parseClientReferenceManifest('globalThis.x = {invalid};'),
+    ).toThrow('Could not parse')
+    expect(() => parseClientReferenceManifest('globalThis.x = {};')).toThrow(
+      'Could not parse',
+    )
+    expect(() =>
       extractDynamicChunkGroups(
         'Promise.all(["invalid.js"].map(i=>e.l(i))).then()',
       ),
     ).toThrow('unrecognized lazy chunk set')
+    expect(() =>
+      extractDynamicChunkGroups(
+        'Promise.all(["static/chunks/a.js",invalid].map(i=>e.l(i))).then()',
+      ),
+    ).toThrow('Admin Center contains an unrecognized lazy chunk set')
   })
 
   it('measures unique files and reports budget excess', () => {
@@ -140,6 +154,12 @@ describe('Admin Center bundle contract', () => {
       }),
     ).toEqual([])
     expect(formatScenario(scenario, 100)).toContain('example: 16 raw bytes')
+
+    for (const limit of [undefined, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => budgetFailures([{ ...scenario, limit }])).toThrow(
+        'Bundle budget limit for example must be a finite number',
+      )
+    }
   })
 
   it('matches every panel to an async non-entry chunk set', () => {
@@ -206,6 +226,33 @@ describe('Admin Center bundle contract', () => {
         staticDirectory: root,
       }),
     ).toThrow('do not match')
+    expect(() =>
+      evaluateAdminBundle({
+        entryChunks: ['static/chunks/entry.js'],
+        importedPanelNames: [],
+        lazyChunkGroups: [],
+        panelNames: ['a-panel'],
+        staticDirectory: root,
+      }),
+    ).toThrow('Missing lazy imports: a-panel')
+    expect(() =>
+      evaluateAdminBundle({
+        entryChunks: ['static/chunks/entry.js'],
+        importedPanelNames: ['a-panel'],
+        lazyChunkGroups: [[]],
+        panelNames: [],
+        staticDirectory: root,
+      }),
+    ).toThrow('Unknown lazy imports: a-panel')
+    expect(() =>
+      evaluateAdminBundle({
+        entryChunks: ['static/chunks/entry.js'],
+        importedPanelNames: ['a-panel'],
+        lazyChunkGroups: [[]],
+        panelNames: ['a-panel'],
+        staticDirectory: root,
+      }),
+    ).toThrow('has no asynchronous chunks')
   })
 
   it('reads a finished build fixture and supports report-only execution', () => {
@@ -235,5 +282,50 @@ describe('Admin Center bundle contract', () => {
       `globalThis.x = ${JSON.stringify({ moduleLoading: {} })};`,
     )
     expect(() => readAdminBundleReport(root)).toThrow('fields are incomplete')
+  })
+
+  it('fails an over-budget build with actionable diagnostics', () => {
+    const root = writeCompleteFixture()
+    write(root, '.next/static/chunks/example.js', deterministicBytes(20_000))
+    vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    expect(() => runAdminBundleCheck({ projectRoot: root })).toThrow(
+      'Admin Center JavaScript bundle budget exceeded',
+    )
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('exceeds limit by'),
+    )
+  })
+
+  it('maps Admin CLI options and non-Error failures to an exit code', () => {
+    const runCheck = vi.fn()
+    expect(
+      runAdminBundleCli({
+        argv: ['node', 'check-admin-center-bundle.mjs', '--report'],
+        cwd: '/workspace/project',
+        runCheck,
+      }),
+    ).toBe(0)
+    expect(runCheck).toHaveBeenCalledWith({
+      projectRoot: '/workspace/project',
+      reportOnly: true,
+    })
+
+    const errorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    expect(
+      runAdminBundleCli({
+        argv: [],
+        cwd: '/workspace/project',
+        runCheck: () => {
+          throw 'admin failure'
+        },
+      }),
+    ).toBe(1)
+    expect(errorSpy).toHaveBeenCalledWith('admin failure')
   })
 })

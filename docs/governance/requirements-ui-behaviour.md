@@ -603,6 +603,13 @@ down.
 
 ## Requirement Selection Question Stewardship
 
+- The stewardship route loads only the selected workspace's client code.
+  Direct query links, remembered selection, workspace switching, and browser
+  back/forward navigation resolve the selected workspace before rendering, so
+  another workspace's heading or controls never flash. While an uncached
+  workspace loads, the page keeps the selected workspace heading and announces
+  a localized loading status. If its JavaScript chunk cannot load, an inline
+  localized alert retains the workspace heading and offers a full-page reload.
 - In `Kravbiblioteksförvaltning` > `Kravurvalsfrågor`, the question form shows
   the selected requirement area's description as small supporting text below
   `Kravområde`.

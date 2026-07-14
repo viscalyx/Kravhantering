@@ -359,9 +359,40 @@ describe('container OCI archive helpers', () => {
     expect(workflow).not.toContain('actions/upload-artifact@v7')
     expect(workflow).toContain('npm install -g npm@latest')
     expect(workflow).toContain('--skip-build')
+    expect(workflow).toContain('--prune-docker-after-load')
     expect(workflow).toContain('container:oci:export')
+    expect(workflow).toContain(
+      'HSA_PERSON_LOOKUP_ADAPTER_IMAGE: localhost/kravhantering/hsa-person-lookup-adapter',
+    )
+    expect(workflow).toContain(
+      'echo "HSA_PERSON_LOOKUP_ADAPTER_SOURCE=pr-build"',
+    )
+    expect(workflow).toContain(
+      `echo "HSA_PERSON_LOOKUP_ADAPTER_TAG=${shellPrefix}{image_tag}"`,
+    )
+    expect(workflow).toContain(
+      `--tag "${shellPrefix}{HSA_PERSON_LOOKUP_ADAPTER_IMAGE}:${shellPrefix}{HSA_PERSON_LOOKUP_ADAPTER_TAG}"`,
+    )
     expect(stepIndex('Report initial disk layout')).toBeLessThan(
-      stepIndex('Checkout code'),
+      stepIndex('Remove unused pre-installed runner toolchains'),
+    )
+    expect(
+      stepIndex('Remove unused pre-installed runner toolchains'),
+    ).toBeLessThan(stepIndex('Checkout code'))
+    expect(workflow).toContain('/usr/local/lib/android')
+    expect(workflow).toContain('/usr/local/.ghcup')
+    expect(workflow).toContain('/opt/hostedtoolcache/CodeQL')
+    expect(workflow).toContain('/opt/hostedtoolcache/Python')
+    expect(workflow).toContain('/usr/share/miniconda')
+    expect(workflow).toContain('/usr/share/swift')
+    expect(workflow).toContain('/usr/share/dotnet')
+    expect(workflow).not.toContain('/opt/hostedtoolcache/node')
+    expect(workflow).toContain('docker image prune --all --force')
+    expect(workflow).toContain(
+      `"${runnerTempExpression}/report-disk-layout.sh" "after runner toolchain cleanup"`,
+    )
+    expect(stepIndex('Build HSA person lookup adapter image')).toBeLessThan(
+      stepIndex('Start container stack'),
     )
     expect(workflow).toContain(
       `cat > "${runnerTempExpression}/report-disk-layout.sh" <<'REPORT_DISK_LAYOUT'`,

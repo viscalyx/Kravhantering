@@ -1200,6 +1200,26 @@ describe('requirement-areas/[id] routes', () => {
     ).not.toHaveBeenCalled()
   })
 
+  it('DELETE returns 409 without audit when the requirement area is in use', async () => {
+    mockDeleteReqArea.mockRejectedValue(
+      new Error(
+        'The DELETE statement conflicted with the REFERENCE constraint',
+      ),
+    )
+    const r = await deleteReqArea(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(409)
+    await expect(r.json()).resolves.toEqual({
+      error: 'Cannot delete: requirement area is in use',
+    })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
+  })
+
   it('returns 400 for invalid ids before opening the DB', async () => {
     const r = await deleteReqArea(
       new NextRequest('http://l', { method: 'DELETE' }),
