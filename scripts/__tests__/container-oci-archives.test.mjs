@@ -360,8 +360,23 @@ describe('container OCI archive helpers', () => {
     expect(workflow).toContain('npm install -g npm@latest')
     expect(workflow).toContain('--skip-build')
     expect(workflow).toContain('container:oci:export')
+    expect(workflow).toContain(
+      'HSA_PERSON_LOOKUP_ADAPTER_IMAGE: localhost/kravhantering/hsa-person-lookup-adapter',
+    )
+    expect(workflow).toContain(
+      'echo "HSA_PERSON_LOOKUP_ADAPTER_SOURCE=pr-build"',
+    )
+    expect(workflow).toContain(
+      `echo "HSA_PERSON_LOOKUP_ADAPTER_TAG=${shellPrefix}{image_tag}"`,
+    )
+    expect(workflow).toContain(
+      `--tag "${shellPrefix}{HSA_PERSON_LOOKUP_ADAPTER_IMAGE}:${shellPrefix}{HSA_PERSON_LOOKUP_ADAPTER_TAG}"`,
+    )
     expect(stepIndex('Report initial disk layout')).toBeLessThan(
       stepIndex('Checkout code'),
+    )
+    expect(stepIndex('Build HSA person lookup adapter image')).toBeLessThan(
+      stepIndex('Start container stack'),
     )
     expect(workflow).toContain(
       `cat > "${runnerTempExpression}/report-disk-layout.sh" <<'REPORT_DISK_LAYOUT'`,

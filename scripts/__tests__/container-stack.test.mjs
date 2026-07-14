@@ -372,6 +372,9 @@ describe('container stack helpers', () => {
     expect(spawned).toContain(
       'docker save localhost/kravhantering/hsa-directory-mock:local',
     )
+    expect(spawned).toContain(
+      'docker save localhost/kravhantering/hsa-person-lookup-adapter:local',
+    )
     expect(commandText).toContain(
       'generate-stack-lock.mjs generate --lock-file tmp/custom-stack.lock.json',
     )

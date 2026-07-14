@@ -22,6 +22,7 @@ jobs:
       DB_JOB_IMAGE: localhost/kravhantering/db-job
       DEMO_SEED_IMAGE: localhost/kravhantering/demo-seed
       HSA_DIRECTORY_MOCK_IMAGE: localhost/kravhantering/hsa-directory-mock
+      HSA_PERSON_LOOKUP_ADAPTER_IMAGE: localhost/kravhantering/hsa-person-lookup-adapter
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
       PODMAN_COMPOSE_PROVIDER: podman-compose
       STORAGE_DRIVER: vfs
@@ -152,6 +153,8 @@ jobs:
             echo "DEMO_SEED_TAG=${image_tag}"
             echo "HSA_DIRECTORY_MOCK_SOURCE=pr-build"
             echo "HSA_DIRECTORY_MOCK_TAG=${image_tag}"
+            echo "HSA_PERSON_LOOKUP_ADAPTER_SOURCE=pr-build"
+            echo "HSA_PERSON_LOOKUP_ADAPTER_TAG=${image_tag}"
             echo "RELEASE_SMOKE_RUN_ID=${GITHUB_RUN_ID}"
           } >> "${GITHUB_ENV}"
 
@@ -205,6 +208,16 @@ jobs:
             --tag "${HSA_DIRECTORY_MOCK_IMAGE}:${HSA_DIRECTORY_MOCK_TAG}" \
             --load \
             containers/hsa-directory-mock
+
+      - name: Build HSA person lookup adapter image
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --file containers/hsa-person-lookup-adapter/Dockerfile \
+            --platform linux/amd64 \
+            --tag "${HSA_PERSON_LOOKUP_ADAPTER_IMAGE}:${HSA_PERSON_LOOKUP_ADAPTER_TAG}" \
+            --load \
+            containers/hsa-person-lookup-adapter
 
       - name: Create per-container local env files
         run: npm run container:env:local
