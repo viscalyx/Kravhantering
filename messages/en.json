@@ -1292,6 +1292,18 @@
   "admin": {
     "title": "Admin center",
     "loading": "Loading admin center...",
+    "accessDenied": {
+      "title": "You do not have access to Admin Center",
+      "description": "Admin Center requires the Admin or PrivacyOfficer role. Contact your access administrator if you need access."
+    },
+    "panelLoading": "Loading {tab}…",
+    "panelLoadError": {
+      "title": "Could not load {tab}",
+      "description": "Reload the page and try again.",
+      "retry": "Try again"
+    },
+    "tabAccessFallback": "You do not have access to the requested tab. {tab} is shown instead.",
+    "tabUnavailableFallback": "The requested tab is unavailable. {tab} is shown instead.",
     "description": "Manage core admin settings for the system, including columns, taxonomy, statuses and workflows, access reviews, and privacy-related configuration.",
     "settings": "Settings",
     "adminCenter": "Admin center",
@@ -1701,6 +1713,7 @@
     "locked": "Locked",
     "saved": "Saved",
     "columnsSaveError": "Could not save the column settings.",
+    "columnsLoadError": "Could not load the column settings.",
     "areasDescription": "Manage requirement areas and their prefixes.",
     "categoriesDescription": "View requirement categories used to classify requirement perspectives.",
     "typesDescription": "View types and their quality hierarchy.",

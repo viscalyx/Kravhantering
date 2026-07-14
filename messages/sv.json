@@ -1292,6 +1292,18 @@
   "admin": {
     "title": "Administrationscenter",
     "loading": "Laddar administrationscenter...",
+    "accessDenied": {
+      "title": "Du saknar behörighet till Administrationscenter",
+      "description": "Administrationscenter kräver rollen Administratör eller Dataskyddshandläggare. Kontakta din behörighetsadministratör om du behöver åtkomst."
+    },
+    "panelLoading": "Laddar {tab}…",
+    "panelLoadError": {
+      "title": "Kunde inte läsa in {tab}",
+      "description": "Ladda om sidan och försök igen.",
+      "retry": "Försök igen"
+    },
+    "tabAccessFallback": "Du saknar behörighet till den begärda fliken. {tab} visas i stället.",
+    "tabUnavailableFallback": "Den begärda fliken är inte tillgänglig. {tab} visas i stället.",
     "description": "Hantera centrala administrationsinställningar för systemet, inklusive kolumner, taxonomi, statusar och arbetsflöden, behörighetsöversyner och integritetsrelaterade funktioner.",
     "settings": "Inställningar",
     "adminCenter": "Administrationscenter",
@@ -1701,6 +1713,7 @@
     "locked": "Låst",
     "saved": "Sparat",
     "columnsSaveError": "Det gick inte att spara kolumninställningarna.",
+    "columnsLoadError": "Det gick inte att läsa in kolumninställningarna.",
     "areasDescription": "Hantera kravområden och deras prefix.",
     "categoriesDescription": "Visa kategorier som används för att klassificera kravets perspektiv.",
     "typesDescription": "Visa typer och deras kvalitetsstruktur.",

@@ -1,5 +1,5 @@
 // cSpell:ignore linneab
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 import {
   type AuthorizationFixture,
   createAuthorizationFixture,
@@ -13,6 +13,21 @@ import {
 
 let fixture: AuthorizationFixture
 const PRIVACY_PREVIEW_TARGET_HSA_ID = 'SE5560000001-linneab'
+
+async function waitForPrivacyPanelHydration(page: Page) {
+  const targetInput = page.getByRole('textbox', {
+    name: 'HSA-id att söka efter',
+  })
+  const previewButton = page.getByRole('button', { name: 'Förhandsgranska' })
+
+  await expect(async () => {
+    await targetInput.fill('SE5560000001-hydration')
+    await expect(previewButton).toBeEnabled({ timeout: 1_000 })
+  }).toPass({ timeout: 15_000 })
+
+  await targetInput.fill('')
+  await expect(previewButton).toBeDisabled()
+}
 
 test.describe.configure({ mode: 'serial' })
 
@@ -80,6 +95,7 @@ test.describe('AUTHZ-10/AUTH-07/AUTH-11: PrivacyOfficer users can run the cross-
   }, testInfo) => {
     referenceManualCases(testInfo, 'AUTHZ-10', 'AUTH-07', 'AUTH-11')
     await page.goto('/sv/admin?tab=privacy')
+    await waitForPrivacyPanelHydration(page)
 
     await expect(page.getByRole('tab', { name: 'Dataskydd' })).toHaveAttribute(
       'aria-selected',
@@ -128,27 +144,27 @@ test.describe('AUTHZ-10/AUTH-07/AUTH-11: Admin Center tab permissions for Privac
     viewport: { height: 720, width: 1280 },
   })
 
-  test('AUTHZ-10/AUTH-07/AUTH-11: enables privacy tabs while Admin-only tabs stay disabled', async ({
+  test('AUTHZ-10/AUTH-07/AUTH-11: shows privacy tabs while Admin-only tabs stay hidden', async ({
     page,
   }, testInfo) => {
     referenceManualCases(testInfo, 'AUTHZ-10', 'AUTH-07', 'AUTH-11')
     await page.goto('/sv/admin?tab=actionAuditLog')
 
-    const columnsTab = page.getByRole('tab', { name: 'Kolumner' })
-    const identityTab = page.getByRole('tab', { name: 'Identitet' })
     const accessReviewTab = page.getByRole('tab', {
       name: 'Behörighetsöversyn',
     })
     const archivingTab = page.getByRole('tab', { name: 'Arkivering' })
     const privacyTab = page.getByRole('tab', { name: 'Dataskydd' })
-    const actionLogTab = page.getByRole('tab', { name: 'Åtgärdslogg' })
-
-    await expect(columnsTab).toHaveAttribute('aria-selected', 'true')
-    await expect(accessReviewTab).not.toHaveAttribute('aria-disabled', 'true')
-    await expect(archivingTab).not.toHaveAttribute('aria-disabled', 'true')
-    await expect(privacyTab).not.toHaveAttribute('aria-disabled', 'true')
-    await expect(identityTab).toHaveAttribute('aria-disabled', 'true')
-    await expect(actionLogTab).toHaveAttribute('aria-disabled', 'true')
-    await expect(actionLogTab).toHaveAttribute('title', /Administratör/)
+    await expect(accessReviewTab).toHaveAttribute('aria-selected', 'true')
+    await expect(archivingTab).toBeVisible()
+    await expect(privacyTab).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Kolumner' })).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: 'Identitet' })).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: 'Åtgärdslogg' })).toHaveCount(0)
+    await expect(
+      page.getByText(
+        'Du saknar behörighet till den begärda fliken. Behörighetsöversyn visas i stället.',
+      ),
+    ).toBeVisible()
   })
 })

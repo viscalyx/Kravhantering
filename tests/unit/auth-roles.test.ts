@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   CANONICAL_ROLES,
+  canAccessAdminCenter,
   parseRolesClaim,
   resolveDisplayName,
 } from '@/lib/auth/roles'
@@ -8,6 +9,16 @@ import {
 describe('CANONICAL_ROLES', () => {
   it('enumerates the canonical roles in spec order', () => {
     expect(CANONICAL_ROLES).toEqual(['Reviewer', 'Admin', 'PrivacyOfficer'])
+  })
+})
+
+describe('canAccessAdminCenter', () => {
+  it('allows Admin and PrivacyOfficer but not unrelated or missing roles', () => {
+    expect(canAccessAdminCenter(['Admin'])).toBe(true)
+    expect(canAccessAdminCenter(['PrivacyOfficer'])).toBe(true)
+    expect(canAccessAdminCenter(['Admin', 'PrivacyOfficer'])).toBe(true)
+    expect(canAccessAdminCenter(['Reviewer'])).toBe(false)
+    expect(canAccessAdminCenter([])).toBe(false)
   })
 })
 

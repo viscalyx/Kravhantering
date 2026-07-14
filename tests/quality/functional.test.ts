@@ -232,6 +232,14 @@ const adminClientPath = join(
   'admin',
   'admin-client.tsx',
 )
+const adminAiPanelPath = join(
+  repoRoot,
+  'app',
+  '[locale]',
+  'admin',
+  'panels',
+  'ai-settings-panel.tsx',
+)
 const requirementsPagePath = join(
   repoRoot,
   'app',
@@ -623,6 +631,7 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
   const adminRouteSource = readFileSync(adminAiSettingsRoutePath, 'utf8')
   const restRouteSource = readFileSync(aiGenerateRequirementsRoutePath, 'utf8')
   const adminClientSource = readFileSync(adminClientPath, 'utf8')
+  const adminAiPanelSource = readFileSync(adminAiPanelPath, 'utf8')
   const requirementsPageSource = readFileSync(requirementsPagePath, 'utf8')
   const requirementsClientSource = readFileSync(requirementsClientPath, 'utf8')
   const generatorSource = readFileSync(aiRequirementGeneratorPath, 'utf8')
@@ -702,16 +711,17 @@ it('Scenario 24: Admin Center AI generation disablement is globally effective', 
   expect(restRouteSource).toContain('createUnavailableAiStreamResponse')
   expect(restRouteSource).toContain("recordStreamEvent('failure', 503)")
   expect(adminClientSource).toContain("id: 'ai'")
-  expect(adminClientSource).toContain('/api/admin/ai-settings')
-  expect(adminClientSource).toContain('disabledByEnvironment')
-  expect(adminClientSource).toContain('mcpMaxRequestBytes')
-  expect(adminClientSource).toContain('aiSafetyForensicLoggingEnabled')
-  expect(adminClientSource).toContain('aiSafetyRuleCacheTtlSeconds')
-  expect(adminClientSource).toContain('admin-ai-mcp-max-request-kib')
-  expect(adminClientSource).toContain('/api/admin/ai-safety-rules')
-  expect(adminClientSource).toContain("ta('ai.assistanceTitle')")
-  expect(adminClientSource).toContain("ta('ai.aiSecurityTitle')")
-  expect(adminClientSource).toContain("ta('ai.mcpInterfaceTitle')")
+  expect(adminClientSource).toContain("import('./panels/ai-settings-panel')")
+  expect(adminAiPanelSource).toContain('/api/admin/ai-settings')
+  expect(adminAiPanelSource).toContain('disabledByEnvironment')
+  expect(adminAiPanelSource).toContain('mcpMaxRequestBytes')
+  expect(adminAiPanelSource).toContain('aiSafetyForensicLoggingEnabled')
+  expect(adminAiPanelSource).toContain('aiSafetyRuleCacheTtlSeconds')
+  expect(adminAiPanelSource).toContain('admin-ai-mcp-max-request-kib')
+  expect(adminAiPanelSource).toContain('/api/admin/ai-safety-rules')
+  expect(adminAiPanelSource).toContain("ta('ai.assistanceTitle')")
+  expect(adminAiPanelSource).toContain("ta('ai.aiSecurityTitle')")
+  expect(adminAiPanelSource).toContain("ta('ai.mcpInterfaceTitle')")
   expect(requirementsPageSource).toContain('getAiGenerationAvailability')
   expect(requirementsClientSource).toContain('aiGenerationAvailability')
   expect(requirementsClientSource).toContain('aiGenerateDisabledByAdmin')

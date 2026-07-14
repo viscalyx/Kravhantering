@@ -56,13 +56,17 @@ test('ADMIN-07: admin can use the action log inline from admin center', async ({
 
   await expect(page.getByRole('heading', { name: 'Åtgärdslogg' })).toBeVisible()
 
-  await page.getByLabel('Åtgärd', { exact: true }).fill('requirement.create')
-  await page.getByLabel('Klient-IP', { exact: true }).fill('203.0.113.10')
-  await page.getByRole('button', { name: 'Filtrera' }).click()
+  await expect(async () => {
+    await page.getByLabel('Åtgärd', { exact: true }).fill('requirement.create')
+    await page.getByLabel('Klient-IP', { exact: true }).fill('203.0.113.10')
+    await page.getByRole('button', { name: 'Filtrera' }).click()
+    await expect(page).toHaveURL(/action=requirement\.create/, {
+      timeout: 2_000,
+    })
+  }).toPass({ timeout: 15_000 })
 
   await expect(page).toHaveURL(/\/sv\/admin\?/)
   await expect(page).toHaveURL(/tab=actionAuditLog/)
-  await expect(page).toHaveURL(/action=requirement\.create/)
   await expect(page).toHaveURL(/client_ip=203\.0\.113\.10/)
   await expect(
     requirementCreateAuditRowsFromClientIp(page, '203.0.113.10').first(),

@@ -20,7 +20,7 @@ workflows without changing route slugs, API field names, or MCP tool
 identifiers.
 
 The global side navigation contains the settings item that links to
-`/{locale}/admin`.
+`/{locale}/admin` after an `Admin` or `PrivacyOfficer` role is confirmed.
 
 Taxonomy and status links are grouped in the Admin Center.
 
@@ -39,8 +39,24 @@ The admin center currently has nine tabs for core administration:
 - `Action log`
 
 The `Action log` tab renders the action-log filters, table, pagination, and
-CSV export directly in the Admin Center. Unavailable tabs are dimmed, cannot be
-selected, and explain the missing prerequisite in a tooltip.
+CSV export directly in the Admin Center. The navigation only renders tabs that
+the current roles may use.
+
+## On-demand tab panels
+
+Admin Center loads a small shared shell for navigation, authorization, help
+content, and feedback. Each tab panel is delivered as a separate JavaScript
+module only after an authorized user activates the tab. Panels are not
+prefetched on hover or while idle, and only the active panel is mounted.
+
+A production-build check verifies that panels remain separate from the shell
+and that the shell and each panel stay within the project's compressed
+JavaScript budget. Raising a budget requires a current size report and an
+intentional implementation-value justification.
+
+Static client modules contain UI logic and public contracts, not database rows
+or secrets. Panel data is loaded after activation from APIs that verify the
+panel role on the server.
 
 ## Action Log
 

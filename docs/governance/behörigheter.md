@@ -269,32 +269,36 @@ arkivera, återaktivera eller ta bort en normreferens kräver `Admin`.
 
 ## Admin Center
 
-Admin Center visar privilegierade flikar även när du inte kan använda dem.
-Flikar som du inte kan använda är nedtonade och kan inte väljas. Det gör det
-tydligt att funktionen finns och vilken roll som krävs.
+Admin Center är tillgängligt för användare med `Admin` eller
+`PrivacyOfficer`. Användare utan någon av rollerna ser inte länken i den
+globala navigationen. En direktlänk visar en sida som förklarar att behörighet
+saknas utan att läsa in Admin Center-data eller klientimplementation.
+
+Admin Center visar endast flikar som den aktuella rollen får använda. Den
+första behöriga fliken i navigationsordningen är användarens startflik.
 
 <!-- markdownlint-disable MD013 -->
 | Flik | Vem kan använda den |
 | --- | --- |
-| Kolumner | Användare som kan öppna Admin Center. |
+| Kolumner | Användare med `Admin`. |
 | Identitet | Användare med `Admin`. |
 | AI | Användare med `Admin`. |
-| Taxonomi | Användare som kan öppna Admin Center. |
-| Statusar och arbetsflöden | Användare som kan öppna Admin Center. |
+| Taxonomi | Användare med `Admin`. |
+| Statusar och arbetsflöden | Användare med `Admin`. |
 | Behörighetsöversyn | Användare med `Admin` eller `PrivacyOfficer`. |
 | Arkivering | Användare med `PrivacyOfficer`. |
 | Dataskydd | Användare med `PrivacyOfficer`. |
 | Åtgärdslogg | Användare med `Admin`. |
 <!-- markdownlint-enable MD013 -->
 
-## Nedtonade flikar
+`Admin` ger inte automatiskt dataskyddsbehörighet. En användare som behöver
+både allmän administration och dataskydds- eller gallringsfunktioner måste ha
+både `Admin` och `PrivacyOfficer`.
 
-När en flik är nedtonad har kontot inte den roll som krävs för arbetet. Ett
-kort meddelande förklarar vilken roll som krävs. Sidan ändras inte när du
-väljer fliken.
-
-Om någon skickar en direktlänk till en flik som du inte kan använda öppnar
-Kravhantering i stället Admin Center på en flik som du får se.
+Om en direktlänk anger en befintlig flik som användaren saknar behörighet till
+ersätter Kravhantering URL:en med den första behöriga fliken och visar ett kort
+statusmeddelande. Panelkod och paneldata laddas först när en behörig flik är
+aktiv.
 
 ## Behörighetsöversyn
 
@@ -322,7 +326,7 @@ berört kravområde eller kravunderlag.
 så Kravhantering kontrollerar rollen igen när användaren förhandsgranskar,
 exporterar, sparar eller utför en åtgärd.
 
-Den nedtonade fliken är därför bara en hjälpsam vägvisare. Tjänsten stoppar
+Att flikar döljs i gränssnittet är inte säkerhetsgränsen. Tjänsten stoppar
 fortfarande åtgärden om den roll som krävs saknas.
 
 En inloggad användare med verifierat HSA-id kan exportera sina egna

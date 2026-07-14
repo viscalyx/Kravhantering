@@ -207,8 +207,8 @@ råa access-, refresh- eller id-tokenvärden.
 1. Försök öppna dataskydds- eller gallringsytor som kräver
    `PrivacyOfficer`.
 
-**Förväntat resultat:** Admin-ytor fungerar, men dataskyddsflikar saknas eller
-nekas.
+**Förväntat resultat:** Admin-ytor fungerar. Flikarna `Arkivering` och
+`Dataskydd` visas inte.
 
 <a id="auth-07-dataskyddshandlaggare-utan-adminbehorighet"></a>
 
@@ -221,11 +221,15 @@ nekas.
 **Steg:**
 
 1. Logga in som `disa.privacy`.
+1. Öppna `/sv/admin` och kontrollera vilken flik som väljs först.
 1. Öppna `/sv/admin?tab=privacy`.
 1. Kör en förhandsgranskning av personuppgifter för ett känt HSA-id.
 1. Försök öppna Admincenter-flikar som `Åtgärdslogg` eller `Taxonomi`.
 
-**Förväntat resultat:** Dataskyddsytor fungerar, men Admin-only-ytor nekas.
+**Förväntat resultat:** `Behörighetsöversyn` är startflik. `Arkivering` och
+`Dataskydd` visas och fungerar. Admin-only-flikar visas inte. En direktlänk
+till en Admin-only-flik ersätts med startfliken och visar att behörighet
+saknas.
 
 <a id="auth-08-anvandare-utan-roll-nekas-privilegierat-arbete"></a>
 
@@ -244,10 +248,9 @@ ansvarstilldelning.
 1. Försök nå API:er för Admin, AI-generering och ändring av kravunderlag med
    `scripts/dev-curl.sh`.
 
-**Förväntat resultat:** Admincenter kan visa read-only-flikar som `Kolumner`,
-`Taxonomi` och `Statusar och arbetsflöden`, men privilegierade flikar och
-kontroller är inaktiva eller saknas. API:erna svarar 403 för privilegierade
-åtgärder.
+**Förväntat resultat:** Länken till Admincenter visas inte. Direktlänken visar
+ett tydligt meddelande om att behörighet saknas, utan Admincenter-flikar eller
+data. API:erna svarar 403 för privilegierade åtgärder.
 
 ### AUTH-09: felaktig auth-callback visar webbläsarfel
 
@@ -1304,6 +1307,15 @@ omladdning.
 knappar går att använda.
 
 **Förväntat resultat:** Kontrollerna överlappar inte och är klickbara.
+
+### ADMIN-04B: paneler laddas först när fliken väljs
+
+**Steg:** Öppna Admincenter som `ada.admin` med webbläsarens nätverkspanel
+öppen. Kontrollera första fliken och välj därefter `AI` och `Identitet`.
+
+**Förväntat resultat:** Endast den aktiva panelens JavaScript och dataanrop
+laddas. Vid panelbyte avmonteras den föregående panelen. Under laddning visas
+ett statusmeddelande utan att fliknavigationen blockeras.
 
 ### ADMIN-05: normbibliotek ligger under förvaltning
 
