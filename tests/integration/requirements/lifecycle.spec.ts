@@ -7,6 +7,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
+import { PDFParse } from 'pdf-parse'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
 import { expectApiResponseOk } from '../api-response-assertions'
 import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
@@ -254,6 +255,8 @@ async function verifyPdfDownload(
   page: Page,
   action: Locator,
   expectedPath: string,
+  expectedText: string[],
+  unexpectedText: string[] = [],
 ) {
   const [response, download] = await Promise.all([
     page.waitForResponse(candidate => {
@@ -279,7 +282,21 @@ async function verifyPdfDownload(
   for await (const chunk of pdfStream) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
   }
-  expect(Buffer.concat(chunks).subarray(0, 4).toString('utf8')).toBe('%PDF')
+  const pdfBuffer = Buffer.concat(chunks)
+  expect(pdfBuffer.subarray(0, 4).toString('utf8')).toBe('%PDF')
+
+  const parser = new PDFParse({ data: Uint8Array.from(pdfBuffer) })
+  try {
+    const pdfText = (await parser.getText()).text
+    for (const text of expectedText) {
+      expect(pdfText).toContain(text)
+    }
+    for (const text of unexpectedText) {
+      expect(pdfText).not.toContain(text)
+    }
+  } finally {
+    await parser.destroy()
+  }
 }
 
 async function openRequirementStandalone(
@@ -303,9 +320,10 @@ async function openRequirementStandalone(
           name: new RegExp(escapeRegExp(uniqueId)),
         }),
       ).toBeVisible({ timeout: 30_000 })
-      await expect(
-        main.getByText(locale === 'sv' ? 'Kravtext' : 'Requirement text'),
-      ).toBeVisible({ timeout: 30_000 })
+      await expect(main).toContainText(
+        locale === 'sv' ? 'Kravtext' : 'Requirement text',
+        { timeout: 30_000 },
+      )
       return main
     } catch (error) {
       if (attempt === 2) throw error
@@ -675,6 +693,12 @@ test.describe('Requirement lifecycle manual cases', () => {
           review: string
           select: string
         },
+        pdfText: {
+          combined: string[]
+          history: string[]
+          review: string[]
+          unexpected: string[]
+        },
       ) {
         const detailPane = await openRequirementStandalone(
           page,
@@ -703,6 +727,8 @@ test.describe('Requirement lifecycle manual cases', () => {
             page,
             page.getByRole('menuitem', { name: report.label }),
             report.path,
+            pdfText[report.label === labels.review ? 'review' : 'history'],
+            pdfText.unexpected,
           )
         }
 
@@ -717,31 +743,109 @@ test.describe('Requirement lifecycle manual cases', () => {
           page,
           page.getByRole('menuitem', { name: labels.combined }),
           `/${locale}/requirements/reports/pdf/review-combined`,
+          pdfText.combined,
+          pdfText.unexpected,
         )
       }
 
       await test.step('select English and download each report through the browser', async () => {
         await page.getByRole('button', { name: 'Byt språk' }).click()
         await expect(page).toHaveURL(/\/en\/requirements/)
-        await verifyLocalizedReports('en', {
-          combined: 'Combined Review Report',
-          history: 'History Report',
-          reports: 'Reports',
-          review: 'Review Report',
-          select: 'Select',
-        })
+        await verifyLocalizedReports(
+          'en',
+          {
+            combined: 'Combined Review Report',
+            history: 'History Report',
+            reports: 'Reports',
+            review: 'Review Report',
+            select: 'Select',
+          },
+          {
+            combined: [
+              'Combined Review Report',
+              'Contents',
+              'REVIEW REPORTS',
+              'Review Report',
+              requirement.uniqueId,
+              'Metadata Changes',
+              'Category',
+              'Review',
+            ],
+            history: [
+              'History Report',
+              requirement.uniqueId,
+              'Current Published Version',
+              `Unpublished Version (v${reviewVersionNumber})`,
+              'Category',
+              'IT requirement',
+              'Published',
+              'Review',
+            ],
+            review: [
+              'Review Report',
+              requirement.uniqueId,
+              'Metadata Changes',
+              'Category',
+              'IT requirement',
+              'Review',
+            ],
+            unexpected: [],
+          },
+        )
       })
 
       await test.step('select Swedish and download each report through the browser', async () => {
         await page.getByRole('button', { name: 'Switch language' }).click()
         await expect(page).toHaveURL(/\/sv\/requirements/)
-        await verifyLocalizedReports('sv', {
-          combined: 'Kombinerad granskningsrapport',
-          history: 'Historikrapport',
-          reports: 'Rapporter',
-          review: 'Granskningsrapport',
-          select: 'Markera',
-        })
+        await verifyLocalizedReports(
+          'sv',
+          {
+            combined: 'Kombinerad granskningsrapport',
+            history: 'Historikrapport',
+            reports: 'Rapporter',
+            review: 'Granskningsrapport',
+            select: 'Markera',
+          },
+          {
+            combined: [
+              'Kombinerad granskningsrapport',
+              'Innehållsförteckning',
+              'GRANSKNINGSRAPPORTER',
+              'Granskningsrapport',
+              requirement.uniqueId,
+              'Metadataändringar',
+              'Kategori',
+              'Granskning',
+            ],
+            history: [
+              'Historikrapport',
+              requirement.uniqueId,
+              'Nuvarande publicerad version',
+              `Opublicerad version (v${reviewVersionNumber})`,
+              'Kategori',
+              'IT-krav',
+              'Publicerad',
+              'Granskning',
+            ],
+            review: [
+              'Granskningsrapport',
+              requirement.uniqueId,
+              'Metadataändringar',
+              'Kategori',
+              'IT-krav',
+              'Granskning',
+            ],
+            unexpected: [
+              'Combined Review Report',
+              'History Report',
+              'Review Report',
+              'Metadata Changes',
+              'Category',
+              'Published',
+              'Review',
+            ],
+          },
+        )
       })
     } finally {
       await reviewerRequest.dispose()
