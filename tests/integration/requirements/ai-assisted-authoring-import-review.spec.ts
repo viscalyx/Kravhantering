@@ -193,7 +193,13 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
   )
 
   await page.goto('/sv/requirements')
-  await page.getByRole('button', { name: 'AI-assistera' }).first().click()
+  const aiTrigger = page.getByRole('button', { name: 'AI-assistera' }).first()
+  await aiTrigger.click()
+  const initialAiDialog = page.getByRole('dialog', {
+    name: 'AI-assisterat författande',
+  })
+  await expect(initialAiDialog).toBeVisible()
+  await expect(initialAiDialog.locator(':focus')).toHaveCount(1)
   await page
     .getByRole('dialog', { name: 'AI-assisterat författande' })
     .getByLabel('Kravområde', { exact: true })
@@ -218,8 +224,13 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
     .getByRole('button', { name: 'Förhandsgranska krav i import' })
     .click()
 
-  await expect(page.getByLabel(/Import-JSON/)).toBeHidden()
-  await expect(page.getByText(generatedDescription)).toBeVisible()
+  const importDialog = page.getByRole('dialog', {
+    name: /Importera krav för/,
+  })
+  await expect(importDialog).toBeVisible()
+  await expect(importDialog.locator(':focus')).toHaveCount(1)
+  await expect(importDialog.getByLabel(/Import-JSON/)).toBeHidden()
+  await expect(importDialog).toContainText(generatedDescription)
   expect(preview.callCount).toBe(1)
   expect(preview.bodies[preview.bodies.length - 1]).toMatchObject({
     payload: generatedPayload,
@@ -500,11 +511,19 @@ test('SPEC-17: AI-assisted authoring hands kravunderlag candidates to local impo
   )
 
   await page.goto(`/sv/specifications/${specificationId}`)
+  const moreActionsTrigger = page
+    .locator('[data-floating-action-menu-trigger="more-actions"]:visible')
+    .first()
   await page.getByRole('button', { name: 'Fler åtgärder' }).click()
   await page
     .getByRole('menuitem', { name: 'AI-assisterat författande' })
     .click()
 
+  const aiDialog = page.getByRole('dialog', {
+    name: 'AI-assisterat författande',
+  })
+  await expect(aiDialog).toBeVisible()
+  await expect(aiDialog.locator(':focus')).toHaveCount(1)
   await generateCandidate(page)
 
   await page
@@ -512,8 +531,14 @@ test('SPEC-17: AI-assisted authoring hands kravunderlag candidates to local impo
     .getByRole('button', { name: 'Förhandsgranska krav i import' })
     .click()
 
-  await expect(page.getByLabel(/Import-JSON/)).toBeHidden()
-  await expect(page.getByText(generatedDescription)).toBeVisible()
+  const importDialog = page.getByRole('dialog', {
+    name: /Importera lokala krav för/,
+  })
+  await expect(importDialog).toBeVisible()
+  await expect(importDialog.locator(':focus')).toHaveCount(1)
+  await expect(importDialog.getByLabel(/Import-JSON/)).toBeHidden()
+  await expect(importDialog).toContainText(generatedDescription)
+  await expect(moreActionsTrigger).not.toBeFocused()
   expect(preview.callCount).toBe(1)
   expect(preview.bodies[preview.bodies.length - 1]).toMatchObject({
     payload: generatedPayload,

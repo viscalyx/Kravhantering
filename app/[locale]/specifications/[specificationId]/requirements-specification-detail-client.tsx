@@ -30,16 +30,16 @@ import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requiremen
 import SpecificationRequirementSelectionPanel from '@/app/[locale]/specifications/[specificationId]/specification-requirement-selection-panel'
 import SpecificationRfiListPanel from '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
 import SpecificationFormModal from '@/app/[locale]/specifications/specification-form-modal'
-import AiRequirementGenerator from '@/components/AiRequirementGenerator'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldHelpButton from '@/components/FieldHelpButton'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
-import RequirementsImportDialog, {
+import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
+import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
-} from '@/components/RequirementsImportDialog'
+} from '@/components/LazyRequirementsImportDialog'
 import RequirementsTable, {
   type FloatingActionItem,
   type FloatingActionMenuItem,
@@ -365,6 +365,8 @@ export default function KravunderlagDetailClient({
   ] = useState(false)
   const [showAiLocalRequirementsModal, setShowAiLocalRequirementsModal] =
     useState(false)
+  const aiReturnFocusTargetRef = useRef<HTMLElement | null>(null)
+  const importReturnFocusTargetRef = useRef<HTMLElement | null>(null)
   const [
     aiLocalRequirementsInitialImport,
     setAiLocalRequirementsInitialImport,
@@ -1655,14 +1657,22 @@ export default function KravunderlagDetailClient({
       : t('aiGenerateDisabledByAdmin')
     : undefined
 
-  const handleOpenAiLocalRequirements = useCallback(() => {
-    if (!canOpenAiLocalRequirements) return
-    setShowAiLocalRequirementsModal(true)
-  }, [canOpenAiLocalRequirements])
+  const handleOpenAiLocalRequirements = useCallback(
+    (returnFocusTarget?: HTMLButtonElement | null) => {
+      if (!canOpenAiLocalRequirements) return
+      aiReturnFocusTargetRef.current = returnFocusTarget ?? null
+      setShowAiLocalRequirementsModal(true)
+    },
+    [canOpenAiLocalRequirements],
+  )
 
-  const handleOpenImportLocalRequirements = useCallback(() => {
-    setShowImportLocalRequirementsModal(true)
-  }, [])
+  const handleOpenImportLocalRequirements = useCallback(
+    (returnFocusTarget?: HTMLButtonElement | null) => {
+      importReturnFocusTargetRef.current = returnFocusTarget ?? null
+      setShowImportLocalRequirementsModal(true)
+    },
+    [],
+  )
 
   const buildMoreActionMenuItems = ({
     includeAddActions,
@@ -3138,7 +3148,7 @@ export default function KravunderlagDetailClient({
       />
       {addModal}
       {createLocalRequirementModal}
-      <AiRequirementGenerator
+      <LazyAiRequirementGenerator
         aiGenerationAvailability={initialData.aiGenerationAvailability}
         mode="specification-local"
         onClose={() => setShowAiLocalRequirementsModal(false)}
@@ -3148,13 +3158,15 @@ export default function KravunderlagDetailClient({
             payload,
             preview: options.preview,
           })
+          importReturnFocusTargetRef.current = aiReturnFocusTargetRef.current
           setShowAiLocalRequirementsModal(false)
           setShowImportLocalRequirementsModal(true)
         }}
         open={showAiLocalRequirementsModal}
+        returnFocusTarget={aiReturnFocusTargetRef.current}
         specificationId={specificationId}
       />
-      <RequirementsImportDialog
+      <LazyRequirementsImportDialog
         destinationName={spec.name}
         initialImport={aiLocalRequirementsInitialImport}
         mode="specification-local"
@@ -3164,6 +3176,7 @@ export default function KravunderlagDetailClient({
           void handleImportLocalRequirementsClose(importSucceeded)
         }}
         open={showImportLocalRequirementsModal}
+        returnFocusTarget={importReturnFocusTargetRef.current}
         specificationId={specificationId}
       />
       {needsReferenceFormModal}

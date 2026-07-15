@@ -156,7 +156,7 @@ type FloatingActionMenuActionItem =
     })
   | (FloatingActionMenuItemBase & {
       href?: never
-      onClick: () => void
+      onClick: (returnFocusTarget?: HTMLButtonElement | null) => void
     })
 
 export type FloatingActionMenuItem =
@@ -224,7 +224,7 @@ export interface FloatingActionItem {
   icon: ReactNode
   id: string
   menuItems?: FloatingActionMenuItem[]
-  onClick?: () => void
+  onClick?: (event: React.MouseEvent<HTMLElement>) => void
   position?: 'beforeColumns' | 'afterColumns'
   tooltip?: string
   variant?: FloatingActionPillVariant
@@ -563,7 +563,7 @@ export function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               className={`${floatingActionMenuItemBaseClassName} hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70`}
                               {...menuItemDeveloperModeProps(item)}
                               onClick={() => {
-                                item.onClick()
+                                item.onClick(triggerRef.current)
                                 setOpen(false)
                               }}
                               role="menuitem"

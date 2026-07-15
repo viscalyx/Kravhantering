@@ -19,6 +19,10 @@ import type {
 } from '@/lib/specifications/preload-types'
 
 const requirementsTableMock = vi.fn()
+const lazyFeatureState = vi.hoisted(() => ({
+  aiRenderSpy: vi.fn(),
+  importRenderSpy: vi.fn(),
+}))
 const pdfDownloadState = vi.hoisted(() => ({
   clearError: vi.fn(),
   download: vi.fn(),
@@ -55,6 +59,20 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
   ),
 }))
 
+vi.mock('@/components/LazyAiRequirementGenerator', () => ({
+  default: (props: Record<string, unknown>) => {
+    lazyFeatureState.aiRenderSpy(props)
+    return props.open ? <div data-testid="lazy-ai-authoring" /> : null
+  },
+}))
+
+vi.mock('@/components/LazyRequirementsImportDialog', () => ({
+  default: (props: Record<string, unknown>) => {
+    lazyFeatureState.importRenderSpy(props)
+    return props.open ? <div data-testid="lazy-import-review" /> : null
+  },
+}))
+
 vi.mock('@/components/RequirementsTable', () => ({
   FloatingActionPill: (props: {
     action: {
@@ -69,7 +87,7 @@ vi.mock('@/components/RequirementsTable', () => ({
         id: string
         kind?: 'separator'
         label?: string
-        onClick?: () => void
+        onClick?: (returnFocusTarget?: HTMLButtonElement | null) => void
       }[]
       onClick?: () => void
     }
@@ -97,7 +115,7 @@ vi.mock('@/components/RequirementsTable', () => ({
                 <button
                   disabled={item.disabled}
                   key={item.id}
-                  onClick={item.onClick}
+                  onClick={event => item.onClick?.(event.currentTarget)}
                   role="menuitem"
                   type="button"
                 >
@@ -127,7 +145,7 @@ vi.mock('@/components/RequirementsTable', () => ({
         icon?: ReactNode
         id: string
         label: string
-        onClick?: () => void
+        onClick?: (returnFocusTarget?: HTMLButtonElement | null) => void
       }[]
       onClick?: () => void
       position?: string
@@ -822,6 +840,66 @@ describe('RequirementsSpecificationDetailClient', () => {
         'specification.reportProfiles.traceability Authorization and IAM ETJANST-UPP-2026.pdf',
       url: '/en/specifications/8/reports/pdf/traceability?refs=lib%3A31',
     })
+  })
+
+  it('preserves menu triggers for direct import and AI-to-import handoff', async () => {
+    renderRequirementsSpecificationDetailClient()
+    await waitForInitialAvailableRequirementsRefresh()
+
+    const itemsTable = latestItemsTableProps()
+    const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
+      id: string
+      menuItems?: Array<{
+        id: string
+        onClick?: (returnFocusTarget?: HTMLButtonElement | null) => void
+      }>
+    }>
+    const menuItems = floatingActions.find(
+      action => action.id === 'more-actions',
+    )?.menuItems
+    const importAction = menuItems?.find(item => item.id === 'import-local')
+    const aiAction = menuItems?.find(item => item.id === 'ai-assist-local')
+    const importTrigger = document.createElement('button')
+    const aiTrigger = document.createElement('button')
+    document.body.append(importTrigger, aiTrigger)
+
+    act(() => importAction?.onClick?.(importTrigger))
+    expect(screen.getByTestId('lazy-import-review')).toBeInTheDocument()
+    let importProps = lazyFeatureState.importRenderSpy.mock.calls.at(
+      -1,
+    )?.[0] as {
+      onClose: (importSucceeded: boolean) => void
+      open: boolean
+      returnFocusTarget?: HTMLElement | null
+    }
+    expect(importProps.open).toBe(true)
+    expect(importProps.returnFocusTarget).toBe(importTrigger)
+
+    act(() => importProps.onClose(false))
+    act(() => aiAction?.onClick?.(aiTrigger))
+    expect(screen.getByTestId('lazy-ai-authoring')).toBeInTheDocument()
+    const aiProps = lazyFeatureState.aiRenderSpy.mock.calls.at(-1)?.[0] as {
+      onImportPreview: (payload: string, options: { preview?: unknown }) => void
+      open: boolean
+      returnFocusTarget?: HTMLElement | null
+    }
+    expect(aiProps.open).toBe(true)
+    expect(aiProps.returnFocusTarget).toBe(aiTrigger)
+
+    act(() => {
+      aiProps.onImportPreview('{"requirements":[]}', {})
+    })
+    importProps = lazyFeatureState.importRenderSpy.mock.calls.at(-1)?.[0] as {
+      onClose: (importSucceeded: boolean) => void
+      open: boolean
+      returnFocusTarget?: HTMLElement | null
+    }
+    expect(importProps.open).toBe(true)
+    expect(importProps.returnFocusTarget).toBe(aiTrigger)
+    expect(screen.getByTestId('lazy-import-review')).toBeInTheDocument()
+
+    importTrigger.remove()
+    aiTrigger.remove()
   })
 
   it('places kravunderlag create before columns and secondary actions after columns', async () => {

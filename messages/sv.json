@@ -2612,6 +2612,22 @@
     "descriptionRequired": "Kravtext måste anges innan raden kan importeras.",
     "verificationMethodRequired": "Verifieringsmetod måste anges för verifierbara krav."
   },
+  "onDemandFeature": {
+    "aiAuthoring": {
+      "loading": "Läser in AI-assisterat författande…",
+      "loadErrorTitle": "AI-assisterat författande kunde inte läsas in",
+      "loadErrorDescription": "Funktionskoden kunde inte läsas in. Läs om sidan och försök igen."
+    },
+    "importReview": {
+      "titleLibrary": "Importera krav",
+      "titleSpecification": "Importera lokala krav",
+      "titleWithDestination": "{title} för {destination}",
+      "loading": "Läser in importgranskning…",
+      "loadErrorTitle": "Importgranskningen kunde inte läsas in",
+      "loadErrorDescription": "Funktionskoden kunde inte läsas in. Läs om sidan och försök igen."
+    },
+    "reloadPage": "Läs om sidan"
+  },
   "safeMarkdown": {
     "imageOmitted": "Bild utelämnad"
   }

@@ -73,14 +73,14 @@ vi.mock('@/components/HelpPanel', () => ({
   useHelpContent: helpPanelState.useHelpContent,
 }))
 
-vi.mock('@/components/AiRequirementGenerator', () => ({
+vi.mock('@/components/LazyAiRequirementGenerator', () => ({
   default: (props: Record<string, unknown>) => {
     aiGeneratorState.renderSpy(props)
     return props.open ? <div data-testid="ai-generator-modal" /> : null
   },
 }))
 
-vi.mock('@/components/RequirementsImportDialog', () => ({
+vi.mock('@/components/LazyRequirementsImportDialog', () => ({
   default: (props: Record<string, unknown>) => {
     importDialogState.renderSpy(props)
     return props.open ? <div data-testid="requirements-import-dialog" /> : null
@@ -904,6 +904,48 @@ describe('RequirementsClient', () => {
     })
   })
 
+  it('preserves the stable trigger through AI-to-import handoff', async () => {
+    mockCommonFetches()
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('requirements-table')).toBeTruthy(),
+    )
+    const aiButton = screen.getByRole('button', { name: 'aiGenerate' })
+    fireEvent.click(aiButton)
+
+    const aiProps = aiGeneratorState.renderSpy.mock.calls.at(-1)?.[0] as {
+      onImportPreview: (
+        payload: string,
+        options: { areaId?: number; preview?: unknown },
+      ) => void
+      open: boolean
+      returnFocusTarget?: HTMLElement | null
+    }
+    expect(aiProps.open).toBe(true)
+    expect(aiProps.returnFocusTarget).toBe(aiButton)
+
+    act(() => {
+      aiProps.onImportPreview('{"requirements":[]}', { areaId: 1 })
+    })
+
+    const importProps = importDialogState.renderSpy.mock.calls.at(-1)?.[0] as {
+      initialImport?: { areaId?: number; payload?: string }
+      open: boolean
+      returnFocusTarget?: HTMLElement | null
+    }
+    expect(importProps).toMatchObject({
+      initialImport: {
+        areaId: 1,
+        payload: '{"requirements":[]}',
+      },
+      open: true,
+    })
+    expect(importProps.returnFocusTarget).toBe(aiButton)
+  })
+
   it('clears the initial loading state when the first row request rejects', async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
@@ -996,8 +1038,14 @@ describe('RequirementsClient', () => {
       screen.getByRole('button', { name: 'importRequirements' }).dataset
         .floatingActionVariant,
     ).toBe('default')
-    fireEvent.click(screen.getByRole('button', { name: 'importRequirements' }))
+    const importButton = screen.getByRole('button', {
+      name: 'importRequirements',
+    })
+    fireEvent.click(importButton)
     expect(screen.getByTestId('requirements-import-dialog')).toBeTruthy()
+    expect(
+      importDialogState.renderSpy.mock.calls.at(-1)?.[0].returnFocusTarget,
+    ).toBe(importButton)
     expect(screen.getByTestId('sort-state').textContent).toBe('uniqueId:asc')
     expect(screen.getByTestId('column-widths').textContent).toBe(
       '{"status":220}',

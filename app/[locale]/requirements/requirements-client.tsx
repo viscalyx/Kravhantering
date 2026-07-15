@@ -4,11 +4,11 @@ import { Download, Plus, Printer, Sparkles, Upload } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import AiRequirementGenerator from '@/components/AiRequirementGenerator'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
-import RequirementsImportDialog, {
+import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
+import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
-} from '@/components/RequirementsImportDialog'
+} from '@/components/LazyRequirementsImportDialog'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import {
@@ -285,6 +285,8 @@ export default function RequirementsClient({
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const aiReturnFocusTargetRef = useRef<HTMLElement | null>(null)
+  const importReturnFocusTargetRef = useRef<HTMLElement | null>(null)
   const [aiInitialImport, setAiInitialImport] =
     useState<InitialRequirementsImport | null>(null)
   const isAiGenerationEnabled =
@@ -959,8 +961,11 @@ export default function RequirementsClient({
                     disabled: !canOpenAiGeneration,
                     icon: <Sparkles aria-hidden="true" className="h-4 w-4" />,
                     id: 'ai-generate',
-                    onClick: () => {
-                      if (canOpenAiGeneration) setAiModalOpen(true)
+                    onClick: event => {
+                      if (canOpenAiGeneration) {
+                        aiReturnFocusTargetRef.current = event.currentTarget
+                        setAiModalOpen(true)
+                      }
                     },
                     position: 'beforeColumns',
                     tooltip: aiGenerationDisabledTooltip ?? t('aiGenerate'),
@@ -1020,7 +1025,10 @@ export default function RequirementsClient({
                     ariaLabel: t('importRequirements'),
                     icon: <Upload aria-hidden="true" className="h-4 w-4" />,
                     id: 'import',
-                    onClick: () => setImportDialogOpen(true),
+                    onClick: event => {
+                      importReturnFocusTargetRef.current = event.currentTarget
+                      setImportDialogOpen(true)
+                    },
                     position: 'afterColumns',
                     tooltip: t('importRequirements'),
                   },
@@ -1091,7 +1099,7 @@ export default function RequirementsClient({
         </div>
       </div>
       {pdfDownload.dialog}
-      <AiRequirementGenerator
+      <LazyAiRequirementGenerator
         aiGenerationAvailability={aiGenerationAvailability}
         areas={areas}
         onClose={() => setAiModalOpen(false)}
@@ -1102,12 +1110,14 @@ export default function RequirementsClient({
             payload,
             preview: options.preview,
           })
+          importReturnFocusTargetRef.current = aiReturnFocusTargetRef.current
           setAiModalOpen(false)
           setImportDialogOpen(true)
         }}
         open={aiModalOpen}
+        returnFocusTarget={aiReturnFocusTargetRef.current}
       />
-      <RequirementsImportDialog
+      <LazyRequirementsImportDialog
         areas={areas}
         initialImport={aiInitialImport}
         mode="library"
@@ -1119,6 +1129,7 @@ export default function RequirementsClient({
           }
         }}
         open={importDialogOpen}
+        returnFocusTarget={importReturnFocusTargetRef.current}
       />
     </>
   )

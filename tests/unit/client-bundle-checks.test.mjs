@@ -5,14 +5,18 @@ import {
 } from '../../scripts/check-client-bundles.mjs'
 
 describe('client bundle checks', () => {
-  it('runs both focused checks with the same build and mode', () => {
+  it('runs every focused check with the same build and mode', () => {
     const runAdmin = vi.fn(() => ({ surface: 'admin' }))
+    const runRequirementWorkflow = vi.fn(() => ({
+      surface: 'requirement-workflow',
+    }))
     const runStewardship = vi.fn(() => ({ surface: 'stewardship' }))
 
     const report = runClientBundleChecks({
       projectRoot: '/workspace/project',
       reportOnly: true,
       runAdmin,
+      runRequirementWorkflow,
       runStewardship,
     })
 
@@ -22,26 +26,33 @@ describe('client bundle checks', () => {
     }
     expect(runAdmin).toHaveBeenCalledOnce()
     expect(runAdmin).toHaveBeenCalledWith(expectedOptions)
+    expect(runRequirementWorkflow).toHaveBeenCalledOnce()
+    expect(runRequirementWorkflow).toHaveBeenCalledWith(expectedOptions)
     expect(runStewardship).toHaveBeenCalledOnce()
     expect(runStewardship).toHaveBeenCalledWith(expectedOptions)
     expect(report).toEqual({
       admin: { surface: 'admin' },
+      requirementWorkflow: { surface: 'requirement-workflow' },
       stewardship: { surface: 'stewardship' },
     })
   })
 
-  it('runs both focused checks when one fails', () => {
+  it('runs every focused check when one fails', () => {
     const adminFailure = new Error('admin failed')
     const runAdmin = vi.fn(() => {
       throw adminFailure
     })
     const runStewardship = vi.fn(() => ({ surface: 'stewardship' }))
+    const runRequirementWorkflow = vi.fn(() => ({
+      surface: 'requirement-workflow',
+    }))
 
     let thrown
     try {
       runClientBundleChecks({
         projectRoot: '/workspace/project',
         runAdmin,
+        runRequirementWorkflow,
         runStewardship,
       })
     } catch (error) {
@@ -49,6 +60,7 @@ describe('client bundle checks', () => {
     }
 
     expect(runAdmin).toHaveBeenCalledOnce()
+    expect(runRequirementWorkflow).toHaveBeenCalledOnce()
     expect(runStewardship).toHaveBeenCalledOnce()
     expect(thrown).toBeInstanceOf(AggregateError)
     expect(thrown.errors).toEqual([adminFailure])
@@ -58,6 +70,7 @@ describe('client bundle checks', () => {
   it('surfaces every focused check failure', () => {
     const adminFailure = new Error('admin failed')
     const stewardshipFailure = 'stewardship failed'
+    const requirementWorkflowFailure = new Error('requirement workflow failed')
 
     let thrown
     try {
@@ -65,6 +78,9 @@ describe('client bundle checks', () => {
         projectRoot: '/workspace/project',
         runAdmin: () => {
           throw adminFailure
+        },
+        runRequirementWorkflow: () => {
+          throw requirementWorkflowFailure
         },
         runStewardship: () => {
           throw stewardshipFailure
@@ -75,8 +91,13 @@ describe('client bundle checks', () => {
     }
 
     expect(thrown).toBeInstanceOf(AggregateError)
-    expect(thrown.errors).toEqual([adminFailure, stewardshipFailure])
+    expect(thrown.errors).toEqual([
+      adminFailure,
+      requirementWorkflowFailure,
+      stewardshipFailure,
+    ])
     expect(thrown.message).toContain('admin failed')
+    expect(thrown.message).toContain('requirement workflow failed')
     expect(thrown.message).toContain('stewardship failed')
   })
 

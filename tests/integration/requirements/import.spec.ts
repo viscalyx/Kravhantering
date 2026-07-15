@@ -149,13 +149,13 @@ test.describe('Requirements import', () => {
     const previewButton = dialog.getByRole('button', {
       name: 'Förhandsgranska krav',
     })
+    const importButton = page.getByRole('button', { name: 'Importera krav' })
     let selectedAreaId: number | null = null
     let selectedAreaDialogName = /Importera krav för/
 
     await test.step('open import and download supporting artifacts', async () => {
       await page.goto('/sv/requirements')
 
-      const importButton = page.getByRole('button', { name: 'Importera krav' })
       const exportButton = page.getByRole('button', { name: 'Exportera' })
       const columnsButton = page.getByRole('button', { name: 'Kolumner' })
       await expect(importButton).toBeVisible()
@@ -179,6 +179,15 @@ test.describe('Requirements import', () => {
 
       await importButton.click()
       await expect(dialog).toHaveCount(1)
+      await expect(dialog.locator(':focus')).toHaveCount(1)
+
+      await dialog.getByRole('button', { name: 'Stäng' }).click()
+      await expect(dialog).toHaveCount(0)
+      await expect(importButton).toBeFocused()
+
+      await importButton.click()
+      await expect(dialog).toHaveCount(1)
+      await expect(dialog.getByLabel('Import-JSON')).toHaveValue('')
 
       await dialog.getByRole('button', { name: 'Ladda ner schema' }).click()
       await dialog
@@ -339,6 +348,17 @@ test.describe('Requirements import', () => {
       expect(receiptCsv).toContain(
         '"SOSFS-IMPORT-1 - Importreferens","true","Demonstration","1"',
       )
+
+      const refreshedRequirements = page.waitForRequest(request => {
+        const url = new URL(request.url())
+        return (
+          request.method() === 'GET' && url.pathname === '/api/requirements'
+        )
+      })
+      await dialog.getByRole('button', { name: 'Stäng' }).click()
+      await refreshedRequirements
+      await expect(dialog).toHaveCount(0)
+      await expect(importButton).toBeFocused()
     })
   })
 })
