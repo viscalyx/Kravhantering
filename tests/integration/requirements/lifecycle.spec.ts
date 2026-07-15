@@ -691,11 +691,11 @@ test.describe('Requirement lifecycle manual cases', () => {
         for (const report of [
           {
             label: labels.review,
-            path: `/${locale}/requirements/reports/pdf/review/${requirement.id}`,
+            path: `/${locale}/requirements/reports/pdf/review/${requirement.uniqueId}`,
           },
           {
             label: labels.history,
-            path: `/${locale}/requirements/reports/pdf/history/${requirement.id}`,
+            path: `/${locale}/requirements/reports/pdf/history/${requirement.uniqueId}`,
           },
         ]) {
           await detailPane.getByRole('button', { name: labels.reports }).click()
