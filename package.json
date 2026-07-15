@@ -188,12 +188,12 @@
     "jsdom": "^29.1.1",
     "markdownlint-cli2": "^0.23.0",
     "oidc-provider": "^9.9.1",
-    "pdf-parse": "^2.4.5",
     "pyright": "^1.1.411",
     "rimraf": "^6.1.3",
     "swagger-ui-dist": "^5.32.8",
     "tailwindcss": "^4.3.2",
     "typescript": "^6.0.3",
+    "unpdf": "^1.6.2",
     "vitest": "^4.1.10"
   },
   "//purge:install": [

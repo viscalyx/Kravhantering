@@ -7,7 +7,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
-import { PDFParse } from 'pdf-parse'
+import { extractText } from 'unpdf'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
 import { expectApiResponseOk } from '../api-response-assertions'
 import { expectApiResponseOkWithRetry } from '../api-retry-helpers'
@@ -285,17 +285,14 @@ async function verifyPdfDownload(
   const pdfBuffer = Buffer.concat(chunks)
   expect(pdfBuffer.subarray(0, 4).toString('utf8')).toBe('%PDF')
 
-  const parser = new PDFParse({ data: Uint8Array.from(pdfBuffer) })
-  try {
-    const pdfText = (await parser.getText()).text
-    for (const text of expectedText) {
-      expect(pdfText).toContain(text)
-    }
-    for (const text of unexpectedText) {
-      expect(pdfText).not.toContain(text)
-    }
-  } finally {
-    await parser.destroy()
+  const { text: pdfText } = await extractText(Uint8Array.from(pdfBuffer), {
+    mergePages: true,
+  })
+  for (const text of expectedText) {
+    expect(pdfText).toContain(text)
+  }
+  for (const text of unexpectedText) {
+    expect(pdfText).not.toContain(text)
   }
 }
 
