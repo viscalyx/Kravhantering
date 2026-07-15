@@ -546,6 +546,61 @@ test.describe('Requirement lifecycle manual cases', () => {
     }
   })
 
+  test('LIFE-14/LIFE-15: report PDFs support Swedish and English locales', async ({
+    request,
+  }, testInfo) => {
+    const reviewerRequest = await newRoleContext(testInfo, 'reviewer')
+
+    try {
+      const requirement = await createRequirementInStatus(
+        request,
+        STATUS_PUBLISHED,
+        'Playwright LIFE-14/LIFE-15 localized report structure',
+        reviewerRequest,
+      )
+      const publishedVersion = latestVersion(requirement)
+      const editResponse = await request.put(
+        `/api/requirements/${requirement.uniqueId}`,
+        {
+          data: {
+            areaId: requirement.area?.id,
+            baseRevisionToken: publishedVersion.revisionToken,
+            baseVersionId: publishedVersion.id,
+            description: 'Localized report metadata change',
+            verifiable: true,
+          },
+          timeout: 30_000,
+        },
+      )
+      await expectApiResponseOk(editResponse, 'PUT localized report draft')
+      await transitionRequirement(request, requirement.uniqueId, STATUS_REVIEW)
+
+      for (const locale of ['sv', 'en'] as const) {
+        await test.step(`${locale} report routes return PDFs`, async () => {
+          const reportUrls = [
+            `/requirements/reports/pdf/review/${requirement.id}`,
+            `/requirements/reports/pdf/review-combined?ids=${requirement.id}`,
+            `/requirements/reports/pdf/history/${requirement.id}`,
+          ]
+
+          for (const reportUrl of reportUrls) {
+            const label = `${locale} ${reportUrl}`
+            const response = await expectApiResponseOkWithRetry(
+              label,
+              () => request.get(`/${locale}${reportUrl}`, { timeout: 30_000 }),
+              { shouldRetryStatus: status => status === 404 || status >= 500 },
+            )
+            expect(response.headers()['content-type']).toContain(
+              'application/pdf',
+            )
+          }
+        })
+      }
+    } finally {
+      await reviewerRequest.dispose()
+    }
+  })
+
   test('LIFE-07: restores an archived requirement version through the UI', async ({
     page,
     request,
