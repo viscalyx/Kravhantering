@@ -193,6 +193,7 @@
     "swagger-ui-dist": "^5.32.8",
     "tailwindcss": "^4.3.2",
     "typescript": "^6.0.3",
+    "unpdf": "^1.6.2",
     "vitest": "^4.1.10"
   },
   "//purge:install": [

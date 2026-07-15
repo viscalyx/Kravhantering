@@ -627,6 +627,7 @@
     "datapropagering",
     "övervakningsresponser",
     "historikrapport",
+    "historikrapporter",
     "autoarkiverad",
     "folkmunsterm",
     "kravdata",
@@ -1031,6 +1032,7 @@
     "Wayfinding",
     "ägbar",
     "unvalidated",
+    "unpdf",
     "fokusmarkering"
   ],
   "flagWords": [],

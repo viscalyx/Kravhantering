@@ -931,6 +931,26 @@ seedade fixturen för pakethistorik.
 **Förväntat resultat:** Den arkiverade kravversionens paketkoppling bevaras
 som historik och arkiveringsanropet kan göras utan efterträdare.
 
+### LIFE-14: svenska gransknings- och historikrapporter är lokaliserade
+
+**Steg:** Välj svenska och skapa PDF för granskningsrapport, kombinerad
+granskningsrapport och historikrapport. Använd kravversioner som visar
+metadataändringar samt publicerat, arkiverat, redigerat och skapat datum.
+
+**Förväntat resultat:** Metadataändringarnas rubrik och kolumner samt
+tidslinjens datumetiketter visas på svenska. Skapat datum visas endast när
+inget publicerat, arkiverat eller redigerat datum finns för tidslinjeposten.
+
+### LIFE-15: engelska gransknings- och historikrapporter förblir engelska
+
+**Steg:** Välj engelska och skapa PDF för review report, combined review report
+och history report med samma slags metadataändringar och livscykeldatum som i
+LIFE-14.
+
+**Förväntat resultat:** Metadataändringarnas rubrik och kolumner samt
+tidslinjens datumetiketter visas på engelska. Datumurvalet är oförändrat från
+det svenska testfallet och inga svenska strukturetiketter visas.
+
 ## Samarbete i kravdetalj
 
 ### COL-01: lägg till krav i kravunderlag
