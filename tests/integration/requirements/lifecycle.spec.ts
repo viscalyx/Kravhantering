@@ -214,10 +214,14 @@ async function newRolePage(
   return { context, page }
 }
 
-async function openRequirement(page: Page, uniqueId: string): Promise<Locator> {
+async function openRequirement(
+  page: Page,
+  uniqueId: string,
+  locale: 'en' | 'sv' = 'sv',
+): Promise<Locator> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await page.goto(
-      `/sv/requirements?selected=${encodeURIComponent(uniqueId)}`,
+      `/${locale}/requirements?selected=${encodeURIComponent(uniqueId)}`,
       { timeout: 30_000, waitUntil: 'domcontentloaded' },
     )
 
@@ -246,15 +250,48 @@ async function openRequirement(page: Page, uniqueId: string): Promise<Locator> {
   throw new Error(`Requirement row ${uniqueId} did not load.`)
 }
 
+async function verifyPdfDownload(
+  page: Page,
+  action: Locator,
+  expectedPath: string,
+) {
+  const [response, download] = await Promise.all([
+    page.waitForResponse(candidate => {
+      const url = new URL(candidate.url())
+      return (
+        candidate.request().method() === 'GET' && url.pathname === expectedPath
+      )
+    }),
+    page.waitForEvent('download'),
+    action.click(),
+  ])
+
+  expect(response.ok()).toBe(true)
+  expect(response.headers()['content-type']).toContain('application/pdf')
+  expect(download.suggestedFilename()).toMatch(/\.pdf$/u)
+
+  const pdfStream = await download.createReadStream()
+  if (!pdfStream) {
+    throw new Error(`PDF download for ${expectedPath} exposed no stream.`)
+  }
+
+  const chunks: Buffer[] = []
+  for await (const chunk of pdfStream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+  expect(Buffer.concat(chunks).subarray(0, 4).toString('utf8')).toBe('%PDF')
+}
+
 async function openRequirementStandalone(
   page: Page,
   uniqueId: string,
   versionNumber?: number,
+  locale: 'en' | 'sv' = 'sv',
 ): Promise<Locator> {
   const suffix = versionNumber === undefined ? '' : `/${versionNumber}`
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page.goto(`/sv/requirements/${uniqueId}${suffix}`, {
+    await page.goto(`/${locale}/requirements/${uniqueId}${suffix}`, {
       timeout: 30_000,
       waitUntil: 'domcontentloaded',
     })
@@ -266,7 +303,9 @@ async function openRequirementStandalone(
           name: new RegExp(escapeRegExp(uniqueId)),
         }),
       ).toBeVisible({ timeout: 30_000 })
-      await expect(main.getByText('Kravtext')).toBeVisible({ timeout: 30_000 })
+      await expect(
+        main.getByText(locale === 'sv' ? 'Kravtext' : 'Requirement text'),
+      ).toBeVisible({ timeout: 30_000 })
       return main
     } catch (error) {
       if (attempt === 2) throw error
@@ -547,6 +586,7 @@ test.describe('Requirement lifecycle manual cases', () => {
   })
 
   test('LIFE-14/LIFE-15: report PDFs support Swedish and English locales', async ({
+    page,
     request,
   }, testInfo) => {
     const reviewerRequest = await newRoleContext(testInfo, 'reviewer')
@@ -558,44 +598,151 @@ test.describe('Requirement lifecycle manual cases', () => {
         'Playwright LIFE-14/LIFE-15 localized report structure',
         reviewerRequest,
       )
-      const publishedVersion = latestVersion(requirement)
-      const editResponse = await request.put(
-        `/api/requirements/${requirement.uniqueId}`,
-        {
-          data: {
-            areaId: requirement.area?.id,
-            baseRevisionToken: publishedVersion.revisionToken,
-            baseVersionId: publishedVersion.id,
-            description: 'Localized report metadata change',
-            verifiable: true,
-          },
-          timeout: 30_000,
-        },
-      )
-      await expectApiResponseOk(editResponse, 'PUT localized report draft')
-      await transitionRequirement(request, requirement.uniqueId, STATUS_REVIEW)
 
-      for (const locale of ['sv', 'en'] as const) {
-        await test.step(`${locale} report routes return PDFs`, async () => {
-          const reportUrls = [
-            `/requirements/reports/pdf/review/${requirement.id}`,
-            `/requirements/reports/pdf/review-combined?ids=${requirement.id}`,
-            `/requirements/reports/pdf/history/${requirement.id}`,
-          ]
+      const reviewVersionNumber =
+        await test.step('edit the published requirement through the Swedish UI', async () => {
+          const detail = await openRequirementStandalone(
+            page,
+            requirement.uniqueId,
+          )
+          await detail.getByRole('link', { name: 'Redigera' }).click()
+          await page
+            .getByRole('textbox', { name: 'Kravtext *' })
+            .fill('Localized report metadata change')
+          await page
+            .getByRole('combobox', { name: 'Kategori' })
+            .selectOption({ label: 'IT-krav' })
 
-          for (const reportUrl of reportUrls) {
-            const label = `${locale} ${reportUrl}`
-            const response = await expectApiResponseOkWithRetry(
-              label,
-              () => request.get(`/${locale}${reportUrl}`, { timeout: 30_000 }),
-              { shouldRetryStatus: status => status === 404 || status >= 500 },
+          const saveButton = page.getByRole('button', { name: 'Spara' })
+          await expect(saveButton).toBeEnabled()
+          await saveButton.scrollIntoViewIfNeeded()
+          const editForm = page.locator('form')
+          await expect
+            .poll(() =>
+              editForm.evaluate(form =>
+                (form as HTMLFormElement).checkValidity(),
+              ),
             )
-            expect(response.headers()['content-type']).toContain(
-              'application/pdf',
-            )
-          }
+            .toBe(true)
+          await Promise.all([
+            page.waitForRequest(candidate => {
+              const url = new URL(candidate.url())
+              return (
+                candidate.method() === 'PUT' &&
+                url.pathname === `/api/requirements/${requirement.uniqueId}`
+              )
+            }),
+            saveButton.click(),
+          ])
+
+          await expect
+            .poll(async () => {
+              const updated = await getRequirement(
+                request,
+                requirement.uniqueId,
+              )
+              return {
+                description: latestVersion(updated).description,
+                status: latestVersion(updated).status,
+              }
+            })
+            .toEqual({
+              description: 'Localized report metadata change',
+              status: STATUS_DRAFT,
+            })
+
+          const updated = await getRequirement(request, requirement.uniqueId)
+          return latestVersion(updated).versionNumber
         })
+
+      await test.step('send the edited requirement to review through the UI', async () => {
+        const detailPane = await openRequirementStandalone(
+          page,
+          requirement.uniqueId,
+          reviewVersionNumber,
+        )
+        await detailPane.getByRole('button', { name: 'Granskning ↗' }).click()
+        await expectLatestStatus(request, requirement.uniqueId, STATUS_REVIEW)
+        await assertActiveStepperStep(detailPane, 'Granskning')
+      })
+
+      async function verifyLocalizedReports(
+        locale: 'en' | 'sv',
+        labels: {
+          combined: string
+          history: string
+          reports: string
+          review: string
+          select: string
+        },
+      ) {
+        const detailPane = await openRequirementStandalone(
+          page,
+          requirement.uniqueId,
+          reviewVersionNumber,
+          locale,
+        )
+        await expect(page).toHaveURL(
+          new RegExp(
+            `/${locale}/requirements/${requirement.uniqueId}/${reviewVersionNumber}$`,
+          ),
+        )
+
+        for (const report of [
+          {
+            label: labels.review,
+            path: `/${locale}/requirements/reports/pdf/review/${requirement.id}`,
+          },
+          {
+            label: labels.history,
+            path: `/${locale}/requirements/reports/pdf/history/${requirement.id}`,
+          },
+        ]) {
+          await detailPane.getByRole('button', { name: labels.reports }).click()
+          await verifyPdfDownload(
+            page,
+            page.getByRole('menuitem', { name: report.label }),
+            report.path,
+          )
+        }
+
+        await openRequirement(page, requirement.uniqueId, locale)
+        await page
+          .getByRole('checkbox', {
+            name: `${labels.select} ${requirement.uniqueId}`,
+          })
+          .check()
+        await page.locator('[data-floating-action-id="reports"]').click()
+        await verifyPdfDownload(
+          page,
+          page.getByRole('menuitem', { name: labels.combined }),
+          `/${locale}/requirements/reports/pdf/review-combined`,
+        )
       }
+
+      await test.step('select English and download each report through the browser', async () => {
+        await page.getByRole('button', { name: 'Byt språk' }).click()
+        await expect(page).toHaveURL(/\/en\/requirements/)
+        await verifyLocalizedReports('en', {
+          combined: 'Combined Review Report',
+          history: 'History Report',
+          reports: 'Reports',
+          review: 'Review Report',
+          select: 'Select',
+        })
+      })
+
+      await test.step('select Swedish and download each report through the browser', async () => {
+        await page.getByRole('button', { name: 'Switch language' }).click()
+        await expect(page).toHaveURL(/\/sv\/requirements/)
+        await verifyLocalizedReports('sv', {
+          combined: 'Kombinerad granskningsrapport',
+          history: 'Historikrapport',
+          reports: 'Rapporter',
+          review: 'Granskningsrapport',
+          select: 'Markera',
+        })
+      })
     } finally {
       await reviewerRequest.dispose()
     }
