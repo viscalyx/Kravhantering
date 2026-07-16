@@ -1850,6 +1850,83 @@ describe('RequirementsClient', () => {
     expect(screen.getByTestId('has-more').textContent).toBe('false')
   })
 
+  it('ignores stale invalid-cursor recovery after a newer refresh replaces the list', async () => {
+    const initialList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean; nextCursor?: string | null }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const freshRefresh = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean; nextCursor?: string | null }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    let resolveStaleLoadMore: ((response: Response) => void) | undefined
+    const staleLoadMore = new Promise<Response>(resolve => {
+      resolveStaleLoadMore = resolve
+    })
+    let firstPageRequests = 0
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (url.includes('cursor=cursor-1')) {
+          return staleLoadMore
+        }
+        firstPageRequests += 1
+        if (url.includes('sortBy=status')) {
+          return freshRefresh.promise
+        }
+        return initialList.promise
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) return metadataResponse
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+    initialList.resolve({
+      pagination: { hasMore: true, nextCursor: 'cursor-1' },
+      requirements: [makeRequirementRow(1)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+    fireEvent.click(screen.getByText('load-more'))
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('cursor=cursor-1'),
+      ),
+    )
+
+    fireEvent.click(screen.getByText('change-sort'))
+    freshRefresh.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(2)],
+    })
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0002'),
+    )
+
+    resolveStaleLoadMore?.({
+      clone() {
+        return this
+      },
+      json: async () => ({ code: 'invalid_cursor' }),
+      ok: false,
+      status: 400,
+    } as Response)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('loading-more').textContent).toBe('false'),
+    )
+    expect(firstPageRequests).toBe(2)
+    expect(screen.getByTestId('row-ids').textContent).toBe('INT0002')
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
   it('does not start load more while a refresh is already in flight', async () => {
     const initialList = createDeferredJsonResponse<{
       pagination: { hasMore: boolean; nextCursor?: string | null }

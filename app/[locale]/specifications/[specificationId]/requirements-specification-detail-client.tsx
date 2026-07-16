@@ -778,6 +778,7 @@ export default function KravunderlagDetailClient({
       const response = await apiFetch(
         `/api/requirements-specifications/${specificationId}/available-requirements?${params}`,
       )
+      if (activeKey !== availableRequirementsKeyRef.current) return
       if (response.status === 400) {
         const body = (await response
           .clone()
@@ -785,6 +786,7 @@ export default function KravunderlagDetailClient({
           .catch(() => null)) as {
           code?: string
         } | null
+        if (activeKey !== availableRequirementsKeyRef.current) return
         if (body?.code === 'invalid_cursor') {
           await availableRequirementsResource.reload()
           setLoadMoreWarning(tc('requirementListRefreshed'))
@@ -795,7 +797,6 @@ export default function KravunderlagDetailClient({
         requirements?: RequirementRow[]
         pagination?: { hasMore?: boolean; nextCursor?: string | null }
       }>(response, t('loadAvailableRequirementsFailed'))
-      if (activeKey !== availableRequirementsKeyRef.current) return
       setLoadMoreWarning(null)
       setAvailableRows(prev => [...prev, ...(data.requirements ?? [])])
       setRightHasMore(data.pagination?.hasMore ?? false)

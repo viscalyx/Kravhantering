@@ -13,9 +13,11 @@ describe('requirement list cursor', () => {
       locale: 'sv',
     })
     const cursor = encodeRequirementListCursor(42, queryHash)
+    const decodedJson = Buffer.from(cursor, 'base64url').toString('utf8')
+    const decodedCursor = decodeRequirementListCursor(cursor)
 
-    expect(cursor).not.toContain('sensitive')
-    expect(decodeRequirementListCursor(cursor)).toEqual({
+    expect(decodedJson).not.toContain('sensitive text')
+    expect(decodedCursor).toEqual({
       anchorRequirementId: 42,
       queryHash,
       version: 1,

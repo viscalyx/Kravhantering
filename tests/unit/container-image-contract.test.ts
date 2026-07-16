@@ -212,6 +212,25 @@ describe('container image contract', () => {
     }
   })
 
+  it('installs Codex CLI system-wide in both devcontainer profiles', () => {
+    const dockerfile = readWorkspaceFile('.devcontainer/Dockerfile')
+
+    expect(dockerfile).toContain('https://chatgpt.com/codex/install.sh')
+    expect(dockerfile).toContain('CODEX_HOME=/usr/local/lib/codex')
+    expect(dockerfile).toContain('CODEX_INSTALL_DIR=/usr/local/bin')
+    expect(dockerfile).toContain('CODEX_NON_INTERACTIVE=1')
+    expect(dockerfile).toContain('codex --version')
+
+    for (const relativePath of [
+      '.devcontainer/docker-compose.yml',
+      '.devcontainer/elevated/docker-compose.yml',
+    ]) {
+      expect(readWorkspaceFile(relativePath)).toContain(
+        'dockerfile: .devcontainer/Dockerfile',
+      )
+    }
+  })
+
   it('installs Podman tooling for the local container stack', () => {
     const dockerfile = readWorkspaceFile('.devcontainer/Dockerfile')
     const defaultCompose = readWorkspaceFile('.devcontainer/docker-compose.yml')

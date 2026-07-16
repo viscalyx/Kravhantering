@@ -527,6 +527,9 @@ export default function RequirementsClient({
 
       try {
         const res = await fetch(`/api/requirements?${params}`)
+        if (requestId !== latestRowsRequestIdRef.current) {
+          return
+        }
         if (res.status === 400) {
           const body = (await res
             .clone()
@@ -534,13 +537,16 @@ export default function RequirementsClient({
             .catch(() => null)) as {
             code?: string
           } | null
+          if (requestId !== latestRowsRequestIdRef.current) {
+            return
+          }
           if (body?.code === 'invalid_cursor') {
             await refreshRows()
             setPaginationNotice(tc('requirementListRefreshed'))
             return
           }
         }
-        if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
+        if (!res.ok) {
           return
         }
 

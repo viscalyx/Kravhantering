@@ -28,17 +28,23 @@ function invalidCursor(): never {
 
 function stableValue(value: unknown): unknown {
   if (Array.isArray(value)) {
-    return value
-      .map(stableValue)
-      .sort((left, right) =>
-        JSON.stringify(left).localeCompare(JSON.stringify(right)),
-      )
+    return value.map(stableValue).sort((left, right) => {
+      const leftValue = JSON.stringify(left)
+      const rightValue = JSON.stringify(right)
+      if (leftValue < rightValue) return -1
+      if (leftValue > rightValue) return 1
+      return 0
+    })
   }
   if (value && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>)
         .filter(([, entry]) => entry !== undefined)
-        .sort(([left], [right]) => left.localeCompare(right))
+        .sort(([left], [right]) => {
+          if (left < right) return -1
+          if (left > right) return 1
+          return 0
+        })
         .map(([key, entry]) => [key, stableValue(entry)]),
     )
   }
