@@ -68,6 +68,7 @@ import {
 import {
   type AreaOption,
   buildRequirementListParams,
+  compareRequirementRows,
   DEFAULT_REQUIREMENT_SORT,
   type FilterValues,
   isRequirementColumnId,
@@ -1522,8 +1523,21 @@ export default function KravunderlagDetailClient({
           statusSet.has(r.specificationItemStatusId),
       )
     }
-    return rows
-  }, [specificationItems, leftFilters, areas, leftNormReferenceOptions, locale])
+    return [...rows].sort((left, right) =>
+      compareRequirementRows(left, right, {
+        locale,
+        sort: leftSort,
+        statusOptions: [],
+      }),
+    )
+  }, [
+    specificationItems,
+    leftFilters,
+    leftSort,
+    areas,
+    leftNormReferenceOptions,
+    locale,
+  ])
   const traceabilityItemRefsParam = useMemo(
     () =>
       filteredSpecificationItems
