@@ -8,7 +8,6 @@ import {
 } from '@/lib/http/secure-mutation-route'
 import {
   businessTextSchema,
-  nonNegativeIntegerStringSchema,
   optionalBusinessTextSchema,
   optionalQueryArraySchema,
   optionalSearchStringSchema,
@@ -135,7 +134,7 @@ const requirementsQuerySchema = z
     locale: z.enum(['en', 'sv']).optional().default('en'),
     needsReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     normReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
-    offset: nonNegativeIntegerStringSchema.optional(),
+    cursor: z.string().min(1).max(512).optional(),
     qualityCharacteristicIds: optionalQueryArraySchema(
       positiveIntegerStringSchema,
     ),
@@ -189,7 +188,7 @@ export async function GET(request: NextRequest) {
     limit,
     locale,
     normReferenceIds = [],
-    offset,
+    cursor,
     qualityCharacteristicIds = [],
     requirementPackageIds = [],
     verifiable = [],
@@ -230,7 +229,7 @@ export async function GET(request: NextRequest) {
         },
         limit,
         locale,
-        offset,
+        cursor,
         sort: {
           by: sortBy ?? DEFAULT_REQUIREMENT_SORT.by,
           direction: sortDirection ?? DEFAULT_REQUIREMENT_SORT.direction,

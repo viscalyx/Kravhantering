@@ -18,6 +18,20 @@ Before rebuilding either devcontainer profile, copy:
 cp .devcontainer/.env.example .devcontainer/.env
 ```
 
+## Codex CLI
+
+Both devcontainer profiles install the Codex CLI system-wide from OpenAI's
+standalone installer. Rebuild the devcontainer after changing branches or
+pulling this setup, then verify the installation inside the container:
+
+```bash
+codex --version
+```
+
+The command is available to the `vscode` user in both profiles. Codex keeps
+configuration, authentication, sessions, skills, and plugins under
+`/home/vscode/.codex`.
+
 ## Local HTTPS Development
 
 The devcontainer includes `mkcert`. Use it inside the container to create the

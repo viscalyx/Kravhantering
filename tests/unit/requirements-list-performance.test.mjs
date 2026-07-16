@@ -34,6 +34,10 @@ describe('requirements-list-performance.mjs', () => {
       'text-search',
       'join-table-filters',
       'deep-pagination',
+      'localized-text-first',
+      'localized-text-deep',
+      'nullable-number-first',
+      'nullable-number-deep',
       'archived-included',
     ])
     expect(seedSql).toContain('WHERE unique_id LIKE @uniqueIdLike')
@@ -56,6 +60,12 @@ describe('requirements-list-performance.mjs', () => {
     ).toMatchObject({
       priorityLevelIds: [2, 3],
       sortBy: 'priorityLevel',
+    })
+    expect(
+      scenarios.find(scenario => scenario.name === 'deep-pagination'),
+    ).toMatchObject({
+      anchorRequirementId: expect.any(Number),
+      options: { sortBy: 'uniqueId' },
     })
     expect(buildPerformanceFixtureStatusSql()).toContain(
       'COUNT(*) AS requirementCount',
@@ -295,6 +305,52 @@ describe('requirements-list-performance.mjs', () => {
       }),
     ).toContain(
       'Requirement-list performance actuals vs baseline (developer profile):',
+    )
+  })
+
+  it('enforces deep-page cost ratios and rejects newly introduced spills', () => {
+    const scenario = (name, value, hasSpill = false) => ({
+      name,
+      plan: { hasSpill, maxMissingIndexImpact: 0 },
+      summary: {
+        maxLogicalReads: value,
+        medianDurationMs: value,
+        p95DurationMs: value,
+      },
+    })
+    const comparison = compareAgainstBaseline(
+      {
+        scenarios: [scenario('first', 100), scenario('deep', 151, true)],
+      },
+      {
+        thresholds: {
+          first: {
+            allowSpills: false,
+            maxLogicalReads: 1000,
+            maxMedianDurationMs: 1000,
+            maxP95DurationMs: 1000,
+          },
+          deep: {
+            allowSpills: true,
+            maxLogicalReads: 1000,
+            maxLogicalReadsRatio: 1.25,
+            maxMedianDurationMs: 1000,
+            maxMedianDurationRatio: 1.5,
+            maxP95DurationMs: 1000,
+            maxP95DurationRatio: 1.5,
+            relativeTo: 'first',
+          },
+        },
+      },
+    )
+
+    expect(comparison.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('logical reads ratio'),
+        expect.stringContaining('median ratio'),
+        expect.stringContaining('p95 ratio'),
+        expect.stringContaining('introduced a spill'),
+      ]),
     )
   })
 

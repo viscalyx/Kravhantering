@@ -44,6 +44,16 @@ RUN mkdir -p /home/vscode/.config/containers && \
     printf '[network]\nnetwork_backend = "netavark"\n' > /home/vscode/.config/containers/containers.conf && \
     chown -R vscode:vscode /home/vscode/.config/containers
 
+# Install the Codex CLI system-wide for both devcontainer profiles. Keep the
+# standalone package outside root's home so the vscode user can execute it.
+RUN mkdir -p /usr/local/lib/codex && \
+    curl -fsSL https://chatgpt.com/codex/install.sh | \
+    CODEX_HOME=/usr/local/lib/codex \
+    CODEX_INSTALL_DIR=/usr/local/bin \
+    CODEX_NON_INTERACTIVE=1 \
+    sh && \
+    codex --version
+
 # Install dotenv-linter for env file checks.
 RUN curl -sSfL https://raw.githubusercontent.com/dotenv-linter/dotenv-linter/master/install.sh | \
     sh -s -- -b /usr/local/bin

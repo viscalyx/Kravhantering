@@ -4,6 +4,7 @@
     "appDescription": "En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess",
     "loading": "Laddar...",
     "loadingRequirements": "Hämtar krav…",
+    "requirementListRefreshed": "Kravlistan ändrades och lästes in på nytt från början.",
     "save": "Spara",
     "saving": "Sparar…",
     "savingInProgress": "Sparning pågår…",

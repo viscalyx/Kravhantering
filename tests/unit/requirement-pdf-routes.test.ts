@@ -187,9 +187,7 @@ function listQueryPage(
   requirements: ReturnType<typeof listRequirement>[],
   pagination: {
     hasMore?: boolean
-    nextOffset?: number | null
-    offset?: number
-    total?: number
+    nextCursor?: string | null
   } = {},
 ) {
   return {
@@ -197,9 +195,7 @@ function listQueryPage(
       count: requirements.length,
       hasMore: pagination.hasMore ?? false,
       limit: 200,
-      nextOffset: pagination.nextOffset ?? null,
-      offset: pagination.offset ?? 0,
-      total: pagination.total ?? requirements.length,
+      nextCursor: pagination.nextCursor ?? null,
     },
     requirements,
   }
@@ -388,16 +384,10 @@ describe('requirement PDF routes', () => {
       .mockResolvedValueOnce(
         listQueryPage([listRequirement(1, 'REQ-1')], {
           hasMore: true,
-          nextOffset: 1,
-          total: 2,
+          nextCursor: 'cursor-1',
         }),
       )
-      .mockResolvedValueOnce(
-        listQueryPage([listRequirement(2, 'REQ-2')], {
-          offset: 1,
-          total: 2,
-        }),
-      )
+      .mockResolvedValueOnce(listQueryPage([listRequirement(2, 'REQ-2')]))
     const { GET } = await import(
       '@/app/[locale]/requirements/reports/pdf/list/route'
     )
@@ -431,7 +421,7 @@ describe('requirement PDF routes', () => {
         },
         limit: 200,
         locale: 'sv',
-        offset: 0,
+        cursor: undefined,
         sort: { by: 'status', direction: 'desc' },
       },
       {
@@ -442,7 +432,7 @@ describe('requirement PDF routes', () => {
     expect(routeState.queryRequirementList).toHaveBeenNthCalledWith(
       2,
       { db: true },
-      expect.objectContaining({ offset: 1 }),
+      expect.objectContaining({ cursor: 'cursor-1' }),
       expect.anything(),
     )
     expect(

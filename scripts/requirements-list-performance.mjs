@@ -4,7 +4,7 @@ import { dirname, relative, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
 import {
-  buildRequirementCountSql,
+  buildRequirementListAnchorSql,
   buildRequirementListSql,
 } from '../lib/dal/requirements-list-sql.mjs'
 import {
@@ -105,12 +105,19 @@ const PERFORMANCE_REFERENCE_REQUIREMENTS = [
 export function createRequirementListPerformanceScenarios(
   config = createPerformanceFixtureConfig(),
 ) {
+  const findAnchorNumber = predicate => {
+    for (let n = config.requirementCount; n >= 1; n -= 1) {
+      if (predicate(n)) return n
+    }
+    return 1
+  }
+  const deepAnchorNumber = findAnchorNumber(n => [3, 4, 5, 6].includes(n % 10))
+  const nullableAnchorNumber = findAnchorNumber(n => n % 10 === 5)
   return [
     {
       name: 'default-published',
       options: {
         limit: 200,
-        offset: 0,
         sortBy: 'uniqueId',
         sortDirection: 'asc',
         statuses: [STATUS_PUBLISHED],
@@ -121,7 +128,6 @@ export function createRequirementListPerformanceScenarios(
       options: {
         includeArchived: true,
         limit: 200,
-        offset: 0,
         sortBy: 'status',
         sortDirection: 'asc',
         statuses: [STATUS_REVIEW],
@@ -133,7 +139,6 @@ export function createRequirementListPerformanceScenarios(
         areaIds: [areaId(config, 1), areaId(config, 2)],
         categoryIds: [1, 2],
         limit: 200,
-        offset: 0,
         qualityCharacteristicIds: [6, 8, 23],
         verifiable: [true],
         priorityLevelIds: [2, 3],
@@ -149,7 +154,6 @@ export function createRequirementListPerformanceScenarios(
         descriptionSearch: 'needle',
         includeArchived: true,
         limit: 200,
-        offset: 0,
         sortBy: 'description',
         sortDirection: 'asc',
         uniqueIdSearch: `${config.uniqueIdPrefix}-`,
@@ -160,7 +164,6 @@ export function createRequirementListPerformanceScenarios(
       options: {
         limit: 200,
         normReferenceIds: [2, 5],
-        offset: 0,
         requirementPackageIds: [3, 8],
         sortBy: 'uniqueId',
         sortDirection: 'asc',
@@ -169,10 +172,50 @@ export function createRequirementListPerformanceScenarios(
     },
     {
       name: 'deep-pagination',
+      anchorRequirementId: config.requirementIdBase - deepAnchorNumber,
       options: {
         limit: 200,
-        offset: Math.floor(config.requirementCount / 2),
         sortBy: 'uniqueId',
+        sortDirection: 'asc',
+        statuses: [STATUS_PUBLISHED],
+      },
+    },
+    {
+      name: 'localized-text-first',
+      options: {
+        limit: 200,
+        locale: 'sv',
+        sortBy: 'category',
+        sortDirection: 'asc',
+        statuses: [STATUS_PUBLISHED],
+      },
+    },
+    {
+      name: 'localized-text-deep',
+      anchorRequirementId: config.requirementIdBase - deepAnchorNumber,
+      options: {
+        limit: 200,
+        locale: 'sv',
+        sortBy: 'category',
+        sortDirection: 'asc',
+        statuses: [STATUS_PUBLISHED],
+      },
+    },
+    {
+      name: 'nullable-number-first',
+      options: {
+        limit: 200,
+        sortBy: 'priorityLevel',
+        sortDirection: 'asc',
+        statuses: [STATUS_PUBLISHED],
+      },
+    },
+    {
+      name: 'nullable-number-deep',
+      anchorRequirementId: config.requirementIdBase - nullableAnchorNumber,
+      options: {
+        limit: 200,
+        sortBy: 'priorityLevel',
         sortDirection: 'asc',
         statuses: [STATUS_PUBLISHED],
       },
@@ -182,7 +225,6 @@ export function createRequirementListPerformanceScenarios(
       options: {
         includeArchived: true,
         limit: 200,
-        offset: 0,
         sortBy: 'version',
         sortDirection: 'desc',
         statuses: [STATUS_ARCHIVED],
@@ -212,7 +254,14 @@ export function buildPerformanceFixtureStatusSql() {
         FROM requirement_versions rv
         INNER JOIN requirements r ON r.id = rv.requirement_id
         WHERE r.unique_id LIKE @0
-      ) AS versionCount
+      ) AS versionCount,
+      (
+        SELECT COUNT(*)
+        FROM requirement_versions rv
+        INNER JOIN requirements r ON r.id = rv.requirement_id
+        WHERE r.unique_id LIKE @0
+          AND rv.priority_level_id IS NULL
+      ) AS nullablePriorityCount
     FROM requirements
     WHERE unique_id LIKE @0
   `
@@ -574,8 +623,8 @@ SELECT
   v.published_at,
   v.archived_at,
   N'perf-seed',
-  v.archive_initiated_at,
-  1 + (v.n % 3)
+    v.archive_initiated_at,
+  CASE WHEN v.n % 5 = 0 THEN NULL ELSE 1 + (v.n % 3) END
 FROM #perf_versions v;
 
 SET IDENTITY_INSERT requirement_versions OFF;
@@ -716,13 +765,12 @@ function combineLogicalReads(...values) {
   return numbers.reduce((sum, value) => sum + value, 0)
 }
 
-async function runMeasuredSample(pool, listQuery, countQuery) {
+async function runMeasuredSample(pool, listQuery) {
   const list = await executeMeasuredStatement(pool, listQuery)
-  const count = await executeMeasuredStatement(pool, countQuery)
   return {
-    durationMs: roundMetric(list.durationMs + count.durationMs),
-    logicalReads: combineLogicalReads(list.logicalReads, count.logicalReads),
-    statements: { count, list },
+    durationMs: roundMetric(list.durationMs),
+    logicalReads: combineLogicalReads(list.logicalReads),
+    statements: { list },
   }
 }
 
@@ -833,8 +881,27 @@ function combinePlanResults(...plans) {
 }
 
 async function runScenario(pool, scenario, options) {
-  const listQuery = buildRequirementListSql(scenario.options)
-  const countQuery = buildRequirementCountSql(scenario.options)
+  const scenarioOptions = { ...scenario.options }
+  if (scenario.anchorRequirementId != null) {
+    const anchorQuery = buildRequirementListAnchorSql(
+      scenarioOptions,
+      scenario.anchorRequirementId,
+    )
+    const anchor = await queryScalarRow(
+      pool,
+      anchorQuery.sqlText,
+      anchorQuery.parameters,
+    )
+    if (!anchor.uniqueId) {
+      throw new Error(`Missing cursor anchor for ${scenario.name}.`)
+    }
+    scenarioOptions.after = {
+      nullRank: Number(anchor.nullRank),
+      sortValue: anchor.sortValue ?? null,
+      uniqueId: String(anchor.uniqueId),
+    }
+  }
+  const listQuery = buildRequirementListSql(scenarioOptions)
 
   const listPlan = await collectExecutionPlan(
     pool,
@@ -843,28 +910,19 @@ async function runScenario(pool, scenario, options) {
     listQuery,
     options.outputDir,
   )
-  const countPlan = await collectExecutionPlan(
-    pool,
-    scenario.name,
-    'count',
-    countQuery,
-    options.outputDir,
-  )
-
   for (let i = 0; i < options.warmupCount; i += 1) {
     await executePlainStatement(pool, listQuery)
-    await executePlainStatement(pool, countQuery)
   }
 
   const samples = []
   for (let i = 0; i < options.sampleCount; i += 1) {
-    samples.push(await runMeasuredSample(pool, listQuery, countQuery))
+    samples.push(await runMeasuredSample(pool, listQuery))
   }
 
   return {
     name: scenario.name,
-    options: scenario.options,
-    plan: combinePlanResults(listPlan, countPlan),
+    options: scenarioOptions,
+    plan: combinePlanResults(listPlan),
     samples,
     summary: summarizeSamples(samples),
   }
@@ -937,6 +995,54 @@ export function compareAgainstBaseline(results, baseline, options = {}) {
       failures.push(
         `${result.name}: missing-index impact ${result.plan.maxMissingIndexImpact} exceeded ${maxMissingIndexImpact}`,
       )
+    }
+    if (threshold.relativeTo) {
+      const reference = results.scenarios.find(
+        candidate => candidate.name === threshold.relativeTo,
+      )
+      if (!reference) {
+        failures.push(
+          `${result.name}: missing relative reference ${threshold.relativeTo}`,
+        )
+        continue
+      }
+      const relativeChecks = [
+        [
+          'logical reads',
+          result.summary.maxLogicalReads,
+          reference.summary.maxLogicalReads,
+          threshold.maxLogicalReadsRatio,
+        ],
+        [
+          'median',
+          result.summary.medianDurationMs,
+          reference.summary.medianDurationMs,
+          threshold.maxMedianDurationRatio,
+        ],
+        [
+          'p95',
+          result.summary.p95DurationMs,
+          reference.summary.p95DurationMs,
+          threshold.maxP95DurationRatio,
+        ],
+      ]
+      for (const [label, actual, referenceValue, maxRatio] of relativeChecks) {
+        if (
+          Number.isFinite(actual) &&
+          Number.isFinite(referenceValue) &&
+          Number.isFinite(maxRatio) &&
+          actual > referenceValue * maxRatio
+        ) {
+          failures.push(
+            `${result.name}: ${label} ratio ${roundMetric(actual / referenceValue)} exceeded ${maxRatio} vs ${threshold.relativeTo}`,
+          )
+        }
+      }
+      if (result.plan.hasSpill && !reference.plan.hasSpill) {
+        failures.push(
+          `${result.name}: execution plan introduced a spill vs ${threshold.relativeTo}`,
+        )
+      }
     }
   }
 
@@ -1056,11 +1162,13 @@ async function ensurePerformanceFixture(pool, config) {
   )
   const existingRequirementCount = Number(statusBefore.requirementCount ?? 0)
   const existingVersionCount = Number(statusBefore.versionCount ?? 0)
+  const nullablePriorityCount = Number(statusBefore.nullablePriorityCount ?? 0)
   const expectedMinimumVersionCount = config.requirementCount * 2
 
   if (
     existingRequirementCount === config.requirementCount &&
-    existingVersionCount >= expectedMinimumVersionCount
+    existingVersionCount >= expectedMinimumVersionCount &&
+    nullablePriorityCount > 0
   ) {
     return {
       inserted: false,
@@ -1192,7 +1300,7 @@ function createRuntimeOptions(env = process.env) {
     outputDir: env.PERF_REQUIREMENTS_OUTPUT_DIR
       ? resolve(env.PERF_REQUIREMENTS_OUTPUT_DIR)
       : DEFAULT_OUTPUT_DIR,
-    sampleCount: parsePositiveInteger(env.PERF_SAMPLE_COUNT, 5),
+    sampleCount: parsePositiveInteger(env.PERF_SAMPLE_COUNT, 20),
     warmupCount: parsePositiveInteger(env.PERF_WARMUP_COUNT, 2),
   }
 }

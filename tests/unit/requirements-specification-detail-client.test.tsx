@@ -392,6 +392,7 @@ function createInitialData(): RequirementsSpecificationDetailInitialData {
     availableNeedsRefs: [],
     availableRequirements: {
       hasMore: false,
+      nextCursor: null,
       rows: [initialAvailableRequirement],
     },
     errors: [] as SpecificationPreloadError[],
@@ -1269,6 +1270,7 @@ describe('RequirementsSpecificationDetailClient', () => {
       ...createInitialData(),
       availableRequirements: {
         hasMore: true,
+        nextCursor: 'cursor-1',
         rows: [initialAvailableRequirement],
       },
     })
@@ -1278,17 +1280,110 @@ describe('RequirementsSpecificationDetailClient', () => {
     await waitFor(() => {
       expect(
         availableRequirementsFetchUrls().some(
-          url => searchParamsFromPath(url).get('offset') === '1',
+          url => searchParamsFromPath(url).get('cursor') === 'cursor-1',
         ),
       ).toBe(true)
     })
 
     const params = searchParamsFromPath(
       availableRequirementsFetchUrls().find(
-        url => searchParamsFromPath(url).get('offset') === '1',
+        url => searchParamsFromPath(url).get('cursor') === 'cursor-1',
       ) ?? '',
     )
     expect(params.has('statuses')).toBe(false)
+  })
+
+  it('reloads available requirements and announces an invalid cursor', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableRequirements: {
+        hasMore: true,
+        nextCursor: 'cursor-1',
+        rows: [initialAvailableRequirement],
+      },
+    })
+    await waitForInitialAvailableRequirementsRefresh()
+    const requestCountBeforeLoadMore = availableRequirementsFetchUrls().length
+    fetchMock.mockImplementationOnce(() =>
+      Promise.resolve({
+        clone() {
+          return this
+        },
+        json: async () => ({ code: 'invalid_cursor' }),
+        ok: false,
+        status: 400,
+      } as Response),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'load-more-available' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'common.requirementListRefreshed',
+    )
+    await waitFor(() => {
+      expect(availableRequirementsFetchUrls()).toHaveLength(
+        requestCountBeforeLoadMore + 2,
+      )
+    })
+    expect(
+      screen.getByTestId('requirements-table-available-rows'),
+    ).toHaveTextContent('202')
+  })
+
+  it('ignores stale invalid-cursor recovery after available filters change', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableRequirements: {
+        hasMore: true,
+        nextCursor: 'cursor-1',
+        rows: [initialAvailableRequirement],
+      },
+      requirementPackages: [{ id: 1, name: 'Mobile use' }],
+    })
+    await waitForInitialAvailableRequirementsRefresh()
+    let resolveStaleLoadMore: ((response: Response) => void) | undefined
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise<Response>(resolve => {
+          resolveStaleLoadMore = resolve
+        }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'load-more-available' }))
+    await waitFor(() => {
+      expect(
+        availableRequirementsFetchUrls().some(
+          url => searchParamsFromPath(url).get('cursor') === 'cursor-1',
+        ),
+      ).toBe(true)
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'filter-package-available-1' }),
+    )
+    await waitFor(() => {
+      expect(
+        availableRequirementsFetchUrls().some(url =>
+          url.includes('requirementPackageIds=1'),
+        ),
+      ).toBe(true)
+    })
+    const requestCountAfterFilter = availableRequirementsFetchUrls().length
+
+    await act(async () => {
+      resolveStaleLoadMore?.({
+        clone() {
+          return this
+        },
+        json: async () => ({ code: 'invalid_cursor' }),
+        ok: false,
+        status: 400,
+      } as Response)
+    })
+    expect(availableRequirementsFetchUrls()).toHaveLength(
+      requestCountAfterFilter,
+    )
+    expect(screen.queryByText('common.requirementListRefreshed')).toBeNull()
   })
 
   it('opens and closes the specification edit dialog from the title action', async () => {
@@ -1980,6 +2075,7 @@ describe('RequirementsSpecificationDetailClient', () => {
       ...createInitialData(),
       availableRequirements: {
         hasMore: true,
+        nextCursor: 'cursor-1',
         rows: [initialAvailableRequirement],
       },
     })

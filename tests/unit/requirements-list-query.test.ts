@@ -3,14 +3,14 @@ import type { RequestContext } from '@/lib/requirements/auth'
 import { queryRequirementList } from '@/lib/requirements/list-query'
 
 const mocks = vi.hoisted(() => ({
-  countRequirements: vi.fn(),
   formatRequirementListItem: vi.fn((row: unknown) => row),
+  getRequirementListSeekAnchor: vi.fn(),
   listRequirements: vi.fn(),
 }))
 
 vi.mock('@/lib/dal/requirements', () => ({
   STATUS_ARCHIVED: 4,
-  countRequirements: mocks.countRequirements,
+  getRequirementListSeekAnchor: mocks.getRequirementListSeekAnchor,
   listRequirements: mocks.listRequirements,
 }))
 
@@ -37,7 +37,11 @@ function makeContext(): RequestContext {
 describe('queryRequirementList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.countRequirements.mockResolvedValue(0)
+    mocks.getRequirementListSeekAnchor.mockResolvedValue({
+      nullRank: 0,
+      sortValue: 'REQ-200',
+      uniqueId: 'REQ-200',
+    })
     mocks.listRequirements.mockResolvedValue([])
   })
 
@@ -47,7 +51,6 @@ describe('queryRequirementList', () => {
     })
 
     expect(mocks.listRequirements).not.toHaveBeenCalled()
-    expect(mocks.countRequirements).not.toHaveBeenCalled()
   })
 
   it('requires an explicit authorization service when a context is provided', async () => {
@@ -58,7 +61,6 @@ describe('queryRequirementList', () => {
     })
 
     expect(mocks.listRequirements).not.toHaveBeenCalled()
-    expect(mocks.countRequirements).not.toHaveBeenCalled()
   })
 
   it('authorizes requirements list queries before reading rows', async () => {
@@ -109,51 +111,114 @@ describe('queryRequirementList', () => {
     ).rejects.toThrow('denied')
 
     expect(mocks.listRequirements).not.toHaveBeenCalled()
-    expect(mocks.countRequirements).not.toHaveBeenCalled()
   })
 
-  it('clamps invalid, negative, and oversized pagination input', async () => {
+  it('clamps invalid and oversized page sizes and requests one lookahead row', async () => {
     await queryRequirementList(
       {} as never,
       {
         limit: Number.NaN,
-        offset: Number.NaN,
       },
       { allowUnauthenticated: true },
     )
 
     expect(mocks.listRequirements).toHaveBeenLastCalledWith(
       expect.anything(),
-      expect.objectContaining({ limit: 200, offset: 0 }),
+      expect.objectContaining({ limit: 201 }),
     )
 
     await queryRequirementList(
       {} as never,
       {
         limit: 9999,
-        offset: -5,
       },
       { allowUnauthenticated: true },
     )
 
     expect(mocks.listRequirements).toHaveBeenLastCalledWith(
       expect.anything(),
-      expect.objectContaining({ limit: 200, offset: 0 }),
+      expect.objectContaining({ limit: 201 }),
     )
 
     await queryRequirementList(
       {} as never,
       {
         limit: 0,
-        offset: 3.7,
       },
       { allowUnauthenticated: true },
     )
 
     expect(mocks.listRequirements).toHaveBeenLastCalledWith(
       expect.anything(),
-      expect.objectContaining({ limit: 1, offset: 3 }),
+      expect.objectContaining({ limit: 2 }),
     )
+  })
+
+  it('returns a forward cursor without running a count query', async () => {
+    mocks.listRequirements.mockResolvedValueOnce(
+      Array.from({ length: 3 }, (_, index) => ({
+        id: index + 1,
+        uniqueId: `REQ-${index + 1}`,
+      })),
+    )
+
+    const firstPage = await queryRequirementList(
+      {} as never,
+      { limit: 2 },
+      { allowUnauthenticated: true },
+    )
+
+    expect(firstPage.requirements).toHaveLength(2)
+    expect(firstPage.pagination).toMatchObject({
+      count: 2,
+      hasMore: true,
+      limit: 2,
+    })
+    expect(firstPage.pagination.nextCursor).toEqual(expect.any(String))
+
+    mocks.listRequirements.mockResolvedValueOnce([])
+    await queryRequirementList(
+      {} as never,
+      { cursor: firstPage.pagination.nextCursor ?? undefined, limit: 2 },
+      { allowUnauthenticated: true },
+    )
+
+    expect(mocks.getRequirementListSeekAnchor).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ limit: undefined }),
+      2,
+    )
+    expect(mocks.listRequirements).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        after: expect.objectContaining({ uniqueId: 'REQ-200' }),
+        limit: 3,
+      }),
+    )
+  })
+
+  it('rejects a cursor when its query state changes', async () => {
+    mocks.listRequirements.mockResolvedValueOnce([
+      { id: 1, uniqueId: 'REQ-1' },
+      { id: 2, uniqueId: 'REQ-2' },
+    ])
+    const firstPage = await queryRequirementList(
+      {} as never,
+      { limit: 1 },
+      { allowUnauthenticated: true },
+    )
+
+    await expect(
+      queryRequirementList(
+        {} as never,
+        {
+          cursor: firstPage.pagination.nextCursor ?? undefined,
+          limit: 1,
+          locale: 'sv',
+        },
+        { allowUnauthenticated: true },
+      ),
+    ).rejects.toMatchObject({ code: 'invalid_cursor', status: 400 })
   })
 
   it('uses the archived status constant when inferring archived inclusion', async () => {

@@ -95,6 +95,58 @@ test.describe('Requirements library', () => {
     await expect(detailPane).toContainText('Kravområde')
   })
 
+  test('REQ-01: an invalid continuation cursor refreshes and announces the list', async ({
+    page,
+  }) => {
+    let firstPageRequests = 0
+    await page.route(/\/api\/requirements\?.*/u, async route => {
+      const requestUrl = new URL(route.request().url())
+      if (requestUrl.searchParams.has('cursor')) {
+        await route.fulfill({
+          contentType: 'application/json',
+          json: { code: 'invalid_cursor', error: 'Invalid cursor' },
+          status: 400,
+        })
+        return
+      }
+
+      const response = await route.fetch()
+      firstPageRequests += 1
+      if (firstPageRequests === 1) {
+        const body = (await response.json()) as {
+          pagination: Record<string, unknown>
+        }
+        await route.fulfill({
+          json: {
+            ...body,
+            pagination: {
+              ...body.pagination,
+              hasMore: true,
+              nextCursor: 'stale-cursor',
+            },
+          },
+          response,
+        })
+        return
+      }
+
+      await route.fulfill({ response })
+    })
+
+    await page.goto('/sv/requirements')
+    await expect(
+      page.getByRole('table', { name: 'Lista över krav' }),
+    ).toBeVisible()
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+
+    await expect(
+      page.getByRole('status').filter({
+        hasText: 'Kravlistan ändrades och lästes in på nytt från början.',
+      }),
+    ).toBeVisible({ timeout: 30_000 })
+    expect(firstPageRequests).toBeGreaterThanOrEqual(2)
+  })
+
   test('REQ-02: language switch keeps the requirements table usable', async ({
     page,
   }) => {
@@ -195,6 +247,77 @@ test.describe('Requirements library', () => {
     await descriptionSortButton.click()
     await expect(descriptionHeader).toHaveAttribute('aria-sort', 'descending')
     await expect.poll(getVisibleRows).not.toEqual(ascendingRows)
+  })
+
+  test('REQ-04: cursor boundaries match an equivalent larger page for every sort', async ({
+    page,
+  }) => {
+    await page.goto('/sv/requirements')
+    const result = await page.evaluate(async () => {
+      const sorts = [
+        'uniqueId',
+        'description',
+        'area',
+        'category',
+        'type',
+        'qualityCharacteristic',
+        'priorityLevel',
+        'status',
+        'version',
+      ]
+      const failures: string[] = []
+
+      async function loadPage(
+        sortBy: string,
+        sortDirection: 'asc' | 'desc',
+        limit: number,
+        cursor?: string,
+      ) {
+        const params = new URLSearchParams({
+          limit: String(limit),
+          locale: 'sv',
+          sortBy,
+          sortDirection,
+        })
+        if (cursor) params.set('cursor', cursor)
+        const response = await fetch(`/api/requirements?${params}`)
+        if (!response.ok) {
+          throw new Error(
+            `${sortBy}/${sortDirection}: ${response.status} ${await response.text()}`,
+          )
+        }
+        return (await response.json()) as {
+          pagination: { nextCursor: string | null }
+          requirements: Array<{ id: number }>
+        }
+      }
+
+      for (const sortBy of sorts) {
+        for (const sortDirection of ['asc', 'desc'] as const) {
+          const reference = await loadPage(sortBy, sortDirection, 4)
+          const first = await loadPage(sortBy, sortDirection, 2)
+          const second = first.pagination.nextCursor
+            ? await loadPage(
+                sortBy,
+                sortDirection,
+                2,
+                first.pagination.nextCursor,
+              )
+            : { pagination: { nextCursor: null }, requirements: [] }
+          const expected = reference.requirements.map(row => row.id)
+          const actual = [...first.requirements, ...second.requirements].map(
+            row => row.id,
+          )
+          if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+            failures.push(`${sortBy}/${sortDirection}`)
+          }
+        }
+      }
+
+      return failures
+    })
+
+    expect(result).toEqual([])
   })
 
   test('REQ-09: inline detail orders text, criteria, metadata, references, and packages', async ({

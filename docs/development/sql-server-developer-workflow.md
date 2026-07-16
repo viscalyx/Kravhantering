@@ -160,8 +160,8 @@ current fixtures.
 ## Requirement List Performance Baseline
 
 The requirement list SQL path has a required SQL Server performance check for
-`listRequirements` and `countRequirements`. It uses the same parameterized SQL
-builder as production code and seeds a dedicated medium fixture of roughly
+`listRequirements` and the cursor anchor lookup. It uses the same parameterized
+SQL builder as production code and seeds a dedicated medium fixture of roughly
 10,000 `PERF-*` requirements with two to four versions each.
 
 Use the regular check when you want to verify that the current branch still
@@ -215,7 +215,7 @@ database IDs to avoid advancing normal SQL Server identity counters.
 
 For each scenario, the script:
 
-1. Builds the list and count SQL from the same helpers used by the DAL.
+1. Builds the cursor-based list SQL from the same helper used by the DAL.
 2. Captures actual SQL Server execution plans with `STATISTICS XML`.
 3. Runs warm-up queries so cold connection/setup cost is not the baseline.
 4. Runs measured samples with `STATISTICS IO` enabled.
@@ -231,7 +231,7 @@ The baseline file contains threshold counters:
 - `maxP95DurationMs`: maximum allowed 95th-percentile elapsed time. This
   catches occasional slow samples better than the median.
 - `maxLogicalReads`: maximum allowed SQL Server logical page reads reported by
-  `STATISTICS IO` for the combined list and count query. This is usually the
+  `STATISTICS IO` for the list query. This is usually the
   most stable regression signal because it tracks work done by SQL Server
   rather than host CPU noise.
 - `allowSpills`: whether execution-plan spill warnings are accepted. Keep this

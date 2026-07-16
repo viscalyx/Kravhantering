@@ -2,7 +2,6 @@ import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
 import {
-  nonNegativeIntegerStringSchema,
   optionalQueryArraySchema,
   optionalSearchStringSchema,
   parseSearchParams,
@@ -47,7 +46,6 @@ const listReportQuerySchema = z
     locale: z.enum(['en', 'sv']).optional(),
     needsReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     normReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
-    offset: nonNegativeIntegerStringSchema.optional(),
     priorityLevelIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     qualityCharacteristicIds: optionalQueryArraySchema(
       positiveIntegerStringSchema,
@@ -171,7 +169,8 @@ async function collectFilteredRequirementsForListReport(
   locale: 'en' | 'sv',
 ): Promise<RequirementReportData[]> {
   const requirements: RequirementReportData[] = []
-  let offset = 0
+  let cursor: string | undefined
+  const seenCursors = new Set<string>()
 
   for (;;) {
     const result = await queryRequirementList(
@@ -180,7 +179,7 @@ async function collectFilteredRequirementsForListReport(
         filters: filtersFromQuery(query),
         limit: REPORT_QUERY_PAGE_SIZE,
         locale,
-        offset,
+        cursor,
         sort: sortFromQuery(query),
       },
       { authorization: runtime.authorization, context: runtime.context },
@@ -196,14 +195,15 @@ async function collectFilteredRequirementsForListReport(
       requirements.push(listQueryRequirementToReportData(requirement))
     }
 
-    if (!result.pagination.hasMore || result.pagination.nextOffset == null) {
+    if (!result.pagination.hasMore || result.pagination.nextCursor == null) {
       break
     }
 
-    if (result.pagination.nextOffset <= offset) {
+    if (seenCursors.has(result.pagination.nextCursor)) {
       throw new ReportDataError('Invalid requirement list pagination', 500)
     }
-    offset = result.pagination.nextOffset
+    seenCursors.add(result.pagination.nextCursor)
+    cursor = result.pagination.nextCursor
   }
 
   if (requirements.length === 0) {

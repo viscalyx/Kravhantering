@@ -4,6 +4,7 @@
     "appDescription": "A web application for requirements management that supports the company's requirements model and process",
     "loading": "Loading...",
     "loadingRequirements": "Fetching requirements…",
+    "requirementListRefreshed": "The requirements list changed and was refreshed from the beginning.",
     "save": "Save",
     "saving": "Saving…",
     "savingInProgress": "Saving in progress…",

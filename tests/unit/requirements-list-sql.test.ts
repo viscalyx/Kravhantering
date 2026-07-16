@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildRequirementCountSql,
+  buildRequirementListAnchorSql,
   buildRequirementListSql,
   escapeLike,
 } from '@/lib/dal/requirements-list-sql.mjs'
@@ -15,7 +15,7 @@ describe('requirement list SQL builders', () => {
       limit: 25,
       locale: 'sv',
       normReferenceIds: [1, 6],
-      offset: 50,
+      after: { nullRank: 0, sortValue: 2, uniqueId: 'REQ-050' },
       qualityCharacteristicIds: [6],
       requirementPackageIds: [8],
       verifiable: [true, false],
@@ -42,7 +42,9 @@ describe('requirement list SQL builders', () => {
       1,
       6,
       8,
-      50,
+      0,
+      2,
+      'REQ-050',
       25,
     ])
     expect(query.sqlText).toContain('requirement.is_archived = 0')
@@ -72,7 +74,9 @@ describe('requirement list SQL builders', () => {
       'JOIN requirement_packages requirement_package',
     )
     expect(query.sqlText).toContain('FOR JSON PATH')
-    expect(query.sqlText).toContain('OFFSET @14 ROWS FETCH NEXT @15 ROWS ONLY')
+    expect(query.sqlText).toContain('OFFSET 0 ROWS FETCH NEXT @17 ROWS ONLY')
+    expect(query.sqlText).toContain('requirement_status.sort_order < @15')
+    expect(query.sqlText).toContain('requirement.unique_id > @16')
     expect(query.sqlText).toContain(
       'effective_status.effective_status_id AS status',
     )
@@ -82,28 +86,6 @@ describe('requirement list SQL builders', () => {
     expect(query.sqlText).toContain('ORDER BY CASE WHEN requirement_status')
   })
 
-  it('builds the count query from the same filters without pagination', () => {
-    const query = buildRequirementCountSql({
-      areaIds: [1],
-      limit: 25,
-      offset: 50,
-      statuses: [STATUS_PUBLISHED],
-    })
-
-    expect(query.parameters).toEqual([1, STATUS_PUBLISHED])
-    expect(query.sqlText).toContain(
-      'SELECT COUNT(DISTINCT requirement.id) AS [count]',
-    )
-    expect(query.sqlText).toContain('requirement.requirement_area_id IN (@0)')
-    expect(query.sqlText).not.toContain('ORDER BY')
-    expect(query.sqlText).not.toContain('FETCH NEXT')
-    expect(query.sqlText).not.toContain('LEFT JOIN requirement_areas')
-    expect(query.sqlText).not.toContain('LEFT JOIN requirement_categories')
-    expect(query.sqlText).not.toContain('LEFT JOIN requirement_types')
-    expect(query.sqlText).not.toContain('LEFT JOIN quality_characteristics')
-    expect(query.sqlText).not.toContain('LEFT JOIN priority_levels')
-  })
-
   it('omits the active-only filter when archived rows are explicitly included', () => {
     const query = buildRequirementListSql({
       includeArchived: true,
@@ -111,7 +93,7 @@ describe('requirement list SQL builders', () => {
     })
 
     expect(query.sqlText).not.toContain('WHERE requirement.is_archived = 0')
-    expect(query.parameters).toEqual([0, 10])
+    expect(query.parameters).toEqual([10])
   })
 
   it('orders requirement package JSON by the selected locale', () => {
@@ -135,5 +117,44 @@ describe('requirement list SQL builders', () => {
 
   it('escapes SQL Server LIKE wildcard characters', () => {
     expect(escapeLike(String.raw`A\%_[B`)).toBe(String.raw`A\\\%\_\[B`)
+  })
+
+  it.each([
+    'description',
+    'area',
+    'category',
+    'type',
+    'qualityCharacteristic',
+    'priorityLevel',
+    'status',
+    'version',
+  ])('builds a deterministic seek predicate for %s sorting', sortBy => {
+    const query = buildRequirementListSql({
+      after: { nullRank: 0, sortValue: 'anchor', uniqueId: 'REQ-010' },
+      limit: 10,
+      locale: 'sv',
+      sortBy,
+      sortDirection: 'asc',
+    })
+
+    expect(query.sqlText).toContain('requirement.unique_id >')
+    expect(query.sqlText).toContain('OFFSET 0 ROWS FETCH NEXT')
+  })
+
+  it('builds the anchor lookup from the same filters and localized sort', () => {
+    const query = buildRequirementListAnchorSql(
+      {
+        areaIds: [2],
+        locale: 'sv',
+        sortBy: 'category',
+      },
+      42,
+    )
+
+    expect(query.parameters).toEqual([2, 42])
+    expect(query.sqlText).toContain('requirement.id = @1')
+    expect(query.sqlText).toContain(
+      'LOWER(requirement_category.name_sv) AS sortValue',
+    )
   })
 })

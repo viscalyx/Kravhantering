@@ -127,6 +127,7 @@ async function loadAvailableRequirements(
   )
   return {
     hasMore: result.pagination.hasMore,
+    nextCursor: result.pagination.nextCursor,
     rows: result.requirements as RequirementRow[],
   }
 }
@@ -161,7 +162,7 @@ function emptyDetailInitialData(
     aiGenerationAvailability: DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
     areas: [],
     availableNeedsRefs: [],
-    availableRequirements: { hasMore: false, rows: [] },
+    availableRequirements: { hasMore: false, nextCursor: null, rows: [] },
     errors,
     leftNormReferenceOptions: [],
     requirementPackages: [],
@@ -313,8 +314,10 @@ export async function loadRequirementsSpecificationDetailInitialData({
     ),
     capture<
       RequirementsSpecificationDetailInitialData['availableRequirements']
-    >('available requirements', { hasMore: false, rows: [] }, () =>
-      loadAvailableRequirements(db, locale),
+    >(
+      'available requirements',
+      { hasMore: false, nextCursor: null, rows: [] },
+      () => loadAvailableRequirements(db, locale),
     ),
     capture<NormReferenceOption[]>('left norm references', [], () =>
       listLinkedNormReferenceOptions(db),

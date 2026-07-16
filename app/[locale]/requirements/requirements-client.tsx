@@ -15,6 +15,7 @@ import {
   type AiRequirementGenerationAvailability,
   DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
 } from '@/lib/ai/generation-availability'
+import { devMarker } from '@/lib/developer-mode-markers'
 import {
   type AreaOption,
   buildRequirementListParams,
@@ -304,6 +305,8 @@ export default function RequirementsClient({
       ? undefined
       : t('aiGenerateDisabledNoAuthorableArea')
   const [hasMore, setHasMore] = useState(false)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [paginationNotice, setPaginationNotice] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasLoadedColumnPreferences, setHasLoadedColumnPreferences] =
     useState(false)
@@ -335,7 +338,7 @@ export default function RequirementsClient({
     })
 
     let data: {
-      pagination?: { hasMore?: boolean }
+      pagination?: { hasMore?: boolean; nextCursor?: string | null }
       requirements?: RequirementRow[]
     } | null = null
 
@@ -346,7 +349,7 @@ export default function RequirementsClient({
       }
 
       data = (await res.json()) as {
-        pagination?: { hasMore?: boolean }
+        pagination?: { hasMore?: boolean; nextCursor?: string | null }
         requirements?: RequirementRow[]
       }
     } catch {
@@ -358,6 +361,7 @@ export default function RequirementsClient({
 
     const newRows = data.requirements ?? []
     const nextHasMore = data.pagination?.hasMore ?? false
+    const refreshedCursor = data.pagination?.nextCursor ?? null
 
     // If an expanded row is no longer in the filtered results, pin it.
     // sid can be a numeric id or a uniqueId string (from ?selected= URL param).
@@ -433,6 +437,7 @@ export default function RequirementsClient({
 
     // Batch both updates in one synchronous block to avoid intermediate renders
     setHasMore(nextHasMore)
+    setNextCursor(refreshedCursor)
     setRows(newRows)
     setPinnedRow(newPinnedRow)
   }, [filters, locale, sortState])
@@ -504,7 +509,7 @@ export default function RequirementsClient({
   }, [refreshRows])
 
   const loadMore = useCallback(async () => {
-    if (loading || loadingMore || !hasMore) return
+    if (loading || loadingMore || !hasMore || !nextCursor) return
     const requestId = ++latestRowsRequestIdRef.current
     setLoadingMore(true)
     try {
@@ -512,22 +517,41 @@ export default function RequirementsClient({
         filters,
         limit: PAGE_SIZE,
         locale,
-        offset: rows.length,
+        cursor: nextCursor,
         sort: sortState,
       })
       let data: {
-        pagination?: { hasMore?: boolean }
+        pagination?: { hasMore?: boolean; nextCursor?: string | null }
         requirements?: RequirementRow[]
       } | null = null
 
       try {
         const res = await fetch(`/api/requirements?${params}`)
-        if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
+        if (requestId !== latestRowsRequestIdRef.current) {
+          return
+        }
+        if (res.status === 400) {
+          const body = (await res
+            .clone()
+            .json()
+            .catch(() => null)) as {
+            code?: string
+          } | null
+          if (requestId !== latestRowsRequestIdRef.current) {
+            return
+          }
+          if (body?.code === 'invalid_cursor') {
+            await refreshRows()
+            setPaginationNotice(tc('requirementListRefreshed'))
+            return
+          }
+        }
+        if (!res.ok) {
           return
         }
 
         data = (await res.json()) as {
-          pagination?: { hasMore?: boolean }
+          pagination?: { hasMore?: boolean; nextCursor?: string | null }
           requirements?: RequirementRow[]
         }
       } catch {
@@ -539,11 +563,22 @@ export default function RequirementsClient({
 
       const moreRows = data.requirements ?? []
       setHasMore(data.pagination?.hasMore ?? false)
+      setNextCursor(data.pagination?.nextCursor ?? null)
       setRows(prev => [...prev, ...moreRows])
     } finally {
       setLoadingMore(false)
     }
-  }, [filters, hasMore, loading, loadingMore, locale, rows.length, sortState])
+  }, [
+    filters,
+    hasMore,
+    loading,
+    loadingMore,
+    locale,
+    nextCursor,
+    refreshRows,
+    sortState,
+    tc,
+  ])
 
   const getName = (opt: FilterOption) =>
     locale === 'sv' ? opt.nameSv : opt.nameEn
@@ -934,166 +969,181 @@ export default function RequirementsClient({
                 </p>
               </div>
             ) : (
-              <RequirementsTable
-                areas={areas}
-                categories={categories}
-                columnDefaults={normalizedColumnDefaults}
-                columnPickerPlacement="end"
-                columnWidths={columnWidths}
-                excludeColumns={['needsReference', 'specificationItemStatus']}
-                expandedId={selectedId}
-                filterValues={filters}
-                floatingActions={[
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'new requirement',
-                    ariaLabel: t('newRequirement'),
-                    href: '/requirements/new',
-                    icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-                    id: 'create',
-                    position: 'beforeColumns',
-                    variant: 'primary',
-                  },
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'ai generate',
-                    ariaLabel: t('aiGenerate'),
-                    disabled: !canOpenAiGeneration,
-                    icon: <Sparkles aria-hidden="true" className="h-4 w-4" />,
-                    id: 'ai-generate',
-                    onClick: event => {
-                      if (canOpenAiGeneration) {
-                        aiReturnFocusTargetRef.current = event.currentTarget
-                        setAiModalOpen(true)
-                      }
+              <>
+                {paginationNotice ? (
+                  <p
+                    {...devMarker({
+                      context: 'requirements table',
+                      name: 'status',
+                      value: 'pagination refresh notice',
+                    })}
+                    className="mx-4 mt-4 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800 dark:border-primary-800 dark:bg-primary-950/40 dark:text-primary-200"
+                    role="status"
+                  >
+                    {paginationNotice}
+                  </p>
+                ) : null}
+                <RequirementsTable
+                  areas={areas}
+                  categories={categories}
+                  columnDefaults={normalizedColumnDefaults}
+                  columnPickerPlacement="end"
+                  columnWidths={columnWidths}
+                  excludeColumns={['needsReference', 'specificationItemStatus']}
+                  expandedId={selectedId}
+                  filterValues={filters}
+                  floatingActions={[
+                    {
+                      developerModeContext: 'requirements table',
+                      developerModeValue: 'new requirement',
+                      ariaLabel: t('newRequirement'),
+                      href: '/requirements/new',
+                      icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                      id: 'create',
+                      position: 'beforeColumns',
+                      variant: 'primary',
                     },
-                    position: 'beforeColumns',
-                    tooltip: aiGenerationDisabledTooltip ?? t('aiGenerate'),
-                  },
-                  {
-                    badge:
-                      selectedIds.size > 0 && anySelectedIsReview
-                        ? selectedIds.size
-                        : undefined,
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'reports',
-                    ariaLabel: tc('reports'),
-                    icon: <Printer aria-hidden="true" className="h-4 w-4" />,
-                    id: 'reports',
-                    menuItems: [
-                      {
-                        id: 'pdf-list',
-                        label: t('downloadListReportPdf'),
-                        onClick: () =>
-                          void pdfDownload.download({
-                            fallbackFilename: 'requirements-list.pdf',
-                            url: listReportPdfUrl,
-                          }),
+                    {
+                      developerModeContext: 'requirements table',
+                      developerModeValue: 'ai generate',
+                      ariaLabel: t('aiGenerate'),
+                      disabled: !canOpenAiGeneration,
+                      icon: <Sparkles aria-hidden="true" className="h-4 w-4" />,
+                      id: 'ai-generate',
+                      onClick: event => {
+                        if (canOpenAiGeneration) {
+                          aiReturnFocusTargetRef.current = event.currentTarget
+                          setAiModalOpen(true)
+                        }
                       },
-                      ...(selectedIds.size > 0 && anySelectedIsReview
-                        ? [
-                            {
-                              badge: selectedIds.size,
-                              description: !allSelectedAreReview
-                                ? t('reviewReportAllMustBeReview')
-                                : undefined,
-                              disabled: !allSelectedAreReview,
-                              id: 'review-report-pdf',
-                              label: t('downloadCombinedReportPdf'),
-                              onClick: () =>
-                                void pdfDownload.download({
-                                  fallbackFilename:
-                                    'combined-review-report.pdf',
-                                  url: `/${locale}/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
-                                }),
-                              tooltip: !allSelectedAreReview
-                                ? t('reviewReportAllMustBeReview')
-                                : undefined,
-                            },
-                          ]
-                        : []),
-                    ],
-                    tooltip: tc('reports'),
-                    variant:
-                      selectedIds.size > 0 && anySelectedIsReview
-                        ? 'warning'
-                        : undefined,
-                  },
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'import requirements',
-                    ariaLabel: t('importRequirements'),
-                    icon: <Upload aria-hidden="true" className="h-4 w-4" />,
-                    id: 'import',
-                    onClick: event => {
-                      importReturnFocusTargetRef.current = event.currentTarget
-                      setImportDialogOpen(true)
+                      position: 'beforeColumns',
+                      tooltip: aiGenerationDisabledTooltip ?? t('aiGenerate'),
                     },
-                    position: 'afterColumns',
-                    tooltip: t('importRequirements'),
-                  },
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'export',
-                    ariaLabel: tc('export'),
-                    icon: <Download aria-hidden="true" className="h-4 w-4" />,
-                    id: 'export',
-                    onClick: handleExport,
-                  },
-                ]}
-                getName={getName}
-                getStatusName={getStatusName}
-                hasMore={hasMore}
-                loading={loading}
-                loadingMore={loadingMore}
-                locale={locale}
-                normReferences={normReferenceOptions}
-                onColumnWidthsChange={setColumnWidths}
-                onFilterChange={val => {
-                  setFilters(val)
-                  selectedIdRef.current = null
-                  setSelectedId(null)
-                  setPinnedRow(null)
-                  setSelectedIds(new Set())
-                }}
-                onLoadMore={loadMore}
-                onRowClick={id => {
-                  const previousSelectedId = selectedIdRef.current
-                  const nextSelectedId = previousSelectedId === id ? null : id
-                  selectedIdRef.current = nextSelectedId
-                  setSelectedId(nextSelectedId)
-                  if (previousSelectedId !== id || nextSelectedId === null) {
+                    {
+                      badge:
+                        selectedIds.size > 0 && anySelectedIsReview
+                          ? selectedIds.size
+                          : undefined,
+                      developerModeContext: 'requirements table',
+                      developerModeValue: 'reports',
+                      ariaLabel: tc('reports'),
+                      icon: <Printer aria-hidden="true" className="h-4 w-4" />,
+                      id: 'reports',
+                      menuItems: [
+                        {
+                          id: 'pdf-list',
+                          label: t('downloadListReportPdf'),
+                          onClick: () =>
+                            void pdfDownload.download({
+                              fallbackFilename: 'requirements-list.pdf',
+                              url: listReportPdfUrl,
+                            }),
+                        },
+                        ...(selectedIds.size > 0 && anySelectedIsReview
+                          ? [
+                              {
+                                badge: selectedIds.size,
+                                description: !allSelectedAreReview
+                                  ? t('reviewReportAllMustBeReview')
+                                  : undefined,
+                                disabled: !allSelectedAreReview,
+                                id: 'review-report-pdf',
+                                label: t('downloadCombinedReportPdf'),
+                                onClick: () =>
+                                  void pdfDownload.download({
+                                    fallbackFilename:
+                                      'combined-review-report.pdf',
+                                    url: `/${locale}/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
+                                  }),
+                                tooltip: !allSelectedAreReview
+                                  ? t('reviewReportAllMustBeReview')
+                                  : undefined,
+                              },
+                            ]
+                          : []),
+                      ],
+                      tooltip: tc('reports'),
+                      variant:
+                        selectedIds.size > 0 && anySelectedIsReview
+                          ? 'warning'
+                          : undefined,
+                    },
+                    {
+                      developerModeContext: 'requirements table',
+                      developerModeValue: 'import requirements',
+                      ariaLabel: t('importRequirements'),
+                      icon: <Upload aria-hidden="true" className="h-4 w-4" />,
+                      id: 'import',
+                      onClick: event => {
+                        importReturnFocusTargetRef.current = event.currentTarget
+                        setImportDialogOpen(true)
+                      },
+                      position: 'afterColumns',
+                      tooltip: t('importRequirements'),
+                    },
+                    {
+                      developerModeContext: 'requirements table',
+                      developerModeValue: 'export',
+                      ariaLabel: tc('export'),
+                      icon: <Download aria-hidden="true" className="h-4 w-4" />,
+                      id: 'export',
+                      onClick: handleExport,
+                    },
+                  ]}
+                  getName={getName}
+                  getStatusName={getStatusName}
+                  hasMore={hasMore}
+                  loading={loading}
+                  loadingMore={loadingMore}
+                  locale={locale}
+                  normReferences={normReferenceOptions}
+                  onColumnWidthsChange={setColumnWidths}
+                  onFilterChange={val => {
+                    setFilters(val)
+                    selectedIdRef.current = null
+                    setSelectedId(null)
                     setPinnedRow(null)
-                  }
-                }}
-                onSelectionChange={setSelectedIds}
-                onSortChange={setSortState}
-                onVisibleColumnsChange={setVisibleColumns}
-                pinnedIds={pinnedIds}
-                priorityLevels={priorityLevels}
-                qualityCharacteristics={qualityCharacteristics}
-                renderExpanded={id => (
-                  <RequirementDetailClient
-                    inline
-                    onChange={detail => handleRequirementChange(id, detail)}
-                    onClose={() => {
-                      selectedIdRef.current = null
-                      setSelectedId(null)
+                    setSelectedIds(new Set())
+                  }}
+                  onLoadMore={loadMore}
+                  onRowClick={id => {
+                    const previousSelectedId = selectedIdRef.current
+                    const nextSelectedId = previousSelectedId === id ? null : id
+                    selectedIdRef.current = nextSelectedId
+                    setSelectedId(nextSelectedId)
+                    if (previousSelectedId !== id || nextSelectedId === null) {
                       setPinnedRow(null)
-                      fetchData()
-                    }}
-                    requirementId={id}
-                  />
-                )}
-                requirementPackages={requirementPackages}
-                rows={displayRows}
-                selectable
-                selectedIds={selectedIds}
-                sortState={sortState}
-                statusOptions={statusOptions}
-                types={types}
-                visibleColumns={visibleColumns}
-              />
+                    }
+                  }}
+                  onSelectionChange={setSelectedIds}
+                  onSortChange={setSortState}
+                  onVisibleColumnsChange={setVisibleColumns}
+                  pinnedIds={pinnedIds}
+                  priorityLevels={priorityLevels}
+                  qualityCharacteristics={qualityCharacteristics}
+                  renderExpanded={id => (
+                    <RequirementDetailClient
+                      inline
+                      onChange={detail => handleRequirementChange(id, detail)}
+                      onClose={() => {
+                        selectedIdRef.current = null
+                        setSelectedId(null)
+                        setPinnedRow(null)
+                        fetchData()
+                      }}
+                      requirementId={id}
+                    />
+                  )}
+                  requirementPackages={requirementPackages}
+                  rows={displayRows}
+                  selectable
+                  selectedIds={selectedIds}
+                  sortState={sortState}
+                  statusOptions={statusOptions}
+                  types={types}
+                  visibleColumns={visibleColumns}
+                />
+              </>
             )}
           </div>
         </div>

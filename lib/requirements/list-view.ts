@@ -786,14 +786,14 @@ export function buildRequirementListParams({
   format,
   limit,
   locale,
-  offset,
+  cursor,
   sort,
 }: {
+  cursor?: string
   filters: FilterValues
   format?: 'csv'
   limit?: number
   locale: string
-  offset?: number
   sort: RequirementSortState
 }): URLSearchParams {
   const params = new URLSearchParams()
@@ -804,8 +804,8 @@ export function buildRequirementListParams({
   params.set('sortBy', sort.by)
   params.set('sortDirection', sort.direction)
 
-  if (offset != null) {
-    params.set('offset', String(offset))
+  if (cursor) {
+    params.set('cursor', cursor)
   }
   if (format) {
     params.set('format', format)
