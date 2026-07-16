@@ -1,6 +1,7 @@
 export type RequirementsErrorCode =
   | 'not_found'
   | 'validation'
+  | 'invalid_cursor'
   | 'conflict'
   | 'unauthorized'
   | 'forbidden'
@@ -10,6 +11,7 @@ export type RequirementsErrorCode =
 const STATUS_BY_CODE: Record<RequirementsErrorCode, number> = {
   not_found: 404,
   validation: 400,
+  invalid_cursor: 400,
   conflict: 409,
   unauthorized: 401,
   forbidden: 403,
@@ -61,6 +63,13 @@ export function validationError(
   details?: Record<string, unknown>,
 ) {
   return createRequirementsError('validation', message, details)
+}
+
+export function invalidCursorError() {
+  return createRequirementsError(
+    'invalid_cursor',
+    'Invalid requirement list cursor',
+  )
 }
 
 export function conflictError(

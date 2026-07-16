@@ -239,6 +239,20 @@ an explicit in-modal error.
 - The first visible table render waits for persisted column visibility and
   locale-specific width preferences to hydrate from `localStorage`.
 
+## List Pagination
+
+- The Requirements Library and the available-requirements panel load additional
+  rows with forward-only opaque cursors.
+- Changing filters, sorting, direction, locale, page size, or visibility scope
+  starts again from the first page.
+- Pages do not expose an exact total. The UI only indicates whether more rows
+  can be loaded.
+- Unchanged result sets must not repeat or skip rows across page boundaries.
+- The list is not a frozen snapshot. Requirements changed by another user may
+  require a full refresh before they appear in their current sorted position.
+- If a cursor becomes invalid, the UI replaces the accumulated rows with a new
+  first page and announces a localized refresh message.
+
 ## Floating Rail
 
 - The requirements table actions live in a floating rail outside the table.

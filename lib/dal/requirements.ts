@@ -28,11 +28,18 @@ import {
 } from '@/lib/requirements/status-constants.mjs'
 import type { DeleteDraftResult } from '@/lib/requirements/types'
 import {
-  buildRequirementCountSql,
+  buildRequirementListAnchorSql,
   buildRequirementListSql,
 } from './requirements-list-sql.mjs'
 
+export interface RequirementListSeekAnchor {
+  nullRank: number
+  sortValue: number | string | null
+  uniqueId: string
+}
+
 export interface ListRequirementsOptions {
+  after?: RequirementListSeekAnchor
   areaIds?: number[]
   categoryIds?: number[]
   descriptionSearch?: string
@@ -41,7 +48,6 @@ export interface ListRequirementsOptions {
   limit?: number
   locale?: 'en' | 'sv'
   normReferenceIds?: number[]
-  offset?: number
   priorityLevelIds?: number[]
   publishedOnly?: boolean
   publishedOrAreaIds?: number[]
@@ -54,6 +60,28 @@ export interface ListRequirementsOptions {
   typeIds?: number[]
   uniqueIdSearch?: string
   verifiable?: boolean[]
+}
+
+export async function getRequirementListSeekAnchor(
+  db: SqlServerDatabase,
+  opts: ListRequirementsOptions,
+  anchorId: number,
+): Promise<RequirementListSeekAnchor | null> {
+  const { parameters, sqlText } = buildRequirementListAnchorSql(opts, anchorId)
+  const rows = (await db.query(sqlText, parameters)) as Array<
+    Record<string, unknown>
+  >
+  const row = rows[0]
+  if (!row) return null
+  const sortValue = row.sortValue
+  return {
+    nullRank: Number(row.nullRank),
+    sortValue:
+      sortValue == null || typeof sortValue === 'string'
+        ? (sortValue ?? null)
+        : Number(sortValue),
+    uniqueId: String(row.uniqueId),
+  }
 }
 
 function toIso(value: unknown): string | null {
@@ -239,18 +267,6 @@ export async function listRequirements(
     ),
     suggestionCount: Number(row.suggestionCount ?? 0),
   }))
-}
-
-export async function countRequirements(
-  db: SqlServerDatabase,
-  opts: ListRequirementsOptions = {},
-): Promise<number> {
-  const { parameters, sqlText } = buildRequirementCountSql(opts)
-
-  const rows = (await db.query(sqlText, parameters)) as Array<
-    Record<string, unknown>
-  >
-  return Number(rows[0]?.count ?? 0)
 }
 
 export interface SqlServerTxExecutor {

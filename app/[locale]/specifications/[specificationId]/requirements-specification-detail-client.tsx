@@ -349,6 +349,9 @@ export default function KravunderlagDetailClient({
   const [rightHasMore, setRightHasMore] = useState(
     initialData.availableRequirements.hasMore,
   )
+  const [rightNextCursor, setRightNextCursor] = useState<string | null>(
+    initialData.availableRequirements.nextCursor,
+  )
   const [rightLoadingMore, setRightLoadingMore] = useState(false)
   const [loadMoreWarning, setLoadMoreWarning] = useState<string | null>(null)
   const [rightVisibleCols, setRightVisibleCols] =
@@ -469,12 +472,13 @@ export default function KravunderlagDetailClient({
           { signal },
         )
         const data = await readJsonOrThrow<{
-          pagination?: { hasMore?: boolean }
+          pagination?: { hasMore?: boolean; nextCursor?: string | null }
           requirements?: RequirementRow[]
           selectionFilter?: AvailableRequirementsData['selectionFilter']
         }>(response, t('loadAvailableRequirementsFailed'))
         return {
           hasMore: data.pagination?.hasMore ?? false,
+          nextCursor: data.pagination?.nextCursor ?? null,
           rows: data.requirements ?? [],
           selectionFilter: data.selectionFilter,
         }
@@ -588,6 +592,7 @@ export default function KravunderlagDetailClient({
     ) {
       setAvailableRows(availableRequirementsResource.data.rows)
       setRightHasMore(availableRequirementsResource.data.hasMore)
+      setRightNextCursor(availableRequirementsResource.data.nextCursor)
       setAvailableRequirementsSelectionFilter(
         availableRequirementsResource.data.selectionFilter,
       )
@@ -756,7 +761,7 @@ export default function KravunderlagDetailClient({
   )
 
   const loadMoreAvailable = useCallback(async () => {
-    if (rightLoadingMore || !rightHasMore) return
+    if (rightLoadingMore || !rightHasMore || !rightNextCursor) return
     const activeKey = availableRequirementsKeyRef.current
     setRightLoadingMore(true)
     try {
@@ -764,25 +769,37 @@ export default function KravunderlagDetailClient({
         filters: rightFilters,
         limit: PAGE_SIZE,
         locale,
-        offset: availableRows.length,
+        cursor: rightNextCursor,
         sort: rightSort,
       })
       if (applyRequirementSelectionFilter) {
         params.set('applyRequirementSelectionFilter', 'true')
       }
+      const response = await apiFetch(
+        `/api/requirements-specifications/${specificationId}/available-requirements?${params}`,
+      )
+      if (response.status === 400) {
+        const body = (await response
+          .clone()
+          .json()
+          .catch(() => null)) as {
+          code?: string
+        } | null
+        if (body?.code === 'invalid_cursor') {
+          await availableRequirementsResource.reload()
+          setLoadMoreWarning(tc('requirementListRefreshed'))
+          return
+        }
+      }
       const data = await readJsonOrThrow<{
         requirements?: RequirementRow[]
-        pagination?: { hasMore?: boolean }
-      }>(
-        await apiFetch(
-          `/api/requirements-specifications/${specificationId}/available-requirements?${params}`,
-        ),
-        t('loadAvailableRequirementsFailed'),
-      )
+        pagination?: { hasMore?: boolean; nextCursor?: string | null }
+      }>(response, t('loadAvailableRequirementsFailed'))
       if (activeKey !== availableRequirementsKeyRef.current) return
       setLoadMoreWarning(null)
       setAvailableRows(prev => [...prev, ...(data.requirements ?? [])])
       setRightHasMore(data.pagination?.hasMore ?? false)
+      setRightNextCursor(data.pagination?.nextCursor ?? null)
     } catch (error) {
       if (activeKey === availableRequirementsKeyRef.current) {
         setLoadMoreWarning(
@@ -796,12 +813,14 @@ export default function KravunderlagDetailClient({
     }
   }, [
     applyRequirementSelectionFilter,
-    availableRows.length,
+    availableRequirementsResource.reload,
     locale,
     rightFilters,
     rightHasMore,
+    rightNextCursor,
     rightLoadingMore,
     rightSort,
+    tc,
     specificationId,
     t,
   ])

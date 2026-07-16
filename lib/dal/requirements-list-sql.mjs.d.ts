@@ -4,6 +4,11 @@ import type {
 } from '@/lib/requirements/list-view'
 
 export interface ListRequirementsOptions {
+  after?: {
+    nullRank: number
+    sortValue: number | string | null
+    uniqueId: string
+  }
   areaIds?: number[]
   categoryIds?: number[]
   descriptionSearch?: string
@@ -11,7 +16,6 @@ export interface ListRequirementsOptions {
   limit?: number
   locale?: 'en' | 'sv'
   normReferenceIds?: number[]
-  offset?: number
   priorityLevelIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementPackageIds?: number[]
@@ -32,6 +36,7 @@ export function escapeLike(value: unknown): string
 export function buildRequirementListSql(
   opts?: ListRequirementsOptions,
 ): RequirementListSql
-export function buildRequirementCountSql(
-  opts?: ListRequirementsOptions,
+export function buildRequirementListAnchorSql(
+  opts: ListRequirementsOptions,
+  anchorId: number,
 ): RequirementListSql

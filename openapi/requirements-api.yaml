@@ -155,7 +155,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Locale'
         - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/SortBy'
         - $ref: '#/components/parameters/SortDirection'
         - name: uniqueIdSearch
@@ -663,12 +663,13 @@ components:
         type: integer
         minimum: 1
         maximum: 200
-    Offset:
-      name: offset
+    Cursor:
+      name: cursor
       in: query
       schema:
-        type: integer
-        minimum: 0
+        type: string
+        minLength: 1
+        maxLength: 512
     SortBy:
       name: sortBy
       in: query
@@ -1034,12 +1035,21 @@ components:
           $ref: '#/components/schemas/DataSubjectExportSummary'
     RequirementListResponse:
       type: object
-      required: [requirements]
-      additionalProperties: true
+      required: [pagination, requirements]
+      additionalProperties: false
       properties:
         pagination:
           type: object
-          additionalProperties: true
+          required: [count, hasMore, limit, nextCursor]
+          additionalProperties: false
+          properties:
+            count: { type: integer, minimum: 0, maximum: 200 }
+            hasMore: { type: boolean }
+            limit: { type: integer, minimum: 1, maximum: 200 }
+            nextCursor:
+              type: string
+              nullable: true
+              maxLength: 512
         requirements:
           type: array
           minItems: 0

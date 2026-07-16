@@ -56,6 +56,7 @@ describe('requirement list view helpers', () => {
         statuses: [3],
         uniqueIdSearch: 'INT',
       },
+      cursor: 'cursor-1',
       limit: 200,
       locale: 'sv',
       sort: { by: 'status', direction: 'desc' },
@@ -65,6 +66,7 @@ describe('requirement list view helpers', () => {
     expect(params.get('locale')).toBe('sv')
     expect(params.get('sortBy')).toBe('status')
     expect(params.get('sortDirection')).toBe('desc')
+    expect(params.get('cursor')).toBe('cursor-1')
     expect(params.get('uniqueIdSearch')).toBe('INT')
     expect(params.getAll('needsReferenceIds')).toEqual(['10', '11'])
     expect(params.getAll('statuses')).toEqual(['3'])

@@ -57,6 +57,7 @@ export interface NormReferenceOption {
 
 export interface AvailableRequirementsData {
   hasMore: boolean
+  nextCursor: string | null
   rows: RequirementRow[]
   selectionFilter?: {
     applied: boolean

@@ -739,7 +739,7 @@ describe('RequirementsClient', () => {
   it('waits for hydrated preferences and the first row response before mounting the table', async () => {
     const columnWidthsStorageKey = getRequirementColumnWidthsStorageKey('sv')
     const initialRequirementsResponse = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
 
@@ -1119,7 +1119,7 @@ describe('RequirementsClient', () => {
 
       if (url.startsWith('/api/requirements?')) {
         return okJson({
-          pagination: { hasMore: true },
+          pagination: { hasMore: true, nextCursor: 'cursor-1' },
           requirements: [reviewRow],
         })
       }
@@ -1304,15 +1304,15 @@ describe('RequirementsClient', () => {
 
   it('ignores stale refresh responses and pinned-row fetches once a newer refresh wins', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const staleList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const freshList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const stalePinned =
@@ -1465,11 +1465,11 @@ describe('RequirementsClient', () => {
 
   it('prepends a pinned row when status sort metadata is unavailable', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const pinnedList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const pinnedDetail =
@@ -1568,11 +1568,11 @@ describe('RequirementsClient', () => {
 
   it('clears a pinned row immediately when selecting a different row', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const pinnedList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const pinnedDetail =
@@ -1652,15 +1652,15 @@ describe('RequirementsClient', () => {
 
   it('clears a pinned row immediately when the expanded detail closes', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const pinnedList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const closeRefresh = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const pinnedDetail =
@@ -1760,15 +1760,15 @@ describe('RequirementsClient', () => {
 
   it('ignores stale load-more responses after a newer refresh replaces the list', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const staleLoadMore = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const freshRefresh = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
 
@@ -1776,7 +1776,7 @@ describe('RequirementsClient', () => {
       const url = String(input)
 
       if (url.startsWith('/api/requirements?')) {
-        if (url.includes('offset=1')) {
+        if (url.includes('cursor=cursor-1')) {
           return staleLoadMore.promise
         }
         if (
@@ -1805,7 +1805,7 @@ describe('RequirementsClient', () => {
     render(<RequirementsClient />)
 
     initialList.resolve({
-      pagination: { hasMore: true },
+      pagination: { hasMore: true, nextCursor: 'cursor-1' },
       requirements: [makeRequirementRow(1)],
     })
 
@@ -1820,7 +1820,7 @@ describe('RequirementsClient', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('offset=1'),
+        expect.stringContaining('cursor=cursor-1'),
       ),
     )
 
@@ -1837,7 +1837,7 @@ describe('RequirementsClient', () => {
     expect(screen.getByTestId('has-more').textContent).toBe('false')
 
     staleLoadMore.resolve({
-      pagination: { hasMore: true },
+      pagination: { hasMore: true, nextCursor: 'cursor-1' },
       requirements: [makeRequirementRow(3)],
     })
 
@@ -1852,11 +1852,11 @@ describe('RequirementsClient', () => {
 
   it('does not start load more while a refresh is already in flight', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const refreshedList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
 
@@ -1890,7 +1890,7 @@ describe('RequirementsClient', () => {
     render(<RequirementsClient />)
 
     initialList.resolve({
-      pagination: { hasMore: true },
+      pagination: { hasMore: true, nextCursor: 'cursor-1' },
       requirements: [makeRequirementRow(1)],
     })
 
@@ -1918,7 +1918,7 @@ describe('RequirementsClient', () => {
       fetchMock.mock.calls.some(
         ([input]) =>
           String(input).startsWith('/api/requirements?') &&
-          String(input).includes('offset=1'),
+          String(input).includes('cursor=cursor-1'),
       ),
     ).toBe(false)
     expect(screen.getByTestId('loading-more').textContent).toBe('false')
@@ -1936,11 +1936,11 @@ describe('RequirementsClient', () => {
 
   it('keeps refreshed rows when the pinned-row fetch rejects', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const refreshedList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
 
@@ -2017,7 +2017,7 @@ describe('RequirementsClient', () => {
       if (url.startsWith('/api/requirements?')) {
         return Promise.resolve(
           okJson({
-            pagination: { hasMore: true },
+            pagination: { hasMore: true, nextCursor: 'cursor-1' },
             requirements: [makeRequirementRow(1)],
           }),
         )
@@ -2446,12 +2446,12 @@ describe('RequirementsClient', () => {
       const url = String(input)
 
       if (url.startsWith('/api/requirements?')) {
-        if (url.includes('offset=1')) {
+        if (url.includes('cursor=cursor-1')) {
           return Promise.reject(new Error('Load more failed'))
         }
 
         return okJson({
-          pagination: { hasMore: true },
+          pagination: { hasMore: true, nextCursor: 'cursor-1' },
           requirements: [makeRequirementRow(1)],
         })
       }
@@ -2480,6 +2480,56 @@ describe('RequirementsClient', () => {
 
     expect(screen.getByTestId('row-ids').textContent).toBe('INT0001')
     expect(screen.getByTestId('has-more').textContent).toBe('true')
+  })
+
+  it('refreshes from the first page and announces an invalid cursor', async () => {
+    let firstPageRequests = 0
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (url.includes('cursor=cursor-1')) {
+          const body = { code: 'invalid_cursor' }
+          return {
+            clone() {
+              return this
+            },
+            json: async () => body,
+            ok: false,
+            status: 400,
+          } as Response
+        }
+
+        firstPageRequests += 1
+        return okJson({
+          pagination:
+            firstPageRequests === 1
+              ? { hasMore: true, nextCursor: 'cursor-1' }
+              : { hasMore: false, nextCursor: null },
+          requirements: [makeRequirementRow(firstPageRequests)],
+        })
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) return metadataResponse
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+
+    fireEvent.click(screen.getByText('load-more'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0002'),
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'requirementListRefreshed',
+    )
+    expect(screen.getByTestId('has-more').textContent).toBe('false')
   })
 
   it('falls back to default column preferences when local storage is invalid', async () => {

@@ -27,6 +27,10 @@ Covered by this contract:
   `409` response during fuzzing.
 - Requirement list, detail, create, edit, archive, version read,
   delete-draft, restore, reactivate, and transition routes.
+- Requirement list continuation uses bounded opaque cursors. Cursors contain an
+  anchor id and a hash of normalized query and visibility state, not requirement
+  text or raw filter values. Malformed or mismatched cursors return
+  `invalid_cursor` with status `400`.
 - Requirement detail responses include server-derived permissions for the
   current actor and requirement; there is no separate generic permissions
   endpoint in the v1 contract.

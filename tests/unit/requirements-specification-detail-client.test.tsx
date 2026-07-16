@@ -392,6 +392,7 @@ function createInitialData(): RequirementsSpecificationDetailInitialData {
     availableNeedsRefs: [],
     availableRequirements: {
       hasMore: false,
+      nextCursor: null,
       rows: [initialAvailableRequirement],
     },
     errors: [] as SpecificationPreloadError[],
@@ -1269,6 +1270,7 @@ describe('RequirementsSpecificationDetailClient', () => {
       ...createInitialData(),
       availableRequirements: {
         hasMore: true,
+        nextCursor: 'cursor-1',
         rows: [initialAvailableRequirement],
       },
     })
@@ -1278,14 +1280,14 @@ describe('RequirementsSpecificationDetailClient', () => {
     await waitFor(() => {
       expect(
         availableRequirementsFetchUrls().some(
-          url => searchParamsFromPath(url).get('offset') === '1',
+          url => searchParamsFromPath(url).get('cursor') === 'cursor-1',
         ),
       ).toBe(true)
     })
 
     const params = searchParamsFromPath(
       availableRequirementsFetchUrls().find(
-        url => searchParamsFromPath(url).get('offset') === '1',
+        url => searchParamsFromPath(url).get('cursor') === 'cursor-1',
       ) ?? '',
     )
     expect(params.has('statuses')).toBe(false)
@@ -1980,6 +1982,7 @@ describe('RequirementsSpecificationDetailClient', () => {
       ...createInitialData(),
       availableRequirements: {
         hasMore: true,
+        nextCursor: 'cursor-1',
         rows: [initialAvailableRequirement],
       },
     })

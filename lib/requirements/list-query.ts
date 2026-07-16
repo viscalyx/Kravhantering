@@ -1,5 +1,5 @@
 import {
-  countRequirements,
+  getRequirementListSeekAnchor,
   type ListRequirementsOptions,
   listRequirements,
 } from '@/lib/dal/requirements'
@@ -8,7 +8,16 @@ import type {
   AuthorizationService,
   RequestContext,
 } from '@/lib/requirements/auth'
-import { unauthorizedError } from '@/lib/requirements/errors'
+import {
+  invalidCursorError,
+  unauthorizedError,
+} from '@/lib/requirements/errors'
+import {
+  assertRequirementListCursorMatches,
+  decodeRequirementListCursor,
+  encodeRequirementListCursor,
+  hashRequirementListQuery,
+} from '@/lib/requirements/list-cursor'
 import {
   DEFAULT_REQUIREMENT_SORT,
   type FilterValues,
@@ -25,9 +34,7 @@ export interface RequirementListPagination {
   count: number
   hasMore: boolean
   limit: number
-  nextOffset: number | null
-  offset: number
-  total: number
+  nextCursor: string | null
 }
 
 export interface RequirementListQueryResult {
@@ -36,12 +43,12 @@ export interface RequirementListQueryResult {
 }
 
 export interface RequirementListQueryInput {
+  cursor?: string
   excludeRequirementIds?: number[]
   filters?: FilterValues
   includeArchived?: boolean
   limit?: number
   locale?: 'en' | 'sv'
-  offset?: number
   requirementIds?: number[]
   sort?: RequirementSortState
 }
@@ -61,14 +68,6 @@ function clampLimit(limit: number): number {
   }
 
   return Math.min(Math.max(Math.trunc(limit), 1), MAX_PAGE_SIZE)
-}
-
-function clampOffset(offset: number): number {
-  if (!Number.isFinite(offset)) {
-    return 0
-  }
-
-  return Math.max(Math.trunc(offset), 0)
 }
 
 async function authorizeRequirementListQuery(
@@ -123,7 +122,6 @@ export async function queryRequirementList(
 
   const filters = input.filters ?? {}
   const limit = clampLimit(input.limit ?? DEFAULT_LIMIT)
-  const offset = clampOffset(input.offset ?? 0)
   const sort = input.sort ?? DEFAULT_REQUIREMENT_SORT
   const statuses = toPositiveIntegerIds(filters.statuses)
   const inferredIncludeArchived =
@@ -145,10 +143,9 @@ export async function queryRequirementList(
     descriptionSearch: filters.descriptionSearch,
     excludeRequirementIds: toPositiveIntegerIds(input.excludeRequirementIds),
     includeArchived,
-    limit,
+    limit: limit + 1,
     locale: input.locale ?? 'en',
     normReferenceIds: toPositiveIntegerIds(filters.normReferenceIds),
-    offset,
     ...visibility,
     qualityCharacteristicIds: toPositiveIntegerIds(
       filters.qualityCharacteristicIds,
@@ -164,21 +161,39 @@ export async function queryRequirementList(
     uniqueIdSearch: filters.uniqueIdSearch,
   }
 
-  const [rows, total] = await Promise.all([
-    listRequirements(db, query),
-    countRequirements(db, query),
-  ])
-  const requirements = rows.map(formatRequirementListItem)
-  const hasMore = offset + requirements.length < total
+  const queryHash = hashRequirementListQuery({
+    ...query,
+    limit,
+  })
+  if (input.cursor) {
+    const cursor = decodeRequirementListCursor(input.cursor)
+    assertRequirementListCursorMatches(cursor, queryHash)
+    const anchor = await getRequirementListSeekAnchor(
+      db,
+      { ...query, limit: undefined },
+      cursor.anchorRequirementId,
+    )
+    if (!anchor) {
+      throw invalidCursorError()
+    }
+    query.after = anchor
+  }
+
+  const rows = await listRequirements(db, query)
+  const hasMore = rows.length > limit
+  const pageRows = hasMore ? rows.slice(0, limit) : rows
+  const requirements = pageRows.map(formatRequirementListItem)
+  const lastRequirement = requirements.at(-1)
 
   return {
     pagination: {
       count: requirements.length,
       hasMore,
       limit,
-      nextOffset: hasMore ? offset + requirements.length : null,
-      offset,
-      total,
+      nextCursor:
+        hasMore && lastRequirement
+          ? encodeRequirementListCursor(lastRequirement.id, queryHash)
+          : null,
     },
     requirements,
   }

@@ -8,7 +8,6 @@ import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   idParamSchema,
-  nonNegativeIntegerStringSchema,
   optionalQueryArraySchema,
   optionalSearchStringSchema,
   parseRouteParams,
@@ -43,7 +42,7 @@ const querySchema = z
       .optional(),
     locale: z.enum(['en', 'sv']).optional().default('en'),
     normReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
-    offset: nonNegativeIntegerStringSchema.optional(),
+    cursor: z.string().min(1).max(512).optional(),
     qualityCharacteristicIds: optionalQueryArraySchema(
       positiveIntegerStringSchema,
     ),
@@ -110,9 +109,7 @@ export async function GET(
           count: 0,
           hasMore: false,
           limit: parsedQuery.data.limit ?? 200,
-          nextOffset: null,
-          offset: parsedQuery.data.offset ?? 0,
-          total: 0,
+          nextCursor: null,
         },
         requirements: [],
         selectionFilter: responseSelectionFilter,
@@ -126,7 +123,7 @@ export async function GET(
       limit,
       locale,
       normReferenceIds = [],
-      offset,
+      cursor,
       qualityCharacteristicIds = [],
       requirementPackageIds = [],
       verifiable = [],
@@ -164,7 +161,7 @@ export async function GET(
         },
         limit,
         locale,
-        offset,
+        cursor,
         ...(shouldApplyRequirementSelectionFilter
           ? { requirementIds: selectionFilter.requirementIds }
           : {}),
