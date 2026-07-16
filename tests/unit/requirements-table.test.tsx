@@ -1389,6 +1389,28 @@ describe('RequirementsTable', () => {
     }
   })
 
+  it('can expose individual row selection without a Select all control', () => {
+    render(
+      <RequirementsTable
+        locale="en"
+        onSelectionChange={vi.fn()}
+        rows={[makeRow()]}
+        selectable
+        selectedIds={new Set()}
+        showSelectAll={false}
+        statusRow={<div role="status">selection summary</div>}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('checkbox', { name: 'selectAll' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('checkbox', { name: 'selectRow' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('selection summary')
+  })
+
   it('supports overriding the sticky top offset classes for container-scrolled tables', () => {
     const { container } = render(
       <RequirementsTable

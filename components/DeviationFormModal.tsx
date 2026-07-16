@@ -26,6 +26,7 @@ const useClientLayoutEffect =
   typeof window === 'undefined' ? useEffect : useLayoutEffect
 
 interface DeviationFormModalProps {
+  affectedRequirementIds?: string[]
   initialMotivation?: string
   loading?: boolean
   onClose: () => void
@@ -36,6 +37,7 @@ interface DeviationFormModalProps {
 }
 
 export default function DeviationFormModal({
+  affectedRequirementIds = [],
   initialMotivation,
   loading,
   onClose,
@@ -139,6 +141,19 @@ export default function DeviationFormModal({
               >
                 {title ?? td('requestDeviation')}
               </h2>
+
+              {affectedRequirementIds.length > 0 ? (
+                <div>
+                  <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                    {td('affectedRequirementIds')}
+                  </p>
+                  <ul className="mt-1 max-h-36 overflow-y-auto rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 font-mono text-xs text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                    {affectedRequirementIds.map(requirementId => (
+                      <li key={requirementId}>{requirementId}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
 
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-secondary-500 dark:text-secondary-400">

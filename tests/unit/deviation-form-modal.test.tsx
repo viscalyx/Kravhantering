@@ -13,6 +13,7 @@ const translations: Record<string, Record<string, string>> = {
     saving: 'Sparar',
   },
   deviation: {
+    affectedRequirementIds: 'Berörda krav-ID:n',
     motivation: 'Motivering',
     motivationHelp: 'Beskriv varför avsteget behövs.',
     motivationPlaceholder: 'Beskriv avsteget',
@@ -45,7 +46,12 @@ describe('DeviationFormModal', () => {
     )
 
     rerender(
-      <DeviationFormModal onClose={vi.fn()} onSubmit={onSubmit} open={true} />,
+      <DeviationFormModal
+        affectedRequirementIds={['BEH0001', 'KRAV0001']}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+        open={true}
+      />,
     )
 
     const dialog = screen.getByRole('dialog', { name: 'Begär ett avsteg' })
@@ -54,6 +60,9 @@ describe('DeviationFormModal', () => {
     })
 
     expect(submitButton).toBeDisabled()
+    expect(within(dialog).getByText('Berörda krav-ID:n')).toBeInTheDocument()
+    expect(within(dialog).getByText('BEH0001')).toBeInTheDocument()
+    expect(within(dialog).getByText('KRAV0001')).toBeInTheDocument()
     expect(
       within(dialog).queryByLabelText(/Kravunderlagsansvarig/),
     ).not.toBeInTheDocument()

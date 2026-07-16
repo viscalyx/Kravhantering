@@ -119,9 +119,11 @@ export interface RequirementsTableProps {
   rows: RequirementRow[]
   selectable?: boolean
   selectedIds?: Set<number>
+  showSelectAll?: boolean
   sortState?: RequirementSortState
   specificationItemStatuses?: SpecificationItemStatusOption[]
   statusOptions?: StatusOption[]
+  statusRow?: ReactNode
   stickyTitle?: ReactNode
   stickyTitleActions?: ReactNode
   stickyTopOffsetClassName?: string
@@ -1508,11 +1510,13 @@ export default function RequirementsTable({
   onVisibleColumnsChange,
   pinnedIds,
   specificationItemStatuses = [],
+  statusRow,
   renderExpanded,
   priorityLevels = [],
   rows,
   selectable = false,
   selectedIds,
+  showSelectAll = true,
   sortState = DEFAULT_REQUIREMENT_SORT,
   stickyTopOffsetClassName = 'top-0',
   stickyTitle,
@@ -1915,13 +1919,13 @@ export default function RequirementsTable({
   }
 
   useEffect(() => {
-    if (selectAllRef.current) {
+    if (showSelectAll && selectAllRef.current) {
       selectAllRef.current.indeterminate =
         rows.length > 0 &&
         rows.some(r => selectedIds?.has(r.id)) &&
         !rows.every(r => selectedIds?.has(r.id))
     }
-  }, [rows, selectedIds])
+  }, [rows, selectedIds, showSelectAll])
 
   // Sync sticky header horizontal position with the scroll container.
   // Uses ScrollTimeline (compositor-thread, zero JS lag) when available,
@@ -2899,7 +2903,9 @@ export default function RequirementsTable({
       <tr className={mode === 'semantic' ? 'h-0 text-left' : 'text-left'}>
         {selectable && (
           <th
-            aria-label={mode === 'semantic' ? tc('selectAll') : undefined}
+            aria-label={
+              mode === 'semantic' && showSelectAll ? tc('selectAll') : undefined
+            }
             className={
               mode === 'semantic'
                 ? 'h-0 w-9 overflow-hidden p-0 text-center'
@@ -2907,7 +2913,7 @@ export default function RequirementsTable({
             }
             scope="col"
           >
-            {mode === 'interactive' ? (
+            {mode === 'interactive' && showSelectAll ? (
               <div className="flex min-h-11 items-center justify-center">
                 {/* WCAG 2.5.8 target-size exception: spacing — the 44 CSS-pixel header row keeps its 24 CSS-pixel target circle separate; verified by requirements-table.test.tsx. */}
                 <input
@@ -3364,6 +3370,7 @@ export default function RequirementsTable({
           </div>
         </div>
       </div>
+      {statusRow}
       <div
         className="relative overflow-x-auto"
         {...devMarker({

@@ -696,8 +696,20 @@
     "noLinkedRequirements": "No requirements use this needs reference.",
     "toggleNeedsReferenceUsage": "Show requirements linked to {needsReference}",
     "bulkNeedsReferenceLabel": "Needs reference for selected requirements",
-    "bulkNeedsReferenceHelp": "Choose the needs reference to apply to every selected requirement in the specification, or choose no needs reference to clear the assignment.",
-    "applyNeedsReferenceSelected": "Apply to selected ({count})",
+    "bulkNeedsReferenceHelp": "Choose the needs reference to apply to every selected requirement in the specification.",
+    "assignNeedsReferenceAction": "Assign needs reference",
+    "assignNeedsReferenceTitle": "Assign needs reference to selected requirements",
+    "assignNeedsReferenceHelp": "Choose an existing needs reference to assign to every affected requirement application listed in this dialog.",
+    "selectNeedsReference": "Select a needs reference",
+    "clearNeedsReferenceAction": "Clear needs references",
+    "clearNeedsReferenceTitle": "Clear needs-reference links",
+    "clearNeedsReferenceConfirm": "Clear the needs-reference links for Requirement IDs: {ids}?",
+    "bulkNeedsReferencePartialFail": "Needs-reference changes failed for Requirement IDs: {ids}. Those requirements remain selected.",
+    "affectedRequirementIds": "Affected Requirement IDs",
+    "selectionStatus": "{total, plural, one {# requirement selected} other {# requirements selected}}; {hidden, plural, =0 {none hidden} one {# not currently shown} other {# not currently shown}}.",
+    "selectionActionsAffectAll": "Actions affect the complete selected set.",
+    "deselectHidden": "Deselect not shown ({count})",
+    "selectionDisappeared": "The following Requirement IDs disappeared during refresh and were deselected: {ids}.",
     "newSpecification": "New requirements specification",
     "editSpecification": "Edit requirements specification",
     "filterByName": "Filter by name",
@@ -719,11 +731,13 @@
     "selectSpecification": "Select requirements specification",
     "selectSpecificationHelp": "Choose the requirements specification that should receive this requirement.",
     "removeSelected": "Remove selected ({count})",
-    "removeConfirm": "Are you sure you want to remove {count, plural, one {1 requirement} other {# requirements}} from this specification?",
+    "removeConfirm": "Remove {count, plural, one {1 library requirement} other {# library requirements}} from this specification? Requirement IDs: {ids}.",
     "removeSpecificationLocalConfirmTitle": "Delete unique requirements",
-    "removeSpecificationLocalConfirm": "Are you sure you want to permanently delete {count, plural, one {1 unique requirement} other {# unique requirements}} from this specification? They cannot be restored.",
+    "removeSpecificationLocalConfirm": "Permanently delete {count, plural, one {1 unique requirement} other {# unique requirements}} from this specification? Requirement IDs: {ids}. They cannot be restored.",
     "removeMixedConfirmTitle": "Remove selected items",
-    "removeMixedConfirm": "Are you sure you want to remove {libraryCount, plural, one {1 library requirement} other {# library requirements}} from this specification and permanently delete {specificationLocalCount, plural, one {1 unique requirement} other {# unique requirements}}? Deleted unique requirements cannot be restored.",
+    "removeMixedConfirm": "Unlink {libraryCount, plural, one {1 library requirement} other {# library requirements}} ({libraryIds}) and permanently delete {specificationLocalCount, plural, one {1 unique requirement} other {# unique requirements}} ({specificationLocalIds})? Deleted unique requirements cannot be restored.",
+    "removePartialFail": "Removal failed for Requirement IDs: {ids}. Those requirements remain selected.",
+    "unlinkLibraryRequirementAction": "Remove from specification",
     "noItems": "No requirements are linked to this specification.",
     "specificationNotFound": "Requirements specification not found.",
     "backToSpecifications": "Back to specifications",
@@ -865,7 +879,8 @@
     "reviewFailed": "Could not request review.",
     "revertFailed": "Could not revert to draft.",
     "priorityLevel": "Priority",
-    "bulkDeviationPartialFail": "{count, plural, one {1 deviation request failed} other {# deviation requests failed}}"
+    "affectedRequirementIds": "Affected Requirement IDs",
+    "bulkDeviationPartialFail": "Deviation requests failed for Requirement IDs: {ids}. Those requirements remain selected."
   },
   "improvementSuggestion": {
     "title": "Improvement suggestions",
@@ -1996,11 +2011,11 @@
       "title": "Specification Detail",
       "requirements": {
         "heading": "Managing requirements",
-        "body": "Click \"Add requirements\" to open the picker and add published requirements to this specification. Select one or more rows and click \"Remove selected\" to remove them."
+        "body": "Click \"Add requirements\" to add published requirements. Editors can select individual specification items; the selection remains active while searching, filtering, sorting, or refreshing. Selected-item actions always affect the complete selection, including items not currently shown."
       },
       "needsReference": {
         "heading": "Needs reference",
-        "body": "Each requirement application in the specification can have a needs reference — free text that explains why the requirement is needed in this specific specification. It can also support when the requirement should be verified. Set it when adding requirements or edit it inline."
+        "body": "Each requirement application can have a needs reference that explains why it is needed. Set it while adding requirements, edit it inline, or use the distinct assign and clear actions for selected items."
       },
       "export": {
         "heading": "More actions",

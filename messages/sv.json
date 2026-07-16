@@ -696,8 +696,20 @@
     "noLinkedRequirements": "Inga krav använder denna behovsreferens.",
     "toggleNeedsReferenceUsage": "Visa krav kopplade till {needsReference}",
     "bulkNeedsReferenceLabel": "Behovsreferens för valda krav",
-    "bulkNeedsReferenceHelp": "Välj den behovsreferens som ska sättas på alla markerade krav i kravunderlaget, eller välj ingen behovsreferens för att rensa kopplingen.",
-    "applyNeedsReferenceSelected": "Sätt på valda ({count})",
+    "bulkNeedsReferenceHelp": "Välj den behovsreferens som ska sättas på alla markerade krav i kravunderlaget.",
+    "assignNeedsReferenceAction": "Tilldela behovsreferens",
+    "assignNeedsReferenceTitle": "Tilldela behovsreferens till valda krav",
+    "assignNeedsReferenceHelp": "Välj en befintlig behovsreferens som ska tilldelas varje berörd kravtillämpning som visas i dialogrutan.",
+    "selectNeedsReference": "Välj en behovsreferens",
+    "clearNeedsReferenceAction": "Rensa behovsreferenser",
+    "clearNeedsReferenceTitle": "Rensa länkar till behovsreferenser",
+    "clearNeedsReferenceConfirm": "Rensa länkarna till behovsreferenser för krav-ID:n: {ids}?",
+    "bulkNeedsReferencePartialFail": "Ändringen av behovsreferenser misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade.",
+    "affectedRequirementIds": "Berörda krav-ID:n",
+    "selectionStatus": "{total, plural, one {# krav markerat} other {# krav markerade}}; {hidden, plural, =0 {inga dolda} one {# visas inte just nu} other {# visas inte just nu}}.",
+    "selectionActionsAffectAll": "Åtgärder påverkar hela den markerade mängden.",
+    "deselectHidden": "Avmarkera de som inte visas ({count})",
+    "selectionDisappeared": "Följande krav-ID:n försvann vid uppdateringen och avmarkerades: {ids}.",
     "newSpecification": "Nytt kravunderlag",
     "editSpecification": "Redigera kravunderlag",
     "filterByName": "Filtrera på namn",
@@ -719,11 +731,13 @@
     "selectSpecification": "Välj kravunderlag",
     "selectSpecificationHelp": "Välj det kravunderlag som kravet ska läggas till i.",
     "removeSelected": "Ta bort valda ({count})",
-    "removeConfirm": "Är du säker på att du vill ta bort {count, plural, one {1 krav} other {# krav}} från underlaget?",
+    "removeConfirm": "Ta bort {count, plural, one {1 bibliotekskrav} other {# bibliotekskrav}} från underlaget? Krav-ID:n: {ids}.",
     "removeSpecificationLocalConfirmTitle": "Ta bort unika krav",
-    "removeSpecificationLocalConfirm": "Är du säker på att du vill radera {count, plural, one {1 unikt krav} other {# unika krav}} permanent från detta kravunderlag? De kan inte återskapas.",
+    "removeSpecificationLocalConfirm": "Radera {count, plural, one {1 unikt krav} other {# unika krav}} permanent från detta kravunderlag? Krav-ID:n: {ids}. De kan inte återskapas.",
     "removeMixedConfirmTitle": "Ta bort valda objekt",
-    "removeMixedConfirm": "Är du säker på att du vill ta bort {libraryCount, plural, one {1 bibliotekskrav} other {# bibliotekskrav}} från underlaget och radera {specificationLocalCount, plural, one {1 unikt krav} other {# unika krav}} permanent? Raderade unika krav kan inte återskapas.",
+    "removeMixedConfirm": "Koppla bort {libraryCount, plural, one {1 bibliotekskrav} other {# bibliotekskrav}} ({libraryIds}) och radera {specificationLocalCount, plural, one {1 unikt krav} other {# unika krav}} ({specificationLocalIds}) permanent? Raderade unika krav kan inte återskapas.",
+    "removePartialFail": "Borttagningen misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade.",
+    "unlinkLibraryRequirementAction": "Ta bort från underlaget",
     "noItems": "Det finns inga krav kopplade till detta underlag.",
     "specificationNotFound": "Kravunderlaget hittades inte.",
     "backToSpecifications": "Tillbaka till kravunderlag",
@@ -865,7 +879,8 @@
     "reviewFailed": "Kunde inte begära granskning.",
     "revertFailed": "Kunde inte återställa till utkast.",
     "priorityLevel": "Prioritet",
-    "bulkDeviationPartialFail": "{count, plural, one {1 avstegsförfrågan misslyckades} other {# avstegsförfrågningar misslyckades}}"
+    "affectedRequirementIds": "Berörda krav-ID:n",
+    "bulkDeviationPartialFail": "Avstegsförfrågningar misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade."
   },
   "improvementSuggestion": {
     "title": "Förbättringsförslag",
@@ -1996,11 +2011,11 @@
       "title": "Kravunderlagsdetalj",
       "requirements": {
         "heading": "Hantera krav",
-        "body": "Klicka på \"Lägg till krav\" för att öppna väljaren och lägga till publicerade krav i underlaget. Markera en eller flera rader och klicka på \"Ta bort valda\" för att ta bort dem."
+        "body": "Klicka på \"Lägg till krav\" för att lägga till publicerade krav. Redigerare kan markera enskilda underlagsobjekt; markeringen finns kvar vid sökning, filtrering, sortering och uppdatering. Åtgärder för markerade objekt påverkar alltid hela markeringen, även objekt som inte visas just nu."
       },
       "needsReference": {
         "heading": "Behovsreferens",
-        "body": "Varje kravtillämpning i underlaget kan ha en behovsreferens - en fritext som förklarar varför kravet behövs i just detta kravunderlag. Den kan också ge stöd när kravet ska verifieras. Ange den när du lägger till krav eller redigera den inline."
+        "body": "Varje kravtillämpning kan ha en behovsreferens som förklarar varför den behövs. Ange den när krav läggs till, redigera den direkt eller använd de separata åtgärderna för att tilldela och rensa på markerade objekt."
       },
       "export": {
         "heading": "Fler åtgärder",

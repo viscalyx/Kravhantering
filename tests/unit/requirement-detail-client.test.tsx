@@ -117,7 +117,10 @@ vi.mock('next-intl', () => ({
         'Det finns inga förbättringsförslag att visa.',
       'improvementSuggestion.title': 'Förbättringsförslag',
       'specification.needsReference': 'Needs reference',
+      'specification.unlinkLibraryRequirementAction':
+        'Remove from specification',
       'deviation.downloadDeviationReviewReportPdf': 'Deviation Review Report',
+      'deviation.requestDeviation': 'Request deviation',
     }
 
     return (key: string, values?: Record<string, number | string>) => {
@@ -955,6 +958,53 @@ describe('RequirementDetailClient', () => {
         .getByText('Usage status')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'usage status')
+  })
+
+  it('places the standard remove action directly after request deviation in the specification rail', async () => {
+    const onRemoveFromSpecification = vi.fn()
+    setupFetch({
+      initialRequirement: makeRequirement([
+        makeVersion(1, {
+          description: 'Removable specification requirement',
+          publishedAt: '2026-03-01',
+          status: 3,
+          statusColor: '#22c55e',
+          statusNameEn: 'Published',
+          statusNameSv: 'Publicerad',
+        }),
+      ]),
+    })
+
+    renderSubject({
+      inline: true,
+      onRemoveFromSpecification,
+      requirementId: 123,
+      specificationItemId: 31,
+      specificationId: 1,
+      specificationPermissions: {
+        canEditContent: true,
+        canReviewDecisions: false,
+      },
+    })
+
+    const requestDeviation = await screen.findByRole('button', {
+      name: 'Request deviation',
+    })
+    const removeFromSpecification = screen.getByRole('button', {
+      name: 'Remove from specification',
+    })
+
+    expect(requestDeviation.nextElementSibling).toBe(removeFromSpecification)
+    expect(removeFromSpecification).toHaveClass(
+      'btn-destructive',
+      'w-full',
+      'justify-center',
+    )
+
+    fireEvent.click(removeFromSpecification)
+    expect(onRemoveFromSpecification).toHaveBeenCalledWith(
+      removeFromSpecification,
+    )
   })
 
   it('falls back to the alternate locale label when localized taxonomy names are missing', async () => {

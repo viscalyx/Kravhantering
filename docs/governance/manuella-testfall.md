@@ -1044,11 +1044,21 @@ panel.
 
 **Förväntat resultat:** Panelerna påverkar inte varandras scrollposition.
 
-### SPEC-06: lägg till och ta bort krav i kravunderlagsdetalj
+### SPEC-06: lägg till, markera och ta bort krav i kravunderlagsdetalj
 
-**Steg:** Lägg till ett krav, kontrollera att det syns och ta sedan bort det.
+**Steg:** Lägg till ett krav och kontrollera att det syns. Kontrollera att
+underlagets kravlista har individuella markeringsrutor men ingen Markera alla.
+Markera ett bibliotekskrav, kontrollera markeringssammanfattningen och öppna
+borttagningsdialogen. Kontrollera att dialogen visar berört krav-ID och att
+avbrytning bevarar markeringen. Expandera bibliotekskravet och kontrollera att
+Ta bort från underlaget finns direkt under Begär ett avsteg i detaljvyns högra
+åtgärdsrad och har samma destruktiva utseende som övriga borttagningsknappar.
+Bekräfta sedan borttagningen via åtgärden för markerade krav.
 
-**Förväntat resultat:** Kopplingen skapas och tas bort korrekt.
+**Förväntat resultat:** Endast redigerare kan markera enskilda krav. Markeringen
+bevaras tills användaren avmarkerar eller åtgärden lyckas. Bekräftelsen skiljer
+frånkoppling av bibliotekskrav från permanent radering av unika krav, visar
+alla berörda krav-ID:n och kopplingen tas bort korrekt.
 
 ### SPEC-07: skapa, redigera och lyft unikt krav i kravunderlag
 

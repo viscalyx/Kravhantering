@@ -6,6 +6,8 @@ import {
   ChevronRight,
   Download,
   Ellipsis,
+  Link2,
+  Link2Off,
   Pencil,
   Plus,
   Printer,
@@ -52,6 +54,7 @@ import SpecificationLocalRequirementForm, {
 } from '@/components/SpecificationLocalRequirementForm'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
@@ -154,6 +157,162 @@ interface NeedsReferenceFormState {
   description: string
   id: number | null
   text: string
+}
+
+interface BulkNeedsReferenceModalProps {
+  affectedRequirementIds: string[]
+  error: string | null
+  loading: boolean
+  needsReferences: SpecificationNeedsReference[]
+  onClose: () => void
+  onSubmit: (needsReferenceId: number) => void
+  open: boolean
+}
+
+function BulkNeedsReferenceModal({
+  affectedRequirementIds,
+  error,
+  loading,
+  needsReferences,
+  onClose,
+  onSubmit,
+  open,
+}: BulkNeedsReferenceModalProps) {
+  const t = useTranslations('specification')
+  const tc = useTranslations('common')
+  const shouldReduceMotion = useReducedMotion()
+  const modalRef = useRef<HTMLDivElement>(null)
+  const selectRef = useRef<HTMLSelectElement>(null)
+  const [needsReferenceId, setNeedsReferenceId] = useState('')
+  const [showHelp, setShowHelp] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setNeedsReferenceId('')
+    setShowHelp(false)
+  }, [open])
+
+  const { handleKeyDown } = useModalFocus({
+    closeDisabled: loading,
+    initialFocusRef: selectRef,
+    modalRef,
+    onClose,
+    open,
+  })
+
+  if (typeof window === 'undefined') return null
+
+  return createPortal(
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          key="bulk-needs-reference-backdrop"
+          {...fadeMotion(shouldReduceMotion)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <motion.div
+            aria-labelledby="bulk-needs-reference-title"
+            aria-modal="true"
+            className="relative z-50 max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-xl bg-white shadow-2xl dark:bg-secondary-900"
+            {...devMarker({
+              context: 'requirements specification detail',
+              name: 'dialog',
+              priority: 420,
+              value: 'assign needs reference to selected items',
+            })}
+            onKeyDown={handleKeyDown}
+            ref={modalRef}
+            role="dialog"
+            {...dialogPanelMotion(shouldReduceMotion)}
+          >
+            <div className="space-y-4 p-5">
+              <h2
+                className="text-base font-semibold text-secondary-900 dark:text-secondary-100"
+                id="bulk-needs-reference-title"
+              >
+                {t('assignNeedsReferenceTitle')}
+              </h2>
+              <div>
+                <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                  {t('affectedRequirementIds')}
+                </p>
+                <ul className="mt-1 max-h-36 overflow-y-auto rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 font-mono text-xs text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                  {affectedRequirementIds.map(requirementId => (
+                    <li key={requirementId}>{requirementId}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <div className="mb-1 flex items-center gap-1.5">
+                  <label
+                    className="text-sm font-medium text-secondary-900 dark:text-secondary-100"
+                    htmlFor="bulk-needs-reference"
+                  >
+                    {t('needsReference')}
+                  </label>
+                  <FieldHelpButton
+                    controls="bulk-needs-reference-help"
+                    expanded={showHelp}
+                    label={`${tc('help')}: ${t('needsReference')}`}
+                    onClick={() => setShowHelp(value => !value)}
+                  />
+                </div>
+                <AnimatedHelpPanel
+                  id="bulk-needs-reference-help"
+                  isOpen={showHelp}
+                >
+                  {t('assignNeedsReferenceHelp')}
+                </AnimatedHelpPanel>
+                <select
+                  className="min-h-11 w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm text-secondary-800 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-600 dark:bg-secondary-900 dark:text-secondary-100"
+                  disabled={loading}
+                  id="bulk-needs-reference"
+                  onChange={event => setNeedsReferenceId(event.target.value)}
+                  ref={selectRef}
+                  value={needsReferenceId}
+                >
+                  <option value="">{t('selectNeedsReference')}</option>
+                  {needsReferences.map(reference => (
+                    <option key={reference.id} value={reference.id}>
+                      {reference.text}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {error ? (
+                <p
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              ) : null}
+              <div className="flex justify-end gap-2">
+                <button
+                  className="btn-secondary px-4 py-2 text-sm"
+                  disabled={loading}
+                  onClick={onClose}
+                  type="button"
+                >
+                  {tc('cancel')}
+                </button>
+                <button
+                  className="btn-primary px-4 py-2 text-sm"
+                  disabled={needsReferenceId === '' || loading}
+                  onClick={() => onSubmit(Number(needsReferenceId))}
+                  type="button"
+                >
+                  {loading ? tc('saving') : tc('confirm')}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
+  )
 }
 
 const needsReferenceFormSignature = (form: NeedsReferenceFormState) =>
@@ -317,9 +476,14 @@ export default function KravunderlagDetailClient({
   const [bulkDeviationError, setBulkDeviationError] = useState<string | null>(
     null,
   )
+  const [bulkDeviationItems, setBulkDeviationItems] = useState<
+    SpecificationListItem[]
+  >([])
 
   // Left panel state
-  const [leftSelectedIds, setLeftSelectedIds] = useState<Set<number>>(new Set())
+  const [leftSelectedItemRefs, setLeftSelectedItemRefs] = useState<Set<string>>(
+    new Set(),
+  )
   const [leftExpandedId, setLeftExpandedId] = useState<number | null>(null)
   const [leftFilters, setLeftFilters] = useState<FilterValues>(
     preFilterAreaId ? { areaIds: [preFilterAreaId] } : {},
@@ -399,7 +563,14 @@ export default function KravunderlagDetailClient({
   const [needsReferenceError, setNeedsReferenceError] = useState<string | null>(
     null,
   )
-  const [bulkNeedsReferenceId, setBulkNeedsReferenceId] = useState<string>('')
+  const [showBulkNeedsReferenceModal, setShowBulkNeedsReferenceModal] =
+    useState(false)
+  const [bulkNeedsReferenceItems, setBulkNeedsReferenceItems] = useState<
+    SpecificationListItem[]
+  >([])
+  const [bulkActionSaving, setBulkActionSaving] = useState(false)
+  const [bulkActionResolving, setBulkActionResolving] = useState(false)
+  const [selectionNotice, setSelectionNotice] = useState<string | null>(null)
   const [bulkNeedsReferenceError, setBulkNeedsReferenceError] = useState<
     string | null
   >(null)
@@ -696,9 +867,39 @@ export default function KravunderlagDetailClient({
   )
 
   const selectedSpecificationItems = useMemo(
-    () => specificationItems.filter(item => leftSelectedIds.has(item.id)),
-    [leftSelectedIds, specificationItems],
+    () =>
+      specificationItems.filter(
+        item => item.itemRef && leftSelectedItemRefs.has(item.itemRef),
+      ),
+    [leftSelectedItemRefs, specificationItems],
   )
+
+  const leftSelectedIds = useMemo(
+    () => new Set(selectedSpecificationItems.map(item => item.id)),
+    [selectedSpecificationItems],
+  )
+
+  const handleLeftSelectionChange = useCallback(
+    (selectedIds: Set<number>) => {
+      setSelectionNotice(null)
+      setLeftSelectedItemRefs(
+        new Set(
+          specificationItems
+            .filter(item => selectedIds.has(item.id) && item.itemRef)
+            .map(item => item.itemRef as string),
+        ),
+      )
+    },
+    [specificationItems],
+  )
+
+  const selectionLocaleRef = useRef(locale)
+  useEffect(() => {
+    if (selectionLocaleRef.current === locale) return
+    selectionLocaleRef.current = locale
+    setLeftSelectedItemRefs(new Set())
+    setSelectionNotice(null)
+  }, [locale])
 
   const fetchSpecificationMeta = useCallback(
     async ({ throwOnError = false }: { throwOnError?: boolean } = {}) => {
@@ -1137,49 +1338,196 @@ export default function KravunderlagDetailClient({
     ],
   )
 
-  const handleBulkNeedsReferenceAssignment = useCallback(async () => {
-    const itemRefs = selectedSpecificationItems
-      .map(item => item.itemRef)
-      .filter((value): value is string => typeof value === 'string')
-    if (itemRefs.length === 0) return
-
-    const needsReferenceId =
-      bulkNeedsReferenceId === '' ? null : Number(bulkNeedsReferenceId)
-    setBulkNeedsReferenceError(null)
-
-    try {
-      const response = await apiFetch(
-        `/api/requirements-specifications/${specificationId}/items`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ itemRefs, needsReferenceId }),
-        },
-      )
-
-      if (!response.ok) {
-        const details = await readResponseMessage(response)
-        setBulkNeedsReferenceError(details || tc('error'))
-        return
+  const resolveItemRefs = useCallback(
+    async (
+      itemRefs: Set<string>,
+      knownItems: SpecificationListItem[] = specificationItems,
+    ) => {
+      const refreshed = await specificationItemsResource.reload()
+      if (refreshed === undefined) {
+        throw new Error(t('loadSpecificationItemsFailed'))
       }
 
-      setLeftSelectedIds(new Set())
-      setBulkNeedsReferenceId('')
-      setBulkNeedsReferenceError(null)
-      await Promise.all([fetchSpecificationItems(), fetchNeedsReferences()])
+      const refreshedByRef = new Map(
+        refreshed
+          .filter(item => item.itemRef)
+          .map(item => [item.itemRef as string, item]),
+      )
+      const knownByRef = new Map(
+        knownItems
+          .filter(item => item.itemRef)
+          .map(item => [item.itemRef as string, item]),
+      )
+      const disappeared = [...itemRefs].filter(
+        itemRef => !refreshedByRef.has(itemRef),
+      )
+
+      if (disappeared.length > 0) {
+        setLeftSelectedItemRefs(current => {
+          const next = new Set(current)
+          for (const itemRef of disappeared) next.delete(itemRef)
+          return next
+        })
+        setSelectionNotice(
+          t('selectionDisappeared', {
+            ids: disappeared
+              .map(itemRef => knownByRef.get(itemRef)?.uniqueId ?? itemRef)
+              .join(', '),
+          }),
+        )
+      }
+
+      return [...itemRefs]
+        .map(itemRef => refreshedByRef.get(itemRef))
+        .filter((item): item is SpecificationListItem => item !== undefined)
+    },
+    [specificationItems, specificationItemsResource, t],
+  )
+
+  const resolveSelectedItems = useCallback(
+    () => resolveItemRefs(leftSelectedItemRefs, specificationItems),
+    [leftSelectedItemRefs, resolveItemRefs, specificationItems],
+  )
+
+  const openBulkNeedsReferenceModal = useCallback(async () => {
+    setBulkActionResolving(true)
+    setBulkNeedsReferenceError(null)
+    try {
+      const items = await resolveSelectedItems()
+      if (items.length === 0) return
+      setBulkNeedsReferenceItems(items)
+      setShowBulkNeedsReferenceModal(true)
     } catch (error) {
       setBulkNeedsReferenceError(
         error instanceof Error ? error.message : tc('error'),
       )
+    } finally {
+      setBulkActionResolving(false)
     }
-  }, [
-    bulkNeedsReferenceId,
-    fetchNeedsReferences,
-    fetchSpecificationItems,
-    selectedSpecificationItems,
-    specificationId,
-    tc,
-  ])
+  }, [resolveSelectedItems, tc])
+
+  const applyBulkNeedsReference = useCallback(
+    async (
+      needsReferenceId: number | null,
+      confirmedItems: SpecificationListItem[],
+    ) => {
+      const confirmedRefs = new Set(
+        confirmedItems
+          .map(item => item.itemRef)
+          .filter((itemRef): itemRef is string => Boolean(itemRef)),
+      )
+      if (confirmedRefs.size === 0) return
+
+      setBulkActionSaving(true)
+      setBulkNeedsReferenceError(null)
+      try {
+        const items = await resolveItemRefs(confirmedRefs, confirmedItems)
+        if (items.length === 0) {
+          setShowBulkNeedsReferenceModal(false)
+          return
+        }
+        const itemRefs = items.map(item => item.itemRef as string)
+        const response = await apiFetch(
+          `/api/requirements-specifications/${specificationId}/items`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemRefs, needsReferenceId }),
+          },
+        )
+
+        if (!response.ok) {
+          const details = await readResponseMessage(response)
+          setBulkNeedsReferenceError(details || tc('error'))
+          return
+        }
+
+        const refreshed = await specificationItemsResource.reload()
+        if (refreshed === undefined) {
+          throw new Error(t('loadSpecificationItemsFailed'))
+        }
+        const refreshedByRef = new Map(
+          refreshed
+            .filter(item => item.itemRef)
+            .map(item => [item.itemRef as string, item]),
+        )
+        const successfulRefs = new Set(
+          items
+            .filter(item => {
+              const refreshedItem = refreshedByRef.get(item.itemRef as string)
+              return (
+                item.needsReferenceId !== needsReferenceId &&
+                refreshedItem?.needsReferenceId === needsReferenceId
+              )
+            })
+            .map(item => item.itemRef as string),
+        )
+        const failedIds = items
+          .filter(
+            item =>
+              item.needsReferenceId !== needsReferenceId &&
+              !successfulRefs.has(item.itemRef as string),
+          )
+          .map(item => item.uniqueId)
+
+        setLeftSelectedItemRefs(current => {
+          const next = new Set(current)
+          for (const itemRef of successfulRefs) next.delete(itemRef)
+          return next
+        })
+        await fetchNeedsReferences()
+        setShowBulkNeedsReferenceModal(false)
+        if (failedIds.length > 0) {
+          setBulkNeedsReferenceError(
+            t('bulkNeedsReferencePartialFail', { ids: failedIds.join(', ') }),
+          )
+        }
+      } catch (error) {
+        setBulkNeedsReferenceError(
+          error instanceof Error ? error.message : tc('error'),
+        )
+      } finally {
+        setBulkActionSaving(false)
+      }
+    },
+    [
+      fetchNeedsReferences,
+      resolveItemRefs,
+      specificationId,
+      specificationItemsResource,
+      t,
+      tc,
+    ],
+  )
+
+  const handleClearNeedsReferences = useCallback(
+    async (anchorEl?: HTMLElement) => {
+      setBulkActionResolving(true)
+      setBulkNeedsReferenceError(null)
+      try {
+        const items = await resolveSelectedItems()
+        if (items.length === 0) return
+        const confirmed = await confirm({
+          anchorEl,
+          confirmText: t('clearNeedsReferenceAction'),
+          icon: 'warning',
+          message: t('clearNeedsReferenceConfirm', {
+            ids: items.map(item => item.uniqueId).join(', '),
+          }),
+          title: t('clearNeedsReferenceTitle'),
+        })
+        if (!confirmed) return
+        await applyBulkNeedsReference(null, items)
+      } catch (error) {
+        setBulkNeedsReferenceError(
+          error instanceof Error ? error.message : tc('error'),
+        )
+      } finally {
+        setBulkActionResolving(false)
+      }
+    },
+    [applyBulkNeedsReference, confirm, resolveSelectedItems, t, tc],
+  )
 
   const handleSpecificationItemStatusChange = useCallback(
     async (itemRef: string, statusId: number) => {
@@ -1241,15 +1589,38 @@ export default function KravunderlagDetailClient({
     ],
   )
 
-  const handleRemoveSelected = useCallback(
-    async (anchorEl?: HTMLElement) => {
-      if (selectedSpecificationItems.length === 0) return
+  const handleRemoveItems = useCallback(
+    async (requestedItems: SpecificationListItem[], anchorEl?: HTMLElement) => {
+      const requestedRefs = new Set(
+        requestedItems
+          .map(item => item.itemRef)
+          .filter((itemRef): itemRef is string => Boolean(itemRef)),
+      )
+      if (requestedRefs.size === 0) return
 
-      const libraryCount = selectedSpecificationItems.filter(
-        item => !item.isSpecificationLocal,
-      ).length
-      const specificationLocalCount =
-        selectedSpecificationItems.length - libraryCount
+      setBulkActionResolving(true)
+      setBulkNeedsReferenceError(null)
+      let items: SpecificationListItem[]
+      try {
+        items = await resolveItemRefs(requestedRefs, requestedItems)
+      } catch (error) {
+        setBulkNeedsReferenceError(
+          error instanceof Error ? error.message : tc('error'),
+        )
+        setBulkActionResolving(false)
+        return
+      }
+      if (items.length === 0) {
+        setBulkActionResolving(false)
+        return
+      }
+
+      const libraryItems = items.filter(item => !item.isSpecificationLocal)
+      const specificationLocalItems = items.filter(
+        item => item.isSpecificationLocal,
+      )
+      const libraryCount = libraryItems.length
+      const specificationLocalCount = specificationLocalItems.length
 
       const confirmed = await confirm({
         anchorEl,
@@ -1257,14 +1628,26 @@ export default function KravunderlagDetailClient({
         icon: 'caution',
         message:
           specificationLocalCount === 0
-            ? t('removeConfirm', { count: libraryCount })
+            ? t('removeConfirm', {
+                count: libraryCount,
+                ids: libraryItems.map(item => item.uniqueId).join(', '),
+              })
             : libraryCount === 0
               ? t('removeSpecificationLocalConfirm', {
                   count: specificationLocalCount,
+                  ids: specificationLocalItems
+                    .map(item => item.uniqueId)
+                    .join(', '),
                 })
               : t('removeMixedConfirm', {
                   libraryCount,
+                  libraryIds: libraryItems
+                    .map(item => item.uniqueId)
+                    .join(', '),
                   specificationLocalCount,
+                  specificationLocalIds: specificationLocalItems
+                    .map(item => item.uniqueId)
+                    .join(', '),
                 }),
         title:
           specificationLocalCount === 0
@@ -1274,15 +1657,11 @@ export default function KravunderlagDetailClient({
               : t('removeMixedConfirmTitle'),
         variant: 'danger',
       })
+      setBulkActionResolving(false)
 
       if (!confirmed) return
 
-      const itemRefs = selectedSpecificationItems
-        .map(item => item.itemRef)
-        .filter((value): value is string => typeof value === 'string')
-
-      if (itemRefs.length === 0) return
-
+      const itemRefs = items.map(item => item.itemRef as string)
       try {
         const response = await apiFetch(
           `/api/requirements-specifications/${specificationId}/items`,
@@ -1294,126 +1673,177 @@ export default function KravunderlagDetailClient({
         )
 
         if (!response.ok) {
-          const body = (await response.json().catch(() => null)) as {
-            error?: string
-          } | null
-          console.error(
-            'Failed to remove items from specification',
-            body?.error ?? response.statusText,
-          )
+          const details = await readResponseMessage(response)
+          setBulkNeedsReferenceError(details || tc('error'))
           return
         }
+
+        const refreshed = await specificationItemsResource.reload()
+        if (refreshed === undefined) {
+          throw new Error(t('loadSpecificationItemsFailed'))
+        }
+        const remainingRefs = new Set(
+          refreshed
+            .map(item => item.itemRef)
+            .filter((itemRef): itemRef is string => Boolean(itemRef)),
+        )
+        const removedRefs = new Set(
+          itemRefs.filter(itemRef => !remainingRefs.has(itemRef)),
+        )
+        const removedIds = new Set(
+          items
+            .filter(item => removedRefs.has(item.itemRef as string))
+            .map(item => item.id),
+        )
+        setLeftSelectedItemRefs(current => {
+          const next = new Set(current)
+          for (const itemRef of removedRefs) next.delete(itemRef)
+          return next
+        })
+        setLeftExpandedId(current =>
+          current != null && removedIds.has(current) ? null : current,
+        )
+        const failedIds = items
+          .filter(item => remainingRefs.has(item.itemRef as string))
+          .map(item => item.uniqueId)
+        setLeftFilters(current => {
+          if (!current.requirementPackageIds?.length) return current
+          const remainingPackageIds = new Set(
+            refreshed.flatMap(item => item.requirementPackageIds ?? []),
+          )
+          const validPackageIds = current.requirementPackageIds.filter(id =>
+            remainingPackageIds.has(id),
+          )
+          if (validPackageIds.length === current.requirementPackageIds.length) {
+            return current
+          }
+          return {
+            ...current,
+            requirementPackageIds:
+              validPackageIds.length > 0 ? validPackageIds : undefined,
+          }
+        })
+        await Promise.all([
+          fetchAvailableRequirements(),
+          fetchNeedsReferences(),
+        ])
+        if (failedIds.length > 0) {
+          setBulkNeedsReferenceError(
+            t('removePartialFail', { ids: failedIds.join(', ') }),
+          )
+        }
       } catch (error) {
-        console.error('Failed to remove items from specification', error)
-        return
+        setBulkNeedsReferenceError(
+          error instanceof Error ? error.message : tc('error'),
+        )
       }
-
-      const removedIds = new Set(
-        selectedSpecificationItems.map(item => item.id),
-      )
-      setLeftSelectedIds(new Set())
-      setLeftExpandedId(current =>
-        current != null && removedIds.has(current) ? null : current,
-      )
-      setLeftFilters(prev => {
-        if (
-          !prev.requirementPackageIds ||
-          prev.requirementPackageIds.length === 0
-        ) {
-          return prev
-        }
-
-        const remainingRequirementPackageIds = new Set(
-          specificationItems
-            .filter(item => !removedIds.has(item.id))
-            .flatMap(item => item.requirementPackageIds ?? []),
-        )
-        const stillValid = prev.requirementPackageIds.filter(id =>
-          remainingRequirementPackageIds.has(id),
-        )
-
-        if (stillValid.length === prev.requirementPackageIds.length) {
-          return prev
-        }
-
-        return {
-          ...prev,
-          requirementPackageIds: stillValid.length > 0 ? stillValid : undefined,
-        }
-      })
-
-      await Promise.all([
-        fetchSpecificationItems(),
-        fetchAvailableRequirements(),
-      ])
     },
     [
       confirm,
       fetchAvailableRequirements,
-      fetchSpecificationItems,
-      specificationItems,
+      fetchNeedsReferences,
+      resolveItemRefs,
       specificationId,
-      selectedSpecificationItems,
+      specificationItemsResource,
       t,
       tc,
     ],
   )
 
+  const handleRemoveSelected = useCallback(
+    async (anchorEl?: HTMLElement) => {
+      if (selectedSpecificationItems.length === 0) return
+      await handleRemoveItems(selectedSpecificationItems, anchorEl)
+    },
+    [handleRemoveItems, selectedSpecificationItems],
+  )
+
+  const openBulkDeviationModal = useCallback(async () => {
+    setBulkActionResolving(true)
+    setBulkDeviationError(null)
+    try {
+      const items = await resolveSelectedItems()
+      if (items.length === 0) return
+      setBulkDeviationItems(items)
+      setShowBulkDeviationModal(true)
+    } catch (error) {
+      setBulkDeviationError(
+        error instanceof Error ? error.message : tc('error'),
+      )
+    } finally {
+      setBulkActionResolving(false)
+    }
+  }, [resolveSelectedItems, tc])
+
   const handleBulkDeviation = useCallback(
     async (motivation: string) => {
-      if (leftSelectedIds.size === 0) return
+      const requestedRefs = new Set(
+        bulkDeviationItems
+          .map(item => item.itemRef)
+          .filter((itemRef): itemRef is string => Boolean(itemRef)),
+      )
+      if (requestedRefs.size === 0) return
       setBulkDeviationSaving(true)
       setBulkDeviationError(null)
       try {
-        const items = specificationItems.filter(item =>
-          leftSelectedIds.has(item.id),
-        )
+        const items = await resolveItemRefs(requestedRefs, bulkDeviationItems)
         const results = await Promise.allSettled(
-          items
-            .filter(item => item.itemRef)
-            .map(item =>
-              apiFetch(
-                `/api/specification-item-deviations/${encodeURIComponent(item.itemRef ?? '')}`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ motivation }),
-                },
-              ).then(async res => {
-                if (!res.ok) {
-                  throw new Error(`Failed for item ${item.itemRef}`)
-                }
-                return item.id
-              }),
-            ),
+          items.map(item =>
+            apiFetch(
+              `/api/specification-item-deviations/${encodeURIComponent(item.itemRef as string)}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ motivation }),
+              },
+            ).then(async response => {
+              if (!response.ok) throw new Error(item.uniqueId)
+              return item
+            }),
+          ),
         )
-        const succeededIds = new Set(
+        const succeededRefs = new Set(
           results
             .filter(
-              (r): r is PromiseFulfilledResult<number> =>
-                r.status === 'fulfilled',
+              (
+                result,
+              ): result is PromiseFulfilledResult<SpecificationListItem> =>
+                result.status === 'fulfilled',
             )
-            .map(r => r.value),
+            .map(result => result.value.itemRef as string),
         )
-        const failedCount = results.filter(r => r.status === 'rejected').length
-        setLeftSelectedIds(prev => {
-          const next = new Set(prev)
-          for (const id of succeededIds) next.delete(id)
+        const failedIds = results
+          .filter(
+            (result): result is PromiseRejectedResult =>
+              result.status === 'rejected',
+          )
+          .map(result =>
+            result.reason instanceof Error
+              ? result.reason.message
+              : tc('error'),
+          )
+        setLeftSelectedItemRefs(current => {
+          const next = new Set(current)
+          for (const itemRef of succeededRefs) next.delete(itemRef)
           return next
         })
-        if (failedCount > 0) {
+        if (failedIds.length > 0) {
           setBulkDeviationError(
-            td('bulkDeviationPartialFail', { count: failedCount }),
+            td('bulkDeviationPartialFail', { ids: failedIds.join(', ') }),
           )
         } else {
           setShowBulkDeviationModal(false)
         }
         await fetchSpecificationItems()
+      } catch (error) {
+        setBulkDeviationError(
+          error instanceof Error ? error.message : tc('error'),
+        )
       } finally {
         setBulkDeviationSaving(false)
       }
     },
-    [fetchSpecificationItems, leftSelectedIds, specificationItems, td],
+    [bulkDeviationItems, fetchSpecificationItems, resolveItemRefs, tc, td],
   )
 
   const getName = (opt: { nameSv: string; nameEn: string }) =>
@@ -1538,6 +1968,34 @@ export default function KravunderlagDetailClient({
     leftNormReferenceOptions,
     locale,
   ])
+  const visibleSpecificationItemRefs = useMemo(
+    () =>
+      new Set(
+        filteredSpecificationItems
+          .map(item => item.itemRef)
+          .filter((itemRef): itemRef is string => Boolean(itemRef)),
+      ),
+    [filteredSpecificationItems],
+  )
+  const hiddenSelectedSpecificationItems = useMemo(
+    () =>
+      selectedSpecificationItems.filter(
+        item => item.itemRef && !visibleSpecificationItemRefs.has(item.itemRef),
+      ),
+    [selectedSpecificationItems, visibleSpecificationItemRefs],
+  )
+  const deselectHiddenSpecificationItems = useCallback(() => {
+    const hiddenRefs = new Set(
+      hiddenSelectedSpecificationItems
+        .map(item => item.itemRef)
+        .filter((itemRef): itemRef is string => Boolean(itemRef)),
+    )
+    setLeftSelectedItemRefs(current => {
+      const next = new Set(current)
+      for (const itemRef of hiddenRefs) next.delete(itemRef)
+      return next
+    })
+  }, [hiddenSelectedSpecificationItems])
   const traceabilityItemRefsParam = useMemo(
     () =>
       filteredSpecificationItems
@@ -2845,7 +3303,7 @@ export default function KravunderlagDetailClient({
                     onRowClick={id =>
                       setLeftExpandedId(prev => (prev === id ? null : id))
                     }
-                    onSelectionChange={setLeftSelectedIds}
+                    onSelectionChange={handleLeftSelectionChange}
                     onSortChange={setLeftSort}
                     onSpecificationItemStatusChange={
                       canEditContent
@@ -2855,150 +3313,227 @@ export default function KravunderlagDetailClient({
                     onVisibleColumnsChange={setLeftVisibleCols}
                     renderExpanded={id => {
                       const item = specificationItems.find(r => r.id === id)
-                      return item?.isSpecificationLocal &&
-                        item.specificationLocalRequirementId != null ? (
-                        <SpecificationLocalRequirementDetailClient
-                          localRequirementId={
-                            item.specificationLocalRequirementId
-                          }
-                          needsReferences={availableNeedsRefs}
-                          onChange={async () => {
-                            await Promise.all([
-                              fetchSpecificationItems(),
-                              fetchNeedsReferences(),
-                            ])
-                          }}
-                          permissions={{
-                            canEditContent,
-                            canReviewDecisions:
-                              permissions.canReviewDecisions === true,
-                          }}
-                          specificationId={specificationId}
-                          usageStatus={{
-                            specificationItemStatusColor:
-                              item.specificationItemStatusColor ?? null,
-                            specificationItemStatusIconName:
-                              item.specificationItemStatusIconName ?? null,
-                            specificationItemStatusId:
-                              item.specificationItemStatusId ?? null,
-                            specificationItemStatusNameEn:
-                              item.specificationItemStatusNameEn ?? null,
-                            specificationItemStatusNameSv:
-                              item.specificationItemStatusNameSv ?? null,
-                          }}
-                        />
-                      ) : item?.specificationItemId != null ? (
-                        <RequirementDetailClient
-                          inline
-                          onChange={async () => {
-                            await fetchSpecificationItems()
-                          }}
-                          requirementId={id}
-                          specificationId={specificationId}
-                          specificationItemId={item.specificationItemId}
-                          specificationPermissions={{
-                            canEditContent,
-                            canReviewDecisions:
-                              permissions.canReviewDecisions === true,
-                          }}
-                        />
-                      ) : (
-                        <RequirementDetailClient
-                          inline
-                          onChange={async () => {
-                            await fetchSpecificationItems()
-                          }}
-                          requirementId={id}
-                        />
+                      return (
+                        <div className="space-y-3">
+                          {item?.isSpecificationLocal &&
+                          item.specificationLocalRequirementId != null ? (
+                            <SpecificationLocalRequirementDetailClient
+                              localRequirementId={
+                                item.specificationLocalRequirementId
+                              }
+                              needsReferences={availableNeedsRefs}
+                              onChange={async () => {
+                                await Promise.all([
+                                  fetchSpecificationItems(),
+                                  fetchNeedsReferences(),
+                                ])
+                              }}
+                              permissions={{
+                                canEditContent,
+                                canReviewDecisions:
+                                  permissions.canReviewDecisions === true,
+                              }}
+                              specificationId={specificationId}
+                              usageStatus={{
+                                specificationItemStatusColor:
+                                  item.specificationItemStatusColor ?? null,
+                                specificationItemStatusIconName:
+                                  item.specificationItemStatusIconName ?? null,
+                                specificationItemStatusId:
+                                  item.specificationItemStatusId ?? null,
+                                specificationItemStatusNameEn:
+                                  item.specificationItemStatusNameEn ?? null,
+                                specificationItemStatusNameSv:
+                                  item.specificationItemStatusNameSv ?? null,
+                              }}
+                            />
+                          ) : item?.specificationItemId != null ? (
+                            <RequirementDetailClient
+                              inline
+                              onChange={async () => {
+                                await fetchSpecificationItems()
+                              }}
+                              onRemoveFromSpecification={
+                                canEditContent &&
+                                item.itemRef &&
+                                !item.isSpecificationLocal
+                                  ? anchorEl =>
+                                      handleRemoveItems([item], anchorEl)
+                                  : undefined
+                              }
+                              removeFromSpecificationDisabled={
+                                bulkActionResolving
+                              }
+                              requirementId={id}
+                              specificationId={specificationId}
+                              specificationItemId={item.specificationItemId}
+                              specificationPermissions={{
+                                canEditContent,
+                                canReviewDecisions:
+                                  permissions.canReviewDecisions === true,
+                              }}
+                            />
+                          ) : (
+                            <RequirementDetailClient
+                              inline
+                              onChange={async () => {
+                                await fetchSpecificationItems()
+                              }}
+                              requirementId={id}
+                            />
+                          )}
+                        </div>
                       )
                     }}
                     requirementPackages={specificationRequirementPackages}
                     rows={filteredSpecificationItems}
-                    selectable
+                    selectable={canEditContent}
                     selectedIds={leftSelectedIds}
+                    showSelectAll={false}
                     sortState={leftSort}
                     specificationItemStatuses={specificationItemStatuses}
-                    stickyTitle={renderLeftPanelTabs()}
-                    stickyTitleActions={
-                      leftSelectedIds.size > 0 && canEditContent ? (
-                        <>
-                          <div className="flex flex-wrap items-start gap-2">
-                            <div className="flex min-w-0 flex-col gap-1">
-                              <div className="flex items-center gap-1.5">
-                                <select
-                                  aria-label={t('bulkNeedsReferenceLabel')}
-                                  className="min-h-11 max-w-full rounded-lg border border-secondary-200 bg-white px-2 py-1.5 text-sm text-secondary-700 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200"
-                                  onChange={event =>
-                                    setBulkNeedsReferenceId(event.target.value)
-                                  }
-                                  value={bulkNeedsReferenceId}
-                                >
-                                  <option value="">{t('noNeedsRef')}</option>
-                                  {availableNeedsRefs.map(ref => (
-                                    <option key={ref.id} value={ref.id}>
-                                      {ref.text}
-                                    </option>
-                                  ))}
-                                </select>
-                                {helpButton(
-                                  'bulk-needs-reference',
-                                  t('bulkNeedsReferenceLabel'),
-                                )}
-                              </div>
-                              {helpPanel(
-                                'bulkNeedsReferenceHelp',
-                                'bulk-needs-reference',
-                              )}
-                              {bulkNeedsReferenceError ? (
-                                <p
-                                  className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
-                                  role="alert"
-                                >
-                                  {bulkNeedsReferenceError}
-                                </p>
-                              ) : null}
-                            </div>
+                    statusRow={
+                      leftSelectedItemRefs.size > 0 ? (
+                        <div
+                          className="flex flex-wrap items-center justify-between gap-2 border-b border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/30 dark:text-primary-100"
+                          {...devMarker({
+                            context: 'requirements specification detail',
+                            name: 'selection status',
+                            priority: 305,
+                            value: 'selected specification items',
+                          })}
+                          role="status"
+                        >
+                          <div>
+                            <span>
+                              {t('selectionStatus', {
+                                hidden: hiddenSelectedSpecificationItems.length,
+                                total: leftSelectedItemRefs.size,
+                              })}{' '}
+                              {t('selectionActionsAffectAll')}
+                            </span>
+                            {selectionNotice ? (
+                              <p className="mt-1 font-medium">
+                                {selectionNotice}
+                              </p>
+                            ) : null}
+                            {bulkNeedsReferenceError &&
+                            !showBulkNeedsReferenceModal ? (
+                              <p
+                                className="mt-1 font-medium text-red-700 dark:text-red-300"
+                                role="alert"
+                              >
+                                {bulkNeedsReferenceError}
+                              </p>
+                            ) : null}
+                          </div>
+                          {hiddenSelectedSpecificationItems.length > 0 ? (
                             <button
-                              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-secondary-300 px-3 py-1.5 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                              onClick={() =>
-                                void handleBulkNeedsReferenceAssignment()
-                              }
+                              className="min-h-6 min-w-6 rounded-md px-2 py-1 font-medium underline underline-offset-2 hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-primary-900/50"
+                              onClick={deselectHiddenSpecificationItems}
                               type="button"
                             >
-                              {t('applyNeedsReferenceSelected', {
-                                count: leftSelectedIds.size,
+                              {t('deselectHidden', {
+                                count: hiddenSelectedSpecificationItems.length,
                               })}
                             </button>
-                          </div>
+                          ) : null}
+                        </div>
+                      ) : selectionNotice || bulkNeedsReferenceError ? (
+                        <div
+                          className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100"
+                          role="status"
+                        >
+                          {selectionNotice ?? bulkNeedsReferenceError}
+                        </div>
+                      ) : null
+                    }
+                    stickyTitle={renderLeftPanelTabs()}
+                    stickyTitleActions={
+                      leftSelectedItemRefs.size > 0 && canEditContent ? (
+                        <>
                           <button
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700/60 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors"
-                            onClick={() => setShowBulkDeviationModal(true)}
+                            aria-label={t('assignNeedsReferenceAction')}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-wait disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                            disabled={bulkActionResolving || bulkActionSaving}
+                            {...devMarker({
+                              context: 'requirements specification detail',
+                              name: 'selection action',
+                              priority: 310,
+                              value: 'assign needs reference',
+                            })}
+                            onClick={() => void openBulkNeedsReferenceModal()}
+                            title={t('assignNeedsReferenceAction')}
+                            type="button"
+                          >
+                            <Link2 aria-hidden="true" className="h-4 w-4" />
+                          </button>
+                          <button
+                            aria-label={t('clearNeedsReferenceAction')}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-wait disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                            disabled={bulkActionResolving || bulkActionSaving}
+                            {...devMarker({
+                              context: 'requirements specification detail',
+                              name: 'selection action',
+                              priority: 311,
+                              value: 'clear needs reference',
+                            })}
+                            onClick={event =>
+                              void handleClearNeedsReferences(
+                                event.currentTarget as HTMLElement,
+                              )
+                            }
+                            title={t('clearNeedsReferenceAction')}
+                            type="button"
+                          >
+                            <Link2Off aria-hidden="true" className="h-4 w-4" />
+                          </button>
+                          <button
+                            aria-label={td('requestDeviationSelected', {
+                              count: leftSelectedItemRefs.size,
+                            })}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-amber-300 text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-wait disabled:opacity-60 dark:border-amber-700/60 dark:text-amber-400 dark:hover:bg-amber-950/20"
+                            disabled={bulkActionResolving || bulkActionSaving}
+                            {...devMarker({
+                              context: 'requirements specification detail',
+                              name: 'selection action',
+                              priority: 312,
+                              value: 'request deviations',
+                            })}
+                            onClick={() => void openBulkDeviationModal()}
+                            title={td('requestDeviationSelected', {
+                              count: leftSelectedItemRefs.size,
+                            })}
                             type="button"
                           >
                             <AlertTriangle
                               aria-hidden="true"
-                              className="h-3.5 w-3.5"
+                              className="h-4 w-4"
                             />
-                            {td('requestDeviationSelected', {
-                              count: leftSelectedIds.size,
-                            })}
                           </button>
                           <button
-                            className="btn-destructive inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm"
+                            aria-label={t('removeSelected', {
+                              count: leftSelectedItemRefs.size,
+                            })}
+                            className="btn-destructive inline-flex h-11 w-11 items-center justify-center rounded-lg px-0 py-0 disabled:cursor-wait disabled:opacity-60"
+                            disabled={bulkActionResolving || bulkActionSaving}
+                            {...devMarker({
+                              context: 'requirements specification detail',
+                              name: 'selection action',
+                              priority: 313,
+                              value: 'remove selected items',
+                            })}
                             onClick={event =>
                               void handleRemoveSelected(
                                 event.currentTarget as HTMLElement,
                               )
                             }
+                            title={t('removeSelected', {
+                              count: leftSelectedItemRefs.size,
+                            })}
                             type="button"
                           >
-                            <Trash2
-                              aria-hidden="true"
-                              className="h-3.5 w-3.5"
-                            />
-                            {t('removeSelected', {
-                              count: leftSelectedIds.size,
-                            })}
+                            <Trash2 aria-hidden="true" className="h-4 w-4" />
                           </button>
                         </>
                       ) : null
@@ -3012,6 +3547,9 @@ export default function KravunderlagDetailClient({
                 </div>
               )}
               <DeviationFormModal
+                affectedRequirementIds={bulkDeviationItems.map(
+                  item => item.uniqueId,
+                )}
                 loading={bulkDeviationSaving}
                 onClose={() => {
                   setShowBulkDeviationModal(false)
@@ -3019,6 +3557,25 @@ export default function KravunderlagDetailClient({
                 }}
                 onSubmit={handleBulkDeviation}
                 open={showBulkDeviationModal}
+              />
+              <BulkNeedsReferenceModal
+                affectedRequirementIds={bulkNeedsReferenceItems.map(
+                  item => item.uniqueId,
+                )}
+                error={bulkNeedsReferenceError}
+                loading={bulkActionSaving}
+                needsReferences={availableNeedsRefs}
+                onClose={() => {
+                  if (bulkActionSaving) return
+                  setShowBulkNeedsReferenceModal(false)
+                }}
+                onSubmit={needsReferenceId =>
+                  void applyBulkNeedsReference(
+                    needsReferenceId,
+                    bulkNeedsReferenceItems,
+                  )
+                }
+                open={showBulkNeedsReferenceModal}
               />
               {bulkDeviationError && showBulkDeviationModal && (
                 <div

@@ -527,6 +527,21 @@ down.
 - Individual row checkboxes toggle selection without triggering row click.
 - Selection is cleared when filters change.
 - Selection state is managed in `requirements-client.tsx` via `selectedIds`.
+- The specification-detail left panel is an exception: only content editors see
+  row checkboxes, and it has no header-level select-all control. Explicit
+  selection is keyed by `itemRef` and survives searching, filtering, sorting,
+  and authoritative item refreshes. It remains transient and clears on locale
+  change, view exit, or reload.
+- When a query hides selected specification items, a status row reports the
+  total and hidden counts, warns that actions affect the complete selected set,
+  and can deselect exactly the hidden set.
+- Selected-item actions resolve the selected `itemRef` values against fresh
+  item data before confirmation and enumerate all affected Krav-ID values.
+  Assigning and clearing needs-reference links are separate actions. Successful
+  targets leave the selection; failed or unaffected targets remain selected.
+- Bulk deviation requests use one motivation to create one deviation per
+  selected application. Removal confirms library unlinking and permanent
+  deletion of unique requirements separately, including mixed selections.
 - In the specification-detail left panel, specification-local rows are visually
   marked with a dedicated icon marker so they can be distinguished from
   library requirements pinned into the specification.
@@ -543,6 +558,10 @@ down.
 - When a library requirement is opened from the specification list `Krav i underlaget`,
   its inline detail metadata also includes the specification-specific fields
   **Behovsreferens** and **Användningsstatus** in the same properties grid.
+- The library requirement's **Remove from specification** action is part of the
+  right-side specification action rail, directly after the deviation controls.
+  It uses the same full-width destructive button treatment as other delete and
+  unlink actions.
 - The specification-local content card uses the same section spacing and card chrome
   as the library requirement detail card in specification context, so the properties
   block reads with the same vertical rhythm and grouping.

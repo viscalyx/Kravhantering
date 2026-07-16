@@ -1283,7 +1283,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect.poll(getVisibleRows).not.toEqual(ascendingRows)
   })
 
-  test('SPEC-06: adds and removes a requirement in the specification detail UI', async ({
+  test('SPEC-06: adds, selects, and removes a requirement in the specification detail UI', async ({
     page,
   }) => {
     const addRequests: unknown[] = []
@@ -1425,18 +1425,50 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect(
       specificationItemsPanel.getByRole('button', { name: /^PWT-REPORT-A\b/u }),
     ).toBeVisible({ timeout: 30_000 })
+    await expect(
+      specificationItemsPanel.getByRole('checkbox', { name: 'Markera alla' }),
+    ).toHaveCount(0)
 
-    await page
-      .getByRole('checkbox', { name: 'Markera PWT-SPEC-EDIT-SOURCE' })
-      .check()
+    const selectedRequirement = page.getByRole('checkbox', {
+      name: 'Markera PWT-SPEC-EDIT-SOURCE',
+    })
+    await selectedRequirement.check()
+    await expect(specificationItemsPanel).toContainText('1 krav markerat')
     await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
     const removeDialog = page.getByRole('alertdialog', {
       name: 'Ta bort valda (1)',
     })
     await expect(removeDialog).toHaveCount(1)
+    await expect(removeDialog).toContainText('PWT-SPEC-EDIT-SOURCE')
     await removeDialog.getByRole('button', { name: 'Avbryt' }).click()
     await expect(removeDialog).toHaveCount(0)
+    await expect(selectedRequirement).toBeChecked()
     expect(removeRequests).toEqual([])
+
+    await specificationItemsPanel
+      .getByRole('button', { name: /^PWT-SPEC-EDIT-SOURCE\b/u })
+      .click()
+    const requestDeviationAction = specificationItemsPanel.getByRole('button', {
+      name: 'Begär ett avsteg',
+    })
+    const removeFromSpecificationAction = specificationItemsPanel.getByRole(
+      'button',
+      {
+        name: 'Ta bort från underlaget',
+      },
+    )
+    await expect(requestDeviationAction).toBeVisible()
+    await expect(removeFromSpecificationAction).toBeVisible()
+    await expect(removeFromSpecificationAction).toHaveClass(/btn-destructive/u)
+    const detailActionLabels = (
+      await requestDeviationAction
+        .locator('xpath=..')
+        .getByRole('button')
+        .allTextContents()
+    ).map(label => label.trim())
+    expect(detailActionLabels.indexOf('Ta bort från underlaget')).toBe(
+      detailActionLabels.indexOf('Begär ett avsteg') + 1,
+    )
 
     await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
     await page
