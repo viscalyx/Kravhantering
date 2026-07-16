@@ -1265,6 +1265,15 @@ kontrollen `Fler åtgärder`, medan AI-till-import-överlämning flyttar fokus
 direkt mellan dialogerna. Lyckad import uppdaterar aktuellt kravunderlag.
 Developer Mode-markörer är tillgängliga före, under och efter inläsning.
 
+### SPEC-18: sortera krav i kravunderlaget
+
+**Steg:** Öppna ett kravunderlag med flera krav och klicka på kolumnrubriken
+Kravtext två gånger.
+
+**Förväntat resultat:** Hela listan sorteras först stigande och sedan fallande
+efter kravtexten; det är inte bara kolumnrubrikens sorteringsindikator som
+ändras.
+
 ## Avsteg
 
 ### DEV-01: skapa avstegsutkast

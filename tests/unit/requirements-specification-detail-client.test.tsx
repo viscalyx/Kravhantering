@@ -12,7 +12,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[specificationId]/requirements-specification-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
-import type { RequirementPackageOption } from '@/lib/requirements/list-view'
+import type {
+  RequirementPackageOption,
+  RequirementSortState,
+} from '@/lib/requirements/list-view'
 import type {
   RequirementsSpecificationDetailInitialData,
   SpecificationPreloadError,
@@ -160,8 +163,10 @@ vi.mock('@/components/RequirementsTable', () => ({
       needsReferenceId: number | null,
     ) => void
     onSelectionChange?: (ids: Set<number>) => void
+    onSortChange?: (value: RequirementSortState) => void
     requirementPackages?: { id: number; name: string }[]
     rows: { id: number; itemRef?: string; requirementPackageIds?: number[] }[]
+    sortState?: RequirementSortState
     stickyTopOffsetClassName?: string
     stickyTitle?: ReactNode
     stickyTitleActions?: ReactNode
@@ -252,6 +257,24 @@ vi.mock('@/components/RequirementsTable', () => ({
             type="button"
           >
             assign needs ref
+          </button>
+        ) : null}
+        {props.onSortChange ? (
+          <button
+            aria-label={`sort-description-${tableKind}`}
+            onClick={() =>
+              props.onSortChange?.({
+                by: 'description',
+                direction:
+                  props.sortState?.by === 'description' &&
+                  props.sortState.direction === 'asc'
+                    ? 'desc'
+                    : 'asc',
+              })
+            }
+            type="button"
+          >
+            sort description
           </button>
         ) : null}
         {`rows:${props.rows.length}`}
@@ -1902,6 +1925,51 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(
       screen.getByTestId('requirements-table-items-rows'),
     ).not.toHaveTextContent('lib:32')
+  })
+
+  it('sorts the complete requirement application list in both directions', async () => {
+    const firstItem = {
+      ...initialSpecificationItem,
+      version: {
+        ...initialSpecificationItem.version,
+        description: 'Zulu requirement',
+      },
+    }
+    const secondItem = {
+      ...initialSpecificationItem,
+      id: 102,
+      itemRef: 'lib:32',
+      specificationItemId: 32,
+      uniqueId: 'BEH0002',
+      version: {
+        ...initialSpecificationItem.version,
+        description: 'Alpha requirement',
+      },
+    }
+
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItems: [secondItem, firstItem],
+    })
+
+    const renderedRows = screen.getByTestId('requirements-table-items-rows')
+    await waitFor(() => {
+      expect(renderedRows).toHaveTextContent('lib:31,lib:32')
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'sort-description-items' }),
+    )
+    await waitFor(() => {
+      expect(renderedRows).toHaveTextContent('lib:32,lib:31')
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'sort-description-items' }),
+    )
+    await waitFor(() => {
+      expect(renderedRows).toHaveTextContent('lib:31,lib:32')
+    })
   })
 
   it('keeps the add dialog open and shows inline errors when adding requirements fails', async () => {

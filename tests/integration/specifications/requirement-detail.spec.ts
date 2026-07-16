@@ -1246,6 +1246,43 @@ test.describe('Requirements specification deterministic manual cases', () => {
   test.setTimeout(180_000)
   test.use({ viewport: { height: 720, width: 1280 } })
 
+  test('SPEC-18: sorts the complete specification item list in both directions', async ({
+    page,
+  }) => {
+    await gotoSpecificationDetail(page)
+
+    const specificationItemsPanel = page.locator(
+      '[data-specification-detail-list-panel="items"]',
+    )
+    const table = specificationItemsPanel.getByRole('table', {
+      name: 'Lista över krav',
+    })
+    const descriptionHeader = table.locator(
+      '[data-requirement-semantic-header-label="description"]',
+    )
+    const descriptionSortButton = specificationItemsPanel.getByRole('button', {
+      name: 'Sortera efter Kravtext',
+    })
+    const getVisibleRows = () =>
+      table.getByRole('row').evaluateAll(rows =>
+        rows
+          .slice(1)
+          .map(row => row.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+          .filter(Boolean),
+      )
+
+    await expect
+      .poll(async () => (await getVisibleRows()).length)
+      .toBeGreaterThan(1)
+    await descriptionSortButton.click()
+    await expect(descriptionHeader).toHaveAttribute('aria-sort', 'ascending')
+    const ascendingRows = await getVisibleRows()
+
+    await descriptionSortButton.click()
+    await expect(descriptionHeader).toHaveAttribute('aria-sort', 'descending')
+    await expect.poll(getVisibleRows).not.toEqual(ascendingRows)
+  })
+
   test('SPEC-06: adds and removes a requirement in the specification detail UI', async ({
     page,
   }) => {
