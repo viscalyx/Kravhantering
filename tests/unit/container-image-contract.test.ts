@@ -231,6 +231,46 @@ describe('container image contract', () => {
     }
   })
 
+  it('shares Codex project defaults across development environments', () => {
+    const codexConfig = readWorkspaceFile('.codex/config.toml')
+
+    expect(codexConfig).toContain('model = "gpt-5.6"')
+    expect(codexConfig).toContain('[mcp_servers.playwright]')
+    expect(codexConfig).toContain('[mcp_servers.github]')
+    expect(codexConfig).toContain('[tui]')
+    expect(codexConfig).toContain('terminal_title = ["activity", "app-name"]')
+    expect(codexConfig).toContain(
+      'status_line = ["model-with-reasoning", "context-used", "context-window-size", "fast-mode", "permissions", "thread-title"]',
+    )
+    expect(codexConfig).toContain('status_line_use_colors = true')
+    expect(codexConfig).not.toContain('kravhantering-devcontainer')
+  })
+
+  it('keeps Codex devcontainer permissions in the user config template', () => {
+    const codexConfig = readWorkspaceFile('.devcontainer/codex-config.toml')
+
+    expect(codexConfig).toContain('approval_policy = "never"')
+    expect(codexConfig).toContain(
+      'default_permissions = "kravhantering-devcontainer"',
+    )
+    expect(codexConfig).toContain('[projects."/workspace"]')
+    expect(codexConfig).toContain('trust_level = "trusted"')
+    expect(codexConfig).toContain(
+      '[permissions.kravhantering-devcontainer.network.domains]',
+    )
+    expect(codexConfig).not.toContain('[mcp_servers.playwright]')
+    expect(codexConfig).not.toContain('[tui]')
+
+    for (const relativePath of [
+      '.devcontainer/devcontainer.json',
+      '.devcontainer/elevated/devcontainer.json',
+    ]) {
+      expect(readWorkspaceFile(relativePath)).toContain(
+        'cp .devcontainer/codex-config.toml /home/vscode/.codex/config.toml',
+      )
+    }
+  })
+
   it('installs Podman tooling for the local container stack', () => {
     const dockerfile = readWorkspaceFile('.devcontainer/Dockerfile')
     const defaultCompose = readWorkspaceFile('.devcontainer/docker-compose.yml')
