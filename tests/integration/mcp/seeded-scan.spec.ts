@@ -667,7 +667,7 @@ test.describe('MCP seeded HTTP security gate', () => {
         {
           responseFormat: 'json',
           uniqueId: disposableUniqueId,
-          view: 'detail',
+          view: 'history',
         },
       )
       const afterStaleVersion = firstRecord(

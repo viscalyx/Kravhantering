@@ -1864,108 +1864,127 @@ test.describe('Requirements specification deterministic manual cases', () => {
     const description = `PWT SPEC-07 unikt krav ${Date.now()}.`
     const editedDescription = `${description} Redigerat.`
 
-    await gotoSpecificationDetail(page, editSpecificationId)
-    await page.getByRole('button', { name: 'Nytt unikt krav' }).click()
-    const createDialog = page.getByRole('dialog').filter({
-      hasText: 'Nytt unikt krav',
-    })
-    await createDialog
-      .getByRole('textbox', { name: /Kravtext/u })
-      .fill(description)
-    await createDialog
-      .getByRole('textbox', { name: /Acceptanskriterium/u })
-      .fill('Verifiera i UI.')
-    await createDialog.getByRole('checkbox', { name: 'Verifierbar' }).check()
-    await createDialog
-      .getByRole('textbox', { name: /Verifieringsmetod/u })
-      .fill('Playwright-test.')
+    const localRequirement =
+      await test.step('create a specification-local requirement', async () => {
+        await gotoSpecificationDetail(page, editSpecificationId)
+        await page.getByRole('button', { name: 'Nytt unikt krav' }).click()
+        const createDialog = page.getByRole('dialog').filter({
+          hasText: 'Nytt unikt krav',
+        })
+        await createDialog
+          .getByRole('textbox', { name: /Kravtext/u })
+          .fill(description)
+        await createDialog
+          .getByRole('textbox', { name: /Acceptanskriterium/u })
+          .fill('Verifiera i UI.')
+        await createDialog
+          .getByRole('checkbox', { name: 'Verifierbar' })
+          .check()
+        await createDialog
+          .getByRole('textbox', { name: /Verifieringsmetod/u })
+          .fill('Playwright-test.')
 
-    const createResponsePromise = page.waitForResponse(response => {
-      const url = new URL(response.url())
-      return (
-        response.request().method() === 'POST' &&
-        url.pathname ===
-          `/api/requirements-specifications/${editSpecificationId}/local-requirements`
+        const createResponsePromise = page.waitForResponse(response => {
+          const url = new URL(response.url())
+          return (
+            response.request().method() === 'POST' &&
+            url.pathname ===
+              `/api/requirements-specifications/${editSpecificationId}/local-requirements`
+          )
+        })
+        await createDialog.getByRole('button', { name: 'Spara' }).click()
+        const createResponse = await createResponsePromise
+        expect(createResponse.ok()).toBe(true)
+        const created = (await createResponse.json()) as {
+          localRequirement: { id: number; uniqueId: string }
+        }
+        const localRequirement = created.localRequirement
+        const localRow = page.getByRole('button', {
+          name: new RegExp(`^${localRequirement.uniqueId}\\b`, 'u'),
+        })
+        await expect(localRow).toBeVisible({ timeout: 30_000 })
+        await localRow.click()
+        return localRequirement
+      })
+
+    await test.step('edit the specification-local requirement', async () => {
+      const localDetailRow = page
+        .getByRole('row')
+        .filter({ hasText: 'Lyft till kravbiblioteket' })
+      await localDetailRow.getByRole('button', { name: 'Redigera' }).click()
+
+      const editDialog = page.getByRole('dialog', {
+        name: 'Redigera unikt krav',
+      })
+      await editDialog
+        .getByRole('textbox', { name: /Kravtext/u })
+        .fill(editedDescription)
+      await editDialog.getByRole('button', { name: 'Spara' }).click()
+      await expect(editDialog).toBeHidden()
+    })
+
+    const graduation =
+      await test.step('graduate the requirement to the library', async () => {
+        const localDetailRow = page
+          .getByRole('row')
+          .filter({ hasText: 'Lyft till kravbiblioteket' })
+        await localDetailRow
+          .getByRole('button', { name: 'Lyft till kravbiblioteket' })
+          .click()
+        const liftDialog = page.getByRole('dialog', {
+          name: 'Lyft unikt krav',
+        })
+        await liftDialog
+          .getByRole('combobox', { name: 'Kravområde' })
+          .selectOption(String(rfiAreaId))
+
+        const graduationResponsePromise = page.waitForResponse(response => {
+          const url = new URL(response.url())
+          return (
+            response.request().method() === 'POST' &&
+            url.pathname ===
+              `/api/requirements-specifications/${editSpecificationId}/local-requirements/${localRequirement.id}/graduate`
+          )
+        })
+        await liftDialog.getByRole('button', { name: 'Lyft' }).click()
+        const graduationResponse = await graduationResponsePromise
+        expect(graduationResponse.ok()).toBe(true)
+        const graduation = (await graduationResponse.json()) as {
+          detail: {
+            uniqueId: string
+            versions: Array<{ description: string; status: number }>
+          }
+          newRequirementVersionNumber: number
+        }
+        expect(graduation.detail.versions[0]).toMatchObject({
+          description: editedDescription,
+          status: 1,
+        })
+        return graduation
+      })
+
+    await test.step('verify source preservation and the graduated draft', async () => {
+      const sourceResponse = await request.get(
+        `/api/requirements-specifications/${editSpecificationId}/local-requirements/${localRequirement.id}`,
       )
-    })
-    await createDialog.getByRole('button', { name: 'Spara' }).click()
-    const createResponse = await createResponsePromise
-    expect(createResponse.ok()).toBe(true)
-    const created = (await createResponse.json()) as {
-      localRequirement: { id: number; uniqueId: string }
-    }
-    const localRequirement = created.localRequirement
+      expect(sourceResponse.ok()).toBe(true)
+      expect(await sourceResponse.json()).toMatchObject({
+        description: editedDescription,
+        id: localRequirement.id,
+        uniqueId: localRequirement.uniqueId,
+      })
 
-    const localRow = page.getByRole('button', {
-      name: new RegExp(`^${localRequirement.uniqueId}\\b`, 'u'),
-    })
-    await expect(localRow).toBeVisible({ timeout: 30_000 })
-    await localRow.click()
-    const localDetailRow = page
-      .getByRole('row')
-      .filter({ hasText: 'Lyft till kravbiblioteket' })
-    await localDetailRow.getByRole('button', { name: 'Redigera' }).click()
-
-    const editDialog = page.getByRole('dialog', {
-      name: 'Redigera unikt krav',
-    })
-    await editDialog
-      .getByRole('textbox', { name: /Kravtext/u })
-      .fill(editedDescription)
-    await editDialog.getByRole('button', { name: 'Spara' }).click()
-    await expect(editDialog).toBeHidden()
-
-    await localDetailRow
-      .getByRole('button', { name: 'Lyft till kravbiblioteket' })
-      .click()
-    const liftDialog = page.getByRole('dialog', { name: 'Lyft unikt krav' })
-    await liftDialog
-      .getByRole('combobox', { name: 'Kravområde' })
-      .selectOption(String(rfiAreaId))
-
-    const graduationResponsePromise = page.waitForResponse(response => {
-      const url = new URL(response.url())
-      return (
-        response.request().method() === 'POST' &&
-        url.pathname ===
-          `/api/requirements-specifications/${editSpecificationId}/local-requirements/${localRequirement.id}/graduate`
+      await page.goto(
+        `/sv/requirements/${encodeURIComponent(graduation.detail.uniqueId)}/${graduation.newRequirementVersionNumber}`,
       )
+      await expect(
+        page.getByRole('heading', {
+          name: new RegExp(graduation.detail.uniqueId, 'u'),
+        }),
+      ).toBeVisible()
+      await expect(page.locator('main')).toContainText(editedDescription)
+      await expect(page.locator('main')).toContainText('Utkast')
     })
-    await liftDialog.getByRole('button', { name: 'Lyft' }).click()
-    const graduationResponse = await graduationResponsePromise
-    expect(graduationResponse.ok()).toBe(true)
-    const graduation = (await graduationResponse.json()) as {
-      detail: {
-        uniqueId: string
-        versions: Array<{ description: string; status: number }>
-      }
-      newRequirementVersionNumber: number
-    }
-    expect(graduation.detail.versions[0]).toMatchObject({
-      description: editedDescription,
-      status: 1,
-    })
-
-    const sourceResponse = await request.get(
-      `/api/requirements-specifications/${editSpecificationId}/local-requirements/${localRequirement.id}`,
-    )
-    expect(sourceResponse.ok()).toBe(true)
-    expect(await sourceResponse.json()).toMatchObject({
-      description: editedDescription,
-      id: localRequirement.id,
-      uniqueId: localRequirement.uniqueId,
-    })
-
-    await page.goto(
-      `/sv/requirements/${encodeURIComponent(graduation.detail.uniqueId)}/${graduation.newRequirementVersionNumber}`,
-    )
-    await expect(
-      page.getByRole('heading', {
-        name: new RegExp(graduation.detail.uniqueId, 'u'),
-      }),
-    ).toBeVisible()
-    await expect(page.locator('main')).toContainText(editedDescription)
-    await expect(page.locator('main')).toContainText('Utkast')
   })
 
   test('SPEC-09: creates, edits, and deletes needs references from the detail tab', async ({

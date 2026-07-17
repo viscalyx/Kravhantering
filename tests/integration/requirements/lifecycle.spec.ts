@@ -479,50 +479,62 @@ test.describe('Requirement lifecycle manual cases', () => {
     const reviewer = await newRolePage(browser, testInfo, 'reviewer')
 
     try {
-      const requirement = await createRequirementInStatus(
-        request,
-        STATUS_PUBLISHED,
-        'Playwright LIFE-05 published predecessor',
-        reviewerRequest,
-      )
-      const predecessor = latestVersion(requirement)
-      const editResponse = await request.put(
-        `/api/requirements/${requirement.uniqueId}`,
-        {
-          data: {
-            areaId: requirement.area?.id,
-            baseRevisionToken: predecessor.revisionToken,
-            baseVersionId: predecessor.id,
-            description: 'Playwright LIFE-05 published successor',
-            verifiable: false,
-          },
-        },
-      )
-      await expectApiResponseOk(editResponse, 'create LIFE-05 successor')
-      await transitionRequirement(request, requirement.uniqueId, STATUS_REVIEW)
-
-      const detailPane = await openRequirement(
-        reviewer.page,
-        requirement.uniqueId,
-      )
-      await detailPane.getByRole('button', { name: 'Publicera ↗' }).click()
-      await confirmDialog(reviewer.page)
-
-      await expect
-        .poll(async () => {
-          const published = await getRequirement(request, requirement.uniqueId)
-          return {
-            predecessor: findVersion(published, 1).status,
-            successor: findVersion(published, 2).status,
-          }
-        })
-        .toEqual({
-          predecessor: STATUS_ARCHIVED,
-          successor: STATUS_PUBLISHED,
+      const requirement =
+        await test.step('set up a reviewed successor to a published requirement', async () => {
+          const created = await createRequirementInStatus(
+            request,
+            STATUS_PUBLISHED,
+            'Playwright LIFE-05 published predecessor',
+            reviewerRequest,
+          )
+          const predecessor = latestVersion(created)
+          const editResponse = await request.put(
+            `/api/requirements/${created.uniqueId}`,
+            {
+              data: {
+                areaId: created.area?.id,
+                baseRevisionToken: predecessor.revisionToken,
+                baseVersionId: predecessor.id,
+                description: 'Playwright LIFE-05 published successor',
+                verifiable: false,
+              },
+            },
+          )
+          await expectApiResponseOk(editResponse, 'create LIFE-05 successor')
+          await transitionRequirement(request, created.uniqueId, STATUS_REVIEW)
+          return created
         })
 
-      await openRequirementStandalone(page, requirement.uniqueId, 1)
-      await expect(page.locator('main')).toContainText('Arkiverad')
+      await test.step('publish the successor through the reviewer UI', async () => {
+        const detailPane = await openRequirementStandalone(
+          reviewer.page,
+          requirement.uniqueId,
+          2,
+        )
+        await detailPane.getByRole('button', { name: 'Publicera ↗' }).click()
+        await confirmDialog(reviewer.page)
+      })
+
+      await test.step('verify the predecessor is archived and the successor is published', async () => {
+        await expect
+          .poll(async () => {
+            const published = await getRequirement(
+              request,
+              requirement.uniqueId,
+            )
+            return {
+              predecessor: findVersion(published, 1).status,
+              successor: findVersion(published, 2).status,
+            }
+          })
+          .toEqual({
+            predecessor: STATUS_ARCHIVED,
+            successor: STATUS_PUBLISHED,
+          })
+
+        await openRequirementStandalone(page, requirement.uniqueId, 1)
+        await expect(page.locator('main')).toContainText('Arkiverad')
+      })
     } finally {
       await reviewer.context.close()
       await reviewerRequest.dispose()
@@ -618,7 +630,7 @@ test.describe('Requirement lifecycle manual cases', () => {
       await expect(publishedDetail).not.toContainText(updatedDescription)
       await expect(
         publishedDetail.getByRole('button', { name: 'Arkivera' }),
-      ).toHaveCount(0)
+      ).toBeDisabled()
     })
   })
 
@@ -1004,62 +1016,87 @@ test.describe('Requirement lifecycle manual cases', () => {
   })
 
   test('LIFE-12: publication replaces practical package membership', async ({
+    browser,
     page,
     request,
   }, testInfo) => {
-    const reviewerRequest = await newRoleContext(testInfo, 'reviewer')
-    const requirement = await getRequirement(request, 'PWT-LIFE-PACKAGE-SWAP')
+    const reviewer = await newRolePage(browser, testInfo, 'reviewer')
 
     try {
-      const detailPane = await openRequirementStandalone(
-        page,
-        requirement.uniqueId,
-        1,
-      )
-      await expect(detailPane.getByText('PWT-MANUAL källpaket')).toHaveCount(
-        1,
-        {
-          timeout: 30_000,
-        },
-      )
-      await expect(
-        detailPane.getByText('PWT-MANUAL ersättningspaket'),
-      ).toHaveCount(0)
+      const requirement =
+        await test.step('verify package membership before publication', async () => {
+          const current = await getRequirement(request, 'PWT-LIFE-PACKAGE-SWAP')
+          const detailPane = await openRequirementStandalone(
+            page,
+            current.uniqueId,
+            1,
+          )
+          await expect(
+            detailPane.getByText('PWT-MANUAL källpaket'),
+          ).toHaveCount(1, {
+            timeout: 30_000,
+          })
+          await expect(
+            detailPane.getByText('PWT-MANUAL ersättningspaket'),
+          ).toHaveCount(0)
 
-      expect(requirementPackageNames(requirement, 1)).toEqual([
-        'PWT-MANUAL källpaket',
-      ])
-      expect(requirementPackageNames(requirement, 2)).toEqual([
-        'PWT-MANUAL ersättningspaket',
-      ])
-      expect(latestVersion(requirement).status).toBe(STATUS_DRAFT)
+          expect(requirementPackageNames(current, 1)).toEqual([
+            'PWT-MANUAL källpaket',
+          ])
+          expect(requirementPackageNames(current, 2)).toEqual([
+            'PWT-MANUAL ersättningspaket',
+          ])
+          expect(latestVersion(current).status).toBe(STATUS_DRAFT)
+          return current
+        })
 
-      await transitionRequirement(request, requirement.uniqueId, STATUS_REVIEW)
-      await transitionRequirement(
-        reviewerRequest,
-        requirement.uniqueId,
-        STATUS_PUBLISHED,
-      )
+      await test.step('review and publish through the UI', async () => {
+        const draftDetail = await openRequirementStandalone(
+          page,
+          requirement.uniqueId,
+          2,
+        )
+        await draftDetail.getByRole('button', { name: 'Granskning ↗' }).click()
+        await expectLatestStatus(request, requirement.uniqueId, STATUS_REVIEW)
 
-      const published = await getRequirement(request, requirement.uniqueId)
-      expect(findVersion(published, 1).status).toBe(STATUS_ARCHIVED)
-      expect(findVersion(published, 2).status).toBe(STATUS_PUBLISHED)
-      expect(requirementPackageNames(published, 1)).toEqual([])
-      expect(requirementPackageNames(published, 2)).toEqual([
-        'PWT-MANUAL ersättningspaket',
-      ])
-      const publishedDetail = await openRequirementStandalone(
-        page,
-        requirement.uniqueId,
-      )
-      await expect(
-        publishedDetail.getByText('PWT-MANUAL ersättningspaket'),
-      ).toHaveCount(1)
-      await expect(
-        publishedDetail.getByText('PWT-MANUAL källpaket'),
-      ).toHaveCount(0)
+        const reviewDetail = await openRequirementStandalone(
+          reviewer.page,
+          requirement.uniqueId,
+          2,
+        )
+        await reviewDetail.getByRole('button', { name: 'Publicera ↗' }).click()
+        await confirmDialog(reviewer.page)
+        await expectLatestStatus(
+          request,
+          requirement.uniqueId,
+          STATUS_PUBLISHED,
+        )
+      })
+
+      await test.step('verify persisted package membership', async () => {
+        const published = await getRequirement(request, requirement.uniqueId)
+        expect(findVersion(published, 1).status).toBe(STATUS_ARCHIVED)
+        expect(findVersion(published, 2).status).toBe(STATUS_PUBLISHED)
+        expect(requirementPackageNames(published, 1)).toEqual([])
+        expect(requirementPackageNames(published, 2)).toEqual([
+          'PWT-MANUAL ersättningspaket',
+        ])
+      })
+
+      await test.step('verify published package membership in the UI', async () => {
+        const publishedDetail = await openRequirementStandalone(
+          page,
+          requirement.uniqueId,
+        )
+        await expect(
+          publishedDetail.getByText('PWT-MANUAL ersättningspaket'),
+        ).toHaveCount(1)
+        await expect(
+          publishedDetail.getByText('PWT-MANUAL källpaket'),
+        ).toHaveCount(0)
+      })
     } finally {
-      await reviewerRequest.dispose()
+      await reviewer.context.close()
     }
   })
 
