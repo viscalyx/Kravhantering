@@ -1081,9 +1081,12 @@ som valbara alternativ.
 
 ### SPEC-09: hantera behovsreferenser
 
-**Steg:** Lägg till, redigera och ta bort behovsreferens.
+**Steg:** Lägg till, redigera och ta bort behovsreferens. Expandera en
+behovsreferens som används av krav på fler än en resultatsida.
 
 **Förväntat resultat:** Referenser sparas och tas bort enligt användarens val.
+Den expanderade användningslistan visar alla kopplade krav, även krav från
+senare resultatsidor.
 
 ### SPEC-10: generera upphandlingsrapport och Anbuds-CSV
 

@@ -123,7 +123,7 @@ export default function SpecificationDeviationRail({
       {onRemoveFromSpecification ? (
         <button
           className="btn-destructive inline-flex items-center gap-1.5 w-full justify-center"
-          disabled={removeFromSpecificationDisabled}
+          disabled={removeFromSpecificationDisabled || workflow.deviationSaving}
           {...devMarker({
             context: `${detailContext ?? 'requirement detail'} > specification actions`,
             name: 'detail action',

@@ -1287,13 +1287,13 @@ integration docs:
 
 <!-- markdownlint-disable MD013 -->
 ```text
-lib/requirements/specification-item-page.ts
-lib/requirements/specification-item-page-cursor.ts
-lib/dal/specification-item-page.ts
-app/api/requirements-specifications/[id]/items/route.ts
-lib/mcp/server.ts
-docs/integrations/mcp-server-user-guide.md
-docs/integrations/mcp-server-contributor-guide.md
+lib/requirements/specification-item-page.ts:120-240
+lib/requirements/specification-item-page-cursor.ts:1-105
+lib/dal/specification-item-page.ts:18-734
+app/api/requirements-specifications/[id]/items/route.ts:111-145
+lib/mcp/server.ts:2274-2441
+docs/integrations/mcp-server-user-guide.md:88-103
+docs/integrations/mcp-server-contributor-guide.md:297-315
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -1301,7 +1301,8 @@ docs/integrations/mcp-server-contributor-guide.md
 1–100 row page (default 50), returns page count and continuation metadata
 without an exact total, and binds a canonical opaque cursor to specification,
 normalized filters, locale, sort, and direction. SQL combines both item kinds
-with `UNION ALL`, seeks from the full boundary tuple, selects only `limit + 1`
+with `UNION ALL`, keeps the cursor bounded to a stable source identity, resolves
+the full ordering boundary inside the candidate query, selects only `limit + 1`
 candidates, and enriches only that selected page. REST and MCP map malformed or
 mismatched state to `invalid_cursor` and document restart from the first page.
 

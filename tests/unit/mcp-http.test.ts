@@ -407,6 +407,8 @@ describe('handleRequirementsMcpRequest', () => {
       expect(tool?.description).toContain('bounded')
       expect(tool?.description).toContain('pagination.nextCursor')
       expect(tool?.description).toContain('invalid_cursor')
+      expect(tool?.description).toContain('kind === "library"')
+      expect(tool?.description).toContain('Use itemRef for mixed-item actions')
       const inputSchema = JSON.stringify(tool?.inputSchema)
       const outputSchema = JSON.stringify(tool?.outputSchema)
       expect(inputSchema).toContain('cursor')
@@ -533,7 +535,7 @@ describe('handleRequirementsMcpRequest', () => {
       const addRequirementIdsCopyPath =
         'requirements_query_catalog.result[].id -> requirementIds'
       const removeRequirementIdsCopyPath =
-        'requirements_get_specification_items.items[].id -> requirementIds'
+        'requirements_get_specification_items.items[] where kind'
       const needsReferenceIdText = 'needsReferenceId'
       const needsReferenceDescriptionText = 'needsReferenceDescription'
 

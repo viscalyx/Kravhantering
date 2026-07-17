@@ -1494,19 +1494,28 @@ describe('createRequirementsService', () => {
       'rest',
       'mcp',
     ])
-    const [event] = events
-    expect(event).toMatchObject({
-      continuation_available: true,
-      outcome: 'success',
-      page_limit: 25,
-      returned_count: 1,
-      surface: 'editor-preload',
-    })
-    const serialized = JSON.stringify(event)
-    expect(serialized).not.toMatch(
-      /incoming-secret-cursor|opaque-secret-cursor|private requirement text|SECRET-REQ-31/,
+    for (const [index, event] of events.entries()) {
+      expect(event).toMatchObject({
+        continuation_available: true,
+        outcome: 'success',
+        page_limit: 25,
+        returned_count: 1,
+        surface: ['editor-preload', 'rest', 'mcp'][index],
+      })
+      const serialized = JSON.stringify(event)
+      expect(serialized).not.toMatch(
+        /incoming-secret-cursor|opaque-secret-cursor|private requirement text|SECRET-REQ-31/,
+      )
+      expect(event).not.toHaveProperty('specification_id')
+    }
+    const specificationPageLogs = logger.info.mock.calls.filter(
+      ([operation]) => operation === 'requirements.get_specification_items',
     )
-    expect(event).not.toHaveProperty('specification_id')
+    expect(specificationPageLogs).toHaveLength(3)
+    for (const [, metadata] of specificationPageLogs) {
+      expect(metadata).toMatchObject({ description_search_supplied: true })
+      expect(JSON.stringify(metadata)).not.toContain('private requirement text')
+    }
   })
 
   it('emits only the bounded cursor failure category', async () => {

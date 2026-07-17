@@ -554,8 +554,9 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
 - **Req tag:**
   `[Req: formal — issue #591 shared specification-item pagination]`
 - **Question:** Do preload, REST, and MCP share a 1–100 row page contract whose
-  cursor binds the complete query, with a two-branch `limit + 1` seek query,
-  bounded enrichment, no exact total or offset, and explicit `invalid_cursor`
-  restart guidance?
+  cursor binds the complete query while remaining bounded to a stable source
+  identity, with a two-branch `limit + 1` seek query that resolves the full
+  ordering boundary, bounded enrichment, no exact total or offset, and explicit
+  `invalid_cursor` restart guidance?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 29: specification item reads stay bounded and cursor-only"`

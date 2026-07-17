@@ -198,7 +198,7 @@ describe('requirements-specifications/[id]/items route', () => {
         hasPendingDeviation: true,
         id: 41,
         itemRef: 'local:41',
-        kind: 'local',
+        kind: 'specificationLocal',
         specificationLocalRequirementId: 41,
       },
     ]

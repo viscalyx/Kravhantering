@@ -7,6 +7,7 @@ import {
   deleteSpecificationItemsByRefs,
   deleteSpecificationLocalRequirement,
   deleteSpecificationNeedsReference,
+  getLibrarySpecificationItemMetadata,
   getOrCreateSpecificationNeedsReference,
   getSpecificationById,
   getSpecificationLocalRequirementDetail,
@@ -52,6 +53,29 @@ function createSqlServerDb() {
 describe('requirements-specifications DAL (SQL Server path)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('preserves a nullable usage status in library item metadata', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        needsReference: null,
+        needsReferenceId: null,
+        specificationItemId: 31,
+        specificationItemStatusColor: null,
+        specificationItemStatusIconName: null,
+        specificationItemStatusId: null,
+        specificationItemStatusNameEn: null,
+        specificationItemStatusNameSv: null,
+      },
+    ])
+
+    await expect(
+      getLibrarySpecificationItemMetadata(db, 7, 31),
+    ).resolves.toMatchObject({
+      specificationItemId: 31,
+      specificationItemStatusId: null,
+    })
   })
 
   it('lists specifications with combined item counts and sorted requirement areas', async () => {

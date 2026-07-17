@@ -1126,8 +1126,10 @@ it('Scenario 29: specification item reads stay bounded and cursor-only', () => {
   expect(cursorSource).toContain("createHash('sha256')")
   expect(cursorSource).toContain("toString('base64url')")
   expect(cursorSource).toContain('queryFingerprint')
+  expect(cursorSource).toContain('boundarySchema.pick')
 
   expect(dalSource).toContain('UNION ALL')
+  expect(dalSource).toContain('anchor AS')
   expect(dalSource).toContain('candidate.nullRank >')
   expect(dalSource).toContain('enrichSpecificationItemPage')
   expect(dalSource).not.toContain('OFFSET')

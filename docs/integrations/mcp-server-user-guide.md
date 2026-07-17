@@ -92,12 +92,14 @@ agents can use it reliably.
   limit from 1 through 100 (default 50). The response reports page count and
   continuation availability, not an exact total. Continue with
   `pagination.nextCursor`; on `invalid_cursor`, restart without a cursor using
-  the same query. Copy stable mixed-item references or library requirement IDs
-  from:
+  the same query. Copy stable references for mixed-item actions. Copy an
+  `items[].id` into `requirementIds` only when that entry has
+  `kind == "library"`; a specification-local ID is not a library requirement
+  ID:
 
   ```text
   requirements_get_specification_items.items[].itemRef -> itemRef
-  requirements_get_specification_items.items[].id -> requirementIds
+  requirements_get_specification_items.items[kind == "library"].id -> requirementIds
   ```
 
 - `requirements_list_graduation_target_areas`
@@ -756,8 +758,9 @@ unchanged status fields.
 > `needsReferenceId` only when it comes from that specification's existing
 > needs-reference register, or use new `needsReferenceText` plus optional
 > `needsReferenceDescription`. For
-> `requirements_remove_from_specification`, copy
-> `requirements_get_specification_items.items[].id` -> `requirementIds`.
+> `requirements_remove_from_specification`, copy only
+> `requirements_get_specification_items.items[kind == "library"].id` ->
+> `requirementIds`; use `itemRef` for mixed-item actions.
 > Requirements must have a published version to be added to a specification.
 > Graduation is copy-only: it creates a new Draft library requirement and leaves
 > the source unique requirement unchanged. Graduation requires

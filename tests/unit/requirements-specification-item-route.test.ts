@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockDb = {}
+const mockAuthorization = {}
 const mockContext = {
   actor: {
     displayName: 'Route Tester',
@@ -17,6 +18,7 @@ const mockContext = {
 }
 
 const mocks = {
+  authorize: vi.fn(),
   getLibrarySpecificationItemMetadata: vi.fn(),
   getSpecificationItemByRef: vi.fn(),
   updateSpecificationItemFieldsByItemRef: vi.fn(),
@@ -45,10 +47,23 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
   }
 })
 
+vi.mock('@/lib/requirements/server', () => ({
+  createRequirementsRestRuntime: vi.fn(async () => ({
+    authorization: mockAuthorization,
+    context: mockContext,
+    db: mockDb,
+  })),
+}))
+
+vi.mock('@/lib/requirements/service-shared', () => ({
+  authorize: (...args: unknown[]) => mocks.authorize(...args),
+}))
+
 import {
   GET,
   PATCH,
 } from '@/app/api/requirements-specifications/[id]/items/[itemId]/route'
+import { forbiddenError } from '@/lib/requirements/errors'
 
 function makeParams(id: string, itemId: string) {
   return { params: Promise.resolve({ id, itemId }) }
@@ -109,6 +124,29 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
       5,
       31,
     )
+    expect(mocks.authorize).toHaveBeenCalledWith(
+      mockAuthorization,
+      { kind: 'get_specification_items', specificationId: 5 },
+      mockContext,
+    )
+    expect(mocks.authorize.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.getLibrarySpecificationItemMetadata.mock.invocationCallOrder[0] ??
+        Number.POSITIVE_INFINITY,
+    )
+  })
+
+  it('rejects unauthorized metadata reads before the item lookup', async () => {
+    mocks.authorize.mockRejectedValueOnce(
+      forbiddenError('Specification read denied'),
+    )
+    const request = new NextRequest(
+      'http://localhost/api/requirements-specifications/5/items/31',
+    )
+
+    const response = await GET(request, makeParams('5', '31'))
+
+    expect(response.status).toBe(403)
+    expect(mocks.getLibrarySpecificationItemMetadata).not.toHaveBeenCalled()
   })
 
   it('updates usage status by item ref within the specification', async () => {

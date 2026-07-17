@@ -15,18 +15,26 @@ const boundarySchema = z
   })
   .strict()
 
+const cursorBoundarySchema = boundarySchema.pick({
+  kindRank: true,
+  sourceId: true,
+})
+
 const cursorPayloadSchema = z
   .object({
-    boundary: boundarySchema,
+    boundary: cursorBoundarySchema,
     queryFingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
     version: z.literal(CURSOR_VERSION),
   })
   .strict()
 
 export type SpecificationItemPageBoundary = z.infer<typeof boundarySchema>
+export type SpecificationItemPageCursorBoundary = z.infer<
+  typeof cursorBoundarySchema
+>
 
 export interface SpecificationItemPageCursorPayload {
-  boundary: SpecificationItemPageBoundary
+  boundary: SpecificationItemPageCursorBoundary
   queryFingerprint: string
   version: typeof CURSOR_VERSION
 }
@@ -61,7 +69,10 @@ export function encodeSpecificationItemPageCursor(
   queryFingerprint: string,
 ): string {
   const payload = cursorPayloadSchema.parse({
-    boundary,
+    boundary: {
+      kindRank: boundary.kindRank,
+      sourceId: boundary.sourceId,
+    },
     queryFingerprint,
     version: CURSOR_VERSION,
   }) satisfies SpecificationItemPageCursorPayload

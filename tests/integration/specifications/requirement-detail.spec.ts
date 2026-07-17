@@ -1357,9 +1357,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
           await route.fulfill({
             contentType: 'application/json',
             json: {
-              items: [firstItem, secondItem],
+              items: [secondItem],
               pagination: {
-                count: 2,
+                count: 1,
                 hasMore: true,
                 limit: 50,
                 nextCursor: 'cursor-2',
@@ -2136,9 +2136,75 @@ test.describe('Requirements specification deterministic manual cases', () => {
         await route.continue()
       },
     )
+    const usageItem = (id: number, uniqueId: string, description: string) => ({
+      area: { name: 'PWT-MANUAL Playwright manual cases' },
+      deviationCount: 0,
+      hasApprovedDeviation: false,
+      hasPendingDeviation: false,
+      id,
+      isArchived: false,
+      itemRef: `lib:${id}`,
+      kind: 'library',
+      needsReferenceId: 920001,
+      specificationItemId: id,
+      specificationItemStatusNameSv: 'Inkluderad',
+      uniqueId,
+      version: {
+        description,
+        status: 3,
+        statusNameSv: 'Publicerad',
+        typeNameSv: 'Verksamhetskrav',
+        verifiable: true,
+        versionNumber: 1,
+      },
+    })
+    await page.route(
+      `**/api/requirements-specifications/${editSpecificationId}/items?*`,
+      async route => {
+        const query = new URL(route.request().url()).searchParams
+        if (query.get('needsReferenceIds') !== '920001') {
+          await route.continue()
+          return
+        }
+        const continuation = query.get('cursor') === 'usage-page-2'
+        const item = continuation
+          ? usageItem(
+              920102,
+              'PWT-NEEDS-USAGE-2',
+              'PWT behovsanvändning från sida två.',
+            )
+          : usageItem(
+              920101,
+              'PWT-NEEDS-USAGE-1',
+              'PWT behovsanvändning från sida ett.',
+            )
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            items: [item],
+            pagination: {
+              count: 1,
+              hasMore: !continuation,
+              limit: 100,
+              nextCursor: continuation ? null : 'usage-page-2',
+            },
+          },
+        })
+      },
+    )
 
     await gotoSpecificationDetail(page, editSpecificationId)
     await openDetailTab(page, 'Behovsreferenser')
+    const linkedNeedsReferenceRow = page
+      .getByRole('row')
+      .filter({ hasText: 'PWT-MANUAL ursprungligt behov' })
+    await linkedNeedsReferenceRow
+      .getByRole('button', {
+        name: 'Visa krav kopplade till PWT-MANUAL ursprungligt behov',
+      })
+      .click()
+    await expect(page.getByText('PWT-NEEDS-USAGE-1')).toBeVisible()
+    await expect(page.getByText('PWT-NEEDS-USAGE-2')).toBeVisible()
     const newNeedsReferenceButton = page.getByRole('button', {
       name: 'Ny behovsreferens',
     })

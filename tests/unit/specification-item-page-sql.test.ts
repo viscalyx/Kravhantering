@@ -32,14 +32,11 @@ describe('specification item page SQL', () => {
     expect(parameters).toContain(51)
   })
 
-  it('builds a full tuple seek from cursor state without an anchor lookup', () => {
-    const { sqlText } = buildSpecificationItemPageCandidateSql({
+  it('resolves the full tuple seek from a bounded source identity', () => {
+    const { parameters, sqlText } = buildSpecificationItemPageCandidateSql({
       after: {
         kindRank: 1,
-        nullRank: 0,
-        sortValue: 'Shared value',
         sourceId: 42,
-        uniqueId: 'REQ-0042',
       },
       filters: {},
       limit: 11,
@@ -49,12 +46,14 @@ describe('specification item page SQL', () => {
       specificationId: 7,
     })
 
-    expect(sqlText).toContain('candidate.nullRank >')
-    expect(sqlText).toContain('candidate.sortValue >')
-    expect(sqlText).toContain('candidate.uniqueId >')
-    expect(sqlText).toContain('candidate.kindRank >')
-    expect(sqlText).toContain('candidate.sourceId >')
-    expect(sqlText).not.toMatch(/anchor/iu)
+    expect(sqlText).toContain('anchor AS')
+    expect(sqlText).toContain('candidate.sourceId =')
+    expect(sqlText).toContain('candidate.nullRank > anchor.nullRank')
+    expect(sqlText).toContain('candidate.sortValue > anchor.sortValue')
+    expect(sqlText).toContain('candidate.uniqueId > anchor.uniqueId')
+    expect(sqlText).toContain('candidate.kindRank > anchor.kindRank')
+    expect(sqlText).toContain('candidate.sourceId > anchor.sourceId')
+    expect(parameters).toEqual(expect.arrayContaining([42, 1]))
   })
 
   it.each(
@@ -79,6 +78,9 @@ describe('specification item page SQL', () => {
       expect(sqlText).toContain('candidate.nullRank ASC')
       expect(sqlText).toContain('candidate.uniqueId ASC')
     }
+    expect(sqlText).toContain(
+      `candidate.sortValue ${input.sortDirection.toUpperCase()}`,
+    )
   })
 
   it('hydrates only selected IDs and restores candidate order', async () => {
@@ -99,7 +101,7 @@ describe('specification item page SQL', () => {
         {
           description: 'Local item',
           sourceId: 41,
-          specificationItemStatusId: 1,
+          specificationItemStatusId: null,
           uniqueId: 'LOCAL-001',
         },
       ])
@@ -124,6 +126,8 @@ describe('specification item page SQL', () => {
     const rows = await enrichSpecificationItemPage(db, 7, candidates)
 
     expect(rows.map(row => row.itemRef)).toEqual(['local:41', 'lib:31'])
+    expect(rows[0]?.specificationItemStatusId).toBeNull()
+    expect(rows[1]?.specificationItemStatusId).toBe(1)
     expect(query).toHaveBeenCalledTimes(2)
     expect(query.mock.calls[0]?.[1]).toEqual([7, 31])
     expect(query.mock.calls[1]?.[1]).toEqual([7, 41])

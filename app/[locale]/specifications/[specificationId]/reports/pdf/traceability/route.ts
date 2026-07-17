@@ -23,7 +23,7 @@ export async function GET(
 
   try {
     const queryParams = new URLSearchParams(request.nextUrl.searchParams)
-    if (!queryParams.has('locale')) queryParams.set('locale', locale)
+    queryParams.set('locale', locale)
     const parsedQuery = parseSearchParams(
       queryParams,
       specificationItemQueryStateSchema,

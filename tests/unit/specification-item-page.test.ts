@@ -151,7 +151,12 @@ describe('traverseCompleteSpecificationItemResult', () => {
       .mockResolvedValueOnce(fullCandidatePage)
       .mockResolvedValueOnce([fullCandidatePage[100]])
     mocks.enrichSpecificationItemPage
-      .mockResolvedValueOnce([{ itemRef: 'lib:1', uniqueId: 'REQ-1' }])
+      .mockResolvedValueOnce(
+        fullCandidatePage.slice(0, 100).map(candidate => ({
+          itemRef: `lib:${candidate.sourceId}`,
+          uniqueId: candidate.uniqueId,
+        })),
+      )
       .mockResolvedValueOnce([{ itemRef: 'lib:101', uniqueId: 'REQ-101' }])
     const visited: string[][] = []
 
@@ -163,8 +168,13 @@ describe('traverseCompleteSpecificationItemResult', () => {
       },
     )
 
-    expect(result).toEqual({ itemCount: 2, pageCount: 2 })
-    expect(visited).toEqual([['lib:1'], ['lib:101']])
+    expect(result).toEqual({ itemCount: 101, pageCount: 2 })
+    expect(visited).toHaveLength(2)
+    expect(visited[0]).toHaveLength(100)
+    expect(visited[1]).toEqual(['lib:101'])
+    expect(visited.flat()).toEqual(
+      Array.from({ length: 101 }, (_, index) => `lib:${index + 1}`),
+    )
     expect(mocks.listSpecificationItemPageCandidates).toHaveBeenCalledTimes(2)
     expect(
       mocks.listSpecificationItemPageCandidates.mock.calls[0]?.[1],

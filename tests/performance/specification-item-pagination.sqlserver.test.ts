@@ -482,31 +482,34 @@ describe.runIf(enabled)('specification item pagination on SQL Server', () => {
 
   afterAll(async () => {
     if (!db) return
-    await mkdir(outputDirectory, { recursive: true })
-    await writeFile(
-      resolve(outputDirectory, 'measurements.json'),
-      `${JSON.stringify(
-        {
-          measurements,
-          sqlEvidence: sqlEvidence.map(({ planXml: _planXml, ...entry }) => ({
-            ...entry,
-            planBytes: Buffer.byteLength(_planXml),
-          })),
-        },
-        null,
-        2,
-      )}\n`,
-    )
-    for (const evidence of sqlEvidence) {
+    try {
+      await mkdir(outputDirectory, { recursive: true })
       await writeFile(
-        resolve(
-          outputDirectory,
-          `actual-plan-${evidence.mix}-${evidence.size}.sqlplan`,
-        ),
-        evidence.planXml,
+        resolve(outputDirectory, 'measurements.json'),
+        `${JSON.stringify(
+          {
+            measurements,
+            sqlEvidence: sqlEvidence.map(({ planXml: _planXml, ...entry }) => ({
+              ...entry,
+              planBytes: Buffer.byteLength(_planXml),
+            })),
+          },
+          null,
+          2,
+        )}\n`,
       )
+      for (const evidence of sqlEvidence) {
+        await writeFile(
+          resolve(
+            outputDirectory,
+            `actual-plan-${evidence.mix}-${evidence.size}.sqlplan`,
+          ),
+          evidence.planXml,
+        )
+      }
+    } finally {
+      await db.query(cleanupSql)
     }
-    await db.query(cleanupSql)
   }, 120_000)
 
   const blockingFixtures = [

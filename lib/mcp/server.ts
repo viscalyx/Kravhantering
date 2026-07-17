@@ -1693,7 +1693,7 @@ export function createKravhanteringMcpServer(
   const addRequirementIdsCopyPath =
     'Copy requirements_query_catalog.result[].id -> requirementIds.'
   const removeRequirementIdsCopyPath =
-    'Copy requirements_get_specification_items.items[].id -> requirementIds.'
+    'For requirements_remove_from_specification, copy only requirements_get_specification_items.items[] where kind === "library": items[].id -> requirementIds. Use itemRef for mixed-item actions; specification-local IDs are not library requirementIds.'
 
   const requirementResourceTemplate = new ResourceTemplate(
     'requirements://requirement/{uniqueId}',
@@ -2280,7 +2280,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: true,
       },
-      description: `List one bounded, database-ordered page of library and specification-local requirements linked to a requirements specification. Filters apply to the complete result. Continue with pagination.nextCursor; on invalid_cursor, restart without cursor using the same filters, locale, and sort. Identify the specification with specificationId from requirements_list_specifications. ${specificationIdCopyPath}`,
+      description: `List one bounded, database-ordered page of library and specification-local requirements linked to a requirements specification. Filters apply to the complete result. Continue with pagination.nextCursor; on invalid_cursor, restart without cursor using the same filters, locale, and sort. Identify the specification with specificationId from requirements_list_specifications. ${specificationIdCopyPath} ${removeRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
           areaIds: z.array(z.number().int().positive()).max(100).optional(),

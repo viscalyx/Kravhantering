@@ -269,7 +269,7 @@ export function createSpecificationWorkflow({
         'requirements.get_specification_items',
         {
           capacity_surface: input.capacitySurface ?? context.source,
-          description_search: input.descriptionSearch,
+          description_search_supplied: Boolean(input.descriptionSearch),
           specification_id: input.specificationId,
         },
         async () => {

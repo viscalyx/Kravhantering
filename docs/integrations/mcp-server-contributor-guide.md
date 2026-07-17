@@ -305,12 +305,13 @@ mixed library/local result in SQL Server. The response has no exact total.
 Continue only with `pagination.nextCursor`; a reduced `limit` is allowed on the
 next call. `invalid_cursor` means the client must restart without `cursor` and
 retain its normalized filters, locale, and sort. Use the specification copy
-path above. Stable item references identify both item kinds, while library
-requirement IDs can be copied into legacy removal inputs:
+path above. Stable `itemRef` values identify both item kinds and should be used
+for mixed-item actions. Copy an `items[].id` into a legacy library-only removal
+input only when the entry has `kind == "library"`:
 
 ```text
 requirements_get_specification_items.items[].itemRef -> itemRef
-requirements_get_specification_items.items[].id -> requirementIds
+requirements_get_specification_items.items[kind == "library"].id -> requirementIds
 ```
 
 ### `requirements_add_to_specification`
@@ -354,10 +355,10 @@ specification authorship before calling the transactional DAL copy operation.
 Unlinks requirements from a specification. Accepts numeric `specificationId`.
 The requirements themselves are not deleted. The operation is idempotent —
 removing an ID that is not in the specification produces no error. Use the
-specification copy path above, and copy linked requirement IDs from:
+specification copy path above, and copy only library requirement IDs from:
 
 ```text
-requirements_get_specification_items.items[].id -> requirementIds
+requirements_get_specification_items.items[kind == "library"].id -> requirementIds
 ```
 
 ### `requirements_list_improvement_suggestions`

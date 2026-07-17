@@ -9,7 +9,10 @@ import type {
   RequirementSortDirection,
   RequirementSortField,
 } from '@/lib/requirements/list-view'
-import type { SpecificationItemPageBoundary } from '@/lib/requirements/specification-item-page-cursor'
+import type {
+  SpecificationItemPageBoundary,
+  SpecificationItemPageCursorBoundary,
+} from '@/lib/requirements/specification-item-page-cursor'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 interface SqlBuilder {
@@ -21,7 +24,7 @@ export interface SpecificationItemPageCandidate
   extends SpecificationItemPageBoundary {}
 
 export interface ListSpecificationItemPageCandidatesInput {
-  after?: SpecificationItemPageBoundary
+  after?: SpecificationItemPageCursorBoundary
   filters: FilterValues
   limit: number
   locale: 'en' | 'sv'
@@ -363,39 +366,30 @@ function candidateBranch(
     WHERE ${conditions}`
 }
 
-function buildTieBreakerSeek(
-  builder: SqlBuilder,
-  boundary: SpecificationItemPageBoundary,
-): string {
-  const uniqueId = builder.push(boundary.uniqueId)
-  const kindRank = builder.push(boundary.kindRank)
-  const sourceId = builder.push(boundary.sourceId)
-  return `(candidate.uniqueId > ${uniqueId}
-    OR (candidate.uniqueId = ${uniqueId} AND candidate.kindRank > ${kindRank})
-    OR (candidate.uniqueId = ${uniqueId} AND candidate.kindRank = ${kindRank} AND candidate.sourceId > ${sourceId}))`
+function buildTieBreakerSeek(): string {
+  return `(candidate.uniqueId > anchor.uniqueId
+    OR (candidate.uniqueId = anchor.uniqueId AND candidate.kindRank > anchor.kindRank)
+    OR (candidate.uniqueId = anchor.uniqueId AND candidate.kindRank = anchor.kindRank AND candidate.sourceId > anchor.sourceId))`
 }
 
 function buildSeekCondition(
-  builder: SqlBuilder,
   input: ListSpecificationItemPageCandidatesInput,
   descriptor: SortDescriptor,
 ): string {
   if (!input.after) return ''
-  const tieBreaker = buildTieBreakerSeek(builder, input.after)
-  const sortValue = builder.push(input.after.sortValue)
+  const tieBreaker = buildTieBreakerSeek()
   if (descriptor.uniqueId) {
     const comparison = input.sortDirection === 'desc' ? '<' : '>'
-    return `WHERE (candidate.sortValue ${comparison} ${sortValue}
-      OR (candidate.sortValue = ${sortValue} AND ${tieBreaker}))`
+    return `WHERE (candidate.sortValue ${comparison} anchor.sortValue
+      OR (candidate.sortValue = anchor.sortValue AND ${tieBreaker}))`
   }
 
-  const nullRank = builder.push(input.after.nullRank)
   const comparison = input.sortDirection === 'desc' ? '<' : '>'
-  return `WHERE (candidate.nullRank > ${nullRank}
-    OR (candidate.nullRank = ${nullRank} AND (
-      candidate.sortValue ${comparison} ${sortValue}
-      OR ((candidate.sortValue = ${sortValue}
-        OR (candidate.sortValue IS NULL AND ${sortValue} IS NULL))
+  return `WHERE (candidate.nullRank > anchor.nullRank
+    OR (candidate.nullRank = anchor.nullRank AND (
+      candidate.sortValue ${comparison} anchor.sortValue
+      OR ((candidate.sortValue = anchor.sortValue
+        OR (candidate.sortValue IS NULL AND anchor.sortValue IS NULL))
         AND ${tieBreaker})
     )))`
 }
@@ -407,27 +401,39 @@ export function buildSpecificationItemPageCandidateSql(
   const descriptor = getSortDescriptor(input.sortBy, input.locale)
   const library = candidateBranch(builder, input, descriptor, 'library')
   const local = candidateBranch(builder, input, descriptor, 'local')
-  const seek = buildSeekCondition(builder, input, descriptor)
+  const seek = buildSeekCondition(input, descriptor)
   const direction = input.sortDirection === 'desc' ? 'DESC' : 'ASC'
   const ordering = descriptor.uniqueId
     ? `candidate.sortValue ${direction}, candidate.kindRank ASC, candidate.sourceId ASC`
     : `candidate.nullRank ASC, candidate.sortValue ${direction}, candidate.uniqueId ASC, candidate.kindRank ASC, candidate.sourceId ASC`
+  const anchor = input.after
+    ? `, anchor AS (
+        SELECT candidate.*
+        FROM candidates candidate
+        WHERE candidate.sourceId = ${builder.push(input.after.sourceId)}
+          AND candidate.kindRank = ${builder.push(input.after.kindRank)}
+      )`
+    : ''
+  const anchorJoin = input.after ? 'CROSS JOIN anchor' : ''
   const limit = builder.push(input.limit)
 
   return {
     parameters: builder.parameters,
     sqlText: `
+      WITH candidates AS (
+        ${library}
+        UNION ALL
+        ${local}
+      )
+      ${anchor}
       SELECT TOP (${limit})
         candidate.sourceId,
         candidate.kindRank,
         candidate.uniqueId,
         candidate.sortValue,
         candidate.nullRank
-      FROM (
-        ${library}
-        UNION ALL
-        ${local}
-      ) candidate
+      FROM candidates candidate
+      ${anchorJoin}
       ${seek}
       ORDER BY ${ordering}
     `,
@@ -522,7 +528,7 @@ function mapEnrichedRow(
     specificationItemStatusIconName: toText(
       row.specificationItemStatusIconName,
     ),
-    specificationItemStatusId: Number(row.specificationItemStatusId),
+    specificationItemStatusId: toNumber(row.specificationItemStatusId),
     specificationItemStatusNameEn: toText(row.specificationItemStatusNameEn),
     specificationItemStatusNameSv: toText(row.specificationItemStatusNameSv),
     uniqueId: String(row.uniqueId ?? ''),

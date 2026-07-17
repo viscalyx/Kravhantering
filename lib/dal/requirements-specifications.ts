@@ -3069,7 +3069,7 @@ export async function getLibrarySpecificationItemMetadata(
     specificationItemId: Number(row.specificationItemId),
     specificationItemStatusColor: toStr(row.specificationItemStatusColor),
     specificationItemStatusIconName: toStr(row.specificationItemStatusIconName),
-    specificationItemStatusId: Number(row.specificationItemStatusId),
+    specificationItemStatusId: toNum(row.specificationItemStatusId),
     specificationItemStatusNameEn: toStr(row.specificationItemStatusNameEn),
     specificationItemStatusNameSv: toStr(row.specificationItemStatusNameSv),
   }

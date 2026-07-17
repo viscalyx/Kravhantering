@@ -26,16 +26,42 @@ describe('specification item page cursor', () => {
     expect(cursor).not.toContain('=')
     expect(cursor.length).toBeLessThanOrEqual(512)
     expect(decodeSpecificationItemPageCursor(cursor)).toEqual({
-      boundary,
+      boundary: {
+        kindRank: boundary.kindRank,
+        sourceId: boundary.sourceId,
+      },
       queryFingerprint,
       version: 1,
+    })
+  })
+
+  it('keeps the cursor bounded for arbitrarily large text boundaries', () => {
+    const cursor = encodeSpecificationItemPageCursor(
+      {
+        ...boundary,
+        sortValue: 'x'.repeat(20_000),
+        uniqueId: 'y'.repeat(20_000),
+      },
+      'a'.repeat(64),
+    )
+
+    expect(cursor.length).toBeLessThanOrEqual(512)
+    expect(decodeSpecificationItemPageCursor(cursor).boundary).toEqual({
+      kindRank: boundary.kindRank,
+      sourceId: boundary.sourceId,
     })
   })
 
   it.each([
     '',
     'not base64url',
-    Buffer.from('{"version":2}').toString('base64url'),
+    Buffer.from(
+      JSON.stringify({
+        boundary: { kindRank: 1, sourceId: 42 },
+        queryFingerprint: 'a'.repeat(64),
+        version: 2,
+      }),
+    ).toString('base64url'),
     `${encodeSpecificationItemPageCursor(boundary, 'a'.repeat(64))}=`,
     'a'.repeat(513),
   ])('strictly rejects malformed cursor state', cursor => {

@@ -361,6 +361,11 @@ let bulkNeedsReferencePatchResponse: { body: unknown; ok: boolean } | null
 let exportCsvError: Error | null
 let failNextAvailableRequirementsFetch = false
 let failNextSpecificationItemsFetch = false
+let deviationPostHandler: ((itemRef: string) => Promise<unknown>) | undefined
+let deleteItemsHandler: ((itemRefs: string[]) => Promise<unknown>) | undefined
+let availableRequirementsGetHandler:
+  | ((url: string) => Promise<unknown>)
+  | undefined
 let specificationItemsGetItems: SpecificationListItem[]
 let specificationItemsGetHandler:
   | ((url: string) => Promise<unknown>)
@@ -572,6 +577,9 @@ describe('RequirementsSpecificationDetailClient', () => {
     exportCsvError = null
     failNextAvailableRequirementsFetch = false
     failNextSpecificationItemsFetch = false
+    deviationPostHandler = undefined
+    deleteItemsHandler = undefined
+    availableRequirementsGetHandler = undefined
     specificationItemsGetItems = [initialSpecificationItem]
     specificationItemsGetHandler = undefined
     failedDeviationItemRefs = new Set()
@@ -598,6 +606,9 @@ describe('RequirementsSpecificationDetailClient', () => {
           method === 'POST'
         ) {
           const itemRef = decodeURIComponent(url.split('/').at(-1) ?? '')
+          if (deviationPostHandler) {
+            return deviationPostHandler(itemRef)
+          }
           return Promise.resolve(
             failedDeviationItemRefs.has(itemRef)
               ? { json: async () => ({ error: 'Failed' }), ok: false }
@@ -656,6 +667,9 @@ describe('RequirementsSpecificationDetailClient', () => {
 
         if (url === specificationApiPath('/items') && method === 'DELETE') {
           const body = JSON.parse(String(init?.body)) as { itemRefs: string[] }
+          if (deleteItemsHandler) {
+            return deleteItemsHandler(body.itemRefs)
+          }
           specificationItemsGetItems = specificationItemsGetItems.filter(
             item => !item.itemRef || !body.itemRefs.includes(item.itemRef),
           )
@@ -739,6 +753,9 @@ describe('RequirementsSpecificationDetailClient', () => {
           ) ||
           url.startsWith('/api/requirements?')
         ) {
+          if (availableRequirementsGetHandler) {
+            return availableRequirementsGetHandler(url)
+          }
           if (failNextAvailableRequirementsFetch) {
             failNextAvailableRequirementsFetch = false
             return Promise.resolve({
@@ -1222,22 +1239,46 @@ describe('RequirementsSpecificationDetailClient', () => {
   })
 
   it('keeps traceability report actions beyond the former item-ref limit', async () => {
+    const items = Array.from({ length: 201 }, (_, index) => {
+      const itemId = index + 1
+      return {
+        ...initialSpecificationItem,
+        id: 1000 + itemId,
+        itemRef: `lib:${itemId}`,
+        specificationItemId: itemId,
+        uniqueId: `BEH${String(itemId).padStart(4, '0')}`,
+      }
+    })
     const initialData = createInitialData()
     initialData.specificationItems = createSpecificationItemsPage(
-      Array.from({ length: 201 }, (_, index) => {
-        const itemId = index + 1
-        return {
-          ...initialSpecificationItem,
-          id: 1000 + itemId,
-          itemRef: `lib:${itemId}`,
-          specificationItemId: itemId,
-          uniqueId: `BEH${String(itemId).padStart(4, '0')}`,
-        }
-      }),
+      items.slice(0, 100),
+      { hasMore: true, limit: 100, nextCursor: 'items-page-2' },
     )
+    specificationItemsGetHandler = async url => {
+      const cursor = searchParamsFromPath(url).get('cursor')
+      const pageItems =
+        cursor === 'items-page-2' ? items.slice(100, 200) : items.slice(200)
+      return okJson({
+        items: pageItems,
+        pagination: {
+          count: pageItems.length,
+          hasMore: cursor === 'items-page-2',
+          limit: 100,
+          nextCursor: cursor === 'items-page-2' ? 'items-page-3' : null,
+        },
+      })
+    }
 
     renderRequirementsSpecificationDetailClient(initialData)
     await waitForInitialAvailableRequirementsRefresh()
+    fireEvent.click(screen.getByRole('button', { name: 'load-more-items' }))
+    await waitFor(() => {
+      expect(latestItemsTableProps().rows).toHaveLength(200)
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'load-more-items' }))
+    await waitFor(() => {
+      expect(latestItemsTableProps().rows).toHaveLength(201)
+    })
 
     const itemsTable = latestItemsTableProps()
     const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
@@ -1503,6 +1544,16 @@ describe('RequirementsSpecificationDetailClient', () => {
   })
 
   it('ignores stale invalid-cursor recovery after available filters change', async () => {
+    availableRequirementsGetHandler = async url => {
+      const filtered = searchParamsFromPath(url).has('requirementPackageIds')
+      return okJson({
+        pagination: {
+          hasMore: !filtered,
+          nextCursor: filtered ? null : 'cursor-1',
+        },
+        requirements: [initialAvailableRequirement],
+      })
+    }
     renderRequirementsSpecificationDetailClient({
       ...createInitialData(),
       availableRequirements: {
@@ -2432,9 +2483,72 @@ describe('RequirementsSpecificationDetailClient', () => {
       }),
     )
 
-    expect(screen.getByText('BEH0001')).toBeInTheDocument()
+    expect(await screen.findByText('BEH0001')).toBeInTheDocument()
     expect(screen.getByText('RBAC should be enforced.')).toBeInTheDocument()
     await waitForInitialAvailableRequirementsRefresh()
+  })
+
+  it('loads every needs-reference usage page independently of the visible item page', async () => {
+    const usageItems = Array.from({ length: 101 }, (_, index) => ({
+      ...initialSpecificationItem,
+      id: 1_000 + index,
+      itemRef: `lib:${1_000 + index}`,
+      needsReferenceId: 81,
+      specificationItemId: 1_000 + index,
+      uniqueId: `USAGE-${String(index + 1).padStart(3, '0')}`,
+    }))
+    specificationItemsGetHandler = async url => {
+      const params = searchParamsFromPath(url)
+      expect(params.getAll('needsReferenceIds')).toEqual(['81'])
+      const cursor = params.get('cursor')
+      const items = cursor ? usageItems.slice(100) : usageItems.slice(0, 100)
+      return okJson({
+        items,
+        pagination: {
+          count: items.length,
+          hasMore: cursor == null,
+          limit: 100,
+          nextCursor: cursor == null ? 'usage-page-2' : null,
+        },
+      })
+    }
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: 'Complete usage',
+          id: 81,
+          libraryItemCount: 101,
+          linkedItemCount: 101,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+      specificationItems: createSpecificationItemsPage([
+        {
+          ...initialSpecificationItem,
+          needsReferenceId: 81,
+        },
+      ]),
+    })
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.toggleNeedsReferenceUsage/,
+      }),
+    )
+
+    expect(await screen.findByText('USAGE-101')).toBeInTheDocument()
+    expect(screen.getByText('USAGE-001')).toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        String(input).includes('needsReferenceIds=81'),
+      ),
+    ).toHaveLength(2)
   })
 
   it('creates a needs reference with a description from the register tab', async () => {
@@ -2811,6 +2925,13 @@ describe('RequirementsSpecificationDetailClient', () => {
   })
 
   it('distinguishes mixed removal and resolves all selected item refs before deletion', async () => {
+    const libraryItems = Array.from({ length: 51 }, (_, index) => ({
+      ...initialSpecificationItem,
+      id: 101 + index,
+      itemRef: `lib:${31 + index}`,
+      specificationItemId: 31 + index,
+      uniqueId: `BEH${String(index + 1).padStart(4, '0')}`,
+    }))
     const localItem = {
       ...initialSpecificationItem,
       id: -41,
@@ -2824,14 +2945,16 @@ describe('RequirementsSpecificationDetailClient', () => {
     const initialData = {
       ...createInitialData(),
       specificationItems: createSpecificationItemsPage([
-        initialSpecificationItem,
+        ...libraryItems,
         localItem,
       ]),
     }
     specificationItemsGetItems = initialData.specificationItems.items
     renderRequirementsSpecificationDetailClient(initialData)
     act(() => {
-      latestItemsTableProps().onSelectionChange?.(new Set([101, -41]))
+      latestItemsTableProps().onSelectionChange?.(
+        new Set([...libraryItems.map(item => item.id), -41]),
+      )
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'specification.removeSelected' }),
@@ -2844,12 +2967,63 @@ describe('RequirementsSpecificationDetailClient', () => {
       within(confirmation).getByRole('button', { name: 'common.delete' }),
     )
     await waitFor(() => {
+      const resolutionCalls = fetchMock.mock.calls.filter(([input]) =>
+        String(input).startsWith('/api/specification-item-resolutions/8?'),
+      )
+      expect(resolutionCalls).toHaveLength(2)
+      expect(
+        resolutionCalls.map(
+          ([input]) =>
+            searchParamsFromPath(String(input)).getAll('refs').length,
+        ),
+      ).toEqual([50, 2])
+    })
+    await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/requirements-specifications/8/items',
         expect.objectContaining({
-          body: JSON.stringify({ itemRefs: ['lib:31', 'local:41'] }),
+          body: JSON.stringify({
+            itemRefs: [...libraryItems.map(item => item.itemRef), 'local:41'],
+          }),
           method: 'DELETE',
         }),
+      )
+    })
+  })
+
+  it('disables detail unlink while a confirmed removal request is pending', async () => {
+    let completeDelete: ((response: unknown) => void) | undefined
+    deleteItemsHandler = () =>
+      new Promise(resolve => {
+        completeDelete = resolve
+      })
+    renderRequirementsSpecificationDetailClient()
+    act(() => {
+      latestItemsTableProps().onSelectionChange?.(new Set([101]))
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.removeSelected' }),
+    )
+    const confirmation = await screen.findByRole('alertdialog')
+    fireEvent.click(
+      within(confirmation).getByRole('button', { name: 'common.delete' }),
+    )
+
+    await waitFor(() => {
+      expect(completeDelete).toBeDefined()
+    })
+    render(latestItemsTableProps().renderExpanded?.(101) as ReactNode)
+    expect(requirementDetailState.renderSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ removeFromSpecificationDisabled: true }),
+    )
+
+    await act(async () => {
+      completeDelete?.(okJson({ ok: true, removedCount: 1 }))
+    })
+    await waitFor(() => {
+      render(latestItemsTableProps().renderExpanded?.(101) as ReactNode)
+      expect(requirementDetailState.renderSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ removeFromSpecificationDisabled: false }),
       )
     })
   })
@@ -2919,6 +3093,73 @@ describe('RequirementsSpecificationDetailClient', () => {
       { motivation: 'Shared motivation' },
       { motivation: 'Shared motivation' },
     ])
+  })
+
+  it('bounds concurrent bulk deviation requests while settling every item', async () => {
+    const items = Array.from({ length: 5 }, (_, index) => ({
+      ...initialSpecificationItem,
+      id: 101 + index,
+      itemRef: `lib:${31 + index}`,
+      specificationItemId: 31 + index,
+      uniqueId: `BEH${String(index + 1).padStart(4, '0')}`,
+    }))
+    specificationItemsGetItems = items
+    let inFlight = 0
+    let maxInFlight = 0
+    const completeRequests: Array<() => void> = []
+    deviationPostHandler = () =>
+      new Promise(resolve => {
+        inFlight += 1
+        maxInFlight = Math.max(maxInFlight, inFlight)
+        completeRequests.push(() => {
+          inFlight -= 1
+          resolve(okJson({ deviation: { id: 1 }, ok: true }))
+        })
+      })
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItems: createSpecificationItemsPage(items),
+    })
+    act(() => {
+      latestItemsTableProps().onSelectionChange?.(
+        new Set(items.map(item => item.id)),
+      )
+    })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'deviation.requestDeviationSelected',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'deviation.requestDeviation',
+    })
+    fireEvent.change(
+      within(dialog).getByLabelText(/deviation\.motivation/, {
+        selector: 'textarea',
+      }),
+      { target: { value: 'Bounded motivation' } },
+    )
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'deviation.newDeviation' }),
+    )
+
+    await waitFor(() => {
+      expect(completeRequests).toHaveLength(4)
+    })
+    expect(maxInFlight).toBe(4)
+    act(() => {
+      for (const complete of completeRequests.splice(0, 4)) complete()
+    })
+    await waitFor(() => {
+      expect(completeRequests).toHaveLength(1)
+    })
+    act(() => {
+      completeRequests.shift()?.()
+    })
+    await waitFor(() => {
+      expect(latestItemsTableProps().selectedIds).toEqual(new Set())
+    })
+    expect(maxInFlight).toBe(4)
   })
 
   it('bulk-updates needs references for selected requirement applications', async () => {
