@@ -144,6 +144,7 @@ Runtime pool defaults are conservative for a single app process:
 | `npm run db:seed:required` | Apply only required system and lookup seed data |
 | `npm run db:seed:demo` | Reset non-required rows, then apply optional demo, smoke-test, guide, and integration seed data |
 | `npm run db:reset` | Drop and recreate the database |
+| `npm run test:sql-integration` | Reset a dedicated test database and run focused SQL Server invariant tests |
 <!-- markdownlint-enable MD013 -->
 
 Under the hood `scripts/db-sqlserver-admin.mjs` builds a TypeORM `DataSource`,
@@ -156,6 +157,27 @@ production-like database. Add `npm run db:seed:demo` only when you need the
 local development, integration-test, guide, or smoke-test fixtures. The demo
 profile is destructive: it clears non-required data before reseeding the
 current fixtures.
+
+## Focused SQL Integration Tests
+
+Run database concurrency, constraint, transaction, rollback, and pagination
+invariants with:
+
+```bash
+npm run db:up
+npm run test:sql-integration
+```
+
+The suite derives its connection from `.env.sqlserver` and replaces the
+configured database name with `<DB_NAME>_sql_integration_tests`. It resets and
+migrates only that dedicated database. Set
+`SQLSERVER_INTEGRATION_TESTS_URL` to provide an explicit test database URL, or
+`SQLSERVER_INTEGRATION_TESTS_DB_NAME` to override only the derived database
+name.
+
+The ordinary `npm test` command excludes `tests/sql-integration/`. The
+`Integration Tests` workflow runs the SQL suite as a separate required job
+against its own test database.
 
 ## Requirement List Performance Baseline
 

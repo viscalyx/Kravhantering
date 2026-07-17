@@ -6,6 +6,7 @@ import {
   buildSeedPerformanceFixtureSql,
   compareAgainstBaseline,
   createBaselineFromResults,
+  createContinuationBoundaryPages,
   createPerformanceFixtureConfig,
   createRequirementListPerformanceScenarios,
   extractExecutionPlanFindings,
@@ -64,7 +65,7 @@ describe('requirements-list-performance.mjs', () => {
     expect(
       scenarios.find(scenario => scenario.name === 'deep-pagination'),
     ).toMatchObject({
-      continuationPages: 20,
+      targetPage: 20,
       options: { sortBy: 'uniqueId' },
     })
     expect(buildPerformanceFixtureStatusSql()).toContain(
@@ -83,6 +84,13 @@ describe('requirements-list-performance.mjs', () => {
       "N'priorityLevelIds' AS optionKey",
     )
     expect(buildReferencePreconditionSql()).toContain('FROM priority_levels')
+  })
+
+  it('advances through preceding pages when measuring a deep target page', () => {
+    expect(createContinuationBoundaryPages(1)).toEqual([])
+    expect(createContinuationBoundaryPages(20)).toEqual(
+      Array.from({ length: 19 }, (_, index) => index + 1),
+    )
   })
 
   it('parses SQL Server logical reads from STATISTICS IO messages', () => {

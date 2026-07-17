@@ -1699,7 +1699,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     }
     await page.route(
-      `**/api/requirements-specifications/${editSpecificationId}/items`,
+      new RegExp(
+        `/api/requirements-specifications/${editSpecificationId}/items(?:\\?.*)?$`,
+        'u',
+      ),
       async route => {
         const method = route.request().method()
         if (method === 'GET') {
@@ -1854,213 +1857,115 @@ test.describe('Requirements specification deterministic manual cases', () => {
     ).toHaveCount(0)
   })
 
-  test('SPEC-07: creates a specification-local requirement and opens the graduation action', async ({
+  test('SPEC-07: graduates a real specification-local requirement as a copy-only draft', async ({
     page,
+    request,
   }) => {
-    const createRequests: unknown[] = []
-    let localRequirementCreated = false
-    const createdLocalRequirementItem = {
-      area: null,
-      deviationCount: 0,
-      hasApprovedDeviation: false,
-      hasPendingDeviation: false,
-      id: 920099,
-      isArchived: false,
-      isSpecificationLocal: true,
-      itemRef: 'local:920099',
-      kind: 'specificationLocal',
-      needsReference: null,
-      needsReferenceId: null,
-      normReferenceIds: [],
-      requirementPackageIds: [],
-      requirementPackages: [],
-      specificationItemId: 920099,
-      specificationItemStatusColor: '#2563eb',
-      specificationItemStatusIconName: 'check-circle',
-      specificationItemStatusId: 1,
-      specificationItemStatusNameEn: 'Included',
-      specificationItemStatusNameSv: 'Inkluderad',
-      specificationLocalRequirementId: 920099,
-      uniqueId: 'KRAV0002',
-      version: {
-        categoryNameEn: null,
-        categoryNameSv: null,
-        description: 'PWT SPEC-07 unikt krav.',
-        priorityLevelColor: null,
-        priorityLevelIconName: null,
-        priorityLevelId: null,
-        priorityLevelNameEn: null,
-        priorityLevelNameSv: null,
-        priorityLevelSortOrder: null,
-        qualityCharacteristicNameEn: null,
-        qualityCharacteristicNameSv: null,
-        verifiable: true,
-        status: 3,
-        statusColor: '#16a34a',
-        statusIconName: 'check-circle',
-        statusNameEn: 'Published',
-        statusNameSv: 'Publicerad',
-        typeNameEn: null,
-        typeNameSv: null,
-        versionNumber: 1,
-      },
-    }
-    await page.route(
-      `**/api/requirements-specifications/${editSpecificationId}/local-requirements`,
-      async route => {
-        createRequests.push(route.request().postDataJSON())
-        localRequirementCreated = true
-        await route.fulfill({
-          contentType: 'application/json',
-          json: {
-            localRequirement: {
-              id: 920099,
-              uniqueId: 'KRAV0002',
-            },
-            ok: true,
-          },
-          status: 201,
-        })
-      },
-    )
-    await page.route(
-      `**/api/requirements-specifications/${editSpecificationId}/local-requirements/920099`,
-      async route => {
-        await route.fulfill({
-          contentType: 'application/json',
-          json: {
-            acceptanceCriteria: 'Verifiera i UI.',
-            createdAt: '2026-04-24T09:00:00.000Z',
-            description: 'PWT SPEC-07 unikt krav.',
-            id: 920099,
-            itemRef: 'local:920099',
-            needsReference: null,
-            needsReferenceId: null,
-            normReferences: [],
-            priorityLevel: null,
-            qualityCharacteristic: null,
-            requirementArea: null,
-            requirementCategory: null,
-            requirementPackages: [],
-            requirementType: null,
-            verifiable: true,
-            specificationId: 920004,
-            specificationItemStatusColor: '#2563eb',
-            specificationItemStatusIconName: 'check-circle',
-            specificationItemStatusId: 1,
-            specificationItemStatusNameEn: 'Included',
-            specificationItemStatusNameSv: 'Inkluderad',
-            uniqueId: 'KRAV0002',
-            updatedAt: '2026-04-24T09:00:00.000Z',
-            verificationMethod: 'Playwright-test.',
-          },
-        })
-      },
-    )
-    await page.route(
-      '**/api/specification-item-deviations/local%3A920099',
-      async route => {
-        await route.fulfill({
-          contentType: 'application/json',
-          json: { deviations: [] },
-        })
-      },
-    )
-    await page.route(
-      `**/api/requirements-specifications/${editSpecificationId}/local-requirements/920099/graduation-target-areas`,
-      async route => {
-        await route.fulfill({
-          contentType: 'application/json',
-          json: {
-            areas: [
-              {
-                id: rfiAreaId,
-                name: 'PWT-MANUAL Playwright manual cases',
-                prefix: 'PWM',
-              },
-            ],
-          },
-        })
-      },
-    )
-    await page.route(
-      `**/api/requirements-specifications/${editSpecificationId}/items`,
-      async route => {
-        const response = await route.fetch()
-        const data = (await response.json()) as { items?: unknown[] }
-        let items = data.items ?? []
-        if (
-          localRequirementCreated &&
-          !items.some(
-            item =>
-              typeof item === 'object' &&
-              item !== null &&
-              'uniqueId' in item &&
-              item.uniqueId === 'KRAV0002',
-          )
-        ) {
-          items = [createdLocalRequirementItem, ...items]
-        }
-        await route.fulfill({
-          contentType: 'application/json',
-          json: { items },
-        })
-      },
-    )
+    const description = `PWT SPEC-07 unikt krav ${Date.now()}.`
+    const editedDescription = `${description} Redigerat.`
 
     await gotoSpecificationDetail(page, editSpecificationId)
     await page.getByRole('button', { name: 'Nytt unikt krav' }).click()
-    const dialog = page.getByRole('dialog').filter({
+    const createDialog = page.getByRole('dialog').filter({
       hasText: 'Nytt unikt krav',
     })
-    await expect(dialog).toBeVisible()
-    await dialog
+    await createDialog
       .getByRole('textbox', { name: /Kravtext/u })
-      .fill('PWT SPEC-07 unikt krav.')
-    await dialog
+      .fill(description)
+    await createDialog
       .getByRole('textbox', { name: /Acceptanskriterium/u })
       .fill('Verifiera i UI.')
-    await dialog.getByRole('checkbox', { name: 'Verifierbar' }).check()
-    await dialog
+    await createDialog.getByRole('checkbox', { name: 'Verifierbar' }).check()
+    await createDialog
       .getByRole('textbox', { name: /Verifieringsmetod/u })
       .fill('Playwright-test.')
-    await dialog.getByRole('button', { name: 'Spara' }).click()
 
-    await expect
-      .poll(() => createRequests)
-      .toEqual([
-        expect.objectContaining({
-          acceptanceCriteria: 'Verifiera i UI.',
-          description: 'PWT SPEC-07 unikt krav.',
-          verifiable: true,
-          verificationMethod: 'Playwright-test.',
-        }),
-      ])
+    const createResponsePromise = page.waitForResponse(response => {
+      const url = new URL(response.url())
+      return (
+        response.request().method() === 'POST' &&
+        url.pathname ===
+          `/api/requirements-specifications/${editSpecificationId}/local-requirements`
+      )
+    })
+    await createDialog.getByRole('button', { name: 'Spara' }).click()
+    const createResponse = await createResponsePromise
+    expect(createResponse.ok()).toBe(true)
+    const created = (await createResponse.json()) as {
+      localRequirement: { id: number; uniqueId: string }
+    }
+    const localRequirement = created.localRequirement
 
     const localRow = page.getByRole('button', {
-      name: /KRAV0002\b/u,
+      name: new RegExp(`^${localRequirement.uniqueId}\\b`, 'u'),
     })
     await expect(localRow).toBeVisible({ timeout: 30_000 })
     await localRow.click()
     const localDetailRow = page
       .getByRole('row')
       .filter({ hasText: 'Lyft till kravbiblioteket' })
-    const editLocalButton = localDetailRow.getByRole('button', {
-      name: 'Redigera',
-    })
-    await expect(editLocalButton).toBeVisible({ timeout: 30_000 })
-    await editLocalButton.click()
+    await localDetailRow.getByRole('button', { name: 'Redigera' }).click()
+
     const editDialog = page.getByRole('dialog', {
       name: 'Redigera unikt krav',
     })
-    await expect(editDialog).toBeVisible()
-    await editDialog.getByRole('button', { name: 'Stäng' }).click()
+    await editDialog
+      .getByRole('textbox', { name: /Kravtext/u })
+      .fill(editedDescription)
+    await editDialog.getByRole('button', { name: 'Spara' }).click()
+    await expect(editDialog).toBeHidden()
+
     await localDetailRow
       .getByRole('button', { name: 'Lyft till kravbiblioteket' })
       .click()
     const liftDialog = page.getByRole('dialog', { name: 'Lyft unikt krav' })
-    await expect(liftDialog).toBeVisible()
-    await liftDialog.getByRole('button', { name: 'Avbryt' }).click()
+    await liftDialog
+      .getByRole('combobox', { name: 'Kravområde' })
+      .selectOption(String(rfiAreaId))
+
+    const graduationResponsePromise = page.waitForResponse(response => {
+      const url = new URL(response.url())
+      return (
+        response.request().method() === 'POST' &&
+        url.pathname ===
+          `/api/requirements-specifications/${editSpecificationId}/local-requirements/${localRequirement.id}/graduate`
+      )
+    })
+    await liftDialog.getByRole('button', { name: 'Lyft' }).click()
+    const graduationResponse = await graduationResponsePromise
+    expect(graduationResponse.ok()).toBe(true)
+    const graduation = (await graduationResponse.json()) as {
+      detail: {
+        uniqueId: string
+        versions: Array<{ description: string; status: number }>
+      }
+      newRequirementVersionNumber: number
+    }
+    expect(graduation.detail.versions[0]).toMatchObject({
+      description: editedDescription,
+      status: 1,
+    })
+
+    const sourceResponse = await request.get(
+      `/api/requirements-specifications/${editSpecificationId}/local-requirements/${localRequirement.id}`,
+    )
+    expect(sourceResponse.ok()).toBe(true)
+    expect(await sourceResponse.json()).toMatchObject({
+      description: editedDescription,
+      id: localRequirement.id,
+      uniqueId: localRequirement.uniqueId,
+    })
+
+    await page.goto(
+      `/sv/requirements/${encodeURIComponent(graduation.detail.uniqueId)}/${graduation.newRequirementVersionNumber}`,
+    )
+    await expect(
+      page.getByRole('heading', {
+        name: new RegExp(graduation.detail.uniqueId, 'u'),
+      }),
+    ).toBeVisible()
+    await expect(page.locator('main')).toContainText(editedDescription)
+    await expect(page.locator('main')).toContainText('Utkast')
   })
 
   test('SPEC-09: creates, edits, and deletes needs references from the detail tab', async ({

@@ -162,7 +162,7 @@ export function createRequirementListPerformanceScenarios(
     },
     {
       name: 'deep-pagination',
-      continuationPages: 20,
+      targetPage: 20,
       options: {
         limit: 200,
         sortBy: 'uniqueId',
@@ -184,7 +184,7 @@ export function createRequirementListPerformanceScenarios(
     },
     {
       name: 'localized-text-deep',
-      continuationPages: 20,
+      targetPage: 20,
       options: {
         limit: 200,
         locale: 'sv',
@@ -206,7 +206,7 @@ export function createRequirementListPerformanceScenarios(
     },
     {
       name: 'nullable-number-deep',
-      continuationPages: 20,
+      targetPage: 20,
       options: {
         limit: 200,
         sortBy: 'priorityLevel',
@@ -887,16 +887,21 @@ function combinePlanResults(...plans) {
   }
 }
 
+export function createContinuationBoundaryPages(targetPage) {
+  return Array.from(
+    { length: Math.max(0, targetPage - 1) },
+    (_, index) => index + 1,
+  )
+}
+
 async function runScenario(pool, scenario, options) {
   const pageLimit = scenario.options.limit ?? 200
   const scenarioOptions = { ...scenario.options, limit: pageLimit + 1 }
-  if (scenario.continuationPages != null) {
+  if (scenario.targetPage != null) {
     let after
-    for (
-      let pageNumber = 1;
-      pageNumber <= scenario.continuationPages;
-      pageNumber += 1
-    ) {
+    for (const pageNumber of createContinuationBoundaryPages(
+      scenario.targetPage,
+    )) {
       const continuationQuery = buildRequirementListSql({
         ...scenarioOptions,
         after,
@@ -908,7 +913,7 @@ async function runScenario(pool, scenario, options) {
       const rows = result.recordset ?? []
       if (rows.length <= pageLimit) {
         throw new Error(
-          `Continuation ended before page ${pageNumber} for ${scenario.name}.`,
+          `Continuation ended before page ${pageNumber + 1} for ${scenario.name}.`,
         )
       }
       const boundary = rows[pageLimit - 1]

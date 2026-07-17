@@ -64,7 +64,7 @@ these locations:
 
 ## Quality / Spec audits
 
-- Quality spec guidance: [quality/QUALITY.md](quality/QUALITY.md)
+- SQL Server invariants: `npm run test:sql-integration`
 
 ## Other notes
 

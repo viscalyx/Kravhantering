@@ -16,5 +16,5 @@ applyTo: "{lib/mcp/**/*.ts,lib/requirements/**/*.ts,lib/dal/**/*.ts,app/api/**/*
 - Do not rely on user docs alone to teach MCP clients how to call a tool.
 - Update `docs/integrations/mcp-server-user-guide.md`,
   `docs/integrations/mcp-server-contributor-guide.md`, and `tests/unit/mcp-http.test.ts`.
-- For outward-facing MCP invariants, update the quality siblings described in
-  `.github/instructions/quality-spec.instructions.md`.
+- When adding, renaming, or removing an MCP tool, update the tool inventory in
+  both MCP guides.

@@ -1,6 +1,0 @@
-interface:
-  display_name: "Spec Audit"
-  short_description: "Audit implementation against project specs"
-  default_prompt: "Use $run-spec-audit to audit this implementation against project specs and report only cited defects."
-policy:
-  allow_implicit_invocation: false

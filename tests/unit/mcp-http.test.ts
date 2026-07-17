@@ -1216,6 +1216,71 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
+  it('rejects empty requirement IDs and unsupported locales before specification mutation delegation', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    for (const name of [
+      'requirements_add_to_specification',
+      'requirements_remove_from_specification',
+    ]) {
+      const emptyIds = await client.callTool({
+        arguments: {
+          requirementIds: [],
+          specificationId: 7,
+        },
+        name,
+      })
+      expect(emptyIds.isError).toBe(true)
+
+      const unsupportedLocale = await client.callTool({
+        arguments: {
+          locale: 'da',
+          requirementIds: [1],
+          specificationId: 7,
+        },
+        name,
+      })
+      expect(unsupportedLocale.isError).toBe(true)
+    }
+
+    expect(fakeService.addToSpecification).not.toHaveBeenCalled()
+    expect(fakeService.removeFromSpecification).not.toHaveBeenCalled()
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns skipped unpublished requirement IDs from add-to-specification', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+    fakeService.addToSpecification.mockResolvedValueOnce({
+      addedCount: 1,
+      message: 'Requirement added to specification',
+      skippedCount: 1,
+      skippedIds: [2],
+    })
+
+    const result = await client.callTool({
+      arguments: {
+        requirementIds: [1, 2],
+        responseFormat: 'json',
+        specificationId: 7,
+      },
+      name: 'requirements_add_to_specification',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(result.structuredContent).toMatchObject({
+      addedCount: 1,
+      skippedCount: 1,
+      skippedIds: [2],
+    })
+
+    await client.close()
+    await transport.close()
+  })
+
   it('graduates a specification-local requirement through MCP and returns links', async () => {
     const { client, transport } = await createClient()
     const fakeService = serviceState.getService.mock.results[0]?.value

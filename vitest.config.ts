@@ -21,6 +21,7 @@ export default defineConfig({
       'containers/hsa-directory-mock/test/**',
       'containers/hsa-person-lookup-adapter/test/**',
       '**/tests/integration/**',
+      '**/tests/sql-integration/**',
       '**/tests/guide/**',
       '**/tests/release-smoke/**',
       '**/node_modules/**',

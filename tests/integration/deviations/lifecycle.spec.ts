@@ -45,6 +45,7 @@ const deviationCases = [
       desktop: { itemRef: 'lib:39', uniqueId: 'PWT0001' },
       mobile: { itemRef: 'lib:40', uniqueId: 'PWT0002' },
     },
+    itemKind: 'library',
     radioLabel: 'Godkänn',
   },
   {
@@ -55,7 +56,19 @@ const deviationCases = [
       desktop: { itemRef: 'lib:41', uniqueId: 'PWT0003' },
       mobile: { itemRef: 'lib:42', uniqueId: 'PWT0004' },
     },
+    itemKind: 'library',
     radioLabel: 'Avslå',
+  },
+  {
+    action: 'approve',
+    decision: 1 as const,
+    expectedStatus: 'Godkänd',
+    fixtures: {
+      desktop: { itemRef: 'local:920001', uniqueId: 'KRAV0001' },
+      mobile: { itemRef: 'local:920001', uniqueId: 'KRAV0001' },
+    },
+    itemKind: 'specification-local',
+    radioLabel: 'Godkänn',
   },
 ] as const
 
@@ -86,17 +99,23 @@ async function closeLatestPendingDeviation(
   if (!latest || latest.decision !== null) return
 
   if (latest.isReviewRequested !== 1) {
+    const reviewPath = itemRef.startsWith('local:')
+      ? `/api/specification-local-deviations/${latest.id}/request-review`
+      : `/api/deviations/${latest.id}/request-review`
     await expectApiResponseOkWithRetry(
       `request review for deviation ${latest.id}`,
       () =>
-        authorRequest.post(`/api/deviations/${latest.id}/request-review`, {
+        authorRequest.post(reviewPath, {
           timeout: 30_000,
         }),
     )
   }
 
+  const decisionPath = itemRef.startsWith('local:')
+    ? `/api/specification-local-deviations/${latest.id}/decision`
+    : `/api/deviations/${latest.id}/decision`
   await expectApiResponseOkWithRetry(`close deviation ${latest.id}`, () =>
-    reviewerRequest.post(`/api/deviations/${latest.id}/decision`, {
+    reviewerRequest.post(decisionPath, {
       data: {
         decision: 2,
         decisionMotivation: 'Closed before rerunning the Playwright flow.',
@@ -127,10 +146,13 @@ async function createDeviationInReview(
   )
   const created = (await createResponse.json()) as { id: number }
 
+  const reviewPath = itemRef.startsWith('local:')
+    ? `/api/specification-local-deviations/${created.id}/request-review`
+    : `/api/deviations/${created.id}/request-review`
   await expectApiResponseOkWithRetry(
     `request review for deviation ${created.id}`,
     () =>
-      authorRequest.post(`/api/deviations/${created.id}/request-review`, {
+      authorRequest.post(reviewPath, {
         timeout: 30_000,
       }),
   )
@@ -172,8 +194,15 @@ async function openSpecificationFixtureRow(
     specificationId?: number
   } = {},
 ) {
-  const specificationId = options.specificationId ?? SPECIFICATION_ID
-  const heading = options.heading ?? SPECIFICATION_HEADING
+  const isManualLocalFixture = uniqueId === 'KRAV0001'
+  const specificationId =
+    options.specificationId ??
+    (isManualLocalFixture ? MANUAL_SPECIFICATION_ID : SPECIFICATION_ID)
+  const heading =
+    options.heading ??
+    (isManualLocalFixture
+      ? MANUAL_SPECIFICATION_HEADING
+      : SPECIFICATION_HEADING)
 
   const itemsPanel = page.locator(
     '[data-specification-detail-list-panel="items"]',
@@ -308,7 +337,7 @@ for (const viewport of viewports) {
         'AUTHZ-09',
       ].join('/')
 
-      test(`${manualCaseIds}: can ${deviationCase.action} a deviation after review is requested`, async ({
+      test(`${manualCaseIds}: can ${deviationCase.action} a ${deviationCase.itemKind} requirement deviation after review is requested`, async ({
         browser,
         page,
         request,
@@ -333,6 +362,19 @@ for (const viewport of viewports) {
               reviewerRequest,
               fixture.itemRef,
             )
+            if (viewport.name === 'desktop') {
+              const deviatedBeforeApproval = await request.patch(
+                `/api/requirements-specifications/${fixture.itemRef.startsWith('local:') ? MANUAL_SPECIFICATION_ID : SPECIFICATION_ID}/items/${encodeURIComponent(fixture.itemRef)}`,
+                {
+                  data: { specificationItemStatusId: 5 },
+                },
+              )
+              await expectApiResponseStatus(
+                deviatedBeforeApproval,
+                409,
+                `assign Deviated before approval for ${fixture.itemRef}`,
+              )
+            }
             detailPane = await openSpecificationFixtureRow(
               page,
               fixture.uniqueId,
@@ -425,6 +467,16 @@ for (const viewport of viewports) {
             await expect(
               reviewerDetailPane.getByRole('button', { name: '← Utkast' }),
             ).toHaveCount(0)
+            await expect(
+              reviewerDetailPane.getByRole('button', {
+                name: 'Redigera avsteg',
+              }),
+            ).toHaveCount(0)
+            await expect(
+              reviewerDetailPane.getByRole('button', {
+                name: 'Ta bort avsteg',
+              }),
+            ).toHaveCount(0)
           })
 
           await test.step('verify persisted API state', async () => {
@@ -436,6 +488,24 @@ for (const viewport of viewports) {
             expect(latest?.decisionMotivation).toBe(decisionMotivation)
             expect(latest?.isReviewRequested).toBe(1)
             expect(latest?.motivation).toBe(motivation)
+
+            if (viewport.name === 'desktop') {
+              const deviatedAfterDecision = await request.patch(
+                `/api/requirements-specifications/${fixture.itemRef.startsWith('local:') ? MANUAL_SPECIFICATION_ID : SPECIFICATION_ID}/items/${encodeURIComponent(fixture.itemRef)}`,
+                {
+                  data: { specificationItemStatusId: 5 },
+                },
+              )
+              if (deviationCase.decision === 1) {
+                expect(deviatedAfterDecision.ok()).toBe(true)
+              } else {
+                await expectApiResponseStatus(
+                  deviatedAfterDecision,
+                  409,
+                  `assign Deviated after rejection for ${fixture.itemRef}`,
+                )
+              }
+            }
           })
         } finally {
           await reviewer.context.close()

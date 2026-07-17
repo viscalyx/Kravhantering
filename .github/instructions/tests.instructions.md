@@ -4,10 +4,6 @@ applyTo: '**/*.{test,spec}.{ts,tsx,js,mjs,cjs},**/__tests__/**/*'
 
 # Tests
 
-For tests under `tests/quality/`, also follow
-`.github/instructions/quality-spec.instructions.md` and the directory's
-own `AGENTS.md` (Fitness Scenario authoring checklist).
-
 ## Required Mocks
 
 - `framer-motion`, `next/image`, and `next/navigation` are globally mocked in `vitest.setup.ts`. Do not re-mock unless you need custom behavior (e.g., controllable pathname, spying on `router.push`).
@@ -74,6 +70,12 @@ expect(result).toEqual([{ slug: 'post-1' }, { slug: 'post-2' }])
 - Keep historical regression tests only for security-sensitive surfaces such as
   authentication, authorization, CSRF, privacy, audit, token handling, or
   secret redaction. Name the current security invariant in the test.
+- Keep user-visible workflows in
+  `docs/governance/manuella-testfall.md` and matching Playwright tests.
+- Keep DAL, concurrency, constraint, transaction, and rollback invariants in
+  focused unit tests or `tests/sql-integration/`.
+- Test observable behavior. Do not assert source text or only a successful
+  status code.
 
 ## React `act()` Guidance
 
