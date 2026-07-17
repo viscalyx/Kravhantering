@@ -33,6 +33,9 @@ enabled = true
 url = "https://api.githubcopilot.com/mcp/"
 bearer_token_env_var = "GH_TOKEN"
 
+[mcp_servers.github.tools.issue_write]
+approval_mode = "approve"
+
 [tui]
 terminal_title = ["activity", "app-name"]
 status_line = ["model-with-reasoning", "context-used", "context-window-size", "fast-mode", "permissions", "thread-title"]
