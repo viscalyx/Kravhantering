@@ -4,6 +4,7 @@ import {
   decodeRequirementListCursor,
   encodeRequirementListCursor,
   fingerprintRequirementListQuery,
+  REQUIREMENT_LIST_CURSOR_MAX_LENGTH,
 } from '@/lib/requirements/list-cursor'
 
 describe('requirement list cursor', () => {
@@ -67,9 +68,11 @@ describe('requirement list cursor', () => {
     expect(() => decodeRequirementListCursor('not-json')).toThrowError(
       expect.objectContaining({ code: 'invalid_cursor' }),
     )
-    expect(() => decodeRequirementListCursor('a'.repeat(513))).toThrowError(
-      expect.objectContaining({ code: 'invalid_cursor' }),
-    )
+    expect(() =>
+      decodeRequirementListCursor(
+        'a'.repeat(REQUIREMENT_LIST_CURSOR_MAX_LENGTH + 1),
+      ),
+    ).toThrowError(expect.objectContaining({ code: 'invalid_cursor' }))
 
     const cursor = encodeRequirementListCursor(
       { nullRank: 0, requirementId: 1, sortValue: 'REQ-1' },
@@ -84,10 +87,23 @@ describe('requirement list cursor', () => {
     ).toThrowError(expect.objectContaining({ code: 'invalid_cursor' }))
   })
 
-  it('enforces the encoded 512-character maximum', () => {
+  it('accepts larger sort values and enforces the expanded maximum', () => {
+    const sortValue = 'x'.repeat(600)
+    const cursor = encodeRequirementListCursor(
+      { nullRank: 0, requirementId: 1, sortValue },
+      'a'.repeat(64),
+    )
+    expect(decodeRequirementListCursor(cursor).boundary.sortValue).toBe(
+      sortValue,
+    )
+
     expect(() =>
       encodeRequirementListCursor(
-        { nullRank: 0, requirementId: 1, sortValue: 'x'.repeat(600) },
+        {
+          nullRank: 0,
+          requirementId: 1,
+          sortValue: 'x'.repeat(REQUIREMENT_LIST_CURSOR_MAX_LENGTH + 1),
+        },
         'a'.repeat(64),
       ),
     ).toThrowError(expect.objectContaining({ code: 'invalid_cursor' }))

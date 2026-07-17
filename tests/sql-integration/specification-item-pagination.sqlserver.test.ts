@@ -50,22 +50,24 @@ describe('specification item pagination', () => {
           nextCursor: null,
         })
         expect(new Set(page.items.map(item => item.itemRef)).size).toBe(6)
+
+        const traversed: string[] = []
+        let cursor: string | undefined
+        do {
+          const traversalPage = await querySpecificationItemPage(appDb(), {
+            cursor,
+            limit: 2,
+            locale: 'sv',
+            sort: { by: sortBy, direction },
+            specificationId: specification.id,
+          })
+          traversed.push(...traversalPage.items.map(item => item.itemRef ?? ''))
+          cursor = traversalPage.pagination.nextCursor ?? undefined
+        } while (cursor)
+        expect(traversed).toHaveLength(6)
+        expect(new Set(traversed).size).toBe(6)
       }
     }
-
-    const traversed: string[] = []
-    let cursor: string | undefined
-    do {
-      const page = await querySpecificationItemPage(appDb(), {
-        cursor,
-        limit: cursor ? 1 : 2,
-        specificationId: specification.id,
-      })
-      traversed.push(...page.items.map(item => item.itemRef ?? ''))
-      cursor = page.pagination.nextCursor ?? undefined
-    } while (cursor)
-    expect(traversed).toHaveLength(6)
-    expect(new Set(traversed).size).toBe(6)
 
     const initialPage = await querySpecificationItemPage(appDb(), {
       limit: 3,

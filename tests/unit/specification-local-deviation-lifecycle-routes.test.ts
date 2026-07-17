@@ -219,6 +219,7 @@ describe('specification-local deviation lifecycle routes', () => {
     expect(routeState.assertAuthorized).toHaveBeenCalledWith(
       {
         deviationId: 1,
+        deviationKind: 'specification-local',
         kind: 'manage_deviation',
         operation: 'record_decision',
       },

@@ -4,6 +4,7 @@ import {
   decodeSpecificationItemPageCursor,
   encodeSpecificationItemPageCursor,
   fingerprintSpecificationItemPageQuery,
+  SPECIFICATION_ITEM_CURSOR_MAX_LENGTH,
 } from '@/lib/requirements/specification-item-page-cursor'
 
 const boundary = {
@@ -24,7 +25,9 @@ describe('specification item page cursor', () => {
 
     expect(cursor).toMatch(/^[A-Za-z0-9_-]+$/u)
     expect(cursor).not.toContain('=')
-    expect(cursor.length).toBeLessThanOrEqual(512)
+    expect(cursor.length).toBeLessThanOrEqual(
+      SPECIFICATION_ITEM_CURSOR_MAX_LENGTH,
+    )
     expect(decodeSpecificationItemPageCursor(cursor)).toEqual({
       boundary,
       queryFingerprint,
@@ -56,7 +59,7 @@ describe('specification item page cursor', () => {
       }),
     ).toString('base64url'),
     `${encodeSpecificationItemPageCursor(boundary, 'a'.repeat(64))}=`,
-    'a'.repeat(513),
+    'a'.repeat(SPECIFICATION_ITEM_CURSOR_MAX_LENGTH + 1),
   ])('strictly rejects malformed cursor state', cursor => {
     expect(() => decodeSpecificationItemPageCursor(cursor)).toThrowError(
       expect.objectContaining({ code: 'invalid_cursor' }),

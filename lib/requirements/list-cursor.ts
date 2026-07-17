@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { invalidCursorError } from '@/lib/requirements/errors'
 
 const CURSOR_VERSION = 4
-export const REQUIREMENT_LIST_CURSOR_MAX_LENGTH = 512
+export const REQUIREMENT_LIST_CURSOR_MAX_LENGTH = 8192
 
 const boundarySchema = z
   .object({

@@ -181,6 +181,7 @@ export type RequirementsAction =
   | {
       kind: 'manage_deviation'
       operation: string
+      deviationKind?: 'library' | 'specification-local'
       deviationId?: number
       specificationItemId?: number
     }
