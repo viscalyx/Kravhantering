@@ -130,6 +130,8 @@
     "kravunderlagskod",
     "kravunderlagsdetaljvyns",
     "kravunderlagsnamn",
+    "kravbiblioteksfilter",
+    "kravfilter",
     "kravpaketsfilter",
     "kravpaketsfiltret",
     "kravpaketshistorik",

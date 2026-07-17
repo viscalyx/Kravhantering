@@ -67,14 +67,26 @@ describe('specification item pagination', () => {
     expect(traversed).toHaveLength(6)
     expect(new Set(traversed).size).toBe(6)
 
+    const initialPage = await querySpecificationItemPage(appDb(), {
+      limit: 3,
+      specificationId: specification.id,
+    })
     const firstPage = await querySpecificationItemPage(appDb(), {
       limit: 2,
       specificationId: specification.id,
     })
-    const formerAnchor = firstPage.items.at(-1)?.itemRef
-    if (!formerAnchor || !firstPage.pagination.nextCursor) {
+    const formerAnchor = initialPage.items[1]?.itemRef
+    const expectedSuccessor = initialPage.items[2]?.itemRef
+    if (
+      !formerAnchor ||
+      !expectedSuccessor ||
+      !firstPage.pagination.nextCursor
+    ) {
       throw new Error('Expected a continuation boundary.')
     }
+    expect(firstPage.items.map(item => item.itemRef)).toEqual(
+      initialPage.items.slice(0, 2).map(item => item.itemRef),
+    )
     const [kind, rawId] = formerAnchor.split(':')
     await appDb().query(
       kind === 'lib'
@@ -82,12 +94,14 @@ describe('specification item pagination', () => {
         : 'DELETE FROM specification_local_requirements WHERE id = @0',
       [Number(rawId)],
     )
-    await expect(
-      querySpecificationItemPage(appDb(), {
-        cursor: firstPage.pagination.nextCursor,
-        limit: 1,
-        specificationId: specification.id,
-      }),
-    ).resolves.toMatchObject({ pagination: { limit: 1 } })
+    const continuation = await querySpecificationItemPage(appDb(), {
+      cursor: firstPage.pagination.nextCursor,
+      limit: 1,
+      specificationId: specification.id,
+    })
+    expect(continuation.items.map(item => item.itemRef)).toEqual([
+      expectedSuccessor,
+    ])
+    expect(continuation.pagination).toMatchObject({ limit: 1 })
   })
 })

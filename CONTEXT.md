@@ -105,6 +105,14 @@ granskat, publicerat, versionerat, arkiverat och förbättrat över tid.
 _Avoid_: Kravbibliotek när processen avses, administration,
 förvaltning utan tydligt kravbibliotekssammanhang.
 
+**Kravbiblioteksfilter**:
+Ett filter som begränsar vilka krav som visas i kravbiblioteket utifrån en
+bestämd egenskap. Kravpaketsfilter är en typ av kravbiblioteksfilter.
+
+- `en`: Requirements library filter
+
+_Avoid_: Kravurvalsfilter, kravfilter.
+
 **Tillämpningsstyrning**:
 Arbetet med att använda kravbiblioteket i ett konkret tillämpningssammanhang,
 till exempel genom behov, urval, kravunderlagslokala krav, prioritering,
@@ -693,6 +701,14 @@ arkiverad status.
 - `en`: Requirements package
 
 _Avoid_: Kravunderlag, referensdata, historik över kravversioner.
+
+**Kravpaketsfilter**:
+Ett kravbiblioteksfilter som begränsar listan till krav som ingår i ett eller
+flera valda kravpaket. Valda kravpaket är filtrets aktiva urval.
+
+- `en`: Requirements package filter
+
+_Avoid_: Kravfilter, kravurvalsfilter.
 
 **Kravpaketsansvarig**:
 Den person eller funktion som har huvudansvar för ett kravpakets syfte,

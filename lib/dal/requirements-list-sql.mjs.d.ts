@@ -5,7 +5,9 @@ import type {
 
 export interface ListRequirementsOptions {
   after?: {
+    nullRank: 0 | 1
     requirementId: number
+    sortValue: number | string | null
   }
   areaIds?: number[]
   categoryIds?: number[]

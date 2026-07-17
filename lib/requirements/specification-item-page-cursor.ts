@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { invalidCursorError } from '@/lib/requirements/errors'
 
-const CURSOR_VERSION = 1
+const CURSOR_VERSION = 2
 export const SPECIFICATION_ITEM_CURSOR_MAX_LENGTH = 512
 
 const boundarySchema = z
@@ -15,23 +15,16 @@ const boundarySchema = z
   })
   .strict()
 
-const cursorBoundarySchema = boundarySchema.pick({
-  kindRank: true,
-  sourceId: true,
-})
-
 const cursorPayloadSchema = z
   .object({
-    boundary: cursorBoundarySchema,
+    boundary: boundarySchema,
     queryFingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
     version: z.literal(CURSOR_VERSION),
   })
   .strict()
 
 export type SpecificationItemPageBoundary = z.infer<typeof boundarySchema>
-export type SpecificationItemPageCursorBoundary = z.infer<
-  typeof cursorBoundarySchema
->
+export type SpecificationItemPageCursorBoundary = SpecificationItemPageBoundary
 
 export interface SpecificationItemPageCursorPayload {
   boundary: SpecificationItemPageCursorBoundary
@@ -69,10 +62,7 @@ export function encodeSpecificationItemPageCursor(
   queryFingerprint: string,
 ): string {
   const payload = cursorPayloadSchema.parse({
-    boundary: {
-      kindRank: boundary.kindRank,
-      sourceId: boundary.sourceId,
-    },
+    boundary,
     queryFingerprint,
     version: CURSOR_VERSION,
   }) satisfies SpecificationItemPageCursorPayload

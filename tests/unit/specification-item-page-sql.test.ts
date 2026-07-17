@@ -32,11 +32,14 @@ describe('specification item page SQL', () => {
     expect(parameters).toContain(51)
   })
 
-  it('resolves the full tuple seek from a bounded source identity', () => {
+  it('resolves the full tuple seek from the encoded boundary', () => {
     const { parameters, sqlText } = buildSpecificationItemPageCandidateSql({
       after: {
         kindRank: 1,
+        nullRank: 0,
+        sortValue: 'Integration',
         sourceId: 42,
+        uniqueId: 'INT0042',
       },
       filters: {},
       limit: 11,
@@ -47,13 +50,15 @@ describe('specification item page SQL', () => {
     })
 
     expect(sqlText).toContain('anchor AS')
-    expect(sqlText).toContain('candidate.sourceId =')
+    expect(sqlText).not.toContain('WHERE candidate.sourceId =')
     expect(sqlText).toContain('candidate.nullRank > anchor.nullRank')
     expect(sqlText).toContain('candidate.sortValue > anchor.sortValue')
     expect(sqlText).toContain('candidate.uniqueId > anchor.uniqueId')
     expect(sqlText).toContain('candidate.kindRank > anchor.kindRank')
     expect(sqlText).toContain('candidate.sourceId > anchor.sourceId')
-    expect(parameters).toEqual(expect.arrayContaining([42, 1]))
+    expect(parameters).toEqual(
+      expect.arrayContaining([1, 0, 'Integration', 42, 'INT0042']),
+    )
   })
 
   it.each(

@@ -371,7 +371,7 @@ for (const viewport of viewports) {
               )
               await expectApiResponseStatus(
                 deviatedBeforeApproval,
-                409,
+                400,
                 `assign Deviated before approval for ${fixture.itemRef}`,
               )
             }
@@ -501,7 +501,7 @@ for (const viewport of viewports) {
               } else {
                 await expectApiResponseStatus(
                   deviatedAfterDecision,
-                  409,
+                  400,
                   `assign Deviated after rejection for ${fixture.itemRef}`,
                 )
               }

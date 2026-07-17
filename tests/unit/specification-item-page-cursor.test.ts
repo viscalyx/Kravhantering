@@ -26,30 +26,23 @@ describe('specification item page cursor', () => {
     expect(cursor).not.toContain('=')
     expect(cursor.length).toBeLessThanOrEqual(512)
     expect(decodeSpecificationItemPageCursor(cursor)).toEqual({
-      boundary: {
-        kindRank: boundary.kindRank,
-        sourceId: boundary.sourceId,
-      },
+      boundary,
       queryFingerprint,
-      version: 1,
+      version: 2,
     })
   })
 
-  it('keeps the cursor bounded for arbitrarily large text boundaries', () => {
-    const cursor = encodeSpecificationItemPageCursor(
-      {
-        ...boundary,
-        sortValue: 'x'.repeat(20_000),
-        uniqueId: 'y'.repeat(20_000),
-      },
-      'a'.repeat(64),
-    )
-
-    expect(cursor.length).toBeLessThanOrEqual(512)
-    expect(decodeSpecificationItemPageCursor(cursor).boundary).toEqual({
-      kindRank: boundary.kindRank,
-      sourceId: boundary.sourceId,
-    })
+  it('rejects boundaries that exceed the cursor size limit', () => {
+    expect(() =>
+      encodeSpecificationItemPageCursor(
+        {
+          ...boundary,
+          sortValue: 'x'.repeat(20_000),
+          uniqueId: 'y'.repeat(20_000),
+        },
+        'a'.repeat(64),
+      ),
+    ).toThrowError(expect.objectContaining({ code: 'invalid_cursor' }))
   })
 
   it.each([
@@ -59,7 +52,7 @@ describe('specification item page cursor', () => {
       JSON.stringify({
         boundary: { kindRank: 1, sourceId: 42 },
         queryFingerprint: 'a'.repeat(64),
-        version: 2,
+        version: 1,
       }),
     ).toString('base64url'),
     `${encodeSpecificationItemPageCursor(boundary, 'a'.repeat(64))}=`,

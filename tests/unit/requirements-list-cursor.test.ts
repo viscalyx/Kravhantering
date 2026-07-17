@@ -13,7 +13,9 @@ describe('requirement list cursor', () => {
       locale: 'sv',
     })
     const boundary = {
+      nullRank: 0 as const,
       requirementId: 42,
+      sortValue: 'sort value',
     }
     const cursor = encodeRequirementListCursor(boundary, queryFingerprint)
     const decodedJson = Buffer.from(cursor, 'base64url').toString('utf8')
@@ -22,21 +24,29 @@ describe('requirement list cursor', () => {
     expect(decodeRequirementListCursor(cursor)).toEqual({
       boundary,
       queryFingerprint,
-      version: 3,
+      version: 4,
     })
   })
 
-  it('keeps sort values and null ranks out of the encoded boundary', () => {
+  it('round-trips nullable and numeric boundary values', () => {
     const queryFingerprint = 'a'.repeat(64)
-    const cursor = encodeRequirementListCursor(
-      { requirementId: 2_147_483_647 },
-      queryFingerprint,
-    )
 
-    expect(decodeRequirementListCursor(cursor).boundary).toEqual({
-      requirementId: 2_147_483_647,
-    })
-    expect(cursor.length).toBeLessThanOrEqual(512)
+    expect(
+      decodeRequirementListCursor(
+        encodeRequirementListCursor(
+          { nullRank: 1, requirementId: 1, sortValue: null },
+          queryFingerprint,
+        ),
+      ).boundary,
+    ).toEqual({ nullRank: 1, requirementId: 1, sortValue: null })
+    expect(
+      decodeRequirementListCursor(
+        encodeRequirementListCursor(
+          { nullRank: 0, requirementId: 2, sortValue: 42 },
+          queryFingerprint,
+        ),
+      ).boundary.sortValue,
+    ).toBe(42)
   })
 
   it('canonicalizes object keys and set-like arrays before fingerprinting', () => {
@@ -62,7 +72,7 @@ describe('requirement list cursor', () => {
     )
 
     const cursor = encodeRequirementListCursor(
-      { requirementId: 1 },
+      { nullRank: 0, requirementId: 1, sortValue: 'REQ-1' },
       'a'.repeat(64),
     )
     expect(() => decodeRequirementListCursor(`${cursor}=`)).toThrowError(
@@ -74,21 +84,12 @@ describe('requirement list cursor', () => {
     ).toThrowError(expect.objectContaining({ code: 'invalid_cursor' }))
   })
 
-  it('rejects legacy boundaries that provide SQL sort values', () => {
-    const cursor = Buffer.from(
-      JSON.stringify({
-        boundary: {
-          nullRank: 0,
-          requirementId: 1,
-          sortValue: 'untrusted',
-        },
-        queryFingerprint: 'a'.repeat(64),
-        version: 3,
-      }),
-    ).toString('base64url')
-
-    expect(() => decodeRequirementListCursor(cursor)).toThrowError(
-      expect.objectContaining({ code: 'invalid_cursor' }),
-    )
+  it('enforces the encoded 512-character maximum', () => {
+    expect(() =>
+      encodeRequirementListCursor(
+        { nullRank: 0, requirementId: 1, sortValue: 'x'.repeat(600) },
+        'a'.repeat(64),
+      ),
+    ).toThrowError(expect.objectContaining({ code: 'invalid_cursor' }))
   })
 })

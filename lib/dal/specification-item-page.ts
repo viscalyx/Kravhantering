@@ -408,10 +408,12 @@ export function buildSpecificationItemPageCandidateSql(
     : `candidate.nullRank ASC, candidate.sortValue ${direction}, candidate.uniqueId ASC, candidate.kindRank ASC, candidate.sourceId ASC`
   const anchor = input.after
     ? `, anchor AS (
-        SELECT candidate.*
-        FROM candidates candidate
-        WHERE candidate.sourceId = ${builder.push(input.after.sourceId)}
-          AND candidate.kindRank = ${builder.push(input.after.kindRank)}
+        SELECT
+          ${builder.push(input.after.kindRank)} AS kindRank,
+          ${builder.push(input.after.nullRank)} AS nullRank,
+          ${builder.push(input.after.sortValue)} AS sortValue,
+          ${builder.push(input.after.sourceId)} AS sourceId,
+          ${builder.push(input.after.uniqueId)} AS uniqueId
       )`
     : ''
   const anchorJoin = input.after ? 'CROSS JOIN anchor' : ''

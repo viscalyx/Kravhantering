@@ -151,7 +151,9 @@ describe('queryRequirementList', () => {
     mocks.listRequirements.mockResolvedValueOnce(
       Array.from({ length: 3 }, (_, index) => ({
         cursorBoundary: {
+          nullRank: 0,
           requirementId: index + 1,
+          sortValue: `REQ-${index + 1}`,
         },
         id: index + 1,
         uniqueId: `REQ-${index + 1}`,
@@ -192,14 +194,18 @@ describe('queryRequirementList', () => {
     mocks.listRequirements.mockResolvedValueOnce([
       {
         cursorBoundary: {
+          nullRank: 0,
           requirementId: 1,
+          sortValue: 'REQ-1',
         },
         id: 1,
         uniqueId: 'REQ-1',
       },
       {
         cursorBoundary: {
+          nullRank: 0,
           requirementId: 2,
+          sortValue: 'REQ-2',
         },
         id: 2,
         uniqueId: 'REQ-2',

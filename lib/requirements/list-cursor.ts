@@ -2,12 +2,14 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { invalidCursorError } from '@/lib/requirements/errors'
 
-const CURSOR_VERSION = 3
+const CURSOR_VERSION = 4
 export const REQUIREMENT_LIST_CURSOR_MAX_LENGTH = 512
 
 const boundarySchema = z
   .object({
+    nullRank: z.union([z.literal(0), z.literal(1)]),
     requirementId: z.number().int().positive(),
+    sortValue: z.union([z.string(), z.number().finite(), z.null()]),
   })
   .strict()
 

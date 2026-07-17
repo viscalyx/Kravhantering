@@ -30,7 +30,9 @@ import type { DeleteDraftResult } from '@/lib/requirements/types'
 import { buildRequirementListSql } from './requirements-list-sql.mjs'
 
 export interface RequirementListSeekAnchor {
+  nullRank: 0 | 1
   requirementId: number
+  sortValue: number | string | null
 }
 
 export interface ListRequirementsOptions {
@@ -173,7 +175,12 @@ export async function listRequirements(
 
   return rows.map(row => ({
     cursorBoundary: {
+      nullRank: Number(row.cursorNullRank) === 1 ? 1 : 0,
       requirementId: Number(row.id),
+      sortValue:
+        row.cursorSortValue == null || typeof row.cursorSortValue === 'string'
+          ? (row.cursorSortValue ?? null)
+          : Number(row.cursorSortValue),
     } satisfies RequirementListSeekAnchor,
     id: Number(row.id),
     uniqueId: String(row.uniqueId ?? ''),
