@@ -346,6 +346,10 @@ for (const viewport of viewports) {
         const fixture = deviationCase.fixtures[viewport.name]
         const motivation = `${fixture.uniqueId} ${viewport.name} ${deviationCase.action} deviation`
         const decisionMotivation = `${fixture.uniqueId} ${viewport.name} ${deviationCase.action} decision`
+        const recordDecisionActionName =
+          deviationCase.itemKind === 'specification-local'
+            ? 'Registrera beslut'
+            : 'Beslutad ↗'
         let detailPane = page.locator('body')
         const reviewerRequest = await newRoleContext(testInfo, 'reviewer')
         const reviewer = await newRolePage(
@@ -362,7 +366,11 @@ for (const viewport of viewports) {
               reviewerRequest,
               fixture.itemRef,
             )
-            if (viewport.name === 'desktop') {
+            const shouldVerifyPreApprovalGuard =
+              deviationCase.itemKind === 'specification-local'
+                ? viewport.name === 'mobile'
+                : viewport.name === 'desktop'
+            if (shouldVerifyPreApprovalGuard) {
               const deviatedBeforeApproval = await request.patch(
                 `/api/requirements-specifications/${fixture.itemRef.startsWith('local:') ? MANUAL_SPECIFICATION_ID : SPECIFICATION_ID}/items/${encodeURIComponent(fixture.itemRef)}`,
                 {
@@ -402,7 +410,13 @@ for (const viewport of viewports) {
               page,
               fixture.uniqueId,
             )
-            await assertActiveStepperStep(detailPane, 'Utkast')
+            if (deviationCase.itemKind === 'specification-local') {
+              await expect(
+                detailPane.getByRole('button', { name: 'Granskning ↗' }),
+              ).toBeVisible()
+            } else {
+              await assertActiveStepperStep(detailPane, 'Utkast')
+            }
             await expect(detailPane).toContainText(motivation)
           })
 
@@ -418,9 +432,17 @@ for (const viewport of viewports) {
               page,
               fixture.uniqueId,
             )
-            await assertActiveStepperStep(detailPane, 'Granskning begärd')
+            if (deviationCase.itemKind === 'specification-local') {
+              await expect(
+                detailPane.getByRole('button', { name: '← Utkast' }),
+              ).toBeVisible()
+            } else {
+              await assertActiveStepperStep(detailPane, 'Granskning begärd')
+            }
             await expect(
-              detailPane.getByRole('button', { name: 'Beslutad ↗' }),
+              detailPane.getByRole('button', {
+                name: recordDecisionActionName,
+              }),
             ).toHaveCount(0)
           })
 
@@ -429,15 +451,23 @@ for (const viewport of viewports) {
               reviewer.page,
               fixture.uniqueId,
             )
-            await assertActiveStepperStep(
-              reviewerDetailPane,
-              'Granskning begärd',
-            )
+            if (deviationCase.itemKind === 'specification-local') {
+              await expect(
+                reviewerDetailPane.getByRole('button', {
+                  name: recordDecisionActionName,
+                }),
+              ).toBeVisible()
+            } else {
+              await assertActiveStepperStep(
+                reviewerDetailPane,
+                'Granskning begärd',
+              )
+            }
             await expect(
               reviewerDetailPane.getByRole('button', { name: '← Utkast' }),
             ).toHaveCount(0)
             await reviewerDetailPane
-              .getByRole('button', { name: 'Beslutad ↗' })
+              .getByRole('button', { name: recordDecisionActionName })
               .click()
 
             const decisionDialog = reviewer.page.getByRole('dialog', {
@@ -456,13 +486,23 @@ for (const viewport of viewports) {
               fixture.uniqueId,
             )
 
-            await assertActiveStepperStep(reviewerDetailPane, 'Beslutad')
+            if (deviationCase.itemKind === 'specification-local') {
+              await expect(
+                reviewerDetailPane.getByRole('status', {
+                  name: 'Avsteg begärt med motivering:',
+                }),
+              ).toContainText(deviationCase.expectedStatus)
+            } else {
+              await assertActiveStepperStep(reviewerDetailPane, 'Beslutad')
+            }
             await expect(reviewerDetailPane).toContainText(
               deviationCase.expectedStatus,
             )
             await expect(reviewerDetailPane).toContainText(decisionMotivation)
             await expect(
-              reviewerDetailPane.getByRole('button', { name: 'Beslutad ↗' }),
+              reviewerDetailPane.getByRole('button', {
+                name: recordDecisionActionName,
+              }),
             ).toHaveCount(0)
             await expect(
               reviewerDetailPane.getByRole('button', { name: '← Utkast' }),

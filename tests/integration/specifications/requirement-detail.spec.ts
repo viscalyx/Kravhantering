@@ -1977,9 +1977,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
       await page.goto(
         `/sv/requirements/${encodeURIComponent(graduation.detail.uniqueId)}/${graduation.newRequirementVersionNumber}`,
       )
-      await expect(page.getByRole('heading')).toContainText(
-        graduation.detail.uniqueId,
-      )
+      await expect(
+        page.getByRole('heading', {
+          level: 1,
+          name: graduation.detail.uniqueId,
+        }),
+      ).toBeVisible()
       await expect(page.locator('main')).toContainText(editedDescription)
       await expect(page.locator('main')).toContainText('Utkast')
     })
