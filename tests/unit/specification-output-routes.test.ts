@@ -172,7 +172,7 @@ describe('specification output routes', () => {
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/42/traceability-items?refs=lib:31,local:41',
+        'http://localhost/api/requirements-specifications/42/traceability-items?descriptionSearch=access&sortBy=priorityLevel&sortDirection=desc&locale=sv',
       ),
       { params: Promise.resolve({ id: '42' }) },
     )
@@ -189,20 +189,26 @@ describe('specification output routes', () => {
     )
     expect(
       routeState.collectSpecificationTraceabilityData,
-    ).toHaveBeenCalledWith({ db: true }, specification(), [
-      'lib:31',
-      'local:41',
-    ])
+    ).toHaveBeenCalledWith(
+      { db: true },
+      specification(),
+      expect.objectContaining({
+        descriptionSearch: 'access',
+        locale: 'sv',
+        sortBy: 'priorityLevel',
+        sortDirection: 'desc',
+      }),
+    )
   })
 
-  it('rejects invalid traceability refs before creating the route runtime', async () => {
+  it('rejects unsupported traceability query keys before creating the route runtime', async () => {
     const { GET } = await import(
       '@/app/api/requirements-specifications/[id]/traceability-items/route'
     )
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/42/traceability-items?refs=lib:0',
+        'http://localhost/api/requirements-specifications/42/traceability-items?refs=lib:31',
       ),
       { params: Promise.resolve({ id: '42' }) },
     )

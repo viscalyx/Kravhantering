@@ -1,14 +1,15 @@
-import {
-  countDeviationsPerItemRef,
-  type DeviationCounts,
-} from '@/lib/dal/deviations'
+import type { DeviationCounts } from '@/lib/dal/deviations'
 import {
   createLibraryItemRef,
   createSpecificationLocalItemRef,
   getSpecificationById,
+  listSpecificationTraceabilityItems,
+  parseSpecificationItemRef,
+  type SpecificationItemRef,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { ReportDataError } from '@/lib/reports/data/server'
+import { traverseCompleteSpecificationItemResult } from '@/lib/requirements/specification-item-page'
 
 type Row = Record<string, unknown>
 
@@ -305,14 +306,24 @@ function mapLocalItem(row: Row): SpecificationOutputItem {
   }
 }
 
-export async function collectSpecificationOutputData(
+async function collectSpecificationOutputPage(
   db: SqlServerDatabase,
   specificationId: number,
-): Promise<SpecificationOutputData> {
-  const specification = await resolveSpecification(db, specificationId)
+  itemRefs: SpecificationItemRef[],
+): Promise<SpecificationOutputItem[]> {
+  const libraryPageItemIds: number[] = []
+  const localPageRequirementIds: number[] = []
+  for (const itemRef of itemRefs) {
+    const parsed = parseSpecificationItemRef(itemRef)
+    if (!parsed) continue
+    if (parsed.kind === 'library') libraryPageItemIds.push(parsed.id)
+    else localPageRequirementIds.push(parsed.id)
+  }
+
   const [libraryRows, localRows] = await Promise.all([
-    db.query(
-      `
+    libraryPageItemIds.length > 0
+      ? (db.query(
+          `
         SELECT
           specification_item.id AS itemId,
           requirement.unique_id AS uniqueId,
@@ -357,12 +368,14 @@ export async function collectSpecificationOutputData(
         LEFT JOIN specification_item_statuses specification_item_status
           ON specification_item_status.id = specification_item.specification_item_status_id
         WHERE specification_item.requirements_specification_id = @0
-        ORDER BY requirement.unique_id ASC
+          AND specification_item.id IN (${buildInClause(1, libraryPageItemIds)})
       `,
-      [specification.id],
-    ) as Promise<Row[]>,
-    db.query(
-      `
+          [specificationId, ...libraryPageItemIds],
+        ) as Promise<Row[]>)
+      : Promise.resolve([] as Row[]),
+    localPageRequirementIds.length > 0
+      ? (db.query(
+          `
         SELECT
           local_requirement.id AS itemId,
           local_requirement.unique_id AS uniqueId,
@@ -395,10 +408,11 @@ export async function collectSpecificationOutputData(
         LEFT JOIN specification_item_statuses specification_item_status
           ON specification_item_status.id = local_requirement.specification_item_status_id
         WHERE local_requirement.specification_id = @0
-        ORDER BY local_requirement.unique_id ASC
+          AND local_requirement.id IN (${buildInClause(1, localPageRequirementIds)})
       `,
-      [specification.id],
-    ) as Promise<Row[]>,
+          [specificationId, ...localPageRequirementIds],
+        ) as Promise<Row[]>)
+      : Promise.resolve([] as Row[]),
   ])
 
   const libraryItems = libraryRows.map(mapLibraryItem)
@@ -410,27 +424,72 @@ export async function collectSpecificationOutputData(
     normReferencesByItemRef,
     requirementPackagesByItemRef,
     suggestionsByItemRef,
-    deviationCountsByItemRef,
+    traceabilityItems,
   ] = await Promise.all([
     listNormReferencesByItemRef(db, libraryItemIds, localRequirementIds),
     listRequirementPackagesByItemRef(db, libraryItemIds),
     countSuggestionsByLibraryItemRef(db, libraryItemIds),
-    countDeviationsPerItemRef(db, specification.id),
+    listSpecificationTraceabilityItems(db, specificationId, itemRefs),
   ])
+  const deviationCountsByItemRef = new Map(
+    traceabilityItems.map(item => [item.itemRef, item.deviationCounts]),
+  )
 
-  const items = [...libraryItems, ...localItems]
-    .map(item => ({
-      ...item,
-      deviationCounts:
-        deviationCountsByItemRef.get(item.itemRef) ?? EMPTY_DEVIATION_COUNTS,
-      normReferences: normReferencesByItemRef.get(item.itemRef) ?? [],
-      requirementPackageNames:
-        requirementPackagesByItemRef.get(item.itemRef) ?? [],
-      suggestionCount: suggestionsByItemRef.get(item.itemRef) ?? 0,
-    }))
-    .sort((left, right) =>
-      left.uniqueId.localeCompare(right.uniqueId, 'sv', { numeric: true }),
-    )
+  const itemsByRef = new Map(
+    [...libraryItems, ...localItems].map(item => [
+      item.itemRef,
+      {
+        ...item,
+        deviationCounts:
+          deviationCountsByItemRef.get(item.itemRef as SpecificationItemRef) ??
+          EMPTY_DEVIATION_COUNTS,
+        normReferences: normReferencesByItemRef.get(item.itemRef) ?? [],
+        requirementPackageNames:
+          requirementPackagesByItemRef.get(item.itemRef) ?? [],
+        suggestionCount: suggestionsByItemRef.get(item.itemRef) ?? 0,
+      },
+    ]),
+  )
+
+  return itemRefs.flatMap(itemRef => {
+    const item = itemsByRef.get(itemRef)
+    return item ? [item] : []
+  })
+}
+
+export async function collectSpecificationOutputData(
+  db: SqlServerDatabase,
+  specificationId: number,
+): Promise<SpecificationOutputData> {
+  const specification = await resolveSpecification(db, specificationId)
+  const items: SpecificationOutputItem[] = []
+
+  await traverseCompleteSpecificationItemResult(
+    db,
+    {
+      filters: {},
+      locale: 'en',
+      sort: { by: 'uniqueId', direction: 'asc' },
+      specificationId: specification.id,
+    },
+    async pageItems => {
+      const itemRefs = pageItems.flatMap(item =>
+        item.itemRef ? [item.itemRef as SpecificationItemRef] : [],
+      )
+      const outputPage = await collectSpecificationOutputPage(
+        db,
+        specification.id,
+        itemRefs,
+      )
+      if (outputPage.length !== itemRefs.length) {
+        throw new ReportDataError(
+          'A requirement application changed while the report was generated',
+          409,
+        )
+      }
+      items.push(...outputPage)
+    },
+  )
 
   return { items, specification }
 }

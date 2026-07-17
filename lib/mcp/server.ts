@@ -2391,6 +2391,7 @@ export function createKravhanteringMcpServer(
           await getBaseContext(request, 'requirements_get_specification_items'),
           {
             ...input,
+            capacitySurface: 'mcp',
             locale: toResponseLocale(input.locale),
             specificationId: input.specificationId,
             responseFormat: toResponseFormat(input.responseFormat),

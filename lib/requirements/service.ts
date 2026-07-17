@@ -195,6 +195,7 @@ export interface ListSpecificationsInput {
 export interface GetSpecificationItemsInput
   extends SpecificationRefInput,
     FilterValues {
+  capacitySurface?: 'editor-preload' | 'mcp' | 'rest'
   cursor?: string
   limit?: number
   locale?: ResponseLocale

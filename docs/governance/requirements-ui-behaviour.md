@@ -643,7 +643,9 @@ down.
   - `Genomföranderapport` for lifecycle status `Införande` or `Utveckling`
   - `Förvaltningsrapport` for lifecycle status `Förvaltning`
 - Report routes always cover the whole specification. They do not accept row
-  selection query parameters.
+  selection query parameters. Lifecycle-profile reports ignore item-list
+  filters; application traceability accepts the normalized item-list filters
+  and sort state and covers that complete server result.
 - PDF routes use
   `/[locale]/specifications/[specificationId]/reports/pdf/[profile]`.
 - Both routes authorize read access to the specification before report data is
@@ -656,6 +658,9 @@ down.
   `Upphandling`.
 - Specification CSV exports are generated server-side from the whole
   specification and remain row-only without metadata rows.
+- Complete outputs traverse bounded server pages with progress, duplicate,
+  cursor-cycle, and maximum-page protection. They never use only the rows
+  currently loaded in the editor.
 
 ## Requirement Selection Question Stewardship
 

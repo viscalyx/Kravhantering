@@ -387,6 +387,7 @@ export async function listSpecificationTraceabilityItems(
             SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
             SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
           FROM deviations deviation
+          WHERE deviation.specification_item_id IN (${buildInClause(3, libraryItemIds)})
           GROUP BY deviation.specification_item_id
         ) deviation_counts
           ON deviation_counts.itemId = specification_item.id
@@ -443,6 +444,7 @@ export async function listSpecificationTraceabilityItems(
             SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
             SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
           FROM specification_local_requirement_deviations deviation
+          WHERE deviation.specification_local_requirement_id IN (${buildInClause(3, localRequirementIds)})
           GROUP BY deviation.specification_local_requirement_id
         ) deviation_counts
           ON deviation_counts.itemId = local_requirement.id

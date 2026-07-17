@@ -244,6 +244,7 @@ describe('requirements-specifications/[id]/items route', () => {
       },
     })
     expect(mocks.getSpecificationItems).toHaveBeenCalledWith(mockContext, {
+      capacitySurface: 'rest',
       limit: 2,
       locale: 'sv',
       responseFormat: 'json',

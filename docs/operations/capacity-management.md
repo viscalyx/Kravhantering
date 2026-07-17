@@ -60,6 +60,9 @@ Safe metrics may be included when relevant:
 
 - `duration_ms`
 - `item_count`
+- `returned_count`
+- `page_limit`
+- `continuation_available`
 - `image_count`
 - `image_bytes`
 - `token_count`
@@ -68,7 +71,8 @@ Safe metrics may be included when relevant:
 - `retry_after_seconds`
 
 The capacity log must not contain prompts, requirement text, images, raw query
-strings, tokens, secrets, or HSA-id values.
+strings, cursor values, filters, requirements specification or Requirement IDs,
+tokens, secrets, HSA-id values, or other user identity.
 
 ## Measured Flows
 
@@ -78,6 +82,11 @@ V1 measures:
 - AI metadata through `/api/ai/models` cache misses, `refresh=1`, and
   `/api/ai/credits`.
 - Shared service operations through service logging.
+- Requirements specification item pages for the `editor-preload`, `rest`, and
+  `mcp` surfaces. These events use
+  `operation == "requirements.get_specification_items"` and include duration,
+  returned count, effective page limit, continuation availability, outcome,
+  and only the bounded `invalid_cursor` failure category when applicable.
 - Server-side report item loading for the specification report.
 - Server-side PDF rendering for requirement, specification, privacy, and
   access-review exports.

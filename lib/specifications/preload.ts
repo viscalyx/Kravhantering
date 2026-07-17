@@ -313,6 +313,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
       },
       async () => {
         const page = await service.getSpecificationItems(context, {
+          capacitySurface: 'editor-preload',
           limit: DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT,
           locale,
           responseFormat: 'json',

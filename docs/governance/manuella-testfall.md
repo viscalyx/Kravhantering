@@ -1134,7 +1134,8 @@ kravunderlag där användaren saknar läsbehörighet.
 **Steg:** Öppna ett kravunderlag med minst ett bibliotekskrav och ett unikt
 krav. Filtrera listan `Krav i underlaget`, öppna rapportmenyn och välj
 `Tillämpningsspårbarhet`. Upprepa kontrollen med
-ett filter som visar fler än 200 kravtillämpningar.
+ett filter som visar fler än 100 kravtillämpningar och med ett kravunderlag
+som innehåller minst 201 kravtillämpningar.
 
 **Förväntat resultat:** Rapporten omfattar bara filtrerade kravtillämpningar.
 Sammanfattningen visar totalt antal kravtillämpningar, bibliotekskrav,
@@ -1142,10 +1143,11 @@ kravunderlagslokala krav, användningsstatusfördelning, saknade
 behovsreferenser och avsteg per beslutsläge. Detaljraderna visar Krav-ID,
 ursprung, version, kravområde, behovsreferens, användningsstatus,
 statusändringsdatum, avsteg, risk, verifierbarhet/verifieringsmetod och
-anteckning. När filtret visar fler än 200 kravtillämpningar visas inte
-alternativen för `Tillämpningsspårbarhet`, medan övriga rapportalternativ i
-menyn fortfarande fungerar. Automatiserad täckning får verifiera filtrerat
-innehåll via befintlig traceability-endpoint och menygränsen i UI.
+anteckning. Rapporten omfattar hela det serverfiltrerade resultatet i samma
+databasstyrda ordning även när resultatet kräver flera serversidor. Webbläsaren
+skickar filter- och sorteringsläget, inte en lista med kravtillämpningsreferenser.
+Automatiserad täckning får verifiera filtrerat innehåll och resultat över 100
+rader via befintlig traceability-endpoint.
 
 ### SPEC-11: återställ kolumnvyer för kravunderlag
 

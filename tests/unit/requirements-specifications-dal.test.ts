@@ -1406,6 +1406,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       ),
       [5, 1, 2, 41],
     )
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'WHERE deviation.specification_item_id IN (@3)',
+    )
+    expect(query.mock.calls[1]?.[0]).toContain(
+      'WHERE deviation.specification_local_requirement_id IN (@3)',
+    )
     expect(result).toEqual([
       expect.objectContaining({
         deviationCounts: { approved: 0, pending: 0, rejected: 0, total: 0 },

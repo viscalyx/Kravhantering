@@ -118,7 +118,8 @@ Deferred from this contract:
   OpenAPI/Schemathesis v1 contract with the other specification and CSV
   surfaces. Their useful assertions are
   authorization-before-data, lifecycle profile gating, linked-version
-  selection, selected-ref ownership checks, and exact output columns.
+  selection, normalized complete-result query traversal, and exact output
+  columns.
 - Specification deviation routes, requirement-library deviation routes, and
   improvement-suggestion routes remain outside the OpenAPI/Schemathesis v1
   contract. Their useful assertions are lifecycle state machines, reviewer

@@ -10,6 +10,7 @@ vi.mock('@/lib/dal/specification-item-page', () => mocks)
 import {
   normalizeSpecificationItemFilters,
   querySpecificationItemPage,
+  traverseCompleteSpecificationItemResult,
 } from '@/lib/requirements/specification-item-page'
 
 const candidates = [
@@ -129,5 +130,84 @@ describe('querySpecificationItemPage', () => {
         specificationId: 7,
       }),
     ).rejects.toMatchObject({ code: 'validation', status: 400 })
+  })
+})
+
+describe('traverseCompleteSpecificationItemResult', () => {
+  const fullCandidatePage = Array.from({ length: 101 }, (_, index) => ({
+    kindRank: 0 as const,
+    nullRank: 0 as const,
+    sortValue: `REQ-${index + 1}`,
+    sourceId: index + 1,
+    uniqueId: `REQ-${index + 1}`,
+  }))
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('visits bounded pages until the database result is complete', async () => {
+    mocks.listSpecificationItemPageCandidates
+      .mockResolvedValueOnce(fullCandidatePage)
+      .mockResolvedValueOnce([fullCandidatePage[100]])
+    mocks.enrichSpecificationItemPage
+      .mockResolvedValueOnce([{ itemRef: 'lib:1', uniqueId: 'REQ-1' }])
+      .mockResolvedValueOnce([{ itemRef: 'lib:101', uniqueId: 'REQ-101' }])
+    const visited: string[][] = []
+
+    const result = await traverseCompleteSpecificationItemResult(
+      {} as never,
+      { specificationId: 7 },
+      items => {
+        visited.push(items.map(item => item.itemRef ?? ''))
+      },
+    )
+
+    expect(result).toEqual({ itemCount: 2, pageCount: 2 })
+    expect(visited).toEqual([['lib:1'], ['lib:101']])
+    expect(mocks.listSpecificationItemPageCandidates).toHaveBeenCalledTimes(2)
+    expect(
+      mocks.listSpecificationItemPageCandidates.mock.calls[0]?.[1],
+    ).toMatchObject({ limit: 101 })
+  })
+
+  it('rejects duplicate stable references across pages', async () => {
+    mocks.listSpecificationItemPageCandidates
+      .mockResolvedValueOnce(fullCandidatePage)
+      .mockResolvedValueOnce([fullCandidatePage[100]])
+    mocks.enrichSpecificationItemPage.mockResolvedValue([
+      { itemRef: 'lib:1', uniqueId: 'REQ-1' },
+    ])
+
+    await expect(
+      traverseCompleteSpecificationItemResult(
+        {} as never,
+        { specificationId: 7 },
+        () => undefined,
+      ),
+    ).rejects.toMatchObject({
+      code: 'internal',
+      details: { reason: 'complete_result_duplicate_reference' },
+    })
+  })
+
+  it('rejects cyclic continuation cursors', async () => {
+    mocks.listSpecificationItemPageCandidates.mockResolvedValue(
+      fullCandidatePage,
+    )
+    mocks.enrichSpecificationItemPage
+      .mockResolvedValueOnce([{ itemRef: 'lib:1', uniqueId: 'REQ-1' }])
+      .mockResolvedValueOnce([{ itemRef: 'lib:2', uniqueId: 'REQ-2' }])
+
+    await expect(
+      traverseCompleteSpecificationItemResult(
+        {} as never,
+        { specificationId: 7 },
+        () => undefined,
+      ),
+    ).rejects.toMatchObject({
+      code: 'internal',
+      details: { reason: 'complete_result_cursor_cycle' },
+    })
   })
 })

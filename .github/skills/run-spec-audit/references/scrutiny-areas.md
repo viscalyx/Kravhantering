@@ -168,10 +168,11 @@ maintenance rule.
 - **Req tag:** `[Req: formal — docs/reference/reports.md
   "Requirements Specification Field Profiles"]`
 - **Question:** Do lifecycle profile reports use linked requirement versions,
-  cover the whole specification, expose only lifecycle-matching profiles, keep
-  full CSV export always available, and document each field choice? Does
-  `Tillämpningsspårbarhet` remain the explicit selected-ref report with 400 for
-  invalid refs and 404 for refs outside the requested kravunderlag?
+  traverse the whole specification in bounded pages, expose only
+  lifecycle-matching profiles, keep full CSV export always available, and
+  document each field choice? Does `Tillämpningsspårbarhet` traverse normalized
+  query state in database order without browser reference enumeration, with
+  progress and cursor-cycle protection?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions"`
 

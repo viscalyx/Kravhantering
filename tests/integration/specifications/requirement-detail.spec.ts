@@ -2245,49 +2245,35 @@ test.describe('Requirements specification deterministic manual cases', () => {
     expect(managementTable.rows.length).toBeGreaterThan(0)
   })
 
-  test('SPEC-10e: shows traceability only up to the 200 filtered-item limit', async ({
+  test('SPEC-10e: generates complete server-filtered traceability beyond 100 items', async ({
     page,
     request,
   }) => {
     const downloadRequests = await mockReportDownloads(page)
 
     await gotoSpecificationDetail(page, 920005)
-    const itemsResponse = await requestWithRetry(
-      'traceability source items',
-      () =>
-        request.get('/api/requirements-specifications/920005/items', {
-          timeout: 30_000,
-        }),
-    )
-    await expectApiResponseOk(itemsResponse, 'traceability source items')
-    const itemsData = (await itemsResponse.json()) as {
-      items?: Array<{ itemRef?: string }>
-    }
-    const filteredRefs =
-      itemsData.items
-        ?.map(item => item.itemRef)
-        .filter((value): value is string => Boolean(value))
-        .slice(0, 2) ?? []
-    expect(filteredRefs.length).toBeGreaterThan(0)
     await clickMenuItem(page, 'Rapporter', 'Tillämpningsspårbarhet')
     await expect
       .poll(() =>
-        downloadRequests.some(url =>
-          url.includes('/sv/specifications/920005/reports/pdf/traceability'),
+        downloadRequests.some(
+          url =>
+            url.includes(
+              '/sv/specifications/920005/reports/pdf/traceability?',
+            ) && url.includes('sortBy=uniqueId'),
         ),
       )
       .toBe(true)
     const traceabilityResponse = await requestWithRetry(
-      'traceability items for filtered refs',
+      'traceability items for filtered query',
       () =>
         request.get(
-          `/api/requirements-specifications/920005/traceability-items?refs=${filteredRefs.map(encodeURIComponent).join(',')}`,
+          '/api/requirements-specifications/920005/traceability-items?uniqueIdSearch=PWT-TRACE-00&sortBy=uniqueId&sortDirection=desc&locale=sv',
           { timeout: 30_000 },
         ),
     )
     await expectApiResponseOk(
       traceabilityResponse,
-      'traceability items for filtered refs',
+      'traceability items for filtered query',
     )
     const traceabilityData = (await traceabilityResponse.json()) as {
       items?: Array<{
@@ -2301,8 +2287,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
     expect(traceabilityData.specification?.specificationCode).toBe(
       'PWT-SPEC-TRACE-200',
     )
-    expect(traceabilityData.items?.map(item => item.itemRef)).toEqual(
-      filteredRefs,
+    expect(traceabilityData.items).toHaveLength(9)
+    expect(traceabilityData.items?.map(item => item.uniqueId)).toEqual(
+      Array.from(
+        { length: 9 },
+        (_, index) => `PWT-TRACE-${String(9 - index).padStart(3, '0')}`,
+      ),
     )
     expect(traceabilityData.items?.[0]).toMatchObject({
       uniqueId: expect.stringMatching(/^PWT-TRACE-/u),
@@ -2312,25 +2302,40 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
     await gotoSpecificationDetail(page, 920006)
     const reportsMenu = await openActionMenu(page, 'Rapporter')
-    await expect(
-      reportsMenu.getByRole('menuitem', {
-        exact: true,
-        name: 'Tillämpningsspårbarhet',
-      }),
-    ).toHaveCount(0)
     await reportsMenu
       .getByRole('menuitem', {
         exact: true,
-        name: 'Genomföranderapport',
+        name: 'Tillämpningsspårbarhet',
       })
       .click()
     await expect
       .poll(() =>
         downloadRequests.some(url =>
-          url.includes('/sv/specifications/920006/reports/pdf/progress'),
+          url.includes('/sv/specifications/920006/reports/pdf/traceability'),
         ),
       )
       .toBe(true)
+    const completeResponse = await requestWithRetry(
+      'complete traceability items beyond 100',
+      () =>
+        request.get(
+          '/api/requirements-specifications/920006/traceability-items?sortBy=uniqueId&sortDirection=asc&locale=sv',
+          { timeout: 30_000 },
+        ),
+    )
+    await expectApiResponseOk(
+      completeResponse,
+      'complete traceability items beyond 100',
+    )
+    const completeData = (await completeResponse.json()) as {
+      items?: Array<{ itemRef: string; uniqueId: string }>
+    }
+    expect(completeData.items).toHaveLength(201)
+    expect(new Set(completeData.items?.map(item => item.itemRef)).size).toBe(
+      201,
+    )
+    expect(completeData.items?.[0]?.uniqueId).toBe('PWT-TRACE-001')
+    expect(completeData.items?.at(-1)?.uniqueId).toBe('PWT-TRACE-201')
   })
 
   test('SPEC-17: imports reviewed JSON as specification-local requirements', async ({

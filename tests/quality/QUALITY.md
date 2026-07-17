@@ -1000,8 +1000,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 24: Admin C
 lifecycle-scoped outputs rather than row-selected list snapshots. They are used
 as procurement attachments, progress follow-up, management reports, and CSV
 analysis extracts. `Tillämpningsspårbarhet` is the explicit exception: it is a
-filtered requirement-application report driven by `lib:` and `local:` item refs
-from the current kravunderlag list. If profile report data follows the latest
+filtered requirement-application report driven by normalized server query
+state from the current kravunderlag list. If profile report data follows the latest
 requirement version instead of the version linked to the specification item, a
 generated report can change without an explicit specification decision. If the
 menu exposes the wrong profile for a lifecycle status, external procurement
@@ -1030,14 +1030,16 @@ lib/reports/specification-profiles.ts:7-65
 <!-- markdownlint-enable MD013 -->
 
 **The requirement:** Requirements specification profile reports must use the
-linked `requirement_version_id`, cover the whole specification sorted by
+linked `requirement_version_id`, cover the whole specification through bounded
+server pages sorted by
 `Krav-ID`, show only the report profile matching the specification lifecycle
 status, and keep `Full CSV-export` always available while limiting
-`Anbuds-CSV` to `Upphandling`. `Tillämpningsspårbarhet` must use explicit
-selected refs from the filtered kravunderlag list, enforce the shared report
-item cap, reject invalid refs with 400, and reject refs outside the requested
-specification with 404. Field inclusions and exclusions must stay documented in
-`docs/reference/reports.md`.
+`Anbuds-CSV` to `Upphandling`. `Tillämpningsspårbarhet` must use normalized
+filter, locale, and sort state to traverse the complete server-filtered result
+in database-authoritative order without browser-side reference enumeration.
+Every complete-result traversal must reject duplicate rows, lack of progress,
+cursor cycles, and excessive page counts. Field inclusions and exclusions must
+stay documented in `docs/reference/reports.md`.
 
 **How to verify:**
 

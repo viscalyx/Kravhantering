@@ -984,7 +984,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename:
         'specification.reportProfiles.traceability Authorization and IAM ETJANST-UPP-2026.pdf',
-      url: '/en/specifications/8/reports/pdf/traceability?refs=lib%3A31',
+      url: '/en/specifications/8/reports/pdf/traceability?locale=en&sortBy=uniqueId&sortDirection=asc',
     })
   })
 
@@ -1138,7 +1138,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
   })
 
-  it('builds traceability report refs from the filtered requirement applications', async () => {
+  it('builds traceability report query state from the complete-result filters', async () => {
     const initialData = createInitialData()
     initialData.specificationItems = createSpecificationItemsPage([
       {
@@ -1188,9 +1188,25 @@ describe('RequirementsSpecificationDetailClient', () => {
           ?.menuItems?.map(item => item.id),
       ).toContain('pdf-traceability')
     })
+
+    const traceabilityAction = (
+      latestItemsTableProps().floatingActions as Array<{
+        id: string
+        menuItems?: Array<{ id: string; onClick?: () => void }>
+      }>
+    )
+      .find(action => action.id === 'more-actions')
+      ?.menuItems?.find(item => item.id === 'pdf-traceability')
+    traceabilityAction?.onClick?.()
+
+    expect(pdfDownloadState.download).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: expect.stringContaining('requirementPackageIds=9'),
+      }),
+    )
   })
 
-  it('hides traceability report actions when filtered items exceed the report limit', async () => {
+  it('keeps traceability report actions beyond the former item-ref limit', async () => {
     const initialData = createInitialData()
     initialData.specificationItems = createSpecificationItemsPage(
       Array.from({ length: 201 }, (_, index) => {
@@ -1222,7 +1238,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(moreActions?.menuItems?.map(item => item.id)).toContain(
       'pdf-progress',
     )
-    expect(moreActions?.menuItems?.map(item => item.id)).not.toContain(
+    expect(moreActions?.menuItems?.map(item => item.id)).toContain(
       'pdf-traceability',
     )
   })

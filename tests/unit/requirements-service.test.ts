@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
-import { conflictError, forbiddenError } from '@/lib/requirements/errors'
+import {
+  conflictError,
+  forbiddenError,
+  invalidCursorError,
+} from '@/lib/requirements/errors'
 
 const mocks = vi.hoisted(() => ({
   approveArchiving: vi.fn(),
@@ -454,6 +458,21 @@ describe('createRequirementsService', () => {
       )
       .filter(
         (event: Record<string, unknown>) => event.channel === 'security-audit',
+      )
+  }
+
+  function emittedCapacityEvents(): Array<Record<string, unknown>> {
+    return infoSpy.mock.calls
+      .map((call: unknown[]) => {
+        try {
+          return JSON.parse(String(call[0])) as Record<string, unknown>
+        } catch {
+          return {}
+        }
+      })
+      .filter(
+        (event: Record<string, unknown>) =>
+          event.channel === 'capacity-observability',
       )
   }
 
@@ -1443,6 +1462,93 @@ describe('createRequirementsService', () => {
     expect(JSON.parse(result.message)).toMatchObject({
       title: 'Kravtillämpningar',
     })
+  })
+
+  it('emits privacy-safe page capacity evidence for preload, REST, and MCP surfaces', async () => {
+    mocks.querySpecificationItemPage.mockResolvedValue({
+      items: [{ itemRef: 'lib:31', uniqueId: 'SECRET-REQ-31' }],
+      pagination: {
+        count: 1,
+        hasMore: true,
+        limit: 25,
+        nextCursor: 'opaque-secret-cursor',
+      },
+    })
+    const service = createTestRequirementsService()
+
+    for (const capacitySurface of ['editor-preload', 'rest', 'mcp'] as const) {
+      await service.getSpecificationItems(makeContext(), {
+        capacitySurface,
+        cursor: 'incoming-secret-cursor',
+        descriptionSearch: 'private requirement text',
+        limit: 25,
+        specificationId: 593,
+      })
+    }
+
+    const events = emittedCapacityEvents().filter(
+      entry => entry.operation === 'requirements.get_specification_items',
+    )
+    expect(events.map(event => event.surface)).toEqual([
+      'editor-preload',
+      'rest',
+      'mcp',
+    ])
+    const [event] = events
+    expect(event).toMatchObject({
+      continuation_available: true,
+      outcome: 'success',
+      page_limit: 25,
+      returned_count: 1,
+      surface: 'editor-preload',
+    })
+    const serialized = JSON.stringify(event)
+    expect(serialized).not.toMatch(
+      /incoming-secret-cursor|opaque-secret-cursor|private requirement text|SECRET-REQ-31/,
+    )
+    expect(event).not.toHaveProperty('specification_id')
+  })
+
+  it('emits only the bounded cursor failure category', async () => {
+    mocks.querySpecificationItemPage.mockRejectedValueOnce(invalidCursorError())
+    const service = createTestRequirementsService()
+
+    await expect(
+      service.getSpecificationItems(makeContext(), {
+        capacitySurface: 'rest',
+        cursor: 'private-cursor-value',
+        specificationId: 593,
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_cursor' })
+
+    const [event] = emittedCapacityEvents().filter(
+      entry => entry.event === 'capacity.operation.failed',
+    )
+    expect(event).toMatchObject({
+      cursor_failure_category: 'invalid_cursor',
+      outcome: 'failure',
+      surface: 'rest',
+    })
+    expect(JSON.stringify(event)).not.toMatch(/private-cursor-value/)
+    expect(event).not.toHaveProperty('specification_id')
+  })
+
+  it('does not fail a page request when capacity telemetry fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    infoSpy.mockImplementationOnce(() => {
+      throw new Error('telemetry sink unavailable')
+    })
+    const service = createTestRequirementsService()
+
+    await expect(
+      service.getSpecificationItems(makeContext(), {
+        capacitySurface: 'mcp',
+        specificationId: 7,
+      }),
+    ).resolves.toMatchObject({
+      pagination: { count: 0, hasMore: false, limit: 50 },
+    })
+    expect(errorSpy).toHaveBeenCalled()
   })
 
   it('uses actual inserted specification link counts in addToSpecification', async () => {

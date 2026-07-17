@@ -6,6 +6,11 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { ReportDataError } from '@/lib/reports/data/server'
+import { traverseCompleteSpecificationItemResult } from '@/lib/requirements/specification-item-page'
+import {
+  type SpecificationItemQueryState,
+  toSpecificationItemPageInput,
+} from '@/lib/requirements/specification-item-query'
 
 export interface SpecificationTraceabilityData {
   items: TraceabilityReportItem[]
@@ -39,29 +44,42 @@ async function resolveSpecification(
 export async function collectSpecificationTraceabilityData(
   db: SqlServerDatabase,
   specificationInput: SpecificationTraceabilitySource,
-  itemRefs: SpecificationItemRef[],
+  query: SpecificationItemQueryState,
 ): Promise<SpecificationTraceabilityData> {
   const specification =
     typeof specificationInput === 'object'
       ? specificationInput
       : await resolveSpecification(db, specificationInput)
-  const items = await listSpecificationTraceabilityItems(
+  const items: TraceabilityReportItem[] = []
+  await traverseCompleteSpecificationItemResult(
     db,
-    specification.id,
-    itemRefs,
+    toSpecificationItemPageInput(specification.id, query),
+    async pageItems => {
+      const itemRefs = pageItems.flatMap(item =>
+        item.itemRef ? [item.itemRef as SpecificationItemRef] : [],
+      )
+      const pageDetails = await listSpecificationTraceabilityItems(
+        db,
+        specification.id,
+        itemRefs,
+      )
+      const detailsByRef = new Map(
+        pageDetails.map(item => [item.itemRef, item]),
+      )
+      const orderedPage = itemRefs.flatMap(itemRef => {
+        const item = detailsByRef.get(itemRef)
+        return item ? [item] : []
+      })
+
+      if (orderedPage.length !== itemRefs.length) {
+        throw new ReportDataError(
+          'A requirement application changed while the report was generated',
+          409,
+        )
+      }
+      items.push(...orderedPage)
+    },
   )
-  const itemsByRef = new Map(items.map(item => [item.itemRef, item]))
-  const orderedItems = itemRefs.flatMap(itemRef => {
-    const item = itemsByRef.get(itemRef)
-    return item ? [item] : []
-  })
 
-  if (orderedItems.length !== itemRefs.length) {
-    throw new ReportDataError(
-      'One or more item refs were not found in this specification',
-      404,
-    )
-  }
-
-  return { items: orderedItems, specification }
+  return { items, specification }
 }

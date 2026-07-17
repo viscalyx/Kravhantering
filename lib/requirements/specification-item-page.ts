@@ -3,7 +3,7 @@ import {
   listSpecificationItemPageCandidates,
 } from '@/lib/dal/specification-item-page'
 import type { SqlServerDatabase } from '@/lib/db'
-import { validationError } from '@/lib/requirements/errors'
+import { internalError, validationError } from '@/lib/requirements/errors'
 import {
   DEFAULT_REQUIREMENT_SORT,
   type FilterValues,
@@ -22,6 +22,7 @@ import {
 
 export const DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT = 50
 export const MAX_SPECIFICATION_ITEM_PAGE_LIMIT = 100
+export const MAX_COMPLETE_SPECIFICATION_ITEM_PAGES = 10_000
 
 export interface SpecificationItemPageInput {
   cursor?: string
@@ -40,6 +41,11 @@ export interface SpecificationItemPageResult {
     limit: number
     nextCursor: string | null
   }
+}
+
+export interface CompleteSpecificationItemTraversal {
+  itemCount: number
+  pageCount: number
 }
 
 function normalizeIds(values: number[] | undefined): number[] | undefined {
@@ -162,4 +168,73 @@ export async function querySpecificationItemPage(
           : null,
     },
   }
+}
+
+export async function traverseCompleteSpecificationItemResult(
+  db: SqlServerDatabase,
+  input: Omit<SpecificationItemPageInput, 'cursor' | 'limit'>,
+  visitPage: (
+    items: RequirementRow[],
+    pageNumber: number,
+  ) => Promise<void> | void,
+): Promise<CompleteSpecificationItemTraversal> {
+  const seenCursors = new Set<string>()
+  const seenItemRefs = new Set<string>()
+  let cursor: string | undefined
+  let itemCount = 0
+
+  for (
+    let pageNumber = 1;
+    pageNumber <= MAX_COMPLETE_SPECIFICATION_ITEM_PAGES;
+    pageNumber += 1
+  ) {
+    const page = await querySpecificationItemPage(db, {
+      ...input,
+      cursor,
+      limit: MAX_SPECIFICATION_ITEM_PAGE_LIMIT,
+    })
+
+    if (page.pagination.count !== page.items.length) {
+      throw internalError('Specification item traversal returned a bad count', {
+        reason: 'complete_result_count_mismatch',
+      })
+    }
+    if (page.pagination.hasMore && page.items.length === 0) {
+      throw internalError(
+        'Specification item traversal did not make progress',
+        { reason: 'complete_result_empty_page' },
+      )
+    }
+
+    for (const item of page.items) {
+      if (!item.itemRef || seenItemRefs.has(item.itemRef)) {
+        throw internalError(
+          'Specification item traversal returned a duplicate stable reference',
+          { reason: 'complete_result_duplicate_reference' },
+        )
+      }
+      seenItemRefs.add(item.itemRef)
+    }
+
+    await visitPage(page.items, pageNumber)
+    itemCount += page.items.length
+
+    if (!page.pagination.hasMore) {
+      return { itemCount, pageCount: pageNumber }
+    }
+
+    const nextCursor = page.pagination.nextCursor
+    if (!nextCursor || seenCursors.has(nextCursor)) {
+      throw internalError(
+        'Specification item traversal returned a cyclic continuation',
+        { reason: 'complete_result_cursor_cycle' },
+      )
+    }
+    seenCursors.add(nextCursor)
+    cursor = nextCursor
+  }
+
+  throw internalError('Specification item traversal exceeded its page bound', {
+    reason: 'complete_result_page_bound',
+  })
 }

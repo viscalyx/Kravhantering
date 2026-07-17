@@ -801,7 +801,8 @@ it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selec
     'canExportProcurementCsvForLifecycleStatus',
   )
   expect(detailClientSource).toContain('export-full')
-  expect(detailClientSource).toContain('/reports/pdf/traceability?refs=')
+  expect(detailClientSource).toContain('/reports/pdf/traceability?')
+  expect(detailClientSource).toContain('traceabilityQueryParams')
 
   expect(profileTemplateSource).toContain(
     "profile === 'procurement' ? 'minimal' : 'default'",
@@ -814,23 +815,25 @@ it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selec
   expect(csvSource).toContain('buildFullCsv')
   expect(traceabilityDataSource).toContain('listSpecificationTraceabilityItems')
   expect(traceabilityDataSource).toContain(
-    'One or more item refs were not found in this specification',
+    'traverseCompleteSpecificationItemResult',
   )
+  expect(outputDataSource).toContain('traverseCompleteSpecificationItemResult')
   expect(traceabilityTemplateSource).toContain("type: 'traceability-summary'")
   expect(traceabilityTemplateSource).toContain("type: 'traceability-table'")
-  expect(traceabilityApiRouteSource).toContain('ARRAY_INPUT_MAX_ITEMS')
   expect(traceabilityApiRouteSource).toContain(
-    'Expected unique item references',
+    'specificationItemQueryStateSchema',
   )
   expect(traceabilityApiRouteSource).toContain('get_specification_items')
-  expect(traceabilityPdfRouteSource).toContain('parseSpecificationItemRef')
-  expect(traceabilityPdfRouteSource).toContain('ARRAY_INPUT_MAX_ITEMS')
+  expect(traceabilityPdfRouteSource).toContain(
+    'specificationItemQueryStateSchema',
+  )
 
   expect(reportsDoc).toContain('Kravbilaga för upphandling')
   expect(reportsDoc).toContain('Genomföranderapport')
   expect(reportsDoc).toContain('Förvaltningsrapport')
   expect(reportsDoc).toContain('Tillämpningsspårbarhet')
-  expect(reportsDoc).toContain('traceability-items?refs=')
+  expect(reportsDoc).toContain('traceability-items')
+  expect(reportsDoc).toContain('normalized filter')
   expect(reportsDoc).toContain('Anbuds-CSV')
   expect(reportsDoc).toContain('Full CSV-export')
   expect(reportsDoc).toContain('requirement_version_id')
@@ -1106,6 +1109,10 @@ it('Scenario 29: specification item reads stay bounded and cursor-only', () => {
     ),
     'utf8',
   )
+  const querySource = readFileSync(
+    join(repoRoot, 'lib', 'requirements', 'specification-item-query.ts'),
+    'utf8',
+  )
   const serverSource = readFileSync(mcpServerPath, 'utf8')
   const userGuideSource = readFileSync(userGuidePath, 'utf8')
   const contributorGuideSource = readFileSync(contributorGuidePath, 'utf8')
@@ -1125,8 +1132,8 @@ it('Scenario 29: specification item reads stay bounded and cursor-only', () => {
   expect(dalSource).toContain('enrichSpecificationItemPage')
   expect(dalSource).not.toContain('OFFSET')
 
-  expect(routeSource).toContain('itemsQuerySchema')
-  expect(routeSource).toContain('value <= 100')
+  expect(routeSource).toContain('specificationItemPageQuerySchema')
+  expect(querySource).toContain('value <= 100')
   expect(routeSource).toContain('service.getSpecificationItems')
   expect(serverSource).toContain('pagination.nextCursor')
   expect(serverSource).toContain("'invalid_cursor'")

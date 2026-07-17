@@ -256,6 +256,43 @@ captured SQL Server execution plans and baseline results show a real
 bottleneck. If the update lowers thresholds after an improvement, keep the
 stricter baseline so future regressions are caught.
 
+### Requirements specification pagination baseline
+
+Run the mixed requirements specification campaign against the local SQL Server:
+
+```bash
+npm run perf:specification-items
+```
+
+The blocking CI job runs the same command for pull requests and pushes to
+`main`. It creates isolated 70/30 and 20/80
+library/specification-local fixtures at 200 and 500 items. For every supported
+sort and direction it traverses the unchanged result twice and requires exact
+stable-reference order with no missing or duplicate rows. The candidate SQL is
+checked for matching bounded seek behavior while the existing unit SQL contract
+guards `TOP (limit + 1)`, page-bounded enrichment, and the absence of counts,
+anchor lookups, offsets, and unbounded list queries.
+
+The same run records one Requirement ID traversal for both mixes at 1,000
+items. Those 1,000-item results are diagnostic artifacts only: they have no
+duration or logical-read regression threshold and do not change the supported
+500-item sizing target.
+
+The committed regression thresholds in
+`tests/performance/specification-item-pagination-baseline.json` are separate
+from product-decision response budgets. The campaign records warm complete
+traversal duration and captures representative actual plans, logical reads,
+spills, key/RID lookups, and missing-index evidence under
+`test-results/specification-item-pagination-performance/`. CI retains those
+artifacts on failure.
+
+Keep the existing membership indexes while warm traversals and logical reads
+remain inside this baseline and plans show no spill-driven or material
+missing-index regression. A key lookup alone does not justify another index.
+Replace a simple membership index with one measured covering index only when
+fresh 200/500 evidence exceeds the baseline and the captured plan identifies
+that lookup as the cause. Do not add one index per sort.
+
 ### Adding a new migration
 
 Create a new file in `typeorm/migrations/` named `NNNN_short_description.mjs`

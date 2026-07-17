@@ -119,7 +119,6 @@ const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
 
 const AVAILABLE_REQUIREMENTS_PAGE_SIZE = 200
 const SPECIFICATION_ITEMS_PAGE_SIZE = 50
-const TRACEABILITY_ITEM_REF_LIMIT = 200
 
 interface ResolvedSpecificationItem {
   itemRef: string
@@ -2157,19 +2156,16 @@ export default function KravunderlagDetailClient({
       return next
     })
   }, [hiddenSelectedSpecificationItems])
-  const traceabilityItemRefsParam = useMemo(
+  const traceabilityQueryParams = useMemo(
     () =>
-      filteredSpecificationItems
-        .slice(0, TRACEABILITY_ITEM_REF_LIMIT)
-        .map(item => item.itemRef)
-        .filter((itemRef): itemRef is string => Boolean(itemRef))
-        .join(','),
-    [filteredSpecificationItems],
+      buildRequirementListParams({
+        filters: leftFilters,
+        locale,
+        sort: leftSort,
+      }).toString(),
+    [leftFilters, leftSort, locale],
   )
-  const hasTraceabilityReportActions =
-    !specificationItemsHasMore &&
-    filteredSpecificationItems.length <= TRACEABILITY_ITEM_REF_LIMIT &&
-    traceabilityItemRefsParam.length > 0
+  const hasTraceabilityReportActions = filteredSpecificationItems.length > 0
 
   const needsReferenceUsageById = useMemo(() => {
     const usage = new Map<number, SpecificationListItem[]>()
@@ -2269,9 +2265,7 @@ export default function KravunderlagDetailClient({
       fallbackFilename: `${label} ${spec.name} ${spec.specificationCode}.pdf`,
       url: `/${locale}/specifications/${encodeURIComponent(
         specificationPathId,
-      )}/reports/pdf/traceability?refs=${encodeURIComponent(
-        traceabilityItemRefsParam,
-      )}`,
+      )}/reports/pdf/traceability?${traceabilityQueryParams}`,
     })
   }, [
     locale,
@@ -2280,7 +2274,7 @@ export default function KravunderlagDetailClient({
     specificationPathId,
     spec,
     t,
-    traceabilityItemRefsParam,
+    traceabilityQueryParams,
   ])
 
   const specName = spec ? spec.name : '…'
@@ -3479,12 +3473,12 @@ export default function KravunderlagDetailClient({
                     needsReferenceOptions={availableNeedsRefs}
                     normReferences={leftNormReferenceOptions}
                     onFilterChange={setLeftFilters}
+                    onLoadMore={() => void loadMoreSpecificationItems()}
                     onNeedsReferenceChange={
                       canEditContent
                         ? handleNeedsReferenceAssignment
                         : undefined
                     }
-                    onLoadMore={() => void loadMoreSpecificationItems()}
                     onRowClick={id => {
                       const itemRef =
                         specificationItems.find(item => item.id === id)

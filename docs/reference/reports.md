@@ -104,7 +104,10 @@ detail list.
 
 - Includes both library requirement applications (`lib:{id}`) and
   specification-local requirement applications (`local:{id}`)
-- Uses explicit item refs in `refs=lib:31,local:41`
+- Accepts the same normalized filter, locale, sort field, and sort direction as
+  the requirements specification item list
+- Traverses the complete server-filtered result in database-authoritative order
+  with bounded 100-row pages
 - Uses the current application data already stored on requirement applications:
   needs reference, usage status, status date, deviations, risk, verifiability,
   verification method, and note
@@ -115,15 +118,20 @@ detail list.
 - Detail rows show requirement ID, origin, version, area, needs reference,
   usage status, status changed date, deviation state, risk, verification, and
   note
-- The detail view shows traceability PDF actions only when the filtered
-  requirement application list contains at most 200 items. The selected `refs`
-  payload is capped at the same limit before the report route is called.
+- The detail view keeps traceability available when matching rows have not yet
+  been loaded in the browser or the filtered result exceeds 100 items.
 
 The traceability report loads data through
-`/api/requirements-specifications/{idOrSlug}/traceability-items?refs=...`.
-The API accepts only `lib:{id}` and `local:{id}` refs, applies the shared report
-array item cap, returns 400 for invalid or duplicate refs, and returns 404 when
-a syntactically valid ref does not belong to the requested specification.
+`/api/requirements-specifications/{id}/traceability-items` with the normalized
+item-list query parameters. The server applies those filters and ordering to the
+complete combined library/specification-local result. It follows opaque
+continuations internally with duplicate, progress, cursor-cycle, and maximum
+page protection; no browser-side reference enumeration or 100-reference limit
+applies.
+
+Lifecycle-profile PDFs, procurement CSV, and full CSV do not inherit editor
+filters or loaded-page state. They always traverse the complete requirements
+specification in stable Requirement ID order using bounded server pages.
 
 ### 7. Improvement Suggestion History
 
