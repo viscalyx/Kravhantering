@@ -6,7 +6,6 @@ import {
   type SpecificationItemRef,
 } from '@/lib/dal/requirements-specifications'
 import {
-  ARRAY_INPUT_MAX_ITEMS,
   idParamSchema,
   parseRouteParams,
   parseSearchParams,
@@ -14,6 +13,7 @@ import {
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { authorize } from '@/lib/requirements/service-shared'
+import { SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT } from '@/lib/specifications/selection-action-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +29,10 @@ const querySchema = z
     refs: z
       .preprocess(
         value => (Array.isArray(value) ? value : value == null ? [] : [value]),
-        z.array(itemRefSchema).min(1).max(ARRAY_INPUT_MAX_ITEMS),
+        z
+          .array(itemRefSchema)
+          .min(1)
+          .max(SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT),
       )
       .refine(values => new Set(values).size === values.length, {
         message: 'Expected unique item references',

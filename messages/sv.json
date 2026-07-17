@@ -707,6 +707,7 @@
     "bulkNeedsReferencePartialFail": "Ändringen av behovsreferenser misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade.",
     "affectedRequirementIds": "Berörda krav-ID:n",
     "selectionStatus": "{total, plural, one {# krav markerat} other {# krav markerade}}; {hidden, plural, =0 {inga dolda} one {# är inte inläst} other {# är inte inlästa}}.",
+    "selectionActionLimitExceeded": "{total, plural, one {# krav markerat} other {# krav markerade}}; {hidden, plural, =0 {inga dolda} one {# är inte inläst} other {# är inte inlästa}}. Gemensamma åtgärder stöder högst {limit} krav. Avmarkera exakt {excess, plural, one {# krav} other {# krav}} för att fortsätta.",
     "selectionActionsAffectAll": "Åtgärder påverkar hela den markerade mängden.",
     "deselectHidden": "Avmarkera de som inte visas ({count})",
     "selectionDisappeared": "Följande krav-ID:n försvann vid uppdateringen och avmarkerades: {ids}.",

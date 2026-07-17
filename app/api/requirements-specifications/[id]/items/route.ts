@@ -26,6 +26,7 @@ import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { specificationItemPageQuerySchema } from '@/lib/requirements/specification-item-query'
+import { SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT } from '@/lib/specifications/selection-action-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,7 +47,7 @@ const requirementIdsSchema = z
 const itemRefsSchema = z
   .array(routeSegmentSchema)
   .min(1)
-  .max(ARRAY_INPUT_MAX_ITEMS)
+  .max(SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT)
   .refine(values => new Set(values).size === values.length, {
     message: 'Expected unique item references',
   })
@@ -96,7 +97,13 @@ const deleteItemsSchema = z.union([
     .strict(),
   z
     .object({
-      requirementIds: requirementIdsSchema,
+      requirementIds: z
+        .array(positiveIntegerSchema)
+        .min(1)
+        .max(SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT)
+        .refine(values => new Set(values).size === values.length, {
+          message: 'Expected unique positive integers',
+        }),
     })
     .strict(),
 ])

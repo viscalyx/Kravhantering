@@ -545,6 +545,20 @@ down.
 - When a query hides selected specification items, a status row reports the
   total and hidden counts, warns that actions affect the complete selected set,
   and can deselect exactly the hidden set.
+- A requirements specification, its paginated display, and the explicit
+  selection have no 200- or 500-item product limit. A single shared
+  selected-item action can target at most 200 stable item references, including
+  selected items that are not shown by the current query or are not loaded.
+- At 201 or more selected items, the polite selection status row uses a warning
+  appearance and states the total, the count not shown, the 200-item maximum,
+  and the exact number to deselect. The four shared actions for assigning or
+  clearing needs references, requesting deviations, and removing selected items
+  remain visible but disabled. The user chooses what to deselect; the
+  `Deselect not shown` recovery action remains enabled and no selection is
+  truncated automatically.
+- Returning to 200 or fewer selected items removes the warning and immediately
+  enables the four shared actions. Single-item actions in expanded details are
+  unaffected because they do not use the shared selection.
 - Selected-item actions resolve the selected `itemRef` values against fresh
   item data before confirmation and enumerate all affected Krav-ID values.
   Assigning and clearing needs-reference links are separate actions. Successful

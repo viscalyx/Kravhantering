@@ -707,6 +707,7 @@
     "bulkNeedsReferencePartialFail": "Needs-reference changes failed for Requirement IDs: {ids}. Those requirements remain selected.",
     "affectedRequirementIds": "Affected Requirement IDs",
     "selectionStatus": "{total, plural, one {# requirement selected} other {# requirements selected}}; {hidden, plural, =0 {none hidden} one {# is not loaded} other {# are not loaded}}.",
+    "selectionActionLimitExceeded": "{total, plural, one {# requirement selected} other {# requirements selected}}; {hidden, plural, =0 {none hidden} one {# is not loaded} other {# are not loaded}}. Shared actions support at most {limit} requirements. Deselect exactly {excess, plural, one {# requirement} other {# requirements}} to continue.",
     "selectionActionsAffectAll": "Actions affect the complete selected set.",
     "deselectHidden": "Deselect not shown ({count})",
     "selectionDisappeared": "The following Requirement IDs disappeared during refresh and were deselected: {ids}.",

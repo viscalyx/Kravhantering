@@ -89,6 +89,7 @@ import type {
   SpecificationNeedsReference,
   SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
+import { SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT } from '@/lib/specifications/selection-action-limit'
 
 const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
   sections: [
@@ -2144,6 +2145,20 @@ export default function KravunderlagDetailClient({
       ),
     [selectedSpecificationItems, visibleSpecificationItemRefs],
   )
+  const selectionActionLimitExceeded =
+    leftSelectedItemRefs.size > SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT
+  const selectionActionLimitExcess = Math.max(
+    0,
+    leftSelectedItemRefs.size - SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT,
+  )
+  const selectionActionLimitWarning = selectionActionLimitExceeded
+    ? t('selectionActionLimitExceeded', {
+        excess: selectionActionLimitExcess,
+        hidden: hiddenSelectedSpecificationItems.length,
+        limit: SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT,
+        total: leftSelectedItemRefs.size,
+      })
+    : null
   const deselectHiddenSpecificationItems = useCallback(() => {
     const hiddenRefs = new Set(
       hiddenSelectedSpecificationItems
@@ -3579,7 +3594,11 @@ export default function KravunderlagDetailClient({
                     statusRow={
                       leftSelectedItemRefs.size > 0 ? (
                         <div
-                          className="flex flex-wrap items-center justify-between gap-2 border-b border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/30 dark:text-primary-100"
+                          className={`flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 text-xs ${
+                            selectionActionLimitExceeded
+                              ? 'border-amber-300 bg-amber-100 text-amber-950 dark:border-amber-700/70 dark:bg-amber-950/50 dark:text-amber-100'
+                              : 'border-primary-200 bg-primary-50 text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/30 dark:text-primary-100'
+                          }`}
                           {...devMarker({
                             context: 'requirements specification detail',
                             name: 'selection status',
@@ -3588,28 +3607,37 @@ export default function KravunderlagDetailClient({
                           })}
                           role="status"
                         >
-                          <div>
-                            <span>
-                              {t('selectionStatus', {
-                                hidden: hiddenSelectedSpecificationItems.length,
-                                total: leftSelectedItemRefs.size,
-                              })}{' '}
-                              {t('selectionActionsAffectAll')}
-                            </span>
-                            {selectionNotice ? (
-                              <p className="mt-1 font-medium">
-                                {selectionNotice}
-                              </p>
+                          <div className="flex min-w-0 items-start gap-2">
+                            {selectionActionLimitExceeded ? (
+                              <AlertTriangle
+                                aria-hidden="true"
+                                className="mt-0.5 h-4 w-4 shrink-0"
+                              />
                             ) : null}
-                            {bulkNeedsReferenceError &&
-                            !showBulkNeedsReferenceModal ? (
-                              <p
-                                className="mt-1 font-medium text-red-700 dark:text-red-300"
-                                role="alert"
-                              >
-                                {bulkNeedsReferenceError}
-                              </p>
-                            ) : null}
+                            <div>
+                              <span>
+                                {selectionActionLimitWarning ??
+                                  `${t('selectionStatus', {
+                                    hidden:
+                                      hiddenSelectedSpecificationItems.length,
+                                    total: leftSelectedItemRefs.size,
+                                  })} ${t('selectionActionsAffectAll')}`}
+                              </span>
+                              {selectionNotice ? (
+                                <p className="mt-1 font-medium">
+                                  {selectionNotice}
+                                </p>
+                              ) : null}
+                              {bulkNeedsReferenceError &&
+                              !showBulkNeedsReferenceModal ? (
+                                <p
+                                  className="mt-1 font-medium text-red-700 dark:text-red-300"
+                                  role="alert"
+                                >
+                                  {bulkNeedsReferenceError}
+                                </p>
+                              ) : null}
+                            </div>
                           </div>
                           {hiddenSelectedSpecificationItems.length > 0 ? (
                             <button
@@ -3638,8 +3666,12 @@ export default function KravunderlagDetailClient({
                         <>
                           <button
                             aria-label={t('assignNeedsReferenceAction')}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-wait disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                            disabled={bulkActionResolving || bulkActionSaving}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                            disabled={
+                              selectionActionLimitExceeded ||
+                              bulkActionResolving ||
+                              bulkActionSaving
+                            }
                             {...devMarker({
                               context: 'requirements specification detail',
                               name: 'selection action',
@@ -3647,15 +3679,22 @@ export default function KravunderlagDetailClient({
                               value: 'assign needs reference',
                             })}
                             onClick={() => void openBulkNeedsReferenceModal()}
-                            title={t('assignNeedsReferenceAction')}
+                            title={
+                              selectionActionLimitWarning ??
+                              t('assignNeedsReferenceAction')
+                            }
                             type="button"
                           >
                             <Link2 aria-hidden="true" className="h-4 w-4" />
                           </button>
                           <button
                             aria-label={t('clearNeedsReferenceAction')}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-wait disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                            disabled={bulkActionResolving || bulkActionSaving}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-secondary-300 text-secondary-700 transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                            disabled={
+                              selectionActionLimitExceeded ||
+                              bulkActionResolving ||
+                              bulkActionSaving
+                            }
                             {...devMarker({
                               context: 'requirements specification detail',
                               name: 'selection action',
@@ -3667,7 +3706,10 @@ export default function KravunderlagDetailClient({
                                 event.currentTarget as HTMLElement,
                               )
                             }
-                            title={t('clearNeedsReferenceAction')}
+                            title={
+                              selectionActionLimitWarning ??
+                              t('clearNeedsReferenceAction')
+                            }
                             type="button"
                           >
                             <Link2Off aria-hidden="true" className="h-4 w-4" />
@@ -3676,8 +3718,12 @@ export default function KravunderlagDetailClient({
                             aria-label={td('requestDeviationSelected', {
                               count: leftSelectedItemRefs.size,
                             })}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-amber-300 text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-wait disabled:opacity-60 dark:border-amber-700/60 dark:text-amber-400 dark:hover:bg-amber-950/20"
-                            disabled={bulkActionResolving || bulkActionSaving}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-amber-300 text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-amber-700/60 dark:text-amber-400 dark:hover:bg-amber-950/20"
+                            disabled={
+                              selectionActionLimitExceeded ||
+                              bulkActionResolving ||
+                              bulkActionSaving
+                            }
                             {...devMarker({
                               context: 'requirements specification detail',
                               name: 'selection action',
@@ -3685,9 +3731,12 @@ export default function KravunderlagDetailClient({
                               value: 'request deviations',
                             })}
                             onClick={() => void openBulkDeviationModal()}
-                            title={td('requestDeviationSelected', {
-                              count: leftSelectedItemRefs.size,
-                            })}
+                            title={
+                              selectionActionLimitWarning ??
+                              td('requestDeviationSelected', {
+                                count: leftSelectedItemRefs.size,
+                              })
+                            }
                             type="button"
                           >
                             <AlertTriangle
@@ -3699,8 +3748,12 @@ export default function KravunderlagDetailClient({
                             aria-label={t('removeSelected', {
                               count: leftSelectedItemRefs.size,
                             })}
-                            className="btn-destructive inline-flex h-11 w-11 items-center justify-center rounded-lg px-0 py-0 disabled:cursor-wait disabled:opacity-60"
-                            disabled={bulkActionResolving || bulkActionSaving}
+                            className="btn-destructive inline-flex h-11 w-11 items-center justify-center rounded-lg px-0 py-0 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={
+                              selectionActionLimitExceeded ||
+                              bulkActionResolving ||
+                              bulkActionSaving
+                            }
                             {...devMarker({
                               context: 'requirements specification detail',
                               name: 'selection action',
@@ -3712,9 +3765,12 @@ export default function KravunderlagDetailClient({
                                 event.currentTarget as HTMLElement,
                               )
                             }
-                            title={t('removeSelected', {
-                              count: leftSelectedItemRefs.size,
-                            })}
+                            title={
+                              selectionActionLimitWarning ??
+                              t('removeSelected', {
+                                count: leftSelectedItemRefs.size,
+                              })
+                            }
                             type="button"
                           >
                             <Trash2 aria-hidden="true" className="h-4 w-4" />

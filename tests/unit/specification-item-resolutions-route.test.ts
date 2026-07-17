@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT } from '@/lib/specifications/selection-action-limit'
 
 const routeState = vi.hoisted(() => ({
   authorize: vi.fn(),
@@ -83,6 +84,28 @@ describe('specification item resolution route', () => {
     const response = await GET(
       new NextRequest(
         'http://localhost/api/specification-item-resolutions/42?refs=lib%3A31&refs=lib%3A31',
+      ),
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
+  })
+
+  it('rejects direct resolution requests above the selected-item action limit', async () => {
+    const refs = Array.from(
+      { length: SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT + 1 },
+      (_, index) => `lib:${index + 1}`,
+    )
+    const params = new URLSearchParams()
+    for (const ref of refs) params.append('refs', ref)
+    const { GET } = await import(
+      '@/app/api/specification-item-resolutions/[id]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        `http://localhost/api/specification-item-resolutions/42?${params}`,
       ),
       { params: Promise.resolve({ id: '42' }) },
     )

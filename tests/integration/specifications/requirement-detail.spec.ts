@@ -1466,6 +1466,160 @@ test.describe('Requirements specification deterministic manual cases', () => {
     ).toHaveCount(1)
   })
 
+  test('SPEC-20: limits shared actions for more than 200 selected items', async ({
+    page,
+  }) => {
+    const items = Array.from({ length: 201 }, (_, index) => {
+      const number = String(index + 1).padStart(3, '0')
+      const isHiddenItem = index === 200
+      const requirementId = index === 0 ? 920005 : 981000 + index
+      return {
+        area: { name: 'PWT-MANUAL Playwright manual cases' },
+        deviationCount: 0,
+        hasApprovedDeviation: false,
+        hasPendingDeviation: false,
+        id: requirementId,
+        isArchived: false,
+        itemRef: `lib:${requirementId}`,
+        kind: 'library',
+        specificationItemId: requirementId,
+        uniqueId: isHiddenItem
+          ? 'PWT-LIMIT-HIDDEN'
+          : `PWT-LIMIT-KEEP-${number}`,
+        version: {
+          categoryNameEn: 'Business requirement',
+          categoryNameSv: 'Verksamhetskrav',
+          description: `PWT selected-item action limit ${number}.`,
+          priorityLevelColor: null,
+          priorityLevelIconName: null,
+          priorityLevelId: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+          priorityLevelSortOrder: null,
+          qualityCharacteristicNameEn: null,
+          qualityCharacteristicNameSv: null,
+          status: 3,
+          statusColor: '#22c55e',
+          statusIconName: 'CheckCircle2',
+          statusNameEn: 'Published',
+          statusNameSv: 'Publicerad',
+          typeNameEn: 'Business requirement',
+          typeNameSv: 'Verksamhetskrav',
+          verifiable: true,
+          versionNumber: 1,
+        },
+      }
+    })
+
+    await page.route(
+      `**/api/requirements-specifications/${specificationId}/items?*`,
+      async route => {
+        const params = new URL(route.request().url()).searchParams
+        const responseItems =
+          params.get('uniqueIdSearch') === 'KEEP' ? items.slice(0, 200) : items
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            items: responseItems,
+            pagination: {
+              count: responseItems.length,
+              hasMore: false,
+              limit: 50,
+              nextCursor: null,
+            },
+          },
+        })
+      },
+    )
+
+    await gotoSpecificationDetail(page)
+    const specificationItemsPanel = page.locator(
+      '[data-specification-detail-list-panel="items"]',
+    )
+    await specificationItemsPanel
+      .getByRole('button', { name: 'Filtrera efter Krav-ID' })
+      .click()
+    const requirementIdFilter = page.getByRole('textbox', { name: 'Krav-ID' })
+    await requirementIdFilter.fill('LIMIT')
+    await requirementIdFilter.press('Enter')
+
+    const selectionCheckboxes = specificationItemsPanel.getByRole('checkbox', {
+      name: /^Markera PWT-LIMIT-/u,
+    })
+    await expect(selectionCheckboxes).toHaveCount(201)
+    for (const checkbox of await selectionCheckboxes.all()) {
+      await checkbox.check()
+    }
+
+    const sharedActions = [
+      specificationItemsPanel.getByRole('button', {
+        name: 'Tilldela behovsreferens',
+      }),
+      specificationItemsPanel.getByRole('button', {
+        name: 'Rensa behovsreferenser',
+      }),
+      specificationItemsPanel.getByRole('button', {
+        name: 'Begär avsteg för valda (201)',
+      }),
+      specificationItemsPanel.getByRole('button', {
+        name: 'Ta bort valda (201)',
+      }),
+    ]
+    for (const action of sharedActions) {
+      await expect(action).toBeDisabled()
+    }
+    await expect(specificationItemsPanel.getByRole('status')).toContainText(
+      '201 krav markerade; inga dolda. Gemensamma åtgärder stöder högst 200 krav. Avmarkera exakt 1 krav för att fortsätta.',
+    )
+
+    await specificationItemsPanel
+      .getByRole('button', { name: /^PWT-LIMIT-KEEP-001\b/u })
+      .click()
+    await expect(
+      specificationItemsPanel.getByRole('button', {
+        name: 'Ta bort från underlaget',
+      }),
+    ).toBeEnabled()
+
+    await specificationItemsPanel
+      .getByRole('button', { name: 'Filtrera efter Krav-ID' })
+      .click()
+    await requirementIdFilter.fill('KEEP')
+    await requirementIdFilter.press('Enter')
+
+    const deselectNotShown = specificationItemsPanel.getByRole('button', {
+      name: 'Avmarkera de som inte visas (1)',
+    })
+    await expect(deselectNotShown).toBeEnabled()
+    await expect(specificationItemsPanel.getByRole('status')).toContainText(
+      '201 krav markerade; 1 är inte inläst. Gemensamma åtgärder stöder högst 200 krav. Avmarkera exakt 1 krav för att fortsätta.',
+    )
+    await deselectNotShown.click()
+
+    await expect(specificationItemsPanel.getByRole('status')).toContainText(
+      '200 krav markerade; inga dolda.',
+    )
+    await expect(specificationItemsPanel.getByRole('status')).not.toContainText(
+      'Gemensamma åtgärder stöder högst 200 krav.',
+    )
+    for (const action of [
+      specificationItemsPanel.getByRole('button', {
+        name: 'Tilldela behovsreferens',
+      }),
+      specificationItemsPanel.getByRole('button', {
+        name: 'Rensa behovsreferenser',
+      }),
+      specificationItemsPanel.getByRole('button', {
+        name: 'Begär avsteg för valda (200)',
+      }),
+      specificationItemsPanel.getByRole('button', {
+        name: 'Ta bort valda (200)',
+      }),
+    ]) {
+      await expect(action).toBeEnabled()
+    }
+  })
+
   test('SPEC-06: adds, selects, and removes a requirement in the specification detail UI', async ({
     page,
   }) => {

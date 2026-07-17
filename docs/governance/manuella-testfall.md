@@ -1305,6 +1305,24 @@ markering, visar en varning med `Försök igen` och återför fokus dit efter et
 misslyckat nytt försök. En lyckad omstart ersätter raderna, annonseras utan
 automatisk fokusflytt och behåller markeringen.
 
+### SPEC-20: begränsa gemensam åtgärd för markerade krav
+
+**Steg:** Markera 200 krav i `Krav i underlaget` och kontrollera de fyra
+gemensamma åtgärderna för att tilldela behovsreferens, rensa
+behovsreferenslänkar, begära avsteg och ta bort markerade krav. Markera ett krav
+till. Filtrera listan så att ett av de 201 markerade kraven inte visas. Öppna
+ett visat kravs detalj och kontrollera dess enskilda åtgärder. Välj sedan
+`Avmarkera de som inte visas (1)`.
+
+**Förväntat resultat:** Vid 200 markerade krav är de fyra gemensamma åtgärderna
+aktiverade. Vid 201 är samma åtgärder synliga men nedtonade och inaktiverade.
+Statusraden har varningsutseende och anger totalt 201 markerade, att 1 inte är
+inläst, gränsen 200 och att exakt 1 krav måste avmarkeras. Ingen markering tas
+bort automatiskt. Åtgärden för att avmarkera de krav som inte visas är
+aktiverad och kravets enskilda detaljåtgärder påverkas inte. Efter
+avmarkeringen återstår 200 markerade krav, varningen försvinner och de fyra
+gemensamma åtgärderna aktiveras igen.
+
 ## Avsteg
 
 ### DEV-01: skapa avstegsutkast

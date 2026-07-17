@@ -76,6 +76,7 @@ import {
   POST,
 } from '@/app/api/requirements-specifications/[id]/items/route'
 import { invalidCursorError, validationError } from '@/lib/requirements/errors'
+import { SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT } from '@/lib/specifications/selection-action-limit'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
@@ -479,6 +480,39 @@ describe('requirements-specifications/[id]/items route', () => {
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'requirementIds.0')
     expect(mocks.removeFromSpecification).not.toHaveBeenCalled()
+  })
+
+  it('rejects direct selected-item mutations above the action limit', async () => {
+    const itemRefs = Array.from(
+      { length: SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT + 1 },
+      (_, index) => `lib:${index + 1}`,
+    )
+    const patchRequest = new NextRequest(
+      'http://localhost/api/requirements-specifications/5/items',
+      {
+        body: JSON.stringify({ itemRefs, needsReferenceId: 7 }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      },
+    )
+    const deleteRequest = new NextRequest(
+      'http://localhost/api/requirements-specifications/5/items',
+      {
+        body: JSON.stringify({ itemRefs }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'DELETE',
+      },
+    )
+
+    const [patchResponse, deleteResponse] = await Promise.all([
+      PATCH(patchRequest, makeParams('5')),
+      DELETE(deleteRequest, makeParams('5')),
+    ])
+
+    expect(patchResponse.status).toBe(400)
+    expect(deleteResponse.status).toBe(400)
+    expect(mocks.updateSpecificationItemFieldsByItemRefs).not.toHaveBeenCalled()
+    expect(mocks.deleteSpecificationItemsByRefs).not.toHaveBeenCalled()
   })
 
   it('returns a JSON 500 error when linking requirements fails unexpectedly', async () => {

@@ -120,6 +120,12 @@ Deferred from this contract:
   authorization-before-data, lifecycle profile gating, linked-version
   selection, normalized complete-result query traversal, and exact output
   columns.
+- Direct callers can submit at most 200 stable item references to the
+  specification selected-item resolution endpoint and to selected-item
+  needs-reference or removal mutations. Requests with more than 200 references
+  fail request validation before resolution or mutation work. This limit
+  bounds one shared action; it does not limit specification size, pagination,
+  display, or explicit selection.
 - Specification deviation routes, requirement-library deviation routes, and
   improvement-suggestion routes remain outside the OpenAPI/Schemathesis v1
   contract. Their useful assertions are lifecycle state machines, reviewer

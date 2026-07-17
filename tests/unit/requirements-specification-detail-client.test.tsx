@@ -29,7 +29,11 @@ const lazyFeatureState = vi.hoisted(() => ({
 }))
 const intlState = vi.hoisted(() => ({
   locale: 'en',
+  selectionActionLimitExceeded: vi.fn(),
   selectionStatus: vi.fn(),
+}))
+const requirementDetailState = vi.hoisted(() => ({
+  renderSpy: vi.fn(),
 }))
 const pdfDownloadState = vi.hoisted(() => ({
   clearError: vi.fn(),
@@ -42,6 +46,9 @@ vi.mock('next-intl', () => ({
     const t = (key: string, values?: Record<string, unknown>) => {
       if (ns === 'specification' && key === 'selectionStatus') {
         intlState.selectionStatus(values)
+      }
+      if (ns === 'specification' && key === 'selectionActionLimitExceeded') {
+        intlState.selectionActionLimitExceeded(values)
       }
       return ns ? `${ns}.${key}` : key
     }
@@ -67,9 +74,13 @@ vi.mock('@/lib/reduced-motion', async importOriginal => {
 })
 
 vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
-  default: ({ requirementId }: { requirementId: number }) => (
-    <div>{`Requirement detail ${requirementId}`}</div>
-  ),
+  default: (props: {
+    removeFromSpecificationDisabled?: boolean
+    requirementId: number
+  }) => {
+    requirementDetailState.renderSpy(props)
+    return <div>{`Requirement detail ${props.requirementId}`}</div>
+  },
 }))
 
 vi.mock('@/components/LazyAiRequirementGenerator', () => ({
@@ -177,6 +188,7 @@ vi.mock('@/components/RequirementsTable', () => ({
     onSortChange?: (value: RequirementSortState) => void
     requirementPackages?: { id: number; name: string }[]
     rows: { id: number; itemRef?: string; requirementPackageIds?: number[] }[]
+    renderExpanded?: (id: number) => ReactNode
     selectable?: boolean
     selectedIds?: Set<number>
     showSelectAll?: boolean
@@ -545,6 +557,9 @@ describe('RequirementsSpecificationDetailClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     intlState.locale = 'en'
+    intlState.selectionActionLimitExceeded.mockReset()
+    intlState.selectionStatus.mockReset()
+    requirementDetailState.renderSpy.mockReset()
     vi.mocked(useReducedMotion).mockReturnValue(false)
     requirementsTableMock.mockReset()
     pdfDownloadState.clearError.mockReset()
@@ -2596,6 +2611,104 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(
       screen.getByRole('button', { name: 'specification.removeSelected' }),
     ).toHaveClass('px-0', 'py-0')
+  })
+
+  it('limits shared selected-item actions without changing the selection', async () => {
+    const items = Array.from({ length: 201 }, (_, index) => ({
+      ...initialSpecificationItem,
+      id: index + 1,
+      itemRef: `lib:${index + 1}`,
+      requirementPackageIds: [index < 200 ? 1 : 2],
+      specificationItemId: index + 1,
+      uniqueId: `BEH${String(index + 1).padStart(4, '0')}`,
+    }))
+    const initialData = {
+      ...createInitialData(),
+      requirementPackages: [
+        { id: 1, name: 'Shown package' },
+        { id: 2, name: 'Hidden package' },
+      ],
+      specificationItems: createSpecificationItemsPage(items),
+    }
+    specificationItemsGetItems = items
+    renderRequirementsSpecificationDetailClient(initialData)
+    await waitForInitialAvailableRequirementsRefresh()
+
+    act(() => {
+      latestItemsTableProps().onSelectionChange?.(
+        new Set(items.slice(0, 200).map(item => item.id)),
+      )
+    })
+
+    const sharedActionNames = [
+      'specification.assignNeedsReferenceAction',
+      'specification.clearNeedsReferenceAction',
+      'deviation.requestDeviationSelected',
+      'specification.removeSelected',
+    ]
+    for (const name of sharedActionNames) {
+      expect(screen.getByRole('button', { name })).toBeEnabled()
+    }
+
+    act(() => {
+      latestItemsTableProps().onSelectionChange?.(
+        new Set(items.map(item => item.id)),
+      )
+    })
+
+    expect(intlState.selectionActionLimitExceeded).toHaveBeenLastCalledWith({
+      excess: 1,
+      hidden: 0,
+      limit: 200,
+      total: 201,
+    })
+    for (const name of sharedActionNames) {
+      const button = screen.getByRole('button', { name })
+      expect(button).toBeDisabled()
+      expect(button).toHaveClass('disabled:opacity-40')
+      expect(button).toHaveAttribute(
+        'title',
+        'specification.selectionActionLimitExceeded',
+      )
+    }
+    expect(latestItemsTableProps().selectedIds?.size).toBe(201)
+
+    render(latestItemsTableProps().renderExpanded?.(items[0].id) as ReactNode)
+    expect(requirementDetailState.renderSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ removeFromSpecificationDisabled: false }),
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'filter-package-items-1' }),
+    )
+    await waitFor(() => {
+      expect(intlState.selectionActionLimitExceeded).toHaveBeenLastCalledWith({
+        excess: 1,
+        hidden: 1,
+        limit: 200,
+        total: 201,
+      })
+    })
+
+    const deselectNotShown = screen.getByRole('button', {
+      name: 'specification.deselectHidden',
+    })
+    expect(deselectNotShown).toBeEnabled()
+    fireEvent.click(deselectNotShown)
+
+    await waitFor(() => {
+      expect(latestItemsTableProps().selectedIds?.size).toBe(200)
+      expect(intlState.selectionStatus).toHaveBeenLastCalledWith({
+        hidden: 0,
+        total: 200,
+      })
+    })
+    for (const name of sharedActionNames) {
+      expect(screen.getByRole('button', { name })).toBeEnabled()
+    }
+    expect(
+      screen.getByTestId('requirements-table-items-status'),
+    ).not.toHaveTextContent('specification.selectionActionLimitExceeded')
   })
 
   it('preserves selection across an authoritative item refresh and clears it on locale change', async () => {
