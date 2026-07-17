@@ -130,6 +130,9 @@ jobs:
       - name: Start local database service
         run: npm run db:up
 
+      - name: Wait for local database service
+        run: npm run db:wait
+
       - name: Run focused SQL integration tests
         run: npm run test:sql-integration
 
