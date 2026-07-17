@@ -10,7 +10,7 @@ import {
   createPublishedRequirement,
   createSpecificationFixture,
   useSqlIntegrationDatabase,
-} from './sql-test-database'
+} from './helpers/sql-test-database'
 
 describe('specification item pagination', () => {
   const appDb = useSqlIntegrationDatabase()

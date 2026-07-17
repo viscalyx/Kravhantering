@@ -16,7 +16,7 @@ import {
   createArea,
   createPublishedRequirement,
   useSqlIntegrationDatabase,
-} from './sql-test-database'
+} from './helpers/sql-test-database'
 
 describe('requirement lifecycle concurrency and constraints', () => {
   const appDb = useSqlIntegrationDatabase()

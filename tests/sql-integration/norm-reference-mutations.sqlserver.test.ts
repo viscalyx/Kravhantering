@@ -3,7 +3,7 @@ import { createNormReferenceWithAudit } from '@/lib/requirements/norm-reference-
 import {
   makeRequestContext,
   useSqlIntegrationDatabase,
-} from './sql-test-database'
+} from './helpers/sql-test-database'
 
 describe('norm-reference audited mutations', () => {
   const appDb = useSqlIntegrationDatabase()

@@ -15,9 +15,9 @@ export default defineConfig({
     environment: 'node',
     exclude: ['**/node_modules/**', '.git/**'],
     fileParallelism: false,
-    globalSetup: ['./tests/sql-integration/global-setup.ts'],
+    globalSetup: ['./tests/sql-integration/helpers/global-setup.ts'],
     hookTimeout: 120_000,
-    include: ['tests/sql-integration/**/*.sql.test.ts'],
+    include: ['tests/sql-integration/**/*.sqlserver.test.ts'],
     maxWorkers: 1,
     reporters: [
       'verbose',

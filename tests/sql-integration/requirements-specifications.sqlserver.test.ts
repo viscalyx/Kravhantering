@@ -8,7 +8,7 @@ import {
   createPublishedRequirement,
   createSpecificationFixture,
   useSqlIntegrationDatabase,
-} from './sql-test-database'
+} from './helpers/sql-test-database'
 
 describe('requirements specification mutations', () => {
   const appDb = useSqlIntegrationDatabase()
