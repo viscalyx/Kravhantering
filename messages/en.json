@@ -433,6 +433,9 @@
   },
   "requirement": {
     "title": "Requirements Library",
+    "loadRequirementsFailed": "Could not load the requirements library.",
+    "paginationContinuationFailed": "Could not load the next page. The requirements already loaded are still shown.",
+    "paginationRecoveryFailed": "The continuation expired and restarting from the first page failed. The requirements already loaded, the current query, and the selection are unchanged.",
     "statusStepperAriaLabel": "Requirement version status workflow steps",
     "tableCaption": "Requirements list",
     "uniqueId": "Requirement ID",

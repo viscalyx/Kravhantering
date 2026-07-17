@@ -319,6 +319,14 @@ CSV with the following conventions:
 - Requirements specification CSV exports are generated server-side from the
   whole specification, stay row-oriented, do not include metadata rows, and are
   returned with a UTF-8 BOM at the HTTP boundary.
+- Requirements Library CSV is served only by
+  `GET /api/requirements/export`. It applies the requested server filters,
+  locale, and database sort, starts from the first page, and accepts no cursor
+  or page-size parameter.
+- Requirements Library CSV and filtered list PDF collection traverse internal
+  200-row pages. They fail rather than return partial output if a page repeats a
+  Requirement ID, does not make progress, repeats a cursor, or exceeds 10 000
+  pages (two million rows).
 
 ## Output Behavior
 

@@ -31,10 +31,16 @@ Covered by this contract:
   at most 100 mixed library and specification-local requirement applications.
   Its filters and ordering apply in SQL Server over the complete result, and
   malformed or query-mismatched continuation state returns `invalid_cursor`.
-- Requirement list continuation uses bounded opaque cursors. Cursors contain an
-  anchor id and a hash of normalized query and visibility state, not requirement
-  text or raw filter values. Malformed or mismatched cursors return
-  `invalid_cursor` with status `400`.
+- Requirement list continuation uses bounded opaque cursors. Cursors contain
+  null rank, the SQL sort key, the stable numeric requirement id, and a hash of
+  normalized query and visibility state. Free-text and lookup-name sort keys
+  are bounded; the system-generated unique requirement id is already bounded
+  by its domain. Cursors do not contain raw filters or the full requirement
+  text. Malformed or mismatched cursors return `invalid_cursor` with status
+  `400`.
+- `GET /api/requirements/export` is the complete Requirements Library CSV
+  contract. It accepts the documented filters, locale, and sort but no cursor
+  or page size, and uses the same authorization and SQL ordering as list pages.
 - Requirement detail responses include server-derived permissions for the
   current actor and requirement; there is no separate generic permissions
   endpoint in the v1 contract.
@@ -65,7 +71,8 @@ Deferred from this contract:
   and a sanitized match state; only Admin users receive the observed TypeORM
   migration `name`, and only for mismatch diagnostics.
 - CSV, PDF, and report export routes remain outside the
-  OpenAPI/Schemathesis v1 contract, except for data-subject export. Their
+  OpenAPI/Schemathesis v1 contract, except for data-subject export and
+  `GET /api/requirements/export`. Their
   useful assertions are exact columns, localized filenames, byte content,
   `Cache-Control: no-store`, and authorization-before-data checks, so focused
   route/report tests are the better coverage mechanism.

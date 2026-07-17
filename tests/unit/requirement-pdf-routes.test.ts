@@ -45,7 +45,7 @@ const routeState = vi.hoisted(() => ({
   listSpecificationRequirementSelectionQuestions: vi.fn(),
   parseLibrarySpecificationItemId: vi.fn(),
   parseSpecificationItemRef: vi.fn(),
-  queryRequirementList: vi.fn(),
+  traverseCompleteRequirementList: vi.fn(),
   renderReportModelPdfResponse: vi.fn(),
   resolveSpecificationId: vi.fn(),
 }))
@@ -87,7 +87,7 @@ vi.mock('@/lib/requirements/server', () => ({
 }))
 
 vi.mock('@/lib/requirements/list-query', () => ({
-  queryRequirementList: routeState.queryRequirementList,
+  traverseCompleteRequirementList: routeState.traverseCompleteRequirementList,
 }))
 
 vi.mock('@/lib/reports/templates/list-template', () => ({
@@ -183,24 +183,6 @@ function listRequirement(id: number, uniqueId = `REQ-${id}`) {
   }
 }
 
-function listQueryPage(
-  requirements: ReturnType<typeof listRequirement>[],
-  pagination: {
-    hasMore?: boolean
-    nextCursor?: string | null
-  } = {},
-) {
-  return {
-    pagination: {
-      count: requirements.length,
-      hasMore: pagination.hasMore ?? false,
-      limit: 200,
-      nextCursor: pagination.nextCursor ?? null,
-    },
-    requirements,
-  }
-}
-
 function reportIds(count: number): string[] {
   return Array.from({ length: count }, (_, index) => String(index + 1))
 }
@@ -226,8 +208,16 @@ describe('requirement PDF routes', () => {
       requirement('REQ-1'),
       requirement('REQ-2'),
     ])
-    routeState.queryRequirementList.mockResolvedValue(
-      listQueryPage([listRequirement(1), listRequirement(2)]),
+    routeState.traverseCompleteRequirementList.mockImplementation(
+      async (
+        _db: unknown,
+        _input: unknown,
+        _authorization: unknown,
+        visitPage: (rows: unknown[], page: number) => void | Promise<void>,
+      ) => {
+        await visitPage([listRequirement(1), listRequirement(2)], 1)
+        return { itemCount: 2, pageCount: 1 }
+      },
     )
     routeState.collectSuggestionsForReport.mockResolvedValue([])
     routeState.buildCombinedReviewReport.mockReturnValue({
@@ -380,14 +370,18 @@ describe('requirement PDF routes', () => {
   })
 
   it('resolves list PDFs from the complete active filter and sort query', async () => {
-    routeState.queryRequirementList
-      .mockResolvedValueOnce(
-        listQueryPage([listRequirement(1, 'REQ-1')], {
-          hasMore: true,
-          nextCursor: 'cursor-1',
-        }),
-      )
-      .mockResolvedValueOnce(listQueryPage([listRequirement(2, 'REQ-2')]))
+    routeState.traverseCompleteRequirementList.mockImplementationOnce(
+      async (
+        _db: unknown,
+        _input: unknown,
+        _authorization: unknown,
+        visitPage: (rows: unknown[], page: number) => void | Promise<void>,
+      ) => {
+        await visitPage([listRequirement(1, 'REQ-1')], 1)
+        await visitPage([listRequirement(2, 'REQ-2')], 2)
+        return { itemCount: 2, pageCount: 2 }
+      },
+    )
     const { GET } = await import(
       '@/app/[locale]/requirements/reports/pdf/list/route'
     )
@@ -400,8 +394,7 @@ describe('requirement PDF routes', () => {
     )
 
     expect(response.status).toBe(200)
-    expect(routeState.queryRequirementList).toHaveBeenNthCalledWith(
-      1,
+    expect(routeState.traverseCompleteRequirementList).toHaveBeenCalledWith(
       { db: true },
       {
         filters: {
@@ -419,21 +412,14 @@ describe('requirement PDF routes', () => {
           typeIds: undefined,
           uniqueIdSearch: 'REQ',
         },
-        limit: 200,
         locale: 'sv',
-        cursor: undefined,
         sort: { by: 'status', direction: 'desc' },
       },
       {
         authorization: routeState.authorization,
         context: routeState.context,
       },
-    )
-    expect(routeState.queryRequirementList).toHaveBeenNthCalledWith(
-      2,
-      { db: true },
-      expect.objectContaining({ cursor: 'cursor-1' }),
-      expect.anything(),
+      expect.any(Function),
     )
     expect(
       routeState.collectMultipleRequirementListItemsForReport,
@@ -573,7 +559,17 @@ describe('requirement PDF routes', () => {
   })
 
   it('rejects filter-based list PDFs when no requirements match', async () => {
-    routeState.queryRequirementList.mockResolvedValueOnce(listQueryPage([]))
+    routeState.traverseCompleteRequirementList.mockImplementationOnce(
+      async (
+        _db: unknown,
+        _input: unknown,
+        _authorization: unknown,
+        visitPage: (rows: unknown[], page: number) => void,
+      ) => {
+        visitPage([], 1)
+        return { itemCount: 0, pageCount: 1 }
+      },
+    )
     const { GET } = await import(
       '@/app/[locale]/requirements/reports/pdf/list/route'
     )

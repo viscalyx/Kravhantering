@@ -640,6 +640,15 @@ som användaren får läsa.
 kravlistan är tillgänglig för publicerade krav som användaren får läsa, medan
 rapporter baserade på historik kräver separat åtkomst till historik.
 
+### REQ-10a: komplett CSV-export går över första serversidan
+
+**Steg:** Använd en fixture med minst 205 publicerade krav. Öppna
+`/sv/requirements`, välj en känd sortering och aktivera `Exportera`.
+
+**Förväntat resultat:** `kravbibliotek.csv` innehåller samtliga 205 krav exakt
+en gång i samma auktoritativa ordning som listan. Exportanropet går till
+`/api/requirements/export` och skickar varken `cursor` eller `limit`.
+
 ### REQ-11: svensk länk till krav omdirigerar till befintlig kravdetalj
 
 **Steg:** Öppna `/krav/INT0001`, `/sv/krav/INT0001` och

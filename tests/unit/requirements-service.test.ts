@@ -184,6 +184,11 @@ function makeRequirementRecord() {
         createdAt: '2026-03-08T00:00:00.000Z',
         createdBy: 'alice',
         description: 'Support secure integration',
+        cursorBoundary: {
+          nullRank: 0,
+          requirementId: 1,
+          sortValue: 'INT0001',
+        },
         editedAt: '2026-03-08T00:00:00.000Z',
         id: 10,
         publishedAt: null,
@@ -484,6 +489,11 @@ describe('createRequirementsService', () => {
         categoryNameEn: 'Business requirement',
         categoryNameSv: 'Verksamhetskrav',
         createdAt: '2026-03-08T00:00:00.000Z',
+        cursorBoundary: {
+          nullRank: 0,
+          requirementId: 1,
+          sortValue: 'INT0001',
+        },
         description: 'Support secure integration',
         id: 1,
         isArchived: false,
@@ -610,6 +620,7 @@ describe('createRequirementsService', () => {
         id: 10,
         isArchived: false,
         maxVersion: 1,
+        matchedFields: ['version.acceptanceCriteria'],
         pendingVersionStatusColor: null,
         pendingVersionStatusId: null,
         requirementAreaId: 1,
@@ -644,11 +655,14 @@ describe('createRequirementsService', () => {
       expect.objectContaining({
         match: {
           matchedFields: ['version.acceptanceCriteria'],
-          quality: 'contains',
         },
         uniqueId: 'INT0001',
       }),
     ])
+    expect(mocks.listRequirements).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ limit: 51, search: '2s' }),
+    )
   })
 
   it('lists status catalog rows as structured results', async () => {

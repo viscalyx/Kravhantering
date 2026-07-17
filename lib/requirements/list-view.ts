@@ -783,7 +783,6 @@ export function serializeRequirementColumnWidths(
 
 export function buildRequirementListParams({
   filters,
-  format,
   limit,
   locale,
   cursor,
@@ -791,7 +790,6 @@ export function buildRequirementListParams({
 }: {
   cursor?: string
   filters: FilterValues
-  format?: 'csv'
   limit?: number
   locale: string
   sort: RequirementSortState
@@ -806,9 +804,6 @@ export function buildRequirementListParams({
 
   if (cursor) {
     params.set('cursor', cursor)
-  }
-  if (format) {
-    params.set('format', format)
   }
   if (filters.uniqueIdSearch) {
     params.set('uniqueIdSearch', filters.uniqueIdSearch)

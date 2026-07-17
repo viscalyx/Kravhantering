@@ -3,46 +3,67 @@ import {
   assertRequirementListCursorMatches,
   decodeRequirementListCursor,
   encodeRequirementListCursor,
-  hashRequirementListQuery,
+  fingerprintRequirementListQuery,
 } from '@/lib/requirements/list-cursor'
 
 describe('requirement list cursor', () => {
-  it('round-trips a versioned anchor without exposing query values', () => {
-    const queryHash = hashRequirementListQuery({
+  it('round-trips a versioned full boundary without exposing query values', () => {
+    const queryFingerprint = fingerprintRequirementListQuery({
       filters: { descriptionSearch: 'sensitive text' },
       locale: 'sv',
     })
-    const cursor = encodeRequirementListCursor(42, queryHash)
+    const boundary = {
+      nullRank: 0 as const,
+      requirementId: 42,
+      sortValue: 'sort value',
+    }
+    const cursor = encodeRequirementListCursor(boundary, queryFingerprint)
     const decodedJson = Buffer.from(cursor, 'base64url').toString('utf8')
-    const decodedCursor = decodeRequirementListCursor(cursor)
 
     expect(decodedJson).not.toContain('sensitive text')
-    expect(decodedCursor).toEqual({
-      anchorRequirementId: 42,
-      queryHash,
-      version: 1,
+    expect(decodeRequirementListCursor(cursor)).toEqual({
+      boundary,
+      queryFingerprint,
+      version: 2,
     })
   })
 
-  it('round-trips non-zero internal identifiers regardless of sign', () => {
-    const queryHash = 'a'.repeat(64)
+  it('round-trips nullable and numeric boundary values', () => {
+    const queryFingerprint = 'a'.repeat(64)
 
     expect(
-      decodeRequirementListCursor(encodeRequirementListCursor(-42, queryHash))
-        .anchorRequirementId,
-    ).toBe(-42)
-    expect(() => encodeRequirementListCursor(0, queryHash)).toThrow()
+      decodeRequirementListCursor(
+        encodeRequirementListCursor(
+          { nullRank: 1, requirementId: 1, sortValue: null },
+          queryFingerprint,
+        ),
+      ).boundary,
+    ).toEqual({ nullRank: 1, requirementId: 1, sortValue: null })
+    expect(
+      decodeRequirementListCursor(
+        encodeRequirementListCursor(
+          { nullRank: 0, requirementId: 2, sortValue: 42 },
+          queryFingerprint,
+        ),
+      ).boundary.sortValue,
+    ).toBe(42)
   })
 
-  it('canonicalizes object keys and set-like arrays before hashing', () => {
+  it('canonicalizes object keys and set-like arrays before fingerprinting', () => {
     expect(
-      hashRequirementListQuery({ filters: { areaIds: [2, 1] }, locale: 'sv' }),
+      fingerprintRequirementListQuery({
+        filters: { areaIds: [2, 1] },
+        locale: 'sv',
+      }),
     ).toBe(
-      hashRequirementListQuery({ locale: 'sv', filters: { areaIds: [1, 2] } }),
+      fingerprintRequirementListQuery({
+        locale: 'sv',
+        filters: { areaIds: [1, 2] },
+      }),
     )
   })
 
-  it('rejects malformed, oversized, and mismatched cursors', () => {
+  it('rejects malformed, non-canonical, oversized, and mismatched cursors', () => {
     expect(() => decodeRequirementListCursor('not-json')).toThrowError(
       expect.objectContaining({ code: 'invalid_cursor' }),
     )
@@ -50,11 +71,34 @@ describe('requirement list cursor', () => {
       expect.objectContaining({ code: 'invalid_cursor' }),
     )
 
-    const payload = decodeRequirementListCursor(
-      encodeRequirementListCursor(1, 'a'.repeat(64)),
+    const cursor = encodeRequirementListCursor(
+      { nullRank: 0, requirementId: 1, sortValue: 'REQ-1' },
+      'a'.repeat(64),
     )
+    expect(() => decodeRequirementListCursor(`${cursor}=`)).toThrowError(
+      expect.objectContaining({ code: 'invalid_cursor' }),
+    )
+    const payload = decodeRequirementListCursor(cursor)
     expect(() =>
       assertRequirementListCursorMatches(payload, 'b'.repeat(64)),
     ).toThrowError(expect.objectContaining({ code: 'invalid_cursor' }))
+  })
+
+  it('enforces the encoded 512-character maximum', () => {
+    expect(() =>
+      encodeRequirementListCursor(
+        { nullRank: 0, requirementId: 1, sortValue: 'x'.repeat(600) },
+        'a'.repeat(64),
+      ),
+    ).toThrowError(expect.objectContaining({ code: 'invalid_cursor' }))
+  })
+
+  it('keeps the bounded SQL text key within the cursor limit', () => {
+    const cursor = encodeRequirementListCursor(
+      { nullRank: 0, requirementId: 2_147_483_647, sortValue: '😀'.repeat(48) },
+      'a'.repeat(64),
+    )
+
+    expect(cursor.length).toBeLessThanOrEqual(512)
   })
 })

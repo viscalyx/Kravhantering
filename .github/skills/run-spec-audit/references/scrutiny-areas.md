@@ -479,20 +479,20 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 24: MCP requirement import keeps token-bound validation execution narrow"`
 
-## 32. Scenario 25: requirements query catalog stays structured-first
+## 32. Scenario 25: requirements query catalog pages only requirements
 
 - **Code:** `lib/mcp/server.ts`, `lib/requirements/service.ts`,
   `lib/requirements/service-requirements.ts`,
   `tests/fixtures/mcp-requests/seeded-cases.json`, and the MCP integration docs.
 - **Spec:** `docs/integrations/mcp-server-user-guide.md`,
-  `docs/integrations/mcp-server-contributor-guide.md`, and issue #404.
-- **Req tag:** `[Req: formal — issue #404 requirements_query_catalog cleanup]`
+  `docs/integrations/mcp-server-contributor-guide.md`, and issue #589.
+- **Req tag:** `[Req: formal — issue #589 requirements_query_catalog requirement pages]`
 - **Question:** Does `requirements_query_catalog` require explicit `catalog` and
-  `operation`, return only `structuredContent.result`, keep search rows
-  annotated with `match`, and exclude legacy response formatting, pagination
-  inputs, wrapper fields, and copy paths?
+  `operation`, page only the `requirements` branch with bounded forward
+  cursors, run requirement search in SQL Server with matched fields but no
+  quality rank, and preserve non-paginated lookup catalog results?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
-  -t "Scenario 25: requirements query catalog stays structured-first"`
+  -t "Scenario 25: requirements query catalog pages only requirements"`
 
 ## 33. Scenario 26: norm-reference MCP discovery keeps connected krav IDs separate
 

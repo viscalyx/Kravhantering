@@ -4,6 +4,7 @@
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
     "Kollationen",
+    "Kravbiblioteksmarkören",
     "Kravunderlagsmarkören",
     "OPENJSON",
     "PERFSP",
@@ -13,6 +14,7 @@
     "kravtillämpningsreferenser",
     "nullrang",
     "sidoperation",
+    "Traverseringen",
     "unpadded",
     "auditflöde",
     "avmarkeringen",

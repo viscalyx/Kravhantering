@@ -99,7 +99,26 @@ test.describe('Requirements library', () => {
     page,
   }) => {
     let firstPageRequests = 0
-    await page.route(/\/api\/requirements\?.*/u, async route => {
+    await page.goto('/sv/requirements')
+    await expect(
+      page.getByRole('table', { name: 'Lista över krav' }),
+    ).toBeVisible()
+    const baseline = await page.evaluate(async () => {
+      const response = await fetch(
+        '/api/requirements?limit=200&locale=sv&sortBy=uniqueId&sortDirection=desc&statuses=3',
+      )
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load cursor test baseline: ${response.status}`,
+        )
+      }
+      return (await response.json()) as {
+        pagination: Record<string, unknown>
+        requirements: unknown[]
+      }
+    })
+
+    await page.route('**/api/requirements?*', async route => {
       const requestUrl = new URL(route.request().url())
       if (requestUrl.searchParams.has('cursor')) {
         await route.fulfill({
@@ -110,33 +129,25 @@ test.describe('Requirements library', () => {
         return
       }
 
-      const response = await route.fetch()
       firstPageRequests += 1
       if (firstPageRequests === 1) {
-        const body = (await response.json()) as {
-          pagination: Record<string, unknown>
-        }
         await route.fulfill({
           json: {
-            ...body,
+            ...baseline,
             pagination: {
-              ...body.pagination,
+              ...baseline.pagination,
               hasMore: true,
               nextCursor: 'stale-cursor',
             },
           },
-          response,
         })
         return
       }
 
-      await route.fulfill({ response })
+      await route.fulfill({ json: baseline })
     })
 
-    await page.goto('/sv/requirements')
-    await expect(
-      page.getByRole('table', { name: 'Lista över krav' }),
-    ).toBeVisible()
+    await page.getByRole('button', { name: 'Sortera efter Krav-ID' }).click()
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
 
     await expect(
@@ -295,12 +306,12 @@ test.describe('Requirements library', () => {
       for (const sortBy of sorts) {
         for (const sortDirection of ['asc', 'desc'] as const) {
           const reference = await loadPage(sortBy, sortDirection, 4)
-          const first = await loadPage(sortBy, sortDirection, 2)
+          const first = await loadPage(sortBy, sortDirection, 1)
           const second = first.pagination.nextCursor
             ? await loadPage(
                 sortBy,
                 sortDirection,
-                2,
+                3,
                 first.pagination.nextCursor,
               )
             : { pagination: { nextCursor: null }, requirements: [] }
@@ -318,6 +329,55 @@ test.describe('Requirements library', () => {
     })
 
     expect(result).toEqual([])
+  })
+
+  test('REQ-10a: complete CSV export uses the dedicated unpaged endpoint', async ({
+    page,
+  }) => {
+    const exportedIds = Array.from(
+      { length: 205 },
+      (_, index) => `EXP${String(index + 1).padStart(4, '0')}`,
+    )
+    let exportUrl: URL | undefined
+    await page.goto('/sv/requirements')
+    await expect(
+      page.getByRole('table', { name: 'Lista över krav' }),
+    ).toBeVisible()
+
+    await page.route('**/api/requirements/export?*', async route => {
+      exportUrl = new URL(route.request().url())
+      await route.fulfill({
+        body: [
+          '\uFEFF"Krav-ID","Kravtext"',
+          ...exportedIds.map(id => `"${id}","Requirement ${id}"`),
+        ].join('\r\n'),
+        headers: {
+          'Content-Disposition': 'attachment; filename="kravbibliotek.csv"',
+          'Content-Type': 'text/csv; charset=utf-8',
+        },
+        status: 200,
+      })
+    })
+
+    const downloadPromise = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Exportera' }).click()
+    const download = await downloadPromise
+    const stream = await download.createReadStream()
+    let csv = ''
+    for await (const chunk of stream) {
+      csv += chunk.toString()
+    }
+
+    expect(exportUrl).toBeDefined()
+    expect(exportUrl?.searchParams.has('cursor')).toBe(false)
+    expect(exportUrl?.searchParams.has('limit')).toBe(false)
+    expect(download.suggestedFilename()).toBe('kravbibliotek.csv')
+    expect(
+      csv
+        .split(/\r?\n/u)
+        .slice(1)
+        .map(line => line.match(/^"(EXP\d{4})"/u)?.[1]),
+    ).toEqual(exportedIds)
   })
 
   test('REQ-09: inline detail orders text, criteria, metadata, references, and packages', async ({

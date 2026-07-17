@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { exportToCsv } from '@/lib/export-csv'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
@@ -24,91 +23,6 @@ import {
 } from '@/lib/requirements/list-view'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { toHttpErrorPayload } from '@/lib/requirements/service'
-import { withUtf8Bom } from '@/lib/text-export'
-import enMessages from '@/messages/en.json'
-import svMessages from '@/messages/sv.json'
-
-const REQUIREMENT_CSV_MESSAGES = {
-  en: {
-    headers: enMessages.requirements.libraryCsvHeaders,
-    no: enMessages.common.no,
-    yes: enMessages.common.yes,
-  },
-  sv: {
-    headers: svMessages.requirements.libraryCsvHeaders,
-    no: svMessages.common.no,
-    yes: svMessages.common.yes,
-  },
-}
-
-type RequirementCsvHeaderKey =
-  keyof typeof enMessages.requirements.libraryCsvHeaders
-type RequirementListCsvRow = Awaited<
-  ReturnType<typeof queryRequirementList>
->['requirements'][number]
-
-function assertUnreachableRequirementCsvHeaderKey(key: never): never {
-  throw new Error(
-    `Unhandled RequirementCsvHeaderKey in getStaticCsvValue: ${String(key)}`,
-  )
-}
-
-function getStaticCsvColumns(locale: 'en' | 'sv') {
-  const headers = REQUIREMENT_CSV_MESSAGES[locale].headers
-  return Object.entries(headers).map(([key, header]) => ({
-    header,
-    key: key as RequirementCsvHeaderKey,
-  }))
-}
-
-function getStaticCsvValue(
-  row: RequirementListCsvRow,
-  key: RequirementCsvHeaderKey,
-  locale: 'en' | 'sv',
-): string {
-  const isSv = locale === 'sv'
-
-  switch (key) {
-    case 'area':
-      return row.area?.name ?? ''
-    case 'category':
-      return isSv
-        ? (row.version?.categoryNameSv ?? '')
-        : (row.version?.categoryNameEn ?? '')
-    case 'description':
-      return row.version?.description ?? ''
-    case 'normReferenceUri':
-      return (row.normReferenceUris ?? []).filter(Boolean).join(', ')
-    case 'normReferences':
-      return (row.normReferenceIds ?? []).join(', ')
-    case 'qualityCharacteristic':
-      return isSv
-        ? (row.version?.qualityCharacteristicNameSv ?? '')
-        : (row.version?.qualityCharacteristicNameEn ?? '')
-    case 'verifiable':
-      return row.version?.verifiable
-        ? REQUIREMENT_CSV_MESSAGES[locale].yes
-        : REQUIREMENT_CSV_MESSAGES[locale].no
-    case 'priorityLevel':
-      return isSv
-        ? (row.version?.priorityLevelNameSv ?? '')
-        : (row.version?.priorityLevelNameEn ?? '')
-    case 'status':
-      return isSv
-        ? (row.version?.statusNameSv ?? '')
-        : (row.version?.statusNameEn ?? '')
-    case 'type':
-      return isSv
-        ? (row.version?.typeNameSv ?? '')
-        : (row.version?.typeNameEn ?? '')
-    case 'uniqueId':
-      return row.uniqueId
-    case 'version':
-      return String(row.version?.versionNumber ?? 1)
-    default:
-      return assertUnreachableRequirementCsvHeaderKey(key)
-  }
-}
 
 const optionalBodyIdSchema = positiveIntegerSchema
   .nullable()
@@ -125,7 +39,6 @@ const requirementsQuerySchema = z
     areaIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     categoryIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     descriptionSearch: optionalSearchStringSchema,
-    format: z.enum(['csv']).optional(),
     limit: positiveIntegerStringSchema
       .refine(value => value <= 200, {
         message: 'Expected a page size no greater than 200',
@@ -184,7 +97,6 @@ export async function GET(request: NextRequest) {
     areaIds = [],
     categoryIds = [],
     descriptionSearch,
-    format,
     limit,
     locale,
     normReferenceIds = [],
@@ -206,6 +118,7 @@ export async function GET(request: NextRequest) {
     const result = await queryRequirementList(
       db,
       {
+        capacitySurface: 'rest',
         filters: {
           areaIds: areaIds.length > 0 ? areaIds : undefined,
           categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
@@ -237,37 +150,9 @@ export async function GET(request: NextRequest) {
       },
       { authorization, context },
     )
-    const requirements = result.requirements
-
-    if (format === 'csv') {
-      const isSv = locale === 'sv'
-      const columns = getStaticCsvColumns(locale)
-      const headers = columns.map(column => column.header)
-
-      const data = requirements.map(r => {
-        return Object.fromEntries(
-          columns.map(column => [
-            column.header,
-            getStaticCsvValue(r, column.key, locale),
-          ]),
-        )
-      })
-
-      const csv = exportToCsv(headers, data)
-
-      const filename = isSv ? 'kravbibliotek.csv' : 'requirements-library.csv'
-
-      return new NextResponse(withUtf8Bom(csv), {
-        headers: {
-          'Content-Type': 'text/csv; charset=utf-8',
-          'Content-Disposition': `attachment; filename="${filename}"`,
-        },
-      })
-    }
-
     return NextResponse.json({
       pagination: result.pagination,
-      requirements,
+      requirements: result.requirements,
     })
   } catch (error) {
     const { body, status } = toHttpErrorPayload(error)

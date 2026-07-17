@@ -839,7 +839,7 @@ it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selec
   expect(reportsDoc).toContain('requirement_version_id')
 })
 
-it('Scenario 25: requirements query catalog stays structured-first', () => {
+it('Scenario 25: requirements query catalog pages only requirements', () => {
   const serverSource = readFileSync(mcpServerPath, 'utf8')
   const serviceSource = readFileSync(requirementsServicePath, 'utf8')
   const contributorGuideSource = readFileSync(contributorGuidePath, 'utf8')
@@ -880,22 +880,21 @@ it('Scenario 25: requirements query catalog stays structured-first', () => {
 
   expect(outputSchemaSource).toContain('result:')
   expect(outputSchemaSource).toContain(
-    'Search rows include top-level match metadata.',
+    'Requirement search rows include match.matchedFields',
   )
   expect(outputSchemaSource).not.toContain('items:')
-  expect(outputSchemaSource).not.toContain('pagination')
+  expect(outputSchemaSource).toContain('pagination:')
   expect(outputSchemaSource).not.toContain('message:')
   expect(inputSchemaSource).toContain('catalog: QueryCatalogKindSchema')
   expect(inputSchemaSource).toContain('operation: z')
   expect(inputSchemaSource).toContain(".enum(['list', 'search'])")
   expect(inputSchemaSource).toContain('search:')
-  expect(inputSchemaSource).toContain(
-    '"search" returns matching rows with top-level match metadata.',
-  )
+  expect(inputSchemaSource).toContain('Requirement search matches id, uniqueId')
+  expect(inputSchemaSource).toContain('cursor:')
+  expect(inputSchemaSource).toContain('.max(100)')
   expect(inputSchemaSource).not.toContain('responseFormat')
   expect(inputSchemaSource).not.toContain('descriptionSearch')
   expect(inputSchemaSource).not.toContain('uniqueIdSearch')
-  expect(inputSchemaSource).not.toContain('limit:')
   expect(inputSchemaSource).not.toContain('offset:')
   expect(toCatalogInputSource).not.toContain('responseFormat')
   expect(toCatalogInputSource).not.toContain('descriptionSearch')
@@ -905,21 +904,22 @@ it('Scenario 25: requirements query catalog stays structured-first', () => {
   )
   expect(queryToolSource).not.toContain('payload.message')
 
-  expect(queryCatalogServiceSource).toContain('return { result: rows }')
+  expect(queryCatalogServiceSource).toContain('queryRequirementList')
+  expect(queryCatalogServiceSource).toContain("capacitySurface: 'mcp'")
+  expect(queryCatalogServiceSource).toContain('pagination: page.pagination')
   expect(queryCatalogServiceSource).toContain('return { result }')
-  expect(queryCatalogServiceSource).toContain('requirementSearchFields')
   expect(queryCatalogServiceSource).toContain('findMcpSearchMatch')
-  expect(queryCatalogServiceSource).toContain('match: McpSearchMatch')
   expect(queryCatalogServiceSource).toContain('{ ...row, match }')
   expect(queryCatalogServiceSource).not.toContain('countRequirements')
-  expect(queryCatalogServiceSource).not.toContain('clampLimit')
+  expect(queryCatalogServiceSource).not.toContain(
+    'requirementSearchFields(row)',
+  )
   expect(queryCatalogServiceSource).not.toContain('descriptionSearch')
   expect(queryCatalogServiceSource).not.toContain('uniqueIdSearch')
 
-  expect(userGuideSource).toContain('search rows include `match` metadata')
-  expect(contributorGuideSource).toContain(
-    'Search rows include `match.quality`',
-  )
+  expect(userGuideSource).toContain('both operations return `result` plus')
+  expect(userGuideSource).toContain('`pagination` without an exact total')
+  expect(contributorGuideSource).toContain('without `match.quality`')
   expect(userGuideSource).toContain(
     'requirements_query_catalog.result[].id -> requirementIds',
   )
@@ -939,7 +939,6 @@ it('Scenario 25: requirements query catalog stays structured-first', () => {
       operation: expect.any(String),
     })
     expect(testCase.arguments).not.toHaveProperty('responseFormat')
-    expect(testCase.arguments).not.toHaveProperty('limit')
     expect(testCase.arguments).not.toHaveProperty('offset')
   }
 })

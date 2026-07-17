@@ -185,6 +185,7 @@ function createFakeService(
       },
     }),
     queryCatalog: vi.fn().mockResolvedValue({
+      pagination: { count: 1, hasMore: false, limit: 50, nextCursor: null },
       result: [
         {
           uniqueId: 'INT0001',
@@ -393,10 +394,12 @@ describe('handleRequirementsMcpRequest', () => {
       expect(queryInputSchemaText).toContain('normReferenceIds')
       expect(queryInputSchemaText).toContain('requirementPackageIds')
       expect(queryInputSchemaText).toContain('sortBy')
+      expect(queryInputSchemaText).toContain('cursor')
+      expect(queryInputSchemaText).toContain('"maximum":100')
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('result')
-      expect(JSON.stringify(queryTool?.outputSchema)).not.toContain(
-        'pagination',
-      )
+      expect(JSON.stringify(queryTool?.outputSchema)).toContain('pagination')
+      expect(queryTool?.description).toContain('without match.quality')
+      expect(queryTool?.description).toContain('invalid_cursor')
       expect(queryInputSchemaText).not.toContain('responseFormat')
     })
 
@@ -810,6 +813,7 @@ describe('handleRequirementsMcpRequest', () => {
         operation: 'list',
         priorityLevelIds: [2],
         locale: 'en',
+        limit: 25,
         sortBy: 'priorityLevel',
         sortDirection: 'desc',
         requirementPackageIds: [3],
@@ -822,6 +826,7 @@ describe('handleRequirementsMcpRequest', () => {
       expect.anything(),
       expect.objectContaining({
         normReferenceIds: [4],
+        limit: 25,
         operation: 'list',
         priorityLevelIds: [2],
         sortBy: 'priorityLevel',
@@ -1403,7 +1408,7 @@ describe('handleRequirementsMcpRequest', () => {
     expect(result.content).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          text: 'Error [invalid_cursor]: Invalid requirement list cursor',
+          text: 'Error [invalid_cursor]: Invalid requirement list cursor. Restart without cursor while retaining the normalized filters, locale, and sort.',
           type: 'text',
         }),
       ]),

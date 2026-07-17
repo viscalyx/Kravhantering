@@ -433,6 +433,9 @@
   },
   "requirement": {
     "title": "Kravbibliotek",
+    "loadRequirementsFailed": "Det gick inte att läsa in kravbiblioteket.",
+    "paginationContinuationFailed": "Det gick inte att läsa in nästa sida. Kraven som redan har lästs in visas fortfarande.",
+    "paginationRecoveryFailed": "Fortsättningen har upphört att gälla och omstarten från första sidan misslyckades. Redan inlästa krav, den aktuella frågan och markeringen är oförändrade.",
     "statusStepperAriaLabel": "Arbetsflöde för kravversionsstatus",
     "tableCaption": "Lista över krav",
     "uniqueId": "Krav-ID",

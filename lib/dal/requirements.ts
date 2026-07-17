@@ -27,15 +27,12 @@ import {
   STATUS_REVIEW,
 } from '@/lib/requirements/status-constants.mjs'
 import type { DeleteDraftResult } from '@/lib/requirements/types'
-import {
-  buildRequirementListAnchorSql,
-  buildRequirementListSql,
-} from './requirements-list-sql.mjs'
+import { buildRequirementListSql } from './requirements-list-sql.mjs'
 
 export interface RequirementListSeekAnchor {
-  nullRank: number
+  nullRank: 0 | 1
+  requirementId: number
   sortValue: number | string | null
-  uniqueId: string
 }
 
 export interface ListRequirementsOptions {
@@ -54,34 +51,13 @@ export interface ListRequirementsOptions {
   qualityCharacteristicIds?: number[]
   requirementIds?: number[]
   requirementPackageIds?: number[]
+  search?: string
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
   verifiable?: boolean[]
-}
-
-export async function getRequirementListSeekAnchor(
-  db: SqlServerDatabase,
-  opts: ListRequirementsOptions,
-  anchorId: number,
-): Promise<RequirementListSeekAnchor | null> {
-  const { parameters, sqlText } = buildRequirementListAnchorSql(opts, anchorId)
-  const rows = (await db.query(sqlText, parameters)) as Array<
-    Record<string, unknown>
-  >
-  const row = rows[0]
-  if (!row) return null
-  const sortValue = row.sortValue
-  return {
-    nullRank: Number(row.nullRank),
-    sortValue:
-      sortValue == null || typeof sortValue === 'string'
-        ? (sortValue ?? null)
-        : Number(sortValue),
-    uniqueId: String(row.uniqueId),
-  }
 }
 
 function toIso(value: unknown): string | null {
@@ -198,6 +174,14 @@ export async function listRequirements(
   >
 
   return rows.map(row => ({
+    cursorBoundary: {
+      nullRank: Number(row.cursorNullRank) === 1 ? 1 : 0,
+      requirementId: Number(row.id),
+      sortValue:
+        row.cursorSortValue == null || typeof row.cursorSortValue === 'string'
+          ? (row.cursorSortValue ?? null)
+          : Number(row.cursorSortValue),
+    } satisfies RequirementListSeekAnchor,
     id: Number(row.id),
     uniqueId: String(row.uniqueId ?? ''),
     requirementAreaId: Number(row.requirementAreaId),
@@ -266,6 +250,14 @@ export async function listRequirements(
       row.requirementPackagesJson,
     ),
     suggestionCount: Number(row.suggestionCount ?? 0),
+    matchedFields: [
+      ...(toBool(row.matchId) ? ['id'] : []),
+      ...(toBool(row.matchUniqueId) ? ['uniqueId'] : []),
+      ...(toBool(row.matchDescription) ? ['version.description'] : []),
+      ...(toBool(row.matchAcceptanceCriteria)
+        ? ['version.acceptanceCriteria']
+        : []),
+    ],
   }))
 }
 

@@ -137,6 +137,7 @@ export async function GET(
     const result = await queryRequirementList(
       db,
       {
+        capacitySurface: 'rest',
         excludeRequirementIds: existingRequirementIds,
         filters: {
           areaIds: areaIds.length > 0 ? areaIds : undefined,

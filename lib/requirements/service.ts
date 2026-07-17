@@ -132,7 +132,9 @@ export interface QueryCatalogInput {
   areaIds?: number[]
   catalog: CatalogKind
   categoryIds?: number[]
+  cursor?: string
   includeArchived?: boolean
+  limit?: number
   locale?: ResponseLocale
   normReferenceIds?: number[]
   operation: 'list' | 'search'
@@ -149,6 +151,12 @@ export interface QueryCatalogInput {
 }
 
 export interface QueryCatalogOutput {
+  pagination?: {
+    count: number
+    hasMore: boolean
+    limit: number
+    nextCursor: string | null
+  }
   result: unknown[]
 }
 

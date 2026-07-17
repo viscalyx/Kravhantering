@@ -4,13 +4,11 @@ import { queryRequirementList } from '@/lib/requirements/list-query'
 
 const mocks = vi.hoisted(() => ({
   formatRequirementListItem: vi.fn((row: unknown) => row),
-  getRequirementListSeekAnchor: vi.fn(),
   listRequirements: vi.fn(),
 }))
 
 vi.mock('@/lib/dal/requirements', () => ({
   STATUS_ARCHIVED: 4,
-  getRequirementListSeekAnchor: mocks.getRequirementListSeekAnchor,
   listRequirements: mocks.listRequirements,
 }))
 
@@ -37,11 +35,6 @@ function makeContext(): RequestContext {
 describe('queryRequirementList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.getRequirementListSeekAnchor.mockResolvedValue({
-      nullRank: 0,
-      sortValue: 'REQ-200',
-      uniqueId: 'REQ-200',
-    })
     mocks.listRequirements.mockResolvedValue([])
   })
 
@@ -157,6 +150,11 @@ describe('queryRequirementList', () => {
   it('returns a forward cursor without running a count query', async () => {
     mocks.listRequirements.mockResolvedValueOnce(
       Array.from({ length: 3 }, (_, index) => ({
+        cursorBoundary: {
+          nullRank: 0,
+          requirementId: index + 1,
+          sortValue: `REQ-${index + 1}`,
+        },
         id: index + 1,
         uniqueId: `REQ-${index + 1}`,
       })),
@@ -183,30 +181,53 @@ describe('queryRequirementList', () => {
       { allowUnauthenticated: true },
     )
 
-    expect(mocks.getRequirementListSeekAnchor).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ limit: undefined }),
-      2,
-    )
     expect(mocks.listRequirements).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.objectContaining({
-        after: expect.objectContaining({ uniqueId: 'REQ-200' }),
+        after: expect.objectContaining({ requirementId: 2 }),
         limit: 3,
       }),
     )
   })
 
-  it('rejects a cursor when its query state changes', async () => {
+  it('allows a reduced page size while rejecting changed query state', async () => {
     mocks.listRequirements.mockResolvedValueOnce([
-      { id: 1, uniqueId: 'REQ-1' },
-      { id: 2, uniqueId: 'REQ-2' },
+      {
+        cursorBoundary: {
+          nullRank: 0,
+          requirementId: 1,
+          sortValue: 'REQ-1',
+        },
+        id: 1,
+        uniqueId: 'REQ-1',
+      },
+      {
+        cursorBoundary: {
+          nullRank: 0,
+          requirementId: 2,
+          sortValue: 'REQ-2',
+        },
+        id: 2,
+        uniqueId: 'REQ-2',
+      },
     ])
     const firstPage = await queryRequirementList(
       {} as never,
       { limit: 1 },
       { allowUnauthenticated: true },
     )
+
+    mocks.listRequirements.mockResolvedValueOnce([])
+    await expect(
+      queryRequirementList(
+        {} as never,
+        {
+          cursor: firstPage.pagination.nextCursor ?? undefined,
+          limit: 2,
+        },
+        { allowUnauthenticated: true },
+      ),
+    ).resolves.toMatchObject({ pagination: { limit: 2 } })
 
     await expect(
       queryRequirementList(

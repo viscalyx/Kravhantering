@@ -271,6 +271,107 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  /api/requirements/export:
+    get:
+      tags: [requirements]
+      operationId: exportRequirements
+      summary: Export the complete filtered requirements library as CSV.
+      parameters:
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/SortBy'
+        - $ref: '#/components/parameters/SortDirection'
+        - name: uniqueIdSearch
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: descriptionSearch
+          in: query
+          schema: { type: string, maxLength: 200 }
+        - name: areaIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: categoryIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: typeIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: qualityCharacteristicIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: statuses
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: normReferenceIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: requirementPackageIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: priorityLevelIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: verifiable
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items:
+              type: string
+              enum: ['true', 'false']
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Complete requirements library CSV export.
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
   /api/requirements/{id}:
     parameters:
       - $ref: '#/components/parameters/RequirementId'

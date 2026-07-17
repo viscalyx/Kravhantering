@@ -243,14 +243,22 @@ an explicit in-modal error.
 
 - The Requirements Library and the available-requirements panel load additional
   rows with forward-only opaque cursors.
+- Requirements Library REST pages allow 1 through 200 rows and default to 200.
+  Their cursor carries the complete database sort boundary and query
+  fingerprint, so no previous anchor row is read. Free-text and lookup-name
+  boundaries use the same normalized, bounded SQL sort key and numeric
+  Requirement ID as the query; the system-generated unique Requirement ID uses
+  its indexed database key. Filters, locale, sort, direction, and visibility
+  are part of the query identity; page size is not, so a continuation may
+  reduce it.
 - Requirements-specification item reads use the same shared service page
   boundary for preload, REST, and MCP. Pages default to 50 rows, allow 1 through
   100, expose page count and continuation availability, and never expose an
   exact result total. The editor preload contains only the first page and
   appends later pages in database order as the user reaches the end of the
   scrollable list.
-- Changing filters, sorting, direction, locale, page size, or visibility scope
-  starts again from the first page.
+- Changing filters, sorting, direction, locale, or visibility scope starts
+  again from the first page.
 - The editor automatically requests the next page when the list-end sentinel
   approaches the viewport. It does not show a manual continuation button or a
   row-count status for a populated list. Empty-state text is shown only after an
@@ -262,6 +270,13 @@ an explicit in-modal error.
   visible and retries the first page once with the same query. Success replaces
   the rows and announces the restart without moving focus. Failure keeps the
   rows, query, and selection and presents a labelled retry action.
+- Initial and continuation reads cancel superseded requests, suppress stale
+  responses, and defensively remove duplicate Requirement IDs before rendering.
+- Requirements Library CSV uses `/api/requirements/export`, accepts current
+  server filters, locale, and sort, and accepts neither cursor nor page size.
+  The server traverses the complete database-ordered result in 200-row pages.
+  It fails on duplicates, missing progress, cursor cycles, or more than 10 000
+  pages (two million rows) instead of returning a partial export.
 
 ## Floating Rail
 

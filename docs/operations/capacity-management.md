@@ -87,6 +87,11 @@ V1 measures:
   `operation == "requirements.get_specification_items"` and include duration,
   returned count, effective page limit, continuation availability, outcome,
   and only the bounded `invalid_cursor` failure category when applicable.
+- Requirements Library pages for the `editor-preload`, `rest`, and `mcp`
+  surfaces. These use `requirements.library_page.list` or
+  `requirements.library_page.search` and record duration, returned count, page
+  limit, continuation availability, outcome, and only the bounded
+  `invalid_cursor` failure category.
 - Server-side report item loading for the specification report.
 - Server-side PDF rendering for requirement, specification, privacy, and
   access-review exports.

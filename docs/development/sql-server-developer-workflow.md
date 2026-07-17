@@ -160,9 +160,13 @@ current fixtures.
 ## Requirement List Performance Baseline
 
 The requirement list SQL path has a required SQL Server performance check for
-`listRequirements` and the cursor anchor lookup. It uses the same parameterized
-SQL builder as production code and seeds a dedicated medium fixture of roughly
-10,000 `PERF-*` requirements with two to four versions each.
+`listRequirements` and production-style cursor continuation. It uses the same
+parameterized SQL builder as production code and seeds a dedicated medium
+fixture of roughly 10,000 `PERF-*` requirements with two to four versions each.
+Deep scenarios obtain each next boundary from the preceding bounded page; they
+do not inject a separately resolved anchor tuple. First-page/deep-page
+comparison pairs are filtered to the dedicated `PERF-*` fixture so their
+relative cost is not distorted by unrelated demo or developer data.
 
 Use the regular check when you want to verify that the current branch still
 fits the committed baseline:

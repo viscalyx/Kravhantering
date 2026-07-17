@@ -683,18 +683,26 @@ Examples:
 
 The server combines requirement search and lookup catalog reads into the same
 tool. Every call requires `catalog` and `operation`. `operation: "list"` returns
-all matching rows, and `operation: "search"` requires `search` and returns only
-matching rows with top-level `match` metadata. MCP text content is only a short
-status message; consume `structuredContent.result`.
+matching rows, and `operation: "search"` requires `search`. MCP text content is
+only a short status message; consume `structuredContent`.
 
-`requirements_query_catalog` does not accept `responseFormat`, `limit`, or
-`offset`, and it does not return pagination metadata. For requirement rows,
-search matches `id`, `uniqueId`, `version.description`, and
-`version.acceptanceCriteria`.
+For `catalog: "requirements"`, both operations return `result` plus
+`pagination` without an exact total. Pages default to 50 rows and `limit`
+accepts 1 through 100. Continue with `pagination.nextCursor`; callers may
+reduce `limit` during continuation. On `invalid_cursor`, restart without
+`cursor` while retaining the normalized filters, locale, and sort. Requirement
+search runs in SQL Server over `id`, `uniqueId`, `version.description`, and
+`version.acceptanceCriteria`. Search rows include `match.matchedFields` without
+`match.quality`.
+
+Other catalogs remain non-paginated and return `{ "result": [...] }`. Their
+search rows retain both `match.matchedFields` and `match.quality`.
 
 For requirement lists and searches, it supports:
 
 - `search` for `operation: "search"`
+- `cursor`
+- `limit`
 - `includeArchived`
 - `areaIds`
 - `categoryIds`

@@ -106,12 +106,19 @@ nullable `iconName` fields. Requirement list/detail version output also carries
 status icon data and priority-level icon data as additive fields so older
 clients can keep using the existing status and priority-level names.
 
-Every `requirements_query_catalog` list/search operation returns the structured
-MCP contract `{ result: [...] }`. Requirement search uses `search` against `id`,
-`uniqueId`, `version.description`, and `version.acceptanceCriteria`. Lookup
-search uses stable lookup fields. Search rows include `match.quality` and
-`match.matchedFields` metadata. These operations do not accept `responseFormat`,
-`limit`, or `offset`, and they do not use pagination wrappers.
+The `requirements` list/search branch returns `result` plus `pagination`
+without an exact total. Its default page size is 50 and `limit` accepts 1
+through 100. It uses the shared Requirements Library page operation, and
+callers continue with `pagination.nextCursor`. A reduced continuation limit is
+valid. On `invalid_cursor`, callers restart without `cursor` while retaining
+normalized filters, locale, and sort.
+
+Requirement search uses SQL Server and the single `search` value against `id`,
+`uniqueId`, `version.description`, and `version.acceptanceCriteria`. Its rows
+include `match.matchedFields` without `match.quality`. Lookup search uses stable
+lookup fields and retains both match fields. Search rows include
+`match.quality` only for lookup catalogs. Those catalogs remain non-paginated
+and return `{ result: [...] }`. No branch accepts `responseFormat` or `offset`.
 
 This avoids a larger set of narrowly scoped read tools.
 

@@ -98,14 +98,28 @@ const ImportSchemaOutputSchema = z
 
 const QueryCatalogOutputSchema = z
   .object({
+    pagination: z
+      .object({
+        count: z.number().int().nonnegative(),
+        hasMore: z.boolean(),
+        limit: z.number().int().positive(),
+        nextCursor: z.string().max(512).nullable(),
+      })
+      .strict()
+      .optional()
+      .describe(
+        'Present only for catalog "requirements"; use nextCursor for forward continuation.',
+      ),
     result: z
       .array(z.record(z.string(), z.unknown()))
       .describe(
-        'Catalog rows for operation "list" or "search". Search rows include top-level match metadata.',
+        'Catalog rows for operation "list" or "search". Requirement search rows include match.matchedFields; lookup search rows also include match.quality.',
       ),
   })
   .strict()
-  .describe('Structured catalog output. Rows are always in result.')
+  .describe(
+    'Structured catalog output. Requirements return result plus pagination without a total; lookup catalogs return only result.',
+  )
 
 const McpSearchMatchOutputSchema = z
   .object({
@@ -606,7 +620,7 @@ function formatError(error: unknown) {
         type: 'text' as const,
         text:
           isRequirementsServiceError(error) && error.code === 'invalid_cursor'
-            ? `Error [invalid_cursor]: ${message}`
+            ? `Error [invalid_cursor]: ${message}. Restart without cursor while retaining the normalized filters, locale, and sort.`
             : `Error: ${message}`,
       },
     ],
@@ -829,6 +843,14 @@ function createQueryCatalogSchema() {
         .describe(
           'Requirement category IDs. Applies only to catalog "requirements".',
         ),
+      cursor: z
+        .string()
+        .min(1)
+        .max(512)
+        .optional()
+        .describe(
+          'Opaque forward cursor from pagination.nextCursor. Applies only to catalog "requirements". On invalid_cursor, restart without cursor while retaining filters, locale, and sort.',
+        ),
       includeArchived: z
         .boolean()
         .optional()
@@ -836,6 +858,15 @@ function createQueryCatalogSchema() {
           'Whether archived requirements are included. Applies only to catalog "requirements".',
         ),
       locale: ResponseLocaleSchema,
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .default(50)
+        .describe(
+          'Bounded page size for catalog "requirements"; defaults to 50 and accepts 1 through 100.',
+        ),
       normReferenceIds: z
         .array(z.number().int().positive())
         .optional()
@@ -937,6 +968,17 @@ function createQueryCatalogSchema() {
           code: 'custom',
           message: 'search is allowed only for operation "search".',
           path: ['search'],
+        })
+      }
+      if (
+        val.catalog !== 'requirements' &&
+        (val.cursor != null || val.limit !== 50)
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            'cursor and non-default limit apply only to catalog "requirements".',
+          path: ['catalog'],
         })
       }
     })
@@ -1563,8 +1605,10 @@ function toCatalogInput(
     areaIds: input.areaIds,
     catalog: input.catalog,
     categoryIds: input.categoryIds,
+    cursor: input.cursor,
     includeArchived: input.includeArchived,
     locale: toResponseLocale(input.locale),
+    limit: input.limit,
     normReferenceIds: input.normReferenceIds,
     operation: input.operation,
     verifiable: input.verifiable,
@@ -1797,7 +1841,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List or search the requirements library and lookup catalogs: requirements, areas, categories, types, quality_characteristics, priority_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Requirement filters and sorting apply when catalog is "requirements"; typeId filters quality_characteristics.',
+        'List or search the requirements library and lookup catalogs: requirements, areas, categories, types, quality_characteristics, priority_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Catalog "requirements" uses bounded forward pages in result plus pagination, defaults to 50 rows, and returns no exact total; continue with pagination.nextCursor. Requirement search is SQL Server-authoritative and returns match.matchedFields without match.quality. On invalid_cursor, restart without cursor while retaining normalized filters, locale, and sort. Other catalogs keep the non-paginated { result: [...] } contract; typeId filters quality_characteristics.',
       inputSchema: createQueryCatalogSchema(),
       outputSchema: QueryCatalogOutputSchema,
       title: 'Query Requirements Library',

@@ -64,11 +64,14 @@ describe('requirements-list-performance.mjs', () => {
     expect(
       scenarios.find(scenario => scenario.name === 'deep-pagination'),
     ).toMatchObject({
-      anchorRequirementId: expect.any(Number),
+      continuationPages: 20,
       options: { sortBy: 'uniqueId' },
     })
     expect(buildPerformanceFixtureStatusSql()).toContain(
       'COUNT(*) AS requirementCount',
+    )
+    expect(buildPerformanceFixtureStatusSql()).toContain(
+      'orderedIdFixtureCount',
     )
     expect(buildReferencePreconditionSql()).toContain(
       "N'categoryIds' AS optionKey",

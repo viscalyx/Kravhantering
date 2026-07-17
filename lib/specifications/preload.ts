@@ -118,6 +118,7 @@ async function loadAvailableRequirements(
   const result = await queryRequirementList(
     db,
     {
+      capacitySurface: 'editor-preload',
       filters: { statuses: [3] },
       limit: PAGE_SIZE,
       locale,

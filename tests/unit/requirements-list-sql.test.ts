@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildRequirementListAnchorSql,
   buildRequirementListSql,
   escapeLike,
 } from '@/lib/dal/requirements-list-sql.mjs'
@@ -15,7 +14,7 @@ describe('requirement list SQL builders', () => {
       limit: 25,
       locale: 'sv',
       normReferenceIds: [1, 6],
-      after: { nullRank: 0, sortValue: 2, uniqueId: 'REQ-050' },
+      after: { nullRank: 0, requirementId: 50, sortValue: 2 },
       qualityCharacteristicIds: [6],
       requirementPackageIds: [8],
       verifiable: [true, false],
@@ -44,7 +43,7 @@ describe('requirement list SQL builders', () => {
       8,
       0,
       2,
-      'REQ-050',
+      50,
       25,
     ])
     expect(query.sqlText).toContain('requirement.is_archived = 0')
@@ -74,9 +73,9 @@ describe('requirement list SQL builders', () => {
       'JOIN requirement_packages requirement_package',
     )
     expect(query.sqlText).toContain('FOR JSON PATH')
-    expect(query.sqlText).toContain('OFFSET 0 ROWS FETCH NEXT @17 ROWS ONLY')
+    expect(query.sqlText).toContain('SELECT TOP (@17)')
     expect(query.sqlText).toContain('requirement_status.sort_order < @15')
-    expect(query.sqlText).toContain('requirement.unique_id > @16')
+    expect(query.sqlText).toContain('requirement.id > @16')
     expect(query.sqlText).toContain(
       'effective_status.effective_status_id AS status',
     )
@@ -105,13 +104,13 @@ describe('requirement list SQL builders', () => {
     })
 
     expect(svQuery.sqlText).toContain(
-      'LOWER(requirement_package.name) ASC, requirement_package.id ASC',
+      "NULLIF(LOWER(LTRIM(RTRIM(requirement_package.name))), '') ASC, requirement_package.id ASC",
     )
     expect(enQuery.sqlText).toContain(
-      'LOWER(requirement_package.name) ASC, requirement_package.id ASC',
+      "NULLIF(LOWER(LTRIM(RTRIM(requirement_package.name))), '') ASC, requirement_package.id ASC",
     )
     expect(fallbackQuery.sqlText).toContain(
-      'LOWER(requirement_package.name) ASC, requirement_package.id ASC',
+      "NULLIF(LOWER(LTRIM(RTRIM(requirement_package.name))), '') ASC, requirement_package.id ASC",
     )
   })
 
@@ -130,31 +129,48 @@ describe('requirement list SQL builders', () => {
     'version',
   ])('builds a deterministic seek predicate for %s sorting', sortBy => {
     const query = buildRequirementListSql({
-      after: { nullRank: 0, sortValue: 'anchor', uniqueId: 'REQ-010' },
+      after: { nullRank: 0, requirementId: 10, sortValue: 'anchor' },
       limit: 10,
       locale: 'sv',
       sortBy,
       sortDirection: 'asc',
     })
 
-    expect(query.sqlText).toContain('requirement.unique_id >')
-    expect(query.sqlText).toContain('OFFSET 0 ROWS FETCH NEXT')
+    expect(query.sqlText).toContain('requirement.id >')
+    expect(query.sqlText).toContain('SELECT TOP (')
   })
 
-  it('builds the anchor lookup from the same filters and localized sort', () => {
-    const query = buildRequirementListAnchorSql(
-      {
-        areaIds: [2],
-        locale: 'sv',
-        sortBy: 'category',
-      },
-      42,
-    )
+  it('projects the localized continuation boundary in the page query', () => {
+    const query = buildRequirementListSql({
+      areaIds: [2],
+      limit: 10,
+      locale: 'sv',
+      sortBy: 'category',
+    })
 
-    expect(query.parameters).toEqual([2, 42])
-    expect(query.sqlText).toContain('requirement.id = @1')
+    expect(query.sqlText).toContain('AS cursorNullRank')
+    expect(query.sqlText).toContain('AS cursorSortValue')
     expect(query.sqlText).toContain(
-      'LOWER(requirement_category.name_sv) AS sortValue',
+      "LEFT(NULLIF(LOWER(LTRIM(RTRIM(requirement_category.name_sv))), ''), 48)",
     )
+    expect(query.sqlText).not.toContain('requirement.id =')
+  })
+
+  it('bounds long text sort keys and uses the numeric requirement id as tie-breaker', () => {
+    const query = buildRequirementListSql({
+      after: {
+        nullRank: 0,
+        requirementId: 42,
+        sortValue: 'x'.repeat(48),
+      },
+      limit: 200,
+      sortBy: 'description',
+    })
+
+    expect(query.sqlText).toContain(
+      "LEFT(NULLIF(LOWER(LTRIM(RTRIM(version.description))), ''), 48)",
+    )
+    expect(query.sqlText).toContain('requirement.id >')
+    expect(query.sqlText).toContain('requirement.id ASC')
   })
 })

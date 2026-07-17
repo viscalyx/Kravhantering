@@ -1103,16 +1103,15 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 24: MCP req
 ```
 <!-- markdownlint-enable MD013 -->
 
-### Scenario 25: requirements query catalog stays structured-first
+### Scenario 25: requirements query catalog pages only requirements
 
 <!-- markdownlint-disable-next-line MD013 -->
-**Requirement tag:** `[Req: formal — issue #404 requirements_query_catalog cleanup]`
+**Requirement tag:** `[Req: formal — issue #589 requirements_query_catalog requirement pages]`
 
 **What happened:** `requirements_query_catalog` used to expose both a legacy
-`items`/`pagination` response shape and a newer `result` lookup shape. It also
-accepted catalog-local response formatting and requirement pagination inputs.
-That made agent calls branch on historical compatibility instead of a single
-structured contract.
+unbounded Requirements Library reads and filtered searches in JavaScript.
+That could produce oversized responses and a different match contract from
+REST. Lookup catalogs remain small, non-paginated reference-data reads.
 
 **Covered code line ranges:** This scenario covers the public MCP schema,
 transport text, service implementation, docs, and seeded MCP request fixture in
@@ -1132,17 +1131,19 @@ tests/fixtures/mcp-requests/seeded-cases.json
 <!-- markdownlint-enable MD013 -->
 
 **The requirement:** `requirements_query_catalog` requires explicit `catalog`
-and `operation`, supports `list` and `search` for every catalog, and always
-returns `{ "result": [...] }` in `structuredContent`. Search rows include
-top-level `match` metadata. Requirement search
-uses the single `search` field against `id`, `uniqueId`,
-`version.description`, and `version.acceptanceCriteria`.
+and `operation` and supports `list` and `search` for every catalog. The
+`requirements` branch accepts `cursor` and `limit` from 1 through 100, defaults
+to 50, and returns `result` plus forward-only `pagination` without a total.
+Requirement search runs in SQL Server over `id`, `uniqueId`,
+`version.description`, and `version.acceptanceCriteria`; its `match` contains
+`matchedFields` without `quality`. Other catalogs keep `{ "result": [...] }`
+and their existing match-quality behavior.
 
 **How to verify:**
 
 <!-- markdownlint-disable MD013 -->
 ```sh
-npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 25: requirements query catalog stays structured-first"
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 25: requirements query catalog pages only requirements"
 ```
 <!-- markdownlint-enable MD013 -->
 

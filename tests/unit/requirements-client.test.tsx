@@ -525,14 +525,13 @@ function mockCommonFetches() {
   fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
     const url = String(input)
 
+    if (url.startsWith('/api/requirements/export?')) {
+      return {
+        blob: async () => new Blob(['csv']),
+        ok: true,
+      } as Response
+    }
     if (url.startsWith('/api/requirements?')) {
-      if (url.includes('format=csv')) {
-        return {
-          blob: async () => new Blob(['csv']),
-          ok: true,
-        } as Response
-      }
-
       return okJson({
         pagination: { hasMore: false },
         requirements: [makeRequirementRow(1)],
@@ -1056,17 +1055,23 @@ describe('RequirementsClient', () => {
     expect(storageGetItem).toHaveBeenCalledWith(columnWidthsStorageKey)
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('sortBy=uniqueId'),
+      expect.objectContaining({ signal: expect.anything() }),
     )
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('sortDirection=asc'),
+      expect.objectContaining({ signal: expect.anything() }),
     )
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('locale=sv'))
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('locale=sv'),
+      expect.objectContaining({ signal: expect.anything() }),
+    )
 
     fireEvent.click(screen.getByText('change-sort'))
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1099,12 +1104,12 @@ describe('RequirementsClient', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('format=csv'),
+        expect.stringContaining('/api/requirements/export?'),
       ),
     )
     const exportRequest = fetchMock.mock.calls
       .map(([input]) => String(input))
-      .find(url => url.includes('format=csv'))
+      .find(url => url.includes('/api/requirements/export?'))
     expect(exportRequest).toBeTruthy()
     expect(exportRequest).not.toContain('limit=')
     expect(createObjectURLMock).toHaveBeenCalledTimes(1)
@@ -1264,11 +1269,10 @@ describe('RequirementsClient', () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = String(input)
 
+      if (url.startsWith('/api/requirements/export?')) {
+        return Promise.reject(new Error('Export failed'))
+      }
       if (url.startsWith('/api/requirements?')) {
-        if (url.includes('format=csv')) {
-          return Promise.reject(new Error('Export failed'))
-        }
-
         return okJson({
           pagination: { hasMore: false },
           requirements: [makeRequirementRow(1)],
@@ -1294,7 +1298,7 @@ describe('RequirementsClient', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('format=csv'),
+        expect.stringContaining('/api/requirements/export?'),
       ),
     )
 
@@ -1378,6 +1382,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1399,6 +1404,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortDirection=desc'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1526,6 +1532,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1544,7 +1551,10 @@ describe('RequirementsClient', () => {
     })
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/1'),
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements/1',
+        expect.objectContaining({ signal: expect.anything() }),
+      ),
     )
 
     pinnedDetail.resolve(
@@ -1626,6 +1636,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1635,7 +1646,10 @@ describe('RequirementsClient', () => {
     })
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/1'),
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements/1',
+        expect.objectContaining({ signal: expect.anything() }),
+      ),
     )
 
     fireEvent.click(screen.getByText('row-3'))
@@ -1718,6 +1732,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1727,7 +1742,10 @@ describe('RequirementsClient', () => {
     })
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/1'),
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements/1',
+        expect.objectContaining({ signal: expect.anything() }),
+      ),
     )
 
     pinnedDetail.resolve(makeRequirementDetail(1, { uniqueId: 'PINNED-0001' }))
@@ -1821,6 +1839,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('cursor=cursor-1'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1898,6 +1917,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('cursor=cursor-1'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1983,6 +2003,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
     await waitFor(() =>
@@ -2069,6 +2090,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -2698,6 +2720,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/api/requirements?'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
   })
