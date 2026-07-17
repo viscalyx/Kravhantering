@@ -2443,30 +2443,37 @@ export function createKravhanteringMcpServer(
           },
         )
         const locale = toResponseLocale(input.locale)
+        const items = payload.items.flatMap(item => {
+          if (!item.itemRef || !item.kind) return []
+
+          return [
+            {
+              area: item.area?.name ?? null,
+              category:
+                locale === 'sv'
+                  ? (item.version?.categoryNameSv ?? null)
+                  : (item.version?.categoryNameEn ?? null),
+              description: item.version?.description ?? null,
+              id: item.id,
+              itemRef: item.itemRef,
+              kind: item.kind,
+              needsReference: item.needsReference ?? null,
+              status:
+                locale === 'sv'
+                  ? (item.version?.statusNameSv ?? null)
+                  : (item.version?.statusNameEn ?? null),
+              type:
+                locale === 'sv'
+                  ? (item.version?.typeNameSv ?? null)
+                  : (item.version?.typeNameEn ?? null),
+              uniqueId: item.uniqueId,
+            },
+          ]
+        })
         const structuredPayload = {
-          items: payload.items.map(item => ({
-            area: item.area?.name ?? null,
-            category:
-              locale === 'sv'
-                ? (item.version?.categoryNameSv ?? null)
-                : (item.version?.categoryNameEn ?? null),
-            description: item.version?.description ?? null,
-            id: item.id,
-            itemRef: item.itemRef ?? '',
-            kind: item.kind ?? 'library',
-            needsReference: item.needsReference ?? null,
-            status:
-              locale === 'sv'
-                ? (item.version?.statusNameSv ?? null)
-                : (item.version?.statusNameEn ?? null),
-            type:
-              locale === 'sv'
-                ? (item.version?.typeNameSv ?? null)
-                : (item.version?.typeNameEn ?? null),
-            uniqueId: item.uniqueId,
-          })),
+          items,
           message: payload.message,
-          pagination: payload.pagination,
+          pagination: { ...payload.pagination, count: items.length },
           specificationId: payload.specificationId,
         }
         return {

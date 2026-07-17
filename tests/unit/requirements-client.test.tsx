@@ -1265,6 +1265,56 @@ describe('RequirementsClient', () => {
     })
   })
 
+  it('disables the combined report when a selected row is absent after refresh', async () => {
+    const firstReviewRow = makeRequirementRow(1)
+    firstReviewRow.version.status = 2
+    const secondReviewRow = makeRequirementRow(2)
+    secondReviewRow.version.status = 2
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return okJson({
+          pagination: { hasMore: false },
+          requirements: url.includes('sortBy=status')
+            ? [firstReviewRow]
+            : [firstReviewRow, secondReviewRow],
+        })
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001,INT0002'),
+    )
+    fireEvent.click(screen.getByText('select-first-two-rows'))
+    fireEvent.click(screen.getByText('change-sort'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+
+    const reviewPdfItem = latestFloatingActions()
+      .find(action => action.id === 'reports')
+      ?.menuItems?.find(item => item.id === 'review-report-pdf')
+
+    expect(reviewPdfItem).toMatchObject({
+      badge: 2,
+      disabled: true,
+      tooltip: 'reviewReportAllMustBeReview',
+    })
+  })
+
   it('ignores export failures without starting a download', async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = String(input)

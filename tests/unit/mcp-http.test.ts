@@ -388,14 +388,20 @@ describe('handleRequirementsMcpRequest', () => {
       expect(queryTool?.description).toContain('priority_levels')
       expect(queryTool?.description).toContain('quality_characteristics')
       const queryInputSchemaText = JSON.stringify(queryTool?.inputSchema)
+      const queryInputSchema = JSON.parse(queryInputSchemaText) as {
+        properties: {
+          cursor: { maxLength: number }
+          limit: { maximum: number }
+        }
+      }
       expect(queryInputSchemaText).toContain('priority_levels')
       expect(queryInputSchemaText).toContain('operation')
       expect(queryInputSchemaText).toContain('search')
       expect(queryInputSchemaText).toContain('normReferenceIds')
       expect(queryInputSchemaText).toContain('requirementPackageIds')
       expect(queryInputSchemaText).toContain('sortBy')
-      expect(queryInputSchemaText).toContain('cursor')
-      expect(queryInputSchemaText).toContain('"maximum":100')
+      expect(queryInputSchema.properties.cursor.maxLength).toBe(512)
+      expect(queryInputSchema.properties.limit.maximum).toBe(100)
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('result')
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('pagination')
       expect(queryTool?.description).toContain('without match.quality')
@@ -1413,6 +1419,39 @@ describe('handleRequirementsMcpRequest', () => {
         }),
       ]),
     )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('omits specification items with incomplete mixed-item identity', async () => {
+    const fakeService = createFakeService()
+    fakeService.getSpecificationItems.mockResolvedValueOnce({
+      items: [
+        {
+          area: null,
+          id: 1,
+          isArchived: false,
+          uniqueId: 'INT0001',
+          version: null,
+        },
+      ],
+      message: 'Requirement applications',
+      pagination: { count: 1, hasMore: false, limit: 50, nextCursor: null },
+      specificationId: 7,
+    })
+    serviceState.getService.mockReturnValue(fakeService)
+
+    const { client, transport } = await createClient()
+    const result = await client.callTool({
+      arguments: { specificationId: 7 },
+      name: 'requirements_get_specification_items',
+    })
+
+    expect(result.structuredContent).toMatchObject({
+      items: [],
+      pagination: { count: 0 },
+    })
 
     await client.close()
     await transport.close()

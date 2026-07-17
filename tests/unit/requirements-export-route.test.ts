@@ -110,11 +110,15 @@ describe('requirements export route', () => {
     )
   })
 
-  it('rejects cursor and page-size inputs', async () => {
+  it.each([
+    'cursor=opaque',
+    'limit=10',
+  ])('rejects the unsupported export query input %s', async unsupportedQuery => {
+    vi.clearAllMocks()
     const { GET } = await import('@/app/api/requirements/export/route')
     const response = await GET(
       new Request(
-        'http://localhost/api/requirements/export?cursor=opaque&limit=10',
+        `http://localhost/api/requirements/export?${unsupportedQuery}`,
       ) as never,
     )
 

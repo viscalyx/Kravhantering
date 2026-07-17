@@ -5,9 +5,9 @@ import {
 import type { SqlServerDatabase } from '@/lib/db'
 import type {
   FilterValues,
-  RequirementRow,
   RequirementSortDirection,
   RequirementSortField,
+  SpecificationItemRequirementRow,
 } from '@/lib/requirements/list-view'
 import type {
   SpecificationItemPageBoundary,
@@ -493,7 +493,7 @@ function parseNumberList(value: unknown): number[] {
 function mapEnrichedRow(
   row: Record<string, unknown>,
   kind: 'library' | 'specificationLocal',
-): RequirementRow {
+): SpecificationItemRequirementRow {
   const local = kind === 'specificationLocal'
   const sourceId = Number(row.sourceId)
   const deviationApproved = Number(row.deviationApproved) || 0
@@ -571,7 +571,7 @@ async function enrichLibraryItems(
   db: SqlServerDatabase,
   specificationId: number,
   ids: number[],
-): Promise<RequirementRow[]> {
+): Promise<SpecificationItemRequirementRow[]> {
   if (!ids.length) return []
   const builder = createSqlBuilder()
   const specification = builder.push(specificationId)
@@ -646,7 +646,7 @@ async function enrichLocalItems(
   db: SqlServerDatabase,
   specificationId: number,
   ids: number[],
-): Promise<RequirementRow[]> {
+): Promise<SpecificationItemRequirementRow[]> {
   if (!ids.length) return []
   const builder = createSqlBuilder()
   const specification = builder.push(specificationId)
@@ -706,7 +706,7 @@ export async function enrichSpecificationItemPage(
   db: SqlServerDatabase,
   specificationId: number,
   candidates: SpecificationItemPageCandidate[],
-): Promise<RequirementRow[]> {
+): Promise<SpecificationItemRequirementRow[]> {
   const [libraryItems, localItems] = await Promise.all([
     enrichLibraryItems(
       db,
@@ -730,5 +730,5 @@ export async function enrichSpecificationItemPage(
           : createSpecificationLocalItemRef(candidate.sourceId),
       ),
     )
-    .filter((item): item is RequirementRow => item != null)
+    .filter((item): item is SpecificationItemRequirementRow => item != null)
 }

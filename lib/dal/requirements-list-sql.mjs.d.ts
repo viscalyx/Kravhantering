@@ -5,9 +5,7 @@ import type {
 
 export interface ListRequirementsOptions {
   after?: {
-    nullRank: number
     requirementId: number
-    sortValue: number | string | null
   }
   areaIds?: number[]
   categoryIds?: number[]
@@ -33,7 +31,6 @@ export interface RequirementListSql {
   sqlText: string
 }
 
-export const REQUIREMENT_LIST_TEXT_SORT_KEY_LENGTH: number
 export function escapeLike(value: unknown): string
 export function buildRequirementListSql(
   opts?: ListRequirementsOptions,

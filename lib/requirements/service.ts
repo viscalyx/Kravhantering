@@ -33,9 +33,9 @@ import {
 } from '@/lib/requirements/import-service'
 import type {
   FilterValues,
-  RequirementRow,
   RequirementSortDirection,
   RequirementSortField,
+  SpecificationItemRequirementRow,
 } from '@/lib/requirements/list-view'
 import {
   createRequirementsLogger,
@@ -284,7 +284,7 @@ export interface ListSpecificationsOutput {
 }
 
 export interface GetSpecificationItemsOutput {
-  items: RequirementRow[]
+  items: SpecificationItemRequirementRow[]
   message: string
   pagination: {
     count: number

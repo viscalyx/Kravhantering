@@ -333,9 +333,12 @@ export default function RequirementsClient({
   const rowsRetryRef = useRef<HTMLButtonElement>(null)
   const latestFetchDataRequestIdRef = useRef(0)
   const scrollToIdRef = useRef<number | null>(null)
-  if (typeof selectedIdRef.current !== 'string') {
-    selectedIdRef.current = selectedId
-  }
+
+  useEffect(() => {
+    if (typeof selectedIdRef.current !== 'string') {
+      selectedIdRef.current = selectedId
+    }
+  }, [selectedId])
 
   const refreshRows = useCallback(
     async ({
@@ -1016,7 +1019,9 @@ export default function RequirementsClient({
     r.pendingVersionStatusId === STATUS_REVIEW
   const anySelectedIsReview = selectedRows.some(hasReviewVersion)
   const allSelectedAreReview =
-    selectedRows.length > 0 && selectedRows.every(hasReviewVersion)
+    selectedRows.length > 0 &&
+    selectedRows.length === selectedIds.size &&
+    selectedRows.every(hasReviewVersion)
 
   const handleExport = async () => {
     const params = buildRequirementListParams({

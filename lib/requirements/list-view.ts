@@ -134,6 +134,11 @@ export interface RequirementRow {
   } | null
 }
 
+export interface SpecificationItemRequirementRow extends RequirementRow {
+  itemRef: string
+  kind: 'library' | 'specificationLocal'
+}
+
 export const DEFAULT_PUBLISHED_STATUS_ID = STATUS_PUBLISHED
 
 export const DEFAULT_FILTERS: FilterValues = {

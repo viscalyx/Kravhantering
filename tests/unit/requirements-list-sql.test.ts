@@ -14,7 +14,7 @@ describe('requirement list SQL builders', () => {
       limit: 25,
       locale: 'sv',
       normReferenceIds: [1, 6],
-      after: { nullRank: 0, requirementId: 50, sortValue: 2 },
+      after: { requirementId: 50 },
       qualityCharacteristicIds: [6],
       requirementPackageIds: [8],
       verifiable: [true, false],
@@ -41,8 +41,7 @@ describe('requirement list SQL builders', () => {
       1,
       6,
       8,
-      0,
-      2,
+      50,
       50,
       25,
     ])
@@ -73,9 +72,12 @@ describe('requirement list SQL builders', () => {
       'JOIN requirement_packages requirement_package',
     )
     expect(query.sqlText).toContain('FOR JSON PATH')
-    expect(query.sqlText).toContain('SELECT TOP (@17)')
-    expect(query.sqlText).toContain('requirement_status.sort_order < @15')
-    expect(query.sqlText).toContain('requirement.id > @16')
+    expect(query.sqlText).toContain('SELECT TOP (@16)')
+    expect(query.sqlText).toContain(
+      'requirement_status.sort_order < cursor_anchor.sortValue',
+    )
+    expect(query.sqlText).toContain('requirement.id > @14')
+    expect(query.sqlText).toContain('WHERE requirement.id = @15')
     expect(query.sqlText).toContain(
       'effective_status.effective_status_id AS status',
     )
@@ -129,7 +131,7 @@ describe('requirement list SQL builders', () => {
     'version',
   ])('builds a deterministic seek predicate for %s sorting', sortBy => {
     const query = buildRequirementListSql({
-      after: { nullRank: 0, requirementId: 10, sortValue: 'anchor' },
+      after: { requirementId: 10 },
       limit: 10,
       locale: 'sv',
       sortBy,
@@ -140,7 +142,7 @@ describe('requirement list SQL builders', () => {
     expect(query.sqlText).toContain('SELECT TOP (')
   })
 
-  it('projects the localized continuation boundary in the page query', () => {
+  it('orders localized text without projecting a cursor sort value', () => {
     const query = buildRequirementListSql({
       areaIds: [2],
       limit: 10,
@@ -148,28 +150,26 @@ describe('requirement list SQL builders', () => {
       sortBy: 'category',
     })
 
-    expect(query.sqlText).toContain('AS cursorNullRank')
-    expect(query.sqlText).toContain('AS cursorSortValue')
     expect(query.sqlText).toContain(
-      "LEFT(NULLIF(LOWER(LTRIM(RTRIM(requirement_category.name_sv))), ''), 48)",
+      "NULLIF(LOWER(LTRIM(RTRIM(requirement_category.name_sv))), '')",
     )
-    expect(query.sqlText).not.toContain('requirement.id =')
+    expect(query.sqlText).not.toContain('LEFT(')
+    expect(query.sqlText).not.toContain('cursor_anchor')
+    expect(query.sqlText).not.toContain('cursorSortValue')
   })
 
-  it('bounds long text sort keys and uses the numeric requirement id as tie-breaker', () => {
+  it('orders and seeks on complete text before the numeric id tie-breaker', () => {
     const query = buildRequirementListSql({
-      after: {
-        nullRank: 0,
-        requirementId: 42,
-        sortValue: 'x'.repeat(48),
-      },
+      after: { requirementId: 42 },
       limit: 200,
       sortBy: 'description',
     })
 
     expect(query.sqlText).toContain(
-      "LEFT(NULLIF(LOWER(LTRIM(RTRIM(version.description))), ''), 48)",
+      "NULLIF(LOWER(LTRIM(RTRIM(version.description))), '') ASC, requirement.id ASC",
     )
+    expect(query.sqlText).not.toContain('LEFT(')
+    expect(query.sqlText).toContain('cursor_anchor.sortValue')
     expect(query.sqlText).toContain('requirement.id >')
     expect(query.sqlText).toContain('requirement.id ASC')
   })

@@ -8,10 +8,10 @@ import {
   DEFAULT_REQUIREMENT_SORT,
   type FilterValues,
   REQUIREMENT_SORT_FIELDS,
-  type RequirementRow,
   type RequirementSortDirection,
   type RequirementSortField,
   type RequirementSortState,
+  type SpecificationItemRequirementRow,
 } from '@/lib/requirements/list-view'
 import {
   assertSpecificationItemPageCursorMatches,
@@ -34,7 +34,7 @@ export interface SpecificationItemPageInput {
 }
 
 export interface SpecificationItemPageResult {
-  items: RequirementRow[]
+  items: SpecificationItemRequirementRow[]
   pagination: {
     count: number
     hasMore: boolean
@@ -174,7 +174,7 @@ export async function traverseCompleteSpecificationItemResult(
   db: SqlServerDatabase,
   input: Omit<SpecificationItemPageInput, 'cursor' | 'limit'>,
   visitPage: (
-    items: RequirementRow[],
+    items: SpecificationItemRequirementRow[],
     pageNumber: number,
   ) => Promise<void> | void,
 ): Promise<CompleteSpecificationItemTraversal> {

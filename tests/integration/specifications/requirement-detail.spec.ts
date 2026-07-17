@@ -1515,17 +1515,28 @@ test.describe('Requirements specification deterministic manual cases', () => {
       `**/api/requirements-specifications/${specificationId}/items?*`,
       async route => {
         const params = new URL(route.request().url()).searchParams
-        const responseItems =
+        const filteredItems =
           params.get('uniqueIdSearch') === 'KEEP' ? items.slice(0, 200) : items
+        const requestedLimit = Number(params.get('limit') ?? 50)
+        const limit = Math.min(
+          Number.isInteger(requestedLimit) && requestedLimit > 0
+            ? requestedLimit
+            : 50,
+          100,
+        )
+        const offset = Number(params.get('cursor')?.replace('page-', '') ?? 0)
+        const responseItems = filteredItems.slice(offset, offset + limit)
+        const nextOffset = offset + responseItems.length
+        const hasMore = nextOffset < filteredItems.length
         await route.fulfill({
           contentType: 'application/json',
           json: {
             items: responseItems,
             pagination: {
               count: responseItems.length,
-              hasMore: false,
-              limit: 50,
-              nextCursor: null,
+              hasMore,
+              limit,
+              nextCursor: hasMore ? `page-${nextOffset}` : null,
             },
           },
         })
@@ -1546,7 +1557,19 @@ test.describe('Requirements specification deterministic manual cases', () => {
     const selectionCheckboxes = specificationItemsPanel.getByRole('checkbox', {
       name: /^Markera PWT-LIMIT-/u,
     })
-    await expect(selectionCheckboxes).toHaveCount(201)
+    const loadAllVisibleItems = async (expectedCount: number) => {
+      await expect(selectionCheckboxes.first()).toBeVisible()
+      while ((await selectionCheckboxes.count()) < expectedCount) {
+        const loadedCount = await selectionCheckboxes.count()
+        await selectionCheckboxes.nth(loadedCount - 1).scrollIntoViewIfNeeded()
+        await expect
+          .poll(() => selectionCheckboxes.count())
+          .toBeGreaterThan(loadedCount)
+      }
+      await expect(selectionCheckboxes).toHaveCount(expectedCount)
+    }
+
+    await loadAllVisibleItems(201)
     for (const checkbox of await selectionCheckboxes.all()) {
       await checkbox.check()
     }
@@ -1586,6 +1609,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
       .click()
     await requirementIdFilter.fill('KEEP')
     await requirementIdFilter.press('Enter')
+    await expect
+      .poll(() => selectionCheckboxes.count())
+      .toBeLessThan(items.length)
+    await loadAllVisibleItems(200)
 
     const deselectNotShown = specificationItemsPanel.getByRole('button', {
       name: 'Avmarkera de som inte visas (1)',
