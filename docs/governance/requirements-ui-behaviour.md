@@ -243,6 +243,12 @@ an explicit in-modal error.
 
 - The Requirements Library and the available-requirements panel load additional
   rows with forward-only opaque cursors.
+- Requirements-specification item reads use the same shared service page
+  boundary for preload, REST, and MCP. Pages default to 50 rows, allow 1 through
+  100, expose page count and continuation availability, and never expose an
+  exact result total. Until the editor pagination cutover, its preload follows
+  these bounded pages internally and preserves the existing complete editor
+  workflow.
 - Changing filters, sorting, direction, locale, page size, or visibility scope
   starts again from the first page.
 - Pages do not expose an exact total. The UI only indicates whether more rows

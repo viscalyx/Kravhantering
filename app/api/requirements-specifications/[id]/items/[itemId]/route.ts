@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  getLibrarySpecificationItemMetadata,
   getSpecificationItemByRef,
-  listSpecificationItems,
   updateSpecificationItemFieldsByItemRef,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -70,12 +70,7 @@ export async function GET(
   const { id, itemId: numericItemId } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
 
-  const items = await listSpecificationItems(db, id)
-  const item = items.find(
-    candidate =>
-      candidate.specificationItemId === numericItemId &&
-      candidate.kind === 'library',
-  )
+  const item = await getLibrarySpecificationItemMetadata(db, id, numericItemId)
 
   if (!item) {
     return NextResponse.json(

@@ -86,11 +86,17 @@ agents can use it reliably.
   ```
 
 - `requirements_get_specification_items`
-  List requirement applications linked to a specific specification, with
-  optional description search. Use the numeric `specificationId` from
-  `requirements_list_specifications`. Copy linked requirement IDs from:
+  List one bounded page of requirement applications for a specification. Use
+  the numeric `specificationId` from `requirements_list_specifications` and
+  optional complete-result filters, locale, sort, direction, cursor, and a
+  limit from 1 through 100 (default 50). The response reports page count and
+  continuation availability, not an exact total. Continue with
+  `pagination.nextCursor`; on `invalid_cursor`, restart without a cursor using
+  the same query. Copy stable mixed-item references or library requirement IDs
+  from:
 
   ```text
+  requirements_get_specification_items.items[].itemRef -> itemRef
   requirements_get_specification_items.items[].id -> requirementIds
   ```
 

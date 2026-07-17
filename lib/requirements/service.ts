@@ -32,6 +32,8 @@ import {
   type RequirementsImportPreview,
 } from '@/lib/requirements/import-service'
 import type {
+  FilterValues,
+  RequirementRow,
   RequirementSortDirection,
   RequirementSortField,
 } from '@/lib/requirements/list-view'
@@ -190,10 +192,15 @@ export interface ListSpecificationsInput {
   responseFormat?: ResponseFormat
 }
 
-export interface GetSpecificationItemsInput extends SpecificationRefInput {
-  descriptionSearch?: string
+export interface GetSpecificationItemsInput
+  extends SpecificationRefInput,
+    FilterValues {
+  cursor?: string
+  limit?: number
   locale?: ResponseLocale
   responseFormat?: ResponseFormat
+  sortBy?: RequirementSortField
+  sortDirection?: RequirementSortDirection
 }
 
 export interface AddToSpecificationInput extends SpecificationRefInput {
@@ -268,17 +275,14 @@ export interface ListSpecificationsOutput {
 }
 
 export interface GetSpecificationItemsOutput {
-  items: {
-    id: number
-    uniqueId: string
-    area: string | null
-    category: string | null
-    description: string | null
-    needsReference: string | null
-    status: string | null
-    type: string | null
-  }[]
+  items: RequirementRow[]
   message: string
+  pagination: {
+    count: number
+    hasMore: boolean
+    limit: number
+    nextCursor: string | null
+  }
   specificationId: number
 }
 

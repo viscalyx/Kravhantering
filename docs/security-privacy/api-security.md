@@ -27,6 +27,10 @@ Covered by this contract:
   `409` response during fuzzing.
 - Requirement list, detail, create, edit, archive, version read,
   delete-draft, restore, reactivate, and transition routes.
+- The requirements-specification item GET route returns only bounded pages of
+  at most 100 mixed library and specification-local requirement applications.
+  Its filters and ordering apply in SQL Server over the complete result, and
+  malformed or query-mismatched continuation state returns `invalid_cursor`.
 - Requirement list continuation uses bounded opaque cursors. Cursors contain an
   anchor id and a hash of normalized query and visibility state, not requirement
   text or raw filter values. Malformed or mismatched cursors return
@@ -97,11 +101,13 @@ Deferred from this contract:
   stateless preview tokens, and are covered by strict schema/unit tests,
   secure-route coverage, authorization policies, and manual workflow cases
   rather than generated fuzzing in this contract slice.
-- Requirements specification CRUD, item, available-requirements, responsible,
-  local-requirement, and needs-reference routes remain outside the
-  OpenAPI/Schemathesis v1 contract. Their useful assertions are assignment
-  authorization, co-author/responsible role behavior, local-versus-library item
-  semantics, import preview tokens, duplicate handling, and UI workflow state.
+- Requirements specification CRUD, item mutation/detail,
+  available-requirements, responsible, local-requirement, and needs-reference
+  routes remain outside the OpenAPI/Schemathesis v1 contract. The bounded item
+  collection GET route is the exception documented above. The excluded routes'
+  useful assertions are assignment authorization, co-author/responsible role
+  behavior, local-versus-library item semantics, import preview tokens,
+  duplicate handling, and UI workflow state.
 - Co-author assignment management routes for requirement areas, requirements
   specifications, and requirement packages remain outside the
   OpenAPI/Schemathesis v1 contract. They are same-origin editing helpers backed

@@ -1,6 +1,5 @@
 import { DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY } from '@/lib/ai/generation-availability'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
-import { countDeviationsPerItemRef } from '@/lib/dal/deviations'
 import {
   countLinkedRequirements,
   listNormReferences,
@@ -13,7 +12,6 @@ import {
   getSpecificationForbiddenSummaryById,
   listSpecificationCoAuthorHsaIds,
   listSpecificationCoAuthorHsaIdsBySpecification,
-  listSpecificationItems,
   listSpecificationNeedsReferences,
   listSpecificationsForActor,
 } from '@/lib/dal/requirements-specifications'
@@ -24,6 +22,7 @@ import { listSpecificationLifecycleStatuses } from '@/lib/dal/specification-life
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { positiveIntegerStringSchema } from '@/lib/http/validation'
+import type { RequestContext } from '@/lib/requirements/auth'
 import { forbiddenError } from '@/lib/requirements/errors'
 import { queryRequirementList } from '@/lib/requirements/list-query'
 import {
@@ -34,7 +33,9 @@ import {
   type SpecificationItemStatusOption,
 } from '@/lib/requirements/list-view'
 import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
+import { createRequirementsRuntime } from '@/lib/requirements/server'
 import { createServerComponentRequestContext } from '@/lib/requirements/server-component-context'
+import type { RequirementsService } from '@/lib/requirements/service'
 import { DEVIATED_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 import {
   canCreateSpecification,
@@ -133,21 +134,34 @@ async function loadAvailableRequirements(
 }
 
 async function loadSpecificationItems(
-  db: SqlServerDatabase,
+  service: RequirementsService,
+  context: RequestContext,
   specificationId: number,
+  locale: 'en' | 'sv',
 ): Promise<SpecificationListItem[]> {
-  const items = await listSpecificationItems(db, specificationId)
-  const deviationCounts = await countDeviationsPerItemRef(db, specificationId)
+  const items: SpecificationListItem[] = []
+  const seenCursors = new Set<string>()
+  let cursor: string | undefined
 
-  return items.map(item => {
-    const counts = item.itemRef ? deviationCounts.get(item.itemRef) : undefined
-    return {
-      ...item,
-      deviationCount: counts?.total ?? 0,
-      hasApprovedDeviation: (counts?.approved ?? 0) > 0,
-      hasPendingDeviation: (counts?.pending ?? 0) > 0,
+  do {
+    const page = await service.getSpecificationItems(context, {
+      cursor,
+      limit: 100,
+      locale,
+      responseFormat: 'json',
+      specificationId,
+    })
+    items.push(...(page.items as SpecificationListItem[]))
+    cursor = page.pagination.nextCursor ?? undefined
+    if (cursor) {
+      if (seenCursors.has(cursor)) {
+        throw new Error('Specification item pagination returned a cursor cycle')
+      }
+      seenCursors.add(cursor)
     }
-  }) as SpecificationListItem[]
+  } while (cursor)
+
+  return items
 }
 
 function emptyDetailInitialData(
@@ -185,6 +199,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
   specificationId: number
 }): Promise<RequirementsSpecificationDetailInitialData> {
   const db = await getRequestSqlServerDataSource()
+  const { service } = createRequirementsRuntime(db)
   const context = await createServerComponentRequestContext({
     path: `/specifications/${specificationId}`,
   })
@@ -310,7 +325,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
       listSpecificationItemStatusOptions(db),
     ),
     capture<SpecificationListItem[]>('requirement applications', [], () =>
-      loadSpecificationItems(db, spec.id),
+      loadSpecificationItems(service, context, spec.id, locale),
     ),
     capture<
       RequirementsSpecificationDetailInitialData['availableRequirements']

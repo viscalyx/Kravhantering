@@ -67,11 +67,13 @@ import {
   type RequestContext,
 } from '@/lib/requirements/auth'
 import { RequirementsServiceError } from '@/lib/requirements/errors'
+import { REQUIREMENT_SORT_FIELDS } from '@/lib/requirements/list-view'
 import { createNormReferenceWithAudit } from '@/lib/requirements/norm-reference-mutations'
 import {
   createRequirementsService,
   type RequirementsService,
 } from '@/lib/requirements/service'
+import { querySpecificationItemPage } from '@/lib/requirements/specification-item-page'
 import {
   STATUS_ARCHIVED,
   STATUS_DRAFT,
@@ -95,7 +97,7 @@ import {
  * Scenario names here must match the QUALITY.md `vitest -t "Scenario N: ..."`
  * invocations verbatim so that spec-referenced commands keep working.
  *
- * Scenarios 10, 15, 18, 19, 23, 24, and 25 are pure file-content checks and
+ * Scenarios 10, 15, 18, 19, 23-27, and 29 are pure file-content checks and
  * always run as part of `npm run test`.
  *
  * Scenarios 1-9, 11-12, 14, 16, and 17 exercise lifecycle/audit/MCP invariants
@@ -1077,6 +1079,59 @@ it('Scenario 27: needs-reference MCP management stays specification-scoped', () 
   expect(contributorGuideSource).toContain(
     'requirements_manage_needs_reference.result[].id -> requirements[].needsReferenceId',
   )
+})
+
+it('Scenario 29: specification item reads stay bounded and cursor-only', () => {
+  const pageSource = readFileSync(
+    join(repoRoot, 'lib', 'requirements', 'specification-item-page.ts'),
+    'utf8',
+  )
+  const cursorSource = readFileSync(
+    join(repoRoot, 'lib', 'requirements', 'specification-item-page-cursor.ts'),
+    'utf8',
+  )
+  const dalSource = readFileSync(
+    join(repoRoot, 'lib', 'dal', 'specification-item-page.ts'),
+    'utf8',
+  )
+  const routeSource = readFileSync(
+    join(
+      repoRoot,
+      'app',
+      'api',
+      'requirements-specifications',
+      '[id]',
+      'items',
+      'route.ts',
+    ),
+    'utf8',
+  )
+  const serverSource = readFileSync(mcpServerPath, 'utf8')
+  const userGuideSource = readFileSync(userGuidePath, 'utf8')
+  const contributorGuideSource = readFileSync(contributorGuidePath, 'utf8')
+
+  expect(pageSource).toContain('DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT = 50')
+  expect(pageSource).toContain('MAX_SPECIFICATION_ITEM_PAGE_LIMIT = 100')
+  expect(pageSource).toContain('limit: limit + 1')
+  expect(pageSource).not.toContain('OFFSET')
+
+  expect(cursorSource).toContain('SPECIFICATION_ITEM_CURSOR_MAX_LENGTH = 512')
+  expect(cursorSource).toContain("createHash('sha256')")
+  expect(cursorSource).toContain("toString('base64url')")
+  expect(cursorSource).toContain('queryFingerprint')
+
+  expect(dalSource).toContain('UNION ALL')
+  expect(dalSource).toContain('candidate.nullRank >')
+  expect(dalSource).toContain('enrichSpecificationItemPage')
+  expect(dalSource).not.toContain('OFFSET')
+
+  expect(routeSource).toContain('itemsQuerySchema')
+  expect(routeSource).toContain('value <= 100')
+  expect(routeSource).toContain('service.getSpecificationItems')
+  expect(serverSource).toContain('pagination.nextCursor')
+  expect(serverSource).toContain("'invalid_cursor'")
+  expect(userGuideSource).toContain('on `invalid_cursor`, restart')
+  expect(contributorGuideSource).toContain('The response has no exact total.')
 })
 
 function resolveFunctionalTestsUrl(): string | null {
@@ -2414,6 +2469,84 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(remainingRequirementRows.map(row => row.id)).toEqual(
       [published.requirementId, draft.requirement.id].sort((a, b) => a - b),
     )
+  })
+
+  it('traverses mixed specification item pages on SQL Server for every sort', async () => {
+    const area = await createArea(appDb())
+    const published = await Promise.all(
+      ['Alpha library', 'Beta library', 'Gamma library'].map(description =>
+        createPublishedRequirement(appDb(), area.id, description),
+      ),
+    )
+    const specification = await createSpecification(appDb(), {
+      name: 'Pagination specification',
+      specificationLifecycleStatusId: 4,
+      ...specificationResponsibleFields(),
+      specificationCode: 'PAGINATION-SPECIFICATION',
+    })
+    await linkRequirementsToSpecificationAtomically(appDb(), specification.id, {
+      requirementIds: published.map(item => item.requirementId),
+    })
+    for (const description of ['Alpha local', 'Beta local', 'Gamma local']) {
+      await createSpecificationLocalRequirement(appDb(), specification.id, {
+        description,
+      })
+    }
+
+    for (const sortBy of REQUIREMENT_SORT_FIELDS) {
+      for (const direction of ['asc', 'desc'] as const) {
+        const page = await querySpecificationItemPage(appDb(), {
+          limit: 100,
+          locale: 'sv',
+          sort: { by: sortBy, direction },
+          specificationId: specification.id,
+        })
+        expect(page.items).toHaveLength(6)
+        expect(page.pagination).toMatchObject({
+          count: 6,
+          hasMore: false,
+          nextCursor: null,
+        })
+        expect(new Set(page.items.map(item => item.itemRef)).size).toBe(6)
+      }
+    }
+
+    const traversed: string[] = []
+    let cursor: string | undefined
+    do {
+      const page = await querySpecificationItemPage(appDb(), {
+        cursor,
+        limit: cursor ? 1 : 2,
+        specificationId: specification.id,
+      })
+      traversed.push(...page.items.map(item => item.itemRef ?? ''))
+      cursor = page.pagination.nextCursor ?? undefined
+    } while (cursor)
+    expect(traversed).toHaveLength(6)
+    expect(new Set(traversed).size).toBe(6)
+
+    const firstPage = await querySpecificationItemPage(appDb(), {
+      limit: 2,
+      specificationId: specification.id,
+    })
+    const formerAnchor = firstPage.items.at(-1)?.itemRef
+    if (!formerAnchor || !firstPage.pagination.nextCursor) {
+      throw new Error('Expected a continuation boundary')
+    }
+    const [kind, rawId] = formerAnchor.split(':')
+    await appDb().query(
+      kind === 'lib'
+        ? 'DELETE FROM requirements_specification_items WHERE id = @0'
+        : 'DELETE FROM specification_local_requirements WHERE id = @0',
+      [Number(rawId)],
+    )
+    await expect(
+      querySpecificationItemPage(appDb(), {
+        cursor: firstPage.pagination.nextCursor,
+        limit: 1,
+        specificationId: specification.id,
+      }),
+    ).resolves.toMatchObject({ pagination: { limit: 1 } })
   })
 
   it('Scenario 13: specification-local graduation is copy-only into a draft library requirement', async () => {

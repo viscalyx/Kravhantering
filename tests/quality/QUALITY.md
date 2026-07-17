@@ -1269,6 +1269,48 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 28: generat
 ```
 <!-- markdownlint-enable MD013 -->
 
+### Scenario 29: specification item reads stay bounded and cursor-only
+
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal — issue #591 shared specification-item pagination]`
+
+**What happened:** The editor preload, REST route, and MCP tool used separate
+complete-result reads. Large mixed specifications could therefore bypass page
+limits, filter outside SQL Server, or expose transport contracts whose cursors
+did not describe the same query.
+
+**Covered code line ranges:** This scenario covers the shared page and cursor
+operation, SQL candidate/enrichment boundary, REST and MCP schemas, and the
+integration docs:
+
+<!-- markdownlint-disable MD013 -->
+```text
+lib/requirements/specification-item-page.ts
+lib/requirements/specification-item-page-cursor.ts
+lib/dal/specification-item-page.ts
+app/api/requirements-specifications/[id]/items/route.ts
+lib/mcp/server.ts
+docs/integrations/mcp-server-user-guide.md
+docs/integrations/mcp-server-contributor-guide.md
+```
+<!-- markdownlint-enable MD013 -->
+
+**The requirement:** Every callable specification-item read accepts only a
+1–100 row page (default 50), returns page count and continuation metadata
+without an exact total, and binds a canonical opaque cursor to specification,
+normalized filters, locale, sort, and direction. SQL combines both item kinds
+with `UNION ALL`, seeks from the full boundary tuple, selects only `limit + 1`
+candidates, and enriches only that selected page. REST and MCP map malformed or
+mismatched state to `invalid_cursor` and document restart from the first page.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 29: specification item reads stay bounded and cursor-only"
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,

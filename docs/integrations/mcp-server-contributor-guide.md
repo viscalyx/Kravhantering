@@ -296,12 +296,20 @@ requirements_list_specifications.specifications[].specificationId -> specificati
 
 ### `requirements_get_specification_items`
 
-Lists requirement applications linked to a specific specification. Accepts
-numeric `specificationId`. Supports optional `descriptionSearch` for client-side
-filtering. Use the specification copy path above. Returned linked requirement
-IDs can be copied into removal inputs:
+Lists one bounded page of requirement applications linked to a specific
+specification. Accepts numeric `specificationId`, all supported list filters,
+`locale`, `sortBy`, `sortDirection`, an optional opaque `cursor`, and `limit`
+from 1 through 100 (default 50). Filtering and ordering run over the complete
+mixed library/local result in SQL Server. The response has no exact total.
+
+Continue only with `pagination.nextCursor`; a reduced `limit` is allowed on the
+next call. `invalid_cursor` means the client must restart without `cursor` and
+retain its normalized filters, locale, and sort. Use the specification copy
+path above. Stable item references identify both item kinds, while library
+requirement IDs can be copied into legacy removal inputs:
 
 ```text
+requirements_get_specification_items.items[].itemRef -> itemRef
 requirements_get_specification_items.items[].id -> requirementIds
 ```
 

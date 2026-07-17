@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
   listSpecificationsForActor: vi.fn(),
   listSpecificationCoAuthorHsaIdsBySpecification: vi.fn(),
   listSpecificationItems: vi.fn(),
+  querySpecificationItemPage: vi.fn(),
   getPublishedVersionIdForRequirement: vi.fn(),
   getOrCreateSpecificationNeedsReference: vi.fn(),
   linkRequirementsToSpecificationAtomically: vi.fn(),
@@ -121,6 +122,10 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
 
 vi.mock('@/lib/dal/requirement-packages', () => ({
   listRequirementPackages: mocks.listRequirementPackages,
+}))
+
+vi.mock('@/lib/requirements/specification-item-page', () => ({
+  querySpecificationItemPage: mocks.querySpecificationItemPage,
 }))
 
 vi.mock('@/lib/dal/requirement-statuses', () => ({
@@ -367,6 +372,10 @@ describe('createRequirementsService', () => {
       },
     ])
     mocks.listSpecificationItems.mockResolvedValue([])
+    mocks.querySpecificationItemPage.mockResolvedValue({
+      items: [],
+      pagination: { count: 0, hasMore: false, limit: 50, nextCursor: null },
+    })
     mocks.listSpecifications.mockResolvedValue([])
     mocks.listSuggestionsForRequirement.mockResolvedValue([])
     mocks.recordDecision.mockResolvedValue(undefined)
@@ -1364,52 +1373,76 @@ describe('createRequirementsService', () => {
       message: 'Missing specification reference',
       status: 400,
     })
-    expect(mocks.listSpecificationItems).not.toHaveBeenCalled()
+    expect(mocks.querySpecificationItemPage).not.toHaveBeenCalled()
     expect(mocks.listDeviationsForSpecification).not.toHaveBeenCalled()
   })
 
-  it('localizes requirement application labels using the requested locale', async () => {
-    mocks.listSpecificationItems.mockResolvedValue([
-      {
-        area: { name: 'Identitet' },
-        id: 101,
-        needsReference: 'IAM-42',
-        uniqueId: 'INT0001',
-        version: {
-          categoryNameEn: 'Category',
-          categoryNameSv: 'Kategori',
-          description: 'Support secure integration',
-          qualityCharacteristicNameEn: null,
-          qualityCharacteristicNameSv: null,
-          verifiable: true,
-          status: 3,
-          statusColor: '#22c55e',
-          statusNameEn: 'Published',
-          statusNameSv: 'Publicerad',
-          typeNameEn: 'Functional',
-          typeNameSv: 'Funktionellt',
-          versionNumber: 1,
-        },
+  it('returns a bounded requirement application page from the shared query', async () => {
+    const item = {
+      area: { name: 'Identitet' },
+      id: 101,
+      isArchived: false,
+      itemRef: 'lib:31',
+      kind: 'library',
+      needsReference: 'IAM-42',
+      uniqueId: 'INT0001',
+      version: {
+        categoryNameEn: 'Category',
+        categoryNameSv: 'Kategori',
+        description: 'Support secure integration',
+        qualityCharacteristicNameEn: null,
+        qualityCharacteristicNameSv: null,
+        verifiable: true,
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        typeNameEn: 'Functional',
+        typeNameSv: 'Funktionellt',
+        versionNumber: 1,
       },
-    ])
+    }
+    mocks.querySpecificationItemPage.mockResolvedValue({
+      items: [item],
+      pagination: {
+        count: 1,
+        hasMore: true,
+        limit: 25,
+        nextCursor: 'next-page',
+      },
+    })
     const service = createTestRequirementsService()
 
     const result = await service.getSpecificationItems(makeContext(), {
+      categoryIds: [4],
+      cursor: 'current-page',
+      limit: 25,
       locale: 'sv',
+      sortBy: 'category',
+      sortDirection: 'desc',
       specificationId: 7,
       responseFormat: 'json',
     })
 
     expect(result.specificationId).toBe(7)
-    expect(result.items).toEqual([
+    expect(result.items).toEqual([item])
+    expect(result.pagination).toEqual({
+      count: 1,
+      hasMore: true,
+      limit: 25,
+      nextCursor: 'next-page',
+    })
+    expect(mocks.querySpecificationItemPage).toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({
-        area: 'Identitet',
-        category: 'Kategori',
-        needsReference: 'IAM-42',
-        status: 'Publicerad',
-        type: 'Funktionellt',
+        cursor: 'current-page',
+        filters: expect.objectContaining({ categoryIds: [4] }),
+        limit: 25,
+        locale: 'sv',
+        sort: { by: 'category', direction: 'desc' },
+        specificationId: 7,
       }),
-    ])
+    )
     expect(JSON.parse(result.message)).toMatchObject({
       title: 'Kravtillämpningar',
     })

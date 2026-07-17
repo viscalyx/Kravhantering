@@ -17,8 +17,8 @@ const mockContext = {
 }
 
 const mocks = {
+  getLibrarySpecificationItemMetadata: vi.fn(),
   getSpecificationItemByRef: vi.fn(),
-  listSpecificationItems: vi.fn(),
   updateSpecificationItemFieldsByItemRef: vi.fn(),
 }
 
@@ -27,10 +27,10 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
+  getLibrarySpecificationItemMetadata: (...args: unknown[]) =>
+    mocks.getLibrarySpecificationItemMetadata(...args),
   getSpecificationItemByRef: (...args: unknown[]) =>
     mocks.getSpecificationItemByRef(...args),
-  listSpecificationItems: (...args: unknown[]) =>
-    mocks.listSpecificationItems(...args),
   updateSpecificationItemFieldsByItemRef: (...args: unknown[]) =>
     mocks.updateSpecificationItemFieldsByItemRef(...args),
 }))
@@ -77,18 +77,15 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
   })
 
   it('returns specification-specific metadata for a library requirement item', async () => {
-    mocks.listSpecificationItems.mockResolvedValue([
-      {
-        kind: 'library',
-        needsReference: 'Shared specification need',
-        needsReferenceId: 81,
-        specificationItemId: 31,
-        specificationItemStatusColor: '#f59e0b',
-        specificationItemStatusId: 2,
-        specificationItemStatusNameEn: 'Ongoing',
-        specificationItemStatusNameSv: 'Pågående',
-      },
-    ])
+    mocks.getLibrarySpecificationItemMetadata.mockResolvedValue({
+      needsReference: 'Shared specification need',
+      needsReferenceId: 81,
+      specificationItemId: 31,
+      specificationItemStatusColor: '#f59e0b',
+      specificationItemStatusId: 2,
+      specificationItemStatusNameEn: 'Ongoing',
+      specificationItemStatusNameSv: 'Pågående',
+    })
 
     const request = new NextRequest(
       'http://localhost/api/requirements-specifications/5/items/31',
@@ -107,7 +104,11 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
       specificationItemStatusNameEn: 'Ongoing',
       specificationItemStatusNameSv: 'Pågående',
     })
-    expect(mocks.listSpecificationItems).toHaveBeenCalledWith(mockDb, 5)
+    expect(mocks.getLibrarySpecificationItemMetadata).toHaveBeenCalledWith(
+      mockDb,
+      5,
+      31,
+    )
   })
 
   it('updates usage status by item ref within the specification', async () => {

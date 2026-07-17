@@ -3379,6 +3379,46 @@ export async function getSpecificationItemByRef(
   }
 }
 
+export async function getLibrarySpecificationItemMetadata(
+  db: SqlExecutor,
+  specificationId: number,
+  specificationItemId: number,
+) {
+  const rows = (await db.query(
+    `
+      SELECT TOP (1)
+        specification_item.id AS specificationItemId,
+        specification_item.needs_reference_id AS needsReferenceId,
+        needs_reference.text AS needsReference,
+        specification_item.specification_item_status_id AS specificationItemStatusId,
+        specification_item_status.color AS specificationItemStatusColor,
+        specification_item_status.icon_name AS specificationItemStatusIconName,
+        specification_item_status.name_en AS specificationItemStatusNameEn,
+        specification_item_status.name_sv AS specificationItemStatusNameSv
+      FROM requirements_specification_items specification_item
+      LEFT JOIN specification_needs_references needs_reference
+        ON needs_reference.id = specification_item.needs_reference_id
+      LEFT JOIN specification_item_statuses specification_item_status
+        ON specification_item_status.id = specification_item.specification_item_status_id
+      WHERE specification_item.requirements_specification_id = @0
+        AND specification_item.id = @1
+    `,
+    [specificationId, specificationItemId],
+  )) as Row[]
+  const row = rows[0]
+  if (!row) return null
+  return {
+    needsReference: toStr(row.needsReference),
+    needsReferenceId: toNum(row.needsReferenceId),
+    specificationItemId: Number(row.specificationItemId),
+    specificationItemStatusColor: toStr(row.specificationItemStatusColor),
+    specificationItemStatusIconName: toStr(row.specificationItemStatusIconName),
+    specificationItemStatusId: Number(row.specificationItemStatusId),
+    specificationItemStatusNameEn: toStr(row.specificationItemStatusNameEn),
+    specificationItemStatusNameSv: toStr(row.specificationItemStatusNameSv),
+  }
+}
+
 async function validateSpecificationItemStatus(
   db: SqlExecutor,
   statusId: number,

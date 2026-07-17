@@ -199,6 +199,7 @@ function createFakeService(
     getSpecificationItems: vi.fn().mockResolvedValue({
       items: [],
       message: 'Requirement applications',
+      pagination: { count: 0, hasMore: false, limit: 50, nextCursor: null },
       specificationId: 7,
     }),
     graduateSpecificationLocalRequirement: vi.fn().mockResolvedValue({
@@ -397,6 +398,26 @@ describe('handleRequirementsMcpRequest', () => {
         'pagination',
       )
       expect(queryInputSchemaText).not.toContain('responseFormat')
+    })
+
+    it('describes bounded specification-item pagination and continuation', () => {
+      const tool = getTool('requirements_get_specification_items')
+
+      expect(tool).toBeDefined()
+      expect(tool?.description).toContain('bounded')
+      expect(tool?.description).toContain('pagination.nextCursor')
+      expect(tool?.description).toContain('invalid_cursor')
+      const inputSchema = JSON.stringify(tool?.inputSchema)
+      const outputSchema = JSON.stringify(tool?.outputSchema)
+      expect(inputSchema).toContain('cursor')
+      expect(inputSchema).toContain('maximum":100')
+      expect(inputSchema).toContain('specificationItemStatusIds')
+      expect(inputSchema).toContain('requirementPackageIds')
+      expect(inputSchema).toContain('qualityCharacteristicIds')
+      expect(outputSchema).toContain('pagination')
+      expect(outputSchema).toContain('nextCursor')
+      expect(outputSchema).toContain('itemRef')
+      expect(outputSchema).not.toContain('total')
     })
 
     it('describes import schema and instruction artifacts', async () => {
@@ -1348,6 +1369,39 @@ describe('handleRequirementsMcpRequest', () => {
       expect.arrayContaining([
         expect.objectContaining({
           text: 'Error: Requirement has changed',
+          type: 'text',
+        }),
+      ]),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns invalid_cursor explicitly for specification continuation', async () => {
+    const fakeService = createFakeService()
+    fakeService.getSpecificationItems.mockRejectedValueOnce(
+      new RequirementsServiceError(
+        'invalid_cursor',
+        'Invalid requirement list cursor',
+      ),
+    )
+    serviceState.getService.mockReturnValue(fakeService)
+
+    const { client, transport } = await createClient()
+    const result = await client.callTool({
+      arguments: {
+        cursor: 'stale-cursor',
+        specificationId: 7,
+      },
+      name: 'requirements_get_specification_items',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          text: 'Error [invalid_cursor]: Invalid requirement list cursor',
           type: 'text',
         }),
       ]),

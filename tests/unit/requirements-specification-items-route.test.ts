@@ -11,6 +11,7 @@ const mocks = {
   addToSpecification: vi.fn(),
   createRequirementsRestRuntime: vi.fn(),
   deleteSpecificationItemsByRefs: vi.fn(),
+  getSpecificationItems: vi.fn(),
   getSpecificationById: vi.fn(),
   linkRequirementsToSpecificationAtomically: vi.fn(),
   listSpecificationItems: vi.fn(),
@@ -77,7 +78,7 @@ import {
   PATCH,
   POST,
 } from '@/app/api/requirements-specifications/[id]/items/route'
-import { validationError } from '@/lib/requirements/errors'
+import { invalidCursorError, validationError } from '@/lib/requirements/errors'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
@@ -123,11 +124,18 @@ describe('requirements-specifications/[id]/items route', () => {
         db: options?.db ?? mockDb,
         service: {
           addToSpecification: mocks.addToSpecification,
+          getSpecificationItems: mocks.getSpecificationItems,
           removeFromSpecification: mocks.removeFromSpecification,
         },
       }),
     )
     mocks.getSpecificationById.mockResolvedValue({ id: 5 })
+    mocks.getSpecificationItems.mockResolvedValue({
+      items: [],
+      message: 'ok',
+      pagination: { count: 0, hasMore: false, limit: 50, nextCursor: null },
+      specificationId: 5,
+    })
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(1)
     mocks.removeFromSpecification.mockResolvedValue({
       message: 'ok',
@@ -174,33 +182,43 @@ describe('requirements-specifications/[id]/items route', () => {
     })
   })
 
-  it('returns requirement applications with merged deviation counts', async () => {
+  it('returns the shared bounded requirement application page', async () => {
     mocks.getSpecificationById.mockResolvedValue({ id: 7 })
-    mocks.listSpecificationItems.mockResolvedValue([
+    const items = [
       {
+        deviationCount: 3,
+        hasApprovedDeviation: true,
+        hasPendingDeviation: true,
         id: 31,
         itemRef: 'lib:31',
         kind: 'library',
         specificationItemId: 31,
       },
       {
+        deviationCount: 1,
+        hasApprovedDeviation: false,
+        hasPendingDeviation: true,
         id: 41,
         itemRef: 'local:41',
         kind: 'local',
         specificationLocalRequirementId: 41,
       },
-    ])
-    const { countDeviationsPerItemRef } = await import('@/lib/dal/deviations')
-    vi.mocked(countDeviationsPerItemRef).mockResolvedValueOnce(
-      new Map([
-        ['lib:31', { approved: 1, pending: 2, rejected: 0, total: 3 }],
-        ['local:41', { approved: 0, pending: 1, rejected: 0, total: 1 }],
-      ]),
-    )
+    ]
+    mocks.getSpecificationItems.mockResolvedValueOnce({
+      items,
+      message: 'ok',
+      pagination: {
+        count: 2,
+        hasMore: true,
+        limit: 2,
+        nextCursor: 'next-page',
+      },
+      specificationId: 7,
+    })
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/5/items',
+        'http://localhost/api/requirements-specifications/5/items?limit=2&locale=sv&sortBy=description&sortDirection=desc',
       ),
       makeParams('5'),
     )
@@ -221,9 +239,52 @@ describe('requirements-specifications/[id]/items route', () => {
           specificationLocalRequirementId: 41,
         }),
       ],
+      pagination: {
+        count: 2,
+        hasMore: true,
+        limit: 2,
+        nextCursor: 'next-page',
+      },
     })
-    expect(mocks.listSpecificationItems).toHaveBeenCalledWith(mockDb, 7)
-    expect(countDeviationsPerItemRef).toHaveBeenCalledWith(mockDb, 7)
+    expect(mocks.getSpecificationItems).toHaveBeenCalledWith(mockContext, {
+      limit: 2,
+      locale: 'sv',
+      responseFormat: 'json',
+      sortBy: 'description',
+      sortDirection: 'desc',
+      specificationId: 7,
+    })
+  })
+
+  it('rejects page limits above 100 before database work', async () => {
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/items?limit=101',
+      ),
+      makeParams('5'),
+    )
+
+    expect(response.status).toBe(400)
+    await expectInvalidRequest(response, 'limit')
+    expect(mocks.getSpecificationById).not.toHaveBeenCalled()
+    expect(mocks.getSpecificationItems).not.toHaveBeenCalled()
+  })
+
+  it('maps malformed continuation state to invalid_cursor', async () => {
+    mocks.getSpecificationItems.mockRejectedValueOnce(invalidCursorError())
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/items?cursor=stale',
+      ),
+      makeParams('5'),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      code: 'invalid_cursor',
+      error: 'Invalid requirement list cursor',
+    })
   })
 
   it('delegates requirement linking to the requirements service', async () => {

@@ -1,10 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { countDeviationsPerItemRef } from '@/lib/dal/deviations'
 import {
   deleteSpecificationItemsByRefs,
   getSpecificationById,
-  listSpecificationItems,
   updateSpecificationItemFieldsByItemRefs,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -19,14 +17,19 @@ import {
   idParamSchema,
   nullableBoundedDbStringSchema,
   nullableBusinessTextSchema,
+  optionalQueryArraySchema,
+  optionalSearchStringSchema,
   parseRouteParams,
+  parseSearchParams,
   positiveIntegerSchema,
+  positiveIntegerStringSchema,
+  queryBooleanStringSchema,
   routeSegmentSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { REQUIREMENT_SORT_FIELDS } from '@/lib/requirements/list-view'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
-import { authorize } from '@/lib/requirements/service-shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -102,6 +105,39 @@ const deleteItemsSchema = z.union([
     .strict(),
 ])
 
+const itemsQuerySchema = z
+  .object({
+    areaIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    categoryIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    cursor: z.string().min(1).max(512).optional(),
+    descriptionSearch: optionalSearchStringSchema,
+    limit: positiveIntegerStringSchema
+      .refine(value => value <= 100, {
+        message: 'Expected a page size no greater than 100',
+      })
+      .optional(),
+    locale: z.enum(['en', 'sv']).optional().default('en'),
+    needsReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    normReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    priorityLevelIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    qualityCharacteristicIds: optionalQueryArraySchema(
+      positiveIntegerStringSchema,
+    ),
+    requirementPackageIds: optionalQueryArraySchema(
+      positiveIntegerStringSchema,
+    ),
+    sortBy: z.enum(REQUIREMENT_SORT_FIELDS).optional(),
+    sortDirection: z.enum(['asc', 'desc']).optional(),
+    specificationItemStatusIds: optionalQueryArraySchema(
+      positiveIntegerStringSchema,
+    ),
+    statuses: optionalQueryArraySchema(positiveIntegerStringSchema),
+    typeIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    uniqueIdSearch: optionalSearchStringSchema,
+    verifiable: optionalQueryArraySchema(queryBooleanStringSchema),
+  })
+  .strict()
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Params },
@@ -110,39 +146,29 @@ export async function GET(
   if (!parsedParams.ok) {
     return parsedParams.response
   }
+  const parsedQuery = parseSearchParams(
+    new URL(request.url).searchParams,
+    itemsQuerySchema,
+  )
+  if (!parsedQuery.ok) return parsedQuery.response
   try {
     const { id } = parsedParams.data
     const db = await getRequestSqlServerDataSource()
     const specification = await getSpecificationById(db, id)
     if (!specification)
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    const { authorization, context } = await createRequirementsRestRuntime(
-      request,
-      { db },
-    )
-    await authorize(
-      authorization,
-      {
-        kind: 'get_specification_items',
-        specificationId: specification.id,
-      },
-      context,
-    )
-    const items = await listSpecificationItems(db, specification.id)
-    const deviationCounts = await countDeviationsPerItemRef(
+    const { context, service } = await createRequirementsRestRuntime(request, {
       db,
-      specification.id,
-    )
-    const enrichedItems = items.map(item => {
-      const dc = item.itemRef ? deviationCounts.get(item.itemRef) : undefined
-      return {
-        ...item,
-        deviationCount: dc?.total ?? 0,
-        hasApprovedDeviation: (dc?.approved ?? 0) > 0,
-        hasPendingDeviation: (dc?.pending ?? 0) > 0,
-      }
     })
-    return NextResponse.json({ items: enrichedItems })
+    const payload = await service.getSpecificationItems(context, {
+      ...parsedQuery.data,
+      responseFormat: 'json',
+      specificationId: specification.id,
+    })
+    return NextResponse.json({
+      items: payload.items,
+      pagination: payload.pagination,
+    })
   } catch (error) {
     const { body, status } = toHttpErrorPayload(error)
     return NextResponse.json(body, { status })

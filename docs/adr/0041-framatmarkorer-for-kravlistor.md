@@ -16,6 +16,19 @@ oförändrade. Den utgör inte en fryst ögonblicksbild över flera HTTP-anrop. 
 klient med en ogiltig eller inaktuell markör läser om listan från början och
 meddelar användaren.
 
+Kravunderlagets blandade lista över bibliotekskrav och kravunderlagslokala krav
+använder samma princip genom en gemensam sidoperation för tjänst, REST, MCP och
+förladdning. SQL Server-databasens befintliga kollation styr textjämförelser;
+applikationen varken väljer, validerar eller åsidosätter den.
+
+Kravunderlagsmarkören innehåller hela gränstupeln: nullrang, primärt
+sorteringsvärde, Krav-ID, objektslag och källans primärnyckel. Den kräver därför
+varken uppslag av en tidigare ankarrad, offset eller exakt total. Sidstorleken
+ingår inte i frågeidentiteten, så en konsument får minska gränsen under fortsatt
+läsning. Markören är kanonisk, utfyllnadsfri base64url-kodad JSON och högst 512
+tecken. Ändrade eller borttagna tidigare gränsrader hindrar inte fortsatt
+läsning; vanlig `READ COMMITTED` innebär däremot ingen fryst ögonblicksbild.
+
 PDF-insamling följer samma framåtmarkörer. Offsetkontraktet behålls inte eftersom
 ingen dokumenterad kompatibilitetskonsument finns. Ändringen aktiveras direkt
 utan funktionsflagga.

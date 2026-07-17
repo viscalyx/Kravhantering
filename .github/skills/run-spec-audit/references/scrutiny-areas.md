@@ -540,3 +540,21 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   reasons?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 28: generated norm-reference IDs remain atomic under concurrent creates"`
+
+## 36. Scenario 29: specification item reads stay bounded and cursor-only
+
+- **Code:** `lib/requirements/specification-item-page.ts`,
+  `lib/requirements/specification-item-page-cursor.ts`,
+  `lib/dal/specification-item-page.ts`, the REST item route, and
+  `lib/mcp/server.ts`.
+- **Spec:** `docs/adr/0041-framatmarkorer-for-kravlistor.md`,
+  `docs/integrations/mcp-server-user-guide.md`, and
+  `docs/integrations/mcp-server-contributor-guide.md`.
+- **Req tag:**
+  `[Req: formal — issue #591 shared specification-item pagination]`
+- **Question:** Do preload, REST, and MCP share a 1–100 row page contract whose
+  cursor binds the complete query, with a two-branch `limit + 1` seek query,
+  bounded enrichment, no exact total or offset, and explicit `invalid_cursor`
+  restart guidance?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 29: specification item reads stay bounded and cursor-only"`

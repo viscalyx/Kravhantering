@@ -18,6 +18,7 @@ import {
   isRequirementsServiceError,
   type RequirementsErrorCode,
 } from '@/lib/requirements/errors'
+import { REQUIREMENT_SORT_FIELDS } from '@/lib/requirements/list-view'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import {
   buildRequirementViewUri,
@@ -51,6 +52,7 @@ const DEFAULT_MCP_RUNTIME_SETTINGS: McpRuntimeSettings = Object.freeze({
 const READABLE_MCP_ERROR_CODES = new Set<RequirementsErrorCode>([
   'not_found',
   'validation',
+  'invalid_cursor',
   'conflict',
   'unauthorized',
   'forbidden',
@@ -602,7 +604,10 @@ function formatError(error: unknown) {
     content: [
       {
         type: 'text' as const,
-        text: `Error: ${message}`,
+        text:
+          isRequirementsServiceError(error) && error.code === 'invalid_cursor'
+            ? `Error [invalid_cursor]: ${message}`
+            : `Error: ${message}`,
       },
     ],
     isError: true,
@@ -2275,16 +2280,65 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: true,
       },
-      description: `List requirements (krav) linked to a specific requirements specification, with optional description search. Identify the specification with specificationId from requirements_list_specifications. ${specificationIdCopyPath}`,
+      description: `List one bounded, database-ordered page of library and specification-local requirements linked to a requirements specification. Filters apply to the complete result. Continue with pagination.nextCursor; on invalid_cursor, restart without cursor using the same filters, locale, and sort. Identify the specification with specificationId from requirements_list_specifications. ${specificationIdCopyPath}`,
       inputSchema: z
         .object({
+          areaIds: z.array(z.number().int().positive()).max(100).optional(),
+          categoryIds: z.array(z.number().int().positive()).max(100).optional(),
+          cursor: z
+            .string()
+            .min(1)
+            .max(512)
+            .optional()
+            .describe(
+              'Opaque continuation cursor from pagination.nextCursor. Omit to start again from the first page.',
+            ),
           descriptionSearch: z
             .string()
+            .max(250)
             .optional()
             .describe(
               'Case-insensitive substring filter on the requirement description.',
             ),
+          limit: z
+            .number()
+            .int()
+            .min(1)
+            .max(100)
+            .default(50)
+            .describe(
+              'Maximum page size from 1 through 100. Defaults to 50 and may be reduced during continuation.',
+            ),
           locale: ResponseLocaleSchema,
+          needsReferenceIds: z
+            .array(z.number().int().positive())
+            .max(100)
+            .optional(),
+          normReferenceIds: z
+            .array(z.number().int().positive())
+            .max(100)
+            .optional(),
+          priorityLevelIds: z
+            .array(z.number().int().positive())
+            .max(100)
+            .optional(),
+          qualityCharacteristicIds: z
+            .array(z.number().int().positive())
+            .max(100)
+            .optional(),
+          requirementPackageIds: z
+            .array(z.number().int().positive())
+            .max(100)
+            .optional(),
+          sortBy: z
+            .enum(REQUIREMENT_SORT_FIELDS)
+            .default('uniqueId')
+            .describe('Whitelisted field used for database ordering.'),
+          sortDirection: z.enum(['asc', 'desc']).default('asc'),
+          specificationItemStatusIds: z
+            .array(z.number().int().positive())
+            .max(100)
+            .optional(),
           specificationId: z
             .number()
             .int()
@@ -2292,6 +2346,10 @@ export function createKravhanteringMcpServer(
             .describe(
               `Numeric ID of the requirements specification. ${specificationIdCopyPath}`,
             ),
+          statuses: z.array(z.number().int().positive()).max(100).optional(),
+          typeIds: z.array(z.number().int().positive()).max(100).optional(),
+          uniqueIdSearch: z.string().max(250).optional(),
+          verifiable: z.array(z.boolean()).max(2).optional(),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
         .strict(),
@@ -2304,6 +2362,8 @@ export function createKravhanteringMcpServer(
                 category: z.string().nullable(),
                 description: z.string().nullable(),
                 id: z.number(),
+                itemRef: z.string(),
+                kind: z.enum(['library', 'specificationLocal']),
                 needsReference: z.string().nullable(),
                 status: z.string().nullable(),
                 type: z.string().nullable(),
@@ -2312,6 +2372,14 @@ export function createKravhanteringMcpServer(
               .strict(),
           ),
           message: z.string(),
+          pagination: z
+            .object({
+              count: z.number().int().nonnegative(),
+              hasMore: z.boolean(),
+              limit: z.number().int().min(1).max(100),
+              nextCursor: z.string().max(512).nullable(),
+            })
+            .strict(),
           specificationId: z.number(),
         })
         .strict(),
@@ -2322,15 +2390,46 @@ export function createKravhanteringMcpServer(
         const payload = await service.getSpecificationItems(
           await getBaseContext(request, 'requirements_get_specification_items'),
           {
-            descriptionSearch: input.descriptionSearch,
+            ...input,
             locale: toResponseLocale(input.locale),
             specificationId: input.specificationId,
             responseFormat: toResponseFormat(input.responseFormat),
+            verifiable: input.verifiable?.map(String),
           },
         )
+        const locale = toResponseLocale(input.locale)
+        const structuredPayload = {
+          items: payload.items.map(item => ({
+            area: item.area?.name ?? null,
+            category:
+              locale === 'sv'
+                ? (item.version?.categoryNameSv ?? null)
+                : (item.version?.categoryNameEn ?? null),
+            description: item.version?.description ?? null,
+            id: item.id,
+            itemRef: item.itemRef ?? '',
+            kind: item.kind ?? 'library',
+            needsReference: item.needsReference ?? null,
+            status:
+              locale === 'sv'
+                ? (item.version?.statusNameSv ?? null)
+                : (item.version?.statusNameEn ?? null),
+            type:
+              locale === 'sv'
+                ? (item.version?.typeNameSv ?? null)
+                : (item.version?.typeNameEn ?? null),
+            uniqueId: item.uniqueId,
+          })),
+          message: payload.message,
+          pagination: payload.pagination,
+          specificationId: payload.specificationId,
+        }
         return {
           content: [{ text: payload.message, type: 'text' }],
-          structuredContent: payload as unknown as Record<string, unknown>,
+          structuredContent: structuredPayload as unknown as Record<
+            string,
+            unknown
+          >,
         }
       } catch (error) {
         return formatError(error)

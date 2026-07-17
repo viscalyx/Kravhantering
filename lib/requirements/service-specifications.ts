@@ -10,7 +10,6 @@ import {
   graduateSpecificationLocalRequirementToLibrary,
   linkRequirementsToSpecificationAtomically,
   listSpecificationCoAuthorHsaIdsBySpecification,
-  listSpecificationItems,
   listSpecificationsForActor,
   unlinkRequirementsFromSpecification,
 } from '@/lib/dal/requirements-specifications'
@@ -22,6 +21,10 @@ import {
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
 import { forbiddenError, notFoundError } from '@/lib/requirements/errors'
+import {
+  DEFAULT_REQUIREMENT_SORT,
+  type FilterValues,
+} from '@/lib/requirements/list-view'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import {
   recordAuthorizationDenied,
@@ -47,11 +50,11 @@ import {
   getRequirementWord,
   getSpecificationServiceTitle,
   getSpecificationWord,
-  localizeName,
   resolveSpecificationIdOrThrow,
   translateServiceMessage,
   withLogging,
 } from '@/lib/requirements/service-shared'
+import { querySpecificationItemPage } from '@/lib/requirements/specification-item-page'
 import {
   canReadAllSpecifications,
   specificationPermissions,
@@ -270,60 +273,56 @@ export function createSpecificationWorkflow({
         },
         async () => {
           const specificationId = await resolveSpecificationIdOrThrow(input)
-          let items = await listSpecificationItems(db, specificationId)
-          if (input.descriptionSearch) {
-            const q = input.descriptionSearch.toLowerCase()
-            items = items.filter(
-              item =>
-                item.version?.description?.toLowerCase().includes(q) ?? false,
-            )
+          const filters: FilterValues = {
+            areaIds: input.areaIds,
+            categoryIds: input.categoryIds,
+            descriptionSearch: input.descriptionSearch,
+            needsReferenceIds: input.needsReferenceIds,
+            normReferenceIds: input.normReferenceIds,
+            priorityLevelIds: input.priorityLevelIds,
+            qualityCharacteristicIds: input.qualityCharacteristicIds,
+            requirementPackageIds: input.requirementPackageIds,
+            specificationItemStatusIds: input.specificationItemStatusIds,
+            statuses: input.statuses,
+            typeIds: input.typeIds,
+            uniqueIdSearch: input.uniqueIdSearch,
+            verifiable: input.verifiable,
           }
+          const page = await querySpecificationItemPage(db, {
+            cursor: input.cursor,
+            filters,
+            limit: input.limit,
+            locale,
+            sort: {
+              by: input.sortBy ?? DEFAULT_REQUIREMENT_SORT.by,
+              direction:
+                input.sortDirection ?? DEFAULT_REQUIREMENT_SORT.direction,
+            },
+            specificationId,
+          })
 
           const ref = getSpecificationReferenceLabel(input, specificationId)
           const summary = translateServiceMessage(
             locale,
             'requirements.specifications.items.count',
             {
-              count: items.length,
+              count: page.pagination.count,
               reference: ref,
-              requirementWord: getRequirementWord(locale, items.length),
+              requirementWord: getRequirementWord(
+                locale,
+                page.pagination.count,
+              ),
             },
           )
 
           return {
-            items: items.map(item => ({
-              area: item.area?.name ?? null,
-              category: localizeName(
-                {
-                  nameEn: item.version?.categoryNameEn ?? null,
-                  nameSv: item.version?.categoryNameSv ?? null,
-                },
-                locale,
-              ),
-              description: item.version?.description ?? null,
-              id: item.id,
-              needsReference: item.needsReference ?? null,
-              status: localizeName(
-                {
-                  nameEn: item.version?.statusNameEn ?? null,
-                  nameSv: item.version?.statusNameSv ?? null,
-                },
-                locale,
-              ),
-              type: localizeName(
-                {
-                  nameEn: item.version?.typeNameEn ?? null,
-                  nameSv: item.version?.typeNameSv ?? null,
-                },
-                locale,
-              ),
-              uniqueId: item.uniqueId,
-            })),
+            items: page.items,
             message: createServiceMessage(
               getSpecificationServiceTitle('items', locale),
               [summary],
               responseFormat,
             ),
+            pagination: page.pagination,
             specificationId,
           }
         },
