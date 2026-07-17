@@ -1283,6 +1283,189 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect.poll(getVisibleRows).not.toEqual(ascendingRows)
   })
 
+  test('SPEC-19: pages and recovers the bounded specification item list', async ({
+    page,
+  }) => {
+    const item = (
+      id: number,
+      itemRef: string,
+      uniqueId: string,
+      description: string,
+    ) => ({
+      area: { name: 'PWT-MANUAL Playwright manual cases' },
+      deviationCount: 0,
+      hasApprovedDeviation: false,
+      hasPendingDeviation: false,
+      id,
+      isArchived: false,
+      itemRef,
+      kind: 'library',
+      specificationItemId: id,
+      uniqueId,
+      version: {
+        categoryNameEn: 'Business requirement',
+        categoryNameSv: 'Verksamhetskrav',
+        description,
+        priorityLevelColor: null,
+        priorityLevelIconName: null,
+        priorityLevelId: null,
+        priorityLevelNameEn: null,
+        priorityLevelNameSv: null,
+        priorityLevelSortOrder: null,
+        qualityCharacteristicNameEn: null,
+        qualityCharacteristicNameSv: null,
+        status: 3,
+        statusColor: '#22c55e',
+        statusIconName: 'CheckCircle2',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        typeNameEn: 'Business requirement',
+        typeNameSv: 'Verksamhetskrav',
+        verifiable: true,
+        versionNumber: 1,
+      },
+    })
+    const firstItem = item(
+      980001,
+      'lib:980001',
+      'PWT-PAGE-1',
+      'PWT first bounded page.',
+    )
+    const secondItem = item(
+      980002,
+      'lib:980002',
+      'PWT-PAGE-2',
+      'PWT continuation page.',
+    )
+    const restartedItem = item(
+      980003,
+      'lib:980003',
+      'PWT-PAGE-3',
+      'PWT restarted first page.',
+    )
+    let firstPageRequests = 0
+    let releaseInvalidCursor: (() => void) | undefined
+    const invalidCursorGate = new Promise<void>(resolve => {
+      releaseInvalidCursor = resolve
+    })
+
+    await page.route(
+      `**/api/requirements-specifications/${specificationId}/items?*`,
+      async route => {
+        const cursor = new URL(route.request().url()).searchParams.get('cursor')
+        if (cursor === 'cursor-1') {
+          await route.fulfill({
+            contentType: 'application/json',
+            json: {
+              items: [firstItem, secondItem],
+              pagination: {
+                count: 2,
+                hasMore: true,
+                limit: 50,
+                nextCursor: 'cursor-2',
+              },
+            },
+          })
+          return
+        }
+        if (cursor === 'cursor-2') {
+          await invalidCursorGate
+          await route.fulfill({
+            contentType: 'application/json',
+            json: { code: 'invalid_cursor', error: 'Invalid cursor' },
+            status: 400,
+          })
+          return
+        }
+
+        firstPageRequests += 1
+        if (firstPageRequests === 1) {
+          await route.fulfill({
+            contentType: 'application/json',
+            json: {
+              items: [firstItem],
+              pagination: {
+                count: 1,
+                hasMore: true,
+                limit: 50,
+                nextCursor: 'cursor-1',
+              },
+            },
+          })
+          return
+        }
+        if (firstPageRequests < 4) {
+          await route.fulfill({
+            contentType: 'application/json',
+            json: { error: 'PWT recovery unavailable' },
+            status: 503,
+          })
+          return
+        }
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            items: [restartedItem],
+            pagination: {
+              count: 1,
+              hasMore: false,
+              limit: 50,
+              nextCursor: null,
+            },
+          },
+        })
+      },
+    )
+
+    await gotoSpecificationDetail(page)
+    const specificationItemsPanel = page.locator(
+      '[data-specification-detail-list-panel="items"]',
+    )
+    await specificationItemsPanel
+      .getByRole('button', { name: 'Sortera efter Kravtext' })
+      .click()
+    await expect(
+      specificationItemsPanel.getByRole('button', { name: /^PWT-PAGE-1\b/u }),
+    ).toHaveCount(1)
+    await expect(
+      specificationItemsPanel.getByRole('button', { name: /^PWT-PAGE-2\b/u }),
+    ).toHaveCount(1)
+    await expect(
+      specificationItemsPanel.getByRole('button', {
+        name: 'Läs in fler krav',
+      }),
+    ).toHaveCount(0)
+    await specificationItemsPanel
+      .getByRole('checkbox', { name: 'Markera PWT-PAGE-1' })
+      .check()
+    releaseInvalidCursor?.()
+    const recoveryAlert = specificationItemsPanel.getByRole('alert')
+    await expect(recoveryAlert).toContainText(
+      'Fortsättningen har upphört att gälla',
+    )
+    await expect(
+      specificationItemsPanel.getByRole('button', { name: /^PWT-PAGE-1\b/u }),
+    ).toHaveCount(1)
+
+    await recoveryAlert.getByRole('button', { name: 'Försök igen' }).click()
+    await expect(
+      recoveryAlert.getByRole('button', { name: 'Försök igen' }),
+    ).toBeFocused()
+    await recoveryAlert.getByRole('button', { name: 'Försök igen' }).click()
+
+    await expect(
+      specificationItemsPanel.getByText(
+        'Listan startade om från första sidan med samma fråga.',
+      ),
+    ).toHaveCount(1)
+    await expect(
+      specificationItemsPanel.getByRole('button', { name: /^PWT-PAGE-3\b/u }),
+    ).toHaveCount(1)
+    await expect(
+      specificationItemsPanel.getByText(/1 krav markerat/u),
+    ).toHaveCount(1)
+  })
+
   test('SPEC-06: adds, selects, and removes a requirement in the specification detail UI', async ({
     page,
   }) => {

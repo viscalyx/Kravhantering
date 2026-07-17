@@ -34,7 +34,6 @@ const mocks = vi.hoisted(() => ({
   listSpecifications: vi.fn(),
   listSpecificationsForActor: vi.fn(),
   listSpecificationCoAuthorHsaIdsBySpecification: vi.fn(),
-  listSpecificationItems: vi.fn(),
   querySpecificationItemPage: vi.fn(),
   getPublishedVersionIdForRequirement: vi.fn(),
   getOrCreateSpecificationNeedsReference: vi.fn(),
@@ -111,7 +110,6 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   linkRequirementsToSpecificationAtomically:
     mocks.linkRequirementsToSpecificationAtomically,
   linkRequirementsToSpecification: mocks.linkRequirementsToSpecification,
-  listSpecificationItems: mocks.listSpecificationItems,
   listSpecifications: mocks.listSpecifications,
   listSpecificationsForActor: mocks.listSpecificationsForActor,
   listSpecificationCoAuthorHsaIdsBySpecification:
@@ -371,7 +369,6 @@ describe('createRequirementsService', () => {
         prefix: 'INT',
       },
     ])
-    mocks.listSpecificationItems.mockResolvedValue([])
     mocks.querySpecificationItemPage.mockResolvedValue({
       items: [],
       pagination: { count: 0, hasMore: false, limit: 50, nextCursor: null },

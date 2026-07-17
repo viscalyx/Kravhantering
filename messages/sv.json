@@ -706,10 +706,14 @@
     "clearNeedsReferenceConfirm": "Rensa länkarna till behovsreferenser för krav-ID:n: {ids}?",
     "bulkNeedsReferencePartialFail": "Ändringen av behovsreferenser misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade.",
     "affectedRequirementIds": "Berörda krav-ID:n",
-    "selectionStatus": "{total, plural, one {# krav markerat} other {# krav markerade}}; {hidden, plural, =0 {inga dolda} one {# visas inte just nu} other {# visas inte just nu}}.",
+    "selectionStatus": "{total, plural, one {# krav markerat} other {# krav markerade}}; {hidden, plural, =0 {inga dolda} one {# är inte inläst} other {# är inte inlästa}}.",
     "selectionActionsAffectAll": "Åtgärder påverkar hela den markerade mängden.",
     "deselectHidden": "Avmarkera de som inte visas ({count})",
     "selectionDisappeared": "Följande krav-ID:n försvann vid uppdateringen och avmarkerades: {ids}.",
+    "requirementsAdded": "Följande krav-ID:n lades till: {ids}.",
+    "paginationContinuationFailed": "Det gick inte att läsa in nästa sida. Kraven som redan har lästs in visas fortfarande.",
+    "paginationRecoveryFailed": "Fortsättningen har upphört att gälla och omstarten från första sidan misslyckades. Redan inlästa krav, den aktuella frågan och markeringen är oförändrade.",
+    "paginationRestarted": "Fortsättningen har upphört att gälla. Listan startade om från första sidan med samma fråga.",
     "newSpecification": "Nytt kravunderlag",
     "editSpecification": "Redigera kravunderlag",
     "filterByName": "Filtrera på namn",
@@ -2011,7 +2015,7 @@
       "title": "Kravunderlagsdetalj",
       "requirements": {
         "heading": "Hantera krav",
-        "body": "Klicka på \"Lägg till krav\" för att lägga till publicerade krav. Redigerare kan markera enskilda underlagsobjekt; markeringen finns kvar vid sökning, filtrering, sortering och uppdatering. Åtgärder för markerade objekt påverkar alltid hela markeringen, även objekt som inte visas just nu."
+        "body": "Klicka på \"Lägg till krav\" för att lägga till publicerade krav. Kravunderlaget börjar med en begränsad sida och läser automatiskt in senare sidor nära listans slut. Redigerare kan markera enskilda underlagsobjekt; markeringen finns kvar vid sökning, filtrering, sortering, sidinläsning och uppdatering. Åtgärder för markerade objekt påverkar alltid hela markeringen, även objekt som inte visas just nu."
       },
       "needsReference": {
         "heading": "Behovsreferens",

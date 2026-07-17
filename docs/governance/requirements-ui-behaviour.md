@@ -246,18 +246,22 @@ an explicit in-modal error.
 - Requirements-specification item reads use the same shared service page
   boundary for preload, REST, and MCP. Pages default to 50 rows, allow 1 through
   100, expose page count and continuation availability, and never expose an
-  exact result total. Until the editor pagination cutover, its preload follows
-  these bounded pages internally and preserves the existing complete editor
-  workflow.
+  exact result total. The editor preload contains only the first page and
+  appends later pages in database order as the user reaches the end of the
+  scrollable list.
 - Changing filters, sorting, direction, locale, page size, or visibility scope
   starts again from the first page.
-- Pages do not expose an exact total. The UI only indicates whether more rows
-  can be loaded.
+- The editor automatically requests the next page when the list-end sentinel
+  approaches the viewport. It does not show a manual continuation button or a
+  row-count status for a populated list. Empty-state text is shown only after an
+  authoritative empty response, and read failures use an explicit error state.
 - Unchanged result sets must not repeat or skip rows across page boundaries.
 - The list is not a frozen snapshot. Requirements changed by another user may
   require a full refresh before they appear in their current sorted position.
-- If a cursor becomes invalid, the UI replaces the accumulated rows with a new
-  first page and announces a localized refresh message.
+- If a continuation cursor becomes invalid, the editor keeps current rows
+  visible and retries the first page once with the same query. Success replaces
+  the rows and announces the restart without moving focus. Failure keeps the
+  rows, query, and selection and presents a labelled retry action.
 
 ## Floating Rail
 

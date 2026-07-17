@@ -113,9 +113,10 @@ Deferred from this contract:
   OpenAPI/Schemathesis v1 contract. They are same-origin editing helpers backed
   by `secureMutationRoute`, HSA-id verification, scoped assignment permissions,
   conflict checks against owner/lead roles, and focused route/UI tests.
-- Requirements specification report-output, traceability-items, and CSV export
-  routes remain outside the OpenAPI/Schemathesis v1 contract with the other
-  specification and CSV surfaces. Their useful assertions are
+- Requirements specification report-output, traceability-items, bounded
+  selected-item resolution, and CSV export routes remain outside the
+  OpenAPI/Schemathesis v1 contract with the other specification and CSV
+  surfaces. Their useful assertions are
   authorization-before-data, lifecycle profile gating, linked-version
   selection, selected-ref ownership checks, and exact output columns.
 - Specification deviation routes, requirement-library deviation routes, and

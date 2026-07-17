@@ -71,7 +71,6 @@ import {
 import {
   type AreaOption,
   buildRequirementListParams,
-  compareRequirementRows,
   DEFAULT_REQUIREMENT_SORT,
   type FilterValues,
   isRequirementColumnId,
@@ -84,6 +83,7 @@ import type {
   AvailableRequirementsData,
   NormReferenceOption,
   RequirementsSpecificationDetailInitialData,
+  SpecificationItemsPageData,
   SpecificationListItem,
   SpecificationMeta,
   SpecificationNeedsReference,
@@ -117,8 +117,16 @@ const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
   titleKey: 'requirementsSpecificationDetail.title',
 }
 
-const PAGE_SIZE = 200
+const AVAILABLE_REQUIREMENTS_PAGE_SIZE = 200
+const SPECIFICATION_ITEMS_PAGE_SIZE = 50
 const TRACEABILITY_ITEM_REF_LIMIT = 200
+
+interface ResolvedSpecificationItem {
+  itemRef: string
+  kind: 'library' | 'specificationLocal'
+  needsReference: string | null
+  uniqueId: string
+}
 
 const LEFT_VISIBLE_COLS_KEY =
   'requirement-specifications.visibleColumns.left.v1'
@@ -408,6 +416,16 @@ async function readJsonOrThrow<T>(response: Response, fallbackMessage: string) {
   return (await response.json()) as T
 }
 
+function deduplicateSpecificationItems(items: SpecificationListItem[]) {
+  const seen = new Set<string>()
+  return items.filter(item => {
+    const itemRef = item.itemRef
+    if (!itemRef || seen.has(itemRef)) return false
+    seen.add(itemRef)
+    return true
+  })
+}
+
 function buildNormReferenceOptionsPath(statuses: number[] | undefined) {
   const params = new URLSearchParams()
   params.set('linked', 'true')
@@ -446,7 +464,25 @@ export default function KravunderlagDetailClient({
   const [spec, setSpec] = useState<SpecificationMeta | null>(initialData.spec)
   const [specificationItems, setSpecificationItems] = useState<
     SpecificationListItem[]
-  >(initialData.specificationItems)
+  >(initialData.specificationItems.items)
+  const [specificationItemsHasMore, setSpecificationItemsHasMore] = useState(
+    initialData.specificationItems.pagination.hasMore,
+  )
+  const [specificationItemsNextCursor, setSpecificationItemsNextCursor] =
+    useState(initialData.specificationItems.pagination.nextCursor)
+  const [specificationItemsLoading, setSpecificationItemsLoading] =
+    useState(false)
+  const [specificationItemsLoadingMore, setSpecificationItemsLoadingMore] =
+    useState(false)
+  const [specificationItemsError, setSpecificationItemsError] = useState<
+    string | null
+  >(null)
+  const [
+    specificationItemsContinuationError,
+    setSpecificationItemsContinuationError,
+  ] = useState<'continuation' | 'recovery' | null>(null)
+  const [specificationItemsAnnouncement, setSpecificationItemsAnnouncement] =
+    useState<string | null>(null)
   const [availableRows, setAvailableRows] = useState<RequirementRow[]>(
     initialData.availableRequirements.rows,
   )
@@ -484,7 +520,9 @@ export default function KravunderlagDetailClient({
   const [leftSelectedItemRefs, setLeftSelectedItemRefs] = useState<Set<string>>(
     new Set(),
   )
-  const [leftExpandedId, setLeftExpandedId] = useState<number | null>(null)
+  const [leftExpandedItemRef, setLeftExpandedItemRef] = useState<string | null>(
+    null,
+  )
   const [leftFilters, setLeftFilters] = useState<FilterValues>(
     preFilterAreaId ? { areaIds: [preFilterAreaId] } : {},
   )
@@ -542,6 +580,8 @@ export default function KravunderlagDetailClient({
   const [createLocalRequirementFormDirty, setCreateLocalRequirementFormDirty] =
     useState(false)
   const [pendingAddIds, setPendingAddIds] = useState<number[]>([])
+  const [pendingAddRequirementUniqueIds, setPendingAddRequirementUniqueIds] =
+    useState<string[]>([])
   const [addNeedsRefMode, setAddNeedsRefMode] = useState<
     'none' | 'existing' | 'new'
   >('none')
@@ -579,11 +619,22 @@ export default function KravunderlagDetailClient({
   const [addModalError, setAddModalError] = useState<string | null>(null)
   const pdfDownload = useServerPdfDownload()
   const specificationPathId = String(specificationId)
+  const selectedItemsByRef = useRef(
+    new Map<string, SpecificationListItem>(
+      initialData.specificationItems.items.flatMap(item =>
+        item.itemRef ? [[item.itemRef, item] as const] : [],
+      ),
+    ),
+  )
+  const specificationItemsRequestIdRef = useRef(0)
+  const specificationItemsAbortRef = useRef<AbortController | null>(null)
+  const specificationItemsQueryKeyRef = useRef<string | null>(null)
+  const specificationItemsRetryRef = useRef<HTMLButtonElement>(null)
 
   const availableRequirementsParams = useMemo(() => {
     const params = buildRequirementListParams({
       filters: rightFilters,
-      limit: PAGE_SIZE,
+      limit: AVAILABLE_REQUIREMENTS_PAGE_SIZE,
       locale,
       sort: rightSort,
     })
@@ -593,6 +644,17 @@ export default function KravunderlagDetailClient({
     return params.toString()
   }, [applyRequirementSelectionFilter, locale, rightFilters, rightSort])
   const availableRequirementsKeyRef = useRef(availableRequirementsParams)
+
+  const specificationItemsParams = useMemo(
+    () =>
+      buildRequirementListParams({
+        filters: leftFilters,
+        limit: SPECIFICATION_ITEMS_PAGE_SIZE,
+        locale,
+        sort: leftSort,
+      }).toString(),
+    [leftFilters, leftSort, locale],
+  )
 
   const specResource = useAsyncResource<SpecificationMeta | null>({
     fetcher: async signal => {
@@ -612,27 +674,6 @@ export default function KravunderlagDetailClient({
       error instanceof Error ? error.message : t('loadSpecificationFailed'),
     initialData: initialData.spec,
     key: `specification:${specificationId}`,
-    loadOnMount: false,
-  })
-
-  const specificationItemsResource = useAsyncResource<SpecificationListItem[]>({
-    fetcher: async signal => {
-      const response = await apiFetch(
-        `/api/requirements-specifications/${specificationId}/items`,
-        { signal },
-      )
-      const data = await readJsonOrThrow<{ items?: SpecificationListItem[] }>(
-        response,
-        t('loadSpecificationItemsFailed'),
-      )
-      return data.items ?? []
-    },
-    getErrorMessage: error =>
-      error instanceof Error
-        ? error.message
-        : t('loadSpecificationItemsFailed'),
-    initialData: initialData.specificationItems,
-    key: `specification-items:${specificationId}`,
     loadOnMount: false,
   })
 
@@ -720,11 +761,10 @@ export default function KravunderlagDetailClient({
     loadOnMount: false,
   })
 
-  const loading = specResource.loading || specificationItemsResource.loading
+  const loading = specResource.loading
   const loadWarning =
     loadMoreWarning ??
     specResource.refreshError ??
-    specificationItemsResource.refreshError ??
     availableRequirementsResource.refreshError ??
     needsReferencesResource.refreshError ??
     leftNormReferenceResource.refreshError ??
@@ -749,12 +789,6 @@ export default function KravunderlagDetailClient({
   useEffect(() => {
     setSpec(specResource.data ?? null)
   }, [specResource.data])
-
-  useEffect(() => {
-    if (specificationItemsResource.data) {
-      setSpecificationItems(specificationItemsResource.data)
-    }
-  }, [specificationItemsResource.data])
 
   useEffect(() => {
     if (
@@ -794,6 +828,228 @@ export default function KravunderlagDetailClient({
   useEffect(() => {
     availableRequirementsKeyRef.current = availableRequirementsParams
   }, [availableRequirementsParams])
+
+  const loadFirstSpecificationItemsPage = useCallback(
+    async ({
+      recoveringInvalidCursor = false,
+      restoreRetryFocusOnFailure = false,
+    }: {
+      recoveringInvalidCursor?: boolean
+      restoreRetryFocusOnFailure?: boolean
+    } = {}) => {
+      const requestId = ++specificationItemsRequestIdRef.current
+      specificationItemsAbortRef.current?.abort()
+      const controller = new AbortController()
+      specificationItemsAbortRef.current = controller
+      setSpecificationItemsLoading(true)
+      setSpecificationItemsLoadingMore(false)
+      setSpecificationItemsError(null)
+      setSpecificationItemsContinuationError(null)
+      setSpecificationItemsAnnouncement(null)
+      setSpecificationItemsHasMore(false)
+      setSpecificationItemsNextCursor(null)
+
+      try {
+        const response = await apiFetch(
+          `/api/requirements-specifications/${specificationId}/items?${specificationItemsParams}`,
+          { signal: controller.signal },
+        )
+        const page = await readJsonOrThrow<SpecificationItemsPageData>(
+          response,
+          t('loadSpecificationItemsFailed'),
+        )
+        if (
+          controller.signal.aborted ||
+          requestId !== specificationItemsRequestIdRef.current
+        ) {
+          return false
+        }
+
+        const items = deduplicateSpecificationItems(page.items ?? [])
+        setSpecificationItems(items)
+        setSpecificationItemsHasMore(page.pagination?.hasMore ?? false)
+        setSpecificationItemsNextCursor(page.pagination?.nextCursor ?? null)
+        setSpecificationItemsError(null)
+        setSpecificationItemsContinuationError(null)
+        if (recoveringInvalidCursor) {
+          setSpecificationItemsAnnouncement(t('paginationRestarted'))
+        }
+        return true
+      } catch (error) {
+        if (
+          controller.signal.aborted ||
+          requestId !== specificationItemsRequestIdRef.current
+        ) {
+          return false
+        }
+        const message =
+          error instanceof Error
+            ? error.message
+            : t('loadSpecificationItemsFailed')
+        if (recoveringInvalidCursor) {
+          setSpecificationItemsContinuationError('recovery')
+        } else {
+          setSpecificationItemsError(message)
+        }
+        if (restoreRetryFocusOnFailure) {
+          requestAnimationFrame(() =>
+            specificationItemsRetryRef.current?.focus(),
+          )
+        }
+        return false
+      } finally {
+        if (requestId === specificationItemsRequestIdRef.current) {
+          setSpecificationItemsLoading(false)
+          if (specificationItemsAbortRef.current === controller) {
+            specificationItemsAbortRef.current = null
+          }
+        }
+      }
+    },
+    [specificationId, specificationItemsParams, t],
+  )
+  const loadFirstSpecificationItemsPageRef = useRef(
+    loadFirstSpecificationItemsPage,
+  )
+  loadFirstSpecificationItemsPageRef.current = loadFirstSpecificationItemsPage
+
+  useEffect(() => {
+    const previousQueryKey = specificationItemsQueryKeyRef.current
+    specificationItemsQueryKeyRef.current = specificationItemsParams
+
+    if (previousQueryKey === null) {
+      const initialQueryKey = buildRequirementListParams({
+        filters: {},
+        limit: SPECIFICATION_ITEMS_PAGE_SIZE,
+        locale,
+        sort: DEFAULT_REQUIREMENT_SORT,
+      }).toString()
+      if (specificationItemsParams === initialQueryKey) return
+    }
+
+    void loadFirstSpecificationItemsPageRef.current()
+  }, [locale, specificationItemsParams])
+
+  useEffect(
+    () => () => {
+      specificationItemsRequestIdRef.current += 1
+      specificationItemsAbortRef.current?.abort()
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (
+      leftExpandedItemRef &&
+      !specificationItems.some(item => item.itemRef === leftExpandedItemRef)
+    ) {
+      setLeftExpandedItemRef(null)
+    }
+  }, [leftExpandedItemRef, specificationItems])
+
+  const loadMoreSpecificationItems = useCallback(async () => {
+    if (
+      specificationItemsLoading ||
+      specificationItemsLoadingMore ||
+      !specificationItemsHasMore ||
+      !specificationItemsNextCursor
+    ) {
+      return
+    }
+
+    const requestId = ++specificationItemsRequestIdRef.current
+    specificationItemsAbortRef.current?.abort()
+    const controller = new AbortController()
+    specificationItemsAbortRef.current = controller
+    setSpecificationItemsLoadingMore(true)
+    setSpecificationItemsContinuationError(null)
+    setSpecificationItemsAnnouncement(null)
+
+    const params = new URLSearchParams(specificationItemsParams)
+    params.set('cursor', specificationItemsNextCursor)
+
+    try {
+      const response = await apiFetch(
+        `/api/requirements-specifications/${specificationId}/items?${params}`,
+        { signal: controller.signal },
+      )
+      if (response.status === 400) {
+        const body = (await response
+          .clone()
+          .json()
+          .catch(() => null)) as { code?: string } | null
+        if (body?.code === 'invalid_cursor') {
+          if (
+            controller.signal.aborted ||
+            requestId !== specificationItemsRequestIdRef.current
+          ) {
+            return
+          }
+          await loadFirstSpecificationItemsPage({
+            recoveringInvalidCursor: true,
+          })
+          return
+        }
+      }
+
+      const page = await readJsonOrThrow<SpecificationItemsPageData>(
+        response,
+        t('loadSpecificationItemsFailed'),
+      )
+      if (
+        controller.signal.aborted ||
+        requestId !== specificationItemsRequestIdRef.current
+      ) {
+        return
+      }
+
+      setSpecificationItems(current =>
+        deduplicateSpecificationItems([...current, ...(page.items ?? [])]),
+      )
+      setSpecificationItemsHasMore(page.pagination?.hasMore ?? false)
+      setSpecificationItemsNextCursor(page.pagination?.nextCursor ?? null)
+    } catch {
+      if (
+        !controller.signal.aborted &&
+        requestId === specificationItemsRequestIdRef.current
+      ) {
+        setSpecificationItemsContinuationError('continuation')
+      }
+    } finally {
+      if (requestId === specificationItemsRequestIdRef.current) {
+        setSpecificationItemsLoadingMore(false)
+        if (specificationItemsAbortRef.current === controller) {
+          specificationItemsAbortRef.current = null
+        }
+      }
+    }
+  }, [
+    loadFirstSpecificationItemsPage,
+    specificationId,
+    specificationItemsHasMore,
+    specificationItemsLoading,
+    specificationItemsLoadingMore,
+    specificationItemsNextCursor,
+    specificationItemsParams,
+    t,
+  ])
+
+  const retrySpecificationItems = useCallback(async () => {
+    if (specificationItemsContinuationError === 'continuation') {
+      await loadMoreSpecificationItems()
+      requestAnimationFrame(() => specificationItemsRetryRef.current?.focus())
+      return
+    }
+    await loadFirstSpecificationItemsPage({
+      recoveringInvalidCursor:
+        specificationItemsContinuationError === 'recovery',
+      restoreRetryFocusOnFailure: true,
+    })
+  }, [
+    loadFirstSpecificationItemsPage,
+    loadMoreSpecificationItems,
+    specificationItemsContinuationError,
+  ])
 
   const closeAddModal = useCallback(() => {
     if (addModalLoading) return
@@ -866,29 +1122,55 @@ export default function KravunderlagDetailClient({
     [specificationItems],
   )
 
+  useEffect(() => {
+    for (const item of specificationItems) {
+      if (item.itemRef) {
+        selectedItemsByRef.current.set(item.itemRef, item)
+      }
+    }
+  }, [specificationItems])
+
   const selectedSpecificationItems = useMemo(
     () =>
-      specificationItems.filter(
-        item => item.itemRef && leftSelectedItemRefs.has(item.itemRef),
-      ),
-    [leftSelectedItemRefs, specificationItems],
+      [...leftSelectedItemRefs].flatMap(itemRef => {
+        const item = selectedItemsByRef.current.get(itemRef)
+        return item ? [item] : []
+      }),
+    [leftSelectedItemRefs],
   )
 
   const leftSelectedIds = useMemo(
-    () => new Set(selectedSpecificationItems.map(item => item.id)),
-    [selectedSpecificationItems],
+    () =>
+      new Set(
+        specificationItems
+          .filter(
+            item => item.itemRef && leftSelectedItemRefs.has(item.itemRef),
+          )
+          .map(item => item.id),
+      ),
+    [leftSelectedItemRefs, specificationItems],
   )
 
   const handleLeftSelectionChange = useCallback(
     (selectedIds: Set<number>) => {
       setSelectionNotice(null)
-      setLeftSelectedItemRefs(
-        new Set(
+      setLeftSelectedItemRefs(current => {
+        const loadedRefs = new Set(
           specificationItems
-            .filter(item => selectedIds.has(item.id) && item.itemRef)
-            .map(item => item.itemRef as string),
-        ),
-      )
+            .map(item => item.itemRef)
+            .filter((itemRef): itemRef is string => Boolean(itemRef)),
+        )
+        const next = new Set(
+          [...current].filter(itemRef => !loadedRefs.has(itemRef)),
+        )
+        for (const item of specificationItems) {
+          if (selectedIds.has(item.id) && item.itemRef) {
+            next.add(item.itemRef)
+            selectedItemsByRef.current.set(item.itemRef, item)
+          }
+        }
+        return next
+      })
     },
     [specificationItems],
   )
@@ -918,8 +1200,8 @@ export default function KravunderlagDetailClient({
     }: {
       throwOnError?: boolean
     } = {}): Promise<boolean> => {
-      const refreshed = await specificationItemsResource.reload()
-      if (refreshed === undefined) {
+      const refreshed = await loadFirstSpecificationItemsPage()
+      if (!refreshed) {
         if (throwOnError) {
           throw new Error(t('loadSpecificationItemsFailed'))
         }
@@ -927,7 +1209,7 @@ export default function KravunderlagDetailClient({
       }
       return true
     },
-    [specificationItemsResource, t],
+    [loadFirstSpecificationItemsPage, t],
   )
 
   const fetchNeedsReferences = useCallback(
@@ -969,7 +1251,7 @@ export default function KravunderlagDetailClient({
     try {
       const params = buildRequirementListParams({
         filters: rightFilters,
-        limit: PAGE_SIZE,
+        limit: AVAILABLE_REQUIREMENTS_PAGE_SIZE,
         locale,
         cursor: rightNextCursor,
         sort: rightSort,
@@ -1061,6 +1343,11 @@ export default function KravunderlagDetailClient({
   // Open add modal
   const handleOpenAddModal = useCallback(async () => {
     setPendingAddIds(Array.from(rightSelectedIds))
+    setPendingAddRequirementUniqueIds(
+      availableRows
+        .filter(item => rightSelectedIds.has(item.id))
+        .map(item => item.uniqueId),
+    )
     setAddNeedsRefMode('none')
     setAddNeedsRefId('')
     setAddNeedsRefText('')
@@ -1069,7 +1356,7 @@ export default function KravunderlagDetailClient({
     setOpenHelp(new Set())
     setShowAddModal(true)
     await needsReferencesResource.reload()
-  }, [needsReferencesResource, rightSelectedIds])
+  }, [availableRows, needsReferencesResource, rightSelectedIds])
 
   const handleOpenCreateLocalRequirementModal = useCallback(async () => {
     setCreateLocalRequirementFormDirty(false)
@@ -1121,6 +1408,11 @@ export default function KravunderlagDetailClient({
       setAddModalError(null)
       setRightSelectedIds(new Set())
       setShowAddModal(false)
+      setSelectionNotice(
+        t('requirementsAdded', {
+          ids: pendingAddRequirementUniqueIds.join(', '),
+        }),
+      )
     } catch {
       setAddModalError(tc('error'))
     } finally {
@@ -1136,6 +1428,8 @@ export default function KravunderlagDetailClient({
     needsReferencesResource,
     specificationId,
     pendingAddIds,
+    pendingAddRequirementUniqueIds,
+    t,
     tc,
   ])
 
@@ -1343,20 +1637,34 @@ export default function KravunderlagDetailClient({
       itemRefs: Set<string>,
       knownItems: SpecificationListItem[] = specificationItems,
     ) => {
-      const refreshed = await specificationItemsResource.reload()
-      if (refreshed === undefined) {
-        throw new Error(t('loadSpecificationItemsFailed'))
-      }
-
-      const refreshedByRef = new Map(
-        refreshed
+      const knownByRef = new Map(
+        [...selectedItemsByRef.current.values(), ...knownItems]
           .filter(item => item.itemRef)
           .map(item => [item.itemRef as string, item]),
       )
-      const knownByRef = new Map(
-        knownItems
-          .filter(item => item.itemRef)
-          .map(item => [item.itemRef as string, item]),
+      const params = new URLSearchParams()
+      for (const itemRef of itemRefs) params.append('refs', itemRef)
+      const response = await apiFetch(
+        `/api/specification-item-resolutions/${specificationId}?${params}`,
+      )
+      const data = await readJsonOrThrow<{
+        items?: ResolvedSpecificationItem[]
+      }>(response, t('loadSpecificationItemsFailed'))
+      const refreshedByRef = new Map(
+        (data.items ?? []).flatMap(item => {
+          const known = knownByRef.get(item.itemRef)
+          if (!known) return []
+          const refreshed: SpecificationListItem = {
+            ...known,
+            isSpecificationLocal: item.kind === 'specificationLocal',
+            itemRef: item.itemRef,
+            kind: item.kind,
+            needsReference: item.needsReference,
+            uniqueId: item.uniqueId,
+          }
+          selectedItemsByRef.current.set(item.itemRef, refreshed)
+          return [[item.itemRef, refreshed] as const]
+        }),
       )
       const disappeared = [...itemRefs].filter(
         itemRef => !refreshedByRef.has(itemRef),
@@ -1381,7 +1689,7 @@ export default function KravunderlagDetailClient({
         .map(itemRef => refreshedByRef.get(itemRef))
         .filter((item): item is SpecificationListItem => item !== undefined)
     },
-    [specificationItems, specificationItemsResource, t],
+    [specificationId, specificationItems, t],
   )
 
   const resolveSelectedItems = useCallback(
@@ -1442,46 +1750,22 @@ export default function KravunderlagDetailClient({
           return
         }
 
-        const refreshed = await specificationItemsResource.reload()
-        if (refreshed === undefined) {
-          throw new Error(t('loadSpecificationItemsFailed'))
-        }
-        const refreshedByRef = new Map(
-          refreshed
-            .filter(item => item.itemRef)
-            .map(item => [item.itemRef as string, item]),
-        )
         const successfulRefs = new Set(
           items
-            .filter(item => {
-              const refreshedItem = refreshedByRef.get(item.itemRef as string)
-              return (
-                item.needsReferenceId !== needsReferenceId &&
-                refreshedItem?.needsReferenceId === needsReferenceId
-              )
-            })
+            .filter(item => item.needsReferenceId !== needsReferenceId)
             .map(item => item.itemRef as string),
         )
-        const failedIds = items
-          .filter(
-            item =>
-              item.needsReferenceId !== needsReferenceId &&
-              !successfulRefs.has(item.itemRef as string),
-          )
-          .map(item => item.uniqueId)
 
         setLeftSelectedItemRefs(current => {
           const next = new Set(current)
           for (const itemRef of successfulRefs) next.delete(itemRef)
           return next
         })
-        await fetchNeedsReferences()
+        await Promise.all([
+          fetchSpecificationItems({ throwOnError: true }),
+          fetchNeedsReferences(),
+        ])
         setShowBulkNeedsReferenceModal(false)
-        if (failedIds.length > 0) {
-          setBulkNeedsReferenceError(
-            t('bulkNeedsReferencePartialFail', { ids: failedIds.join(', ') }),
-          )
-        }
       } catch (error) {
         setBulkNeedsReferenceError(
           error instanceof Error ? error.message : tc('error'),
@@ -1492,10 +1776,9 @@ export default function KravunderlagDetailClient({
     },
     [
       fetchNeedsReferences,
+      fetchSpecificationItems,
       resolveItemRefs,
       specificationId,
-      specificationItemsResource,
-      t,
       tc,
     ],
   )
@@ -1570,6 +1853,8 @@ export default function KravunderlagDetailClient({
             // Fallback: refresh authoritative list
             await fetchSpecificationItems()
           }
+        } else {
+          await fetchSpecificationItems()
         }
       } catch {
         if (originalItem) {
@@ -1678,52 +1963,37 @@ export default function KravunderlagDetailClient({
           return
         }
 
-        const refreshed = await specificationItemsResource.reload()
-        if (refreshed === undefined) {
-          throw new Error(t('loadSpecificationItemsFailed'))
+        const result = (await response.json()) as { removedCount?: number }
+        let remainingRefs = new Set<string>()
+        if (result.removedCount !== itemRefs.length) {
+          const params = new URLSearchParams()
+          for (const itemRef of itemRefs) params.append('refs', itemRef)
+          const resolutionResponse = await apiFetch(
+            `/api/specification-item-resolutions/${specificationId}?${params}`,
+          )
+          const resolution = await readJsonOrThrow<{
+            items?: ResolvedSpecificationItem[]
+          }>(resolutionResponse, t('loadSpecificationItemsFailed'))
+          remainingRefs = new Set(
+            (resolution.items ?? []).map(item => item.itemRef),
+          )
         }
-        const remainingRefs = new Set(
-          refreshed
-            .map(item => item.itemRef)
-            .filter((itemRef): itemRef is string => Boolean(itemRef)),
-        )
         const removedRefs = new Set(
           itemRefs.filter(itemRef => !remainingRefs.has(itemRef)),
-        )
-        const removedIds = new Set(
-          items
-            .filter(item => removedRefs.has(item.itemRef as string))
-            .map(item => item.id),
         )
         setLeftSelectedItemRefs(current => {
           const next = new Set(current)
           for (const itemRef of removedRefs) next.delete(itemRef)
           return next
         })
-        setLeftExpandedId(current =>
-          current != null && removedIds.has(current) ? null : current,
+        setLeftExpandedItemRef(current =>
+          current != null && removedRefs.has(current) ? null : current,
         )
         const failedIds = items
           .filter(item => remainingRefs.has(item.itemRef as string))
           .map(item => item.uniqueId)
-        setLeftFilters(current => {
-          if (!current.requirementPackageIds?.length) return current
-          const remainingPackageIds = new Set(
-            refreshed.flatMap(item => item.requirementPackageIds ?? []),
-          )
-          const validPackageIds = current.requirementPackageIds.filter(id =>
-            remainingPackageIds.has(id),
-          )
-          if (validPackageIds.length === current.requirementPackageIds.length) {
-            return current
-          }
-          return {
-            ...current,
-            requirementPackageIds:
-              validPackageIds.length > 0 ? validPackageIds : undefined,
-          }
-        })
         await Promise.all([
+          fetchSpecificationItems({ throwOnError: true }),
           fetchAvailableRequirements(),
           fetchNeedsReferences(),
         ])
@@ -1742,9 +2012,9 @@ export default function KravunderlagDetailClient({
       confirm,
       fetchAvailableRequirements,
       fetchNeedsReferences,
+      fetchSpecificationItems,
       resolveItemRefs,
       specificationId,
-      specificationItemsResource,
       t,
       tc,
     ],
@@ -1855,119 +2125,10 @@ export default function KravunderlagDetailClient({
     [availableRows, specificationItemIds],
   )
 
-  // Filter left panel rows client-side (all items loaded at once)
-  const filteredSpecificationItems = useMemo(() => {
-    let rows = specificationItems
-    const normalizeSearch = (value: string | undefined) =>
-      value?.trim().toLocaleLowerCase(locale)
-    const uniqueIdSearch = normalizeSearch(leftFilters.uniqueIdSearch)
-    const descriptionSearch = normalizeSearch(leftFilters.descriptionSearch)
-
-    if (uniqueIdSearch) {
-      rows = rows.filter(r =>
-        r.uniqueId.toLocaleLowerCase(locale).includes(uniqueIdSearch),
-      )
-    }
-    if (descriptionSearch) {
-      rows = rows.filter(r =>
-        (r.version?.description ?? '')
-          .toLocaleLowerCase(locale)
-          .includes(descriptionSearch),
-      )
-    }
-    if (leftFilters.areaIds && leftFilters.areaIds.length > 0) {
-      const areaSet = new Set(leftFilters.areaIds)
-      rows = rows.filter(
-        r =>
-          r.area &&
-          areaSet.has(areas.find(a => a.name === r.area?.name)?.id ?? -1),
-      )
-    }
-    if (
-      leftFilters.needsReferenceIds &&
-      leftFilters.needsReferenceIds.length > 0
-    ) {
-      const refSet = new Set(leftFilters.needsReferenceIds)
-      rows = rows.filter(
-        r => r.needsReferenceId != null && refSet.has(r.needsReferenceId),
-      )
-    }
-    if (
-      leftFilters.requirementPackageIds &&
-      leftFilters.requirementPackageIds.length > 0
-    ) {
-      const requirementPackageSet = new Set(leftFilters.requirementPackageIds)
-      rows = rows.filter(r =>
-        r.requirementPackageIds?.some(id => requirementPackageSet.has(id)),
-      )
-    }
-    if (
-      leftFilters.normReferenceIds &&
-      leftFilters.normReferenceIds.length > 0
-    ) {
-      if (leftNormReferenceOptions.length > 0) {
-        const filterDbIds = new Set(leftFilters.normReferenceIds)
-        const matchingTextIds = new Set(
-          leftNormReferenceOptions
-            .filter(nr => filterDbIds.has(nr.id))
-            .map(nr => nr.normReferenceId),
-        )
-        rows = rows.filter(r =>
-          r.normReferenceIds?.some(textId => matchingTextIds.has(textId)),
-        )
-      }
-    }
-    if (leftFilters.statuses && leftFilters.statuses.length > 0) {
-      const statusSet = new Set(leftFilters.statuses)
-      rows = rows.filter(
-        r => r.version?.status != null && statusSet.has(r.version.status),
-      )
-    }
-    if (
-      leftFilters.priorityLevelIds &&
-      leftFilters.priorityLevelIds.length > 0
-    ) {
-      const prioritySet = new Set(leftFilters.priorityLevelIds)
-      rows = rows.filter(
-        r =>
-          r.version?.priorityLevelId != null &&
-          prioritySet.has(r.version.priorityLevelId),
-      )
-    }
-    if (leftFilters.verifiable && leftFilters.verifiable.length > 0) {
-      const verifiableSet = new Set(
-        leftFilters.verifiable.map(value => value === 'true'),
-      )
-      rows = rows.filter(
-        r => r.version != null && verifiableSet.has(r.version.verifiable),
-      )
-    }
-    if (
-      leftFilters.specificationItemStatusIds &&
-      leftFilters.specificationItemStatusIds.length > 0
-    ) {
-      const statusSet = new Set(leftFilters.specificationItemStatusIds)
-      rows = rows.filter(
-        r =>
-          r.specificationItemStatusId != null &&
-          statusSet.has(r.specificationItemStatusId),
-      )
-    }
-    return [...rows].sort((left, right) =>
-      compareRequirementRows(left, right, {
-        locale,
-        sort: leftSort,
-        statusOptions: [],
-      }),
-    )
-  }, [
-    specificationItems,
-    leftFilters,
-    leftSort,
-    areas,
-    leftNormReferenceOptions,
-    locale,
-  ])
+  const filteredSpecificationItems = specificationItems
+  const leftExpandedId =
+    specificationItems.find(item => item.itemRef === leftExpandedItemRef)?.id ??
+    null
   const visibleSpecificationItemRefs = useMemo(
     () =>
       new Set(
@@ -2006,6 +2167,7 @@ export default function KravunderlagDetailClient({
     [filteredSpecificationItems],
   )
   const hasTraceabilityReportActions =
+    !specificationItemsHasMore &&
     filteredSpecificationItems.length <= TRACEABILITY_ITEM_REF_LIMIT &&
     traceabilityItemRefsParam.length > 0
 
@@ -2020,13 +2182,7 @@ export default function KravunderlagDetailClient({
     return usage
   }, [specificationItems])
 
-  // Only show requirements packages that appear on at least one item in the specification
-  const specificationRequirementPackages = useMemo(() => {
-    const usedIds = new Set(
-      specificationItems.flatMap(r => r.requirementPackageIds ?? []),
-    )
-    return requirementPackages.filter(s => usedIds.has(s.id))
-  }, [specificationItems, requirementPackages])
+  const specificationRequirementPackages = requirementPackages
 
   const specificationReportProfile = useMemo(
     () =>
@@ -2776,7 +2932,6 @@ export default function KravunderlagDetailClient({
         type="button"
       >
         <span className="truncate">{t('itemsInSpecification')}</span>
-        <span className="text-xs opacity-80">{specificationItems.length}</span>
       </button>
       <button
         aria-selected={leftTab === 'needs-references'}
@@ -3231,7 +3386,9 @@ export default function KravunderlagDetailClient({
                     specificationId={specificationId}
                   />
                 </div>
-              ) : specificationItems.length === 0 ? (
+              ) : specificationItems.length === 0 &&
+                !specificationItemsLoading &&
+                !specificationItemsError ? (
                 <div
                   className={desktopSplitPanelCardClassName}
                   data-specification-detail-list-panel="items"
@@ -3249,6 +3406,30 @@ export default function KravunderlagDetailClient({
                   className={desktopSplitPanelCardClassName}
                   data-specification-detail-list-panel="items"
                 >
+                  {specificationItemsError ? (
+                    <div
+                      className="m-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
+                      role="alert"
+                    >
+                      <p>{t('loadSpecificationItemsFailed')}</p>
+                      <button
+                        className="mt-2 min-h-6 min-w-6 rounded-md px-2 py-1 font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                        onClick={() => void retrySpecificationItems()}
+                        ref={specificationItemsRetryRef}
+                        type="button"
+                      >
+                        {tc('retry')}
+                      </button>
+                    </div>
+                  ) : null}
+                  {specificationItemsAnnouncement ? (
+                    <p
+                      className="mx-3 mt-3 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/30 dark:text-primary-100"
+                      role="status"
+                    >
+                      {specificationItemsAnnouncement}
+                    </p>
+                  ) : null}
                   <RequirementsTable
                     areas={areas}
                     columnPickerPlacement="betweenActions"
@@ -3291,6 +3472,9 @@ export default function KravunderlagDetailClient({
                       },
                     ]}
                     getName={getName}
+                    hasMore={specificationItemsHasMore}
+                    loading={specificationItemsLoading}
+                    loadingMore={specificationItemsLoadingMore}
                     locale={locale}
                     needsReferenceOptions={availableNeedsRefs}
                     normReferences={leftNormReferenceOptions}
@@ -3300,9 +3484,15 @@ export default function KravunderlagDetailClient({
                         ? handleNeedsReferenceAssignment
                         : undefined
                     }
-                    onRowClick={id =>
-                      setLeftExpandedId(prev => (prev === id ? null : id))
-                    }
+                    onLoadMore={() => void loadMoreSpecificationItems()}
+                    onRowClick={id => {
+                      const itemRef =
+                        specificationItems.find(item => item.id === id)
+                          ?.itemRef ?? null
+                      setLeftExpandedItemRef(current =>
+                        current === itemRef ? null : itemRef,
+                      )
+                    }}
                     onSelectionChange={handleLeftSelectionChange}
                     onSortChange={setLeftSort}
                     onSpecificationItemStatusChange={
@@ -3544,6 +3734,26 @@ export default function KravunderlagDetailClient({
                     visibleColumns={leftVisibleCols}
                     wrapDescription
                   />
+                  {specificationItemsContinuationError ? (
+                    <div
+                      className="m-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
+                      role="alert"
+                    >
+                      <p>
+                        {specificationItemsContinuationError === 'recovery'
+                          ? t('paginationRecoveryFailed')
+                          : t('paginationContinuationFailed')}
+                      </p>
+                      <button
+                        className="mt-2 min-h-6 min-w-6 rounded-md px-2 py-1 font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                        onClick={() => void retrySpecificationItems()}
+                        ref={specificationItemsRetryRef}
+                        type="button"
+                      >
+                        {tc('retry')}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               )}
               <DeviationFormModal

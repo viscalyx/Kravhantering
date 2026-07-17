@@ -14,7 +14,6 @@ const mocks = {
   getSpecificationItems: vi.fn(),
   getSpecificationById: vi.fn(),
   linkRequirementsToSpecificationAtomically: vi.fn(),
-  listSpecificationItems: vi.fn(),
   removeFromSpecification: vi.fn(),
   unlinkRequirementsFromSpecification: vi.fn(),
   updateSpecificationItemFieldsByItemRefs: vi.fn(),
@@ -45,8 +44,6 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mocks.getSpecificationById(...args),
   linkRequirementsToSpecificationAtomically: (...args: unknown[]) =>
     mocks.linkRequirementsToSpecificationAtomically(...args),
-  listSpecificationItems: (...args: unknown[]) =>
-    mocks.listSpecificationItems(...args),
   unlinkRequirementsFromSpecification: (...args: unknown[]) =>
     mocks.unlinkRequirementsFromSpecification(...args),
   updateSpecificationItemFieldsByItemRefs: (...args: unknown[]) =>

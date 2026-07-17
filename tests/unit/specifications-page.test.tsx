@@ -43,17 +43,20 @@ vi.mock(
       initialData,
       specificationId,
     }: {
-      initialData: { specificationItems: unknown[] }
+      initialData: { specificationItems: { items: unknown[] } }
       specificationId: number
     }) => (
-      <div>{`RequirementsSpecificationDetailClient mounted: ${specificationId} (${initialData.specificationItems.length})`}</div>
+      <div>{`RequirementsSpecificationDetailClient mounted: ${specificationId} (${initialData.specificationItems.items.length})`}</div>
     ),
   }),
 )
 
 vi.mock('@/lib/specifications/preload', () => ({
   loadRequirementsSpecificationDetailInitialData: vi.fn(async () => ({
-    specificationItems: [{ id: 1 }],
+    specificationItems: {
+      items: [{ id: 1 }],
+      pagination: { count: 1, hasMore: false, limit: 50, nextCursor: null },
+    },
   })),
   loadRequirementsSpecificationsInitialData: vi.fn(async () => ({
     specifications: [{ id: 1 }],
@@ -157,7 +160,10 @@ describe('specifications pages', () => {
           specificationCode: 'ETJANST-UPP-2026',
         },
       },
-      specificationItems: [],
+      specificationItems: {
+        items: [],
+        pagination: { count: 0, hasMore: false, limit: 50, nextCursor: null },
+      },
     } as never)
 
     const element = await RequirementsSpecificationDetailPage({

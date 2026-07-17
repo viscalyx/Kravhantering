@@ -1284,6 +1284,25 @@ Kravtext två gånger.
 efter kravtexten; det är inte bara kolumnrubrikens sorteringsindikator som
 ändras.
 
+### SPEC-19: bläddra och återhämta kravlistan i kravunderlaget
+
+**Steg:** Öppna ett kravunderlag med fler krav än första sidan. Ändra sortering
+eller filter och kontrollera att den första serversidan ersätter den tidigare
+frågan. Markera ett krav och rulla till listans slut så att nästa sida läses in
+automatiskt. Fortsätt med en utgången fortsättningsmarkör. Prova både en
+misslyckad omstart och en lyckad omstart från första sidan.
+
+**Förväntat resultat:** Vyn visar inget meddelande om en tom lista eller någon
+statusrad medan en ny sortering eller filtrering läses in. Meddelandet om en tom
+lista visas först efter ett bekräftat tomt serversvar och feltext visas vid
+inläsningsfel. Nästa sida läses in automatiskt nära listans slut utan en manuell
+fortsättningsknapp. Fortsättning lägger till unika krav i serverordning.
+Markeringen finns kvar när fler krav läses in och räknas som dold om den inte
+finns på en senare första sida. En misslyckad omstart behåller rader, fråga och
+markering, visar en varning med `Försök igen` och återför fokus dit efter ett
+misslyckat nytt försök. En lyckad omstart ersätter raderna, annonseras utan
+automatisk fokusflytt och behåller markeringen.
+
 ## Avsteg
 
 ### DEV-01: skapa avstegsutkast

@@ -27,7 +27,10 @@ const lazyFeatureState = vi.hoisted(() => ({
   aiRenderSpy: vi.fn(),
   importRenderSpy: vi.fn(),
 }))
-const intlState = vi.hoisted(() => ({ locale: 'en' }))
+const intlState = vi.hoisted(() => ({
+  locale: 'en',
+  selectionStatus: vi.fn(),
+}))
 const pdfDownloadState = vi.hoisted(() => ({
   clearError: vi.fn(),
   download: vi.fn(),
@@ -36,7 +39,12 @@ const pdfDownloadState = vi.hoisted(() => ({
 vi.mock('next-intl', () => ({
   useLocale: () => intlState.locale,
   useTranslations: (ns?: string) => {
-    const t = (key: string) => (ns ? `${ns}.${key}` : key)
+    const t = (key: string, values?: Record<string, unknown>) => {
+      if (ns === 'specification' && key === 'selectionStatus') {
+        intlState.selectionStatus(values)
+      }
+      return ns ? `${ns}.${key}` : key
+    }
     t.rich = (key: string) => (ns ? `${ns}.${key}` : key)
     return t
   },
@@ -136,6 +144,7 @@ vi.mock('@/components/RequirementsTable', () => ({
   default: (props: {
     defaultVisibleColumns?: string[]
     columnPickerPlacement?: string
+    excludeColumns?: string[]
     floatingActionRailPlacement?: string
     floatingActions?: {
       ariaLabel: string
@@ -179,7 +188,9 @@ vi.mock('@/components/RequirementsTable', () => ({
     visibleColumns?: string[]
   }) => {
     requirementsTableMock(props)
-    const tableKind = props.onLoadMore ? 'available' : 'items'
+    const tableKind = props.excludeColumns?.includes('needsReference')
+      ? 'available'
+      : 'items'
     return (
       <div
         data-floating-action-rail-placement={
@@ -238,7 +249,7 @@ vi.mock('@/components/RequirementsTable', () => ({
         })}
         {props.hasMore ? (
           <button
-            aria-label="load-more-available"
+            aria-label={`load-more-${tableKind}`}
             disabled={props.loadingMore}
             onClick={() => void props.onLoadMore?.()}
             type="button"
@@ -339,6 +350,9 @@ let exportCsvError: Error | null
 let failNextAvailableRequirementsFetch = false
 let failNextSpecificationItemsFetch = false
 let specificationItemsGetItems: SpecificationListItem[]
+let specificationItemsGetHandler:
+  | ((url: string) => Promise<unknown>)
+  | undefined
 let failedDeviationItemRefs: Set<string>
 let availableRequirementsSelectionFilter:
   | RequirementsSpecificationDetailInitialData['availableRequirements']['selectionFilter']
@@ -422,6 +436,24 @@ const initialAvailableRequirement = {
   },
 }
 
+function createSpecificationItemsPage(
+  items: SpecificationListItem[],
+  pagination: Partial<
+    RequirementsSpecificationDetailInitialData['specificationItems']['pagination']
+  > = {},
+): RequirementsSpecificationDetailInitialData['specificationItems'] {
+  return {
+    items,
+    pagination: {
+      count: items.length,
+      hasMore: false,
+      limit: 50,
+      nextCursor: null,
+      ...pagination,
+    },
+  }
+}
+
 function createInitialData(): RequirementsSpecificationDetailInitialData {
   return {
     aiGenerationAvailability: {
@@ -444,7 +476,9 @@ function createInitialData(): RequirementsSpecificationDetailInitialData {
       { id: 2, nameEn: 'Program', nameSv: 'Program' },
     ],
     specificationItemStatuses: [],
-    specificationItems: [initialSpecificationItem],
+    specificationItems: createSpecificationItemsPage([
+      initialSpecificationItem,
+    ]),
     specificationLifecycleStatuses: [
       { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
     ],
@@ -500,7 +534,8 @@ function latestItemsTableProps() {
     .reverse()
     .find(
       props =>
-        props.floatingActionRailPlacement === 'inline-top' && !props.onLoadMore,
+        props.floatingActionRailPlacement === 'inline-top' &&
+        !props.excludeColumns?.includes('needsReference'),
     )
   expect(itemsTable).toBeDefined()
   return itemsTable as NonNullable<typeof itemsTable>
@@ -523,6 +558,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     failNextAvailableRequirementsFetch = false
     failNextSpecificationItemsFetch = false
     specificationItemsGetItems = [initialSpecificationItem]
+    specificationItemsGetHandler = undefined
     failedDeviationItemRefs = new Set()
     availableRequirementsSelectionFilter = undefined
     fetchMock.mockImplementation(
@@ -611,7 +647,36 @@ describe('RequirementsSpecificationDetailClient', () => {
           return Promise.resolve(okJson({ ok: true, removedCount: 1 }))
         }
 
-        if (url === specificationApiPath('/items') && method === 'GET') {
+        if (
+          url.startsWith(
+            `/api/specification-item-resolutions/${activeSpecificationId}?`,
+          ) &&
+          method === 'GET'
+        ) {
+          const requestedRefs = new Set(
+            new URLSearchParams(url.split('?')[1] ?? '').getAll('refs'),
+          )
+          return Promise.resolve(
+            okJson({
+              items: specificationItemsGetItems
+                .filter(item => item.itemRef && requestedRefs.has(item.itemRef))
+                .map(item => ({
+                  itemRef: item.itemRef,
+                  kind: item.kind,
+                  needsReference: item.needsReference ?? null,
+                  uniqueId: item.uniqueId,
+                })),
+            }),
+          )
+        }
+
+        if (
+          url.startsWith(`${specificationApiPath('/items')}?`) &&
+          method === 'GET'
+        ) {
+          if (specificationItemsGetHandler) {
+            return specificationItemsGetHandler(url)
+          }
           if (failNextSpecificationItemsFetch) {
             failNextSpecificationItemsFetch = false
             return Promise.resolve({
@@ -620,7 +685,37 @@ describe('RequirementsSpecificationDetailClient', () => {
             })
           }
 
-          return Promise.resolve(okJson({ items: specificationItemsGetItems }))
+          const params = searchParamsFromPath(url)
+          const packageIds = params.getAll('requirementPackageIds').map(Number)
+          const items =
+            packageIds.length > 0
+              ? specificationItemsGetItems.filter(item =>
+                  item.requirementPackageIds?.some(id =>
+                    packageIds.includes(id),
+                  ),
+                )
+              : [...specificationItemsGetItems]
+          if (params.get('sortBy') === 'description') {
+            const direction = params.get('sortDirection') === 'desc' ? -1 : 1
+            items.sort(
+              (left, right) =>
+                (left.version?.description ?? '').localeCompare(
+                  right.version?.description ?? '',
+                ) * direction,
+            )
+          }
+
+          return Promise.resolve(
+            okJson({
+              items,
+              pagination: {
+                count: items.length,
+                hasMore: false,
+                limit: 50,
+                nextCursor: null,
+              },
+            }),
+          )
         }
 
         if (
@@ -827,9 +922,9 @@ describe('RequirementsSpecificationDetailClient', () => {
       errors: [{ key: 'available requirements', message: 'preload failed' }],
     })
 
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'specification.partialDataLoadWarning',
-    )
+    expect(
+      screen.getByText('specification.partialDataLoadWarning'),
+    ).toHaveAttribute('role', 'status')
     await waitForInitialAvailableRequirementsRefresh()
   })
 
@@ -837,6 +932,13 @@ describe('RequirementsSpecificationDetailClient', () => {
     renderRequirementsSpecificationDetailClient()
     await waitForInitialAvailableRequirementsRefresh()
 
+    await waitFor(() => {
+      expect(
+        latestItemsTableProps().rows.map(
+          (row: { itemRef?: string }) => row.itemRef,
+        ),
+      ).toEqual(['lib:31'])
+    })
     const itemsTable = latestItemsTableProps()
     const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
       hidden?: boolean
@@ -1038,7 +1140,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
   it('builds traceability report refs from the filtered requirement applications', async () => {
     const initialData = createInitialData()
-    initialData.specificationItems = [
+    initialData.specificationItems = createSpecificationItemsPage([
       {
         ...initialSpecificationItem,
         requirementPackageIds: [9],
@@ -1060,10 +1162,11 @@ describe('RequirementsSpecificationDetailClient', () => {
           versionNumber: 1,
         },
       },
-    ]
+    ])
     initialData.requirementPackages = [
       { id: 9, name: 'Security package' },
     ] as RequirementPackageOption[]
+    specificationItemsGetItems = initialData.specificationItems.items
 
     renderRequirementsSpecificationDetailClient(initialData)
     await waitForInitialAvailableRequirementsRefresh()
@@ -1072,40 +1175,35 @@ describe('RequirementsSpecificationDetailClient', () => {
       latestItemsTableProps().onFilterChange?.({ requirementPackageIds: [9] })
     })
 
-    const itemsTable = latestItemsTableProps()
-    const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
-      hidden?: boolean
-      id: string
-      menuItems?: Array<{ href?: string; id: string }>
-    }>
-    const moreActions = floatingActions.find(
-      action => action.id === 'more-actions',
-    )
-
-    expect(
-      itemsTable.rows.map((row: { itemRef?: string }) => row.itemRef),
-    ).toEqual(['lib:31'])
-    expect(moreActions?.menuItems).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: 'pdf-traceability',
-        }),
-      ]),
-    )
+    await waitFor(() => {
+      const floatingActions = (latestItemsTableProps().floatingActions ??
+        []) as Array<{
+        hidden?: boolean
+        id: string
+        menuItems?: Array<{ href?: string; id: string }>
+      }>
+      expect(
+        floatingActions
+          .find(action => action.id === 'more-actions')
+          ?.menuItems?.map(item => item.id),
+      ).toContain('pdf-traceability')
+    })
   })
 
   it('hides traceability report actions when filtered items exceed the report limit', async () => {
     const initialData = createInitialData()
-    initialData.specificationItems = Array.from({ length: 201 }, (_, index) => {
-      const itemId = index + 1
-      return {
-        ...initialSpecificationItem,
-        id: 1000 + itemId,
-        itemRef: `lib:${itemId}`,
-        specificationItemId: itemId,
-        uniqueId: `BEH${String(itemId).padStart(4, '0')}`,
-      }
-    })
+    initialData.specificationItems = createSpecificationItemsPage(
+      Array.from({ length: 201 }, (_, index) => {
+        const itemId = index + 1
+        return {
+          ...initialSpecificationItem,
+          id: 1000 + itemId,
+          itemRef: `lib:${itemId}`,
+          specificationItemId: itemId,
+          uniqueId: `BEH${String(itemId).padStart(4, '0')}`,
+        }
+      }),
+    )
 
     renderRequirementsSpecificationDetailClient(initialData)
     await waitForInitialAvailableRequirementsRefresh()
@@ -1360,9 +1458,9 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'load-more-available' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'common.requirementListRefreshed',
-    )
+    expect(
+      await screen.findByText('common.requirementListRefreshed'),
+    ).toHaveAttribute('role', 'status')
     await waitFor(() => {
       expect(availableRequirementsFetchUrls()).toHaveLength(
         requestCountBeforeLoadMore + 2,
@@ -1639,7 +1737,7 @@ describe('RequirementsSpecificationDetailClient', () => {
   it('shows direct create and more actions but no columns action in the editable empty state', async () => {
     renderRequirementsSpecificationDetailClient({
       ...createInitialData(),
-      specificationItems: [],
+      specificationItems: createSpecificationItemsPage([]),
     })
 
     await waitFor(() => {
@@ -1911,11 +2009,12 @@ describe('RequirementsSpecificationDetailClient', () => {
         description: 'Operational monitoring should be in place.',
       },
     }
+    specificationItemsGetItems = [firstItem, secondItem]
 
     renderRequirementsSpecificationDetailClient({
       ...createInitialData(),
       requirementPackages,
-      specificationItems: [firstItem, secondItem],
+      specificationItems: createSpecificationItemsPage([firstItem, secondItem]),
     })
 
     await waitFor(() => {
@@ -1931,7 +2030,9 @@ describe('RequirementsSpecificationDetailClient', () => {
     await waitFor(() => {
       const latestItemsProps = [...requirementsTableMock.mock.calls]
         .reverse()
-        .find(([props]) => !props.onLoadMore)?.[0] as
+        .find(
+          ([props]) => !props.excludeColumns?.includes('needsReference'),
+        )?.[0] as
         | {
             filterValues?: { requirementPackageIds?: number[] }
             rows: { id: number }[]
@@ -1970,10 +2071,11 @@ describe('RequirementsSpecificationDetailClient', () => {
         description: 'Alpha requirement',
       },
     }
+    specificationItemsGetItems = [firstItem, secondItem]
 
     renderRequirementsSpecificationDetailClient({
       ...createInitialData(),
-      specificationItems: [secondItem, firstItem],
+      specificationItems: createSpecificationItemsPage([firstItem, secondItem]),
     })
 
     const renderedRows = screen.getByTestId('requirements-table-items-rows')
@@ -2156,7 +2258,10 @@ describe('RequirementsSpecificationDetailClient', () => {
       screen.getByRole('button', { name: 'specification.confirmAdd' }),
     )
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
+    expect(await screen.findByText('common.error')).toHaveAttribute(
+      'role',
+      'alert',
+    )
     expect(dialog).toBeInTheDocument()
   })
 
@@ -2183,9 +2288,9 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'load-more-available' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'specification.loadAvailableRequirementsFailed',
-    )
+    expect(
+      await screen.findByText('specification.loadAvailableRequirementsFailed'),
+    ).toHaveAttribute('role', 'status')
   })
 
   it('opens the specification-local requirement dialog directly from the left-panel create action', async () => {
@@ -2260,14 +2365,14 @@ describe('RequirementsSpecificationDetailClient', () => {
           updatedAt: '2026-04-20T10:00:00.000Z',
         },
       ],
-      specificationItems: [
+      specificationItems: createSpecificationItemsPage([
         {
           ...initialSpecificationItem,
           needsReference: 'IAM-42',
           needsReferenceId: 81,
           specificationItemStatusNameEn: 'Included',
         },
-      ],
+      ]),
     })
 
     expect(
@@ -2413,28 +2518,37 @@ describe('RequirementsSpecificationDetailClient', () => {
       requirementPackages: [
         { id: 9, name: 'Security package' },
       ] as RequirementPackageOption[],
-      specificationItems: [initialSpecificationItem, hiddenItem],
+      specificationItems: createSpecificationItemsPage([
+        initialSpecificationItem,
+        hiddenItem,
+      ]),
     }
-    specificationItemsGetItems = initialData.specificationItems
+    specificationItemsGetItems = initialData.specificationItems.items
     renderRequirementsSpecificationDetailClient(initialData)
     await waitForInitialAvailableRequirementsRefresh()
 
     fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
-    fireEvent.click(
-      screen.getByRole('button', { name: 'sort-description-items' }),
-    )
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'sort-description-items' }),
+      )
+    })
     expect(
       screen.getByRole('button', {
         name: 'specification.assignNeedsReferenceAction',
       }),
     ).toBeInTheDocument()
-    fireEvent.click(
-      screen.getByRole('button', { name: 'filter-package-items-9' }),
-    )
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'filter-package-items-9' }),
+      )
+    })
 
-    expect(
-      screen.getByTestId('requirements-table-items-status'),
-    ).toHaveTextContent('specification.selectionStatus')
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('requirements-table-items-status'),
+      ).toHaveTextContent('specification.selectionStatus')
+    })
     fireEvent.click(
       screen.getByRole('button', { name: 'specification.deselectHidden' }),
     )
@@ -2528,7 +2642,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     const item = { ...initialSpecificationItem, needsReferenceId: 81 }
     const initialData = {
       ...createInitialData(),
-      specificationItems: [item],
+      specificationItems: createSpecificationItemsPage([item]),
     }
     specificationItemsGetItems = [item]
     renderRequirementsSpecificationDetailClient(initialData)
@@ -2580,9 +2694,12 @@ describe('RequirementsSpecificationDetailClient', () => {
     }
     const initialData = {
       ...createInitialData(),
-      specificationItems: [initialSpecificationItem, localItem],
+      specificationItems: createSpecificationItemsPage([
+        initialSpecificationItem,
+        localItem,
+      ]),
     }
-    specificationItemsGetItems = initialData.specificationItems
+    specificationItemsGetItems = initialData.specificationItems.items
     renderRequirementsSpecificationDetailClient(initialData)
     act(() => {
       latestItemsTableProps().onSelectionChange?.(new Set([101, -41]))
@@ -2621,9 +2738,12 @@ describe('RequirementsSpecificationDetailClient', () => {
     }
     const initialData = {
       ...createInitialData(),
-      specificationItems: [initialSpecificationItem, localItem],
+      specificationItems: createSpecificationItemsPage([
+        initialSpecificationItem,
+        localItem,
+      ]),
     }
-    specificationItemsGetItems = initialData.specificationItems
+    specificationItemsGetItems = initialData.specificationItems.items
     failedDeviationItemRefs.add('local:41')
     renderRequirementsSpecificationDetailClient(initialData)
     act(() => {
@@ -2840,5 +2960,363 @@ describe('RequirementsSpecificationDetailClient', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('Network unavailable')
     })
+  })
+
+  it('automatically appends bounded specification pages and de-duplicates stable item refs', async () => {
+    const secondItem = {
+      ...initialSpecificationItem,
+      id: 102,
+      itemRef: 'lib:32',
+      specificationItemId: 32,
+      uniqueId: 'BEH0002',
+    }
+    const initialData = createInitialData()
+    initialData.specificationItems = createSpecificationItemsPage(
+      [initialSpecificationItem],
+      { hasMore: true, nextCursor: 'cursor-1' },
+    )
+    specificationItemsGetHandler = async url => {
+      expect(searchParamsFromPath(url).get('cursor')).toBe('cursor-1')
+      return okJson({
+        items: [initialSpecificationItem, secondItem],
+        pagination: {
+          count: 2,
+          hasMore: false,
+          limit: 50,
+          nextCursor: null,
+        },
+      })
+    }
+
+    renderRequirementsSpecificationDetailClient(initialData)
+    expect(
+      screen.getByRole('button', {
+        name: 'load-more-items',
+      }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'load-more-items',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(
+        latestItemsTableProps().rows.map(
+          (item: SpecificationListItem) => item.itemRef,
+        ),
+      ).toEqual(['lib:31', 'lib:32'])
+    })
+    expect(
+      screen.queryByRole('button', {
+        name: 'load-more-items',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('does not flash the empty specification message while sorting', async () => {
+    let resolveSortedRequest: ((response: unknown) => void) | undefined
+    const sortedRequest = new Promise<unknown>(resolve => {
+      resolveSortedRequest = resolve
+    })
+    specificationItemsGetHandler = async () => sortedRequest
+
+    renderRequirementsSpecificationDetailClient()
+    expect(screen.queryByText('specification.noItems')).not.toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'sort-description-items' }),
+    )
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([input]) =>
+          String(input).includes('sortBy=description'),
+        ),
+      ).toBe(true)
+    })
+    expect(screen.queryByText('specification.noItems')).not.toBeInTheDocument()
+    expect(
+      screen.getByTestId('requirements-table-items-rows'),
+    ).toHaveTextContent('lib:31')
+
+    await act(async () => {
+      resolveSortedRequest?.(
+        okJson({
+          items: [],
+          pagination: {
+            count: 0,
+            hasMore: false,
+            limit: 50,
+            nextCursor: null,
+          },
+        }),
+      )
+    })
+
+    expect(await screen.findByText('specification.noItems')).toBeInTheDocument()
+  })
+
+  it('keeps the unloaded selected count stable while sorting', async () => {
+    const firstItem = {
+      ...initialSpecificationItem,
+      requirementPackageIds: [1],
+    }
+    const secondItem = {
+      ...initialSpecificationItem,
+      id: 102,
+      itemRef: 'lib:32',
+      requirementPackageIds: [2],
+      specificationItemId: 32,
+      uniqueId: 'BEH0002',
+    }
+    specificationItemsGetItems = [firstItem, secondItem]
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      requirementPackages: [
+        { id: 1, name: 'First package' },
+        { id: 2, name: 'Second package' },
+      ],
+      specificationItems: createSpecificationItemsPage([firstItem, secondItem]),
+    })
+
+    act(() => {
+      latestItemsTableProps().onSelectionChange?.(new Set([101, 102]))
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'filter-package-items-1' }),
+    )
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('requirements-table-items-rows'),
+      ).toHaveTextContent('lib:31')
+      expect(intlState.selectionStatus).toHaveBeenLastCalledWith({
+        hidden: 1,
+        total: 2,
+      })
+    })
+
+    let resolveSortedRequest: ((response: unknown) => void) | undefined
+    const sortedRequest = new Promise<unknown>(resolve => {
+      resolveSortedRequest = resolve
+    })
+    specificationItemsGetHandler = async () => sortedRequest
+    fireEvent.click(
+      screen.getByRole('button', { name: 'sort-description-items' }),
+    )
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([input]) =>
+          String(input).includes('sortBy=description'),
+        ),
+      ).toBe(true)
+    })
+    expect(
+      screen.getByTestId('requirements-table-items-rows'),
+    ).toHaveTextContent('lib:31')
+    expect(intlState.selectionStatus).toHaveBeenLastCalledWith({
+      hidden: 1,
+      total: 2,
+    })
+
+    await act(async () => {
+      resolveSortedRequest?.(
+        okJson({
+          items: [firstItem],
+          pagination: {
+            count: 1,
+            hasMore: false,
+            limit: 50,
+            nextCursor: null,
+          },
+        }),
+      )
+    })
+  })
+
+  it('restarts an invalid continuation from the first page and keeps selection', async () => {
+    const restartedItem = {
+      ...initialSpecificationItem,
+      id: 102,
+      itemRef: 'lib:32',
+      specificationItemId: 32,
+      uniqueId: 'BEH0002',
+    }
+    const initialData = createInitialData()
+    initialData.specificationItems = createSpecificationItemsPage(
+      [initialSpecificationItem],
+      { hasMore: true, nextCursor: 'stale-cursor' },
+    )
+    specificationItemsGetHandler = async url => {
+      if (searchParamsFromPath(url).has('cursor')) {
+        return {
+          clone: () => ({ json: async () => ({ code: 'invalid_cursor' }) }),
+          json: async () => ({ code: 'invalid_cursor' }),
+          ok: false,
+          status: 400,
+        }
+      }
+      return okJson({
+        items: [restartedItem],
+        pagination: {
+          count: 1,
+          hasMore: false,
+          limit: 50,
+          nextCursor: null,
+        },
+      })
+    }
+
+    renderRequirementsSpecificationDetailClient(initialData)
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'load-more-items',
+      }),
+    )
+
+    expect(
+      await screen.findByText('specification.paginationRestarted'),
+    ).toHaveAttribute('role', 'status')
+    expect(
+      latestItemsTableProps().rows.map(
+        (item: SpecificationListItem) => item.itemRef,
+      ),
+    ).toEqual(['lib:32'])
+    expect(
+      screen.getByRole('button', {
+        name: 'specification.assignNeedsReferenceAction',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps rows visible and restores retry focus when cursor recovery fails', async () => {
+    const initialData = createInitialData()
+    initialData.specificationItems = createSpecificationItemsPage(
+      [initialSpecificationItem],
+      { hasMore: true, nextCursor: 'stale-cursor' },
+    )
+    specificationItemsGetHandler = async url => {
+      if (searchParamsFromPath(url).has('cursor')) {
+        return {
+          clone: () => ({ json: async () => ({ code: 'invalid_cursor' }) }),
+          json: async () => ({ code: 'invalid_cursor' }),
+          ok: false,
+          status: 400,
+        }
+      }
+      return {
+        json: async () => ({ error: 'Unavailable' }),
+        ok: false,
+        status: 503,
+      }
+    }
+
+    renderRequirementsSpecificationDetailClient(initialData)
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'load-more-items',
+      }),
+    )
+
+    const recoveryAlert = await screen.findByRole('alert')
+    expect(recoveryAlert).toHaveTextContent(
+      'specification.paginationRecoveryFailed',
+    )
+    expect(
+      latestItemsTableProps().rows.map(
+        (item: SpecificationListItem) => item.itemRef,
+      ),
+    ).toEqual(['lib:31'])
+
+    const retry = within(recoveryAlert).getByRole('button', {
+      name: 'common.retry',
+    })
+    fireEvent.click(retry)
+    await waitFor(() => {
+      expect(
+        within(screen.getByRole('alert')).getByRole('button', {
+          name: 'common.retry',
+        }),
+      ).toHaveFocus()
+    })
+  })
+
+  it('ignores obsolete specification queries after filters change', async () => {
+    const firstResult = {
+      ...initialSpecificationItem,
+      id: 102,
+      itemRef: 'lib:32',
+      specificationItemId: 32,
+      uniqueId: 'FIRST',
+    }
+    const latestResult = {
+      ...initialSpecificationItem,
+      id: 103,
+      itemRef: 'lib:33',
+      specificationItemId: 33,
+      uniqueId: 'LATEST',
+    }
+    let resolveObsoleteRequest: ((response: unknown) => void) | undefined
+    const obsoleteRequest = new Promise<unknown>(resolve => {
+      resolveObsoleteRequest = resolve
+    })
+    specificationItemsGetHandler = async url => {
+      const search = searchParamsFromPath(url).get('uniqueIdSearch')
+      if (search === 'first') return obsoleteRequest
+      return okJson({
+        items: [latestResult],
+        pagination: {
+          count: 1,
+          hasMore: false,
+          limit: 50,
+          nextCursor: null,
+        },
+      })
+    }
+
+    renderRequirementsSpecificationDetailClient()
+    act(() => {
+      latestItemsTableProps().onFilterChange?.({ uniqueIdSearch: 'first' })
+    })
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([input]) =>
+          String(input).includes('uniqueIdSearch=first'),
+        ),
+      ).toBe(true)
+    })
+    act(() => {
+      latestItemsTableProps().onFilterChange?.({ uniqueIdSearch: 'latest' })
+    })
+    await waitFor(() => {
+      expect(
+        latestItemsTableProps().rows.map(
+          (item: SpecificationListItem) => item.itemRef,
+        ),
+      ).toEqual(['lib:33'])
+    })
+
+    await act(async () => {
+      resolveObsoleteRequest?.(
+        okJson({
+          items: [firstResult],
+          pagination: {
+            count: 1,
+            hasMore: false,
+            limit: 50,
+            nextCursor: null,
+          },
+        }),
+      )
+      await Promise.resolve()
+    })
+    expect(
+      latestItemsTableProps().rows.map(
+        (item: SpecificationListItem) => item.itemRef,
+      ),
+    ).toEqual(['lib:33'])
   })
 })

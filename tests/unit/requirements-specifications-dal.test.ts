@@ -13,7 +13,6 @@ import {
   graduateSpecificationLocalRequirementToLibrary,
   isSpecificationCodeTaken,
   linkRequirementsToSpecificationAtomically,
-  listSpecificationItems,
   listSpecificationNeedsReferences,
   listSpecifications,
   listSpecificationTraceabilityItems,
@@ -1339,120 +1338,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       expect.stringContaining('INSERT INTO requirements_specification_items'),
       [5, 7, 101, 33, DEFAULT_SPECIFICATION_ITEM_STATUS_ID, expect.any(Date)],
     )
-  })
-
-  it('lists requirement applications on SQL Server', async () => {
-    const { db, query } = createSqlServerDb()
-    query
-      .mockResolvedValueOnce([
-        {
-          areaName: 'Platform',
-          categoryNameEn: 'Functional',
-          categoryNameSv: 'Funktionell',
-          description: 'Shared library requirement',
-          isArchived: 0,
-          needsReferenceId: 6,
-          needsReferenceText: 'Shared need',
-          normReferenceIds: 'ISO-27001',
-          specificationItemId: 31,
-          specificationItemStatusColor: '#22c55e',
-          specificationItemStatusIconName: 'Circle',
-          specificationItemStatusDescriptionEn: 'Included',
-          specificationItemStatusDescriptionSv: 'Inkluderad',
-          specificationItemStatusId: 1,
-          specificationItemStatusNameEn: 'Included',
-          specificationItemStatusNameSv: 'Inkluderad',
-          qualityCharacteristicNameEn: 'Security',
-          qualityCharacteristicNameSv: 'Säkerhet',
-          requirementId: 11,
-          verifiable: 1,
-          priorityLevelColor: '#dc2626',
-          priorityLevelIconName: 'ShieldAlert',
-          priorityLevelId: 4,
-          priorityLevelNameEn: 'High',
-          priorityLevelNameSv: 'Hög',
-          priorityLevelSortOrder: 3,
-          statusColor: '#22c55e',
-          statusId: 3,
-          statusNameEn: 'Published',
-          statusNameSv: 'Publicerad',
-          typeNameEn: 'Business',
-          typeNameSv: 'Verksamhet',
-          uniqueId: 'REQ-001',
-          requirementPackageIds: '2,3',
-          versionNumber: 2,
-        },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 41,
-          uniqueId: 'KRAV0001',
-          description: 'Local specification requirement',
-          needsReferenceId: null,
-          needsReferenceText: null,
-          normReferenceIds: 'LOK-REF',
-          specificationItemStatusColor: '#f59e0b',
-          specificationItemStatusIconName: 'Clock',
-          specificationItemStatusDescriptionEn: 'In progress',
-          specificationItemStatusDescriptionSv: 'Pågående',
-          specificationItemStatusId: 2,
-          specificationItemStatusNameEn: 'Ongoing',
-          specificationItemStatusNameSv: 'Pågående',
-          qualityCharacteristicNameEn: 'Security',
-          qualityCharacteristicNameSv: 'Säkerhet',
-          requirementCategoryNameEn: 'Functional',
-          requirementCategoryNameSv: 'Funktionell',
-          requirementTypeNameEn: 'Business',
-          requirementTypeNameSv: 'Verksamhet',
-          verifiable: 0,
-          priorityLevelColor: '#eab308',
-          priorityLevelIconName: 'AlertTriangle',
-          priorityLevelId: 2,
-          priorityLevelNameEn: 'Medium',
-          priorityLevelNameSv: 'Medel',
-          priorityLevelSortOrder: 2,
-        },
-      ])
-
-    const result = await listSpecificationItems(db, 5)
-
-    expect(query).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining(
-        'FROM requirements_specification_items specification_item',
-      ),
-      [5],
-    )
-    expect(query).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining(
-        'FROM specification_local_requirements local_requirement',
-      ),
-      [5],
-    )
-    expect(result).toEqual([
-      expect.objectContaining({
-        id: -41,
-        itemRef: 'local:41',
-        kind: 'specificationLocal',
-        area: null,
-        specificationItemStatusIconName: 'Clock',
-        uniqueId: 'KRAV0001',
-        version: expect.objectContaining({
-          priorityLevelIconName: 'AlertTriangle',
-        }),
-      }),
-      expect.objectContaining({
-        id: 11,
-        itemRef: 'lib:31',
-        kind: 'library',
-        specificationItemStatusIconName: 'Circle',
-        uniqueId: 'REQ-001',
-        version: expect.objectContaining({
-          priorityLevelIconName: 'ShieldAlert',
-        }),
-      }),
-    ])
   })
 
   it('lists traceability report items in requested ref order on the SQL Server path', async () => {

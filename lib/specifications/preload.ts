@@ -22,7 +22,6 @@ import { listSpecificationLifecycleStatuses } from '@/lib/dal/specification-life
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { positiveIntegerStringSchema } from '@/lib/http/validation'
-import type { RequestContext } from '@/lib/requirements/auth'
 import { forbiddenError } from '@/lib/requirements/errors'
 import { queryRequirementList } from '@/lib/requirements/list-query'
 import {
@@ -35,7 +34,7 @@ import {
 import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import { createServerComponentRequestContext } from '@/lib/requirements/server-component-context'
-import type { RequirementsService } from '@/lib/requirements/service'
+import { DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT } from '@/lib/requirements/specification-item-page'
 import { DEVIATED_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 import {
   canCreateSpecification,
@@ -133,37 +132,6 @@ async function loadAvailableRequirements(
   }
 }
 
-async function loadSpecificationItems(
-  service: RequirementsService,
-  context: RequestContext,
-  specificationId: number,
-  locale: 'en' | 'sv',
-): Promise<SpecificationListItem[]> {
-  const items: SpecificationListItem[] = []
-  const seenCursors = new Set<string>()
-  let cursor: string | undefined
-
-  do {
-    const page = await service.getSpecificationItems(context, {
-      cursor,
-      limit: 100,
-      locale,
-      responseFormat: 'json',
-      specificationId,
-    })
-    items.push(...(page.items as SpecificationListItem[]))
-    cursor = page.pagination.nextCursor ?? undefined
-    if (cursor) {
-      if (seenCursors.has(cursor)) {
-        throw new Error('Specification item pagination returned a cursor cycle')
-      }
-      seenCursors.add(cursor)
-    }
-  } while (cursor)
-
-  return items
-}
-
 function emptyDetailInitialData(
   spec: SpecificationMeta | null,
   errors: SpecificationPreloadError[] = [],
@@ -185,7 +153,15 @@ function emptyDetailInitialData(
     ...extras,
     specificationImplementationTypes: [],
     specificationItemStatuses: [],
-    specificationItems: [],
+    specificationItems: {
+      items: [],
+      pagination: {
+        count: 0,
+        hasMore: false,
+        limit: DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT,
+        nextCursor: null,
+      },
+    },
     specificationLifecycleStatuses: [],
     specificationGovernanceObjectTypes: [],
   }
@@ -324,8 +300,29 @@ export async function loadRequirementsSpecificationDetailInitialData({
     capture<SpecificationItemStatusOption[]>('usage statuses', [], () =>
       listSpecificationItemStatusOptions(db),
     ),
-    capture<SpecificationListItem[]>('requirement applications', [], () =>
-      loadSpecificationItems(service, context, spec.id, locale),
+    capture<RequirementsSpecificationDetailInitialData['specificationItems']>(
+      'requirement applications',
+      {
+        items: [],
+        pagination: {
+          count: 0,
+          hasMore: false,
+          limit: DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT,
+          nextCursor: null,
+        },
+      },
+      async () => {
+        const page = await service.getSpecificationItems(context, {
+          limit: DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT,
+          locale,
+          responseFormat: 'json',
+          specificationId: spec.id,
+        })
+        return {
+          items: page.items as SpecificationListItem[],
+          pagination: page.pagination,
+        }
+      },
     ),
     capture<
       RequirementsSpecificationDetailInitialData['availableRequirements']

@@ -38,6 +38,16 @@ export interface SpecificationListItem extends RequirementRow {
   needsReference?: string | null
 }
 
+export interface SpecificationItemsPageData {
+  items: SpecificationListItem[]
+  pagination: {
+    count: number
+    hasMore: boolean
+    limit: number
+    nextCursor: string | null
+  }
+}
+
 export interface SpecificationNeedsReference {
   createdAt?: string
   description: string | null
@@ -93,7 +103,7 @@ export interface RequirementsSpecificationDetailInitialData {
   specificationGovernanceObjectTypes: SpecificationTaxonomyItem[]
   specificationImplementationTypes: SpecificationTaxonomyItem[]
   specificationItemStatuses: SpecificationItemStatusOption[]
-  specificationItems: SpecificationListItem[]
+  specificationItems: SpecificationItemsPageData
   specificationLifecycleStatuses: SpecificationTaxonomyItem[]
 }
 
