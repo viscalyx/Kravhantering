@@ -591,8 +591,8 @@ fokus efter varje åtgärd, stäng med Escape, klick utanför och flytta fokus
 utanför filtret. Upprepa i engelskt språk och med kravpaketskolumnen dold.
 Kontrollera även lägena tom katalog och alla paket valda samt hjälptexter,
 verktygstips, tillgänglighetsattribut, annonseringar och Developer Mode-markörer.
-Välj slutligen status `Arkiverad` och ett kravpaket med en historisk koppling
-till ett arkiverat krav.
+Välj slutligen status `Arkiverad` och `PWT-MANUAL källpaket`. Kontrollera att
+det arkiverade kravet `PWT-LIFE-RESTORE` visas.
 
 **Förväntat resultat:** Krav-ID-filtret begränsar listan och rensning
 återställer den. Kravpaketsbandet ligger kvar efter lyckad kataloginläsning,

@@ -3831,45 +3831,51 @@ describe('RequirementsTable', () => {
   })
 
   it('uses requirement package purpose and scope as filter pill tooltips', () => {
-    const requirementPackages = [
-      {
-        id: 1,
-        name: 'Mobil användning',
-        purposeAndScope: 'Krav för mobil användning.',
-      },
-      {
-        id: 2,
-        name: 'Tom avgränsning',
-        purposeAndScope: '   ',
-      },
-    ]
+    vi.useFakeTimers()
+    try {
+      const requirementPackages = [
+        {
+          id: 1,
+          name: 'Mobil användning',
+          purposeAndScope: 'Krav för mobil användning.',
+        },
+        {
+          id: 2,
+          name: 'Tom avgränsning',
+          purposeAndScope: '   ',
+        },
+      ]
 
-    render(
-      <RequirementsTable
-        filterValues={{}}
-        locale="sv"
-        onFilterChange={vi.fn()}
-        requirementPackages={requirementPackages}
-        rows={[makeRow()]}
-      />,
-    )
+      render(
+        <RequirementsTable
+          filterValues={{}}
+          locale="sv"
+          onFilterChange={vi.fn()}
+          requirementPackages={requirementPackages}
+          rows={[makeRow()]}
+        />,
+      )
 
-    fireEvent.mouseEnter(
-      screen.getByRole('button', { name: 'Mobil användning' }),
-    )
+      fireEvent.mouseEnter(
+        screen.getByRole('button', { name: 'Mobil användning' }),
+      )
+      act(() => vi.advanceTimersByTime(1000))
 
-    expect(screen.getByRole('tooltip')).toHaveTextContent(
-      'Krav för mobil användning.',
-    )
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'Krav för mobil användning.',
+      )
 
-    fireEvent.mouseLeave(
-      screen.getByRole('button', { name: 'Mobil användning' }),
-    )
-    fireEvent.mouseEnter(
-      screen.getByRole('button', { name: 'Tom avgränsning' }),
-    )
+      fireEvent.mouseLeave(
+        screen.getByRole('button', { name: 'Mobil användning' }),
+      )
+      fireEvent.mouseEnter(
+        screen.getByRole('button', { name: 'Tom avgränsning' }),
+      )
 
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('renders the compact package filter only after a successful catalog load', () => {
@@ -4066,6 +4072,42 @@ describe('RequirementsTable', () => {
     expect(screen.getByTestId('package-filter-state')).toHaveTextContent('[]')
     expect(screen.getByRole('status')).toHaveTextContent(
       'requirementPackageFilterCleared',
+    )
+  })
+
+  it('preserves selected package ids that are absent from the catalog', () => {
+    render(
+      <ControlledCompactPackageFilter
+        initialSelectedIds={[99, 1]}
+        packages={[
+          { id: 1, name: 'Alfa' },
+          { id: 2, name: 'Beta' },
+        ]}
+      />,
+    )
+
+    const band = screen.getByRole('group', { name: 'requirementPackages' })
+    fireEvent.click(
+      within(band).getByRole('button', {
+        name: 'requirementPackageFilterButtonActive',
+      }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'addRequirementPackageToFilter',
+      }),
+    )
+    expect(screen.getByTestId('package-filter-state')).toHaveTextContent(
+      '[99,1,2]',
+    )
+
+    fireEvent.click(
+      within(band).getAllByRole('button', {
+        name: 'removeRequirementPackageFromFilter',
+      })[0] as HTMLButtonElement,
+    )
+    expect(screen.getByTestId('package-filter-state')).toHaveTextContent(
+      '[99,2]',
     )
   })
 

@@ -708,6 +708,10 @@ describe('RequirementForm', () => {
     const prioritySelect = screen.getByRole('combobox', {
       name: 'requirement.priorityLevel',
     })
+    const originalMatches = prioritySelect.matches.bind(prioritySelect)
+    vi.spyOn(prioritySelect, 'matches').mockImplementation(
+      selector => selector === ':focus-visible' || originalMatches(selector),
+    )
     fireEvent.focus(prioritySelect)
 
     const priorityTooltip = await screen.findByRole('tooltip')

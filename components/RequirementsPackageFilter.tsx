@@ -325,7 +325,7 @@ export default function RequirementsPackageFilter({
     pendingFocusRef.current = nextFocus
       ? { id: nextFocus.id, surface: 'available' }
       : { surface: 'trigger' }
-    onChange([...selectedPackages.map(item => item.id), requirementPackage.id])
+    onChange([...selectedIds, requirementPackage.id])
     setAnnouncement(
       t('requirementPackageAdded', {
         package: packageName(requirementPackage),
@@ -341,9 +341,7 @@ export default function RequirementsPackageFilter({
     pendingFocusRef.current = nextFocus
       ? { id: nextFocus.id, surface: 'selected' }
       : { surface: 'trigger' }
-    const nextIds = selectedPackages
-      .filter(item => item.id !== requirementPackage.id)
-      .map(item => item.id)
+    const nextIds = selectedIds.filter(id => id !== requirementPackage.id)
     onChange(nextIds.length > 0 ? nextIds : undefined)
     setAnnouncement(
       t('requirementPackageRemoved', {
