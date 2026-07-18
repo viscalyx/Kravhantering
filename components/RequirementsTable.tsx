@@ -43,6 +43,7 @@ import { useColumnState } from '@/components/_requirements-table/useColumnState'
 import { useFloatingRailPosition } from '@/components/_requirements-table/useFloatingRailPosition'
 import { useResizeHandles } from '@/components/_requirements-table/useResizeHandles'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
+import RequirementsPackageFilterPrototype from '@/components/RequirementsPackageFilterPrototype'
 import StatusBadge from '@/components/StatusBadge'
 import StatusIcon from '@/components/StatusIcon'
 import { Link, useRouter } from '@/i18n/routing'
@@ -3235,63 +3236,19 @@ export default function RequirementsTable({
           </div>
         )}
         {requirementPackages.length > 0 && hasFilters && (
-          <div className="flex items-center gap-2 border-b bg-white/80 px-3 py-2 text-sm backdrop-blur-sm dark:bg-secondary-900/80">
-            <span className="shrink-0 text-xs font-medium text-secondary-600 dark:text-secondary-400">
-              {t('requirementPackage')}:
-            </span>
-            <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto overflow-y-hidden py-0.5">
-              {requirementPackages.map(s => {
-                const active = (fv.requirementPackageIds ?? []).includes(s.id)
-                const purposeAndScope = requirementPackagePurposeAndScope(s)
-                return (
-                  <RequirementPackagePurposeTooltip
-                    key={s.id}
-                    maxWidth={280}
-                    purposeAndScope={purposeAndScope}
-                    wrapperClassName="inline-flex shrink-0"
-                  >
-                    <button
-                      aria-label={requirementPackageName(s)}
-                      aria-pressed={active}
-                      className={`inline-flex h-6 max-w-48 shrink-0 items-center rounded-full px-2 text-[10px] leading-none font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-                        active
-                          ? 'bg-primary-600 text-white'
-                          : 'bg-secondary-100 text-secondary-600 hover:bg-secondary-200 dark:bg-secondary-800 dark:text-secondary-400 dark:hover:bg-secondary-700'
-                      }`}
-                      data-requirement-package={s.id}
-                      onClick={() => {
-                        const current = fv.requirementPackageIds ?? []
-                        const next = active
-                          ? current.filter(id => id !== s.id)
-                          : [...current, s.id]
-                        updateFilter({
-                          requirementPackageIds:
-                            next.length > 0 ? next : undefined,
-                        })
-                      }}
-                      type="button"
-                    >
-                      <span className="truncate">
-                        {requirementPackageName(s)}
-                      </span>
-                    </button>
-                  </RequirementPackagePurposeTooltip>
-                )
-              })}
-            </div>
-            {(fv.requirementPackageIds ?? []).length > 0 && (
-              <button
-                aria-label={tc('clearFilters')}
-                className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                onClick={() =>
-                  updateFilter({ requirementPackageIds: undefined })
-                }
-                type="button"
-              >
-                <X aria-hidden="true" className="h-3 w-3" />
-              </button>
-            )}
-          </div>
+          <RequirementsPackageFilterPrototype
+            locale={locale}
+            onChange={requirementPackageIds =>
+              updateFilter({
+                requirementPackageIds:
+                  requirementPackageIds.length > 0
+                    ? requirementPackageIds
+                    : undefined,
+              })
+            }
+            packages={requirementPackages}
+            selectedIds={fv.requirementPackageIds ?? []}
+          />
         )}
         {normReferences.length > 0 &&
           visibleColumnSet.has('normReferences') && (
