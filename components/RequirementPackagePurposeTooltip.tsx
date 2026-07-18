@@ -6,6 +6,7 @@ import {
   isValidElement,
   type MouseEventHandler,
   type ReactElement,
+  type FocusEvent as ReactFocusEvent,
   type ReactNode,
   useCallback,
   useEffect,
@@ -37,6 +38,8 @@ interface TooltipPosition {
   top?: number
 }
 
+const HOVER_OPEN_DELAY_MS = 1000
+
 function describedByWithTooltip(
   existing: string | undefined,
   tooltipId: string,
@@ -46,11 +49,11 @@ function describedByWithTooltip(
 
 function composeEventHandler<Event>(
   existing: ((event: Event) => void) | undefined,
-  next: () => void,
+  next: (event: Event) => void,
 ): (event: Event) => void {
   return event => {
     existing?.(event)
-    next()
+    next(event)
   }
 }
 
@@ -62,8 +65,11 @@ export default function RequirementPackagePurposeTooltip({
 }: ComponentProps) {
   const tooltipId = useId()
   const rootRef = useRef<HTMLSpanElement>(null)
+  const tooltipRef = useRef<HTMLSpanElement>(null)
+  const hoverOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [position, setPosition] = useState<TooltipPosition | null>(null)
+  const [supportsPopover, setSupportsPopover] = useState(false)
   const text = purposeAndScope?.trim()
 
   const updatePosition = useCallback(() => {
@@ -95,15 +101,57 @@ export default function RequirementPackagePurposeTooltip({
     })
   }, [maxWidth])
 
+  const clearHoverOpenTimer = useCallback(() => {
+    if (hoverOpenTimerRef.current) {
+      clearTimeout(hoverOpenTimerRef.current)
+      hoverOpenTimerRef.current = null
+    }
+  }, [])
+
   const openTooltip = useCallback(() => {
+    clearHoverOpenTimer()
     if (!text) return
     updatePosition()
     setIsOpen(true)
-  }, [text, updatePosition])
+  }, [clearHoverOpenTimer, text, updatePosition])
+
+  const scheduleTooltipOpen = useCallback(() => {
+    clearHoverOpenTimer()
+    if (!text) return
+
+    hoverOpenTimerRef.current = setTimeout(() => {
+      hoverOpenTimerRef.current = null
+      updatePosition()
+      setIsOpen(true)
+    }, HOVER_OPEN_DELAY_MS)
+  }, [clearHoverOpenTimer, text, updatePosition])
 
   const closeTooltip = useCallback(() => {
+    clearHoverOpenTimer()
     setIsOpen(false)
+  }, [clearHoverOpenTimer])
+
+  const handleFocus = useCallback(
+    (event: ReactFocusEvent<Element>) => {
+      if (event.currentTarget.matches(':focus-visible')) {
+        openTooltip()
+        return
+      }
+      closeTooltip()
+    },
+    [closeTooltip, openTooltip],
+  )
+
+  useEffect(() => {
+    setSupportsPopover(typeof HTMLElement.prototype.showPopover === 'function')
   }, [])
+
+  useEffect(
+    () => () => {
+      clearHoverOpenTimer()
+    },
+    [clearHoverOpenTimer],
+  )
 
   useEffect(() => {
     if (!isOpen) return
@@ -117,6 +165,33 @@ export default function RequirementPackagePurposeTooltip({
     }
   }, [isOpen, updatePosition])
 
+  useEffect(() => {
+    const tooltip = tooltipRef.current
+    if (
+      !isOpen ||
+      !position ||
+      !supportsPopover ||
+      !tooltip ||
+      typeof tooltip.showPopover !== 'function'
+    ) {
+      return
+    }
+
+    try {
+      tooltip.showPopover()
+    } catch {
+      return
+    }
+
+    return () => {
+      try {
+        tooltip.hidePopover()
+      } catch {
+        // The tooltip may already have left the top layer during unmount.
+      }
+    }
+  }, [isOpen, position, supportsPopover])
+
   const describedChildren = (() => {
     if (!text || !isValidElement<DescribedElementProps>(children)) {
       return children
@@ -128,8 +203,11 @@ export default function RequirementPackagePurposeTooltip({
         ? describedByWithTooltip(child.props['aria-describedby'], tooltipId)
         : child.props['aria-describedby'],
       onBlur: composeEventHandler(child.props.onBlur, closeTooltip),
-      onFocus: composeEventHandler(child.props.onFocus, openTooltip),
-      onMouseEnter: composeEventHandler(child.props.onMouseEnter, openTooltip),
+      onFocus: composeEventHandler(child.props.onFocus, handleFocus),
+      onMouseEnter: composeEventHandler(
+        child.props.onMouseEnter,
+        scheduleTooltipOpen,
+      ),
       onMouseLeave: composeEventHandler(child.props.onMouseLeave, closeTooltip),
     })
   })()
@@ -140,13 +218,16 @@ export default function RequirementPackagePurposeTooltip({
       {text && isOpen && position
         ? createPortal(
             <span
-              className="pointer-events-none fixed z-90 whitespace-pre-wrap wrap-break-word rounded-lg border border-secondary-200 bg-white px-3 py-2 text-left text-xs leading-5 text-secondary-700 shadow-lg dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200"
+              className="pointer-events-none fixed z-90 m-0 whitespace-pre-wrap wrap-break-word rounded-lg border border-secondary-200 bg-white px-3 py-2 text-left text-xs leading-5 text-secondary-700 shadow-lg dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200"
               id={tooltipId}
+              popover={supportsPopover ? 'manual' : undefined}
+              ref={tooltipRef}
               role="tooltip"
               style={{
                 bottom: position.bottom,
                 left: position.left,
                 maxWidth: position.maxWidth,
+                right: 'auto',
                 top: position.top,
                 transform: 'translateX(-50%)',
               }}
