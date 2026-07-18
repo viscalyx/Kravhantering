@@ -60,6 +60,7 @@ export const PUT = secureMutationRoute({
   errorMessage: 'Failed to update specification-local deviation',
   paramsSchema: idParamSchema,
   policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
+    deviationKind: 'specification-local',
     deviationId: params.id,
     kind: 'manage_deviation',
     operation: 'edit',
@@ -91,6 +92,7 @@ export const DELETE = secureMutationRoute({
   errorMessage: 'Failed to delete specification-local deviation',
   paramsSchema: idParamSchema,
   policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
+    deviationKind: 'specification-local',
     deviationId: params.id,
     kind: 'manage_deviation',
     operation: 'delete',

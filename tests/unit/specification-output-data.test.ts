@@ -3,20 +3,24 @@ import type { SqlServerDatabase } from '@/lib/db'
 import { collectSpecificationOutputData } from '@/lib/reports/data/specification-output'
 
 const dalState = vi.hoisted(() => ({
-  countDeviationsPerItemRef: vi.fn(),
   getSpecificationById: vi.fn(),
+  listSpecificationTraceabilityItems: vi.fn(),
   parseSpecificationItemRef: vi.fn(),
-}))
-
-vi.mock('@/lib/dal/deviations', () => ({
-  countDeviationsPerItemRef: dalState.countDeviationsPerItemRef,
+  traverseCompleteSpecificationItemResult: vi.fn(),
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   createLibraryItemRef: (id: number) => `lib:${id}`,
   createSpecificationLocalItemRef: (id: number) => `local:${id}`,
   getSpecificationById: dalState.getSpecificationById,
+  listSpecificationTraceabilityItems:
+    dalState.listSpecificationTraceabilityItems,
   parseSpecificationItemRef: dalState.parseSpecificationItemRef,
+}))
+
+vi.mock('@/lib/requirements/specification-item-page', () => ({
+  traverseCompleteSpecificationItemResult:
+    dalState.traverseCompleteSpecificationItemResult,
 }))
 
 function specification() {
@@ -141,12 +145,29 @@ describe('collectSpecificationOutputData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     dalState.getSpecificationById.mockResolvedValue(specification())
-    dalState.countDeviationsPerItemRef.mockResolvedValue(
-      new Map([
-        ['lib:31', { approved: 1, pending: 0, rejected: 0, total: 1 }],
-        ['local:41', { approved: 0, pending: 1, rejected: 0, total: 1 }],
-      ]),
+    dalState.parseSpecificationItemRef.mockImplementation((itemRef: string) => {
+      const [prefix, rawId] = itemRef.split(':')
+      return {
+        id: Number(rawId),
+        kind: prefix === 'lib' ? 'library' : 'specificationLocal',
+      }
+    })
+    dalState.traverseCompleteSpecificationItemResult.mockImplementation(
+      async (_db, _input, visitPage) => {
+        await visitPage([{ itemRef: 'local:41' }, { itemRef: 'lib:31' }], 1)
+        return { itemCount: 2, pageCount: 1 }
+      },
     )
+    dalState.listSpecificationTraceabilityItems.mockResolvedValue([
+      {
+        deviationCounts: { approved: 0, pending: 1, rejected: 0, total: 1 },
+        itemRef: 'local:41',
+      },
+      {
+        deviationCounts: { approved: 1, pending: 0, rejected: 0, total: 1 },
+        itemRef: 'lib:31',
+      },
+    ])
   })
 
   it('uses the requirement version pinned by the specification item', async () => {
@@ -155,6 +176,17 @@ describe('collectSpecificationOutputData', () => {
     const result = await collectSpecificationOutputData(db, 10)
 
     expect(result.items.map(item => item.uniqueId)).toEqual(['A-1', 'B-2'])
+    expect(
+      dalState.traverseCompleteSpecificationItemResult,
+    ).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({
+        filters: {},
+        sort: { by: 'uniqueId', direction: 'asc' },
+        specificationId: 10,
+      }),
+      expect.any(Function),
+    )
     expect(result.items[0]).toMatchObject({
       requirementPackageNames: [],
     })

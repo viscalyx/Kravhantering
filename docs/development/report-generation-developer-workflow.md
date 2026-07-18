@@ -64,10 +64,12 @@ Requirements specification reports use a separate prefix
 - **Management report**:
   `.../pdf/management`
 - **Requirement application traceability**:
-  `.../pdf/traceability?refs=lib:31,local:41`
+  `.../pdf/traceability?locale=sv&sortBy=uniqueId&sortDirection=asc`
 
-The detail view must keep traceability PDF menu actions hidden when the
-filtered requirement application list exceeds that cap.
+The traceability route accepts the normalized requirements specification item
+filters and ordering. It and lifecycle-profile/CSV collectors use the shared
+bounded server traversal; complete formal output must never depend on browser
+loaded-page state.
 
 ## PDF Rendering
 

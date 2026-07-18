@@ -107,6 +107,7 @@ function createService() {
     getSpecificationItems: vi.fn(async () => ({
       items: [],
       message: 'Requirement applications',
+      pagination: { count: 0, hasMore: false, limit: 50, nextCursor: null },
       specificationId: 7,
     })),
     graduateSpecificationLocalRequirement: vi.fn(async () => ({

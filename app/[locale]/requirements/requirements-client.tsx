@@ -243,6 +243,9 @@ export default function RequirementsClient({
   useHelpContent(REQUIREMENTS_HELP)
   const tc = useTranslations('common')
   const t = useTranslations('requirement')
+  const loadRequirementsFailedMessage = t('loadRequirementsFailed')
+  const paginationContinuationFailedMessage = t('paginationContinuationFailed')
+  const requirementListRefreshedMessage = tc('requirementListRefreshed')
   const locale = useLocale()
   const pdfDownload = useServerPdfDownload()
   const normalizedColumnDefaults = useMemo(
@@ -307,6 +310,10 @@ export default function RequirementsClient({
   const [hasMore, setHasMore] = useState(false)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [paginationNotice, setPaginationNotice] = useState<string | null>(null)
+  const [rowsError, setRowsError] = useState(false)
+  const [continuationError, setContinuationError] = useState<
+    'continuation' | 'recovery' | null
+  >(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasLoadedColumnPreferences, setHasLoadedColumnPreferences] =
     useState(false)
@@ -322,125 +329,177 @@ export default function RequirementsClient({
   // Can temporarily hold a uniqueId string when resolving from URL params.
   const selectedIdRef = useRef<number | string | null>(null)
   const latestRowsRequestIdRef = useRef(0)
+  const rowsAbortRef = useRef<AbortController | null>(null)
+  const rowsRetryRef = useRef<HTMLButtonElement>(null)
   const latestFetchDataRequestIdRef = useRef(0)
   const scrollToIdRef = useRef<number | null>(null)
-  if (typeof selectedIdRef.current !== 'string') {
-    selectedIdRef.current = selectedId
-  }
 
-  const refreshRows = useCallback(async () => {
-    const requestId = ++latestRowsRequestIdRef.current
-    const params = buildRequirementListParams({
-      filters,
-      limit: PAGE_SIZE,
-      locale,
-      sort: sortState,
-    })
-
-    let data: {
-      pagination?: { hasMore?: boolean; nextCursor?: string | null }
-      requirements?: RequirementRow[]
-    } | null = null
-
-    try {
-      const res = await fetch(`/api/requirements?${params}`)
-      if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
-        return
-      }
-
-      data = (await res.json()) as {
-        pagination?: { hasMore?: boolean; nextCursor?: string | null }
-        requirements?: RequirementRow[]
-      }
-    } catch {
-      return
+  useEffect(() => {
+    if (typeof selectedIdRef.current !== 'string') {
+      selectedIdRef.current = selectedId
     }
-    if (!data || requestId !== latestRowsRequestIdRef.current) {
-      return
-    }
+  }, [selectedId])
 
-    const newRows = data.requirements ?? []
-    const nextHasMore = data.pagination?.hasMore ?? false
-    const refreshedCursor = data.pagination?.nextCursor ?? null
-
-    // If an expanded row is no longer in the filtered results, pin it.
-    // sid can be a numeric id or a uniqueId string (from ?selected= URL param).
-    const sid = selectedIdRef.current
-    let newPinnedRow: RequirementRow | null = null
-    let resolvedNumericId: number | null = null
-
-    if (sid != null) {
-      const inResults =
-        typeof sid === 'number'
-          ? newRows.some(r => r.id === sid)
-          : newRows.some(r => r.uniqueId === sid)
-
-      // If sid is a uniqueId string, resolve the numeric id from the results
-      if (typeof sid === 'string' && inResults) {
-        const match = newRows.find(r => r.uniqueId === sid)
-        if (match) resolvedNumericId = match.id
-      }
-
-      const isCurrentRowsRequest = () =>
-        requestId === latestRowsRequestIdRef.current
-      const hasCurrentPinnedSelection = (
-        row?: Pick<RequirementRow, 'id' | 'uniqueId'>,
-      ) =>
-        isCurrentRowsRequest() &&
-        (selectedIdRef.current === sid ||
-          (row
-            ? selectionMatchesRequirementRow(selectedIdRef.current, row)
-            : false))
+  const refreshRows = useCallback(
+    async ({
+      recoveringInvalidCursor = false,
+      restoreRetryFocusOnFailure = false,
+    }: {
+      recoveringInvalidCursor?: boolean
+      restoreRetryFocusOnFailure?: boolean
+    } = {}): Promise<boolean> => {
+      const requestId = ++latestRowsRequestIdRef.current
+      rowsAbortRef.current?.abort()
+      const controller = new AbortController()
+      rowsAbortRef.current = controller
+      setLoadingMore(false)
+      setRowsError(false)
+      setContinuationError(null)
+      const params = buildRequirementListParams({
+        filters,
+        limit: PAGE_SIZE,
+        locale,
+        sort: sortState,
+      })
 
       try {
-        const singleRes = await fetch(`/api/requirements/${sid}`)
-        if (singleRes.ok && isCurrentRowsRequest()) {
-          const detail = (await singleRes.json()) as RequirementDetailRowSource
-          const row = mapRequirementDetailToRow(detail)
-          if (hasCurrentPinnedSelection(row)) {
-            newPinnedRow = row
-            resolvedNumericId = detail.id
+        const res = await fetch(`/api/requirements?${params}`, {
+          signal: controller.signal,
+        })
+        if (!res.ok) {
+          throw new Error(loadRequirementsFailedMessage)
+        }
+        const data = (await res.json()) as {
+          pagination?: { hasMore?: boolean; nextCursor?: string | null }
+          requirements?: RequirementRow[]
+        }
+        if (
+          controller.signal.aborted ||
+          requestId !== latestRowsRequestIdRef.current
+        ) {
+          return false
+        }
+
+        const newRows = Array.from(
+          new Map(
+            (data.requirements ?? []).map(row => [row.id, row] as const),
+          ).values(),
+        )
+        const nextHasMore = data.pagination?.hasMore ?? false
+        const refreshedCursor = data.pagination?.nextCursor ?? null
+
+        // If an expanded row is no longer in the filtered results, pin it.
+        // sid can be a numeric id or a uniqueId string (from ?selected= URL param).
+        const sid = selectedIdRef.current
+        let newPinnedRow: RequirementRow | null = null
+        let resolvedNumericId: number | null = null
+
+        if (sid != null) {
+          const inResults =
+            typeof sid === 'number'
+              ? newRows.some(r => r.id === sid)
+              : newRows.some(r => r.uniqueId === sid)
+
+          if (typeof sid === 'string' && inResults) {
+            const match = newRows.find(r => r.uniqueId === sid)
+            if (match) resolvedNumericId = match.id
           }
-        } else if (!singleRes.ok && hasCurrentPinnedSelection()) {
-          if (!inResults) {
-            selectedIdRef.current = null
-            setSelectedId(null)
-            scrollToIdRef.current = null
+
+          const isCurrentRowsRequest = () =>
+            !controller.signal.aborted &&
+            requestId === latestRowsRequestIdRef.current
+          const hasCurrentPinnedSelection = (
+            row?: Pick<RequirementRow, 'id' | 'uniqueId'>,
+          ) =>
+            isCurrentRowsRequest() &&
+            (selectedIdRef.current === sid ||
+              (row
+                ? selectionMatchesRequirementRow(selectedIdRef.current, row)
+                : false))
+
+          try {
+            const singleRes = await fetch(`/api/requirements/${sid}`, {
+              signal: controller.signal,
+            })
+            if (singleRes.ok && isCurrentRowsRequest()) {
+              const detail =
+                (await singleRes.json()) as RequirementDetailRowSource
+              const row = mapRequirementDetailToRow(detail)
+              if (hasCurrentPinnedSelection(row)) {
+                newPinnedRow = row
+                resolvedNumericId = detail.id
+              }
+            } else if (!singleRes.ok && hasCurrentPinnedSelection()) {
+              if (!inResults) {
+                selectedIdRef.current = null
+                setSelectedId(null)
+                scrollToIdRef.current = null
+              }
+            }
+          } catch {
+            if (hasCurrentPinnedSelection() && !inResults) {
+              selectedIdRef.current = null
+              setSelectedId(null)
+              scrollToIdRef.current = null
+            }
           }
         }
+
+        if (
+          controller.signal.aborted ||
+          requestId !== latestRowsRequestIdRef.current
+        ) {
+          return false
+        }
+
+        if (resolvedNumericId != null) {
+          selectedIdRef.current = resolvedNumericId
+          setSelectedId(resolvedNumericId)
+          if (typeof sid === 'string') {
+            scrollToIdRef.current = resolvedNumericId
+          }
+        }
+
+        setHasMore(nextHasMore)
+        setNextCursor(refreshedCursor)
+        setRows(newRows)
+        setPinnedRow(newPinnedRow)
+        if (recoveringInvalidCursor) {
+          setPaginationNotice(requirementListRefreshedMessage)
+        }
+        return true
       } catch {
-        if (hasCurrentPinnedSelection()) {
-          if (!inResults) {
-            selectedIdRef.current = null
-            setSelectedId(null)
-            scrollToIdRef.current = null
+        if (
+          controller.signal.aborted ||
+          requestId !== latestRowsRequestIdRef.current
+        ) {
+          return false
+        }
+        if (recoveringInvalidCursor) {
+          setContinuationError('recovery')
+        } else {
+          setRowsError(true)
+        }
+        if (restoreRetryFocusOnFailure) {
+          requestAnimationFrame(() => rowsRetryRef.current?.focus())
+        }
+        return false
+      } finally {
+        if (requestId === latestRowsRequestIdRef.current) {
+          if (rowsAbortRef.current === controller) {
+            rowsAbortRef.current = null
           }
         }
       }
-    }
-
-    if (requestId !== latestRowsRequestIdRef.current) {
-      return
-    }
-
-    // Keep selectedId numeric after row/detail refreshes.
-    if (resolvedNumericId != null) {
-      selectedIdRef.current = resolvedNumericId
-      setSelectedId(resolvedNumericId)
-      // URL-selected uniqueIds need one scroll after hydration. Normal numeric
-      // selection refreshes, such as lifecycle transitions, should preserve
-      // the user's current detail position.
-      if (typeof sid === 'string') {
-        scrollToIdRef.current = resolvedNumericId
-      }
-    }
-
-    // Batch both updates in one synchronous block to avoid intermediate renders
-    setHasMore(nextHasMore)
-    setNextCursor(refreshedCursor)
-    setRows(newRows)
-    setPinnedRow(newPinnedRow)
-  }, [filters, locale, sortState])
+    },
+    [
+      filters,
+      loadRequirementsFailedMessage,
+      locale,
+      requirementListRefreshedMessage,
+      sortState,
+    ],
+  )
 
   const applyChangedRequirementDetail = useCallback(
     (
@@ -511,7 +570,12 @@ export default function RequirementsClient({
   const loadMore = useCallback(async () => {
     if (loading || loadingMore || !hasMore || !nextCursor) return
     const requestId = ++latestRowsRequestIdRef.current
+    rowsAbortRef.current?.abort()
+    const controller = new AbortController()
+    rowsAbortRef.current = controller
     setLoadingMore(true)
+    setContinuationError(null)
+    setPaginationNotice(null)
     try {
       const params = buildRequirementListParams({
         filters,
@@ -520,53 +584,63 @@ export default function RequirementsClient({
         cursor: nextCursor,
         sort: sortState,
       })
-      let data: {
-        pagination?: { hasMore?: boolean; nextCursor?: string | null }
-        requirements?: RequirementRow[]
-      } | null = null
-
-      try {
-        const res = await fetch(`/api/requirements?${params}`)
-        if (requestId !== latestRowsRequestIdRef.current) {
-          return
-        }
-        if (res.status === 400) {
-          const body = (await res
-            .clone()
-            .json()
-            .catch(() => null)) as {
-            code?: string
-          } | null
-          if (requestId !== latestRowsRequestIdRef.current) {
-            return
-          }
-          if (body?.code === 'invalid_cursor') {
-            await refreshRows()
-            setPaginationNotice(tc('requirementListRefreshed'))
-            return
-          }
-        }
-        if (!res.ok) {
-          return
-        }
-
-        data = (await res.json()) as {
-          pagination?: { hasMore?: boolean; nextCursor?: string | null }
-          requirements?: RequirementRow[]
-        }
-      } catch {
+      const res = await fetch(`/api/requirements?${params}`, {
+        signal: controller.signal,
+      })
+      if (
+        controller.signal.aborted ||
+        requestId !== latestRowsRequestIdRef.current
+      ) {
         return
       }
-      if (!data || requestId !== latestRowsRequestIdRef.current) {
+      if (res.status === 400) {
+        const body = (await res
+          .clone()
+          .json()
+          .catch(() => null)) as { code?: string } | null
+        if (body?.code === 'invalid_cursor') {
+          await refreshRows({ recoveringInvalidCursor: true })
+          return
+        }
+      }
+      if (!res.ok) {
+        throw new Error(paginationContinuationFailedMessage)
+      }
+      const data = (await res.json()) as {
+        pagination?: { hasMore?: boolean; nextCursor?: string | null }
+        requirements?: RequirementRow[]
+      }
+      if (
+        controller.signal.aborted ||
+        requestId !== latestRowsRequestIdRef.current
+      ) {
         return
       }
 
       const moreRows = data.requirements ?? []
       setHasMore(data.pagination?.hasMore ?? false)
       setNextCursor(data.pagination?.nextCursor ?? null)
-      setRows(prev => [...prev, ...moreRows])
+      setRows(previousRows =>
+        Array.from(
+          new Map(
+            [...previousRows, ...moreRows].map(row => [row.id, row] as const),
+          ).values(),
+        ),
+      )
+    } catch {
+      if (
+        !controller.signal.aborted &&
+        requestId === latestRowsRequestIdRef.current
+      ) {
+        setContinuationError('continuation')
+      }
     } finally {
-      setLoadingMore(false)
+      if (requestId === latestRowsRequestIdRef.current) {
+        setLoadingMore(false)
+        if (rowsAbortRef.current === controller) {
+          rowsAbortRef.current = null
+        }
+      }
     }
   }, [
     filters,
@@ -577,8 +651,27 @@ export default function RequirementsClient({
     nextCursor,
     refreshRows,
     sortState,
-    tc,
+    paginationContinuationFailedMessage,
   ])
+
+  const retryRows = useCallback(async () => {
+    if (continuationError === 'continuation') {
+      await loadMore()
+      requestAnimationFrame(() => rowsRetryRef.current?.focus())
+      return
+    }
+    await refreshRows({
+      recoveringInvalidCursor: continuationError === 'recovery',
+      restoreRetryFocusOnFailure: true,
+    })
+  }, [continuationError, loadMore, refreshRows])
+
+  useEffect(
+    () => () => {
+      rowsAbortRef.current?.abort()
+    },
+    [],
+  )
 
   const getName = (opt: FilterOption) =>
     locale === 'sv' ? opt.nameSv : opt.nameEn
@@ -926,18 +1019,19 @@ export default function RequirementsClient({
     r.pendingVersionStatusId === STATUS_REVIEW
   const anySelectedIsReview = selectedRows.some(hasReviewVersion)
   const allSelectedAreReview =
-    selectedRows.length > 0 && selectedRows.every(hasReviewVersion)
+    selectedRows.length > 0 &&
+    selectedRows.length === selectedIds.size &&
+    selectedRows.every(hasReviewVersion)
 
   const handleExport = async () => {
     const params = buildRequirementListParams({
       filters,
-      format: 'csv',
       locale,
       sort: sortState,
     })
 
     try {
-      const res = await fetch(`/api/requirements?${params}`)
+      const res = await fetch(`/api/requirements/export?${params}`)
       if (!res.ok) return
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -970,6 +1064,28 @@ export default function RequirementsClient({
               </div>
             ) : (
               <>
+                {rowsError || continuationError ? (
+                  <div
+                    className="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
+                    role="alert"
+                  >
+                    <p>
+                      {rowsError
+                        ? t('loadRequirementsFailed')
+                        : continuationError === 'recovery'
+                          ? t('paginationRecoveryFailed')
+                          : t('paginationContinuationFailed')}
+                    </p>
+                    <button
+                      className="mt-2 min-h-6 min-w-6 rounded-md px-2 py-1 font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                      onClick={() => void retryRows()}
+                      ref={rowsRetryRef}
+                      type="button"
+                    >
+                      {tc('retry')}
+                    </button>
+                  </div>
+                ) : null}
                 {paginationNotice ? (
                   <p
                     {...devMarker({

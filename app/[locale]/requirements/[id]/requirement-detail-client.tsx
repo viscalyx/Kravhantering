@@ -76,6 +76,8 @@ interface RequirementDetailClientPropsBase {
   inline?: boolean
   onChange?: (detail?: RequirementDetailResponse) => void | Promise<void>
   onClose?: () => void
+  onRemoveFromSpecification?: (anchorEl: HTMLElement) => void | Promise<void>
+  removeFromSpecificationDisabled?: boolean
   requirementId: number | string
   specificationPermissions?: SpecificationDeviationPermissions
 }
@@ -101,6 +103,8 @@ export default function RequirementDetailClient({
   inline,
   onChange,
   onClose,
+  onRemoveFromSpecification,
+  removeFromSpecificationDisabled,
   specificationPermissions,
   specificationItemId,
   specificationId,
@@ -1038,7 +1042,11 @@ export default function RequirementDetailClient({
                   }
                   detailContext={detailContext}
                   locale={locale}
+                  onRemoveFromSpecification={onRemoveFromSpecification}
                   priorityLevel={priorityLevelForDeviation}
+                  removeFromSpecificationDisabled={
+                    removeFromSpecificationDisabled
+                  }
                   requirementId={requirementId}
                   specificationId={specificationId}
                   specificationItemId={specificationItemId}

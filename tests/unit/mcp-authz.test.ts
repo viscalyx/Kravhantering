@@ -99,6 +99,7 @@ function createService() {
   const getSpecificationItems = vi.fn(async (_context: RequestContext) => ({
     items: [],
     message: 'Requirement applications',
+    pagination: { count: 0, hasMore: false, limit: 50, nextCursor: null },
     specificationId: 7,
   }))
   const listGraduationTargetAreas = vi.fn(async (_context: RequestContext) => ({

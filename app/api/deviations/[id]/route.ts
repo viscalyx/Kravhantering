@@ -56,6 +56,7 @@ export const PUT = secureMutationRoute({
   errorMessage: 'Failed to update deviation',
   paramsSchema: idParamSchema,
   policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
+    deviationKind: 'library',
     deviationId: params.id,
     kind: 'manage_deviation',
     operation: 'edit',
@@ -86,6 +87,7 @@ export const DELETE = secureMutationRoute({
   errorMessage: 'Failed to delete deviation',
   paramsSchema: idParamSchema,
   policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
+    deviationKind: 'library',
     deviationId: params.id,
     kind: 'manage_deviation',
     operation: 'delete',

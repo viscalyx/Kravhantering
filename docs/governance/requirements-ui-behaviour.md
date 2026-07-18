@@ -243,15 +243,40 @@ an explicit in-modal error.
 
 - The Requirements Library and the available-requirements panel load additional
   rows with forward-only opaque cursors.
-- Changing filters, sorting, direction, locale, page size, or visibility scope
-  starts again from the first page.
-- Pages do not expose an exact total. The UI only indicates whether more rows
-  can be loaded.
+- Requirements Library REST pages allow 1 through 200 rows and default to 200.
+  Their cursor carries the complete database sort boundary and query
+  fingerprint, so no previous anchor row is read. Free-text and lookup-name
+  boundaries use the same normalized, bounded SQL sort key and numeric
+  Requirement ID as the query; the system-generated unique Requirement ID uses
+  its indexed database key. Filters, locale, sort, direction, and visibility
+  are part of the query identity; page size is not, so a continuation may
+  reduce it.
+- Requirements-specification item reads use the same shared service page
+  boundary for preload, REST, and MCP. Pages default to 50 rows, allow 1 through
+  100, expose page count and continuation availability, and never expose an
+  exact result total. The editor preload contains only the first page and
+  appends later pages in database order as the user reaches the end of the
+  scrollable list.
+- Changing filters, sorting, direction, locale, or visibility scope starts
+  again from the first page.
+- The editor automatically requests the next page when the list-end sentinel
+  approaches the viewport. It does not show a manual continuation button or a
+  row-count status for a populated list. Empty-state text is shown only after an
+  authoritative empty response, and read failures use an explicit error state.
 - Unchanged result sets must not repeat or skip rows across page boundaries.
 - The list is not a frozen snapshot. Requirements changed by another user may
   require a full refresh before they appear in their current sorted position.
-- If a cursor becomes invalid, the UI replaces the accumulated rows with a new
-  first page and announces a localized refresh message.
+- If a continuation cursor becomes invalid, the editor keeps current rows
+  visible and retries the first page once with the same query. Success replaces
+  the rows and announces the restart without moving focus. Failure keeps the
+  rows, query, and selection and presents a labelled retry action.
+- Initial and continuation reads cancel superseded requests, suppress stale
+  responses, and defensively remove duplicate Requirement IDs before rendering.
+- Requirements Library CSV uses `/api/requirements/export`, accepts current
+  server filters, locale, and sort, and accepts neither cursor nor page size.
+  The server traverses the complete database-ordered result in 200-row pages.
+  It fails on duplicates, missing progress, cursor cycles, or more than 10 000
+  pages (two million rows) instead of returning a partial export.
 
 ## Floating Rail
 
@@ -527,6 +552,35 @@ down.
 - Individual row checkboxes toggle selection without triggering row click.
 - Selection is cleared when filters change.
 - Selection state is managed in `requirements-client.tsx` via `selectedIds`.
+- The specification-detail left panel is an exception: only content editors see
+  row checkboxes, and it has no header-level select-all control. Explicit
+  selection is keyed by `itemRef` and survives searching, filtering, sorting,
+  and authoritative item refreshes. It remains transient and clears on locale
+  change, view exit, or reload.
+- When a query hides selected specification items, a status row reports the
+  total and hidden counts, warns that actions affect the complete selected set,
+  and can deselect exactly the hidden set.
+- A requirements specification, its paginated display, and the explicit
+  selection have no 200- or 500-item product limit. A single shared
+  selected-item action can target at most 200 stable item references, including
+  selected items that are not shown by the current query or are not loaded.
+- At 201 or more selected items, the polite selection status row uses a warning
+  appearance and states the total, the count not shown, the 200-item maximum,
+  and the exact number to deselect. The four shared actions for assigning or
+  clearing needs references, requesting deviations, and removing selected items
+  remain visible but disabled. The user chooses what to deselect; the
+  `Deselect not shown` recovery action remains enabled and no selection is
+  truncated automatically.
+- Returning to 200 or fewer selected items removes the warning and immediately
+  enables the four shared actions. Single-item actions in expanded details are
+  unaffected because they do not use the shared selection.
+- Selected-item actions resolve the selected `itemRef` values against fresh
+  item data before confirmation and enumerate all affected Krav-ID values.
+  Assigning and clearing needs-reference links are separate actions. Successful
+  targets leave the selection; failed or unaffected targets remain selected.
+- Bulk deviation requests use one motivation to create one deviation per
+  selected application. Removal confirms library unlinking and permanent
+  deletion of unique requirements separately, including mixed selections.
 - In the specification-detail left panel, specification-local rows are visually
   marked with a dedicated icon marker so they can be distinguished from
   library requirements pinned into the specification.
@@ -543,6 +597,10 @@ down.
 - When a library requirement is opened from the specification list `Krav i underlaget`,
   its inline detail metadata also includes the specification-specific fields
   **Behovsreferens** and **Användningsstatus** in the same properties grid.
+- The library requirement's **Remove from specification** action is part of the
+  right-side specification action rail, directly after the deviation controls.
+  It uses the same full-width destructive button treatment as other delete and
+  unlink actions.
 - The specification-local content card uses the same section spacing and card chrome
   as the library requirement detail card in specification context, so the properties
   block reads with the same vertical rhythm and grouping.
@@ -614,7 +672,9 @@ down.
   - `Genomföranderapport` for lifecycle status `Införande` or `Utveckling`
   - `Förvaltningsrapport` for lifecycle status `Förvaltning`
 - Report routes always cover the whole specification. They do not accept row
-  selection query parameters.
+  selection query parameters. Lifecycle-profile reports ignore item-list
+  filters; application traceability accepts the normalized item-list filters
+  and sort state and covers that complete server result.
 - PDF routes use
   `/[locale]/specifications/[specificationId]/reports/pdf/[profile]`.
 - Both routes authorize read access to the specification before report data is
@@ -627,6 +687,9 @@ down.
   `Upphandling`.
 - Specification CSV exports are generated server-side from the whole
   specification and remain row-only without metadata rows.
+- Complete outputs traverse bounded server pages with progress, duplicate,
+  cursor-cycle, and maximum-page protection. They never use only the rows
+  currently loaded in the editor.
 
 ## Requirement Selection Question Stewardship
 

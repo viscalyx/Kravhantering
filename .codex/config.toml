@@ -3,7 +3,7 @@
 
 personality = "pragmatic"
 
-model = "gpt-5.6"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 
 [mcp_servers.playwright]
@@ -32,6 +32,15 @@ approval_mode = "approve"
 enabled = true
 url = "https://api.githubcopilot.com/mcp/"
 bearer_token_env_var = "GH_TOKEN"
+
+[mcp_servers.github.tools.issue_write]
+approval_mode = "approve"
+
+[mcp_servers.github.tools.add_issue_comment]
+approval_mode = "approve"
+
+[mcp_servers.github.tools.sub_issue_write]
+approval_mode = "approve"
 
 [tui]
 terminal_title = ["activity", "app-name"]

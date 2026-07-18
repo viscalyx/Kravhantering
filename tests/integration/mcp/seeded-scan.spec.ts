@@ -661,6 +661,34 @@ test.describe('MCP seeded HTTP security gate', () => {
         status: 'expected-error',
       })
 
+      const afterStaleEdit = await callToolOk(
+        client,
+        'requirements_get_requirement',
+        {
+          responseFormat: 'json',
+          uniqueId: disposableUniqueId,
+          view: 'history',
+        },
+      )
+      const afterStaleVersion = firstRecord(
+        arrayField(
+          recordField(afterStaleEdit, 'requirement', 'stale edit read-back'),
+          'versions',
+          'stale edit requirement',
+        ),
+        'stale edit versions',
+      )
+      expect(
+        stringField(
+          afterStaleVersion,
+          'description',
+          'stale edit latest version',
+        ),
+      ).toBe('Disposable MCP requirement edited')
+      expect(JSON.stringify(afterStaleEdit)).not.toContain(
+        'Stale edit must not overwrite',
+      )
+
       await callToolOk(client, 'requirements_transition_requirement', {
         responseFormat: 'json',
         toStatusId: numberField(

@@ -584,9 +584,13 @@ läslig.
 
 **Steg:** Öppna filtret för `Krav-ID`, skriv `INT0001`, kontrollera träff, öppna
 filtret igen och klicka `Rensa` i sökfältet. Kontrollera att fler krav visas.
-Aktivera och avaktivera även ett filter för kravpaket.
+Aktivera och avaktivera även ett filter för kravpaket. Välj status
+`Arkiverad` och filtrera på ett kravpaket som har historisk koppling till ett
+arkiverat krav.
 
 **Förväntat resultat:** Filter begränsar listan och rensning återställer den.
+Det arkiverade kravet är tillgängligt i kravbiblioteket när statusen valts
+uttryckligen och kan hittas via sin historiska kravpaketskoppling.
 
 ### REQ-04: sortera på sorterbar kolumn
 
@@ -639,6 +643,15 @@ som användaren får läsa.
 **Förväntat resultat:** Servergenererad PDF skapas utan fel. PDF från
 kravlistan är tillgänglig för publicerade krav som användaren får läsa, medan
 rapporter baserade på historik kräver separat åtkomst till historik.
+
+### REQ-10a: komplett CSV-export går över första serversidan
+
+**Steg:** Använd en fixture med minst 205 publicerade krav. Öppna
+`/sv/requirements`, välj en känd sortering och aktivera `Exportera`.
+
+**Förväntat resultat:** `kravbibliotek.csv` innehåller samtliga 205 krav exakt
+en gång i samma auktoritativa ordning som listan. Exportanropet går till
+`/api/requirements/export` och skickar varken `cursor` eller `limit`.
 
 ### REQ-11: svensk länk till krav omdirigerar till befintlig kravdetalj
 
@@ -856,8 +869,10 @@ fältfel visas och inget krav skapas.
 ### LIFE-03: skicka utkast till granskning
 
 **Steg:** Öppna ett utkast och välj åtgärden för att skicka till granskning.
+Försök därefter redigera kravversionen.
 
-**Förväntat resultat:** Status ändras till granskning.
+**Förväntat resultat:** Status ändras till granskning och redigering är inte
+tillgänglig förrän kravversionen återförs till utkast.
 
 ### LIFE-04: återför granskningskrav till utkast
 
@@ -867,21 +882,33 @@ fältfel visas och inget krav skapas.
 
 ### LIFE-05: godkänn och publicera granskat krav
 
-**Steg:** Öppna krav i granskning och godkänn publicering.
+**Steg:** Öppna krav i granskning och godkänn publicering. Om kravet har en
+tidigare publicerad version, öppna historiken efter publiceringen.
 
-**Förväntat resultat:** Kravet blir publicerat.
+**Förväntat resultat:** Den nya kravversionen blir publicerad och den tidigare
+publicerade kravversionen blir arkiverad i samma publiceringsåtgärd.
 
 ### LIFE-06: skapa ny utkastversion från publicerat krav
 
-**Steg:** Öppna publicerat krav och skapa ny version.
+**Steg:** Öppna ett publicerat krav, notera den publicerade kravtexten och
+skapa en ny version med en tydligt annan kravtext. Öppna kravets
+standarddetalj utan versionsnummer och försök starta arkivering.
 
 **Förväntat resultat:** En ny utkastversion skapas utan att historiken tappas.
+Standarddetaljen visar fortfarande den publicerade kravtexten och exponerar
+inte utkastets kravtext. Arkivering är inte tillgänglig eller avvisas medan
+den nyare utkastversionen finns.
 
 ### LIFE-07: återställ arkiverad kravversion
 
-**Steg:** Öppna arkiverat krav och använd återställningsåtgärden.
+**Steg:** Öppna ett arkiverat krav, kontrollera att kravversionen inte kan
+redigeras och använd återställningsåtgärden. Kontrollera även ett arkiverat
+krav som redan har en ny utkastversion.
 
-**Förväntat resultat:** Kravet återställs till aktiv hantering.
+**Förväntat resultat:** Den arkiverade kravversionen är skrivskyddad tills den
+återställs. Återställning skapar aktiv hantering som utkast. Ett krav med en
+arkiverad föregångare fortsätter att visas med beräknad kravstatus
+`Arkiverad` medan den nya utkastversionen väntar.
 
 ### LIFE-08: avbryt initiering av arkivering
 
@@ -916,20 +943,26 @@ går bara att hämta när användaren har åtkomst till kravets historik.
 
 **Steg:** Skapa eller välj ett publicerat krav som ingår i ett kravpaket.
 Skapa en ny utkastversion med ett annat kravpaketsval. Öppna
-kravpaketslistans dialog för kopplade krav innan publicering.
+kravpaketslistans dialog för kopplade krav innan publicering. Skicka sedan
+utkastet till granskning och publicera det. Öppna båda kravpaketens listor över
+kopplade krav.
 
 **Förväntat resultat:** Före publicering visar kravpaketet fortfarande den
 publicerade föregångaren. Ett opublicerat utkast med annat paketval ersätter
-inte den publicerade kravversionens praktiska paketmedlemskap.
+inte den publicerade kravversionens praktiska paketmedlemskap. Efter
+publicering visar det gamla paketet inte längre kravet och det nya paketet
+visar den nya publicerade kravversionen.
 
 ### LIFE-13: arkivering utan efterträdare bevarar pakethistorik
 
 **Steg:** Skapa eller välj ett publicerat krav som ingår i ett kravpaket.
-Arkivera kravet utan att först skapa en ny kravversion och kontrollera den
-seedade fixturen för pakethistorik.
+Arkivera kravet utan att först skapa en ny kravversion, godkänn arkiveringen
+och öppna den arkiverade kravversionens historik. Öppna därefter paketets
+praktiska lista över kopplade eller användbara krav.
 
 **Förväntat resultat:** Den arkiverade kravversionens paketkoppling bevaras
-som historik och arkiveringsanropet kan göras utan efterträdare.
+som historik och arkiveringsanropet kan göras utan efterträdare. Kravet visas
+inte längre i paketets praktiska lista.
 
 ### LIFE-14: svenska gransknings- och historikrapporter är lokaliserade
 
@@ -962,9 +995,11 @@ välj ett testunderlag.
 
 ### COL-02: registrera förbättringsförslag
 
-**Steg:** Öppna ett krav och skapa ett förbättringsförslag.
+**Steg:** Öppna ett krav och skapa ett förbättringsförslag. Försök lösa eller
+avvisa förslaget innan granskning begärts.
 
 **Förväntat resultat:** Förslaget visas med rätt status och skapare.
+Åtgärderna för att lösa eller avvisa är inte tillgängliga före granskning.
 
 ### COL-03: begär granskning av förbättringsförslag
 
@@ -975,14 +1010,18 @@ välj ett testunderlag.
 ### COL-04: lös förbättringsförslag
 
 **Steg:** Öppna ett granskningsbart förslag, ange lösningskommentar och lös.
+Försök därefter fatta ett nytt beslut om samma förslag.
 
-**Förväntat resultat:** Förslaget markeras som löst.
+**Förväntat resultat:** Förslaget markeras som löst och kan inte lösas eller
+avvisas en gång till.
 
 ### COL-05: avvisa förbättringsförslag
 
-**Steg:** Öppna ett förslag och avvisa med motivering.
+**Steg:** Öppna ett granskningsbart förslag och avvisa med motivering. Försök
+därefter fatta ett nytt beslut om samma förslag.
 
-**Förväntat resultat:** Förslaget får avvisad status och motiveringen sparas.
+**Förväntat resultat:** Förslaget får avvisad status, motiveringen sparas och
+förslaget kan inte lösas eller avvisas en gång till.
 
 ### COL-06: rapport för förslagshistorik innehåller förslag
 
@@ -1044,36 +1083,56 @@ panel.
 
 **Förväntat resultat:** Panelerna påverkar inte varandras scrollposition.
 
-### SPEC-06: lägg till och ta bort krav i kravunderlagsdetalj
+### SPEC-06: lägg till, markera och ta bort krav i kravunderlagsdetalj
 
-**Steg:** Lägg till ett krav, kontrollera att det syns och ta sedan bort det.
+**Steg:** Lägg till ett krav och kontrollera att det syns. Kontrollera att
+underlagets kravlista har individuella markeringsrutor men ingen Markera alla.
+Filtrera tillgängliga krav med ett arkiverat kravpaket som endast har historisk
+medlemskap och kontrollera att dess arkiverade krav inte kan väljas.
+Markera ett bibliotekskrav, kontrollera markeringssammanfattningen och öppna
+borttagningsdialogen. Kontrollera att dialogen visar berört krav-ID och att
+avbrytning bevarar markeringen. Expandera bibliotekskravet och kontrollera att
+Ta bort från underlaget finns direkt under Begär ett avsteg i detaljvyns högra
+åtgärdsrad och har samma destruktiva utseende som övriga borttagningsknappar.
+Bekräfta sedan borttagningen via åtgärden för markerade krav.
 
-**Förväntat resultat:** Kopplingen skapas och tas bort korrekt.
+**Förväntat resultat:** Endast redigerare kan markera enskilda krav. Markeringen
+bevaras tills användaren avmarkerar eller åtgärden lyckas. Bekräftelsen skiljer
+frånkoppling av bibliotekskrav från permanent radering av unika krav, visar
+alla berörda krav-ID:n och kopplingen tas bort korrekt. Arkiverad
+kravpaketshistorik gör inte ett krav praktiskt valbart för kravunderlaget.
 
 ### SPEC-07: skapa, redigera och lyft unikt krav i kravunderlag
 
 **Steg:** Skapa ett nytt krav direkt från kravunderlaget. Ändra
 kravtexten via Redigera i det unika kravets inline-detalj och kontrollera att
 formuläret öppnas i modal med kravets ID i huvudet. Öppna därefter åtgärden
-`Lyft till kravbiblioteket`.
+`Lyft till kravbiblioteket`, välj ett kravområde och genomför lyftet.
 
 **Förväntat resultat:** Kravet får unikt ID och kopplas till underlaget.
 Redigering sker i modal och lyftåtgärden är tillgänglig från det
-kravunderlagslokala kravets inline-detalj.
+kravunderlagslokala kravets inline-detalj. Ett nytt utkast visas i valt
+kravområde i kravbiblioteket medan det ursprungliga kravunderlagslokala kravet
+finns kvar oförändrat.
 
 ### SPEC-08: uppdatera användningsstatus
 
 **Steg:** Öppna den redigerbara statuskolumnen för ett krav i
-kravunderlaget.
+kravunderlaget. Försök välja `Avviken` före och efter att ett avsteg har
+godkänts. Upprepa för ett bibliotekskrav och ett kravunderlagslokalt krav.
 
 **Förväntat resultat:** Kolumnen visar de konfigurerade användningsstatusarna
-som valbara alternativ.
+som valbara alternativ. `Avviken` kan inte tilldelas före ett godkänt avsteg
+men kan tilldelas efter godkännandet för båda typerna av krav.
 
 ### SPEC-09: hantera behovsreferenser
 
-**Steg:** Lägg till, redigera och ta bort behovsreferens.
+**Steg:** Lägg till, redigera och ta bort behovsreferens. Expandera en
+behovsreferens som används av krav på fler än en resultatsida.
 
 **Förväntat resultat:** Referenser sparas och tas bort enligt användarens val.
+Den expanderade användningslistan visar alla kopplade krav, även krav från
+senare resultatsidor.
 
 ### SPEC-10: generera upphandlingsrapport och Anbuds-CSV
 
@@ -1124,7 +1183,8 @@ kravunderlag där användaren saknar läsbehörighet.
 **Steg:** Öppna ett kravunderlag med minst ett bibliotekskrav och ett unikt
 krav. Filtrera listan `Krav i underlaget`, öppna rapportmenyn och välj
 `Tillämpningsspårbarhet`. Upprepa kontrollen med
-ett filter som visar fler än 200 kravtillämpningar.
+ett filter som visar fler än 100 kravtillämpningar och med ett kravunderlag
+som innehåller minst 201 kravtillämpningar.
 
 **Förväntat resultat:** Rapporten omfattar bara filtrerade kravtillämpningar.
 Sammanfattningen visar totalt antal kravtillämpningar, bibliotekskrav,
@@ -1132,10 +1192,11 @@ kravunderlagslokala krav, användningsstatusfördelning, saknade
 behovsreferenser och avsteg per beslutsläge. Detaljraderna visar Krav-ID,
 ursprung, version, kravområde, behovsreferens, användningsstatus,
 statusändringsdatum, avsteg, risk, verifierbarhet/verifieringsmetod och
-anteckning. När filtret visar fler än 200 kravtillämpningar visas inte
-alternativen för `Tillämpningsspårbarhet`, medan övriga rapportalternativ i
-menyn fortfarande fungerar. Automatiserad täckning får verifiera filtrerat
-innehåll via befintlig traceability-endpoint och menygränsen i UI.
+anteckning. Rapporten omfattar hela det serverfiltrerade resultatet i samma
+databasstyrda ordning även när resultatet kräver flera serversidor. Webbläsaren
+skickar filter- och sorteringsläget, inte en lista med kravtillämpningsreferenser.
+Automatiserad täckning får verifiera filtrerat innehåll och resultat över 100
+rader via befintlig traceability-endpoint.
 
 ### SPEC-11: återställ kolumnvyer för kravunderlag
 
@@ -1274,6 +1335,43 @@ Kravtext två gånger.
 efter kravtexten; det är inte bara kolumnrubrikens sorteringsindikator som
 ändras.
 
+### SPEC-19: bläddra och återhämta kravlistan i kravunderlaget
+
+**Steg:** Öppna ett kravunderlag med fler krav än första sidan. Ändra sortering
+eller filter och kontrollera att den första serversidan ersätter den tidigare
+frågan. Markera ett krav och rulla till listans slut så att nästa sida läses in
+automatiskt. Fortsätt med en utgången fortsättningsmarkör. Prova både en
+misslyckad omstart och en lyckad omstart från första sidan.
+
+**Förväntat resultat:** Vyn visar inget meddelande om en tom lista eller någon
+statusrad medan en ny sortering eller filtrering läses in. Meddelandet om en tom
+lista visas först efter ett bekräftat tomt serversvar och feltext visas vid
+inläsningsfel. Nästa sida läses in automatiskt nära listans slut utan en manuell
+fortsättningsknapp. Fortsättning lägger till unika krav i serverordning.
+Markeringen finns kvar när fler krav läses in och räknas som dold om den inte
+finns på en senare första sida. En misslyckad omstart behåller rader, fråga och
+markering, visar en varning med `Försök igen` och återför fokus dit efter ett
+misslyckat nytt försök. En lyckad omstart ersätter raderna, annonseras utan
+automatisk fokusflytt och behåller markeringen.
+
+### SPEC-20: begränsa gemensam åtgärd för markerade krav
+
+**Steg:** Markera 200 krav i `Krav i underlaget` och kontrollera de fyra
+gemensamma åtgärderna för att tilldela behovsreferens, rensa
+behovsreferenslänkar, begära avsteg och ta bort markerade krav. Markera ett krav
+till. Filtrera listan så att ett av de 201 markerade kraven inte visas. Öppna
+ett visat kravs detalj och kontrollera dess enskilda åtgärder. Välj sedan
+`Avmarkera de som inte visas (1)`.
+
+**Förväntat resultat:** Vid 200 markerade krav är de fyra gemensamma åtgärderna
+aktiverade. Vid 201 är samma åtgärder synliga men nedtonade och inaktiverade.
+Statusraden har varningsutseende och anger totalt 201 markerade, att 1 inte är
+inläst, gränsen 200 och att exakt 1 krav måste avmarkeras. Ingen markering tas
+bort automatiskt. Åtgärden för att avmarkera de krav som inte visas är
+aktiverad och kravets enskilda detaljåtgärder påverkas inte. Efter
+avmarkeringen återstår 200 markerade krav, varningen försvinner och de fyra
+gemensamma åtgärderna aktiveras igen.
+
 ## Avsteg
 
 ### DEV-01: skapa avstegsutkast
@@ -1308,9 +1406,12 @@ efter kravtexten; det är inte bara kolumnrubrikens sorteringsindikator som
 
 ### DEV-06: beslutade avsteg är terminala
 
-**Steg:** Öppna godkänt eller avslaget avsteg och försök ändra beslutet.
+**Steg:** Öppna godkänt eller avslaget avsteg för både bibliotekskrav och
+kravunderlagslokalt krav. Försök fatta ett andra beslut, redigera eller ta bort
+avsteget.
 
-**Förväntat resultat:** Inga åtgärder för ny beslutscykel visas.
+**Förväntat resultat:** Inga åtgärder för ny beslutscykel, redigering eller
+borttagning visas. Motsvarande direkta anrop avvisas.
 
 ### DEV-07: endast kravgranskare kan besluta avsteg
 

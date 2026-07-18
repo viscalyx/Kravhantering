@@ -185,6 +185,7 @@ function createFakeService(
       },
     }),
     queryCatalog: vi.fn().mockResolvedValue({
+      pagination: { count: 1, hasMore: false, limit: 50, nextCursor: null },
       result: [
         {
           uniqueId: 'INT0001',
@@ -199,6 +200,7 @@ function createFakeService(
     getSpecificationItems: vi.fn().mockResolvedValue({
       items: [],
       message: 'Requirement applications',
+      pagination: { count: 0, hasMore: false, limit: 50, nextCursor: null },
       specificationId: 7,
     }),
     graduateSpecificationLocalRequirement: vi.fn().mockResolvedValue({
@@ -386,17 +388,47 @@ describe('handleRequirementsMcpRequest', () => {
       expect(queryTool?.description).toContain('priority_levels')
       expect(queryTool?.description).toContain('quality_characteristics')
       const queryInputSchemaText = JSON.stringify(queryTool?.inputSchema)
+      const queryInputSchema = JSON.parse(queryInputSchemaText) as {
+        properties: {
+          cursor: { maxLength: number }
+          limit: { maximum: number }
+        }
+      }
       expect(queryInputSchemaText).toContain('priority_levels')
       expect(queryInputSchemaText).toContain('operation')
       expect(queryInputSchemaText).toContain('search')
       expect(queryInputSchemaText).toContain('normReferenceIds')
       expect(queryInputSchemaText).toContain('requirementPackageIds')
       expect(queryInputSchemaText).toContain('sortBy')
+      expect(queryInputSchema.properties.cursor.maxLength).toBe(512)
+      expect(queryInputSchema.properties.limit.maximum).toBe(100)
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('result')
-      expect(JSON.stringify(queryTool?.outputSchema)).not.toContain(
-        'pagination',
-      )
+      expect(JSON.stringify(queryTool?.outputSchema)).toContain('pagination')
+      expect(queryTool?.description).toContain('without match.quality')
+      expect(queryTool?.description).toContain('invalid_cursor')
       expect(queryInputSchemaText).not.toContain('responseFormat')
+    })
+
+    it('describes bounded specification-item pagination and continuation', () => {
+      const tool = getTool('requirements_get_specification_items')
+
+      expect(tool).toBeDefined()
+      expect(tool?.description).toContain('bounded')
+      expect(tool?.description).toContain('pagination.nextCursor')
+      expect(tool?.description).toContain('invalid_cursor')
+      expect(tool?.description).toContain('kind === "library"')
+      expect(tool?.description).toContain('Use itemRef for mixed-item actions')
+      const inputSchema = JSON.stringify(tool?.inputSchema)
+      const outputSchema = JSON.stringify(tool?.outputSchema)
+      expect(inputSchema).toContain('cursor')
+      expect(inputSchema).toContain('maximum":100')
+      expect(inputSchema).toContain('specificationItemStatusIds')
+      expect(inputSchema).toContain('requirementPackageIds')
+      expect(inputSchema).toContain('qualityCharacteristicIds')
+      expect(outputSchema).toContain('pagination')
+      expect(outputSchema).toContain('nextCursor')
+      expect(outputSchema).toContain('itemRef')
+      expect(outputSchema).not.toContain('total')
     })
 
     it('describes import schema and instruction artifacts', async () => {
@@ -512,7 +544,7 @@ describe('handleRequirementsMcpRequest', () => {
       const addRequirementIdsCopyPath =
         'requirements_query_catalog.result[].id -> requirementIds'
       const removeRequirementIdsCopyPath =
-        'requirements_get_specification_items.items[].id -> requirementIds'
+        'requirements_get_specification_items.items[] where kind'
       const needsReferenceIdText = 'needsReferenceId'
       const needsReferenceDescriptionText = 'needsReferenceDescription'
 
@@ -787,6 +819,7 @@ describe('handleRequirementsMcpRequest', () => {
         operation: 'list',
         priorityLevelIds: [2],
         locale: 'en',
+        limit: 25,
         sortBy: 'priorityLevel',
         sortDirection: 'desc',
         requirementPackageIds: [3],
@@ -799,6 +832,7 @@ describe('handleRequirementsMcpRequest', () => {
       expect.anything(),
       expect.objectContaining({
         normReferenceIds: [4],
+        limit: 25,
         operation: 'list',
         priorityLevelIds: [2],
         sortBy: 'priorityLevel',
@@ -1182,6 +1216,71 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
+  it('rejects empty requirement IDs and unsupported locales before specification mutation delegation', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    for (const name of [
+      'requirements_add_to_specification',
+      'requirements_remove_from_specification',
+    ]) {
+      const emptyIds = await client.callTool({
+        arguments: {
+          requirementIds: [],
+          specificationId: 7,
+        },
+        name,
+      })
+      expect(emptyIds.isError).toBe(true)
+
+      const unsupportedLocale = await client.callTool({
+        arguments: {
+          locale: 'da',
+          requirementIds: [1],
+          specificationId: 7,
+        },
+        name,
+      })
+      expect(unsupportedLocale.isError).toBe(true)
+    }
+
+    expect(fakeService.addToSpecification).not.toHaveBeenCalled()
+    expect(fakeService.removeFromSpecification).not.toHaveBeenCalled()
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns skipped unpublished requirement IDs from add-to-specification', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+    fakeService.addToSpecification.mockResolvedValueOnce({
+      addedCount: 1,
+      message: 'Requirement added to specification',
+      skippedCount: 1,
+      skippedIds: [2],
+    })
+
+    const result = await client.callTool({
+      arguments: {
+        requirementIds: [1, 2],
+        responseFormat: 'json',
+        specificationId: 7,
+      },
+      name: 'requirements_add_to_specification',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(result.structuredContent).toMatchObject({
+      addedCount: 1,
+      skippedCount: 1,
+      skippedIds: [2],
+    })
+
+    await client.close()
+    await transport.close()
+  })
+
   it('graduates a specification-local requirement through MCP and returns links', async () => {
     const { client, transport } = await createClient()
     const fakeService = serviceState.getService.mock.results[0]?.value
@@ -1352,6 +1451,72 @@ describe('handleRequirementsMcpRequest', () => {
         }),
       ]),
     )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns invalid_cursor explicitly for specification continuation', async () => {
+    const fakeService = createFakeService()
+    fakeService.getSpecificationItems.mockRejectedValueOnce(
+      new RequirementsServiceError(
+        'invalid_cursor',
+        'Invalid requirement list cursor',
+      ),
+    )
+    serviceState.getService.mockReturnValue(fakeService)
+
+    const { client, transport } = await createClient()
+    const result = await client.callTool({
+      arguments: {
+        cursor: 'stale-cursor',
+        specificationId: 7,
+      },
+      name: 'requirements_get_specification_items',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          text: 'Error [invalid_cursor]: Invalid requirement list cursor. Restart without cursor while retaining the normalized filters, locale, and sort.',
+          type: 'text',
+        }),
+      ]),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('omits specification items with incomplete mixed-item identity', async () => {
+    const fakeService = createFakeService()
+    fakeService.getSpecificationItems.mockResolvedValueOnce({
+      items: [
+        {
+          area: null,
+          id: 1,
+          isArchived: false,
+          uniqueId: 'INT0001',
+          version: null,
+        },
+      ],
+      message: 'Requirement applications',
+      pagination: { count: 1, hasMore: false, limit: 50, nextCursor: null },
+      specificationId: 7,
+    })
+    serviceState.getService.mockReturnValue(fakeService)
+
+    const { client, transport } = await createClient()
+    const result = await client.callTool({
+      arguments: { specificationId: 7 },
+      name: 'requirements_get_specification_items',
+    })
+
+    expect(result.structuredContent).toMatchObject({
+      items: [],
+      pagination: { count: 0 },
+    })
 
     await client.close()
     await transport.close()

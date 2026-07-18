@@ -5,9 +5,9 @@ import type {
 
 export interface ListRequirementsOptions {
   after?: {
-    nullRank: number
+    nullRank: 0 | 1
+    requirementId: number
     sortValue: number | string | null
-    uniqueId: string
   }
   areaIds?: number[]
   categoryIds?: number[]
@@ -19,6 +19,7 @@ export interface ListRequirementsOptions {
   priorityLevelIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementPackageIds?: number[]
+  search?: string
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
@@ -35,8 +36,4 @@ export interface RequirementListSql {
 export function escapeLike(value: unknown): string
 export function buildRequirementListSql(
   opts?: ListRequirementsOptions,
-): RequirementListSql
-export function buildRequirementListAnchorSql(
-  opts: ListRequirementsOptions,
-  anchorId: number,
 ): RequirementListSql

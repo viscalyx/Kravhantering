@@ -104,6 +104,106 @@ jobs:
         if: always()
         run: npm run db:down
 
+  sql-integration:
+    name: SQL Server Invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare SQL Server env file
+        run: cp .env.sqlserver.ci .env.sqlserver
+
+      - name: Start local database service
+        run: npm run db:up
+
+      - name: Wait for local database service
+        run: |
+          npm exec -- dotenv \
+            -e .env.sqlserver \
+            --override \
+            -- node scripts/db-sqlserver-admin.mjs wait
+
+      - name: Run focused SQL integration tests
+        run: npm run test:sql-integration
+
+      - name: Capture SQL Server diagnostics
+        if: failure()
+        run: |
+          mkdir -p test-results/sql-integration
+          diagnostics_path="test-results/sql-integration/sqlserver-diagnostics.log"
+          {
+            echo "Captured at $(date --iso-8601=seconds)"
+            echo
+            echo "## SQL Server client route"
+            echo "Client context: GitHub Actions runner host"
+            sed -n \
+              -e '/^DB_HOST=/p' \
+              -e '/^DB_PORT=/p' \
+              -e '/^SQLSERVER_HOST_PORT=/p' \
+              .env.sqlserver
+            echo "Published container endpoint:"
+            docker compose \
+              --env-file .env.sqlserver \
+              -f docker-compose.sqlserver.yml \
+              port db 1433 || true
+
+            echo
+            echo "## Docker Compose service status"
+            docker compose \
+              --env-file .env.sqlserver \
+              -f docker-compose.sqlserver.yml \
+              ps --all || true
+
+            container_id="$(
+              docker compose \
+                --env-file .env.sqlserver \
+                -f docker-compose.sqlserver.yml \
+                ps -q db 2>/dev/null || true
+            )"
+            echo
+            echo "## SQL Server container state"
+            if [ -n "${container_id}" ]; then
+              docker inspect \
+                --format '{{json .State}}' \
+                "${container_id}" || true
+            else
+              echo "SQL Server container was not found."
+            fi
+
+            echo
+            echo "## SQL Server container logs"
+            docker compose \
+              --env-file .env.sqlserver \
+              -f docker-compose.sqlserver.yml \
+              logs --timestamps --no-color db || true
+          } 2>&1 | tee "${diagnostics_path}"
+
+      - name: Upload SQL integration results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: sql-integration-results
+          path: test-results/sql-integration/
+          retention-days: 7
+
+      - name: Stop local database service
+        if: always()
+        run: npm run db:down
+
   test-prodlike-pruned:
     name: Canonical Playwright Gate (Prod-like, Pruned Dependencies)
     runs-on: ubuntu-latest

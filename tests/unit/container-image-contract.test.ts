@@ -234,7 +234,7 @@ describe('container image contract', () => {
   it('shares Codex project defaults across development environments', () => {
     const codexConfig = readWorkspaceFile('.codex/config.toml')
 
-    expect(codexConfig).toContain('model = "gpt-5.6"')
+    expect(codexConfig).toContain('model = "gpt-5.6-sol"')
     expect(codexConfig).toContain('[mcp_servers.playwright]')
     expect(codexConfig).toContain('[mcp_servers.github]')
     expect(codexConfig).toContain('[tui]')

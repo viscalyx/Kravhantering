@@ -9,7 +9,7 @@ description: >-
 
 # Run And Fix Integration Tests/
 
-Talk like /caveman for dialogs.
+Talk like /caveman for dialogs with user.
 
 ## Scope
 
@@ -97,8 +97,8 @@ Between chunks:
 - Treat env-only failures as setup issues before changing spec code.
 - Do not edit production code, including application, component, hook, runtime
   library, translation, config, migration, or seed files.
-- If a production change is required, write a detailed report in the projects docs
-  folder.
+- If a production change is required, write "PRODUCTION CHANGE NEEDED: {link to report }
+  - write a detailed report in the systems temporary folder what needs to be changed and why.
   - Group the report by failing spec file.
   - For each spec group, include the command, failure evidence, suspected
     production files or symbols, required behavior change, and blocked tests.

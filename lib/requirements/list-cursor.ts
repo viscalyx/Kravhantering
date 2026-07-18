@@ -2,23 +2,30 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { invalidCursorError } from '@/lib/requirements/errors'
 
-const CURSOR_VERSION = 1
-const MAX_CURSOR_LENGTH = 512
+const CURSOR_VERSION = 4
+export const REQUIREMENT_LIST_CURSOR_MAX_LENGTH = 8192
+
+const boundarySchema = z
+  .object({
+    nullRank: z.union([z.literal(0), z.literal(1)]),
+    requirementId: z.number().int().positive(),
+    sortValue: z.union([z.string(), z.number().finite(), z.null()]),
+  })
+  .strict()
 
 const cursorPayloadSchema = z
   .object({
-    anchorRequirementId: z
-      .number()
-      .int()
-      .refine(value => value !== 0),
-    queryHash: z.string().regex(/^[a-f0-9]{64}$/u),
+    boundary: boundarySchema,
+    queryFingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
     version: z.literal(CURSOR_VERSION),
   })
   .strict()
 
+export type RequirementListPageBoundary = z.infer<typeof boundarySchema>
+
 export interface RequirementListCursorPayload {
-  anchorRequirementId: number
-  queryHash: string
+  boundary: RequirementListPageBoundary
+  queryFingerprint: string
   version: typeof CURSOR_VERSION
 }
 
@@ -31,55 +38,50 @@ function stableValue(value: unknown): unknown {
     return value.map(stableValue).sort((left, right) => {
       const leftValue = JSON.stringify(left)
       const rightValue = JSON.stringify(right)
-      if (leftValue < rightValue) return -1
-      if (leftValue > rightValue) return 1
-      return 0
+      return leftValue.localeCompare(rightValue)
     })
   }
   if (value && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>)
         .filter(([, entry]) => entry !== undefined)
-        .sort(([left], [right]) => {
-          if (left < right) return -1
-          if (left > right) return 1
-          return 0
-        })
+        .sort(([left], [right]) => left.localeCompare(right))
         .map(([key, entry]) => [key, stableValue(entry)]),
     )
   }
   return value
 }
 
-export function hashRequirementListQuery(value: unknown): string {
+export function fingerprintRequirementListQuery(value: unknown): string {
   return createHash('sha256')
     .update(JSON.stringify(stableValue(value)))
     .digest('hex')
 }
 
 export function encodeRequirementListCursor(
-  anchorRequirementId: number,
-  queryHash: string,
+  boundary: RequirementListPageBoundary,
+  queryFingerprint: string,
 ): string {
   const payload = cursorPayloadSchema.parse({
-    anchorRequirementId,
-    queryHash,
+    boundary,
+    queryFingerprint,
     version: CURSOR_VERSION,
-  })
-  return Buffer.from(
-    JSON.stringify(payload satisfies RequirementListCursorPayload),
-  ).toString('base64url')
+  }) satisfies RequirementListCursorPayload
+  const cursor = Buffer.from(JSON.stringify(payload)).toString('base64url')
+  if (cursor.length > REQUIREMENT_LIST_CURSOR_MAX_LENGTH) invalidCursor()
+  return cursor
 }
 
 export function decodeRequirementListCursor(
   cursor: string,
 ): RequirementListCursorPayload {
-  if (!cursor || cursor.length > MAX_CURSOR_LENGTH) invalidCursor()
+  if (!cursor || cursor.length > REQUIREMENT_LIST_CURSOR_MAX_LENGTH) {
+    return invalidCursor()
+  }
 
   try {
     const decoded = Buffer.from(cursor, 'base64url').toString('utf8')
-    const canonical = Buffer.from(decoded).toString('base64url')
-    if (canonical !== cursor) invalidCursor()
+    if (Buffer.from(decoded).toString('base64url') !== cursor) invalidCursor()
     return cursorPayloadSchema.parse(JSON.parse(decoded))
   } catch {
     return invalidCursor()
@@ -88,7 +90,7 @@ export function decodeRequirementListCursor(
 
 export function assertRequirementListCursorMatches(
   payload: RequirementListCursorPayload,
-  queryHash: string,
+  queryFingerprint: string,
 ): void {
-  if (payload.queryHash !== queryHash) invalidCursor()
+  if (payload.queryFingerprint !== queryFingerprint) invalidCursor()
 }

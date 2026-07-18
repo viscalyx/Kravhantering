@@ -15,7 +15,10 @@ import {
 } from '@/lib/reports/data/server'
 import { getReportLabels } from '@/lib/reports/report-labels'
 import { buildListReport } from '@/lib/reports/templates/list-template'
-import { queryRequirementList } from '@/lib/requirements/list-query'
+import {
+  type RequirementListPageItem,
+  traverseCompleteRequirementList,
+} from '@/lib/requirements/list-query'
 import {
   DEFAULT_REQUIREMENT_SORT,
   type FilterValues,
@@ -34,15 +37,12 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-const REPORT_QUERY_PAGE_SIZE = 200
-
 const listReportQuerySchema = z
   .object({
     areaIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     categoryIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     descriptionSearch: optionalSearchStringSchema,
     ids: z.string().optional(),
-    limit: positiveIntegerStringSchema.optional(),
     locale: z.enum(['en', 'sv']).optional(),
     needsReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     normReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
@@ -66,10 +66,6 @@ const listReportQuerySchema = z
   .strict()
 
 type ListReportQuery = z.infer<typeof listReportQuerySchema>
-type ListQueryRequirement = Awaited<
-  ReturnType<typeof queryRequirementList>
->['requirements'][number]
-
 function reportLocale(locale: string): 'en' | 'sv' {
   return locale === 'sv' ? 'sv' : 'en'
 }
@@ -100,7 +96,7 @@ function sortFromQuery(query: ListReportQuery): RequirementSortState {
 }
 
 function listQueryRequirementToReportData(
-  requirement: ListQueryRequirement,
+  requirement: RequirementListPageItem,
 ): RequirementReportData {
   const version = requirement.version
 
@@ -169,42 +165,26 @@ async function collectFilteredRequirementsForListReport(
   locale: 'en' | 'sv',
 ): Promise<RequirementReportData[]> {
   const requirements: RequirementReportData[] = []
-  let cursor: string | undefined
-  const seenCursors = new Set<string>()
-
-  for (;;) {
-    const result = await queryRequirementList(
-      runtime.db,
-      {
-        filters: filtersFromQuery(query),
-        limit: REPORT_QUERY_PAGE_SIZE,
-        locale,
-        cursor,
-        sort: sortFromQuery(query),
-      },
-      { authorization: runtime.authorization, context: runtime.context },
-    )
-
-    for (const requirement of result.requirements) {
-      await authorizeRequirementReportRead(
-        runtime.authorization,
-        runtime.context,
-        String(requirement.id),
-        'detail',
-      )
-      requirements.push(listQueryRequirementToReportData(requirement))
-    }
-
-    if (!result.pagination.hasMore || result.pagination.nextCursor == null) {
-      break
-    }
-
-    if (seenCursors.has(result.pagination.nextCursor)) {
-      throw new ReportDataError('Invalid requirement list pagination', 500)
-    }
-    seenCursors.add(result.pagination.nextCursor)
-    cursor = result.pagination.nextCursor
-  }
+  await traverseCompleteRequirementList(
+    runtime.db,
+    {
+      filters: filtersFromQuery(query),
+      locale,
+      sort: sortFromQuery(query),
+    },
+    { authorization: runtime.authorization, context: runtime.context },
+    async page => {
+      for (const requirement of page) {
+        await authorizeRequirementReportRead(
+          runtime.authorization,
+          runtime.context,
+          String(requirement.id),
+          'detail',
+        )
+        requirements.push(listQueryRequirementToReportData(requirement))
+      }
+    },
+  )
 
   if (requirements.length === 0) {
     throw new ReportDataError('No requirements matched report filters', 400)

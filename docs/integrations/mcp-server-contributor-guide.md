@@ -106,12 +106,19 @@ nullable `iconName` fields. Requirement list/detail version output also carries
 status icon data and priority-level icon data as additive fields so older
 clients can keep using the existing status and priority-level names.
 
-Every `requirements_query_catalog` list/search operation returns the structured
-MCP contract `{ result: [...] }`. Requirement search uses `search` against `id`,
-`uniqueId`, `version.description`, and `version.acceptanceCriteria`. Lookup
-search uses stable lookup fields. Search rows include `match.quality` and
-`match.matchedFields` metadata. These operations do not accept `responseFormat`,
-`limit`, or `offset`, and they do not use pagination wrappers.
+The `requirements` list/search branch returns `result` plus `pagination`
+without an exact total. Its default page size is 50 and `limit` accepts 1
+through 100. It uses the shared Requirements Library page operation, and
+callers continue with `pagination.nextCursor`. A reduced continuation limit is
+valid. On `invalid_cursor`, callers restart without `cursor` while retaining
+normalized filters, locale, and sort.
+
+Requirement search uses SQL Server and the single `search` value against `id`,
+`uniqueId`, `version.description`, and `version.acceptanceCriteria`. Its rows
+include `match.matchedFields` without `match.quality`. Lookup search uses stable
+lookup fields and retains both match fields. Search rows include
+`match.quality` only for lookup catalogs. Those catalogs remain non-paginated
+and return `{ result: [...] }`. No branch accepts `responseFormat` or `offset`.
 
 This avoids a larger set of narrowly scoped read tools.
 
@@ -296,13 +303,22 @@ requirements_list_specifications.specifications[].specificationId -> specificati
 
 ### `requirements_get_specification_items`
 
-Lists requirement applications linked to a specific specification. Accepts
-numeric `specificationId`. Supports optional `descriptionSearch` for client-side
-filtering. Use the specification copy path above. Returned linked requirement
-IDs can be copied into removal inputs:
+Lists one bounded page of requirement applications linked to a specific
+specification. Accepts numeric `specificationId`, all supported list filters,
+`locale`, `sortBy`, `sortDirection`, an optional opaque `cursor`, and `limit`
+from 1 through 100 (default 50). Filtering and ordering run over the complete
+mixed library/local result in SQL Server. The response has no exact total.
+
+Continue only with `pagination.nextCursor`; a reduced `limit` is allowed on the
+next call. `invalid_cursor` means the client must restart without `cursor` and
+retain its normalized filters, locale, and sort. Use the specification copy
+path above. Stable `itemRef` values identify both item kinds and should be used
+for mixed-item actions. Copy an `items[].id` into a legacy library-only removal
+input only when the entry has `kind == "library"`:
 
 ```text
-requirements_get_specification_items.items[].id -> requirementIds
+requirements_get_specification_items.items[].itemRef -> itemRef
+requirements_get_specification_items.items[kind == "library"].id -> requirementIds
 ```
 
 ### `requirements_add_to_specification`
@@ -346,10 +362,10 @@ specification authorship before calling the transactional DAL copy operation.
 Unlinks requirements from a specification. Accepts numeric `specificationId`.
 The requirements themselves are not deleted. The operation is idempotent —
 removing an ID that is not in the specification produces no error. Use the
-specification copy path above, and copy linked requirement IDs from:
+specification copy path above, and copy only library requirement IDs from:
 
 ```text
-requirements_get_specification_items.items[].id -> requirementIds
+requirements_get_specification_items.items[kind == "library"].id -> requirementIds
 ```
 
 ### `requirements_list_improvement_suggestions`

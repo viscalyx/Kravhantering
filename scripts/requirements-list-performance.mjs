@@ -3,10 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, relative, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
-import {
-  buildRequirementListAnchorSql,
-  buildRequirementListSql,
-} from '../lib/dal/requirements-list-sql.mjs'
+import { buildRequirementListSql } from '../lib/dal/requirements-list-sql.mjs'
 import {
   STATUS_ARCHIVED,
   STATUS_DRAFT,
@@ -105,14 +102,6 @@ const PERFORMANCE_REFERENCE_REQUIREMENTS = [
 export function createRequirementListPerformanceScenarios(
   config = createPerformanceFixtureConfig(),
 ) {
-  const findAnchorNumber = predicate => {
-    for (let n = config.requirementCount; n >= 1; n -= 1) {
-      if (predicate(n)) return n
-    }
-    return 1
-  }
-  const deepAnchorNumber = findAnchorNumber(n => [3, 4, 5, 6].includes(n % 10))
-  const nullableAnchorNumber = findAnchorNumber(n => n % 10 === 5)
   return [
     {
       name: 'default-published',
@@ -121,6 +110,7 @@ export function createRequirementListPerformanceScenarios(
         sortBy: 'uniqueId',
         sortDirection: 'asc',
         statuses: [STATUS_PUBLISHED],
+        uniqueIdSearch: `${config.uniqueIdPrefix}-`,
       },
     },
     {
@@ -172,12 +162,13 @@ export function createRequirementListPerformanceScenarios(
     },
     {
       name: 'deep-pagination',
-      anchorRequirementId: config.requirementIdBase - deepAnchorNumber,
+      targetPage: 20,
       options: {
         limit: 200,
         sortBy: 'uniqueId',
         sortDirection: 'asc',
         statuses: [STATUS_PUBLISHED],
+        uniqueIdSearch: `${config.uniqueIdPrefix}-`,
       },
     },
     {
@@ -188,17 +179,19 @@ export function createRequirementListPerformanceScenarios(
         sortBy: 'category',
         sortDirection: 'asc',
         statuses: [STATUS_PUBLISHED],
+        uniqueIdSearch: `${config.uniqueIdPrefix}-`,
       },
     },
     {
       name: 'localized-text-deep',
-      anchorRequirementId: config.requirementIdBase - deepAnchorNumber,
+      targetPage: 20,
       options: {
         limit: 200,
         locale: 'sv',
         sortBy: 'category',
         sortDirection: 'asc',
         statuses: [STATUS_PUBLISHED],
+        uniqueIdSearch: `${config.uniqueIdPrefix}-`,
       },
     },
     {
@@ -208,16 +201,18 @@ export function createRequirementListPerformanceScenarios(
         sortBy: 'priorityLevel',
         sortDirection: 'asc',
         statuses: [STATUS_PUBLISHED],
+        uniqueIdSearch: `${config.uniqueIdPrefix}-`,
       },
     },
     {
       name: 'nullable-number-deep',
-      anchorRequirementId: config.requirementIdBase - nullableAnchorNumber,
+      targetPage: 20,
       options: {
         limit: 200,
         sortBy: 'priorityLevel',
         sortDirection: 'asc',
         statuses: [STATUS_PUBLISHED],
+        uniqueIdSearch: `${config.uniqueIdPrefix}-`,
       },
     },
     {
@@ -261,7 +256,13 @@ export function buildPerformanceFixtureStatusSql() {
         INNER JOIN requirements r ON r.id = rv.requirement_id
         WHERE r.unique_id LIKE @0
           AND rv.priority_level_id IS NULL
-      ) AS nullablePriorityCount
+      ) AS nullablePriorityCount,
+      SUM(
+        CASE
+          WHEN unique_id LIKE REPLACE(@0, N'-%', N'-000001-%') THEN 1
+          ELSE 0
+        END
+      ) AS orderedIdFixtureCount
     FROM requirements
     WHERE unique_id LIKE @0
   `
@@ -388,7 +389,13 @@ SELECT
   ((n - 1) % @areaCount) + 1,
   @areaIdBase - (((n - 1) % @areaCount) + 1),
   2 + (n % 3),
-  CONCAT(@uniqueIdPrefix, N'-', ((n - 1) % @areaCount) + 1, N'-', RIGHT(CONCAT(N'000000', CONVERT(varchar(12), n)), 6)),
+  CONCAT(
+    @uniqueIdPrefix,
+    N'-',
+    RIGHT(CONCAT(N'000000', CONVERT(varchar(12), n)), 6),
+    N'-',
+    ((n - 1) % @areaCount) + 1
+  ),
   CASE WHEN n % 10 = 0 THEN 1 ELSE 0 END
 FROM numbers;
 
@@ -880,26 +887,43 @@ function combinePlanResults(...plans) {
   }
 }
 
+export function createContinuationBoundaryPages(targetPage) {
+  return Array.from(
+    { length: Math.max(0, targetPage - 1) },
+    (_, index) => index + 1,
+  )
+}
+
 async function runScenario(pool, scenario, options) {
-  const scenarioOptions = { ...scenario.options }
-  if (scenario.anchorRequirementId != null) {
-    const anchorQuery = buildRequirementListAnchorSql(
-      scenarioOptions,
-      scenario.anchorRequirementId,
-    )
-    const anchor = await queryScalarRow(
-      pool,
-      anchorQuery.sqlText,
-      anchorQuery.parameters,
-    )
-    if (!anchor.uniqueId) {
-      throw new Error(`Missing cursor anchor for ${scenario.name}.`)
+  const pageLimit = scenario.options.limit ?? 200
+  const scenarioOptions = { ...scenario.options, limit: pageLimit + 1 }
+  if (scenario.targetPage != null) {
+    let after
+    for (const pageNumber of createContinuationBoundaryPages(
+      scenario.targetPage,
+    )) {
+      const continuationQuery = buildRequirementListSql({
+        ...scenarioOptions,
+        after,
+      })
+      const result = await createRequest(
+        pool,
+        continuationQuery.parameters,
+      ).query(continuationQuery.sqlText)
+      const rows = result.recordset ?? []
+      if (rows.length <= pageLimit) {
+        throw new Error(
+          `Continuation ended before page ${pageNumber + 1} for ${scenario.name}.`,
+        )
+      }
+      const boundary = rows[pageLimit - 1]
+      after = {
+        nullRank: Number(boundary.cursorNullRank),
+        requirementId: Number(boundary.id),
+        sortValue: boundary.cursorSortValue ?? null,
+      }
     }
-    scenarioOptions.after = {
-      nullRank: Number(anchor.nullRank),
-      sortValue: anchor.sortValue ?? null,
-      uniqueId: String(anchor.uniqueId),
-    }
+    scenarioOptions.after = after
   }
   const listQuery = buildRequirementListSql(scenarioOptions)
 
@@ -1163,12 +1187,14 @@ async function ensurePerformanceFixture(pool, config) {
   const existingRequirementCount = Number(statusBefore.requirementCount ?? 0)
   const existingVersionCount = Number(statusBefore.versionCount ?? 0)
   const nullablePriorityCount = Number(statusBefore.nullablePriorityCount ?? 0)
+  const orderedIdFixtureCount = Number(statusBefore.orderedIdFixtureCount ?? 0)
   const expectedMinimumVersionCount = config.requirementCount * 2
 
   if (
     existingRequirementCount === config.requirementCount &&
     existingVersionCount >= expectedMinimumVersionCount &&
-    nullablePriorityCount > 0
+    nullablePriorityCount > 0 &&
+    orderedIdFixtureCount > 0
   ) {
     return {
       inserted: false,

@@ -7,7 +7,6 @@ vi.mock('@/lib/db', () => ({
 const mockQueryCatalog = vi.fn()
 const mockQueryRequirementList = vi.fn()
 const mockManageRequirement = vi.fn()
-const mockExportToCsv = vi.hoisted(() => vi.fn(() => 'csv-data'))
 const mockAuthorization = { assertAuthorized: vi.fn() }
 const mockRequestContext = {
   actor: {
@@ -49,16 +48,6 @@ vi.mock('@/lib/requirements/list-view', () => ({
   isRequirementSortDirection: (v: string) => ['asc', 'desc'].includes(v),
 }))
 
-vi.mock('@/lib/export-csv', () => ({
-  exportToCsv: mockExportToCsv,
-}))
-
-async function responseTextWithBom(response: Response): Promise<string> {
-  const bytes = new Uint8Array(await response.arrayBuffer())
-  expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf])
-  return new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)
-}
-
 describe('requirements route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -93,45 +82,15 @@ describe('requirements route', () => {
       )
     })
 
-    it('returns CSV when format=csv', async () => {
-      mockQueryRequirementList.mockResolvedValue({
-        pagination: { hasMore: false, nextCursor: null },
-        requirements: [{ id: 1, uniqueId: 'TST-001', version: {} }],
-      })
-
+    it('rejects the removed CSV format switch', async () => {
       const { GET } = await import('@/app/api/requirements/route')
       const req = new Request(
         'http://localhost/api/requirements?format=csv&locale=sv',
       )
       const res = await GET(req as never)
-      const body = await responseTextWithBom(res)
-      expect(res.headers.get('Content-Type')).toContain('text/csv')
-      expect(res.headers.get('Content-Disposition')).toContain(
-        'kravbibliotek.csv',
-      )
-      expect(body).toBe('\uFEFFcsv-data')
-      expect(mockExportToCsv).toHaveBeenCalledWith(
-        [
-          'Krav-ID',
-          'Kravtext',
-          'Kravområde',
-          'Kategori',
-          'Typ',
-          'Kvalitetsegenskap',
-          'Prioritet',
-          'Kravversionsstatus',
-          'Verifierbar',
-          'Version',
-          'Normreferenser',
-          'Normreferens-URI',
-        ],
-        [
-          expect.objectContaining({
-            'Krav-ID': 'TST-001',
-            Kravtext: '',
-          }),
-        ],
-      )
+
+      expect(res.status).toBe(400)
+      expect(mockQueryRequirementList).not.toHaveBeenCalled()
     })
 
     it('passes filter params to service', async () => {

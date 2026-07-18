@@ -1,10 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { countDeviationsPerItemRef } from '@/lib/dal/deviations'
 import {
   deleteSpecificationItemsByRefs,
   getSpecificationById,
-  listSpecificationItems,
   updateSpecificationItemFieldsByItemRefs,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -20,13 +18,15 @@ import {
   nullableBoundedDbStringSchema,
   nullableBusinessTextSchema,
   parseRouteParams,
+  parseSearchParams,
   positiveIntegerSchema,
   routeSegmentSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
-import { authorize } from '@/lib/requirements/service-shared'
+import { specificationItemPageQuerySchema } from '@/lib/requirements/specification-item-query'
+import { SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT } from '@/lib/specifications/selection-action-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,7 +47,7 @@ const requirementIdsSchema = z
 const itemRefsSchema = z
   .array(routeSegmentSchema)
   .min(1)
-  .max(ARRAY_INPUT_MAX_ITEMS)
+  .max(SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT)
   .refine(values => new Set(values).size === values.length, {
     message: 'Expected unique item references',
   })
@@ -97,7 +97,13 @@ const deleteItemsSchema = z.union([
     .strict(),
   z
     .object({
-      requirementIds: requirementIdsSchema,
+      requirementIds: z
+        .array(positiveIntegerSchema)
+        .min(1)
+        .max(SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT)
+        .refine(values => new Set(values).size === values.length, {
+          message: 'Expected unique positive integers',
+        }),
     })
     .strict(),
 ])
@@ -110,39 +116,30 @@ export async function GET(
   if (!parsedParams.ok) {
     return parsedParams.response
   }
+  const parsedQuery = parseSearchParams(
+    new URL(request.url).searchParams,
+    specificationItemPageQuerySchema,
+  )
+  if (!parsedQuery.ok) return parsedQuery.response
   try {
     const { id } = parsedParams.data
     const db = await getRequestSqlServerDataSource()
     const specification = await getSpecificationById(db, id)
     if (!specification)
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    const { authorization, context } = await createRequirementsRestRuntime(
-      request,
-      { db },
-    )
-    await authorize(
-      authorization,
-      {
-        kind: 'get_specification_items',
-        specificationId: specification.id,
-      },
-      context,
-    )
-    const items = await listSpecificationItems(db, specification.id)
-    const deviationCounts = await countDeviationsPerItemRef(
+    const { context, service } = await createRequirementsRestRuntime(request, {
       db,
-      specification.id,
-    )
-    const enrichedItems = items.map(item => {
-      const dc = item.itemRef ? deviationCounts.get(item.itemRef) : undefined
-      return {
-        ...item,
-        deviationCount: dc?.total ?? 0,
-        hasApprovedDeviation: (dc?.approved ?? 0) > 0,
-        hasPendingDeviation: (dc?.pending ?? 0) > 0,
-      }
     })
-    return NextResponse.json({ items: enrichedItems })
+    const payload = await service.getSpecificationItems(context, {
+      ...parsedQuery.data,
+      capacitySurface: 'rest',
+      responseFormat: 'json',
+      specificationId: specification.id,
+    })
+    return NextResponse.json({
+      items: payload.items,
+      pagination: payload.pagination,
+    })
   } catch (error) {
     const { body, status } = toHttpErrorPayload(error)
     return NextResponse.json(body, { status })

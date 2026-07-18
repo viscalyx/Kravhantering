@@ -257,8 +257,11 @@ export class SqlAssignmentLookup implements AssignmentLookup {
   ): Promise<DeviationTarget> {
     const db = await this.getDb()
     if (action.deviationId != null) {
-      const libraryRows = (await db.query(
-        `
+      const libraryRows =
+        action.deviationKind === 'specification-local'
+          ? []
+          : ((await db.query(
+              `
           SELECT TOP (1)
             item.requirements_specification_id AS specificationId,
             deviation.created_by_hsa_id AS createdByHsaId
@@ -267,10 +270,13 @@ export class SqlAssignmentLookup implements AssignmentLookup {
             ON item.id = deviation.specification_item_id
           WHERE deviation.id = @0
         `,
-        [action.deviationId],
-      )) as Array<Record<string, unknown>>
-      const localRows = (await db.query(
-        `
+              [action.deviationId],
+            )) as Array<Record<string, unknown>>)
+      const localRows =
+        action.deviationKind === 'library'
+          ? []
+          : ((await db.query(
+              `
           SELECT TOP (1)
             local_requirement.specification_id AS specificationId,
             local_deviation.created_by_hsa_id AS createdByHsaId
@@ -280,8 +286,8 @@ export class SqlAssignmentLookup implements AssignmentLookup {
               local_deviation.specification_local_requirement_id
           WHERE local_deviation.id = @0
         `,
-        [action.deviationId],
-      )) as Array<Record<string, unknown>>
+              [action.deviationId],
+            )) as Array<Record<string, unknown>>)
 
       const librarySpecificationId = firstNumber(libraryRows, 'specificationId')
       const localSpecificationId = firstNumber(localRows, 'specificationId')

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
-import { conflictError, forbiddenError } from '@/lib/requirements/errors'
+import {
+  conflictError,
+  forbiddenError,
+  invalidCursorError,
+} from '@/lib/requirements/errors'
 
 const mocks = vi.hoisted(() => ({
   approveArchiving: vi.fn(),
@@ -34,7 +38,7 @@ const mocks = vi.hoisted(() => ({
   listSpecifications: vi.fn(),
   listSpecificationsForActor: vi.fn(),
   listSpecificationCoAuthorHsaIdsBySpecification: vi.fn(),
-  listSpecificationItems: vi.fn(),
+  querySpecificationItemPage: vi.fn(),
   getPublishedVersionIdForRequirement: vi.fn(),
   getOrCreateSpecificationNeedsReference: vi.fn(),
   linkRequirementsToSpecificationAtomically: vi.fn(),
@@ -110,7 +114,6 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   linkRequirementsToSpecificationAtomically:
     mocks.linkRequirementsToSpecificationAtomically,
   linkRequirementsToSpecification: mocks.linkRequirementsToSpecification,
-  listSpecificationItems: mocks.listSpecificationItems,
   listSpecifications: mocks.listSpecifications,
   listSpecificationsForActor: mocks.listSpecificationsForActor,
   listSpecificationCoAuthorHsaIdsBySpecification:
@@ -121,6 +124,10 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
 
 vi.mock('@/lib/dal/requirement-packages', () => ({
   listRequirementPackages: mocks.listRequirementPackages,
+}))
+
+vi.mock('@/lib/requirements/specification-item-page', () => ({
+  querySpecificationItemPage: mocks.querySpecificationItemPage,
 }))
 
 vi.mock('@/lib/dal/requirement-statuses', () => ({
@@ -177,6 +184,11 @@ function makeRequirementRecord() {
         createdAt: '2026-03-08T00:00:00.000Z',
         createdBy: 'alice',
         description: 'Support secure integration',
+        cursorBoundary: {
+          nullRank: 0,
+          requirementId: 1,
+          sortValue: 'INT0001',
+        },
         editedAt: '2026-03-08T00:00:00.000Z',
         id: 10,
         publishedAt: null,
@@ -366,7 +378,10 @@ describe('createRequirementsService', () => {
         prefix: 'INT',
       },
     ])
-    mocks.listSpecificationItems.mockResolvedValue([])
+    mocks.querySpecificationItemPage.mockResolvedValue({
+      items: [],
+      pagination: { count: 0, hasMore: false, limit: 50, nextCursor: null },
+    })
     mocks.listSpecifications.mockResolvedValue([])
     mocks.listSuggestionsForRequirement.mockResolvedValue([])
     mocks.recordDecision.mockResolvedValue(undefined)
@@ -451,6 +466,21 @@ describe('createRequirementsService', () => {
       )
   }
 
+  function emittedCapacityEvents(): Array<Record<string, unknown>> {
+    return infoSpy.mock.calls
+      .map((call: unknown[]) => {
+        try {
+          return JSON.parse(String(call[0])) as Record<string, unknown>
+        } catch {
+          return {}
+        }
+      })
+      .filter(
+        (event: Record<string, unknown>) =>
+          event.channel === 'capacity-observability',
+      )
+  }
+
   it('returns structured requirements library list results', async () => {
     mocks.listRequirements.mockResolvedValue([
       {
@@ -459,6 +489,11 @@ describe('createRequirementsService', () => {
         categoryNameEn: 'Business requirement',
         categoryNameSv: 'Verksamhetskrav',
         createdAt: '2026-03-08T00:00:00.000Z',
+        cursorBoundary: {
+          nullRank: 0,
+          requirementId: 1,
+          sortValue: 'INT0001',
+        },
         description: 'Support secure integration',
         id: 1,
         isArchived: false,
@@ -585,6 +620,7 @@ describe('createRequirementsService', () => {
         id: 10,
         isArchived: false,
         maxVersion: 1,
+        matchedFields: ['version.acceptanceCriteria'],
         pendingVersionStatusColor: null,
         pendingVersionStatusId: null,
         requirementAreaId: 1,
@@ -619,11 +655,14 @@ describe('createRequirementsService', () => {
       expect.objectContaining({
         match: {
           matchedFields: ['version.acceptanceCriteria'],
-          quality: 'contains',
         },
         uniqueId: 'INT0001',
       }),
     ])
+    expect(mocks.listRequirements).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ limit: 51, search: '2s' }),
+    )
   })
 
   it('lists status catalog rows as structured results', async () => {
@@ -1364,55 +1403,175 @@ describe('createRequirementsService', () => {
       message: 'Missing specification reference',
       status: 400,
     })
-    expect(mocks.listSpecificationItems).not.toHaveBeenCalled()
+    expect(mocks.querySpecificationItemPage).not.toHaveBeenCalled()
     expect(mocks.listDeviationsForSpecification).not.toHaveBeenCalled()
   })
 
-  it('localizes requirement application labels using the requested locale', async () => {
-    mocks.listSpecificationItems.mockResolvedValue([
-      {
-        area: { name: 'Identitet' },
-        id: 101,
-        needsReference: 'IAM-42',
-        uniqueId: 'INT0001',
-        version: {
-          categoryNameEn: 'Category',
-          categoryNameSv: 'Kategori',
-          description: 'Support secure integration',
-          qualityCharacteristicNameEn: null,
-          qualityCharacteristicNameSv: null,
-          verifiable: true,
-          status: 3,
-          statusColor: '#22c55e',
-          statusNameEn: 'Published',
-          statusNameSv: 'Publicerad',
-          typeNameEn: 'Functional',
-          typeNameSv: 'Funktionellt',
-          versionNumber: 1,
-        },
+  it('returns a bounded requirement application page from the shared query', async () => {
+    const item = {
+      area: { name: 'Identitet' },
+      id: 101,
+      isArchived: false,
+      itemRef: 'lib:31',
+      kind: 'library',
+      needsReference: 'IAM-42',
+      uniqueId: 'INT0001',
+      version: {
+        categoryNameEn: 'Category',
+        categoryNameSv: 'Kategori',
+        description: 'Support secure integration',
+        qualityCharacteristicNameEn: null,
+        qualityCharacteristicNameSv: null,
+        verifiable: true,
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        typeNameEn: 'Functional',
+        typeNameSv: 'Funktionellt',
+        versionNumber: 1,
       },
-    ])
+    }
+    mocks.querySpecificationItemPage.mockResolvedValue({
+      items: [item],
+      pagination: {
+        count: 1,
+        hasMore: true,
+        limit: 25,
+        nextCursor: 'next-page',
+      },
+    })
     const service = createTestRequirementsService()
 
     const result = await service.getSpecificationItems(makeContext(), {
+      categoryIds: [4],
+      cursor: 'current-page',
+      limit: 25,
       locale: 'sv',
+      sortBy: 'category',
+      sortDirection: 'desc',
       specificationId: 7,
       responseFormat: 'json',
     })
 
     expect(result.specificationId).toBe(7)
-    expect(result.items).toEqual([
+    expect(result.items).toEqual([item])
+    expect(result.pagination).toEqual({
+      count: 1,
+      hasMore: true,
+      limit: 25,
+      nextCursor: 'next-page',
+    })
+    expect(mocks.querySpecificationItemPage).toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({
-        area: 'Identitet',
-        category: 'Kategori',
-        needsReference: 'IAM-42',
-        status: 'Publicerad',
-        type: 'Funktionellt',
+        cursor: 'current-page',
+        filters: expect.objectContaining({ categoryIds: [4] }),
+        limit: 25,
+        locale: 'sv',
+        sort: { by: 'category', direction: 'desc' },
+        specificationId: 7,
       }),
-    ])
+    )
     expect(JSON.parse(result.message)).toMatchObject({
       title: 'Kravtillämpningar',
     })
+  })
+
+  it('emits privacy-safe page capacity evidence for preload, REST, and MCP surfaces', async () => {
+    mocks.querySpecificationItemPage.mockResolvedValue({
+      items: [{ itemRef: 'lib:31', uniqueId: 'SECRET-REQ-31' }],
+      pagination: {
+        count: 1,
+        hasMore: true,
+        limit: 25,
+        nextCursor: 'opaque-secret-cursor',
+      },
+    })
+    const service = createTestRequirementsService()
+
+    for (const capacitySurface of ['editor-preload', 'rest', 'mcp'] as const) {
+      await service.getSpecificationItems(makeContext(), {
+        capacitySurface,
+        cursor: 'incoming-secret-cursor',
+        descriptionSearch: 'private requirement text',
+        limit: 25,
+        specificationId: 593,
+      })
+    }
+
+    const events = emittedCapacityEvents().filter(
+      entry => entry.operation === 'requirements.get_specification_items',
+    )
+    expect(events.map(event => event.surface)).toEqual([
+      'editor-preload',
+      'rest',
+      'mcp',
+    ])
+    for (const [index, event] of events.entries()) {
+      expect(event).toMatchObject({
+        continuation_available: true,
+        outcome: 'success',
+        page_limit: 25,
+        returned_count: 1,
+        surface: ['editor-preload', 'rest', 'mcp'][index],
+      })
+      const serialized = JSON.stringify(event)
+      expect(serialized).not.toMatch(
+        /incoming-secret-cursor|opaque-secret-cursor|private requirement text|SECRET-REQ-31/,
+      )
+      expect(event).not.toHaveProperty('specification_id')
+    }
+    const specificationPageLogs = logger.info.mock.calls.filter(
+      ([operation]) => operation === 'requirements.get_specification_items',
+    )
+    expect(specificationPageLogs).toHaveLength(3)
+    for (const [, metadata] of specificationPageLogs) {
+      expect(metadata).toMatchObject({ description_search_supplied: true })
+      expect(JSON.stringify(metadata)).not.toContain('private requirement text')
+    }
+  })
+
+  it('emits only the bounded cursor failure category', async () => {
+    mocks.querySpecificationItemPage.mockRejectedValueOnce(invalidCursorError())
+    const service = createTestRequirementsService()
+
+    await expect(
+      service.getSpecificationItems(makeContext(), {
+        capacitySurface: 'rest',
+        cursor: 'private-cursor-value',
+        specificationId: 593,
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_cursor' })
+
+    const [event] = emittedCapacityEvents().filter(
+      entry => entry.event === 'capacity.operation.failed',
+    )
+    expect(event).toMatchObject({
+      cursor_failure_category: 'invalid_cursor',
+      outcome: 'failure',
+      surface: 'rest',
+    })
+    expect(JSON.stringify(event)).not.toMatch(/private-cursor-value/)
+    expect(event).not.toHaveProperty('specification_id')
+  })
+
+  it('does not fail a page request when capacity telemetry fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    infoSpy.mockImplementationOnce(() => {
+      throw new Error('telemetry sink unavailable')
+    })
+    const service = createTestRequirementsService()
+
+    await expect(
+      service.getSpecificationItems(makeContext(), {
+        capacitySurface: 'mcp',
+        specificationId: 7,
+      }),
+    ).resolves.toMatchObject({
+      pagination: { count: 0, hasMore: false, limit: 50 },
+    })
+    expect(errorSpy).toHaveBeenCalled()
   })
 
   it('uses actual inserted specification link counts in addToSpecification', async () => {

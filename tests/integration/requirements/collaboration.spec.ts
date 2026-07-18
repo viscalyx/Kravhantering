@@ -283,6 +283,9 @@ test.describe('Requirement collaboration', () => {
         .filter({ hasText: 'Playwright föreslår tydligare verifiering.' })
         .getByText('Utkast'),
     ).toHaveCount(1)
+    await expect(
+      detailPane.getByRole('button', { name: 'Åtgärdad ↗' }),
+    ).toHaveCount(0)
     expect(suggestionMock.requests).toContainEqual(
       expect.objectContaining({ type: 'create' }),
     )
@@ -334,6 +337,12 @@ test.describe('Requirement collaboration', () => {
         .filter({ hasText: 'Playwright förslag att åtgärda' }),
     ).toContainText('Åtgärdad')
     await expect(detailPane.getByText('Åtgärdas i kravtexten.')).toHaveCount(1)
+    await expect(
+      detailPane.getByRole('button', { name: 'Åtgärdad ↗' }),
+    ).toHaveCount(0)
+    await expect(
+      detailPane.getByRole('button', { name: 'Granskning ↗' }),
+    ).toHaveCount(0)
     expect(suggestionMock.requests).toContainEqual(
       expect.objectContaining({
         body: expect.objectContaining({ resolution: 1 }),
@@ -367,6 +376,12 @@ test.describe('Requirement collaboration', () => {
         .filter({ hasText: 'Playwright förslag att avvisa' }),
     ).toContainText('Avvisad')
     await expect(detailPane.getByText('Förslaget avvisas.')).toHaveCount(1)
+    await expect(
+      detailPane.getByRole('button', { name: 'Åtgärdad ↗' }),
+    ).toHaveCount(0)
+    await expect(
+      detailPane.getByRole('button', { name: 'Granskning ↗' }),
+    ).toHaveCount(0)
     expect(suggestionMock.requests).toContainEqual(
       expect.objectContaining({
         body: expect.objectContaining({ resolution: 2 }),

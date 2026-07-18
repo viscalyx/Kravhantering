@@ -227,6 +227,7 @@ describe('deviation mutation routes', () => {
     expect(routeState.assertAuthorized).toHaveBeenCalledWith(
       {
         deviationId: 7,
+        deviationKind: 'library',
         kind: 'manage_deviation',
         operation: 'record_decision',
       },

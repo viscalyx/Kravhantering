@@ -13,17 +13,23 @@ export type CapacityEventName =
 export type CapacityEventLevel = 'error' | 'info' | 'warn'
 export type CapacityEventOutcome = 'failure' | 'success' | 'throttled'
 export type CapacityEventSource = 'mcp' | 'rest' | 'server'
+export type CapacityPageSurface = 'editor-preload' | 'mcp' | 'rest'
+export type CapacityCursorFailureCategory = 'invalid_cursor'
 
 export interface CapacityMetrics {
+  continuation_available?: boolean | null
   cost?: number | null
   image_bytes?: number | null
   image_count?: number | null
   item_count?: number | null
+  page_limit?: number | null
+  returned_count?: number | null
   throttled?: boolean | null
   token_count?: number | null
 }
 
 export interface CapacityEventInput extends Partial<RequestCorrelationIds> {
+  cursorFailureCategory?: CapacityCursorFailureCategory
   durationMs?: number
   event: CapacityEventName
   level?: CapacityEventLevel
@@ -34,6 +40,7 @@ export interface CapacityEventInput extends Partial<RequestCorrelationIds> {
   retryAfterSeconds?: number
   source: CapacityEventSource
   statusCode?: number
+  surface?: CapacityPageSurface
   toolName?: string
 }
 
@@ -124,7 +131,18 @@ export function recordCapacityEvent(input: CapacityEventInput): void {
       payload.retry_after_seconds = retryAfterSeconds
     }
     if (input.toolName) payload.tool_name = sanitizeOperation(input.toolName)
+    if (input.surface) payload.surface = input.surface
+    if (input.cursorFailureCategory) {
+      payload.cursor_failure_category = input.cursorFailureCategory
+    }
     if (itemCount !== null) payload.item_count = itemCount
+    const returnedCount = safeNumber(metrics.returned_count)
+    const pageLimit = safeNumber(metrics.page_limit)
+    if (returnedCount !== null) payload.returned_count = returnedCount
+    if (pageLimit !== null) payload.page_limit = pageLimit
+    if (typeof metrics.continuation_available === 'boolean') {
+      payload.continuation_available = metrics.continuation_available
+    }
     if (imageCount !== null) payload.image_count = imageCount
     if (imageBytes !== null) payload.image_bytes = imageBytes
     if (tokenCount !== null) payload.token_count = tokenCount

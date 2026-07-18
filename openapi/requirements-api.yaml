@@ -271,6 +271,107 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  /api/requirements/export:
+    get:
+      tags: [requirements]
+      operationId: exportRequirements
+      summary: Export the complete filtered requirements library as CSV.
+      parameters:
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/SortBy'
+        - $ref: '#/components/parameters/SortDirection'
+        - name: uniqueIdSearch
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: descriptionSearch
+          in: query
+          schema: { type: string, maxLength: 200 }
+        - name: areaIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: categoryIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: typeIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: qualityCharacteristicIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: statuses
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: normReferenceIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: requirementPackageIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: priorityLevelIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: verifiable
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items:
+              type: string
+              enum: ['true', 'false']
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Complete requirements library CSV export.
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
   /api/requirements/{id}:
     parameters:
       - $ref: '#/components/parameters/RequirementId'
@@ -311,6 +412,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+
     delete:
       tags: [requirements]
       operationId: archiveRequirement
@@ -330,6 +432,124 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  /api/requirements-specifications/{id}/items:
+    parameters:
+      - $ref: '#/components/parameters/SpecificationId'
+    get:
+      tags: [requirements]
+      operationId: listRequirementsSpecificationItems
+      summary: List one bounded page of requirement applications.
+      parameters:
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/SpecificationItemLimit'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/SortBy'
+        - $ref: '#/components/parameters/SortDirection'
+        - name: uniqueIdSearch
+          in: query
+          schema: { type: string, maxLength: 250 }
+        - name: descriptionSearch
+          in: query
+          schema: { type: string, maxLength: 250 }
+        - name: areaIds
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: categoryIds
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: typeIds
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: qualityCharacteristicIds
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: priorityLevelIds
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: statuses
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: verifiable
+          in: query
+          schema:
+            type: array
+            maxItems: 2
+            items: { type: string, enum: ['true', 'false'] }
+          style: form
+          explode: true
+        - name: needsReferenceIds
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: normReferenceIds
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: requirementPackageIds
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+        - name: specificationItemStatusIds
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Bounded requirement-application page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpecificationItemPageResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /api/requirements/{id}/versions/{version}:
     parameters:
       - $ref: '#/components/parameters/RequirementId'
@@ -643,6 +863,13 @@ components:
       schema:
         type: integer
         minimum: 1
+    SpecificationId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
     VersionNumber:
       name: version
       in: path
@@ -663,6 +890,14 @@ components:
         type: integer
         minimum: 1
         maximum: 200
+    SpecificationItemLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
     Cursor:
       name: cursor
       in: query
@@ -1055,6 +1290,46 @@ components:
           minItems: 0
           maxItems: 200
           items: { $ref: '#/components/schemas/RequirementSummary' }
+    SpecificationItemPageResponse:
+      type: object
+      required: [items, pagination]
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          minItems: 0
+          maxItems: 100
+          items: { $ref: '#/components/schemas/SpecificationItemSummary' }
+        pagination:
+          type: object
+          required: [count, hasMore, limit, nextCursor]
+          additionalProperties: false
+          properties:
+            count: { type: integer, minimum: 0, maximum: 100 }
+            hasMore: { type: boolean }
+            limit: { type: integer, minimum: 1, maximum: 100 }
+            nextCursor:
+              type: string
+              nullable: true
+              maxLength: 512
+    SpecificationItemSummary:
+      type: object
+      required: [id, isArchived, itemRef, kind, uniqueId, version]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        isArchived: { type: boolean }
+        itemRef:
+          type: string
+          pattern: '^(lib|local):[1-9][0-9]*$'
+        kind:
+          type: string
+          enum: [library, specificationLocal]
+        uniqueId: { type: string }
+        version:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/RequirementVersion'
     RequirementSummary:
       type: object
       required: [id, uniqueId]

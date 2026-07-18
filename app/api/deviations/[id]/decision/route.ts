@@ -33,6 +33,7 @@ export const POST = secureMutationRoute({
   errorMessage: 'Failed to record decision',
   paramsSchema: idParamSchema,
   policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
+    deviationKind: 'library',
     deviationId: params.id,
     kind: 'manage_deviation',
     operation: 'record_decision',
