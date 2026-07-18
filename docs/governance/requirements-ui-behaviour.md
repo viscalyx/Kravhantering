@@ -226,10 +226,32 @@ an explicit in-modal error.
 - Status is filterable and sortable.
 - `priorityLevel` is filterable and sortable.
 - `verifiable` is filterable, but not sortable.
-- `requirementPackage` is filterable through the requirement-package chip row
+- `requirementPackage` is filterable through a persistent package-filter band
   even when the optional, non-sortable table column is hidden.
-- Requirement-package chip filters show the package purpose and scope in the
-  shared requirement-package tooltip when purpose and scope text exists.
+- The band appears after the package catalog loads successfully, including when
+  the catalog is empty. Its first column contains the `Kravpaket` title and
+  filter button, followed by a vertical divider and a second column for the
+  inactive state or selected packages. The title uses the same typography as
+  the table column titles.
+- Selected packages use locale-aware alphabetical order. Their badges stay in
+  the second column and wrap only when they need more horizontal space, growing
+  the table chrome in normal layout flow.
+- The filter button pins a floating chooser for pointer, touch, Enter, and
+  Space input. Pointer hover can open the same chooser transiently. Escape,
+  outside clicks, and focus leaving the complete filter surface close it.
+- The chooser overlays the table, contains only unselected packages, wraps
+  badges, scrolls vertically when necessary, and remains inside the viewport.
+  Its top edge follows the live bottom edge of the filter band when selected
+  badges wrap or unwrap. Adding a package does not close it. Focus recovers to
+  an adjacent package or the filter button after an add, remove, or clear
+  action.
+- Package selection preserves the existing OR query semantics. Selected badges
+  remove one package, and a clear-all control appears when at least two packages
+  are selected.
+- Package badges use the shared requirement-package tooltip. It shows the full
+  package name and includes purpose and scope when that text exists. Keyboard
+  focus shows the tooltip when focus is visibly indicated; pointer-driven focus
+  recovery after removing a badge does not open a tooltip on another badge.
 
 ## Column Visibility
 

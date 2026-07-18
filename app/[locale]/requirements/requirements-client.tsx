@@ -271,6 +271,8 @@ export default function RequirementsClient({
   const [requirementPackages, setRequirementPackages] = useState<
     RequirementPackageOption[]
   >([])
+  const [requirementPackageCatalogStatus, setRequirementPackageCatalogStatus] =
+    useState<'failed' | 'loaded' | 'loading'>('loading')
   const [normReferenceOptions, setNormReferenceOptions] = useState<
     { id: number; normReferenceId: string; name: string }[]
   >([])
@@ -842,6 +844,9 @@ export default function RequirementsClient({
         setRequirementPackages(
           requirementPackagesData.requirementPackages ?? [],
         )
+        setRequirementPackageCatalogStatus('loaded')
+      } else {
+        setRequirementPackageCatalogStatus('failed')
       }
       const priorityLevelsData = await readFilterResponse<{
         priorityLevels?: PriorityLevelOption[]
@@ -1250,6 +1255,10 @@ export default function RequirementsClient({
                       requirementId={id}
                     />
                   )}
+                  requirementPackageCatalogStatus={
+                    requirementPackageCatalogStatus
+                  }
+                  requirementPackageFilterPresentation="compact-band"
                   requirementPackages={requirementPackages}
                   rows={displayRows}
                   selectable

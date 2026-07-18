@@ -214,6 +214,14 @@ test.describe('Requirements table column picker', () => {
         const scrollTopTrigger = page.locator(
           '[data-scroll-top-trigger="true"]',
         )
+        const requirementPackageFilterBand = page.getByRole('group', {
+          exact: true,
+          name: 'Kravpaket',
+        })
+        const requirementPackageFilterTrigger =
+          requirementPackageFilterBand.getByRole('button', {
+            name: 'Filtrera kravpaket',
+          })
         const requirementPackageFilter = page.locator(
           '[data-requirement-package="1"]',
         )
@@ -222,11 +230,18 @@ test.describe('Requirements table column picker', () => {
           .first()
 
         await expect(columnsTrigger).toBeVisible()
+        await requirementPackageFilterTrigger.click()
+        await expect(requirementPackageFilterTrigger).toHaveAttribute(
+          'aria-expanded',
+          'true',
+        )
         await expect(requirementPackageFilter).toBeVisible()
         await requirementPackageFilter.hover()
         await expect(page.getByRole('tooltip')).toContainText(
           'Krav som gäller när systemet används från mobiltelefon eller surfplatta.',
         )
+        await page.keyboard.press('Escape')
+        await expect(requirementPackageFilter).toHaveCount(0)
         await expect(headerLabel).toBeVisible()
 
         const beforeScrollBox = await columnsTrigger.boundingBox()
@@ -241,7 +256,7 @@ test.describe('Requirements table column picker', () => {
         await expect
           .poll(async () => page.evaluate(() => Math.round(window.scrollY)))
           .toBeGreaterThan(200)
-        await expect(requirementPackageFilter).toBeVisible()
+        await expect(requirementPackageFilterBand).toBeVisible()
         await expect(headerLabel).toBeVisible()
         await expect(scrollTopTrigger).toBeVisible()
 

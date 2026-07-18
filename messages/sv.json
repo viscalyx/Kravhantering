@@ -470,6 +470,19 @@
     "verifiableHelp": "<strong>Ange om kravversionen har objektiva villkor som kan kontrolleras.</strong>\nOm kravet markeras som verifierbart behöver du även ange en verifieringsmetod.",
     "reference": "Kravreferens",
     "requirementPackage": "Kravpaket",
+    "requirementPackages": "Kravpaket",
+    "noRequirementPackageFilterActive": "Inget kravpaketsfilter aktivt",
+    "noRequirementPackagesAvailableToFilter": "Det finns inga kravpaket att filtrera på",
+    "requirementPackageFilterButton": "Filtrera kravpaket",
+    "requirementPackageFilterButtonActive": "Filtrera kravpaket, {count, plural, one {# valt} other {# valda}}",
+    "requirementPackageChooser": "Tillgängliga kravpaket",
+    "addRequirementPackageToFilter": "Lägg till {package} i kravpaketsfiltret",
+    "removeRequirementPackageFromFilter": "Ta bort {package} från kravpaketsfiltret",
+    "clearRequirementPackageFilter": "Rensa alla kravpaket",
+    "allRequirementPackagesSelected": "Alla kravpaket är valda.",
+    "requirementPackageAdded": "{package} har lagts till i kravpaketsfiltret.",
+    "requirementPackageRemoved": "{package} har tagits bort från kravpaketsfiltret.",
+    "requirementPackageFilterCleared": "Kravpaketsfiltret har rensats.",
     "newRequirement": "Nytt krav",
     "importRequirements": "Importera krav",
     "aiGenerate": "AI-assistera",
@@ -1904,7 +1917,7 @@
       },
       "filtering": {
         "heading": "Sökning och filter",
-        "body": "Använd sökfältet för fritextsökning i krav-ID och innehåll. Klicka på filterikonen i en kolumnrubrik för att begränsa listan till rätt kravområde, kravversionsstatus eller annan metadata. Aktivera \"Visa arkiverade\" när du behöver se krav som inte längre är aktiva."
+        "body": "Använd sökfältet för fritextsökning i krav-ID och innehåll. Klicka på filterikonen i en kolumnrubrik för att begränsa listan till rätt kravområde, kravversionsstatus eller annan metadata. Kravpaketsbandet ovanför listan visar alltid det aktiva kravpaketsfiltret. Håll pekaren över bandet eller aktivera filterknappen med pekare, beröring, Enter eller blanksteg för att öppna väljaren. Lägg till paket från väljaren, ta bort dem från valda märken eller rensa alla när flera är valda. Paketval använder ELLER-logik och fungerar även när den valfria kravpaketskolumnen är dold. Aktivera \"Visa arkiverade\" när du behöver se krav som inte längre är aktiva."
       },
       "columns": {
         "heading": "Kolumner",

@@ -580,17 +580,28 @@ läslig.
 **Förväntat resultat:** Tabellen fungerar efter språkbyte och svenska etiketter
 återkommer.
 
-### REQ-03: filtrera på krav-id och rensa filter
+### REQ-03: filtrera kravbiblioteket och hantera kravpaketsfiltret
 
-**Steg:** Öppna filtret för `Krav-ID`, skriv `INT0001`, kontrollera träff, öppna
-filtret igen och klicka `Rensa` i sökfältet. Kontrollera att fler krav visas.
-Aktivera och avaktivera även ett filter för kravpaket. Välj status
-`Arkiverad` och filtrera på ett kravpaket som har historisk koppling till ett
-arkiverat krav.
+**Steg:** Öppna filtret för `Krav-ID`, skriv `INT0001`, kontrollera träff och
+rensa sökfältet. Kontrollera sedan att kravpaketsbandet visar inaktivt läge.
+Öppna väljaren genom att hålla pekaren över bandet och genom att aktivera
+filterknappen med pekare, Enter och blanksteg. Lägg till flera alfabetiskt
+sorterade kravpaket i följd, ta bort ett valt paket och rensa alla. Kontrollera
+fokus efter varje åtgärd, stäng med Escape, klick utanför och flytta fokus
+utanför filtret. Upprepa i engelskt språk och med kravpaketskolumnen dold.
+Kontrollera även lägena tom katalog och alla paket valda samt hjälptexter,
+verktygstips, tillgänglighetsattribut, annonseringar och Developer Mode-markörer.
+Välj slutligen status `Arkiverad` och `PWT-MANUAL källpaket`. Kontrollera att
+det arkiverade kravet `PWT-LIFE-RESTORE` visas.
 
-**Förväntat resultat:** Filter begränsar listan och rensning återställer den.
-Det arkiverade kravet är tillgängligt i kravbiblioteket när statusen valts
-uttryckligen och kan hittas via sin historiska kravpaketskoppling.
+**Förväntat resultat:** Krav-ID-filtret begränsar listan och rensning
+återställer den. Kravpaketsbandet ligger kvar efter lyckad kataloginläsning,
+visar valda paket i lokaliserad alfabetisk ordning och behåller OR-logiken i
+frågan. Mus, beröring och tangentbord ger likvärdig åtkomst; fokus och
+annonseringar är förutsägbara. Tomma lägen, svenska och engelska texter,
+verktygstips, tillgänglighetsattribut och Developer Mode-markörer är korrekta.
+Det arkiverade kravet kan hittas via sin historiska kravpaketskoppling när
+arkiverad status väljs uttryckligen.
 
 ### REQ-04: sortera på sorterbar kolumn
 

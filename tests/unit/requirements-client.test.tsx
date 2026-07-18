@@ -116,6 +116,9 @@ vi.mock('@/components/RequirementsTable', () => ({
       onSortChange,
       onVisibleColumnsChange,
       renderExpanded,
+      requirementPackageCatalogStatus,
+      requirementPackageFilterPresentation,
+      requirementPackages,
       rows,
       selectedIds,
       sortState,
@@ -139,6 +142,9 @@ vi.mock('@/components/RequirementsTable', () => ({
       sortState,
       statusOptions: statusOptions ?? [],
       qualityCharacteristics: qualityCharacteristics ?? [],
+      requirementPackageCatalogStatus,
+      requirementPackageFilterPresentation,
+      requirementPackages: requirementPackages ?? [],
       types: types ?? [],
       visibleColumns: visibleColumns ?? [],
     })
@@ -801,6 +807,44 @@ describe('RequirementsClient', () => {
       rows: [expect.objectContaining({ uniqueId: 'INT0001' })],
       visibleColumns: ['uniqueId', 'description', 'area', 'status'],
     })
+    await waitFor(() =>
+      expect(tableState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+        requirementPackageCatalogStatus: 'loaded',
+        requirementPackageFilterPresentation: 'compact-band',
+        requirementPackages: [],
+      }),
+    )
+  })
+
+  it('preserves the existing failure surface when the package catalog fails', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return okJson({
+          pagination: { hasMore: false },
+          requirements: [makeRequirementRow(1)],
+        })
+      }
+      if (url === '/api/requirement-packages') {
+        return { ok: false } as Response
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) return metadataResponse
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(tableState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+        requirementPackageCatalogStatus: 'failed',
+        requirementPackageFilterPresentation: 'compact-band',
+        requirementPackages: [],
+      }),
+    )
   })
 
   it('disables AI generation when availability is disabled by Admin Center', async () => {

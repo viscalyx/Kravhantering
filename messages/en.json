@@ -470,6 +470,19 @@
     "verifiableHelp": "<strong>Indicate whether the requirement has objective conditions that can be checked.</strong>\nIf the requirement is marked as verifiable, you also need to specify a verification method.",
     "reference": "Requirement reference",
     "requirementPackage": "Requirements package",
+    "requirementPackages": "Requirements packages",
+    "noRequirementPackageFilterActive": "No requirements package filter active",
+    "noRequirementPackagesAvailableToFilter": "No requirements packages are available to filter by",
+    "requirementPackageFilterButton": "Filter requirements packages",
+    "requirementPackageFilterButtonActive": "Filter requirements packages, {count, plural, one {# selected} other {# selected}}",
+    "requirementPackageChooser": "Available requirements packages",
+    "addRequirementPackageToFilter": "Add {package} to requirements package filter",
+    "removeRequirementPackageFromFilter": "Remove {package} from requirements package filter",
+    "clearRequirementPackageFilter": "Clear all requirements packages",
+    "allRequirementPackagesSelected": "All requirements packages are selected.",
+    "requirementPackageAdded": "Added {package} to the requirements package filter.",
+    "requirementPackageRemoved": "Removed {package} from the requirements package filter.",
+    "requirementPackageFilterCleared": "Cleared the requirements package filter.",
     "newRequirement": "New requirement",
     "importRequirements": "Import requirements",
     "aiGenerate": "AI assist",
@@ -1904,7 +1917,7 @@
       },
       "filtering": {
         "heading": "Searching and filtering",
-        "body": "Use the search field for free-text searches in requirement IDs and content. Click the filter icon on any column header to narrow the list to the right requirement area, requirement version status, or other metadata. Turn on \"Show archived\" when you need to include requirements that are no longer active."
+        "body": "Use the search field for free-text searches in requirement IDs and content. Click the filter icon on any column header to narrow the list to the right requirement area, requirement version status, or other metadata. The requirements package band above the list always shows the active package filter. Hover over the band, or activate its filter button with a pointer, touch, Enter, or Space, to open the chooser. Add packages from the chooser, remove them from selected badges, or clear all when several are selected. Package selections use OR logic and work even when the optional requirements package column is hidden. Turn on \"Show archived\" when you need to include requirements that are no longer active."
       },
       "columns": {
         "heading": "Columns",
