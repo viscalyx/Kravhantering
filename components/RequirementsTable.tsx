@@ -2776,7 +2776,9 @@ export default function RequirementsTable({
     'relative px-2 font-medium text-secondary-700 dark:text-secondary-300 align-top'
   const headerCellSurfaceClassName =
     'bg-secondary-50 shadow-[inset_0_-1px_0_rgba(148,163,184,0.24)] dark:bg-secondary-900 dark:shadow-[inset_0_-1px_0_rgba(51,65,85,0.6)]'
-  const stickyTableChromeClassName = `sticky ${stickyTopOffsetClassName} z-20 overflow-hidden rounded-t-2xl`
+  // PROTOTYPE: the requirements package chooser must escape the sticky header
+  // and float above table rows.
+  const stickyTableChromeClassName = `sticky ${stickyTopOffsetClassName} z-20 overflow-visible rounded-t-2xl`
   const stickyTopBarClassName =
     'flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80'
   const resizeHandleBaseClassName =
