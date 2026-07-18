@@ -1,0 +1,123 @@
+name: Weekly Integration Chunk Isolation
+
+on:
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Read prodlike chunk manifest
+    runs-on: ubuntu-latest
+    outputs:
+      chunks: ${{ steps.chunks.outputs.chunks }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Read prodlike chunks
+        id: chunks
+        run: |
+          chunks="$(
+            node -e "
+              const manifest = require('./tests/integration-chunks.manifest.json')
+              const ids = manifest.suites.prodlike.chunks.map(chunk => chunk.id)
+              process.stdout.write(JSON.stringify(ids))
+            "
+          )"
+          echo "chunks=${chunks}" >> "${GITHUB_OUTPUT}"
+
+  isolated-chunk:
+    name: Clean seed / ${{ matrix.chunk }}
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        chunk: ${{ fromJSON(needs.plan.outputs.chunks) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check integration chunk manifest
+        run: npm run test:integration:chunks:check
+
+      - name: Clean server state
+        run: npm run clean:all
+
+      - name: Prepare SQL Server env file
+        run: cp .env.sqlserver.ci .env.sqlserver
+
+      - name: Start local database service
+        run: npm run db:up
+
+      - name: Create clean demo seed
+        run: npm run db:setup
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Start and wait for local IdP service
+        run: npm run idp:up
+
+      - name: Start local HSA lookup fixture
+        run: >
+          bash scripts/ci-hsa-person-lookup-fixture.sh
+          start weekly-isolation
+
+      - name: Run isolated prodlike chunk
+        run: >
+          npm run test:integration:prodlike --
+          --chunk "${{ matrix.chunk }}"
+        env:
+          CI: true
+
+      - name: Stop local HSA lookup fixture
+        if: always()
+        run: >
+          bash scripts/ci-hsa-person-lookup-fixture.sh
+          stop weekly-isolation
+
+      - name: Stop local IdP service
+        if: always()
+        run: npm run idp:down
+
+      - name: Stop local database service
+        if: always()
+        run: npm run db:down
+
+      - name: Upload isolated chunk results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: integration-isolation-${{ matrix.chunk }}
+          path: |
+            playwright-report-prodlike/
+            test-results/prodlike/
+            test-results/server-logs/prodlike/
+            test-results/hsa-person-lookup/weekly-isolation.log
+          retention-days: 7

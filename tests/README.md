@@ -41,6 +41,36 @@ The same workflow keeps a small dev-server smoke for Developer Mode and local
 dev-server startup behavior; it does not run the full dev-server suite on every
 pull request.
 
+### Database state across chunks
+
+The normal full-suite workflow runs `npm run db:setup` once before Playwright
+starts. All chunks then share that database while the chunk runner recycles the
+application server to release memory.
+
+The shared database is intentional. It lets the required pull-request gate find
+state leakage, missing cleanup, and order-dependent tests. Resetting before
+every chunk would hide those failures, increase runtime, and reset the database
+under the externally managed prodlike server.
+
+Chunks must still be independently runnable from the clean demo seed. A chunk
+must not depend on mutations made by an earlier chunk. Tests should create
+explicit disposable fixtures or restore shared fixtures when their scenario
+changes persistent state.
+
+The
+[weekly integration isolation workflow](../.github/workflows/integration-isolation-weekly.yml)
+runs at 03:17 UTC every Sunday and can also be started manually. It reads the
+prodlike chunk IDs from the committed chunk manifest and starts one matrix job
+per chunk. Every matrix job gets a fresh runner, runs `npm run db:setup`, and
+then runs exactly one chunk. This complementary gate detects hidden
+cross-chunk dependencies and assumptions that only hold after an earlier chunk
+has changed the seed.
+
+A focused local chunk does not reset the database automatically. Run
+`npm run db:setup` first when a clean baseline is required. The command deletes
+and recreates the local development database before applying migrations and
+demo seed data.
+
 When specs move or are added, refresh and verify the committed chunk manifest:
 
 ```bash

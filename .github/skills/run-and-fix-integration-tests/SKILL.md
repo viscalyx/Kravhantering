@@ -63,6 +63,7 @@ Between chunks:
 
 ## Workflow
 
+0. run `npm run db:setup` outside your sandbox to reset database
 1. Build the phase list:
    - User supplied paths: use those spec files.
    - User supplied chunk id: use the matching chunk command.
