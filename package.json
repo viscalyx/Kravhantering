@@ -207,14 +207,14 @@
   ],
   "overrides": {
     "ip-address": "10.2.0",
-    "postcss": "8.5.15"
+    "postcss": "8.5.20"
   },
   "//overrides": [
     "Overrides pin transitive dependencies that still resolve to vulnerable versions.",
     "Remove each override when the parent dependency updates to include the fix natively.",
     "Document below this. Example: @swc/helpers: next@16.1.6 pins 0.5.15, but next-intl's @swc/core@^1.15.2 peer-requires >=0.5.17. Override to 0.5.19 resolves the conflict.",
     "ip-address: @modelcontextprotocol/sdk@1.29.0 resolves express-rate-limit@8.4.1 -> ip-address@10.1.0 when unforced. Override maps vulnerable ip-address <=10.1.0 to 10.2.0 for GHSA-v2v4-37r5-5v8g.",
-    "postcss: next@16.2.9 pins postcss@8.4.31 when unforced. Override maps the vulnerable Next postcss pin to 8.5.15 for GHSA-qx2v-qp2m-jg93."
+    "postcss: next@16.2.9 pins postcss@8.4.31 when unforced. Override maps the vulnerable Next postcss pin to 8.5.20 for GHSA-qx2v-qp2m-jg93."
   ],
   "allowScripts": {
     "@parcel/watcher@2.5.6": true,
