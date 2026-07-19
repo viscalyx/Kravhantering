@@ -1608,6 +1608,12 @@ gränser.
 reserverat skal gör att sektionerna inte hoppar och de visas atomärt när alla
 anrop har nått resultat; felkälla visar lokalt fel och `Försök igen`.
 Filstorlek visas i MiB men sparas i byte. Varje rad visar
+en enhet i samma rundade kontroll som talvärdet: krav, MiB, exporter,
+renderingar eller sekunder. Kontrollerna är lika breda och rymmer respektive
+maxvärde, förutom CSV-/PDF-filstorlek och Worker-minne som använder minus- och
+plusknappar med samma kompakta bredd som MCP-anropsgränsen. Filstorlekarna
+ändras i 1 MiB-steg och sparas i byte. Worker-minnet ändras i 128 MiB-steg och
+visar det lagrade heltalsvärdet direkt i MiB. Varje rad visar
 `Sparar`/`Sparat`/fel, äldre svar skriver inte över nyare värde, och exakt ett
 fält auditeras med gammalt/nytt värde. Runtime använder den nya
 inställningssnapshoten. `?tab=ai` betraktas som otillgänglig och omdirigeras

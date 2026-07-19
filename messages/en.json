@@ -1678,6 +1678,8 @@
       "loadError": "Could not load application settings.",
       "saveError": "Could not save the setting.",
       "invalidValue": "Enter a value within the allowed range.",
+      "decreaseValue": "Decrease {field}",
+      "increaseValue": "Increase {field}",
       "exports": {
         "title": "Exports",
         "description": "Controls resource limits for CSV exports. Limits apply per operation unless stated otherwise."
@@ -1686,6 +1688,13 @@
         "title": "Reports",
         "description": "Controls resource limits for large server-generated PDF reports. Limits apply per operation unless stated otherwise."
       },
+      "units": {
+        "exports": "exports",
+        "mib": "MiB",
+        "renderings": "renderings",
+        "requirements": "requirements",
+        "seconds": "seconds"
+      },
       "fields": {
         "csvExportMaxRequirements": {
           "label": "Maximum requirements per CSV export",
@@ -1693,7 +1702,7 @@
         },
         "csvExportMaxFileBytes": {
           "label": "Maximum CSV file size",
-          "help": "Limits the completed CSV file size. The file is not delivered when the limit is exceeded. The value is specified in MiB. Allowed: 1–1,024 MiB."
+          "help": "Limits the completed CSV file size. The file is not delivered when the limit is exceeded. Use minus or plus to adjust by 1 MiB, or enter an integer in MiB. Allowed: 1–1,024 MiB."
         },
         "csvExportConcurrencyPerNode": {
           "label": "Concurrent CSV exports per node",
@@ -1709,7 +1718,7 @@
         },
         "pdfReportMaxFileBytes": {
           "label": "Maximum PDF file size",
-          "help": "Limits the completed PDF file size. The file is not delivered when the limit is exceeded. The value is specified in MiB. Allowed: 1–512 MiB."
+          "help": "Limits the completed PDF file size. The file is not delivered when the limit is exceeded. Use minus or plus to adjust by 1 MiB, or enter an integer in MiB. Allowed: 1–512 MiB."
         },
         "pdfReportConcurrencyPerNode": {
           "label": "Concurrent PDF renderings per node",
@@ -1721,7 +1730,7 @@
         },
         "pdfWorkerMemoryMib": {
           "label": "Worker memory per PDF rendering",
-          "help": "Limits JavaScript memory for each isolated PDF worker. The container memory limit remains the final safeguard. The value is specified in MiB. Allowed: 128–4,096 MiB."
+          "help": "Limits JavaScript memory for each isolated PDF worker. The container memory limit remains the final safeguard. Use minus or plus to adjust by 128 MiB, or enter an integer in MiB. Allowed: 128–4,096 MiB."
         }
       }
     },

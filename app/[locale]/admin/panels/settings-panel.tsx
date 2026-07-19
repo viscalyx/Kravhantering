@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, FileText } from 'lucide-react'
+import { Download, FileText, Minus, Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
   type KeyboardEvent,
@@ -27,23 +27,43 @@ type SaveState = 'error' | 'idle' | 'saved' | 'saving'
 type LoadState = 'error' | 'loading' | 'ready'
 
 interface SettingDefinition {
+  adjustmentStep?: number
   field: ApplicationSettingField
-  unit?: 'mib'
+  stepper?: boolean
+  storedAsBytes?: boolean
+  unit: 'exports' | 'mib' | 'renderings' | 'requirements' | 'seconds'
 }
 
 const EXPORT_SETTINGS: readonly SettingDefinition[] = [
-  { field: 'csvExportMaxRequirements' },
-  { field: 'csvExportMaxFileBytes', unit: 'mib' },
-  { field: 'csvExportConcurrencyPerNode' },
-  { field: 'csvExportTimeoutSeconds' },
+  { field: 'csvExportMaxRequirements', unit: 'requirements' },
+  {
+    adjustmentStep: 1,
+    field: 'csvExportMaxFileBytes',
+    stepper: true,
+    storedAsBytes: true,
+    unit: 'mib',
+  },
+  { field: 'csvExportConcurrencyPerNode', unit: 'exports' },
+  { field: 'csvExportTimeoutSeconds', unit: 'seconds' },
 ]
 
 const REPORT_SETTINGS: readonly SettingDefinition[] = [
-  { field: 'pdfReportMaxRequirements' },
-  { field: 'pdfReportMaxFileBytes', unit: 'mib' },
-  { field: 'pdfReportConcurrencyPerNode' },
-  { field: 'pdfReportTimeoutSeconds' },
-  { field: 'pdfWorkerMemoryMib' },
+  { field: 'pdfReportMaxRequirements', unit: 'requirements' },
+  {
+    adjustmentStep: 1,
+    field: 'pdfReportMaxFileBytes',
+    stepper: true,
+    storedAsBytes: true,
+    unit: 'mib',
+  },
+  { field: 'pdfReportConcurrencyPerNode', unit: 'renderings' },
+  { field: 'pdfReportTimeoutSeconds', unit: 'seconds' },
+  {
+    adjustmentStep: 128,
+    field: 'pdfWorkerMemoryMib',
+    stepper: true,
+    unit: 'mib',
+  },
 ]
 
 function initialSettings(): AdminApplicationSettings {
@@ -59,11 +79,11 @@ function displayValue(
   definition: SettingDefinition,
 ): number {
   const value = settings[definition.field]
-  return definition.unit === 'mib' ? value / MIB : value
+  return definition.storedAsBytes ? value / MIB : value
 }
 
 function apiValue(definition: SettingDefinition, value: number): number {
-  return definition.unit === 'mib' ? value * MIB : value
+  return definition.storedAsBytes ? value * MIB : value
 }
 
 function emptySaveStates(): Record<ApplicationSettingField, SaveState> {
@@ -120,9 +140,9 @@ export default function SettingsPanel() {
     void loadSettings()
   }, [loadSettings])
 
-  async function commit(definition: SettingDefinition) {
+  async function commit(definition: SettingDefinition, rawOverride?: string) {
     const field = definition.field
-    const raw = drafts[field]
+    const raw = rawOverride ?? drafts[field]
     if (raw === undefined) return
     const parsed = Number(raw.trim())
     const constraint = settings.constraints[field]
@@ -189,6 +209,17 @@ export default function SettingsPanel() {
     }
   }
 
+  function adjustSetting(definition: SettingDefinition, direction: -1 | 1) {
+    const field = definition.field
+    const constraint = settings.constraints[field]
+    const current = displayValue(settings, definition)
+    const step = definition.adjustmentStep ?? 1
+    const min = definition.storedAsBytes ? constraint.min / MIB : constraint.min
+    const max = definition.storedAsBytes ? constraint.max / MIB : constraint.max
+    const next = Math.min(max, Math.max(min, current + direction * step))
+    void commit(definition, String(next))
+  }
+
   function onInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key !== 'Enter') return
     event.preventDefault()
@@ -198,21 +229,28 @@ export default function SettingsPanel() {
   function renderSetting(definition: SettingDefinition) {
     const { field } = definition
     const constraint = settings.constraints[field]
-    const inputConstraint =
-      definition.unit === 'mib'
-        ? {
-            max: constraint.max / MIB,
-            min: constraint.min / MIB,
-            step: 'step' in constraint ? constraint.step / MIB : 1,
-          }
-        : {
-            max: constraint.max,
-            min: constraint.min,
-            step: 'step' in constraint ? constraint.step : 1,
-          }
+    const inputConstraint = definition.storedAsBytes
+      ? {
+          max: constraint.max / MIB,
+          min: constraint.min / MIB,
+          step:
+            definition.adjustmentStep ??
+            ('step' in constraint ? constraint.step / MIB : 1),
+        }
+      : {
+          max: constraint.max,
+          min: constraint.min,
+          step:
+            definition.adjustmentStep ??
+            ('step' in constraint ? constraint.step : 1),
+        }
     const inputId = `admin-application-setting-${field}`
     const helpId = `${inputId}-help`
+    const unitId = `${inputId}-unit`
     const state = saveStates[field]
+    const isStepper = definition.stepper === true
+    const displayedValue = displayValue(settings, definition)
+    const isDisabled = loadState !== 'ready' || state === 'saving'
 
     return (
       <div
@@ -249,12 +287,40 @@ export default function SettingsPanel() {
               {ta(`applicationSettings.fields.${field}.help`)}
             </AnimatedHelpPanel>
           </div>
-          <div className="flex min-w-40 flex-col items-end gap-1">
-            <div className="flex items-center gap-2">
+          <div
+            className={`flex flex-col items-end gap-1 ${
+              isStepper ? '' : 'min-w-44'
+            }`}
+          >
+            <div
+              className={`flex min-h-11 items-center overflow-hidden rounded-full border border-secondary-200 bg-white text-sm font-medium text-secondary-800 shadow-sm dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100 ${
+                isStepper ? '' : 'w-44'
+              }`}
+            >
+              {isStepper ? (
+                <button
+                  aria-label={ta('applicationSettings.decreaseValue', {
+                    field: ta(`applicationSettings.fields.${field}.label`),
+                  })}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center border-r border-secondary-200 transition-colors hover:bg-secondary-100 disabled:opacity-50 dark:border-secondary-700 dark:hover:bg-secondary-800"
+                  disabled={isDisabled || displayedValue <= inputConstraint.min}
+                  onClick={() => adjustSetting(definition, -1)}
+                  title={ta('applicationSettings.decreaseValue', {
+                    field: ta(`applicationSettings.fields.${field}.label`),
+                  })}
+                  type="button"
+                >
+                  <Minus aria-hidden="true" className="h-4 w-4" />
+                </button>
+              ) : null}
               <input
-                aria-describedby={openHelp === field ? helpId : undefined}
-                className="min-h-11 w-28 rounded-xl border border-secondary-300 bg-white px-3 py-2 text-right text-sm text-secondary-950 shadow-sm outline-none focus:border-primary-600 focus:ring-2 focus:ring-primary-200 disabled:cursor-not-allowed disabled:opacity-60 dark:border-secondary-600 dark:bg-secondary-900 dark:text-secondary-50 dark:focus:ring-primary-900"
-                disabled={loadState !== 'ready' || state === 'saving'}
+                aria-describedby={
+                  openHelp === field ? `${helpId} ${unitId}` : unitId
+                }
+                className={`h-11 border-0 bg-transparent px-3 text-center tabular-nums text-secondary-950 outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-50 ${
+                  isStepper ? 'w-24' : 'min-w-0 flex-1'
+                }`}
+                disabled={isDisabled}
                 id={inputId}
                 inputMode="numeric"
                 max={inputConstraint.max}
@@ -273,10 +339,35 @@ export default function SettingsPanel() {
                   drafts[field] ?? String(displayValue(settings, definition))
                 }
               />
-              {definition.unit === 'mib' ? (
-                <span className="text-sm text-secondary-600 dark:text-secondary-300">
-                  MiB
-                </span>
+              <span
+                className={`shrink-0 text-xs text-secondary-500 dark:text-secondary-400 ${
+                  isStepper ? 'px-2' : 'px-3'
+                }`}
+                id={unitId}
+                {...devMarker({
+                  context: 'admin settings',
+                  name: 'input unit',
+                  priority: 350,
+                  value: definition.unit,
+                })}
+              >
+                {ta(`applicationSettings.units.${definition.unit}`)}
+              </span>
+              {isStepper ? (
+                <button
+                  aria-label={ta('applicationSettings.increaseValue', {
+                    field: ta(`applicationSettings.fields.${field}.label`),
+                  })}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center border-l border-secondary-200 transition-colors hover:bg-secondary-100 disabled:opacity-50 dark:border-secondary-700 dark:hover:bg-secondary-800"
+                  disabled={isDisabled || displayedValue >= inputConstraint.max}
+                  onClick={() => adjustSetting(definition, 1)}
+                  title={ta('applicationSettings.increaseValue', {
+                    field: ta(`applicationSettings.fields.${field}.label`),
+                  })}
+                  type="button"
+                >
+                  <Plus aria-hidden="true" className="h-4 w-4" />
+                </button>
               ) : null}
             </div>
             <span

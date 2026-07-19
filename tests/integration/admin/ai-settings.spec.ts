@@ -125,6 +125,165 @@ test.describe('Admin settings', () => {
 
       const inputs = panel.locator('input[id^="admin-application-setting-"]')
       await expect(inputs).toHaveCount(9)
+      const controlWidths = await inputs.evaluateAll(elements =>
+        elements
+          .filter(
+            element =>
+              element.id !==
+                'admin-application-setting-csvExportMaxFileBytes' &&
+              element.id !==
+                'admin-application-setting-pdfReportMaxFileBytes' &&
+              element.id !== 'admin-application-setting-pdfWorkerMemoryMib',
+          )
+          .map(element => element.parentElement?.getBoundingClientRect().width),
+      )
+      expect(new Set(controlWidths)).toEqual(new Set([176]))
+      const mcpControlWidth = await panel
+        .locator('#admin-ai-mcp-max-request-kib')
+        .evaluate(
+          element => element.parentElement?.getBoundingClientRect().width ?? 0,
+        )
+      for (const field of [
+        'csvExportMaxFileBytes',
+        'pdfReportMaxFileBytes',
+        'pdfWorkerMemoryMib',
+      ]) {
+        const width = await panel
+          .locator(`#admin-application-setting-${field}`)
+          .evaluate(
+            element =>
+              element.parentElement?.getBoundingClientRect().width ?? 0,
+          )
+        expect(Math.abs(width - mcpControlWidth)).toBeLessThanOrEqual(4)
+      }
+      await expect(
+        panel.locator('#admin-application-setting-csvExportMaxFileBytes'),
+      ).toHaveValue(String(original.csvExportMaxFileBytes / (1024 * 1024)))
+      await expect(
+        panel.locator('#admin-application-setting-pdfWorkerMemoryMib'),
+      ).toHaveValue(String(original.pdfWorkerMemoryMib))
+      await expect(
+        panel.locator('#admin-application-setting-pdfReportMaxFileBytes'),
+      ).toHaveValue(String(original.pdfReportMaxFileBytes / (1024 * 1024)))
+      const decreaseCsvFileSize = panel.getByRole('button', {
+        name: 'Minska Högsta CSV-filstorlek',
+      })
+      await expect(decreaseCsvFileSize).toHaveAttribute(
+        'title',
+        'Minska Högsta CSV-filstorlek',
+      )
+      await expect(
+        decreaseCsvFileSize.locator('.lucide-minus'),
+      ).toHaveAttribute('aria-hidden', 'true')
+      const increaseCsvFileSize = panel.getByRole('button', {
+        name: 'Öka Högsta CSV-filstorlek',
+      })
+      await expect(increaseCsvFileSize).toHaveAttribute(
+        'title',
+        'Öka Högsta CSV-filstorlek',
+      )
+      await expect(increaseCsvFileSize.locator('.lucide-plus')).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      )
+      await panel
+        .getByRole('button', {
+          name: 'Hjälp: Högsta CSV-filstorlek',
+        })
+        .click()
+      await expect(
+        panel.locator('#admin-application-setting-csvExportMaxFileBytes-help'),
+      ).toContainText(/Använd minus eller plus för att ändra med 1 MiB/)
+      const decreasePdfFileSize = panel.getByRole('button', {
+        name: 'Minska Högsta PDF-filstorlek',
+      })
+      await expect(decreasePdfFileSize).toHaveAttribute(
+        'title',
+        'Minska Högsta PDF-filstorlek',
+      )
+      await expect(
+        decreasePdfFileSize.locator('.lucide-minus'),
+      ).toHaveAttribute('aria-hidden', 'true')
+      const increasePdfFileSize = panel.getByRole('button', {
+        name: 'Öka Högsta PDF-filstorlek',
+      })
+      await expect(increasePdfFileSize).toHaveAttribute(
+        'title',
+        'Öka Högsta PDF-filstorlek',
+      )
+      await expect(increasePdfFileSize.locator('.lucide-plus')).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      )
+      await panel
+        .getByRole('button', {
+          name: 'Hjälp: Högsta PDF-filstorlek',
+        })
+        .click()
+      await expect(
+        panel.locator('#admin-application-setting-pdfReportMaxFileBytes-help'),
+      ).toContainText(/Använd minus eller plus för att ändra med 1 MiB/)
+      const decreaseWorkerMemory = panel.getByRole('button', {
+        name: 'Minska Worker-minne per PDF-rendering',
+      })
+      await expect(decreaseWorkerMemory).toHaveAttribute(
+        'title',
+        'Minska Worker-minne per PDF-rendering',
+      )
+      await expect(
+        decreaseWorkerMemory.locator('.lucide-minus'),
+      ).toHaveAttribute('aria-hidden', 'true')
+      const increaseWorkerMemory = panel.getByRole('button', {
+        name: 'Öka Worker-minne per PDF-rendering',
+      })
+      await expect(increaseWorkerMemory).toHaveAttribute(
+        'title',
+        'Öka Worker-minne per PDF-rendering',
+      )
+      await expect(
+        increaseWorkerMemory.locator('.lucide-plus'),
+      ).toHaveAttribute('aria-hidden', 'true')
+      await expect(
+        panel
+          .getByRole('button', { name: 'Sänk MCP-anropsgränsen' })
+          .locator('.lucide-minus'),
+      ).toHaveAttribute('aria-hidden', 'true')
+      await expect(
+        panel
+          .getByRole('button', { name: 'Höj MCP-anropsgränsen' })
+          .locator('.lucide-plus'),
+      ).toHaveAttribute('aria-hidden', 'true')
+      await panel
+        .getByRole('button', {
+          name: 'Hjälp: Worker-minne per PDF-rendering',
+        })
+        .click()
+      await expect(
+        panel.getByText(/Använd minus eller plus för att ändra med 128 MiB/),
+      ).toBeVisible()
+      await expect(
+        panel.locator(
+          '#admin-application-setting-csvExportMaxRequirements-unit',
+        ),
+      ).toHaveText('krav')
+      await expect(
+        panel.locator('#admin-application-setting-csvExportMaxFileBytes-unit'),
+      ).toHaveText('MiB')
+      await expect(
+        panel.locator(
+          '#admin-application-setting-csvExportConcurrencyPerNode-unit',
+        ),
+      ).toHaveText('exporter')
+      await expect(
+        panel.locator(
+          '#admin-application-setting-csvExportTimeoutSeconds-unit',
+        ),
+      ).toHaveText('sekunder')
+      await expect(
+        panel.locator(
+          '#admin-application-setting-pdfReportConcurrencyPerNode-unit',
+        ),
+      ).toHaveText('renderingar')
       await expect(
         panel.getByRole('button', {
           name: 'Hjälp: Högsta antal krav per CSV-export',

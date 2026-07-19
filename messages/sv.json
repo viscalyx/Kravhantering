@@ -1678,6 +1678,8 @@
       "loadError": "Kunde inte läsa applikationsinställningar.",
       "saveError": "Kunde inte spara inställningen.",
       "invalidValue": "Ange ett värde inom det tillåtna intervallet.",
+      "decreaseValue": "Minska {field}",
+      "increaseValue": "Öka {field}",
       "exports": {
         "title": "Exporter",
         "description": "Styr resursgränser för CSV-exporter. Gränserna gäller per operation om inget annat anges."
@@ -1686,6 +1688,13 @@
         "title": "Rapporter",
         "description": "Styr resursgränser för stora servergenererade PDF-rapporter. Gränserna gäller per operation om inget annat anges."
       },
+      "units": {
+        "exports": "exporter",
+        "mib": "MiB",
+        "renderings": "renderingar",
+        "requirements": "krav",
+        "seconds": "sekunder"
+      },
       "fields": {
         "csvExportMaxRequirements": {
           "label": "Högsta antal krav per CSV-export",
@@ -1693,7 +1702,7 @@
         },
         "csvExportMaxFileBytes": {
           "label": "Högsta CSV-filstorlek",
-          "help": "Begränsar den färdiga CSV-filens storlek. Filen levereras inte om gränsen överskrids. Värdet anges i MiB. Tillåtet: 1–1 024 MiB."
+          "help": "Begränsar den färdiga CSV-filens storlek. Filen levereras inte om gränsen överskrids. Använd minus eller plus för att ändra med 1 MiB, eller ange ett heltal i MiB. Tillåtet: 1–1 024 MiB."
         },
         "csvExportConcurrencyPerNode": {
           "label": "Samtidiga CSV-exporter per nod",
@@ -1709,7 +1718,7 @@
         },
         "pdfReportMaxFileBytes": {
           "label": "Högsta PDF-filstorlek",
-          "help": "Begränsar den färdiga PDF-filens storlek. Filen levereras inte om gränsen överskrids. Värdet anges i MiB. Tillåtet: 1–512 MiB."
+          "help": "Begränsar den färdiga PDF-filens storlek. Filen levereras inte om gränsen överskrids. Använd minus eller plus för att ändra med 1 MiB, eller ange ett heltal i MiB. Tillåtet: 1–512 MiB."
         },
         "pdfReportConcurrencyPerNode": {
           "label": "Samtidiga PDF-renderingar per nod",
@@ -1721,7 +1730,7 @@
         },
         "pdfWorkerMemoryMib": {
           "label": "Worker-minne per PDF-rendering",
-          "help": "Begränsar JavaScript-minnet för varje isolerad PDF-worker. Containerns minnesgräns är fortfarande det yttersta skyddet. Värdet anges i MiB. Tillåtet: 128–4 096 MiB."
+          "help": "Begränsar JavaScript-minnet för varje isolerad PDF-worker. Containerns minnesgräns är fortfarande det yttersta skyddet. Använd minus eller plus för att ändra med 128 MiB, eller ange ett heltal i MiB. Tillåtet: 128–4 096 MiB."
         }
       }
     },

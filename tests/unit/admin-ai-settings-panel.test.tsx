@@ -67,6 +67,35 @@ describe('AiSettingsPanel', () => {
     ).toHaveAttribute('aria-hidden', 'true')
   })
 
+  it('uses matching plain minus and plus icons for the MCP limit stepper', async () => {
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        const method = init?.method ?? 'GET'
+        if (url === '/api/admin/ai-settings' && method === 'GET') {
+          return Promise.resolve(okJson({}))
+        }
+        if (url === '/api/admin/ai-safety-rules' && method === 'GET') {
+          return Promise.resolve(okJson(safetyRulesResponse()))
+        }
+        return Promise.reject(new Error(`Unexpected fetch ${method} ${url}`))
+      },
+    )
+
+    renderAdminPanel(<AiSettingsPanel />, { confirmModal: true })
+
+    const input = await screen.findByLabelText('admin.ai.mcpMaxRequestLimit')
+    const buttons = input.parentElement?.querySelectorAll('button')
+    expect(buttons?.[0].querySelector('.lucide-minus')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    )
+    expect(buttons?.[1].querySelector('.lucide-plus')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    )
+  })
+
   it('confirms before restoring a safety rule', async () => {
     fetchMock.mockImplementation(
       (input: RequestInfo | URL, init?: RequestInit) => {

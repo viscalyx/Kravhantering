@@ -5,6 +5,7 @@ import {
   ChevronRight,
   CircleAlert,
   CircleMinus,
+  Minus,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -1539,7 +1540,7 @@ export default function AiSettingsPanel({
                       }
                       type="button"
                     >
-                      <CircleMinus aria-hidden="true" className="h-4 w-4" />
+                      <Minus aria-hidden="true" className="h-4 w-4" />
                     </button>
                     <input
                       aria-describedby={`${mcpLimitHelpId} ${mcpLimitConstraintId}`}
