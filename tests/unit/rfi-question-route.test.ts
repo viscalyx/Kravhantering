@@ -174,31 +174,30 @@ describe('rfi-questions/[id] route', () => {
       mutation: routeState.setRfiQuestionArchived,
       name: 'reactivate',
     },
-  ])('returns 403 for direct $name mutations without requirement-area authorship', async ({
-    expectedAction,
-    handler,
-    mutation,
-  }) => {
-    routeState.assertAuthorized.mockRejectedValueOnce(
-      forbiddenError('denied', {
-        reason: 'requirement_area_author_required',
-        requirementAreaId: 7,
-      }),
-    )
+  ])(
+    'returns 403 for direct $name mutations without requirement-area authorship',
+    async ({ expectedAction, handler, mutation }) => {
+      routeState.assertAuthorized.mockRejectedValueOnce(
+        forbiddenError('denied', {
+          reason: 'requirement_area_author_required',
+          requirementAreaId: 7,
+        }),
+      )
 
-    const response = await handler()
+      const response = await handler()
 
-    expect(response.status).toBe(403)
-    await expect(response.json()).resolves.toMatchObject({
-      code: 'forbidden',
-      error: 'Forbidden',
-    })
-    expect(routeState.assertAuthorized).toHaveBeenCalledWith(
-      expectedAction,
-      context,
-    )
-    expect(mutation).not.toHaveBeenCalled()
-  })
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toMatchObject({
+        code: 'forbidden',
+        error: 'Forbidden',
+      })
+      expect(routeState.assertAuthorized).toHaveBeenCalledWith(
+        expectedAction,
+        context,
+      )
+      expect(mutation).not.toHaveBeenCalled()
+    },
+  )
 
   it('authorizes access to the resolved RFI question area before returning the question', async () => {
     const response = await GET(

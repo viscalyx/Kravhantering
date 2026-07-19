@@ -182,28 +182,27 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     )
   })
 
-  it.each([
-    0,
-    -1,
-    1.5,
-    null,
-    '2',
-  ])('rejects malformed usage status id %s', async specificationItemStatusId => {
-    const request = new NextRequest(
-      'http://localhost/api/requirements-specifications/7/items/lib%3A31',
-      {
-        body: JSON.stringify({ specificationItemStatusId }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'PATCH',
-      },
-    )
+  it.each([0, -1, 1.5, null, '2'])(
+    'rejects malformed usage status id %s',
+    async specificationItemStatusId => {
+      const request = new NextRequest(
+        'http://localhost/api/requirements-specifications/7/items/lib%3A31',
+        {
+          body: JSON.stringify({ specificationItemStatusId }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PATCH',
+        },
+      )
 
-    const response = await PATCH(request, makeParams('7', 'lib%3A31'))
+      const response = await PATCH(request, makeParams('7', 'lib%3A31'))
 
-    expect(response.status).toBe(400)
-    await expectInvalidRequest(response, 'specificationItemStatusId')
-    expect(mocks.updateSpecificationItemFieldsByItemRef).not.toHaveBeenCalled()
-  })
+      expect(response.status).toBe(400)
+      await expectInvalidRequest(response, 'specificationItemStatusId')
+      expect(
+        mocks.updateSpecificationItemFieldsByItemRef,
+      ).not.toHaveBeenCalled()
+    },
+  )
 
   it('allows note-only item updates without a status field', async () => {
     mocks.getSpecificationItemByRef.mockResolvedValue({

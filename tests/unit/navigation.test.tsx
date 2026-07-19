@@ -580,18 +580,18 @@ describe('Navigation', () => {
     expect(toggleHelp).toHaveBeenCalledOnce()
   })
 
-  it.each([
-    ['Admin'],
-    ['PrivacyOfficer'],
-  ])('shows Admin Center navigation for the eligible %s role', async role => {
-    authState.value = { authenticated: true, roles: [role] }
+  it.each([['Admin'], ['PrivacyOfficer']])(
+    'shows Admin Center navigation for the eligible %s role',
+    async role => {
+      authState.value = { authenticated: true, roles: [role] }
 
-    render(<Navigation />)
+      render(<Navigation />)
 
-    expect(
-      await screen.findByRole('link', { name: 'admin.settings' }),
-    ).toHaveAttribute('href', '/admin')
-  })
+      expect(
+        await screen.findByRole('link', { name: 'admin.settings' }),
+      ).toHaveAttribute('href', '/admin')
+    },
+  )
 
   it('keeps Admin Center navigation hidden for an ineligible role', async () => {
     authState.value = { authenticated: true, roles: ['Reviewer'] }

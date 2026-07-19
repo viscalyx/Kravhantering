@@ -152,21 +152,21 @@ describe('proxy production CSP', () => {
     }
   })
 
-  it.each([
-    '/api/health',
-    '/api/ready',
-  ])('passes public API route %s without page CSP headers', async path => {
-    const restore = withEnv(AUTH_ON_ENV)
-    try {
-      const response = await proxy(buildRequest(`http://localhost${path}`))
+  it.each(['/api/health', '/api/ready'])(
+    'passes public API route %s without page CSP headers',
+    async path => {
+      const restore = withEnv(AUTH_ON_ENV)
+      try {
+        const response = await proxy(buildRequest(`http://localhost${path}`))
 
-      expect(response.status).toBe(200)
-      expect(response.headers.get('content-security-policy')).toBeNull()
-      expect(response.headers.get('x-middleware-request-x-nonce')).toBeNull()
-      expect(response.headers.get('x-user-id')).toBeNull()
-      expect(response.headers.get('x-user-roles')).toBeNull()
-    } finally {
-      restore()
-    }
-  })
+        expect(response.status).toBe(200)
+        expect(response.headers.get('content-security-policy')).toBeNull()
+        expect(response.headers.get('x-middleware-request-x-nonce')).toBeNull()
+        expect(response.headers.get('x-user-id')).toBeNull()
+        expect(response.headers.get('x-user-roles')).toBeNull()
+      } finally {
+        restore()
+      }
+    },
+  )
 })
