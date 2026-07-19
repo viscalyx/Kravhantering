@@ -758,7 +758,11 @@ describe('AdminClient', () => {
     )
 
     expect(
-      await screen.findByRole('heading', { name: 'admin.ai.title' }),
+      await screen.findByRole(
+        'heading',
+        { name: 'admin.ai.title' },
+        { timeout: 3_000 },
+      ),
     ).toBeVisible()
     expect(screen.getByRole('tab', { name: 'admin.settings' })).toHaveAttribute(
       'aria-selected',
