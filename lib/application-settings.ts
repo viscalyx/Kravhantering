@@ -49,6 +49,7 @@ export function isValidApplicationSetting(
 ): value is number {
   if (typeof value !== 'number' || !Number.isSafeInteger(value)) return false
   const constraint = APPLICATION_SETTING_CONSTRAINTS[field]
+  if (!constraint) return false
   if (value < constraint.min || value > constraint.max) return false
   return 'step' in constraint ? value % constraint.step === 0 : true
 }

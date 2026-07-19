@@ -52,6 +52,12 @@ describe('application settings contract', () => {
     expect(isValidApplicationSetting('pdfReportMaxFileBytes', 2 * MIB)).toBe(
       true,
     )
+    expect(
+      isValidApplicationSetting(
+        'missingField' as keyof typeof APPLICATION_SETTING_CONSTRAINTS,
+        1,
+      ),
+    ).toBe(false)
   })
 
   it('maps the singleton entity and all nine checks', () => {
@@ -65,6 +71,22 @@ describe('application settings contract', () => {
     expect(
       applicationSettingEntity.options.checks?.map(check => check.name),
     ).toContain('chk_application_settings_pdf_worker_memory_mib')
+    const expressions = new Map(
+      applicationSettingEntity.options.checks?.map(check => [
+        check.name,
+        check.expression,
+      ]),
+    )
+    expect(
+      expressions.get('chk_application_settings_csv_export_max_file_bytes'),
+    ).toBe(
+      `[csv_export_max_file_bytes] >= ${APPLICATION_SETTING_CONSTRAINTS.csvExportMaxFileBytes.min} AND [csv_export_max_file_bytes] <= ${APPLICATION_SETTING_CONSTRAINTS.csvExportMaxFileBytes.max} AND [csv_export_max_file_bytes] % ${MIB} = 0`,
+    )
+    expect(
+      expressions.get('chk_application_settings_pdf_worker_memory_mib'),
+    ).toBe(
+      `[pdf_worker_memory_mib] >= ${APPLICATION_SETTING_CONSTRAINTS.pdfWorkerMemoryMib.min} AND [pdf_worker_memory_mib] <= ${APPLICATION_SETTING_CONSTRAINTS.pdfWorkerMemoryMib.max}`,
+    )
   })
 
   it('keeps migration and both seed profiles synchronized', async () => {

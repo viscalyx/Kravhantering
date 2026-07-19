@@ -1,4 +1,8 @@
 import { EntitySchema } from 'typeorm'
+import {
+  APPLICATION_SETTING_CONSTRAINTS,
+  MIB,
+} from '@/lib/application-settings'
 
 export interface ApplicationSettingEntity {
   createdAt: Date
@@ -80,48 +84,39 @@ export const applicationSettingEntity =
         name: 'chk_application_settings_id',
       },
       {
-        expression:
-          '[csv_export_max_requirements] >= 1 AND [csv_export_max_requirements] <= 5000',
+        expression: `[csv_export_max_requirements] >= ${APPLICATION_SETTING_CONSTRAINTS.csvExportMaxRequirements.min} AND [csv_export_max_requirements] <= ${APPLICATION_SETTING_CONSTRAINTS.csvExportMaxRequirements.max}`,
         name: 'chk_application_settings_csv_export_max_requirements',
       },
       {
-        expression:
-          '[csv_export_max_file_bytes] >= 1048576 AND [csv_export_max_file_bytes] <= 1073741824 AND [csv_export_max_file_bytes] % 1048576 = 0',
+        expression: `[csv_export_max_file_bytes] >= ${APPLICATION_SETTING_CONSTRAINTS.csvExportMaxFileBytes.min} AND [csv_export_max_file_bytes] <= ${APPLICATION_SETTING_CONSTRAINTS.csvExportMaxFileBytes.max} AND [csv_export_max_file_bytes] % ${MIB} = 0`,
         name: 'chk_application_settings_csv_export_max_file_bytes',
       },
       {
-        expression:
-          '[csv_export_concurrency_per_node] >= 1 AND [csv_export_concurrency_per_node] <= 20',
+        expression: `[csv_export_concurrency_per_node] >= ${APPLICATION_SETTING_CONSTRAINTS.csvExportConcurrencyPerNode.min} AND [csv_export_concurrency_per_node] <= ${APPLICATION_SETTING_CONSTRAINTS.csvExportConcurrencyPerNode.max}`,
         name: 'chk_application_settings_csv_export_concurrency_per_node',
       },
       {
-        expression:
-          '[csv_export_timeout_seconds] >= 10 AND [csv_export_timeout_seconds] <= 600',
+        expression: `[csv_export_timeout_seconds] >= ${APPLICATION_SETTING_CONSTRAINTS.csvExportTimeoutSeconds.min} AND [csv_export_timeout_seconds] <= ${APPLICATION_SETTING_CONSTRAINTS.csvExportTimeoutSeconds.max}`,
         name: 'chk_application_settings_csv_export_timeout_seconds',
       },
       {
-        expression:
-          '[pdf_report_max_requirements] >= 1 AND [pdf_report_max_requirements] <= 1000',
+        expression: `[pdf_report_max_requirements] >= ${APPLICATION_SETTING_CONSTRAINTS.pdfReportMaxRequirements.min} AND [pdf_report_max_requirements] <= ${APPLICATION_SETTING_CONSTRAINTS.pdfReportMaxRequirements.max}`,
         name: 'chk_application_settings_pdf_report_max_requirements',
       },
       {
-        expression:
-          '[pdf_report_max_file_bytes] >= 1048576 AND [pdf_report_max_file_bytes] <= 536870912 AND [pdf_report_max_file_bytes] % 1048576 = 0',
+        expression: `[pdf_report_max_file_bytes] >= ${APPLICATION_SETTING_CONSTRAINTS.pdfReportMaxFileBytes.min} AND [pdf_report_max_file_bytes] <= ${APPLICATION_SETTING_CONSTRAINTS.pdfReportMaxFileBytes.max} AND [pdf_report_max_file_bytes] % ${MIB} = 0`,
         name: 'chk_application_settings_pdf_report_max_file_bytes',
       },
       {
-        expression:
-          '[pdf_report_concurrency_per_node] >= 1 AND [pdf_report_concurrency_per_node] <= 10',
+        expression: `[pdf_report_concurrency_per_node] >= ${APPLICATION_SETTING_CONSTRAINTS.pdfReportConcurrencyPerNode.min} AND [pdf_report_concurrency_per_node] <= ${APPLICATION_SETTING_CONSTRAINTS.pdfReportConcurrencyPerNode.max}`,
         name: 'chk_application_settings_pdf_report_concurrency_per_node',
       },
       {
-        expression:
-          '[pdf_report_timeout_seconds] >= 10 AND [pdf_report_timeout_seconds] <= 600',
+        expression: `[pdf_report_timeout_seconds] >= ${APPLICATION_SETTING_CONSTRAINTS.pdfReportTimeoutSeconds.min} AND [pdf_report_timeout_seconds] <= ${APPLICATION_SETTING_CONSTRAINTS.pdfReportTimeoutSeconds.max}`,
         name: 'chk_application_settings_pdf_report_timeout_seconds',
       },
       {
-        expression:
-          '[pdf_worker_memory_mib] >= 128 AND [pdf_worker_memory_mib] <= 4096',
+        expression: `[pdf_worker_memory_mib] >= ${APPLICATION_SETTING_CONSTRAINTS.pdfWorkerMemoryMib.min} AND [pdf_worker_memory_mib] <= ${APPLICATION_SETTING_CONSTRAINTS.pdfWorkerMemoryMib.max}`,
         name: 'chk_application_settings_pdf_worker_memory_mib',
       },
     ],

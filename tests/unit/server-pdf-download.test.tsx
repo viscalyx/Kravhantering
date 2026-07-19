@@ -207,6 +207,27 @@ describe('useServerPdfDownload', () => {
     expect(downloadBlob).not.toHaveBeenCalled()
   })
 
+  it('closes and restores focus when cancelled while the blob resolves', async () => {
+    const blob = deferred<Blob>()
+    fetchMock.mockResolvedValueOnce(responseWithBlob(blob.promise))
+    render(<DownloadProbe url="/reports/cancel-download.pdf" />)
+    const trigger = screen.getByRole('button', { name: 'Download' })
+    trigger.focus()
+    fireEvent.click(trigger)
+    await flushMicrotasks()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    blob.resolve(new Blob(['%PDF'], { type: 'application/pdf' }))
+    await flushMicrotasks()
+    act(() => {
+      vi.runOnlyPendingTimers()
+    })
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+    expect(downloadBlob).not.toHaveBeenCalled()
+  })
+
   it('keeps indeterminate progress static when reduced motion is requested', () => {
     vi.mocked(useReducedMotion).mockReturnValue(true)
     fetchMock.mockReturnValueOnce(new Promise(() => {}))

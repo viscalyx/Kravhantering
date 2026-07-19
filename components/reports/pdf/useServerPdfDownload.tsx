@@ -179,7 +179,11 @@ export function useServerPdfDownload(): UseServerPdfDownloadResult {
         }
         setPhase('downloading')
         const blob = await response.blob()
-        if (controller.signal.aborted) return
+        if (controller.signal.aborted) {
+          setPhase(null)
+          restoreFocus()
+          return
+        }
         const filename =
           filenameFromContentDisposition(
             response.headers.get('Content-Disposition'),

@@ -411,6 +411,25 @@ describe('requirement PDF routes', () => {
     ).toHaveBeenCalledWith({ db: true }, ids)
   })
 
+  it('authorizes and collects explicit list PDF ids only once', async () => {
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/list?ids=1,REQ-2,1,REQ-2',
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(
+      routeState.collectMultipleRequirementListItemsForReport,
+    ).toHaveBeenCalledWith({ db: true }, ['1', 'REQ-2'])
+    expect(routeState.authorization.assertAuthorized).toHaveBeenCalledTimes(2)
+  })
+
   it('rejects explicit list PDFs above the Admin item limit', async () => {
     const ids = reportIds(1001)
     const { GET } = await import(

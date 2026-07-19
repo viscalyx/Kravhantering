@@ -26,7 +26,7 @@ Server PDF Engine
   app/[locale]/specifications/[specificationId]/reports/pdf/[profile]
                                        Specification route handler
   components/reports/pdf/useServerPdfDownload.tsx
-                                       Delayed client download UX
+                                       Immediate two-phase client helper
 ```
 
 Report builders and template functions stay pure. They receive already

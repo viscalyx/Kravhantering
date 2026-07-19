@@ -274,6 +274,7 @@ export async function GET(
         request.signal,
       )
       const ids = splitCsvParam(parsedQuery.data.ids ?? null)
+      const uniqueIds = [...new Set(ids)]
       const requirements =
         parsedQuery.data.ids == null
           ? await collectFilteredRequirementsForListReport(
@@ -287,7 +288,7 @@ export async function GET(
               if (ids.length === 0) {
                 throw new ReportDataError('No requirement IDs provided', 400)
               }
-              if (new Set(ids).size > settings.pdfReportMaxRequirements) {
+              if (uniqueIds.length > settings.pdfReportMaxRequirements) {
                 throw new GeneratedOutputError(
                   'output_limit_exceeded',
                   'item_limit_exceeded',
@@ -298,7 +299,7 @@ export async function GET(
                   },
                 )
               }
-              for (const id of ids) {
+              for (const id of uniqueIds) {
                 throwIfGenerationAborted(deadline?.signal ?? request.signal)
                 await authorizeRequirementReportRead(
                   runtime.authorization,
@@ -309,7 +310,7 @@ export async function GET(
               }
               return collectMultipleRequirementListItemsForReport(
                 runtime.db,
-                ids,
+                uniqueIds,
               )
             })()
       itemCount = requirements.length

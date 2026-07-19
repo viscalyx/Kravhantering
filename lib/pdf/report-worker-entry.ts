@@ -3,7 +3,7 @@ import { Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { parentPort, workerData } from 'node:worker_threads'
 import { renderToStream } from '@react-pdf/renderer'
-import { createElement } from 'react'
+import { createElement, type ReactElement } from 'react'
 import PdfReportRenderer from '@/components/reports/pdf/PdfReportRenderer'
 import type { ReportModel } from '@/lib/reports/types'
 
@@ -28,7 +28,7 @@ async function renderReport(): Promise<void> {
   })
 
   const source = await renderToStream(
-    document as React.ReactElement<import('@react-pdf/renderer').DocumentProps>,
+    document as ReactElement<import('@react-pdf/renderer').DocumentProps>,
   )
   let byteCount = 0
   const bounded = new Transform({

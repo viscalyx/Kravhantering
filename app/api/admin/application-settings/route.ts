@@ -18,6 +18,7 @@ import { createRequestContext } from '@/lib/requirements/auth'
 import {
   forbiddenError,
   isRequirementsServiceError,
+  unauthorizedError,
 } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
@@ -92,6 +93,9 @@ function noStore<T extends NextResponse>(response: T): T {
 
 async function assertAdmin(request: Request): Promise<void> {
   const context = await createRequestContext(request, 'rest')
+  if (!context.actor.isAuthenticated) {
+    throw unauthorizedError()
+  }
   if (!context.actor.roles.includes('Admin')) {
     throw forbiddenError('Missing required role for application settings', {
       actorRoles: context.actor.roles,
@@ -123,6 +127,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
 export const PATCH = secureMutationRoute({
   bodySchema: applicationSettingsPatchSchema,
+  decorateErrorResponse: noStore,
   policy: adminMutationPolicy(),
   handler: async ({ body, context }) => {
     try {

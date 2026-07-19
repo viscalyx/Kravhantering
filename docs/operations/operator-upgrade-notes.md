@@ -28,7 +28,8 @@ Before rollout, review identity-provider role assignments for Admin Center users
 
 Provision sufficient private temporary storage on every application node. If KRAVHANTERING_EXPORT_TEMP_DIR is configured, it must reference an existing absolute directory accessible only to the non-root application account. Size storage for configured concurrency and maximum file sizes.
 
-Deploy the updated reverse-proxy configuration so generated-output routes receive the required extended timeout.
+Deploy the updated reverse-proxy configuration with an extended timeout for
+generated-output routes.
 
 #### After Upgrade
 

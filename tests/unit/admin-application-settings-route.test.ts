@@ -31,10 +31,15 @@ const routeState = vi.hoisted(() => {
     createRequestContext: vi.fn(async () => adminContext),
     getAdminApplicationSettings: vi.fn(),
     getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
+    recordDeniedActionAuditEvent: vi.fn(async () => {}),
     recordAdminPrivilegedActionSucceeded: vi.fn(async () => {}),
     updateApplicationSetting: vi.fn(),
   }
 })
+
+vi.mock('@/lib/audit/action-audit', () => ({
+  recordDeniedActionAuditEvent: routeState.recordDeniedActionAuditEvent,
+}))
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
   createAdminPrivilegedAuditContext:
@@ -112,6 +117,48 @@ describe('admin application settings route', () => {
 
     expect(response.status).toBe(403)
     expect(routeState.getAdminApplicationSettings).not.toHaveBeenCalled()
+  })
+
+  it('returns matching unauthorized responses for anonymous reads and writes', async () => {
+    const anonymousContext = {
+      ...routeState.adminContext,
+      actor: {
+        ...routeState.adminContext.actor,
+        isAuthenticated: false,
+        roles: [],
+        source: 'anonymous',
+      },
+    }
+    routeState.createRequestContext.mockResolvedValueOnce(anonymousContext)
+    routeState.createAdminPrivilegedAuditContext.mockResolvedValueOnce(
+      anonymousContext,
+    )
+
+    const readResponse = await GET(
+      new NextRequest('https://example.test/api/admin/application-settings'),
+    )
+    const writeResponse = await PATCH(
+      new NextRequest('https://example.test/api/admin/application-settings', {
+        body: JSON.stringify({ csvExportConcurrencyPerNode: 8 }),
+        method: 'PATCH',
+      }),
+    )
+
+    expect(readResponse.status).toBe(401)
+    expect(writeResponse.status).toBe(401)
+    expect(readResponse.headers.get('Cache-Control')).toBe('no-store')
+    expect(writeResponse.headers.get('Cache-Control')).toBe('no-store')
+    await expect(readResponse.json()).resolves.toEqual({
+      code: 'unauthorized',
+      error: 'Authentication is required',
+    })
+    await expect(writeResponse.json()).resolves.toEqual({
+      code: 'unauthorized',
+      error: 'Authentication is required',
+    })
+    expect(routeState.getAdminApplicationSettings).not.toHaveBeenCalled()
+    expect(routeState.updateApplicationSetting).not.toHaveBeenCalled()
+    expect(routeState.recordDeniedActionAuditEvent).toHaveBeenCalled()
   })
 
   it('requires exactly one allowlisted valid field', async () => {
