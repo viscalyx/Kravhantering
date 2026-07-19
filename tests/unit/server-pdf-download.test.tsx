@@ -5,15 +5,25 @@ import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownl
 import { downloadBlob } from '@/lib/browser-download'
 
 vi.mock('next-intl', () => ({
-  useTranslations: (namespace: string) => (key: string) => {
+  useTranslations: (namespace: string) => (key: string, values?: object) => {
     const translations: Record<string, string> = {
+      'common.cancel': 'Cancel',
       'common.close': 'Close',
-      'reports.errorTitle': 'Error',
-      'reports.failedToLoadReport': 'Failed to load report',
-      'reports.generatingPdf': 'Generating PDF...',
-      'reports.generatingPdfTitle': 'Preparing PDF',
+      'generatedOutput.downloadStarted': 'Download started',
+      'generatedOutput.errors.pdf.busy': `Busy ${String(
+        (values as { retryAfter?: number } | undefined)?.retryAfter,
+      )}`,
+      'generatedOutput.errors.pdf.unknown': 'Safe PDF error',
+      'generatedOutput.errorTitle': 'Download failed',
+      'generatedOutput.phases.csv.downloading': 'Downloading CSV…',
+      'generatedOutput.phases.csv.generating': 'Preparing CSV export…',
+      'generatedOutput.phases.pdf.downloading': 'Downloading PDF…',
+      'generatedOutput.phases.pdf.generating': 'Generating PDF…',
+      'generatedOutput.retry': 'Retry',
+      'generatedOutput.retryCountdown': `Retry in ${String(
+        (values as { seconds?: number } | undefined)?.seconds,
+      )} s`,
     }
-
     return translations[`${namespace}.${key}`] ?? `${namespace}.${key}`
   },
 }))
@@ -24,9 +34,12 @@ vi.mock('@/lib/browser-download', () => ({
 
 const fetchMock = vi.fn()
 
-function pdfResponse(body = '%PDF', headers?: HeadersInit): Response {
+function responseWithBlob(
+  blobPromise: Promise<Blob>,
+  headers?: HeadersInit,
+): Response {
   return {
-    blob: async () => new Blob([body], { type: 'application/pdf' }),
+    blob: () => blobPromise,
     headers: new Headers({
       'Content-Disposition':
         'attachment; filename="fallback.pdf"; filename*=UTF-8\'\'server.pdf',
@@ -37,12 +50,23 @@ function pdfResponse(body = '%PDF', headers?: HeadersInit): Response {
   } as Response
 }
 
-function errorResponse(message: string): Response {
+function errorResponse(
+  code: string,
+  details: Record<string, unknown>,
+  headers?: HeadersInit,
+): Response {
   return {
-    headers: new Headers({ 'Content-Type': 'application/json' }),
-    json: async () => ({ error: message }),
+    headers: new Headers({
+      'Content-Type': 'application/json',
+      ...headers,
+    }),
+    json: async () => ({
+      code,
+      details,
+      error: 'RAW SERVER TEXT MUST NOT BE SHOWN',
+    }),
     ok: false,
-    status: 500,
+    status: code === 'capacity_busy' ? 429 : 500,
   } as Response
 }
 
@@ -61,22 +85,29 @@ async function flushMicrotasks() {
   })
 }
 
-function PdfDownloadProbe() {
-  const pdf = useServerPdfDownload()
+function DownloadProbe({
+  output = 'pdf',
+  url = '/reports/test.pdf',
+}: {
+  output?: 'csv' | 'pdf'
+  url?: string
+}) {
+  const download = useServerPdfDownload()
   return (
     <>
       <button
         onClick={() =>
-          void pdf.download({
-            fallbackFilename: 'fallback.pdf',
-            url: '/reports/test.pdf',
+          void download.download({
+            fallbackFilename: `fallback.${output}`,
+            output,
+            url,
           })
         }
         type="button"
       >
         Download
       </button>
-      {pdf.dialog}
+      {download.dialog}
     </>
   )
 }
@@ -96,84 +127,131 @@ describe('useServerPdfDownload', () => {
     vi.unstubAllGlobals()
   })
 
-  it('does not show the modal for fast downloads', async () => {
-    fetchMock.mockResolvedValueOnce(pdfResponse())
-    render(<PdfDownloadProbe />)
+  it('opens immediately, switches phase after headers, and uses the server filename', async () => {
+    const response = deferred<Response>()
+    const blob = deferred<Blob>()
+    fetchMock.mockReturnValueOnce(response.promise)
+    render(<DownloadProbe />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Download' }))
-    await flushMicrotasks()
-
-    expect(downloadBlob).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'server.pdf')
-  })
-
-  it('shows the modal after two seconds and closes it when download starts', async () => {
-    const pending = deferred<Response>()
-    fetchMock.mockReturnValueOnce(pending.promise)
-    render(<PdfDownloadProbe />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Download' }))
-
-    act(() => {
-      vi.advanceTimersByTime(1999)
-    })
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-
-    act(() => {
-      vi.advanceTimersByTime(1)
-    })
     expect(
-      screen.getByRole('dialog', { name: 'Preparing PDF' }),
+      screen.getByRole('dialog', { name: 'Generating PDF…' }),
     ).toBeInTheDocument()
+    expect(screen.getAllByText('Generating PDF…')).toHaveLength(1)
 
-    pending.resolve(pdfResponse())
+    response.resolve(responseWithBlob(blob.promise))
     await flushMicrotasks()
+    expect(
+      screen.getByRole('dialog', { name: 'Downloading PDF…' }),
+    ).toBeInTheDocument()
+    expect(screen.getAllByText('Downloading PDF…')).toHaveLength(1)
 
-    expect(downloadBlob).toHaveBeenCalledTimes(1)
+    blob.resolve(new Blob(['%PDF'], { type: 'application/pdf' }))
+    await flushMicrotasks()
+    expect(downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'server.pdf')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Download started')
   })
 
-  it('keeps the progress bar static when reduced motion is requested', () => {
-    vi.mocked(useReducedMotion).mockReturnValue(true)
-    const pending = deferred<Response>()
-    fetchMock.mockReturnValueOnce(pending.promise)
-    render(<PdfDownloadProbe />)
+  it('uses the shared CSV phases', async () => {
+    const response = deferred<Response>()
+    const blob = deferred<Blob>()
+    fetchMock.mockReturnValueOnce(response.promise)
+    render(<DownloadProbe output="csv" url="/reports/test-csv" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Download' }))
+    expect(
+      screen.getByRole('dialog', { name: 'Preparing CSV export…' }),
+    ).toBeInTheDocument()
+    expect(screen.getAllByText('Preparing CSV export…')).toHaveLength(1)
+    response.resolve(
+      responseWithBlob(blob.promise, {
+        'Content-Disposition': 'attachment; filename="kravbibliotek.csv"',
+        'Content-Type': 'text/csv',
+      }),
+    )
+    await flushMicrotasks()
+    expect(
+      screen.getByRole('dialog', { name: 'Downloading CSV…' }),
+    ).toBeInTheDocument()
+    expect(screen.getAllByText('Downloading CSV…')).toHaveLength(1)
+    blob.resolve(new Blob(['csv']))
+    await flushMicrotasks()
+    expect(downloadBlob).toHaveBeenCalledWith(
+      expect.any(Blob),
+      'kravbibliotek.csv',
+    )
+  })
+
+  it('cancels the active fetch and restores trigger focus', async () => {
+    fetchMock.mockImplementationOnce(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError')),
+          )
+        }),
+    )
+    render(<DownloadProbe url="/reports/cancel.pdf" />)
+    const trigger = screen.getByRole('button', { name: 'Download' })
+    trigger.focus()
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await flushMicrotasks()
     act(() => {
-      vi.advanceTimersByTime(2000)
+      vi.runOnlyPendingTimers()
     })
 
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+    expect(downloadBlob).not.toHaveBeenCalled()
+  })
+
+  it('keeps indeterminate progress static when reduced motion is requested', () => {
+    vi.mocked(useReducedMotion).mockReturnValue(true)
+    fetchMock.mockReturnValueOnce(new Promise(() => {}))
+    render(<DownloadProbe url="/reports/reduced-motion.pdf" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download' }))
     const progressBar = screen
-      .getByRole('dialog', { name: 'Preparing PDF' })
+      .getByRole('dialog', { name: 'Generating PDF…' })
       .querySelector('.bg-primary-600')
     expect(progressBar).toBeInTheDocument()
     expect(progressBar).not.toHaveClass('animate-pulse')
   })
 
-  it('closes the progress modal and shows feedback when generation fails', async () => {
-    const pending = deferred<Response>()
-    fetchMock.mockReturnValueOnce(pending.promise)
-    render(<PdfDownloadProbe />)
+  it('uses only stable codes and enforces Retry-After countdown', async () => {
+    fetchMock.mockResolvedValueOnce(
+      errorResponse(
+        'capacity_busy',
+        { output: 'pdf', retryAfterSeconds: 2 },
+        { 'Retry-After': '2' },
+      ),
+    )
+    render(<DownloadProbe url="/reports/busy.pdf" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Download' }))
-    act(() => {
-      vi.advanceTimersByTime(2000)
-    })
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-
-    pending.resolve(errorResponse('PDF generation failed'))
     await flushMicrotasks()
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(
-      screen.getByRole('alertdialog', { name: 'Error' }),
+      screen.getByRole('alertdialog', { name: 'Download failed' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('PDF generation failed')).toBeInTheDocument()
-    expect(downloadBlob).not.toHaveBeenCalled()
+    expect(screen.getByText('Busy 2')).toBeInTheDocument()
+    expect(screen.queryByText(/RAW SERVER/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry in 2 s' })).toBeDisabled()
+    act(() => vi.advanceTimersByTime(2000))
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled()
+  })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  it('falls back to a localized unknown error instead of raw text', async () => {
+    fetchMock.mockResolvedValueOnce(
+      errorResponse('unrecognized_code', { output: 'pdf' }),
+    )
+    render(<DownloadProbe url="/reports/error.pdf" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download' }))
+    await flushMicrotasks()
+    expect(screen.getByText('Safe PDF error')).toBeInTheDocument()
+    expect(screen.queryByText(/RAW SERVER/)).not.toBeInTheDocument()
   })
 })

@@ -62,6 +62,8 @@ server {
         try_files $uri $uri/ =404;
     }
 
+    include /etc/nginx/snippets/generated-output-locations.conf;
+
     location / {
         proxy_pass http://app_runtime_upstream;
         proxy_http_version 1.1;

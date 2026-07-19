@@ -889,7 +889,7 @@ test.describe('Requirements library', () => {
     expect(result).toEqual([])
   })
 
-  test('REQ-10a: complete CSV export uses the dedicated unpaged endpoint', async ({
+  test('REQ-18: complete CSV export uses the dedicated unpaged endpoint', async ({
     page,
   }) => {
     const exportedIds = Array.from(
@@ -897,6 +897,10 @@ test.describe('Requirements library', () => {
       (_, index) => `EXP${String(index + 1).padStart(4, '0')}`,
     )
     let exportUrl: URL | undefined
+    let releaseExport: (() => void) | undefined
+    const exportGate = new Promise<void>(resolve => {
+      releaseExport = resolve
+    })
     await page.goto('/sv/requirements')
     await expect(
       page.getByRole('table', { name: 'Lista över krav' }),
@@ -904,14 +908,19 @@ test.describe('Requirements library', () => {
 
     await page.route('**/api/requirements/export?*', async route => {
       exportUrl = new URL(route.request().url())
+      await exportGate
+      const body = [
+        '\uFEFF"Krav-ID","Kravtext"',
+        ...exportedIds.map(id => `"${id}","Requirement ${id}"`),
+      ].join('\r\n')
       await route.fulfill({
-        body: [
-          '\uFEFF"Krav-ID","Kravtext"',
-          ...exportedIds.map(id => `"${id}","Requirement ${id}"`),
-        ].join('\r\n'),
+        body,
         headers: {
+          'Cache-Control': 'private, no-store',
+          'Content-Length': String(Buffer.byteLength(body)),
           'Content-Disposition': 'attachment; filename="kravbibliotek.csv"',
           'Content-Type': 'text/csv; charset=utf-8',
+          'X-Accel-Buffering': 'no',
         },
         status: 200,
       })
@@ -919,6 +928,14 @@ test.describe('Requirements library', () => {
 
     const downloadPromise = page.waitForEvent('download')
     await page.getByRole('button', { name: 'Exportera' }).click()
+    const progressDialog = page.getByRole('dialog', {
+      name: 'Förbereder CSV-export …',
+    })
+    await expect(progressDialog).toBeVisible()
+    await expect(
+      progressDialog.getByRole('button', { name: 'Avbryt' }),
+    ).toBeFocused()
+    releaseExport?.()
     const download = await downloadPromise
     const stream = await download.createReadStream()
     let csv = ''
@@ -930,12 +947,77 @@ test.describe('Requirements library', () => {
     expect(exportUrl?.searchParams.has('cursor')).toBe(false)
     expect(exportUrl?.searchParams.has('limit')).toBe(false)
     expect(download.suggestedFilename()).toBe('kravbibliotek.csv')
+    await expect(progressDialog).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Exportera' })).toBeFocused()
     expect(
       csv
         .split(/\r?\n/u)
         .slice(1)
         .map(line => line.match(/^"(EXP\d{4})"/u)?.[1]),
     ).toEqual(exportedIds)
+  })
+
+  test('CSV export busy response shows a stable countdown and retries only on request', async ({
+    page,
+  }) => {
+    let attempts = 0
+    await page.route('**/api/requirements/export?*', async route => {
+      attempts += 1
+      if (attempts === 1) {
+        await route.fulfill({
+          body: JSON.stringify({
+            code: 'capacity_busy',
+            details: {
+              output: 'csv',
+              retryAfterSeconds: 1,
+            },
+            error: 'internal queue saturation detail must stay hidden',
+          }),
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '1',
+          },
+          status: 429,
+        })
+        return
+      }
+
+      await route.fulfill({
+        body: '\uFEFF"Krav-ID"\r\n"INT0001"',
+        headers: {
+          'Content-Disposition': 'attachment; filename="retry.csv"',
+          'Content-Type': 'text/csv; charset=utf-8',
+        },
+        status: 200,
+      })
+    })
+
+    await page.goto('/sv/requirements')
+    const exportButton = page.getByRole('button', { name: 'Exportera' })
+    await exportButton.click()
+
+    const errorDialog = page.getByRole('alertdialog', {
+      name: 'Nedladdningen misslyckades',
+    })
+    await expect(errorDialog).toContainText(
+      'Så många CSV-exporter som tillåts samtidigt pågår redan.',
+    )
+    await expect(errorDialog).not.toContainText('internal queue saturation')
+    await expect(
+      errorDialog.getByRole('button', { name: 'Försök igen om 1 s' }),
+    ).toBeDisabled()
+    await expect(
+      errorDialog.getByRole('button', { name: 'Försök igen' }),
+    ).toBeEnabled()
+    expect(attempts).toBe(1)
+
+    const downloadPromise = page.waitForEvent('download')
+    await errorDialog.getByRole('button', { name: 'Försök igen' }).click()
+    const download = await downloadPromise
+    expect(download.suggestedFilename()).toBe('retry.csv')
+    expect(attempts).toBe(2)
+    await expect(errorDialog).toHaveCount(0)
+    await expect(exportButton).toBeFocused()
   })
 
   test('REQ-09: inline detail orders text, criteria, metadata, references, and packages', async ({

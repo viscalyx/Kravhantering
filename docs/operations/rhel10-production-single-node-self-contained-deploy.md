@@ -86,6 +86,7 @@ verification.
 | `VERSION` | Release artifact names | No default | Always record the release version to install, for example `1.2.3`. |
 | `APP_HOST` | `PUBLIC_HOSTNAME`, app URLs, `KC_HOSTNAME`, realm redirect/logout settings, realm web origins, TLS certificate SANs and smoke checks | No default | Always record the public DNS name without `https://`, for example `kravhantering.example.internal`. |
 | `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_SITE_URL` in `app.env` | `https://<APP_HOST>` | Verify after choosing `APP_HOST`; plan only if the public URL cannot use the normal scheme and host. |
+| `KRAVHANTERING_EXPORT_TEMP_DIR` | Optional absolute spool root in `app.env` | Unset/blank (OS temporary directory) | Set only when generated CSV/PDF files need a dedicated filesystem. Use an existing private directory that grants only the non-root operating-system account running Node.js read/write/search access (for example, app-owned mode `0700`). Whether set or unset, verify the directory from inside `app-runtime` and size it for configured CSV/PDF concurrency times maximum file sizes plus headroom. When unset or blank, this verification of the container operating-system temporary directory is mandatory. |
 | `HSA_PERSON_LOOKUP_URL` | `HSA_PERSON_LOOKUP_URL` in `app.env` | No default | Always record the approved server-side HSA person lookup endpoint, normally the environment's Kong or integration-platform REST facade. |
 | `HSA_PERSON_LOOKUP_TIMEOUT_MS` | `HSA_PERSON_LOOKUP_TIMEOUT_MS` in `app.env` | `5000` | Plan only if the HSA integration path needs another timeout. |
 | `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH`, `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH` | Optional mTLS client credential paths in `app.env` | Blank | Set both when the approved external integration platform requires app-to-platform mTLS. |
@@ -1502,6 +1503,60 @@ podman compose --env-file /etc/kravhantering/release.env \
 
 exit
 ```
+
+Verify generated-output temporary storage from inside `app-runtime`. If
+`KRAVHANTERING_EXPORT_TEMP_DIR` is unset or blank, the printed path is the
+container operating-system temporary directory; the fallback must still have
+the required permissions and capacity. The probe runs as the non-root Node.js
+account, verifies read/write/search access, and creates and removes a file:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml exec -T app-runtime node <<'NODE'
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
+
+const configured = process.env.KRAVHANTERING_EXPORT_TEMP_DIR?.trim()
+const directory = configured || os.tmpdir()
+fs.accessSync(
+  directory,
+  fs.constants.R_OK | fs.constants.W_OK | fs.constants.X_OK,
+)
+const probeDirectory = fs.mkdtempSync(
+  path.join(directory, 'kravhantering-storage-check-'),
+)
+try {
+  const probeFile = path.join(probeDirectory, 'probe')
+  fs.writeFileSync(probeFile, 'ready', { mode: 0o600 })
+} finally {
+  fs.rmSync(probeDirectory, { recursive: true })
+}
+const stats = fs.statfsSync(directory, { bigint: true })
+const availableBytes = stats.bavail * stats.bsize
+const availableGiB = Number(availableBytes) / 1024 ** 3
+console.log(`Temporary directory: ${directory}`)
+console.log(`Available: ${availableBytes} bytes (${availableGiB.toFixed(2)} GiB)`)
+NODE
+
+exit
+```
+
+Do not continue if the probe fails. Confirm that the reported available space
+is at least:
+
+```text
+(CSV concurrency per node × CSV maximum file bytes)
++ (PDF concurrency per node × PDF maximum file bytes)
++ site-approved filesystem headroom
+```
+
+Use the application settings planned for this environment. The built-in
+defaults require 650 MiB before filesystem headroom. `/api/ready` repeats the
+create/write/remove check, but capacity planning remains an operator check.
 
 The full start command reads the corrected value from
 `/etc/kravhantering/release.env`.

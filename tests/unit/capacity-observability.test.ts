@@ -63,6 +63,47 @@ describe('capacity observability', () => {
     expect(JSON.stringify(event)).not.toMatch(/sk-or-v1|SELECT token/)
   })
 
+  it('emits only non-negative safe-integer generated-output metrics', () => {
+    const errorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    recordCapacityEvent({
+      capacityReason: 'byte_limit_exceeded',
+      correlationId: 'workflow-1',
+      event: 'capacity.threshold_exceeded',
+      metrics: {
+        active_count: 2,
+        byte_count: 1024,
+        byte_limit: Number.MAX_SAFE_INTEGER,
+        concurrency_limit: 5,
+        item_count: -1,
+        item_limit: 1000.5,
+        timeout_ms: Number.POSITIVE_INFINITY,
+        worker_memory_limit_bytes: 512 * 1024 * 1024,
+      },
+      operation: 'requirements.library_csv_export',
+      outcome: 'failure',
+      requestId: 'request-1',
+      source: 'rest',
+      surface: 'export',
+    })
+
+    const [event] = parseCapacityEvents(errorSpy)
+    expect(event).toMatchObject({
+      active_count: 2,
+      byte_count: 1024,
+      byte_limit: Number.MAX_SAFE_INTEGER,
+      capacity_reason: 'byte_limit_exceeded',
+      concurrency_limit: 5,
+      surface: 'export',
+      worker_memory_limit_bytes: 512 * 1024 * 1024,
+    })
+    expect(event).not.toHaveProperty('item_count')
+    expect(event).not.toHaveProperty('item_limit')
+    expect(event).not.toHaveProperty('timeout_ms')
+  })
+
   it('records operation completion and threshold events', async () => {
     const infoSpy = vi
       .spyOn(console, 'info')

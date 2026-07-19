@@ -9,7 +9,7 @@ import {
   LayoutPanelTop,
   type LucideIcon,
   ShieldCheck,
-  Sparkles,
+  SlidersHorizontal,
   Tags,
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
@@ -25,7 +25,7 @@ const AccessReviewPanel = lazy(() => import('./panels/access-review-panel'))
 const ActionAuditLogPanel = lazy(
   () => import('./panels/action-audit-log-panel'),
 )
-const AiSettingsPanel = lazy(() => import('./panels/ai-settings-panel'))
+const SettingsPanel = lazy(() => import('./panels/settings-panel'))
 const ArchivingPanel = lazy(() => import('./panels/archiving-panel'))
 const ColumnsPanel = lazy(() => import('./panels/columns-panel'))
 const IdentitySettingsPanel = lazy(() => import('./panels/identity-panel'))
@@ -228,7 +228,7 @@ const ADMIN_ACCESS_REVIEW_HELP: HelpContent = {
 export type AdminTab =
   | 'accessReview'
   | 'actionAuditLog'
-  | 'ai'
+  | 'settings'
   | 'archiving'
   | 'columns'
   | 'identity'
@@ -245,7 +245,7 @@ const EMPTY_USER_ROLES: string[] = []
 export const adminTabs: ReadonlyArray<{ icon: LucideIcon; id: AdminTab }> = [
   { icon: LayoutPanelTop, id: 'columns' },
   { icon: KeyRound, id: 'identity' },
-  { icon: Sparkles, id: 'ai' },
+  { icon: SlidersHorizontal, id: 'settings' },
   { icon: Tags, id: 'taxonomy' },
   { icon: CircleDot, id: 'statusesAndWorkflows' },
   { icon: ClipboardCheck, id: 'accessReview' },
@@ -257,7 +257,7 @@ export const adminTabs: ReadonlyArray<{ icon: LucideIcon; id: AdminTab }> = [
 const ADMIN_TAB_DEVELOPER_MODE_VALUES: Record<AdminTab, string> = {
   accessReview: 'access review',
   actionAuditLog: 'action log',
-  ai: 'ai',
+  settings: 'settings',
   archiving: 'archiving',
   columns: 'columns',
   identity: 'identity',
@@ -334,7 +334,7 @@ function adminTabLabel(
   if (tab === 'privacy') return t('privacy.title')
   if (tab === 'accessReview') return t('accessReview.title')
   if (tab === 'identity') return t('identity.title')
-  if (tab === 'ai') return t('ai.title')
+  if (tab === 'settings') return t('settings')
   if (tab === 'archiving') return t('archiving.title')
   if (tab === 'actionAuditLog') return t('auditLog.title')
   return t(tab)
@@ -344,7 +344,7 @@ function panelHelp(activeTab: AdminTab): HelpContent {
   if (activeTab === 'privacy') return ADMIN_PRIVACY_HELP
   if (activeTab === 'accessReview') return ADMIN_ACCESS_REVIEW_HELP
   if (activeTab === 'identity') return ADMIN_IDENTITY_HELP
-  if (activeTab === 'ai') return ADMIN_AI_HELP
+  if (activeTab === 'settings') return ADMIN_AI_HELP
   return ADMIN_HELP
 }
 
@@ -413,8 +413,8 @@ export default function AdminClient({
         return <ColumnsPanel />
       case 'identity':
         return <IdentitySettingsPanel />
-      case 'ai':
-        return <AiSettingsPanel />
+      case 'settings':
+        return <SettingsPanel />
       case 'taxonomy':
         return <TaxonomyPanel />
       case 'statusesAndWorkflows':
@@ -445,7 +445,7 @@ export default function AdminClient({
             </div>
             <div
               aria-label={ta('title')}
-              className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-secondary-200/80 bg-white/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-900/70 xl:w-max xl:shrink-0"
+              className="flex max-w-full flex-wrap items-center gap-1 rounded-3xl border border-secondary-200/80 bg-white/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-900/70"
               role="tablist"
               {...devMarker({
                 name: 'navigation',

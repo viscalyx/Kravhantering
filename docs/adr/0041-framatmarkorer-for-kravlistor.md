@@ -37,10 +37,13 @@ tidigare gränsrader hindrar inte fortsatt läsning; vanlig `READ COMMITTED`
 innebär däremot ingen fryst ögonblicksbild.
 
 Kompletta CSV- och PDF-resultat följer samma framåtmarkörer i interna,
-200-raders sidor. Traverseringen avbryter vid dubbletter, utebliven progress
-eller markörcykler och efter högst 10 000 sidor, motsvarande två miljoner rader.
-Offset- och äldre exportkontrakt behålls inte. Ändringen aktiveras direkt utan
-funktionsflagga.
+200-raders sidor. Traverseringen avbryts vid den aktiva operationens
+Admin-styrda postgräns eller vid dubbletter, utebliven progress eller
+markörcykler. Offset- och äldre exportkontrakt behålls inte. Ändringen aktiveras
+direkt utan funktionsflagga.
+
+De Admin-styrda produktgränserna för kompletta resultat beskrivs i
+[ADR 0042](./0042-begransade-synkrona-exporter-och-rapporter.md).
 
 Beslutet kompletterar
 [ADR 0004](./0004-persistensstack-med-sql-server-och-typeorm.md) om

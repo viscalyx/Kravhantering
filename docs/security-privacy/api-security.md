@@ -144,6 +144,7 @@ Deferred from this contract:
   `POST /api/norm-references/{id}/reactivate` stay in scope; the remaining
   stewardship mutations are covered by secure-route and focused route/UI tests.
 - Admin Center settings routes such as `GET/PUT/PATCH /api/admin/ai-settings`,
+  `GET/PATCH /api/admin/application-settings`,
   `GET/POST /api/admin/ai-safety-rules`, AI safety term mutation routes, and
   `GET/PUT /api/admin/hsa-id-prefixes` remain outside the
   OpenAPI/Schemathesis v1 contract. Their useful assertions are Admin-only

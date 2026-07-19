@@ -3,6 +3,7 @@ import {
   listRequirements,
 } from '@/lib/dal/requirements'
 import type { SqlServerDatabase } from '@/lib/db'
+import { throwIfGenerationAborted } from '@/lib/generated-output/operation'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
 import type {
   AuthorizationService,
@@ -82,6 +83,12 @@ export interface RequirementListQueryAuthorization {
 export interface CompleteRequirementListTraversal {
   itemCount: number
   pageCount: number
+}
+
+export interface CompleteRequirementListTraversalOptions {
+  createItemLimitError?: (limit: number) => Error
+  maxItems?: number
+  signal?: AbortSignal
 }
 
 function normalizeLimit(limit: number | undefined): number {
@@ -330,6 +337,7 @@ export async function traverseCompleteRequirementList(
     requirements: RequirementListPageItem[],
     pageNumber: number,
   ) => Promise<void> | void,
+  traversalOptions: CompleteRequirementListTraversalOptions = {},
 ): Promise<CompleteRequirementListTraversal> {
   const seenCursors = new Set<string>()
   const seenRequirementIds = new Set<number>()
@@ -341,15 +349,28 @@ export async function traverseCompleteRequirementList(
     pageNumber <= MAX_COMPLETE_REQUIREMENT_LIST_PAGES;
     pageNumber += 1
   ) {
+    if (traversalOptions.signal) {
+      throwIfGenerationAborted(traversalOptions.signal)
+    }
+    const remainingItemBudget =
+      traversalOptions.maxItems == null
+        ? REQUIREMENT_COMPLETE_RESULT_PAGE_SIZE
+        : Math.max(traversalOptions.maxItems + 1 - itemCount, 1)
     const page = await queryRequirementList(
       db,
       {
         ...input,
         cursor,
-        limit: REQUIREMENT_COMPLETE_RESULT_PAGE_SIZE,
+        limit: Math.min(
+          REQUIREMENT_COMPLETE_RESULT_PAGE_SIZE,
+          remainingItemBudget,
+        ),
       },
       authorizationOptions,
     )
+    if (traversalOptions.signal) {
+      throwIfGenerationAborted(traversalOptions.signal)
+    }
     if (page.pagination.count !== page.requirements.length) {
       throw internalError('Requirement traversal returned a bad count', {
         reason: 'complete_result_count_mismatch',
@@ -368,6 +389,17 @@ export async function traverseCompleteRequirementList(
         )
       }
       seenRequirementIds.add(requirement.id)
+    }
+    if (
+      traversalOptions.maxItems != null &&
+      itemCount + page.requirements.length > traversalOptions.maxItems
+    ) {
+      throw (
+        traversalOptions.createItemLimitError?.(traversalOptions.maxItems) ??
+        internalError('Requirement traversal exceeded its item bound', {
+          reason: 'complete_result_item_bound',
+        })
+      )
     }
 
     await visitPage(page.requirements, pageNumber)

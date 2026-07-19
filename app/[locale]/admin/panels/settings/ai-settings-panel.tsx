@@ -8,6 +8,7 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
+  Sparkles,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import {
@@ -235,7 +236,13 @@ function restoreSafetyRuleDefaultsInRules(
   )
 }
 
-export default function AiSettingsPanel() {
+export default function AiSettingsPanel({
+  embedded = false,
+  onSettingsSettled,
+}: {
+  embedded?: boolean
+  onSettingsSettled?: () => void
+}) {
   const locale = useLocale()
   const ta = useTranslations('admin')
   const tc = useTranslations('common')
@@ -559,6 +566,10 @@ export default function AiSettingsPanel() {
   }, [loadSafetyRules])
 
   useEffect(() => {
+    if (!isLoading && !isRulesLoading) onSettingsSettled?.()
+  }, [isLoading, isRulesLoading, onSettingsSettled])
+
+  useEffect(() => {
     setMcpLimitInputKiB(committedMcpLimitKiB)
   }, [committedMcpLimitKiB])
 
@@ -805,7 +816,7 @@ export default function AiSettingsPanel() {
 
   return (
     <section
-      aria-labelledby="ai-tab"
+      aria-labelledby={embedded ? 'admin-settings-ai-title' : 'ai-tab'}
       className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
       {...devMarker({
         context: 'admin center',
@@ -813,13 +824,19 @@ export default function AiSettingsPanel() {
         priority: 340,
         value: 'ai',
       })}
-      id="ai-panel"
-      role="tabpanel"
+      id={embedded ? 'admin-settings-ai-section' : 'ai-panel'}
+      role={embedded ? undefined : 'tabpanel'}
     >
       <div className="flex flex-col gap-4 border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
-            {ta('ai.title')}
+          <h2 className="flex items-center gap-2 text-xl font-semibold text-secondary-950 dark:text-secondary-50">
+            <Sparkles
+              aria-hidden="true"
+              className="h-5 w-5 text-primary-700 dark:text-primary-300"
+            />
+            <span id={embedded ? 'admin-settings-ai-title' : undefined}>
+              {ta('ai.title')}
+            </span>
           </h2>
           <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
             {ta('ai.description')}
@@ -827,12 +844,23 @@ export default function AiSettingsPanel() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {message ? (
-            <span
-              className="text-sm font-medium text-red-700 dark:text-red-400"
-              role="alert"
-            >
-              {message}
-            </span>
+            <>
+              <span
+                className="text-sm font-medium text-red-700 dark:text-red-400"
+                role="alert"
+              >
+                {message}
+              </span>
+              {!isLoading ? (
+                <button
+                  className="btn-secondary px-4! py-2! text-sm"
+                  onClick={() => void loadSettings()}
+                  type="button"
+                >
+                  {tc('retry')}
+                </button>
+              ) : null}
+            </>
           ) : null}
         </div>
       </div>

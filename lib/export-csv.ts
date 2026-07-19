@@ -11,7 +11,7 @@ export function exportToCsv(
 
 const FORMULA_LEADING_CHARACTERS = ['=', '+', '-', '@', '\t', '\r'] as const
 
-function escapeCsvField(field: string): string {
+export function escapeCsvField(field: string): string {
   const isFormulaLeading = startsWithFormulaLeadingCharacter(field)
   const safeField = isFormulaLeading ? `'${field}` : field
 

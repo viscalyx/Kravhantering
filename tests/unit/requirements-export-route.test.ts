@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  exportToCsv: vi.fn((_columns: unknown, _rows: unknown) => 'csv-data'),
+  getApplicationSettings: vi.fn(),
   traverseCompleteRequirementList: vi.fn(),
 }))
 
-vi.mock('@/lib/export-csv', () => ({
-  exportToCsv: mocks.exportToCsv,
+vi.mock('@/lib/dal/application-settings', () => ({
+  getApplicationSettings: mocks.getApplicationSettings,
 }))
 
 vi.mock('@/lib/requirements/list-query', () => ({
@@ -69,6 +69,17 @@ async function responseTextWithBom(response: Response): Promise<string> {
 describe('requirements export route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.getApplicationSettings.mockResolvedValue({
+      csvExportConcurrencyPerNode: 5,
+      csvExportMaxFileBytes: 100 * 1024 * 1024,
+      csvExportMaxRequirements: 1000,
+      csvExportTimeoutSeconds: 120,
+      pdfReportConcurrencyPerNode: 3,
+      pdfReportMaxFileBytes: 50 * 1024 * 1024,
+      pdfReportMaxRequirements: 1000,
+      pdfReportTimeoutSeconds: 180,
+      pdfWorkerMemoryMib: 512,
+    })
     mocks.traverseCompleteRequirementList.mockImplementation(
       async (
         _db: unknown,
@@ -76,8 +87,8 @@ describe('requirements export route', () => {
         _authorization: unknown,
         visitPage: (rows: unknown[], page: number) => void,
       ) => {
-        visitPage([requirement(1), requirement(2)], 1)
-        visitPage([requirement(3)], 2)
+        await visitPage([requirement(1), requirement(2)], 1)
+        await visitPage([requirement(3)], 2)
         return { itemCount: 3, pageCount: 2 }
       },
     )
@@ -96,17 +107,18 @@ describe('requirements export route', () => {
     expect(response.headers.get('Content-Disposition')).toContain(
       'kravbibliotek.csv',
     )
-    expect(await responseTextWithBom(response)).toBe('\uFEFFcsv-data')
-    expect(mocks.exportToCsv.mock.calls[0]?.[1]).toEqual([
-      expect.objectContaining({ 'Krav-ID': 'TST-001' }),
-      expect.objectContaining({ 'Krav-ID': 'TST-002' }),
-      expect.objectContaining({ 'Krav-ID': 'TST-003' }),
-    ])
+    const csv = await responseTextWithBom(response)
+    expect(csv).toContain('Krav-ID;Kravtext')
+    expect(csv).toContain('TST-001;Requirement 1')
+    expect(csv).toContain('TST-002;Requirement 2')
+    expect(csv).toContain('TST-003;Requirement 3')
+    expect(csv.indexOf('TST-001')).toBeLessThan(csv.indexOf('TST-003'))
     expect(mocks.traverseCompleteRequirementList).toHaveBeenCalledWith(
       expect.anything(),
       expect.not.objectContaining({ cursor: expect.anything() }),
       expect.anything(),
       expect.any(Function),
+      expect.objectContaining({ maxItems: 1000 }),
     )
   })
 
@@ -124,5 +136,58 @@ describe('requirements export route', () => {
 
     expect(response.status).toBe(400)
     expect(mocks.traverseCompleteRequirementList).not.toHaveBeenCalled()
+  })
+
+  it('returns the stable item-limit envelope before delivery', async () => {
+    mocks.getApplicationSettings.mockResolvedValueOnce({
+      ...(await mocks.getApplicationSettings()),
+      csvExportMaxRequirements: 2,
+    })
+    mocks.traverseCompleteRequirementList.mockImplementationOnce(
+      async (
+        _db,
+        _input,
+        _authorization,
+        _visitPage,
+        options: {
+          createItemLimitError: (limit: number) => Error
+          maxItems: number
+        },
+      ) => {
+        throw options.createItemLimitError(options.maxItems)
+      },
+    )
+    const { GET } = await import('@/app/api/requirements/export/route')
+    const response = await GET(
+      new Request(
+        'http://localhost/api/requirements/export?locale=en',
+      ) as never,
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'output_limit_exceeded',
+      details: { limit: 2, limitKind: 'items', output: 'csv' },
+    })
+  })
+
+  it('returns the stable byte-limit envelope without a partial download', async () => {
+    mocks.getApplicationSettings.mockResolvedValueOnce({
+      ...(await mocks.getApplicationSettings()),
+      csvExportMaxFileBytes: 8,
+    })
+    const { GET } = await import('@/app/api/requirements/export/route')
+    const response = await GET(
+      new Request(
+        'http://localhost/api/requirements/export?locale=en',
+      ) as never,
+    )
+
+    expect(response.status).toBe(422)
+    expect(response.headers.get('Content-Disposition')).toBeNull()
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'output_limit_exceeded',
+      details: { limit: 8, limitKind: 'bytes', output: 'csv' },
+    })
   })
 })

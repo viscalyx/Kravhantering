@@ -1147,17 +1147,18 @@ describe('RequirementsClient', () => {
     fireEvent.click(screen.getByRole('button', { name: 'export' }))
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/api/requirements/export?'),
+      expect(pdfDownloadState.download).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fallbackFilename: 'kravbibliotek.csv',
+          output: 'csv',
+          url: expect.stringContaining('/api/requirements/export?'),
+        }),
       ),
     )
-    const exportRequest = fetchMock.mock.calls
-      .map(([input]) => String(input))
-      .find(url => url.includes('/api/requirements/export?'))
-    expect(exportRequest).toBeTruthy()
+    const exportRequest = String(
+      pdfDownloadState.download.mock.calls.at(-1)?.[0]?.url,
+    )
     expect(exportRequest).not.toContain('limit=')
-    expect(createObjectURLMock).toHaveBeenCalledTimes(1)
-    expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:requirements-export')
   })
 
   it('uses localized filter-based report URLs for floating actions', async () => {
@@ -1359,7 +1360,7 @@ describe('RequirementsClient', () => {
     })
   })
 
-  it('ignores export failures without starting a download', async () => {
+  it('delegates CSV export failures to the shared download flow', async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = String(input)
 
@@ -1391,13 +1392,13 @@ describe('RequirementsClient', () => {
     fireEvent.click(screen.getByRole('button', { name: 'export' }))
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/api/requirements/export?'),
+      expect(pdfDownloadState.download).toHaveBeenCalledWith(
+        expect.objectContaining({
+          output: 'csv',
+          url: expect.stringContaining('/api/requirements/export?'),
+        }),
       ),
     )
-
-    expect(createObjectURLMock).not.toHaveBeenCalled()
-    expect(revokeObjectURLMock).not.toHaveBeenCalled()
   })
 
   it('ignores stale refresh responses and pinned-row fetches once a newer refresh wins', async () => {

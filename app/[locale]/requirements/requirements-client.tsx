@@ -1035,20 +1035,12 @@ export default function RequirementsClient({
       sort: sortState,
     })
 
-    try {
-      const res = await fetch(`/api/requirements/export?${params}`)
-      if (!res.ok) return
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download =
-        locale === 'sv' ? 'kravbibliotek.csv' : 'requirements-library.csv'
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch {
-      return
-    }
+    await pdfDownload.download({
+      fallbackFilename:
+        locale === 'sv' ? 'kravbibliotek.csv' : 'requirements-library.csv',
+      output: 'csv',
+      url: `/api/requirements/export?${params}`,
+    })
   }
 
   return (

@@ -5,6 +5,7 @@ import {
   readDatabaseSchemaStatus,
 } from '@/lib/database-schema-status'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { probeGeneratedOutputTempDirectory } from '@/lib/generated-output/spool'
 import { getSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
 export const dynamic = 'force-dynamic'
@@ -17,12 +18,14 @@ type ReadinessCheckName =
   | 'sql_server'
   | 'database_migration_compatibility'
   | 'oidc_discovery'
+  | 'temporary_storage'
 
 type ReadinessFailureReason =
   | 'runtime_config_invalid'
   | 'sql_server_unavailable'
   | DatabaseSchemaStatusReason
   | 'oidc_discovery_unavailable'
+  | 'temporary_storage_unavailable'
 
 interface ReadinessCheck {
   defaultReason: ReadinessFailureReason
@@ -104,6 +107,10 @@ async function checkDatabaseMigrationCompatibility() {
   }
 }
 
+async function checkTemporaryStorage() {
+  await probeGeneratedOutputTempDirectory()
+}
+
 async function checkOidcDiscovery() {
   const cfg = getAuthConfig()
   const response = await fetch(discoveryUrl(cfg.issuerUrl), {
@@ -155,6 +162,11 @@ export async function GET() {
       defaultReason: 'database_schema_version_check_failed',
       name: 'database_migration_compatibility',
       run: checkDatabaseMigrationCompatibility,
+    },
+    {
+      defaultReason: 'temporary_storage_unavailable',
+      name: 'temporary_storage',
+      run: checkTemporaryStorage,
     },
     {
       defaultReason: 'oidc_discovery_unavailable',

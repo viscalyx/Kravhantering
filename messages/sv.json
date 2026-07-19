@@ -954,6 +954,42 @@
     "reviewFailed": "Kunde inte begära granskning.",
     "revertFailed": "Kunde inte återställa till utkast."
   },
+  "generatedOutput": {
+    "downloadStarted": "Nedladdningen har startat",
+    "errorTitle": "Nedladdningen misslyckades",
+    "retry": "Försök igen",
+    "retryCountdown": "Försök igen om {seconds} s",
+    "phases": {
+      "pdf": {
+        "generating": "Genererar PDF …",
+        "downloading": "Laddar ned PDF …"
+      },
+      "csv": {
+        "generating": "Förbereder CSV-export …",
+        "downloading": "Laddar ned CSV …"
+      }
+    },
+    "errors": {
+      "csv": {
+        "items": "CSV-exporten innehåller fler än den tillåtna gränsen på {limit} krav. Begränsa urvalet eller be en administratör justera exportinställningarna.",
+        "bytes": "CSV-exporten överskrider den tillåtna filstorleken på {limitMiB} MiB. Begränsa urvalet eller be en administratör justera exportinställningarna.",
+        "busy": "Så många CSV-exporter som tillåts samtidigt pågår redan. Du kan försöka igen om {retryAfter} sekunder.",
+        "timeout": "CSV-exporten kunde inte slutföras inom tidsgränsen på {timeoutSeconds} sekunder. Begränsa urvalet eller be en administratör justera exportinställningarna.",
+        "storage": "CSV-exporten kunde inte skapas eftersom den temporära lagringen inte är tillgänglig. Försök igen senare eller kontakta en administratör.",
+        "unknown": "CSV-exporten kunde inte laddas ned. Försök igen."
+      },
+      "pdf": {
+        "items": "PDF-rapporten innehåller fler än den tillåtna gränsen på {limit} krav. Begränsa urvalet eller be en administratör justera rapportinställningarna.",
+        "bytes": "PDF-rapporten överskrider den tillåtna filstorleken på {limitMiB} MiB. Begränsa urvalet eller be en administratör justera rapportinställningarna.",
+        "busy": "Så många PDF-renderingar som tillåts samtidigt pågår redan. Du kan försöka igen om {retryAfter} sekunder.",
+        "timeout": "PDF-rapporten kunde inte skapas inom tidsgränsen på {timeoutSeconds} sekunder. Begränsa urvalet eller be en administratör justera rapportinställningarna.",
+        "storage": "PDF-rapporten kunde inte skapas eftersom den temporära lagringen inte är tillgänglig. Försök igen senare eller kontakta en administratör.",
+        "workerMemory": "PDF-rapporten kunde inte skapas inom den konfigurerade minnesgränsen. Minska antalet krav eller be en administratör justera rapportinställningarna.",
+        "workerFailed": "PDF-rapporten kunde inte skapas på grund av ett tillfälligt renderingsfel. Försök igen. Kontakta en administratör om felet kvarstår.",
+        "unknown": "PDF-rapporten kunde inte laddas ned. Försök igen."
+      }
+    }
+  },
   "reports": {
     "errorTitle": "Fel",
     "loading": "Laddar rapport...",
@@ -1633,6 +1669,60 @@
       },
       "readOnly": {
         "controlledByOwner": "Visas som information. Kravområden och kravpaket byts automatiskt när ägarraden byts."
+      }
+    },
+    "applicationSettings": {
+      "title": "Inställningar",
+      "description": "Gemensamma inställningar för AI, exporter och rapporter.",
+      "loading": "Laddar inställningar…",
+      "loadError": "Kunde inte läsa applikationsinställningar.",
+      "saveError": "Kunde inte spara inställningen.",
+      "invalidValue": "Ange ett värde inom det tillåtna intervallet.",
+      "exports": {
+        "title": "Exporter",
+        "description": "Styr resursgränser för CSV-exporter. Gränserna gäller per operation om inget annat anges."
+      },
+      "reports": {
+        "title": "Rapporter",
+        "description": "Styr resursgränser för stora servergenererade PDF-rapporter. Gränserna gäller per operation om inget annat anges."
+      },
+      "fields": {
+        "csvExportMaxRequirements": {
+          "label": "Högsta antal krav per CSV-export",
+          "help": "Begränsar hur många krav en CSV-export får innehålla. Exporten avvisas innan nedladdningen börjar om resultatet överstiger gränsen. Tillåtet: 1–5 000."
+        },
+        "csvExportMaxFileBytes": {
+          "label": "Högsta CSV-filstorlek",
+          "help": "Begränsar den färdiga CSV-filens storlek. Filen levereras inte om gränsen överskrids. Värdet anges i MiB. Tillåtet: 1–1 024 MiB."
+        },
+        "csvExportConcurrencyPerNode": {
+          "label": "Samtidiga CSV-exporter per nod",
+          "help": "Anger hur många CSV-exporter som får pågå samtidigt på varje applikationsnod. Ytterligare försök avvisas tillfälligt med möjlighet att försöka igen. Tillåtet: 1–20."
+        },
+        "csvExportTimeoutSeconds": {
+          "label": "Tidsgräns för CSV-export",
+          "help": "Avbryter en CSV-export som inte har slutförts inom den angivna tiden. Värdet anges i sekunder. Tillåtet: 10–600 sekunder."
+        },
+        "pdfReportMaxRequirements": {
+          "label": "Högsta antal krav per PDF-rapport",
+          "help": "Begränsar hur många krav en PDF-rapport får innehålla. Rapporten avvisas innan rendering börjar om resultatet överstiger gränsen. Tillåtet: 1–1 000."
+        },
+        "pdfReportMaxFileBytes": {
+          "label": "Högsta PDF-filstorlek",
+          "help": "Begränsar den färdiga PDF-filens storlek. Filen levereras inte om gränsen överskrids. Värdet anges i MiB. Tillåtet: 1–512 MiB."
+        },
+        "pdfReportConcurrencyPerNode": {
+          "label": "Samtidiga PDF-renderingar per nod",
+          "help": "Anger hur många stora PDF-rapporter som får renderas samtidigt på varje applikationsnod. Ytterligare försök avvisas tillfälligt med möjlighet att försöka igen. Tillåtet: 1–10."
+        },
+        "pdfReportTimeoutSeconds": {
+          "label": "Tidsgräns för PDF-generering",
+          "help": "Stoppar en PDF-generering som inte har slutförts inom den angivna tiden. Värdet anges i sekunder. Tillåtet: 10–600 sekunder."
+        },
+        "pdfWorkerMemoryMib": {
+          "label": "Worker-minne per PDF-rendering",
+          "help": "Begränsar JavaScript-minnet för varje isolerad PDF-worker. Containerns minnesgräns är fortfarande det yttersta skyddet. Värdet anges i MiB. Tillåtet: 128–4 096 MiB."
+        }
       }
     },
     "archiving": {

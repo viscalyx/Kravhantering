@@ -26,6 +26,7 @@ export type AdminPrivilegedActionOperation =
   | 'update'
 
 export type AdminPrivilegedResourceType =
+  | 'application_settings'
   | 'ai_settings'
   | 'ai_safety_rule'
   | 'ai_safety_rule_term'

@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import AiSettingsPanel from '@/app/[locale]/admin/panels/ai-settings-panel'
+import AiSettingsPanel from '@/app/[locale]/admin/panels/settings/ai-settings-panel'
 import {
   expectAdminPanelContract,
   pendingFetch,
@@ -60,6 +60,11 @@ describe('AiSettingsPanel', () => {
   it('owns the AI tab panel contract', () => {
     renderAdminPanel(<AiSettingsPanel />, { confirmModal: true })
     expectAdminPanelContract({ markerValue: 'ai', tabId: 'ai' })
+    expect(
+      screen
+        .getByRole('heading', { name: 'admin.ai.title' })
+        .querySelector('.lucide-sparkles'),
+    ).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('confirms before restoring a safety rule', async () => {
