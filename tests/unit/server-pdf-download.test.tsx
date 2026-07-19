@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useReducedMotion } from 'framer-motion'
+import { useRef, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import { downloadBlob } from '@/lib/browser-download'
@@ -107,6 +108,36 @@ function DownloadProbe({
       >
         Download
       </button>
+      {download.dialog}
+    </>
+  )
+}
+
+function MenuDownloadProbe() {
+  const download = useServerPdfDownload()
+  const reportsButtonRef = useRef<HTMLButtonElement>(null)
+  const [menuOpen, setMenuOpen] = useState(true)
+
+  return (
+    <>
+      <button ref={reportsButtonRef} type="button">
+        Reports
+      </button>
+      {menuOpen ? (
+        <button
+          onClick={() => {
+            void download.download({
+              fallbackFilename: 'requirements-list.pdf',
+              restoreFocusTo: reportsButtonRef.current,
+              url: '/reports/from-menu.pdf',
+            })
+            setMenuOpen(false)
+          }}
+          type="button"
+        >
+          Requirements list
+        </button>
+      ) : null}
       {download.dialog}
     </>
   )
@@ -226,6 +257,29 @@ describe('useServerPdfDownload', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(trigger).toHaveFocus()
     expect(downloadBlob).not.toHaveBeenCalled()
+  })
+
+  it('restores explicit trigger focus after the initiating menu item unmounts', async () => {
+    const blob = deferred<Blob>()
+    fetchMock.mockResolvedValueOnce(responseWithBlob(blob.promise))
+    render(<MenuDownloadProbe />)
+
+    const reportsButton = screen.getByRole('button', { name: 'Reports' })
+    const menuItem = screen.getByRole('button', {
+      name: 'Requirements list',
+    })
+    menuItem.focus()
+    fireEvent.click(menuItem)
+    expect(menuItem).not.toBeInTheDocument()
+
+    blob.resolve(new Blob(['%PDF'], { type: 'application/pdf' }))
+    await flushMicrotasks()
+    act(() => {
+      vi.runOnlyPendingTimers()
+    })
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(reportsButton).toHaveFocus()
   })
 
   it('keeps indeterminate progress static when reduced motion is requested', () => {

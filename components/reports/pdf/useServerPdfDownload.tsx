@@ -26,6 +26,7 @@ interface ServerPdfDownloadRequest {
   fallbackFilename: string
   init?: RequestInit
   output?: GeneratedOutputKind
+  restoreFocusTo?: HTMLElement | null
   url: string
 }
 
@@ -146,9 +147,10 @@ export function useServerPdfDownload(): UseServerPdfDownloadResult {
   const pendingRef = useRef<PendingDownload | null>(null)
 
   const restoreFocus = useCallback(() => {
-    window.requestAnimationFrame(() =>
-      pendingRef.current?.restoreFocusTo?.focus(),
-    )
+    const target = pendingRef.current?.restoreFocusTo
+    window.requestAnimationFrame(() => {
+      if (target?.isConnected) target.focus()
+    })
   }, [])
 
   const clearError = useCallback(() => {
@@ -230,7 +232,7 @@ export function useServerPdfDownload(): UseServerPdfDownloadResult {
       await runDownload({
         ...request,
         output: request.output ?? 'pdf',
-        restoreFocusTo: activeElement,
+        restoreFocusTo: request.restoreFocusTo ?? activeElement,
       })
     },
     [runDownload],

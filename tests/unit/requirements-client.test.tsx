@@ -1200,15 +1200,19 @@ describe('RequirementsClient', () => {
     expect(reportsAction?.badge).toBeUndefined()
     expect(reportsAction?.variant).toBeUndefined()
     expect(pdfListItem).toBeTruthy()
+    const reportsTrigger = screen.getByRole('button', {
+      name: 'reports',
+    }) as HTMLButtonElement
     if (
       pdfListItem &&
       !('kind' in pdfListItem) &&
       typeof pdfListItem.onClick === 'function'
     ) {
-      pdfListItem.onClick()
+      pdfListItem.onClick(reportsTrigger)
     }
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename: 'requirements-list.pdf',
+      restoreFocusTo: reportsTrigger,
       url: '/sv/requirements/reports/pdf/list?locale=sv&sortBy=uniqueId&sortDirection=asc&statuses=3',
     })
 
@@ -1246,10 +1250,11 @@ describe('RequirementsClient', () => {
       !('kind' in reviewPdfItem) &&
       typeof reviewPdfItem.onClick === 'function'
     ) {
-      reviewPdfItem.onClick()
+      reviewPdfItem.onClick(reportsTrigger)
     }
     expect(pdfDownloadState.download).toHaveBeenLastCalledWith({
       fallbackFilename: 'combined-review-report.pdf',
+      restoreFocusTo: reportsTrigger,
       url: '/sv/requirements/reports/pdf/review-combined?ids=1',
     })
   })
