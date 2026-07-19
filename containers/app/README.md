@@ -141,6 +141,21 @@ Optional application values:
   discovery.
 - `OPENROUTER_API_KEY`, `OPENROUTER_MGMT_API_KEY`, and
   `NEXT_PUBLIC_DEFAULT_MODEL` enable optional AI integrations.
+- `KRAVHANTERING_EXPORT_TEMP_DIR` selects an absolute private spool root for
+  generated CSV and PDF files. Blank or omitted uses the operating-system
+  temporary directory. When configured, the directory must already exist,
+  remain inaccessible to other users, and grant the non-root operating-system
+  account under which the Node.js process runs read, write, and search access.
+  In the app container, that account is the image's `node` user. An app-owned
+  directory with mode `0700` satisfies that least-privilege contract. Readiness
+  fails while its create/write/remove probe fails.
+
+Generated output uses per-operation directories with mode `0700` and files
+with mode `0600`. The process removes completed, cancelled, and failed output,
+and removes stale owned operation directories older than 15 minutes during
+startup. Size is reserved before generation, so provision the spool filesystem
+for the sum of configured per-node CSV and PDF concurrency multiplied by their
+respective maximum file sizes, plus normal filesystem headroom.
 
 ## Sensitive Values
 

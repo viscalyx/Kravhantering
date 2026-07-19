@@ -296,9 +296,10 @@ an explicit in-modal error.
   responses, and defensively remove duplicate Requirement IDs before rendering.
 - Requirements Library CSV uses `/api/requirements/export`, accepts current
   server filters, locale, and sort, and accepts neither cursor nor page size.
-  The server traverses the complete database-ordered result in 200-row pages.
-  It fails on duplicates, missing progress, cursor cycles, or more than 10 000
-  pages (two million rows) instead of returning a partial export.
+  The server traverses the database-ordered result in bounded pages up to the
+  Admin-configured limit plus one. It fails on an item/byte limit, duplicates,
+  missing progress, cursor cycles, timeout, or traversal guard, and stops on
+  cancellation instead of returning a partial export.
 
 ## Floating Rail
 
@@ -675,7 +676,8 @@ down.
   route.
 - Passes the list view's active filters and sort order to the localized PDF
   route so the server resolves the complete matching requirement set.
-- Does not apply an application-level item-count cap to matching rows.
+- Applies the Admin-configured list-PDF item cap before rendering and creates
+  the PDF in a memory-limited isolated worker.
 - The report shows Requirement ID, requirement text, requirement area, and
   status columns.
 
@@ -890,9 +892,15 @@ down.
   share button.
 - Always shows "History Report".
 - Shows "Review Report" only when the current version has Review status.
-- PDF report URLs are fetched as blobs from the server route; a temporary
-  progress dialog appears only when generation takes longer than two seconds.
-- List view PDF actions use the shared blob helper.
+- PDF report URLs and Requirements Library CSV use the shared Blob helper. Its
+  accessible modal opens immediately, shows separate indeterminate
+  generation/preparation and download phases, and provides Cancel in both
+  phases.
+- The helper uses the server filename when provided and otherwise the
+  caller-provided fallback filename, prevents identical concurrent downloads,
+  restores focus, and maps stable error codes to localized text. Busy capacity
+  shows a five-second countdown before manual Retry; there is no automatic
+  retry, percentage, service worker, or File System Access path.
 
 For report implementation details, see
 [report-generation-developer-workflow.md](../development/report-generation-developer-workflow.md).

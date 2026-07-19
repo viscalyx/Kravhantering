@@ -6,29 +6,56 @@ import {
 
 export type CapacityEventName =
   | 'capacity.operation.completed'
+  | 'capacity.operation.cancelled'
   | 'capacity.operation.failed'
   | 'capacity.threshold_exceeded'
   | 'capacity.throttled'
 
 export type CapacityEventLevel = 'error' | 'info' | 'warn'
-export type CapacityEventOutcome = 'failure' | 'success' | 'throttled'
+export type CapacityEventOutcome =
+  | 'cancelled'
+  | 'failure'
+  | 'success'
+  | 'throttled'
 export type CapacityEventSource = 'mcp' | 'rest' | 'server'
-export type CapacityPageSurface = 'editor-preload' | 'mcp' | 'rest'
+export type CapacityPageSurface =
+  | 'editor-preload'
+  | 'export'
+  | 'mcp'
+  | 'report'
+  | 'rest'
 export type CapacityCursorFailureCategory = 'invalid_cursor'
+export type CapacityReason =
+  | 'byte_limit_exceeded'
+  | 'client_cancelled'
+  | 'concurrency_limit'
+  | 'generation_timeout'
+  | 'item_limit_exceeded'
+  | 'temporary_storage_unavailable'
+  | 'worker_failed'
+  | 'worker_memory_exceeded'
 
 export interface CapacityMetrics {
+  active_count?: number | null
+  byte_count?: number | null
+  byte_limit?: number | null
+  concurrency_limit?: number | null
   continuation_available?: boolean | null
   cost?: number | null
   image_bytes?: number | null
   image_count?: number | null
   item_count?: number | null
+  item_limit?: number | null
   page_limit?: number | null
   returned_count?: number | null
   throttled?: boolean | null
+  timeout_ms?: number | null
   token_count?: number | null
+  worker_memory_limit_bytes?: number | null
 }
 
 export interface CapacityEventInput extends Partial<RequestCorrelationIds> {
+  capacityReason?: CapacityReason
   cursorFailureCategory?: CapacityCursorFailureCategory
   durationMs?: number
   event: CapacityEventName
@@ -62,6 +89,15 @@ function sanitizeOperation(value: string): string {
 
 function safeNumber(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function safeMetricInteger(value: number | null | undefined): number | null {
+  return typeof value === 'number' &&
+    Number.isSafeInteger(value) &&
+    value >= 0 &&
+    value <= Number.MAX_SAFE_INTEGER
+    ? value
+    : null
 }
 
 function collectIds(
@@ -119,7 +155,7 @@ export function recordCapacityEvent(input: CapacityEventInput): void {
     const durationMs = safeNumber(input.durationMs)
     const statusCode = safeNumber(input.statusCode)
     const retryAfterSeconds = safeNumber(input.retryAfterSeconds)
-    const itemCount = safeNumber(metrics.item_count)
+    const itemCount = safeMetricInteger(metrics.item_count)
     const imageCount = safeNumber(metrics.image_count)
     const imageBytes = safeNumber(metrics.image_bytes)
     const tokenCount = safeNumber(metrics.token_count)
@@ -135,6 +171,9 @@ export function recordCapacityEvent(input: CapacityEventInput): void {
     if (input.cursorFailureCategory) {
       payload.cursor_failure_category = input.cursorFailureCategory
     }
+    if (input.capacityReason) {
+      payload.capacity_reason = input.capacityReason
+    }
     if (itemCount !== null) payload.item_count = itemCount
     const returnedCount = safeNumber(metrics.returned_count)
     const pageLimit = safeNumber(metrics.page_limit)
@@ -149,6 +188,19 @@ export function recordCapacityEvent(input: CapacityEventInput): void {
     if (cost !== null) payload.cost = cost
     if (typeof metrics.throttled === 'boolean') {
       payload.throttled = metrics.throttled
+    }
+    const integerMetrics = {
+      active_count: metrics.active_count,
+      byte_count: metrics.byte_count,
+      byte_limit: metrics.byte_limit,
+      concurrency_limit: metrics.concurrency_limit,
+      item_limit: metrics.item_limit,
+      timeout_ms: metrics.timeout_ms,
+      worker_memory_limit_bytes: metrics.worker_memory_limit_bytes,
+    }
+    for (const [key, value] of Object.entries(integerMetrics)) {
+      const safeValue = safeMetricInteger(value)
+      if (safeValue !== null) payload[key] = safeValue
     }
 
     writeCapacityLog(level, payload)

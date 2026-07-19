@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   filenameFromContentDisposition,
+  sanitizeAttachmentFilename,
   sanitizePdfFilename,
 } from '@/lib/pdf/filename'
 import { renderPdfResponse } from '@/lib/pdf/server-response'
@@ -45,5 +46,20 @@ describe('PDF response helpers', () => {
     expect(filenameFromContentDisposition(disposition)).toBe(
       'Granskning REQ-1.pdf',
     )
+  })
+
+  it('preserves valid attachment extensions and sanitizes unsafe characters', () => {
+    expect(
+      filenameFromContentDisposition(
+        'attachment; filename="kravbibliotek.csv"',
+      ),
+    ).toBe('kravbibliotek.csv')
+    expect(
+      filenameFromContentDisposition('attachment; filename="retry.csv"'),
+    ).toBe('retry.csv')
+    expect(sanitizeAttachmentFilename('\u0000Risk:export?.csv')).toBe(
+      'Risk-export-.csv',
+    )
+    expect(sanitizePdfFilename('Risk:rapport?')).toBe('Risk-rapport-.pdf')
   })
 })

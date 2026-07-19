@@ -23,6 +23,18 @@ WHERE period_start > period_end;
 <!-- operator-upgrade:source pr-572 start -->
 Before rollout, review identity-provider role assignments for Admin Center users. Access is now limited to users with the Admin or PrivacyOfficer role, and users who need both general administration and privacy or archiving work must have both roles. Users without either role will no longer see the Admin Center entry point, and direct links will show an access-denied page.
 <!-- operator-upgrade:source pr-572 end -->
+
+### Export CSV and PDF generation
+
+Provision sufficient private temporary storage on every application node. If KRAVHANTERING_EXPORT_TEMP_DIR is configured, it must reference an existing absolute directory accessible only to the non-root application account. Size storage for configured concurrency and maximum file sizes.
+
+Deploy the updated reverse-proxy configuration with an extended timeout for
+generated-output routes.
+
+#### After Upgrade
+
+Review Admin Center > Settings > Exports and Reports. New limits immediately apply to previously unbounded Requirements Library CSV and list-PDF generation.
+
 ## v0.3.0 - 2026-07-09
 
 ### Requirements specifications need lifecycle status before upgrade
@@ -166,7 +178,7 @@ complete after migration.
 
 Releases with AI safety forensic logging add
 `ai_settings.ai_safety_forensic_logging_enabled` with default `1`. Review the
-Admin Center `AI` tab after migration and either route
+Admin Center `Settings` tab, section `AI`, after migration and either route
 `channel == "security-forensics"` logs with stricter access/retention controls
 or disable `Log forensic AI security data` until that routing is ready.
 

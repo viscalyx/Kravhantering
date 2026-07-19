@@ -1,5 +1,60 @@
-import { expect, type Locator, type Page, test } from '@playwright/test'
+import {
+  expect,
+  type Locator,
+  type Page,
+  type Route,
+  test,
+} from '@playwright/test'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
+import { referenceManualCases } from '@/tests/integration/authorization/authorization-test-helpers'
+
+// cSpell:ignore requestfailed
+type DeferredRouteDecision = 'abort' | 'fulfill'
+
+async function deferRoute(
+  page: Page,
+  url: string,
+  fulfill: (route: Route) => Promise<void>,
+) {
+  let decideRoute: (decision: DeferredRouteDecision) => void = () => undefined
+  let decisionSettled = false
+  let routeTask: Promise<void> | undefined
+  let signalRequestStarted: () => void = () => undefined
+  const decision = new Promise<DeferredRouteDecision>(resolve => {
+    decideRoute = resolve
+  })
+  const requestStarted = new Promise<void>(resolve => {
+    signalRequestStarted = resolve
+  })
+  const settle = (nextDecision: DeferredRouteDecision) => {
+    if (decisionSettled) return
+    decisionSettled = true
+    decideRoute(nextDecision)
+  }
+
+  await page.route(url, route => {
+    signalRequestStarted()
+    routeTask = (async () => {
+      const routeDecision = await decision
+      if (routeDecision === 'fulfill') {
+        await fulfill(route)
+        return
+      }
+      await route.abort('aborted').catch(() => undefined)
+    })()
+    return routeTask
+  })
+
+  return {
+    fulfill: () => settle('fulfill'),
+    requestStarted,
+    async cleanup() {
+      settle('abort')
+      await routeTask
+      await page.unroute(url)
+    },
+  }
+}
 
 async function openRequirementDetail(
   page: Page,
@@ -889,53 +944,327 @@ test.describe('Requirements library', () => {
     expect(result).toEqual([])
   })
 
-  test('REQ-10a: complete CSV export uses the dedicated unpaged endpoint', async ({
+  test('REQ-10: complete list PDF download uses the server filename and restores report focus', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    referenceManualCases(testInfo, 'REQ-10')
+    const pdfBody = '%PDF-1.4\n%%EOF'
+    const pdfRoute = await deferRoute(
+      page,
+      '**/sv/requirements/reports/pdf/list?*',
+      async route => {
+        await route.fulfill({
+          body: pdfBody,
+          headers: {
+            'Cache-Control': 'private, no-store',
+            'Content-Disposition':
+              'attachment; filename="server-generated-list.pdf"',
+            'Content-Length': String(Buffer.byteLength(pdfBody)),
+            'Content-Type': 'application/pdf',
+          },
+          status: 200,
+        })
+      },
+    )
+
+    try {
+      await page.goto('/sv/requirements')
+      await expect(
+        page.getByRole('table', { name: 'Lista över krav' }),
+      ).toBeVisible()
+      const reportsButton = page.getByRole('button', { name: 'Rapporter' })
+      await reportsButton.click()
+      const listPdfMenuItem = page.getByRole('menuitem', {
+        name: 'Kravlista',
+      })
+      await expect(listPdfMenuItem).toBeVisible()
+
+      const downloadPromise = page.waitForEvent('download')
+      await listPdfMenuItem.click()
+      await pdfRoute.requestStarted
+      const progressDialog = page.getByRole('dialog', {
+        name: 'Genererar PDF …',
+      })
+      await expect(progressDialog).toBeVisible()
+      await expect(
+        progressDialog.getByRole('button', { name: 'Avbryt' }),
+      ).toBeFocused()
+
+      pdfRoute.fulfill()
+      const download = await downloadPromise
+      expect(download.suggestedFilename()).toBe('server-generated-list.pdf')
+      const stream = await download.createReadStream()
+      expect(stream).not.toBeNull()
+      let downloadedPdf = ''
+      if (stream) {
+        for await (const chunk of stream) {
+          downloadedPdf += chunk.toString()
+        }
+      }
+      expect(downloadedPdf).toBe(pdfBody)
+      await expect(progressDialog).toHaveCount(0)
+      await expect(reportsButton).toBeFocused()
+    } finally {
+      await pdfRoute.cleanup()
+    }
+  })
+
+  test('REQ-10a: cancelling list PDF generation aborts the request without a download', async ({
+    page,
+  }, testInfo) => {
+    referenceManualCases(testInfo, 'REQ-10a')
+    let cancellationError: string | undefined
+    let downloadCount = 0
+    page.on('download', () => {
+      downloadCount += 1
+    })
+    page.on('requestfailed', request => {
+      if (
+        new URL(request.url()).pathname === '/sv/requirements/reports/pdf/list'
+      ) {
+        cancellationError = request.failure()?.errorText
+      }
+    })
+    const pdfRoute = await deferRoute(
+      page,
+      '**/sv/requirements/reports/pdf/list?*',
+      async route => {
+        await route.fulfill({
+          body: '%PDF-1.4\n%%EOF',
+          headers: {
+            'Content-Disposition': 'attachment; filename="cancelled-list.pdf"',
+            'Content-Type': 'application/pdf',
+          },
+          status: 200,
+        })
+      },
+    )
+
+    try {
+      await page.goto('/sv/requirements')
+      await expect(
+        page.getByRole('table', { name: 'Lista över krav' }),
+      ).toBeVisible()
+      const reportsButton = page.getByRole('button', { name: 'Rapporter' })
+      await reportsButton.click()
+      await page.getByRole('menuitem', { name: 'Kravlista' }).click()
+      await pdfRoute.requestStarted
+
+      const progressDialog = page.getByRole('dialog', {
+        name: 'Genererar PDF …',
+      })
+      const cancelButton = progressDialog.getByRole('button', {
+        name: 'Avbryt',
+      })
+      await expect(cancelButton).toBeFocused()
+      await cancelButton.click()
+
+      await expect(progressDialog).toHaveCount(0)
+      await expect
+        .poll(() => cancellationError)
+        .toMatch(/ERR_ABORTED|NS_BINDING_ABORTED/u)
+      expect(downloadCount).toBe(0)
+      await expect(reportsButton).toBeFocused()
+    } finally {
+      await pdfRoute.cleanup()
+    }
+    expect(downloadCount).toBe(0)
+  })
+
+  test('REQ-18: complete CSV export uses the dedicated unpaged endpoint', async ({
+    page,
+  }, testInfo) => {
+    referenceManualCases(testInfo, 'REQ-18')
     const exportedIds = Array.from(
       { length: 205 },
       (_, index) => `EXP${String(index + 1).padStart(4, '0')}`,
     )
     let exportUrl: URL | undefined
-    await page.goto('/sv/requirements')
-    await expect(
-      page.getByRole('table', { name: 'Lista över krav' }),
-    ).toBeVisible()
+    const body = [
+      '\uFEFF"Krav-ID","Kravtext"',
+      ...exportedIds.map(id => `"${id}","Requirement ${id}"`),
+    ].join('\r\n')
+    const csvRoute = await deferRoute(
+      page,
+      '**/api/requirements/export?*',
+      async route => {
+        exportUrl = new URL(route.request().url())
+        await route.fulfill({
+          body,
+          headers: {
+            'Cache-Control': 'private, no-store',
+            'Content-Disposition': 'attachment; filename="kravbibliotek.csv"',
+            'Content-Length': String(Buffer.byteLength(body)),
+            'Content-Type': 'text/csv; charset=utf-8',
+            'X-Accel-Buffering': 'no',
+          },
+          status: 200,
+        })
+      },
+    )
 
+    try {
+      await page.goto('/sv/requirements')
+      await expect(
+        page.getByRole('table', { name: 'Lista över krav' }),
+      ).toBeVisible()
+
+      const downloadPromise = page.waitForEvent('download')
+      await page.getByRole('button', { name: 'Exportera' }).click()
+      await csvRoute.requestStarted
+      const progressDialog = page.getByRole('dialog', {
+        name: 'Förbereder CSV-export …',
+      })
+      await expect(progressDialog).toBeVisible()
+      await expect(
+        progressDialog.getByRole('button', { name: 'Avbryt' }),
+      ).toBeFocused()
+      csvRoute.fulfill()
+      const download = await downloadPromise
+      const stream = await download.createReadStream()
+      let csv = ''
+      for await (const chunk of stream) {
+        csv += chunk.toString()
+      }
+
+      expect(exportUrl).toBeDefined()
+      expect(exportUrl?.searchParams.has('cursor')).toBe(false)
+      expect(exportUrl?.searchParams.has('limit')).toBe(false)
+      expect(download.suggestedFilename()).toBe('kravbibliotek.csv')
+      await expect(progressDialog).toHaveCount(0)
+      await expect(
+        page.getByRole('button', { name: 'Exportera' }),
+      ).toBeFocused()
+      expect(
+        csv
+          .split(/\r?\n/u)
+          .slice(1)
+          .map(line => line.match(/^"(EXP\d{4})"/u)?.[1]),
+      ).toEqual(exportedIds)
+    } finally {
+      await csvRoute.cleanup()
+    }
+  })
+
+  test('REQ-18a: cancelling CSV preparation aborts the request without a download', async ({
+    page,
+  }, testInfo) => {
+    referenceManualCases(testInfo, 'REQ-18a')
+    let cancellationError: string | undefined
+    let downloadCount = 0
+    page.on('download', () => {
+      downloadCount += 1
+    })
+    page.on('requestfailed', request => {
+      if (new URL(request.url()).pathname === '/api/requirements/export') {
+        cancellationError = request.failure()?.errorText
+      }
+    })
+    const csvRoute = await deferRoute(
+      page,
+      '**/api/requirements/export?*',
+      async route => {
+        await route.fulfill({
+          body: '\uFEFF"Krav-ID"\r\n"INT0001"',
+          headers: {
+            'Content-Disposition': 'attachment; filename="cancelled.csv"',
+            'Content-Type': 'text/csv; charset=utf-8',
+          },
+          status: 200,
+        })
+      },
+    )
+
+    try {
+      await page.goto('/sv/requirements')
+      await expect(
+        page.getByRole('table', { name: 'Lista över krav' }),
+      ).toBeVisible()
+      const exportButton = page.getByRole('button', { name: 'Exportera' })
+      await exportButton.click()
+      await csvRoute.requestStarted
+
+      const progressDialog = page.getByRole('dialog', {
+        name: 'Förbereder CSV-export …',
+      })
+      const cancelButton = progressDialog.getByRole('button', {
+        name: 'Avbryt',
+      })
+      await expect(cancelButton).toBeFocused()
+      await cancelButton.click()
+
+      await expect(progressDialog).toHaveCount(0)
+      await expect(exportButton).toBeFocused()
+      await expect
+        .poll(() => cancellationError)
+        .toMatch(/ERR_ABORTED|NS_BINDING_ABORTED/u)
+    } finally {
+      await csvRoute.cleanup()
+    }
+    expect(downloadCount).toBe(0)
+  })
+
+  test('CSV export busy response shows a stable countdown and retries only on request', async ({
+    page,
+  }) => {
+    let attempts = 0
     await page.route('**/api/requirements/export?*', async route => {
-      exportUrl = new URL(route.request().url())
+      attempts += 1
+      if (attempts === 1) {
+        await route.fulfill({
+          body: JSON.stringify({
+            code: 'capacity_busy',
+            details: {
+              output: 'csv',
+              retryAfterSeconds: 1,
+            },
+            error: 'internal queue saturation detail must stay hidden',
+          }),
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '1',
+          },
+          status: 429,
+        })
+        return
+      }
+
       await route.fulfill({
-        body: [
-          '\uFEFF"Krav-ID","Kravtext"',
-          ...exportedIds.map(id => `"${id}","Requirement ${id}"`),
-        ].join('\r\n'),
+        body: '\uFEFF"Krav-ID"\r\n"INT0001"',
         headers: {
-          'Content-Disposition': 'attachment; filename="kravbibliotek.csv"',
+          'Content-Disposition': 'attachment; filename="retry.csv"',
           'Content-Type': 'text/csv; charset=utf-8',
         },
         status: 200,
       })
     })
 
-    const downloadPromise = page.waitForEvent('download')
-    await page.getByRole('button', { name: 'Exportera' }).click()
-    const download = await downloadPromise
-    const stream = await download.createReadStream()
-    let csv = ''
-    for await (const chunk of stream) {
-      csv += chunk.toString()
-    }
+    await page.goto('/sv/requirements')
+    const exportButton = page.getByRole('button', { name: 'Exportera' })
+    await exportButton.click()
 
-    expect(exportUrl).toBeDefined()
-    expect(exportUrl?.searchParams.has('cursor')).toBe(false)
-    expect(exportUrl?.searchParams.has('limit')).toBe(false)
-    expect(download.suggestedFilename()).toBe('kravbibliotek.csv')
-    expect(
-      csv
-        .split(/\r?\n/u)
-        .slice(1)
-        .map(line => line.match(/^"(EXP\d{4})"/u)?.[1]),
-    ).toEqual(exportedIds)
+    const errorDialog = page.getByRole('alertdialog', {
+      name: 'Nedladdningen misslyckades',
+    })
+    await expect(errorDialog).toContainText(
+      'Så många CSV-exporter som tillåts samtidigt pågår redan.',
+    )
+    await expect(errorDialog).not.toContainText('internal queue saturation')
+    await expect(
+      errorDialog.getByRole('button', { name: 'Försök igen om 1 s' }),
+    ).toBeDisabled()
+    await expect(
+      errorDialog.getByRole('button', { name: 'Försök igen' }),
+    ).toBeEnabled()
+    expect(attempts).toBe(1)
+
+    const downloadPromise = page.waitForEvent('download')
+    await errorDialog.getByRole('button', { name: 'Försök igen' }).click()
+    const download = await downloadPromise
+    expect(download.suggestedFilename()).toBe('retry.csv')
+    expect(attempts).toBe(2)
+    await expect(errorDialog).toHaveCount(0)
+    await expect(exportButton).toBeFocused()
   })
 
   test('REQ-09: inline detail orders text, criteria, metadata, references, and packages', async ({

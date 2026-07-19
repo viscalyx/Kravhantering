@@ -385,8 +385,8 @@ for (const { name, viewport } of viewportVariants) {
           }))
 
           expect(tablistMetrics.clientWidth).toBeGreaterThan(0)
-          expect(tablistMetrics.scrollWidth).toBeGreaterThanOrEqual(
-            tablistMetrics.clientWidth,
+          expect(tablistMetrics.scrollWidth).toBeLessThanOrEqual(
+            tablistMetrics.clientWidth + 1,
           )
 
           await actionAuditLogTab.scrollIntoViewIfNeeded()
@@ -680,12 +680,23 @@ for (const { name, viewport } of viewportVariants) {
           name: 'Administrationscenter',
         })
         const tablistMetrics = await tablist.evaluate(element => ({
+          clientHeight: element.clientHeight,
           clientWidth: element.clientWidth,
+          firstTabHeight:
+            element.querySelector<HTMLElement>('[role="tab"]')?.offsetHeight ??
+            0,
+          scrollHeight: element.scrollHeight,
           scrollWidth: element.scrollWidth,
         }))
 
-        expect(tablistMetrics.scrollWidth).toBeGreaterThan(
-          tablistMetrics.clientWidth,
+        expect(tablistMetrics.scrollWidth).toBeLessThanOrEqual(
+          tablistMetrics.clientWidth + 1,
+        )
+        expect(tablistMetrics.scrollHeight).toBeLessThanOrEqual(
+          tablistMetrics.clientHeight + 1,
+        )
+        expect(tablistMetrics.clientHeight).toBeGreaterThan(
+          tablistMetrics.firstTabHeight,
         )
 
         await expect(

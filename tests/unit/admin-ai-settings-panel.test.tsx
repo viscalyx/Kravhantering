@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import AiSettingsPanel from '@/app/[locale]/admin/panels/ai-settings-panel'
+import AiSettingsPanel from '@/app/[locale]/admin/panels/settings/ai-settings-panel'
 import {
   expectAdminPanelContract,
   pendingFetch,
@@ -60,6 +60,40 @@ describe('AiSettingsPanel', () => {
   it('owns the AI tab panel contract', () => {
     renderAdminPanel(<AiSettingsPanel />, { confirmModal: true })
     expectAdminPanelContract({ markerValue: 'ai', tabId: 'ai' })
+    expect(
+      screen
+        .getByRole('heading', { name: 'admin.ai.title' })
+        .querySelector('.lucide-sparkles'),
+    ).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('uses matching plain minus and plus icons for the MCP limit stepper', async () => {
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        const method = init?.method ?? 'GET'
+        if (url === '/api/admin/ai-settings' && method === 'GET') {
+          return Promise.resolve(okJson({}))
+        }
+        if (url === '/api/admin/ai-safety-rules' && method === 'GET') {
+          return Promise.resolve(okJson(safetyRulesResponse()))
+        }
+        return Promise.reject(new Error(`Unexpected fetch ${method} ${url}`))
+      },
+    )
+
+    renderAdminPanel(<AiSettingsPanel />, { confirmModal: true })
+
+    const input = await screen.findByLabelText('admin.ai.mcpMaxRequestLimit')
+    const buttons = input.parentElement?.querySelectorAll('button')
+    expect(buttons?.[0].querySelector('.lucide-minus')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    )
+    expect(buttons?.[1].querySelector('.lucide-plus')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    )
   })
 
   it('confirms before restoring a safety rule', async () => {

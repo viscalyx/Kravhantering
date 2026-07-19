@@ -83,6 +83,7 @@ describe('Admin Center bundle contract', () => {
     const directory = join(root, 'panels')
     write(root, 'panels/zeta-panel.tsx', '')
     write(root, 'panels/alpha-panel.tsx', '')
+    write(root, 'panels/settings/ai-settings-panel.tsx', '')
     write(root, 'panels/readme.md', '')
 
     expect(discoverAdminPanelNames(directory)).toEqual([

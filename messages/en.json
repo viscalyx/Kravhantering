@@ -954,6 +954,42 @@
     "reviewFailed": "Could not request review.",
     "revertFailed": "Could not revert to draft."
   },
+  "generatedOutput": {
+    "downloadStarted": "Download started",
+    "errorTitle": "Download failed",
+    "retry": "Retry",
+    "retryCountdown": "Retry in {seconds} s",
+    "phases": {
+      "pdf": {
+        "generating": "Generating PDF…",
+        "downloading": "Downloading PDF…"
+      },
+      "csv": {
+        "generating": "Preparing CSV export…",
+        "downloading": "Downloading CSV…"
+      }
+    },
+    "errors": {
+      "csv": {
+        "items": "The CSV export contains more than the allowed limit of {limit} requirements. Narrow the selection or ask an administrator to adjust the export settings.",
+        "bytes": "The CSV export exceeds the allowed file size of {limitMiB} MiB. Narrow the selection or ask an administrator to adjust the export settings.",
+        "busy": "The maximum number of CSV exports allowed at the same time are already in progress. You can try again in {retryAfter} seconds.",
+        "timeout": "The CSV export could not be completed within the {timeoutSeconds}-second time limit. Narrow the selection or ask an administrator to adjust the export settings.",
+        "storage": "The CSV export could not be created because temporary storage is unavailable. Try again later or contact an administrator.",
+        "unknown": "The CSV export could not be downloaded. Try again."
+      },
+      "pdf": {
+        "items": "The PDF report contains more than the allowed limit of {limit} requirements. Narrow the selection or ask an administrator to adjust the report settings.",
+        "bytes": "The PDF report exceeds the allowed file size of {limitMiB} MiB. Narrow the selection or ask an administrator to adjust the report settings.",
+        "busy": "The maximum number of PDF renderings allowed at the same time are already in progress. You can try again in {retryAfter} seconds.",
+        "timeout": "The PDF report could not be generated within the {timeoutSeconds}-second time limit. Narrow the selection or ask an administrator to adjust the report settings.",
+        "storage": "The PDF report could not be generated because temporary storage is unavailable. Try again later or contact an administrator.",
+        "workerMemory": "The PDF report could not be generated within the configured memory limit. Reduce the number of requirements or ask an administrator to adjust the report settings.",
+        "workerFailed": "The PDF report could not be generated because of a temporary rendering error. Try again. Contact an administrator if the problem persists.",
+        "unknown": "The PDF report could not be downloaded. Try again."
+      }
+    }
+  },
   "reports": {
     "errorTitle": "Error",
     "loading": "Loading report...",
@@ -1633,6 +1669,69 @@
       },
       "readOnly": {
         "controlledByOwner": "Shown for information. Requirement areas and packages are switched automatically when the owner row is switched."
+      }
+    },
+    "applicationSettings": {
+      "title": "Settings",
+      "description": "Shared settings for AI, exports, and reports.",
+      "loading": "Loading settings…",
+      "loadError": "Could not load application settings.",
+      "saveError": "Could not save the setting.",
+      "invalidValue": "Enter a value within the allowed range.",
+      "decreaseValue": "Decrease {field}",
+      "increaseValue": "Increase {field}",
+      "exports": {
+        "title": "Exports",
+        "description": "Controls resource limits for CSV exports. Limits apply per operation unless stated otherwise."
+      },
+      "reports": {
+        "title": "Reports",
+        "description": "Controls resource limits for large server-generated PDF reports. Limits apply per operation unless stated otherwise."
+      },
+      "units": {
+        "exports": "exports",
+        "mib": "MiB",
+        "renderings": "renderings",
+        "requirements": "requirements",
+        "seconds": "seconds"
+      },
+      "fields": {
+        "csvExportMaxRequirements": {
+          "label": "Maximum requirements per CSV export",
+          "help": "Limits how many requirements a CSV export may contain. The export is rejected before download begins when the result exceeds the limit. Allowed: 1–5,000."
+        },
+        "csvExportMaxFileBytes": {
+          "label": "Maximum CSV file size",
+          "help": "Limits the completed CSV file size. The file is not delivered when the limit is exceeded. Use minus or plus to adjust by 1 MiB, or enter an integer in MiB. Allowed: 1–1,024 MiB."
+        },
+        "csvExportConcurrencyPerNode": {
+          "label": "Concurrent CSV exports per node",
+          "help": "Sets how many CSV exports may run concurrently on each application node. Additional attempts are temporarily rejected and may be retried. Allowed: 1–20."
+        },
+        "csvExportTimeoutSeconds": {
+          "label": "CSV export time limit",
+          "help": "Stops a CSV export that has not completed within the configured time. The value is specified in seconds. Allowed: 10–600 seconds."
+        },
+        "pdfReportMaxRequirements": {
+          "label": "Maximum requirements per PDF report",
+          "help": "Limits how many requirements a PDF report may contain. The report is rejected before rendering begins when the result exceeds the limit. Allowed: 1–1,000."
+        },
+        "pdfReportMaxFileBytes": {
+          "label": "Maximum PDF file size",
+          "help": "Limits the completed PDF file size. The file is not delivered when the limit is exceeded. Use minus or plus to adjust by 1 MiB, or enter an integer in MiB. Allowed: 1–512 MiB."
+        },
+        "pdfReportConcurrencyPerNode": {
+          "label": "Concurrent PDF renderings per node",
+          "help": "Sets how many large PDF reports may render concurrently on each application node. Additional attempts are temporarily rejected and may be retried. Allowed: 1–10."
+        },
+        "pdfReportTimeoutSeconds": {
+          "label": "PDF generation time limit",
+          "help": "Stops PDF generation that has not completed within the configured time. The value is specified in seconds. Allowed: 10–600 seconds."
+        },
+        "pdfWorkerMemoryMib": {
+          "label": "Worker memory per PDF rendering",
+          "help": "Limits JavaScript memory for each isolated PDF worker. The container memory limit remains the final safeguard. Use minus or plus to adjust by 128 MiB, or enter an integer in MiB. Allowed: 128–4,096 MiB."
+        }
       }
     },
     "archiving": {

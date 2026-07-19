@@ -1,9 +1,16 @@
-import { expect, type Page, type Route, test } from '@playwright/test'
+import {
+  type APIRequestContext,
+  expect,
+  type Page,
+  type Route,
+  test,
+} from '@playwright/test'
 import {
   addMcpMaxRequestBytesSteps,
   MCP_REQUEST_PAYLOAD_MAX_BYTES,
   MCP_REQUEST_PAYLOAD_MIN_BYTES,
 } from '@/lib/ai/generation-availability'
+import type { AdminApplicationSettings } from '@/lib/application-settings'
 import { getAiSettings, putAiSettings } from '../ai-settings-test-helpers'
 
 async function mockAiDialogReferenceData(page: Page) {
@@ -54,8 +61,254 @@ async function mockUnavailableGeneration(route: Route) {
   })
 }
 
-test.describe('Admin AI settings', () => {
+async function getApplicationSettings(
+  request: APIRequestContext,
+): Promise<AdminApplicationSettings> {
+  const response = await request.get('/api/admin/application-settings')
+  expect(response.ok()).toBe(true)
+  return (await response.json()) as AdminApplicationSettings
+}
+
+async function patchApplicationSetting(
+  request: APIRequestContext,
+  body: Record<string, number>,
+) {
+  const response = await request.patch('/api/admin/application-settings', {
+    data: body,
+  })
+  expect(response.ok()).toBe(true)
+}
+
+test.describe('Admin settings', () => {
   test.use({ viewport: { height: 760, width: 1280 } })
+
+  test('ADMIN-15: Settings keeps AI, Exports, and Reports ordered and autosaves one application setting', async ({
+    page,
+    request,
+  }) => {
+    const original = await getApplicationSettings(request)
+    const changedLimit =
+      original.csvExportMaxRequirements < 5000
+        ? original.csvExportMaxRequirements + 1
+        : original.csvExportMaxRequirements - 1
+
+    try {
+      await page.goto('/sv/admin?tab=settings')
+      await expect(
+        page.getByRole('tab', { name: 'Inställningar' }),
+      ).toHaveAttribute('aria-selected', 'true')
+
+      const panel = page.locator('#settings-panel')
+      await expect(panel.locator('[aria-busy]')).toHaveAttribute(
+        'aria-busy',
+        'false',
+      )
+      await expect(page.locator('#admin-settings-ai-section')).toBeVisible()
+      await expect(
+        panel.getByRole('heading', { exact: true, name: 'Exporter' }),
+      ).toBeVisible()
+      await expect(
+        panel.getByRole('heading', { exact: true, name: 'Rapporter' }),
+      ).toBeVisible()
+
+      const sectionOrder = await panel.evaluate(element => {
+        const text = element.textContent ?? ''
+        return {
+          ai: text.indexOf('AI-assistering'),
+          exports: text.indexOf('Exporter'),
+          reports: text.indexOf('Rapporter'),
+        }
+      })
+      expect(sectionOrder.ai).toBeGreaterThanOrEqual(0)
+      expect(sectionOrder.exports).toBeGreaterThan(sectionOrder.ai)
+      expect(sectionOrder.reports).toBeGreaterThan(sectionOrder.exports)
+
+      const inputs = panel.locator('input[id^="admin-application-setting-"]')
+      await expect(inputs).toHaveCount(9)
+      const controlWidths = await inputs.evaluateAll(elements =>
+        elements
+          .filter(
+            element =>
+              element.id !==
+                'admin-application-setting-csvExportMaxFileBytes' &&
+              element.id !==
+                'admin-application-setting-pdfReportMaxFileBytes' &&
+              element.id !== 'admin-application-setting-pdfWorkerMemoryMib',
+          )
+          .map(element => element.parentElement?.getBoundingClientRect().width),
+      )
+      expect(new Set(controlWidths)).toEqual(new Set([176]))
+      const mcpControlWidth = await panel
+        .locator('#admin-ai-mcp-max-request-kib')
+        .evaluate(
+          element => element.parentElement?.getBoundingClientRect().width ?? 0,
+        )
+      for (const field of [
+        'csvExportMaxFileBytes',
+        'pdfReportMaxFileBytes',
+        'pdfWorkerMemoryMib',
+      ]) {
+        const width = await panel
+          .locator(`#admin-application-setting-${field}`)
+          .evaluate(
+            element =>
+              element.parentElement?.getBoundingClientRect().width ?? 0,
+          )
+        expect(Math.abs(width - mcpControlWidth)).toBeLessThanOrEqual(4)
+      }
+      await expect(
+        panel.locator('#admin-application-setting-csvExportMaxFileBytes'),
+      ).toHaveValue(String(original.csvExportMaxFileBytes / (1024 * 1024)))
+      await expect(
+        panel.locator('#admin-application-setting-pdfWorkerMemoryMib'),
+      ).toHaveValue(String(original.pdfWorkerMemoryMib))
+      await expect(
+        panel.locator('#admin-application-setting-pdfReportMaxFileBytes'),
+      ).toHaveValue(String(original.pdfReportMaxFileBytes / (1024 * 1024)))
+      const decreaseCsvFileSize = panel.getByRole('button', {
+        name: 'Minska Högsta CSV-filstorlek',
+      })
+      await expect(decreaseCsvFileSize).toHaveAttribute(
+        'title',
+        'Minska Högsta CSV-filstorlek',
+      )
+      await expect(
+        decreaseCsvFileSize.locator('.lucide-minus'),
+      ).toHaveAttribute('aria-hidden', 'true')
+      const increaseCsvFileSize = panel.getByRole('button', {
+        name: 'Öka Högsta CSV-filstorlek',
+      })
+      await expect(increaseCsvFileSize).toHaveAttribute(
+        'title',
+        'Öka Högsta CSV-filstorlek',
+      )
+      await expect(increaseCsvFileSize.locator('.lucide-plus')).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      )
+      await panel
+        .getByRole('button', {
+          name: 'Hjälp: Högsta CSV-filstorlek',
+        })
+        .click()
+      await expect(
+        panel.locator('#admin-application-setting-csvExportMaxFileBytes-help'),
+      ).toContainText(/Använd minus eller plus för att ändra med 1 MiB/)
+      const decreasePdfFileSize = panel.getByRole('button', {
+        name: 'Minska Högsta PDF-filstorlek',
+      })
+      await expect(decreasePdfFileSize).toHaveAttribute(
+        'title',
+        'Minska Högsta PDF-filstorlek',
+      )
+      await expect(
+        decreasePdfFileSize.locator('.lucide-minus'),
+      ).toHaveAttribute('aria-hidden', 'true')
+      const increasePdfFileSize = panel.getByRole('button', {
+        name: 'Öka Högsta PDF-filstorlek',
+      })
+      await expect(increasePdfFileSize).toHaveAttribute(
+        'title',
+        'Öka Högsta PDF-filstorlek',
+      )
+      await expect(increasePdfFileSize.locator('.lucide-plus')).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      )
+      await panel
+        .getByRole('button', {
+          name: 'Hjälp: Högsta PDF-filstorlek',
+        })
+        .click()
+      await expect(
+        panel.locator('#admin-application-setting-pdfReportMaxFileBytes-help'),
+      ).toContainText(/Använd minus eller plus för att ändra med 1 MiB/)
+      const decreaseWorkerMemory = panel.getByRole('button', {
+        name: 'Minska Worker-minne per PDF-rendering',
+      })
+      await expect(decreaseWorkerMemory).toHaveAttribute(
+        'title',
+        'Minska Worker-minne per PDF-rendering',
+      )
+      await expect(
+        decreaseWorkerMemory.locator('.lucide-minus'),
+      ).toHaveAttribute('aria-hidden', 'true')
+      const increaseWorkerMemory = panel.getByRole('button', {
+        name: 'Öka Worker-minne per PDF-rendering',
+      })
+      await expect(increaseWorkerMemory).toHaveAttribute(
+        'title',
+        'Öka Worker-minne per PDF-rendering',
+      )
+      await expect(
+        increaseWorkerMemory.locator('.lucide-plus'),
+      ).toHaveAttribute('aria-hidden', 'true')
+      await expect(
+        panel
+          .getByRole('button', { name: 'Sänk MCP-anropsgränsen' })
+          .locator('.lucide-minus'),
+      ).toHaveAttribute('aria-hidden', 'true')
+      await expect(
+        panel
+          .getByRole('button', { name: 'Höj MCP-anropsgränsen' })
+          .locator('.lucide-plus'),
+      ).toHaveAttribute('aria-hidden', 'true')
+      await panel
+        .getByRole('button', {
+          name: 'Hjälp: Worker-minne per PDF-rendering',
+        })
+        .click()
+      await expect(
+        panel.getByText(/Använd minus eller plus för att ändra med 128 MiB/),
+      ).toBeVisible()
+      await expect(
+        panel.locator(
+          '#admin-application-setting-csvExportMaxRequirements-unit',
+        ),
+      ).toHaveText('krav')
+      await expect(
+        panel.locator('#admin-application-setting-csvExportMaxFileBytes-unit'),
+      ).toHaveText('MiB')
+      await expect(
+        panel.locator(
+          '#admin-application-setting-csvExportConcurrencyPerNode-unit',
+        ),
+      ).toHaveText('exporter')
+      await expect(
+        panel.locator(
+          '#admin-application-setting-csvExportTimeoutSeconds-unit',
+        ),
+      ).toHaveText('sekunder')
+      await expect(
+        panel.locator(
+          '#admin-application-setting-pdfReportConcurrencyPerNode-unit',
+        ),
+      ).toHaveText('renderingar')
+      await expect(
+        panel.getByRole('button', {
+          name: 'Hjälp: Högsta antal krav per CSV-export',
+        }),
+      ).toBeVisible()
+
+      const csvLimit = page.locator(
+        '#admin-application-setting-csvExportMaxRequirements',
+      )
+      await csvLimit.fill(String(changedLimit))
+      await csvLimit.press('Enter')
+      await expect(csvLimit).toHaveValue(String(changedLimit))
+      await expect
+        .poll(
+          async () =>
+            (await getApplicationSettings(request)).csvExportMaxRequirements,
+        )
+        .toBe(changedLimit)
+      await expect(panel.getByText('Sparat', { exact: true })).toBeVisible()
+    } finally {
+      await patchApplicationSetting(request, {
+        csvExportMaxRequirements: original.csvExportMaxRequirements,
+      })
+    }
+  })
 
   test('REQ-16B: Admin Center controls the MCP request payload limit', async ({
     page,
@@ -78,13 +331,12 @@ test.describe('Admin AI settings', () => {
       shouldRestoreSettings = true
 
       await test.step('shows AI security between AI assistance and MCP controls', async () => {
-        await page.goto('/sv/admin?tab=ai')
-        const aiPanel = page.locator('#ai-panel')
+        await page.goto('/sv/admin?tab=settings')
+        const aiPanel = page.locator('#admin-settings-ai-section')
         await expect(aiPanel).toHaveCount(1)
-        await expect(page.getByRole('tab', { name: 'AI' })).toHaveAttribute(
-          'aria-selected',
-          'true',
-        )
+        await expect(
+          page.getByRole('tab', { name: 'Inställningar' }),
+        ).toHaveAttribute('aria-selected', 'true')
         await expect(
           aiPanel.getByRole('checkbox', { name: /Kravgenerering/ }),
         ).toBeVisible()
@@ -153,7 +405,7 @@ test.describe('Admin AI settings', () => {
       })
 
       await test.step('keeps term-selection checkbox target circles separate', async () => {
-        const aiPanel = page.locator('#ai-panel')
+        const aiPanel = page.locator('#admin-settings-ai-section')
         const ruleButton = aiPanel.getByRole('button', {
           name: 'Promptinjektion: instruktionsövertagande',
         })
@@ -178,7 +430,7 @@ test.describe('Admin AI settings', () => {
       })
 
       await test.step('confirms before restoring safety-rule defaults', async () => {
-        const aiPanel = page.locator('#ai-panel')
+        const aiPanel = page.locator('#admin-settings-ai-section')
         await aiPanel
           .getByRole('button', { name: 'Återställ standard' })
           .click()
@@ -257,11 +509,10 @@ test.describe('Admin AI settings', () => {
     let shouldRestoreSettings = false
 
     try {
-      await page.goto('/sv/admin?tab=ai')
-      await expect(page.getByRole('tab', { name: 'AI' })).toHaveAttribute(
-        'aria-selected',
-        'true',
-      )
+      await page.goto('/sv/admin?tab=settings')
+      await expect(
+        page.getByRole('tab', { name: 'Inställningar' }),
+      ).toHaveAttribute('aria-selected', 'true')
       const generationToggle = page.locator(
         '#admin-ai-requirement-generation-enabled',
       )
@@ -310,7 +561,7 @@ test.describe('Admin AI settings', () => {
         .getByRole('textbox', { name: 'Behov och sammanhang' })
         .fill('Skapa ett krav om spårbar import och verifierbarhet.')
 
-      await page.goto('/sv/admin?tab=ai')
+      await page.goto('/sv/admin?tab=settings')
       const refreshedGenerationToggle = page.locator(
         '#admin-ai-requirement-generation-enabled',
       )

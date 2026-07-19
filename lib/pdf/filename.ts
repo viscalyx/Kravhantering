@@ -9,15 +9,20 @@ function removeControlChars(value: string): string {
     .join('')
 }
 
-export function sanitizePdfFilename(filename: string): string {
-  const normalized = removeControlChars(filename)
+export function sanitizeAttachmentFilename(filename: string): string | null {
+  const sanitized = removeControlChars(filename)
     .replace(RESERVED_FILENAME_CHARS, '-')
     .replace(/\s+/g, ' ')
     .trim()
 
-  const withExtension = normalized.toLowerCase().endsWith('.pdf')
-    ? normalized
-    : `${normalized}.pdf`
+  return sanitized.length > 0 ? sanitized : null
+}
+
+export function sanitizePdfFilename(filename: string): string {
+  const sanitized = sanitizeAttachmentFilename(filename) ?? ''
+  const withExtension = sanitized.toLowerCase().endsWith('.pdf')
+    ? sanitized
+    : `${sanitized}.pdf`
 
   return withExtension.length > 4 ? withExtension : 'report.pdf'
 }
@@ -52,7 +57,7 @@ export function filenameFromContentDisposition(
   const encodedMatch = /filename\*=UTF-8''([^;]+)/i.exec(value)
   if (encodedMatch?.[1]) {
     try {
-      return sanitizePdfFilename(decodeURIComponent(encodedMatch[1]))
+      return sanitizeAttachmentFilename(decodeURIComponent(encodedMatch[1]))
     } catch {
       return null
     }
@@ -60,11 +65,11 @@ export function filenameFromContentDisposition(
 
   const quotedMatch = /filename="((?:\\"|[^"])*)"/i.exec(value)
   if (quotedMatch?.[1]) {
-    return sanitizePdfFilename(
+    return sanitizeAttachmentFilename(
       quotedMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\'),
     )
   }
 
   const bareMatch = /filename=([^;]+)/i.exec(value)
-  return bareMatch?.[1] ? sanitizePdfFilename(bareMatch[1].trim()) : null
+  return bareMatch?.[1] ? sanitizeAttachmentFilename(bareMatch[1].trim()) : null
 }

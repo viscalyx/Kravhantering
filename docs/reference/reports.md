@@ -49,10 +49,10 @@ formatted table.
 - Includes all currently visible requirements (after filtering/sorting)
 - Uses the same displayed requirement version and status as the list view, so
   Review rows are included when the current filter includes them
-- Does not apply an application-level item-count cap. The list report route
-  resolves the full matching requirement set server-side from the active
+- Resolves the complete matching requirement set server-side from the active
   filters and sort order instead of relying on the currently loaded client
-  page.
+  page. The Admin-configured PDF item cap is checked with a bounded
+  `limit + 1` traversal before rendering.
 - Header shows total count and generation timestamp
 
 ### 4. Combined Review Report
@@ -318,15 +318,45 @@ CSV with the following conventions:
   the download BOM.
 - Requirements specification CSV exports are generated server-side from the
   whole specification, stay row-oriented, do not include metadata rows, and are
-  returned with a UTF-8 BOM at the HTTP boundary.
-- Requirements Library CSV is served only by
-  `GET /api/requirements/export`. It applies the requested server filters,
-  locale, and database sort, starts from the first page, and accepts no cursor
-  or page-size parameter.
+  tracked separately in [issue 606](https://github.com/viscalyx/Kravhantering/issues/606);
+  issue 596 limits only the Requirements Library CSV and large requirements-list
+  PDF paths.
+- Requirements Library CSV is returned with a UTF-8 BOM at the HTTP boundary
+  and is served only by `GET /api/requirements/export`. It applies the requested
+  server filters, locale, and database sort, starts from the first page, and
+  accepts no cursor or page-size parameter.
 - Requirements Library CSV and filtered list PDF collection traverse internal
-  200-row pages. They fail rather than return partial output if a page repeats a
-  Requirement ID, does not make progress, repeats a cursor, or exceeds 10 000
-  pages (two million rows).
+  bounded pages and fetch at most the Admin item limit plus one row. They fail
+  rather than return partial output if a page repeats a Requirement ID, does not
+  make progress, repeats a cursor, or exceeds the traversal page guard.
+
+## Bounded Requirements Library Output
+
+Requirements Library CSV and the requirements-list PDF are same-request,
+all-or-error operations. After authorization they read one
+`application_settings` snapshot, acquire a process-local per-node slot, reserve
+the configured maximum file size against temporary-storage capacity, and
+create a private spool file. No response headers are sent until generation has
+completed within all configured bounds.
+
+CSV traverses SQL-authoritative pages and appends escaped rows directly to a
+bounded file; it never builds the complete row model or CSV string in memory.
+The large list PDF collects at most 1,000 report rows and renders the shared
+model in an isolated worker thread with an Admin-configured V8 heap limit.
+Both paths stop traversal/rendering on timeout or client cancellation and
+remove output after completion, cancellation, or error.
+
+The browser uses one accessible two-phase modal for both outputs:
+`Generating/Preparing` while awaiting response headers and `Downloading` while
+reading the response Blob. There is no percentage, service worker, or File
+System Access path. The server filename from `Content-Disposition` wins over
+the localized fallback filename.
+
+Stable failures are `output_limit_exceeded` (`422`), `capacity_busy` (`429`,
+`Retry-After: 5`), and the `503` timeout, temporary-storage, PDF-memory, or
+worker failure codes. The client maps only these codes and bounded details to
+localized messages; it never displays raw server error text. A busy response
+enables manual retry only after the countdown and never retries automatically.
 
 ## Output Behavior
 

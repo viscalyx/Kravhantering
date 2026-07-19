@@ -193,6 +193,21 @@ erDiagram
         datetime2 updated_at
     }
 
+    application_settings {
+        integer id PK
+        integer csv_export_max_requirements
+        integer csv_export_max_file_bytes
+        integer csv_export_concurrency_per_node
+        integer csv_export_timeout_seconds
+        integer pdf_report_max_requirements
+        integer pdf_report_max_file_bytes
+        integer pdf_report_concurrency_per_node
+        integer pdf_report_timeout_seconds
+        integer pdf_worker_memory_mib
+        datetime2 created_at
+        datetime2 updated_at
+    }
+
     requirement_import_validation_sessions {
         integer id PK
         text token_hash UK
@@ -1441,6 +1456,36 @@ These tables store contributor- and admin-managed UI configuration.
 They are not business-domain reference data. They control organization-wide UI
 defaults used by the app.
 
+### `application_settings`
+
+Singleton Admin Center resource limits for generated CSV exports and large PDF
+reports. File-size values are persisted as bytes; the UI converts them to MiB.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Default | Allowed value |
+| --- | --- | --- | --- |
+| `id` | integer PK | `1` | Singleton row `1` |
+| `csv_export_max_requirements` | integer | `1000` | `1`–`5000` |
+| `csv_export_max_file_bytes` | integer | `104857600` | `1`–`1024` MiB in `1 MiB` steps |
+| `csv_export_concurrency_per_node` | integer | `5` | `1`–`20` |
+| `csv_export_timeout_seconds` | integer | `120` | `10`–`600` |
+| `pdf_report_max_requirements` | integer | `1000` | `1`–`1000` |
+| `pdf_report_max_file_bytes` | integer | `52428800` | `1`–`512` MiB in `1 MiB` steps |
+| `pdf_report_concurrency_per_node` | integer | `3` | `1`–`10` |
+| `pdf_report_timeout_seconds` | integer | `180` | `10`–`600` |
+| `pdf_worker_memory_mib` | integer | `512` | `128`–`4096` MiB |
+| `created_at` | datetime2 | Seed time | Creation timestamp |
+| `updated_at` | datetime2 | Seed time | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+Required and demo seed profiles create row `id = 1` without overwriting an
+existing row. `chk_application_settings_id` enforces the singleton identity.
+The nine field-specific `chk_application_settings_*` constraints enforce the
+ranges above; the two byte fields additionally enforce exact `1 MiB` steps.
+Each generated-output operation reads one settings snapshot after
+authorization and uses that snapshot for admission, bounds, timeout, worker
+memory, and telemetry.
+
 ### `ai_settings`
 
 Singleton Admin Center settings for AI-assisted requirement generation, AI
@@ -2625,6 +2670,7 @@ graph LR
     end
 
     subgraph UI Settings
+        APS[application_settings]
         AIS[ai_settings]
         AIR[ai_safety_rules]
         AIRT[ai_safety_rule_terms]

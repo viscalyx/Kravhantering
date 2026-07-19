@@ -53,6 +53,7 @@ The following events are used in v1:
 | --- | --- |
 | `capacity.operation.completed` | A measured flow completed. |
 | `capacity.operation.failed` | A measured flow failed. |
+| `capacity.operation.cancelled` | The client cancelled measured work. |
 | `capacity.threshold_exceeded` | A flow exceeded its duration threshold. |
 | `capacity.throttled` | A request was blocked by throttling. |
 
@@ -60,6 +61,13 @@ Safe metrics may be included when relevant:
 
 - `duration_ms`
 - `item_count`
+- `byte_count`
+- `item_limit`
+- `byte_limit`
+- `timeout_ms`
+- `active_count`
+- `concurrency_limit`
+- `worker_memory_limit_bytes`
 - `returned_count`
 - `page_limit`
 - `continuation_available`
@@ -96,11 +104,39 @@ V1 measures:
 - Server-side PDF rendering for requirement, specification, privacy, and
   access-review exports.
 
-Report PDFs are rendered in Node route handlers so production CSP can stay
-strict without `unsafe-eval` or `wasm-unsafe-eval`. V1 does not impose an
-application-level item-count cap on report lists. Large report PDFs remain
-server workload for capacity planning; practical constraints are request URL
-length, data loading time, and PDF rendering capacity.
+Large report PDFs are rendered in isolated Node worker threads from the
+production-bundled report renderer so production CSP can stay strict without
+`unsafe-eval` or `wasm-unsafe-eval`. CSV export and large report-list PDF use
+Admin-configured item, byte, timeout, and per-node concurrency limits. PDF
+workers additionally have an Admin-configured JavaScript heap limit. Each
+operation uses one database settings snapshot.
+
+These flows use `operation == "requirements.library_csv_export"` or
+`operation == "requirements.list_pdf_report"` with `surface == "export"` or
+`surface == "report"` and `source == "rest"`. Terminal reason is one of
+`item_limit_exceeded`, `byte_limit_exceeded`, `generation_timeout`,
+`temporary_storage_unavailable`, `worker_memory_exceeded`, `worker_failed`,
+`client_cancelled`, or `concurrency_limit`. Events never include raw errors,
+paths, filters, requirement IDs, or requirement text.
+
+Generated files are written before response headers to a private spool root
+selected by `KRAVHANTERING_EXPORT_TEMP_DIR`, or the operating-system temporary
+directory when the variable is unset or blank. Operation directories use mode
+`0700`; files use `0600`. An explicitly configured base directory must already
+exist, remain inaccessible to other users, and grant the non-root
+operating-system account under which the Node.js process runs read, write, and
+search access. An app-owned directory with mode `0700` meets that contract.
+Logical maximum bytes are reserved against current filesystem capacity before
+generation. Files are removed after complete transfer, cancellation, or error,
+and stale owned operation directories older than 15 minutes are removed on
+startup. `/api/ready` fails its sanitized `temporary_storage` check when the
+runtime cannot create, write, close, and remove a probe file.
+
+Successful file responses set exact `Content-Length`,
+`Cache-Control: no-store`, and `X-Accel-Buffering: no`. Production Nginx grants
+only the CSV export and localized list-PDF routes a 660-second read timeout,
+leaving 60 seconds of proxy margin over the maximum 600-second application
+setting.
 
 ## Throttling
 
@@ -113,6 +149,13 @@ V1 uses process-local in-memory throttling:
 
 When a limit is reached, REST flows respond with `429` and `Retry-After`. MCP
 flows return a tool error and log `capacity.throttled`.
+
+Generated output uses `429 capacity_busy` with `Retry-After: 5` when its
+process-local concurrency slot is unavailable. Item and completed-file limits
+return `422 output_limit_exceeded`. Timeout, temporary-storage, worker-memory,
+and unexpected worker failures return stable `503` error codes. Client
+cancellation stops upstream query/render work and cleans up without exposing a
+response body.
 
 This solution is not distributed. In scaled production, throttling must move to
 SQL Server, Redis, or a platform rate-limiting capability.

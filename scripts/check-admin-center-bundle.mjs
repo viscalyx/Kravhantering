@@ -13,8 +13,8 @@ import {
 
 // 2026-07-14 production baseline 4,596 gzip bytes plus 5% headroom.
 export const ADMIN_CENTER_ENTRY_GZIP_MAX_BYTES = 4_826
-// 2026-07-14 largest panel baseline 8,824 gzip bytes plus 5% headroom.
-export const ADMIN_CENTER_PANEL_GZIP_MAX_BYTES = 9_266
+// 2026-07-19 Settings panel stepper baseline 12,084 gzip bytes plus 5% headroom.
+export const ADMIN_CENTER_PANEL_GZIP_MAX_BYTES = 12_689
 
 const ADMIN_ROUTE_MODULE = '[project]/app/[locale]/admin/page'
 const ADMIN_CLIENT_MODULE = '[project]/app/[locale]/admin/admin-client.tsx'

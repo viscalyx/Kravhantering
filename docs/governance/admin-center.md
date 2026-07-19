@@ -30,7 +30,7 @@ The admin center currently has nine tabs for core administration:
 
 - `Columns`
 - `Identity`
-- `AI`
+- `Settings`
 - `Taxonomy`
 - `Statuses and workflows`
 - `Access review`
@@ -139,14 +139,21 @@ Demo seed data contains `SE5560000001` as the visible default prefix. Required
 seed data intentionally does not create any HSA-id-prefix rows, so a clean
 installation starts without organization-specific prefix policy.
 
-## AI
+## Settings
 
-The `AI` tab manages AI-assisted requirement generation directly in the AI
-panel. Its `AI assistance` section contains the requirement-generation toggle,
+The `Settings` tab is addressed by `?tab=settings` and contains fixed `AI`,
+`Exports`, and `Reports` sections. It loads AI and application settings in
+parallel, reserves the complete panel layout while loading, and reveals the
+sections together after both settings reads settle. The former `?tab=ai`
+address is intentionally unavailable rather than retained as a compatibility
+alias.
+
+The `AI` section manages AI-assisted requirement generation. Its
+`AI assistance` subsection contains the requirement-generation toggle,
 its `AI security` section contains the forensic AI safety JSON logging toggle,
 safety-rule cache time and editable AI safety-rule terms, and its
 `MCP interface` section contains the MCP request/session payload limit and MCP
-import row/TTL limits. The AI tab has no shared Save button; controls save
+import row/TTL limits. The section has no shared Save button; controls save
 directly when changed, with per-control or per-row status. Numeric controls
 show their allowed range and step directly under the control.
 
@@ -216,6 +223,17 @@ request begin. A warning icon marks standard terms whose active state or
 direction differs from the seeded standard. The safety filter reads active
 terms from the database only; if the rule set cannot be loaded, AI-assisted
 authoring fails closed before provider work.
+
+The `Exports` and `Reports` sections use the singleton
+`application_settings` table through
+`GET/PATCH /api/admin/application-settings`. The nine numeric fields control
+the per-operation item cap, completed-file byte cap, per-node process-local
+concurrency, and generation timeout for CSV and PDF; PDF also has an isolated
+worker JavaScript-memory limit. File sizes are shown and edited in MiB but sent
+to the API as integer bytes. A field saves on blur or Enter. Each field has its
+own saving state and request token, so an older response cannot overwrite a
+newer edit. Every successful change is written to the privileged action log
+with the field and old/new values.
 
 When an AI safety block happens, the metadata event is always written to
 `security-audit`. If forensic AI safety logging is enabled, the same block also

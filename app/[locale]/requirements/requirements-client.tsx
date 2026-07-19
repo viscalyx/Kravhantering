@@ -1035,20 +1035,12 @@ export default function RequirementsClient({
       sort: sortState,
     })
 
-    try {
-      const res = await fetch(`/api/requirements/export?${params}`)
-      if (!res.ok) return
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download =
-        locale === 'sv' ? 'kravbibliotek.csv' : 'requirements-library.csv'
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch {
-      return
-    }
+    await pdfDownload.download({
+      fallbackFilename:
+        locale === 'sv' ? 'kravbibliotek.csv' : 'requirements-library.csv',
+      output: 'csv',
+      url: `/api/requirements/export?${params}`,
+    })
   }
 
   return (
@@ -1154,9 +1146,10 @@ export default function RequirementsClient({
                         {
                           id: 'pdf-list',
                           label: t('downloadListReportPdf'),
-                          onClick: () =>
+                          onClick: returnFocusTarget =>
                             void pdfDownload.download({
                               fallbackFilename: 'requirements-list.pdf',
+                              restoreFocusTo: returnFocusTarget,
                               url: listReportPdfUrl,
                             }),
                         },
@@ -1170,10 +1163,13 @@ export default function RequirementsClient({
                                 disabled: !allSelectedAreReview,
                                 id: 'review-report-pdf',
                                 label: t('downloadCombinedReportPdf'),
-                                onClick: () =>
+                                onClick: (
+                                  returnFocusTarget?: HTMLButtonElement | null,
+                                ) =>
                                   void pdfDownload.download({
                                     fallbackFilename:
                                       'combined-review-report.pdf',
+                                    restoreFocusTo: returnFocusTarget,
                                     url: `/${locale}/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
                                   }),
                                 tooltip: !allSelectedAreReview

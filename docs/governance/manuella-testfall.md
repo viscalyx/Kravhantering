@@ -646,23 +646,26 @@ sätt, och öppnad inline-detalj hindrar inte användaren från att rulla vidare
 **Förväntat resultat:** Kravtext visas före acceptanskriterier och därefter
 metadata, referenser och paket.
 
-### REQ-10: rapport från kravlistan fungerar
+### REQ-10: skapa PDF från kravlistan
 
-**Steg:** Öppna eller anropa kravlistans PDF-rapport för ett publicerat krav
-som användaren får läsa.
+**Steg:** Öppna `/sv/requirements`, välj ett känt filter och en känd sortering,
+öppna rapportmenyn och välj `Kravlista`. Låt genereringen och nedladdningen
+slutföras.
 
-**Förväntat resultat:** Servergenererad PDF skapas utan fel. PDF från
-kravlistan är tillgänglig för publicerade krav som användaren får läsa, medan
-rapporter baserade på historik kräver separat åtkomst till historik.
+**Förväntat resultat:** Dialogen visar först `Genererar PDF …` och sedan
+`Laddar ned PDF …`. En PDF med serverns filnamn laddas ned och innehåller
+samtliga matchande publicerade krav som användaren får läsa, i vald ordning.
+Dialogen stängs och fokus återgår till rapportknappen.
 
-### REQ-10a: komplett CSV-export går över första serversidan
+### REQ-10a: avbryt PDF-generering från kravlistan
 
-**Steg:** Använd en fixture med minst 205 publicerade krav. Öppna
-`/sv/requirements`, välj en känd sortering och aktivera `Exportera`.
+**Steg:** Använd en tillräckligt stor matchande resultatuppsättning för att
+dialogen ska ligga kvar i fasen `Genererar PDF …`. Starta `Kravlista` från
+rapportmenyn och välj `Avbryt` innan nedladdningen börjar.
 
-**Förväntat resultat:** `kravbibliotek.csv` innehåller samtliga 205 krav exakt
-en gång i samma auktoritativa ordning som listan. Exportanropet går till
-`/api/requirements/export` och skickar varken `cursor` eller `limit`.
+**Förväntat resultat:** Generering och överföring stoppas, dialogen stängs och
+fokus återgår till rapportknappen. Ingen PDF eller delfil laddas ned och den
+privata spoolfilen tas bort.
 
 ### REQ-11: svensk länk till krav omdirigerar till befintlig kravdetalj
 
@@ -856,6 +859,29 @@ När import aktiveras öppnas importgranskningen omedelbart med en översatt
 laddningsstatus tills innehållet är klart. Att stänga och öppna igen startar en
 ren importgranskning, och vanlig stängning återför fokus till importåtgärden.
 Efter en lyckad import uppdateras kravbiblioteket när dialogen stängs.
+
+### REQ-18: exportera kravbiblioteket till CSV
+
+**Steg:** Använd en fixture med minst 205 publicerade krav och sätt CSV-gränsen
+till minst antalet matchningar. Öppna `/sv/requirements`, välj ett känt filter
+och en känd sortering, välj `Exportera` och låt exporten och nedladdningen
+slutföras.
+
+**Förväntat resultat:** Dialogen visar först `Förbereder CSV-export …` och sedan
+`Laddar ned CSV …`. `kravbibliotek.csv` innehåller samtliga matchande krav exakt
+en gång i samma auktoritativa ordning som listan. Exportanropet går till
+`/api/requirements/export` utan `cursor` eller `limit`. Dialogen stängs och
+fokus återgår till exportknappen.
+
+### REQ-18a: avbryt CSV-export från kravbiblioteket
+
+**Steg:** Använd en tillräckligt stor matchande resultatuppsättning för att
+dialogen ska ligga kvar i fasen `Förbereder CSV-export …`. Välj `Exportera` och
+sedan `Avbryt` innan nedladdningen börjar.
+
+**Förväntat resultat:** Export och överföring stoppas, dialogen stängs och
+fokus återgår till exportknappen. Ingen CSV eller delfil laddas ned och den
+privata spoolfilen tas bort.
 
 ## Skapa krav och livscykel
 
@@ -1469,12 +1495,14 @@ omladdning.
 **Steg:** Minska webbläsarbredden och kontrollera att Admin-navigering och
 knappar går att använda.
 
-**Förväntat resultat:** Kontrollerna överlappar inte och är klickbara.
+**Förväntat resultat:** Admin-flikarna radbryts utan horisontell rullning.
+Kontrollerna överlappar inte och är klickbara.
 
 ### ADMIN-04B: paneler laddas först när fliken väljs
 
 **Steg:** Öppna Admincenter som `ada.admin` med webbläsarens nätverkspanel
-öppen. Kontrollera första fliken och välj därefter `AI` och `Identitet`.
+öppen. Kontrollera första fliken och välj därefter `Inställningar` och
+`Identitet`.
 
 **Förväntat resultat:** Endast den aktiva panelens JavaScript och dataanrop
 laddas. Vid panelbyte avmonteras den föregående panelen. Under laddning visas
@@ -1566,6 +1594,30 @@ rad och tar bort den efter omladdning.
 kontrollera valideringen.
 
 **Förväntat resultat:** Prefixet sparas och används i HSA-id-validering.
+
+### ADMIN-15: Inställningar styr export- och rapportgränser
+
+**Steg:** Öppna `/sv/admin?tab=settings` som Admin och kontrollera nätverk och
+sektionernas positioner medan data laddas. Kontrollera ordningen AI, Exporter,
+Rapporter och hjälpknappen för vart och ett av de nio gränsfälten. Prova min-,
+max- och ogiltiga värden. Spara med både blur och Enter, simulera omkastade
+svar och kontrollera åtgärdsloggen. Kör därefter CSV/PDF som träffar ändrade
+gränser.
+
+**Förväntat resultat:** AI- och applikationsdata hämtas parallellt. Ett
+reserverat skal gör att sektionerna inte hoppar och de visas atomärt när alla
+anrop har nått resultat; felkälla visar lokalt fel och `Försök igen`.
+Filstorlek visas i MiB men sparas i byte. Varje rad visar
+en enhet i samma rundade kontroll som talvärdet: krav, MiB, exporter,
+renderingar eller sekunder. Kontrollerna är lika breda och rymmer respektive
+maxvärde, förutom CSV-/PDF-filstorlek och Worker-minne som använder minus- och
+plusknappar med samma kompakta bredd som MCP-anropsgränsen. Filstorlekarna
+ändras i 1 MiB-steg och sparas i byte. Worker-minnet ändras i 128 MiB-steg och
+visar det lagrade heltalsvärdet direkt i MiB. Varje rad visar
+`Sparar`/`Sparat`/fel, äldre svar skriver inte över nyare värde, och exakt ett
+fält auditeras med gammalt/nytt värde. Runtime använder den nya
+inställningssnapshoten. `?tab=ai` betraktas som otillgänglig och omdirigeras
+enligt vanlig flikfallback.
 
 ## Dataskydd och personuppgifter
 

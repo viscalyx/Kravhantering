@@ -666,8 +666,8 @@ describe('AdminClient', () => {
     )
   })
 
-  it('loads and saves AI settings from the AI tab', async () => {
-    searchParamsMock.current = new URLSearchParams('tab=ai')
+  it('loads and saves AI settings from the Settings tab', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=settings')
     const initialMcpLimitBytes = addMcpMaxRequestBytesSteps(
       MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
       -1,
@@ -760,7 +760,7 @@ describe('AdminClient', () => {
     expect(
       await screen.findByRole('heading', { name: 'admin.ai.title' }),
     ).toBeVisible()
-    expect(screen.getByRole('tab', { name: 'admin.ai.title' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'admin.settings' })).toHaveAttribute(
       'aria-selected',
       'true',
     )
@@ -937,7 +937,7 @@ describe('AdminClient', () => {
   })
 
   it('reverts only the failed AI setting after concurrent optimistic saves', async () => {
-    searchParamsMock.current = new URLSearchParams('tab=ai')
+    searchParamsMock.current = new URLSearchParams('tab=settings')
     const failedMcpSave = deferred<Response>()
     fetchMock.mockImplementation(
       (input: RequestInfo | URL, init?: RequestInit) => {
@@ -1022,7 +1022,7 @@ describe('AdminClient', () => {
   })
 
   it('anchors the selected safety-term removal dialog to the clicked button', async () => {
-    searchParamsMock.current = new URLSearchParams('tab=ai')
+    searchParamsMock.current = new URLSearchParams('tab=settings')
     fetchMock.mockImplementation(
       (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input)
@@ -1314,7 +1314,7 @@ describe('AdminClient', () => {
   it.each([
     ['tab=privacy', ['Admin'], 'admin.columns'],
     ['tab=actionAuditLog', ['PrivacyOfficer'], 'admin.accessReview.title'],
-    ['tab=ai', ['PrivacyOfficer'], 'admin.accessReview.title'],
+    ['tab=settings', ['PrivacyOfficer'], 'admin.accessReview.title'],
   ])('falls back from unauthorized admin tab URL %s', (query, roles, tabName) => {
     searchParamsMock.current = new URLSearchParams(query)
 
@@ -1491,11 +1491,16 @@ describe('AdminClient', () => {
     )
 
     const columnsTab = screen.getByRole('tab', { name: 'admin.columns' })
+    const settingsTab = screen.getByRole('tab', { name: 'admin.settings' })
     const taxonomyTab = screen.getByRole('tab', {
       name: 'admin.taxonomy',
     })
 
     expect(columnsTab.parentElement).toHaveAttribute('role', 'tablist')
+    expect(columnsTab.parentElement).toHaveClass('flex-wrap')
+    expect(
+      settingsTab.querySelector('.lucide-sliders-horizontal'),
+    ).toHaveAttribute('aria-hidden', 'true')
     expect(columnsTab).toHaveAttribute('aria-selected', 'true')
     expect(taxonomyTab).toHaveAttribute('aria-selected', 'false')
 
@@ -2357,7 +2362,7 @@ describe('AdminClient', () => {
     expect(
       screen.queryByRole('tab', { name: 'admin.auditLog.title' }),
     ).toBeNull()
-    expect(screen.queryByRole('tab', { name: 'admin.ai.title' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'admin.settings' })).toBeNull()
     expect(screen.queryByRole('tab', { name: 'admin.columns' })).toBeNull()
 
     fireEvent.click(accessReviewTab)

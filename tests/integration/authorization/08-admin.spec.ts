@@ -94,7 +94,7 @@ test.describe('AUTHZ-08/AUTH-11: Admin users with PrivacyOfficer can reach both 
     await page.goto('/sv/admin')
 
     const identityTab = page.getByRole('tab', { name: 'Identitet' })
-    const aiTab = page.getByRole('tab', { name: 'AI' })
+    const settingsTab = page.getByRole('tab', { name: 'Inställningar' })
     const accessReviewTab = page.getByRole('tab', {
       name: 'Behörighetsöversyn',
     })
@@ -108,7 +108,7 @@ test.describe('AUTHZ-08/AUTH-11: Admin users with PrivacyOfficer can reach both 
 
     for (const tab of [
       identityTab,
-      aiTab,
+      settingsTab,
       accessReviewTab,
       archivingTab,
       privacyTab,
@@ -121,10 +121,10 @@ test.describe('AUTHZ-08/AUTH-11: Admin users with PrivacyOfficer can reach both 
     await expect(identityTab).toHaveAttribute('aria-selected', 'true')
     await expect(page.getByRole('heading', { name: 'Identitet' })).toBeVisible()
 
-    await aiTab.click()
-    await expect(aiTab).toHaveAttribute('aria-selected', 'true')
+    await settingsTab.click()
+    await expect(settingsTab).toHaveAttribute('aria-selected', 'true')
     await expect(
-      page.getByRole('heading', { exact: true, name: 'AI' }),
+      page.getByRole('heading', { exact: true, name: 'Inställningar' }),
     ).toBeVisible()
 
     await accessReviewTab.click()
