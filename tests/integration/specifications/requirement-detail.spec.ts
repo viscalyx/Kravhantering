@@ -14,6 +14,7 @@ import {
   expectStatus,
   newRoleContext,
 } from '../authorization/authorization-test-helpers'
+import { deferRoute } from '../deferred-route'
 
 const specificationId = 8
 const specificationCode = 'ETJANST-UPP-2026'
@@ -30,53 +31,6 @@ type Spec15CreatedQuestion = {
   id: number
   questionCode: string
 } | null
-
-type DeferredRouteDecision = 'abort' | 'fulfill'
-
-async function deferRoute(
-  page: Page,
-  url: string,
-  fulfill: (route: Route) => Promise<void>,
-) {
-  let decideRoute: (decision: DeferredRouteDecision) => void = () => undefined
-  let decisionSettled = false
-  let routeTask: Promise<void> | undefined
-  let signalRequestStarted: () => void = () => undefined
-  const decision = new Promise<DeferredRouteDecision>(resolve => {
-    decideRoute = resolve
-  })
-  const requestStarted = new Promise<void>(resolve => {
-    signalRequestStarted = resolve
-  })
-  const settle = (nextDecision: DeferredRouteDecision) => {
-    if (decisionSettled) return
-    decisionSettled = true
-    decideRoute(nextDecision)
-  }
-
-  await page.route(url, route => {
-    signalRequestStarted()
-    routeTask = (async () => {
-      const routeDecision = await decision
-      if (routeDecision === 'fulfill') {
-        await fulfill(route)
-        return
-      }
-      await route.abort('aborted').catch(() => undefined)
-    })()
-    return routeTask
-  })
-
-  return {
-    fulfill: () => settle('fulfill'),
-    requestStarted,
-    async cleanup() {
-      settle('abort')
-      await routeTask
-      await page.unroute(url)
-    },
-  }
-}
 
 type Spec15RfiMutationDiagnosticOptions = {
   createdQuestion?: Spec15CreatedQuestion
@@ -2354,113 +2308,128 @@ test.describe('Requirements specification deterministic manual cases', () => {
     const csvRoutePattern = `**/api/requirements-specifications/${csvExportSpecificationId}/exports?**`
     const csvBody =
       '\uFEFFKrav-ID;Kravtext\r\nPWT-TRACE-001;PWT-MANUAL first\r\nPWT-TRACE-205;PWT-MANUAL last'
-    const procurementRoute = await deferRoute(
-      page,
-      csvRoutePattern,
-      async route => {
+
+    await test.step('procurement export completion', async () => {
+      const procurementRoute = await deferRoute(
+        page,
+        csvRoutePattern,
+        async route => {
+          await route.fulfill({
+            body: csvBody,
+            headers: {
+              'Content-Disposition':
+                'attachment; filename="fallback.csv"; filename*=UTF-8\'\'anbuds-export.csv',
+              'Content-Length': String(Buffer.byteLength(csvBody)),
+              'Content-Type': 'text/csv; charset=utf-8',
+            },
+            status: 200,
+          })
+        },
+      )
+
+      try {
+        const downloadPromise = page.waitForEvent('download')
+        await clickMenuItem(page, 'Exportera', 'Anbuds-CSV')
+        await procurementRoute.requestStarted
+        const progressDialog = page.getByRole('dialog', {
+          name: 'Förbereder CSV-export …',
+        })
+        await expect(progressDialog).toBeVisible()
+        await expect(
+          progressDialog.getByRole('button', { name: 'Avbryt' }),
+        ).toBeFocused()
+        procurementRoute.fulfill()
+        const download = await downloadPromise
+        expect(download.suggestedFilename()).toBe('anbuds-export.csv')
+        await expect(progressDialog).toHaveCount(0)
+        await expect(
+          page
+            .locator(
+              '[data-floating-action-menu-trigger="more-actions"]:visible',
+            )
+            .first(),
+        ).toBeFocused()
+        await expect(
+          page.getByText('Filen är klar', { exact: true }),
+        ).toBeVisible()
+      } finally {
+        await procurementRoute.cleanup()
+      }
+    })
+
+    await test.step('full-export cancellation', async () => {
+      let cancelledDownloadCount = 0
+      page.on('download', () => {
+        cancelledDownloadCount += 1
+      })
+      const fullRoute = await deferRoute(page, csvRoutePattern, async route => {
         await route.fulfill({
           body: csvBody,
           headers: {
-            'Content-Disposition':
-              'attachment; filename="fallback.csv"; filename*=UTF-8\'\'anbuds-export.csv',
-            'Content-Length': String(Buffer.byteLength(csvBody)),
+            'Content-Disposition': 'attachment; filename="full.csv"',
             'Content-Type': 'text/csv; charset=utf-8',
           },
           status: 200,
         })
-      },
-    )
-
-    try {
-      const downloadPromise = page.waitForEvent('download')
-      await clickMenuItem(page, 'Exportera', 'Anbuds-CSV')
-      await procurementRoute.requestStarted
-      const progressDialog = page.getByRole('dialog', {
-        name: 'Förbereder CSV-export …',
       })
-      await expect(progressDialog).toBeVisible()
-      await expect(
-        progressDialog.getByRole('button', { name: 'Avbryt' }),
-      ).toBeFocused()
-      procurementRoute.fulfill()
-      const download = await downloadPromise
-      expect(download.suggestedFilename()).toBe('anbuds-export.csv')
-      await expect(progressDialog).toHaveCount(0)
-      await expect(
-        page
-          .locator('[data-floating-action-menu-trigger="more-actions"]:visible')
-          .first(),
-      ).toBeFocused()
-      await expect(
-        page.getByText('Filen är klar', { exact: true }),
-      ).toBeVisible()
-    } finally {
-      await procurementRoute.cleanup()
-    }
 
-    let cancelledDownloadCount = 0
-    page.on('download', () => {
-      cancelledDownloadCount += 1
-    })
-    const fullRoute = await deferRoute(page, csvRoutePattern, async route => {
-      await route.fulfill({
-        body: csvBody,
-        headers: {
-          'Content-Disposition': 'attachment; filename="full.csv"',
-          'Content-Type': 'text/csv; charset=utf-8',
-        },
-        status: 200,
-      })
+      try {
+        await clickMenuItem(page, 'Exportera', 'Full CSV-export')
+        await fullRoute.requestStarted
+        const progressDialog = page.getByRole('dialog', {
+          name: 'Förbereder CSV-export …',
+        })
+        await progressDialog.getByRole('button', { name: 'Avbryt' }).click()
+        await expect(progressDialog).toHaveCount(0)
+        await expect(
+          page
+            .locator(
+              '[data-floating-action-menu-trigger="more-actions"]:visible',
+            )
+            .first(),
+        ).toBeFocused()
+      } finally {
+        await fullRoute.cleanup()
+      }
+      expect(cancelledDownloadCount).toBe(0)
     })
 
-    try {
-      await clickMenuItem(page, 'Exportera', 'Full CSV-export')
-      await fullRoute.requestStarted
-      const progressDialog = page.getByRole('dialog', {
-        name: 'Förbereder CSV-export …',
-      })
-      await progressDialog.getByRole('button', { name: 'Avbryt' }).click()
-      await expect(progressDialog).toHaveCount(0)
-      await expect(
-        page
-          .locator('[data-floating-action-menu-trigger="more-actions"]:visible')
-          .first(),
-      ).toBeFocused()
-    } finally {
-      await fullRoute.cleanup()
-    }
-    expect(cancelledDownloadCount).toBe(0)
-
-    const limitFailure = async (route: Route) => {
-      await route.fulfill({
-        body: JSON.stringify({
-          code: 'output_limit_exceeded',
-          details: { limit: 100, limitKind: 'items', output: 'csv' },
-          error: 'raw requirement identifiers must not be displayed',
-        }),
-        contentType: 'application/json',
-        status: 422,
-      })
-    }
-    await page.route(csvRoutePattern, limitFailure)
-    try {
-      await clickMenuItem(page, 'Exportera', 'Full CSV-export')
-      const errorDialog = page.getByRole('alertdialog', {
-        name: 'Nedladdningen misslyckades',
-      })
-      await expect(errorDialog).toContainText(
-        'CSV-exporten innehåller fler än den tillåtna gränsen på 100 krav.',
-      )
-      await expect(errorDialog).not.toContainText('raw requirement identifiers')
-      await errorDialog.getByRole('button', { name: 'Stäng' }).click()
-      await expect(
-        page
-          .locator('[data-floating-action-menu-trigger="more-actions"]:visible')
-          .first(),
-      ).toBeFocused()
-    } finally {
-      await page.unroute(csvRoutePattern, limitFailure)
-    }
+    await test.step('limit-failure error handling', async () => {
+      const limitFailure = async (route: Route) => {
+        await route.fulfill({
+          body: JSON.stringify({
+            code: 'output_limit_exceeded',
+            details: { limit: 100, limitKind: 'items', output: 'csv' },
+            error: 'raw requirement identifiers must not be displayed',
+          }),
+          contentType: 'application/json',
+          status: 422,
+        })
+      }
+      await page.route(csvRoutePattern, limitFailure)
+      try {
+        await clickMenuItem(page, 'Exportera', 'Full CSV-export')
+        const errorDialog = page.getByRole('alertdialog', {
+          name: 'Nedladdningen misslyckades',
+        })
+        await expect(errorDialog).toContainText(
+          'CSV-exporten innehåller fler än den tillåtna gränsen på 100 krav.',
+        )
+        await expect(errorDialog).not.toContainText(
+          'raw requirement identifiers',
+        )
+        await errorDialog.getByRole('button', { name: 'Stäng' }).click()
+        await expect(
+          page
+            .locator(
+              '[data-floating-action-menu-trigger="more-actions"]:visible',
+            )
+            .first(),
+        ).toBeFocused()
+      } finally {
+        await page.unroute(csvRoutePattern, limitFailure)
+      }
+    })
   })
 
   test('SPEC-10b: generates progress reports for Införande and Utveckling specifications', async ({
