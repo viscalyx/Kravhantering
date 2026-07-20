@@ -15,7 +15,12 @@ permissions:
 
 jobs:
   persist-operator-upgrade-notes:
-    if: github.event.pull_request.merged == true
+    if: >-
+      github.event.pull_request.merged == true &&
+      (
+        github.event.pull_request.user.login != 'dependabot[bot]' ||
+        !startsWith(github.event.pull_request.title, 'build(deps):')
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
