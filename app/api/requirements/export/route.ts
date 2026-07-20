@@ -1,27 +1,10 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { getApplicationSettings } from '@/lib/dal/application-settings'
 import { escapeCsvField } from '@/lib/export-csv'
 import {
-  GeneratedOutputError,
-  generatedOutputErrorResponse,
-  isGeneratedOutputError,
-} from '@/lib/generated-output/errors'
-import {
-  ClientCancelledGeneratedOutputError,
-  createGeneratedOutputTerminalRecorder,
-  createGenerationDeadline,
-  GeneratedOutputTimeoutError,
-  generatedOutputErrorFromTimeout,
-  throwIfGenerationAborted,
-} from '@/lib/generated-output/operation'
-import {
-  acquireGeneratedOutputSpool,
-  BoundedGeneratedOutputWriter,
-  createGeneratedOutputFileResponse,
-  type GeneratedOutputSpool,
-  generatedOutputCapacitySnapshot,
-} from '@/lib/generated-output/spool'
+  createCsvItemLimitError,
+  runBoundedCsvOutput,
+} from '@/lib/generated-output/csv-runner'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   optionalQueryArraySchema,
@@ -143,152 +126,73 @@ export async function GET(request: NextRequest): Promise<Response> {
   if (!parsedQuery.ok) return parsedQuery.response
 
   const query = parsedQuery.data
-  let spool: GeneratedOutputSpool | undefined
-  let deadline: ReturnType<typeof createGenerationDeadline> | undefined
-  let writer: BoundedGeneratedOutputWriter | undefined
-  let itemCount = 0
-  let byteCount = 0
   try {
     const { authorization, context, db } =
       await createRequirementsRestRuntime(request)
-    const settings = await getApplicationSettings(db)
-    const terminal = createGeneratedOutputTerminalRecorder('csv', context)
-    const terminalMetrics = () => ({
-      activeCount: generatedOutputCapacitySnapshot().activeCsv,
-      byteCount,
-      concurrencyLimit: settings.csvExportConcurrencyPerNode,
-      itemCount,
-      itemLimit: settings.csvExportMaxRequirements,
-      timeoutMs: settings.csvExportTimeoutSeconds * 1000,
-    })
+    const headers = REQUIREMENT_CSV_MESSAGES[query.locale].headers
+    const columns = Object.entries(headers).map(([key, header]) => ({
+      header,
+      key: key as RequirementCsvHeaderKey,
+    }))
+    const filename =
+      query.locale === 'sv' ? 'kravbibliotek.csv' : 'requirements-library.csv'
 
-    try {
-      spool = await acquireGeneratedOutputSpool({
-        concurrencyLimit: settings.csvExportConcurrencyPerNode,
-        maxFileBytes: settings.csvExportMaxFileBytes,
-        output: 'csv',
-      })
-      deadline = createGenerationDeadline(
-        settings.csvExportTimeoutSeconds,
-        request.signal,
-      )
-      const csvWriter = await BoundedGeneratedOutputWriter.open(
-        spool.filePath,
-        settings.csvExportMaxFileBytes,
-        'csv',
-      )
-      writer = csvWriter
-      const headers = REQUIREMENT_CSV_MESSAGES[query.locale].headers
-      const columns = Object.entries(headers).map(([key, header]) => ({
-        header,
-        key: key as RequirementCsvHeaderKey,
-      }))
-      await csvWriter.write('\uFEFF')
-      await csvWriter.write(
-        columns.map(column => escapeCsvField(column.header)).join(';'),
-      )
-
-      await traverseCompleteRequirementList(
-        db,
-        {
-          filters: {
-            areaIds: query.areaIds,
-            categoryIds: query.categoryIds,
-            descriptionSearch: query.descriptionSearch,
-            normReferenceIds: query.normReferenceIds,
-            priorityLevelIds: query.priorityLevelIds,
-            qualityCharacteristicIds: query.qualityCharacteristicIds,
-            requirementPackageIds: query.requirementPackageIds,
-            statuses: query.statuses,
-            typeIds: query.typeIds,
-            uniqueIdSearch: query.uniqueIdSearch,
-            verifiable: query.verifiable,
+    return await runBoundedCsvOutput({
+      context,
+      db,
+      generateRows: async ({ maxItems, signal, writeRow }) => {
+        await traverseCompleteRequirementList(
+          db,
+          {
+            filters: {
+              areaIds: query.areaIds,
+              categoryIds: query.categoryIds,
+              descriptionSearch: query.descriptionSearch,
+              normReferenceIds: query.normReferenceIds,
+              priorityLevelIds: query.priorityLevelIds,
+              qualityCharacteristicIds: query.qualityCharacteristicIds,
+              requirementPackageIds: query.requirementPackageIds,
+              statuses: query.statuses,
+              typeIds: query.typeIds,
+              uniqueIdSearch: query.uniqueIdSearch,
+              verifiable: query.verifiable,
+            },
+            locale: query.locale,
+            sort: {
+              by: query.sortBy ?? DEFAULT_REQUIREMENT_SORT.by,
+              direction:
+                query.sortDirection ?? DEFAULT_REQUIREMENT_SORT.direction,
+            },
           },
-          locale: query.locale,
-          sort: {
-            by: query.sortBy ?? DEFAULT_REQUIREMENT_SORT.by,
-            direction:
-              query.sortDirection ?? DEFAULT_REQUIREMENT_SORT.direction,
-          },
-        },
-        { authorization, context },
-        async page => {
-          for (const row of page) {
-            throwIfGenerationAborted(deadline?.signal ?? request.signal)
-            const line = columns
-              .map(column =>
-                escapeCsvField(
-                  getStaticCsvValue(row, column.key, query.locale),
-                ),
+          { authorization, context },
+          async page => {
+            for (const row of page) {
+              await writeRow(
+                columns
+                  .map(column =>
+                    escapeCsvField(
+                      getStaticCsvValue(row, column.key, query.locale),
+                    ),
+                  )
+                  .join(';'),
               )
-              .join(';')
-            await csvWriter.write(`\r\n${line}`)
-            itemCount += 1
-          }
-        },
-        {
-          createItemLimitError: limit =>
-            new GeneratedOutputError(
-              'output_limit_exceeded',
-              'item_limit_exceeded',
-              { limit, limitKind: 'items', output: 'csv' },
-            ),
-          maxItems: settings.csvExportMaxRequirements,
-          signal: deadline.signal,
-        },
-      )
-      byteCount = await csvWriter.close()
-      writer = undefined
-      throwIfGenerationAborted(deadline.signal)
-      deadline.dispose()
-      deadline = undefined
-
-      const filename =
-        query.locale === 'sv' ? 'kravbibliotek.csv' : 'requirements-library.csv'
-      const response = await createGeneratedOutputFileResponse(
-        spool,
-        {
-          'Content-Disposition': `attachment; filename="${filename}"`,
-          'Content-Type': 'text/csv; charset=utf-8',
-        },
-        {
-          onCancel: () => terminal.cancelled(terminalMetrics()),
-          onComplete: () => terminal.completed(terminalMetrics()),
-          onError: () =>
-            terminal.failed(
-              new Error('CSV response stream failed'),
-              terminalMetrics(),
-            ),
-        },
-      )
-      spool = undefined
-      return response
-    } catch (error) {
-      deadline?.dispose()
-      deadline = undefined
-      await writer?.close().catch(() => {})
-      writer = undefined
-      spool?.releaseGeneration()
-      await spool?.releaseSpool().catch(() => {})
-      spool = undefined
-      terminal.failed(error, terminalMetrics())
-
-      if (error instanceof GeneratedOutputTimeoutError) {
-        return generatedOutputErrorResponse(
-          generatedOutputErrorFromTimeout('csv', error),
+            }
+          },
+          {
+            createItemLimitError: createCsvItemLimitError,
+            maxItems,
+            signal,
+          },
         )
-      }
-      if (isGeneratedOutputError(error)) {
-        return generatedOutputErrorResponse(error)
-      }
-      if (error instanceof ClientCancelledGeneratedOutputError) {
-        return new Response(null, {
-          headers: { 'Cache-Control': 'no-store' },
-          status: 499,
-        })
-      }
-      throw error
-    }
+      },
+      headers: columns.map(column => column.header),
+      operation: 'requirements.library_csv_export',
+      requestSignal: request.signal,
+      responseHeaders: {
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Type': 'text/csv; charset=utf-8',
+      },
+    })
   } catch (error) {
     const { body, status } = toHttpErrorPayload(error)
     if (status >= 500) {
@@ -301,10 +205,5 @@ export async function GET(request: NextRequest): Promise<Response> {
       headers: { 'Cache-Control': 'no-store' },
       status,
     })
-  } finally {
-    deadline?.dispose()
-    await writer?.close().catch(() => {})
-    spool?.releaseGeneration()
-    await spool?.releaseSpool().catch(() => {})
   }
 }

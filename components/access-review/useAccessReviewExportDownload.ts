@@ -1,7 +1,7 @@
 'use client'
 
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
-import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
+import { useGeneratedOutputDownload } from '@/components/generated-output/useGeneratedOutputDownload'
 import { accessReviewExportFilename } from '@/lib/access-review/export-filenames'
 import type {
   AccessReviewDelivery,
@@ -37,7 +37,7 @@ export function useAccessReviewExportDownload({
     null,
   )
   const [error, setError] = useState<string | null>(null)
-  const pdfDownload = useServerPdfDownload()
+  const pdfDownload = useGeneratedOutputDownload()
   const clearError = useCallback(() => setError(null), [])
 
   useEffect(() => {

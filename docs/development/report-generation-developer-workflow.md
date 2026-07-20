@@ -25,7 +25,7 @@ Server PDF Engine
   app/[locale]/requirements/reports/pdf/       Route handlers
   app/[locale]/specifications/[specificationId]/reports/pdf/[profile]
                                        Specification route handler
-  components/reports/pdf/useServerPdfDownload.tsx
+  components/generated-output/useGeneratedOutputDownload.tsx
                                        Immediate two-phase client helper
 ```
 
@@ -71,9 +71,12 @@ Requirements specification reports use a separate prefix
   `.../pdf/traceability?locale=sv&sortBy=uniqueId&sortDirection=asc`
 
 The traceability route accepts the normalized requirements specification item
-filters and ordering. It and lifecycle-profile/CSV collectors use the shared
-bounded server traversal; complete formal output must never depend on browser
-loaded-page state.
+filters and ordering. It and lifecycle-profile outputs use the shared bounded
+server traversal; complete formal output must never depend on browser
+loaded-page state. PDF and structured report JSON intentionally use
+`collectCompleteSpecificationOutputData()`. Procurement and full CSV instead
+use `visitSpecificationOutputPages()` and serialize each enriched row directly
+through the bounded CSV runner.
 
 ## PDF Rendering
 
@@ -85,8 +88,10 @@ production CSP compatible with strict `script-src` values and avoids
 
 The shared client helper opens immediately, shows separate indeterminate
 generation and Blob-download phases, supports cancellation, and maps only
-stable generated-output error codes. User-facing report menu labels use only
-the report name for PDF actions, without a download verb or `(PDF)` suffix.
+stable generated-output error codes. One hook instance permits only one active
+CSV or PDF operation, including different URLs. User-facing report menu labels
+use only the report name for PDF actions, without a download verb or `(PDF)`
+suffix.
 
 The large list-PDF route writes only to a private spool file and invokes
 `renderReportInWorker()`. It passes the literal
@@ -104,7 +109,8 @@ route used by clients. `KRAVHANTERING_EXPORT_TEMP_DIR` keeps its blank-value
 fallback and absolute-path requirement. An explicit directory must already
 exist and grant the non-root operating-system account under which the Node.js
 process runs read, write, and search access while remaining inaccessible to
-other users.
+other users. Requirements-specification CSV reuses this environment and
+storage-sizing contract without adding a setting or variable.
 
 When changing the worker entry or renderer dependencies, run:
 

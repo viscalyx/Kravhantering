@@ -32,6 +32,15 @@ generera om filen på en annan instans, medan operatören ger varje instans en
 egen filnamnsrymd och dimensionerar eventuell gemensam fysisk disk för
 instansernas sammanlagda maximala behov.
 
+Beslutet omfattar även Anbuds-CSV och Full CSV-export för kravunderlag.
+Profilerna delar kravbibliotekets CSV-gränser och processlokala
+samtidighetspool, berikar en databasordnad sida i taget och skriver varje rad
+direkt till samma privata mellanlagring. Den kompletta kravunderlagsinsamlaren
+är fortsatt ett uttryckligt PDF- och JSON-begrepp. RFI-frågelistans CSV är
+inventerad men är ett separat dataset och omfattas inte av detta beslut.
+Miljövariabeln, lagringsdimensioneringen och driftsättningskontraktet
+återanvänds utan ändring.
+
 Beslutet kompletterar
 [ADR 0020](./0020-kapacitetsobserverbarhet-via-plattformen.md) om
 integritetssäker kapacitetsmätning och

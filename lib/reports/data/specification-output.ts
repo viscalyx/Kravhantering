@@ -8,8 +8,12 @@ import {
   type SpecificationItemRef,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
+import { throwIfGenerationAborted } from '@/lib/generated-output/operation'
 import { ReportDataError } from '@/lib/reports/data/server'
-import { traverseCompleteSpecificationItemResult } from '@/lib/requirements/specification-item-page'
+import {
+  type CompleteSpecificationItemTraversalOptions,
+  traverseCompleteSpecificationItemResult,
+} from '@/lib/requirements/specification-item-page'
 
 type Row = Record<string, unknown>
 
@@ -52,6 +56,12 @@ export interface SpecificationOutputItem {
 export interface SpecificationOutputData {
   items: SpecificationOutputItem[]
   specification: NonNullable<Awaited<ReturnType<typeof getSpecificationById>>>
+}
+
+export interface SpecificationOutputPageTraversal {
+  itemCount: number
+  pageCount: number
+  specification: SpecificationOutputData['specification']
 }
 
 const EMPTY_DEVIATION_COUNTS: DeviationCounts = {
@@ -457,14 +467,18 @@ async function collectSpecificationOutputPage(
   })
 }
 
-export async function collectSpecificationOutputData(
+export async function visitSpecificationOutputPages(
   db: SqlServerDatabase,
   specificationId: number,
-): Promise<SpecificationOutputData> {
+  visitPage: (
+    items: SpecificationOutputItem[],
+    pageNumber: number,
+  ) => Promise<void> | void,
+  traversalOptions: CompleteSpecificationItemTraversalOptions = {},
+): Promise<SpecificationOutputPageTraversal> {
   const specification = await resolveSpecification(db, specificationId)
-  const items: SpecificationOutputItem[] = []
 
-  await traverseCompleteSpecificationItemResult(
+  const traversal = await traverseCompleteSpecificationItemResult(
     db,
     {
       filters: {},
@@ -472,7 +486,10 @@ export async function collectSpecificationOutputData(
       sort: { by: 'uniqueId', direction: 'asc' },
       specificationId: specification.id,
     },
-    async pageItems => {
+    async (pageItems, pageNumber) => {
+      if (traversalOptions.signal) {
+        throwIfGenerationAborted(traversalOptions.signal)
+      }
       const itemRefs = pageItems.flatMap(item =>
         item.itemRef ? [item.itemRef as SpecificationItemRef] : [],
       )
@@ -487,7 +504,27 @@ export async function collectSpecificationOutputData(
           409,
         )
       }
-      items.push(...outputPage)
+      if (traversalOptions.signal) {
+        throwIfGenerationAborted(traversalOptions.signal)
+      }
+      await visitPage(outputPage, pageNumber)
+    },
+    traversalOptions,
+  )
+
+  return { ...traversal, specification }
+}
+
+export async function collectCompleteSpecificationOutputData(
+  db: SqlServerDatabase,
+  specificationId: number,
+): Promise<SpecificationOutputData> {
+  const items: SpecificationOutputItem[] = []
+  const { specification } = await visitSpecificationOutputPages(
+    db,
+    specificationId,
+    pageItems => {
+      items.push(...pageItems)
     },
   )
 

@@ -356,6 +356,33 @@ describe('container image contract', () => {
     }
   })
 
+  it('grants the bounded generated-output routes the extended timeout', () => {
+    const generatedOutputConfig = readWorkspaceFile(
+      'containers/production/nginx/templates/generated-output-locations.conf',
+    )
+    const locationExpression = generatedOutputConfig.match(
+      /^location ~ (\S+) \{$/m,
+    )?.[1]
+
+    expect(locationExpression).toBeDefined()
+    const generatedOutputRoute = new RegExp(locationExpression ?? '')
+    expect(generatedOutputRoute.test('/api/requirements/export')).toBe(true)
+    expect(
+      generatedOutputRoute.test(
+        '/api/requirements-specifications/920008/exports',
+      ),
+    ).toBe(true)
+    expect(generatedOutputRoute.test('/sv/requirements/reports/pdf/list')).toBe(
+      true,
+    )
+    expect(
+      generatedOutputRoute.test(
+        '/api/requirements-specifications/920008/rfi-list/export',
+      ),
+    ).toBe(false)
+    expect(generatedOutputConfig).toContain('proxy_read_timeout 660s;')
+  })
+
   it('keeps SQL Server example env scoped to the vendor database engine', () => {
     const sqlServerEnv = readWorkspaceFile(
       'containers/sqlserver/.env.sqlserver.example',

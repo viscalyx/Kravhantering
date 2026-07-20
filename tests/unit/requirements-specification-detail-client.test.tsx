@@ -38,6 +38,7 @@ const requirementDetailState = vi.hoisted(() => ({
 const pdfDownloadState = vi.hoisted(() => ({
   clearError: vi.fn(),
   download: vi.fn(),
+  downloading: false,
 }))
 
 vi.mock('next-intl', () => ({
@@ -321,12 +322,12 @@ vi.mock('@/components/RequirementsTable', () => ({
   },
 }))
 
-vi.mock('@/components/reports/pdf/useServerPdfDownload', () => ({
-  useServerPdfDownload: () => ({
+vi.mock('@/components/generated-output/useGeneratedOutputDownload', () => ({
+  useGeneratedOutputDownload: () => ({
     clearError: pdfDownloadState.clearError,
     dialog: null,
     download: pdfDownloadState.download,
-    downloading: false,
+    downloading: pdfDownloadState.downloading,
     error: null,
   }),
 }))
@@ -358,7 +359,6 @@ let addRequirementsResponse: { body: unknown; ok: boolean }
 let activeSpecificationId = defaultSpecificationId
 let bulkNeedsReferencePatchError: Error | null
 let bulkNeedsReferencePatchResponse: { body: unknown; ok: boolean } | null
-let exportCsvError: Error | null
 let failNextAvailableRequirementsFetch = false
 let failNextSpecificationItemsFetch = false
 let deviationPostHandler: ((itemRef: string) => Promise<unknown>) | undefined
@@ -570,11 +570,11 @@ describe('RequirementsSpecificationDetailClient', () => {
     pdfDownloadState.clearError.mockReset()
     pdfDownloadState.download.mockReset()
     pdfDownloadState.download.mockResolvedValue(undefined)
+    pdfDownloadState.downloading = false
     addRequirementsResponse = { body: { ok: true }, ok: true }
     activeSpecificationId = defaultSpecificationId
     bulkNeedsReferencePatchError = null
     bulkNeedsReferencePatchResponse = null
-    exportCsvError = null
     failNextAvailableRequirementsFetch = false
     failNextSpecificationItemsFetch = false
     deviationPostHandler = undefined
@@ -812,17 +812,6 @@ describe('RequirementsSpecificationDetailClient', () => {
           )
         }
 
-        if (url.startsWith(`${specificationApiPath('/exports')}?`)) {
-          if (exportCsvError) {
-            return Promise.reject(exportCsvError)
-          }
-
-          return Promise.resolve({
-            blob: async () => new Blob(['Krav-ID\r\nBEH0001']),
-            ok: true,
-          })
-        }
-
         if (url === '/api/requirement-areas') {
           return Promise.resolve(okJson({ areas: [] }))
         }
@@ -975,7 +964,11 @@ describe('RequirementsSpecificationDetailClient', () => {
     const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
       hidden?: boolean
       id: string
-      menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
+      menuItems?: Array<{
+        href?: string
+        id: string
+        onClick?: (target?: HTMLButtonElement | null) => void
+      }>
     }>
     const moreActions = floatingActions.find(
       action => action.id === 'more-actions',
@@ -1001,21 +994,24 @@ describe('RequirementsSpecificationDetailClient', () => {
       expect.objectContaining({ id: 'export-full' }),
     ])
 
+    const menuTrigger = document.createElement('button')
     moreActions?.menuItems
       ?.find(item => item.id === 'pdf-progress')
-      ?.onClick?.()
+      ?.onClick?.(menuTrigger)
     moreActions?.menuItems
       ?.find(item => item.id === 'pdf-traceability')
-      ?.onClick?.()
+      ?.onClick?.(menuTrigger)
 
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename:
         'specification.reportProfiles.progress Authorization and IAM ETJANST-UPP-2026.pdf',
+      restoreFocusTo: menuTrigger,
       url: '/en/specifications/8/reports/pdf/progress',
     })
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename:
         'specification.reportProfiles.traceability Authorization and IAM ETJANST-UPP-2026.pdf',
+      restoreFocusTo: menuTrigger,
       url: '/en/specifications/8/reports/pdf/traceability?locale=en&sortBy=uniqueId&sortDirection=asc',
     })
   })
@@ -1146,7 +1142,11 @@ describe('RequirementsSpecificationDetailClient', () => {
     const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
       hidden?: boolean
       id: string
-      menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
+      menuItems?: Array<{
+        href?: string
+        id: string
+        onClick?: (target?: HTMLButtonElement | null) => void
+      }>
     }>
     const moreActions = floatingActions.find(
       action => action.id === 'more-actions',
@@ -1159,13 +1159,15 @@ describe('RequirementsSpecificationDetailClient', () => {
       'pdf-traceability',
     )
 
+    const menuTrigger = document.createElement('button')
     moreActions?.menuItems
       ?.find(item => item.id === 'pdf-progress')
-      ?.onClick?.()
+      ?.onClick?.(menuTrigger)
 
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename:
         'specification.reportProfiles.progress Authorization and IAM ETJANST-UPP-2026.pdf',
+      restoreFocusTo: menuTrigger,
       url: '/en/specifications/8/reports/pdf/progress',
     })
   })
@@ -1299,34 +1301,67 @@ describe('RequirementsSpecificationDetailClient', () => {
     )
   })
 
-  it('logs CSV export failures from discarded menu handlers', async () => {
-    const csvError = new Error('network unavailable')
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    exportCsvError = csvError
+  it('routes full CSV through the generated-output controller with menu focus restoration', async () => {
+    renderRequirementsSpecificationDetailClient()
+    await waitForInitialAvailableRequirementsRefresh()
 
-    try {
-      renderRequirementsSpecificationDetailClient()
-
-      const itemsTable = latestItemsTableProps()
-      const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
-        hidden?: boolean
+    const itemsTable = latestItemsTableProps()
+    const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
+      hidden?: boolean
+      id: string
+      menuItems?: Array<{
+        href?: string
         id: string
-        menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
+        onClick?: (target?: HTMLButtonElement | null) => void
       }>
-      const moreActions = floatingActions.find(
-        action => action.id === 'more-actions',
-      )
+    }>
+    const moreActions = floatingActions.find(
+      action => action.id === 'more-actions',
+    )
+    const menuTrigger = document.createElement('button')
 
-      moreActions?.menuItems
-        ?.find(menuItem => menuItem.id === 'export-full')
-        ?.onClick?.()
+    moreActions?.menuItems
+      ?.find(menuItem => menuItem.id === 'export-full')
+      ?.onClick?.(menuTrigger)
 
-      await waitFor(() => {
-        expect(consoleError).toHaveBeenCalledWith(csvError)
-      })
-    } finally {
-      consoleError.mockRestore()
+    expect(pdfDownloadState.download).toHaveBeenCalledWith({
+      fallbackFilename:
+        'specification.exportProfiles.full Authorization and IAM ETJANST-UPP-2026.csv',
+      output: 'csv',
+      restoreFocusTo: menuTrigger,
+      url: '/api/requirements-specifications/8/exports?profile=full&locale=en',
+    })
+  })
+
+  it('disables both CSV profiles while any generated output is active', async () => {
+    pdfDownloadState.downloading = true
+    const initialData = createInitialData()
+    if (!initialData.spec) {
+      throw new Error('Expected specification fixture')
     }
+    initialData.spec = {
+      ...initialData.spec,
+      specificationLifecycleStatusId: 1,
+    }
+    renderRequirementsSpecificationDetailClient(initialData)
+    await waitForInitialAvailableRequirementsRefresh()
+
+    const moreActions = (
+      latestItemsTableProps().floatingActions as Array<{
+        id: string
+        menuItems?: Array<{ disabled?: boolean; id: string }>
+      }>
+    ).find(action => action.id === 'more-actions')
+
+    expect(moreActions?.menuItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          disabled: true,
+          id: 'export-procurement',
+        }),
+        expect.objectContaining({ disabled: true, id: 'export-full' }),
+      ]),
+    )
   })
 
   it('loads available requirements without sending the fixed status filter', async () => {

@@ -131,8 +131,8 @@ vi.mock('next-intl', () => ({
   },
 }))
 
-vi.mock('@/components/reports/pdf/useServerPdfDownload', () => ({
-  useServerPdfDownload: () => ({
+vi.mock('@/components/generated-output/useGeneratedOutputDownload', () => ({
+  useGeneratedOutputDownload: () => ({
     clearError: pdfDownloadState.clearError,
     dialog: null,
     download: pdfDownloadState.download,

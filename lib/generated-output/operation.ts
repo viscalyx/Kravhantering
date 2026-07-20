@@ -44,6 +44,34 @@ export interface GeneratedOutputTerminalRecorder {
   failed: (error: unknown, metrics?: GeneratedOutputTerminalMetrics) => void
 }
 
+export type GeneratedOutputOperation =
+  | 'requirements.library_csv_export'
+  | 'requirements.list_pdf_report'
+  | 'requirements.specification_csv_export'
+
+interface GeneratedOutputOperationDefinition {
+  output: GeneratedOutputKind
+  surface: 'export' | 'report'
+}
+
+const GENERATED_OUTPUT_OPERATIONS: Record<
+  GeneratedOutputOperation,
+  GeneratedOutputOperationDefinition
+> = {
+  'requirements.library_csv_export': {
+    output: 'csv',
+    surface: 'export',
+  },
+  'requirements.list_pdf_report': {
+    output: 'pdf',
+    surface: 'report',
+  },
+  'requirements.specification_csv_export': {
+    output: 'csv',
+    surface: 'export',
+  },
+}
+
 export function createGenerationDeadline(
   timeoutSeconds: number,
   requestSignal?: AbortSignal,
@@ -81,15 +109,11 @@ export function throwIfGenerationAborted(signal: AbortSignal): void {
 }
 
 export function createGeneratedOutputTerminalRecorder(
-  output: GeneratedOutputKind,
+  operation: GeneratedOutputOperation,
   context: RequestContext,
 ): GeneratedOutputTerminalRecorder {
   const startedAt = Date.now()
-  const operation =
-    output === 'csv'
-      ? 'requirements.library_csv_export'
-      : 'requirements.list_pdf_report'
-  const surface = output === 'csv' ? 'export' : 'report'
+  const { output, surface } = GENERATED_OUTPUT_OPERATIONS[operation]
   let terminalRecorded = false
 
   const record = (

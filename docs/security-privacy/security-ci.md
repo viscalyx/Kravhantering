@@ -11,10 +11,12 @@ Workflow file:
 
 Each pull request to `main` runs the repository-owned SSDLC gate before merge,
 including forked pull requests when repository settings allow fork workflows.
-The gate uses `pull_request_target`, explicitly limits `GITHUB_TOKEN` to read
-permissions, and checks out the base commit instead of the pull request commit.
-That keeps the gate script and workflow logic trusted while still reading the
-pull request body and changed file list from the GitHub API.
+The gate skips pull requests authored by `dependabot[bot]` whose title starts
+with `build(deps):`. The gate uses `pull_request_target`, explicitly limits
+`GITHUB_TOKEN` to read permissions, and checks out the base commit instead of
+the pull request commit. That keeps the gate script and workflow logic trusted
+while still reading the pull request body and changed file list from the GitHub
+API.
 
 The implementation lives in
 [scripts/security/ssdlc-gate.mjs](../../scripts/security/ssdlc-gate.mjs) and can

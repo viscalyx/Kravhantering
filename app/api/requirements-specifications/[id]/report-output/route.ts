@@ -9,7 +9,7 @@ import {
 } from '@/lib/http/validation'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { ReportDataError } from '@/lib/reports/data/server'
-import { collectSpecificationOutputData } from '@/lib/reports/data/specification-output'
+import { collectCompleteSpecificationOutputData } from '@/lib/reports/data/specification-output'
 import { getSpecificationReportProfileForLifecycleStatus } from '@/lib/reports/specification-profiles'
 import { buildSpecificationProfileReport } from '@/lib/reports/templates/specification-profile-template'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
@@ -87,7 +87,7 @@ export async function GET(
       )
     }
 
-    const data = await collectSpecificationOutputData(
+    const data = await collectCompleteSpecificationOutputData(
       runtime.db,
       specification.id,
     )

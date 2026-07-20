@@ -41,6 +41,11 @@ Covered by this contract:
 - `GET /api/requirements/export` is the complete Requirements Library CSV
   contract. It accepts the documented filters, locale, and sort but no cursor
   or page size, and uses the same authorization and SQL ordering as list pages.
+- `GET /api/requirements-specifications/{id}/exports` serves procurement and
+  full CSV only after specification read authorization and procurement
+  lifecycle validation. Both profiles use the common bounded CSV settings,
+  same-request private spool, stable capacity envelopes, and sanitized
+  terminal events.
 - Requirement detail responses include server-derived permissions for the
   current actor and requirement; there is no separate generic permissions
   endpoint in the v1 contract.
@@ -125,8 +130,8 @@ Deferred from this contract:
   OpenAPI/Schemathesis v1 contract with the other specification and CSV
   surfaces. Their useful assertions are
   authorization-before-data, lifecycle profile gating, linked-version
-  selection, normalized complete-result query traversal, and exact output
-  columns.
+  selection, normalized bounded traversal, exact output columns, no partial
+  success, and privacy-safe capacity telemetry.
 - Direct callers can submit at most 200 stable item references to the
   specification selected-item resolution endpoint and to selected-item
   needs-reference or removal mutations. Requests with more than 200 references

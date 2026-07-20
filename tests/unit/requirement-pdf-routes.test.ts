@@ -20,7 +20,7 @@ const routeState = vi.hoisted(() => ({
   collectMultipleRequirementListItemsForReport: vi.fn(),
   collectMultipleRequirementsForReport: vi.fn(),
   collectRequirementForReport: vi.fn(),
-  collectSpecificationOutputData: vi.fn(),
+  collectCompleteSpecificationOutputData: vi.fn(),
   collectSuggestionsForReport: vi.fn(),
   context: {
     actor: {
@@ -94,7 +94,8 @@ vi.mock('@/lib/reports/data/server', () => ({
 }))
 
 vi.mock('@/lib/reports/data/specification-output', () => ({
-  collectSpecificationOutputData: routeState.collectSpecificationOutputData,
+  collectCompleteSpecificationOutputData:
+    routeState.collectCompleteSpecificationOutputData,
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
@@ -270,7 +271,7 @@ describe('requirement PDF routes', () => {
     routeState.buildSpecificationProfileReport.mockReturnValue({
       kind: 'specification-profile',
     })
-    routeState.collectSpecificationOutputData.mockResolvedValue({
+    routeState.collectCompleteSpecificationOutputData.mockResolvedValue({
       items: [],
       specification: {
         businessNeedsReference: null,
@@ -592,7 +593,7 @@ describe('requirement PDF routes', () => {
       id: 42,
       specificationLifecycleStatusId: 3,
     })
-    routeState.collectSpecificationOutputData.mockResolvedValueOnce({
+    routeState.collectCompleteSpecificationOutputData.mockResolvedValueOnce({
       items: [],
       specification: {
         businessNeedsReference: null,
@@ -746,10 +747,9 @@ describe('requirement PDF routes', () => {
       { kind: 'get_specification_items', specificationId: 42 },
       routeState.context,
     )
-    expect(routeState.collectSpecificationOutputData).toHaveBeenCalledWith(
-      { db: true },
-      42,
-    )
+    expect(
+      routeState.collectCompleteSpecificationOutputData,
+    ).toHaveBeenCalledWith({ db: true }, 42)
     expect(routeState.buildSpecificationProfileReport).toHaveBeenCalledWith(
       expect.objectContaining({
         specification: expect.objectContaining({ specificationCode: 'SPEC-1' }),
@@ -783,7 +783,9 @@ describe('requirement PDF routes', () => {
     })
     expect(routeState.getSpecificationById).not.toHaveBeenCalled()
     expect(routeState.authorization.assertAuthorized).not.toHaveBeenCalled()
-    expect(routeState.collectSpecificationOutputData).not.toHaveBeenCalled()
+    expect(
+      routeState.collectCompleteSpecificationOutputData,
+    ).not.toHaveBeenCalled()
   })
 
   it('rejects deviation review PDFs before collecting report data when specification authorization is denied', async () => {

@@ -3,6 +3,7 @@ import {
   listSpecificationItemPageCandidates,
 } from '@/lib/dal/specification-item-page'
 import type { SqlServerDatabase } from '@/lib/db'
+import { throwIfGenerationAborted } from '@/lib/generated-output/operation'
 import { internalError, validationError } from '@/lib/requirements/errors'
 import {
   DEFAULT_REQUIREMENT_SORT,
@@ -46,6 +47,12 @@ export interface SpecificationItemPageResult {
 export interface CompleteSpecificationItemTraversal {
   itemCount: number
   pageCount: number
+}
+
+export interface CompleteSpecificationItemTraversalOptions {
+  createItemLimitError?: (limit: number) => Error
+  maxItems?: number
+  signal?: AbortSignal
 }
 
 function normalizeIds(values: number[] | undefined): number[] | undefined {
@@ -177,6 +184,7 @@ export async function traverseCompleteSpecificationItemResult(
     items: SpecificationItemRequirementRow[],
     pageNumber: number,
   ) => Promise<void> | void,
+  traversalOptions: CompleteSpecificationItemTraversalOptions = {},
 ): Promise<CompleteSpecificationItemTraversal> {
   const seenCursors = new Set<string>()
   const seenItemRefs = new Set<string>()
@@ -188,11 +196,21 @@ export async function traverseCompleteSpecificationItemResult(
     pageNumber <= MAX_COMPLETE_SPECIFICATION_ITEM_PAGES;
     pageNumber += 1
   ) {
+    if (traversalOptions.signal) {
+      throwIfGenerationAborted(traversalOptions.signal)
+    }
+    const remainingItemBudget =
+      traversalOptions.maxItems == null
+        ? MAX_SPECIFICATION_ITEM_PAGE_LIMIT
+        : Math.max(traversalOptions.maxItems + 1 - itemCount, 1)
     const page = await querySpecificationItemPage(db, {
       ...input,
       cursor,
-      limit: MAX_SPECIFICATION_ITEM_PAGE_LIMIT,
+      limit: Math.min(MAX_SPECIFICATION_ITEM_PAGE_LIMIT, remainingItemBudget),
     })
+    if (traversalOptions.signal) {
+      throwIfGenerationAborted(traversalOptions.signal)
+    }
 
     if (page.pagination.count !== page.items.length) {
       throw internalError('Specification item traversal returned a bad count', {
@@ -214,6 +232,17 @@ export async function traverseCompleteSpecificationItemResult(
         )
       }
       seenItemRefs.add(item.itemRef)
+    }
+    if (
+      traversalOptions.maxItems != null &&
+      itemCount + page.items.length > traversalOptions.maxItems
+    ) {
+      throw (
+        traversalOptions.createItemLimitError?.(traversalOptions.maxItems) ??
+        internalError('Specification item traversal exceeded its item bound', {
+          reason: 'complete_result_item_bound',
+        })
+      )
     }
 
     await visitPage(page.items, pageNumber)

@@ -51,6 +51,7 @@ export const PWT_MANUAL_SEED = Object.freeze({
   },
   specification: {
     edit: 920001,
+    export205: 920008,
     reportForvaltning: 920004,
     reportInforande: 920002,
     reportUtveckling: 920003,
@@ -60,6 +61,7 @@ export const PWT_MANUAL_SEED = Object.freeze({
   },
   specificationItem: {
     editSource: 920001,
+    export205Base: 920800,
     reportBase: 920020,
     trace200Base: 920200,
     trace201Base: 920500,
@@ -95,6 +97,40 @@ const ACTOR = {
     hsaId: 'SE5560000001-specresp1',
   },
 }
+
+const TRACE_SPECIFICATION_FIXTURES = [
+  {
+    id: PWT_MANUAL_SEED.specification.trace200,
+    itemCount: 200,
+    itemIdBase: PWT_MANUAL_SEED.specificationItem.trace200Base,
+    lifecycle: 3,
+    name: 'PWT-MANUAL spårbarhet 200',
+    note: 'PWT-MANUAL traceability 200 item.',
+    specificationCode: 'PWT-SPEC-TRACE-200',
+  },
+  {
+    id: PWT_MANUAL_SEED.specification.trace201,
+    itemCount: 201,
+    itemIdBase: PWT_MANUAL_SEED.specificationItem.trace201Base,
+    lifecycle: 3,
+    name: 'PWT-MANUAL spårbarhet 201',
+    note: 'PWT-MANUAL traceability 201 item.',
+    specificationCode: 'PWT-SPEC-TRACE-201',
+  },
+  {
+    id: PWT_MANUAL_SEED.specification.export205,
+    itemCount: 205,
+    itemIdBase: PWT_MANUAL_SEED.specificationItem.export205Base,
+    lifecycle: 1,
+    name: 'PWT-MANUAL CSV-export 205',
+    note: 'PWT-MANUAL bounded CSV export item.',
+    specificationCode: 'PWT-SPEC-CSV-205',
+  },
+]
+
+const TRACE_REQUIREMENT_COUNT = Math.max(
+  ...TRACE_SPECIFICATION_FIXTURES.map(fixture => fixture.itemCount),
+)
 
 function tableSection(seedData, name) {
   const table = seedData[name]
@@ -377,7 +413,7 @@ function addLifecycleRequirements(seedData) {
 }
 
 function addTraceRequirements(seedData) {
-  for (let index = 0; index < 201; index += 1) {
+  for (let index = 0; index < TRACE_REQUIREMENT_COUNT; index += 1) {
     const requirementId = PWT_MANUAL_SEED.requirement.traceBase + index
     const versionId = PWT_MANUAL_SEED.requirementVersion.traceBase + index
     addRow(seedData, 'requirements', {
@@ -431,18 +467,7 @@ function addSpecifications(seedData) {
       name: 'PWT-MANUAL förvaltningsrapport',
       specificationCode: 'PWT-SPEC-REPORT-FORV',
     },
-    {
-      id: PWT_MANUAL_SEED.specification.trace200,
-      lifecycle: 3,
-      name: 'PWT-MANUAL spårbarhet 200',
-      specificationCode: 'PWT-SPEC-TRACE-200',
-    },
-    {
-      id: PWT_MANUAL_SEED.specification.trace201,
-      lifecycle: 3,
-      name: 'PWT-MANUAL spårbarhet 201',
-      specificationCode: 'PWT-SPEC-TRACE-201',
-    },
+    ...TRACE_SPECIFICATION_FIXTURES,
     {
       id: PWT_MANUAL_SEED.specification.rfiWorkflow,
       lifecycle: 1,
@@ -557,33 +582,21 @@ function addSpecifications(seedData) {
     }
   }
 
-  for (let index = 0; index < 201; index += 1) {
-    const requirementId = PWT_MANUAL_SEED.requirement.traceBase + index
-    const versionId = PWT_MANUAL_SEED.requirementVersion.traceBase + index
-    if (index < 200) {
+  for (const fixture of TRACE_SPECIFICATION_FIXTURES) {
+    for (let index = 0; index < fixture.itemCount; index += 1) {
       addRow(seedData, 'requirements_specification_items', {
         created_at: SEED_TS,
-        id: PWT_MANUAL_SEED.specificationItem.trace200Base + index,
+        id: fixture.itemIdBase + index,
         needs_reference_id: null,
-        note: 'PWT-MANUAL traceability 200 item.',
-        requirement_id: requirementId,
-        requirement_version_id: versionId,
-        requirements_specification_id: PWT_MANUAL_SEED.specification.trace200,
+        note: fixture.note,
+        requirement_id: PWT_MANUAL_SEED.requirement.traceBase + index,
+        requirement_version_id:
+          PWT_MANUAL_SEED.requirementVersion.traceBase + index,
+        requirements_specification_id: fixture.id,
         specification_item_status_id: 1,
         status_updated_at: SEED_TS,
       })
     }
-    addRow(seedData, 'requirements_specification_items', {
-      created_at: SEED_TS,
-      id: PWT_MANUAL_SEED.specificationItem.trace201Base + index,
-      needs_reference_id: null,
-      note: 'PWT-MANUAL traceability 201 item.',
-      requirement_id: requirementId,
-      requirement_version_id: versionId,
-      requirements_specification_id: PWT_MANUAL_SEED.specification.trace201,
-      specification_item_status_id: 1,
-      status_updated_at: SEED_TS,
-    })
   }
 }
 
@@ -734,7 +747,7 @@ export function appendPlaywrightManualCaseSeed(seedData) {
   addRfi(seedData)
   addPrivacy(seedData)
   return {
-    requirementCount: 207,
-    specificationCount: 7,
+    requirementCount: 211,
+    specificationCount: 8,
   }
 }

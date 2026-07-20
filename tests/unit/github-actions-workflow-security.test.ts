@@ -270,6 +270,12 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).toContain('contents: read')
     expect(workflow).toContain('pull-requests: read')
     expect(workflow).toContain(
+      "github.event.pull_request.user.login != 'dependabot[bot]'",
+    )
+    expect(workflow).toContain(
+      "!startsWith(github.event.pull_request.title, 'build(deps):')",
+    )
+    expect(workflow).toContain(
       ['ref: $', '{{ github.event.pull_request.base.sha }}'].join(''),
     )
     expect(workflow).not.toMatch(/github\.event\.pull_request\.head/iu)
@@ -329,6 +335,12 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).toContain('contents: read')
     expect(workflow).toContain('pull-requests: read')
     expect(workflow).toContain(
+      "github.event.pull_request.user.login != 'dependabot[bot]'",
+    )
+    expect(workflow).toContain(
+      "!startsWith(github.event.pull_request.title, 'build(deps):')",
+    )
+    expect(workflow).toContain(
       ['ref: $', '{{ github.event.pull_request.base.sha }}'].join(''),
     )
     expect(workflow).toContain(
@@ -350,7 +362,13 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).toContain('types: [closed]')
     expect(workflow).toContain('contents: write')
     expect(workflow).toContain('pull-requests: write')
-    expect(workflow).toContain('if: github.event.pull_request.merged == true')
+    expect(workflow).toContain('github.event.pull_request.merged == true')
+    expect(workflow).toContain(
+      "github.event.pull_request.user.login != 'dependabot[bot]'",
+    )
+    expect(workflow).toContain(
+      "!startsWith(github.event.pull_request.title, 'build(deps):')",
+    )
     expect(workflow).toContain('ref: main')
     expect(workflow).toContain('persist-credentials: false')
     expect(workflow).toContain('OPERATOR_UPGRADE_NOTES_TOKEN is required.')

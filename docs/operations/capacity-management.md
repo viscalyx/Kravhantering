@@ -106,14 +106,18 @@ V1 measures:
 
 Large report PDFs are rendered in isolated Node worker threads from the
 production-bundled report renderer so production CSP can stay strict without
-`unsafe-eval` or `wasm-unsafe-eval`. CSV export and large report-list PDF use
-Admin-configured item, byte, timeout, and per-node concurrency limits. PDF
-workers additionally have an Admin-configured JavaScript heap limit. Each
-operation uses one database settings snapshot.
+`unsafe-eval` or `wasm-unsafe-eval`. Requirements Library CSV, procurement and
+full requirements-specification CSV, and large report-list PDF use
+Admin-configured item, byte, timeout, and per-node concurrency limits. Both
+specification CSV profiles reuse the Requirements Library CSV settings and
+process-local pool. PDF workers additionally have an Admin-configured
+JavaScript heap limit. Each operation uses one database settings snapshot.
 
-These flows use `operation == "requirements.library_csv_export"` or
+These flows use `operation == "requirements.library_csv_export"`,
+`operation == "requirements.specification_csv_export"`, or
 `operation == "requirements.list_pdf_report"` with `surface == "export"` or
-`surface == "report"` and `source == "rest"`. Terminal reason is one of
+`surface == "report"` and `source == "rest"`. Both specification profiles use
+the same operation name. Terminal reason is one of
 `item_limit_exceeded`, `byte_limit_exceeded`, `generation_timeout`,
 `temporary_storage_unavailable`, `worker_memory_exceeded`, `worker_failed`,
 `client_cancelled`, or `concurrency_limit`. Events never include raw errors,
@@ -134,9 +138,13 @@ runtime cannot create, write, close, and remove a probe file.
 
 Successful file responses set exact `Content-Length`,
 `Cache-Control: no-store`, and `X-Accel-Buffering: no`. Production Nginx grants
-only the CSV export and localized list-PDF routes a 660-second read timeout,
-leaving 60 seconds of proxy margin over the maximum 600-second application
-setting.
+the Requirements Library CSV, numeric requirements-specification CSV, and
+localized list-PDF routes a 660-second read timeout, leaving 60 seconds of
+proxy margin over the maximum 600-second application setting.
+
+Requirements-specification CSV reuses the existing
+`KRAVHANTERING_EXPORT_TEMP_DIR` environment contract and storage-sizing
+formula. It adds no environment variable or separate storage reservation.
 
 ## Throttling
 

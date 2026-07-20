@@ -220,4 +220,74 @@ describe('traverseCompleteSpecificationItemResult', () => {
       details: { reason: 'complete_result_cursor_cycle' },
     })
   })
+
+  it('visits exactly the configured item limit', async () => {
+    const candidates = fullCandidatePage.slice(0, 2)
+    mocks.listSpecificationItemPageCandidates.mockResolvedValue(candidates)
+    mocks.enrichSpecificationItemPage.mockResolvedValue(
+      candidates.map(candidate => ({
+        itemRef: `lib:${candidate.sourceId}`,
+        uniqueId: candidate.uniqueId,
+      })),
+    )
+    const visitPage = vi.fn()
+
+    const result = await traverseCompleteSpecificationItemResult(
+      {} as never,
+      { specificationId: 7 },
+      visitPage,
+      { maxItems: 2 },
+    )
+
+    expect(result).toEqual({ itemCount: 2, pageCount: 1 })
+    expect(visitPage).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({ itemRef: 'lib:1' }),
+        expect.objectContaining({ itemRef: 'lib:2' }),
+      ],
+      1,
+    )
+  })
+
+  it('rejects limit plus one before delivering the over-limit page', async () => {
+    const candidates = fullCandidatePage.slice(0, 3)
+    mocks.listSpecificationItemPageCandidates.mockResolvedValue(candidates)
+    mocks.enrichSpecificationItemPage.mockResolvedValue(
+      candidates.map(candidate => ({
+        itemRef: `lib:${candidate.sourceId}`,
+        uniqueId: candidate.uniqueId,
+      })),
+    )
+    const visitPage = vi.fn()
+    const createItemLimitError = vi.fn(
+      (limit: number) => new Error(`limit:${limit}`),
+    )
+
+    await expect(
+      traverseCompleteSpecificationItemResult(
+        {} as never,
+        { specificationId: 7 },
+        visitPage,
+        { createItemLimitError, maxItems: 2 },
+      ),
+    ).rejects.toThrow('limit:2')
+
+    expect(createItemLimitError).toHaveBeenCalledWith(2)
+    expect(visitPage).not.toHaveBeenCalled()
+  })
+
+  it('stops before page work when generation is cancelled', async () => {
+    const controller = new AbortController()
+    controller.abort(new Error('cancelled'))
+
+    await expect(
+      traverseCompleteSpecificationItemResult(
+        {} as never,
+        { specificationId: 7 },
+        () => undefined,
+        { signal: controller.signal },
+      ),
+    ).rejects.toThrow('cancelled')
+    expect(mocks.listSpecificationItemPageCandidates).not.toHaveBeenCalled()
+  })
 })

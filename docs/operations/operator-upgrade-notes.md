@@ -29,11 +29,15 @@ Before rollout, review identity-provider role assignments for Admin Center users
 Provision sufficient private temporary storage on every application node. If KRAVHANTERING_EXPORT_TEMP_DIR is configured, it must reference an existing absolute directory accessible only to the non-root application account. Size storage for configured concurrency and maximum file sizes.
 
 Deploy the updated reverse-proxy configuration with an extended timeout for
-generated-output routes.
+generated-output routes, including numeric requirements-specification CSV
+paths. Procurement and full specification CSV reuse the existing
+`KRAVHANTERING_EXPORT_TEMP_DIR`, storage-sizing formula, CSV settings, and
+process-local pool; no new environment variable or setting is required.
 
 #### After Upgrade
 
-Review Admin Center > Settings > Exports and Reports. New limits immediately apply to previously unbounded Requirements Library CSV and list-PDF generation.
+Review Admin Center > Settings > Exports and Reports. The common CSV limits
+apply to Requirements Library, procurement, and full specification CSV.
 
 ## v0.3.0 - 2026-07-09
 

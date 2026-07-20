@@ -37,6 +37,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldHelpButton from '@/components/FieldHelpButton'
+import { useGeneratedOutputDownload } from '@/components/generated-output/useGeneratedOutputDownload'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
 import LazyRequirementsImportDialog, {
@@ -47,7 +48,6 @@ import RequirementsTable, {
   type FloatingActionMenuItem,
   FloatingActionPill,
 } from '@/components/RequirementsTable'
-import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
 import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
@@ -673,7 +673,7 @@ export default function KravunderlagDetailClient({
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [addModalLoading, setAddModalLoading] = useState(false)
   const [addModalError, setAddModalError] = useState<string | null>(null)
-  const pdfDownload = useServerPdfDownload()
+  const generatedOutputDownload = useGeneratedOutputDownload()
   const specificationPathId = String(specificationId)
   const selectedItemsByRef = useRef(
     new Map<string, SpecificationListItem>(
@@ -2358,73 +2358,78 @@ export default function KravunderlagDetailClient({
   )
 
   const handleExportCsv = useCallback(
-    async (profile: SpecificationCsvProfile) => {
+    (
+      profile: SpecificationCsvProfile,
+      restoreFocusTo?: HTMLButtonElement | null,
+    ) => {
       if (!spec) return
-      try {
-        const response = await fetch(
-          `/api/requirements-specifications/${encodeURIComponent(
-            specificationId,
-          )}/exports?profile=${encodeURIComponent(
-            profile,
-          )}&locale=${encodeURIComponent(locale)}`,
-        )
-        if (!response.ok) {
-          const details = await readResponseMessage(response)
-          console.error(details || tc('error'))
-          return
-        }
-
-        const blob = await response.blob()
-        const label = exportProfileLabel(profile)
-        const fallbackFilename = `${label} ${spec.name} ${spec.specificationCode}.csv`
-        const url = URL.createObjectURL(blob)
-        try {
-          const a = document.createElement('a')
-          a.href = url
-          a.download = fallbackFilename
-          a.click()
-        } finally {
-          URL.revokeObjectURL(url)
-        }
-      } catch (error) {
-        console.error(error)
-      }
+      const label = exportProfileLabel(profile)
+      void generatedOutputDownload.download({
+        fallbackFilename: `${label} ${spec.name} ${spec.specificationCode}.csv`,
+        output: 'csv',
+        restoreFocusTo,
+        url: `/api/requirements-specifications/${encodeURIComponent(
+          specificationId,
+        )}/exports?profile=${encodeURIComponent(
+          profile,
+        )}&locale=${encodeURIComponent(locale)}`,
+      })
     },
-    [exportProfileLabel, locale, spec, specificationId, tc],
+    [
+      exportProfileLabel,
+      generatedOutputDownload,
+      locale,
+      spec,
+      specificationId,
+    ],
   )
 
   const handleDownloadPdf = useCallback(
-    (profile: SpecificationReportProfile) => {
+    (
+      profile: SpecificationReportProfile,
+      restoreFocusTo?: HTMLButtonElement | null,
+    ) => {
       if (!spec) return
       const label = reportProfileLabel(profile)
-      void pdfDownload.download({
+      void generatedOutputDownload.download({
         fallbackFilename: `${label} ${spec.name} ${spec.specificationCode}.pdf`,
+        restoreFocusTo,
         url: `/${locale}/specifications/${encodeURIComponent(
           specificationPathId,
         )}/reports/pdf/${profile}`,
       })
     },
-    [locale, pdfDownload, reportProfileLabel, specificationPathId, spec],
+    [
+      generatedOutputDownload,
+      locale,
+      reportProfileLabel,
+      specificationPathId,
+      spec,
+    ],
   )
 
-  const handleDownloadTraceabilityPdf = useCallback(() => {
-    if (!spec || !hasTraceabilityReportActions) return
-    const label = t('reportProfiles.traceability')
-    void pdfDownload.download({
-      fallbackFilename: `${label} ${spec.name} ${spec.specificationCode}.pdf`,
-      url: `/${locale}/specifications/${encodeURIComponent(
-        specificationPathId,
-      )}/reports/pdf/traceability?${traceabilityQueryParams}`,
-    })
-  }, [
-    locale,
-    pdfDownload,
-    hasTraceabilityReportActions,
-    specificationPathId,
-    spec,
-    t,
-    traceabilityQueryParams,
-  ])
+  const handleDownloadTraceabilityPdf = useCallback(
+    (restoreFocusTo?: HTMLButtonElement | null) => {
+      if (!spec || !hasTraceabilityReportActions) return
+      const label = t('reportProfiles.traceability')
+      void generatedOutputDownload.download({
+        fallbackFilename: `${label} ${spec.name} ${spec.specificationCode}.pdf`,
+        restoreFocusTo,
+        url: `/${locale}/specifications/${encodeURIComponent(
+          specificationPathId,
+        )}/reports/pdf/traceability?${traceabilityQueryParams}`,
+      })
+    },
+    [
+      generatedOutputDownload,
+      hasTraceabilityReportActions,
+      locale,
+      specificationPathId,
+      spec,
+      t,
+      traceabilityQueryParams,
+    ],
+  )
 
   const specName = spec ? spec.name : '…'
   const permissions = spec?.permissions ?? {
@@ -2506,8 +2511,12 @@ export default function KravunderlagDetailClient({
                   label: t('downloadProfileReportPdf', {
                     report: reportProfileLabel(specificationReportProfile),
                   }),
-                  onClick: () =>
-                    void handleDownloadPdf(specificationReportProfile),
+                  disabled: generatedOutputDownload.downloading,
+                  onClick: returnFocusTarget =>
+                    void handleDownloadPdf(
+                      specificationReportProfile,
+                      returnFocusTarget,
+                    ),
                 } satisfies FloatingActionMenuItem,
               ]
             : []),
@@ -2520,7 +2529,9 @@ export default function KravunderlagDetailClient({
                   label: t('downloadProfileReportPdf', {
                     report: t('reportProfiles.traceability'),
                   }),
-                  onClick: () => void handleDownloadTraceabilityPdf(),
+                  disabled: generatedOutputDownload.downloading,
+                  onClick: returnFocusTarget =>
+                    void handleDownloadTraceabilityPdf(returnFocusTarget),
                 } satisfies FloatingActionMenuItem,
               ]
             : []),
@@ -2535,7 +2546,9 @@ export default function KravunderlagDetailClient({
                   icon: <Download aria-hidden="true" className="h-4 w-4" />,
                   id: 'export-procurement',
                   label: exportProfileLabel('procurement'),
-                  onClick: () => void handleExportCsv('procurement'),
+                  disabled: generatedOutputDownload.downloading,
+                  onClick: returnFocusTarget =>
+                    void handleExportCsv('procurement', returnFocusTarget),
                 } satisfies FloatingActionMenuItem,
               ]
             : []),
@@ -2544,7 +2557,9 @@ export default function KravunderlagDetailClient({
             icon: <Download aria-hidden="true" className="h-4 w-4" />,
             id: 'export-full',
             label: exportProfileLabel('full'),
-            onClick: () => void handleExportCsv('full'),
+            disabled: generatedOutputDownload.downloading,
+            onClick: returnFocusTarget =>
+              void handleExportCsv('full', returnFocusTarget),
           },
         ]
       : []
@@ -4179,7 +4194,7 @@ export default function KravunderlagDetailClient({
         specificationId={specificationId}
       />
       {needsReferenceFormModal}
-      {pdfDownload.dialog}
+      {generatedOutputDownload.dialog}
     </>
   )
 }

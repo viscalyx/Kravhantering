@@ -99,7 +99,10 @@ describe('generated output operation contract', () => {
   })
 
   it('records exactly one terminal CSV event with closed names and metrics', () => {
-    const recorder = createGeneratedOutputTerminalRecorder('csv', context)
+    const recorder = createGeneratedOutputTerminalRecorder(
+      'requirements.library_csv_export',
+      context,
+    )
     recorder.failed(
       new GeneratedOutputError('output_limit_exceeded', 'item_limit_exceeded', {
         limit: 1000,
@@ -138,7 +141,10 @@ describe('generated output operation contract', () => {
   })
 
   it('records PDF cancellation without leaking the cancellation cause', () => {
-    const recorder = createGeneratedOutputTerminalRecorder('pdf', context)
+    const recorder = createGeneratedOutputTerminalRecorder(
+      'requirements.list_pdf_report',
+      context,
+    )
     recorder.failed(
       new ClientCancelledGeneratedOutputError({
         cause: new Error('/private/spool/path'),
@@ -159,5 +165,28 @@ describe('generated output operation contract', () => {
     expect(
       JSON.stringify(observability.recordCapacityEvent.mock.calls),
     ).not.toContain('/private/spool/path')
+  })
+
+  it('uses one closed operation for both specification CSV profiles', () => {
+    const recorder = createGeneratedOutputTerminalRecorder(
+      'requirements.specification_csv_export',
+      context,
+    )
+    recorder.completed({ byteCount: 120, itemCount: 2 })
+
+    expect(observability.recordCapacityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'capacity.operation.completed',
+        operation: 'requirements.specification_csv_export',
+        source: 'rest',
+        surface: 'export',
+      }),
+    )
+    expect(
+      JSON.stringify(observability.recordCapacityEvent.mock.calls),
+    ).not.toContain('procurement')
+    expect(
+      JSON.stringify(observability.recordCapacityEvent.mock.calls),
+    ).not.toContain('full')
   })
 })

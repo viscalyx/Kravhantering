@@ -1,60 +1,9 @@
-import {
-  expect,
-  type Locator,
-  type Page,
-  type Route,
-  test,
-} from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
 import { referenceManualCases } from '@/tests/integration/authorization/authorization-test-helpers'
+import { deferRoute } from '../deferred-route'
 
 // cSpell:ignore requestfailed
-type DeferredRouteDecision = 'abort' | 'fulfill'
-
-async function deferRoute(
-  page: Page,
-  url: string,
-  fulfill: (route: Route) => Promise<void>,
-) {
-  let decideRoute: (decision: DeferredRouteDecision) => void = () => undefined
-  let decisionSettled = false
-  let routeTask: Promise<void> | undefined
-  let signalRequestStarted: () => void = () => undefined
-  const decision = new Promise<DeferredRouteDecision>(resolve => {
-    decideRoute = resolve
-  })
-  const requestStarted = new Promise<void>(resolve => {
-    signalRequestStarted = resolve
-  })
-  const settle = (nextDecision: DeferredRouteDecision) => {
-    if (decisionSettled) return
-    decisionSettled = true
-    decideRoute(nextDecision)
-  }
-
-  await page.route(url, route => {
-    signalRequestStarted()
-    routeTask = (async () => {
-      const routeDecision = await decision
-      if (routeDecision === 'fulfill') {
-        await fulfill(route)
-        return
-      }
-      await route.abort('aborted').catch(() => undefined)
-    })()
-    return routeTask
-  })
-
-  return {
-    fulfill: () => settle('fulfill'),
-    requestStarted,
-    async cleanup() {
-      settle('abort')
-      await routeTask
-      await page.unroute(url)
-    },
-  }
-}
 
 async function openRequirementDetail(
   page: Page,
@@ -1135,6 +1084,11 @@ test.describe('Requirements library', () => {
       await expect(
         page.getByRole('button', { name: 'Exportera' }),
       ).toBeFocused()
+      const fileReadyStatus = page.getByRole('status').filter({
+        hasText: 'Filen är klar',
+      })
+      await expect(fileReadyStatus).toBeVisible()
+      await expect(fileReadyStatus).toHaveCount(0, { timeout: 5000 })
       expect(
         csv
           .split(/\r?\n/u)

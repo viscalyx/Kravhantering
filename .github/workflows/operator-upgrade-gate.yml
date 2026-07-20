@@ -15,6 +15,9 @@ permissions:
 
 jobs:
   operator-upgrade-gate:
+    if: >-
+      github.event.pull_request.user.login != 'dependabot[bot]' ||
+      !startsWith(github.event.pull_request.title, 'build(deps):')
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

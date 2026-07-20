@@ -175,6 +175,9 @@ Operator upgrade notes are maintained in
 `docs/operations/operator-upgrade-notes.md`. A separate merged-pull-request
 workflow reads completed Operator Upgrade Impact evidence from the trusted pull
 request body and appends it under `## Unreleased` with hidden source markers.
+The Operator Upgrade gate and merged-pull-request workflow both skip pull
+requests authored by `dependabot[bot]` whose title starts with `build(deps):`;
+dependency-only updates therefore do not require or persist operator notes.
 Instead of pushing directly to protected `main`, the workflow opens or updates
 the `automation/operator-upgrade-notes` PR and enables auto-merge when GitHub
 allows it. Configure an `OPERATOR_UPGRADE_NOTES_TOKEN` secret from a

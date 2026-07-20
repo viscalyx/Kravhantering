@@ -955,7 +955,7 @@
     "revertFailed": "Could not revert to draft."
   },
   "generatedOutput": {
-    "downloadStarted": "Download started",
+    "fileReady": "The file is ready",
     "errorTitle": "Download failed",
     "retry": "Retry",
     "retryCountdown": "Retry in {seconds} s",

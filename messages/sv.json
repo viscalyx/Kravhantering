@@ -955,7 +955,7 @@
     "revertFailed": "Kunde inte återställa till utkast."
   },
   "generatedOutput": {
-    "downloadStarted": "Nedladdningen har startat",
+    "fileReady": "Filen är klar",
     "errorTitle": "Nedladdningen misslyckades",
     "retry": "Försök igen",
     "retryCountdown": "Försök igen om {seconds} s",
