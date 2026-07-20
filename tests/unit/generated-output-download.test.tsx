@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useReducedMotion } from 'framer-motion'
 import { useRef, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
+import { useGeneratedOutputDownload } from '@/components/generated-output/useGeneratedOutputDownload'
 import { downloadBlob } from '@/lib/browser-download'
 
 vi.mock('next-intl', () => ({
@@ -10,11 +10,18 @@ vi.mock('next-intl', () => ({
     const translations: Record<string, string> = {
       'common.cancel': 'Cancel',
       'common.close': 'Close',
-      'generatedOutput.downloadStarted': 'Download started',
+      'generatedOutput.fileReady': 'The file is ready',
       'generatedOutput.errors.pdf.busy': `Busy ${String(
         (values as { retryAfter?: number } | undefined)?.retryAfter,
       )}`,
+      'generatedOutput.errors.csv.bytes': 'CSV byte limit',
+      'generatedOutput.errors.csv.items': 'CSV item limit',
+      'generatedOutput.errors.csv.storage': 'CSV storage unavailable',
+      'generatedOutput.errors.csv.timeout': 'CSV timeout',
+      'generatedOutput.errors.csv.unknown': 'Safe CSV error',
       'generatedOutput.errors.pdf.unknown': 'Safe PDF error',
+      'generatedOutput.errors.pdf.workerFailed': 'PDF worker failed',
+      'generatedOutput.errors.pdf.workerMemory': 'PDF worker memory',
       'generatedOutput.errorTitle': 'Download failed',
       'generatedOutput.phases.csv.downloading': 'Downloading CSV…',
       'generatedOutput.phases.csv.generating': 'Preparing CSV export…',
@@ -93,7 +100,7 @@ function DownloadProbe({
   output?: 'csv' | 'pdf'
   url?: string
 }) {
-  const download = useServerPdfDownload()
+  const download = useGeneratedOutputDownload()
   return (
     <>
       <button
@@ -114,7 +121,7 @@ function DownloadProbe({
 }
 
 function MenuDownloadProbe() {
-  const download = useServerPdfDownload()
+  const download = useGeneratedOutputDownload()
   const reportsButtonRef = useRef<HTMLButtonElement>(null)
   const [menuOpen, setMenuOpen] = useState(true)
 
@@ -143,7 +150,40 @@ function MenuDownloadProbe() {
   )
 }
 
-describe('useServerPdfDownload', () => {
+function ConcurrentDownloadProbe() {
+  const download = useGeneratedOutputDownload()
+
+  return (
+    <>
+      <button
+        onClick={() =>
+          void download.download({
+            fallbackFilename: 'first.csv',
+            output: 'csv',
+            url: '/exports/first',
+          })
+        }
+        type="button"
+      >
+        First
+      </button>
+      <button
+        onClick={() =>
+          void download.download({
+            fallbackFilename: 'second.pdf',
+            url: '/reports/second',
+          })
+        }
+        type="button"
+      >
+        Second
+      </button>
+      {download.dialog}
+    </>
+  )
+}
+
+describe('useGeneratedOutputDownload', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     fetchMock.mockReset()
@@ -181,7 +221,12 @@ describe('useServerPdfDownload', () => {
     await flushMicrotasks()
     expect(downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'server.pdf')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('Download started')
+    expect(screen.getByRole('status')).toHaveTextContent('The file is ready')
+
+    act(() => vi.advanceTimersByTime(3999))
+    expect(screen.getByRole('status')).toHaveTextContent('The file is ready')
+    act(() => vi.advanceTimersByTime(1))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('uses the shared CSV phases', async () => {
@@ -212,6 +257,23 @@ describe('useServerPdfDownload', () => {
       expect.any(Blob),
       'kravbibliotek.csv',
     )
+  })
+
+  it('allows only one active operation per hook across different URLs', () => {
+    fetchMock.mockReturnValueOnce(new Promise(() => {}))
+    render(<ConcurrentDownloadProbe />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'First' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Second' }))
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/exports/first',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+    expect(
+      screen.getByRole('dialog', { name: 'Preparing CSV export…' }),
+    ).toBeInTheDocument()
   })
 
   it('cancels the active fetch and restores trigger focus', async () => {
@@ -328,5 +390,71 @@ describe('useServerPdfDownload', () => {
     await flushMicrotasks()
     expect(screen.getByText('Safe PDF error')).toBeInTheDocument()
     expect(screen.queryByText(/RAW SERVER/)).not.toBeInTheDocument()
+  })
+
+  it('uses the requested output fallback when an error body is malformed', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response('invalid JSON', { status: 500 }),
+    )
+    render(<DownloadProbe output="csv" url="/reports/malformed-error" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download' }))
+    await flushMicrotasks()
+
+    expect(screen.getByText('Safe CSV error')).toBeInTheDocument()
+    expect(screen.queryByText(/invalid JSON/)).not.toBeInTheDocument()
+  })
+
+  it.each([
+    {
+      code: 'output_limit_exceeded',
+      details: { limit: 2, limitKind: 'items', output: 'csv' },
+      expected: 'CSV item limit',
+      output: 'csv' as const,
+    },
+    {
+      code: 'output_limit_exceeded',
+      details: { limit: 1024, limitKind: 'bytes', output: 'csv' },
+      expected: 'CSV byte limit',
+      output: 'csv' as const,
+    },
+    {
+      code: 'generation_timeout',
+      details: { output: 'csv', timeoutSeconds: 120 },
+      expected: 'CSV timeout',
+      output: 'csv' as const,
+    },
+    {
+      code: 'temporary_storage_unavailable',
+      details: { output: 'csv' },
+      expected: 'CSV storage unavailable',
+      output: 'csv' as const,
+    },
+    {
+      code: 'pdf_worker_memory_exceeded',
+      details: { output: 'pdf' },
+      expected: 'PDF worker memory',
+      output: 'pdf' as const,
+    },
+    {
+      code: 'pdf_worker_failed',
+      details: { output: 'pdf' },
+      expected: 'PDF worker failed',
+      output: 'pdf' as const,
+    },
+  ])('localizes the stable $code error', async testCase => {
+    fetchMock.mockResolvedValueOnce(
+      errorResponse(testCase.code, testCase.details),
+    )
+    render(
+      <DownloadProbe
+        output={testCase.output}
+        url={`/reports/${testCase.code}`}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download' }))
+    await flushMicrotasks()
+    expect(screen.getByText(testCase.expected)).toBeInTheDocument()
   })
 })

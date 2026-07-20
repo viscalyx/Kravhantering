@@ -13444,6 +13444,7 @@ const SPEC_RESPONSIBLE_BY_ID = new Map([
   [920005, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
   [920006, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
   [920007, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
+  [920008, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
 ])
 
 function seedTable(name) {

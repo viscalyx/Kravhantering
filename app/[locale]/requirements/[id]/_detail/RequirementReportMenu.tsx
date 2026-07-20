@@ -3,7 +3,7 @@
 import { Printer } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
-import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
+import { useGeneratedOutputDownload } from '@/components/generated-output/useGeneratedOutputDownload'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { STATUS_REVIEW } from '@/lib/requirements/status-constants.mjs'
 import type { DeviationStep } from './types'
@@ -36,7 +36,7 @@ export default function RequirementReportMenu(
   const tc = useTranslations('common')
   const td = useTranslations('deviation')
   const [showReportMenu, setShowReportMenu] = useState(false)
-  const pdfDownload = useServerPdfDownload()
+  const pdfDownload = useGeneratedOutputDownload()
   const reportMenu = useDetailActionMenu({
     idPrefix: 'requirement-report-menu',
     isOpen: showReportMenu,

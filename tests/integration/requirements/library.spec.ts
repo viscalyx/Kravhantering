@@ -1135,6 +1135,11 @@ test.describe('Requirements library', () => {
       await expect(
         page.getByRole('button', { name: 'Exportera' }),
       ).toBeFocused()
+      const fileReadyStatus = page.getByRole('status').filter({
+        hasText: 'Filen är klar',
+      })
+      await expect(fileReadyStatus).toBeVisible()
+      await expect(fileReadyStatus).toHaveCount(0, { timeout: 5000 })
       expect(
         csv
           .split(/\r?\n/u)

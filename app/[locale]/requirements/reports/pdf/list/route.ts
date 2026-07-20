@@ -248,7 +248,7 @@ export async function GET(
     const runtime = await createReportRuntime(request)
     const settings = await getApplicationSettings(runtime.db)
     const terminal = createGeneratedOutputTerminalRecorder(
-      'pdf',
+      'requirements.list_pdf_report',
       runtime.context,
     )
     let byteCount = 0

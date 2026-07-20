@@ -300,6 +300,8 @@ an explicit in-modal error.
   Admin-configured limit plus one. It fails on an item/byte limit, duplicates,
   missing progress, cursor cycles, timeout, or traversal guard, and stops on
   cancellation instead of returning a partial export.
+- A completed generated-output download closes its progress dialog, restores
+  focus to the initiating action, and shows a four-second success status.
 
 ## Floating Rail
 
@@ -710,7 +712,15 @@ down.
 - The export dropdown also shows `Anbuds-CSV` only for lifecycle status
   `Upphandling`.
 - Specification CSV exports are generated server-side from the whole
-  specification and remain row-only without metadata rows.
+  specification and remain row-only without metadata rows. Both profiles use
+  the shared accessible generated-output dialog, server filename, localized
+  stable capacity errors, cancellation, manual retry, download announcement,
+  and focus restoration.
+- Only one specification CSV or PDF operation can run at a time in this view.
+  Both CSV actions are disabled while either profile is active.
+- Procurement and full CSV enrich bounded pages and append rows directly to a
+  private same-request spool under the shared Admin CSV item, byte, timeout,
+  and concurrency settings. A partial file is never presented as complete.
 - Complete outputs traverse bounded server pages with progress, duplicate,
   cursor-cycle, and maximum-page protection. They never use only the rows
   currently loaded in the editor.
@@ -892,15 +902,16 @@ down.
   share button.
 - Always shows "History Report".
 - Shows "Review Report" only when the current version has Review status.
-- PDF report URLs and Requirements Library CSV use the shared Blob helper. Its
-  accessible modal opens immediately, shows separate indeterminate
-  generation/preparation and download phases, and provides Cancel in both
-  phases.
+- PDF report URLs, Requirements Library CSV, and both requirements-specification
+  CSV profiles use the shared Blob helper. Its accessible modal opens
+  immediately, shows separate indeterminate generation/preparation and download
+  phases, and provides Cancel in both phases.
 - The helper uses the server filename when provided and otherwise the
-  caller-provided fallback filename, prevents identical concurrent downloads,
-  restores focus, and maps stable error codes to localized text. Busy capacity
-  shows a five-second countdown before manual Retry; there is no automatic
-  retry, percentage, service worker, or File System Access path.
+  caller-provided fallback filename, permits only one active operation per hook
+  even across different URLs, restores focus, and maps stable error codes to
+  localized text. Busy capacity shows a five-second countdown before manual
+  Retry; there is no automatic retry, percentage, service worker, or File
+  System Access path.
 
 For report implementation details, see
 [report-generation-developer-workflow.md](../development/report-generation-developer-workflow.md).

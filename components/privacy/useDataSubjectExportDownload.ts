@@ -1,7 +1,7 @@
 'use client'
 
 import { type ReactNode, useCallback, useState } from 'react'
-import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
+import { useGeneratedOutputDownload } from '@/components/generated-output/useGeneratedOutputDownload'
 import { downloadBlob } from '@/lib/browser-download'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -35,7 +35,7 @@ export function useDataSubjectExportDownload({
   const [downloading, setDownloading] =
     useState<DataSubjectExportDelivery | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const pdfDownload = useServerPdfDownload()
+  const pdfDownload = useGeneratedOutputDownload()
 
   const download = useCallback(
     async ({ delivery }: DownloadOptions) => {

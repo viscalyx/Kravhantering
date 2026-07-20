@@ -871,7 +871,8 @@ slutföras.
 `Laddar ned CSV …`. `kravbibliotek.csv` innehåller samtliga matchande krav exakt
 en gång i samma auktoritativa ordning som listan. Exportanropet går till
 `/api/requirements/export` utan `cursor` eller `limit`. Dialogen stängs och
-fokus återgår till exportknappen.
+fokus återgår till exportknappen. Statusmeddelandet `Filen är klar` försvinner
+automatiskt efter fyra sekunder.
 
 ### REQ-18a: avbryt CSV-export från kravbiblioteket
 
@@ -1173,17 +1174,23 @@ senare resultatsidor.
 
 ### SPEC-10: generera upphandlingsrapport och Anbuds-CSV
 
-**Steg:** Öppna ett kravunderlag med livscykelstatus `Upphandling`, öppna
-rapportmenyn och välj `Kravbilaga för upphandling`. Öppna exportmenyn och välj
-`Anbuds-CSV` samt `Full CSV-export`.
+**Steg:** Öppna ett kravunderlag med livscykelstatus `Upphandling` och minst
+205 kravtillämpningar. Öppna rapportmenyn och välj
+`Kravbilaga för upphandling`. Öppna exportmenyn och välj `Anbuds-CSV`. Avbryt
+sedan en pågående `Full CSV-export` och starta den igen. Verifiera även ett
+lokaliserat gränsfel.
 
 **Förväntat resultat:** Rapporten genereras för hela kravunderlaget, sorterad
 på Krav-ID, och innehåller bara Krav-ID, Kravtext, Kvalitetsegenskap med
 ISO-kapitel och Normreferenser utan rå URI. `Anbuds-CSV` innehåller samma
-kravfält och en separat Norm-URI-kolumn. `Full CSV-export` finns också och
-exporterna använder rätt profil i API-anropet. Automatiserad täckning får
-verifiera rapportens fält via befintlig strukturerad rapportslutpunkt och
-CSV-innehållet via exportslutpunkten.
+kravfält och en separat Norm-URI-kolumn. Båda CSV-profilerna innehåller alla
+205 kravtillämpningar exakt en gång i Krav-ID-ordning. Dialogen visar
+`Förbereder CSV-export …`, har fokuserad avbrytknapp och använder serverns
+filnamn. Efter slutförd nedladdning, avbrott och stängt gränsfel återgår fokus
+till exportmenyn. Ett avbrott laddar inte ned någon delvis fil och gränsfelet
+visar inte rå servertext. Automatiserad täckning får verifiera rapportens fält
+via befintlig strukturerad rapportslutpunkt och CSV-innehållet via
+exportslutpunkten.
 
 ### SPEC-10b: generera genomföranderapport för införande och utveckling
 

@@ -646,8 +646,8 @@ describe('appendDogfoodSeed', () => {
     const seed = emptySeed()
     const summary = appendDogfoodSeed(seed)
 
-    expect(summary.playwrightManualCaseRequirementsAdded).toBe(207)
-    expect(summary.playwrightManualCaseSpecificationsAdded).toBe(7)
+    expect(summary.playwrightManualCaseRequirementsAdded).toBe(211)
+    expect(summary.playwrightManualCaseSpecificationsAdded).toBe(8)
 
     const requirementUniqueIds = new Set(
       seed.requirements.rows.map(row => row[1]),
@@ -672,6 +672,7 @@ describe('appendDogfoodSeed', () => {
         'PWT-SPEC-REPORT-FORV',
         'PWT-SPEC-TRACE-200',
         'PWT-SPEC-TRACE-201',
+        'PWT-SPEC-CSV-205',
         'PWT-RFI-WORKFLOW-2026',
       ]),
     )
@@ -683,6 +684,9 @@ describe('appendDogfoodSeed', () => {
     expect(
       items.filter(row => row[1] === PWT_MANUAL_SEED.specification.trace201),
     ).toHaveLength(201)
+    expect(
+      items.filter(row => row[1] === PWT_MANUAL_SEED.specification.export205),
+    ).toHaveLength(205)
 
     expect(
       seed.rfi_question_suggestions.rows.filter(

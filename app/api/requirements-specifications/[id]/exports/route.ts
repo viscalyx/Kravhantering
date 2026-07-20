@@ -2,6 +2,10 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import {
+  createCsvItemLimitError,
+  runBoundedCsvOutput,
+} from '@/lib/generated-output/csv-runner'
+import {
   idParamSchema,
   localeSchema,
   parseRouteParams,
@@ -9,9 +13,9 @@ import {
 } from '@/lib/http/validation'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { ReportDataError } from '@/lib/reports/data/server'
-import { collectSpecificationOutputData } from '@/lib/reports/data/specification-output'
+import { visitSpecificationOutputPages } from '@/lib/reports/data/specification-output'
 import { getReportLabels } from '@/lib/reports/report-labels'
-import { buildSpecificationCsv } from '@/lib/reports/specification-csv'
+import { createSpecificationCsvFormatter } from '@/lib/reports/specification-csv'
 import {
   canExportProcurementCsvForLifecycleStatus,
   parseSpecificationCsvProfile,
@@ -19,7 +23,6 @@ import {
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { authorize } from '@/lib/requirements/service-shared'
-import { withUtf8Bom } from '@/lib/text-export'
 
 export const dynamic = 'force-dynamic'
 
@@ -114,29 +117,44 @@ export async function GET(
       )
     }
 
-    const data = await collectSpecificationOutputData(
-      runtime.db,
-      specification.id,
-    )
     const labels = getReportLabels(parsedQuery.data.locale).columns
     const title =
       profile === 'procurement'
         ? labels.procurementCsvTitle
         : labels.fullCsvExportTitle
-    const response = new NextResponse(
-      withUtf8Bom(
-        buildSpecificationCsv(data, profile, parsedQuery.data.locale),
-      ),
-      {
-        headers: {
-          'Cache-Control': 'no-store',
-          'Content-Disposition': csvContentDisposition(
-            `${title} ${specification.name} ${specification.specificationCode}.csv`,
-          ),
-          'Content-Type': 'text/csv; charset=utf-8',
-        },
-      },
+    const formatter = createSpecificationCsvFormatter(
+      profile,
+      parsedQuery.data.locale,
     )
+    const response = await runBoundedCsvOutput({
+      context: runtime.context,
+      db: runtime.db,
+      generateRows: async ({ maxItems, signal, writeRow }) => {
+        await visitSpecificationOutputPages(
+          runtime.db,
+          specification.id,
+          async pageItems => {
+            for (const item of pageItems) {
+              await writeRow(formatter.serializeRow(item))
+            }
+          },
+          {
+            createItemLimitError: createCsvItemLimitError,
+            maxItems,
+            signal,
+          },
+        )
+      },
+      headers: formatter.headers,
+      operation: 'requirements.specification_csv_export',
+      requestSignal: request.signal,
+      responseHeaders: {
+        'Content-Disposition': csvContentDisposition(
+          `${title} ${specification.name} ${specification.specificationCode}.csv`,
+        ),
+        'Content-Type': 'text/csv; charset=utf-8',
+      },
+    })
     return applyResponseCorrelationHeaders(response, runtime.context)
   } catch (error) {
     return applyResponseCorrelationHeaders(

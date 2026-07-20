@@ -4,13 +4,13 @@ import { Download, Plus, Printer, Sparkles, Upload } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useGeneratedOutputDownload } from '@/components/generated-output/useGeneratedOutputDownload'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
 import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/LazyRequirementsImportDialog'
 import RequirementsTable from '@/components/RequirementsTable'
-import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import {
   type AiRequirementGenerationAvailability,
   DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
@@ -247,7 +247,7 @@ export default function RequirementsClient({
   const paginationContinuationFailedMessage = t('paginationContinuationFailed')
   const requirementListRefreshedMessage = tc('requirementListRefreshed')
   const locale = useLocale()
-  const pdfDownload = useServerPdfDownload()
+  const pdfDownload = useGeneratedOutputDownload()
   const normalizedColumnDefaults = useMemo(
     () => normalizeRequirementListColumnDefaults(initialColumnDefaults),
     [initialColumnDefaults],

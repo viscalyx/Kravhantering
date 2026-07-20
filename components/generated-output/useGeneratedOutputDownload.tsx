@@ -22,7 +22,7 @@ import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 type GeneratedOutputKind = 'csv' | 'pdf'
 type DownloadPhase = 'downloading' | 'generating'
 
-interface ServerPdfDownloadRequest {
+interface GeneratedOutputDownloadRequest {
   fallbackFilename: string
   init?: RequestInit
   output?: GeneratedOutputKind
@@ -30,10 +30,10 @@ interface ServerPdfDownloadRequest {
   url: string
 }
 
-interface UseServerPdfDownloadResult {
+interface UseGeneratedOutputDownloadResult {
   clearError: () => void
   dialog: ReactNode
-  download: (request: ServerPdfDownloadRequest) => Promise<void>
+  download: (request: GeneratedOutputDownloadRequest) => Promise<void>
   downloading: boolean
   error: string | null
 }
@@ -52,12 +52,13 @@ interface OutputDownloadError {
   retryAfterSeconds: number
 }
 
-interface PendingDownload extends ServerPdfDownloadRequest {
+interface PendingDownload extends GeneratedOutputDownloadRequest {
   output: GeneratedOutputKind
   restoreFocusTo: HTMLElement | null
 }
 
 const activeDownloadKeys = new Set<string>()
+const DOWNLOAD_STARTED_ANNOUNCEMENT_MS = 4000
 
 function isApiMutation(url: string, init?: RequestInit): boolean {
   const method = (init?.method ?? 'GET').toUpperCase()
@@ -135,7 +136,7 @@ async function parseOutputError(
   }
 }
 
-export function useServerPdfDownload(): UseServerPdfDownloadResult {
+export function useGeneratedOutputDownload(): UseGeneratedOutputDownloadResult {
   const t = useTranslations('generatedOutput')
   const [downloading, setDownloading] = useState(false)
   const [errorState, setErrorState] = useState<OutputDownloadError | null>(null)
@@ -161,6 +162,7 @@ export function useServerPdfDownload(): UseServerPdfDownloadResult {
 
   const runDownload = useCallback(
     async (pending: PendingDownload) => {
+      if (abortRef.current) return
       const key = downloadKey(pending)
       if (activeDownloadKeys.has(key)) return
       activeDownloadKeys.add(key)
@@ -192,7 +194,7 @@ export function useServerPdfDownload(): UseServerPdfDownloadResult {
           ) ?? pending.fallbackFilename
         downloadBlob(blob, filename)
         setPhase(null)
-        setAnnouncement(t('downloadStarted'))
+        setAnnouncement(t('fileReady'))
         restoreFocus()
       } catch (caught) {
         if (controller.signal.aborted) {
@@ -224,7 +226,7 @@ export function useServerPdfDownload(): UseServerPdfDownloadResult {
   )
 
   const download = useCallback(
-    async (request: ServerPdfDownloadRequest) => {
+    async (request: GeneratedOutputDownloadRequest) => {
       const activeElement =
         document.activeElement instanceof HTMLElement
           ? document.activeElement
@@ -255,6 +257,15 @@ export function useServerPdfDownload(): UseServerPdfDownloadResult {
     }, 1000)
     return () => window.clearInterval(timer)
   }, [retrySeconds])
+
+  useEffect(() => {
+    if (!announcement) return
+    const timer = window.setTimeout(
+      () => setAnnouncement(''),
+      DOWNLOAD_STARTED_ANNOUNCEMENT_MS,
+    )
+    return () => window.clearTimeout(timer)
+  }, [announcement])
 
   useEffect(() => () => abortRef.current?.abort(), [])
 

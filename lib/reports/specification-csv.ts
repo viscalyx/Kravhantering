@@ -1,5 +1,5 @@
-import { exportToCsv } from '@/lib/export-csv'
-import type { SpecificationOutputData } from '@/lib/reports/data/specification-output'
+import { escapeCsvField } from '@/lib/export-csv'
+import type { SpecificationOutputItem } from '@/lib/reports/data/specification-output'
 import {
   formatReportBoolean,
   getReportLabels,
@@ -14,116 +14,109 @@ import {
 } from '@/lib/reports/specification-output-format'
 import type { SpecificationCsvProfile } from '@/lib/reports/specification-profiles'
 
-function qualityCharacteristicName(
-  item: SpecificationOutputData['items'][number],
-  locale: string,
-) {
-  return localizeReportValue(
-    locale,
-    item.qualityCharacteristicNameSv,
-    item.qualityCharacteristicNameEn,
-  )
+type ReportLabels = ReturnType<typeof getReportLabels>
+type SpecificationCsvHeaderKey = keyof ReportLabels['columns']
+
+interface SpecificationCsvColumnDefinition {
+  headerKey: SpecificationCsvHeaderKey
+  value: (
+    item: SpecificationOutputItem,
+    locale: string,
+    labels: ReportLabels,
+  ) => string
 }
 
-function buildProcurementCsv(
-  data: SpecificationOutputData,
-  locale: string,
-): string {
-  const labels = getReportLabels(locale).columns
-  const headers = [
-    labels.requirementId,
-    labels.requirementText,
-    labels.qualityCharacteristic,
-    labels.normReferences,
-    labels.normReferenceUri,
-  ]
-  const rows = data.items.map(item => ({
-    [labels.normReferences]: formatNormReferences(item),
-    [labels.normReferenceUri]: formatNormReferenceUris(item),
-    [labels.qualityCharacteristic]: formatQualityCharacteristic(item, locale),
-    [labels.requirementId]: item.uniqueId,
-    [labels.requirementText]: item.description,
-  }))
-
-  return exportToCsv(headers, rows)
+export interface SpecificationCsvFormatter {
+  headers: readonly string[]
+  serializeRow: (item: SpecificationOutputItem) => string
 }
 
-function buildFullCsv(data: SpecificationOutputData, locale: string): string {
-  const reportLabels = getReportLabels(locale)
-  const labels = reportLabels.columns
-  const headers = [
-    labels.requirementId,
-    labels.requirementText,
-    labels.requirementArea,
-    labels.category,
-    labels.type,
-    labels.qualityCharacteristic,
-    labels.priorityLevel,
-    labels.requirementVersionStatus,
-    labels.verifiable,
-    labels.version,
-    labels.needsReference,
-    labels.usageStatus,
-    labels.normReferences,
-    labels.requirementPackage,
-    labels.improvementSuggestions,
-    labels.isoChapter,
-    labels.normReferenceUri,
-    labels.deviationSignal,
-  ]
-  const rows = data.items.map(item => ({
-    [labels.requirementArea]: formatArea(item, reportLabels),
-    [labels.category]: localizeReportValue(
+const PROCUREMENT_COLUMNS = Object.freeze([
+  column('requirementId', item => item.uniqueId),
+  column('requirementText', item => item.description),
+  column('qualityCharacteristic', (item, locale) =>
+    formatQualityCharacteristic(item, locale),
+  ),
+  column('normReferences', item => formatNormReferences(item)),
+  column('normReferenceUri', item => formatNormReferenceUris(item)),
+])
+
+const FULL_COLUMNS = Object.freeze([
+  column('requirementId', item => item.uniqueId),
+  column('requirementText', item => item.description),
+  column('requirementArea', (item, _locale, labels) =>
+    formatArea(item, labels),
+  ),
+  column('category', (item, locale) =>
+    localizeReportValue(locale, item.categoryNameSv, item.categoryNameEn),
+  ),
+  column('type', (item, locale) =>
+    localizeReportValue(locale, item.typeNameSv, item.typeNameEn),
+  ),
+  column('qualityCharacteristic', (item, locale) =>
+    localizeReportValue(
       locale,
-      item.categoryNameSv,
-      item.categoryNameEn,
+      item.qualityCharacteristicNameSv,
+      item.qualityCharacteristicNameEn,
     ),
-    [labels.deviationSignal]: formatDeviationSignal(
-      item.deviationCounts,
-      reportLabels,
-    ),
-    [labels.improvementSuggestions]: String(item.suggestionCount),
-    [labels.isoChapter]: item.qualityCharacteristicChapterId ?? '',
-    [labels.needsReference]: item.needsReference ?? '',
-    [labels.normReferences]: formatNormReferences(item),
-    [labels.normReferenceUri]: formatNormReferenceUris(item),
-    [labels.qualityCharacteristic]: qualityCharacteristicName(item, locale),
-    [labels.requirementId]: item.uniqueId,
-    [labels.requirementPackage]: item.requirementPackageNames.join(', '),
-    [labels.requirementText]: item.description,
-    [labels.requirementVersionStatus]: localizeReportValue(
-      locale,
-      item.statusNameSv,
-      item.statusNameEn,
-    ),
-    [labels.priorityLevel]: localizeReportValue(
+  ),
+  column('priorityLevel', (item, locale) =>
+    localizeReportValue(
       locale,
       item.priorityLevelNameSv,
       item.priorityLevelNameEn,
     ),
-    [labels.type]: localizeReportValue(
-      locale,
-      item.typeNameSv,
-      item.typeNameEn,
-    ),
-    [labels.usageStatus]: localizeReportValue(
+  ),
+  column('requirementVersionStatus', (item, locale) =>
+    localizeReportValue(locale, item.statusNameSv, item.statusNameEn),
+  ),
+  column('verifiable', (item, _locale, labels) =>
+    formatReportBoolean(item.verifiable, labels),
+  ),
+  column('version', item => String(item.versionNumber)),
+  column('needsReference', item => item.needsReference ?? ''),
+  column('usageStatus', (item, locale) =>
+    localizeReportValue(
       locale,
       item.specificationItemStatusNameSv,
       item.specificationItemStatusNameEn,
     ),
-    [labels.verifiable]: formatReportBoolean(item.verifiable, reportLabels),
-    [labels.version]: String(item.versionNumber),
-  }))
+  ),
+  column('normReferences', item => formatNormReferences(item)),
+  column('requirementPackage', item => item.requirementPackageNames.join(', ')),
+  column('improvementSuggestions', item => String(item.suggestionCount)),
+  column('isoChapter', item => item.qualityCharacteristicChapterId ?? ''),
+  column('normReferenceUri', item => formatNormReferenceUris(item)),
+  column('deviationSignal', (item, _locale, labels) =>
+    formatDeviationSignal(item.deviationCounts, labels),
+  ),
+])
 
-  return exportToCsv(headers, rows)
-}
-
-export function buildSpecificationCsv(
-  data: SpecificationOutputData,
+export function createSpecificationCsvFormatter(
   profile: SpecificationCsvProfile,
   locale: string,
-): string {
-  return profile === 'procurement'
-    ? buildProcurementCsv(data, locale)
-    : buildFullCsv(data, locale)
+): SpecificationCsvFormatter {
+  const labels = getReportLabels(locale)
+  const columns = profile === 'procurement' ? PROCUREMENT_COLUMNS : FULL_COLUMNS
+
+  return {
+    headers: Object.freeze(
+      columns.map(
+        columnDefinition => labels.columns[columnDefinition.headerKey],
+      ),
+    ),
+    serializeRow: item =>
+      columns
+        .map(columnDefinition =>
+          escapeCsvField(columnDefinition.value(item, locale, labels)),
+        )
+        .join(';'),
+  }
+}
+
+function column(
+  headerKey: SpecificationCsvHeaderKey,
+  value: SpecificationCsvColumnDefinition['value'],
+): SpecificationCsvColumnDefinition {
+  return Object.freeze({ headerKey, value })
 }
