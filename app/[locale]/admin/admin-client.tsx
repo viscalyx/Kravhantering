@@ -1,39 +1,22 @@
 'use client'
 
-import {
-  Archive,
-  CircleDot,
-  ClipboardCheck,
-  FileText,
-  KeyRound,
-  LayoutPanelTop,
-  type LucideIcon,
-  ShieldCheck,
-  SlidersHorizontal,
-  Tags,
-} from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { lazy, useEffect, useState } from 'react'
-import type { ActionAuditLogInitialState } from '@/components/admin/ActionAuditLogView'
+import type { ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import AdminLazyPanel from './admin-lazy-panel'
-
-const AccessReviewPanel = lazy(() => import('./panels/access-review-panel'))
-const ActionAuditLogPanel = lazy(
-  () => import('./panels/action-audit-log-panel'),
-)
-const SettingsPanel = lazy(() => import('./panels/settings-panel'))
-const ArchivingPanel = lazy(() => import('./panels/archiving-panel'))
-const ColumnsPanel = lazy(() => import('./panels/columns-panel'))
-const IdentitySettingsPanel = lazy(() => import('./panels/identity-panel'))
-const PrivacyErasurePanel = lazy(() => import('./panels/privacy-panel'))
-const StatusesAndWorkflowsPanel = lazy(
-  () => import('./panels/statuses-and-workflows-panel'),
-)
-const TaxonomyPanel = lazy(() => import('./panels/taxonomy-panel'))
+import {
+  ADMIN_TAB_DEVELOPER_MODE_VALUES,
+  type AdminTab,
+  adminTabs,
+  canAccessAdminTab,
+  getAdminTabHref,
+  resolveAdminTab,
+  type TabFallbackReason,
+} from './admin-tabs'
 
 const ADMIN_HELP: HelpContent = {
   sections: [
@@ -225,107 +208,7 @@ const ADMIN_ACCESS_REVIEW_HELP: HelpContent = {
   titleKey: 'adminAccessReview.title',
 }
 
-export type AdminTab =
-  | 'accessReview'
-  | 'actionAuditLog'
-  | 'settings'
-  | 'archiving'
-  | 'columns'
-  | 'identity'
-  | 'privacy'
-  | 'statusesAndWorkflows'
-  | 'taxonomy'
-
-type TabFallbackReason = 'unauthorized' | 'unavailable'
-
-const ADMIN_ROLE = 'Admin'
-const PRIVACY_OFFICER_ROLE = 'PrivacyOfficer'
 const EMPTY_USER_ROLES: string[] = []
-
-export const adminTabs: ReadonlyArray<{ icon: LucideIcon; id: AdminTab }> = [
-  { icon: LayoutPanelTop, id: 'columns' },
-  { icon: KeyRound, id: 'identity' },
-  { icon: SlidersHorizontal, id: 'settings' },
-  { icon: Tags, id: 'taxonomy' },
-  { icon: CircleDot, id: 'statusesAndWorkflows' },
-  { icon: ClipboardCheck, id: 'accessReview' },
-  { icon: Archive, id: 'archiving' },
-  { icon: ShieldCheck, id: 'privacy' },
-  { icon: FileText, id: 'actionAuditLog' },
-]
-
-const ADMIN_TAB_DEVELOPER_MODE_VALUES: Record<AdminTab, string> = {
-  accessReview: 'access review',
-  actionAuditLog: 'action log',
-  settings: 'settings',
-  archiving: 'archiving',
-  columns: 'columns',
-  identity: 'identity',
-  privacy: 'privacy',
-  statusesAndWorkflows: 'statuses and workflows',
-  taxonomy: 'taxonomy',
-}
-
-const ADMIN_TAB_QUERY_KEY = 'tab'
-
-export function canAccessAdminTab(
-  tab: AdminTab,
-  roles: readonly string[],
-): boolean {
-  const isAdmin = roles.includes(ADMIN_ROLE)
-  const isPrivacyOfficer = roles.includes(PRIVACY_OFFICER_ROLE)
-
-  if (tab === 'accessReview') return isAdmin || isPrivacyOfficer
-  if (tab === 'archiving' || tab === 'privacy') return isPrivacyOfficer
-  return isAdmin
-}
-
-export function firstAuthorizedAdminTab(
-  roles: readonly string[],
-): AdminTab | undefined {
-  return adminTabs.find(tab => canAccessAdminTab(tab.id, roles))?.id
-}
-
-function isAdminTab(value: string): value is AdminTab {
-  return adminTabs.some(tab => tab.id === value)
-}
-
-function resolveAdminTab(
-  searchParams: URLSearchParams,
-  roles: readonly string[],
-): { reason?: TabFallbackReason; tab: AdminTab } {
-  const fallback = firstAuthorizedAdminTab(roles) ?? adminTabs[0].id
-  const requestedTab = searchParams.get(ADMIN_TAB_QUERY_KEY)
-
-  if (requestedTab === null) return { tab: fallback }
-  if (!isAdminTab(requestedTab)) {
-    return { reason: 'unavailable', tab: fallback }
-  }
-  if (!canAccessAdminTab(requestedTab, roles)) {
-    return { reason: 'unauthorized', tab: fallback }
-  }
-
-  return { tab: requestedTab }
-}
-
-function getAdminTabHref(
-  tab: AdminTab,
-  searchParams: URLSearchParams,
-  roles: readonly string[],
-) {
-  const query = Object.fromEntries(searchParams.entries())
-  const firstAuthorizedTab = firstAuthorizedAdminTab(roles)
-
-  if (firstAuthorizedTab === undefined || tab === firstAuthorizedTab) {
-    delete query[ADMIN_TAB_QUERY_KEY]
-  } else {
-    query[ADMIN_TAB_QUERY_KEY] = tab
-  }
-
-  return Object.keys(query).length > 0
-    ? { pathname: '/admin', query }
-    : '/admin'
-}
 
 function adminTabLabel(
   tab: AdminTab,
@@ -349,11 +232,15 @@ function panelHelp(activeTab: AdminTab): HelpContent {
 }
 
 export default function AdminClient({
-  actionAuditLog,
+  children,
   currentUserRoles = EMPTY_USER_ROLES,
+  renderPanel,
+  selectedTab,
 }: {
-  actionAuditLog?: ActionAuditLogInitialState
+  children?: ReactNode
   currentUserRoles?: string[]
+  renderPanel?: (activeTab: AdminTab) => ReactNode
+  selectedTab?: AdminTab
 }) {
   const ta = useTranslations('admin')
   const router = useRouter()
@@ -362,10 +249,13 @@ export default function AdminClient({
     new URLSearchParams(searchParams),
     currentUserRoles,
   )
-  const [activeTab, setActiveTab] = useState<AdminTab>(initialResolution.tab)
+  const [uncontrolledActiveTab, setUncontrolledActiveTab] = useState<AdminTab>(
+    initialResolution.tab,
+  )
   const [fallbackReason, setFallbackReason] = useState<
     TabFallbackReason | undefined
   >(initialResolution.reason)
+  const activeTab = selectedTab ?? uncontrolledActiveTab
   const authorizedTabs = adminTabs.filter(tab =>
     canAccessAdminTab(tab.id, currentUserRoles),
   )
@@ -375,11 +265,13 @@ export default function AdminClient({
   useHelpContent(panelHelp(activeTab))
 
   useEffect(() => {
+    if (selectedTab !== undefined) return
+
     const resolution = resolveAdminTab(
       new URLSearchParams(searchParams),
       currentUserRoles,
     )
-    setActiveTab(resolution.tab)
+    setUncontrolledActiveTab(resolution.tab)
     setFallbackReason(resolution.reason)
 
     if (resolution.reason) {
@@ -392,43 +284,24 @@ export default function AdminClient({
         { scroll: false },
       )
     }
-  }, [currentUserRoles, router, searchParams])
+  }, [currentUserRoles, router, searchParams, selectedTab])
 
   const selectTab = (tab: AdminTab) => {
     if (!canAccessAdminTab(tab, currentUserRoles)) return
 
-    setFallbackReason(undefined)
-    setActiveTab(tab)
+    if (selectedTab === undefined) {
+      setFallbackReason(undefined)
+      setUncontrolledActiveTab(tab)
+    }
     router.replace(
       getAdminTabHref(tab, new URLSearchParams(searchParams), currentUserRoles),
       { scroll: false },
     )
   }
 
-  const panel = (() => {
-    if (!canRenderActiveTab) return null
-
-    switch (activeTab) {
-      case 'columns':
-        return <ColumnsPanel />
-      case 'identity':
-        return <IdentitySettingsPanel />
-      case 'settings':
-        return <SettingsPanel />
-      case 'taxonomy':
-        return <TaxonomyPanel />
-      case 'statusesAndWorkflows':
-        return <StatusesAndWorkflowsPanel />
-      case 'accessReview':
-        return <AccessReviewPanel canManage />
-      case 'archiving':
-        return <ArchivingPanel />
-      case 'privacy':
-        return <PrivacyErasurePanel />
-      case 'actionAuditLog':
-        return <ActionAuditLogPanel initialState={actionAuditLog} />
-    }
-  })()
+  const panel = canRenderActiveTab
+    ? (children ?? renderPanel?.(activeTab))
+    : null
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">

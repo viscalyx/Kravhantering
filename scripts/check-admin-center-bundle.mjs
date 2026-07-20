@@ -1,166 +1,222 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   budgetFailures,
   createScenario,
-  extractDynamicChunkGroups as extractSharedDynamicChunkGroups,
   formatScenario,
-  parseClientReferenceManifest as parseSharedClientReferenceManifest,
-  readClientBundleArtifacts,
+  LOCALE_LAYOUT_MODULE,
+  parseClientReferenceManifest,
   runBundleCli,
 } from './lib/client-bundle-budget.mjs'
 
-// 2026-07-14 production baseline 4,596 gzip bytes plus 5% headroom.
-export const ADMIN_CENTER_ENTRY_GZIP_MAX_BYTES = 4_826
-// 2026-07-19 Settings panel stepper baseline 12,084 gzip bytes plus 5% headroom.
-export const ADMIN_CENTER_PANEL_GZIP_MAX_BYTES = 12_689
-
-const ADMIN_ROUTE_MODULE = '[project]/app/[locale]/admin/page'
+const ADMIN_ROUTE_ROOT = '[project]/app/[locale]/admin/workspaces'
 const ADMIN_CLIENT_MODULE = '[project]/app/[locale]/admin/admin-client.tsx'
 
-export { createScenario, formatScenario }
+export const ADMIN_WORKSPACES = [
+  {
+    clientModule: '[project]/app/[locale]/admin/panels/columns-panel.tsx',
+    id: 'columns',
+    routeSegment: 'columns',
+  },
+  {
+    clientModule: '[project]/app/[locale]/admin/panels/identity-panel.tsx',
+    id: 'identity',
+    routeSegment: 'identity',
+  },
+  {
+    clientModule: '[project]/app/[locale]/admin/panels/settings-panel.tsx',
+    id: 'settings',
+    routeSegment: 'settings',
+  },
+  {
+    clientModule: '[project]/app/[locale]/admin/panels/taxonomy-panel.tsx',
+    id: 'taxonomy',
+    routeSegment: 'taxonomy',
+  },
+  {
+    clientModule:
+      '[project]/app/[locale]/admin/panels/statuses-and-workflows-panel.tsx',
+    id: 'statusesAndWorkflows',
+    routeSegment: 'statuses-and-workflows',
+  },
+  {
+    clientModule: '[project]/app/[locale]/admin/panels/access-review-panel.tsx',
+    id: 'accessReview',
+    routeSegment: 'access-review',
+  },
+  {
+    clientModule: '[project]/app/[locale]/admin/panels/archiving-panel.tsx',
+    id: 'archiving',
+    routeSegment: 'archiving',
+  },
+  {
+    clientModule: '[project]/app/[locale]/admin/panels/privacy-panel.tsx',
+    id: 'privacy',
+    routeSegment: 'privacy',
+  },
+  {
+    clientModule:
+      '[project]/app/[locale]/admin/panels/action-audit-log-panel.tsx',
+    id: 'actionAuditLog',
+    routeSegment: 'action-audit-log',
+  },
+]
 
-export function discoverAdminPanelNames(panelDirectory) {
-  return readdirSync(panelDirectory, { withFileTypes: true })
-    .filter(entry => entry.isFile() && entry.name.endsWith('-panel.tsx'))
-    .map(entry => entry.name.replace(/\.tsx$/u, ''))
-    .sort()
+export const ADMIN_WORKSPACE_GZIP_MAX_BYTES = {
+  // 2026-07-20 isolated-route baseline: 13,236 gzip bytes plus 5% headroom.
+  accessReview: 13_898,
+  // 2026-07-20 isolated-route baseline: 6,357 gzip bytes plus 5% headroom.
+  actionAuditLog: 6_675,
+  // 2026-07-20 isolated-route baseline: 7,676 gzip bytes plus 5% headroom.
+  archiving: 8_060,
+  // 2026-07-20 isolated-route baseline: 9,265 gzip bytes plus 5% headroom.
+  columns: 9_729,
+  // 2026-07-20 isolated-route baseline: 9,191 gzip bytes plus 5% headroom.
+  identity: 9_651,
+  // 2026-07-20 isolated-route baseline: 12,599 gzip bytes plus 5% headroom.
+  privacy: 13_229,
+  // 2026-07-20 isolated-route baseline: 15,778 gzip bytes plus 5% headroom.
+  settings: 16_567,
+  // 2026-07-20 isolated-route baseline: 4,879 gzip bytes plus 5% headroom.
+  statusesAndWorkflows: 5_123,
+  // 2026-07-20 isolated-route baseline: 5,256 gzip bytes plus 5% headroom.
+  taxonomy: 5_519,
 }
 
-export function extractLazyPanelImportNames(source) {
-  return Array.from(
-    source.matchAll(/import\('\.\/panels\/([^']+-panel)'\)/gu),
-    match => match[1],
-  )
+function expectedWorkspaceIds() {
+  return ADMIN_WORKSPACES.map(workspace => workspace.id)
 }
 
-export function extractDynamicChunkGroups(source) {
-  return extractSharedDynamicChunkGroups(source, 'Admin Center')
-}
-
-export function parseClientReferenceManifest(source) {
-  return parseSharedClientReferenceManifest(source, 'Admin Center')
-}
-
-function assertSameNames(discoveredNames, importedNames) {
-  const discovered = [...discoveredNames].sort()
-  const imported = [...importedNames].sort()
-  if (JSON.stringify(discovered) !== JSON.stringify(imported)) {
-    const missingImports = discovered.filter(name => !imported.includes(name))
-    const unknownImports = imported.filter(name => !discovered.includes(name))
+function assertExpectedWorkspaceOrder(workspaces) {
+  const actualIds = workspaces.map(workspace => workspace.id)
+  if (JSON.stringify(actualIds) !== JSON.stringify(expectedWorkspaceIds())) {
     throw new Error(
-      [
-        'Admin Center panel files and lazy imports do not match.',
-        missingImports.length > 0
-          ? `Missing lazy imports: ${missingImports.join(', ')}`
-          : null,
-        unknownImports.length > 0
-          ? `Unknown lazy imports: ${unknownImports.join(', ')}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join(' '),
+      `Admin workspace routes must remain in this order: ${expectedWorkspaceIds().join(', ')}. Found: ${actualIds.join(', ') || 'none'}.`,
     )
   }
 }
 
-export function evaluateAdminBundle({
-  entryChunks,
-  importedPanelNames,
-  lazyChunkGroups,
-  panelNames,
-  staticDirectory,
-}) {
-  assertSameNames(panelNames, importedPanelNames)
-  if (lazyChunkGroups.length !== importedPanelNames.length) {
+function normalizeClientChunks(chunks) {
+  return chunks.map(chunk => chunk.replace(/^\/_next\//u, ''))
+}
+
+export function workspaceChunksFromManifest(manifest, workspace) {
+  const routeModule = `${ADMIN_ROUTE_ROOT}/${workspace.routeSegment}/page`
+  const routeChunks = manifest.entryJSFiles?.[routeModule]
+  const layoutChunks = manifest.entryJSFiles?.[LOCALE_LAYOUT_MODULE]
+  const clientChunks = manifest.clientModules?.[ADMIN_CLIENT_MODULE]?.chunks
+  const panelChunks = manifest.clientModules?.[workspace.clientModule]?.chunks
+
+  if (
+    !Array.isArray(routeChunks) ||
+    !Array.isArray(layoutChunks) ||
+    !Array.isArray(clientChunks) ||
+    !Array.isArray(panelChunks)
+  ) {
     throw new Error(
-      `Expected ${importedPanelNames.length} compiled lazy panel chunk sets, found ${lazyChunkGroups.length}.`,
+      `Admin ${workspace.id} bundle manifest fields are incomplete.`,
     )
   }
 
-  const entryChunkSet = new Set(entryChunks)
-  const panels = importedPanelNames.map((name, index) => {
-    const chunks = lazyChunkGroups[index]
-    const entryOverlap = chunks.filter(chunk => entryChunkSet.has(chunk))
-    if (entryOverlap.length > 0) {
-      throw new Error(
-        `Admin Center panel ${name} is included in entry chunks: ${entryOverlap.join(', ')}.`,
-      )
-    }
-    if (chunks.length === 0) {
-      throw new Error(`Admin Center panel ${name} has no asynchronous chunks.`)
-    }
-    return createScenario(name, chunks, staticDirectory)
-  })
+  const layoutChunkSet = new Set(normalizeClientChunks(layoutChunks))
+  const selectedChunks = [
+    ...normalizeClientChunks(routeChunks),
+    ...normalizeClientChunks(clientChunks),
+    ...normalizeClientChunks(panelChunks),
+  ].filter(chunk => !layoutChunkSet.has(chunk))
+
+  if (selectedChunks.length === 0) {
+    throw new Error(
+      `Admin ${workspace.id} has no route-specific client chunks.`,
+    )
+  }
+
+  return [...new Set(selectedChunks)]
+}
+
+export function evaluateAdminBundle({ staticDirectory, workspaceRoutes }) {
+  assertExpectedWorkspaceOrder(workspaceRoutes)
 
   return {
-    entry: createScenario('admin-center-entry', entryChunks, staticDirectory),
-    panels,
+    workspaces: workspaceRoutes.map(workspace => {
+      if (!Array.isArray(workspace.chunks) || workspace.chunks.length === 0) {
+        throw new Error(`Admin workspace ${workspace.id} has no client chunks.`)
+      }
+      return {
+        id: workspace.id,
+        total: createScenario(
+          `admin-${workspace.id}`,
+          workspace.chunks,
+          staticDirectory,
+        ),
+      }
+    }),
   }
 }
 
-export function bundleBudgetFailures(
+export function adminBudgetFailures(
   report,
-  {
-    entryLimit = ADMIN_CENTER_ENTRY_GZIP_MAX_BYTES,
-    panelLimit = ADMIN_CENTER_PANEL_GZIP_MAX_BYTES,
-  } = {},
+  limits = ADMIN_WORKSPACE_GZIP_MAX_BYTES,
 ) {
-  const scenarios = [
-    { ...report.entry, limit: entryLimit },
-    ...report.panels.map(panel => ({ ...panel, limit: panelLimit })),
-  ]
-  return budgetFailures(scenarios)
+  return budgetFailures(
+    report.workspaces.map(workspace => ({
+      ...workspace.total,
+      limit: limits[workspace.id],
+    })),
+  )
 }
 
 export function readAdminBundleReport(projectRoot) {
-  const panelDirectory = join(projectRoot, 'app', '[locale]', 'admin', 'panels')
-  const adminClientPath = join(
-    projectRoot,
-    'app',
-    '[locale]',
-    'admin',
-    'admin-client.tsx',
-  )
-  const manifestPath = join(
-    projectRoot,
-    '.next',
-    'server',
-    'app',
-    '[locale]',
-    'admin',
-    'page_client-reference-manifest.js',
-  )
-  const { entryChunks, lazyChunkGroups, staticDirectory } =
-    readClientBundleArtifacts({
-      clientModule: ADMIN_CLIENT_MODULE,
-      manifestPath,
+  const workspaceRoutes = ADMIN_WORKSPACES.map(workspace => {
+    const manifestPath = join(
       projectRoot,
-      routeModule: ADMIN_ROUTE_MODULE,
-      surfaceName: 'Admin Center',
-    })
+      '.next',
+      'server',
+      'app',
+      '[locale]',
+      'admin',
+      'workspaces',
+      workspace.routeSegment,
+      'page_client-reference-manifest.js',
+    )
+    let manifestSource
+    try {
+      manifestSource = readFileSync(manifestPath, 'utf8')
+    } catch {
+      throw new Error(
+        `Admin ${workspace.id} bundle manifest is missing. Run an optimized production build first.`,
+      )
+    }
+    const manifest = parseClientReferenceManifest(
+      manifestSource,
+      `Admin ${workspace.id}`,
+    )
+    return {
+      chunks: workspaceChunksFromManifest(manifest, workspace),
+      id: workspace.id,
+    }
+  })
 
   return evaluateAdminBundle({
-    entryChunks,
-    importedPanelNames: extractLazyPanelImportNames(
-      readFileSync(adminClientPath, 'utf8'),
-    ),
-    lazyChunkGroups,
-    panelNames: discoverAdminPanelNames(panelDirectory),
-    staticDirectory,
+    staticDirectory: join(projectRoot, '.next', 'static'),
+    workspaceRoutes,
   })
 }
 
 export function runAdminBundleCheck({ projectRoot, reportOnly = false }) {
   const report = readAdminBundleReport(projectRoot)
-  console.log(formatScenario(report.entry, ADMIN_CENTER_ENTRY_GZIP_MAX_BYTES))
-  for (const panel of report.panels) {
-    console.log(formatScenario(panel, ADMIN_CENTER_PANEL_GZIP_MAX_BYTES))
+  for (const workspace of report.workspaces) {
+    console.log(
+      formatScenario(
+        workspace.total,
+        ADMIN_WORKSPACE_GZIP_MAX_BYTES[workspace.id],
+      ),
+    )
   }
 
   if (reportOnly) return report
-  const failures = bundleBudgetFailures(report)
+  const failures = adminBudgetFailures(report)
   if (failures.length > 0) {
     for (const failure of failures) {
       console.error(

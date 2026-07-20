@@ -4,13 +4,18 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   evaluateStewardshipBundle,
-  extractLazyWorkspaceIds,
   readStewardshipBundleReport,
   runStewardshipBundleCheck,
   runStewardshipBundleCli,
+  STEWARDSHIP_WORKSPACES,
   stewardshipBudgetFailures,
+  workspaceChunksFromManifest,
 } from '../../scripts/check-stewardship-bundle.mjs'
 import { deterministicBytes } from './helpers/bundle-test-helpers.mjs'
+
+const BOUNDARY_MODULE =
+  '[project]/app/[locale]/requirements/stewardship/stewardship-lazy-workspace.tsx'
+const LAYOUT_MODULE = '[project]/app/[locale]/layout'
 
 function fixtureRoot() {
   return mkdtempSync(join(tmpdir(), 'stewardship-bundle-'))
@@ -23,63 +28,56 @@ function write(root, relativePath, content) {
   return path
 }
 
-function clientManifest() {
+function clientManifest(workspace) {
+  const routeModule =
+    `[project]/app/[locale]/requirements/stewardship/workspaces/` +
+    `${workspace.routeSegment}/page`
   return {
     clientModules: {
-      '[project]/app/[locale]/requirements/stewardship/stewardship-client.tsx':
-        {
-          chunks: [
-            '/_next/static/chunks/layout.js',
-            '/_next/static/chunks/shell.js',
-          ],
-        },
+      [BOUNDARY_MODULE]: {
+        chunks: ['/_next/static/chunks/boundary.js'],
+      },
+      [workspace.clientModule]: {
+        chunks: [
+          `/_next/static/chunks/${workspace.id}.js`,
+          '/_next/static/chunks/shared.js',
+        ],
+      },
     },
     entryJSFiles: {
-      '[project]/app/[locale]/layout': ['static/chunks/layout.js'],
-      '[project]/app/[locale]/requirements/stewardship/page': [
+      [LAYOUT_MODULE]: ['static/chunks/layout.js'],
+      [routeModule]: [
         'static/chunks/layout.js',
-        'static/chunks/shell.js',
+        `static/chunks/${workspace.id}-route.js`,
       ],
     },
     moduleLoading: {},
   }
 }
 
-function stewardshipClientSource() {
-  return [
-    "lazy(() => import('../../requirement-packages/requirement-packages-client'))",
-    "lazy(() => import('./requirement-selection-questions-client'))",
-    "lazy(() => import('./rfi-questions-client'))",
-    "lazy(() => import('../../norm-references/norm-references-client'))",
-  ].join('\n')
-}
-
 function writeCompleteFixture() {
   const root = fixtureRoot()
-  write(
-    root,
-    'app/[locale]/requirements/stewardship/stewardship-client.tsx',
-    stewardshipClientSource(),
-  )
   write(root, '.next/static/chunks/layout.js', 'layout')
-  write(
-    root,
-    '.next/static/chunks/shell.js',
-    [
-      'Promise.all(["static/chunks/packages.js","static/chunks/shared.js"].map(i=>e.l(i))).then()',
-      'Promise.all(["static/chunks/questions.js","static/chunks/shared.js"].map(i=>e.l(i))).then()',
-      'Promise.all(["static/chunks/rfi.js"].map(i=>e.l(i))).then()',
-      'Promise.all(["static/chunks/norms.js"].map(i=>e.l(i))).then()',
-    ].join(';'),
-  )
-  for (const name of ['packages', 'questions', 'rfi', 'norms', 'shared']) {
-    write(root, `.next/static/chunks/${name}.js`, `${name} workspace`)
+  write(root, '.next/static/chunks/boundary.js', 'boundary')
+  write(root, '.next/static/chunks/shared.js', 'shared')
+
+  for (const workspace of STEWARDSHIP_WORKSPACES) {
+    write(
+      root,
+      `.next/static/chunks/${workspace.id}-route.js`,
+      `${workspace.id} route`,
+    )
+    write(
+      root,
+      `.next/static/chunks/${workspace.id}.js`,
+      `${workspace.id} workspace`,
+    )
+    write(
+      root,
+      `.next/server/app/[locale]/requirements/stewardship/workspaces/${workspace.routeSegment}/page_client-reference-manifest.js`,
+      `globalThis.x = ${JSON.stringify(clientManifest(workspace))};`,
+    )
   }
-  write(
-    root,
-    '.next/server/app/[locale]/requirements/stewardship/page_client-reference-manifest.js',
-    `globalThis.x = ${JSON.stringify(clientManifest())};`,
-  )
   return root
 }
 
@@ -88,40 +86,40 @@ afterEach(() => {
 })
 
 describe('stewardship bundle contract', () => {
-  it('extracts the exact ordered workspace imports', () => {
-    expect(extractLazyWorkspaceIds(stewardshipClientSource())).toEqual([
-      'packages',
-      'questions',
-      'rfi',
-      'norms',
+  it('selects only the requested workspace route and client chunks', () => {
+    const workspace = STEWARDSHIP_WORKSPACES[2]
+    const manifest = clientManifest(workspace)
+
+    expect(workspaceChunksFromManifest(manifest, workspace)).toEqual([
+      'static/chunks/rfi-route.js',
+      'static/chunks/rfi.js',
+      'static/chunks/shared.js',
+      'static/chunks/boundary.js',
     ])
-    expect(() =>
-      extractLazyWorkspaceIds("lazy(() => import('./unknown-client'))"),
-    ).toThrow('unknown lazy workspace import')
   })
 
-  it('measures entry plus active workspace without double-counting chunks', () => {
+  it('measures each isolated workspace without double-counting chunks', () => {
     const root = fixtureRoot()
-    write(root, 'chunks/entry.js', 'entry')
-    write(root, 'chunks/shared.js', 'shared')
-    write(root, 'chunks/packages.js', 'packages')
-    write(root, 'chunks/questions.js', 'questions')
-    write(root, 'chunks/rfi.js', 'rfi')
-    write(root, 'chunks/norms.js', 'norms')
+    for (const name of ['packages', 'questions', 'rfi', 'norms', 'shared']) {
+      write(root, `chunks/${name}.js`, name)
+    }
 
     const report = evaluateStewardshipBundle({
-      entryChunks: ['static/chunks/entry.js'],
-      importedWorkspaceIds: ['packages', 'questions', 'rfi', 'norms'],
-      lazyChunkGroups: [
-        ['static/chunks/packages.js', 'static/chunks/shared.js'],
-        ['static/chunks/questions.js', 'static/chunks/shared.js'],
-        ['static/chunks/rfi.js'],
-        ['static/chunks/norms.js'],
-      ],
       staticDirectory: root,
+      workspaceRoutes: [
+        {
+          chunks: ['static/chunks/packages.js', 'static/chunks/shared.js'],
+          id: 'packages',
+        },
+        {
+          chunks: ['static/chunks/questions.js', 'static/chunks/shared.js'],
+          id: 'questions',
+        },
+        { chunks: ['static/chunks/rfi.js'], id: 'rfi' },
+        { chunks: ['static/chunks/norms.js'], id: 'norms' },
+      ],
     })
 
-    expect(report.entry.name).toBe('stewardship-entry')
     expect(report.workspaces.map(workspace => workspace.total.name)).toEqual([
       'stewardship-packages',
       'stewardship-questions',
@@ -129,67 +127,49 @@ describe('stewardship bundle contract', () => {
       'stewardship-norms',
     ])
     expect(report.workspaces[0].total.chunks.map(file => file.chunk)).toEqual([
-      'static/chunks/entry.js',
       'static/chunks/packages.js',
       'static/chunks/shared.js',
     ])
   })
 
-  it('fails closed for order, group count, empty groups, and eager overlap', () => {
+  it('fails closed for route order, empty routes, and incomplete manifests', () => {
     const root = fixtureRoot()
-    write(root, 'chunks/entry.js', 'entry')
     write(root, 'chunks/a.js', 'a')
-
-    const base = {
-      entryChunks: ['static/chunks/entry.js'],
-      importedWorkspaceIds: ['packages', 'questions', 'rfi', 'norms'],
-      lazyChunkGroups: [
-        ['static/chunks/a.js'],
-        ['static/chunks/a.js'],
-        ['static/chunks/a.js'],
-        ['static/chunks/a.js'],
-      ],
-      staticDirectory: root,
-    }
+    const completeRoutes = STEWARDSHIP_WORKSPACES.map(workspace => ({
+      chunks: ['static/chunks/a.js'],
+      id: workspace.id,
+    }))
 
     expect(() =>
       evaluateStewardshipBundle({
-        ...base,
-        importedWorkspaceIds: ['questions', 'packages', 'rfi', 'norms'],
+        staticDirectory: root,
+        workspaceRoutes: [
+          completeRoutes[1],
+          completeRoutes[0],
+          ...completeRoutes.slice(2),
+        ],
       }),
     ).toThrow('must remain in this order')
     expect(() =>
       evaluateStewardshipBundle({
-        ...base,
-        importedWorkspaceIds: [],
-        lazyChunkGroups: [],
+        staticDirectory: root,
+        workspaceRoutes: [],
       }),
     ).toThrow('Found: none')
     expect(() =>
-      evaluateStewardshipBundle({ ...base, lazyChunkGroups: [] }),
-    ).toThrow('compiled lazy stewardship chunk sets')
-    expect(() =>
       evaluateStewardshipBundle({
-        ...base,
-        lazyChunkGroups: [
-          [],
-          ['static/chunks/a.js'],
-          ['static/chunks/a.js'],
-          ['static/chunks/a.js'],
+        staticDirectory: root,
+        workspaceRoutes: [
+          { ...completeRoutes[0], chunks: [] },
+          ...completeRoutes.slice(1),
         ],
       }),
-    ).toThrow('has no asynchronous chunks')
+    ).toThrow('has no client chunks')
+
+    const workspace = STEWARDSHIP_WORKSPACES[0]
     expect(() =>
-      evaluateStewardshipBundle({
-        ...base,
-        lazyChunkGroups: [
-          ['static/chunks/entry.js'],
-          ['static/chunks/a.js'],
-          ['static/chunks/a.js'],
-          ['static/chunks/a.js'],
-        ],
-      }),
-    ).toThrow('included in entry chunks')
+      workspaceChunksFromManifest({ moduleLoading: {} }, workspace),
+    ).toThrow('manifest fields are incomplete')
   })
 
   it('applies individual workspace limits', () => {
@@ -213,33 +193,26 @@ describe('stewardship bundle contract', () => {
     ])
   })
 
-  it('reads a build fixture and supports report-only execution', () => {
+  it('reads isolated build fixtures and supports report-only execution', () => {
     const root = writeCompleteFixture()
     const report = readStewardshipBundleReport(root)
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
 
-    expect(report.entry.chunks.map(file => file.chunk)).toEqual([
-      'static/chunks/shell.js',
+    expect(report.workspaces[2].total.chunks.map(file => file.chunk)).toEqual([
+      'static/chunks/boundary.js',
+      'static/chunks/rfi-route.js',
+      'static/chunks/rfi.js',
+      'static/chunks/shared.js',
     ])
     expect(
       runStewardshipBundleCheck({ projectRoot: root, reportOnly: true }),
     ).toEqual(report)
-    expect(logSpy).toHaveBeenCalledTimes(9)
+    expect(logSpy).toHaveBeenCalledTimes(4)
   })
 
-  it('explains missing and incomplete production manifests', () => {
-    const root = fixtureRoot()
-    expect(() => readStewardshipBundleReport(root)).toThrow(
+  it('explains missing production manifests', () => {
+    expect(() => readStewardshipBundleReport(fixtureRoot())).toThrow(
       'optimized production build',
-    )
-
-    write(
-      root,
-      '.next/server/app/[locale]/requirements/stewardship/page_client-reference-manifest.js',
-      `globalThis.x = ${JSON.stringify({ moduleLoading: {} })};`,
-    )
-    expect(() => readStewardshipBundleReport(root)).toThrow(
-      'fields are incomplete',
     )
   })
 

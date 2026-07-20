@@ -9,7 +9,7 @@ import {
 } from '@testing-library/react'
 import { type ComponentProps, StrictMode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import AdminClientShell from '@/app/[locale]/admin/admin-client'
+import AdminClientShell from '@/app/[locale]/admin/admin-composed-client'
 import type { ActionAuditLogInitialState } from '@/components/admin/ActionAuditLogView'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { HelpProvider, useHelp } from '@/components/HelpPanel'

@@ -5,109 +5,129 @@ import {
   budgetFailures,
   createScenario,
   formatScenario,
-  readClientBundleArtifacts,
+  LOCALE_LAYOUT_MODULE,
+  parseClientReferenceManifest,
   runBundleCli,
 } from './lib/client-bundle-budget.mjs'
 
-const STEWARDSHIP_ROUTE_MODULE =
-  '[project]/app/[locale]/requirements/stewardship/page'
-const STEWARDSHIP_CLIENT_MODULE =
-  '[project]/app/[locale]/requirements/stewardship/stewardship-client.tsx'
+const STEWARDSHIP_ROUTE_ROOT =
+  '[project]/app/[locale]/requirements/stewardship/workspaces'
+const STEWARDSHIP_BOUNDARY_MODULE =
+  '[project]/app/[locale]/requirements/stewardship/stewardship-lazy-workspace.tsx'
 
-export const STEWARDSHIP_WORKSPACE_IDS = [
-  'packages',
-  'questions',
-  'rfi',
-  'norms',
+export const STEWARDSHIP_WORKSPACES = [
+  {
+    clientModule:
+      '[project]/app/[locale]/requirement-packages/requirement-packages-client.tsx',
+    id: 'packages',
+    routeSegment: 'packages',
+  },
+  {
+    clientModule:
+      '[project]/app/[locale]/requirements/stewardship/requirement-selection-questions-client.tsx',
+    id: 'questions',
+    routeSegment: 'questions',
+  },
+  {
+    clientModule:
+      '[project]/app/[locale]/requirements/stewardship/rfi-questions-client.tsx',
+    id: 'rfi',
+    routeSegment: 'information-requests',
+  },
+  {
+    clientModule:
+      '[project]/app/[locale]/norm-references/norm-references-client.tsx',
+    id: 'norms',
+    routeSegment: 'norms',
+  },
 ]
 
-const IMPORT_PATH_TO_WORKSPACE = new Map([
-  ['../../requirement-packages/requirement-packages-client', 'packages'],
-  ['./requirement-selection-questions-client', 'questions'],
-  ['./rfi-questions-client', 'rfi'],
-  ['../../norm-references/norm-references-client', 'norms'],
-])
-
 export const STEWARDSHIP_WORKSPACE_GZIP_MAX_BYTES = {
-  // 2026-07-14 production baseline: 245,256 gzip bytes plus 5% headroom.
-  packages: 257_519,
-  // 2026-07-14 production baseline: 268,875 gzip bytes plus 5% headroom.
-  questions: 282_319,
-  // 2026-07-14 production baseline: 13,072 gzip bytes plus 5% headroom.
-  rfi: 13_726,
-  // 2026-07-14 production baseline: 238,348 gzip bytes plus 5% headroom.
-  norms: 250_266,
+  // 2026-07-20 isolated-route baseline: 244,443 gzip bytes plus 5% headroom.
+  packages: 256_666,
+  // 2026-07-20 isolated-route baseline: 268,160 gzip bytes plus 5% headroom.
+  questions: 281_568,
+  // 2026-07-20 isolated-route baseline: 11,780 gzip bytes plus 5% headroom.
+  rfi: 12_369,
+  // 2026-07-20 isolated-route baseline: 237,747 gzip bytes plus 5% headroom.
+  norms: 249_635,
 }
 
-export function extractLazyWorkspaceIds(source) {
-  return Array.from(source.matchAll(/import\(\s*'([^']+)'\s*\)/gu), match => {
-    const workspaceId = IMPORT_PATH_TO_WORKSPACE.get(match[1])
-    if (!workspaceId) {
-      throw new Error(
-        `Stewardship contains an unknown lazy workspace import: ${match[1]}.`,
-      )
-    }
-    return workspaceId
-  })
+function expectedWorkspaceIds() {
+  return STEWARDSHIP_WORKSPACES.map(workspace => workspace.id)
 }
 
-function assertExpectedWorkspaceOrder(importedWorkspaceIds) {
-  if (
-    JSON.stringify(importedWorkspaceIds) !==
-    JSON.stringify(STEWARDSHIP_WORKSPACE_IDS)
-  ) {
+function assertExpectedWorkspaceOrder(workspaces) {
+  const actualIds = workspaces.map(workspace => workspace.id)
+  if (JSON.stringify(actualIds) !== JSON.stringify(expectedWorkspaceIds())) {
     throw new Error(
-      `Stewardship lazy workspace imports must remain in this order: ${STEWARDSHIP_WORKSPACE_IDS.join(', ')}. Found: ${importedWorkspaceIds.join(', ') || 'none'}.`,
+      `Stewardship workspace routes must remain in this order: ${expectedWorkspaceIds().join(', ')}. Found: ${actualIds.join(', ') || 'none'}.`,
     )
   }
+}
+
+function normalizeClientChunks(chunks) {
+  return chunks.map(chunk => chunk.replace(/^\/_next\//u, ''))
+}
+
+export function workspaceChunksFromManifest(manifest, workspace) {
+  const routeModule = `${STEWARDSHIP_ROUTE_ROOT}/${workspace.routeSegment}/page`
+  const routeChunks = manifest.entryJSFiles?.[routeModule]
+  const layoutChunks = manifest.entryJSFiles?.[LOCALE_LAYOUT_MODULE]
+  const workspaceChunks =
+    manifest.clientModules?.[workspace.clientModule]?.chunks
+  const boundaryChunks =
+    manifest.clientModules?.[STEWARDSHIP_BOUNDARY_MODULE]?.chunks
+
+  if (
+    !Array.isArray(routeChunks) ||
+    !Array.isArray(layoutChunks) ||
+    !Array.isArray(workspaceChunks) ||
+    !Array.isArray(boundaryChunks)
+  ) {
+    throw new Error(
+      `Stewardship ${workspace.id} bundle manifest fields are incomplete.`,
+    )
+  }
+
+  const layoutChunkSet = new Set(normalizeClientChunks(layoutChunks))
+  const selectedChunks = [
+    ...normalizeClientChunks(routeChunks),
+    ...normalizeClientChunks(workspaceChunks),
+    ...normalizeClientChunks(boundaryChunks),
+  ].filter(chunk => !layoutChunkSet.has(chunk))
+
+  if (selectedChunks.length === 0) {
+    throw new Error(
+      `Stewardship ${workspace.id} has no route-specific client chunks.`,
+    )
+  }
+
+  return [...new Set(selectedChunks)]
 }
 
 export function evaluateStewardshipBundle({
-  entryChunks,
-  importedWorkspaceIds,
-  lazyChunkGroups,
   staticDirectory,
+  workspaceRoutes,
 }) {
-  assertExpectedWorkspaceOrder(importedWorkspaceIds)
-  if (lazyChunkGroups.length !== importedWorkspaceIds.length) {
-    throw new Error(
-      `Expected ${importedWorkspaceIds.length} compiled lazy stewardship chunk sets, found ${lazyChunkGroups.length}.`,
-    )
-  }
-
-  const entryChunkSet = new Set(entryChunks)
-  const workspaces = importedWorkspaceIds.map((workspaceId, index) => {
-    const chunks = lazyChunkGroups[index]
-    if (chunks.length === 0) {
-      throw new Error(
-        `Stewardship workspace ${workspaceId} has no asynchronous chunks.`,
-      )
-    }
-    const entryOverlap = chunks.filter(chunk => entryChunkSet.has(chunk))
-    if (entryOverlap.length > 0) {
-      throw new Error(
-        `Stewardship workspace ${workspaceId} is included in entry chunks: ${entryOverlap.join(', ')}.`,
-      )
-    }
-
-    return {
-      id: workspaceId,
-      incremental: createScenario(
-        `stewardship-${workspaceId}-incremental`,
-        chunks,
-        staticDirectory,
-      ),
-      total: createScenario(
-        `stewardship-${workspaceId}`,
-        [...entryChunks, ...chunks],
-        staticDirectory,
-      ),
-    }
-  })
+  assertExpectedWorkspaceOrder(workspaceRoutes)
 
   return {
-    entry: createScenario('stewardship-entry', entryChunks, staticDirectory),
-    workspaces,
+    workspaces: workspaceRoutes.map(workspace => {
+      if (!Array.isArray(workspace.chunks) || workspace.chunks.length === 0) {
+        throw new Error(
+          `Stewardship workspace ${workspace.id} has no client chunks.`,
+        )
+      }
+      return {
+        id: workspace.id,
+        total: createScenario(
+          `stewardship-${workspace.id}`,
+          workspace.chunks,
+          staticDirectory,
+        ),
+      }
+    }),
   }
 }
 
@@ -124,48 +144,46 @@ export function stewardshipBudgetFailures(
 }
 
 export function readStewardshipBundleReport(projectRoot) {
-  const stewardshipClientPath = join(
-    projectRoot,
-    'app',
-    '[locale]',
-    'requirements',
-    'stewardship',
-    'stewardship-client.tsx',
-  )
-  const manifestPath = join(
-    projectRoot,
-    '.next',
-    'server',
-    'app',
-    '[locale]',
-    'requirements',
-    'stewardship',
-    'page_client-reference-manifest.js',
-  )
-  const { entryChunks, lazyChunkGroups, staticDirectory } =
-    readClientBundleArtifacts({
-      clientModule: STEWARDSHIP_CLIENT_MODULE,
-      manifestPath,
+  const workspaceRoutes = STEWARDSHIP_WORKSPACES.map(workspace => {
+    const manifestPath = join(
       projectRoot,
-      routeModule: STEWARDSHIP_ROUTE_MODULE,
-      surfaceName: 'Stewardship',
-    })
+      '.next',
+      'server',
+      'app',
+      '[locale]',
+      'requirements',
+      'stewardship',
+      'workspaces',
+      workspace.routeSegment,
+      'page_client-reference-manifest.js',
+    )
+    let manifestSource
+    try {
+      manifestSource = readFileSync(manifestPath, 'utf8')
+    } catch {
+      throw new Error(
+        `Stewardship ${workspace.id} bundle manifest is missing. Run an optimized production build first.`,
+      )
+    }
+    const manifest = parseClientReferenceManifest(
+      manifestSource,
+      `Stewardship ${workspace.id}`,
+    )
+    return {
+      chunks: workspaceChunksFromManifest(manifest, workspace),
+      id: workspace.id,
+    }
+  })
 
   return evaluateStewardshipBundle({
-    entryChunks,
-    importedWorkspaceIds: extractLazyWorkspaceIds(
-      readFileSync(stewardshipClientPath, 'utf8'),
-    ),
-    lazyChunkGroups,
-    staticDirectory,
+    staticDirectory: join(projectRoot, '.next', 'static'),
+    workspaceRoutes,
   })
 }
 
 export function runStewardshipBundleCheck({ projectRoot, reportOnly = false }) {
   const report = readStewardshipBundleReport(projectRoot)
-  console.log(formatScenario(report.entry))
   for (const workspace of report.workspaces) {
-    console.log(formatScenario(workspace.incremental))
     console.log(
       formatScenario(
         workspace.total,
