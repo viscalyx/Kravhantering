@@ -2,10 +2,14 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const adminPageMocks = vi.hoisted(() => ({
-  dataSource: { name: 'test-data-source' },
-  getDataSource: vi.fn(),
   getSession: vi.fn(),
-  listActionAuditEvents: vi.fn(),
+  redirect: vi.fn(() => {
+    throw new Error('NEXT_REDIRECT')
+  }),
+}))
+
+vi.mock('next/navigation', () => ({
+  redirect: adminPageMocks.redirect,
 }))
 
 vi.mock('next-intl/server', () => ({
@@ -24,30 +28,7 @@ vi.mock('@/lib/auth/session', () => ({
   isSignedIn: (session: { sub?: string }) => Boolean(session.sub),
 }))
 
-vi.mock('@/lib/db', () => ({
-  getRequestSqlServerDataSource: adminPageMocks.getDataSource,
-}))
-
-vi.mock('@/lib/audit/action-audit', () => ({
-  listActionAuditEvents: adminPageMocks.listActionAuditEvents,
-}))
-
-vi.mock('@/app/[locale]/admin/admin-client', () => ({
-  default: ({
-    actionAuditLog,
-    currentUserRoles,
-  }: {
-    actionAuditLog?: unknown
-    currentUserRoles: string[]
-  }) => (
-    <div data-testid="admin-client">
-      {currentUserRoles.join(',')}:
-      {actionAuditLog ? 'audit-loaded' : 'no-audit'}
-    </div>
-  ),
-}))
-
-async function renderAdminPage({
+async function invokeAdminPage({
   roles,
   tab,
 }: {
@@ -56,67 +37,63 @@ async function renderAdminPage({
 }) {
   adminPageMocks.getSession.mockResolvedValue({ roles, sub: 'signed-in-user' })
   const { default: AdminPage } = await import('@/app/[locale]/admin/page')
-  const searchParams = tab ? { tab } : {}
-
-  render(
-    await AdminPage({
-      params: Promise.resolve({ locale: 'sv' }),
-      searchParams: Promise.resolve(searchParams),
-    }),
-  )
+  return AdminPage({
+    params: Promise.resolve({ locale: 'sv' }),
+    searchParams: Promise.resolve(tab ? { tab } : {}),
+  })
 }
 
-describe('AdminPage authorization and initial data', () => {
+describe('AdminPage canonical routing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    adminPageMocks.getDataSource.mockResolvedValue(adminPageMocks.dataSource)
-    adminPageMocks.listActionAuditEvents.mockResolvedValue({
-      events: [],
-      pagination: { page: 1, pageSize: 50, total: 0, totalPages: 1 },
-    })
   })
 
-  it('renders access denied without client code or database reads for an ineligible role', async () => {
-    await renderAdminPage({ roles: ['Reviewer'], tab: 'actionAuditLog' })
+  it('renders access denied for an ineligible role', async () => {
+    render(await invokeAdminPage({ roles: ['Reviewer'] }))
 
     expect(
       screen.getByRole('heading', { name: 'admin.accessDenied.title' }),
     ).toBeVisible()
-    expect(screen.queryByTestId('admin-client')).toBeNull()
-    expect(adminPageMocks.getDataSource).not.toHaveBeenCalled()
-    expect(adminPageMocks.listActionAuditEvents).not.toHaveBeenCalled()
+    expect(adminPageMocks.redirect).not.toHaveBeenCalled()
   })
 
-  it('does not load the Admin-only action log for PrivacyOfficer', async () => {
-    await renderAdminPage({
-      roles: ['PrivacyOfficer'],
-      tab: 'actionAuditLog',
-    })
-
-    expect(screen.getByTestId('admin-client')).toHaveTextContent(
-      'PrivacyOfficer:no-audit',
+  it('redirects an eligible default request to the isolated columns route', async () => {
+    await expect(invokeAdminPage({ roles: ['Admin'] })).rejects.toThrow(
+      'NEXT_REDIRECT',
     )
-    expect(adminPageMocks.getDataSource).not.toHaveBeenCalled()
-    expect(adminPageMocks.listActionAuditEvents).not.toHaveBeenCalled()
+
+    expect(adminPageMocks.redirect).toHaveBeenCalledWith(
+      '/sv/admin?tab=columns',
+    )
   })
 
-  it('loads action-log data only when an Admin initially opens that tab', async () => {
-    await renderAdminPage({ roles: ['Admin'], tab: 'actionAuditLog' })
+  it('preserves an authorized requested tab for rewrite routing', async () => {
+    await expect(
+      invokeAdminPage({ roles: ['Admin'], tab: 'actionAuditLog' }),
+    ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(screen.getByTestId('admin-client')).toHaveTextContent(
-      'Admin:audit-loaded',
+    expect(adminPageMocks.redirect).toHaveBeenCalledWith(
+      '/sv/admin?tab=actionAuditLog',
     )
-    expect(adminPageMocks.getDataSource).toHaveBeenCalledOnce()
-    expect(adminPageMocks.listActionAuditEvents).toHaveBeenCalledOnce()
   })
 
-  it('does not load action-log data when an Admin opens the default tab', async () => {
-    await renderAdminPage({ roles: ['Admin'] })
-
-    expect(screen.getByTestId('admin-client')).toHaveTextContent(
-      'Admin:no-audit',
+  it('falls back to the first authorized tab for unavailable or unauthorized tabs', async () => {
+    await expect(
+      invokeAdminPage({ roles: ['Admin'], tab: 'missing' }),
+    ).rejects.toThrow('NEXT_REDIRECT')
+    expect(adminPageMocks.redirect).toHaveBeenLastCalledWith(
+      '/sv/admin?tab=columns',
     )
-    expect(adminPageMocks.getDataSource).not.toHaveBeenCalled()
-    expect(adminPageMocks.listActionAuditEvents).not.toHaveBeenCalled()
+
+    adminPageMocks.redirect.mockClear()
+    await expect(
+      invokeAdminPage({
+        roles: ['PrivacyOfficer'],
+        tab: 'actionAuditLog',
+      }),
+    ).rejects.toThrow('NEXT_REDIRECT')
+    expect(adminPageMocks.redirect).toHaveBeenLastCalledWith(
+      '/sv/admin?tab=accessReview',
+    )
   })
 })

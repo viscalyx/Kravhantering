@@ -71,6 +71,14 @@ async function getStaticHeaderKeys(config: NextConfig): Promise<string[]> {
   return allHeaders.map(header => header.key)
 }
 
+async function getBeforeFilesRewrites(config: NextConfig) {
+  expect(config.rewrites).toBeTypeOf('function')
+  const rewrites = await config.rewrites?.()
+  expect(Array.isArray(rewrites)).toBe(false)
+  if (Array.isArray(rewrites) || rewrites === undefined) return []
+  return rewrites.beforeFiles ?? []
+}
+
 afterEach(() => {
   setEnv(originalEnv)
   vi.doUnmock('next-intl/plugin')
@@ -185,6 +193,113 @@ describe('next.config container output', () => {
     })
 
     expect(config.output).toBe('standalone')
+  })
+})
+
+describe('next.config stewardship workspace routing', () => {
+  it('maps each public tab URL to an isolated internal route', async () => {
+    const config = await loadNextConfig({
+      NODE_ENV: 'development',
+    })
+
+    const rewrites = (await getBeforeFilesRewrites(config)).filter(
+      rewrite => rewrite.source === '/:locale/requirements/stewardship',
+    )
+
+    expect(rewrites).toEqual([
+      {
+        destination: '/:locale/requirements/stewardship/workspaces/packages',
+        has: [{ key: 'tab', type: 'query', value: 'packages' }],
+        source: '/:locale/requirements/stewardship',
+      },
+      {
+        destination: '/:locale/requirements/stewardship/workspaces/questions',
+        has: [{ key: 'tab', type: 'query', value: 'questions' }],
+        source: '/:locale/requirements/stewardship',
+      },
+      {
+        destination:
+          '/:locale/requirements/stewardship/workspaces/information-requests',
+        has: [{ key: 'tab', type: 'query', value: 'information-requests' }],
+        source: '/:locale/requirements/stewardship',
+      },
+      {
+        destination: '/:locale/requirements/stewardship/workspaces/norms',
+        has: [{ key: 'tab', type: 'query', value: 'norms' }],
+        source: '/:locale/requirements/stewardship',
+      },
+    ])
+  })
+})
+
+describe('next.config Admin workspace routing', () => {
+  it('maps every public tab and the default URL to isolated internal routes', async () => {
+    const config = await loadNextConfig({
+      NODE_ENV: 'development',
+    })
+
+    const rewrites = (await getBeforeFilesRewrites(config)).filter(
+      rewrite => rewrite.source === '/:locale/admin',
+    )
+
+    expect(rewrites).toEqual([
+      {
+        destination: '/:locale/admin/workspaces/columns',
+        has: [{ key: 'tab', type: 'query', value: 'columns' }],
+        source: '/:locale/admin',
+      },
+      {
+        destination: '/:locale/admin/workspaces/identity',
+        has: [{ key: 'tab', type: 'query', value: 'identity' }],
+        source: '/:locale/admin',
+      },
+      {
+        destination: '/:locale/admin/workspaces/settings',
+        has: [{ key: 'tab', type: 'query', value: 'settings' }],
+        source: '/:locale/admin',
+      },
+      {
+        destination: '/:locale/admin/workspaces/taxonomy',
+        has: [{ key: 'tab', type: 'query', value: 'taxonomy' }],
+        source: '/:locale/admin',
+      },
+      {
+        destination: '/:locale/admin/workspaces/statuses-and-workflows',
+        has: [
+          {
+            key: 'tab',
+            type: 'query',
+            value: 'statusesAndWorkflows',
+          },
+        ],
+        source: '/:locale/admin',
+      },
+      {
+        destination: '/:locale/admin/workspaces/access-review',
+        has: [{ key: 'tab', type: 'query', value: 'accessReview' }],
+        source: '/:locale/admin',
+      },
+      {
+        destination: '/:locale/admin/workspaces/archiving',
+        has: [{ key: 'tab', type: 'query', value: 'archiving' }],
+        source: '/:locale/admin',
+      },
+      {
+        destination: '/:locale/admin/workspaces/privacy',
+        has: [{ key: 'tab', type: 'query', value: 'privacy' }],
+        source: '/:locale/admin',
+      },
+      {
+        destination: '/:locale/admin/workspaces/action-audit-log',
+        has: [{ key: 'tab', type: 'query', value: 'actionAuditLog' }],
+        source: '/:locale/admin',
+      },
+      {
+        destination: '/:locale/admin/workspaces/columns',
+        missing: [{ key: 'tab', type: 'query' }],
+        source: '/:locale/admin',
+      },
+    ])
   })
 })
 

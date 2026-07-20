@@ -79,6 +79,39 @@ const UNSUPPORTED_WEBPACK_BUILD_MESSAGE = [
   'the Webpack aliases stay in sync.',
 ].join(' ')
 
+const stewardshipWorkspaceRewrites = [
+  ['packages', 'packages'],
+  ['questions', 'questions'],
+  ['information-requests', 'information-requests'],
+  ['norms', 'norms'],
+].map(([tab, workspace]) => ({
+  destination: `/:locale/requirements/stewardship/workspaces/${workspace}`,
+  has: [{ type: 'query' as const, key: 'tab', value: tab }],
+  source: '/:locale/requirements/stewardship',
+}))
+
+const adminWorkspaceRewrites = [
+  ['columns', 'columns'],
+  ['identity', 'identity'],
+  ['settings', 'settings'],
+  ['taxonomy', 'taxonomy'],
+  ['statusesAndWorkflows', 'statuses-and-workflows'],
+  ['accessReview', 'access-review'],
+  ['archiving', 'archiving'],
+  ['privacy', 'privacy'],
+  ['actionAuditLog', 'action-audit-log'],
+].map(([tab, workspace]) => ({
+  destination: `/:locale/admin/workspaces/${workspace}`,
+  has: [{ type: 'query' as const, key: 'tab', value: tab }],
+  source: '/:locale/admin',
+}))
+
+const adminDefaultWorkspaceRewrite = {
+  destination: '/:locale/admin/workspaces/columns',
+  missing: [{ type: 'query' as const, key: 'tab' }],
+  source: '/:locale/admin',
+}
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   typedRoutes: true,
@@ -123,6 +156,17 @@ const nextConfig: NextConfig = {
   },
   webpack() {
     throw new Error(UNSUPPORTED_WEBPACK_BUILD_MESSAGE)
+  },
+  async rewrites() {
+    return {
+      beforeFiles: [
+        ...stewardshipWorkspaceRewrites,
+        ...adminWorkspaceRewrites,
+        adminDefaultWorkspaceRewrite,
+      ],
+      afterFiles: [],
+      fallback: [],
+    }
   },
   // CSP is set per-request in proxy.ts (nonce-based).
   // Only static security headers are defined here.
