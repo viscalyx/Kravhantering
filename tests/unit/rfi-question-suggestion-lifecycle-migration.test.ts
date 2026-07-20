@@ -13,12 +13,14 @@ const migrationSource = readFileSync(
 )
 
 describe('RFI question suggestion lifecycle migration', () => {
-  it('adds a checked lifecycle invariant', () => {
+  it('diagnoses incoherent history before adding a checked invariant', () => {
+    expect(migrationSource).toContain(
+      'Cannot enforce RFI question suggestion lifecycle: incoherent row ids',
+    )
     expect(migrationSource).toContain(
       'WITH CHECK ADD CONSTRAINT [chk_rfi_question_suggestions_lifecycle]',
     )
     expect(migrationSource).not.toContain('NOCHECK')
-    expect(migrationSource).not.toContain('Cannot enforce RFI question')
   })
 
   it('uses one set-based trigger for inserts, transitions, evidence, and deletion', () => {

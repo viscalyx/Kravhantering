@@ -36,6 +36,28 @@ const LIFECYCLE_INVARIANT = `(
 const UP_STATEMENTS = [
   `IF EXISTS (
       SELECT 1
+      FROM [rfi_question_suggestions]
+      WHERE NOT ${LIFECYCLE_INVARIANT}
+    )
+    BEGIN
+      DECLARE @invalid_ids nvarchar(1800);
+      SELECT @invalid_ids = LEFT(
+        STRING_AGG(CONVERT(nvarchar(max), [id]), N','),
+        1800
+      )
+      FROM [rfi_question_suggestions]
+      WHERE NOT ${LIFECYCLE_INVARIANT};
+
+      DECLARE @diagnostic nvarchar(2048) =
+        CONCAT(
+          N'Cannot enforce RFI question suggestion lifecycle: incoherent row ids ',
+          COALESCE(@invalid_ids, N'(unknown)'),
+          N'. Review lifecycle timestamps and resolution evidence before retrying.'
+        );
+      THROW 51015, @diagnostic, 1;
+    END;`,
+  `IF EXISTS (
+      SELECT 1
       FROM sys.check_constraints
       WHERE [name] = N'chk_rfi_question_suggestions_resolution'
         AND [parent_object_id] = OBJECT_ID(N'rfi_question_suggestions')
