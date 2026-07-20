@@ -881,6 +881,17 @@ down.
 - Scope switches are disabled when the RFI list is locked or the actor cannot
   edit the specification RFI list. Relevance remains separate and is edited only
   after the list is locked.
+- RFI question suggestions move only from `Utkast` to `Granskning begärd` and
+  then to `Hanterad` or `Avfärdad`. Resolution controls are available only
+  after review has been requested, and only draft suggestions can be deleted.
+- If another actor changes or deletes a suggestion before the current action
+  completes, the UI shows localized conflict feedback and reloads suggestions.
+  A missing row is distinct from an existing suggestion in an incompatible
+  lifecycle state.
+- Creation, review request, resolution, and deletion each commit with exactly
+  one successful action-log event. The log includes target and lifecycle
+  transition metadata but excludes suggestion content and resolution
+  motivation.
 
 ## Combined Review Report In Requirements Library
 

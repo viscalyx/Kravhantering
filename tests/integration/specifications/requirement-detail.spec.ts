@@ -480,6 +480,13 @@ async function mockRfiList(
     deleteSuggestion(id: number) {
       suggestions = suggestions.filter(suggestion => suggestion.id !== id)
     },
+    requestSuggestionReview(id: number) {
+      suggestions = suggestions.map(suggestion =>
+        suggestion.id === id
+          ? { ...suggestion, isReviewRequested: true }
+          : suggestion,
+      )
+    },
   }
 }
 
@@ -3142,6 +3149,15 @@ test.describe('Requirements specification deterministic manual cases', () => {
           rfiQuestionId: rfiPrimaryQuestionId,
           specificationId: rfiSpecificationId,
         },
+        {
+          areaId: rfiAreaId,
+          content: 'PWT-MANUAL samtidigt granskat RFI-förslag.',
+          id: 920006,
+          isReviewRequested: false,
+          resolution: null,
+          rfiQuestionId: rfiPrimaryQuestionId,
+          specificationId: rfiSpecificationId,
+        },
       ],
     })
     const deleteRequests: number[] = []
@@ -3151,6 +3167,18 @@ test.describe('Requirements specification deterministic manual cases', () => {
       await route.fulfill({
         contentType: 'application/json',
         json: { ok: true },
+      })
+    })
+    await page.route('**/api/rfi-question-suggestions/920006', async route => {
+      rfiMock.requestSuggestionReview(920006)
+      await route.fulfill({
+        contentType: 'application/json',
+        json: {
+          code: 'conflict',
+          details: { reason: 'rfi_question_suggestion_not_draft' },
+          error: 'Only a draft RFI question suggestion can be deleted',
+        },
+        status: 409,
       })
     })
 
@@ -3172,7 +3200,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
     await page
       .getByRole('button', {
-        name: 'Visa 3 RFI-frågeförslag för PWM-RFI001',
+        name: 'Visa 4 RFI-frågeförslag för PWM-RFI001',
       })
       .click()
     suggestionsDialog = page.getByRole('dialog', {
@@ -3187,6 +3215,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect(suggestionsDialog).toContainText(
       'PWT-MANUAL RFI-förslag i granskning.',
     )
+    await expect(suggestionsDialog).toContainText(
+      'PWT-MANUAL samtidigt granskat RFI-förslag.',
+    )
     const openSuggestion = suggestionsDialog
       .locator('li')
       .filter({ hasText: 'PWT-MANUAL öppet frågeförslag.' })
@@ -3196,6 +3227,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
     const handledSuggestion = suggestionsDialog
       .locator('li')
       .filter({ hasText: 'PWT-MANUAL hanterat RFI-förslag.' })
+    const concurrentlyReviewedSuggestion = suggestionsDialog
+      .locator('li')
+      .filter({ hasText: 'PWT-MANUAL samtidigt granskat RFI-förslag.' })
     await expect(
       openSuggestion.getByRole('button', {
         name: 'Ta bort RFI-frågeförslag',
@@ -3211,6 +3245,11 @@ test.describe('Requirements specification deterministic manual cases', () => {
         name: 'Ta bort RFI-frågeförslag',
       }),
     ).toHaveCount(0)
+    await expect(
+      concurrentlyReviewedSuggestion.getByRole('button', {
+        name: 'Ta bort RFI-frågeförslag',
+      }),
+    ).toHaveCount(1)
     await openSuggestion
       .getByRole('button', { name: 'Ta bort RFI-frågeförslag' })
       .click()
@@ -3229,6 +3268,25 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect(suggestionsDialog).toContainText(
       'PWT-MANUAL RFI-förslag i granskning.',
     )
+
+    await concurrentlyReviewedSuggestion
+      .getByRole('button', { name: 'Ta bort RFI-frågeförslag' })
+      .click()
+    await page
+      .getByRole('alertdialog', { name: 'Ta bort RFI-frågeförslag' })
+      .getByRole('button', { name: 'Ta bort' })
+      .click()
+
+    await expect(
+      page.getByText(
+        'Endast ett RFI-frågeförslag i utkast kan tas bort. Förslagen har lästs in på nytt.',
+      ),
+    ).toHaveCount(1)
+    await expect(
+      concurrentlyReviewedSuggestion.getByRole('button', {
+        name: 'Ta bort RFI-frågeförslag',
+      }),
+    ).toHaveCount(0)
   })
 
   test('SPEC-16b: rejects an RFI suggestion when the specification author lacks target area authorship', async ({

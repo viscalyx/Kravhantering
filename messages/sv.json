@@ -177,6 +177,13 @@
     "createSuggestion": "Skicka RFI-frågeförslag",
     "createSuggestionForArea": "Skicka RFI-frågeförslag för kravområdet {area}",
     "createSuggestionForQuestion": "Skicka RFI-frågeförslag för {code}",
+    "conflicts": {
+      "alreadyResolved": "Det här RFI-frågeförslaget har redan behandlats. Förslagen har lästs in på nytt.",
+      "notDraft": "Endast ett RFI-frågeförslag i utkast kan tas bort. Förslagen har lästs in på nytt.",
+      "notFound": "Det här RFI-frågeförslaget finns inte längre. Förslagen har lästs in på nytt.",
+      "reviewAlreadyRequested": "Granskning har redan begärts för det här RFI-frågeförslaget. Förslagen har lästs in på nytt.",
+      "reviewRequired": "Begär granskning innan RFI-frågeförslaget behandlas. Förslagen har lästs in på nytt."
+    },
     "deleteSuggestionAriaLabel": "Ta bort RFI-frågeförslag",
     "deleteSuggestionConfirm": "Ta bort det här RFI-frågeförslaget? Det går inte att ångra.",
     "deleteSuggestionTitle": "Ta bort RFI-frågeförslag",
@@ -235,6 +242,13 @@
     "area": "Kravområde",
     "areaLockedHint": "Kravområdet kan inte ändras efter att RFI-frågan har skapats.",
     "confirmArchiveQuestion": "Arkivera den här RFI-frågan?",
+    "conflicts": {
+      "alreadyResolved": "Det här RFI-frågeförslaget har redan behandlats. Förslagen har lästs in på nytt.",
+      "notDraft": "Endast ett RFI-frågeförslag i utkast kan tas bort. Förslagen har lästs in på nytt.",
+      "notFound": "Det här RFI-frågeförslaget finns inte längre. Förslagen har lästs in på nytt.",
+      "reviewAlreadyRequested": "Granskning har redan begärts för det här RFI-frågeförslaget. Förslagen har lästs in på nytt.",
+      "reviewRequired": "Begär granskning innan RFI-frågeförslaget behandlas. Förslagen har lästs in på nytt."
+    },
     "createdAt": "Skapad",
     "createdBy": "Skapad av",
     "dismiss": "Avfärda",

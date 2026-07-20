@@ -177,6 +177,13 @@
     "createSuggestion": "Send RFI question suggestion",
     "createSuggestionForArea": "Send RFI question suggestion for requirement area {area}",
     "createSuggestionForQuestion": "Send RFI question suggestion for {code}",
+    "conflicts": {
+      "alreadyResolved": "This RFI question suggestion has already been handled. The suggestions have been reloaded.",
+      "notDraft": "Only a draft RFI question suggestion can be deleted. The suggestions have been reloaded.",
+      "notFound": "This RFI question suggestion no longer exists. The suggestions have been reloaded.",
+      "reviewAlreadyRequested": "Review has already been requested for this RFI question suggestion. The suggestions have been reloaded.",
+      "reviewRequired": "Request review before handling this RFI question suggestion. The suggestions have been reloaded."
+    },
     "deleteSuggestionAriaLabel": "Delete RFI question suggestion",
     "deleteSuggestionConfirm": "Delete this RFI question suggestion? This cannot be undone.",
     "deleteSuggestionTitle": "Delete RFI question suggestion",
@@ -235,6 +242,13 @@
     "area": "Requirement area",
     "areaLockedHint": "The requirement area cannot be changed after the RFI question has been created.",
     "confirmArchiveQuestion": "Archive this RFI question?",
+    "conflicts": {
+      "alreadyResolved": "This RFI question suggestion has already been handled. The suggestions have been reloaded.",
+      "notDraft": "Only a draft RFI question suggestion can be deleted. The suggestions have been reloaded.",
+      "notFound": "This RFI question suggestion no longer exists. The suggestions have been reloaded.",
+      "reviewAlreadyRequested": "Review has already been requested for this RFI question suggestion. The suggestions have been reloaded.",
+      "reviewRequired": "Request review before handling this RFI question suggestion. The suggestions have been reloaded."
+    },
     "createdAt": "Created",
     "createdBy": "Created by",
     "dismiss": "Dismiss",

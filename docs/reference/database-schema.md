@@ -1296,7 +1296,13 @@ version and included scope are unchanged.
 Separate proposal track for new or changed RFI questions. Suggestions target a
 requirement area and may optionally point to an existing RFI question. A source
 specification reference is stored as a minimal snapshot so area authors can
-handle the suggestion without receiving full specification access.
+handle the suggestion without receiving full specification access. Lifecycle
+state is derived from the review and resolution fields: `draft` moves to
+`review_requested`, which moves once to `resolved` or `dismissed`. Only drafts
+can be deleted. Review timestamps, resolution evidence, content, targeting, and
+source snapshots are immutable after review starts. Privacy anonymization of
+actor snapshots and `specification_id` cleanup from a deleted specification
+remain allowed.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -1309,13 +1315,27 @@ handle the suggestion without receiving full specification access.
 | `source_specification_name` | text | Minimal source snapshot |
 | `content` | text | Suggestion content |
 | `is_review_requested` | integer | Whether review has been requested |
+| `review_requested_at` | text (ISO 8601) | First review-request timestamp |
 | `resolution` | integer | `1` resolved, `2` dismissed, or `NULL` |
 | `resolution_motivation` | text | Resolution reason |
 | `created_by_hsa_id` | text | Creator HSA-id snapshot |
 | `created_by_display_name` | text | Creator display-name snapshot |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last lifecycle-change timestamp |
 | `resolved_by_hsa_id` | text | Resolver HSA-id snapshot |
 | `resolved_by_display_name` | text | Resolver display-name snapshot |
+| `resolved_at` | text (ISO 8601) | Write-once resolution timestamp |
 <!-- markdownlint-enable MD013 -->
+
+**Check constraint:**
+`chk_rfi_question_suggestions_lifecycle` rejects incoherent combinations of
+review flags, lifecycle timestamps, resolution type, and resolution
+motivation.
+
+**Trigger:** `trg_rfi_question_suggestions_lifecycle` enforces set-based
+insert, update, and delete rules. It permits creation only as draft, the
+forward-only lifecycle, actor anonymization, and specification cleanup while
+rejecting evidence changes and non-draft deletion.
 
 ---
 

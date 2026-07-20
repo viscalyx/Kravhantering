@@ -106,7 +106,15 @@ export async function runSeedData(
           const sql = hasIdentityId
             ? `SET IDENTITY_INSERT [${table}] ON; ${insertSql} SET IDENTITY_INSERT [${table}] OFF;`
             : insertSql
-          await query(sql, row)
+          const handled = await options.insertRow?.({
+            columns: entry.columns,
+            defaultSql: sql,
+            query,
+            row,
+            rowIndex,
+            table,
+          })
+          if (!handled) await query(sql, row)
           inserted += 1
         }
       } finally {

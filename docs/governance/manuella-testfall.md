@@ -1310,7 +1310,10 @@ modalen.
 **Förväntat resultat:** Räknaren visar alla RFI-frågeförslag som skrivits från
 det aktuella kravunderlaget för den frågan eller det kravområdet. Modalen visar
 förslagstexten. Bara förslag som inte är i granskning och inte har resolution
-kan tas bort. Efter borttagning uppdateras modalen och räknaren.
+kan tas bort. Efter borttagning uppdateras modalen och räknaren. Om en annan
+användare hinner begära granskning innan borttagningen slutförs visas ett
+lokaliserat konfliktmeddelande, förslagen läses in på nytt och
+borttagningsknappen försvinner.
 
 ### SPEC-16b: RFI-frågeförslag kontrollerar både kravunderlag och kravområde
 
@@ -1327,15 +1330,17 @@ förslaget.
 
 **Steg:** Öppna Kravbiblioteksförvaltning och fliken `RFI-frågor`. Kontrollera
 seedade RFI-frågeförslag på rubriker för kravområde och RFI-frågerader. Klicka på
-en amber `MessageSquareWarning`, begär granskning för ett nytt förslag och
-markera ett förslag som hanterat med beslutsmotivering.
+en amber `MessageSquareWarning`. Kontrollera att ett nytt förslag bara kan
+skickas till granskning. Begär granskning och markera därefter förslaget som
+hanterat med beslutsmotivering. Upprepa flödet för ett områdesförslag.
 
 **Förväntat resultat:** Obehandlade förslag visas på den nivå de gäller:
 kravområdesrubrik för områdesförslag och RFI-frågerad för frågespecifika
 förslag. Amber varningsikon visar antal obehandlade förslag. När alla förslag
 på nivån är behandlade visas en check-ikon utan räknare. Modalen visar `Nya`,
 `I granskning` och `Behandlade`, inklusive kravunderlagskälla och skapande
-person.
+person. Ett förslag kan inte beslutas före granskning och kan bara beslutas en
+gång.
 
 ### SPEC-17: importera unika krav till kravunderlag
 

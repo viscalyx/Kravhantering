@@ -22,6 +22,15 @@ import { tryGetSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
 const TRANSACTIONAL_TABLES = [
   'action_audit_events',
+  'rfi_question_suggestions',
+  'specification_rfi_question_items',
+  'specification_rfi_lists',
+  'rfi_question_version_requirement_selection_questions',
+  'rfi_question_version_requirement_packages',
+  'rfi_question_version_requirements',
+  'rfi_question_versions',
+  'rfi_questions',
+  'rfi_question_sequences',
   'requirement_version_requirement_packages',
   'requirement_version_norm_references',
   'specification_local_requirement_norm_references',
@@ -138,7 +147,23 @@ async function clearTransactionalTables(
   target: SqlServerDatabase,
 ): Promise<void> {
   for (const table of TRANSACTIONAL_TABLES) {
-    await target.query(`DELETE FROM ${table}`)
+    const hasLifecycleDeleteGuard = table === 'rfi_question_suggestions'
+    if (hasLifecycleDeleteGuard) {
+      await target.query(
+        `DISABLE TRIGGER [trg_rfi_question_suggestions_lifecycle]
+         ON [rfi_question_suggestions]`,
+      )
+    }
+    try {
+      await target.query(`DELETE FROM ${table}`)
+    } finally {
+      if (hasLifecycleDeleteGuard) {
+        await target.query(
+          `ENABLE TRIGGER [trg_rfi_question_suggestions_lifecycle]
+           ON [rfi_question_suggestions]`,
+        )
+      }
+    }
     await target.query(
       `IF EXISTS (
          SELECT 1 FROM sys.identity_columns ic

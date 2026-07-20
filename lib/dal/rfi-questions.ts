@@ -1,6 +1,7 @@
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   conflictError,
+  internalError,
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
@@ -11,13 +12,32 @@ export type RfiRelevance = 'not_relevant' | 'relevant'
 export const RFI_SUGGESTION_RESOLVED = 1
 export const RFI_SUGGESTION_DISMISSED = 2
 
-interface SqlExecutor {
+export interface SqlExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
 }
 
-interface ActorSnapshot {
+export interface ActorSnapshot {
   displayName: string
   hsaId: string
+}
+
+export interface RfiQuestionSuggestionCreateData {
+  areaId: number
+  content: string
+  rfiQuestionId?: number | null
+  specificationId?: number | null
+}
+
+export interface RfiQuestionSuggestionResolutionData {
+  resolution: typeof RFI_SUGGESTION_RESOLVED | typeof RFI_SUGGESTION_DISMISSED
+  resolutionMotivation: string
+}
+
+export interface RfiQuestionSuggestionMutationTarget {
+  areaId: number
+  id: number
+  rfiQuestionId: number | null
+  specificationId: number | null
 }
 
 export interface RfiQuestionVersionLinks {
@@ -153,9 +173,13 @@ type RfiQuestionSuggestionDbRow = {
 }
 
 type RfiQuestionSuggestionStateDbRow = {
+  areaId: number
   id: number
   isReviewRequested: boolean | number | string
   resolution: number | null
+  reviewRequestedAt: Date | string | null
+  rfiQuestionId: number | null
+  specificationId: number | null
 }
 
 function placeholders(values: readonly unknown[], offset = 0): string {
@@ -1253,13 +1277,8 @@ export async function updateSpecificationRfiAreaScope(
 }
 
 export async function createRfiQuestionSuggestion(
-  db: SqlServerDatabase,
-  data: {
-    areaId: number
-    content: string
-    rfiQuestionId?: number | null
-    specificationId?: number | null
-  },
+  db: SqlExecutor,
+  data: RfiQuestionSuggestionCreateData,
   actor: ActorSnapshot,
 ): Promise<RfiQuestionSuggestionRow> {
   const content = data.content.trim()
@@ -1318,6 +1337,8 @@ export async function createRfiQuestionSuggestion(
   const specification = specificationRows[0]
   const rows = (await db.query(
     `
+      DECLARE @created TABLE (id int NOT NULL);
+
       INSERT INTO rfi_question_suggestions
         (
           area_id,
@@ -1330,8 +1351,10 @@ export async function createRfiQuestionSuggestion(
           created_by_display_name,
           created_at
         )
-      OUTPUT INSERTED.id AS id
+      OUTPUT INSERTED.id INTO @created (id)
       VALUES (@0, @1, @2, @3, @4, @5, @6, @7, SYSUTCDATETIME())
+
+      SELECT id FROM @created
     `,
     [
       data.areaId,
@@ -1346,13 +1369,13 @@ export async function createRfiQuestionSuggestion(
   )) as Array<{ id: number }>
   const suggestion = await getRfiQuestionSuggestion(db, Number(rows[0]?.id))
   if (!suggestion) {
-    throw validationError('Created RFI question suggestion could not be loaded')
+    throw internalError('Created RFI question suggestion could not be loaded')
   }
   return suggestion
 }
 
 export async function getRfiQuestionSuggestion(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   suggestionId: number,
 ): Promise<RfiQuestionSuggestionRow | null> {
   const suggestions = await listRfiQuestionSuggestions(db, { suggestionId })
@@ -1360,7 +1383,7 @@ export async function getRfiQuestionSuggestion(
 }
 
 export async function listRfiQuestionSuggestions(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   options: {
     areaId?: number
     specificationId?: number
@@ -1419,74 +1442,141 @@ export async function listRfiQuestionSuggestions(
 }
 
 export async function deleteRfiQuestionSuggestion(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   suggestionId: number,
-): Promise<void> {
-  const rows = (await db.query(
+): Promise<RfiQuestionSuggestionMutationTarget> {
+  const deletedRows = (await db.query(
     `
-      SELECT TOP (1)
-        id,
-        is_review_requested AS isReviewRequested,
-        resolution
-      FROM rfi_question_suggestions
+      DECLARE @deleted TABLE (
+        id int NOT NULL,
+        areaId int NOT NULL,
+        rfiQuestionId int NULL,
+        specificationId int NULL
+      );
+
+      DELETE FROM rfi_question_suggestions
+      OUTPUT
+        DELETED.id,
+        DELETED.area_id,
+        DELETED.rfi_question_id,
+        DELETED.specification_id
+      INTO @deleted (id, areaId, rfiQuestionId, specificationId)
       WHERE id = @0
+        AND is_review_requested = 0
+        AND review_requested_at IS NULL
+        AND resolution IS NULL
+        AND resolution_motivation IS NULL
+        AND resolved_at IS NULL
+        AND resolved_by_hsa_id IS NULL
+        AND resolved_by_display_name IS NULL
+
+      SELECT id, areaId, rfiQuestionId, specificationId
+      FROM @deleted
     `,
     [suggestionId],
-  )) as RfiQuestionSuggestionStateDbRow[]
-  const existing = rows[0]
+  )) as RfiQuestionSuggestionMutationTarget[]
+  const deleted = deletedRows[0]
+  if (deleted) return deleted
+
+  const existing = await getRfiQuestionSuggestionState(db, suggestionId)
   if (!existing) {
     throw notFoundError(`RFI question suggestion ${suggestionId} not found`, {
       suggestionId,
     })
   }
-  if (toBoolean(existing.isReviewRequested) || existing.resolution !== null) {
-    throw conflictError(
-      'Cannot delete an RFI question suggestion after review has started or a resolution has been recorded',
-      {
-        reason: 'rfi_question_suggestion_already_handled',
-        suggestionId,
-      },
-    )
-  }
-  await db.query(`DELETE FROM rfi_question_suggestions WHERE id = @0`, [
+  throw conflictError('Only a draft RFI question suggestion can be deleted', {
+    reason: 'rfi_question_suggestion_not_draft',
     suggestionId,
-  ])
+  })
+}
+
+async function getRfiQuestionSuggestionState(
+  db: SqlExecutor,
+  suggestionId: number,
+): Promise<RfiQuestionSuggestionStateDbRow | null> {
+  const rows = (await db.query(
+    `
+      SELECT TOP (1)
+        area_id AS areaId,
+        id,
+        is_review_requested AS isReviewRequested,
+        resolution,
+        review_requested_at AS reviewRequestedAt,
+        rfi_question_id AS rfiQuestionId,
+        specification_id AS specificationId
+      FROM rfi_question_suggestions
+      WITH (UPDLOCK, HOLDLOCK)
+      WHERE id = @0
+    `,
+    [suggestionId],
+  )) as RfiQuestionSuggestionStateDbRow[]
+  return rows[0] ?? null
 }
 
 export async function requestRfiQuestionSuggestionReview(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   suggestionId: number,
-): Promise<RfiQuestionSuggestionRow | null> {
+): Promise<RfiQuestionSuggestionRow> {
   const rows = (await db.query(
     `
+      DECLARE @reviewed TABLE (id int NOT NULL);
+
       UPDATE rfi_question_suggestions
       SET is_review_requested = 1,
           review_requested_at = SYSUTCDATETIME(),
           updated_at = SYSUTCDATETIME()
-      OUTPUT INSERTED.id AS id
+      OUTPUT INSERTED.id INTO @reviewed (id)
       WHERE id = @0
+        AND is_review_requested = 0
+        AND review_requested_at IS NULL
         AND resolution IS NULL
+        AND resolution_motivation IS NULL
+        AND resolved_at IS NULL
+        AND resolved_by_hsa_id IS NULL
+        AND resolved_by_display_name IS NULL
+
+      SELECT id FROM @reviewed
     `,
     [suggestionId],
   )) as Array<{ id: number }>
-  return rows[0] ? getRfiQuestionSuggestion(db, suggestionId) : null
+  if (rows[0]) {
+    const suggestion = await getRfiQuestionSuggestion(db, suggestionId)
+    if (suggestion) return suggestion
+    throw internalError('Reviewed RFI question suggestion could not be loaded')
+  }
+
+  const existing = await getRfiQuestionSuggestionState(db, suggestionId)
+  if (!existing) {
+    throw notFoundError(`RFI question suggestion ${suggestionId} not found`, {
+      suggestionId,
+    })
+  }
+  if (existing.resolution !== null) {
+    throw conflictError('RFI question suggestion is already resolved', {
+      reason: 'rfi_question_suggestion_already_resolved',
+      suggestionId,
+    })
+  }
+  throw conflictError('RFI question suggestion review is already requested', {
+    reason: 'rfi_question_suggestion_review_already_requested',
+    suggestionId,
+  })
 }
 
 export async function resolveRfiQuestionSuggestion(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   suggestionId: number,
-  data: {
-    resolution: typeof RFI_SUGGESTION_RESOLVED | typeof RFI_SUGGESTION_DISMISSED
-    resolutionMotivation: string
-  },
+  data: RfiQuestionSuggestionResolutionData,
   actor: ActorSnapshot,
-): Promise<RfiQuestionSuggestionRow | null> {
+): Promise<RfiQuestionSuggestionRow> {
   const motivation = data.resolutionMotivation.trim()
   if (!motivation) {
     throw validationError('Resolution motivation is required')
   }
   const rows = (await db.query(
     `
+      DECLARE @resolved TABLE (id int NOT NULL);
+
       UPDATE rfi_question_suggestions
       SET resolution = @1,
           resolution_motivation = @2,
@@ -1494,11 +1584,43 @@ export async function resolveRfiQuestionSuggestion(
           resolved_by_display_name = @4,
           resolved_at = SYSUTCDATETIME(),
           updated_at = SYSUTCDATETIME()
-      OUTPUT INSERTED.id AS id
+      OUTPUT INSERTED.id INTO @resolved (id)
       WHERE id = @0
+        AND is_review_requested = 1
+        AND review_requested_at IS NOT NULL
         AND resolution IS NULL
+        AND resolution_motivation IS NULL
+        AND resolved_at IS NULL
+        AND resolved_by_hsa_id IS NULL
+        AND resolved_by_display_name IS NULL
+
+      SELECT id FROM @resolved
     `,
     [suggestionId, data.resolution, motivation, actor.hsaId, actor.displayName],
   )) as Array<{ id: number }>
-  return rows[0] ? getRfiQuestionSuggestion(db, suggestionId) : null
+  if (rows[0]) {
+    const suggestion = await getRfiQuestionSuggestion(db, suggestionId)
+    if (suggestion) return suggestion
+    throw internalError('Resolved RFI question suggestion could not be loaded')
+  }
+
+  const existing = await getRfiQuestionSuggestionState(db, suggestionId)
+  if (!existing) {
+    throw notFoundError(`RFI question suggestion ${suggestionId} not found`, {
+      suggestionId,
+    })
+  }
+  if (existing.resolution !== null) {
+    throw conflictError('RFI question suggestion is already resolved', {
+      reason: 'rfi_question_suggestion_already_resolved',
+      suggestionId,
+    })
+  }
+  throw conflictError(
+    'RFI question suggestion review must be requested before resolution',
+    {
+      reason: 'rfi_question_suggestion_review_required',
+      suggestionId,
+    },
+  )
 }
