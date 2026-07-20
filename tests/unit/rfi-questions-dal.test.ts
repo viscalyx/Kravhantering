@@ -5,20 +5,22 @@ import {
   deleteRfiQuestionSuggestion,
   listRfiQuestionSuggestions,
   lockSpecificationRfiList,
+  RFI_SUGGESTION_RESOLVED,
+  requestRfiQuestionSuggestionReview,
+  resolveRfiQuestionSuggestion,
+  type SqlExecutor,
   updateRfiQuestion,
   updateSpecificationRfiAreaScope,
   updateSpecificationRfiQuestionItem,
 } from '@/lib/dal/rfi-questions'
 
-type QueryFn = ReturnType<
-  typeof vi.fn<(sql: string, parameters?: unknown[]) => Promise<unknown[]>>
->
+type QueryFn = ReturnType<typeof vi.fn> & SqlExecutor['query']
 type MockManager = { query: QueryFn }
 
 function createQuery(responses: unknown[][]): QueryFn {
   const query = vi
     .fn<(sql: string, parameters?: unknown[]) => Promise<unknown[]>>()
-    .mockResolvedValue([])
+    .mockResolvedValue([]) as QueryFn
   for (const response of responses) query.mockResolvedValueOnce(response)
   return query
 }
@@ -679,26 +681,50 @@ describe('RFI questions DAL', () => {
 
   it('deletes only RFI question suggestions that have not entered review or resolution', async () => {
     const query = createQuery([
-      [{ id: 77, isReviewRequested: 0, resolution: null }],
-      [],
+      [
+        {
+          areaId: 2,
+          id: 77,
+          rfiQuestionId: 12,
+          specificationId: 4,
+        },
+      ],
     ])
     const db = { query }
 
-    await deleteRfiQuestionSuggestion(
-      db as unknown as Parameters<typeof deleteRfiQuestionSuggestion>[0],
-      77,
-    )
+    await expect(
+      deleteRfiQuestionSuggestion(
+        db as unknown as Parameters<typeof deleteRfiQuestionSuggestion>[0],
+        77,
+      ),
+    ).resolves.toEqual({
+      areaId: 2,
+      id: 77,
+      rfiQuestionId: 12,
+      specificationId: 4,
+    })
 
-    expect(query).toHaveBeenNthCalledWith(
-      2,
-      'DELETE FROM rfi_question_suggestions WHERE id = @0',
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM rfi_question_suggestions'),
       [77],
     )
+    expect(String(query.mock.calls[0]?.[0])).toContain('OUTPUT')
   })
 
   it('rejects deletion after RFI question suggestion review has started', async () => {
     const query = createQuery([
-      [{ id: 77, isReviewRequested: 1, resolution: null }],
+      [],
+      [
+        {
+          areaId: 2,
+          id: 77,
+          isReviewRequested: 1,
+          resolution: null,
+          reviewRequestedAt: new Date(),
+          rfiQuestionId: 12,
+          specificationId: 4,
+        },
+      ],
     ])
     const db = { query }
 
@@ -709,8 +735,78 @@ describe('RFI questions DAL', () => {
       ),
     ).rejects.toMatchObject({
       code: 'conflict',
-      details: { reason: 'rfi_question_suggestion_already_handled' },
+      details: { reason: 'rfi_question_suggestion_not_draft' },
     })
-    expect(query).toHaveBeenCalledTimes(1)
+    expect(query).toHaveBeenCalledTimes(2)
+    expect(String(query.mock.calls[1]?.[0])).toContain('UPDLOCK, HOLDLOCK')
+  })
+
+  it('distinguishes a repeated review request from a missing suggestion', async () => {
+    const query = createQuery([
+      [],
+      [
+        {
+          areaId: 2,
+          id: 77,
+          isReviewRequested: 1,
+          resolution: null,
+          reviewRequestedAt: new Date(),
+          rfiQuestionId: 12,
+          specificationId: 4,
+        },
+      ],
+    ])
+
+    await expect(
+      requestRfiQuestionSuggestionReview({ query }, 77),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: {
+        reason: 'rfi_question_suggestion_review_already_requested',
+      },
+    })
+  })
+
+  it('requires review before resolving and preserves reason-coded conflicts', async () => {
+    const query = createQuery([
+      [],
+      [
+        {
+          areaId: 2,
+          id: 77,
+          isReviewRequested: 0,
+          resolution: null,
+          reviewRequestedAt: null,
+          rfiQuestionId: 12,
+          specificationId: 4,
+        },
+      ],
+    ])
+
+    await expect(
+      resolveRfiQuestionSuggestion(
+        { query },
+        77,
+        {
+          resolution: RFI_SUGGESTION_RESOLVED,
+          resolutionMotivation: 'Handled in the library.',
+        },
+        actor,
+      ),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: { reason: 'rfi_question_suggestion_review_required' },
+    })
+  })
+
+  it('returns not found only when the conditional mutation diagnostic finds no row', async () => {
+    const query = createQuery([[], []])
+
+    await expect(
+      deleteRfiQuestionSuggestion({ query }, 404),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      status: 404,
+    })
   })
 })

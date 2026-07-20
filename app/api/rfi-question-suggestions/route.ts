@@ -4,11 +4,7 @@ import {
   rfiQuestionSuggestionCreateSchema,
   rfiQuestionSuggestionQuerySchema,
 } from '@/app/api/rfi-questions/_schemas'
-import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
-import {
-  createRfiQuestionSuggestion,
-  listRfiQuestionSuggestions,
-} from '@/lib/dal/rfi-questions'
+import { listRfiQuestionSuggestions } from '@/lib/dal/rfi-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   type MutationPolicy,
@@ -19,6 +15,7 @@ import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids
 import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
 import { unauthorizedError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { createRfiQuestionSuggestionWithAudit } from '@/lib/requirements/rfi-question-suggestion-mutations'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { authorize } from '@/lib/requirements/service-shared'
 
@@ -142,7 +139,7 @@ export const POST = secureMutationRoute({
   handler: async ({ body, context, db }) => {
     const activeDb = db ?? (await getRequestSqlServerDataSource())
     const actor = requireHumanActorSnapshot(context)
-    const suggestion = await createRfiQuestionSuggestion(
+    const suggestion = await createRfiQuestionSuggestionWithAudit(
       activeDb,
       {
         areaId: body.areaId,
@@ -151,17 +148,8 @@ export const POST = secureMutationRoute({
         specificationId: body.specificationId ?? null,
       },
       actor,
+      context,
     )
-    await recordAllowedActionAuditEvent(activeDb, context, {
-      action: 'rfi_question_suggestion.create',
-      details: {
-        areaId: suggestion.areaId,
-        rfiQuestionId: suggestion.rfiQuestionId,
-        specificationId: suggestion.specificationId,
-      },
-      targetId: suggestion.id,
-      targetKind: 'rfi_question_suggestion',
-    })
     return NextResponse.json({ suggestion }, { status: 201 })
   },
 })

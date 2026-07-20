@@ -23,6 +23,10 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
+import {
+  readRfiQuestionSuggestionMutationError,
+  shouldReloadRfiQuestionSuggestions,
+} from '@/lib/requirements/rfi-question-suggestion-conflicts'
 
 interface RequirementArea {
   id: number
@@ -148,6 +152,7 @@ interface RfiCopy {
   allAreas: string
   allStatuses: string
   allSuggestionStates: string
+  alreadyResolvedSuggestion: string
   archive: string
   archived: string
   area: string
@@ -176,6 +181,8 @@ interface RfiCopy {
   newSuggestions: string
   noFilteredQuestions: string
   noSource: string
+  notDraftSuggestion: string
+  notFoundSuggestion: string
   questions: string
   questionText: string
   questionTextHelp: string
@@ -186,6 +193,8 @@ interface RfiCopy {
   resolutionRequired: string
   resolvedAt: string
   resolvedResolution: string
+  reviewAlreadyRequested: string
+  reviewRequired: string
   reviewSuggestions: string
   saveError: string
   saveQuestion: string
@@ -233,6 +242,7 @@ export default function RfiQuestionsClient() {
   const copy = useMemo(
     () => ({
       active: t('active'),
+      alreadyResolvedSuggestion: t('conflicts.alreadyResolved'),
       allAreas: t('allAreas'),
       allSuggestionStates: t('allSuggestionStates'),
       allStatuses: t('allStatuses'),
@@ -264,11 +274,15 @@ export default function RfiQuestionsClient() {
       newSuggestions: t('newSuggestions'),
       noFilteredQuestions: t('noFilteredQuestions'),
       noSource: t('noSource'),
+      notDraftSuggestion: t('conflicts.notDraft'),
+      notFoundSuggestion: t('conflicts.notFound'),
       questionText: t('questionText'),
       questionTextHelp: t('fieldHelp.questionText'),
       questions: t('questions'),
       reactivate: t('reactivate'),
       requestReview: t('requestReview'),
+      reviewAlreadyRequested: t('conflicts.reviewAlreadyRequested'),
+      reviewRequired: t('conflicts.reviewRequired'),
       resolvedAt: t('resolvedAt'),
       resolvedResolution: t('resolvedResolution'),
       resolutionMotivation: t('resolutionMotivation'),
@@ -339,6 +353,23 @@ export default function RfiQuestionsClient() {
       setLoading(false)
     }
   }, [copy.loadError])
+
+  const suggestionConflictMessages = useMemo(
+    () => ({
+      alreadyResolved: copy.alreadyResolvedSuggestion,
+      notDraft: copy.notDraftSuggestion,
+      notFound: copy.notFoundSuggestion,
+      reviewAlreadyRequested: copy.reviewAlreadyRequested,
+      reviewRequired: copy.reviewRequired,
+    }),
+    [
+      copy.alreadyResolvedSuggestion,
+      copy.notDraftSuggestion,
+      copy.notFoundSuggestion,
+      copy.reviewAlreadyRequested,
+      copy.reviewRequired,
+    ],
+  )
 
   useEffect(() => {
     void loadData()
@@ -753,7 +784,13 @@ export default function RfiQuestionsClient() {
         }),
       )
       if (!response.ok) {
-        throw new Error((await readResponseMessage(response)) ?? copy.saveError)
+        const message = await readRfiQuestionSuggestionMutationError(
+          response,
+          suggestionConflictMessages,
+          copy.saveError,
+        )
+        if (shouldReloadRfiQuestionSuggestions(response)) await loadData()
+        throw new Error(message)
       }
       setResolutionText(current => {
         const next = { ...current }
@@ -777,7 +814,13 @@ export default function RfiQuestionsClient() {
         { method: 'POST' },
       )
       if (!response.ok) {
-        throw new Error((await readResponseMessage(response)) ?? copy.saveError)
+        const message = await readRfiQuestionSuggestionMutationError(
+          response,
+          suggestionConflictMessages,
+          copy.saveError,
+        )
+        if (shouldReloadRfiQuestionSuggestions(response)) await loadData()
+        throw new Error(message)
       }
       await loadData()
     } catch (saveError) {
@@ -936,25 +979,27 @@ export default function RfiQuestionsClient() {
             ) : null}
           </div>
         </div>
-        <div>
-          <FieldLabelWithHelp
-            help={copy.resolutionMotivationHelp}
-            htmlFor={resolutionId}
-            label={copy.resolutionMotivation}
-            required
-          />
-          <input
-            className={inputClassName}
-            id={resolutionId}
-            onChange={event =>
-              setResolutionText(current => ({
-                ...current,
-                [suggestion.id]: event.target.value,
-              }))
-            }
-            value={resolutionText[suggestion.id] ?? ''}
-          />
-        </div>
+        {variant === 'review' ? (
+          <div>
+            <FieldLabelWithHelp
+              help={copy.resolutionMotivationHelp}
+              htmlFor={resolutionId}
+              label={copy.resolutionMotivation}
+              required
+            />
+            <input
+              className={inputClassName}
+              id={resolutionId}
+              onChange={event =>
+                setResolutionText(current => ({
+                  ...current,
+                  [suggestion.id]: event.target.value,
+                }))
+              }
+              value={resolutionText[suggestion.id] ?? ''}
+            />
+          </div>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           {variant === 'new' ? (
             <button
@@ -962,29 +1007,48 @@ export default function RfiQuestionsClient() {
               disabled={saving}
               onClick={() => void requestSuggestionReview(suggestion)}
               type="button"
+              {...devMarker({
+                context: 'rfiQuestions',
+                name: 'suggestion lifecycle action',
+                value: 'draft to review requested',
+              })}
             >
               <MessageSquareWarning aria-hidden="true" className="h-4 w-4" />
               {copy.requestReview}
             </button>
           ) : null}
-          <button
-            className="btn-primary inline-flex min-h-10 items-center gap-2"
-            disabled={saving}
-            onClick={() => void resolveSuggestion(suggestion, 'resolved')}
-            type="button"
-          >
-            <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-            {copy.markResolved}
-          </button>
-          <button
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-secondary-300 px-3 py-1.5 text-sm font-medium text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-            disabled={saving}
-            onClick={() => void resolveSuggestion(suggestion, 'dismissed')}
-            type="button"
-          >
-            <X aria-hidden="true" className="h-4 w-4" />
-            {copy.dismiss}
-          </button>
+          {variant === 'review' ? (
+            <>
+              <button
+                className="btn-primary inline-flex min-h-10 items-center gap-2"
+                disabled={saving}
+                onClick={() => void resolveSuggestion(suggestion, 'resolved')}
+                type="button"
+                {...devMarker({
+                  context: 'rfiQuestions',
+                  name: 'suggestion lifecycle action',
+                  value: 'review requested to resolved',
+                })}
+              >
+                <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
+                {copy.markResolved}
+              </button>
+              <button
+                className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-secondary-300 px-3 py-1.5 text-sm font-medium text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                disabled={saving}
+                onClick={() => void resolveSuggestion(suggestion, 'dismissed')}
+                type="button"
+                {...devMarker({
+                  context: 'rfiQuestions',
+                  name: 'suggestion lifecycle action',
+                  value: 'review requested to dismissed',
+                })}
+              >
+                <X aria-hidden="true" className="h-4 w-4" />
+                {copy.dismiss}
+              </button>
+            </>
+          ) : null}
         </div>
       </article>
     )

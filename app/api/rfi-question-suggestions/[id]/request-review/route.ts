@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { z } from 'zod'
 import { rfiQuestionSuggestionParamsSchema } from '@/app/api/rfi-questions/_schemas'
-import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
-import { requestRfiQuestionSuggestionReview } from '@/lib/dal/rfi-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   type MutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
+import { requestRfiQuestionSuggestionReviewWithAudit } from '@/lib/requirements/rfi-question-suggestion-mutations'
 
 type RfiQuestionSuggestionParams = z.infer<
   typeof rfiQuestionSuggestionParamsSchema
@@ -27,18 +26,11 @@ export const POST = secureMutationRoute({
   policy,
   handler: async ({ context, db, params }) => {
     const activeDb = db ?? (await getRequestSqlServerDataSource())
-    const suggestion = await requestRfiQuestionSuggestionReview(
+    const suggestion = await requestRfiQuestionSuggestionReviewWithAudit(
       activeDb,
       params.id,
+      context,
     )
-    if (!suggestion) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
-    await recordAllowedActionAuditEvent(activeDb, context, {
-      action: 'rfi_question_suggestion.request_review',
-      targetId: suggestion.id,
-      targetKind: 'rfi_question_suggestion',
-    })
     return NextResponse.json({ suggestion })
   },
 })

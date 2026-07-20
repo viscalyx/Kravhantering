@@ -287,7 +287,7 @@ test.describe('Stewardship navigation memory', () => {
     page,
   }) => {
     const reviewRequests: number[] = []
-    const resolutionRequests: unknown[] = []
+    const resolutionRequests: Array<{ body: unknown; id: number }> = []
     let suggestions = [
       pwtRfiSuggestion({
         content: 'PWT-MANUAL öppet frågeförslag.',
@@ -341,12 +341,30 @@ test.describe('Stewardship navigation memory', () => {
       },
     )
     await page.route(
-      '**/api/rfi-question-suggestions/920002/resolution',
+      '**/api/rfi-question-suggestions/920002/request-review',
       async route => {
-        const body = route.request().postDataJSON()
-        resolutionRequests.push(body)
+        reviewRequests.push(920002)
         suggestions = suggestions.map(suggestion =>
           suggestion.id === 920002
+            ? {
+                ...suggestion,
+                isReviewRequested: true,
+                reviewRequestedAt: '2026-04-24T10:15:00.000Z',
+                updatedAt: '2026-04-24T10:15:00.000Z',
+              }
+            : suggestion,
+        )
+        await fulfillJson(route, { ok: true })
+      },
+    )
+    await page.route(
+      '**/api/rfi-question-suggestions/*/resolution',
+      async route => {
+        const id = Number(route.request().url().split('/').at(-2))
+        const body = route.request().postDataJSON()
+        resolutionRequests.push({ body, id })
+        suggestions = suggestions.map(suggestion =>
+          suggestion.id === id
             ? {
                 ...suggestion,
                 resolution: 1,
@@ -386,9 +404,14 @@ test.describe('Stewardship navigation memory', () => {
     await expect(suggestionsDialog).toContainText(
       'PWT-MANUAL öppet frågeförslag.',
     )
-    await suggestionsDialog
-      .getByRole('textbox', { name: /Beslutsmotivering/u })
-      .fill('PWT SPEC-16c skickad till granskning.')
+    await expect(
+      suggestionsDialog.getByRole('textbox', {
+        name: /Beslutsmotivering/u,
+      }),
+    ).toHaveCount(0)
+    await expect(
+      suggestionsDialog.getByRole('button', { name: 'Markera hanterad' }),
+    ).toHaveCount(0)
     await expect(
       suggestionsDialog
         .getByRole('button', { name: 'Begär granskning' })
@@ -406,6 +429,24 @@ test.describe('Stewardship navigation memory', () => {
         .getByRole('button', { name: 'Markera hanterad' })
         .locator('svg'),
     ).toBeVisible()
+    await suggestionsDialog
+      .getByRole('textbox', { name: /Beslutsmotivering/u })
+      .fill('PWT SPEC-16c frågeförslag hanterat efter granskning.')
+    await suggestionsDialog
+      .getByRole('button', { name: 'Markera hanterad' })
+      .click()
+    await expect
+      .poll(() => resolutionRequests)
+      .toEqual([
+        {
+          body: {
+            resolution: 'resolved',
+            resolutionMotivation:
+              'PWT SPEC-16c frågeförslag hanterat efter granskning.',
+          },
+          id: 920001,
+        },
+      ])
     await suggestionsDialog.getByRole('button', { name: 'Stäng' }).click()
 
     const areaSuggestionButton = page.getByRole('button', {
@@ -421,6 +462,15 @@ test.describe('Stewardship navigation memory', () => {
     await expect(suggestionsDialog).toContainText(
       'PWT-MANUAL öppet områdesförslag.',
     )
+    await expect(
+      suggestionsDialog.getByRole('textbox', {
+        name: /Beslutsmotivering/u,
+      }),
+    ).toHaveCount(0)
+    await suggestionsDialog
+      .getByRole('button', { name: 'Begär granskning' })
+      .click()
+    await expect.poll(() => reviewRequests).toEqual([920001, 920002])
     await suggestionsDialog
       .getByRole('textbox', { name: /Beslutsmotivering/u })
       .fill('PWT SPEC-16c hanterat i kravområdesförvaltningen.')
@@ -432,9 +482,20 @@ test.describe('Stewardship navigation memory', () => {
       .poll(() => resolutionRequests)
       .toEqual([
         {
-          resolution: 'resolved',
-          resolutionMotivation:
-            'PWT SPEC-16c hanterat i kravområdesförvaltningen.',
+          body: {
+            resolution: 'resolved',
+            resolutionMotivation:
+              'PWT SPEC-16c frågeförslag hanterat efter granskning.',
+          },
+          id: 920001,
+        },
+        {
+          body: {
+            resolution: 'resolved',
+            resolutionMotivation:
+              'PWT SPEC-16c hanterat i kravområdesförvaltningen.',
+          },
+          id: 920002,
         },
       ])
     await expect(suggestionsDialog).toContainText('Hanterad')

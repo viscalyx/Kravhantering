@@ -420,14 +420,24 @@ describe('RFI client UI states', () => {
       )
     })
 
-    const motivationInputs = screen.getAllByLabelText(
-      /rfiQuestions\.resolutionMotivation/,
-    )
-    await userEvent.type(motivationInputs[1], 'Handled after review.')
+    const motivationInputs = screen.getAllByRole('textbox', {
+      name: /^rfiQuestions\.resolutionMotivation\*$/,
+    })
+    expect(motivationInputs).toHaveLength(1)
+    expect(
+      screen.getByRole('button', { name: 'rfiQuestions.requestReview' }),
+    ).toHaveAttribute('data-developer-mode-value', 'draft to review requested')
+    await userEvent.type(motivationInputs[0], 'Handled after review.')
     await userEvent.click(
-      screen.getAllByRole('button', {
+      screen.getByRole('button', {
         name: 'rfiQuestions.markResolved',
-      })[1],
+      }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'rfiQuestions.markResolved' }),
+    ).toHaveAttribute(
+      'data-developer-mode-value',
+      'review requested to resolved',
     )
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -444,6 +454,68 @@ describe('RFI client UI states', () => {
       resolution: 'resolved',
       resolutionMotivation: 'Handled after review.',
     })
+  })
+
+  it('localizes lifecycle conflicts and reloads stewardship suggestions', async () => {
+    let suggestionLoads = 0
+    fetchMock.mockImplementation(
+      (url: RequestInfo | URL, init?: RequestInit) => {
+        const href = String(url)
+        if (href === '/api/requirement-areas') {
+          return Promise.resolve(okJson({ areas }))
+        }
+        if (href === '/api/rfi-questions?includeArchived=true') {
+          return Promise.resolve(okJson({ questions: rfiQuestions }))
+        }
+        if (href === '/api/rfi-question-suggestions') {
+          suggestionLoads += 1
+          const suggestions =
+            suggestionLoads === 1
+              ? [rfiSuggestions[1]]
+              : [{ ...rfiSuggestions[1], isReviewRequested: true }]
+          return Promise.resolve(okJson({ suggestions }))
+        }
+        if (
+          href === '/api/rfi-question-suggestions/102/request-review' &&
+          init?.method === 'POST'
+        ) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                code: 'conflict',
+                details: {
+                  reason: 'rfi_question_suggestion_review_already_requested',
+                },
+                error: 'Review already requested',
+              }),
+              {
+                headers: { 'Content-Type': 'application/json' },
+                status: 409,
+              },
+            ),
+          )
+        }
+        throw new Error(`Unmocked fetch: ${href}`)
+      },
+    )
+
+    await renderRfiQuestionsClient()
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: 'rfiQuestions.handleSuggestions: SEC-RFI001',
+      }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'rfiQuestions.requestReview' }),
+    )
+
+    expect(
+      await screen.findByText('rfiQuestions.conflicts.reviewAlreadyRequested'),
+    ).toBeInTheDocument()
+    expect(suggestionLoads).toBe(2)
+    expect(
+      screen.queryByRole('button', { name: 'rfiQuestions.requestReview' }),
+    ).not.toBeInTheDocument()
   })
 
   it('filters to untreated suggestions and keeps archived questions visible', async () => {
@@ -793,6 +865,114 @@ describe('RFI client UI states', () => {
     expect(
       screen.getByText('specificationRfiList.suggestionCreated'),
     ).toBeInTheDocument()
+  })
+
+  it('localizes delete conflicts and reloads specification suggestions', async () => {
+    const rfiList = {
+      isLocked: false,
+      items: [
+        {
+          areaId: 1,
+          areaName: 'Security',
+          expectedAnswerFormat: 'Free text',
+          helpText: null,
+          isIncluded: true,
+          isVersionStale: false,
+          questionCode: 'SEC-RFI001',
+          questionId: 11,
+          questionText: 'How do you handle logs?',
+          relevance: null,
+          versionNumber: 1,
+        },
+      ],
+      lockedAt: null,
+      lockedByDisplayName: null,
+      specificationId: 1,
+    }
+    const suggestion = {
+      areaId: 1,
+      content: 'Concurrent review.',
+      id: 90,
+      isReviewRequested: false,
+      resolution: null,
+      rfiQuestionId: 11,
+      specificationId: 1,
+    }
+    let suggestionLoads = 0
+    fetchMock.mockImplementation(
+      (url: RequestInfo | URL, init?: RequestInit) => {
+        const href = String(url)
+        if (href === '/api/requirements-specifications/1/rfi-list') {
+          return Promise.resolve(okJson({ list: rfiList }))
+        }
+        if (
+          href === '/api/rfi-question-suggestions?areaId=1&specificationId=1'
+        ) {
+          suggestionLoads += 1
+          return Promise.resolve(
+            okJson({
+              suggestions: [
+                {
+                  ...suggestion,
+                  isReviewRequested: suggestionLoads > 1,
+                },
+              ],
+            }),
+          )
+        }
+        if (
+          href === '/api/rfi-question-suggestions/90' &&
+          init?.method === 'DELETE'
+        ) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                code: 'conflict',
+                details: {
+                  reason: 'rfi_question_suggestion_not_draft',
+                },
+                error: 'Only drafts can be deleted',
+              }),
+              {
+                headers: { 'Content-Type': 'application/json' },
+                status: 409,
+              },
+            ),
+          )
+        }
+        throw new Error(`Unmocked fetch: ${href}`)
+      },
+    )
+    const { default: SpecificationRfiListPanel } = await import(
+      '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <SpecificationRfiListPanel canEdit specificationId={1} />
+      </ConfirmModalProvider>,
+    )
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: /^specificationRfiList\.viewQuestionSuggestions/u,
+      }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'specificationRfiList.deleteSuggestionAriaLabel',
+      }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'common.delete' }))
+
+    expect(
+      await screen.findByText('specificationRfiList.conflicts.notDraft'),
+    ).toBeInTheDocument()
+    expect(suggestionLoads).toBe(2)
+    expect(
+      screen.queryByRole('button', {
+        name: 'specificationRfiList.deleteSuggestionAriaLabel',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('updates and filters RFI-list scope with area and question switches', async () => {

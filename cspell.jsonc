@@ -3,6 +3,7 @@
   "language": "en,sv",
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
+    "anonymization",
     "applikationsnod",
     "auditeras",
     "bakgrundskö",
