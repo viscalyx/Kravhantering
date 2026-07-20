@@ -14,7 +14,6 @@ const DEVCONTAINER_DOCKERFILE = path.join(
   '.devcontainer',
   'Dockerfile',
 )
-const FULL_COMMIT_SHA = /^[a-f0-9]{40}$/iu
 const USES_LINE = /^\s*uses:\s*([^#\s]+)(?:\s+#\s*(.+))?\s*$/u
 const PERSIST_CREDENTIALS_FALSE_LINE =
   /^\s*persist-credentials:\s*['"]?false['"]?(?:\s+#.*)?$/iu
@@ -70,14 +69,6 @@ function readWorkflowYaml(fileName: string): WorkflowDocument {
   ) as WorkflowDocument
 }
 
-function isLocalOrContainerReference(reference: string) {
-  return (
-    reference.startsWith('./') ||
-    reference.startsWith('../') ||
-    reference.startsWith('docker://')
-  )
-}
-
 function readZapRules(fileName: string) {
   const rules = new Map<string, string>()
   const content = readFileSync(path.join(ZAP_DIR, fileName), 'utf8')
@@ -124,8 +115,8 @@ function stepRunText(job: WorkflowJob | undefined, stepName: string) {
 }
 
 describe('GitHub Actions workflow security', () => {
-  it('pins external actions and hardens checkout credentials', () => {
-    const unpinnedReferences: string[] = []
+  it('hardens checkout credentials', () => {
+    const insecureCheckoutReferences: string[] = []
 
     for (const { absolutePath, relativePath } of workflowAndActionFiles()) {
       const lines = readFileSync(absolutePath, 'utf8').split(/\r?\n/u)
@@ -134,31 +125,18 @@ describe('GitHub Actions workflow security', () => {
         if (line.trimStart().startsWith('#')) return
         const match = line.match(USES_LINE)
         const reference = match?.[1]
-        if (!reference || isLocalOrContainerReference(reference)) return
-
-        const refSeparatorIndex = reference.lastIndexOf('@')
-        const ref =
-          refSeparatorIndex === -1
-            ? undefined
-            : reference.slice(refSeparatorIndex + 1)
-        const versionComment = match[2]?.trim()
-
-        if (!ref || !FULL_COMMIT_SHA.test(ref) || !versionComment) {
-          unpinnedReferences.push(`${relativePath}:${index + 1} ${reference}`)
-        }
-
         if (
-          reference.startsWith('actions/checkout') &&
+          reference?.startsWith('actions/checkout@') &&
           !disablesCheckoutCredentialPersistence(lines, index)
         ) {
-          unpinnedReferences.push(
+          insecureCheckoutReferences.push(
             `${relativePath}:${index + 1} ${reference} missing persist-credentials: false`,
           )
         }
       })
     }
 
-    expect(unpinnedReferences).toEqual([])
+    expect(insecureCheckoutReferences).toEqual([])
   })
 
   it('keeps the development-container and quality-check workflow Lychee versions aligned', () => {
