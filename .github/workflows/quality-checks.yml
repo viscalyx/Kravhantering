@@ -120,6 +120,9 @@ jobs:
           filter_mode: nofilter
           fail_level: any
 
+      - name: Run HSA support package tests
+        run: npm run test:hsa-support
+
       - name: Run tests and coverage
         run: npm run test:coverage
 
