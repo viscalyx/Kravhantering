@@ -230,13 +230,16 @@ describe('priority-levels DAL', () => {
       undefined,
       /Undefined value encountered in property 'PriorityLevel\.id'/,
     ],
-  ])('getPriorityLevelById rejects %s ids through runtime TypeORM where validation', async (_label, id, expectedError) => {
-    const db = await createRuntimeSqlServerDb()
+  ])(
+    'getPriorityLevelById rejects %s ids through runtime TypeORM where validation',
+    async (_label, id, expectedError) => {
+      const db = await createRuntimeSqlServerDb()
 
-    await expect(
-      getPriorityLevelById(db, id as unknown as number),
-    ).rejects.toThrow(expectedError)
-  })
+      await expect(
+        getPriorityLevelById(db, id as unknown as number),
+      ).rejects.toThrow(expectedError)
+    },
+  )
 
   it('updatePriorityLevel updates seeded priority levels', async () => {
     const { db, repository } = createSqlServerDb()

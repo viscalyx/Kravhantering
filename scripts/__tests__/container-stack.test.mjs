@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
+import { checkStandaloneServerDependencies } from '../check-standalone-server-dependencies.mjs'
 import {
   buildStatusDocument,
   collectContainerStatus,
@@ -684,6 +685,52 @@ describe('container stack helpers', () => {
     expect(status.ps).toEqual([])
     expect(status.psText).toContain('demo_app-runtime_1')
     expect(status.psText).not.toContain('unrecognized arguments')
+  })
+
+  it('falls back to direct podman logs when Compose returns an empty log tail', () => {
+    const execFileSync = vi.fn((_command, args) => {
+      if (args.includes('ps')) {
+        return '[]'
+      }
+      if (args[0] === 'compose') {
+        return ''
+      }
+      if (args[0] === 'logs') {
+        return `direct log from ${args.at(-1)}`
+      }
+      throw new Error(`Unexpected podman args: ${args.join(' ')}`)
+    })
+    const fsImpl = {
+      existsSync: () => false,
+    }
+
+    const status = collectContainerStatus({
+      composeFile: 'stack.yml',
+      execFileSync,
+      fsImpl,
+      projectName: 'demo',
+    })
+
+    expect(status.logs.find(log => log.service === 'app-runtime')?.text).toBe(
+      'direct log from demo_app-runtime_1',
+    )
+  })
+
+  it('rejects standalone dependencies resolved outside the deployment output', () => {
+    const standaloneRequire = Object.assign(() => {}, {
+      resolve: dependency =>
+        dependency === 'mssql'
+          ? `/workspace/node_modules/${dependency}/index.js`
+          : `/workspace/.next/standalone/node_modules/${dependency}/index.js`,
+    })
+
+    expect(() =>
+      checkStandaloneServerDependencies({
+        createRequireImpl: () => standaloneRequire,
+        cwd: '/workspace',
+        fsImpl: { existsSync: () => true },
+      }),
+    ).toThrow('Standalone server dependencies are missing: mssql.')
   })
 
   it('starts app-runtime before nginx so the static upstream is resolvable', async () => {

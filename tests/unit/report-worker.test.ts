@@ -77,11 +77,14 @@ describe('PDF report worker orchestration', () => {
       'temporary_storage_unavailable',
       'temporary_storage_unavailable',
     ],
-  ])('maps bounded worker failure %o', async (message, code, capacityReason) => {
-    const result = renderReportInWorker(options())
-    workerState.instances[0].emit('message', message)
-    await expect(result).rejects.toMatchObject({ capacityReason, code })
-  })
+  ])(
+    'maps bounded worker failure %o',
+    async (message, code, capacityReason) => {
+      const result = renderReportInWorker(options())
+      workerState.instances[0].emit('message', message)
+      await expect(result).rejects.toMatchObject({ capacityReason, code })
+    },
+  )
 
   it('maps V8 out-of-memory separately from an unexpected crash', async () => {
     const memoryResult = renderReportInWorker(options())

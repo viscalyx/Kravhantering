@@ -122,21 +122,21 @@ describe('requirements export route', () => {
     )
   })
 
-  it.each([
-    'cursor=opaque',
-    'limit=10',
-  ])('rejects the unsupported export query input %s', async unsupportedQuery => {
-    vi.clearAllMocks()
-    const { GET } = await import('@/app/api/requirements/export/route')
-    const response = await GET(
-      new Request(
-        `http://localhost/api/requirements/export?${unsupportedQuery}`,
-      ) as never,
-    )
+  it.each(['cursor=opaque', 'limit=10'])(
+    'rejects the unsupported export query input %s',
+    async unsupportedQuery => {
+      vi.clearAllMocks()
+      const { GET } = await import('@/app/api/requirements/export/route')
+      const response = await GET(
+        new Request(
+          `http://localhost/api/requirements/export?${unsupportedQuery}`,
+        ) as never,
+      )
 
-    expect(response.status).toBe(400)
-    expect(mocks.traverseCompleteRequirementList).not.toHaveBeenCalled()
-  })
+      expect(response.status).toBe(400)
+      expect(mocks.traverseCompleteRequirementList).not.toHaveBeenCalled()
+    },
+  )
 
   it('returns the stable item-limit envelope before delivery', async () => {
     mocks.getApplicationSettings.mockResolvedValueOnce({

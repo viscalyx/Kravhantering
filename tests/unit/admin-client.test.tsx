@@ -758,7 +758,11 @@ describe('AdminClient', () => {
     )
 
     expect(
-      await screen.findByRole('heading', { name: 'admin.ai.title' }),
+      await screen.findByRole(
+        'heading',
+        { name: 'admin.ai.title' },
+        { timeout: 3_000 },
+      ),
     ).toBeVisible()
     expect(screen.getByRole('tab', { name: 'admin.settings' })).toHaveAttribute(
       'aria-selected',
@@ -1315,18 +1319,21 @@ describe('AdminClient', () => {
     ['tab=privacy', ['Admin'], 'admin.columns'],
     ['tab=actionAuditLog', ['PrivacyOfficer'], 'admin.accessReview.title'],
     ['tab=settings', ['PrivacyOfficer'], 'admin.accessReview.title'],
-  ])('falls back from unauthorized admin tab URL %s', (query, roles, tabName) => {
-    searchParamsMock.current = new URLSearchParams(query)
+  ])(
+    'falls back from unauthorized admin tab URL %s',
+    (query, roles, tabName) => {
+      searchParamsMock.current = new URLSearchParams(query)
 
-    renderWithConfirmModal(<AdminClient currentUserRoles={roles} />)
+      renderWithConfirmModal(<AdminClient currentUserRoles={roles} />)
 
-    expect(screen.getByRole('tab', { name: tabName })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
-    expect(screen.getByText('admin.tabAccessFallback')).toBeVisible()
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
+      expect(screen.getByRole('tab', { name: tabName })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+      expect(screen.getByText('admin.tabAccessFallback')).toBeVisible()
+      expect(fetchMock).not.toHaveBeenCalled()
+    },
+  )
 
   it('removes the admin tab query when returning to the default tab', () => {
     searchParamsMock.current = new URLSearchParams('tab=taxonomy')

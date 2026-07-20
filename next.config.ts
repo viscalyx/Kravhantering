@@ -98,11 +98,11 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/webp', 'image/avif'],
   },
-  // TypeORM v1 imports its driver factory eagerly. Keep the package external
-  // on the server and alias the unused Expo SQLite dependency below so
-  // Turbopack does not require the Expo-only optional package for this SQL
-  // Server application.
-  serverExternalPackages: ['mermaid', 'typeorm'],
+  // Keep TypeORM and the explicitly injected SQL Server driver external so
+  // Next.js traces both packages (including tedious) into standalone output.
+  // Alias the unused Expo SQLite dependency below so Turbopack does not
+  // require the Expo-only optional package for this SQL Server application.
+  serverExternalPackages: ['mermaid', 'mssql', 'typeorm'],
   allowedDevOrigins: ['0.0.0.0', '127.0.0.1'],
   // Next.js 16 production builds use Turbopack for this app. These aliases
   // swap in the right `build-target.*.ts` and developer-mode no-op modules.

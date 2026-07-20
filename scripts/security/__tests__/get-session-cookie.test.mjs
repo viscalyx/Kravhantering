@@ -21,17 +21,14 @@ describe('parseFetchTimeoutMs', () => {
     expect(parseFetchTimeoutMs('5000')).toBe(5000)
   })
 
-  it.each([
-    '0',
-    '-1',
-    '1.5',
-    'abc',
-    '15000ms',
-  ])('rejects invalid override %s', value => {
-    expect(() => parseFetchTimeoutMs(value)).toThrow(
-      'DAST_FETCH_TIMEOUT_MS must be a positive integer number of milliseconds',
-    )
-  })
+  it.each(['0', '-1', '1.5', 'abc', '15000ms'])(
+    'rejects invalid override %s',
+    value => {
+      expect(() => parseFetchTimeoutMs(value)).toThrow(
+        'DAST_FETCH_TIMEOUT_MS must be a positive integer number of milliseconds',
+      )
+    },
+  )
 
   it('rejects values that are too large to use safely', () => {
     expect(() => parseFetchTimeoutMs('4294967296')).toThrow(

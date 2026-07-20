@@ -40,27 +40,29 @@ const REQUIRED_PROMPT_MESSAGE_LIST_PATHS = [
 ] as const
 
 describe('prompt localization helpers', () => {
-  it.each(
-    PROMPT_LOCALES,
-  )('has every required string prompt message for %s', locale => {
-    for (const path of REQUIRED_PROMPT_MESSAGE_PATHS) {
-      expect(
-        getPromptMessage(locale, path),
-        `${locale}:${path.join('.')}`,
-      ).not.toBe('')
-    }
-  })
+  it.each(PROMPT_LOCALES)(
+    'has every required string prompt message for %s',
+    locale => {
+      for (const path of REQUIRED_PROMPT_MESSAGE_PATHS) {
+        expect(
+          getPromptMessage(locale, path),
+          `${locale}:${path.join('.')}`,
+        ).not.toBe('')
+      }
+    },
+  )
 
-  it.each(
-    PROMPT_LOCALES,
-  )('has every required prompt message list for %s', locale => {
-    for (const path of REQUIRED_PROMPT_MESSAGE_LIST_PATHS) {
-      expect(
-        getPromptMessageList(locale, path),
-        `${locale}:${path.join('.')}`,
-      ).not.toEqual([])
-    }
-  })
+  it.each(PROMPT_LOCALES)(
+    'has every required prompt message list for %s',
+    locale => {
+      for (const path of REQUIRED_PROMPT_MESSAGE_LIST_PATHS) {
+        expect(
+          getPromptMessageList(locale, path),
+          `${locale}:${path.join('.')}`,
+        ).not.toEqual([])
+      }
+    },
+  )
 
   it('throws missing localization errors only for absent paths', () => {
     expect(() => getPromptValue('en', ['ai', 'prompt', 'missing'])).toThrow(

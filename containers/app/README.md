@@ -42,7 +42,10 @@ building a deployable image for another origin.
 `app-runtime` is the long-running Next.js image. It is based on
 `output: "standalone"` and only copies `.next/standalone`, `.next/static`, and
 `public` into the final runtime stage. The stage runs as the non-root `node`
-user and starts `node server.js` on port `3000`.
+user and starts `node server.js` on port `3000`. The post-build standalone
+dependency check verifies that TypeORM and the SQL Server driver packages were
+traced into this output; a missing runtime database dependency therefore fails
+the image build with an explicit error.
 
 `db-job` is built from the same Dockerfile for release consistency, but it is
 documented in [../db-job/README.md](../db-job/README.md) because it has a

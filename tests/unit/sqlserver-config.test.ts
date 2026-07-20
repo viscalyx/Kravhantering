@@ -25,6 +25,9 @@ describe('SQL Server TypeORM config', () => {
 
     expect(options).toMatchObject({
       connectionTimeout: 15_000,
+      driver: expect.objectContaining({
+        ConnectionPool: expect.any(Function),
+      }),
       invalidWhereValuesBehavior: {
         null: 'throw',
         undefined: 'throw',

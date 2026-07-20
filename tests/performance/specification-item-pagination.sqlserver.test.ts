@@ -533,67 +533,63 @@ describe.runIf(enabled)('specification item pagination on SQL Server', () => {
         })),
       ),
     ),
-  )('$mix at $size items preserves exact $sortBy $direction traversal', async ({
-    direction,
-    id,
-    mix,
-    size,
-    sortBy,
-  }) => {
-    const first = await traverse(db, id, sortBy, direction)
-    const second = await traverse(db, id, sortBy, direction)
-    const threshold =
-      baseline.thresholds[scenarioKey(mix, size)]?.maxCompleteTraversalMs
+  )(
+    '$mix at $size items preserves exact $sortBy $direction traversal',
+    async ({ direction, id, mix, size, sortBy }) => {
+      const first = await traverse(db, id, sortBy, direction)
+      const second = await traverse(db, id, sortBy, direction)
+      const threshold =
+        baseline.thresholds[scenarioKey(mix, size)]?.maxCompleteTraversalMs
 
-    expect(first.refs).toHaveLength(size)
-    expect(new Set(first.refs).size).toBe(size)
-    expect(second.refs).toEqual(first.refs)
-    expect(first.pageCount).toBe(Math.ceil(size / 100))
-    expect(first.candidateQueries).toBe(first.pageCount)
-    expect(threshold).toBeTypeOf('number')
-    expect(second.durationMs).toBeLessThanOrEqual(threshold ?? 0)
+      expect(first.refs).toHaveLength(size)
+      expect(new Set(first.refs).size).toBe(size)
+      expect(second.refs).toEqual(first.refs)
+      expect(first.pageCount).toBe(Math.ceil(size / 100))
+      expect(first.candidateQueries).toBe(first.pageCount)
+      expect(threshold).toBeTypeOf('number')
+      expect(second.durationMs).toBeLessThanOrEqual(threshold ?? 0)
 
-    measurements.push({
-      candidateQueries: second.candidateQueries,
-      diagnostic: false,
-      direction,
-      durationMs: second.durationMs,
-      itemCount: second.refs.length,
-      mix,
-      pageCount: second.pageCount,
-      size,
-      sortBy,
-    })
-  }, 60_000)
+      measurements.push({
+        candidateQueries: second.candidateQueries,
+        diagnostic: false,
+        direction,
+        durationMs: second.durationMs,
+        itemCount: second.refs.length,
+        mix,
+        pageCount: second.pageCount,
+        size,
+        sortBy,
+      })
+    },
+    60_000,
+  )
 
-  it.each(
-    diagnosticFixtures,
-  )('$mix at $size items records non-blocking diagnostic traversal', async ({
-    id,
-    mix,
-    size,
-  }) => {
-    const first = await traverse(db, id, 'uniqueId', 'asc')
-    const second = await traverse(db, id, 'uniqueId', 'asc')
+  it.each(diagnosticFixtures)(
+    '$mix at $size items records non-blocking diagnostic traversal',
+    async ({ id, mix, size }) => {
+      const first = await traverse(db, id, 'uniqueId', 'asc')
+      const second = await traverse(db, id, 'uniqueId', 'asc')
 
-    expect(first.refs).toHaveLength(size)
-    expect(new Set(first.refs).size).toBe(size)
-    expect(second.refs).toEqual(first.refs)
-    expect(first.pageCount).toBe(Math.ceil(size / 100))
-    expect(first.candidateQueries).toBe(first.pageCount)
+      expect(first.refs).toHaveLength(size)
+      expect(new Set(first.refs).size).toBe(size)
+      expect(second.refs).toEqual(first.refs)
+      expect(first.pageCount).toBe(Math.ceil(size / 100))
+      expect(first.candidateQueries).toBe(first.pageCount)
 
-    measurements.push({
-      candidateQueries: second.candidateQueries,
-      diagnostic: true,
-      direction: 'asc',
-      durationMs: second.durationMs,
-      itemCount: second.refs.length,
-      mix,
-      pageCount: second.pageCount,
-      size,
-      sortBy: 'uniqueId',
-    })
-  }, 120_000)
+      measurements.push({
+        candidateQueries: second.candidateQueries,
+        diagnostic: true,
+        direction: 'asc',
+        durationMs: second.durationMs,
+        itemCount: second.refs.length,
+        mix,
+        pageCount: second.pageCount,
+        size,
+        sortBy: 'uniqueId',
+      })
+    },
+    120_000,
+  )
 
   it('captures actual plans, reads, spills, lookups, and missing-index evidence', async () => {
     for (const fixture of blockingFixtures) {

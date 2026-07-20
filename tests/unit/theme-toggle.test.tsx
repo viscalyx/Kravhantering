@@ -72,20 +72,22 @@ describe('ThemeToggle', () => {
       expectedLabel: 'Vaxla tema (Automatiskt)',
       developerValue: 'auto',
     },
-  ] as const)('keeps translated labels and English developer-mode values aligned for $theme', ({
-    theme,
-    expectedLabel,
-    developerValue,
-  }) => {
-    themeState.value = theme
-    render(<ThemeToggle />)
+  ] as const)(
+    'keeps translated labels and English developer-mode values aligned for $theme',
+    ({ theme, expectedLabel, developerValue }) => {
+      themeState.value = theme
+      render(<ThemeToggle />)
 
-    const button = screen.getByRole('button', { name: expectedLabel })
+      const button = screen.getByRole('button', { name: expectedLabel })
 
-    expect(button).toBeInTheDocument()
-    expect(button).toHaveAttribute('data-developer-mode-value', developerValue)
-    expect(button).toHaveAttribute('title', expectedLabel)
-  })
+      expect(button).toBeInTheDocument()
+      expect(button).toHaveAttribute(
+        'data-developer-mode-value',
+        developerValue,
+      )
+      expect(button).toHaveAttribute('title', expectedLabel)
+    },
+  )
 
   it('does not cycle before the theme is available', () => {
     themeState.value = undefined

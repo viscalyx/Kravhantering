@@ -1102,6 +1102,7 @@
     "build/**",
     "bundled/**",
     ".git/**",
+    ".github/skills/**",
     "*.min.js",
     "*.min.css",
     "package-lock.json",

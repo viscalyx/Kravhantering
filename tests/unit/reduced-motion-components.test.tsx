@@ -91,23 +91,25 @@ describe('reduced-motion component wiring', () => {
     expect(collapsiblePanelMotion).toHaveBeenCalledWith(true)
   })
 
-  it.each(modalCases)('passes normal motion preference to $name', ({
-    render: renderModal,
-  }) => {
-    render(renderModal())
+  it.each(modalCases)(
+    'passes normal motion preference to $name',
+    ({ render: renderModal }) => {
+      render(renderModal())
 
-    expect(fadeMotion).toHaveBeenCalledWith(false)
-    expect(dialogPanelMotion).toHaveBeenCalledWith(false)
-  })
+      expect(fadeMotion).toHaveBeenCalledWith(false)
+      expect(dialogPanelMotion).toHaveBeenCalledWith(false)
+    },
+  )
 
-  it.each(modalCases)('passes reduced motion preference to $name', ({
-    render: renderModal,
-  }) => {
-    vi.mocked(useReducedMotion).mockReturnValue(true)
+  it.each(modalCases)(
+    'passes reduced motion preference to $name',
+    ({ render: renderModal }) => {
+      vi.mocked(useReducedMotion).mockReturnValue(true)
 
-    render(renderModal())
+      render(renderModal())
 
-    expect(fadeMotion).toHaveBeenCalledWith(true)
-    expect(dialogPanelMotion).toHaveBeenCalledWith(true)
-  })
+      expect(fadeMotion).toHaveBeenCalledWith(true)
+      expect(dialogPanelMotion).toHaveBeenCalledWith(true)
+    },
+  )
 })
