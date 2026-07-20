@@ -18,6 +18,7 @@ import { getRequestSqlServerDataSource } from '@/lib/db'
 import AdminAccessDenied from './admin-access-denied'
 import AdminClient from './admin-client'
 import {
+  ADMIN_TAB_FALLBACK_QUERY_KEY,
   type AdminTab,
   canAccessAdminTab,
   firstAuthorizedAdminTab,
@@ -63,10 +64,13 @@ export default async function AdminWorkspacePage({
     if (fallbackTab === undefined) {
       return AdminAccessDenied({ locale })
     }
-    if (fallbackTab === 'columns') {
-      redirect(`/${locale}/admin`)
+    const fallbackQuery = new URLSearchParams({
+      [ADMIN_TAB_FALLBACK_QUERY_KEY]: 'unauthorized',
+    })
+    if (fallbackTab !== 'columns') {
+      fallbackQuery.set('tab', fallbackTab)
     }
-    redirect(`/${locale}/admin?tab=${fallbackTab}`)
+    redirect(`/${locale}/admin?${fallbackQuery.toString()}`)
   }
 
   let panel = children

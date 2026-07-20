@@ -10,9 +10,12 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import AdminLazyPanel from './admin-lazy-panel'
 import {
   ADMIN_TAB_DEVELOPER_MODE_VALUES,
+  ADMIN_TAB_FALLBACK_QUERY_KEY,
   type AdminTab,
+  adminTabFallbackReason,
   adminTabs,
   canAccessAdminTab,
+  getAdminTabFallbackCleanupHref,
   getAdminTabHref,
   resolveAdminTab,
   type TabFallbackReason,
@@ -249,12 +252,15 @@ export default function AdminClient({
     new URLSearchParams(searchParams),
     currentUserRoles,
   )
+  const initialFallbackReason =
+    adminTabFallbackReason(new URLSearchParams(searchParams)) ??
+    initialResolution.reason
   const [uncontrolledActiveTab, setUncontrolledActiveTab] = useState<AdminTab>(
     initialResolution.tab,
   )
   const [fallbackReason, setFallbackReason] = useState<
     TabFallbackReason | undefined
-  >(initialResolution.reason)
+  >(initialFallbackReason)
   const activeTab = selectedTab ?? uncontrolledActiveTab
   const authorizedTabs = adminTabs.filter(tab =>
     canAccessAdminTab(tab.id, currentUserRoles),
@@ -265,22 +271,31 @@ export default function AdminClient({
   useHelpContent(panelHelp(activeTab))
 
   useEffect(() => {
-    if (selectedTab !== undefined) return
+    const currentSearchParams = new URLSearchParams(searchParams)
+    const handedOffFallbackReason = adminTabFallbackReason(currentSearchParams)
 
-    const resolution = resolveAdminTab(
-      new URLSearchParams(searchParams),
-      currentUserRoles,
-    )
+    if (selectedTab !== undefined) {
+      if (handedOffFallbackReason) {
+        setFallbackReason(handedOffFallbackReason)
+      }
+      if (currentSearchParams.has(ADMIN_TAB_FALLBACK_QUERY_KEY)) {
+        router.replace(getAdminTabFallbackCleanupHref(currentSearchParams), {
+          scroll: false,
+        })
+      }
+      return
+    }
+
+    const resolution = resolveAdminTab(currentSearchParams, currentUserRoles)
     setUncontrolledActiveTab(resolution.tab)
-    setFallbackReason(resolution.reason)
+    setFallbackReason(handedOffFallbackReason ?? resolution.reason)
 
-    if (resolution.reason) {
+    if (
+      resolution.reason ||
+      currentSearchParams.has(ADMIN_TAB_FALLBACK_QUERY_KEY)
+    ) {
       router.replace(
-        getAdminTabHref(
-          resolution.tab,
-          new URLSearchParams(searchParams),
-          currentUserRoles,
-        ),
+        getAdminTabHref(resolution.tab, currentSearchParams, currentUserRoles),
         { scroll: false },
       )
     }
@@ -289,8 +304,8 @@ export default function AdminClient({
   const selectTab = (tab: AdminTab) => {
     if (!canAccessAdminTab(tab, currentUserRoles)) return
 
+    setFallbackReason(undefined)
     if (selectedTab === undefined) {
-      setFallbackReason(undefined)
       setUncontrolledActiveTab(tab)
     }
     router.replace(

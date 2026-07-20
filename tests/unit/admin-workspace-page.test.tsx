@@ -123,7 +123,18 @@ describe('AdminWorkspacePage', () => {
     ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(workspaceMocks.redirect).toHaveBeenCalledWith(
-      '/sv/admin?tab=accessReview',
+      '/sv/admin?_adminFallback=unauthorized&tab=accessReview',
+    )
+    expect(workspaceMocks.getDataSource).not.toHaveBeenCalled()
+  })
+
+  it('hands an unauthorized fallback reason to the default Admin workspace', async () => {
+    await expect(
+      renderWorkspace({ roles: ['Admin'], tab: 'privacy' }),
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(workspaceMocks.redirect).toHaveBeenCalledWith(
+      '/sv/admin?_adminFallback=unauthorized',
     )
     expect(workspaceMocks.getDataSource).not.toHaveBeenCalled()
   })

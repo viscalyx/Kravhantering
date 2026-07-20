@@ -24,6 +24,8 @@ export type AdminTab =
 
 export type TabFallbackReason = 'unauthorized' | 'unavailable'
 
+export const ADMIN_TAB_FALLBACK_QUERY_KEY = '_adminFallback'
+
 const ADMIN_ROLE = 'Admin'
 const PRIVACY_OFFICER_ROLE = 'PrivacyOfficer'
 
@@ -91,6 +93,24 @@ export function resolveAdminTab(
   return { tab: requestedTab }
 }
 
+export function adminTabFallbackReason(
+  searchParams: URLSearchParams,
+): TabFallbackReason | undefined {
+  const reason = searchParams.get(ADMIN_TAB_FALLBACK_QUERY_KEY)
+  return reason === 'unauthorized' || reason === 'unavailable'
+    ? reason
+    : undefined
+}
+
+export function getAdminTabFallbackCleanupHref(searchParams: URLSearchParams) {
+  const query = Object.fromEntries(searchParams.entries())
+  delete query[ADMIN_TAB_FALLBACK_QUERY_KEY]
+
+  return Object.keys(query).length > 0
+    ? { pathname: '/admin', query }
+    : '/admin'
+}
+
 export function getAdminTabHref(
   tab: AdminTab,
   searchParams: URLSearchParams,
@@ -98,6 +118,8 @@ export function getAdminTabHref(
 ) {
   const query = Object.fromEntries(searchParams.entries())
   const firstAuthorizedTab = firstAuthorizedAdminTab(roles)
+
+  delete query[ADMIN_TAB_FALLBACK_QUERY_KEY]
 
   if (firstAuthorizedTab === undefined || tab === firstAuthorizedTab) {
     delete query.tab

@@ -1335,6 +1335,47 @@ describe('AdminClient', () => {
     },
   )
 
+  it('shows a server fallback notice and removes its transient query state', async () => {
+    searchParamsMock.current = new URLSearchParams(
+      '_adminFallback=unauthorized',
+    )
+
+    render(
+      <AdminClient selectedTab="columns">
+        <div>authorized columns panel</div>
+      </AdminClient>,
+    )
+
+    expect(screen.getByText('admin.tabAccessFallback')).toBeVisible()
+    expect(screen.getByText('authorized columns panel')).toBeVisible()
+    await waitFor(() => {
+      expect(routerReplace).toHaveBeenCalledWith('/admin', { scroll: false })
+    })
+  })
+
+  it('preserves the PrivacyOfficer workspace while cleaning fallback state', async () => {
+    searchParamsMock.current = new URLSearchParams(
+      'tab=accessReview&_adminFallback=unauthorized',
+    )
+
+    render(
+      <AdminClient
+        currentUserRoles={['PrivacyOfficer']}
+        selectedTab="accessReview"
+      >
+        <div>authorized access review panel</div>
+      </AdminClient>,
+    )
+
+    expect(screen.getByText('admin.tabAccessFallback')).toBeVisible()
+    await waitFor(() => {
+      expect(routerReplace).toHaveBeenCalledWith(
+        { pathname: '/admin', query: { tab: 'accessReview' } },
+        { scroll: false },
+      )
+    })
+  })
+
   it('removes the admin tab query when returning to the default tab', () => {
     searchParamsMock.current = new URLSearchParams('tab=taxonomy')
 
