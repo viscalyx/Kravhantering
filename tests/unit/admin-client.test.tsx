@@ -1369,10 +1369,9 @@ describe('AdminClient', () => {
 
     expect(screen.getByText('admin.tabAccessFallback')).toBeVisible()
     await waitFor(() => {
-      expect(routerReplace).toHaveBeenCalledWith(
-        { pathname: '/admin', query: { tab: 'accessReview' } },
-        { scroll: false },
-      )
+      expect(routerReplace).toHaveBeenCalledWith('/admin?tab=accessReview', {
+        scroll: false,
+      })
     })
   })
 

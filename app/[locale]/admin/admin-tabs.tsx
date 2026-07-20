@@ -103,12 +103,11 @@ export function adminTabFallbackReason(
 }
 
 export function getAdminTabFallbackCleanupHref(searchParams: URLSearchParams) {
-  const query = Object.fromEntries(searchParams.entries())
-  delete query[ADMIN_TAB_FALLBACK_QUERY_KEY]
+  const query = new URLSearchParams(searchParams)
+  query.delete(ADMIN_TAB_FALLBACK_QUERY_KEY)
+  const queryString = query.toString()
 
-  return Object.keys(query).length > 0
-    ? { pathname: '/admin', query }
-    : '/admin'
+  return queryString ? `/admin?${queryString}` : '/admin'
 }
 
 export function getAdminTabHref(
