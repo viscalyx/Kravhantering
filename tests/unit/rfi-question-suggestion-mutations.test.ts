@@ -12,7 +12,8 @@ vi.mock('@/lib/audit/action-audit', () => ({
   recordAllowedActionAuditEvent: mocks.recordAllowedActionAuditEvent,
 }))
 
-vi.mock('@/lib/dal/rfi-questions', () => ({
+vi.mock('@/lib/dal/rfi-questions', async importOriginal => ({
+  ...(await importOriginal()),
   createRfiQuestionSuggestion: mocks.createRfiQuestionSuggestion,
   deleteRfiQuestionSuggestion: mocks.deleteRfiQuestionSuggestion,
   requestRfiQuestionSuggestionReview: mocks.requestRfiQuestionSuggestionReview,

@@ -3,6 +3,7 @@ import {
   type ActorSnapshot,
   createRfiQuestionSuggestion,
   deleteRfiQuestionSuggestion,
+  RFI_SUGGESTION_RESOLVED,
   type RfiQuestionSuggestionCreateData,
   type RfiQuestionSuggestionMutationTarget,
   type RfiQuestionSuggestionResolutionData,
@@ -104,7 +105,8 @@ export async function resolveRfiQuestionSuggestionWithAudit(
       data,
       actor,
     )
-    const resolution = data.resolution === 1 ? 'resolved' : 'dismissed'
+    const resolution =
+      data.resolution === RFI_SUGGESTION_RESOLVED ? 'resolved' : 'dismissed'
     await recordAllowedActionAuditEvent(manager, context, {
       action: 'rfi_question_suggestion.resolve',
       details: {

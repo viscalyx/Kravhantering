@@ -3249,7 +3249,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       concurrentlyReviewedSuggestion.getByRole('button', {
         name: 'Ta bort RFI-frågeförslag',
       }),
-    ).toBeVisible()
+    ).toHaveCount(1)
     await openSuggestion
       .getByRole('button', { name: 'Ta bort RFI-frågeförslag' })
       .click()
