@@ -203,14 +203,14 @@ describe('next.config static security headers', () => {
 })
 
 describe('next.config TypeORM bundling', () => {
-  it('keeps TypeORM external to the server bundle', async () => {
+  it('keeps TypeORM and the SQL Server driver external to the server bundle', async () => {
     const config = await loadNextConfig({
       BUILD_TARGET: 'prod',
       NODE_ENV: 'production',
     })
 
     expect(config.serverExternalPackages).toEqual(
-      expect.arrayContaining(['typeorm']),
+      expect.arrayContaining(['mssql', 'typeorm']),
     )
   })
 

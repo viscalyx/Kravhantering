@@ -147,7 +147,7 @@ function projectPsArgs(projectName) {
 function collectServiceLogs(service, options) {
   const { composeFile, projectName, tail } = options
   try {
-    return runPodman(
+    const composeLogs = runPodman(
       composeArgs(
         composeFile,
         ['logs', '--tail', String(tail), '--no-color', service],
@@ -155,19 +155,23 @@ function collectServiceLogs(service, options) {
       ),
       options,
     )
+    if (composeLogs.trim() || !projectName) {
+      return composeLogs
+    }
   } catch {
     if (!projectName)
       throw new Error('Project name is required for log fallback.')
-    return runPodman(
-      [
-        'logs',
-        '--tail',
-        String(tail),
-        projectContainerName(projectName, service),
-      ],
-      options,
-    )
   }
+
+  return runPodman(
+    [
+      'logs',
+      '--tail',
+      String(tail),
+      projectContainerName(projectName, service),
+    ],
+    options,
+  )
 }
 
 export function collectContainerStatus(options = {}) {

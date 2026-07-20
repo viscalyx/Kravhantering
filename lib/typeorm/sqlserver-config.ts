@@ -1,3 +1,4 @@
+import sqlServerDriver from 'mssql'
 import type { DataSource, DataSourceOptions } from 'typeorm'
 import { DataSource as TypeOrmDataSource } from 'typeorm'
 
@@ -187,6 +188,14 @@ export function buildSqlServerDataSourceOptions(
 
   return {
     type: 'mssql',
+    // TypeORM 1.1 intentionally replaced literal optional-driver require calls
+    // with a dynamic require(name) in PR #12647 ("remove require() calls that
+    // break bundlers"): https://github.com/typeorm/typeorm/pull/12647
+    // The review also warned that this prevents static dependency discovery,
+    // which makes Next.js omit mssql from standalone output. Applications may
+    // provide a driver explicitly through this supported option, so keep that
+    // integration here instead of patching TypeORM's internal loader.
+    driver: sqlServerDriver,
     url,
     isolationLevel: DEFAULT_TRANSACTION_ISOLATION_LEVEL,
     synchronize: false,

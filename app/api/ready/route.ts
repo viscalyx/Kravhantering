@@ -82,6 +82,21 @@ function sanitizeError(error: unknown): string {
   return 'Error'
 }
 
+function readinessDiagnostic(
+  check: ReadinessCheckName,
+  error: unknown,
+): 'check_failed' | 'sql_server_driver_unavailable' {
+  if (
+    check === 'sql_server' &&
+    error instanceof Error &&
+    error.name === 'DriverPackageNotInstalledError'
+  ) {
+    return 'sql_server_driver_unavailable'
+  }
+
+  return 'check_failed'
+}
+
 function failureReason(
   error: unknown,
   fallback: ReadinessFailureReason,
@@ -139,6 +154,7 @@ async function runCheck(
     const reason = failureReason(error, check.defaultReason)
     console.warn('[readiness] check failed', {
       check: check.name,
+      diagnostic: readinessDiagnostic(check.name, error),
       error: sanitizeError(error),
       reason,
     })

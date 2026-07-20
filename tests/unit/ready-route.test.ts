@@ -153,6 +153,38 @@ describe('GET /api/ready', () => {
     warn.mockRestore()
   })
 
+  it('identifies a missing SQL Server driver in logs without exposing it publicly', async () => {
+    setReadyDefaults()
+    const error = new Error(
+      'SQL Server package has not been found installed. Please run "npm install mssql".',
+    )
+    error.name = 'DriverPackageNotInstalledError'
+    routeState.getRequestSqlServerDataSource.mockRejectedValueOnce(error)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const response = await route.GET()
+    const body = await response.text()
+
+    expect(response.status).toBe(503)
+    expect(JSON.parse(body)).toEqual({
+      failedChecks: [
+        {
+          name: 'sql_server',
+          reason: 'sql_server_unavailable',
+        },
+      ],
+      status: 'not_ready',
+    })
+    expect(body).not.toContain('mssql')
+    expect(warn).toHaveBeenCalledWith('[readiness] check failed', {
+      check: 'sql_server',
+      diagnostic: 'sql_server_driver_unavailable',
+      error: 'DriverPackageNotInstalledError',
+      reason: 'sql_server_unavailable',
+    })
+    warn.mockRestore()
+  })
+
   it('returns a sanitized temporary-storage readiness failure', async () => {
     setReadyDefaults()
     routeState.probeGeneratedOutputTempDirectory.mockRejectedValueOnce(
