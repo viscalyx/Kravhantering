@@ -4,7 +4,9 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useRef, useState } from 'react'
+import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import FormActionRow from '@/components/FormActionRow'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import IconPicker from '@/components/IconPicker'
@@ -125,6 +127,7 @@ export default function PriorityLevelsClient() {
   const tr = useTranslations('requirement')
   const locale = useLocale()
   const shouldReduceMotion = useReducedMotion()
+  const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [linkedRequirements, setLinkedRequirements] = useState<
     LinkedRequirement[]
   >([])
@@ -159,6 +162,33 @@ export default function PriorityLevelsClient() {
   const invalidStoredPriorityCodes = controller.items
     .filter(priorityLevel => !isStrictHexColor(priorityLevel.color))
     .map(priorityLevel => priorityLevel.code)
+
+  const toggleHelp = (field: string) => {
+    setOpenHelp(previousHelp => {
+      const nextHelp = new Set(previousHelp)
+      if (nextHelp.has(field)) {
+        nextHelp.delete(field)
+      } else {
+        nextHelp.add(field)
+      }
+      return nextHelp
+    })
+  }
+
+  const helpButton = (field: string, label: string) => (
+    <FieldHelpButton
+      controls={`help-${field}`}
+      expanded={openHelp.has(field)}
+      label={`${tc('help')}: ${label}`}
+      onClick={() => toggleHelp(field)}
+    />
+  )
+
+  const helpPanel = (helpKey: string, field: string) => (
+    <AnimatedHelpPanel id={`help-${field}`} isOpen={openHelp.has(field)}>
+      {t(helpKey)}
+    </AnimatedHelpPanel>
+  )
 
   const fetchLinkedRequirements = useCallback(
     async (priorityLevelId: number) => {
@@ -275,7 +305,10 @@ export default function PriorityLevelsClient() {
                   onSubmit={submit}
                 >
                   <h2 className="text-lg font-semibold">{t('editItem')}</h2>
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <div
+                    className="grid grid-cols-1 gap-5 sm:grid-cols-2"
+                    data-priority-form-row="code-sort"
+                  >
                     <div>
                       <label
                         className="block text-sm font-medium mb-1"
@@ -294,12 +327,16 @@ export default function PriorityLevelsClient() {
                       </p>
                     </div>
                     <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="priority-sort-order"
-                      >
-                        {t('sortOrder')}
-                      </label>
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <label
+                          className="text-sm font-medium"
+                          htmlFor="priority-sort-order"
+                        >
+                          {t('sortOrder')}
+                        </label>
+                        {helpButton('priority-sort-order', t('sortOrder'))}
+                      </div>
+                      {helpPanel('sortOrderHelp', 'priority-sort-order')}
                       <input
                         className={inputClassName}
                         disabled={controller.submitting}
@@ -448,15 +485,22 @@ export default function PriorityLevelsClient() {
                       value={controller.form.assessmentCriteriaEn}
                     />
                   </div>
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <div
+                    className="grid grid-cols-1 gap-5 sm:grid-cols-2"
+                    data-priority-form-row="color-icon"
+                  >
                     <div className="min-w-0">
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="priority-color-hex"
-                      >
-                        {t('color')}
-                        <RequiredFieldMarker />
-                      </label>
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <label
+                          className="text-sm font-medium"
+                          htmlFor="priority-color-hex"
+                        >
+                          {t('color')}
+                          <RequiredFieldMarker />
+                        </label>
+                        {helpButton('priority-color', t('color'))}
+                      </div>
+                      {helpPanel('colorHelp', 'priority-color')}
                       <div className="flex items-center gap-3">
                         {isStrictHexColor(controller.form.color) && (
                           <>
@@ -505,12 +549,16 @@ export default function PriorityLevelsClient() {
                       </div>
                     </div>
                     <div className="min-w-0">
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="priority-icon"
-                      >
-                        {t('icon')}
-                      </label>
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <label
+                          className="text-sm font-medium"
+                          htmlFor="priority-icon"
+                        >
+                          {t('icon')}
+                        </label>
+                        {helpButton('priority-icon', t('icon'))}
+                      </div>
+                      {helpPanel('iconHelp', 'priority-icon')}
                       <div className="flex items-center gap-3">
                         <IconPicker
                           disabled={controller.submitting}

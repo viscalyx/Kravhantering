@@ -14,7 +14,7 @@ const UP_STATEMENTS = [
     WHERE [code] IN (N'P1', N'P2', N'P3', N'P4', N'P5')
       AND (
         [color] IS NULL
-        OR DATALENGTH([color]) <> 14
+        OR LEN([color]) <> 7
         OR [color] COLLATE Latin1_General_100_BIN2 NOT LIKE ${VALID_HEX_PATTERN}
       );`,
 ]

@@ -571,13 +571,9 @@ export default function KravunderlagDetailClient({
       const version = item.version
       const name =
         locale === 'sv'
-          ? version?.priorityLevelNameSv
-          : version?.priorityLevelNameEn
-      if (
-        version?.priorityLevelId == null ||
-        !version.priorityLevelCode ||
-        !name
-      ) {
+          ? (version?.priorityLevelNameSv ?? version?.priorityLevelNameEn ?? '')
+          : (version?.priorityLevelNameEn ?? version?.priorityLevelNameSv ?? '')
+      if (version?.priorityLevelId == null || !version.priorityLevelCode) {
         continue
       }
       priorityLevelsById.set(version.priorityLevelId, {

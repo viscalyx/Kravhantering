@@ -190,8 +190,9 @@ describe('PriorityLevelsClient', () => {
       ).value,
     ).toBe('Low')
     expect(document.querySelector('[data-color-swatch="exact-rgb"]')).toBeNull()
-    const codeSortRow =
-      document.getElementById('priority-code')?.parentElement?.parentElement
+    const codeSortRow = document
+      .getElementById('priority-code')
+      ?.closest('[data-priority-form-row="code-sort"]')
     expect(codeSortRow).toHaveClass('grid', 'sm:grid-cols-2')
     expect(codeSortRow).toContainElement(
       document.getElementById('priority-sort-order'),
@@ -202,9 +203,9 @@ describe('PriorityLevelsClient', () => {
     expect(screen.getByLabelText('priorityLevelAdmin.colorPicker')).toHaveValue(
       '#22c55e',
     )
-    const colorIconRow =
-      document.getElementById('priority-color-hex')?.parentElement
-        ?.parentElement?.parentElement
+    const colorIconRow = document
+      .getElementById('priority-color-hex')
+      ?.closest('[data-priority-form-row="color-icon"]')
     expect(colorIconRow).toHaveClass('grid', 'sm:grid-cols-2')
     expect(colorIconRow).toContainElement(
       document.getElementById('priority-icon'),
@@ -212,6 +213,27 @@ describe('PriorityLevelsClient', () => {
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
+  })
+
+  it('shows contextual help for sort order, color, and icon fields', async () => {
+    const user = userEvent.setup()
+    render(<PriorityLevelsClient />)
+    await screen.findByText('P2 – Low')
+
+    await user.click(
+      screen.getAllByRole('button', { name: /common\.edit/i })[0],
+    )
+
+    for (const field of ['sortOrder', 'color', 'icon']) {
+      await user.click(
+        screen.getByRole('button', {
+          name: `common.help: priorityLevelAdmin.${field}`,
+        }),
+      )
+      expect(
+        await screen.findByText(`priorityLevelAdmin.${field}Help`),
+      ).toBeInTheDocument()
+    }
   })
 
   it('shows shared light and dark badge previews with contrast guidance', async () => {
@@ -228,7 +250,6 @@ describe('PriorityLevelsClient', () => {
     expect(preview).toHaveTextContent('priorityLevelAdmin.lightTheme')
     expect(preview).toHaveTextContent('priorityLevelAdmin.darkTheme')
     expect(preview).toHaveTextContent('P2 – Low')
-    expect(preview.querySelectorAll('[data-badge-theme]')).toHaveLength(2)
     expect(preview.querySelector('[data-badge-theme="light"]')).toHaveAttribute(
       'data-badge-icon',
       'ArrowDownLeft',

@@ -2523,7 +2523,10 @@
     "invalidColorWarning": "Enter a color as #RRGGBB to preview and save this priority.",
     "invalidStoredColors": "Priorities {codes} have invalid stored colors. Their accent styling is omitted until an administrator corrects each value.",
     "icon": "Icon",
+    "iconHelp": "Choose an approved icon shown next to the priority label. Leave empty for a text-only badge.",
     "sortOrder": "Sort order",
+    "sortOrderHelp": "Enter a number that controls the display order. Lower numbers appear first.",
+    "colorHelp": "Choose the color used for this priority badge.",
     "linkedRequirements": "Linked requirements",
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
     "emptyState": "No priority levels are available."

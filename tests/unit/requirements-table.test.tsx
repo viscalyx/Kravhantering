@@ -816,6 +816,32 @@ describe('RequirementsTable', () => {
     expect(screen.getByText('P3 – Medelhög')).toBeTruthy()
   })
 
+  it('retains the priority code when the snapshot name is missing', () => {
+    const rows = [
+      makeRow({
+        version: {
+          ...makeRow().version,
+          priorityLevelCode: 'P3',
+          priorityLevelId: 3,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+        },
+      }),
+    ]
+    render(
+      <RequirementsTable
+        locale="sv"
+        rows={rows}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'priorityLevel',
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('P3')).toBeTruthy()
+  })
+
   it('renders read-only usage status icons as decorative badge content', () => {
     const rows = [
       makeRow({

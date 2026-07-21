@@ -435,7 +435,12 @@ export default function RequirementDetailClient({
         <StatusBadge
           color={selectedVersion.priorityLevel.color}
           iconName={selectedVersion.priorityLevel.iconName}
-          label={`${selectedVersion.priorityLevel.code} – ${localName(selectedVersion.priorityLevel) ?? ''}`}
+          label={[
+            selectedVersion.priorityLevel.code,
+            localName(selectedVersion.priorityLevel),
+          ]
+            .filter(Boolean)
+            .join(' – ')}
           size="sm"
         />
       ) : (

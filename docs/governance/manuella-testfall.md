@@ -1503,7 +1503,8 @@ visuell åtskillnad. Kontrollera att tabellen har en gemensam kolumn
 färgväljaren till vänster om hexvärdet, utan en extra färgruta till höger.
 Kontrollera att `Kod` och `Sorteringsordning` ligger i den ordningen på samma
 rad samt att `Färg` och `Ikon` ligger på nästa gemensamma tvåkolumnsrad.
-Spara därefter ändringen.
+Öppna hjälpen för `Sorteringsordning`, `Färg` och `Ikon` och kontrollera att
+varje fält visar sin vägledning. Spara därefter ändringen.
 
 **Förväntat resultat:** Spara tänds först efter ändringen. Formulär med
 osparade ändringar kräver bekräftelse innan det stängs. Ändringen visas efter
@@ -1511,7 +1512,8 @@ omladdning. Prioritetsmärket använder samma lokaliserade namn och ikon i båda
 förhandsvisningarna, och båda kontrastresultaten uppfyller AA. Tabellen visar
 P-kod och lokaliserat namn i samma märke. Färgfältet visar ingen redundant
 färgförhandsvisning efter hexvärdet. På breda skärmar visas fältparen i två
-kolumner och på smala skärmar staplas de utan horisontell överlappning.
+kolumner och på smala skärmar staplas de utan horisontell överlappning. Varje
+hjälpknapp visar rätt fältspecifik och lokaliserad vägledning.
 
 ### ADMIN-03: webbläsarens bakåtknapp återställer taxonomiflik
 

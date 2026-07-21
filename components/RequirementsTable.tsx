@@ -2467,11 +2467,10 @@ export default function RequirementsTable({
           (locale === 'sv'
             ? row.version?.priorityLevelNameSv
             : row.version?.priorityLevelNameEn) ?? null
-        const fallbackPriorityLevelLabel = fallbackPriorityLevelName
-          ? [row.version?.priorityLevelCode, fallbackPriorityLevelName]
-              .filter(Boolean)
-              .join(' – ')
-          : null
+        const fallbackPriorityLevelLabel =
+          [row.version?.priorityLevelCode, fallbackPriorityLevelName]
+            .filter(Boolean)
+            .join(' – ') || null
         const priorityLevelOption =
           row.version?.priorityLevelId == null
             ? null

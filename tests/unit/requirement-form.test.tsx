@@ -771,6 +771,20 @@ describe('RequirementForm', () => {
     })
   })
 
+  it('shows a priority code without a dangling separator when its localized name is empty', async () => {
+    const originalNameEn = samplePriorityLevels[0].nameEn
+    samplePriorityLevels[0].nameEn = ''
+
+    try {
+      render(<RequirementForm mode="create" />)
+
+      expect(await screen.findByRole('option', { name: 'P2' })).toBeVisible()
+      expect(screen.queryByRole('option', { name: 'P2 –' })).toBeNull()
+    } finally {
+      samplePriorityLevels[0].nameEn = originalNameEn
+    }
+  })
+
   it('fetches quality characteristics when typeId is set', async () => {
     const sampleQC = [
       { id: 10, nameSv: 'Qc sv', nameEn: 'Qc en', parentId: null },

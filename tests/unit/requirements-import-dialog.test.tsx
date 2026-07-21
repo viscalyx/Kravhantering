@@ -116,6 +116,14 @@ function importPreviewRow(sourceIndex = 0) {
     proposedNeedsReferenceKey: null,
     proposedNormReferenceKeys: [],
     reviewRowId: `row-${sourceIndex}`,
+    resolvedPriorityLevel: undefined as
+      | {
+          code: string
+          color: string
+          iconName: string | null
+          name: string
+        }
+      | undefined,
     selected: true,
     sourceIndex,
     values: {
@@ -369,6 +377,40 @@ describe('RequirementsImportDialog', () => {
     expect(
       priorityBadge.closest('.status-badge')?.querySelector('svg'),
     ).toBeTruthy()
+  })
+
+  it('renders the server-resolved priority snapshot when taxonomy no longer contains the selected ID', async () => {
+    const row = importPreviewRow()
+    row.values.priorityLevelId = 2
+    row.resolvedPriorityLevel = {
+      code: 'P2',
+      color: '#22c55e',
+      iconName: 'ArrowDownLeft',
+      name: 'Låg',
+    }
+    vi.mocked(apiFetch).mockResolvedValue(importPreviewResponse([row]))
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
+
+    const priorityBadge = await screen.findByText('P2 – Låg')
+    expect(priorityBadge.closest('.status-badge')).toHaveAttribute(
+      'data-accent-color',
+      '#22c55e',
+    )
   })
 
   it('announces a successful import receipt with status semantics', async () => {

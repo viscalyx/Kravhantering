@@ -107,7 +107,7 @@ export default function RequirementFormFields({
   const getOptionName = (o: TaxonomyOption) =>
     locale === 'sv' ? o.nameSv : o.nameEn
   const getPriorityName = (o: (typeof priorityLevels)[number]) =>
-    `${o.code} – ${getOptionName(o)}`
+    [o.code, getOptionName(o)].filter(Boolean).join(' – ')
   const getPriorityDescription = (o: (typeof priorityLevels)[number]) =>
     locale === 'sv' ? o.descriptionSv : o.descriptionEn
   const getPriorityAssessmentCriteria = (o: (typeof priorityLevels)[number]) =>

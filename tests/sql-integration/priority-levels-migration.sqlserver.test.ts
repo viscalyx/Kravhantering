@@ -22,7 +22,7 @@ describe('priority-level color repair migration', () => {
     }
   })
 
-  it('preserves valid custom colors byte-for-byte and repairs invalid P1-P5 colors', async () => {
+  it('preserves valid custom colors byte-for-byte', async () => {
     const migration = new RepairInvalidPriorityColors()
     await appDb().query(
       `UPDATE [priority_levels]
@@ -45,7 +45,10 @@ describe('priority-level color repair migration', () => {
       { code: 'P1', color: '#a1b2c3' },
       { code: 'P2', color: '#A1B2C3' },
     ])
+  })
 
+  it('repairs invalid P1-P5 colors to their canonical values', async () => {
+    const migration = new RepairInvalidPriorityColors()
     await appDb().query(
       `UPDATE [priority_levels]
        SET [color] = CASE [code]

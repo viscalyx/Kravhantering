@@ -120,7 +120,7 @@ describe('DeviationFormModal', () => {
             color: '#22c55e',
             iconName: null,
             id: 2,
-            name: 'Låg',
+            name: '',
             sortOrder: 2,
           },
           {
@@ -139,7 +139,7 @@ describe('DeviationFormModal', () => {
     expect(within(dialog).getByText('Prioriteter')).toBeInTheDocument()
     const badges = dialog.querySelectorAll('.status-badge')
     expect([...badges].map(item => item.textContent)).toEqual([
-      'P2 – Låg',
+      'P2',
       'P4 – Hög',
     ])
     expect(badges[0]?.querySelector('svg')).toBeNull()

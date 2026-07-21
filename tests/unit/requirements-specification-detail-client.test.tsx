@@ -3063,7 +3063,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
   })
 
-  it('shows unique bulk deviation priorities in configured sort order', async () => {
+  it('shows unique bulk deviation priorities with localized name fallbacks in configured sort order', async () => {
     const highPriorityItem = {
       ...initialSpecificationItem,
       version: {
@@ -3072,7 +3072,7 @@ describe('RequirementsSpecificationDetailClient', () => {
         priorityLevelColor: '#f97316',
         priorityLevelIconName: 'ArrowUpRight',
         priorityLevelId: 4,
-        priorityLevelNameEn: 'High',
+        priorityLevelNameEn: null,
         priorityLevelNameSv: 'Hög',
         priorityLevelSortOrder: 4,
       },
@@ -3089,8 +3089,8 @@ describe('RequirementsSpecificationDetailClient', () => {
         priorityLevelColor: '#22c55e',
         priorityLevelIconName: null,
         priorityLevelId: 2,
-        priorityLevelNameEn: 'Low',
-        priorityLevelNameSv: 'Låg',
+        priorityLevelNameEn: null,
+        priorityLevelNameSv: null,
         priorityLevelSortOrder: 2,
       },
     }
@@ -3124,8 +3124,8 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).toBeInTheDocument()
     const priorityBadges = dialog.querySelectorAll('.status-badge')
     expect([...priorityBadges].map(badge => badge.textContent)).toEqual([
-      'P2 – Low',
-      'P4 – High',
+      'P2',
+      'P4 – Hög',
     ])
     expect(priorityBadges[0]?.querySelector('svg')).toBeNull()
     expect(priorityBadges[1]?.querySelector('svg')).toBeTruthy()

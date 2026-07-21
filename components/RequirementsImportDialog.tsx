@@ -81,6 +81,13 @@ interface PriorityLevelOption extends TaxonomyOption {
   iconName: string | null
 }
 
+interface ResolvedPriorityLevelSnapshot {
+  code: string
+  color: string
+  iconName: string | null
+  name: string
+}
+
 interface QualityCharacteristicOption extends TaxonomyOption {
   parentId: number | null
   requirementTypeId: number
@@ -117,12 +124,7 @@ interface ImportPreviewRow {
   }
   proposedNeedsReferenceKey: string | null
   proposedNormReferenceKeys: string[]
-  resolvedPriorityLevel?: {
-    code: string
-    color: string
-    iconName: string | null
-    name: string
-  }
+  resolvedPriorityLevel?: ResolvedPriorityLevelSnapshot
   reviewRowId: string
   selected: boolean
   sourceIndex: number
@@ -2002,8 +2004,12 @@ export default function RequirementsImportDialog({
     locale === 'sv' ? option.nameSv : option.nameEn
   const getPriorityLabel = (option: PriorityLevelOption) =>
     `${option.code} – ${getLocalizedName(option)}`
-  const getPriorityChipLabel = (option: PriorityLevelOption) =>
-    getPriorityLabel(option)
+  const getPriorityChipLabel = (
+    option: PriorityLevelOption | ResolvedPriorityLevelSnapshot,
+  ) =>
+    'name' in option
+      ? [option.code, option.name].filter(Boolean).join(' – ')
+      : getPriorityLabel(option)
   const getPriorityDescription = (option: PriorityLevelOption) =>
     locale === 'sv' ? option.descriptionSv : option.descriptionEn
   const getPriorityAssessmentCriteria = (option: PriorityLevelOption) =>
@@ -2722,13 +2728,19 @@ export default function RequirementsImportDialog({
                             row.reviewRowId,
                           )
                           const rowMessageSummary = getRowMessageSummary(row)
-                          const selectedPriorityLevel =
+                          const taxonomyPriorityLevel =
                             row.values.priorityLevelId == null
                               ? null
                               : (taxonomy.priorityLevels.find(
                                   option =>
                                     option.id === row.values.priorityLevelId,
                                 ) ?? null)
+                          const selectedPriorityLevel =
+                            row.values.priorityLevelId == null
+                              ? null
+                              : (taxonomyPriorityLevel ??
+                                row.resolvedPriorityLevel ??
+                                null)
                           return (
                             <div
                               className="grid gap-2 md:grid-cols-[3rem_minmax(0,1fr)] md:items-start"
@@ -2998,16 +3010,16 @@ export default function RequirementsImportDialog({
                                           </option>
                                         ))}
                                       </select>
-                                      {selectedPriorityLevel ? (
+                                      {taxonomyPriorityLevel ? (
                                         <div className="mt-2 rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs leading-relaxed text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-200">
                                           <p>
                                             {getPriorityDescription(
-                                              selectedPriorityLevel,
+                                              taxonomyPriorityLevel,
                                             )}
                                           </p>
                                           <p className="mt-1 text-secondary-500 dark:text-secondary-400">
                                             {getPriorityAssessmentCriteria(
-                                              selectedPriorityLevel,
+                                              taxonomyPriorityLevel,
                                             )}
                                           </p>
                                         </div>

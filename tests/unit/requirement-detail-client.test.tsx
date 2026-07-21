@@ -844,6 +844,31 @@ describe('RequirementDetailClient', () => {
     ).toHaveAttribute('data-developer-mode-value', 'quality characteristic')
   })
 
+  it('shows a priority code without a dangling separator when names are missing', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Priority code fallback requirement',
+        priorityLevel: {
+          code: 'P4',
+          color: '#f97316',
+          iconName: null,
+          id: 4,
+          nameEn: '',
+          nameSv: '',
+          sortOrder: 4,
+        },
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Priority code fallback requirement')
+    const priorityBadge = screen.getByText('P4').closest('.status-badge')
+    expect(priorityBadge).toBeInTheDocument()
+    expect(priorityBadge).not.toHaveTextContent('–')
+  })
+
   it('renders the specification count in the detail view', async () => {
     const requirement = makeRequirement(
       [

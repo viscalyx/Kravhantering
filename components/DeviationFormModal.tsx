@@ -196,7 +196,12 @@ export default function DeviationFormModal({
                         color={resolvedPriorityLevel.color}
                         iconName={resolvedPriorityLevel.iconName}
                         key={resolvedPriorityLevel.id}
-                        label={`${resolvedPriorityLevel.code} – ${resolvedPriorityLevel.name}`}
+                        label={[
+                          resolvedPriorityLevel.code,
+                          resolvedPriorityLevel.name,
+                        ]
+                          .filter(Boolean)
+                          .join(' – ')}
                       />
                     ))}
                   </div>
