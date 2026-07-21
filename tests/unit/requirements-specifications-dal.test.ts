@@ -51,6 +51,32 @@ function createSqlServerDb() {
   return { db, query, transaction }
 }
 
+function specificationCatalogRow(overrides: Record<string, unknown> = {}) {
+  return {
+    businessNeedsReference: null,
+    createdAt: new Date('2026-04-20T10:00:00.000Z'),
+    governanceObjectTypeNameEn: null,
+    governanceObjectTypeNameSv: null,
+    id: 1,
+    implementationTypeNameEn: null,
+    implementationTypeNameSv: null,
+    itemCount: 0,
+    lifecycleStatusNameEn: null,
+    lifecycleStatusNameSv: null,
+    name: 'Specification',
+    responsibleGivenName: 'Ada',
+    responsibleHsaId: 'SE5560000001-ada1',
+    responsibleMiddleName: null,
+    responsibleSurname: 'Admin',
+    specificationCode: 'SPEC-001',
+    specificationGovernanceObjectTypeId: null,
+    specificationImplementationTypeId: null,
+    specificationLifecycleStatusId: null,
+    updatedAt: new Date('2026-04-21T10:00:00.000Z'),
+    ...overrides,
+  }
+}
+
 describe('requirements-specifications DAL (SQL Server path)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -165,6 +191,65 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     ])
   })
 
+  it('maps ordered, deduplicated relationships for multiple specifications', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        specificationCatalogRow({
+          id: 2,
+          name: 'Specification A',
+          specificationCode: 'SPEC-002',
+        }),
+        specificationCatalogRow({
+          id: 1,
+          name: 'Specification B',
+        }),
+      ])
+      .mockResolvedValueOnce([
+        { areaId: 9, areaName: 'Alpha', specificationId: 2 },
+        { areaId: 9, areaName: 'Alpha', specificationId: 2 },
+        { areaId: 3, areaName: 'Zulu', specificationId: 2 },
+        { areaId: 8, areaName: 'Beta', specificationId: 1 },
+        { areaId: 2, areaName: 'Delta', specificationId: 1 },
+      ])
+      .mockResolvedValueOnce([
+        { hsaId: 'SE5560000001-alpha1', specificationId: 1 },
+        { hsaId: 'SE5560000001-zulu1', specificationId: 1 },
+        { hsaId: 'SE5560000001-beta1', specificationId: 2 },
+        { hsaId: 'SE5560000001-beta1', specificationId: 2 },
+        { hsaId: 'SE5560000001-gamma1', specificationId: 2 },
+      ])
+
+    const catalog = await listSpecificationsForActorCatalog(db, {
+      actorHsaId: null,
+      canReadAll: true,
+    })
+
+    expect(
+      catalog.specifications.map(specification => specification.id),
+    ).toEqual([2, 1])
+    expect(
+      catalog.specifications.map(
+        specification => specification.requirementAreas,
+      ),
+    ).toEqual([
+      [
+        { id: 9, name: 'Alpha' },
+        { id: 3, name: 'Zulu' },
+      ],
+      [
+        { id: 8, name: 'Beta' },
+        { id: 2, name: 'Delta' },
+      ],
+    ])
+    expect(catalog.coAuthorHsaIdsBySpecification).toEqual(
+      new Map([
+        [1, ['SE5560000001-alpha1', 'SE5560000001-zulu1']],
+        [2, ['SE5560000001-beta1', 'SE5560000001-gamma1']],
+      ]),
+    )
+  })
+
   it('reuses one actor parameter for specification areas and deduplicated co-authors', async () => {
     const { db, query } = createSqlServerDb()
     query
@@ -209,6 +294,22 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           parameters[0] === 'SE5560000001-ada1',
       ),
     ).toBe(true)
+  })
+
+  it('returns an empty actor catalog without running relationship queries', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([])
+
+    await expect(
+      listSpecificationsForActorCatalog(db, {
+        actorHsaId: 'SE5560000001-empty1',
+        canReadAll: false,
+      }),
+    ).resolves.toEqual({
+      coAuthorHsaIdsBySpecification: new Map(),
+      specifications: [],
+    })
+    expect(query).toHaveBeenCalledTimes(1)
   })
 
   it('gets a specification by id with nested metadata', async () => {

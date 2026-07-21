@@ -112,20 +112,47 @@ describe('fixed-shape SQL Server catalog hydration', () => {
     })
 
     expect(result).toHaveLength(1)
-    expect(result[0]?.answers).toHaveLength(LARGE_SELECTION_ANSWER_COUNT)
-    expect(result[0]?.visibilityGroups[0]?.conditions).toHaveLength(
-      LARGE_SELECTION_ANSWER_COUNT,
+    const answers = result[0]?.answers ?? []
+    expect(
+      answers.map(answer => ({
+        matchingRequirementCount: answer.matchingRequirementCount,
+        matchingRequirements: answer.matchingRequirements.map(match => ({
+          direct: match.direct,
+          id: match.id,
+          sourcePackageIds: match.sourcePackages.map(source => source.id),
+        })),
+        packageIds: answer.packageIds,
+        requirementIds: answer.requirementIds,
+        sortOrder: answer.sortOrder,
+        text: answer.text,
+      })),
+    ).toEqual(
+      Array.from({ length: LARGE_SELECTION_ANSWER_COUNT }, (_, index) => ({
+        matchingRequirementCount: 1,
+        matchingRequirements: [
+          {
+            direct: true,
+            id: requirement.requirementId,
+            sourcePackageIds: [packageId],
+          },
+        ],
+        packageIds: [packageId],
+        requirementIds: [requirement.requirementId],
+        sortOrder: index + 1,
+        text: `Answer ${String(index + 1).padStart(4, '0')}`,
+      })),
     )
-    expect(result[0]?.answers[0]).toMatchObject({
-      matchingRequirementCount: 1,
-      packageIds: [packageId],
-      requirementIds: [requirement.requirementId],
-    })
-    expect(result[0]?.answers.at(-1)?.matchingRequirements[0]).toMatchObject({
-      direct: true,
-      id: requirement.requirementId,
-      sourcePackages: [{ id: packageId }],
-    })
+    expect(
+      result[0]?.visibilityGroups[0]?.conditions.map(condition => ({
+        answerId: condition.answerId,
+        answerText: condition.answerText,
+      })),
+    ).toEqual(
+      answers.map(answer => ({
+        answerId: answer.id,
+        answerText: answer.text,
+      })),
+    )
   })
 
   it('hydrates all three RFI version relationship kinds beyond 2,100 versions', async () => {
@@ -208,17 +235,22 @@ describe('fixed-shape SQL Server catalog hydration', () => {
 
     const result = await listRfiQuestions(appDb(), { includeArchived: true })
 
-    expect(result).toHaveLength(LARGE_CATALOG_SIZE)
-    expect(result[0]).toMatchObject({
-      requirementIds: [requirement.requirementId],
-      requirementPackageIds: [packageRows[0]?.id],
-      requirementSelectionQuestionIds: [selectionQuestionRows[0]?.id],
-    })
-    expect(result.at(-1)).toMatchObject({
-      requirementIds: [requirement.requirementId],
-      requirementPackageIds: [packageRows[0]?.id],
-      requirementSelectionQuestionIds: [selectionQuestionRows[0]?.id],
-    })
+    expect(
+      result.map(question => ({
+        questionCode: question.questionCode,
+        requirementIds: question.requirementIds,
+        requirementPackageIds: question.requirementPackageIds,
+        requirementSelectionQuestionIds:
+          question.requirementSelectionQuestionIds,
+      })),
+    ).toEqual(
+      Array.from({ length: LARGE_CATALOG_SIZE }, (_, index) => ({
+        questionCode: `SQL-RFI${String(index + 1).padStart(4, '0')}`,
+        requirementIds: [requirement.requirementId],
+        requirementPackageIds: [packageRows[0]?.id],
+        requirementSelectionQuestionIds: [selectionQuestionRows[0]?.id],
+      })),
+    )
   })
 
   it('retains actor scope, aggregates, areas, classifications, and co-authors beyond 2,100 specifications', async () => {
@@ -290,21 +322,41 @@ describe('fixed-shape SQL Server catalog hydration', () => {
       canReadAll: false,
     })
 
-    expect(catalog.specifications).toHaveLength(LARGE_CATALOG_SIZE)
-    expect(catalog.specifications[0]).toMatchObject({
-      governanceObjectType: expect.objectContaining({ id: expect.any(Number) }),
-      implementationType: expect.objectContaining({ id: expect.any(Number) }),
-      itemCount: 1,
-      lifecycleStatus: expect.objectContaining({ id: expect.any(Number) }),
-      requirementAreas: [{ id: area.id, name: area.name }],
-      responsibleHsaId,
-    })
+    const firstSpecification = catalog.specifications[0]
+    expect(firstSpecification?.governanceObjectType?.id).toEqual(
+      expect.any(Number),
+    )
+    expect(firstSpecification?.implementationType?.id).toEqual(
+      expect.any(Number),
+    )
+    expect(firstSpecification?.lifecycleStatus?.id).toEqual(expect.any(Number))
+    expect(
+      catalog.specifications.map(specification => ({
+        governanceObjectTypeId: specification.governanceObjectType?.id,
+        implementationTypeId: specification.implementationType?.id,
+        itemCount: specification.itemCount,
+        lifecycleStatusId: specification.lifecycleStatus?.id,
+        requirementAreas: specification.requirementAreas,
+        responsibleHsaId: specification.responsibleHsaId,
+        specificationCode: specification.specificationCode,
+      })),
+    ).toEqual(
+      Array.from({ length: LARGE_CATALOG_SIZE }, (_, index) => ({
+        governanceObjectTypeId: firstSpecification?.governanceObjectType?.id,
+        implementationTypeId: firstSpecification?.implementationType?.id,
+        itemCount: 1,
+        lifecycleStatusId: firstSpecification?.lifecycleStatus?.id,
+        requirementAreas: [{ id: area.id, name: area.name }],
+        responsibleHsaId,
+        specificationCode: `SQL-SPEC-${String(index + 1).padStart(4, '0')}`,
+      })),
+    )
     expect(catalog.coAuthorHsaIdsBySpecification.size).toBe(LARGE_CATALOG_SIZE)
     expect(
-      catalog.coAuthorHsaIdsBySpecification.get(
-        catalog.specifications.at(-1)?.id ?? 0,
+      catalog.specifications.map(specification =>
+        catalog.coAuthorHsaIdsBySpecification.get(specification.id),
       ),
-    ).toEqual([coAuthorHsaId])
+    ).toEqual(Array.from({ length: LARGE_CATALOG_SIZE }, () => [coAuthorHsaId]))
   })
 
   it('hydrates every package responsibility relationship beyond 2,100 packages', async () => {
@@ -343,12 +395,20 @@ describe('fixed-shape SQL Server catalog hydration', () => {
       includeArchived: true,
     })
 
-    expect(result).toHaveLength(LARGE_CATALOG_SIZE)
-    expect(result[0]?.coAuthors).toEqual([
-      expect.objectContaining({ hsaId: coAuthorHsaId }),
-    ])
-    expect(result.at(-1)?.coAuthors).toEqual([
-      expect.objectContaining({ hsaId: coAuthorHsaId }),
-    ])
+    expect(
+      result.map(requirementPackage => ({
+        coAuthorHsaIds: requirementPackage.coAuthors.map(
+          coAuthor => coAuthor.hsaId,
+        ),
+        leadHsaId: requirementPackage.leadHsaId,
+        name: requirementPackage.name,
+      })),
+    ).toEqual(
+      Array.from({ length: LARGE_CATALOG_SIZE }, (_, index) => ({
+        coAuthorHsaIds: [coAuthorHsaId],
+        leadHsaId,
+        name: `Package ${String(index + 1).padStart(4, '0')}`,
+      })),
+    )
   })
 })

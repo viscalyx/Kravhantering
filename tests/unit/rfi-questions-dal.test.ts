@@ -80,12 +80,31 @@ const activeQuestionRow = {
 describe('RFI questions DAL', () => {
   it('maps and deduplicates discriminated version links in one fixed-shape query', async () => {
     const query = createQuery([
-      [activeQuestionRow],
+      [
+        activeQuestionRow,
+        {
+          ...activeQuestionRow,
+          id: 13,
+          questionCode: 'INF-RFI008',
+          questionText: 'Hur hanteras loggning?',
+          sortOrder: 40,
+          versionId: 35,
+        },
+      ],
       [
         { id: 5, relationKind: 'package', versionId: 34 },
+        { id: 9, relationKind: 'package', versionId: 34 },
+        { id: 2, relationKind: 'requirement', versionId: 34 },
         { id: 7, relationKind: 'requirement', versionId: 34 },
         { id: 7, relationKind: 'requirement', versionId: 34 },
         { id: 3, relationKind: 'selection_question', versionId: 34 },
+        { id: 8, relationKind: 'selection_question', versionId: 34 },
+        { id: 4, relationKind: 'package', versionId: 35 },
+        { id: 6, relationKind: 'requirement', versionId: 35 },
+        { id: 10, relationKind: 'requirement', versionId: 35 },
+        { id: 1, relationKind: 'selection_question', versionId: 35 },
+        { id: 11, relationKind: 'selection_question', versionId: 35 },
+        { id: 11, relationKind: 'selection_question', versionId: 35 },
       ],
     ])
 
@@ -94,14 +113,46 @@ describe('RFI questions DAL', () => {
       { areaId: 2, includeArchived: true },
     )
 
-    expect(result[0]).toMatchObject({
-      requirementIds: [7],
-      requirementPackageIds: [5],
-      requirementSelectionQuestionIds: [3],
-    })
+    expect(result.map(question => question.id)).toEqual([12, 13])
+    expect(
+      result.map(
+        ({
+          requirementIds,
+          requirementPackageIds,
+          requirementSelectionQuestionIds,
+        }) => ({
+          requirementIds,
+          requirementPackageIds,
+          requirementSelectionQuestionIds,
+        }),
+      ),
+    ).toEqual([
+      {
+        requirementIds: [2, 7],
+        requirementPackageIds: [5, 9],
+        requirementSelectionQuestionIds: [3, 8],
+      },
+      {
+        requirementIds: [6, 10],
+        requirementPackageIds: [4],
+        requirementSelectionQuestionIds: [1, 11],
+      },
+    ])
     expect(String(query.mock.calls[1]?.[0]).match(/UNION ALL/g)).toHaveLength(2)
     expect(query.mock.calls[0]?.[1]).toEqual([2])
     expect(query.mock.calls[1]?.[1]).toEqual([2])
+  })
+
+  it('returns an empty catalog without running the version-link query', async () => {
+    const query = createQuery([[]])
+
+    await expect(
+      listRfiQuestions(
+        { query } as unknown as Parameters<typeof listRfiQuestions>[0],
+        { includeArchived: true },
+      ),
+    ).resolves.toEqual([])
+    expect(query).toHaveBeenCalledTimes(1)
   })
 
   it('creates an area-sequenced RFI question with version links', async () => {
