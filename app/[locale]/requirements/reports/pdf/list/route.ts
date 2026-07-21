@@ -20,6 +20,7 @@ import {
   type GeneratedOutputSpool,
   generatedOutputCapacitySnapshot,
 } from '@/lib/generated-output/spool'
+import { pdfContentDisposition } from '@/lib/http/content-disposition'
 import {
   optionalQueryArraySchema,
   optionalSearchStringSchema,
@@ -27,7 +28,6 @@ import {
   positiveIntegerStringSchema,
   queryBooleanStringSchema,
 } from '@/lib/http/validation'
-import { pdfContentDisposition } from '@/lib/pdf/filename'
 import { renderReportInWorker } from '@/lib/pdf/report-worker'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 import {

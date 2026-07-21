@@ -353,8 +353,12 @@ The browser uses one accessible two-phase modal for these outputs:
 `Generating/Preparing` while awaiting response headers and `Downloading` while
 reading the response Blob. There is no percentage, service worker, or File
 System Access path. The server filename from `Content-Disposition` wins over
-the localized fallback filename. One hook instance runs only one operation at a
-time, including when different specification CSV or PDF URLs are requested.
+the localized fallback filename. Server-provided CSV and PDF filenames are
+Unicode-normalized; control, format, and malformed surrogate characters are
+removed; and filenames are bounded to 240 UTF-8 bytes before
+standards-compliant header encoding. One hook instance runs only one operation
+at a time, including when different specification CSV or PDF URLs are
+requested.
 
 Stable failures are `output_limit_exceeded` (`422`), `capacity_busy` (`429`,
 `Retry-After: 5`), and the `503` timeout, temporary-storage, PDF-memory, or
