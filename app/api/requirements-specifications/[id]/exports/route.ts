@@ -11,6 +11,7 @@ import {
   parseRouteParams,
   parseSearchParams,
 } from '@/lib/http/validation'
+import { csvContentDisposition } from '@/lib/http/content-disposition'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { ReportDataError } from '@/lib/reports/data/server'
 import { visitSpecificationOutputPages } from '@/lib/reports/data/specification-output'
@@ -36,21 +37,6 @@ const exportQuerySchema = z
     profile: z.enum(['procurement', 'full']),
   })
   .strict()
-
-const RESERVED_FILENAME_CHARS = /[/\\:*?"<>|]+/g
-
-function csvContentDisposition(filename: string): string {
-  const sanitized = filename
-    .replace(RESERVED_FILENAME_CHARS, '-')
-    .replace(/\s+/g, ' ')
-    .trim()
-  const withExtension = sanitized.toLowerCase().endsWith('.csv')
-    ? sanitized
-    : `${sanitized}.csv`
-  const fallback = withExtension.replace(/[^\x20-\x7e]/g, '_')
-
-  return `attachment; filename="${fallback.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(withExtension)}`
-}
 
 function errorResponse(error: unknown) {
   if (error instanceof ReportDataError) {
