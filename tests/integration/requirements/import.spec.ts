@@ -90,7 +90,7 @@ test.describe('Requirements import', () => {
             infos: [],
             labels: {
               category: null,
-              priorityLevel: null,
+              priorityLevel: 'Låg',
               qualityCharacteristic: null,
               type: 'Funktionellt',
             },
@@ -104,7 +104,7 @@ test.describe('Requirements import', () => {
               description: importedDescription,
               needsReferenceId: null,
               normReferenceIds: [1],
-              priorityLevelId: null,
+              priorityLevelId: 2,
               qualityCharacteristicId: null,
               requirementPackageIds: [],
               verifiable: true,
@@ -130,7 +130,7 @@ test.describe('Requirements import', () => {
             importMode: 'library',
             needsReferenceId: null,
             normReferences: ['SOSFS-IMPORT-1 - Importreferens'],
-            priorityLevelName: null,
+            priorityLevelName: 'P2 – Låg',
             qualityCharacteristicName: null,
             requirementPackageNames: [],
             verifiable: true,
@@ -270,6 +270,13 @@ test.describe('Requirements import', () => {
       await expect(
         page.getByRole('button', { name: 'Expandera alla' }),
       ).toBeEnabled()
+      const priorityBadge = page
+        .getByRole('dialog', { name: selectedAreaDialogName })
+        .locator('.status-badge')
+        .filter({ hasText: 'P2 – Låg' })
+      await expect(priorityBadge).toHaveCount(1)
+      await expect(priorityBadge).toHaveText('P2 – Låg')
+      await expect(priorityBadge.locator('svg')).toHaveCount(1)
     })
 
     await test.step('review imported requirement and norm reference details', async () => {

@@ -20,7 +20,6 @@ import {
 import { useLocale, useTranslations } from 'next-intl'
 import {
   type ChangeEvent,
-  type CSSProperties,
   type DragEvent,
   useCallback,
   useEffect,
@@ -37,6 +36,7 @@ import NormReferenceModal, {
 import QualityCharacteristicSelectOptions from '@/components/QualityCharacteristicSelectOptions'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
+import StatusBadge from '@/components/StatusBadge'
 import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -78,6 +78,7 @@ interface PriorityLevelOption extends TaxonomyOption {
   color?: string
   descriptionEn: string
   descriptionSv: string
+  iconName: string | null
 }
 
 interface QualityCharacteristicOption extends TaxonomyOption {
@@ -116,6 +117,12 @@ interface ImportPreviewRow {
   }
   proposedNeedsReferenceKey: string | null
   proposedNormReferenceKeys: string[]
+  resolvedPriorityLevel?: {
+    code: string
+    color: string
+    iconName: string | null
+    name: string
+  }
   reviewRowId: string
   selected: boolean
   sourceIndex: number
@@ -570,25 +577,6 @@ function downloadText(
 
 function uniquePositiveIds(values: number[]): number[] {
   return [...new Set(values.filter(id => Number.isInteger(id) && id > 0))]
-}
-
-function colorWithAlpha(color: string, alpha: number): string | null {
-  const match = color.trim().match(/^#?([0-9a-f]{6})$/i)
-  if (!match) return null
-  const value = match[1]
-  const red = Number.parseInt(value.slice(0, 2), 16)
-  const green = Number.parseInt(value.slice(2, 4), 16)
-  const blue = Number.parseInt(value.slice(4, 6), 16)
-  return `rgb(${red} ${green} ${blue} / ${alpha})`
-}
-
-function priorityChipStyle(option: PriorityLevelOption): CSSProperties {
-  if (!option.color) return {}
-  return {
-    backgroundColor: colorWithAlpha(option.color, 0.08) ?? undefined,
-    borderColor: option.color,
-    color: option.color,
-  }
 }
 
 function RequirementSummaryText({
@@ -2013,9 +2001,9 @@ export default function RequirementsImportDialog({
   const getLocalizedName = (option: TaxonomyOption) =>
     locale === 'sv' ? option.nameSv : option.nameEn
   const getPriorityLabel = (option: PriorityLevelOption) =>
-    `${option.code} - ${getLocalizedName(option)}`
+    `${option.code} – ${getLocalizedName(option)}`
   const getPriorityChipLabel = (option: PriorityLevelOption) =>
-    getLocalizedName(option)
+    getPriorityLabel(option)
   const getPriorityDescription = (option: PriorityLevelOption) =>
     locale === 'sv' ? option.descriptionSv : option.descriptionEn
   const getPriorityAssessmentCriteria = (option: PriorityLevelOption) =>
@@ -2840,16 +2828,17 @@ export default function RequirementsImportDialog({
                                     />
                                     <div className="flex flex-wrap items-center gap-2">
                                       {selectedPriorityLevel ? (
-                                        <span
-                                          className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium"
-                                          style={priorityChipStyle(
+                                        <StatusBadge
+                                          color={
+                                            selectedPriorityLevel.color ?? null
+                                          }
+                                          iconName={
+                                            selectedPriorityLevel.iconName
+                                          }
+                                          label={getPriorityChipLabel(
                                             selectedPriorityLevel,
                                           )}
-                                        >
-                                          {getPriorityChipLabel(
-                                            selectedPriorityLevel,
-                                          )}
-                                        </span>
+                                        />
                                       ) : null}
                                       {rowMessageSummary ? (
                                         <button

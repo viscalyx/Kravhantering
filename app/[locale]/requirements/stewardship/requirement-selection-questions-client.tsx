@@ -731,7 +731,7 @@ function CompactRequirementDetail({
         <StatusBadge
           color={selectedVersion.priorityLevel.color}
           iconName={selectedVersion.priorityLevel.iconName}
-          label={localizedName(locale, selectedVersion.priorityLevel) ?? ''}
+          label={`${selectedVersion.priorityLevel.code} – ${localizedName(locale, selectedVersion.priorityLevel) ?? ''}`}
           size="sm"
         />
       ) : (

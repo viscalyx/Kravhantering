@@ -3,7 +3,9 @@
 import { AlertTriangle, Edit, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import DeviationDecisionModal from '@/components/DeviationDecisionModal'
-import DeviationFormModal from '@/components/DeviationFormModal'
+import DeviationFormModal, {
+  type DeviationPriorityLevel,
+} from '@/components/DeviationFormModal'
 import { devMarker } from '@/lib/developer-mode-markers'
 import RequirementReportMenu from './RequirementReportMenu'
 import type { UseDeviationWorkflowResult } from './use-deviation-workflow'
@@ -14,7 +16,7 @@ interface SpecificationDeviationRailProps {
   detailContext?: string
   locale: string
   onRemoveFromSpecification?: (anchorEl: HTMLElement) => void | Promise<void>
-  priorityLevel: { color: string; name: string | null } | null
+  priorityLevel: DeviationPriorityLevel | null
   removeFromSpecificationDisabled?: boolean
   requirementId: number | string
   specificationId: number

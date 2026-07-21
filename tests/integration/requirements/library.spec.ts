@@ -1337,6 +1337,7 @@ test.describe('Requirements library', () => {
     await expect(publishedBadge).toHaveCount(1)
     await expect(publishedBadge.locator('svg')).toHaveCount(1)
     await expect(priorityBadge).toHaveCount(1)
+    await expect(priorityBadge).toContainText(/P[1-5] – /u)
     await expect(priorityBadge.locator('svg')).toHaveCount(1)
 
     const workflow = detailPane.getByRole('group', {

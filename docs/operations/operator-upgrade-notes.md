@@ -7,6 +7,29 @@ target version.
 
 ## Unreleased
 
+### Invalid priority colors are reset during upgrade
+
+Before running `db-job migrate`, identify P1-P5 priority rows whose color is
+not an exact case-insensitive `#RRGGBB` value. Migration 0050 replaces only
+those invalid values with the corresponding canonical P1-P5 color; valid
+custom colors remain unchanged.
+
+```sql
+SELECT id, code, color
+FROM priority_levels
+WHERE code IN (N'P1', N'P2', N'P3', N'P4', N'P5')
+  AND (
+    color IS NULL
+    OR DATALENGTH(color) <> 14
+    OR color COLLATE Latin1_General_100_BIN2 NOT LIKE
+      N'#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]'
+  );
+```
+
+After upgrade, open `/sv/priority-levels` and review every priority in both
+the labeled light and dark previews. Confirm that each priority remains
+readable and visually distinct before accepting the upgraded configuration.
+
 ### Access-review periods must be ordered before upgrade
 
 Before running `db-job migrate`, confirm no access-review run has a

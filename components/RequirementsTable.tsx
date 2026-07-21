@@ -1779,7 +1779,7 @@ export default function RequirementsTable({
   const formatPriorityLevelOptionLabel = (rl: PriorityLevelOption) =>
     [rl.code, locale === 'sv' ? rl.nameSv : rl.nameEn]
       .filter(Boolean)
-      .join(' - ')
+      .join(' – ')
   const formatPriorityLevelLabel = (id: number) => {
     const rl = priorityLevels.find(rl => rl.id === id)
     return rl ? formatPriorityLevelOptionLabel(rl) : String(id)
@@ -2463,10 +2463,15 @@ export default function RequirementsTable({
           </td>
         )
       case 'priorityLevel': {
-        const fallbackPriorityLevelLabel =
+        const fallbackPriorityLevelName =
           (locale === 'sv'
             ? row.version?.priorityLevelNameSv
             : row.version?.priorityLevelNameEn) ?? null
+        const fallbackPriorityLevelLabel = fallbackPriorityLevelName
+          ? [row.version?.priorityLevelCode, fallbackPriorityLevelName]
+              .filter(Boolean)
+              .join(' – ')
+          : null
         const priorityLevelOption =
           row.version?.priorityLevelId == null
             ? null

@@ -298,6 +298,7 @@ export function formatRequirementListItem(
       revisionToken: item.revisionToken,
       verifiable: item.verifiable,
       priorityLevelId: item.priorityLevelId,
+      priorityLevelCode: item.priorityLevelCode,
       priorityLevelNameEn: item.priorityLevelNameEn,
       priorityLevelNameSv: item.priorityLevelNameSv,
       priorityLevelColor: item.priorityLevelColor,
@@ -381,6 +382,7 @@ export function formatRequirementDetail(
         : null,
       priorityLevel: version.priorityLevel
         ? {
+            code: version.priorityLevel.code,
             id: version.priorityLevel.id,
             nameEn: version.priorityLevel.nameEn,
             nameSv: version.priorityLevel.nameSv,

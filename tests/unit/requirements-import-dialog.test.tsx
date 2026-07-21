@@ -49,8 +49,14 @@ function mockReferenceDataFetch(
       normReferenceId: string
     }>
     priorityLevels?: Array<{
+      assessmentCriteriaEn: string
+      assessmentCriteriaSv: string
+      code: string
       color?: string
+      descriptionEn: string
+      descriptionSv: string
       id: number
+      iconName: string | null
       nameEn: string
       nameSv: string
     }>
@@ -118,7 +124,7 @@ function importPreviewRow(sourceIndex = 0) {
       description: `Kravtext ${sourceIndex + 1}`,
       needsReferenceId: null,
       normReferenceIds: [],
-      priorityLevelId: null,
+      priorityLevelId: null as number | null,
       qualityCharacteristicId: null,
       requirementPackageIds: [],
       typeId: null,
@@ -320,6 +326,49 @@ describe('RequirementsImportDialog', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Filen innehåller 200 eller fler krav.',
     )
+  })
+
+  it('renders an imported priority with its localized name and configured icon', async () => {
+    mockReferenceDataFetch({
+      priorityLevels: [
+        {
+          assessmentCriteriaEn: 'Low impact',
+          assessmentCriteriaSv: 'Låg påverkan',
+          code: 'P2',
+          color: '#22c55e',
+          descriptionEn: 'Low priority',
+          descriptionSv: 'Låg prioritet',
+          iconName: 'ArrowDownLeft',
+          id: 2,
+          nameEn: 'Low',
+          nameSv: 'Låg',
+        },
+      ],
+    })
+    const row = importPreviewRow()
+    row.values.priorityLevelId = 2
+    vi.mocked(apiFetch).mockResolvedValue(importPreviewResponse([row]))
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
+
+    const priorityBadge = await screen.findByText('P2 – Låg')
+    expect(
+      priorityBadge.closest('.status-badge')?.querySelector('svg'),
+    ).toBeTruthy()
   })
 
   it('announces a successful import receipt with status semantics', async () => {

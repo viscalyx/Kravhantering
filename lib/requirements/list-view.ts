@@ -116,6 +116,7 @@ export interface RequirementRow {
     verifiable: boolean
     revisionToken?: string
     priorityLevelId: number | null
+    priorityLevelCode?: string | null
     priorityLevelNameEn: string | null
     priorityLevelNameSv: string | null
     priorityLevelColor: string | null

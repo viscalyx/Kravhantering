@@ -31,6 +31,7 @@ export interface RequirementVersionNormReference {
 }
 
 export interface PriorityLevelSummary {
+  code: string
   color: string
   iconName?: string | null
   id: number

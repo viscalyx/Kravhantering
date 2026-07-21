@@ -213,6 +213,7 @@ function mapRequirementDetailToRow(
           qualityCharacteristicNameSv:
             version.qualityCharacteristic?.nameSv ?? null,
           priorityLevelId: version.priorityLevel?.id ?? null,
+          priorityLevelCode: version.priorityLevel?.code ?? null,
           priorityLevelNameEn: version.priorityLevel?.nameEn ?? null,
           priorityLevelNameSv: version.priorityLevel?.nameSv ?? null,
           priorityLevelColor: version.priorityLevel?.color ?? null,

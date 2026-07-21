@@ -34,7 +34,9 @@ import SpecificationRfiListPanel from '@/app/[locale]/specifications/[specificat
 import SpecificationFormModal from '@/app/[locale]/specifications/specification-form-modal'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
-import DeviationFormModal from '@/components/DeviationFormModal'
+import DeviationFormModal, {
+  type DeviationPriorityLevel,
+} from '@/components/DeviationFormModal'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldHelpButton from '@/components/FieldHelpButton'
 import { useGeneratedOutputDownload } from '@/components/generated-output/useGeneratedOutputDownload'
@@ -563,6 +565,35 @@ export default function KravunderlagDetailClient({
   const [bulkDeviationItems, setBulkDeviationItems] = useState<
     SpecificationListItem[]
   >([])
+  const bulkDeviationPriorityLevels = useMemo(() => {
+    const priorityLevelsById = new Map<number, DeviationPriorityLevel>()
+    for (const item of bulkDeviationItems) {
+      const version = item.version
+      const name =
+        locale === 'sv'
+          ? version?.priorityLevelNameSv
+          : version?.priorityLevelNameEn
+      if (
+        version?.priorityLevelId == null ||
+        !version.priorityLevelCode ||
+        !name
+      ) {
+        continue
+      }
+      priorityLevelsById.set(version.priorityLevelId, {
+        code: version.priorityLevelCode,
+        color: version.priorityLevelColor,
+        iconName: version.priorityLevelIconName ?? null,
+        id: version.priorityLevelId,
+        name,
+        sortOrder: version.priorityLevelSortOrder ?? Number.MAX_SAFE_INTEGER,
+      })
+    }
+    return [...priorityLevelsById.values()].sort(
+      (left, right) =>
+        left.sortOrder - right.sortOrder || left.code.localeCompare(right.code),
+    )
+  }, [bulkDeviationItems, locale])
 
   // Left panel state
   const [leftSelectedItemRefs, setLeftSelectedItemRefs] = useState<Set<string>>(
@@ -3980,6 +4011,7 @@ export default function KravunderlagDetailClient({
                 }}
                 onSubmit={handleBulkDeviation}
                 open={showBulkDeviationModal}
+                priorityLevels={bulkDeviationPriorityLevels}
               />
               <BulkNeedsReferenceModal
                 affectedRequirementIds={bulkNeedsReferenceItems.map(

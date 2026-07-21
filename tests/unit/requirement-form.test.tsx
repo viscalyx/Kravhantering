@@ -74,8 +74,10 @@ const samplePriorityLevels = [
     assessmentCriteriaEn: 'Low assessment criteria',
     assessmentCriteriaSv: 'Låga bedömningsgrunder',
     code: 'P2',
+    color: '#22c55e',
     descriptionEn: 'Low priority description',
     descriptionSv: 'Låg prioritetsbeskrivning',
+    iconName: 'ArrowDownLeft',
     id: 2,
     nameEn: 'Low',
     nameSv: 'Låg',
@@ -84,8 +86,10 @@ const samplePriorityLevels = [
     assessmentCriteriaEn: 'High assessment criteria',
     assessmentCriteriaSv: 'Höga bedömningsgrunder',
     code: 'P4',
+    color: '#f97316',
     descriptionEn: 'High priority description',
     descriptionSv: 'Hög prioritetsbeskrivning',
+    iconName: null,
     id: 4,
     nameEn: 'High',
     nameSv: 'Hög',
@@ -703,11 +707,12 @@ describe('RequirementForm', () => {
     expect(
       screen.queryByText('Low priority description'),
     ).not.toBeInTheDocument()
-    await screen.findByRole('option', { name: 'P2 - Low' })
+    await screen.findByRole('option', { name: 'P2 – Low' })
 
     const prioritySelect = screen.getByRole('combobox', {
       name: 'requirement.priorityLevel',
     })
+    expect(prioritySelect.tagName).toBe('SELECT')
     const originalMatches = prioritySelect.matches.bind(prioritySelect)
     vi.spyOn(prioritySelect, 'matches').mockImplementation(
       selector => selector === ':focus-visible' || originalMatches(selector),
@@ -742,8 +747,13 @@ describe('RequirementForm', () => {
       ),
     ).toBeInTheDocument()
     expect(
-      within(helpPanel as HTMLElement).getByText('P2 - Low'),
+      within(helpPanel as HTMLElement).getByText('P2 – Low'),
     ).toBeInTheDocument()
+    const priorityBadges = helpPanel.querySelectorAll('.status-badge')
+    expect(priorityBadges).toHaveLength(2)
+    expect(priorityBadges[0]).toHaveTextContent('P2 – Low')
+    expect(priorityBadges[0]?.querySelector('svg')).toBeTruthy()
+    expect(priorityBadges[1]?.querySelector('svg')).toBeNull()
     expect(
       within(helpPanel as HTMLElement).getByText('Low priority description'),
     ).toBeInTheDocument()

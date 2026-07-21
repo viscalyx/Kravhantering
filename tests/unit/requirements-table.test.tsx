@@ -793,6 +793,7 @@ describe('RequirementsTable', () => {
       makeRow({
         version: {
           ...makeRow().version,
+          priorityLevelCode: 'P3',
           priorityLevelId: 3,
           priorityLevelNameEn: 'Medium high',
           priorityLevelNameSv: 'Medelhög',
@@ -804,16 +805,6 @@ describe('RequirementsTable', () => {
     render(
       <RequirementsTable
         locale="sv"
-        priorityLevels={[
-          {
-            code: 'P3',
-            color: '#eab308',
-            id: 3,
-            nameEn: 'Medium high',
-            nameSv: 'Medelhög',
-            sortOrder: 3,
-          },
-        ]}
         rows={rows}
         visibleColumns={[
           ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
@@ -822,7 +813,7 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    expect(screen.getByText('P3 - Medelhög')).toBeTruthy()
+    expect(screen.getByText('P3 – Medelhög')).toBeTruthy()
   })
 
   it('renders read-only usage status icons as decorative badge content', () => {

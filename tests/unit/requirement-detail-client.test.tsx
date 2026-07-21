@@ -809,6 +809,15 @@ describe('RequirementDetailClient', () => {
           nameEn: 'Maintainability',
           nameSv: 'Underhållbarhet',
         },
+        priorityLevel: {
+          code: 'P4',
+          color: '#f97316',
+          iconName: 'ArrowUpRight',
+          id: 4,
+          nameEn: 'High',
+          nameSv: 'Hög',
+          sortOrder: 4,
+        },
       }),
     ])
 
@@ -820,6 +829,9 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByText('Funktionellt')).toBeInTheDocument()
     expect(screen.getByText('Quality characteristic')).toBeInTheDocument()
     expect(screen.getByText('Underhållbarhet')).toBeInTheDocument()
+    const priorityBadge = screen.getByText('P4 – Hög').closest('.status-badge')
+    expect(priorityBadge).toHaveAttribute('data-accent-color', '#f97316')
+    expect(priorityBadge?.querySelector('svg')).toBeTruthy()
     expect(
       screen
         .getByText('Type')
