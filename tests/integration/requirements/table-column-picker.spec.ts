@@ -70,7 +70,6 @@ test.describe('Requirements table column picker', () => {
           await verifiableCheckbox.check()
         }
 
-        await trigger.click()
         await expect(popover).toBeVisible()
 
         if (!(await versionCheckbox.isChecked())) {
