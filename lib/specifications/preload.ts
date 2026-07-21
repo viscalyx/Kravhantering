@@ -11,9 +11,8 @@ import {
   getSpecificationById,
   getSpecificationForbiddenSummaryById,
   listSpecificationCoAuthorHsaIds,
-  listSpecificationCoAuthorHsaIdsBySpecification,
   listSpecificationNeedsReferences,
-  listSpecificationsForActor,
+  listSpecificationsForActorCatalog,
 } from '@/lib/dal/requirements-specifications'
 import { listSpecificationGovernanceObjectTypes } from '@/lib/dal/specification-governance-object-types'
 import { listSpecificationImplementationTypes } from '@/lib/dal/specification-implementation-types'
@@ -401,15 +400,12 @@ export async function loadRequirementsSpecificationsInitialData(): Promise<Requi
     lifecycleStatuses,
   ] = await Promise.all([
     capture<Specification[]>('requirements specifications', [], async () => {
-      const specs = (await listSpecificationsForActor(db, {
+      const catalog = await listSpecificationsForActorCatalog(db, {
         actorHsaId: context.actor.hsaId,
         canReadAll: canReadAllSpecifications(context),
-      })) as Specification[]
-      const coAuthorIdsBySpecification =
-        await listSpecificationCoAuthorHsaIdsBySpecification(
-          db,
-          specs.map(spec => spec.id),
-        )
+      })
+      const specs = catalog.specifications as Specification[]
+      const coAuthorIdsBySpecification = catalog.coAuthorHsaIdsBySpecification
       return specs.map(spec => ({
         ...spec,
         permissions: specificationPermissions(context, {

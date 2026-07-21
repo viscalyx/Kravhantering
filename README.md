@@ -91,6 +91,18 @@ graph TD
 
 <!-- markdownlint-enable MD013 -->
 
+## AI-assisted authoring
+
+In Requirements Management, AI-assisted authoring turns the user’s description
+and supporting material into structured requirement candidates, including
+requirement text and acceptance criteria. The user reviews, edits, and selects
+which candidates to import into the requirements library or a specification;
+the AI makes no decisions and publishes nothing automatically.
+
+<!-- markdownlint-disable MD013 -->
+![Horizontal infographic titled “AI-assisted authoring.” It presents a five-step workflow from left to right: 1) the user describes a need and selects supporting input, 2) AI generates structured requirement proposals, 3) the user reviews the requirement text, acceptance criteria, and AI analysis, 4) the user edits the content, deselects proposals, and checks classification and standards references, and 5) the user previews and imports approved proposals into a requirement library or requirements document. The same user appears in stages 1, 3, 4, and 5, while AI is shown only as a blue document with sparkles in stage 2. An amber callout emphasizes that the proposals are not yet requirements. A green message explains that proposals enter the regular requirements process only after the user’s review. A control strip at the bottom states that there is no automatic publishing, no AI decision-making, the user chooses which proposals move forward, and all content can be edited before import.](docs/images/ai-assisted-authoring-requirements-management.png)
+<!-- markdownlint-enable MD013 -->
+
 <!-- cSpell:disable -->
 
 ### Svenska
@@ -167,6 +179,18 @@ graph TD
 
 <!-- markdownlint-enable MD013 -->
 <!-- cSpell:enable -->
+
+## AI-assisterat författande
+
+Kravhantering används AI-assisterat författande för att omvandla användarens
+beskrivning och underlag till strukturerade kravkandidater med bland annat
+kravtext och acceptanskriterier. Användaren granskar, redigerar och väljer
+vilka kandidater som ska importeras till kravbiblioteket eller ett kravunderlag;
+AI:n fattar inga beslut och publicerar ingenting automatiskt.
+
+<!-- markdownlint-disable MD013 -->
+![Horisontell infografik med rubriken ”AI-assisterat författande”. Den visar ett arbetsflöde i fem steg från vänster till höger: 1) användaren beskriver sitt behov och väljer underlag, 2) AI tar fram strukturerade kravförslag, 3) användaren granskar kravtext, acceptanskriterier och AI-analys, 4) användaren redigerar innehåll, väljer bort förslag och kontrollerar klassning och normreferenser, och 5) användaren förhandsgranskar och importerar godkända förslag till ett kravbibliotek eller kravunderlag. Samma användare visas i steg 1, 3, 4 och 5, medan AI endast visas som ett blått dokument med gnistor i steg 2. Ett orange meddelande betonar att förslagen ännu inte är krav. Ett grönt meddelande förklarar att förslagen förs in i den ordinarie kravprocessen först efter användarens granskning. Längst ned finns en kontrollremsa med budskapen: ingen automatisk publicering, inga AI-beslut, användaren väljer vilka förslag som går vidare och innehållet kan redigeras före import.](docs/images/ai-assisterat-forfattande-kravhantering.png)
+<!-- markdownlint-enable MD013 -->
 
 ## MCP Server
 

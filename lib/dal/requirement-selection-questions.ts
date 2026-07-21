@@ -123,6 +123,24 @@ interface QueryExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
 }
 
+interface QuestionSelectionOptions {
+  activeOnly?: boolean
+  areaId?: number
+  includeArchived?: boolean
+  includeSavedForSpecificationId?: number
+  questionId?: number
+}
+
+interface AnswerSelectionOptions {
+  activeOnly?: boolean
+  includeSavedForSpecificationId?: number
+}
+
+interface SqlSelection {
+  parameters: unknown[]
+  sql: string
+}
+
 type QuestionDbRow = {
   areaId: number
   areaName: string
@@ -204,6 +222,89 @@ function placeholders(values: readonly unknown[], offset = 0): string {
   return values.map((_, index) => `@${index + offset}`).join(', ')
 }
 
+function buildQuestionSelection(
+  options: QuestionSelectionOptions = {},
+): SqlSelection {
+  const parameters: unknown[] = []
+  const conditions: string[] = []
+  if (!options.includeArchived) {
+    conditions.push('question.is_archived = 0')
+  }
+  if (options.activeOnly) {
+    conditions.push('question.is_active = 1')
+  }
+  if (options.questionId != null) {
+    parameters.push(options.questionId)
+    conditions.push(`question.id = @${parameters.length - 1}`)
+  }
+  if (options.areaId != null) {
+    parameters.push(options.areaId)
+    conditions.push(`question.area_id = @${parameters.length - 1}`)
+  }
+  if (options.includeSavedForSpecificationId != null) {
+    parameters.push(options.includeSavedForSpecificationId)
+    conditions.push(`(
+      (question.is_active = 1 AND question.is_archived = 0)
+      OR EXISTS (
+        SELECT 1
+        FROM specification_requirement_selection_answers saved
+        WHERE saved.question_id = question.id
+          AND saved.specification_id = @${parameters.length - 1}
+      )
+    )`)
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  return {
+    parameters,
+    sql: `
+      WITH selected_questions AS (
+        SELECT question.id
+        FROM requirement_selection_questions AS question
+        ${where}
+      )
+    `,
+  }
+}
+
+function buildAnswerSelection(
+  questionOptions: QuestionSelectionOptions,
+  answerOptions: AnswerSelectionOptions = {},
+): SqlSelection {
+  const questionSelection = buildQuestionSelection(questionOptions)
+  const parameters = [...questionSelection.parameters]
+  const conditions: string[] = []
+  if (answerOptions.activeOnly) {
+    conditions.push('answer.is_active = 1')
+    conditions.push('answer.is_archived = 0')
+  }
+  if (answerOptions.includeSavedForSpecificationId != null) {
+    parameters.push(answerOptions.includeSavedForSpecificationId)
+    conditions.push(`(
+      (answer.is_active = 1 AND answer.is_archived = 0)
+      OR EXISTS (
+        SELECT 1
+        FROM specification_requirement_selection_answers saved
+        WHERE saved.answer_id = answer.id
+          AND saved.specification_id = @${parameters.length - 1}
+      )
+    )`)
+  }
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+
+  return {
+    parameters,
+    sql: `${questionSelection.sql.trimEnd()},
+      selected_answers AS (
+        SELECT answer.id, answer.question_id
+        FROM requirement_selection_answers AS answer
+        INNER JOIN selected_questions
+          ON selected_questions.id = answer.question_id
+        ${where}
+      )`,
+  }
+}
+
 function mapQuestionRow(row: QuestionDbRow): RequirementSelectionQuestionRow {
   return {
     answers: [],
@@ -248,41 +349,12 @@ function mapAnswerRow(row: AnswerDbRow): RequirementSelectionAnswerRow {
 
 async function listQuestionRows(
   executor: QueryExecutor,
-  options: {
-    activeOnly?: boolean
-    areaId?: number
-    includeArchived?: boolean
-    includeSavedForSpecificationId?: number
-  } = {},
+  options: QuestionSelectionOptions = {},
 ): Promise<RequirementSelectionQuestionRow[]> {
-  const params: unknown[] = []
-  const conditions: string[] = []
-  if (!options.includeArchived) {
-    conditions.push('question.is_archived = 0')
-  }
-  if (options.activeOnly) {
-    conditions.push('question.is_active = 1')
-  }
-  if (options.areaId != null) {
-    params.push(options.areaId)
-    conditions.push(`question.area_id = @${params.length - 1}`)
-  }
-  if (options.includeSavedForSpecificationId != null) {
-    params.push(options.includeSavedForSpecificationId)
-    conditions.push(`(
-      (question.is_active = 1 AND question.is_archived = 0)
-      OR EXISTS (
-        SELECT 1
-        FROM specification_requirement_selection_answers saved
-        WHERE saved.question_id = question.id
-          AND saved.specification_id = @${params.length - 1}
-      )
-    )`)
-  }
-
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const selection = buildQuestionSelection(options)
   const rows = (await executor.query(
     `
+      ${selection.sql}
       SELECT
         question.id AS id,
         question.question_code AS questionCode,
@@ -298,13 +370,14 @@ async function listQuestionRows(
         question.archived_at AS archivedAt,
         question.created_at AS createdAt,
         question.updated_at AS updatedAt
-      FROM requirement_selection_questions AS question
+      FROM selected_questions
+      INNER JOIN requirement_selection_questions AS question
+        ON question.id = selected_questions.id
       INNER JOIN requirement_areas AS area
         ON area.id = question.area_id
-      ${where}
       ORDER BY area.name ASC, question.sort_order ASC, question.question_code ASC
     `,
-    params,
+    selection.parameters,
   )) as QuestionDbRow[]
   return rows.map(mapQuestionRow)
 }
@@ -312,12 +385,15 @@ async function listQuestionRows(
 async function hydrateVisibilityGroups(
   executor: QueryExecutor,
   questions: RequirementSelectionQuestionRow[],
+  options: QuestionSelectionOptions,
 ): Promise<void> {
-  const questionIds = questions.map(question => question.id)
-  if (questionIds.length === 0) return
+  if (questions.length === 0) return
+
+  const selection = buildQuestionSelection(options)
 
   const rows = (await executor.query(
     `
+      ${selection.sql}
       SELECT
         visibility_group.question_id AS questionId,
         visibility_group.id AS groupId,
@@ -333,7 +409,9 @@ async function hydrateVisibilityGroups(
         answer.answer_text AS answerText,
         answer.is_active AS answerIsActive,
         answer.is_archived AS answerIsArchived
-      FROM requirement_selection_question_visibility_groups AS visibility_group
+      FROM selected_questions
+      INNER JOIN requirement_selection_question_visibility_groups AS visibility_group
+        ON visibility_group.question_id = selected_questions.id
       INNER JOIN requirement_selection_question_visibility_conditions AS condition
         ON condition.visibility_group_id = visibility_group.id
       INNER JOIN requirement_selection_questions AS parent_question
@@ -342,7 +420,6 @@ async function hydrateVisibilityGroups(
         ON parent_area.id = parent_question.area_id
       INNER JOIN requirement_selection_answers AS answer
         ON answer.id = condition.answer_id
-      WHERE visibility_group.question_id IN (${placeholders(questionIds)})
       ORDER BY
         visibility_group.question_id ASC,
         visibility_group.sort_order ASC,
@@ -350,7 +427,7 @@ async function hydrateVisibilityGroups(
         condition.sort_order ASC,
         condition.id ASC
     `,
-    questionIds,
+    selection.parameters,
   )) as VisibilityConditionDbRow[]
 
   const groupsByQuestion = new Map<
@@ -523,35 +600,16 @@ function sortMatchedRequirements(
 async function hydrateAnswers(
   executor: QueryExecutor,
   questions: RequirementSelectionQuestionRow[],
-  options: {
-    activeOnly?: boolean
-    includeSavedForSpecificationId?: number
-  } = {},
+  questionOptions: QuestionSelectionOptions,
+  answerOptions: AnswerSelectionOptions = {},
 ): Promise<void> {
-  const questionIds = questions.map(question => question.id)
-  if (questionIds.length === 0) return
+  if (questions.length === 0) return
 
-  const params: unknown[] = [...questionIds]
-  const conditions = [`answer.question_id IN (${placeholders(questionIds)})`]
-  if (options.activeOnly) {
-    conditions.push('answer.is_active = 1')
-    conditions.push('answer.is_archived = 0')
-  }
-  if (options.includeSavedForSpecificationId != null) {
-    params.push(options.includeSavedForSpecificationId)
-    conditions.push(`(
-      (answer.is_active = 1 AND answer.is_archived = 0)
-      OR EXISTS (
-        SELECT 1
-        FROM specification_requirement_selection_answers saved
-        WHERE saved.answer_id = answer.id
-          AND saved.specification_id = @${params.length - 1}
-      )
-    )`)
-  }
+  const answerSelection = buildAnswerSelection(questionOptions, answerOptions)
 
   const answerRows = (await executor.query(
     `
+      ${answerSelection.sql}
       SELECT
         answer.id AS id,
         answer.question_id AS questionId,
@@ -564,11 +622,12 @@ async function hydrateAnswers(
         answer.archived_at AS archivedAt,
         answer.created_at AS createdAt,
         answer.updated_at AS updatedAt
-      FROM requirement_selection_answers AS answer
-      WHERE ${conditions.join(' AND ')}
-      ORDER BY answer.sort_order ASC, answer.answer_text ASC
+      FROM selected_answers
+      INNER JOIN requirement_selection_answers AS answer
+        ON answer.id = selected_answers.id
+      ORDER BY answer.question_id ASC, answer.sort_order ASC, answer.answer_text ASC, answer.id ASC
     `,
-    params,
+    answerSelection.parameters,
   )) as AnswerDbRow[]
   const answers = answerRows.map(mapAnswerRow)
   const answersByQuestion = new Map<number, RequirementSelectionAnswerRow[]>()
@@ -579,16 +638,17 @@ async function hydrateAnswers(
   }
 
   const answerById = new Map(answers.map(answer => [answer.id, answer]))
-  const answerIds = answers.map(answer => answer.id)
-  if (answerIds.length > 0) {
+  if (answers.length > 0) {
     const packageRows = (await executor.query(
       `
-        SELECT answer_id AS answerId, requirement_package_id AS packageId
-        FROM requirement_selection_answer_packages
-        WHERE answer_id IN (${placeholders(answerIds)})
-        ORDER BY requirement_package_id ASC
+        ${answerSelection.sql}
+        SELECT answer_package.answer_id AS answerId, answer_package.requirement_package_id AS packageId
+        FROM selected_answers
+        INNER JOIN requirement_selection_answer_packages AS answer_package
+          ON answer_package.answer_id = selected_answers.id
+        ORDER BY answer_package.answer_id ASC, answer_package.requirement_package_id ASC
       `,
-      answerIds,
+      answerSelection.parameters,
     )) as Array<{ answerId: number; packageId: number }>
     for (const row of packageRows) {
       answerById.get(row.answerId)?.packageIds.push(row.packageId)
@@ -596,18 +656,25 @@ async function hydrateAnswers(
 
     const requirementRows = (await executor.query(
       `
-        SELECT answer_id AS answerId, requirement_id AS requirementId
-        FROM requirement_selection_answer_requirements
-        WHERE answer_id IN (${placeholders(answerIds)})
-        ORDER BY requirement_id ASC
+        ${answerSelection.sql}
+        SELECT answer_requirement.answer_id AS answerId, answer_requirement.requirement_id AS requirementId
+        FROM selected_answers
+        INNER JOIN requirement_selection_answer_requirements AS answer_requirement
+          ON answer_requirement.answer_id = selected_answers.id
+        ORDER BY answer_requirement.answer_id ASC, answer_requirement.requirement_id ASC
       `,
-      answerIds,
+      answerSelection.parameters,
     )) as Array<{ answerId: number; requirementId: number }>
     for (const row of requirementRows) {
       answerById.get(row.answerId)?.requirementIds.push(row.requirementId)
     }
 
-    await hydrateAnswerRequirementMatches(executor, answers)
+    await hydrateAnswerRequirementMatches(
+      executor,
+      answers,
+      questionOptions,
+      answerOptions,
+    )
   }
 
   for (const question of questions) {
@@ -618,18 +685,18 @@ async function hydrateAnswers(
 async function hydrateAnswerRequirementMatches(
   executor: QueryExecutor,
   answers: RequirementSelectionAnswerRow[],
+  questionOptions: QuestionSelectionOptions,
+  answerOptions: AnswerSelectionOptions,
 ): Promise<void> {
-  const answerIds = answers.map(answer => answer.id)
-  if (answerIds.length === 0) return
+  if (answers.length === 0) return
 
-  const firstAnswerPlaceholders = placeholders(answerIds)
-  const secondAnswerOffset = answerIds.length
-  const secondAnswerPlaceholders = placeholders(answerIds, secondAnswerOffset)
-  const explicitStatusParam = answerIds.length * 2
+  const answerSelection = buildAnswerSelection(questionOptions, answerOptions)
+  const explicitStatusParam = answerSelection.parameters.length
   const packageStatusParam = explicitStatusParam + 1
   const descriptionStatusParam = packageStatusParam + 1
   const rows = (await executor.query(
     `
+      ${answerSelection.sql}
       SELECT DISTINCT
         source.answerId AS answerId,
         requirement.id AS id,
@@ -647,9 +714,10 @@ async function hydrateAnswerRequirementMatches(
           CAST(NULL AS int) AS packageId,
           CAST(NULL AS nvarchar(max)) AS packageName,
           CAST(NULL AS nvarchar(max)) AS packagePurposeAndScope
-        FROM requirement_selection_answer_requirements AS answer_requirement
-        WHERE answer_requirement.answer_id IN (${firstAnswerPlaceholders})
-          AND EXISTS (
+        FROM selected_answers
+        INNER JOIN requirement_selection_answer_requirements AS answer_requirement
+          ON answer_requirement.answer_id = selected_answers.id
+        WHERE EXISTS (
             SELECT 1
             FROM requirement_versions AS explicit_version
             WHERE explicit_version.requirement_id = answer_requirement.requirement_id
@@ -665,7 +733,9 @@ async function hydrateAnswerRequirementMatches(
           requirement_package.id AS packageId,
           requirement_package.name AS packageName,
           requirement_package.purpose_and_scope AS packagePurposeAndScope
-        FROM requirement_selection_answer_packages AS answer_package
+        FROM selected_answers
+        INNER JOIN requirement_selection_answer_packages AS answer_package
+          ON answer_package.answer_id = selected_answers.id
         INNER JOIN requirement_packages AS requirement_package
           ON requirement_package.id = answer_package.requirement_package_id
         INNER JOIN requirement_version_requirement_packages AS version_package
@@ -673,7 +743,6 @@ async function hydrateAnswerRequirementMatches(
         INNER JOIN requirement_versions AS version
           ON version.id = version_package.requirement_version_id
          AND version.requirement_status_id = @${packageStatusParam}
-        WHERE answer_package.answer_id IN (${secondAnswerPlaceholders})
       ) AS source
       INNER JOIN requirements AS requirement
         ON requirement.id = source.requirementId
@@ -687,8 +756,7 @@ async function hydrateAnswerRequirementMatches(
       ORDER BY source.answerId ASC, requirement.unique_id ASC
     `,
     [
-      ...answerIds,
-      ...answerIds,
+      ...answerSelection.parameters,
       STATUS_PUBLISHED,
       STATUS_PUBLISHED,
       STATUS_PUBLISHED,
@@ -823,12 +891,13 @@ export async function listRequirementSelectionQuestions(
   db: SqlServerDatabase,
   options: { areaId?: number; includeArchived?: boolean } = {},
 ): Promise<RequirementSelectionQuestionRow[]> {
-  const questions = await listQuestionRows(db, {
+  const selectionOptions = {
     areaId: options.areaId,
     includeArchived: options.includeArchived ?? true,
-  })
-  await hydrateVisibilityGroups(db, questions)
-  await hydrateAnswers(db, questions)
+  }
+  const questions = await listQuestionRows(db, selectionOptions)
+  await hydrateVisibilityGroups(db, questions, selectionOptions)
+  await hydrateAnswers(db, questions, selectionOptions)
   return questions
 }
 
@@ -836,11 +905,12 @@ export async function getRequirementSelectionQuestionById(
   db: SqlServerDatabase,
   id: number,
 ): Promise<RequirementSelectionQuestionRow | null> {
-  const questions = await listQuestionRows(db, { includeArchived: true })
-  const question = questions.find(item => item.id === id)
+  const selectionOptions = { includeArchived: true, questionId: id }
+  const questions = await listQuestionRows(db, selectionOptions)
+  const question = questions[0]
   if (!question) return null
-  await hydrateVisibilityGroups(db, [question])
-  await hydrateAnswers(db, [question])
+  await hydrateVisibilityGroups(db, [question], selectionOptions)
+  await hydrateAnswers(db, [question], selectionOptions)
   return question
 }
 
@@ -1586,11 +1656,12 @@ async function getQuestionWithExecutor(
   executor: QueryExecutor,
   id: number,
 ): Promise<RequirementSelectionQuestionRow | null> {
-  const questions = await listQuestionRows(executor, { includeArchived: true })
-  const question = questions.find(item => item.id === id)
+  const selectionOptions = { includeArchived: true, questionId: id }
+  const questions = await listQuestionRows(executor, selectionOptions)
+  const question = questions[0]
   if (!question) return null
-  await hydrateVisibilityGroups(executor, [question])
-  await hydrateAnswers(executor, [question])
+  await hydrateVisibilityGroups(executor, [question], selectionOptions)
+  await hydrateAnswers(executor, [question], selectionOptions)
   return question
 }
 
@@ -1598,12 +1669,16 @@ async function loadSpecificationRequirementSelectionQuestionsForVisibility(
   executor: QueryExecutor,
   specificationId: number,
 ): Promise<SpecificationRequirementSelectionQuestionRow[]> {
-  const questions = (await listQuestionRows(executor, {
+  const selectionOptions = {
     includeArchived: true,
     includeSavedForSpecificationId: specificationId,
-  })) as SpecificationRequirementSelectionQuestionRow[]
-  await hydrateVisibilityGroups(executor, questions)
-  await hydrateAnswers(executor, questions, {
+  }
+  const questions = (await listQuestionRows(
+    executor,
+    selectionOptions,
+  )) as SpecificationRequirementSelectionQuestionRow[]
+  await hydrateVisibilityGroups(executor, questions, selectionOptions)
+  await hydrateAnswers(executor, questions, selectionOptions, {
     includeSavedForSpecificationId: specificationId,
   })
   const savedRows = (await executor.query(

@@ -36,8 +36,7 @@ const mocks = vi.hoisted(() => ({
   listStatuses: vi.fn(),
   listTransitions: vi.fn(),
   listSpecifications: vi.fn(),
-  listSpecificationsForActor: vi.fn(),
-  listSpecificationCoAuthorHsaIdsBySpecification: vi.fn(),
+  listSpecificationsForActorCatalog: vi.fn(),
   querySpecificationItemPage: vi.fn(),
   getPublishedVersionIdForRequirement: vi.fn(),
   getOrCreateSpecificationNeedsReference: vi.fn(),
@@ -115,9 +114,7 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mocks.linkRequirementsToSpecificationAtomically,
   linkRequirementsToSpecification: mocks.linkRequirementsToSpecification,
   listSpecifications: mocks.listSpecifications,
-  listSpecificationsForActor: mocks.listSpecificationsForActor,
-  listSpecificationCoAuthorHsaIdsBySpecification:
-    mocks.listSpecificationCoAuthorHsaIdsBySpecification,
+  listSpecificationsForActorCatalog: mocks.listSpecificationsForActorCatalog,
   unlinkRequirementsFromSpecification:
     mocks.unlinkRequirementsFromSpecification,
 }))
@@ -1339,22 +1336,22 @@ describe('createRequirementsService', () => {
   })
 
   it('authorizes and logs specification listing operations', async () => {
-    mocks.listSpecificationsForActor.mockResolvedValue([
-      {
-        businessNeedsReference: null,
-        id: 7,
-        implementationType: null,
-        itemCount: 2,
-        lifecycleStatus: null,
-        name: 'IAM Specification',
-        governanceObjectType: null,
-        responsibleHsaId: 'SE5560000001-alice1',
-        specificationCode: 'IAM-SPECIFICATION',
-      },
-    ])
-    mocks.listSpecificationCoAuthorHsaIdsBySpecification.mockResolvedValue(
-      new Map([[7, []]]),
-    )
+    mocks.listSpecificationsForActorCatalog.mockResolvedValue({
+      coAuthorHsaIdsBySpecification: new Map([[7, []]]),
+      specifications: [
+        {
+          businessNeedsReference: null,
+          id: 7,
+          implementationType: null,
+          itemCount: 2,
+          lifecycleStatus: null,
+          name: 'IAM Specification',
+          governanceObjectType: null,
+          responsibleHsaId: 'SE5560000001-alice1',
+          specificationCode: 'IAM-SPECIFICATION',
+        },
+      ],
+    })
     const authorization = {
       assertAuthorized: vi.fn().mockResolvedValue(undefined),
     }

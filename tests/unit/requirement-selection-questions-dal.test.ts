@@ -4,6 +4,7 @@ import {
   getExistingSpecificationRequirementIds,
   getRequirementSelectionFilterForSpecification,
   listRequirementSelectionMatchedRequirements,
+  listRequirementSelectionQuestions,
   replaceRequirementSelectionQuestionVisibilityGroups,
   replaceSpecificationRequirementSelectionAnswers,
   resolveRequirementSelectionQuestionId,
@@ -78,18 +79,18 @@ function createRequirementSelectionFilterDb({
   visibilityRows?: Array<Record<string, unknown>>
 }) {
   const query = vi.fn(async (sql: string) => {
-    if (sql.includes('FROM requirement_selection_questions AS question')) {
+    if (
+      sql.includes('FROM requirement_selection_questions AS question') &&
+      sql.includes('question.question_code AS questionCode')
+    ) {
       return questions
     }
     if (
       sql.includes(
-        'FROM requirement_selection_question_visibility_groups AS visibility_group',
+        'requirement_selection_question_visibility_groups AS visibility_group',
       )
     ) {
       return visibilityRows
-    }
-    if (sql.includes('FROM requirement_selection_answers AS answer')) {
-      return answers
     }
     if (
       sql.includes(
@@ -98,17 +99,24 @@ function createRequirementSelectionFilterDb({
     ) {
       return finalRequirementRows
     }
-    if (sql.includes('FROM requirement_selection_answer_packages')) {
+    if (
+      sql.includes('requirement_selection_answer_packages AS answer_package')
+    ) {
       return []
     }
     if (
-      sql.includes('FROM requirement_selection_answer_requirements') &&
+      sql.includes(
+        'requirement_selection_answer_requirements AS answer_requirement',
+      ) &&
       sql.includes('answer_id AS answerId')
     ) {
       return []
     }
     if (sql.includes('source.answerId AS answerId')) {
       return []
+    }
+    if (sql.includes('FROM requirement_selection_answers AS answer')) {
+      return answers
     }
     if (sql.includes('FROM specification_requirement_selection_answers')) {
       return savedRows
@@ -121,6 +129,203 @@ function createRequirementSelectionFilterDb({
 }
 
 describe('requirement selection questions DAL', () => {
+  it('hydrates catalog collections with fixed parameters and deduplicated matched sources', async () => {
+    const query = vi.fn(async (sql: string, _parameters?: unknown[]) => {
+      if (sql.includes('source.answerId AS answerId')) {
+        return [
+          {
+            answerId: 3,
+            description: 'Published 1',
+            id: 101,
+            isDirect: 1,
+            packageId: null,
+            packageName: null,
+            packagePurposeAndScope: null,
+            uniqueId: 'SEC-001',
+          },
+          {
+            answerId: 3,
+            description: 'Published 1',
+            id: 101,
+            isDirect: 0,
+            packageId: 9,
+            packageName: 'Package 9',
+            packagePurposeAndScope: 'Scope 9',
+            uniqueId: 'SEC-001',
+          },
+          {
+            answerId: 3,
+            description: 'Published 1',
+            id: 101,
+            isDirect: 0,
+            packageId: 9,
+            packageName: 'Package 9',
+            packagePurposeAndScope: 'Scope 9',
+            uniqueId: 'SEC-001',
+          },
+          {
+            answerId: 3,
+            description: 'Published 2',
+            id: 102,
+            isDirect: 0,
+            packageId: 7,
+            packageName: 'Package 7',
+            packagePurposeAndScope: 'Scope 7',
+            uniqueId: 'SEC-002',
+          },
+          {
+            answerId: 4,
+            description: 'Published 3',
+            id: 103,
+            isDirect: 1,
+            packageId: 8,
+            packageName: 'Package 8',
+            packagePurposeAndScope: 'Scope 8',
+            uniqueId: 'SEC-003',
+          },
+          {
+            answerId: 9,
+            description: 'Published 4',
+            id: 104,
+            isDirect: 1,
+            packageId: 6,
+            packageName: 'Package 6',
+            packagePurposeAndScope: 'Scope 6',
+            uniqueId: 'SEC-004',
+          },
+          {
+            answerId: 9,
+            description: 'Published 4',
+            id: 104,
+            isDirect: 1,
+            packageId: 6,
+            packageName: 'Package 6',
+            packagePurposeAndScope: 'Scope 6',
+            uniqueId: 'SEC-004',
+          },
+        ]
+      }
+      if (
+        sql.includes('requirement_selection_answer_packages AS answer_package')
+      ) {
+        return [
+          { answerId: 3, packageId: 7 },
+          { answerId: 3, packageId: 9 },
+          { answerId: 4, packageId: 8 },
+          { answerId: 9, packageId: 6 },
+        ]
+      }
+      if (
+        sql.includes(
+          'requirement_selection_answer_requirements AS answer_requirement',
+        )
+      ) {
+        return [
+          { answerId: 3, requirementId: 101 },
+          { answerId: 3, requirementId: 102 },
+          { answerId: 4, requirementId: 103 },
+          { answerId: 9, requirementId: 104 },
+        ]
+      }
+      if (sql.includes('FROM requirement_selection_answers AS answer')) {
+        return [
+          answerRow({ id: 3, sortOrder: 10, text: 'Answer A' }),
+          answerRow({ id: 4, sortOrder: 20, text: 'Answer B' }),
+          answerRow({
+            id: 9,
+            questionId: 2,
+            sortOrder: 10,
+            text: 'Answer C',
+          }),
+        ]
+      }
+      if (
+        sql.includes(
+          'requirement_selection_question_visibility_groups AS visibility_group',
+        )
+      ) {
+        return []
+      }
+      return [
+        questionRow(),
+        questionRow({
+          id: 2,
+          questionCode: 'SAK-KUF002',
+          sortOrder: 20,
+          text: 'Question 2',
+        }),
+      ]
+    })
+    const db = { query } as unknown as Parameters<
+      typeof listRequirementSelectionQuestions
+    >[0]
+
+    const result = await listRequirementSelectionQuestions(db, {
+      includeArchived: true,
+    })
+
+    expect(result.map(question => question.id)).toEqual([1, 2])
+    expect(result[0]?.answers.map(answer => answer.id)).toEqual([3, 4])
+    expect(result[1]?.answers.map(answer => answer.id)).toEqual([9])
+    expect(result[0]?.answers[0]).toMatchObject({
+      matchingRequirementCount: 2,
+      packageIds: [7, 9],
+      requirementIds: [101, 102],
+      matchingRequirements: [
+        {
+          direct: true,
+          id: 101,
+          sourcePackages: [{ id: 9 }],
+        },
+        {
+          direct: false,
+          id: 102,
+          sourcePackages: [{ id: 7 }],
+        },
+      ],
+    })
+    expect(result[0]?.answers[1]).toMatchObject({
+      matchingRequirementCount: 1,
+      packageIds: [8],
+      requirementIds: [103],
+      matchingRequirements: [{ direct: true, id: 103 }],
+    })
+    expect(result[1]?.answers[0]).toMatchObject({
+      matchingRequirementCount: 1,
+      packageIds: [6],
+      requirementIds: [104],
+      matchingRequirements: [
+        {
+          direct: true,
+          id: 104,
+          sourcePackages: [{ id: 6 }],
+        },
+      ],
+    })
+    expect(
+      query.mock.calls.every(
+        ([, parameters]) => (parameters?.length ?? 0) <= 3,
+      ),
+    ).toBe(true)
+    expect(
+      query.mock.calls
+        .slice(0, 6)
+        .every(([sql]) => String(sql).includes('WITH selected_questions AS')),
+    ).toBe(true)
+  })
+
+  it('returns an empty catalog without running child hydration queries', async () => {
+    const query = vi.fn().mockResolvedValue([])
+    const db = { query } as unknown as Parameters<
+      typeof listRequirementSelectionQuestions
+    >[0]
+
+    await expect(
+      listRequirementSelectionQuestions(db, { includeArchived: true }),
+    ).resolves.toEqual([])
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+
   it('loads existing requirement ids through the specification item foreign key', async () => {
     const db = createDb([{ requirementId: 101 }, { requirementId: 102 }])
 
@@ -299,7 +504,10 @@ describe('requirement selection questions DAL', () => {
       if (sql.includes('is_no_requirement_selection')) {
         return [{ id: 5, isNoRequirementSelection: 0 }]
       }
-      if (sql.includes('FROM requirement_selection_questions AS question')) {
+      if (
+        sql.includes('FROM requirement_selection_questions AS question') &&
+        sql.includes('question.question_code AS questionCode')
+      ) {
         return [
           questionRow({
             areaName: 'Integration',
@@ -320,7 +528,7 @@ describe('requirement selection questions DAL', () => {
       }
       if (
         sql.includes(
-          'FROM requirement_selection_question_visibility_groups AS visibility_group',
+          'requirement_selection_question_visibility_groups AS visibility_group',
         )
       ) {
         return [
@@ -342,21 +550,27 @@ describe('requirement selection questions DAL', () => {
           },
         ]
       }
+      if (
+        sql.includes('requirement_selection_answer_packages AS answer_package')
+      ) {
+        return []
+      }
+      if (
+        sql.includes(
+          'requirement_selection_answer_requirements AS answer_requirement',
+        )
+      ) {
+        return []
+      }
+      if (sql.includes('source.answerId AS answerId')) {
+        return []
+      }
       if (sql.includes('FROM requirement_selection_answers AS answer')) {
         return [
           answerRow({ id: 4, questionId: 1, text: 'REST API' }),
           answerRow({ id: 5, questionId: 1, text: 'Message queue' }),
           answerRow({ id: 9, questionId: 2, text: 'E2E tests' }),
         ]
-      }
-      if (sql.includes('FROM requirement_selection_answer_packages')) {
-        return []
-      }
-      if (sql.includes('FROM requirement_selection_answer_requirements')) {
-        return []
-      }
-      if (sql.includes('source.answerId AS answerId')) {
-        return []
       }
       if (sql.includes('FROM specification_requirement_selection_answers')) {
         return savedRows
@@ -459,7 +673,10 @@ describe('requirement selection questions DAL', () => {
       ) {
         return [{ specificationId: 9 }]
       }
-      if (sql.includes('FROM requirement_selection_questions AS question')) {
+      if (
+        sql.includes('FROM requirement_selection_questions AS question') &&
+        sql.includes('question.question_code AS questionCode')
+      ) {
         return [
           questionRow({
             areaName: 'Integration',
@@ -488,7 +705,7 @@ describe('requirement selection questions DAL', () => {
       }
       if (
         sql.includes(
-          'FROM requirement_selection_question_visibility_groups AS visibility_group',
+          'requirement_selection_question_visibility_groups AS visibility_group',
         )
       ) {
         return [
@@ -526,21 +743,27 @@ describe('requirement selection questions DAL', () => {
           },
         ]
       }
+      if (
+        sql.includes('requirement_selection_answer_packages AS answer_package')
+      ) {
+        return []
+      }
+      if (
+        sql.includes(
+          'requirement_selection_answer_requirements AS answer_requirement',
+        )
+      ) {
+        return []
+      }
+      if (sql.includes('source.answerId AS answerId')) {
+        return []
+      }
       if (sql.includes('FROM requirement_selection_answers AS answer')) {
         return [
           answerRow({ id: 4, questionId: 1, text: 'REST API' }),
           answerRow({ id: 9, questionId: 2, text: 'E2E tests' }),
           answerRow({ id: 30, questionId: 3, text: 'Operated service' }),
         ]
-      }
-      if (sql.includes('FROM requirement_selection_answer_packages')) {
-        return []
-      }
-      if (sql.includes('FROM requirement_selection_answer_requirements')) {
-        return []
-      }
-      if (sql.includes('source.answerId AS answerId')) {
-        return []
       }
       if (sql.includes('UPDATE specification_requirement_selection_answers')) {
         return [{ questionId: 1 }, { questionId: 2 }]

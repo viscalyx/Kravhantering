@@ -3,7 +3,7 @@
 Detta sammanhang beskriver verksamhetsspråket för kravhantering:
 hur krav formuleras, granskas, publiceras, används och följs upp.
 
-## Language
+## Språk
 
 Primärt ordlistespråk: `sv`
 
