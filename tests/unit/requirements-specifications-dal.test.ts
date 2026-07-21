@@ -16,6 +16,7 @@ import {
   linkRequirementsToSpecificationAtomically,
   listSpecificationNeedsReferences,
   listSpecifications,
+  listSpecificationsForActorCatalog,
   listSpecificationTraceabilityItems,
   replaceSpecificationCoAuthors,
   unlinkRequirementsFromSpecification,
@@ -102,34 +103,34 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           implementationTypeNameEn: 'Implementation',
           lifecycleStatusNameSv: 'Planerad',
           lifecycleStatusNameEn: 'Planned',
+          itemCount: 3,
         },
       ])
-      .mockResolvedValueOnce([{ specificationId: 1, count: 2 }])
-      .mockResolvedValueOnce([{ specificationId: 1, count: 1 }])
       .mockResolvedValueOnce([
         { specificationId: 1, areaId: 8, areaName: 'Security' },
+      ])
+      .mockResolvedValueOnce([
+        { specificationId: 1, hsaId: 'SE5560000001-coauthor1' },
+        { specificationId: 1, hsaId: 'SE5560000001-coauthor1' },
       ])
 
     const result = await listSpecifications(db)
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining(
-        'FROM requirements_specifications specification_record',
+        'INNER JOIN requirements_specifications specification_record',
       ),
       [],
     )
     expect(String(query.mock.calls[1]?.[0])).toContain(
-      'WHERE requirements_specification_id IN (@0)',
+      'FROM selected_specifications',
     )
-    expect(query.mock.calls[1]?.[1]).toEqual([1])
+    expect(query.mock.calls[1]?.[1]).toEqual([])
     expect(String(query.mock.calls[2]?.[0])).toContain(
-      'WHERE specification_id IN (@0)',
+      'INNER JOIN specification_co_authors AS co_author',
     )
-    expect(query.mock.calls[2]?.[1]).toEqual([1])
-    expect(String(query.mock.calls[3]?.[0])).toContain(
-      'WHERE specification_item.requirements_specification_id IN (@0)',
-    )
-    expect(query.mock.calls[3]?.[1]).toEqual([1])
+    expect(query.mock.calls[2]?.[1]).toEqual([])
+    expect(query).toHaveBeenCalledTimes(3)
     expect(result).toEqual([
       {
         id: 1,
@@ -162,6 +163,52 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         requirementAreas: [{ id: 8, name: 'Security' }],
       },
     ])
+  })
+
+  it('reuses one actor parameter for specification areas and deduplicated co-authors', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          businessNeedsReference: null,
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+          id: 1,
+          itemCount: 0,
+          name: 'Specification A',
+          responsibleGivenName: 'Ada',
+          responsibleHsaId: 'SE5560000001-ada1',
+          responsibleMiddleName: null,
+          responsibleSurname: 'Admin',
+          specificationCode: 'SPEC-001',
+          specificationGovernanceObjectTypeId: null,
+          specificationImplementationTypeId: null,
+          specificationLifecycleStatusId: null,
+          updatedAt: new Date('2026-04-21T10:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { specificationId: 1, hsaId: 'SE5560000001-ada1' },
+        { specificationId: 1, hsaId: 'SE5560000001-ada1' },
+      ])
+
+    const catalog = await listSpecificationsForActorCatalog(db, {
+      actorHsaId: ' SE5560000001-ada1 ',
+      canReadAll: false,
+    })
+
+    expect(catalog.coAuthorHsaIdsBySpecification.get(1)).toEqual([
+      'SE5560000001-ada1',
+    ])
+    expect(query.mock.calls).toHaveLength(3)
+    expect(
+      query.mock.calls.every(
+        ([sql, parameters]) =>
+          String(sql).includes('WITH selected_specifications AS') &&
+          parameters?.length === 1 &&
+          parameters[0] === 'SE5560000001-ada1',
+      ),
+    ).toBe(true)
   })
 
   it('gets a specification by id with nested metadata', async () => {

@@ -3,6 +3,7 @@ import {
   createRequirementPackage,
   deleteRequirementPackage,
   getLinkedRequirementsForPackage,
+  listRequirementPackages,
   replaceRequirementPackageCoAuthors,
   updateRequirementPackage,
 } from '@/lib/dal/requirement-packages'
@@ -30,6 +31,62 @@ function createSqlServerDb() {
 describe('requirement-packages DAL', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('maps ordered co-authors from one fixed-shape package projection', async () => {
+    const base = {
+      coAuthorCreatedAt: new Date('2026-05-02T08:00:00.000Z'),
+      createdAt: new Date('2026-05-01T08:00:00.000Z'),
+      id: 13,
+      isArchived: 0,
+      leadEmail: 'lead@example.test',
+      leadGivenName: 'Package',
+      leadHsaId: 'SE5560000001-lead1',
+      leadMiddleName: null,
+      leadSurname: 'Lead',
+      name: 'Package',
+      purposeAndScope: 'Scope',
+      updatedAt: new Date('2026-05-01T08:00:00.000Z'),
+    }
+    const query = vi.fn().mockResolvedValue([
+      {
+        ...base,
+        coAuthorEmail: 'alpha@example.test',
+        coAuthorGivenName: 'Alpha',
+        coAuthorHsaId: 'SE5560000001-alpha1',
+        coAuthorMiddleName: null,
+        coAuthorSurname: 'Author',
+      },
+      {
+        ...base,
+        coAuthorEmail: 'alpha@example.test',
+        coAuthorGivenName: 'Alpha',
+        coAuthorHsaId: 'SE5560000001-alpha1',
+        coAuthorMiddleName: null,
+        coAuthorSurname: 'Author',
+      },
+      {
+        ...base,
+        coAuthorEmail: 'beta@example.test',
+        coAuthorGivenName: 'Beta',
+        coAuthorHsaId: 'SE5560000001-beta1',
+        coAuthorMiddleName: null,
+        coAuthorSurname: 'Author',
+      },
+    ])
+
+    const result = await listRequirementPackages(
+      { query } as unknown as Parameters<typeof listRequirementPackages>[0],
+      { includeArchived: true },
+    )
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.coAuthors.map(coAuthor => coAuthor.hsaId)).toEqual([
+      'SE5560000001-alpha1',
+      'SE5560000001-beta1',
+    ])
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(query.mock.calls[0]?.[1]).toEqual([1])
   })
 
   it('creates a requirement package with the required timestamp columns', async () => {
@@ -176,7 +233,9 @@ describe('requirement-packages DAL', () => {
     expect(String(query.mock.calls[3]?.[0])).toContain(
       'UPDATE requirement_packages',
     )
-    expect(String(query.mock.calls[6]?.[0])).toContain('DELETE person')
+    expect(
+      query.mock.calls.some(([sql]) => String(sql).includes('DELETE person')),
+    ).toBe(true)
     expect(result).toMatchObject({
       id: 13,
       leadHsaId: 'SE5560000001-new1',

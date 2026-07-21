@@ -118,6 +118,7 @@
     "kravkandidaternas",
     "matchstr",
     "matchtype",
+    "MAXRECURSION",
     "manualarea",
     "manualpkg",
     "manualspec",
@@ -1091,7 +1092,8 @@
     "ägbar",
     "unvalidated",
     "unpdf",
-    "fokusmarkering"
+    "fokusmarkering",
+    "infografik"
   ],
   "flagWords": [],
   "ignorePaths": [

@@ -9,8 +9,7 @@ import {
   getSpecificationLocalRequirementDetail,
   graduateSpecificationLocalRequirementToLibrary,
   linkRequirementsToSpecificationAtomically,
-  listSpecificationCoAuthorHsaIdsBySpecification,
-  listSpecificationsForActor,
+  listSpecificationsForActorCatalog,
   unlinkRequirementsFromSpecification,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -139,10 +138,11 @@ export function createSpecificationWorkflow({
           name_search: input.nameSearch,
         },
         async () => {
-          let specifications = await listSpecificationsForActor(db, {
+          const catalog = await listSpecificationsForActorCatalog(db, {
             actorHsaId: context.actor.hsaId,
             canReadAll: canReadAllSpecifications(context),
           })
+          let specifications = catalog.specifications
           if (input.nameSearch) {
             const q = input.nameSearch.toLowerCase()
             specifications = specifications.filter(p =>
@@ -150,10 +150,7 @@ export function createSpecificationWorkflow({
             )
           }
           const coAuthorIdsBySpecification =
-            await listSpecificationCoAuthorHsaIdsBySpecification(
-              db,
-              specifications.map(p => p.id),
-            )
+            catalog.coAuthorHsaIdsBySpecification
 
           const summary =
             specifications.length === 0

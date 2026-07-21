@@ -4,6 +4,7 @@ import {
   createRfiQuestionSuggestion,
   deleteRfiQuestionSuggestion,
   listRfiQuestionSuggestions,
+  listRfiQuestions,
   lockSpecificationRfiList,
   RFI_SUGGESTION_RESOLVED,
   requestRfiQuestionSuggestionReview,
@@ -77,6 +78,32 @@ const activeQuestionRow = {
 }
 
 describe('RFI questions DAL', () => {
+  it('maps and deduplicates discriminated version links in one fixed-shape query', async () => {
+    const query = createQuery([
+      [activeQuestionRow],
+      [
+        { id: 5, relationKind: 'package', versionId: 34 },
+        { id: 7, relationKind: 'requirement', versionId: 34 },
+        { id: 7, relationKind: 'requirement', versionId: 34 },
+        { id: 3, relationKind: 'selection_question', versionId: 34 },
+      ],
+    ])
+
+    const result = await listRfiQuestions(
+      { query } as unknown as Parameters<typeof listRfiQuestions>[0],
+      { areaId: 2, includeArchived: true },
+    )
+
+    expect(result[0]).toMatchObject({
+      requirementIds: [7],
+      requirementPackageIds: [5],
+      requirementSelectionQuestionIds: [3],
+    })
+    expect(String(query.mock.calls[1]?.[0]).match(/UNION ALL/g)).toHaveLength(2)
+    expect(query.mock.calls[0]?.[1]).toEqual([2])
+    expect(query.mock.calls[1]?.[1]).toEqual([2])
+  })
+
   it('creates an area-sequenced RFI question with version links', async () => {
     const { db, managerQuery, query, transaction } = createTransactionalDb({
       managerResponses: [
@@ -95,9 +122,12 @@ describe('RFI questions DAL', () => {
       ],
       queryResponses: [
         [activeQuestionRow],
-        [{ id: 3, versionId: 34 }],
-        [{ id: 5, versionId: 34 }],
-        [{ id: 7, versionId: 34 }],
+        [
+          { id: 5, relationKind: 'package', versionId: 34 },
+          { id: 7, relationKind: 'requirement', versionId: 34 },
+          { id: 3, relationKind: 'selection_question', versionId: 34 },
+          { id: 7, relationKind: 'requirement', versionId: 34 },
+        ],
       ],
     })
 
@@ -202,9 +232,11 @@ describe('RFI questions DAL', () => {
       ],
       queryResponses: [
         [{ ...activeQuestionRow, questionText: 'Ny fråga', versionNumber: 3 }],
-        [{ id: 8, versionId: 34 }],
-        [{ id: 4, versionId: 34 }],
-        [{ id: 99, versionId: 34 }],
+        [
+          { id: 4, relationKind: 'package', versionId: 34 },
+          { id: 99, relationKind: 'requirement', versionId: 34 },
+          { id: 8, relationKind: 'selection_question', versionId: 34 },
+        ],
       ],
     })
 

@@ -479,13 +479,43 @@ function formatSpecificationLocalRequirementUniqueId(
 
 // ─── Specifications ──────────────────────────────────────────────────────────
 
+interface SpecificationSelection {
+  parameters: unknown[]
+  sql: string
+}
+
+function buildSpecificationSelection(options?: {
+  actorHsaId: string
+}): SpecificationSelection {
+  const parameters = options ? [options.actorHsaId] : []
+  const where = options
+    ? `WHERE specification_record.responsible_hsa_id = @0
+        OR EXISTS (
+          SELECT 1
+          FROM specification_co_authors AS actor_co_author
+          WHERE actor_co_author.specification_id = specification_record.id
+            AND actor_co_author.hsa_id = @0
+        )`
+    : ''
+  return {
+    parameters,
+    sql: `
+      WITH selected_specifications AS (
+        SELECT specification_record.id
+        FROM requirements_specifications AS specification_record
+        ${where}
+      )
+    `,
+  }
+}
+
 async function listSpecificationRows(
   db: SqlServerDatabase,
-  whereClause = '',
-  parameters: unknown[] = [],
+  selection: SpecificationSelection,
 ): Promise<Row[]> {
   return (await db.query(
     `
+      ${selection.sql}
       SELECT
         specification_record.id AS id,
         specification_record.specification_code AS specificationCode,
@@ -506,8 +536,19 @@ async function listSpecificationRows(
         implementation_type.name_sv AS implementationTypeNameSv,
         implementation_type.name_en AS implementationTypeNameEn,
         lifecycle_status.name_sv AS lifecycleStatusNameSv,
-        lifecycle_status.name_en AS lifecycleStatusNameEn
-      FROM requirements_specifications specification_record
+        lifecycle_status.name_en AS lifecycleStatusNameEn,
+        (
+          SELECT COUNT(*)
+          FROM requirements_specification_items AS library_item
+          WHERE library_item.requirements_specification_id = specification_record.id
+        ) + (
+          SELECT COUNT(*)
+          FROM specification_local_requirements AS local_requirement
+          WHERE local_requirement.specification_id = specification_record.id
+        ) AS itemCount
+      FROM selected_specifications
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = selected_specifications.id
       LEFT JOIN specification_governance_object_types governance_object_type
         ON governance_object_type.id = specification_record.specification_governance_object_type_id
       LEFT JOIN specification_implementation_types implementation_type
@@ -516,65 +557,63 @@ async function listSpecificationRows(
         ON lifecycle_status.id = specification_record.specification_lifecycle_status_id
       LEFT JOIN requirement_responsibility_people responsible_person
         ON responsible_person.hsa_id = specification_record.responsible_hsa_id
-      ${whereClause}
-      ORDER BY specification_record.name
+      ORDER BY specification_record.name ASC, specification_record.id ASC
     `,
-    parameters,
+    selection.parameters,
   )) as Row[]
 }
 
-async function mapSpecificationRows(db: SqlServerDatabase, specRows: Row[]) {
+async function mapSpecificationRows(
+  db: SqlServerDatabase,
+  specRows: Row[],
+  selection: SpecificationSelection,
+) {
+  const coAuthorHsaIdsBySpecification = new Map<number, string[]>()
   if (specRows.length === 0) {
-    return []
+    return { coAuthorHsaIdsBySpecification, specifications: [] }
   }
 
-  const specIds = [...new Set(specRows.map(row => Number(row.id)))]
-  const specIdClause = buildInClause(0, specIds)
-  const [libraryCounts, localCounts, libraryAreas] = await Promise.all([
+  const [libraryAreas, coAuthorRows] = await Promise.all([
     db.query(
       `
-          SELECT requirements_specification_id AS specificationId, COUNT(*) AS count
-          FROM requirements_specification_items
-          WHERE requirements_specification_id IN (${specIdClause})
-          GROUP BY requirements_specification_id
-        `,
-      specIds,
-    ) as Promise<Row[]>,
-    db.query(
-      `
-          SELECT specification_id AS specificationId, COUNT(*) AS count
-          FROM specification_local_requirements
-          WHERE specification_id IN (${specIdClause})
-          GROUP BY specification_id
-        `,
-      specIds,
-    ) as Promise<Row[]>,
-    db.query(
-      `
+          ${selection.sql}
           SELECT
             specification_item.requirements_specification_id AS specificationId,
             requirement_area.id AS areaId,
             requirement_area.name AS areaName
-          FROM requirements_specification_items specification_item
+          FROM selected_specifications
+          INNER JOIN requirements_specification_items specification_item
+            ON specification_item.requirements_specification_id = selected_specifications.id
           INNER JOIN requirements requirement
             ON requirement.id = specification_item.requirement_id
           INNER JOIN requirement_areas requirement_area
             ON requirement_area.id = requirement.requirement_area_id
-          WHERE specification_item.requirements_specification_id IN (${specIdClause})
           GROUP BY specification_item.requirements_specification_id, requirement_area.id, requirement_area.name
+          ORDER BY specification_item.requirements_specification_id ASC, requirement_area.name ASC, requirement_area.id ASC
         `,
-      specIds,
+      selection.parameters,
+    ) as Promise<Row[]>,
+    db.query(
+      `
+          ${selection.sql}
+          SELECT
+            co_author.specification_id AS specificationId,
+            co_author.hsa_id AS hsaId
+          FROM selected_specifications
+          INNER JOIN specification_co_authors AS co_author
+            ON co_author.specification_id = selected_specifications.id
+          ORDER BY co_author.specification_id ASC, co_author.hsa_id ASC
+        `,
+      selection.parameters,
     ) as Promise<Row[]>,
   ])
 
-  const itemCounts = new Map<number, number>()
-  for (const row of [...libraryCounts, ...localCounts]) {
+  for (const row of coAuthorRows) {
     const specificationId = Number(row.specificationId)
-    const count = Number(row.count) || 0
-    itemCounts.set(
-      specificationId,
-      (itemCounts.get(specificationId) ?? 0) + count,
-    )
+    const existing = coAuthorHsaIdsBySpecification.get(specificationId) ?? []
+    const hsaId = requireStr(row.hsaId, 'hsaId')
+    if (!existing.includes(hsaId)) existing.push(hsaId)
+    coAuthorHsaIdsBySpecification.set(specificationId, existing)
   }
 
   const requirementAreasBySpecification = new Map<number, Map<number, string>>()
@@ -588,7 +627,7 @@ async function mapSpecificationRows(db: SqlServerDatabase, specRows: Row[]) {
     requirementAreasBySpecification.set(specificationId, existing)
   }
 
-  return specRows.map(row => {
+  const specifications = specRows.map(row => {
     const id = Number(row.id)
     const specificationGovernanceObjectTypeId = toNum(
       row.specificationGovernanceObjectTypeId,
@@ -650,43 +689,58 @@ async function mapSpecificationRows(db: SqlServerDatabase, specRows: Row[]) {
                 : '',
             }
           : null,
-      itemCount: itemCounts.get(id) ?? 0,
+      itemCount: Number(row.itemCount) || 0,
       requirementAreas,
     }
   })
+  return { coAuthorHsaIdsBySpecification, specifications }
 }
 
 export async function listSpecifications(db: SqlServerDatabase) {
-  return mapSpecificationRows(db, await listSpecificationRows(db))
+  const selection = buildSpecificationSelection()
+  return (
+    await mapSpecificationRows(
+      db,
+      await listSpecificationRows(db, selection),
+      selection,
+    )
+  ).specifications
+}
+
+export async function listSpecificationsForActorCatalog(
+  db: SqlServerDatabase,
+  options: { actorHsaId: string | null; canReadAll: boolean },
+) {
+  if (options.canReadAll) {
+    const selection = buildSpecificationSelection()
+    return mapSpecificationRows(
+      db,
+      await listSpecificationRows(db, selection),
+      selection,
+    )
+  }
+
+  const actorHsaId = options.actorHsaId?.trim()
+  if (!actorHsaId) {
+    return {
+      coAuthorHsaIdsBySpecification: new Map<number, string[]>(),
+      specifications: [],
+    }
+  }
+
+  const selection = buildSpecificationSelection({ actorHsaId })
+  return mapSpecificationRows(
+    db,
+    await listSpecificationRows(db, selection),
+    selection,
+  )
 }
 
 export async function listSpecificationsForActor(
   db: SqlServerDatabase,
   options: { actorHsaId: string | null; canReadAll: boolean },
 ) {
-  if (options.canReadAll) {
-    return listSpecifications(db)
-  }
-
-  const actorHsaId = options.actorHsaId?.trim()
-  if (!actorHsaId) {
-    return []
-  }
-
-  const rows = await listSpecificationRows(
-    db,
-    `
-      WHERE specification_record.responsible_hsa_id = @0
-        OR EXISTS (
-          SELECT 1
-          FROM specification_co_authors co_author
-          WHERE co_author.specification_id = specification_record.id
-            AND co_author.hsa_id = @0
-        )
-    `,
-    [actorHsaId],
-  )
-  return mapSpecificationRows(db, rows)
+  return (await listSpecificationsForActorCatalog(db, options)).specifications
 }
 
 interface SpecificationRecord {
@@ -927,38 +981,6 @@ export async function listSpecificationCoAuthorHsaIds(
     [specificationId],
   )) as Row[]
   return rows.map(row => requireStr(row.hsaId, 'hsaId'))
-}
-
-export async function listSpecificationCoAuthorHsaIdsBySpecification(
-  db: SqlServerDatabase,
-  specificationIds: number[],
-): Promise<Map<number, string[]>> {
-  const distinctSpecificationIds = [...new Set(specificationIds)].filter(
-    id => Number.isInteger(id) && id > 0,
-  )
-  const bySpecification = new Map<number, string[]>()
-  if (distinctSpecificationIds.length === 0) {
-    return bySpecification
-  }
-
-  const rows = (await db.query(
-    `
-      SELECT specification_id AS specificationId, hsa_id AS hsaId
-      FROM specification_co_authors
-      WHERE specification_id IN (${buildInClause(0, distinctSpecificationIds)})
-      ORDER BY specification_id ASC, hsa_id ASC
-    `,
-    distinctSpecificationIds,
-  )) as Row[]
-
-  for (const row of rows) {
-    const specificationId = Number(row.specificationId)
-    const existing = bySpecification.get(specificationId) ?? []
-    existing.push(requireStr(row.hsaId, 'hsaId'))
-    bySpecification.set(specificationId, existing)
-  }
-
-  return bySpecification
 }
 
 export async function canAuthorSpecification(

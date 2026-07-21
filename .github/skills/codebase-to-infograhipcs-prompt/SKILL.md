@@ -12,6 +12,8 @@ description: >-
 
 This skill helps an AI analyze a complete software codebase and produce a high-quality prompt for another AI system that will generate a professional infographic.
 
+Use domain language from CONTEXT.md where relevant.
+
 The skill has two phases:
 
 1. Analyze the codebase and extract the right information.

@@ -5,6 +5,8 @@ requirement generation. Behavioral contracts for prompts, provider requests,
 taxonomy loading, and generated-requirement validation live in
 [reference-data-and-ai.md](../governance/reference-data-and-ai.md).
 
+![Technical infographic showing AI-assisted authoring in Kravhantering. The flow illustrates how user input is checked, processed through an LLM integration layer, sent to OpenRouter, validated, and reviewed by a human before being imported into a requirements library or requirements document.](../images/ai-assisted-authoring-llm-integration-architecture.png)
+
 ## Local OpenRouter Setup
 
 AI-assisted requirement generation is disabled unless local OpenRouter
