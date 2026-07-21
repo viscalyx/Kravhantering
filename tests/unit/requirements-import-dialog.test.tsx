@@ -379,6 +379,49 @@ describe('RequirementsImportDialog', () => {
     ).toBeTruthy()
   })
 
+  it('omits the priority separator when the localized name is empty', async () => {
+    mockReferenceDataFetch({
+      priorityLevels: [
+        {
+          assessmentCriteriaEn: 'Low impact',
+          assessmentCriteriaSv: 'Låg påverkan',
+          code: 'P2',
+          color: '#22c55e',
+          descriptionEn: 'Low priority',
+          descriptionSv: 'Låg prioritet',
+          iconName: 'ArrowDownLeft',
+          id: 2,
+          nameEn: 'Low',
+          nameSv: '',
+        },
+      ],
+    })
+    const row = importPreviewRow()
+    row.values.priorityLevelId = 2
+    vi.mocked(apiFetch).mockResolvedValue(importPreviewResponse([row]))
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
+
+    expect(await screen.findByText('P2')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expandera rad #1' }))
+    expect(screen.getByRole('option', { name: 'P2' })).toBeInTheDocument()
+  })
+
   it('renders the server-resolved priority snapshot when taxonomy no longer contains the selected ID', async () => {
     const row = importPreviewRow()
     row.values.priorityLevelId = 2

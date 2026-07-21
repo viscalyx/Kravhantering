@@ -2003,7 +2003,7 @@ export default function RequirementsImportDialog({
   const getLocalizedName = (option: TaxonomyOption) =>
     locale === 'sv' ? option.nameSv : option.nameEn
   const getPriorityLabel = (option: PriorityLevelOption) =>
-    `${option.code} – ${getLocalizedName(option)}`
+    [option.code, getLocalizedName(option)].filter(Boolean).join(' – ')
   const getPriorityChipLabel = (
     option: PriorityLevelOption | ResolvedPriorityLevelSnapshot,
   ) =>
