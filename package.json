@@ -150,6 +150,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@react-pdf/renderer": "^4.5.1",
     "@tailwindcss/typography": "^0.5.20",
+    "content-disposition": "^2.0.1",
     "framer-motion": "^12.42.2",
     "iron-session": "^8.0.4",
     "jose": "^6.2.3",

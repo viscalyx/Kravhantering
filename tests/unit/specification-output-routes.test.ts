@@ -166,6 +166,9 @@ describe('specification output routes', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Type')).toContain('text/csv')
+    expect(response.headers.get('Content-Disposition')).toBe(
+      'attachment; filename="Full CSV-export IAM SPEC-1.csv"',
+    )
     expect(response.headers.get('Content-Length')).toBe('19')
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(response.headers.get('X-Accel-Buffering')).toBe('no')

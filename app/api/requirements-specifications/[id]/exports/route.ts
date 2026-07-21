@@ -5,6 +5,7 @@ import {
   createCsvItemLimitError,
   runBoundedCsvOutput,
 } from '@/lib/generated-output/csv-runner'
+import { csvContentDisposition } from '@/lib/http/content-disposition'
 import {
   idParamSchema,
   localeSchema,
@@ -36,21 +37,6 @@ const exportQuerySchema = z
     profile: z.enum(['procurement', 'full']),
   })
   .strict()
-
-const RESERVED_FILENAME_CHARS = /[/\\:*?"<>|]+/g
-
-function csvContentDisposition(filename: string): string {
-  const sanitized = filename
-    .replace(RESERVED_FILENAME_CHARS, '-')
-    .replace(/\s+/g, ' ')
-    .trim()
-  const withExtension = sanitized.toLowerCase().endsWith('.csv')
-    ? sanitized
-    : `${sanitized}.csv`
-  const fallback = withExtension.replace(/[^\x20-\x7e]/g, '_')
-
-  return `attachment; filename="${fallback.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(withExtension)}`
-}
 
 function errorResponse(error: unknown) {
   if (error instanceof ReportDataError) {
