@@ -483,8 +483,12 @@ export default function PriorityLevelsClient() {
                           </>
                         )}
                         <input
+                          aria-describedby={
+                            previewColors ? undefined : 'priority-color-warning'
+                          }
+                          aria-invalid={!previewColors}
                           aria-label={t('colorHex')}
-                          className={`${inputClassName} min-w-0`}
+                          className={`${inputClassName} min-w-0 max-w-36`}
                           disabled={controller.submitting}
                           id="priority-color-hex"
                           onChange={event =>
@@ -581,7 +585,10 @@ export default function PriorityLevelsClient() {
                         })}
                       </div>
                     ) : (
-                      <p className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+                      <p
+                        className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+                        id="priority-color-warning"
+                      >
                         <AlertTriangle
                           aria-hidden="true"
                           className="h-4 w-4 shrink-0"

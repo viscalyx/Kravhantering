@@ -196,6 +196,12 @@ describe('PriorityLevelsClient', () => {
     expect(codeSortRow).toContainElement(
       document.getElementById('priority-sort-order'),
     )
+    const colorHexInput = screen.getByLabelText('priorityLevelAdmin.colorHex')
+    expect(colorHexInput).toHaveValue('#22c55e')
+    expect(colorHexInput).toHaveClass('max-w-36')
+    expect(screen.getByLabelText('priorityLevelAdmin.colorPicker')).toHaveValue(
+      '#22c55e',
+    )
     const colorIconRow =
       document.getElementById('priority-color-hex')?.parentElement
         ?.parentElement?.parentElement
@@ -263,9 +269,9 @@ describe('PriorityLevelsClient', () => {
         name: 'priorityLevelAdmin.themePreview',
       }),
     ).toHaveTextContent('priorityLevelAdmin.invalidColorWarning')
-    expect(screen.getByLabelText('priorityLevelAdmin.colorHex')).toHaveValue(
-      'invalid-color',
-    )
+    const colorHexInput = screen.getByLabelText('priorityLevelAdmin.colorHex')
+    expect(colorHexInput).toHaveValue('invalid-color')
+    expect(colorHexInput).toHaveAttribute('aria-invalid', 'true')
     expect(document.querySelector('[data-color-swatch="exact-rgb"]')).toBeNull()
     expect(screen.queryByLabelText('priorityLevelAdmin.colorPicker')).toBeNull()
     expect(document.body.innerHTML).not.toContain('#000000')

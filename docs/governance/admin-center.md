@@ -567,9 +567,8 @@ the configured accent and optional decorative icon. This applies to lists,
 details, import and AI review, priority-scale help, administration, and
 single or bulk deviation forms. Native selection controls remain text-only.
 The priority administration table combines code and name in one Priority
-column and has no standalone color marker. The color field retains one exact,
-bordered rectangular RGB swatch as an input aid; invalid input leaves that
-swatch neutral.
+column and has no standalone color marker. The color field contains a native
+color picker beside a compact hexadecimal `#RRGGBB` text field.
 
 ### Requirement Area Owner
 

@@ -212,6 +212,10 @@ test.describe('Admin statuses and workflows', () => {
       await expect(form.locator('[data-color-swatch="exact-rgb"]')).toHaveCount(
         0,
       )
+      await expect(form.getByLabel('Färgkod (hex)')).toHaveValue(
+        priorityLevel.color,
+      )
+      await expect(form.locator('#priority-color-hex')).toHaveClass(/max-w-36/u)
       const codeSortRow = form
         .locator('#priority-code')
         .locator('..')
