@@ -136,5 +136,11 @@ describe('specification item page SQL', () => {
     expect(query).toHaveBeenCalledTimes(2)
     expect(query.mock.calls[0]?.[1]).toEqual([7, 31])
     expect(query.mock.calls[1]?.[1]).toEqual([7, 41])
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      'priority_level.code AS priorityLevelCode',
+    )
+    expect(String(query.mock.calls[1]?.[0])).toContain(
+      'priority_level.code AS priorityLevelCode',
+    )
   })
 })

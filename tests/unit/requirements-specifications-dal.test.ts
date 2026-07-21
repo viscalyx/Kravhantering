@@ -992,6 +992,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           requirementTypeNameEn: 'Business',
           requirementTypeNameSv: 'Verksamhet',
           priorityLevelId: 10,
+          priorityLevelCode: 'P4',
           priorityLevelColor: '#dc2626',
           priorityLevelIconName: 'ShieldAlert',
           priorityLevelNameEn: 'High',
@@ -1054,6 +1055,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       },
       verifiable: true,
       priorityLevel: {
+        code: 'P4',
         color: '#dc2626',
         iconName: 'ShieldAlert',
         id: 10,

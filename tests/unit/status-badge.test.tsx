@@ -15,7 +15,7 @@ describe('StatusBadge', () => {
     expect(screen.getByText('Draft')).toBeInTheDocument()
   })
 
-  it('emits both light- and dark-mode foreground CSS variables', () => {
+  it('emits exact light- and dark-mode background and foreground variables', () => {
     const { container } = render(<StatusBadge color="#3b82f6" label="Test" />)
     const span = container.querySelector('span.status-badge') as HTMLElement
     expect(span).toBeTruthy()
@@ -25,17 +25,21 @@ describe('StatusBadge', () => {
     expect(span.style.getPropertyValue('--sb-fg-dark')).toMatch(
       /^#[0-9a-f]{6}$/,
     )
+    expect(span.style.getPropertyValue('--sb-bg-light')).toMatch(
+      /^#[0-9a-f]{6}$/,
+    )
+    expect(span.style.getPropertyValue('--sb-bg-dark')).toMatch(
+      /^#[0-9a-f]{6}$/,
+    )
   })
 
-  it('uses a fallback gray when color is null', () => {
+  it('omits accent styling when color is null', () => {
     const { container } = render(<StatusBadge color={null} label="Unknown" />)
     const span = container.querySelector('span.status-badge') as HTMLElement
     expect(span).toBeTruthy()
-    // Fallback #6b7280 (rgb 107,114,128) is used as the configured background;
-    // JSDOM normalizes hex+alpha to rgba(...).
-    expect(span.style.backgroundColor).toContain('rgba(107, 114, 128')
-    expect(span.style.getPropertyValue('--sb-fg-light')).not.toBe('')
-    expect(span.style.getPropertyValue('--sb-fg-dark')).not.toBe('')
+    expect(span).not.toHaveAttribute('data-accent-color')
+    expect(span.style.getPropertyValue('--sb-bg-light')).toBe('')
+    expect(span).toHaveClass('bg-secondary-100')
   })
 
   it('clamps a low-contrast DB color to a readable light-mode foreground (WCAG 1.4.3)', () => {
@@ -44,7 +48,8 @@ describe('StatusBadge', () => {
     const light = span.style.getPropertyValue('--sb-fg-light')
     // Bright yellow on near-white background fails 4.5:1; the light foreground
     // must be darkened so it passes against white.
-    expect(contrastRatio(light, '#ffffff')).toBeGreaterThanOrEqual(4.5)
+    const background = span.style.getPropertyValue('--sb-bg-light')
+    expect(contrastRatio(light, background)).toBeGreaterThanOrEqual(4.5)
     expect(light.toLowerCase()).not.toBe('#ffff00')
   })
 
@@ -54,7 +59,8 @@ describe('StatusBadge', () => {
     const { container } = render(<StatusBadge color="#1e3a8a" label="Deep" />)
     const span = container.querySelector('span.status-badge') as HTMLElement
     const dark = span.style.getPropertyValue('--sb-fg-dark')
-    expect(contrastRatio(dark, '#0f172a')).toBeGreaterThanOrEqual(4.5)
+    const background = span.style.getPropertyValue('--sb-bg-dark')
+    expect(contrastRatio(dark, background)).toBeGreaterThanOrEqual(4.5)
   })
 
   it('produces a darker light-variant and lighter dark-variant for mid-tones', () => {
@@ -73,11 +79,34 @@ describe('StatusBadge', () => {
     )
   })
 
-  it('preserves the configured background color (alpha-blended hex)', () => {
+  it('uses an opaque background derived from the configured accent', () => {
     const { container } = render(<StatusBadge color="#3b82f6" label="Test" />)
     const span = container.querySelector('span.status-badge') as HTMLElement
-    // JSDOM converts `#3b82f620` (12.5% alpha) to rgba(59, 130, 246, ...)
-    expect(span.style.backgroundColor).toContain('rgba(59, 130, 246')
+    expect(span.style.getPropertyValue('--sb-bg-light')).toBe('#e7effe')
+    expect(span.style.getPropertyValue('--sb-bg-dark')).toBe('#152444')
+    expect(span.style.backgroundColor).toBe('')
+  })
+
+  it('omits accent styling for an invalid configured value', () => {
+    const { container } = render(
+      <StatusBadge color="invalid" label="Invalid" />,
+    )
+    const span = container.querySelector('span.status-badge') as HTMLElement
+    expect(span).not.toHaveAttribute('data-accent-color')
+    expect(span.getAttribute('style')).toBeNull()
+  })
+
+  it('renders the configured icon and supports forced theme previews', () => {
+    const { container } = render(
+      <StatusBadge
+        color="#22c55e"
+        iconName="ArrowDownLeft"
+        label="P2 - Low"
+        theme="dark"
+      />,
+    )
+    expect(container.querySelector('svg')).toBeTruthy()
+    expect(container.querySelector('.status-badge--dark')).toBeTruthy()
   })
 
   it('respects the size prop', () => {

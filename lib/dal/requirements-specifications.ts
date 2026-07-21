@@ -111,6 +111,7 @@ export interface SpecificationLocalRequirementDetail {
     uri: string | null
   }[]
   priorityLevel: {
+    code: string
     color: string
     iconName: string | null
     id: number
@@ -2052,6 +2053,7 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
     requirement_type.name_en AS requirementTypeNameEn,
     requirement_type.name_sv AS requirementTypeNameSv,
     local_requirement.priority_level_id AS priorityLevelId,
+    priority_level.code AS priorityLevelCode,
     priority_level.color AS priorityLevelColor,
     priority_level.icon_name AS priorityLevelIconName,
     priority_level.name_en AS priorityLevelNameEn,
@@ -2144,6 +2146,7 @@ function mapSpecificationLocalRequirementDetailFlat(
     priorityLevel:
       priorityLevelId != null
         ? {
+            code: String(row.priorityLevelCode ?? ''),
             color: String(row.priorityLevelColor ?? ''),
             iconName: toStr(row.priorityLevelIconName),
             id: priorityLevelId,

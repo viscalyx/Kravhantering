@@ -8,7 +8,7 @@ const generatedPayload = {
   requirements: [
     {
       description: generatedDescription,
-      priorityLevelId: null,
+      priorityLevelId: 2,
       verifiable: true,
       typeId: 1,
     },
@@ -51,11 +51,17 @@ function previewBody(token: string) {
         infos: [],
         labels: {
           category: null,
-          priorityLevel: null,
+          priorityLevel: 'P2 – Låg',
           qualityCharacteristic: null,
           type: 'Funktionellt',
         },
         proposedNormReferenceKeys: [],
+        resolvedPriorityLevel: {
+          code: 'P2',
+          color: '#22c55e',
+          iconName: 'ArrowDownLeft',
+          name: 'Låg',
+        },
         reviewRowId: `${token}-row-0`,
         selected: true,
         sourceIndex: 0,
@@ -65,7 +71,7 @@ function previewBody(token: string) {
           description: generatedDescription,
           needsReferenceId: null,
           normReferenceIds: [],
-          priorityLevelId: null,
+          priorityLevelId: 2,
           qualityCharacteristicId: null,
           requirementPackageIds: [],
           verifiable: true,
@@ -210,6 +216,12 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
   const dialog = page.getByRole('dialog', {
     name: 'AI-assisterat författande',
   })
+  const priorityBadge = dialog.locator('.status-badge').filter({
+    hasText: 'P2 – Låg',
+  })
+  await expect(priorityBadge).toHaveCount(1)
+  await expect(priorityBadge).toHaveAttribute('data-accent-color', '#22c55e')
+  await expect(priorityBadge.locator('svg')).toHaveCount(1)
   await dialog.getByRole('button', { name: 'AI-analys' }).click()
   await expect(
     dialog.getByRole('heading', { level: 3, name: 'Analys av betygskrav' }),

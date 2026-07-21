@@ -12,8 +12,10 @@ export interface PriorityLevelOption extends TaxonomyOption {
   assessmentCriteriaEn: string
   assessmentCriteriaSv: string
   code: string
+  color: string
   descriptionEn: string
   descriptionSv: string
+  iconName: string | null
 }
 
 export interface AreaOption {

@@ -75,7 +75,7 @@ async function openPriorityLevelForm(page: Page, priorityLevel: PriorityLevel) {
   await page.goto('/sv/priority-levels')
 
   const row = page.getByRole('row', {
-    name: new RegExp(priorityLevel.nameSv),
+    name: priorityLevel.nameSv,
   })
   await row.getByRole('button', { name: 'Redigera' }).click()
 
@@ -172,10 +172,80 @@ test.describe('Admin statuses and workflows', () => {
 
     try {
       const form = await openPriorityLevelForm(page, priorityLevel)
+      const priorityTable = page.getByRole('table')
+      await expect(
+        priorityTable.getByRole('columnheader', { name: 'Prioritet' }),
+      ).toHaveCount(1)
+      await expect(
+        priorityTable.getByRole('columnheader', { name: 'Färg' }),
+      ).toHaveCount(0)
+      await expect(
+        priorityTable.getByRole('columnheader', { name: 'Kod' }),
+      ).toHaveCount(0)
+      await expect(
+        priorityTable
+          .getByRole('row', { name: priorityLevel.nameSv })
+          .locator('.status-badge'),
+      ).toHaveText(`${priorityLevel.code} – ${priorityLevel.nameSv}`)
       const saveButton = form.getByRole('button', { name: 'Spara' })
       const descriptionInput = form.getByRole('textbox', {
         name: 'Beskrivning (SV) *',
       })
+      const badgePreview = form.getByRole('status', {
+        name: 'Förhandsvisning av märke',
+      })
+
+      await expect(badgePreview).toContainText(
+        'Kontrollera att prioriteten är läsbar och visuellt särskiljbar',
+      )
+      await expect(badgePreview).toContainText('Ljust tema')
+      await expect(badgePreview).toContainText('Mörkt tema')
+      await expect(badgePreview.getByText('Uppfyller AA')).toHaveCount(2)
+      await expect(badgePreview.locator('.status-badge')).toHaveCount(2)
+      await expect(
+        badgePreview.getByText(
+          `${priorityLevel.code} – ${priorityLevel.nameSv}`,
+          { exact: true },
+        ),
+      ).toHaveCount(2)
+      await expect(badgePreview.locator('.status-badge svg')).toHaveCount(2)
+      await expect(form.locator('[data-color-swatch="exact-rgb"]')).toHaveCount(
+        0,
+      )
+      await expect(form.getByLabel('Färgkod (hex)')).toHaveValue(
+        priorityLevel.color,
+      )
+      await expect(form.locator('#priority-color-hex')).toHaveClass(/max-w-36/u)
+      const codeSortRow = form
+        .locator('[data-priority-form-row="code-sort"]')
+        .filter({ has: page.locator('#priority-code') })
+      await expect(codeSortRow).toHaveClass(/sm:grid-cols-2/u)
+      await expect(codeSortRow.locator('#priority-sort-order')).toHaveCount(1)
+      const colorIconRow = form
+        .locator('[data-priority-form-row="color-icon"]')
+        .filter({ has: page.locator('#priority-color-hex') })
+      await expect(colorIconRow).toHaveClass(/sm:grid-cols-2/u)
+      await expect(colorIconRow.locator('#priority-icon')).toHaveCount(1)
+      await form
+        .getByRole('button', { name: 'Hjälp: Sorteringsordning' })
+        .click()
+      await expect(
+        form.getByText(
+          'Ange ett tal som styr visningsordningen. Lägre tal visas först.',
+        ),
+      ).toBeVisible()
+      await form.getByRole('button', { name: 'Hjälp: Färg' }).click()
+      await expect(
+        form.getByText(
+          'Välj färgen som används för märket för denna prioritet.',
+        ),
+      ).toBeVisible()
+      await form.getByRole('button', { name: 'Hjälp: Ikon' }).click()
+      await expect(
+        form.getByText(
+          'Välj en godkänd ikon som visas bredvid prioritetsetiketten. Lämna tomt för ett märke med enbart text.',
+        ),
+      ).toBeVisible()
 
       await expect(saveButton).toBeDisabled()
       await descriptionInput.fill(temporaryDescription)

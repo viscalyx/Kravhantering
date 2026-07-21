@@ -39,11 +39,13 @@ interface SpecificationLocalRequirementDetail {
     uri: string | null
   }[]
   priorityLevel: {
+    code: string
     color: string
     iconName: string | null
     id: number
     nameEn: string
     nameSv: string
+    sortOrder: number
   } | null
   qualityCharacteristic: { id: number; nameEn: string; nameSv: string } | null
   requirementArea: null
@@ -1052,6 +1054,20 @@ export default function SpecificationLocalRequirementDetailClient({
   }
 
   const priorityLevelLabel = localName(requirement.priorityLevel)?.trim()
+  const priorityLevelBadgeLabel =
+    requirement.priorityLevel && priorityLevelLabel
+      ? `${requirement.priorityLevel.code} – ${priorityLevelLabel}`
+      : null
+  const priorityLevelForDeviation = requirement.priorityLevel
+    ? {
+        code: requirement.priorityLevel.code,
+        color: requirement.priorityLevel.color,
+        iconName: requirement.priorityLevel.iconName,
+        id: requirement.priorityLevel.id,
+        name: priorityLevelLabel ?? '',
+        sortOrder: requirement.priorityLevel.sortOrder,
+      }
+    : null
 
   const metadata = [
     {
@@ -1083,11 +1099,11 @@ export default function SpecificationLocalRequirementDetailClient({
       label: t('priorityLevel'),
       markerValue: 'priority level',
       value:
-        requirement.priorityLevel && priorityLevelLabel ? (
+        requirement.priorityLevel && priorityLevelBadgeLabel ? (
           <StatusBadge
             color={requirement.priorityLevel.color}
             iconName={requirement.priorityLevel.iconName}
-            label={priorityLevelLabel}
+            label={priorityLevelBadgeLabel}
             size="sm"
           />
         ) : (
@@ -1435,6 +1451,7 @@ export default function SpecificationLocalRequirementDetailClient({
         onClose={() => setShowDeviationForm(false)}
         onSubmit={handleCreateDeviation}
         open={showDeviationForm}
+        priorityLevel={priorityLevelForDeviation}
       />
       <DeviationFormModal
         initialMotivation={latestDeviation?.motivation ?? ''}
@@ -1442,6 +1459,7 @@ export default function SpecificationLocalRequirementDetailClient({
         onClose={() => setShowEditDeviationForm(false)}
         onSubmit={handleEditDeviation}
         open={showEditDeviationForm}
+        priorityLevel={priorityLevelForDeviation}
         title={td('editDeviation')}
       />
       <DeviationDecisionModal

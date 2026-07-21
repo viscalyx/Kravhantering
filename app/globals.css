@@ -107,16 +107,28 @@
   }
 
   /*
-   * Status badge: theme-aware foreground.
-   * Per-instance CSS variables --sb-fg-light / --sb-fg-dark are emitted by
-   * `components/StatusBadge.tsx` via `getReadableTextColors`, ensuring WCAG
-   * 1.4.3 (AA, 4.5:1) against the badge background in BOTH light and dark mode.
+   * Status badge: theme-aware opaque background and foreground.
+   * Per-instance variables are emitted only for valid configured accents.
    */
-  .status-badge {
+  .status-badge[data-accent-color] {
     color: var(--sb-fg-light);
+    background-color: var(--sb-bg-light);
   }
-  .dark .status-badge {
+  .status-badge--light[data-accent-color] {
+    color: var(--sb-fg-light);
+    background-color: var(--sb-bg-light);
+  }
+  .status-badge--dark[data-accent-color] {
     color: var(--sb-fg-dark);
+    background-color: var(--sb-bg-dark);
+  }
+  .dark .status-badge[data-accent-color] {
+    color: var(--sb-fg-dark);
+    background-color: var(--sb-bg-dark);
+  }
+  .dark .status-badge--light[data-accent-color] {
+    color: var(--sb-fg-light);
+    background-color: var(--sb-bg-light);
   }
 }
 

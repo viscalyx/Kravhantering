@@ -435,7 +435,12 @@ export default function RequirementDetailClient({
         <StatusBadge
           color={selectedVersion.priorityLevel.color}
           iconName={selectedVersion.priorityLevel.iconName}
-          label={localName(selectedVersion.priorityLevel) ?? ''}
+          label={[
+            selectedVersion.priorityLevel.code,
+            localName(selectedVersion.priorityLevel),
+          ]
+            .filter(Boolean)
+            .join(' – ')}
           size="sm"
         />
       ) : (
@@ -822,8 +827,12 @@ export default function RequirementDetailClient({
 
   const priorityLevelForDeviation = selectedVersion?.priorityLevel
     ? {
+        code: selectedVersion.priorityLevel.code,
         color: selectedVersion.priorityLevel.color,
-        name: localName(selectedVersion.priorityLevel),
+        iconName: selectedVersion.priorityLevel.iconName ?? null,
+        id: selectedVersion.priorityLevel.id,
+        name: localName(selectedVersion.priorityLevel) ?? '',
+        sortOrder: selectedVersion.priorityLevel.sortOrder,
       }
     : null
 

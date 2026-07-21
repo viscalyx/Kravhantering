@@ -32,6 +32,7 @@ import FieldHelpButton from '@/components/FieldHelpButton'
 import { modalResizableTextareaRows4ClassName } from '@/components/modal-textarea-class'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import SafeMarkdown from '@/components/SafeMarkdown'
+import StatusBadge from '@/components/StatusBadge'
 import {
   type AiRequirementGenerationAvailability,
   DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
@@ -135,6 +136,12 @@ interface PreviewRow {
   }
   proposedNeedsReferenceKey: string | null
   proposedNormReferenceKeys: string[]
+  resolvedPriorityLevel?: {
+    code: string
+    color: string
+    iconName: string | null
+    name: string
+  }
   reviewRowId: string
   selected: boolean
   sourceIndex: number
@@ -2701,13 +2708,6 @@ export default function AiRequirementGenerator({
                               row.labels?.qualityCharacteristic,
                               row.values.qualityCharacteristicId,
                             ),
-                            previewFieldDisplay(
-                              row,
-                              'priorityLevelId',
-                              t('detailPriorityLevel'),
-                              row.labels?.priorityLevel,
-                              row.values.priorityLevelId,
-                            ),
                           ].filter(
                             (
                               item,
@@ -2716,6 +2716,13 @@ export default function AiRequirementGenerator({
                               value: string
                               warning: ImportMessage | null
                             } => item !== null,
+                          )
+                          const priorityClassification = previewFieldDisplay(
+                            row,
+                            'priorityLevelId',
+                            t('detailPriorityLevel'),
+                            row.labels?.priorityLevel,
+                            row.values.priorityLevelId,
                           )
                           return (
                             <article
@@ -2752,6 +2759,37 @@ export default function AiRequirementGenerator({
                                     {row.values.description}
                                   </p>
                                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                    {row.resolvedPriorityLevel ? (
+                                      <StatusBadge
+                                        color={row.resolvedPriorityLevel.color}
+                                        iconName={
+                                          row.resolvedPriorityLevel.iconName
+                                        }
+                                        label={`${row.resolvedPriorityLevel.code} – ${row.resolvedPriorityLevel.name}`}
+                                      />
+                                    ) : priorityClassification ? (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-secondary-100 px-2 py-1 text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                        {priorityClassification.label}:{' '}
+                                        {priorityClassification.value}
+                                        {priorityClassification.warning ? (
+                                          <span
+                                            aria-label={previewFieldWarningText(
+                                              priorityClassification.warning,
+                                            )}
+                                            className="inline-flex text-amber-600 dark:text-amber-300"
+                                            role="img"
+                                            title={previewFieldWarningText(
+                                              priorityClassification.warning,
+                                            )}
+                                          >
+                                            <AlertTriangle
+                                              aria-hidden
+                                              className="h-3.5 w-3.5"
+                                            />
+                                          </span>
+                                        ) : null}
+                                      </span>
+                                    ) : null}
                                     {classificationBadges.map(badge => (
                                       <span
                                         className="inline-flex items-center gap-1 rounded-full bg-secondary-100 px-2 py-1 text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"

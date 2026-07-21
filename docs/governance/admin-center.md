@@ -553,6 +553,23 @@ keep the label visible and use the icon only as a decorative cue in tables,
 badges, steppers, and reports. Existing rows without an icon continue to render
 with text-only labels until an admin selects one.
 
+Priority colors remain a single administrator-selected `#RRGGBB` accent. The
+priority form uses the shared badge renderer to show labeled light- and
+dark-theme previews with the calculated contrast result for each theme.
+Administrators verify both readability and visual distinction before saving.
+An invalid stored value is shown without accent styling and produces an
+administration warning until it is corrected; valid custom colors are neither
+normalized nor replaced.
+
+Read-only browser views present a resolved priority through the shared badge
+as its stable P-code, an en dash, and the localized name. The badge also uses
+the configured accent and optional decorative icon. This applies to lists,
+details, import and AI review, priority-scale help, administration, and
+single or bulk deviation forms. Native selection controls remain text-only.
+The priority administration table combines code and name in one Priority
+column and has no standalone color marker. The color field contains a native
+color picker beside a compact hexadecimal `#RRGGBB` text field.
+
 ### Requirement Area Owner
 
 Each requirement area must have an assigned owner HSA-id. A new requirement area
@@ -580,6 +597,7 @@ If you change any of the following, update this document:
 - admin entrypoint navigation
 - taxonomy and status/workflow navigation structure
 - status, usage-status, or priority-level icon behavior
+- priority color validation, previews, or theme contrast behavior
 
 If you add a new requirement column or property, also update
 [.github/instructions/add-requirement-column.instructions.md](../../.github/instructions/add-requirement-column.instructions.md).

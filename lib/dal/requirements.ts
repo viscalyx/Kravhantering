@@ -221,6 +221,8 @@ export async function listRequirements(
         ? null
         : String(row.qualityCharacteristicNameEn),
     priorityLevelId: toNum(row.priorityLevelId),
+    priorityLevelCode:
+      row.priorityLevelCode == null ? null : String(row.priorityLevelCode),
     priorityLevelNameSv:
       row.priorityLevelNameSv == null ? null : String(row.priorityLevelNameSv),
     priorityLevelNameEn:
@@ -1687,6 +1689,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         quality_characteristic.requirement_type_id AS qcRequirementTypeId,
         quality_characteristic.parent_id AS qcParentId,
         priority_level.id AS rlId,
+        priority_level.code AS rlCode,
         priority_level.name_en AS rlNameEn,
         priority_level.name_sv AS rlNameSv,
         priority_level.color AS rlColor,
@@ -1842,6 +1845,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         rlId == null
           ? null
           : {
+              code: String(row.rlCode ?? ''),
               id: rlId,
               nameEn: String(row.rlNameEn ?? ''),
               nameSv: String(row.rlNameSv ?? ''),

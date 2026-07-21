@@ -264,6 +264,12 @@ function previewResponse(
       type: string | null
     }
     priorityLevelId: number | null
+    resolvedPriorityLevel: {
+      code: string
+      color: string
+      iconName: string | null
+      name: string
+    }
     qualityCharacteristicId: number | null
     needsReferenceProposals: Array<{
       description: string | null
@@ -327,6 +333,7 @@ function previewResponse(
           proposedNeedsReferenceKey:
             overrides.proposedNeedsReferenceKey ?? null,
           proposedNormReferenceKeys: [],
+          resolvedPriorityLevel: overrides.resolvedPriorityLevel,
           reviewRowId: overrides.reviewRowId ?? 'row-1',
           selected: true,
           sourceIndex: 0,
@@ -2382,7 +2389,7 @@ describe('AiRequirementGenerator', () => {
     await waitFor(() => expect(resultsHeading).toHaveFocus())
   })
 
-  it('styles generated priority badges from stable priority codes', async () => {
+  it('renders the server-resolved priority snapshot as the shared badge', async () => {
     mockFetch.mockImplementation(async (url: string) => {
       if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
         return modelResponse()
@@ -2415,13 +2422,19 @@ describe('AiRequirementGenerator', () => {
         return previewResponse('Critical generated requirement', {
           labels: {
             category: 'IT requirement',
-            priorityLevel: 'P5 - Very high',
+            priorityLevel: 'P5 – Very high',
             qualityCharacteristic: 'Functional correctness',
             type: 'Functional',
           },
           categoryId: 2,
           priorityLevelId: 42,
           qualityCharacteristicId: 3,
+          resolvedPriorityLevel: {
+            code: 'P5',
+            color: '#ef4444',
+            iconName: 'AlertTriangle',
+            name: 'Very high',
+          },
         })
       }
       return { json: async () => ({}), ok: true }
@@ -2437,9 +2450,11 @@ describe('AiRequirementGenerator', () => {
     expect(
       await screen.findByText('Critical generated requirement'),
     ).toBeInTheDocument()
-    expect(
-      screen.getByText('detailPriorityLevel: P5 - Very high'),
-    ).toBeInTheDocument()
+    const priorityBadge = screen
+      .getByText('P5 – Very high')
+      .closest('.status-badge')
+    expect(priorityBadge).toHaveAttribute('data-accent-color', '#ef4444')
+    expect(priorityBadge?.querySelector('svg')).toBeTruthy()
     expect(screen.getByText('detailType: Functional')).toBeInTheDocument()
     expect(
       screen.getByText('detailCategory: IT requirement'),

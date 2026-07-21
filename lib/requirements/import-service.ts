@@ -99,6 +99,12 @@ export interface RequirementsImportPreviewRow {
   }
   proposedNeedsReferenceKey: string | null
   proposedNormReferenceKeys: string[]
+  resolvedPriorityLevel?: {
+    code: string
+    color: string
+    iconName: string | null
+    name: string
+  }
   reviewRowId: string
   selected: boolean
   sourceIndex: number
@@ -1318,6 +1324,12 @@ function previewRows(args: {
       ),
       type: receiptName(args.referenceData.types, values.typeId, args.locale),
     }
+    const selectedPriorityLevel =
+      values.priorityLevelId == null
+        ? undefined
+        : args.referenceData.priorityLevels.find(
+            item => item.id === values.priorityLevelId,
+          )
 
     if (values.verifiable && !values.verificationMethod) {
       errors.push(
@@ -1339,6 +1351,17 @@ function previewRows(args: {
         ),
       ],
       proposedNeedsReferenceKey: compactText(row.needsReferenceKey),
+      resolvedPriorityLevel: selectedPriorityLevel
+        ? {
+            code: selectedPriorityLevel.code,
+            color: selectedPriorityLevel.color,
+            iconName: selectedPriorityLevel.iconName,
+            name:
+              args.locale === 'sv'
+                ? selectedPriorityLevel.nameSv
+                : selectedPriorityLevel.nameEn,
+          }
+        : undefined,
       reviewRowId: `row-${sourceIndex}`,
       selected: true,
       sourceIndex,
@@ -1527,7 +1550,7 @@ function receiptPriorityName(
   const item = items.find(candidate => candidate.id === id)
   if (!item) return null
   const name = locale === 'sv' ? item.nameSv : item.nameEn
-  return `${item.code} - ${name}`
+  return `${item.code} – ${name}`
 }
 
 function receiptRowsForInputs(args: {

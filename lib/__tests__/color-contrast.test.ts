@@ -1,13 +1,39 @@
 import { describe, expect, it } from 'vitest'
 import {
   clampForReadability,
+  compositeHexColors,
   contrastRatio,
+  getBadgeContrastColors,
   getReadableTextColors,
   hexToRgb,
   lightenForReadability,
+  parseStrictHexColor,
   pickReadableTextOn,
   relativeLuminance,
 } from '@/lib/color-contrast'
+
+const CANONICAL_PRIORITY_COLORS = [
+  '#6b7280',
+  '#22c55e',
+  '#eab308',
+  '#f97316',
+  '#ef4444',
+]
+
+describe('strict hex parsing and compositing', () => {
+  it('accepts only exact case-insensitive #RRGGBB values', () => {
+    expect(parseStrictHexColor('#A1b2C3')).toEqual([161, 178, 195])
+    expect(parseStrictHexColor('#abc')).toBeNull()
+    expect(parseStrictHexColor('A1B2C3')).toBeNull()
+    expect(parseStrictHexColor(' #A1B2C3')).toBeNull()
+  })
+
+  it('composites an accent into an exact opaque background', () => {
+    expect(compositeHexColors('#000000', '#ffffff', 0.125)).toBe('#dfdfdf')
+    expect(compositeHexColors('#ffffff', '#0f172a', 0.125)).toBe('#2d3445')
+    expect(compositeHexColors('#bad', '#ffffff', 0.125)).toBeNull()
+  })
+})
 
 describe('hexToRgb', () => {
   it('parses 6-digit hex', () => {
@@ -132,6 +158,34 @@ describe('getReadableTextColors', () => {
     const lLight = relativeLuminance(...hexToRgb(light))
     const lDark = relativeLuminance(...hexToRgb(dark))
     expect(lDark).toBeGreaterThan(lLight)
+  })
+})
+
+describe('getBadgeContrastColors', () => {
+  it.each([...CANONICAL_PRIORITY_COLORS, '#A1B2C3'])(
+    'derives passing light and dark badge colors for %s',
+    accent => {
+      const colors = getBadgeContrastColors(accent)
+      expect(colors).not.toBeNull()
+      expect(colors?.light.ratio).toBeGreaterThanOrEqual(4.5)
+      expect(colors?.dark.ratio).toBeGreaterThanOrEqual(4.5)
+      expect(
+        contrastRatio(
+          colors?.light.foreground ?? '',
+          colors?.light.background ?? '',
+        ),
+      ).toBeGreaterThanOrEqual(4.5)
+      expect(
+        contrastRatio(
+          colors?.dark.foreground ?? '',
+          colors?.dark.background ?? '',
+        ),
+      ).toBeGreaterThanOrEqual(4.5)
+    },
+  )
+
+  it('does not derive accent styling for an invalid value', () => {
+    expect(getBadgeContrastColors('not-a-color')).toBeNull()
   })
 })
 

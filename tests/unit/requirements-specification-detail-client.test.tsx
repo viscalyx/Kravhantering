@@ -3063,6 +3063,74 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
   })
 
+  it('shows unique bulk deviation priorities with localized name fallbacks in configured sort order', async () => {
+    const highPriorityItem = {
+      ...initialSpecificationItem,
+      version: {
+        ...initialSpecificationItem.version,
+        priorityLevelCode: 'P4',
+        priorityLevelColor: '#f97316',
+        priorityLevelIconName: 'ArrowUpRight',
+        priorityLevelId: 4,
+        priorityLevelNameEn: null,
+        priorityLevelNameSv: 'Hög',
+        priorityLevelSortOrder: 4,
+      },
+    }
+    const lowPriorityItem = {
+      ...initialSpecificationItem,
+      id: 102,
+      itemRef: 'lib:32',
+      specificationItemId: 32,
+      uniqueId: 'BEH0002',
+      version: {
+        ...initialSpecificationItem.version,
+        priorityLevelCode: 'P2',
+        priorityLevelColor: '#22c55e',
+        priorityLevelIconName: null,
+        priorityLevelId: 2,
+        priorityLevelNameEn: null,
+        priorityLevelNameSv: null,
+        priorityLevelSortOrder: 2,
+      },
+    }
+    const duplicateHighPriorityItem = {
+      ...highPriorityItem,
+      id: 103,
+      itemRef: 'lib:33',
+      specificationItemId: 33,
+      uniqueId: 'BEH0003',
+    }
+    const items = [highPriorityItem, lowPriorityItem, duplicateHighPriorityItem]
+    specificationItemsGetItems = items
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItems: createSpecificationItemsPage(items),
+    })
+    act(() => {
+      latestItemsTableProps().onSelectionChange?.(new Set([101, 102, 103]))
+    })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'deviation.requestDeviationSelected',
+      }),
+    )
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'deviation.requestDeviation',
+    })
+    expect(
+      within(dialog).getByText('deviation.priorityLevels'),
+    ).toBeInTheDocument()
+    const priorityBadges = dialog.querySelectorAll('.status-badge')
+    expect([...priorityBadges].map(badge => badge.textContent)).toEqual([
+      'P2',
+      'P4 – Hög',
+    ])
+    expect(priorityBadges[0]?.querySelector('svg')).toBeNull()
+    expect(priorityBadges[1]?.querySelector('svg')).toBeTruthy()
+  })
+
   it('creates one deviation per application and retains failed Requirement IDs in selection', async () => {
     const localItem = {
       ...initialSpecificationItem,

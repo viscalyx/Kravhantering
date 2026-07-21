@@ -904,7 +904,7 @@ stakeholder needs.
 | `assessment_criteria_sv` | text | Swedish guidance for selecting the level |
 | `assessment_criteria_en` | text | English guidance for selecting the level |
 | `sort_order` | integer | Display ordering |
-| `color` | text | Hex color code for UI badges |
+| `color` | text | Admin-selected `#RRGGBB` accent; valid values stay exact |
 | `icon_name` | text | Allowed lucide icon name (nullable) |
 
 **Seed values:**

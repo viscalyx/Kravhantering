@@ -1,9 +1,12 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useRef, useState } from 'react'
+import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import FormActionRow from '@/components/FormActionRow'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import IconPicker from '@/components/IconPicker'
@@ -11,6 +14,7 @@ import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
+import { getBadgeContrastColors, isStrictHexColor } from '@/lib/color-contrast'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
@@ -123,6 +127,7 @@ export default function PriorityLevelsClient() {
   const tr = useTranslations('requirement')
   const locale = useLocale()
   const shouldReduceMotion = useReducedMotion()
+  const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [linkedRequirements, setLinkedRequirements] = useState<
     LinkedRequirement[]
   >([])
@@ -148,6 +153,42 @@ export default function PriorityLevelsClient() {
     toForm,
     toPayload,
   })
+  const previewColors = getBadgeContrastColors(controller.form.color)
+  const previewName =
+    locale === 'sv' ? controller.form.nameSv : controller.form.nameEn
+  const previewLabel = [controller.form.code, previewName]
+    .filter(Boolean)
+    .join(' – ')
+  const invalidStoredPriorityCodes = controller.items
+    .filter(priorityLevel => !isStrictHexColor(priorityLevel.color))
+    .map(priorityLevel => priorityLevel.code)
+
+  const toggleHelp = (field: string) => {
+    setOpenHelp(previousHelp => {
+      const nextHelp = new Set(previousHelp)
+      if (nextHelp.has(field)) {
+        nextHelp.delete(field)
+      } else {
+        nextHelp.add(field)
+      }
+      return nextHelp
+    })
+  }
+
+  const helpButton = (field: string, label: string) => (
+    <FieldHelpButton
+      controls={`help-${field}`}
+      expanded={openHelp.has(field)}
+      label={`${tc('help')}: ${label}`}
+      onClick={() => toggleHelp(field)}
+    />
+  )
+
+  const helpPanel = (helpKey: string, field: string) => (
+    <AnimatedHelpPanel id={`help-${field}`} isOpen={openHelp.has(field)}>
+      {t(helpKey)}
+    </AnimatedHelpPanel>
+  )
 
   const fetchLinkedRequirements = useCallback(
     async (priorityLevelId: number) => {
@@ -225,6 +266,27 @@ export default function PriorityLevelsClient() {
           </p>
         )}
 
+        {invalidStoredPriorityCodes.length > 0 && (
+          <p
+            className="mb-4 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+            {...devMarker({
+              context: 'priority-levels',
+              name: 'invalid color warning',
+              priority: 350,
+              value: invalidStoredPriorityCodes.join(','),
+            })}
+            role="alert"
+          >
+            <AlertTriangle
+              aria-hidden="true"
+              className="mt-0.5 h-4 w-4 shrink-0"
+            />
+            {t('invalidStoredColors', {
+              codes: invalidStoredPriorityCodes.join(', '),
+            })}
+          </p>
+        )}
+
         <AnimatePresence>
           {controller.showForm && (
             <motion.div
@@ -243,22 +305,53 @@ export default function PriorityLevelsClient() {
                   onSubmit={submit}
                 >
                   <h2 className="text-lg font-semibold">{t('editItem')}</h2>
-                  <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
-                      htmlFor="priority-code"
-                    >
-                      {t('code')}
-                    </label>
-                    <input
-                      className={`${inputClassName} bg-secondary-50 text-secondary-600 dark:bg-secondary-800 dark:text-secondary-300`}
-                      disabled
-                      id="priority-code"
-                      value={controller.form.code}
-                    />
-                    <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                      {t('codeHelp')}
-                    </p>
+                  <div
+                    className="grid grid-cols-1 gap-5 sm:grid-cols-2"
+                    data-priority-form-row="code-sort"
+                  >
+                    <div>
+                      <label
+                        className="block text-sm font-medium mb-1"
+                        htmlFor="priority-code"
+                      >
+                        {t('code')}
+                      </label>
+                      <input
+                        className={`${inputClassName} bg-secondary-50 text-secondary-600 dark:bg-secondary-800 dark:text-secondary-300`}
+                        disabled
+                        id="priority-code"
+                        value={controller.form.code}
+                      />
+                      <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                        {t('codeHelp')}
+                      </p>
+                    </div>
+                    <div>
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <label
+                          className="text-sm font-medium"
+                          htmlFor="priority-sort-order"
+                        >
+                          {t('sortOrder')}
+                        </label>
+                        {helpButton('priority-sort-order', t('sortOrder'))}
+                      </div>
+                      {helpPanel('sortOrderHelp', 'priority-sort-order')}
+                      <input
+                        className={inputClassName}
+                        disabled={controller.submitting}
+                        id="priority-sort-order"
+                        min="0"
+                        onChange={event =>
+                          controller.setForm(previousForm => ({
+                            ...previousForm,
+                            sortOrder: event.target.value,
+                          }))
+                        }
+                        type="number"
+                        value={controller.form.sortOrder}
+                      />
+                    </div>
                   </div>
                   <div>
                     <label
@@ -392,103 +485,166 @@ export default function PriorityLevelsClient() {
                       value={controller.form.assessmentCriteriaEn}
                     />
                   </div>
-                  <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
-                      htmlFor="priority-color"
-                    >
-                      {t('color')}
-                      <RequiredFieldMarker />
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        className="h-10 w-14 rounded-lg border cursor-pointer"
-                        disabled={controller.submitting}
-                        id="priority-color"
-                        onChange={event =>
-                          controller.setForm(previousForm => ({
-                            ...previousForm,
-                            color: event.target.value,
-                          }))
-                        }
-                        required
-                        type="color"
-                        value={controller.form.color}
-                      />
-                      <input
-                        aria-label={t('colorHex')}
-                        className={inputClassName}
-                        disabled={controller.submitting}
-                        onChange={event =>
-                          controller.setForm(previousForm => ({
-                            ...previousForm,
-                            color: event.target.value,
-                          }))
-                        }
-                        pattern="^#[0-9a-fA-F]{6}$"
-                        placeholder="#3b82f6"
-                        value={controller.form.color}
-                      />
-                      <span
-                        aria-hidden="true"
-                        className="inline-block w-6 h-6 rounded-full shrink-0 border"
-                        style={{ backgroundColor: controller.form.color }}
-                      />
+                  <div
+                    className="grid grid-cols-1 gap-5 sm:grid-cols-2"
+                    data-priority-form-row="color-icon"
+                  >
+                    <div className="min-w-0">
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <label
+                          className="text-sm font-medium"
+                          htmlFor="priority-color-hex"
+                        >
+                          {t('color')}
+                          <RequiredFieldMarker />
+                        </label>
+                        {helpButton('priority-color', t('color'))}
+                      </div>
+                      {helpPanel('colorHelp', 'priority-color')}
+                      <div className="flex items-center gap-3">
+                        {isStrictHexColor(controller.form.color) && (
+                          <>
+                            <label
+                              className="sr-only"
+                              htmlFor="priority-color-picker"
+                            >
+                              {t('colorPicker')}
+                            </label>
+                            <input
+                              className="h-10 w-14 shrink-0 rounded-lg border cursor-pointer"
+                              disabled={controller.submitting}
+                              id="priority-color-picker"
+                              onChange={event =>
+                                controller.setForm(previousForm => ({
+                                  ...previousForm,
+                                  color: event.target.value,
+                                }))
+                              }
+                              required
+                              type="color"
+                              value={controller.form.color}
+                            />
+                          </>
+                        )}
+                        <input
+                          aria-describedby={
+                            previewColors ? undefined : 'priority-color-warning'
+                          }
+                          aria-invalid={!previewColors}
+                          aria-label={t('colorHex')}
+                          className={`${inputClassName} min-w-0 max-w-36`}
+                          disabled={controller.submitting}
+                          id="priority-color-hex"
+                          onChange={event =>
+                            controller.setForm(previousForm => ({
+                              ...previousForm,
+                              color: event.target.value,
+                            }))
+                          }
+                          pattern="^#[0-9a-fA-F]{6}$"
+                          placeholder="#3b82f6"
+                          required
+                          value={controller.form.color}
+                        />
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <label
+                          className="text-sm font-medium"
+                          htmlFor="priority-icon"
+                        >
+                          {t('icon')}
+                        </label>
+                        {helpButton('priority-icon', t('icon'))}
+                      </div>
+                      {helpPanel('iconHelp', 'priority-icon')}
+                      <div className="flex items-center gap-3">
+                        <IconPicker
+                          disabled={controller.submitting}
+                          id="priority-icon"
+                          label={t('icon')}
+                          onChange={iconName =>
+                            controller.setForm(previousForm => ({
+                              ...previousForm,
+                              iconName,
+                            }))
+                          }
+                          value={controller.form.iconName}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
-                      htmlFor="priority-sort-order"
-                    >
-                      {t('sortOrder')}
-                    </label>
-                    <input
-                      className={inputClassName}
-                      disabled={controller.submitting}
-                      id="priority-sort-order"
-                      min="0"
-                      onChange={event =>
-                        controller.setForm(previousForm => ({
-                          ...previousForm,
-                          sortOrder: event.target.value,
-                        }))
-                      }
-                      type="number"
-                      value={controller.form.sortOrder}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
-                      htmlFor="priority-icon"
-                    >
-                      {t('icon')}
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <IconPicker
-                        disabled={controller.submitting}
-                        id="priority-icon"
-                        label={t('icon')}
-                        onChange={iconName =>
-                          controller.setForm(previousForm => ({
-                            ...previousForm,
-                            iconName,
-                          }))
-                        }
-                        value={controller.form.iconName}
-                      />
-                      <StatusBadge
-                        color={controller.form.color}
-                        iconName={controller.form.iconName}
-                        label={
-                          controller.form.nameSv ||
-                          controller.form.nameEn ||
-                          t('name')
-                        }
-                      />
+                  <section
+                    aria-label={t('themePreview')}
+                    className="space-y-3 rounded-xl border border-secondary-200 p-4 dark:border-secondary-700"
+                    {...devMarker({
+                      context: 'priority-levels',
+                      name: 'theme contrast preview',
+                      priority: 350,
+                      value: 'light-dark',
+                    })}
+                    role="status"
+                  >
+                    <div>
+                      <h3 className="text-sm font-semibold">
+                        {t('themePreview')}
+                      </h3>
+                      <p className="mt-1 text-xs leading-relaxed text-secondary-600 dark:text-secondary-300">
+                        {t('themePreviewGuidance')}
+                      </p>
                     </div>
-                  </div>
+                    {previewColors ? (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {(['light', 'dark'] as const).map(theme => {
+                          const themeColors = previewColors[theme]
+                          return (
+                            <div
+                              className={
+                                theme === 'light'
+                                  ? 'rounded-lg border border-secondary-200 bg-white p-3 text-secondary-900'
+                                  : 'rounded-lg border border-secondary-700 bg-secondary-900 p-3 text-secondary-100'
+                              }
+                              key={theme}
+                            >
+                              <p className="mb-2 text-xs font-semibold">
+                                {theme === 'light'
+                                  ? t('lightTheme')
+                                  : t('darkTheme')}
+                              </p>
+                              <StatusBadge
+                                color={controller.form.color}
+                                iconName={controller.form.iconName}
+                                label={previewLabel}
+                                theme={theme}
+                              />
+                              <p className="mt-2 flex items-center gap-1 text-xs">
+                                <CheckCircle2
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
+                                {t('contrastResult', {
+                                  ratio: themeColors.ratio.toFixed(2),
+                                })}{' '}
+                                {t('contrastPass')}
+                              </p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <p
+                        className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+                        id="priority-color-warning"
+                      >
+                        <AlertTriangle
+                          aria-hidden="true"
+                          className="h-4 w-4 shrink-0"
+                        />
+                        {t('invalidColorWarning')}
+                      </p>
+                    )}
+                  </section>
                   {controller.formError && (
                     <p
                       className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
@@ -624,9 +780,7 @@ export default function PriorityLevelsClient() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
-                  <th className="py-3 px-4 font-medium">{t('color')}</th>
-                  <th className="py-3 px-4 font-medium">{t('code')}</th>
-                  <th className="py-3 px-4 font-medium">{t('designation')}</th>
+                  <th className="py-3 px-4 font-medium">{t('priority')}</th>
                   <th className="py-3 px-4 font-medium">{t('description')}</th>
                   <th className="py-3 px-4 font-medium">
                     {t('assessmentCriteria')}
@@ -649,7 +803,7 @@ export default function PriorityLevelsClient() {
                   >
                     <td
                       className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
-                      colSpan={8}
+                      colSpan={6}
                     >
                       {t('emptyState')}
                     </td>
@@ -665,21 +819,11 @@ export default function PriorityLevelsClient() {
                         className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
                         key={priorityLevel.id}
                       >
-                        <td className="py-3 px-4">
-                          <span
-                            aria-hidden="true"
-                            className="inline-block w-4 h-4 rounded-full"
-                            style={{ backgroundColor: priorityLevel.color }}
-                          />
-                        </td>
-                        <td className="py-3 px-4 font-medium text-secondary-700 dark:text-secondary-300">
-                          {priorityLevel.code}
-                        </td>
                         <td className="py-3 px-4 font-medium">
                           <StatusBadge
                             color={priorityLevel.color}
                             iconName={priorityLevel.iconName}
-                            label={getName(priorityLevel)}
+                            label={`${priorityLevel.code} – ${getName(priorityLevel)}`}
                           />
                         </td>
                         <td

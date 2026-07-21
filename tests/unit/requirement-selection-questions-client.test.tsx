@@ -211,7 +211,15 @@ function sampleRequirementDetail() {
         qualityCharacteristic: null,
         verifiable: false,
         revisionToken: 'revision-token',
-        priorityLevel: null,
+        priorityLevel: {
+          code: 'P4',
+          color: '#f97316',
+          iconName: null,
+          id: 4,
+          nameEn: null,
+          nameSv: null,
+          sortOrder: 4,
+        },
         status: 3,
         statusColor: '#22c55e',
         statusIconName: 'CheckCircle2',
@@ -1532,6 +1540,8 @@ describe('RequirementSelectionQuestionsClient', () => {
       'text-sm',
     )
     expect(detailCard.parentElement).toHaveClass('px-6', 'py-4')
+    const priorityBadge = within(detailCard).getByText('P4')
+    expect(priorityBadge.closest('.status-badge')).not.toHaveTextContent('–')
     expect(
       within(detailCard).queryByRole('heading', { name: 'SEC-001' }),
     ).not.toBeInTheDocument()
