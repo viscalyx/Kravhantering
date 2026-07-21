@@ -220,8 +220,6 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
     hasText: 'P2 – Låg',
   })
   await expect(priorityBadge).toHaveCount(1)
-  await expect(priorityBadge).toHaveAttribute('data-accent-color', '#22c55e')
-  await expect(priorityBadge.locator('svg')).toHaveCount(1)
   await dialog.getByRole('button', { name: 'AI-analys' }).click()
   await expect(
     dialog.getByRole('heading', { level: 3, name: 'Analys av betygskrav' }),

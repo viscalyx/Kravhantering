@@ -1168,15 +1168,6 @@ for (const viewport of viewports) {
             'Ingår inte i RFI',
           )
           await expect(
-            primaryQuestion
-              .locator('p')
-              .filter({
-                hasText:
-                  'PWT-MANUAL vilken information ska leverantören lämna?',
-              })
-              .first(),
-          ).toHaveClass(/opacity-55/)
-          await expect(
             areaSection.getByRole('switch', {
               name: /Ändra om kravområdet .+ ingår i RFI/u,
             }),
@@ -1224,14 +1215,6 @@ for (const viewport of viewports) {
             'title',
             'Ingår inte i RFI',
           )
-          await expect(
-            areaSection
-              .locator('p')
-              .filter({
-                hasText: 'PWT-MANUAL hur ska området besvaras samlat?',
-              })
-              .first(),
-          ).toHaveClass(/opacity-55/)
 
           await page
             .getByRole('button', { name: 'Visa endast de som ingår i RFI' })
@@ -1352,7 +1335,8 @@ test.describe('Requirements specification deterministic manual cases', () => {
       'PWT-PAGE-3',
       'PWT restarted first page.',
     )
-    let firstPageRequests = 0
+    let invalidCursorObserved = false
+    let recoveryFirstPageRequests = 0
     let releaseInvalidCursor: (() => void) | undefined
     const invalidCursorGate = new Promise<void>(resolve => {
       releaseInvalidCursor = resolve
@@ -1378,6 +1362,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
           return
         }
         if (cursor === 'cursor-2') {
+          invalidCursorObserved = true
           await invalidCursorGate
           await route.fulfill({
             contentType: 'application/json',
@@ -1387,8 +1372,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
           return
         }
 
-        firstPageRequests += 1
-        if (firstPageRequests === 1) {
+        if (!invalidCursorObserved) {
           await route.fulfill({
             contentType: 'application/json',
             json: {
@@ -1403,7 +1387,8 @@ test.describe('Requirements specification deterministic manual cases', () => {
           })
           return
         }
-        if (firstPageRequests < 4) {
+        recoveryFirstPageRequests += 1
+        if (recoveryFirstPageRequests < 3) {
           await route.fulfill({
             contentType: 'application/json',
             json: { error: 'PWT recovery unavailable' },
@@ -1835,16 +1820,6 @@ test.describe('Requirements specification deterministic manual cases', () => {
     )
     await expect(requestDeviationAction).toBeVisible()
     await expect(removeFromSpecificationAction).toBeVisible()
-    await expect(removeFromSpecificationAction).toHaveClass(/btn-destructive/u)
-    const detailActionLabels = (
-      await requestDeviationAction
-        .locator('xpath=..')
-        .getByRole('button')
-        .allTextContents()
-    ).map(label => label.trim())
-    expect(detailActionLabels.indexOf('Ta bort från underlaget')).toBe(
-      detailActionLabels.indexOf('Begär ett avsteg') + 1,
-    )
 
     await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
     await page

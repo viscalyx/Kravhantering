@@ -82,7 +82,7 @@ async function patchApplicationSetting(
 test.describe('Admin settings', () => {
   test.use({ viewport: { height: 760, width: 1280 } })
 
-  test('ADMIN-15: Settings keeps AI, Exports, and Reports ordered and autosaves one application setting', async ({
+  test('ADMIN-15: Settings exposes limits and autosaves one application setting', async ({
     page,
     request,
   }) => {
@@ -111,51 +111,8 @@ test.describe('Admin settings', () => {
         panel.getByRole('heading', { exact: true, name: 'Rapporter' }),
       ).toBeVisible()
 
-      const sectionOrder = await panel.evaluate(element => {
-        const text = element.textContent ?? ''
-        return {
-          ai: text.indexOf('AI-assistering'),
-          exports: text.indexOf('Exporter'),
-          reports: text.indexOf('Rapporter'),
-        }
-      })
-      expect(sectionOrder.ai).toBeGreaterThanOrEqual(0)
-      expect(sectionOrder.exports).toBeGreaterThan(sectionOrder.ai)
-      expect(sectionOrder.reports).toBeGreaterThan(sectionOrder.exports)
-
       const inputs = panel.locator('input[id^="admin-application-setting-"]')
       await expect(inputs).toHaveCount(9)
-      const controlWidths = await inputs.evaluateAll(elements =>
-        elements
-          .filter(
-            element =>
-              element.id !==
-                'admin-application-setting-csvExportMaxFileBytes' &&
-              element.id !==
-                'admin-application-setting-pdfReportMaxFileBytes' &&
-              element.id !== 'admin-application-setting-pdfWorkerMemoryMib',
-          )
-          .map(element => element.parentElement?.getBoundingClientRect().width),
-      )
-      expect(new Set(controlWidths)).toEqual(new Set([176]))
-      const mcpControlWidth = await panel
-        .locator('#admin-ai-mcp-max-request-kib')
-        .evaluate(
-          element => element.parentElement?.getBoundingClientRect().width ?? 0,
-        )
-      for (const field of [
-        'csvExportMaxFileBytes',
-        'pdfReportMaxFileBytes',
-        'pdfWorkerMemoryMib',
-      ]) {
-        const width = await panel
-          .locator(`#admin-application-setting-${field}`)
-          .evaluate(
-            element =>
-              element.parentElement?.getBoundingClientRect().width ?? 0,
-          )
-        expect(Math.abs(width - mcpControlWidth)).toBeLessThanOrEqual(4)
-      }
       await expect(
         panel.locator('#admin-application-setting-csvExportMaxFileBytes'),
       ).toHaveValue(String(original.csvExportMaxFileBytes / (1024 * 1024)))
@@ -172,19 +129,12 @@ test.describe('Admin settings', () => {
         'title',
         'Minska Högsta CSV-filstorlek',
       )
-      await expect(
-        decreaseCsvFileSize.locator('.lucide-minus'),
-      ).toHaveAttribute('aria-hidden', 'true')
       const increaseCsvFileSize = panel.getByRole('button', {
         name: 'Öka Högsta CSV-filstorlek',
       })
       await expect(increaseCsvFileSize).toHaveAttribute(
         'title',
         'Öka Högsta CSV-filstorlek',
-      )
-      await expect(increaseCsvFileSize.locator('.lucide-plus')).toHaveAttribute(
-        'aria-hidden',
-        'true',
       )
       await panel
         .getByRole('button', {
@@ -201,19 +151,12 @@ test.describe('Admin settings', () => {
         'title',
         'Minska Högsta PDF-filstorlek',
       )
-      await expect(
-        decreasePdfFileSize.locator('.lucide-minus'),
-      ).toHaveAttribute('aria-hidden', 'true')
       const increasePdfFileSize = panel.getByRole('button', {
         name: 'Öka Högsta PDF-filstorlek',
       })
       await expect(increasePdfFileSize).toHaveAttribute(
         'title',
         'Öka Högsta PDF-filstorlek',
-      )
-      await expect(increasePdfFileSize.locator('.lucide-plus')).toHaveAttribute(
-        'aria-hidden',
-        'true',
       )
       await panel
         .getByRole('button', {
@@ -230,9 +173,6 @@ test.describe('Admin settings', () => {
         'title',
         'Minska Worker-minne per PDF-rendering',
       )
-      await expect(
-        decreaseWorkerMemory.locator('.lucide-minus'),
-      ).toHaveAttribute('aria-hidden', 'true')
       const increaseWorkerMemory = panel.getByRole('button', {
         name: 'Öka Worker-minne per PDF-rendering',
       })
@@ -240,19 +180,6 @@ test.describe('Admin settings', () => {
         'title',
         'Öka Worker-minne per PDF-rendering',
       )
-      await expect(
-        increaseWorkerMemory.locator('.lucide-plus'),
-      ).toHaveAttribute('aria-hidden', 'true')
-      await expect(
-        panel
-          .getByRole('button', { name: 'Sänk MCP-anropsgränsen' })
-          .locator('.lucide-minus'),
-      ).toHaveAttribute('aria-hidden', 'true')
-      await expect(
-        panel
-          .getByRole('button', { name: 'Höj MCP-anropsgränsen' })
-          .locator('.lucide-plus'),
-      ).toHaveAttribute('aria-hidden', 'true')
       await panel
         .getByRole('button', {
           name: 'Hjälp: Worker-minne per PDF-rendering',

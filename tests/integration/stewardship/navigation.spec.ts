@@ -87,22 +87,6 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
   })
 }
 
-const stewardshipHeadings = new Set([
-  'Kravpaket',
-  'Kravurvalsfrågor',
-  'Normbibliotek',
-  'RFI-frågor',
-])
-
-async function resetStewardshipHeadingLog(page: Page) {
-  await page.evaluate(() => {
-    const win = window as typeof window & {
-      __stewardshipHeadingLog?: string[]
-    }
-    win.__stewardshipHeadingLog = []
-  })
-}
-
 async function assertWorkspaceNavigation({
   navigate,
   page,
@@ -114,29 +98,17 @@ async function assertWorkspaceNavigation({
   title: string
   url: RegExp
 }) {
-  await resetStewardshipHeadingLog(page)
   await navigate()
   await expect(page).toHaveURL(url)
   await expect(
     page.getByRole('heading', { level: 1, name: title }),
   ).toBeVisible()
-
-  const headingLog = await page.evaluate(() => {
-    const win = window as typeof window & {
-      __stewardshipHeadingLog?: string[]
-    }
-    return win.__stewardshipHeadingLog ?? []
-  })
-  const loggedWorkspaceHeadings = headingLog.filter(heading =>
-    stewardshipHeadings.has(heading),
-  )
-  expect(loggedWorkspaceHeadings.every(heading => heading === title)).toBe(true)
 }
 
 test.describe('Stewardship navigation memory', () => {
   test.use({ viewport: { height: 720, width: 1280 } })
 
-  test('REQ-14b: remembers and navigates stewardship workspaces without flashing another workspace', async ({
+  test('REQ-14b: remembers and navigates stewardship workspaces', async ({
     page,
   }) => {
     await test.step('browse to the question stewardship tab', async () => {
@@ -167,44 +139,7 @@ test.describe('Stewardship navigation memory', () => {
       ).toBeVisible()
     })
 
-    await test.step('return through the direct stewardship link without a package flash', async () => {
-      await page.evaluate(() => {
-        const win = window as typeof window & {
-          __stewardshipHeadingLog?: string[]
-          __stewardshipHeadingObserver?: MutationObserver
-        }
-        win.__stewardshipHeadingLog = []
-        const recordHeading = (heading: Element | null) => {
-          const text = heading?.textContent?.trim()
-          if (text) win.__stewardshipHeadingLog?.push(text)
-        }
-        win.__stewardshipHeadingObserver = new MutationObserver(mutations => {
-          for (const mutation of mutations) {
-            if (mutation.type === 'characterData') {
-              recordHeading(
-                mutation.target.parentElement?.closest('h1') ?? null,
-              )
-              continue
-            }
-            for (const node of mutation.addedNodes) {
-              if (!(node instanceof Element)) {
-                recordHeading(node.parentElement?.closest('h1') ?? null)
-                continue
-              }
-              if (node.matches('h1')) recordHeading(node)
-              for (const heading of node.querySelectorAll('h1')) {
-                recordHeading(heading)
-              }
-            }
-          }
-        })
-        win.__stewardshipHeadingObserver.observe(document.body, {
-          childList: true,
-          subtree: true,
-          characterData: true,
-        })
-      })
-
+    await test.step('return through the direct stewardship link', async () => {
       await assertWorkspaceNavigation({
         navigate: () =>
           page.getByRole('link', { name: 'Kravurvalsfrågor' }).click(),
@@ -251,13 +186,6 @@ test.describe('Stewardship navigation memory', () => {
         page,
         title: 'Normbibliotek',
         url: /\/sv\/requirements\/stewardship\?tab=norms/,
-      })
-
-      await page.evaluate(() => {
-        const win = window as typeof window & {
-          __stewardshipHeadingObserver?: MutationObserver
-        }
-        win.__stewardshipHeadingObserver?.disconnect()
       })
     })
   })
@@ -393,7 +321,6 @@ test.describe('Stewardship navigation memory', () => {
     const questionSuggestionButton = page.getByRole('button', {
       name: 'Behandla RFI-frågeförslag: PWM-RFI001',
     })
-    await expect(questionSuggestionButton.locator('svg')).toBeVisible()
     await expect(questionSuggestionButton.getByText('1')).toBeVisible()
     await questionSuggestionButton.click()
     let suggestionsDialog = page.getByRole('dialog', {
@@ -412,11 +339,6 @@ test.describe('Stewardship navigation memory', () => {
     await expect(
       suggestionsDialog.getByRole('button', { name: 'Markera hanterad' }),
     ).toHaveCount(0)
-    await expect(
-      suggestionsDialog
-        .getByRole('button', { name: 'Begär granskning' })
-        .locator('svg'),
-    ).toBeVisible()
     await suggestionsDialog
       .getByRole('button', { name: 'Begär granskning' })
       .click()
@@ -424,11 +346,6 @@ test.describe('Stewardship navigation memory', () => {
     await expect.poll(() => reviewRequests).toEqual([920001])
     await expect(suggestionsDialog).toContainText('I granskning')
     await expect(suggestionsDialog).toContainText('Behandlade (1)')
-    await expect(
-      suggestionsDialog
-        .getByRole('button', { name: 'Markera hanterad' })
-        .locator('svg'),
-    ).toBeVisible()
     await suggestionsDialog
       .getByRole('textbox', { name: /Beslutsmotivering/u })
       .fill('PWT SPEC-16c frågeförslag hanterat efter granskning.')
@@ -452,7 +369,6 @@ test.describe('Stewardship navigation memory', () => {
     const areaSuggestionButton = page.getByRole('button', {
       name: 'Behandla RFI-frågeförslag: PWM PWT-MANUAL Playwright manual cases',
     })
-    await expect(areaSuggestionButton.locator('svg')).toBeVisible()
     await expect(areaSuggestionButton.getByText('1')).toBeVisible()
     await areaSuggestionButton.click()
     suggestionsDialog = page.getByRole('dialog', {

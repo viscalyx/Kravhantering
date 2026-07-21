@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test.describe('Requirement selection question detail preview', () => {
   test.use({ viewport: { height: 720, width: 1280 } })
 
-  test('REQ-14c: opens a library-style read-only requirement detail card from the answer modal', async ({
+  test('REQ-14c: opens a read-only requirement detail from the answer modal', async ({
     page,
   }) => {
     await test.step('open a seeded requirement-selection answer for editing', async () => {
@@ -40,7 +40,7 @@ test.describe('Requirement selection question detail preview', () => {
       await expect(requirementButton).toHaveAttribute('aria-expanded', 'true')
     })
 
-    await test.step('verify the library-style read-only detail card layout', async () => {
+    await test.step('verify the read-only requirement detail', async () => {
       const expandedRequirement = dialog
         .getByRole('button', {
           name: `Öppna kravdetaljer ${requirementId}`,

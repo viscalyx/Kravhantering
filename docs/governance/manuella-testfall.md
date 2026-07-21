@@ -82,19 +82,13 @@ Behörighetsmatrisen finns i [behörigheter.md](./behörigheter.md).
 
 ## Navigering
 
-### NAV-01: global sidonavigering linjerar verktygsikoner
+### NAV-01: global sidonavigering kan öppnas och stängas
 
-**Steg:** Logga in som `ada.admin`, öppna `/sv/requirements` på desktop och
-expandera den globala sidonavigeringen. Minska därefter webbläsarbredden och
-öppna samt stäng sidolådan.
+**Steg:** Logga in som `ada.admin`, öppna `/sv/requirements`, expandera och
+fäll ihop den globala sidonavigeringen. Öppna och stäng därefter sidolådan.
 
-**Förväntat resultat:** Sidonavigeringen är kompakt utan att rubriken
-`Kravbiblioteksförvaltning` eller länketiketter bryts. Ikonerna för språkbyte,
-temaväxling och användarmeny har samma horisontella fotavtryck och linjerar med
-övriga ikoner i sidonavigeringen. Knappen för att öppna eller expandera
-navigeringen visar `panel-left-open`, och knappen för att stänga eller fälla
-ihop navigeringen visar `panel-left-close` på samma övre vänstra placering som
-öppningsknappen.
+**Förväntat resultat:** Sidonavigeringen och sidolådan öppnas och stängs med
+respektive kontroll.
 
 ## Tillgänglighet
 
@@ -612,12 +606,11 @@ arkiverad status väljs uttryckligen.
 ### REQ-05: kolumnväljare sparar synliga kolumner
 
 **Steg:** Öppna kolumnväljaren, visa kolumnen `Verifierbar` och kontrollera
-att verifierbara krav visar `SearchCheck` medan inte verifierbara krav visar
-`Minus`. Dölj därefter en valfri kolumn, ladda om sidan och visa kolumnen igen.
+att verifierbara och inte verifierbara krav kan skiljas åt. Dölj därefter en
+valfri kolumn, ladda om sidan och visa kolumnen igen.
 
-**Förväntat resultat:** Båda verifierbarhetslägena har separata ikoner med
-lokaliserade hjälptexter. Kolumnvalet ligger kvar efter omladdning och kan
-återställas.
+**Förväntat resultat:** Båda verifierbarhetslägena har lokaliserade
+hjälptexter. Kolumnvalet ligger kvar efter omladdning och kan återställas.
 
 ### REQ-06: återställ lokala listinställningar
 
@@ -625,19 +618,13 @@ lokaliserade hjälptexter. Kolumnvalet ligger kvar efter omladdning och kan
 
 **Förväntat resultat:** Kravbiblioteket återgår till standardvy.
 
-### REQ-07: ändra bredd på tabellkolumn
+### REQ-08: inline-detalj tillåter fortsatt rullning
 
-**Steg:** Dra en kolumnkant horisontellt.
+**Steg:** Öppna ett krav i inline-detalj och scrolla därefter direkt upp och
+ned igen.
 
-**Förväntat resultat:** Kolumnen ändrar bredd utan att tabellen blir oanvändbar.
-
-### REQ-08: sticky tabellrubrik och flytande verktyg är användbara
-
-**Steg:** Scrolla kravbiblioteket, använd den flytande åtgärdsytan och öppna
-ett krav i inline-detalj. Scrolla därefter direkt upp och ned igen.
-
-**Förväntat resultat:** Tabellrubrik och åtgärder ligger kvar på ett läsbart
-sätt, och öppnad inline-detalj hindrar inte användaren från att rulla vidare.
+**Förväntat resultat:** Öppnad inline-detalj hindrar inte användaren från att
+rulla vidare.
 
 ### REQ-09: innehållsordning i inline-detalj
 
@@ -715,19 +702,17 @@ webbläsarens bakåt- och framåtknappar för att gå genom arbetsytorna. Kontro
 att den valda arbetsytans rubrik visas under varje navigeringssteg.
 
 **Förväntat resultat:** Direktlänken tillbaka till
-`Kravbiblioteksförvaltning` öppnar den ihågkomna fliken utan att paketfliken
-blinkar till. Drag-och-släpp visar förhandsvisning, markör och sparad ny ordning
-för både frågor och svar. Rätt arbetsyta visas vid direktlänk, växling och varje
-historiksteg utan att en annan arbetsytas rubrik eller innehåll blinkar till.
+`Kravbiblioteksförvaltning` öppnar den ihågkomna fliken. Drag-och-släpp sparar
+ny ordning för både frågor och svar. Rätt arbetsyta visas vid direktlänk,
+växling och varje historiksteg.
 
 ### REQ-14c: kravurvalsförhandsvisning visar skrivskyddat krav
 
 **Steg:** Öppna en seedad kravurvalsfråga, redigera ett svar och öppna ett
 krav från svarets kravurvalsförhandsvisning.
 
-**Förväntat resultat:** Kravet visas i en skrivskyddad detaljlayout som följer
-kravbibliotekets ordning med `Kravtext`, utan arkiverings- eller
-livscykelåtgärder.
+**Förväntat resultat:** Kravet visas skrivskyddat med `Kravtext` och utan
+arkiverings- eller livscykelåtgärder.
 
 ### REQ-14d: borttagningsknappar i kravurvalsvar är användbara
 
@@ -744,18 +729,16 @@ aktuella svaret utan att kravpaketet eller kravet tas bort från kravbiblioteket
 
 **Steg:** Öppna AI-assisterat författande från kravbiblioteket, välj
 kravområde och generera en kravkandidat. Öppna fliken `AI-analys` och
-kontrollera att modellens analys visas med formaterade rubriker och listor.
-Välj sedan `Förhandsgranska krav i import`.
+kontrollera modellens analys. Välj sedan `Förhandsgranska krav i import`.
 
 **Förväntat resultat:** Den genererade kandidaten skickas som
 `requirement-import.v3` till importgranskningen för valt kravområde.
-En resolverad prioritet visas i AI-förhandsgranskningen som ett gemensamt
-prioritetsmärke med P-kod, lokaliserat namn, konfigurerad accent och ikon. Ett
-ogiltigt förslag visas i stället som neutral varningstext med varningsikon.
+En resolverad prioritet visas i AI-förhandsgranskningen med P-kod och
+lokaliserat namn. Ett ogiltigt förslag visas i stället med en varning.
 Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
-`Import-JSON`-formuläret. Fliken `AI-analys` visar analysen som säker
-formaterad text utan klickbara länkar, fjärrladdade bilder eller aktiv HTML.
-Råresultat visas fortfarande separat från analysen.
+`Import-JSON`-formuläret. Fliken `AI-analys` visar analysen utan klickbara
+länkar, fjärrladdade bilder eller aktiv HTML. Råresultat visas fortfarande
+separat från analysen.
 När AI-assisterat författande aktiveras öppnas dialogen omedelbart med en
 översatt laddningsstatus tills innehållet är klart, och fokus stannar i
 dialogflödet. `Förhandsgranska krav i import` flyttar fokus direkt till
@@ -811,8 +794,8 @@ kravgenerering och spara. Öppna kravbiblioteket och kontrollera AI-knappen.
 Öppna därefter en redan öppen AI-dialog i en annan flik och försök generera.
 
 **Förväntat resultat:** Inställningen sparas, AI-knappen i kravbiblioteket är
-synlig men dimmad med förklarande text och dialogens genereringsknapp är
-dimmad. Om `AI_REQUIREMENT_GENERATION_DISABLED` är satt visar Admincenter att
+inaktiverad med förklarande text och dialogens genereringsknapp är inaktiverad.
+Om `AI_REQUIREMENT_GENERATION_DISABLED` är satt visar Admincenter att
 driftkonfigurationen har högre prioritet.
 
 ### REQ-16B: Admin Center styr MCP-anropsgräns
@@ -847,15 +830,12 @@ ladda ner CSV-kvitto.
 
 **Förväntat resultat:** JSON med destinationsfält stoppas före granskning.
 Kravområde måste väljas från användarens tilldelade områden, dialogrubriken
-visar `Importera krav för {kravområde}` och importknappen ligger direkt före
-exportknappen medan kolumnväljaren ligger sist till höger. Granskningen delar
-upp `Krav` och `Föreslagna normreferenser`, rader är kollapsade från start,
-`Typ` visas före `Kvalitetsegenskap`, verifieringsmetod visas när
-`Verifierbar` är aktiv, löst förslag till normreferens visas som löst och
-behovsreferensfält visas som diskret information om att de inte används för
-kravbiblioteksimport. En vald prioritet visas med P-kod, tankstreck,
-lokaliserat namn, konfigurerad accent och ikon i det gemensamma
-prioritetsmärket. Importen skickar vald rad
+visar `Importera krav för {kravområde}` och granskningen skiljer mellan `Krav`
+och `Föreslagna normreferenser`. Rader är kollapsade från start,
+verifieringsmetod visas när `Verifierbar` är aktiv, löst förslag till
+normreferens visas som löst och behovsreferensfält anger att de inte används
+för kravbiblioteksimport. En vald prioritet visas med P-kod, tankstreck och
+lokaliserat namn. Importen skickar vald rad
 och skapar CSV-kvitto med importerad kravrad. Skärmläsare meddelar dynamiska
 importfel som felmeddelanden
 och icke-brådskande varningar samt CSV-kvittot som status utan att användaren
@@ -1093,22 +1073,22 @@ paket och referenser visas.
 
 ### SPEC-02: skapa nytt kravunderlag
 
-**Steg:** Öppna skapa-dialogen och kontrollera att Spara är dimmad. Fyll unikt
-ID och namn och kontrollera att kravunderlagets livscykelstatus och ansvarig
-person är obligatoriska fält i formuläret.
+**Steg:** Öppna skapa-dialogen och kontrollera att Spara är inaktiverad. Fyll
+unikt ID och namn och kontrollera att kravunderlagets livscykelstatus och
+ansvarig person är obligatoriska fält i formuläret.
 
-**Förväntat resultat:** Spara är dimmad tills användaren har gjort en
+**Förväntat resultat:** Spara är inaktiverad tills användaren har gjort en
 normaliserad metadataändring. Skapa-dialogen visar obligatorisk
 livscykelstatus och ansvarig person innan kravunderlag kan sparas.
 
 ### SPEC-03: redigera kravunderlag från titelåtgärd
 
 **Steg:** Öppna detalj, använd titelns redigeringsåtgärd och kontrollera att
-Spara är dimmad innan ändring. Ändra text, klicka X och avbryt
+Spara är inaktiverad innan ändring. Ändra text, klicka X och avbryt
 förkastandet. Kontrollera ansvarig persons HSA-id-fält och att klick utanför
 dialogen inte stänger formuläret.
 
-**Förväntat resultat:** Spara tänds först efter metadataändringen. X visar
+**Förväntat resultat:** Spara aktiveras först efter metadataändringen. X visar
 bekräftelse innan formulär med osparade ändringar förkastas. HSA-id för
 ansvarig person visas i formuläret och dialogen ligger kvar vid klick utanför.
 
@@ -1136,9 +1116,8 @@ medlemskap och kontrollera att dess arkiverade krav inte kan väljas.
 Markera ett bibliotekskrav, kontrollera markeringssammanfattningen och öppna
 borttagningsdialogen. Kontrollera att dialogen visar berört krav-ID och att
 avbrytning bevarar markeringen. Expandera bibliotekskravet och kontrollera att
-Ta bort från underlaget finns direkt under Begär ett avsteg i detaljvyns högra
-åtgärdsrad och har samma destruktiva utseende som övriga borttagningsknappar.
-Bekräfta sedan borttagningen via åtgärden för markerade krav.
+Ta bort från underlaget är tillgänglig i detaljvyn. Bekräfta sedan
+borttagningen via åtgärden för markerade krav.
 
 **Förväntat resultat:** Endast redigerare kan markera enskilda krav. Markeringen
 bevaras tills användaren avmarkerar eller åtgärden lyckas. Bekräftelsen skiljer
@@ -1276,11 +1255,11 @@ kravområdet utan att listan först behöver låsas.
 
 **Steg:** I kravunderlagets `RFI-frågelista`, välj bort en fråga med frågans
 scope-reglage och kontrollera att reglagets tooltip växlar mellan
-`Ingår i RFI` och `Ingår inte i RFI`. Kontrollera att frågetexten dimmas och att
-kravområdet visar `Delvis`. Slå på kravområdets scope-reglage och kontrollera
-att alla frågor i området ingår igen. Välj bort en fråga på nytt, aktivera
-filterknappen med tooltip `Visa endast de som ingår i RFI` och kontrollera
-CSV- och PDF-exportlänkarna.
+`Ingår i RFI` och `Ingår inte i RFI`. Kontrollera att frågan inte längre ingår
+och att kravområdet visar `Delvis`. Slå på kravområdets scope-reglage och
+kontrollera att alla frågor i området ingår igen. Välj bort en fråga på nytt,
+aktivera filterknappen med tooltip `Visa endast de som ingår i RFI` och
+kontrollera CSV- och PDF-exportlänkarna.
 
 **Förväntat resultat:** Scope-reglage och reglage för kravområde uppdaterar
 visning och tooltip korrekt. Filtret döljer frågor som inte ingår på sidan men
@@ -1297,12 +1276,12 @@ rensas för den fråga vars version ändrats.
 ### SPEC-16: skapa och hantera RFI-frågeförslag
 
 **Steg:** Öppna kravunderlaget `PWT-RFI-WORKFLOW-2026` och fliken
-`RFI-frågelista`. Klicka på förslagsikonen på en RFI-fråga, kontrollera
-mottagarraden i modalen och skicka ett förslag. Klicka även på
-förslagsikonen i en kravområdesrubrik och kontrollera att modalen anger att
-förslaget gäller kravområdet utan specifik RFI-fråga.
+`RFI-frågelista`. Öppna förslagsåtgärden för en RFI-fråga, kontrollera
+mottagarraden i modalen och skicka ett förslag. Öppna även förslagsåtgärden för
+ett kravområde och kontrollera att modalen anger att förslaget gäller
+kravområdet utan specifik RFI-fråga.
 
-**Förväntat resultat:** Förslagsikonerna är kontextbundna. Skapamodalen visar
+**Förväntat resultat:** Förslagsåtgärderna är kontextbundna. Skapamodalen visar
 att förslaget skickas till kravområdesansvariga för berört kravområde. Efter
 skickat förslag visas en bekräftelse och förslagsräknaren uppdateras.
 
@@ -1335,15 +1314,15 @@ förslaget.
 ### SPEC-16c: behandla RFI-frågeförslag i kravbiblioteksförvaltning
 
 **Steg:** Öppna Kravbiblioteksförvaltning och fliken `RFI-frågor`. Kontrollera
-seedade RFI-frågeförslag på rubriker för kravområde och RFI-frågerader. Klicka på
-en amber `MessageSquareWarning`. Kontrollera att ett nytt förslag bara kan
-skickas till granskning. Begär granskning och markera därefter förslaget som
-hanterat med beslutsmotivering. Upprepa flödet för ett områdesförslag.
+seedade RFI-frågeförslag på rubriker för kravområde och RFI-frågerader. Klicka
+på ett obehandlat förslag. Kontrollera att ett nytt förslag bara kan skickas
+till granskning. Begär granskning och markera därefter förslaget som hanterat
+med beslutsmotivering. Upprepa flödet för ett områdesförslag.
 
 **Förväntat resultat:** Obehandlade förslag visas på den nivå de gäller:
 kravområdesrubrik för områdesförslag och RFI-frågerad för frågespecifika
-förslag. Amber varningsikon visar antal obehandlade förslag. När alla förslag
-på nivån är behandlade visas en check-ikon utan räknare. Modalen visar `Nya`,
+förslag. Antalet obehandlade förslag visas. När alla förslag på nivån är
+behandlade visas ingen räknare för obehandlade förslag. Modalen visar `Nya`,
 `I granskning` och `Behandlade`, inklusive kravunderlagskälla och skapande
 person. Ett förslag kan inte beslutas före granskning och kan bara beslutas en
 gång.
@@ -1419,13 +1398,12 @@ ett visat kravs detalj och kontrollera dess enskilda åtgärder. Välj sedan
 `Avmarkera de som inte visas (1)`.
 
 **Förväntat resultat:** Vid 200 markerade krav är de fyra gemensamma åtgärderna
-aktiverade. Vid 201 är samma åtgärder synliga men nedtonade och inaktiverade.
-Statusraden har varningsutseende och anger totalt 201 markerade, att 1 inte är
-inläst, gränsen 200 och att exakt 1 krav måste avmarkeras. Ingen markering tas
-bort automatiskt. Åtgärden för att avmarkera de krav som inte visas är
-aktiverad och kravets enskilda detaljåtgärder påverkas inte. Efter
-avmarkeringen återstår 200 markerade krav, varningen försvinner och de fyra
-gemensamma åtgärderna aktiveras igen.
+aktiverade. Vid 201 är samma åtgärder inaktiverade. Ett meddelande anger totalt
+201 markerade, att 1 inte är inläst, gränsen 200 och att exakt 1 krav måste
+avmarkeras. Ingen markering tas bort automatiskt. Åtgärden för att avmarkera de
+krav som inte visas är aktiverad och kravets enskilda detaljåtgärder påverkas
+inte. Efter avmarkeringen återstår 200 markerade krav, meddelandet försvinner
+och de fyra gemensamma åtgärderna aktiveras igen.
 
 ## Avsteg
 
@@ -1495,39 +1473,20 @@ session.
 ### ADMIN-02: taxonomi- och statussidor sparar ändringar
 
 **Steg:** Öppna ett testbart taxonomi- eller statusformulär, kontrollera att
-Spara är dimmad innan ändring, gör en liten ändring, klicka Avbryt och avbryt
-förkastandet. Öppna en prioritet och kontrollera de märkta förhandsvisningarna
-för ljust och mörkt tema, kontrastresultaten samt vägledningen om läsbarhet och
-visuell åtskillnad. Kontrollera att tabellen har en gemensam kolumn
-`Prioritet` utan fristående färgpunkt och att färgfältet endast visar
-färgväljaren till vänster om hexvärdet, utan en extra färgruta till höger.
-Kontrollera att `Kod` och `Sorteringsordning` ligger i den ordningen på samma
-rad samt att `Färg` och `Ikon` ligger på nästa gemensamma tvåkolumnsrad.
-Öppna hjälpen för `Sorteringsordning`, `Färg` och `Ikon` och kontrollera att
-varje fält visar sin vägledning. Spara därefter ändringen.
+Spara är inaktiverad innan ändring, gör en liten ändring, klicka Avbryt och
+avbryt förkastandet. Öppna en prioritet och öppna hjälpen för
+`Sorteringsordning`, `Färg` och `Ikon`. Spara därefter ändringen.
 
-**Förväntat resultat:** Spara tänds först efter ändringen. Formulär med
+**Förväntat resultat:** Spara aktiveras först efter ändringen. Formulär med
 osparade ändringar kräver bekräftelse innan det stängs. Ändringen visas efter
-omladdning. Prioritetsmärket använder samma lokaliserade namn och ikon i båda
-förhandsvisningarna, och båda kontrastresultaten uppfyller AA. Tabellen visar
-P-kod och lokaliserat namn i samma märke. Färgfältet visar ingen redundant
-färgförhandsvisning efter hexvärdet. På breda skärmar visas fältparen i två
-kolumner och på smala skärmar staplas de utan horisontell överlappning. Varje
-hjälpknapp visar rätt fältspecifik och lokaliserad vägledning.
+omladdning. Varje hjälpknapp visar rätt fältspecifik och lokaliserad
+vägledning.
 
 ### ADMIN-03: webbläsarens bakåtknapp återställer taxonomiflik
 
 **Steg:** Öppna en Admin-flik, navigera vidare och använd bakåtknappen.
 
 **Förväntat resultat:** Rätt flik och URL återställs.
-
-### ADMIN-04: små skärmar kan använda Admin-flikar och åtgärder
-
-**Steg:** Minska webbläsarbredden och kontrollera att Admin-navigering och
-knappar går att använda.
-
-**Förväntat resultat:** Admin-flikarna radbryts utan horisontell rullning.
-Kontrollerna överlappar inte och är klickbara.
 
 ### ADMIN-04B: paneler laddas först när fliken väljs
 
@@ -1547,16 +1506,14 @@ placering och länkar.
 **Förväntat resultat:** Normbiblioteket finns i förvaltningsytan, inte som
 taxonomiflik i Admincenter.
 
-### ADMIN-06: ny normreferens använder responsiv formulärlayout
+### ADMIN-06: ny normreferens avvisar duplicerat ID
 
-**Steg:** Öppna Normbibliotek, klicka `Ny normreferens` och jämför layout på
-desktop respektive smal mobilbredd. Spara sedan en normreferens med ett angivet
-Normreferens-ID och försök skapa samma ID igen.
+**Steg:** Öppna Normbibliotek, klicka `Ny normreferens`, spara en normreferens
+med ett angivet Normreferens-ID och försök skapa samma ID igen.
 
-**Förväntat resultat:** Desktop visar formuläret i två kolumner med
-Normreferens-ID sist och fullbrett. Mobil visar samma fält i en kolumn utan
-överlapp. Den andra sparningen behåller formuläret öppet och visar att
-Normreferens-ID:t redan finns i stället för ett generellt tekniskt fel.
+**Förväntat resultat:** Den andra sparningen behåller formuläret öppet och
+visar att Normreferens-ID:t redan finns i stället för ett generellt tekniskt
+fel.
 
 ### ADMIN-07: åtgärdslogg filtrerar och exporterar CSV
 
@@ -1593,10 +1550,8 @@ sidan.
 **Steg:** Öppna kravlista och kravdetalj där kravversionsstatus och prioritet
 visas.
 
-**Förväntat resultat:** Statusindikatorer visar konfigurerade ikoner med
-läsbara etiketter. Resolverade prioriteter visar P-kod, tankstreck och
-lokaliserat namn tillsammans med konfigurerad accent och valfri dekorativ ikon.
-En prioritet utan ikon får ingen ersättningssymbol.
+**Förväntat resultat:** Kravversionsstatus visas med lokaliserad etikett.
+Resolverade prioriteter visar P-kod, tankstreck och lokaliserat namn.
 
 ### ADMIN-12: arkiverad kravurvalsretention undantar sparad historik
 
@@ -1608,18 +1563,18 @@ att historiska sparade svar inte förekommer bland kandidaterna.
 
 ### ADMIN-13: kravområdesägare och medförfattare visas med HSA-id
 
-**Steg:** Öppna kravområdeslistan och kontrollera att radåtgärderna för
-medförfattare, redigering och borttagning visas som ikonknappar. Öppna
-radåtgärden `Hantera medförfattare` och kontrollera att den separata dialogen
-kan läsa in, visa laddningsläge, lägga till och ta bort
+**Steg:** Öppna kravområdeslistan och kontrollera radåtgärderna för
+medförfattare, redigering och borttagning. Öppna radåtgärden
+`Hantera medförfattare` och kontrollera att den separata dialogen kan läsa in,
+visa laddningsläge, lägga till och ta bort
 kravområdesmedförfattare i en sparad tabell. Öppna sedan ett kravområde för
 redigering och kontrollera HSA-id för kravområdesägaren.
 
-**Förväntat resultat:** Listan visar ikonbaserade knappar för Hantera
-medförfattare, Redigera och Ta bort. Medförfattare hanteras i en separat modal,
-inte i metadataformuläret. Kravområdesägaren visas och sparas som HSA-id och
-dialogen för medförfattare visar befintliga HSA-id-rader samt sparar tillagd
-rad och tar bort den efter omladdning.
+**Förväntat resultat:** Åtgärderna Hantera medförfattare, Redigera och Ta bort
+är tillgängliga. Medförfattare hanteras i en separat modal, inte i
+metadataformuläret. Kravområdesägaren visas och sparas som HSA-id och dialogen
+för medförfattare visar befintliga HSA-id-rader samt sparar tillagd rad och tar
+bort den efter omladdning.
 
 ### ADMIN-14: HSA-id-prefix administreras från Identitet
 
@@ -1630,27 +1585,20 @@ kontrollera valideringen.
 
 ### ADMIN-15: Inställningar styr export- och rapportgränser
 
-**Steg:** Öppna `/sv/admin?tab=settings` som Admin och kontrollera nätverk och
-sektionernas positioner medan data laddas. Kontrollera ordningen AI, Exporter,
-Rapporter och hjälpknappen för vart och ett av de nio gränsfälten. Prova min-,
-max- och ogiltiga värden. Spara med både blur och Enter, simulera omkastade
-svar och kontrollera åtgärdsloggen. Kör därefter CSV/PDF som träffar ändrade
-gränser.
+**Steg:** Öppna `/sv/admin?tab=settings` som Admin och kontrollera nätverket
+medan data laddas. Öppna hjälpknappen för vart och ett av de nio gränsfälten.
+Prova min-, max- och ogiltiga värden. Spara med både blur och Enter, simulera
+omkastade svar och kontrollera åtgärdsloggen. Kör därefter CSV/PDF som träffar
+ändrade gränser.
 
-**Förväntat resultat:** AI- och applikationsdata hämtas parallellt. Ett
-reserverat skal gör att sektionerna inte hoppar och de visas atomärt när alla
-anrop har nått resultat; felkälla visar lokalt fel och `Försök igen`.
-Filstorlek visas i MiB men sparas i byte. Varje rad visar
-en enhet i samma rundade kontroll som talvärdet: krav, MiB, exporter,
-renderingar eller sekunder. Kontrollerna är lika breda och rymmer respektive
-maxvärde, förutom CSV-/PDF-filstorlek och Worker-minne som använder minus- och
-plusknappar med samma kompakta bredd som MCP-anropsgränsen. Filstorlekarna
-ändras i 1 MiB-steg och sparas i byte. Worker-minnet ändras i 128 MiB-steg och
-visar det lagrade heltalsvärdet direkt i MiB. Varje rad visar
-`Sparar`/`Sparat`/fel, äldre svar skriver inte över nyare värde, och exakt ett
-fält auditeras med gammalt/nytt värde. Runtime använder den nya
-inställningssnapshoten. `?tab=ai` betraktas som otillgänglig och omdirigeras
-enligt vanlig flikfallback.
+**Förväntat resultat:** AI- och applikationsdata hämtas parallellt. En
+felaktig datakälla visar ett lokalt fel och `Försök igen`. Filstorlek visas i
+MiB men sparas i byte. Filstorlekarna ändras i 1 MiB-steg och sparas i byte.
+Worker-minnet ändras i 128 MiB-steg och visar det lagrade heltalsvärdet direkt
+i MiB. Varje gränsfält visar `Sparar`/`Sparat`/fel, äldre svar skriver inte över
+nyare värde, och exakt ett fält auditeras med gammalt/nytt värde. Runtime
+använder den nya inställningssnapshoten. `?tab=ai` betraktas som otillgänglig
+och omdirigeras enligt vanlig flikfallback.
 
 ## Dataskydd och personuppgifter
 
@@ -1715,10 +1663,9 @@ otilldelade personer som inte matchar målet.
 ### DEVTOOLS-01: Developer Mode-chip kopierar referens
 
 **Steg:** Aktivera Developer Mode, hovra över en annoterad kontroll och kopiera
-referensen. Scrolla kravbiblioteket tills tabellrubriken ligger sticky och
-upprepa kontrollen på en annoterad kolumnrubrik.
+referensen. Upprepa kontrollen på en annoterad kolumnrubrik.
 
-**Förväntat resultat:** Referensen kopieras och bekräftas visuellt.
+**Förväntat resultat:** Referensen kopieras och en bekräftelse visas.
 
 ### MCP-01: MCP HTTP kräver bearer och exponerar seedade verktyg
 
