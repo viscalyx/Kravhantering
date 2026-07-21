@@ -749,6 +749,9 @@ Välj sedan `Förhandsgranska krav i import`.
 
 **Förväntat resultat:** Den genererade kandidaten skickas som
 `requirement-import.v3` till importgranskningen för valt kravområde.
+En resolverad prioritet visas i AI-förhandsgranskningen som ett gemensamt
+prioritetsmärke med P-kod, lokaliserat namn, konfigurerad accent och ikon. Ett
+ogiltigt förslag visas i stället som neutral varningstext med varningsikon.
 Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
 `Import-JSON`-formuläret. Fliken `AI-analys` visar analysen som säker
 formaterad text utan klickbara länkar, fjärrladdade bilder eller aktiv HTML.
@@ -850,8 +853,11 @@ upp `Krav` och `Föreslagna normreferenser`, rader är kollapsade från start,
 `Typ` visas före `Kvalitetsegenskap`, verifieringsmetod visas när
 `Verifierbar` är aktiv, löst förslag till normreferens visas som löst och
 behovsreferensfält visas som diskret information om att de inte används för
-kravbiblioteksimport. Importen skickar vald rad och skapar CSV-kvitto med
-importerad kravrad. Skärmläsare meddelar dynamiska importfel som felmeddelanden
+kravbiblioteksimport. En vald prioritet visas med P-kod, tankstreck,
+lokaliserat namn, konfigurerad accent och ikon i det gemensamma
+prioritetsmärket. Importen skickar vald rad
+och skapar CSV-kvitto med importerad kravrad. Skärmläsare meddelar dynamiska
+importfel som felmeddelanden
 och icke-brådskande varningar samt CSV-kvittot som status utan att användaren
 flyttar fokus; en senare förhandsgranskning eller import meddelar bara det
 senaste resultatet.
@@ -1490,11 +1496,24 @@ session.
 
 **Steg:** Öppna ett testbart taxonomi- eller statusformulär, kontrollera att
 Spara är dimmad innan ändring, gör en liten ändring, klicka Avbryt och avbryt
-förkastandet. Spara därefter ändringen.
+förkastandet. Öppna en prioritet och kontrollera de märkta förhandsvisningarna
+för ljust och mörkt tema, kontrastresultaten samt vägledningen om läsbarhet och
+visuell åtskillnad. Kontrollera att tabellen har en gemensam kolumn
+`Prioritet` utan fristående färgpunkt och att färgfältet endast visar
+färgväljaren till vänster om hexvärdet, utan en extra färgruta till höger.
+Kontrollera att `Kod` och `Sorteringsordning` ligger i den ordningen på samma
+rad samt att `Färg` och `Ikon` ligger på nästa gemensamma tvåkolumnsrad.
+Öppna hjälpen för `Sorteringsordning`, `Färg` och `Ikon` och kontrollera att
+varje fält visar sin vägledning. Spara därefter ändringen.
 
 **Förväntat resultat:** Spara tänds först efter ändringen. Formulär med
 osparade ändringar kräver bekräftelse innan det stängs. Ändringen visas efter
-omladdning.
+omladdning. Prioritetsmärket använder samma lokaliserade namn och ikon i båda
+förhandsvisningarna, och båda kontrastresultaten uppfyller AA. Tabellen visar
+P-kod och lokaliserat namn i samma märke. Färgfältet visar ingen redundant
+färgförhandsvisning efter hexvärdet. På breda skärmar visas fältparen i två
+kolumner och på smala skärmar staplas de utan horisontell överlappning. Varje
+hjälpknapp visar rätt fältspecifik och lokaliserad vägledning.
 
 ### ADMIN-03: webbläsarens bakåtknapp återställer taxonomiflik
 
@@ -1569,13 +1588,15 @@ sidan.
 
 **Förväntat resultat:** Only nekas; Ada kan förhandsgranska.
 
-### ADMIN-11: status- och riskikoner visas på kravytor
+### ADMIN-11: status- och prioritetsidentitet visas på kravytor
 
 **Steg:** Öppna kravlista och kravdetalj där kravversionsstatus och prioritet
 visas.
 
-**Förväntat resultat:** Status- och prioritetsindikatorer visar konfigurerade
-ikoner tillsammans med läsbara etiketter.
+**Förväntat resultat:** Statusindikatorer visar konfigurerade ikoner med
+läsbara etiketter. Resolverade prioriteter visar P-kod, tankstreck och
+lokaliserat namn tillsammans med konfigurerad accent och valfri dekorativ ikon.
+En prioritet utan ikon får ingen ersättningssymbol.
 
 ### ADMIN-12: arkiverad kravurvalsretention undantar sparad historik
 

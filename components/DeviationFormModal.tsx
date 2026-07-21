@@ -14,6 +14,7 @@ import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldHelpButton from '@/components/FieldHelpButton'
 import { modalResizableTextareaRows4ClassName } from '@/components/modal-textarea-class'
+import StatusBadge from '@/components/StatusBadge'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -25,6 +26,15 @@ const textareaClassName = `w-full rounded-lg border border-secondary-300 bg-whit
 const useClientLayoutEffect =
   typeof window === 'undefined' ? useEffect : useLayoutEffect
 
+export interface DeviationPriorityLevel {
+  code: string
+  color: string | null
+  iconName: string | null
+  id: number
+  name: string
+  sortOrder: number
+}
+
 interface DeviationFormModalProps {
   affectedRequirementIds?: string[]
   initialMotivation?: string
@@ -32,7 +42,8 @@ interface DeviationFormModalProps {
   onClose: () => void
   onSubmit: (motivation: string) => void
   open: boolean
-  priorityLevel?: { color: string | null; name: string | null } | null
+  priorityLevel?: DeviationPriorityLevel | null
+  priorityLevels?: DeviationPriorityLevel[]
   title?: string
 }
 
@@ -44,6 +55,7 @@ export default function DeviationFormModal({
   onSubmit,
   open,
   priorityLevel,
+  priorityLevels = [],
   title,
 }: DeviationFormModalProps) {
   const td = useTranslations('deviation')
@@ -57,6 +69,12 @@ export default function DeviationFormModal({
   const modalRef = useRef<HTMLDivElement>(null)
   const shouldReduceMotion = useReducedMotion()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
+  const resolvedPriorityLevels =
+    priorityLevels.length > 0
+      ? priorityLevels
+      : priorityLevel
+        ? [priorityLevel]
+        : []
 
   // Reset fields when opening
   useClientLayoutEffect(() => {
@@ -155,19 +173,43 @@ export default function DeviationFormModal({
                 </div>
               ) : null}
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-secondary-500 dark:text-secondary-400">
-                  {td('priorityLevel')}:
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-secondary-200 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800 px-2.5 py-0.5 text-xs font-medium text-secondary-700 dark:text-secondary-300">
-                  {priorityLevel?.color && (
-                    <span
-                      className="inline-block w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: priorityLevel.color }}
-                    />
+              <div
+                {...devMarker({
+                  context: 'deviation-form',
+                  name: 'priority identity',
+                  priority: 350,
+                  value:
+                    resolvedPriorityLevels.length > 1 ? 'multiple' : 'single',
+                })}
+              >
+                <p className="text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                  {td(
+                    resolvedPriorityLevels.length > 1
+                      ? 'priorityLevels'
+                      : 'priorityLevel',
                   )}
-                  {priorityLevel?.name ?? '—'}
-                </span>
+                </p>
+                {resolvedPriorityLevels.length > 0 ? (
+                  <div className="mt-1.5 flex flex-wrap gap-2">
+                    {resolvedPriorityLevels.map(resolvedPriorityLevel => (
+                      <StatusBadge
+                        color={resolvedPriorityLevel.color}
+                        iconName={resolvedPriorityLevel.iconName}
+                        key={resolvedPriorityLevel.id}
+                        label={[
+                          resolvedPriorityLevel.code,
+                          resolvedPriorityLevel.name,
+                        ]
+                          .filter(Boolean)
+                          .join(' – ')}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-sm text-secondary-700 dark:text-secondary-300">
+                    —
+                  </p>
+                )}
               </div>
 
               <div>

@@ -49,8 +49,14 @@ function mockReferenceDataFetch(
       normReferenceId: string
     }>
     priorityLevels?: Array<{
+      assessmentCriteriaEn: string
+      assessmentCriteriaSv: string
+      code: string
       color?: string
+      descriptionEn: string
+      descriptionSv: string
       id: number
+      iconName: string | null
       nameEn: string
       nameSv: string
     }>
@@ -110,6 +116,14 @@ function importPreviewRow(sourceIndex = 0) {
     proposedNeedsReferenceKey: null,
     proposedNormReferenceKeys: [],
     reviewRowId: `row-${sourceIndex}`,
+    resolvedPriorityLevel: undefined as
+      | {
+          code: string
+          color: string
+          iconName: string | null
+          name: string
+        }
+      | undefined,
     selected: true,
     sourceIndex,
     values: {
@@ -118,7 +132,7 @@ function importPreviewRow(sourceIndex = 0) {
       description: `Kravtext ${sourceIndex + 1}`,
       needsReferenceId: null,
       normReferenceIds: [],
-      priorityLevelId: null,
+      priorityLevelId: null as number | null,
       qualityCharacteristicId: null,
       requirementPackageIds: [],
       typeId: null,
@@ -319,6 +333,126 @@ describe('RequirementsImportDialog', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Filen innehåller 200 eller fler krav.',
+    )
+  })
+
+  it('renders an imported priority with its localized name and configured icon', async () => {
+    mockReferenceDataFetch({
+      priorityLevels: [
+        {
+          assessmentCriteriaEn: 'Low impact',
+          assessmentCriteriaSv: 'Låg påverkan',
+          code: 'P2',
+          color: '#22c55e',
+          descriptionEn: 'Low priority',
+          descriptionSv: 'Låg prioritet',
+          iconName: 'ArrowDownLeft',
+          id: 2,
+          nameEn: 'Low',
+          nameSv: 'Låg',
+        },
+      ],
+    })
+    const row = importPreviewRow()
+    row.values.priorityLevelId = 2
+    vi.mocked(apiFetch).mockResolvedValue(importPreviewResponse([row]))
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
+
+    const priorityBadge = await screen.findByText('P2 – Låg')
+    expect(
+      priorityBadge.closest('.status-badge')?.querySelector('svg'),
+    ).toBeTruthy()
+  })
+
+  it('omits the priority separator when the localized name is empty', async () => {
+    mockReferenceDataFetch({
+      priorityLevels: [
+        {
+          assessmentCriteriaEn: 'Low impact',
+          assessmentCriteriaSv: 'Låg påverkan',
+          code: 'P2',
+          color: '#22c55e',
+          descriptionEn: 'Low priority',
+          descriptionSv: 'Låg prioritet',
+          iconName: 'ArrowDownLeft',
+          id: 2,
+          nameEn: 'Low',
+          nameSv: '',
+        },
+      ],
+    })
+    const row = importPreviewRow()
+    row.values.priorityLevelId = 2
+    vi.mocked(apiFetch).mockResolvedValue(importPreviewResponse([row]))
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
+
+    expect(await screen.findByText('P2')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expandera rad #1' }))
+    expect(screen.getByRole('option', { name: 'P2' })).toBeInTheDocument()
+  })
+
+  it('renders the server-resolved priority snapshot when taxonomy no longer contains the selected ID', async () => {
+    const row = importPreviewRow()
+    row.values.priorityLevelId = 2
+    row.resolvedPriorityLevel = {
+      code: 'P2',
+      color: '#22c55e',
+      iconName: 'ArrowDownLeft',
+      name: 'Låg',
+    }
+    vi.mocked(apiFetch).mockResolvedValue(importPreviewResponse([row]))
+
+    render(
+      <RequirementsImportDialog
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    )
+
+    const priorityBadge = await screen.findByText('P2 – Låg')
+    expect(priorityBadge.closest('.status-badge')).toHaveAttribute(
+      'data-accent-color',
+      '#22c55e',
     )
   })
 

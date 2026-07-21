@@ -27,7 +27,10 @@ const updatePriorityLevelSchema = z
   .object({
     assessmentCriteriaEn: boundedDbStringSchema.optional(),
     assessmentCriteriaSv: boundedDbStringSchema.optional(),
-    color: boundedDbStringSchema.optional(),
+    color: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
     descriptionEn: boundedDbStringSchema.optional(),
     descriptionSv: boundedDbStringSchema.optional(),
     iconName: nullableOptionalStatusIconNameSchema,

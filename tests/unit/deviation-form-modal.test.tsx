@@ -20,6 +20,7 @@ const translations: Record<string, Record<string, string>> = {
     newDeviation: 'Registrera avsteg',
     requestDeviation: 'Begär ett avsteg',
     priorityLevel: 'Prioritet',
+    priorityLevels: 'Prioriteter',
   },
 }
 
@@ -78,6 +79,71 @@ describe('DeviationFormModal', () => {
     await user.click(submitButton)
 
     expect(onSubmit).toHaveBeenCalledWith('Needs exception')
+  })
+
+  it('renders resolved single and bulk priority identities without fallback dots', () => {
+    const { rerender } = render(
+      <DeviationFormModal
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        open
+        priorityLevel={{
+          code: 'P3',
+          color: '#eab308',
+          iconName: 'CircleAlert',
+          id: 3,
+          name: 'Medelhög',
+          sortOrder: 3,
+        }}
+      />,
+    )
+
+    let dialog = screen.getByRole('dialog', { name: 'Begär ett avsteg' })
+    expect(within(dialog).getByText('Prioritet')).toBeInTheDocument()
+    const badge = within(dialog)
+      .getByText('P3 – Medelhög')
+      .closest('.status-badge')
+    expect(badge).toHaveAttribute('data-accent-color', '#eab308')
+    expect(badge?.querySelector('svg')).toBeTruthy()
+    expect(
+      dialog.querySelector('[data-developer-mode-name="priority identity"]'),
+    ).toHaveAttribute('data-developer-mode-value', 'single')
+
+    rerender(
+      <DeviationFormModal
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        open
+        priorityLevels={[
+          {
+            code: 'P2',
+            color: '#22c55e',
+            iconName: null,
+            id: 2,
+            name: '',
+            sortOrder: 2,
+          },
+          {
+            code: 'P4',
+            color: '#f97316',
+            iconName: 'ArrowUpRight',
+            id: 4,
+            name: 'Hög',
+            sortOrder: 4,
+          },
+        ]}
+      />,
+    )
+
+    dialog = screen.getByRole('dialog', { name: 'Begär ett avsteg' })
+    expect(within(dialog).getByText('Prioriteter')).toBeInTheDocument()
+    const badges = dialog.querySelectorAll('.status-badge')
+    expect([...badges].map(item => item.textContent)).toEqual([
+      'P2',
+      'P4 – Hög',
+    ])
+    expect(badges[0]?.querySelector('svg')).toBeNull()
+    expect(badges[1]?.querySelector('svg')).toBeTruthy()
   })
 
   it('confirms dirty cancel and ignores backdrop clicks', async () => {

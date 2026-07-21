@@ -87,6 +87,7 @@ describe('requirement list SQL builders', () => {
     expect(query.sqlText).toContain(
       'requirement_status.name_sv AS statusNameSv',
     )
+    expect(query.sqlText).toContain('priority_level.code AS priorityLevelCode')
     expect(query.sqlText).toContain('ORDER BY CASE WHEN requirement_status')
   })
 

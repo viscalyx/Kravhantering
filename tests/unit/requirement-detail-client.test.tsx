@@ -809,6 +809,15 @@ describe('RequirementDetailClient', () => {
           nameEn: 'Maintainability',
           nameSv: 'Underhållbarhet',
         },
+        priorityLevel: {
+          code: 'P4',
+          color: '#f97316',
+          iconName: 'ArrowUpRight',
+          id: 4,
+          nameEn: 'High',
+          nameSv: 'Hög',
+          sortOrder: 4,
+        },
       }),
     ])
 
@@ -820,6 +829,9 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByText('Funktionellt')).toBeInTheDocument()
     expect(screen.getByText('Quality characteristic')).toBeInTheDocument()
     expect(screen.getByText('Underhållbarhet')).toBeInTheDocument()
+    const priorityBadge = screen.getByText('P4 – Hög').closest('.status-badge')
+    expect(priorityBadge).toHaveAttribute('data-accent-color', '#f97316')
+    expect(priorityBadge?.querySelector('svg')).toBeTruthy()
     expect(
       screen
         .getByText('Type')
@@ -830,6 +842,31 @@ describe('RequirementDetailClient', () => {
         .getByText('Quality characteristic')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'quality characteristic')
+  })
+
+  it('shows a priority code without a dangling separator when names are missing', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Priority code fallback requirement',
+        priorityLevel: {
+          code: 'P4',
+          color: '#f97316',
+          iconName: null,
+          id: 4,
+          nameEn: '',
+          nameSv: '',
+          sortOrder: 4,
+        },
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Priority code fallback requirement')
+    const priorityBadge = screen.getByText('P4').closest('.status-badge')
+    expect(priorityBadge).toBeInTheDocument()
+    expect(priorityBadge).not.toHaveTextContent('–')
   })
 
   it('renders the specification count in the detail view', async () => {

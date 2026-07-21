@@ -1877,9 +1877,15 @@ describe('requirements import service', () => {
 
     expect(preview.rows[0]?.labels).toEqual({
       category: 'Leverantörskrav',
-      priorityLevel: 'P4 - Hög',
+      priorityLevel: 'P4 – Hög',
       qualityCharacteristic: 'Tidsbeteende',
       type: 'Icke-funktionellt',
+    })
+    expect(preview.rows[0]?.resolvedPriorityLevel).toEqual({
+      code: 'P4',
+      color: '#f97316',
+      iconName: 'AlertCircle',
+      name: 'Hög',
     })
   })
 })

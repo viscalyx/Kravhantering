@@ -297,6 +297,7 @@ describe('requirements DAL (SQL Server path)', () => {
           qcRequirementTypeId: 5,
           qcParentId: null,
           rlId: 1,
+          rlCode: 'P4',
           rlNameEn: 'High',
           rlNameSv: 'Hög',
           rlColor: '#ff0000',
@@ -372,6 +373,7 @@ describe('requirements DAL (SQL Server path)', () => {
       nameSv: 'Funktionell',
     })
     expect(version?.priorityLevel).toEqual({
+      code: 'P4',
       id: 1,
       nameEn: 'High',
       nameSv: 'Hög',

@@ -2653,7 +2653,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'prioritetsnivaer',
         'Prioritetsskala',
-        'Prioritetsskalan klassificerar hur viktigt, angeläget eller kritiskt ett krav är. Varje nivå har en P-kod, ett namn, en beskrivning, bedömningsgrunder och en färg för visuell identifiering i kravbiblioteket och detaljvyer.',
+        'Prioritetsskalan klassificerar hur viktigt, angeläget eller kritiskt ett krav är. Varje nivå har en P-kod, ett namn, en beskrivning, bedömningsgrunder och en färg för visuell identifiering i kravbiblioteket och detaljvyer. När en prioritetsfärg redigeras visar formuläret samma märke sida vid sida i ljust och mörkt tema tillsammans med kontrastresultatet. Kontrollera både läsbarhet och att prioriteterna går att skilja åt i de två förhandsvisningarna innan du sparar.',
       )
     })
 
