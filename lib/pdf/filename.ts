@@ -1,52 +1,12 @@
-const RESERVED_FILENAME_CHARS = /[/\\:*?"<>|]+/g
+import {
+  sanitizeAttachmentFilename,
+  withRequiredAttachmentExtension,
+} from '@/lib/attachment-filename'
 
-function removeControlChars(value: string): string {
-  return Array.from(value)
-    .filter(char => {
-      const code = char.charCodeAt(0)
-      return code > 31 && code !== 127
-    })
-    .join('')
-}
-
-export function sanitizeAttachmentFilename(filename: string): string | null {
-  const sanitized = removeControlChars(filename)
-    .replace(RESERVED_FILENAME_CHARS, '-')
-    .replace(/\s+/g, ' ')
-    .trim()
-
-  return sanitized.length > 0 ? sanitized : null
-}
+export { sanitizeAttachmentFilename } from '@/lib/attachment-filename'
 
 export function sanitizePdfFilename(filename: string): string {
-  const sanitized = sanitizeAttachmentFilename(filename) ?? ''
-  const withExtension = sanitized.toLowerCase().endsWith('.pdf')
-    ? sanitized
-    : `${sanitized}.pdf`
-
-  return withExtension.length > 4 ? withExtension : 'report.pdf'
-}
-
-function escapeQuotedFilename(filename: string): string {
-  return filename.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-}
-
-function asciiFallbackFilename(filename: string): string {
-  const fallback = filename
-    .replace(/[^\x20-\x7e]/g, '_')
-    .replace(/[%/\\:*?"<>|]+/g, '-')
-    .replace(/\s+/g, ' ')
-    .trim()
-
-  return fallback.length > 4 ? fallback : 'report.pdf'
-}
-
-export function pdfContentDisposition(filename: string): string {
-  const sanitized = sanitizePdfFilename(filename)
-  const asciiFallback = asciiFallbackFilename(sanitized)
-  return `attachment; filename="${escapeQuotedFilename(
-    asciiFallback,
-  )}"; filename*=UTF-8''${encodeURIComponent(sanitized)}`
+  return withRequiredAttachmentExtension(filename, '.pdf', 'report.pdf')
 }
 
 export function filenameFromContentDisposition(

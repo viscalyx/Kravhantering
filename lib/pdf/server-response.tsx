@@ -1,6 +1,6 @@
 import { renderToBuffer } from '@react-pdf/renderer'
 import type { ReactElement } from 'react'
-import { pdfContentDisposition } from '@/lib/pdf/filename'
+import { pdfContentDisposition } from '@/lib/http/content-disposition'
 
 interface PdfResponseOptions {
   headers?: HeadersInit

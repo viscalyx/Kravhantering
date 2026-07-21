@@ -1,4 +1,4 @@
-import contentDisposition from 'content-disposition'
+import { parse as parseContentDisposition } from 'content-disposition'
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -68,7 +68,7 @@ describe('RFI list export route', () => {
     expect(response.status).toBe(200)
     const header = response.headers.get('Content-Disposition')
     expect(header).not.toBeNull()
-    expect(contentDisposition.parse(header ?? '').parameters.filename).toBe(
+    expect(parseContentDisposition(header ?? '').parameters.filename).toBe(
       'RFI question list Spec-Part -å- SPEC-1.csv',
     )
     expect(response.headers.get('X-Request-Id')).toBe('req')
