@@ -58,6 +58,9 @@ certificates
 .env.azure.development
 .azure/
 
+# Optional local Azure VM shell profile override
+/scripts/azure-dev/templates/zshrc.template
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

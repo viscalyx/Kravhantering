@@ -110,6 +110,27 @@ describe('development environment contract', () => {
     expect(hostBootstrap).toContain('resize2fs "${DATA_DEVICE}"')
   })
 
+  it('classifies only allowlisted Bicep WhatIf false positives', () => {
+    const azureModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Azure.psm1',
+    )
+    const developmentGuide = readWorkspaceFile(
+      'docs/development/azure-vm-remote-ssh-development.md',
+    )
+
+    expect(azureModule).toContain('Get-AzureDevWhatIfClassification')
+    expect(azureModule).toContain('Test-AzureDevKnownWhatIfNoise')
+    expect(azureModule).toContain(
+      "$PropertyChange.PropertyChangeType -ne 'Delete'",
+    )
+    expect(azureModule).toContain('properties.allowPort25Out')
+    expect(azureModule).toContain('properties.ddosSettings')
+    expect(azureModule).toContain('Unknown changes remain actionable.')
+    expect(developmentGuide).toContain(
+      'https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-what-if',
+    )
+  })
+
   it('keeps Azure VM support-service passwords in untracked configuration', () => {
     const envExample = readWorkspaceFile('.env.azure.development.example')
     const configModule = readWorkspaceFile(
@@ -144,6 +165,137 @@ describe('development environment contract', () => {
     )
     expect(hostBootstrap).not.toContain('MSSQL_SA_PASSWORD=YourStrong!Passw0rd')
     expect(hostBootstrap).not.toContain('KEYCLOAK_ADMIN_PASSWORD=admin')
+  })
+
+  it('installs the customizable Azure VM Zsh profile with a safe default', () => {
+    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+    const gitignore = readWorkspaceFile('.gitignore')
+    const bootstrapModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Bootstrap.psm1',
+    )
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+    const zshExample = readWorkspaceFile(
+      'scripts/azure-dev/templates/zshrc.template.example',
+    )
+    const validationModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Validation.psm1',
+    )
+
+    expect(gitignore).toContain(
+      '/scripts/azure-dev/templates/zshrc.template',
+    )
+    expect(bootstrapModule).toContain(
+      "$customPath = Join-Path $templatesPath 'zshrc.template'",
+    )
+    expect(bootstrapModule).toContain(
+      "$examplePath = Join-Path $templatesPath 'zshrc.template.example'",
+    )
+    expect(bootstrapModule).toContain(
+      'AZURE_DEV_ZSHRC_SOURCE=$remoteZshrcPath',
+    )
+    expect(hostBootstrap).toContain('custom/themes/powerlevel10k')
+    expect(hostBootstrap).toContain('"${ZSHRC_SOURCE}"')
+    expect(hostBootstrap).toContain('"${VSCODE_HOME}/.zshrc"')
+    expect(zshExample).toContain(
+      'ZSH_THEME="powerlevel10k/powerlevel10k"',
+    )
+    expect(zshExample).toContain('POWERLEVEL9K_MODE=nerdfont-v3')
+    expect(zshExample).toContain('POWERLEVEL9K_TRANSIENT_PROMPT=always')
+    expect(zshExample).toContain('zsh-autosuggestions')
+    expect(zshExample).toContain('zsh-syntax-highlighting')
+    expect(zshExample).not.toContain('OP_SERVICE_ACCOUNT_TOKEN')
+    expect(zshExample).not.toContain('/Users/')
+    expect(entryScript).toContain('Assert-AzureDevTerminalFontInstalled')
+    expect(entryScript).toContain(
+      'p10k configure to customize the prompt.',
+    )
+    expect(validationModule).toContain(
+      "$script:AzureDevTerminalFontFamily = 'MesloLGS Nerd Font Mono'",
+    )
+    expect(validationModule).toContain(
+      'Powerlevel10k is rendered by the local terminal, not by the Azure VM.',
+    )
+    expect(validationModule).toContain(
+      'brew install --cask font-meslo-lg-nerd-font',
+    )
+    expect(validationModule).toContain(
+      'You must configure VS Code terminal.integrated.fontFamily as',
+    )
+  })
+
+  it('prints a regular SSH command after Azure VM setup', () => {
+    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+    const developmentGuide = readWorkspaceFile(
+      'docs/development/azure-vm-remote-ssh-development.md',
+    )
+
+    expect(entryScript).toContain(
+      '$identityFile = $Context.Config.SshPrivateKeyPath',
+    )
+    expect(entryScript).toContain(
+      'Write-Host "ssh -i `"$identityFile`" -o IdentitiesOnly=yes ' +
+        'vscode@$hostName"',
+    )
+    expect(developmentGuide).toContain(
+      'ssh -i "<private-key-path>" -o IdentitiesOnly=yes',
+    )
+  })
+
+  it('offers explicit VS Code Remote SSH extension installation choices', () => {
+    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+    const extensions = readWorkspaceFile('.vscode/extensions.json')
+    const developmentGuide = readWorkspaceFile(
+      'docs/development/azure-vm-remote-ssh-development.md',
+    )
+
+    expect(extensions).toContain('"recommendations"')
+    expect(entryScript).toContain(
+      'VS Code extensions: choose one installation option:',
+    )
+    expect(entryScript).toContain(
+      "Join-Path $Context.Config.RepoRoot '.vscode/extensions.json'",
+    )
+    expect(entryScript).toContain('remote.SSH.defaultExtensions')
+    expect(entryScript).toContain(
+      'Extensions: Install Workspace Recommended Extensions',
+    )
+    expect(entryScript).toContain(
+      '.vscode/extensions.json remains the source of truth.',
+    )
+    expect(developmentGuide).toContain(
+      'always-installed Remote SSH extensions',
+    )
+    expect(developmentGuide).toContain(
+      'does not change the application-wide VS Code setting',
+    )
+  })
+
+  it('blocks direct root SSH and validates the effective policy', () => {
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+    const validationModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Validation.psm1',
+    )
+    const internalsGuide = readWorkspaceFile(
+      'docs/development/azure-vm-remote-ssh-internals.md',
+    )
+
+    expect(hostBootstrap).toContain('PermitRootLogin no')
+    expect(hostBootstrap).toContain('/usr/sbin/sshd -t')
+    expect(hostBootstrap).toContain(
+      '-C user=root,host=localhost,addr=127.0.0.1',
+    )
+    expect(hostBootstrap).toContain('systemctl reload ssh.service')
+    expect(validationModule).toContain(
+      '-C user=root,host=localhost,addr=127.0.0.1',
+    )
+    expect(validationModule).toContain(
+      'test "${root_login_policy}" = "no"',
+    )
+    expect(internalsGuide).toContain('PermitRootLogin no')
   })
 
   it('generates HSA lookup Swagger UI for the Next dev server', () => {

@@ -1,5 +1,103 @@
 Set-StrictMode -Version Latest
 
+$script:AzureDevTerminalFontFamily = 'MesloLGS Nerd Font Mono'
+$script:AzureDevTerminalFontFile = 'MesloLGSNerdFontMono-Regular.ttf'
+
+function Test-AzureDevTerminalFontInstalled {
+  [CmdletBinding()]
+  param()
+
+  $fontPaths = if ($IsMacOS) {
+    @(
+      (Join-Path $HOME "Library/Fonts/$script:AzureDevTerminalFontFile"),
+      "/Library/Fonts/$script:AzureDevTerminalFontFile",
+      "/System/Library/Fonts/$script:AzureDevTerminalFontFile"
+    )
+  } elseif ($IsWindows) {
+    @(
+      (Join-Path $env:LOCALAPPDATA "Microsoft/Windows/Fonts/$script:AzureDevTerminalFontFile"),
+      (Join-Path $env:WINDIR "Fonts/$script:AzureDevTerminalFontFile")
+    )
+  } else {
+    @(
+      (Join-Path $HOME ".local/share/fonts/$script:AzureDevTerminalFontFile"),
+      (Join-Path $HOME ".fonts/$script:AzureDevTerminalFontFile"),
+      "/usr/local/share/fonts/$script:AzureDevTerminalFontFile",
+      "/usr/share/fonts/$script:AzureDevTerminalFontFile"
+    )
+  }
+
+  if (@($fontPaths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }).Count -gt 0) {
+    return $true
+  }
+
+  if ($IsWindows) {
+    foreach ($registryPath in @(
+      'HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts',
+      'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
+    )) {
+      if (-not (Test-Path -LiteralPath $registryPath)) {
+        continue
+      }
+      $fontProperties = (Get-ItemProperty -LiteralPath $registryPath).PSObject.Properties
+      if (@($fontProperties | Where-Object {
+        $_.Name -like "*$script:AzureDevTerminalFontFamily*"
+      }).Count -gt 0) {
+        return $true
+      }
+    }
+  }
+
+  if ($IsLinux) {
+    $fontConfig = Get-Command 'fc-list' -ErrorAction SilentlyContinue
+    if ($null -ne $fontConfig) {
+      $fontFamilies = & $fontConfig.Source ':' 'family' 2>$null
+      if (
+        $LASTEXITCODE -eq 0 -and
+        ($fontFamilies -join "`n").Contains($script:AzureDevTerminalFontFamily)
+      ) {
+        return $true
+      }
+    }
+  }
+
+  return $false
+}
+
+function Assert-AzureDevTerminalFontInstalled {
+  [CmdletBinding()]
+  param()
+
+  $vscodeInstructions = (
+    "You must configure VS Code terminal.integrated.fontFamily as " +
+    "'$script:AzureDevTerminalFontFamily'."
+  )
+
+  if (Test-AzureDevTerminalFontInstalled) {
+    Write-Host (
+      "Workstation font '$script:AzureDevTerminalFontFamily' found. " +
+      $vscodeInstructions
+    )
+    return
+  }
+
+  $installInstructions = if ($IsMacOS) {
+    'On macOS, run: brew install --cask font-meslo-lg-nerd-font.'
+  } elseif ($IsWindows) {
+    'On Windows, download Meslo from Nerd Fonts and install the MesloLGS Nerd Font Mono faces.'
+  } elseif ($IsLinux) {
+    'On Linux, install the MesloLGS Nerd Font Mono faces and refresh fontconfig with fc-cache -f.'
+  } else {
+    'Download Meslo from Nerd Fonts and install the MesloLGS Nerd Font Mono faces.'
+  }
+
+  throw (
+    "Required workstation font '$script:AzureDevTerminalFontFamily' was not found. " +
+    'Powerlevel10k is rendered by the local terminal, not by the Azure VM. ' +
+    "$installInstructions $vscodeInstructions Then run setup again."
+  )
+}
+
 function Invoke-AzureDevSmokeValidation {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
@@ -147,6 +245,13 @@ PY
 test -d /workspace
 test "$(stat -c '%U' /workspace)" = "vscode"
 test -d /workspace/.git
+sudo -n test -f /etc/ssh/sshd_config.d/00-kravhantering-root-login.conf
+root_login_policy="$(
+  sudo -n /usr/sbin/sshd -T \
+    -C user=root,host=localhost,addr=127.0.0.1 \
+    | awk '$1 == "permitrootlogin" { print $2; exit }'
+)"
+test "${root_login_policy}" = "no"
 findmnt /mnt/krav-azure-dev-data >/dev/null
 findmnt /workspace >/dev/null
 findmnt /var/lib/krav-azure-dev >/dev/null
@@ -287,5 +392,7 @@ function Get-AzureDevValidationStatus {
 }
 
 Export-ModuleMember -Function `
+  Assert-AzureDevTerminalFontInstalled, `
   Get-AzureDevValidationStatus, `
-  Invoke-AzureDevSmokeValidation
+  Invoke-AzureDevSmokeValidation, `
+  Test-AzureDevTerminalFontInstalled

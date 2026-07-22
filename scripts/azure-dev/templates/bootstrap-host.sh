@@ -16,7 +16,9 @@ SYSTEMD_USER_DIR="${VSCODE_HOME}/.config/containers/systemd"
 KRAV_CONFIG_DIR="${VSCODE_HOME}/.config/krav-dev"
 HOST_STATE_DIR="/var/lib/krav-azure-dev"
 QUADLET_SOURCE_DIR="${AZURE_DEV_QUADLET_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/quadlet}"
+ZSHRC_SOURCE="${AZURE_DEV_ZSHRC_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/zshrc.template.example}"
 SERVICE_ENV_SOURCE_DIR="${AZURE_DEV_SERVICE_ENV_SOURCE:-}"
+SSHD_ROOT_LOGIN_CONFIG="/etc/ssh/sshd_config.d/00-kravhantering-root-login.conf"
 
 log() {
   printf '[krav-azure-bootstrap] %s\n' "$*"
@@ -54,6 +56,30 @@ ensure_vscode_user() {
   printf '%s ALL=(ALL) NOPASSWD:ALL\n' "${VSCODE_USER}" \
     > /etc/sudoers.d/90-krav-vscode
   chmod 0440 /etc/sudoers.d/90-krav-vscode
+}
+
+configure_ssh_access() {
+  install -d -m 0755 /etc/ssh/sshd_config.d
+  printf '%s\n' \
+    '# Managed by Kravhantering Azure development setup.' \
+    'PermitRootLogin no' \
+    > "${SSHD_ROOT_LOGIN_CONFIG}"
+  chmod 0644 "${SSHD_ROOT_LOGIN_CONFIG}"
+
+  /usr/sbin/sshd -t
+
+  local root_login_policy
+  root_login_policy="$(
+    /usr/sbin/sshd -T \
+      -C user=root,host=localhost,addr=127.0.0.1 \
+      | awk '$1 == "permitrootlogin" { print $2; exit }'
+  )"
+  if [ "${root_login_policy}" != "no" ]; then
+    log "effective SSH root-login policy is ${root_login_policy:-unset}; expected no"
+    return 1
+  fi
+
+  systemctl reload ssh.service
 }
 
 configure_repositories() {
@@ -389,7 +415,8 @@ install_zsh_profile() {
       "RUNZSH=no CHSH=no KEEP_ZSHRC=yes sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\""
   fi
 
-  run_as_vscode "mkdir -p '${VSCODE_HOME}/.oh-my-zsh/custom/plugins'"
+  run_as_vscode \
+    "mkdir -p '${VSCODE_HOME}/.oh-my-zsh/custom/plugins' '${VSCODE_HOME}/.oh-my-zsh/custom/themes'"
   if [ ! -d "${VSCODE_HOME}/.oh-my-zsh/custom/plugins/zsh-autosuggestions" ]; then
     run_as_vscode \
       "git clone https://github.com/zsh-users/zsh-autosuggestions.git '${VSCODE_HOME}/.oh-my-zsh/custom/plugins/zsh-autosuggestions'"
@@ -399,12 +426,18 @@ install_zsh_profile() {
       "git clone https://github.com/zsh-users/zsh-syntax-highlighting.git '${VSCODE_HOME}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting'"
   fi
 
-  if ! grep -q 'zsh-autosuggestions' "${VSCODE_HOME}/.zshrc" 2>/dev/null; then
-    cat >> "${VSCODE_HOME}/.zshrc" <<'EOF'
-plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
-EOF
+  if [ ! -d "${VSCODE_HOME}/.oh-my-zsh/custom/themes/powerlevel10k" ]; then
+    run_as_vscode \
+      "git clone --depth=1 https://github.com/romkatv/powerlevel10k.git '${VSCODE_HOME}/.oh-my-zsh/custom/themes/powerlevel10k'"
   fi
-  chown "${VSCODE_USER}:${VSCODE_USER}" "${VSCODE_HOME}/.zshrc"
+
+  if [ ! -f "${ZSHRC_SOURCE}" ]; then
+    log "Zsh template not found: ${ZSHRC_SOURCE}"
+    return 1
+  fi
+  install -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0644 \
+    "${ZSHRC_SOURCE}" \
+    "${VSCODE_HOME}/.zshrc"
 }
 
 configure_codex_home() {
@@ -838,6 +871,7 @@ main() {
   log "starting host bootstrap"
   install_host_packages
   ensure_vscode_user
+  configure_ssh_access
   install_service_environment_files
   stop_user_quadlet_services_before_storage_change
   mount_data_disk

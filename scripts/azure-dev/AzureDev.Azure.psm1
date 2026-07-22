@@ -1,5 +1,7 @@
 Set-StrictMode -Version Latest
 
+$script:AzureDevWhatIfDocumentationUrl = 'https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-what-if'
+
 function Invoke-AzCli {
   [CmdletBinding()]
   param(
@@ -632,6 +634,309 @@ function Get-AzureDevDeploymentParameters {
   )
 }
 
+function Get-AzureDevJsonProperty {
+  [CmdletBinding()]
+  param(
+    [AllowNull()]
+    [object]$InputObject,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Name
+  )
+
+  if ($null -eq $InputObject) {
+    return $null
+  }
+  $property = $InputObject.PSObject.Properties[$Name]
+  if ($null -eq $property) {
+    return $null
+  }
+  return $property.Value
+}
+
+function Join-AzureDevWhatIfPropertyPath {
+  [CmdletBinding()]
+  param(
+    [string]$ParentPath,
+
+    [string]$ChildPath
+  )
+
+  if ([string]::IsNullOrWhiteSpace($ParentPath)) {
+    return $ChildPath
+  }
+  if ($ChildPath -match '^\d+$') {
+    return "$ParentPath[$ChildPath]"
+  }
+  return "$ParentPath.$ChildPath"
+}
+
+function Get-AzureDevWhatIfLeafChanges {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [object[]]$Changes,
+
+    [string]$ParentPath = ''
+  )
+
+  foreach ($change in $Changes) {
+    $path = Join-AzureDevWhatIfPropertyPath `
+      -ParentPath $ParentPath `
+      -ChildPath (Get-AzureDevJsonProperty -InputObject $change -Name 'path')
+    $childrenValue = Get-AzureDevJsonProperty `
+      -InputObject $change `
+      -Name 'children'
+    $children = @()
+    if ($null -ne $childrenValue) {
+      $children = @($childrenValue)
+    }
+    if ($children.Count -gt 0) {
+      Get-AzureDevWhatIfLeafChanges -Changes $children -ParentPath $path
+      continue
+    }
+
+    [pscustomobject]@{
+      Path = $path
+      PropertyChangeType = Get-AzureDevJsonProperty `
+        -InputObject $change `
+        -Name 'propertyChangeType'
+      Before = Get-AzureDevJsonProperty -InputObject $change -Name 'before'
+      After = Get-AzureDevJsonProperty -InputObject $change -Name 'after'
+    }
+  }
+}
+
+function Test-AzureDevKnownWhatIfNoise {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ResourceId,
+
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$PropertyChange
+  )
+
+  if ($PropertyChange.PropertyChangeType -ne 'Delete') {
+    return $false
+  }
+
+  if ($ResourceId -match '(?i)/providers/Microsoft\.Network/networkInterfaces/') {
+    return $PropertyChange.Path -in @(
+      'kind',
+      'properties.allowPort25Out',
+      'properties.auxiliaryMode',
+      'properties.auxiliarySku',
+      'properties.disableTcpStateTracking'
+    ) -or $PropertyChange.Path -match (
+      '^properties\.ipConfigurations\[\d+\]\.properties\.privateIPAddress$'
+    )
+  }
+
+  if ($ResourceId -match '(?i)/providers/Microsoft\.Network/publicIPAddresses/') {
+    return $PropertyChange.Path -eq 'properties.ddosSettings'
+  }
+
+  return $false
+}
+
+function Get-AzureDevWhatIfClassification {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Result
+  )
+
+  $properties = Get-AzureDevJsonProperty -InputObject $Result -Name 'properties'
+  $changesValue = Get-AzureDevJsonProperty -InputObject $properties -Name 'changes'
+  $potentialChangesValue = Get-AzureDevJsonProperty `
+    -InputObject $properties `
+    -Name 'potentialChanges'
+  $changes = @()
+  if ($null -ne $changesValue) {
+    $changes = @($changesValue)
+  }
+  $potentialChanges = @()
+  if ($null -ne $potentialChangesValue) {
+    $potentialChanges = @($potentialChangesValue)
+  }
+
+  $actionable = [System.Collections.Generic.List[object]]::new()
+  $knownNoise = [System.Collections.Generic.List[object]]::new()
+  $neutral = [System.Collections.Generic.List[object]]::new()
+
+  foreach ($change in $changes) {
+    $changeType = Get-AzureDevJsonProperty -InputObject $change -Name 'changeType'
+    $resourceId = Get-AzureDevJsonProperty -InputObject $change -Name 'resourceId'
+    if ($changeType -in @('NoChange', 'Ignore')) {
+      $neutral.Add($change)
+      continue
+    }
+    if ($changeType -ne 'Modify') {
+      $actionable.Add($change)
+      continue
+    }
+
+    $deltaValue = Get-AzureDevJsonProperty -InputObject $change -Name 'delta'
+    $delta = @()
+    if ($null -ne $deltaValue) {
+      $delta = @($deltaValue)
+    }
+    $leafChanges = @()
+    if (@($delta).Count -gt 0) {
+      $leafChanges = @(
+        Get-AzureDevWhatIfLeafChanges -Changes $delta |
+          Where-Object { $_.PropertyChangeType -ne 'NoEffect' }
+      )
+    }
+    if (@($leafChanges).Count -eq 0) {
+      $neutral.Add($change)
+      continue
+    }
+
+    $unknownChanges = @(
+      $leafChanges |
+        Where-Object {
+          -not (Test-AzureDevKnownWhatIfNoise `
+              -ResourceId $resourceId `
+              -PropertyChange $_)
+        }
+    )
+    if (@($unknownChanges).Count -eq 0) {
+      $knownNoise.Add([pscustomobject]@{
+          ResourceId = $resourceId
+          Properties = $leafChanges
+        })
+      continue
+    }
+
+    $actionable.Add($change)
+  }
+
+  foreach ($change in $potentialChanges) {
+    $actionable.Add($change)
+  }
+
+  return [pscustomobject]@{
+    Actionable = @($actionable)
+    KnownNoise = @($knownNoise)
+    Neutral = @($neutral)
+  }
+}
+
+function ConvertTo-AzureDevWhatIfValue {
+  [CmdletBinding()]
+  param(
+    [AllowNull()]
+    [object]$Value
+  )
+
+  if ($null -eq $Value) {
+    return '<null>'
+  }
+  if ($Value -is [string] -or $Value -is [ValueType]) {
+    return "$Value"
+  }
+  return ($Value | ConvertTo-Json -Compress -Depth 20)
+}
+
+function Write-AzureDevWhatIfChanges {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Heading,
+
+    [Parameter(Mandatory = $true)]
+    [object[]]$Changes
+  )
+
+  Write-Host $Heading
+  foreach ($change in $Changes) {
+    $changeType = Get-AzureDevJsonProperty -InputObject $change -Name 'changeType'
+    $resourceId = Get-AzureDevJsonProperty -InputObject $change -Name 'resourceId'
+    Write-Host "  $changeType $resourceId"
+
+    $deltaValue = Get-AzureDevJsonProperty -InputObject $change -Name 'delta'
+    $delta = @()
+    if ($null -ne $deltaValue) {
+      $delta = @($deltaValue)
+    }
+    if (@($delta).Count -gt 0) {
+      foreach ($propertyChange in @(Get-AzureDevWhatIfLeafChanges -Changes $delta)) {
+        $before = ConvertTo-AzureDevWhatIfValue -Value $propertyChange.Before
+        $after = ConvertTo-AzureDevWhatIfValue -Value $propertyChange.After
+        Write-Host (
+          "    $($propertyChange.PropertyChangeType) " +
+          "$($propertyChange.Path): $before -> $after"
+        )
+      }
+    }
+  }
+}
+
+function Write-AzureDevWhatIfResult {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Result
+  )
+
+  $properties = Get-AzureDevJsonProperty -InputObject $Result -Name 'properties'
+  $changesValue = Get-AzureDevJsonProperty -InputObject $properties -Name 'changes'
+  $potentialChangesValue = Get-AzureDevJsonProperty `
+    -InputObject $properties `
+    -Name 'potentialChanges'
+  $changes = @()
+  if ($null -ne $changesValue) {
+    $changes = @($changesValue)
+  }
+  $potentialChanges = @()
+  if ($null -ne $potentialChangesValue) {
+    $potentialChanges = @($potentialChangesValue)
+  }
+
+  if ($changes.Count -eq 0) {
+    Write-Host 'Bicep What-If resource changes: none'
+  } else {
+    Write-AzureDevWhatIfChanges `
+      -Heading 'Bicep What-If resource changes' `
+      -Changes $changes
+  }
+  if ($potentialChanges.Count -gt 0) {
+    Write-AzureDevWhatIfChanges `
+      -Heading 'Bicep What-If potential changes' `
+      -Changes $potentialChanges
+  }
+}
+
+function Write-AzureDevWhatIfClassification {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Result
+  )
+
+  $classification = Get-AzureDevWhatIfClassification -Result $Result
+  Write-Host ''
+  Write-Host 'Bicep What-If interpretation'
+  Write-Host "  Actionable resource changes: $(@($classification.Actionable).Count)"
+  Write-Host "  Known false-positive resource changes: $(@($classification.KnownNoise).Count)"
+  Write-Host "  Neutral resources: $(@($classification.Neutral).Count)"
+
+  foreach ($noise in $classification.KnownNoise) {
+    Write-Host "  Known noise: $($noise.ResourceId)"
+    foreach ($propertyChange in $noise.Properties) {
+      Write-Host "    $($propertyChange.Path)"
+    }
+  }
+
+  Write-Warning (
+    'ARM/Bicep What-If predictions can contain false positives for default or ' +
+    'provider-assigned properties. Unknown changes remain actionable. ' +
+    "Microsoft documentation: $script:AzureDevWhatIfDocumentationUrl"
+  )
+}
+
 function New-AzureDevDeployment {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
@@ -674,7 +979,12 @@ function New-AzureDevDeployment {
   ) + $parameters
 
   if ($Preview) {
-    return Invoke-AzCli -Arguments ($baseArgs + @('--output', 'table'))
+    $result = Invoke-AzCli -Arguments (
+      $baseArgs + @('--no-pretty-print', '--output', 'json')
+    ) -Json
+    Write-AzureDevWhatIfResult -Result $result
+    Write-AzureDevWhatIfClassification -Result $result
+    return $result
   }
 
   if ($PSCmdlet.ShouldProcess($Context.Config.ResourceGroup, 'Deploy Azure VM resources')) {

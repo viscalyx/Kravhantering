@@ -100,6 +100,8 @@ OS disk
     |   |   `-- sources.list.d/
     |   |-- fstab
     |   |-- krav-dev/                         -> optional Tailscale env read
+    |   |-- ssh/sshd_config.d/
+    |   |   `-- 00-kravhantering-root-login.conf
     |   `-- sudoers.d/
     |       `-- 90-krav-vscode
     |
@@ -126,8 +128,10 @@ OS disk
     |       |-- .nuget/
     |       |-- .oh-my-zsh/
     |       |   `-- custom/
-    |       |       `-- plugins/
-    |       |-- .zshrc
+    |       |       |-- plugins/
+    |       |       `-- themes/
+    |       |           `-- powerlevel10k/
+    |       |-- .zshrc                 -> selected repository template
     |       `-- ...
     |
     |-- mnt/
@@ -278,7 +282,29 @@ Install these tools on the workstation:
 - Azure CLI
 - OpenSSH client, `ssh-keygen`, and `scp`
 - VS Code with Remote SSH
+- MesloLGS Nerd Font Mono installed on the workstation
 - Optional: Tailscale CLI for Tailscale cleanup checks
+
+Powerlevel10k is rendered on the workstation even when the shell runs on the
+Azure VM. Configure VS Code with:
+
+```json
+{
+  "terminal.integrated.fontFamily": "MesloLGS Nerd Font Mono"
+}
+```
+
+On macOS, install the font with:
+
+```sh
+brew install --cask font-meslo-lg-nerd-font
+```
+
+On Windows or Linux, install the MesloLGS Nerd Font Mono faces from the
+[Nerd Fonts downloads](https://www.nerdfonts.com/font-downloads). On Linux,
+run `fc-cache -f` after installation. `setup` checks for the font before
+creating or changing Azure resources and stops with installation guidance when
+it is missing.
 
 Service-principal automation may use `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`,
 and `AZURE_CLIENT_SECRET` from the shell or `.env.azure.development.local`.
@@ -500,6 +526,29 @@ That means a shell `AZURE_CLIENT_SECRET` overrides the value in
 `.env.azure.development.local`. If the shell does not define it, the value from
 `.env.azure.development.local` is used.
 
+### (Optional) Customize the Zsh profile
+
+Setup installs Oh My Zsh, Powerlevel10k, `git`, `zsh-autosuggestions`, and
+`zsh-syntax-highlighting` for the remote `vscode` user. The tracked
+`scripts/azure-dev/templates/zshrc.template.example` contains the default
+profile and the local rainbow prompt defaults. Running `p10k configure` on the
+VM creates `/home/vscode/.p10k.zsh`, which takes precedence on later shells.
+The required MesloLGS Nerd Font Mono remains a workstation prerequisite; the
+Azure VM cannot install a font used by the local VS Code terminal renderer.
+
+To customize the profile before setup, copy the example to the ignored local
+override and edit it:
+
+```sh
+cp scripts/azure-dev/templates/zshrc.template.example \
+  scripts/azure-dev/templates/zshrc.template
+```
+
+`setup` installs `zshrc.template` when it exists. Otherwise, it installs
+`zshrc.template.example`. Each setup run reapplies the selected profile to
+`/home/vscode/.zshrc`. Keep credentials out of both files; load secrets through
+the environment or an external secret manager instead.
+
 ## Step 6: Run Setup
 
 In the PowerShell session at the repository root, run the read-only Azure
@@ -529,6 +578,13 @@ marked `NoEffect`, or standalone managed disks marked `Ignore`. Treat those as
 noise when no create, delete, or meaningful update is listed for managed
 resources.
 
+After the raw Bicep result, setup prints a conservative interpretation. It
+classifies only the known NIC and Public IP provider-default property deletions
+as false positives. Every unfamiliar create, delete, or modification remains
+actionable. Microsoft documents that ARM What-If can incorrectly report
+automatically assigned or default properties as deleted. See the
+[ARM template deployment What-If documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-what-if).
+
 For an existing VM, setup reuses its exact Marketplace image reference because
 Azure does not allow `imageReference` to change in place. Setup resolves the
 latest validated Ubuntu image only when it creates a new VM.
@@ -546,7 +602,8 @@ every charge. It does not run the Azure deployment preview; use
 Use `-Yes` for non-interactive confirmation. The command creates a dedicated
 SSH key if missing, provisions Azure resources, installs the managed SSH config
 block when approved, waits for SSH, uploads the local bootstrap and Quadlet
-templates, reruns the VM bootstrap, and runs smoke validation.
+templates and the selected Zsh profile, reruns the VM bootstrap, and runs smoke
+validation.
 If the VM already exists but was deallocated by `stop` or auto-shutdown, `setup`
 starts it before waiting for SSH.
 
@@ -568,6 +625,45 @@ The generated VS Code command is:
 ```sh
 code --remote ssh-remote+kravhantering-azure-dev /workspace
 ```
+
+Before opening the workspace, choose how VS Code should install the extensions
+listed in `.vscode/extensions.json`:
+
+- For automatic installation on every Remote SSH host, set the local VS Code
+  User setting `remote.SSH.defaultExtensions` to the active recommendations in
+  `.vscode/extensions.json`. This is an application-wide setting and affects
+  other SSH hosts.
+- To install the extensions only for this remote workspace, connect first and
+  run **Extensions: Install Workspace Recommended Extensions** from the Command
+  Palette.
+
+Setup prints both options but does not change the application-wide VS Code
+setting. The repository file remains the source of truth. The automatic option
+installs the extensions while VS Code establishes the first Remote SSH session,
+because the matching VS Code Server does not exist before that connection. See
+the VS Code documentation for
+[always-installed Remote SSH extensions](https://code.visualstudio.com/docs/remote/ssh#_always-installed-extensions).
+
+The generated regular SSH command is:
+
+```sh
+ssh -i "<private-key-path>" -o IdentitiesOnly=yes \
+  vscode@<public-ip-or-tailscale-name>
+```
+
+Setup fills in the configured private-key path and the resolved remote host.
+The matching public key is installed on the VM and is not passed to the SSH
+client. `IdentitiesOnly=yes` ensures that SSH offers only that private key.
+Bootstrap explicitly disables direct SSH login as `root`. Connect as `vscode`
+and use `sudo` for administrative commands. This restriction applies only to
+OpenSSH; Azure control-plane operations, Run Command, VM Access, and Serial
+Console remain available for management and recovery. After using an Azure
+recovery action that resets or rewrites SSH configuration, rerun `setup` to
+restore and validate the managed policy.
+
+After VS Code connects, optionally open its integrated terminal and run
+`p10k configure` to customize the prompt. The repository defaults are already
+active, so this step is not required.
 
 ## Step 7: Open and Run the App
 

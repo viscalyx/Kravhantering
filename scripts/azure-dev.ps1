@@ -185,6 +185,33 @@ function Write-AzureDevSshInstructions {
   if ($null -ne $codeCommand) {
     Write-Host $codeCommand
   }
+
+  $extensionsPath = Join-Path $Context.Config.RepoRoot '.vscode/extensions.json'
+  Write-Host ''
+  Write-Host 'VS Code extensions: choose one installation option:'
+  Write-Host (
+    '  1. For automatic installation on every Remote SSH host, set the local ' +
+    'VS Code User setting remote.SSH.defaultExtensions to the active recommendations in:'
+  )
+  Write-Host "     $extensionsPath"
+  Write-Host '  2. For this remote workspace only, connect first and then run:'
+  Write-Host '     Extensions: Install Workspace Recommended Extensions'
+  Write-Host (
+    'The setup does not change the application-wide setting. ' +
+    '.vscode/extensions.json remains the source of truth.'
+  )
+
+  $hostName = Get-AzureDevHostName -Context $Context
+  $identityFile = $Context.Config.SshPrivateKeyPath
+  Write-Host 'Connect using standard SSH:'
+  Write-Host "ssh -i `"$identityFile`" -o IdentitiesOnly=yes vscode@$hostName"
+
+  if ($null -ne $codeCommand) {
+    Write-Host (
+      'Optional: after VS Code connects, open its integrated terminal and run ' +
+      'p10k configure to customize the prompt.'
+    )
+  }
 }
 
 function Test-AzureDevVmSshPublicKeyDrift {
@@ -265,6 +292,8 @@ function Invoke-AzureDevSetup {
 
     [string]$CidrOverride
   )
+
+  Assert-AzureDevTerminalFontInstalled
 
   if (-not $WhatIfPreference) {
     Test-AzureDevBootstrapSecrets -Config $Context.Config

@@ -111,6 +111,58 @@ function Copy-AzureDevQuadletFiles {
   }
 }
 
+function Copy-AzureDevZshTemplate {
+  [CmdletBinding(SupportsShouldProcess = $true)]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RemotePath
+  )
+
+  $templatesPath = Split-Path -Parent $Context.BootstrapPath
+  $customPath = Join-Path $templatesPath 'zshrc.template'
+  $examplePath = Join-Path $templatesPath 'zshrc.template.example'
+  $sourcePath = if (Test-Path -LiteralPath $customPath -PathType Leaf) {
+    $customPath
+  } else {
+    $examplePath
+  }
+
+  if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+    throw "Zsh template is missing: $sourcePath"
+  }
+
+  if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Upload Zsh template')) {
+    $lastSlash = $RemotePath.LastIndexOf('/')
+    if ($lastSlash -le 0) {
+      throw "Zsh template remote path must be absolute: $RemotePath"
+    }
+    $remoteDirectory = $RemotePath.Substring(0, $lastSlash)
+    Invoke-AzureDevRemoteCommand `
+      -Context $Context `
+      -Command "mkdir -p $remoteDirectory" `
+      -Description 'Prepare Zsh template upload directory'
+
+    $result = Invoke-AzureDevNativeCommand `
+      -FilePath 'scp' `
+      -Arguments @(
+        '-o',
+        'BatchMode=yes',
+        '-o',
+        'ClearAllForwardings=yes',
+        '-o',
+        'StrictHostKeyChecking=accept-new',
+        $sourcePath,
+        "$($Context.Config.SshHostAlias):$RemotePath"
+      )
+    if ($result.ExitCode -ne 0) {
+      throw "Zsh template upload failed.`n$($result.Text.Trim())"
+    }
+  }
+}
+
 function Test-AzureDevBootstrapSecrets {
   [CmdletBinding()]
   param(
@@ -238,6 +290,7 @@ function Invoke-AzureDevBootstrap {
 
   $remoteBootstrapPath = '/tmp/krav-bootstrap-host.sh'
   $remoteQuadletPath = '/tmp/krav-azure-dev/quadlet'
+  $remoteZshrcPath = '/tmp/krav-azure-dev/zshrc'
   $remoteServiceEnvironmentPath = '/tmp/krav-azure-dev/service-env'
   Copy-AzureDevBootstrapFile `
     -Context $Context `
@@ -245,6 +298,9 @@ function Invoke-AzureDevBootstrap {
   Copy-AzureDevQuadletFiles `
     -Context $Context `
     -RemotePath $remoteQuadletPath
+  Copy-AzureDevZshTemplate `
+    -Context $Context `
+    -RemotePath $remoteZshrcPath
   Copy-AzureDevServiceEnvironmentFiles `
     -Context $Context `
     -RemotePath $remoteServiceEnvironmentPath
@@ -254,6 +310,7 @@ function Invoke-AzureDevBootstrap {
     "chmod 0755 $remoteBootstrapPath"
     (
       "sudo env AZURE_DEV_QUADLET_SOURCE=$remoteQuadletPath " +
+      "AZURE_DEV_ZSHRC_SOURCE=$remoteZshrcPath " +
       "AZURE_DEV_SERVICE_ENV_SOURCE=$remoteServiceEnvironmentPath " +
       "bash $remoteBootstrapPath"
     )
@@ -269,6 +326,7 @@ function Invoke-AzureDevBootstrap {
 Export-ModuleMember -Function `
   Copy-AzureDevBootstrapFile, `
   Copy-AzureDevQuadletFiles, `
+  Copy-AzureDevZshTemplate, `
   Copy-AzureDevServiceEnvironmentFiles, `
   Invoke-AzureDevBootstrap, `
   Invoke-AzureDevRemoteCommand, `

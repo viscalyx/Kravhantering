@@ -55,8 +55,8 @@ Module responsibilities:
 | `AzureDev.Logging.psm1` | Local state, locks, JSONL logs, redaction, and native command execution helpers. |
 | `AzureDev.Azure.psm1` | Azure CLI calls, authentication checks, SKU and image lookup, resource-group ownership, deployment, power operations, CIDR updates, and tag-based deletion. |
 | `AzureDev.Ssh.psm1` | Public IPv4 detection, CIDR validation, SSH key generation, managed OpenSSH config blocks, host-key mismatch handling, SSH wait loop, and VS Code command formatting. |
-| `AzureDev.Bootstrap.psm1` | Uploads `bootstrap-host.sh` and Quadlet templates with `scp`, then invokes bootstrap over SSH with port forwarding disabled. |
-| `AzureDev.Validation.psm1` | Runs post-setup smoke validation over SSH and reports remote diagnostics on failure. |
+| `AzureDev.Bootstrap.psm1` | Uploads `bootstrap-host.sh`, Quadlet templates, and the selected Zsh profile with `scp`, then invokes bootstrap over SSH with port forwarding disabled. |
+| `AzureDev.Validation.psm1` | Checks the workstation terminal font, runs post-setup smoke validation over SSH, and reports remote diagnostics on failure. |
 | `AzureDev.Podman.psm1` | Shared support-service unit and port metadata used by validation. |
 <!-- markdownlint-enable MD013 -->
 
@@ -76,6 +76,7 @@ operator switches, and derived local paths:
 .azure/logs/
 scripts/azure-dev/templates/main.bicep
 scripts/azure-dev/templates/bootstrap-host.sh
+scripts/azure-dev/templates/zshrc.template.example
 ```
 
 Only `setup` requires `.env.azure.development` to exist. `estimate-cost` allows
@@ -86,7 +87,8 @@ before calling Azure.
 The command flow is intentionally narrow:
 
 - `estimate-cost` prints local cost drivers only.
-- `setup` validates prerequisites, resolves SSH CIDR, preserves an existing
+- `setup` verifies the workstation Powerlevel10k font before any Azure
+  mutation, validates prerequisites, resolves SSH CIDR, preserves an existing
   VM's immutable image reference or resolves the latest image for a new VM,
   creates or verifies the SSH key, checks existing VM SSH-key drift, converges
   the resource group and Bicep deployment, starts the VM when needed, waits for
@@ -112,6 +114,14 @@ path.
 subscription visibility, SKU availability, resource-group tags, SSH CIDR, and
 the Azure deployment preview. It must not create Azure resources, SSH keys,
 OpenSSH config entries, local state, locks, or logs.
+
+The deployment preview requests structured JSON once, prints its resource and
+leaf-property changes, and then prints a conservative interpretation. Only
+`Delete` predictions for the allowlisted NIC provider defaults, dynamic private
+IP, and Public IP DDoS defaults count as known false positives. Treat mixed or
+unknown modifications, creates, deletes, deploys, unsupported resources, and
+potential changes as actionable. Keep the Microsoft ARM What-If limitations
+link in the operator guide and preview output.
 
 The script uses a placeholder public key only during `setup -WhatIf` when the
 real key does not exist. Real setup creates or reuses the configured local
@@ -243,6 +253,12 @@ The managed OpenSSH block is bounded by markers and is the only part of
 the `vscode` user, `IdentitiesOnly yes`, the configured private key, and the
 local forwards documented in the development guide.
 
+The setup and start connection output must present both supported extension
+installation choices. It points to `.vscode/extensions.json` as the source for
+`remote.SSH.defaultExtensions`, warns that the setting applies to every Remote
+SSH host, and gives the workspace-only Command Palette alternative. Do not
+silently change the developer's application-wide VS Code settings.
+
 Remote command probes use:
 
 ```text
@@ -257,15 +273,30 @@ existing VS Code Remote SSH session may already own the forwarded local ports.
 Tailscale mode is explicit. It uses ordinary OpenSSH over the VM's Tailscale
 address and does not enable Tailscale SSH.
 
+Guest bootstrap writes
+`/etc/ssh/sshd_config.d/00-kravhantering-root-login.conf` with
+`PermitRootLogin no`. It validates the complete OpenSSH configuration and the
+effective root-specific policy before reloading `ssh.service`. Direct root SSH
+is unavailable; operators connect as `vscode` and use passwordless `sudo`.
+Azure control-plane operations and agent- or console-based recovery remain
+independent of this OpenSSH restriction. Rerun setup after any recovery action
+that resets or rewrites guest SSH configuration.
+
 ## Guest Bootstrap
 
-`AzureDev.Bootstrap.psm1` uploads the current local bootstrap script and
-Quadlet templates to `/tmp` on the VM, waits for cloud-init when available, and
-runs:
+`AzureDev.Bootstrap.psm1` uploads the current local bootstrap script, Quadlet
+templates, and Zsh profile to `/tmp` on the VM, waits for cloud-init when
+available, and runs:
 
 ```text
-sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet bash /tmp/krav-bootstrap-host.sh
+sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet AZURE_DEV_ZSHRC_SOURCE=/tmp/krav-azure-dev/zshrc bash /tmp/krav-bootstrap-host.sh
 ```
+
+The ignored `scripts/azure-dev/templates/zshrc.template` is the local override.
+When it is absent, setup uploads the tracked
+`scripts/azure-dev/templates/zshrc.template.example`. Bootstrap installs the
+selected file as `/home/vscode/.zshrc` and installs the Oh My Zsh plugins and
+theme required by the default profile.
 
 Do not move bootstrap into Azure `customData`. Azure does not allow changing
 `customData` on an existing VM, while this workflow must be able to rerun the
@@ -425,6 +456,7 @@ runs over SSH after bootstrap and diagnoses remote failures in place.
 Validation must prove these implementation contracts:
 
 - SSH reaches the generated host alias as `vscode`.
+- the effective root-specific OpenSSH policy is `PermitRootLogin no`.
 - `/workspace` exists, is owned by `vscode`, and contains the repo.
 - the data disk, `/workspace`, host state, and rootless Podman storage are
   mounted as described in the storage invariants.
