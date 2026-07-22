@@ -710,9 +710,25 @@ function Get-AzureDevManagedResources {
   }
 
   return @($resources) | Where-Object {
-    $_.tags.'managed-by' -eq $Config.ManagedBy -and
-    $_.tags.'environment-id' -eq $Config.EnvironmentId -and
-    $_.tags.repository -eq $Config.Repository
+    $tagsProperty = $_.PSObject.Properties['tags']
+    $tags = if ($null -ne $tagsProperty) { $tagsProperty.Value } else { $null }
+    if ($null -eq $tags) {
+      return $false
+    }
+
+    $tagValues = @{}
+    foreach ($key in @('managed-by', 'environment-id', 'repository')) {
+      $tagValues[$key] = if ($tags -is [System.Collections.IDictionary]) {
+        $tags[$key]
+      } else {
+        $property = $tags.PSObject.Properties[$key]
+        if ($null -ne $property) { $property.Value } else { $null }
+      }
+    }
+
+    $tagValues['managed-by'] -eq $Config.ManagedBy -and
+    $tagValues['environment-id'] -eq $Config.EnvironmentId -and
+    $tagValues.repository -eq $Config.Repository
   }
 }
 

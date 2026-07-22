@@ -211,6 +211,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
       osDisk: {
         name: osDiskName
         createOption: 'FromImage'
+        deleteOption: 'Delete'
         managedDisk: {
           storageAccountType: 'Premium_LRS'
         }
@@ -221,7 +222,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
           name: dataDiskName
           createOption: 'Empty'
           caching: 'None'
-          deleteOption: 'Detach'
+          deleteOption: 'Delete'
           diskSizeGB: dataDiskGiB
           managedDisk: {
             storageAccountType: 'Premium_LRS'

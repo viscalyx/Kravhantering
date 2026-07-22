@@ -1,11 +1,5 @@
 # Azure VM Remote SSH Internals
 
-<!-- cSpell:ignore Aardvark Bicep CIDR DevTestLab GraphRoot HSA Keycloak -->
-<!-- cSpell:ignore Netavark OpenSSH Podman Quadlet RunRoot Tailscale -->
-<!-- cSpell:ignore DB-less appId blkid codex dotenv findmnt fstab idempotent -->
-<!-- cSpell:ignore idempotently libnss mkfs mssql pwsh rootless runuser -->
-<!-- cSpell:ignore slirp sshconfig systemd tailnet uidmap vscode writability -->
-
 This document is for contributors who maintain the Azure VM Remote SSH
 implementation. The operator workflow, configuration examples, cost warning,
 disk tree, and daily commands live in
@@ -221,9 +215,8 @@ and the configured SSH public key is written to
 allow that OS-profile SSH key to be changed in place, so setup detects a VM
 created with a different key and fails with a remove-and-recreate instruction.
 
-The data disk uses `deleteOption: Detach` in Bicep. Teardown therefore deletes
-the managed data disk explicitly by tag, instead of relying on VM deletion to
-cascade it.
+The OS and data disks use `deleteOption: Delete` in Bicep so VM teardown deletes
+them with the VM instead of leaving detached managed disks behind.
 
 ## SSH And Connectivity
 

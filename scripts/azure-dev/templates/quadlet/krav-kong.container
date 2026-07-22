@@ -11,7 +11,7 @@ PublishPort=127.0.0.1:18000:8000
 Volume=/workspace/containers/kong/kong.yml:/kong/declarative/kong.yml:ro
 Environment=KONG_ADMIN_ACCESS_LOG=/dev/stdout
 Environment=KONG_ADMIN_ERROR_LOG=/dev/stderr
-Environment=KONG_ADMIN_LISTEN=0.0.0.0:8001
+Environment=KONG_ADMIN_LISTEN=127.0.0.1:8001
 Environment=KONG_DATABASE=off
 Environment=KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.yml
 Environment=KONG_PREFIX=/tmp/kong

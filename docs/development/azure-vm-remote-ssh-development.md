@@ -1,12 +1,5 @@
 # Azure VM Remote SSH Development
 
-<!-- cSpell:ignore Bicep DevTestLab Keycloak OpenSSH Podman Quadlet Tailscale -->
-<!-- cSpell:ignore appId cidr deallocates dotenv dotnet eastus idempotent -->
-<!-- cSpell:ignore isDefault rbac -->
-<!-- cSpell:ignore AzSubscription Connect-AzAccount preflight pwsh rootless -->
-<!-- cSpell:ignore Select-Object sqlcmd subscriptionId tailnet tenantId -->
-<!-- cSpell:ignore vscode -->
-
 This guide describes the optional disposable Azure VM development environment.
 The VM is for one developer, runs the app directly in `/workspace`, and runs
 only SQL Server, Keycloak, Kong, and HSA support services in rootless Podman.
@@ -495,10 +488,9 @@ resource-group ownership tags, SSH CIDR, and the deployment preview. It needs
 the Azure permissions described in Step 2, but it must not create Azure
 resources, SSH keys, local locks, state, or logs.
 
-<!-- cSpell:ignore Noeffect -->
 Azure what-if can report provider-owned or read-only defaults as changes, for
 example NIC `kind`, dynamic private IP, public-IP DDoS settings, disk values
-marked `Noeffect`, or standalone managed disks marked `Ignore`. Treat those as
+marked `NoEffect`, or standalone managed disks marked `Ignore`. Treat those as
 noise when no create, delete, or meaningful update is listed for managed
 resources.
 

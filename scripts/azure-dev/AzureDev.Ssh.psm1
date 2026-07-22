@@ -60,6 +60,8 @@ function Get-AzureDevAllowedSshCidr {
   }
 
   if ($Config.ConnectivityMode -eq 'tailscale') {
+    # Tailscale mode emits no Azure SSH NSG rule; this nonmatching sentinel only
+    # satisfies the required deployment parameter and local state shape.
     return '10.0.0.0/32'
   }
   if ($cidr -eq 'auto') {
@@ -282,19 +284,19 @@ function Reset-AzureDevKnownHost {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
-    [string]$Host
+    [string]$HostName
   )
 
-  if ([string]::IsNullOrWhiteSpace($Host)) {
+  if ([string]::IsNullOrWhiteSpace($HostName)) {
     return
   }
 
-  if ($PSCmdlet.ShouldProcess($Host, 'Remove stale OpenSSH known_hosts entry')) {
+  if ($PSCmdlet.ShouldProcess($HostName, 'Remove stale OpenSSH known_hosts entry')) {
     $result = Invoke-AzureDevNativeCommand `
       -FilePath 'ssh-keygen' `
-      -Arguments @('-R', $Host)
+      -Arguments @('-R', $HostName)
     if ($result.ExitCode -ne 0) {
-      Write-Warning "Could not remove known_hosts entry for $Host`: $($result.Text.Trim())"
+      Write-Warning "Could not remove known_hosts entry for $HostName`: $($result.Text.Trim())"
     }
   }
 }
@@ -339,7 +341,7 @@ function Wait-AzureDevSsh {
         Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
         Select-Object -Unique
       foreach ($hostEntry in $hostEntries) {
-        Reset-AzureDevKnownHost -Host $hostEntry
+        Reset-AzureDevKnownHost -HostName $hostEntry
       }
       $knownHostReset = $true
       continue
