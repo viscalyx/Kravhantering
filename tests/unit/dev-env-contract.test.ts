@@ -444,9 +444,12 @@ describe('development environment contract', () => {
     expect(hostBootstrap).toContain("'AcceptEnv GH_TOKEN'")
     expect(hostBootstrap).toContain('01-kravhantering-environment.conf')
     expect(validationModule).toContain('01-kravhantering-environment.conf')
-    expect(validationModule).toContain(
-      "grep -Eq '^acceptenv (.* )?GH_TOKEN( |$)'",
-    )
+    const safeAcceptEnvCheck =
+      "grep -E '^acceptenv (.* )?GH_TOKEN( |$)' >/dev/null"
+    expect(hostBootstrap).toContain(safeAcceptEnvCheck)
+    expect(validationModule).toContain(safeAcceptEnvCheck)
+    expect(hostBootstrap).not.toContain("grep -Eq '^acceptenv")
+    expect(validationModule).not.toContain("grep -Eq '^acceptenv")
     expect(entryScript).toContain(
       'GitHub authentication for the remote development environment:',
     )

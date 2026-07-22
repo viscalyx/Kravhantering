@@ -107,7 +107,7 @@ configure_ssh_access() {
   fi
   if ! /usr/sbin/sshd -T \
     -C user=vscode,host=localhost,addr=127.0.0.1 \
-    | grep -Eq '^acceptenv (.* )?GH_TOKEN( |$)'; then
+    | grep -E '^acceptenv (.* )?GH_TOKEN( |$)' >/dev/null; then
     log "effective SSH environment policy does not accept GH_TOKEN"
     return 1
   fi
