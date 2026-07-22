@@ -1,6 +1,6 @@
 interface:
   display_name: "Codebase to Infographic Prompt"
-  short_description: "Helps AI analyze a codebase and create a strong prompt for generating a professional infographic."
-  default_prompt: "Helps an AI analyze a complete software codebase and produce a high-quality prompt for another AI system that will generate a professional infographic."
+  short_description: "Create infographic prompts from codebases"
+  default_prompt: "Use $codebase-to-infographic-prompt to analyze a codebase and create a professional infographic-generation prompt."
 policy:
   allow_implicit_invocation: false

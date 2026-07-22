@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const i18nState = vi.hoisted(() => ({ commonSuffix: '' }))
@@ -715,7 +716,7 @@ describe('RequirementPackagesClient', () => {
         url === '/api/requirement-packages/1' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     )
-    expect((putCall?.[1] as RequestInit).body).toBe(
+    expect((putCall?.[1] as RequestInit | undefined)?.body).toBe(
       JSON.stringify({
         name: 'Updated mobile use',
         purposeAndScope: 'Requirements for mobile access and responsive flows.',
@@ -1064,7 +1065,9 @@ describe('RequirementPackagesClient', () => {
       expect(createButton).toBeEnabled()
     })
     fireEvent.click(createButton)
-    fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
+    await userEvent.click(
+      screen.getByRole('button', { name: /common\.cancel/i }),
+    )
     expect(
       screen.queryByRole('textbox', {
         name: /requirementPackage\.name/,
@@ -1085,7 +1088,9 @@ describe('RequirementPackagesClient', () => {
       }),
     ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
+    await userEvent.click(
+      screen.getByRole('button', { name: /common\.cancel/i }),
+    )
 
     expect(
       screen.queryByRole('dialog', {

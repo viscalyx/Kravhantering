@@ -1,11 +1,12 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { HelpCircle, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import FormActionRow from '@/components/FormActionRow'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
@@ -27,16 +28,12 @@ export default function AddToSpecificationDialog({
   const shouldReduceMotion = useReducedMotion()
 
   const helpButton = (field: string, label: string) => (
-    <button
-      aria-controls={`help-${field}`}
-      aria-expanded={state.openHelp.has(field)}
-      aria-label={`${tc('help')}: ${label}`}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+    <FieldHelpButton
+      controls={`help-${field}`}
+      expanded={state.openHelp.has(field)}
+      label={`${tc('help')}: ${label}`}
       onClick={() => dialog.toggleHelp(field)}
-      type="button"
-    >
-      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-    </button>
+    />
   )
 
   const helpPanel = (helpKey: string, field: string) => (

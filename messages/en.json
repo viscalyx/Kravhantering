@@ -4,6 +4,7 @@
     "appDescription": "A web application for requirements management that supports the company's requirements model and process",
     "loading": "Loading...",
     "loadingRequirements": "Fetching requirements…",
+    "requirementListRefreshed": "The requirements list changed and was refreshed from the beginning.",
     "save": "Save",
     "saving": "Saving…",
     "savingInProgress": "Saving in progress…",
@@ -140,6 +141,14 @@
     "userInfoNoRoles": "No roles assigned",
     "dataExport": "My personal data"
   },
+  "stewardshipWorkspace": {
+    "loading": "Loading {workspace}…",
+    "loadError": {
+      "title": "Could not load {workspace}",
+      "description": "The workspace could not be loaded. Reload the page and try again.",
+      "retry": "Reload page"
+    }
+  },
   "specificationRequirementSelection": {
     "allAreas": "All requirement areas",
     "answered": "Answered",
@@ -168,6 +177,13 @@
     "createSuggestion": "Send RFI question suggestion",
     "createSuggestionForArea": "Send RFI question suggestion for requirement area {area}",
     "createSuggestionForQuestion": "Send RFI question suggestion for {code}",
+    "conflicts": {
+      "alreadyResolved": "This RFI question suggestion has already been handled. The suggestions have been reloaded.",
+      "notDraft": "Only a draft RFI question suggestion can be deleted. The suggestions have been reloaded.",
+      "notFound": "This RFI question suggestion no longer exists. The suggestions have been reloaded.",
+      "reviewAlreadyRequested": "Review has already been requested for this RFI question suggestion. The suggestions have been reloaded.",
+      "reviewRequired": "Request review before handling this RFI question suggestion. The suggestions have been reloaded."
+    },
     "deleteSuggestionAriaLabel": "Delete RFI question suggestion",
     "deleteSuggestionConfirm": "Delete this RFI question suggestion? This cannot be undone.",
     "deleteSuggestionTitle": "Delete RFI question suggestion",
@@ -226,6 +242,13 @@
     "area": "Requirement area",
     "areaLockedHint": "The requirement area cannot be changed after the RFI question has been created.",
     "confirmArchiveQuestion": "Archive this RFI question?",
+    "conflicts": {
+      "alreadyResolved": "This RFI question suggestion has already been handled. The suggestions have been reloaded.",
+      "notDraft": "Only a draft RFI question suggestion can be deleted. The suggestions have been reloaded.",
+      "notFound": "This RFI question suggestion no longer exists. The suggestions have been reloaded.",
+      "reviewAlreadyRequested": "Review has already been requested for this RFI question suggestion. The suggestions have been reloaded.",
+      "reviewRequired": "Request review before handling this RFI question suggestion. The suggestions have been reloaded."
+    },
     "createdAt": "Created",
     "createdBy": "Created by",
     "dismiss": "Dismiss",
@@ -424,6 +447,9 @@
   },
   "requirement": {
     "title": "Requirements Library",
+    "loadRequirementsFailed": "Could not load the requirements library.",
+    "paginationContinuationFailed": "Could not load the next page. The requirements already loaded are still shown.",
+    "paginationRecoveryFailed": "The continuation expired and restarting from the first page failed. The requirements already loaded, the current query, and the selection are unchanged.",
     "statusStepperAriaLabel": "Requirement version status workflow steps",
     "tableCaption": "Requirements list",
     "uniqueId": "Requirement ID",
@@ -458,6 +484,19 @@
     "verifiableHelp": "<strong>Indicate whether the requirement has objective conditions that can be checked.</strong>\nIf the requirement is marked as verifiable, you also need to specify a verification method.",
     "reference": "Requirement reference",
     "requirementPackage": "Requirements package",
+    "requirementPackages": "Requirements packages",
+    "noRequirementPackageFilterActive": "No requirements package filter active",
+    "noRequirementPackagesAvailableToFilter": "No requirements packages are available to filter by",
+    "requirementPackageFilterButton": "Filter requirements packages",
+    "requirementPackageFilterButtonActive": "Filter requirements packages, {count, plural, one {# selected} other {# selected}}",
+    "requirementPackageChooser": "Available requirements packages",
+    "addRequirementPackageToFilter": "Add {package} to requirements package filter",
+    "removeRequirementPackageFromFilter": "Remove {package} from requirements package filter",
+    "clearRequirementPackageFilter": "Clear all requirements packages",
+    "allRequirementPackagesSelected": "All requirements packages are selected.",
+    "requirementPackageAdded": "Added {package} to the requirements package filter.",
+    "requirementPackageRemoved": "Removed {package} from the requirements package filter.",
+    "requirementPackageFilterCleared": "Cleared the requirements package filter.",
     "newRequirement": "New requirement",
     "importRequirements": "Import requirements",
     "aiGenerate": "AI assist",
@@ -687,8 +726,25 @@
     "noLinkedRequirements": "No requirements use this needs reference.",
     "toggleNeedsReferenceUsage": "Show requirements linked to {needsReference}",
     "bulkNeedsReferenceLabel": "Needs reference for selected requirements",
-    "bulkNeedsReferenceHelp": "Choose the needs reference to apply to every selected requirement in the specification, or choose no needs reference to clear the assignment.",
-    "applyNeedsReferenceSelected": "Apply to selected ({count})",
+    "bulkNeedsReferenceHelp": "Choose the needs reference to apply to every selected requirement in the specification.",
+    "assignNeedsReferenceAction": "Assign needs reference",
+    "assignNeedsReferenceTitle": "Assign needs reference to selected requirements",
+    "assignNeedsReferenceHelp": "Choose an existing needs reference to assign to every affected requirement application listed in this dialog.",
+    "selectNeedsReference": "Select a needs reference",
+    "clearNeedsReferenceAction": "Clear needs references",
+    "clearNeedsReferenceTitle": "Clear needs-reference links",
+    "clearNeedsReferenceConfirm": "Clear the needs-reference links for Requirement IDs: {ids}?",
+    "bulkNeedsReferencePartialFail": "Needs-reference changes failed for Requirement IDs: {ids}. Those requirements remain selected.",
+    "affectedRequirementIds": "Affected Requirement IDs",
+    "selectionStatus": "{total, plural, one {# requirement selected} other {# requirements selected}}; {hidden, plural, =0 {none hidden} one {# is not loaded} other {# are not loaded}}.",
+    "selectionActionLimitExceeded": "{total, plural, one {# requirement selected} other {# requirements selected}}; {hidden, plural, =0 {none hidden} one {# is not loaded} other {# are not loaded}}. Shared actions support at most {limit} requirements. Deselect exactly {excess, plural, one {# requirement} other {# requirements}} to continue.",
+    "selectionActionsAffectAll": "Actions affect the complete selected set.",
+    "deselectHidden": "Deselect not shown ({count})",
+    "selectionDisappeared": "The following Requirement IDs disappeared during refresh and were deselected: {ids}.",
+    "requirementsAdded": "Added Requirement IDs: {ids}.",
+    "paginationContinuationFailed": "Could not load the next page. The requirements already loaded are still shown.",
+    "paginationRecoveryFailed": "The continuation expired and restarting from the first page failed. The requirements already loaded, the current query, and the selection are unchanged.",
+    "paginationRestarted": "The continuation expired. The list restarted from the first page with the same query.",
     "newSpecification": "New requirements specification",
     "editSpecification": "Edit requirements specification",
     "filterByName": "Filter by name",
@@ -710,11 +766,13 @@
     "selectSpecification": "Select requirements specification",
     "selectSpecificationHelp": "Choose the requirements specification that should receive this requirement.",
     "removeSelected": "Remove selected ({count})",
-    "removeConfirm": "Are you sure you want to remove {count, plural, one {1 requirement} other {# requirements}} from this specification?",
+    "removeConfirm": "Remove {count, plural, one {1 library requirement} other {# library requirements}} from this specification? Requirement IDs: {ids}.",
     "removeSpecificationLocalConfirmTitle": "Delete unique requirements",
-    "removeSpecificationLocalConfirm": "Are you sure you want to permanently delete {count, plural, one {1 unique requirement} other {# unique requirements}} from this specification? They cannot be restored.",
+    "removeSpecificationLocalConfirm": "Permanently delete {count, plural, one {1 unique requirement} other {# unique requirements}} from this specification? Requirement IDs: {ids}. They cannot be restored.",
     "removeMixedConfirmTitle": "Remove selected items",
-    "removeMixedConfirm": "Are you sure you want to remove {libraryCount, plural, one {1 library requirement} other {# library requirements}} from this specification and permanently delete {specificationLocalCount, plural, one {1 unique requirement} other {# unique requirements}}? Deleted unique requirements cannot be restored.",
+    "removeMixedConfirm": "Unlink {libraryCount, plural, one {1 library requirement} other {# library requirements}} ({libraryIds}) and permanently delete {specificationLocalCount, plural, one {1 unique requirement} other {# unique requirements}} ({specificationLocalIds})? Deleted unique requirements cannot be restored.",
+    "removePartialFail": "Removal failed for Requirement IDs: {ids}. Those requirements remain selected.",
+    "unlinkLibraryRequirementAction": "Remove from specification",
     "noItems": "No requirements are linked to this specification.",
     "specificationNotFound": "Requirements specification not found.",
     "backToSpecifications": "Back to specifications",
@@ -856,7 +914,9 @@
     "reviewFailed": "Could not request review.",
     "revertFailed": "Could not revert to draft.",
     "priorityLevel": "Priority",
-    "bulkDeviationPartialFail": "{count, plural, one {1 deviation request failed} other {# deviation requests failed}}"
+    "priorityLevels": "Priorities",
+    "affectedRequirementIds": "Affected Requirement IDs",
+    "bulkDeviationPartialFail": "Deviation requests failed for Requirement IDs: {ids}. Those requirements remain selected."
   },
   "improvementSuggestion": {
     "title": "Improvement suggestions",
@@ -908,6 +968,42 @@
     "resolvedByPlaceholder": "Enter the name of the reviewer",
     "reviewFailed": "Could not request review.",
     "revertFailed": "Could not revert to draft."
+  },
+  "generatedOutput": {
+    "fileReady": "The file is ready",
+    "errorTitle": "Download failed",
+    "retry": "Retry",
+    "retryCountdown": "Retry in {seconds} s",
+    "phases": {
+      "pdf": {
+        "generating": "Generating PDF…",
+        "downloading": "Downloading PDF…"
+      },
+      "csv": {
+        "generating": "Preparing CSV export…",
+        "downloading": "Downloading CSV…"
+      }
+    },
+    "errors": {
+      "csv": {
+        "items": "The CSV export contains more than the allowed limit of {limit} requirements. Narrow the selection or ask an administrator to adjust the export settings.",
+        "bytes": "The CSV export exceeds the allowed file size of {limitMiB} MiB. Narrow the selection or ask an administrator to adjust the export settings.",
+        "busy": "The maximum number of CSV exports allowed at the same time are already in progress. You can try again in {retryAfter} seconds.",
+        "timeout": "The CSV export could not be completed within the {timeoutSeconds}-second time limit. Narrow the selection or ask an administrator to adjust the export settings.",
+        "storage": "The CSV export could not be created because temporary storage is unavailable. Try again later or contact an administrator.",
+        "unknown": "The CSV export could not be downloaded. Try again."
+      },
+      "pdf": {
+        "items": "The PDF report contains more than the allowed limit of {limit} requirements. Narrow the selection or ask an administrator to adjust the report settings.",
+        "bytes": "The PDF report exceeds the allowed file size of {limitMiB} MiB. Narrow the selection or ask an administrator to adjust the report settings.",
+        "busy": "The maximum number of PDF renderings allowed at the same time are already in progress. You can try again in {retryAfter} seconds.",
+        "timeout": "The PDF report could not be generated within the {timeoutSeconds}-second time limit. Narrow the selection or ask an administrator to adjust the report settings.",
+        "storage": "The PDF report could not be generated because temporary storage is unavailable. Try again later or contact an administrator.",
+        "workerMemory": "The PDF report could not be generated within the configured memory limit. Reduce the number of requirements or ask an administrator to adjust the report settings.",
+        "workerFailed": "The PDF report could not be generated because of a temporary rendering error. Try again. Contact an administrator if the problem persists.",
+        "unknown": "The PDF report could not be downloaded. Try again."
+      }
+    }
   },
   "reports": {
     "errorTitle": "Error",
@@ -1292,6 +1388,18 @@
   "admin": {
     "title": "Admin center",
     "loading": "Loading admin center...",
+    "accessDenied": {
+      "title": "You do not have access to Admin Center",
+      "description": "Admin Center requires the Admin or PrivacyOfficer role. Contact your access administrator if you need access."
+    },
+    "panelLoading": "Loading {tab}…",
+    "panelLoadError": {
+      "title": "Could not load {tab}",
+      "description": "Reload the page and try again.",
+      "retry": "Try again"
+    },
+    "tabAccessFallback": "You do not have access to the requested tab. {tab} is shown instead.",
+    "tabUnavailableFallback": "The requested tab is unavailable. {tab} is shown instead.",
     "description": "Manage core admin settings for the system, including columns, taxonomy, statuses and workflows, access reviews, and privacy-related configuration.",
     "settings": "Settings",
     "adminCenter": "Admin center",
@@ -1381,6 +1489,8 @@
       "removeSelectedTermsConfirmMessage": "{standardCount} standard words will be deactivated and {customCount} custom additions will be deleted.",
       "removeSelectedTermsConfirmTitle": "Remove selected words?",
       "restoreRuleDefaults": "Restore default",
+      "restoreRuleDefaultsConfirmMessage": "Standard words will be reactivated and restored to their default directions. Custom additions will remain unchanged.",
+      "restoreRuleDefaultsConfirmTitle": "Restore default words?",
       "rowSaveError": "Could not save",
       "safetyDirections": {
         "input": "Input",
@@ -1576,6 +1686,69 @@
         "controlledByOwner": "Shown for information. Requirement areas and packages are switched automatically when the owner row is switched."
       }
     },
+    "applicationSettings": {
+      "title": "Settings",
+      "description": "Shared settings for AI, exports, and reports.",
+      "loading": "Loading settings…",
+      "loadError": "Could not load application settings.",
+      "saveError": "Could not save the setting.",
+      "invalidValue": "Enter a value within the allowed range.",
+      "decreaseValue": "Decrease {field}",
+      "increaseValue": "Increase {field}",
+      "exports": {
+        "title": "Exports",
+        "description": "Controls resource limits for CSV exports. Limits apply per operation unless stated otherwise."
+      },
+      "reports": {
+        "title": "Reports",
+        "description": "Controls resource limits for large server-generated PDF reports. Limits apply per operation unless stated otherwise."
+      },
+      "units": {
+        "exports": "exports",
+        "mib": "MiB",
+        "renderings": "renderings",
+        "requirements": "requirements",
+        "seconds": "seconds"
+      },
+      "fields": {
+        "csvExportMaxRequirements": {
+          "label": "Maximum requirements per CSV export",
+          "help": "Limits how many requirements a CSV export may contain. The export is rejected before download begins when the result exceeds the limit. Allowed: 1–5,000."
+        },
+        "csvExportMaxFileBytes": {
+          "label": "Maximum CSV file size",
+          "help": "Limits the completed CSV file size. The file is not delivered when the limit is exceeded. Use minus or plus to adjust by 1 MiB, or enter an integer in MiB. Allowed: 1–1,024 MiB."
+        },
+        "csvExportConcurrencyPerNode": {
+          "label": "Concurrent CSV exports per node",
+          "help": "Sets how many CSV exports may run concurrently on each application node. Additional attempts are temporarily rejected and may be retried. Allowed: 1–20."
+        },
+        "csvExportTimeoutSeconds": {
+          "label": "CSV export time limit",
+          "help": "Stops a CSV export that has not completed within the configured time. The value is specified in seconds. Allowed: 10–600 seconds."
+        },
+        "pdfReportMaxRequirements": {
+          "label": "Maximum requirements per PDF report",
+          "help": "Limits how many requirements a PDF report may contain. The report is rejected before rendering begins when the result exceeds the limit. Allowed: 1–1,000."
+        },
+        "pdfReportMaxFileBytes": {
+          "label": "Maximum PDF file size",
+          "help": "Limits the completed PDF file size. The file is not delivered when the limit is exceeded. Use minus or plus to adjust by 1 MiB, or enter an integer in MiB. Allowed: 1–512 MiB."
+        },
+        "pdfReportConcurrencyPerNode": {
+          "label": "Concurrent PDF renderings per node",
+          "help": "Sets how many large PDF reports may render concurrently on each application node. Additional attempts are temporarily rejected and may be retried. Allowed: 1–10."
+        },
+        "pdfReportTimeoutSeconds": {
+          "label": "PDF generation time limit",
+          "help": "Stops PDF generation that has not completed within the configured time. The value is specified in seconds. Allowed: 10–600 seconds."
+        },
+        "pdfWorkerMemoryMib": {
+          "label": "Worker memory per PDF rendering",
+          "help": "Limits JavaScript memory for each isolated PDF worker. The container memory limit remains the final safeguard. Use minus or plus to adjust by 128 MiB, or enter an integer in MiB. Allowed: 128–4,096 MiB."
+        }
+      }
+    },
     "archiving": {
       "body": "Use archiving to preview and execute approved retention policies and export archive evidence before deletion. The data protection flow remains separate for data-subject cases.",
       "description": "Preview retention candidates, manage exceptions, and export archive material before data is removed from the application.",
@@ -1701,6 +1874,7 @@
     "locked": "Locked",
     "saved": "Saved",
     "columnsSaveError": "Could not save the column settings.",
+    "columnsLoadError": "Could not load the column settings.",
     "areasDescription": "Manage requirement areas and their prefixes.",
     "categoriesDescription": "View requirement categories used to classify requirement perspectives.",
     "typesDescription": "View types and their quality hierarchy.",
@@ -1857,7 +2031,7 @@
       },
       "filtering": {
         "heading": "Searching and filtering",
-        "body": "Use the search field for free-text searches in requirement IDs and content. Click the filter icon on any column header to narrow the list to the right requirement area, requirement version status, or other metadata. Turn on \"Show archived\" when you need to include requirements that are no longer active."
+        "body": "Use the search field for free-text searches in requirement IDs and content. Click the filter icon on any column header to narrow the list to the right requirement area, requirement version status, or other metadata. The requirements package band above the list always shows the active package filter. Hover over the band, or activate its filter button with a pointer, touch, Enter, or Space, to open the chooser. Add packages from the chooser, remove them from selected badges, or clear all when several are selected. Package selections use OR logic and work even when the optional requirements package column is hidden. Turn on \"Show archived\" when you need to include requirements that are no longer active."
       },
       "columns": {
         "heading": "Columns",
@@ -1972,11 +2146,11 @@
       "title": "Specification Detail",
       "requirements": {
         "heading": "Managing requirements",
-        "body": "Click \"Add requirements\" to open the picker and add published requirements to this specification. Select one or more rows and click \"Remove selected\" to remove them."
+        "body": "Click \"Add requirements\" to add published requirements. The specification starts with one bounded page and loads later pages automatically near the end of the list. Editors can select individual specification items; the selection remains active while searching, filtering, sorting, paging, or refreshing. Selected-item actions always affect the complete selection, including items not currently shown."
       },
       "needsReference": {
         "heading": "Needs reference",
-        "body": "Each requirement application in the specification can have a needs reference — free text that explains why the requirement is needed in this specific specification. It can also support when the requirement should be verified. Set it when adding requirements or edit it inline."
+        "body": "Each requirement application can have a needs reference that explains why it is needed. Set it while adding requirements, edit it inline, or use the distinct assign and clear actions for selected items."
       },
       "export": {
         "heading": "More actions",
@@ -2129,7 +2303,7 @@
       },
       "saving": {
         "heading": "Change and restore",
-        "body": "Add custom terms with the plus button inside a rule type. Remove selected terms with the minus button; custom additions are deleted while standard terms are deactivated. The word text itself is not edited: add the correct word and remove or deactivate the incorrect one. Restore standard on a rule activates the standard terms and restores their directions, but keeps custom additions."
+        "body": "Add custom terms with the plus button inside a rule type. Remove selected terms with the minus button; custom additions are deleted while standard terms are deactivated. The word text itself is not edited: add the correct word and remove or deactivate the incorrect one. Restore standard on a rule asks for confirmation before activating standard terms and restoring their directions; custom additions remain unchanged."
       }
     },
     "adminPrivacy": {
@@ -2175,7 +2349,7 @@
       "title": "Access review",
       "overview": {
         "heading": "Purpose",
-        "body": "Access review records who currently holds app-managed assignments, who reviewed them, and which decision was made for each row."
+        "body": "Access review records who currently holds app-managed assignments, who reviewed them, and which decision was made for each row. If the run list cannot be loaded, use Try again after the error is shown."
       },
       "scope": {
         "heading": "Scope",
@@ -2330,6 +2504,7 @@
   },
   "priorityLevelAdmin": {
     "editItem": "Edit priority",
+    "priority": "Priority",
     "code": "Code",
     "codeHelp": "The code is system-controlled and cannot be changed.",
     "name": "Name",
@@ -2338,8 +2513,20 @@
     "assessmentCriteria": "Assessment criteria",
     "color": "Color",
     "colorHex": "Color hex code",
+    "colorPicker": "Color picker",
+    "themePreview": "Badge preview",
+    "themePreviewGuidance": "Verify that the priority is readable and visually distinct from the other priorities in both themes before saving.",
+    "lightTheme": "Light theme",
+    "darkTheme": "Dark theme",
+    "contrastResult": "Contrast {ratio}:1",
+    "contrastPass": "Passes AA",
+    "invalidColorWarning": "Enter a color as #RRGGBB to preview and save this priority.",
+    "invalidStoredColors": "Priorities {codes} have invalid stored colors. Their accent styling is omitted until an administrator corrects each value.",
     "icon": "Icon",
+    "iconHelp": "Choose an approved icon shown next to the priority label. Leave empty for a text-only badge.",
     "sortOrder": "Sort order",
+    "sortOrderHelp": "Enter a number that controls the display order. Lower numbers appear first.",
+    "colorHelp": "Choose the color used for this priority badge.",
     "linkedRequirements": "Linked requirements",
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
     "emptyState": "No priority levels are available."
@@ -2498,9 +2685,12 @@
     "proposals": "Proposed norm references",
     "rawResultTab": "Raw result",
     "repair": "Repair JSON",
+    "repairFailed": "Repair failed",
     "repairPrompt": "Suggested repair prompt",
     "repairPromptLead": "Send the invalid JSON and validation errors to the selected model and ask it to preserve the content while fixing the import format.",
+    "repairSuccess": "The generated JSON was repaired.",
     "repairing": "Repairing…",
+    "repairSucceeded": "The generated JSON was repaired successfully.",
     "resolvedNeedsReferenceId": "Existing needs reference #{id}",
     "selectedCandidates": "{count, plural, one {# selected candidate} other {# selected candidates}}",
     "selectedProposals": "{count, plural, one {# selected proposal} other {# selected proposals}}",
@@ -2508,6 +2698,7 @@
     "previewFailed": "Preview failed",
     "missingSpecificationContext": "Missing specification context.",
     "invalidGeneratedJson": "Model output was not valid JSON.",
+    "generationFailed": "Generation failed",
     "generatedJsonSchemaMismatch": "Generated JSON did not match the requirement import schema.",
     "repairedJsonSchemaMismatch": "Repaired JSON did not match the requirement import schema.",
     "inputSafetyBlocked": "The AI request was blocked by the AI safety filter: {ruleType}. Revise the need or context and try again.",
@@ -2584,6 +2775,22 @@
     "loadingInitialImport": "Preparing import review...",
     "descriptionRequired": "Requirement text is required before this row can be imported.",
     "verificationMethodRequired": "Verification method is required for verifiable requirements."
+  },
+  "onDemandFeature": {
+    "aiAuthoring": {
+      "loading": "Loading AI-assisted authoring…",
+      "loadErrorTitle": "AI-assisted authoring could not be loaded",
+      "loadErrorDescription": "The feature code could not be loaded. Reload the page and try again."
+    },
+    "importReview": {
+      "titleLibrary": "Import requirements",
+      "titleSpecification": "Import local requirements",
+      "titleWithDestination": "{title} for {destination}",
+      "loading": "Loading requirement import review…",
+      "loadErrorTitle": "Requirement import review could not be loaded",
+      "loadErrorDescription": "The feature code could not be loaded. Reload the page and try again."
+    },
+    "reloadPage": "Reload page"
   },
   "safeMarkdown": {
     "imageOmitted": "Image omitted"

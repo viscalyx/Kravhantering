@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
           persist-credentials: false
 
@@ -69,7 +69,7 @@ jobs:
             );
 
       - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -88,6 +88,13 @@ jobs:
 
       - name: Run markdown lint check
         run: npm run lint:md
+
+      - name: Run Lychee Markdown link check
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: --config .lychee.toml . .github
+          lycheeVersion: v0.24.2
+          jobSummary: true
 
       - name: Run type check
         run: npm run type-check
@@ -113,6 +120,9 @@ jobs:
           filter_mode: nofilter
           fail_level: any
 
+      - name: Run HSA support package tests
+        run: npm run test:hsa-support
+
       - name: Run tests and coverage
         run: npm run test:coverage
 
@@ -134,7 +144,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: always()
-        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6
         with:
           file: ./coverage/lcov.info
           fail_ci_if_error: false

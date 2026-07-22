@@ -211,7 +211,15 @@ function sampleRequirementDetail() {
         qualityCharacteristic: null,
         verifiable: false,
         revisionToken: 'revision-token',
-        priorityLevel: null,
+        priorityLevel: {
+          code: 'P4',
+          color: '#f97316',
+          iconName: null,
+          id: 4,
+          nameEn: null,
+          nameSv: null,
+          sortOrder: 4,
+        },
         status: 3,
         statusColor: '#22c55e',
         statusIconName: 'CheckCircle2',
@@ -675,6 +683,80 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(childNode).toHaveTextContent('Condition group 1')
     expect(childNode).toHaveTextContent(sampleAnswer.text)
     expect(dialog.querySelector('svg > path[d^="M"]')).toBeTruthy()
+  })
+
+  it('keeps visibility answer checkboxes compact within separate option rows', async () => {
+    const secondParentAnswer: TestAnswer = {
+      ...sampleAnswer,
+      id: 102,
+      text: 'Enhanced profile',
+    }
+    const parentQuestion: TestQuestion = {
+      ...sampleQuestion,
+      answers: [sampleAnswer, secondParentAnswer],
+    }
+    const childQuestion: TestQuestion = {
+      ...sampleQuestion,
+      answers: [],
+      id: 22,
+      questionCode: 'SEC-KUF002',
+      sortOrder: 1,
+      text: 'Which follow-up applies?',
+      visibilityGroups: [
+        {
+          conditions: [
+            {
+              answerId: sampleAnswer.id,
+              answerIsActive: true,
+              answerIsArchived: false,
+              answerText: sampleAnswer.text,
+              id: 1,
+              parentAreaName: parentQuestion.areaName,
+              parentQuestionCode: parentQuestion.questionCode,
+              parentQuestionId: parentQuestion.id,
+              parentQuestionIsActive: true,
+              parentQuestionIsArchived: false,
+              parentQuestionText: parentQuestion.text,
+            },
+          ],
+          id: 1,
+          sortOrder: 0,
+        },
+      ],
+    }
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [parentQuestion, childQuestion] })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(childQuestion.text)).toBeInTheDocument()
+    const childCard = expandQuestion(childQuestion.text)
+    fireEvent.click(
+      within(childCard).getByRole('button', { name: 'Visibility conditions' }),
+    )
+
+    const visibilityPanel = screen.getByRole('complementary', {
+      name: 'Visibility conditions',
+    })
+    const visibilityAnswerCheckboxes =
+      within(visibilityPanel).getAllByRole('checkbox')
+    expect(visibilityAnswerCheckboxes).toHaveLength(2)
+    for (const checkbox of visibilityAnswerCheckboxes) {
+      expect(checkbox).toHaveClass('h-4', 'w-4')
+      expect(checkbox).not.toHaveClass('min-h-6', 'min-w-6')
+      expect(checkbox.parentElement).toHaveClass('min-h-10')
+    }
   })
 
   it('keeps multiple questions expanded and does not auto-expand answer search hits', async () => {
@@ -1307,6 +1389,9 @@ describe('RequirementSelectionQuestionsClient', () => {
       { name: samplePackage.name },
     )
     expect(packageCheckbox).toBeChecked()
+    expect(packageCheckbox).toHaveClass('h-4', 'w-4')
+    expect(packageCheckbox).not.toHaveClass('min-h-6', 'min-w-6')
+    expect(packageCheckbox.parentElement).toHaveClass('min-h-10')
     fireEvent.click(packageCheckbox)
     expect(packageCheckbox).not.toBeChecked()
     fireEvent.click(packageCheckbox)
@@ -1316,12 +1401,24 @@ describe('RequirementSelectionQuestionsClient', () => {
         name: 'Selected requirement packages',
       }),
     ).toHaveTextContent(samplePackage.name)
-
-    fireEvent.click(
-      within(dialog as HTMLElement).getByRole('button', {
-        name: 'Remove requirement SEC-001',
-      }),
+    const removePackageButton = within(dialog as HTMLElement).getByRole(
+      'button',
+      { name: `Remove package ${samplePackage.name}` },
     )
+    expect(removePackageButton).toHaveClass('h-6', 'w-6')
+    fireEvent.click(removePackageButton)
+    expect(
+      within(dialog as HTMLElement).queryByRole('group', {
+        name: 'Selected requirement packages',
+      }),
+    ).not.toBeInTheDocument()
+
+    const removeRequirementButton = within(dialog as HTMLElement).getByRole(
+      'button',
+      { name: 'Remove requirement SEC-001' },
+    )
+    expect(removeRequirementButton).toHaveClass('h-6', 'w-6')
+    fireEvent.click(removeRequirementButton)
     expect(
       within(dialog as HTMLElement).queryByRole('group', {
         name: 'Selected Requirement IDs',
@@ -1443,6 +1540,8 @@ describe('RequirementSelectionQuestionsClient', () => {
       'text-sm',
     )
     expect(detailCard.parentElement).toHaveClass('px-6', 'py-4')
+    const priorityBadge = within(detailCard).getByText('P4')
+    expect(priorityBadge.closest('.status-badge')).not.toHaveTextContent('–')
     expect(
       within(detailCard).queryByRole('heading', { name: 'SEC-001' }),
     ).not.toBeInTheDocument()
@@ -1453,11 +1552,13 @@ describe('RequirementSelectionQuestionsClient', () => {
       within(dialog as HTMLElement).queryByRole('button', { name: 'Archive' }),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(
-      within(dialog as HTMLElement).getByRole('checkbox', {
-        name: 'No requirement selection',
-      }),
+    const noRequirementSelection = within(dialog as HTMLElement).getByRole(
+      'checkbox',
+      { name: 'No requirement selection' },
     )
+    expect(noRequirementSelection).toHaveClass('h-4', 'w-4')
+    expect(noRequirementSelection).not.toHaveClass('min-h-6', 'min-w-6')
+    fireEvent.click(noRequirementSelection)
     expect(packageSelector).toBeDisabled()
     expect(
       within(dialog as HTMLElement).getByRole('textbox', {
@@ -2409,7 +2510,7 @@ describe('RequirementSelectionQuestionsClient', () => {
     ])
   })
 
-  it('keeps answer action controls at 44px minimum touch targets', async () => {
+  it('keeps answer action controls at their standard action size', async () => {
     const questions = [{ ...sampleQuestion, answers: [sampleAnswer] }]
 
     fetchMock.mockImplementation(async (url: string) => {

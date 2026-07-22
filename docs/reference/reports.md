@@ -49,10 +49,10 @@ formatted table.
 - Includes all currently visible requirements (after filtering/sorting)
 - Uses the same displayed requirement version and status as the list view, so
   Review rows are included when the current filter includes them
-- Does not apply an application-level item-count cap. The list report route
-  resolves the full matching requirement set server-side from the active
+- Resolves the complete matching requirement set server-side from the active
   filters and sort order instead of relying on the currently loaded client
-  page.
+  page. The Admin-configured PDF item cap is checked with a bounded
+  `limit + 1` traversal before rendering.
 - Header shows total count and generation timestamp
 
 ### 4. Combined Review Report
@@ -104,7 +104,10 @@ detail list.
 
 - Includes both library requirement applications (`lib:{id}`) and
   specification-local requirement applications (`local:{id}`)
-- Uses explicit item refs in `refs=lib:31,local:41`
+- Accepts the same normalized filter, locale, sort field, and sort direction as
+  the requirements specification item list
+- Traverses the complete server-filtered result in database-authoritative order
+  with bounded 100-row pages
 - Uses the current application data already stored on requirement applications:
   needs reference, usage status, status date, deviations, risk, verifiability,
   verification method, and note
@@ -115,15 +118,20 @@ detail list.
 - Detail rows show requirement ID, origin, version, area, needs reference,
   usage status, status changed date, deviation state, risk, verification, and
   note
-- The detail view shows traceability PDF actions only when the filtered
-  requirement application list contains at most 200 items. The selected `refs`
-  payload is capped at the same limit before the report route is called.
+- The detail view keeps traceability available when matching rows have not yet
+  been loaded in the browser or the filtered result exceeds 100 items.
 
 The traceability report loads data through
-`/api/requirements-specifications/{idOrSlug}/traceability-items?refs=...`.
-The API accepts only `lib:{id}` and `local:{id}` refs, applies the shared report
-array item cap, returns 400 for invalid or duplicate refs, and returns 404 when
-a syntactically valid ref does not belong to the requested specification.
+`/api/requirements-specifications/{id}/traceability-items` with the normalized
+item-list query parameters. The server applies those filters and ordering to the
+complete combined library/specification-local result. It follows opaque
+continuations internally with duplicate, progress, cursor-cycle, and maximum
+page protection; no browser-side reference enumeration or 100-reference limit
+applies.
+
+Lifecycle-profile PDFs, procurement CSV, and full CSV do not inherit editor
+filters or loaded-page state. They always traverse the complete requirements
+specification in stable Requirement ID order using bounded server pages.
 
 ### 7. Improvement Suggestion History
 
@@ -293,8 +301,8 @@ Excluded fields:
 
 ## CSV Export Format
 
-The `exportToCsv()` function in `lib/export-csv.ts` produces
-CSV with the following conventions:
+The shared `escapeCsvField()` contract in `lib/export-csv.ts` and the
+row-wise exporters produce CSV with the following conventions:
 
 - **Separator:** semicolon (`;`) — European locale
   compatibility.
@@ -306,11 +314,57 @@ CSV with the following conventions:
   double-quotes.
 - **Download encoding:** UTF-8 with BOM at the HTTP/download boundary so
   Windows spreadsheet tools detect Swedish characters correctly.
-- `exportToCsv()` itself returns plain CSV text without a BOM; callers add
-  the download BOM.
 - Requirements specification CSV exports are generated server-side from the
-  whole specification, stay row-oriented, do not include metadata rows, and are
-  returned with a UTF-8 BOM at the HTTP boundary.
+  whole specification, stay row-oriented, do not include metadata rows, and
+  write the BOM, header, and each enriched page directly to the bounded spool.
+- The RFI question-list CSV is a distinct dataset and workflow. It is
+  inventoried but does not use the requirements-specification CSV runner.
+- Requirements Library CSV is returned with a UTF-8 BOM at the HTTP boundary
+  and is served only by `GET /api/requirements/export`. It applies the requested
+  server filters, locale, and database sort, starts from the first page, and
+  accepts no cursor or page-size parameter.
+- Requirements Library CSV, specification CSV, and filtered list PDF
+  collection traverse internal bounded pages and fetch at most the Admin item
+  limit plus one row. They fail rather than return partial output if a page
+  repeats a stable identifier, does not make progress, repeats a cursor, or
+  exceeds the traversal page guard.
+
+## Bounded Synchronous Output
+
+Requirements Library CSV, procurement and full requirements-specification CSV,
+and the requirements-list PDF are same-request, all-or-error operations. After
+authorization they read one `application_settings` snapshot, acquire a
+process-local per-node slot, reserve the configured maximum file size against
+temporary-storage capacity, and create a private spool file. Both specification
+profiles share the Requirements Library CSV item, byte, timeout, and concurrency
+settings and the same CSV pool. No response headers are sent until generation
+has completed within all configured bounds.
+
+CSV traverses SQL-authoritative pages and appends escaped rows directly to a
+bounded file; it never builds the complete row model or CSV string in memory.
+Specification CSV enriches one page at a time. The explicitly eager
+specification collector remains available only to PDF and structured report
+JSON callers. The large list PDF collects at most 1,000 report rows and renders
+the shared model in an isolated worker thread with an Admin-configured V8 heap
+limit. All bounded paths stop traversal/rendering on timeout or client
+cancellation and remove output after completion, cancellation, or error.
+
+The browser uses one accessible two-phase modal for these outputs:
+`Generating/Preparing` while awaiting response headers and `Downloading` while
+reading the response Blob. There is no percentage, service worker, or File
+System Access path. The server filename from `Content-Disposition` wins over
+the localized fallback filename. Server-provided CSV and PDF filenames are
+Unicode-normalized; control, format, and malformed surrogate characters are
+removed; and filenames are bounded to 240 UTF-8 bytes before
+standards-compliant header encoding. One hook instance runs only one operation
+at a time, including when different specification CSV or PDF URLs are
+requested.
+
+Stable failures are `output_limit_exceeded` (`422`), `capacity_busy` (`429`,
+`Retry-After: 5`), and the `503` timeout, temporary-storage, PDF-memory, or
+worker failure codes. The client maps only these codes and bounded details to
+localized messages; it never displays raw server error text. A busy response
+enables manual retry only after the countdown and never retries automatically.
 
 ## Output Behavior
 
@@ -333,6 +387,9 @@ specification before collecting items and reject profiles that do not match the
 specification lifecycle status. Requirements specification traceability PDF and
 API routes authorize against the specification before collecting item data and
 reject selected refs that do not belong to the requested specification.
+Specification CSV validates the requested profile, specification,
+authorization, and procurement lifecycle before it reads capacity settings or
+acquires a spool slot.
 
 ## PDF Filenames
 

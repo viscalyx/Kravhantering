@@ -11,6 +11,7 @@ import {
   Columns3,
   DiamondPlus,
   Filter,
+  Minus,
   Search,
   SearchCheck,
   WrapText,
@@ -42,6 +43,7 @@ import { useColumnState } from '@/components/_requirements-table/useColumnState'
 import { useFloatingRailPosition } from '@/components/_requirements-table/useFloatingRailPosition'
 import { useResizeHandles } from '@/components/_requirements-table/useResizeHandles'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
+import RequirementsPackageFilter from '@/components/RequirementsPackageFilter'
 import StatusBadge from '@/components/StatusBadge'
 import StatusIcon from '@/components/StatusIcon'
 import { Link, useRouter } from '@/i18n/routing'
@@ -114,13 +116,17 @@ export interface RequirementsTableProps {
   priorityLevels?: PriorityLevelOption[]
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
+  requirementPackageCatalogStatus?: 'failed' | 'loaded' | 'loading'
+  requirementPackageFilterPresentation?: 'chips' | 'compact-band'
   requirementPackages?: RequirementPackageOption[]
   rows: RequirementRow[]
   selectable?: boolean
   selectedIds?: Set<number>
+  showSelectAll?: boolean
   sortState?: RequirementSortState
   specificationItemStatuses?: SpecificationItemStatusOption[]
   statusOptions?: StatusOption[]
+  statusRow?: ReactNode
   stickyTitle?: ReactNode
   stickyTitleActions?: ReactNode
   stickyTopOffsetClassName?: string
@@ -155,7 +161,7 @@ type FloatingActionMenuActionItem =
     })
   | (FloatingActionMenuItemBase & {
       href?: never
-      onClick: () => void
+      onClick: (returnFocusTarget?: HTMLButtonElement | null) => void
     })
 
 export type FloatingActionMenuItem =
@@ -223,7 +229,7 @@ export interface FloatingActionItem {
   icon: ReactNode
   id: string
   menuItems?: FloatingActionMenuItem[]
-  onClick?: () => void
+  onClick?: (event: React.MouseEvent<HTMLElement>) => void
   position?: 'beforeColumns' | 'afterColumns'
   tooltip?: string
   variant?: FloatingActionPillVariant
@@ -562,7 +568,7 @@ export function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               className={`${floatingActionMenuItemBaseClassName} hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70`}
                               {...menuItemDeveloperModeProps(item)}
                               onClick={() => {
-                                item.onClick()
+                                item.onClick(triggerRef.current)
                                 setOpen(false)
                               }}
                               role="menuitem"
@@ -825,7 +831,7 @@ function SearchFilterPopover({
               />
               <input
                 aria-label={label}
-                className="w-full pl-7 pr-7 py-1.5 text-xs rounded-lg border bg-white dark:bg-secondary-800/50 placeholder:text-secondary-400 focus:outline-none focus:ring-1 focus:ring-primary-400/50 focus:border-primary-500 transition-all"
+                className="w-full pl-7 pr-8 py-1.5 text-xs rounded-lg border bg-white dark:bg-secondary-800/50 placeholder:text-secondary-400 focus:outline-none focus:ring-1 focus:ring-primary-400/50 focus:border-primary-500 transition-all"
                 onChange={e => {
                   setLocal(e.target.value)
                   commit(e.target.value)
@@ -847,7 +853,7 @@ function SearchFilterPopover({
               {local && (
                 <button
                   aria-label={tt('clear')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-secondary-400 hover:text-secondary-600"
+                  className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center text-secondary-400 hover:text-secondary-600"
                   onClick={() => {
                     setLocal('')
                     clearPendingCommit()
@@ -1407,9 +1413,10 @@ function SearchChip({
       })}
     >
       <span className="truncate">{label}</span>
+      {/* WCAG 2.5.8 target-size exception: spacing — chip remove controls have separate 24 CSS-pixel target circles; verified by requirements-table.test.tsx. */}
       <button
         aria-label={tt('removeItem', { label })}
-        className="shrink-0 hover:text-red-600 dark:hover:text-red-400"
+        className="inline-flex shrink-0 items-center justify-center hover:text-red-600 dark:hover:text-red-400"
         onClick={e => {
           e.stopPropagation()
           onRemove()
@@ -1456,9 +1463,10 @@ function FilterChips({
             })}
           >
             <span className="truncate">{label}</span>
+            {/* WCAG 2.5.8 target-size exception: spacing — chip remove controls have separate 24 CSS-pixel target circles; verified by requirements-table.test.tsx. */}
             <button
               aria-label={tt('removeItem', { label })}
-              className="shrink-0 hover:text-red-600 dark:hover:text-red-400"
+              className="inline-flex shrink-0 items-center justify-center hover:text-red-600 dark:hover:text-red-400"
               onClick={e => {
                 e.stopPropagation()
                 onRemove(id)
@@ -1505,11 +1513,13 @@ export default function RequirementsTable({
   onVisibleColumnsChange,
   pinnedIds,
   specificationItemStatuses = [],
+  statusRow,
   renderExpanded,
   priorityLevels = [],
   rows,
   selectable = false,
   selectedIds,
+  showSelectAll = true,
   sortState = DEFAULT_REQUIREMENT_SORT,
   stickyTopOffsetClassName = 'top-0',
   stickyTitle,
@@ -1518,6 +1528,8 @@ export default function RequirementsTable({
   qualityCharacteristics = [],
   types = [],
   requirementPackages = [],
+  requirementPackageFilterPresentation = 'chips',
+  requirementPackageCatalogStatus = 'loaded',
   visibleColumns = defaultVisibleColumns ??
     getDefaultVisibleRequirementColumns(columnDefaults),
   wrapDescription = false,
@@ -1767,7 +1779,7 @@ export default function RequirementsTable({
   const formatPriorityLevelOptionLabel = (rl: PriorityLevelOption) =>
     [rl.code, locale === 'sv' ? rl.nameSv : rl.nameEn]
       .filter(Boolean)
-      .join(' - ')
+      .join(' – ')
   const formatPriorityLevelLabel = (id: number) => {
     const rl = priorityLevels.find(rl => rl.id === id)
     return rl ? formatPriorityLevelOptionLabel(rl) : String(id)
@@ -1912,13 +1924,13 @@ export default function RequirementsTable({
   }
 
   useEffect(() => {
-    if (selectAllRef.current) {
+    if (showSelectAll && selectAllRef.current) {
       selectAllRef.current.indeterminate =
         rows.length > 0 &&
         rows.some(r => selectedIds?.has(r.id)) &&
         !rows.every(r => selectedIds?.has(r.id))
     }
-  }, [rows, selectedIds])
+  }, [rows, selectedIds, showSelectAll])
 
   // Sync sticky header horizontal position with the scroll container.
   // Uses ScrollTimeline (compositor-thread, zero JS lag) when available,
@@ -2451,10 +2463,14 @@ export default function RequirementsTable({
           </td>
         )
       case 'priorityLevel': {
-        const fallbackPriorityLevelLabel =
+        const fallbackPriorityLevelName =
           (locale === 'sv'
             ? row.version?.priorityLevelNameSv
             : row.version?.priorityLevelNameEn) ?? null
+        const fallbackPriorityLevelLabel =
+          [row.version?.priorityLevelCode, fallbackPriorityLevelName]
+            .filter(Boolean)
+            .join(' – ') || null
         const priorityLevelOption =
           row.version?.priorityLevelId == null
             ? null
@@ -2551,11 +2567,30 @@ export default function RequirementsTable({
           <td
             className={`py-2 px-2 text-center ${archivedContentClass} ${dividerClass}`}
           >
-            {row.version?.verifiable && (
-              <SearchCheck
-                aria-label={t('verifiable')}
-                className="inline h-4 w-4 text-primary-700 dark:text-primary-300"
-              />
+            {row.version ? (
+              <span
+                aria-label={t(
+                  row.version.verifiable ? 'verifiable' : 'verifiableOff',
+                )}
+                role="img"
+                title={t(
+                  row.version.verifiable ? 'verifiable' : 'verifiableOff',
+                )}
+              >
+                {row.version.verifiable ? (
+                  <SearchCheck
+                    aria-hidden="true"
+                    className="inline h-4 w-4 text-primary-700 dark:text-primary-300"
+                  />
+                ) : (
+                  <Minus
+                    aria-hidden="true"
+                    className="inline h-4 w-4 text-secondary-600 dark:text-secondary-400"
+                  />
+                )}
+              </span>
+            ) : (
+              '—'
             )}
           </td>
         )
@@ -2877,7 +2912,9 @@ export default function RequirementsTable({
       <tr className={mode === 'semantic' ? 'h-0 text-left' : 'text-left'}>
         {selectable && (
           <th
-            aria-label={mode === 'semantic' ? tc('selectAll') : undefined}
+            aria-label={
+              mode === 'semantic' && showSelectAll ? tc('selectAll') : undefined
+            }
             className={
               mode === 'semantic'
                 ? 'h-0 w-9 overflow-hidden p-0 text-center'
@@ -2885,8 +2922,9 @@ export default function RequirementsTable({
             }
             scope="col"
           >
-            {mode === 'interactive' ? (
+            {mode === 'interactive' && showSelectAll ? (
               <div className="flex min-h-11 items-center justify-center">
+                {/* WCAG 2.5.8 target-size exception: spacing — the 44 CSS-pixel header row keeps its 24 CSS-pixel target circle separate; verified by requirements-table.test.tsx. */}
                 <input
                   aria-label={tc('selectAll')}
                   checked={
@@ -3205,65 +3243,79 @@ export default function RequirementsTable({
             </div>
           </div>
         )}
-        {requirementPackages.length > 0 && hasFilters && (
-          <div className="flex items-center gap-2 border-b bg-white/80 px-3 py-2 text-sm backdrop-blur-sm dark:bg-secondary-900/80">
-            <span className="shrink-0 text-xs font-medium text-secondary-600 dark:text-secondary-400">
-              {t('requirementPackage')}:
-            </span>
-            <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto overflow-y-hidden py-0.5">
-              {requirementPackages.map(s => {
-                const active = (fv.requirementPackageIds ?? []).includes(s.id)
-                const purposeAndScope = requirementPackagePurposeAndScope(s)
-                return (
-                  <RequirementPackagePurposeTooltip
-                    key={s.id}
-                    maxWidth={280}
-                    purposeAndScope={purposeAndScope}
-                    wrapperClassName="inline-flex shrink-0"
-                  >
-                    <button
-                      aria-label={requirementPackageName(s)}
-                      aria-pressed={active}
-                      className={`inline-flex min-h-11 min-w-11 max-w-48 shrink-0 items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-                        active
-                          ? 'bg-primary-600 text-white'
-                          : 'bg-secondary-100 text-secondary-600 hover:bg-secondary-200 dark:bg-secondary-800 dark:text-secondary-400 dark:hover:bg-secondary-700'
-                      }`}
-                      data-requirement-package={s.id}
-                      onClick={() => {
-                        const current = fv.requirementPackageIds ?? []
-                        const next = active
-                          ? current.filter(id => id !== s.id)
-                          : [...current, s.id]
-                        updateFilter({
-                          requirementPackageIds:
-                            next.length > 0 ? next : undefined,
-                        })
-                      }}
-                      type="button"
+        {requirementPackageFilterPresentation === 'compact-band' &&
+          hasFilters && (
+            <RequirementsPackageFilter
+              catalogStatus={requirementPackageCatalogStatus}
+              locale={locale}
+              onChange={requirementPackageIds =>
+                updateFilter({ requirementPackageIds })
+              }
+              requirementPackages={requirementPackages}
+              selectedIds={fv.requirementPackageIds ?? []}
+            />
+          )}
+        {requirementPackageFilterPresentation === 'chips' &&
+          requirementPackages.length > 0 &&
+          hasFilters && (
+            <div className="flex items-center gap-2 border-b bg-white/80 px-3 py-2 text-sm backdrop-blur-sm dark:bg-secondary-900/80">
+              <span className="shrink-0 text-xs font-medium text-secondary-600 dark:text-secondary-400">
+                {t('requirementPackage')}:
+              </span>
+              <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto overflow-y-hidden py-0.5">
+                {requirementPackages.map(s => {
+                  const active = (fv.requirementPackageIds ?? []).includes(s.id)
+                  const purposeAndScope = requirementPackagePurposeAndScope(s)
+                  return (
+                    <RequirementPackagePurposeTooltip
+                      key={s.id}
+                      maxWidth={280}
+                      purposeAndScope={purposeAndScope}
+                      wrapperClassName="inline-flex shrink-0"
                     >
-                      <span className="truncate">
-                        {requirementPackageName(s)}
-                      </span>
-                    </button>
-                  </RequirementPackagePurposeTooltip>
-                )
-              })}
+                      <button
+                        aria-label={requirementPackageName(s)}
+                        aria-pressed={active}
+                        className={`inline-flex h-6 max-w-48 shrink-0 items-center rounded-full px-2 text-[10px] leading-none font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                          active
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-secondary-100 text-secondary-600 hover:bg-secondary-200 dark:bg-secondary-800 dark:text-secondary-400 dark:hover:bg-secondary-700'
+                        }`}
+                        data-requirement-package={s.id}
+                        onClick={() => {
+                          const current = fv.requirementPackageIds ?? []
+                          const next = active
+                            ? current.filter(id => id !== s.id)
+                            : [...current, s.id]
+                          updateFilter({
+                            requirementPackageIds:
+                              next.length > 0 ? next : undefined,
+                          })
+                        }}
+                        type="button"
+                      >
+                        <span className="truncate">
+                          {requirementPackageName(s)}
+                        </span>
+                      </button>
+                    </RequirementPackagePurposeTooltip>
+                  )
+                })}
+              </div>
+              {(fv.requirementPackageIds ?? []).length > 0 && (
+                <button
+                  aria-label={tc('clearFilters')}
+                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  onClick={() =>
+                    updateFilter({ requirementPackageIds: undefined })
+                  }
+                  type="button"
+                >
+                  <X aria-hidden="true" className="h-3 w-3" />
+                </button>
+              )}
             </div>
-            {(fv.requirementPackageIds ?? []).length > 0 && (
-              <button
-                aria-label={tc('clearFilters')}
-                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                onClick={() =>
-                  updateFilter({ requirementPackageIds: undefined })
-                }
-                type="button"
-              >
-                <X aria-hidden="true" className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-        )}
+          )}
         {normReferences.length > 0 &&
           visibleColumnSet.has('normReferences') && (
             <div className="flex items-center gap-2 border-b bg-white/80 px-3 py-2 text-sm backdrop-blur-sm dark:bg-secondary-900/80">
@@ -3341,6 +3393,7 @@ export default function RequirementsTable({
           </div>
         </div>
       </div>
+      {statusRow}
       <div
         className="relative overflow-x-auto"
         {...devMarker({
@@ -3442,6 +3495,7 @@ export default function RequirementsTable({
                       >
                         {selectable && (
                           <td className="w-9 px-1 py-2 text-center align-middle">
+                            {/* WCAG 2.5.8 target-size exception: spacing — table rows keep 24 CSS-pixel target circles separate; verified by requirements-table.test.tsx. */}
                             <input
                               aria-label={tc('selectRow', { id: row.uniqueId })}
                               checked={selectedIds?.has(row.id) ?? false}

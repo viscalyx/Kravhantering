@@ -18,6 +18,7 @@ vanlig `curl` inte använder samma lokala autentiseringsstöd.
 - [Konfigurerade användare](#konfigurerade-användare)
 - [Allmän förberedelse](#allmän-förberedelse)
 - [Navigering](#navigering)
+- [Tillgänglighet](#tillgänglighet)
 - [Autentisering och behörighet](#autentisering-och-behörighet)
   - [AUTH-01 till AUTH-12](#auth-01-logga-in-via-keycloak)
   - [AUTHZ-00 till AUTHZ-10](#authz-00-fas-0-testdata-och-identiteter)
@@ -81,19 +82,26 @@ Behörighetsmatrisen finns i [behörigheter.md](./behörigheter.md).
 
 ## Navigering
 
-### NAV-01: global sidonavigering linjerar verktygsikoner
+### NAV-01: global sidonavigering kan öppnas och stängas
 
-**Steg:** Logga in som `ada.admin`, öppna `/sv/requirements` på desktop och
-expandera den globala sidonavigeringen. Minska därefter webbläsarbredden och
-öppna samt stäng sidolådan.
+**Steg:** Logga in som `ada.admin`, öppna `/sv/requirements`, expandera och
+fäll ihop den globala sidonavigeringen. Öppna och stäng därefter sidolådan.
 
-**Förväntat resultat:** Sidonavigeringen är kompakt utan att rubriken
-`Kravbiblioteksförvaltning` eller länketiketter bryts. Ikonerna för språkbyte,
-temaväxling och användarmeny har samma horisontella fotavtryck och linjerar med
-övriga ikoner i sidonavigeringen. Knappen för att öppna eller expandera
-navigeringen visar `panel-left-open`, och knappen för att stänga eller fälla
-ihop navigeringen visar `panel-left-close` på samma övre vänstra placering som
-öppningsknappen.
+**Förväntat resultat:** Sidonavigeringen och sidolådan öppnas och stängs med
+respektive kontroll.
+
+## Tillgänglighet
+
+### A11Y-01: enhetliga hjälpkontroller är åtkomliga
+
+**Steg:** Öppna ett formulär med en hjälpknapp, till exempel ett nytt krav, och
+flytta fokus till hjälpknappen med tangentbordet. Aktivera den med Enter och
+kontrollera hjälppanelen. Upprepa i en avstegs- eller
+förbättringsförslagsmodal.
+
+**Förväntat resultat:** Hjälpknappen har ett begripligt tillgänglighetsnamn,
+synlig tangentbordsfokus och växlar hjälppanelen. När panelen är öppen är den
+kopplad till knappen för hjälpmedel.
 
 ## Autentisering och behörighet
 
@@ -193,8 +201,8 @@ råa access-, refresh- eller id-tokenvärden.
 1. Försök öppna dataskydds- eller gallringsytor som kräver
    `PrivacyOfficer`.
 
-**Förväntat resultat:** Admin-ytor fungerar, men dataskyddsflikar saknas eller
-nekas.
+**Förväntat resultat:** Admin-ytor fungerar. Flikarna `Arkivering` och
+`Dataskydd` visas inte.
 
 <a id="auth-07-dataskyddshandlaggare-utan-adminbehorighet"></a>
 
@@ -207,11 +215,15 @@ nekas.
 **Steg:**
 
 1. Logga in som `disa.privacy`.
+1. Öppna `/sv/admin` och kontrollera vilken flik som väljs först.
 1. Öppna `/sv/admin?tab=privacy`.
 1. Kör en förhandsgranskning av personuppgifter för ett känt HSA-id.
 1. Försök öppna Admincenter-flikar som `Åtgärdslogg` eller `Taxonomi`.
 
-**Förväntat resultat:** Dataskyddsytor fungerar, men Admin-only-ytor nekas.
+**Förväntat resultat:** `Behörighetsöversyn` är startflik. `Arkivering` och
+`Dataskydd` visas och fungerar. Admin-only-flikar visas inte. En direktlänk
+till en Admin-only-flik ersätts med startfliken och visar att behörighet
+saknas.
 
 <a id="auth-08-anvandare-utan-roll-nekas-privilegierat-arbete"></a>
 
@@ -230,10 +242,9 @@ ansvarstilldelning.
 1. Försök nå API:er för Admin, AI-generering och ändring av kravunderlag med
    `scripts/dev-curl.sh`.
 
-**Förväntat resultat:** Admincenter kan visa read-only-flikar som `Kolumner`,
-`Taxonomi` och `Statusar och arbetsflöden`, men privilegierade flikar och
-kontroller är inaktiva eller saknas. API:erna svarar 403 för privilegierade
-åtgärder.
+**Förväntat resultat:** Länken till Admincenter visas inte. Direktlänken visar
+ett tydligt meddelande om att behörighet saknas, utan Admincenter-flikar eller
+data. API:erna svarar 403 för privilegierade åtgärder.
 
 ### AUTH-09: felaktig auth-callback visar webbläsarfel
 
@@ -563,12 +574,28 @@ läslig.
 **Förväntat resultat:** Tabellen fungerar efter språkbyte och svenska etiketter
 återkommer.
 
-### REQ-03: filtrera på krav-id och rensa filter
+### REQ-03: filtrera kravbiblioteket och hantera kravpaketsfiltret
 
-**Steg:** Sök efter `INT0001`, kontrollera träff, klicka `Rensa` och kontrollera
-att fler krav visas.
+**Steg:** Öppna filtret för `Krav-ID`, skriv `INT0001`, kontrollera träff och
+rensa sökfältet. Kontrollera sedan att kravpaketsbandet visar inaktivt läge.
+Öppna väljaren genom att hålla pekaren över bandet och genom att aktivera
+filterknappen med pekare, Enter och blanksteg. Lägg till flera alfabetiskt
+sorterade kravpaket i följd, ta bort ett valt paket och rensa alla. Kontrollera
+fokus efter varje åtgärd, stäng med Escape, klick utanför och flytta fokus
+utanför filtret. Upprepa i engelskt språk och med kravpaketskolumnen dold.
+Kontrollera även lägena tom katalog och alla paket valda samt hjälptexter,
+verktygstips, tillgänglighetsattribut, annonseringar och Developer Mode-markörer.
+Välj slutligen status `Arkiverad` och `PWT-MANUAL källpaket`. Kontrollera att
+det arkiverade kravet `PWT-LIFE-RESTORE` visas.
 
-**Förväntat resultat:** Filter begränsar listan och rensning återställer den.
+**Förväntat resultat:** Krav-ID-filtret begränsar listan och rensning
+återställer den. Kravpaketsbandet ligger kvar efter lyckad kataloginläsning,
+visar valda paket i lokaliserad alfabetisk ordning och behåller OR-logiken i
+frågan. Mus, beröring och tangentbord ger likvärdig åtkomst; fokus och
+annonseringar är förutsägbara. Tomma lägen, svenska och engelska texter,
+verktygstips, tillgänglighetsattribut och Developer Mode-markörer är korrekta.
+Det arkiverade kravet kan hittas via sin historiska kravpaketskoppling när
+arkiverad status väljs uttryckligen.
 
 ### REQ-04: sortera på sorterbar kolumn
 
@@ -578,10 +605,12 @@ att fler krav visas.
 
 ### REQ-05: kolumnväljare sparar synliga kolumner
 
-**Steg:** Öppna kolumnväljaren, dölj en valfri kolumn, ladda om sidan och visa
-kolumnen igen.
+**Steg:** Öppna kolumnväljaren, visa kolumnen `Verifierbar` och kontrollera
+att verifierbara och inte verifierbara krav kan skiljas åt. Dölj därefter en
+valfri kolumn, ladda om sidan och visa kolumnen igen.
 
-**Förväntat resultat:** Valet ligger kvar efter omladdning och kan återställas.
+**Förväntat resultat:** Båda verifierbarhetslägena har lokaliserade
+hjälptexter. Kolumnvalet ligger kvar efter omladdning och kan återställas.
 
 ### REQ-06: återställ lokala listinställningar
 
@@ -589,19 +618,13 @@ kolumnen igen.
 
 **Förväntat resultat:** Kravbiblioteket återgår till standardvy.
 
-### REQ-07: ändra bredd på tabellkolumn
+### REQ-08: inline-detalj tillåter fortsatt rullning
 
-**Steg:** Dra en kolumnkant horisontellt.
+**Steg:** Öppna ett krav i inline-detalj och scrolla därefter direkt upp och
+ned igen.
 
-**Förväntat resultat:** Kolumnen ändrar bredd utan att tabellen blir oanvändbar.
-
-### REQ-08: sticky tabellrubrik och flytande verktyg är användbara
-
-**Steg:** Scrolla kravbiblioteket, använd den flytande åtgärdsytan och öppna
-ett krav i inline-detalj. Scrolla därefter direkt upp och ned igen.
-
-**Förväntat resultat:** Tabellrubrik och åtgärder ligger kvar på ett läsbart
-sätt, och öppnad inline-detalj hindrar inte användaren från att rulla vidare.
+**Förväntat resultat:** Öppnad inline-detalj hindrar inte användaren från att
+rulla vidare.
 
 ### REQ-09: innehållsordning i inline-detalj
 
@@ -610,14 +633,26 @@ sätt, och öppnad inline-detalj hindrar inte användaren från att rulla vidare
 **Förväntat resultat:** Kravtext visas före acceptanskriterier och därefter
 metadata, referenser och paket.
 
-### REQ-10: rapport från kravlistan fungerar
+### REQ-10: skapa PDF från kravlistan
 
-**Steg:** Öppna eller anropa kravlistans PDF-rapport för ett publicerat krav
-som användaren får läsa.
+**Steg:** Öppna `/sv/requirements`, välj ett känt filter och en känd sortering,
+öppna rapportmenyn och välj `Kravlista`. Låt genereringen och nedladdningen
+slutföras.
 
-**Förväntat resultat:** Servergenererad PDF skapas utan fel. PDF från
-kravlistan är tillgänglig för publicerade krav som användaren får läsa, medan
-rapporter baserade på historik kräver separat åtkomst till historik.
+**Förväntat resultat:** Dialogen visar först `Genererar PDF …` och sedan
+`Laddar ned PDF …`. En PDF med serverns filnamn laddas ned och innehåller
+samtliga matchande publicerade krav som användaren får läsa, i vald ordning.
+Dialogen stängs och fokus återgår till rapportknappen.
+
+### REQ-10a: avbryt PDF-generering från kravlistan
+
+**Steg:** Använd en tillräckligt stor matchande resultatuppsättning för att
+dialogen ska ligga kvar i fasen `Genererar PDF …`. Starta `Kravlista` från
+rapportmenyn och välj `Avbryt` innan nedladdningen börjar.
+
+**Förväntat resultat:** Generering och överföring stoppas, dialogen stängs och
+fokus återgår till rapportknappen. Ingen PDF eller delfil laddas ned och den
+privata spoolfilen tas bort.
 
 ### REQ-11: svensk länk till krav omdirigerar till befintlig kravdetalj
 
@@ -661,35 +696,55 @@ kravpaketsansvarig verifierar HSA-id och visar namn och e-post som text.
 
 **Steg:** Öppna `Kravurvalsfrågor` via global navigering, gå vidare till
 `Kravunderlag` och återvänd till kravurvalsfrågorna. Ändra därefter ordning på
-seedade kravurvalsfrågor och kravurvalsvar med respektive draghandtag.
+seedade kravurvalsfrågor och kravurvalsvar med respektive draghandtag. Växla
+därefter mellan `Kravurvalsfrågor`, `RFI-frågor` och `Normbibliotek` och använd
+webbläsarens bakåt- och framåtknappar för att gå genom arbetsytorna. Kontrollera
+att den valda arbetsytans rubrik visas under varje navigeringssteg.
 
 **Förväntat resultat:** Direktlänken tillbaka till
-`Kravbiblioteksförvaltning` öppnar den ihågkomna fliken utan att paketfliken
-blinkar till. Drag-och-släpp visar förhandsvisning, markör och sparad ny ordning
-för både frågor och svar.
+`Kravbiblioteksförvaltning` öppnar den ihågkomna fliken. Drag-och-släpp sparar
+ny ordning för både frågor och svar. Rätt arbetsyta visas vid direktlänk,
+växling och varje historiksteg.
 
 ### REQ-14c: kravurvalsförhandsvisning visar skrivskyddat krav
 
 **Steg:** Öppna en seedad kravurvalsfråga, redigera ett svar och öppna ett
 krav från svarets kravurvalsförhandsvisning.
 
-**Förväntat resultat:** Kravet visas i en skrivskyddad detaljlayout som följer
-kravbibliotekets ordning med `Kravtext`, utan arkiverings- eller
-livscykelåtgärder.
+**Förväntat resultat:** Kravet visas skrivskyddat med `Kravtext` och utan
+arkiverings- eller livscykelåtgärder.
+
+### REQ-14d: borttagningsknappar i kravurvalsvar är användbara
+
+**Steg:** Öppna en seedad kravurvalsfråga och redigera ett svar som har både
+valt kravpaket och valt Krav-ID. Tabba till knapparna för att ta bort paketet
+respektive kravet och aktivera vardera knappen. Avbryt sedan redigeringen utan
+att spara.
+
+**Förväntat resultat:** Båda knapparna har tydliga tillgängliga namn, synlig
+fokusmarkering och går att använda med tangentbord. Valet tas bort från det
+aktuella svaret utan att kravpaketet eller kravet tas bort från kravbiblioteket.
 
 ### REQ-15: AI-kravgenerator lämnar kandidater till importgranskning
 
 **Steg:** Öppna AI-assisterat författande från kravbiblioteket, välj
 kravområde och generera en kravkandidat. Öppna fliken `AI-analys` och
-kontrollera att modellens analys visas med formaterade rubriker och listor.
-Välj sedan `Förhandsgranska krav i import`.
+kontrollera modellens analys. Välj sedan `Förhandsgranska krav i import`.
 
 **Förväntat resultat:** Den genererade kandidaten skickas som
 `requirement-import.v3` till importgranskningen för valt kravområde.
+En resolverad prioritet visas i AI-förhandsgranskningen med P-kod och
+lokaliserat namn. Ett ogiltigt förslag visas i stället med en varning.
 Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
-`Import-JSON`-formuläret. Fliken `AI-analys` visar analysen som säker
-formaterad text utan klickbara länkar, fjärrladdade bilder eller aktiv HTML.
-Råresultat visas fortfarande separat från analysen.
+`Import-JSON`-formuläret. Fliken `AI-analys` visar analysen utan klickbara
+länkar, fjärrladdade bilder eller aktiv HTML. Råresultat visas fortfarande
+separat från analysen.
+När AI-assisterat författande aktiveras öppnas dialogen omedelbart med en
+översatt laddningsstatus tills innehållet är klart, och fokus stannar i
+dialogflödet. `Förhandsgranska krav i import` flyttar fokus direkt till
+importgranskningen utan att fokusera sidan emellan, behåller valt kravområde
+och den genererade `requirement-import.v3`-nyttolasten samt visar kandidaten
+utan formuläret `Import-JSON`.
 
 ### REQ-15B: AI-assisterat författande blockerar osäkert AI-anrop
 
@@ -708,6 +763,30 @@ HSA-id. När `Logga forensisk AI-säkerhetsdata` är på får
 `security-forensics` en matchande händelse med rått blockerat innehåll och
 matchade regeltermer.
 
+### REQ-15C: AI-assisterat författande annonserar och återhämtar fel
+
+**Steg:** Öppna AI-assisterat författande från kravbiblioteket med en
+skärmläsare, välj en Vision-modell och välj giltiga bilder tillsammans med en
+fil av otillåten typ så att urvalet överskrider gränsen på tre bilder.
+Kontrollera synlig tangentbordsfokus för knappen `Ta bort bild`. Ta bort sedan
+en bifogad bild.
+Starta en generering som får ett terminalt leverantörsfel. Starta en ny
+generering som får ett valideringsfel, välj `Reparera JSON`, låt första
+reparationen misslyckas och låt nästa lyckas. Avbryt slutligen en pågående
+generering genom att stänga dialogen.
+
+**Förväntat resultat:** De giltiga bilder som ryms ligger kvar och bildfelet
+är knutet till `Välj bilder`; skärmläsaren annonserar en sammanfattad feltext
+som både beskriver den otillåtna filtypen och gränsen på tre bilder.
+När en bifogad bild tas bort rensas bildfelet. Vid det första terminala felet
+flyttas fokus till rubriken `Genereringen misslyckades`, medan fel vid ett nytt
+försök och reparation behåller fokus på åtgärdsknappen. Råresultat,
+valideringsfel, behov, modell och bifogade bilder ligger kvar tills användaren
+ändrar dem. En lyckad reparation annonserar status en gång och flyttar fokus
+till resultatets rubrik. Endast sanerade feltexter visas eller annonseras; rått
+modell- eller leverantörsinnehåll visas inte. Att avbryta genom att stänga
+dialogen ger ingen felannonsering.
+
 ### REQ-16: Admin Center stänger av AI-kravgenerering
 
 **Steg:** Logga in som `Admin`, öppna `/sv/admin?tab=ai`, stäng av
@@ -715,8 +794,8 @@ kravgenerering och spara. Öppna kravbiblioteket och kontrollera AI-knappen.
 Öppna därefter en redan öppen AI-dialog i en annan flik och försök generera.
 
 **Förväntat resultat:** Inställningen sparas, AI-knappen i kravbiblioteket är
-synlig men dimmad med förklarande text och dialogens genereringsknapp är
-dimmad. Om `AI_REQUIREMENT_GENERATION_DISABLED` är satt visar Admincenter att
+inaktiverad med förklarande text och dialogens genereringsknapp är inaktiverad.
+Om `AI_REQUIREMENT_GENERATION_DISABLED` är satt visar Admincenter att
 driftkonfigurationen har högre prioritet.
 
 ### REQ-16B: Admin Center styr MCP-anropsgräns
@@ -727,15 +806,17 @@ sektionen `AI-säkerhet` visas efter `AI-assistering`, innehåller
 `Logga forensisk AI-säkerhetsdata`, `Cachetid för säkerhetsregler` och
 `AI-säkerhetsregler`, och att sektionen `MCP-gränssnitt` visas därefter med
 `MCP-anropsgräns` med synligt tillåtet intervall och steg. Notera aktuell
-gräns, ställ in `1 MiB` och spara. Höj därefter gränsen ett steg med
-plusknappen, kontrollera att den blir `2 MiB` och spara. Återställ därefter
-ursprungligt värde och spara.
+gräns, ställ in `1 MiB` och spara. Expandera en AI-säkerhetsregel, välj
+`Återställ standard`, kontrollera bekräftelsedialogen och avbryt. Höj därefter
+gränsen ett steg med plusknappen, kontrollera att den blir `2 MiB` och spara.
+Återställ därefter ursprungligt värde och spara.
 
 **Förväntat resultat:** Gränsen sparas i Admincenter och visas som aktuell
 gräns. Det tillåtna intervallet visas som `1 MiB` till `10 MiB` med steg
 `1 MiB`. Standardvärdet är `10 MiB`; den sparade teständringen visar `2 MiB`
-efter ett steg upp från minimum. Inställningen påverkar inte reglaget för
-kravgenerering om reglaget inte ändras separat.
+efter ett steg upp från minimum. Återställningen visar en varningsdialog innan
+någon ändring skickas. Inställningen påverkar inte reglaget för kravgenerering
+om reglaget inte ändras separat.
 
 ### REQ-17: importera krav till kravbiblioteket
 
@@ -749,14 +830,45 @@ ladda ner CSV-kvitto.
 
 **Förväntat resultat:** JSON med destinationsfält stoppas före granskning.
 Kravområde måste väljas från användarens tilldelade områden, dialogrubriken
-visar `Importera krav för {kravområde}` och importknappen ligger direkt före
-exportknappen medan kolumnväljaren ligger sist till höger. Granskningen delar
-upp `Krav` och `Föreslagna normreferenser`, rader är kollapsade från start,
-`Typ` visas före `Kvalitetsegenskap`, verifieringsmetod visas när
-`Verifierbar` är aktiv, löst förslag till normreferens visas som löst och
-behovsreferensfält visas som diskret information om att de inte används för
-kravbiblioteksimport. Importen skickar vald rad och skapar CSV-kvitto med
-importerad kravrad.
+visar `Importera krav för {kravområde}` och granskningen skiljer mellan `Krav`
+och `Föreslagna normreferenser`. Rader är kollapsade från start,
+verifieringsmetod visas när `Verifierbar` är aktiv, löst förslag till
+normreferens visas som löst och behovsreferensfält anger att de inte används
+för kravbiblioteksimport. En vald prioritet visas med P-kod, tankstreck och
+lokaliserat namn. Importen skickar vald rad
+och skapar CSV-kvitto med importerad kravrad. Skärmläsare meddelar dynamiska
+importfel som felmeddelanden
+och icke-brådskande varningar samt CSV-kvittot som status utan att användaren
+flyttar fokus; en senare förhandsgranskning eller import meddelar bara det
+senaste resultatet.
+När import aktiveras öppnas importgranskningen omedelbart med en översatt
+laddningsstatus tills innehållet är klart. Att stänga och öppna igen startar en
+ren importgranskning, och vanlig stängning återför fokus till importåtgärden.
+Efter en lyckad import uppdateras kravbiblioteket när dialogen stängs.
+
+### REQ-18: exportera kravbiblioteket till CSV
+
+**Steg:** Använd en fixture med minst 205 publicerade krav och sätt CSV-gränsen
+till minst antalet matchningar. Öppna `/sv/requirements`, välj ett känt filter
+och en känd sortering, välj `Exportera` och låt exporten och nedladdningen
+slutföras.
+
+**Förväntat resultat:** Dialogen visar först `Förbereder CSV-export …` och sedan
+`Laddar ned CSV …`. `kravbibliotek.csv` innehåller samtliga matchande krav exakt
+en gång i samma auktoritativa ordning som listan. Exportanropet går till
+`/api/requirements/export` utan `cursor` eller `limit`. Dialogen stängs och
+fokus återgår till exportknappen. Statusmeddelandet `Filen är klar` försvinner
+automatiskt efter fyra sekunder.
+
+### REQ-18a: avbryt CSV-export från kravbiblioteket
+
+**Steg:** Använd en tillräckligt stor matchande resultatuppsättning för att
+dialogen ska ligga kvar i fasen `Förbereder CSV-export …`. Välj `Exportera` och
+sedan `Avbryt` innan nedladdningen börjar.
+
+**Förväntat resultat:** Export och överföring stoppas, dialogen stängs och
+fokus återgår till exportknappen. Ingen CSV eller delfil laddas ned och den
+privata spoolfilen tas bort.
 
 ## Skapa krav och livscykel
 
@@ -781,8 +893,10 @@ fältfel visas och inget krav skapas.
 ### LIFE-03: skicka utkast till granskning
 
 **Steg:** Öppna ett utkast och välj åtgärden för att skicka till granskning.
+Försök därefter redigera kravversionen.
 
-**Förväntat resultat:** Status ändras till granskning.
+**Förväntat resultat:** Status ändras till granskning och redigering är inte
+tillgänglig förrän kravversionen återförs till utkast.
 
 ### LIFE-04: återför granskningskrav till utkast
 
@@ -792,21 +906,33 @@ fältfel visas och inget krav skapas.
 
 ### LIFE-05: godkänn och publicera granskat krav
 
-**Steg:** Öppna krav i granskning och godkänn publicering.
+**Steg:** Öppna krav i granskning och godkänn publicering. Om kravet har en
+tidigare publicerad version, öppna historiken efter publiceringen.
 
-**Förväntat resultat:** Kravet blir publicerat.
+**Förväntat resultat:** Den nya kravversionen blir publicerad och den tidigare
+publicerade kravversionen blir arkiverad i samma publiceringsåtgärd.
 
 ### LIFE-06: skapa ny utkastversion från publicerat krav
 
-**Steg:** Öppna publicerat krav och skapa ny version.
+**Steg:** Öppna ett publicerat krav, notera den publicerade kravtexten och
+skapa en ny version med en tydligt annan kravtext. Öppna kravets
+standarddetalj utan versionsnummer och försök starta arkivering.
 
 **Förväntat resultat:** En ny utkastversion skapas utan att historiken tappas.
+Standarddetaljen visar fortfarande den publicerade kravtexten och exponerar
+inte utkastets kravtext. Arkivering är inte tillgänglig eller avvisas medan
+den nyare utkastversionen finns.
 
 ### LIFE-07: återställ arkiverad kravversion
 
-**Steg:** Öppna arkiverat krav och använd återställningsåtgärden.
+**Steg:** Öppna ett arkiverat krav, kontrollera att kravversionen inte kan
+redigeras och använd återställningsåtgärden. Kontrollera även ett arkiverat
+krav som redan har en ny utkastversion.
 
-**Förväntat resultat:** Kravet återställs till aktiv hantering.
+**Förväntat resultat:** Den arkiverade kravversionen är skrivskyddad tills den
+återställs. Återställning skapar aktiv hantering som utkast. Ett krav med en
+arkiverad föregångare fortsätter att visas med beräknad kravstatus
+`Arkiverad` medan den nya utkastversionen väntar.
 
 ### LIFE-08: avbryt initiering av arkivering
 
@@ -841,20 +967,46 @@ går bara att hämta när användaren har åtkomst till kravets historik.
 
 **Steg:** Skapa eller välj ett publicerat krav som ingår i ett kravpaket.
 Skapa en ny utkastversion med ett annat kravpaketsval. Öppna
-kravpaketslistans dialog för kopplade krav innan publicering.
+kravpaketslistans dialog för kopplade krav innan publicering. Skicka sedan
+utkastet till granskning och publicera det. Öppna båda kravpaketens listor över
+kopplade krav.
 
 **Förväntat resultat:** Före publicering visar kravpaketet fortfarande den
 publicerade föregångaren. Ett opublicerat utkast med annat paketval ersätter
-inte den publicerade kravversionens praktiska paketmedlemskap.
+inte den publicerade kravversionens praktiska paketmedlemskap. Efter
+publicering visar det gamla paketet inte längre kravet och det nya paketet
+visar den nya publicerade kravversionen.
 
 ### LIFE-13: arkivering utan efterträdare bevarar pakethistorik
 
 **Steg:** Skapa eller välj ett publicerat krav som ingår i ett kravpaket.
-Arkivera kravet utan att först skapa en ny kravversion och kontrollera den
-seedade fixturen för pakethistorik.
+Arkivera kravet utan att först skapa en ny kravversion, godkänn arkiveringen
+och öppna den arkiverade kravversionens historik. Öppna därefter paketets
+praktiska lista över kopplade eller användbara krav.
 
 **Förväntat resultat:** Den arkiverade kravversionens paketkoppling bevaras
-som historik och arkiveringsanropet kan göras utan efterträdare.
+som historik och arkiveringsanropet kan göras utan efterträdare. Kravet visas
+inte längre i paketets praktiska lista.
+
+### LIFE-14: svenska gransknings- och historikrapporter är lokaliserade
+
+**Steg:** Välj svenska och skapa PDF för granskningsrapport, kombinerad
+granskningsrapport och historikrapport. Använd kravversioner som visar
+metadataändringar samt publicerat, arkiverat, redigerat och skapat datum.
+
+**Förväntat resultat:** Metadataändringarnas rubrik och kolumner samt
+tidslinjens datumetiketter visas på svenska. Skapat datum visas endast när
+inget publicerat, arkiverat eller redigerat datum finns för tidslinjeposten.
+
+### LIFE-15: engelska gransknings- och historikrapporter förblir engelska
+
+**Steg:** Välj engelska och skapa PDF för review report, combined review report
+och history report med samma slags metadataändringar och livscykeldatum som i
+LIFE-14.
+
+**Förväntat resultat:** Metadataändringarnas rubrik och kolumner samt
+tidslinjens datumetiketter visas på engelska. Datumurvalet är oförändrat från
+det svenska testfallet och inga svenska strukturetiketter visas.
 
 ## Samarbete i kravdetalj
 
@@ -867,9 +1019,11 @@ välj ett testunderlag.
 
 ### COL-02: registrera förbättringsförslag
 
-**Steg:** Öppna ett krav och skapa ett förbättringsförslag.
+**Steg:** Öppna ett krav och skapa ett förbättringsförslag. Försök lösa eller
+avvisa förslaget innan granskning begärts.
 
 **Förväntat resultat:** Förslaget visas med rätt status och skapare.
+Åtgärderna för att lösa eller avvisa är inte tillgängliga före granskning.
 
 ### COL-03: begär granskning av förbättringsförslag
 
@@ -880,14 +1034,18 @@ välj ett testunderlag.
 ### COL-04: lös förbättringsförslag
 
 **Steg:** Öppna ett granskningsbart förslag, ange lösningskommentar och lös.
+Försök därefter fatta ett nytt beslut om samma förslag.
 
-**Förväntat resultat:** Förslaget markeras som löst.
+**Förväntat resultat:** Förslaget markeras som löst och kan inte lösas eller
+avvisas en gång till.
 
 ### COL-05: avvisa förbättringsförslag
 
-**Steg:** Öppna ett förslag och avvisa med motivering.
+**Steg:** Öppna ett granskningsbart förslag och avvisa med motivering. Försök
+därefter fatta ett nytt beslut om samma förslag.
 
-**Förväntat resultat:** Förslaget får avvisad status och motiveringen sparas.
+**Förväntat resultat:** Förslaget får avvisad status, motiveringen sparas och
+förslaget kan inte lösas eller avvisas en gång till.
 
 ### COL-06: rapport för förslagshistorik innehåller förslag
 
@@ -915,22 +1073,22 @@ paket och referenser visas.
 
 ### SPEC-02: skapa nytt kravunderlag
 
-**Steg:** Öppna skapa-dialogen och kontrollera att Spara är dimmad. Fyll unikt
-ID och namn och kontrollera att kravunderlagets livscykelstatus och ansvarig
-person är obligatoriska fält i formuläret.
+**Steg:** Öppna skapa-dialogen och kontrollera att Spara är inaktiverad. Fyll
+unikt ID och namn och kontrollera att kravunderlagets livscykelstatus och
+ansvarig person är obligatoriska fält i formuläret.
 
-**Förväntat resultat:** Spara är dimmad tills användaren har gjort en
+**Förväntat resultat:** Spara är inaktiverad tills användaren har gjort en
 normaliserad metadataändring. Skapa-dialogen visar obligatorisk
 livscykelstatus och ansvarig person innan kravunderlag kan sparas.
 
 ### SPEC-03: redigera kravunderlag från titelåtgärd
 
 **Steg:** Öppna detalj, använd titelns redigeringsåtgärd och kontrollera att
-Spara är dimmad innan ändring. Ändra text, klicka X och avbryt
+Spara är inaktiverad innan ändring. Ändra text, klicka X och avbryt
 förkastandet. Kontrollera ansvarig persons HSA-id-fält och att klick utanför
 dialogen inte stänger formuläret.
 
-**Förväntat resultat:** Spara tänds först efter metadataändringen. X visar
+**Förväntat resultat:** Spara aktiveras först efter metadataändringen. X visar
 bekräftelse innan formulär med osparade ändringar förkastas. HSA-id för
 ansvarig person visas i formuläret och dialogen ligger kvar vid klick utanför.
 
@@ -949,50 +1107,75 @@ panel.
 
 **Förväntat resultat:** Panelerna påverkar inte varandras scrollposition.
 
-### SPEC-06: lägg till och ta bort krav i kravunderlagsdetalj
+### SPEC-06: lägg till, markera och ta bort krav i kravunderlagsdetalj
 
-**Steg:** Lägg till ett krav, kontrollera att det syns och ta sedan bort det.
+**Steg:** Lägg till ett krav och kontrollera att det syns. Kontrollera att
+underlagets kravlista har individuella markeringsrutor men ingen Markera alla.
+Filtrera tillgängliga krav med ett arkiverat kravpaket som endast har historisk
+medlemskap och kontrollera att dess arkiverade krav inte kan väljas.
+Markera ett bibliotekskrav, kontrollera markeringssammanfattningen och öppna
+borttagningsdialogen. Kontrollera att dialogen visar berört krav-ID och att
+avbrytning bevarar markeringen. Expandera bibliotekskravet och kontrollera att
+Ta bort från underlaget är tillgänglig i detaljvyn. Bekräfta sedan
+borttagningen via åtgärden för markerade krav.
 
-**Förväntat resultat:** Kopplingen skapas och tas bort korrekt.
+**Förväntat resultat:** Endast redigerare kan markera enskilda krav. Markeringen
+bevaras tills användaren avmarkerar eller åtgärden lyckas. Bekräftelsen skiljer
+frånkoppling av bibliotekskrav från permanent radering av unika krav, visar
+alla berörda krav-ID:n och kopplingen tas bort korrekt. Arkiverad
+kravpaketshistorik gör inte ett krav praktiskt valbart för kravunderlaget.
 
 ### SPEC-07: skapa, redigera och lyft unikt krav i kravunderlag
 
 **Steg:** Skapa ett nytt krav direkt från kravunderlaget. Ändra
 kravtexten via Redigera i det unika kravets inline-detalj och kontrollera att
 formuläret öppnas i modal med kravets ID i huvudet. Öppna därefter åtgärden
-`Lyft till kravbiblioteket`.
+`Lyft till kravbiblioteket`, välj ett kravområde och genomför lyftet.
 
 **Förväntat resultat:** Kravet får unikt ID och kopplas till underlaget.
 Redigering sker i modal och lyftåtgärden är tillgänglig från det
-kravunderlagslokala kravets inline-detalj.
+kravunderlagslokala kravets inline-detalj. Ett nytt utkast visas i valt
+kravområde i kravbiblioteket medan det ursprungliga kravunderlagslokala kravet
+finns kvar oförändrat.
 
 ### SPEC-08: uppdatera användningsstatus
 
 **Steg:** Öppna den redigerbara statuskolumnen för ett krav i
-kravunderlaget.
+kravunderlaget. Försök välja `Avviken` före och efter att ett avsteg har
+godkänts. Upprepa för ett bibliotekskrav och ett kravunderlagslokalt krav.
 
 **Förväntat resultat:** Kolumnen visar de konfigurerade användningsstatusarna
-som valbara alternativ.
+som valbara alternativ. `Avviken` kan inte tilldelas före ett godkänt avsteg
+men kan tilldelas efter godkännandet för båda typerna av krav.
 
 ### SPEC-09: hantera behovsreferenser
 
-**Steg:** Lägg till, redigera och ta bort behovsreferens.
+**Steg:** Lägg till, redigera och ta bort behovsreferens. Expandera en
+behovsreferens som används av krav på fler än en resultatsida.
 
 **Förväntat resultat:** Referenser sparas och tas bort enligt användarens val.
+Den expanderade användningslistan visar alla kopplade krav, även krav från
+senare resultatsidor.
 
 ### SPEC-10: generera upphandlingsrapport och Anbuds-CSV
 
-**Steg:** Öppna ett kravunderlag med livscykelstatus `Upphandling`, öppna
-rapportmenyn och välj `Kravbilaga för upphandling`. Öppna exportmenyn och välj
-`Anbuds-CSV` samt `Full CSV-export`.
+**Steg:** Öppna ett kravunderlag med livscykelstatus `Upphandling` och minst
+205 kravtillämpningar. Öppna rapportmenyn och välj
+`Kravbilaga för upphandling`. Öppna exportmenyn och välj `Anbuds-CSV`. Avbryt
+sedan en pågående `Full CSV-export` och starta den igen. Verifiera även ett
+lokaliserat gränsfel.
 
 **Förväntat resultat:** Rapporten genereras för hela kravunderlaget, sorterad
 på Krav-ID, och innehåller bara Krav-ID, Kravtext, Kvalitetsegenskap med
 ISO-kapitel och Normreferenser utan rå URI. `Anbuds-CSV` innehåller samma
-kravfält och en separat Norm-URI-kolumn. `Full CSV-export` finns också och
-exporterna använder rätt profil i API-anropet. Automatiserad täckning får
-verifiera rapportens fält via befintlig strukturerad rapportslutpunkt och
-CSV-innehållet via exportslutpunkten.
+kravfält och en separat Norm-URI-kolumn. Båda CSV-profilerna innehåller alla
+205 kravtillämpningar exakt en gång i Krav-ID-ordning. Dialogen visar
+`Förbereder CSV-export …`, har fokuserad avbrytknapp och använder serverns
+filnamn. Efter slutförd nedladdning, avbrott och stängt gränsfel återgår fokus
+till exportmenyn. Ett avbrott laddar inte ned någon delvis fil och gränsfelet
+visar inte rå servertext. Automatiserad täckning får verifiera rapportens fält
+via befintlig strukturerad rapportslutpunkt och CSV-innehållet via
+exportslutpunkten.
 
 ### SPEC-10b: generera genomföranderapport för införande och utveckling
 
@@ -1029,7 +1212,8 @@ kravunderlag där användaren saknar läsbehörighet.
 **Steg:** Öppna ett kravunderlag med minst ett bibliotekskrav och ett unikt
 krav. Filtrera listan `Krav i underlaget`, öppna rapportmenyn och välj
 `Tillämpningsspårbarhet`. Upprepa kontrollen med
-ett filter som visar fler än 200 kravtillämpningar.
+ett filter som visar fler än 100 kravtillämpningar och med ett kravunderlag
+som innehåller minst 201 kravtillämpningar.
 
 **Förväntat resultat:** Rapporten omfattar bara filtrerade kravtillämpningar.
 Sammanfattningen visar totalt antal kravtillämpningar, bibliotekskrav,
@@ -1037,10 +1221,11 @@ kravunderlagslokala krav, användningsstatusfördelning, saknade
 behovsreferenser och avsteg per beslutsläge. Detaljraderna visar Krav-ID,
 ursprung, version, kravområde, behovsreferens, användningsstatus,
 statusändringsdatum, avsteg, risk, verifierbarhet/verifieringsmetod och
-anteckning. När filtret visar fler än 200 kravtillämpningar visas inte
-alternativen för `Tillämpningsspårbarhet`, medan övriga rapportalternativ i
-menyn fortfarande fungerar. Automatiserad täckning får verifiera filtrerat
-innehåll via befintlig traceability-endpoint och menygränsen i UI.
+anteckning. Rapporten omfattar hela det serverfiltrerade resultatet i samma
+databasstyrda ordning även när resultatet kräver flera serversidor. Webbläsaren
+skickar filter- och sorteringsläget, inte en lista med kravtillämpningsreferenser.
+Automatiserad täckning får verifiera filtrerat innehåll och resultat över 100
+rader via befintlig traceability-endpoint.
 
 ### SPEC-11: återställ kolumnvyer för kravunderlag
 
@@ -1070,11 +1255,11 @@ kravområdet utan att listan först behöver låsas.
 
 **Steg:** I kravunderlagets `RFI-frågelista`, välj bort en fråga med frågans
 scope-reglage och kontrollera att reglagets tooltip växlar mellan
-`Ingår i RFI` och `Ingår inte i RFI`. Kontrollera att frågetexten dimmas och att
-kravområdet visar `Delvis`. Slå på kravområdets scope-reglage och kontrollera
-att alla frågor i området ingår igen. Välj bort en fråga på nytt, aktivera
-filterknappen med tooltip `Visa endast de som ingår i RFI` och kontrollera
-CSV- och PDF-exportlänkarna.
+`Ingår i RFI` och `Ingår inte i RFI`. Kontrollera att frågan inte längre ingår
+och att kravområdet visar `Delvis`. Slå på kravområdets scope-reglage och
+kontrollera att alla frågor i området ingår igen. Välj bort en fråga på nytt,
+aktivera filterknappen med tooltip `Visa endast de som ingår i RFI` och
+kontrollera CSV- och PDF-exportlänkarna.
 
 **Förväntat resultat:** Scope-reglage och reglage för kravområde uppdaterar
 visning och tooltip korrekt. Filtret döljer frågor som inte ingår på sidan men
@@ -1091,12 +1276,12 @@ rensas för den fråga vars version ändrats.
 ### SPEC-16: skapa och hantera RFI-frågeförslag
 
 **Steg:** Öppna kravunderlaget `PWT-RFI-WORKFLOW-2026` och fliken
-`RFI-frågelista`. Klicka på förslagsikonen på en RFI-fråga, kontrollera
-mottagarraden i modalen och skicka ett förslag. Klicka även på
-förslagsikonen i en kravområdesrubrik och kontrollera att modalen anger att
-förslaget gäller kravområdet utan specifik RFI-fråga.
+`RFI-frågelista`. Öppna förslagsåtgärden för en RFI-fråga, kontrollera
+mottagarraden i modalen och skicka ett förslag. Öppna även förslagsåtgärden för
+ett kravområde och kontrollera att modalen anger att förslaget gäller
+kravområdet utan specifik RFI-fråga.
 
-**Förväntat resultat:** Förslagsikonerna är kontextbundna. Skapamodalen visar
+**Förväntat resultat:** Förslagsåtgärderna är kontextbundna. Skapamodalen visar
 att förslaget skickas till kravområdesansvariga för berört kravområde. Efter
 skickat förslag visas en bekräftelse och förslagsräknaren uppdateras.
 
@@ -1110,7 +1295,10 @@ modalen.
 **Förväntat resultat:** Räknaren visar alla RFI-frågeförslag som skrivits från
 det aktuella kravunderlaget för den frågan eller det kravområdet. Modalen visar
 förslagstexten. Bara förslag som inte är i granskning och inte har resolution
-kan tas bort. Efter borttagning uppdateras modalen och räknaren.
+kan tas bort. Efter borttagning uppdateras modalen och räknaren. Om en annan
+användare hinner begära granskning innan borttagningen slutförs visas ett
+lokaliserat konfliktmeddelande, förslagen läses in på nytt och
+borttagningsknappen försvinner.
 
 ### SPEC-16b: RFI-frågeförslag kontrollerar både kravunderlag och kravområde
 
@@ -1126,16 +1314,18 @@ förslaget.
 ### SPEC-16c: behandla RFI-frågeförslag i kravbiblioteksförvaltning
 
 **Steg:** Öppna Kravbiblioteksförvaltning och fliken `RFI-frågor`. Kontrollera
-seedade RFI-frågeförslag på rubriker för kravområde och RFI-frågerader. Klicka på
-en amber `MessageSquareWarning`, begär granskning för ett nytt förslag och
-markera ett förslag som hanterat med beslutsmotivering.
+seedade RFI-frågeförslag på rubriker för kravområde och RFI-frågerader. Klicka
+på ett obehandlat förslag. Kontrollera att ett nytt förslag bara kan skickas
+till granskning. Begär granskning och markera därefter förslaget som hanterat
+med beslutsmotivering. Upprepa flödet för ett områdesförslag.
 
 **Förväntat resultat:** Obehandlade förslag visas på den nivå de gäller:
 kravområdesrubrik för områdesförslag och RFI-frågerad för frågespecifika
-förslag. Amber varningsikon visar antal obehandlade förslag. När alla förslag
-på nivån är behandlade visas en check-ikon utan räknare. Modalen visar `Nya`,
+förslag. Antalet obehandlade förslag visas. När alla förslag på nivån är
+behandlade visas ingen räknare för obehandlade förslag. Modalen visar `Nya`,
 `I granskning` och `Behandlade`, inklusive kravunderlagskälla och skapande
-person.
+person. Ett förslag kan inte beslutas före granskning och kan bara beslutas en
+gång.
 
 ### SPEC-17: importera unika krav till kravunderlag
 
@@ -1159,6 +1349,61 @@ visas inte som val för kravunderlagslokala krav, och importerade
 `requirementPackageIds` eller `requirementPackageNames` visas som diskret
 information om att kravpaketen inte används. Execute-anropet skickar
 `specificationId`, löst behovsreferens-ID, normreferens-ID och verifieringsmetod.
+Skärmläsare meddelar dynamiska importfel som felmeddelanden och
+icke-brådskande varningar samt CSV-kvittot som status utan att användaren
+flyttar fokus; en senare förhandsgranskning eller import meddelar bara det
+senaste resultatet.
+Både direkt lokal import och överlämning från AI-assisterat författande öppnar
+importgranskningen vid behov för aktuellt kravunderlag. Mottagarnamn och
+`specificationId` ändras inte. Vanlig stängning återför fokus till den stabila
+kontrollen `Fler åtgärder`, medan AI-till-import-överlämning flyttar fokus
+direkt mellan dialogerna. Lyckad import uppdaterar aktuellt kravunderlag.
+Developer Mode-markörer är tillgängliga före, under och efter inläsning.
+
+### SPEC-18: sortera krav i kravunderlaget
+
+**Steg:** Öppna ett kravunderlag med flera krav och klicka på kolumnrubriken
+Kravtext två gånger.
+
+**Förväntat resultat:** Hela listan sorteras först stigande och sedan fallande
+efter kravtexten; det är inte bara kolumnrubrikens sorteringsindikator som
+ändras.
+
+### SPEC-19: bläddra och återhämta kravlistan i kravunderlaget
+
+**Steg:** Öppna ett kravunderlag med fler krav än första sidan. Ändra sortering
+eller filter och kontrollera att den första serversidan ersätter den tidigare
+frågan. Markera ett krav och rulla till listans slut så att nästa sida läses in
+automatiskt. Fortsätt med en utgången fortsättningsmarkör. Prova både en
+misslyckad omstart och en lyckad omstart från första sidan.
+
+**Förväntat resultat:** Vyn visar inget meddelande om en tom lista eller någon
+statusrad medan en ny sortering eller filtrering läses in. Meddelandet om en tom
+lista visas först efter ett bekräftat tomt serversvar och feltext visas vid
+inläsningsfel. Nästa sida läses in automatiskt nära listans slut utan en manuell
+fortsättningsknapp. Fortsättning lägger till unika krav i serverordning.
+Markeringen finns kvar när fler krav läses in och räknas som dold om den inte
+finns på en senare första sida. En misslyckad omstart behåller rader, fråga och
+markering, visar en varning med `Försök igen` och återför fokus dit efter ett
+misslyckat nytt försök. En lyckad omstart ersätter raderna, annonseras utan
+automatisk fokusflytt och behåller markeringen.
+
+### SPEC-20: begränsa gemensam åtgärd för markerade krav
+
+**Steg:** Markera 200 krav i `Krav i underlaget` och kontrollera de fyra
+gemensamma åtgärderna för att tilldela behovsreferens, rensa
+behovsreferenslänkar, begära avsteg och ta bort markerade krav. Markera ett krav
+till. Filtrera listan så att ett av de 201 markerade kraven inte visas. Öppna
+ett visat kravs detalj och kontrollera dess enskilda åtgärder. Välj sedan
+`Avmarkera de som inte visas (1)`.
+
+**Förväntat resultat:** Vid 200 markerade krav är de fyra gemensamma åtgärderna
+aktiverade. Vid 201 är samma åtgärder inaktiverade. Ett meddelande anger totalt
+201 markerade, att 1 inte är inläst, gränsen 200 och att exakt 1 krav måste
+avmarkeras. Ingen markering tas bort automatiskt. Åtgärden för att avmarkera de
+krav som inte visas är aktiverad och kravets enskilda detaljåtgärder påverkas
+inte. Efter avmarkeringen återstår 200 markerade krav, meddelandet försvinner
+och de fyra gemensamma åtgärderna aktiveras igen.
 
 ## Avsteg
 
@@ -1194,9 +1439,12 @@ information om att kravpaketen inte används. Execute-anropet skickar
 
 ### DEV-06: beslutade avsteg är terminala
 
-**Steg:** Öppna godkänt eller avslaget avsteg och försök ändra beslutet.
+**Steg:** Öppna godkänt eller avslaget avsteg för både bibliotekskrav och
+kravunderlagslokalt krav. Försök fatta ett andra beslut, redigera eller ta bort
+avsteget.
 
-**Förväntat resultat:** Inga åtgärder för ny beslutscykel visas.
+**Förväntat resultat:** Inga åtgärder för ny beslutscykel, redigering eller
+borttagning visas. Motsvarande direkta anrop avvisas.
 
 ### DEV-07: endast kravgranskare kan besluta avsteg
 
@@ -1225,12 +1473,14 @@ session.
 ### ADMIN-02: taxonomi- och statussidor sparar ändringar
 
 **Steg:** Öppna ett testbart taxonomi- eller statusformulär, kontrollera att
-Spara är dimmad innan ändring, gör en liten ändring, klicka Avbryt och avbryt
-förkastandet. Spara därefter ändringen.
+Spara är inaktiverad innan ändring, gör en liten ändring, klicka Avbryt och
+avbryt förkastandet. Öppna en prioritet och öppna hjälpen för
+`Sorteringsordning`, `Färg` och `Ikon`. Spara därefter ändringen.
 
-**Förväntat resultat:** Spara tänds först efter ändringen. Formulär med
+**Förväntat resultat:** Spara aktiveras först efter ändringen. Formulär med
 osparade ändringar kräver bekräftelse innan det stängs. Ändringen visas efter
-omladdning.
+omladdning. Varje hjälpknapp visar rätt fältspecifik och lokaliserad
+vägledning.
 
 ### ADMIN-03: webbläsarens bakåtknapp återställer taxonomiflik
 
@@ -1238,12 +1488,15 @@ omladdning.
 
 **Förväntat resultat:** Rätt flik och URL återställs.
 
-### ADMIN-04: små skärmar kan använda Admin-flikar och åtgärder
+### ADMIN-04B: paneler laddas först när fliken väljs
 
-**Steg:** Minska webbläsarbredden och kontrollera att Admin-navigering och
-knappar går att använda.
+**Steg:** Öppna Admincenter som `ada.admin` med webbläsarens nätverkspanel
+öppen. Kontrollera första fliken och välj därefter `Inställningar` och
+`Identitet`.
 
-**Förväntat resultat:** Kontrollerna överlappar inte och är klickbara.
+**Förväntat resultat:** Endast den aktiva panelens JavaScript och dataanrop
+laddas. Vid panelbyte avmonteras den föregående panelen. Under laddning visas
+ett statusmeddelande utan att fliknavigationen blockeras.
 
 ### ADMIN-05: normbibliotek ligger under förvaltning
 
@@ -1253,14 +1506,14 @@ placering och länkar.
 **Förväntat resultat:** Normbiblioteket finns i förvaltningsytan, inte som
 taxonomiflik i Admincenter.
 
-### ADMIN-06: ny normreferens använder responsiv formulärlayout
+### ADMIN-06: ny normreferens avvisar duplicerat ID
 
-**Steg:** Öppna Normbibliotek, klicka `Ny normreferens` och jämför layout på
-desktop respektive smal mobilbredd.
+**Steg:** Öppna Normbibliotek, klicka `Ny normreferens`, spara en normreferens
+med ett angivet Normreferens-ID och försök skapa samma ID igen.
 
-**Förväntat resultat:** Desktop visar formuläret i två kolumner med
-Normreferens-ID sist och fullbrett. Mobil visar samma fält i en kolumn utan
-överlapp.
+**Förväntat resultat:** Den andra sparningen behåller formuläret öppet och
+visar att Normreferens-ID:t redan finns i stället för ett generellt tekniskt
+fel.
 
 ### ADMIN-07: åtgärdslogg filtrerar och exporterar CSV
 
@@ -1272,11 +1525,13 @@ Admincenter. Filtrera på aktör eller händelse och exportera.
 ### ADMIN-08: åtkomstöversyn, beslut och export
 
 **Steg:** Öppna åtkomstöversyn, fatta ett testbeslut och exportera underlag.
-Upprepa med simulerat serverfel eller behörighetsfel vid beslut och export.
+Upprepa med simulerat serverfel eller behörighetsfel vid inläsning, beslut och
+export. Välj `Försök igen` efter inläsningsfelet.
 
 **Förväntat resultat:** Beslut sparas och exporten innehåller beslutet. Vid
-fel visas felmeddelande, beslutet ligger kvar som ej sparat och exportfel
-bryter inte sidan.
+inläsningsfel visas meddelandet en gång och `Försök igen` läser in listan.
+Beslutet ligger kvar som ej sparat efter beslutsfel och exportfel bryter inte
+sidan.
 
 ### ADMIN-09: åtkomstöversyn avvisar för långa kommentarer
 
@@ -1290,13 +1545,13 @@ bryter inte sidan.
 
 **Förväntat resultat:** Only nekas; Ada kan förhandsgranska.
 
-### ADMIN-11: status- och riskikoner visas på kravytor
+### ADMIN-11: status- och prioritetsidentitet visas på kravytor
 
 **Steg:** Öppna kravlista och kravdetalj där kravversionsstatus och prioritet
 visas.
 
-**Förväntat resultat:** Status- och prioritetsindikatorer visar konfigurerade
-ikoner tillsammans med läsbara etiketter.
+**Förväntat resultat:** Kravversionsstatus visas med lokaliserad etikett.
+Resolverade prioriteter visar P-kod, tankstreck och lokaliserat namn.
 
 ### ADMIN-12: arkiverad kravurvalsretention undantar sparad historik
 
@@ -1308,18 +1563,18 @@ att historiska sparade svar inte förekommer bland kandidaterna.
 
 ### ADMIN-13: kravområdesägare och medförfattare visas med HSA-id
 
-**Steg:** Öppna kravområdeslistan och kontrollera att radåtgärderna för
-medförfattare, redigering och borttagning visas som ikonknappar. Öppna
-radåtgärden `Hantera medförfattare` och kontrollera att den separata dialogen
-kan läsa in, visa laddningsläge, lägga till och ta bort
+**Steg:** Öppna kravområdeslistan och kontrollera radåtgärderna för
+medförfattare, redigering och borttagning. Öppna radåtgärden
+`Hantera medförfattare` och kontrollera att den separata dialogen kan läsa in,
+visa laddningsläge, lägga till och ta bort
 kravområdesmedförfattare i en sparad tabell. Öppna sedan ett kravområde för
 redigering och kontrollera HSA-id för kravområdesägaren.
 
-**Förväntat resultat:** Listan visar ikonbaserade knappar för Hantera
-medförfattare, Redigera och Ta bort. Medförfattare hanteras i en separat modal,
-inte i metadataformuläret. Kravområdesägaren visas och sparas som HSA-id och
-dialogen för medförfattare visar befintliga HSA-id-rader samt sparar tillagd
-rad och tar bort den efter omladdning.
+**Förväntat resultat:** Åtgärderna Hantera medförfattare, Redigera och Ta bort
+är tillgängliga. Medförfattare hanteras i en separat modal, inte i
+metadataformuläret. Kravområdesägaren visas och sparas som HSA-id och dialogen
+för medförfattare visar befintliga HSA-id-rader samt sparar tillagd rad och tar
+bort den efter omladdning.
 
 ### ADMIN-14: HSA-id-prefix administreras från Identitet
 
@@ -1327,6 +1582,23 @@ rad och tar bort den efter omladdning.
 kontrollera valideringen.
 
 **Förväntat resultat:** Prefixet sparas och används i HSA-id-validering.
+
+### ADMIN-15: Inställningar styr export- och rapportgränser
+
+**Steg:** Öppna `/sv/admin?tab=settings` som Admin och kontrollera nätverket
+medan data laddas. Öppna hjälpknappen för vart och ett av de nio gränsfälten.
+Prova min-, max- och ogiltiga värden. Spara med både blur och Enter, simulera
+omkastade svar och kontrollera åtgärdsloggen. Kör därefter CSV/PDF som träffar
+ändrade gränser.
+
+**Förväntat resultat:** AI- och applikationsdata hämtas parallellt. En
+felaktig datakälla visar ett lokalt fel och `Försök igen`. Filstorlek visas i
+MiB men sparas i byte. Filstorlekarna ändras i 1 MiB-steg och sparas i byte.
+Worker-minnet ändras i 128 MiB-steg och visar det lagrade heltalsvärdet direkt
+i MiB. Varje gränsfält visar `Sparar`/`Sparat`/fel, äldre svar skriver inte över
+nyare värde, och exakt ett fält auditeras med gammalt/nytt värde. Runtime
+använder den nya inställningssnapshoten. `?tab=ai` betraktas som otillgänglig
+och omdirigeras enligt vanlig flikfallback.
 
 ## Dataskydd och personuppgifter
 
@@ -1391,10 +1663,9 @@ otilldelade personer som inte matchar målet.
 ### DEVTOOLS-01: Developer Mode-chip kopierar referens
 
 **Steg:** Aktivera Developer Mode, hovra över en annoterad kontroll och kopiera
-referensen. Scrolla kravbiblioteket tills tabellrubriken ligger sticky och
-upprepa kontrollen på en annoterad kolumnrubrik.
+referensen. Upprepa kontrollen på en annoterad kolumnrubrik.
 
-**Förväntat resultat:** Referensen kopieras och bekräftas visuellt.
+**Förväntat resultat:** Referensen kopieras och en bekräftelse visas.
 
 ### MCP-01: MCP HTTP kräver bearer och exponerar seedade verktyg
 

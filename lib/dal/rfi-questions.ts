@@ -1,6 +1,7 @@
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   conflictError,
+  internalError,
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
@@ -11,13 +12,32 @@ export type RfiRelevance = 'not_relevant' | 'relevant'
 export const RFI_SUGGESTION_RESOLVED = 1
 export const RFI_SUGGESTION_DISMISSED = 2
 
-interface SqlExecutor {
+export interface SqlExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
 }
 
-interface ActorSnapshot {
+export interface ActorSnapshot {
   displayName: string
   hsaId: string
+}
+
+export interface RfiQuestionSuggestionCreateData {
+  areaId: number
+  content: string
+  rfiQuestionId?: number | null
+  specificationId?: number | null
+}
+
+export interface RfiQuestionSuggestionResolutionData {
+  resolution: typeof RFI_SUGGESTION_RESOLVED | typeof RFI_SUGGESTION_DISMISSED
+  resolutionMotivation: string
+}
+
+export interface RfiQuestionSuggestionMutationTarget {
+  areaId: number
+  id: number
+  rfiQuestionId: number | null
+  specificationId: number | null
 }
 
 export interface RfiQuestionVersionLinks {
@@ -153,13 +173,70 @@ type RfiQuestionSuggestionDbRow = {
 }
 
 type RfiQuestionSuggestionStateDbRow = {
+  areaId: number
   id: number
   isReviewRequested: boolean | number | string
   resolution: number | null
+  reviewRequestedAt: Date | string | null
+  rfiQuestionId: number | null
+  specificationId: number | null
+}
+
+interface SqlSelection {
+  parameters: unknown[]
+  sql: string
+}
+
+interface RfiQuestionSelectionOptions {
+  areaId?: number
+  includeArchived?: boolean
+  questionId?: number
 }
 
 function placeholders(values: readonly unknown[], offset = 0): string {
   return values.map((_, index) => `@${index + offset}`).join(', ')
+}
+
+function buildRfiQuestionSelection(
+  options: RfiQuestionSelectionOptions = {},
+): SqlSelection {
+  const parameters: unknown[] = []
+  const conditions: string[] = []
+  if (options.questionId != null) {
+    parameters.push(options.questionId)
+    conditions.push(`question.id = @${parameters.length - 1}`)
+  }
+  if (options.areaId != null) {
+    parameters.push(options.areaId)
+    conditions.push(`question.area_id = @${parameters.length - 1}`)
+  }
+  if (!options.includeArchived) {
+    conditions.push('question.is_archived = 0')
+  }
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+
+  return {
+    parameters,
+    sql: `
+      WITH selected_questions AS (
+        SELECT question.id AS questionId, active_version.id AS versionId
+        FROM rfi_questions AS question
+        OUTER APPLY (
+          SELECT TOP (1) version_record.id
+          FROM rfi_question_versions AS version_record
+          WHERE version_record.rfi_question_id = question.id
+            AND version_record.is_active = 1
+          ORDER BY version_record.version_number DESC
+        ) AS active_version
+        ${where}
+      ),
+      selected_versions AS (
+        SELECT versionId
+        FROM selected_questions
+        WHERE versionId IS NOT NULL
+      )
+    `,
+  }
 }
 
 function uniquePositiveIntegers(
@@ -260,11 +337,9 @@ function mapRfiQuestionSuggestionRow(
 async function hydrateVersionLinks<T extends { versionId: number | null }>(
   executor: SqlExecutor,
   rows: T[],
+  selection: SqlSelection,
 ): Promise<void> {
-  const versionIds = rows
-    .map(row => row.versionId)
-    .filter((value): value is number => typeof value === 'number')
-  if (versionIds.length === 0) return
+  if (!rows.some(row => row.versionId != null)) return
 
   const byVersion = new Map<number, T & RfiQuestionVersionLinks>()
   for (const row of rows) {
@@ -273,50 +348,60 @@ async function hydrateVersionLinks<T extends { versionId: number | null }>(
     }
   }
 
-  const [selectionRows, packageRows, requirementRows] = await Promise.all([
-    executor.query<Array<{ id: number; versionId: number }>>(
-      `
+  const linkRows = await executor.query<
+    Array<{
+      id: number
+      relationKind: 'package' | 'requirement' | 'selection_question'
+      versionId: number
+    }>
+  >(
+    `
+      ${selection.sql}
+      SELECT links.versionId, links.relationKind, links.id
+      FROM (
         SELECT
-          rfi_question_version_id AS versionId,
-          requirement_selection_question_id AS id
-        FROM rfi_question_version_requirement_selection_questions
-        WHERE rfi_question_version_id IN (${placeholders(versionIds)})
-        ORDER BY requirement_selection_question_id ASC
-      `,
-      versionIds,
-    ),
-    executor.query<Array<{ id: number; versionId: number }>>(
-      `
-        SELECT
-          rfi_question_version_id AS versionId,
-          requirement_package_id AS id
-        FROM rfi_question_version_requirement_packages
-        WHERE rfi_question_version_id IN (${placeholders(versionIds)})
-        ORDER BY requirement_package_id ASC
-      `,
-      versionIds,
-    ),
-    executor.query<Array<{ id: number; versionId: number }>>(
-      `
-        SELECT
-          rfi_question_version_id AS versionId,
-          requirement_id AS id
-        FROM rfi_question_version_requirements
-        WHERE rfi_question_version_id IN (${placeholders(versionIds)})
-        ORDER BY requirement_id ASC
-      `,
-      versionIds,
-    ),
-  ])
+          selection_link.rfi_question_version_id AS versionId,
+          CAST(N'selection_question' AS nvarchar(30)) AS relationKind,
+          selection_link.requirement_selection_question_id AS id
+        FROM selected_versions
+        INNER JOIN rfi_question_version_requirement_selection_questions AS selection_link
+          ON selection_link.rfi_question_version_id = selected_versions.versionId
 
-  for (const row of selectionRows) {
-    byVersion.get(row.versionId)?.requirementSelectionQuestionIds.push(row.id)
-  }
-  for (const row of packageRows) {
-    byVersion.get(row.versionId)?.requirementPackageIds.push(row.id)
-  }
-  for (const row of requirementRows) {
-    byVersion.get(row.versionId)?.requirementIds.push(row.id)
+        UNION ALL
+
+        SELECT
+          package_link.rfi_question_version_id AS versionId,
+          CAST(N'package' AS nvarchar(30)) AS relationKind,
+          package_link.requirement_package_id AS id
+        FROM selected_versions
+        INNER JOIN rfi_question_version_requirement_packages AS package_link
+          ON package_link.rfi_question_version_id = selected_versions.versionId
+
+        UNION ALL
+
+        SELECT
+          requirement_link.rfi_question_version_id AS versionId,
+          CAST(N'requirement' AS nvarchar(30)) AS relationKind,
+          requirement_link.requirement_id AS id
+        FROM selected_versions
+        INNER JOIN rfi_question_version_requirements AS requirement_link
+          ON requirement_link.rfi_question_version_id = selected_versions.versionId
+      ) AS links
+      ORDER BY links.versionId ASC, links.relationKind ASC, links.id ASC
+    `,
+    selection.parameters,
+  )
+
+  for (const row of linkRows) {
+    const target = byVersion.get(row.versionId)
+    if (!target) continue
+    const ids =
+      row.relationKind === 'selection_question'
+        ? target.requirementSelectionQuestionIds
+        : row.relationKind === 'package'
+          ? target.requirementPackageIds
+          : target.requirementIds
+    if (!ids.includes(row.id)) ids.push(row.id)
   }
 }
 
@@ -420,28 +505,12 @@ async function getVersionLinks(
 
 async function getRfiQuestionRows(
   executor: SqlExecutor,
-  options: {
-    areaId?: number
-    includeArchived?: boolean
-    questionId?: number
-  } = {},
+  options: RfiQuestionSelectionOptions = {},
 ): Promise<RfiQuestionRow[]> {
-  const params: unknown[] = []
-  const conditions: string[] = []
-  if (options.questionId != null) {
-    params.push(options.questionId)
-    conditions.push(`question.id = @${params.length - 1}`)
-  }
-  if (options.areaId != null) {
-    params.push(options.areaId)
-    conditions.push(`question.area_id = @${params.length - 1}`)
-  }
-  if (!options.includeArchived) {
-    conditions.push('question.is_archived = 0')
-  }
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const selection = buildRfiQuestionSelection(options)
   const rows = (await executor.query(
     `
+      ${selection.sql}
       SELECT
         question.id AS id,
         question.question_code AS questionCode,
@@ -458,28 +527,19 @@ async function getRfiQuestionRows(
         version_record.question_text AS questionText,
         version_record.help_text AS helpText,
         version_record.expected_answer_format AS expectedAnswerFormat
-      FROM rfi_questions question
+      FROM selected_questions
+      INNER JOIN rfi_questions question
+        ON question.id = selected_questions.questionId
       INNER JOIN requirement_areas area
         ON area.id = question.area_id
-      OUTER APPLY (
-        SELECT TOP (1)
-          id,
-          version_number,
-          question_text,
-          help_text,
-          expected_answer_format
-        FROM rfi_question_versions active_version
-        WHERE active_version.rfi_question_id = question.id
-          AND active_version.is_active = 1
-        ORDER BY active_version.version_number DESC
-      ) version_record
-      ${where}
+      LEFT JOIN rfi_question_versions version_record
+        ON version_record.id = selected_questions.versionId
       ORDER BY area.name ASC, question.sort_order ASC, question.question_code ASC
     `,
-    params,
+    selection.parameters,
   )) as RfiQuestionDbRow[]
   const mapped = rows.map(mapRfiQuestionRow)
-  await hydrateVersionLinks(executor, mapped)
+  await hydrateVersionLinks(executor, mapped, selection)
   return mapped
 }
 
@@ -832,6 +892,30 @@ export async function getSpecificationRfiList(
   specificationId: number,
 ): Promise<SpecificationRfiListRow> {
   const header = await getSpecificationRfiListHeader(db, specificationId)
+  const selectedVersions: SqlSelection = header.isLocked
+    ? {
+        parameters: [specificationId],
+        sql: `
+          WITH selected_versions AS (
+            SELECT item.rfi_question_version_id AS versionId
+            FROM specification_rfi_question_items AS item
+            WHERE item.specification_id = @0
+          )
+        `,
+      }
+    : {
+        parameters: [],
+        sql: `
+          WITH selected_versions AS (
+            SELECT version_record.id AS versionId
+            FROM rfi_questions AS question
+            INNER JOIN rfi_question_versions AS version_record
+              ON version_record.rfi_question_id = question.id
+             AND version_record.is_active = 1
+            WHERE question.is_archived = 0
+          )
+        `,
+      }
   const rows = header.isLocked
     ? ((await db.query(
         `
@@ -903,7 +987,7 @@ export async function getSpecificationRfiList(
         [specificationId],
       )) as SpecificationRfiQuestionItemDbRow[])
   const items = rows.map(mapSpecificationRfiQuestionItemRow)
-  await hydrateVersionLinks(db, items)
+  await hydrateVersionLinks(db, items, selectedVersions)
   return { ...header, items }
 }
 
@@ -1253,13 +1337,8 @@ export async function updateSpecificationRfiAreaScope(
 }
 
 export async function createRfiQuestionSuggestion(
-  db: SqlServerDatabase,
-  data: {
-    areaId: number
-    content: string
-    rfiQuestionId?: number | null
-    specificationId?: number | null
-  },
+  db: SqlExecutor,
+  data: RfiQuestionSuggestionCreateData,
   actor: ActorSnapshot,
 ): Promise<RfiQuestionSuggestionRow> {
   const content = data.content.trim()
@@ -1318,6 +1397,8 @@ export async function createRfiQuestionSuggestion(
   const specification = specificationRows[0]
   const rows = (await db.query(
     `
+      DECLARE @created TABLE (id int NOT NULL);
+
       INSERT INTO rfi_question_suggestions
         (
           area_id,
@@ -1330,8 +1411,10 @@ export async function createRfiQuestionSuggestion(
           created_by_display_name,
           created_at
         )
-      OUTPUT INSERTED.id AS id
+      OUTPUT INSERTED.id INTO @created (id)
       VALUES (@0, @1, @2, @3, @4, @5, @6, @7, SYSUTCDATETIME())
+
+      SELECT id FROM @created
     `,
     [
       data.areaId,
@@ -1346,13 +1429,13 @@ export async function createRfiQuestionSuggestion(
   )) as Array<{ id: number }>
   const suggestion = await getRfiQuestionSuggestion(db, Number(rows[0]?.id))
   if (!suggestion) {
-    throw validationError('Created RFI question suggestion could not be loaded')
+    throw internalError('Created RFI question suggestion could not be loaded')
   }
   return suggestion
 }
 
 export async function getRfiQuestionSuggestion(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   suggestionId: number,
 ): Promise<RfiQuestionSuggestionRow | null> {
   const suggestions = await listRfiQuestionSuggestions(db, { suggestionId })
@@ -1360,7 +1443,7 @@ export async function getRfiQuestionSuggestion(
 }
 
 export async function listRfiQuestionSuggestions(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   options: {
     areaId?: number
     specificationId?: number
@@ -1419,74 +1502,141 @@ export async function listRfiQuestionSuggestions(
 }
 
 export async function deleteRfiQuestionSuggestion(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   suggestionId: number,
-): Promise<void> {
-  const rows = (await db.query(
+): Promise<RfiQuestionSuggestionMutationTarget> {
+  const deletedRows = (await db.query(
     `
-      SELECT TOP (1)
-        id,
-        is_review_requested AS isReviewRequested,
-        resolution
-      FROM rfi_question_suggestions
+      DECLARE @deleted TABLE (
+        id int NOT NULL,
+        areaId int NOT NULL,
+        rfiQuestionId int NULL,
+        specificationId int NULL
+      );
+
+      DELETE FROM rfi_question_suggestions
+      OUTPUT
+        DELETED.id,
+        DELETED.area_id,
+        DELETED.rfi_question_id,
+        DELETED.specification_id
+      INTO @deleted (id, areaId, rfiQuestionId, specificationId)
       WHERE id = @0
+        AND is_review_requested = 0
+        AND review_requested_at IS NULL
+        AND resolution IS NULL
+        AND resolution_motivation IS NULL
+        AND resolved_at IS NULL
+        AND resolved_by_hsa_id IS NULL
+        AND resolved_by_display_name IS NULL
+
+      SELECT id, areaId, rfiQuestionId, specificationId
+      FROM @deleted
     `,
     [suggestionId],
-  )) as RfiQuestionSuggestionStateDbRow[]
-  const existing = rows[0]
+  )) as RfiQuestionSuggestionMutationTarget[]
+  const deleted = deletedRows[0]
+  if (deleted) return deleted
+
+  const existing = await getRfiQuestionSuggestionState(db, suggestionId)
   if (!existing) {
     throw notFoundError(`RFI question suggestion ${suggestionId} not found`, {
       suggestionId,
     })
   }
-  if (toBoolean(existing.isReviewRequested) || existing.resolution !== null) {
-    throw conflictError(
-      'Cannot delete an RFI question suggestion after review has started or a resolution has been recorded',
-      {
-        reason: 'rfi_question_suggestion_already_handled',
-        suggestionId,
-      },
-    )
-  }
-  await db.query(`DELETE FROM rfi_question_suggestions WHERE id = @0`, [
+  throw conflictError('Only a draft RFI question suggestion can be deleted', {
+    reason: 'rfi_question_suggestion_not_draft',
     suggestionId,
-  ])
+  })
+}
+
+async function getRfiQuestionSuggestionState(
+  db: SqlExecutor,
+  suggestionId: number,
+): Promise<RfiQuestionSuggestionStateDbRow | null> {
+  const rows = (await db.query(
+    `
+      SELECT TOP (1)
+        area_id AS areaId,
+        id,
+        is_review_requested AS isReviewRequested,
+        resolution,
+        review_requested_at AS reviewRequestedAt,
+        rfi_question_id AS rfiQuestionId,
+        specification_id AS specificationId
+      FROM rfi_question_suggestions
+      WITH (UPDLOCK, HOLDLOCK)
+      WHERE id = @0
+    `,
+    [suggestionId],
+  )) as RfiQuestionSuggestionStateDbRow[]
+  return rows[0] ?? null
 }
 
 export async function requestRfiQuestionSuggestionReview(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   suggestionId: number,
-): Promise<RfiQuestionSuggestionRow | null> {
+): Promise<RfiQuestionSuggestionRow> {
   const rows = (await db.query(
     `
+      DECLARE @reviewed TABLE (id int NOT NULL);
+
       UPDATE rfi_question_suggestions
       SET is_review_requested = 1,
           review_requested_at = SYSUTCDATETIME(),
           updated_at = SYSUTCDATETIME()
-      OUTPUT INSERTED.id AS id
+      OUTPUT INSERTED.id INTO @reviewed (id)
       WHERE id = @0
+        AND is_review_requested = 0
+        AND review_requested_at IS NULL
         AND resolution IS NULL
+        AND resolution_motivation IS NULL
+        AND resolved_at IS NULL
+        AND resolved_by_hsa_id IS NULL
+        AND resolved_by_display_name IS NULL
+
+      SELECT id FROM @reviewed
     `,
     [suggestionId],
   )) as Array<{ id: number }>
-  return rows[0] ? getRfiQuestionSuggestion(db, suggestionId) : null
+  if (rows[0]) {
+    const suggestion = await getRfiQuestionSuggestion(db, suggestionId)
+    if (suggestion) return suggestion
+    throw internalError('Reviewed RFI question suggestion could not be loaded')
+  }
+
+  const existing = await getRfiQuestionSuggestionState(db, suggestionId)
+  if (!existing) {
+    throw notFoundError(`RFI question suggestion ${suggestionId} not found`, {
+      suggestionId,
+    })
+  }
+  if (existing.resolution !== null) {
+    throw conflictError('RFI question suggestion is already resolved', {
+      reason: 'rfi_question_suggestion_already_resolved',
+      suggestionId,
+    })
+  }
+  throw conflictError('RFI question suggestion review is already requested', {
+    reason: 'rfi_question_suggestion_review_already_requested',
+    suggestionId,
+  })
 }
 
 export async function resolveRfiQuestionSuggestion(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   suggestionId: number,
-  data: {
-    resolution: typeof RFI_SUGGESTION_RESOLVED | typeof RFI_SUGGESTION_DISMISSED
-    resolutionMotivation: string
-  },
+  data: RfiQuestionSuggestionResolutionData,
   actor: ActorSnapshot,
-): Promise<RfiQuestionSuggestionRow | null> {
+): Promise<RfiQuestionSuggestionRow> {
   const motivation = data.resolutionMotivation.trim()
   if (!motivation) {
     throw validationError('Resolution motivation is required')
   }
   const rows = (await db.query(
     `
+      DECLARE @resolved TABLE (id int NOT NULL);
+
       UPDATE rfi_question_suggestions
       SET resolution = @1,
           resolution_motivation = @2,
@@ -1494,11 +1644,43 @@ export async function resolveRfiQuestionSuggestion(
           resolved_by_display_name = @4,
           resolved_at = SYSUTCDATETIME(),
           updated_at = SYSUTCDATETIME()
-      OUTPUT INSERTED.id AS id
+      OUTPUT INSERTED.id INTO @resolved (id)
       WHERE id = @0
+        AND is_review_requested = 1
+        AND review_requested_at IS NOT NULL
         AND resolution IS NULL
+        AND resolution_motivation IS NULL
+        AND resolved_at IS NULL
+        AND resolved_by_hsa_id IS NULL
+        AND resolved_by_display_name IS NULL
+
+      SELECT id FROM @resolved
     `,
     [suggestionId, data.resolution, motivation, actor.hsaId, actor.displayName],
   )) as Array<{ id: number }>
-  return rows[0] ? getRfiQuestionSuggestion(db, suggestionId) : null
+  if (rows[0]) {
+    const suggestion = await getRfiQuestionSuggestion(db, suggestionId)
+    if (suggestion) return suggestion
+    throw internalError('Resolved RFI question suggestion could not be loaded')
+  }
+
+  const existing = await getRfiQuestionSuggestionState(db, suggestionId)
+  if (!existing) {
+    throw notFoundError(`RFI question suggestion ${suggestionId} not found`, {
+      suggestionId,
+    })
+  }
+  if (existing.resolution !== null) {
+    throw conflictError('RFI question suggestion is already resolved', {
+      reason: 'rfi_question_suggestion_already_resolved',
+      suggestionId,
+    })
+  }
+  throw conflictError(
+    'RFI question suggestion review must be requested before resolution',
+    {
+      reason: 'rfi_question_suggestion_review_required',
+      suggestionId,
+    },
+  )
 }

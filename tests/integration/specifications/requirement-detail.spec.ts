@@ -14,9 +14,11 @@ import {
   expectStatus,
   newRoleContext,
 } from '../authorization/authorization-test-helpers'
+import { deferRoute } from '../deferred-route'
 
 const specificationId = 8
 const specificationCode = 'ETJANST-UPP-2026'
+const csvExportSpecificationId = 920008
 const editSpecificationId = 920001
 const rfiSpecificationId = 920007
 const rfiSpecificationCode = 'PWT-RFI-WORKFLOW-2026'
@@ -477,6 +479,13 @@ async function mockRfiList(
     },
     deleteSuggestion(id: number) {
       suggestions = suggestions.filter(suggestion => suggestion.id !== id)
+    },
+    requestSuggestionReview(id: number) {
+      suggestions = suggestions.map(suggestion =>
+        suggestion.id === id
+          ? { ...suggestion, isReviewRequested: true }
+          : suggestion,
+      )
     },
   }
 }
@@ -1159,15 +1168,6 @@ for (const viewport of viewports) {
             'Ingår inte i RFI',
           )
           await expect(
-            primaryQuestion
-              .locator('p')
-              .filter({
-                hasText:
-                  'PWT-MANUAL vilken information ska leverantören lämna?',
-              })
-              .first(),
-          ).toHaveClass(/opacity-55/)
-          await expect(
             areaSection.getByRole('switch', {
               name: /Ändra om kravområdet .+ ingår i RFI/u,
             }),
@@ -1215,14 +1215,6 @@ for (const viewport of viewports) {
             'title',
             'Ingår inte i RFI',
           )
-          await expect(
-            areaSection
-              .locator('p')
-              .filter({
-                hasText: 'PWT-MANUAL hur ska området besvaras samlat?',
-              })
-              .first(),
-          ).toHaveClass(/opacity-55/)
 
           await page
             .getByRole('button', { name: 'Visa endast de som ingår i RFI' })
@@ -1246,7 +1238,410 @@ test.describe('Requirements specification deterministic manual cases', () => {
   test.setTimeout(180_000)
   test.use({ viewport: { height: 720, width: 1280 } })
 
-  test('SPEC-06: adds and removes a requirement in the specification detail UI', async ({
+  test('SPEC-18: sorts the complete specification item list in both directions', async ({
+    page,
+  }) => {
+    await gotoSpecificationDetail(page)
+
+    const specificationItemsPanel = page.locator(
+      '[data-specification-detail-list-panel="items"]',
+    )
+    const table = specificationItemsPanel.getByRole('table', {
+      name: 'Lista över krav',
+    })
+    const descriptionHeader = table.locator(
+      '[data-requirement-semantic-header-label="description"]',
+    )
+    const descriptionSortButton = specificationItemsPanel.getByRole('button', {
+      name: 'Sortera efter Kravtext',
+    })
+    const getVisibleRows = () =>
+      table.getByRole('row').evaluateAll(rows =>
+        rows
+          .slice(1)
+          .map(row => row.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+          .filter(Boolean),
+      )
+
+    await expect
+      .poll(async () => (await getVisibleRows()).length)
+      .toBeGreaterThan(1)
+    await descriptionSortButton.click()
+    await expect(descriptionHeader).toHaveAttribute('aria-sort', 'ascending')
+    const ascendingRows = await getVisibleRows()
+
+    await descriptionSortButton.click()
+    await expect(descriptionHeader).toHaveAttribute('aria-sort', 'descending')
+    await expect.poll(getVisibleRows).not.toEqual(ascendingRows)
+  })
+
+  test('SPEC-19: pages and recovers the bounded specification item list', async ({
+    page,
+  }) => {
+    const item = (
+      id: number,
+      itemRef: string,
+      uniqueId: string,
+      description: string,
+    ) => ({
+      area: { name: 'PWT-MANUAL Playwright manual cases' },
+      deviationCount: 0,
+      hasApprovedDeviation: false,
+      hasPendingDeviation: false,
+      id,
+      isArchived: false,
+      itemRef,
+      kind: 'library',
+      specificationItemId: id,
+      uniqueId,
+      version: {
+        categoryNameEn: 'Business requirement',
+        categoryNameSv: 'Verksamhetskrav',
+        description,
+        priorityLevelColor: null,
+        priorityLevelIconName: null,
+        priorityLevelId: null,
+        priorityLevelNameEn: null,
+        priorityLevelNameSv: null,
+        priorityLevelSortOrder: null,
+        qualityCharacteristicNameEn: null,
+        qualityCharacteristicNameSv: null,
+        status: 3,
+        statusColor: '#22c55e',
+        statusIconName: 'CheckCircle2',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        typeNameEn: 'Business requirement',
+        typeNameSv: 'Verksamhetskrav',
+        verifiable: true,
+        versionNumber: 1,
+      },
+    })
+    const firstItem = item(
+      980001,
+      'lib:980001',
+      'PWT-PAGE-1',
+      'PWT first bounded page.',
+    )
+    const secondItem = item(
+      980002,
+      'lib:980002',
+      'PWT-PAGE-2',
+      'PWT continuation page.',
+    )
+    const restartedItem = item(
+      980003,
+      'lib:980003',
+      'PWT-PAGE-3',
+      'PWT restarted first page.',
+    )
+    let invalidCursorObserved = false
+    let recoveryFirstPageRequests = 0
+    let releaseInvalidCursor: (() => void) | undefined
+    const invalidCursorGate = new Promise<void>(resolve => {
+      releaseInvalidCursor = resolve
+    })
+
+    await page.route(
+      `**/api/requirements-specifications/${specificationId}/items?*`,
+      async route => {
+        const cursor = new URL(route.request().url()).searchParams.get('cursor')
+        if (cursor === 'cursor-1') {
+          await route.fulfill({
+            contentType: 'application/json',
+            json: {
+              items: [secondItem],
+              pagination: {
+                count: 1,
+                hasMore: true,
+                limit: 50,
+                nextCursor: 'cursor-2',
+              },
+            },
+          })
+          return
+        }
+        if (cursor === 'cursor-2') {
+          invalidCursorObserved = true
+          await invalidCursorGate
+          await route.fulfill({
+            contentType: 'application/json',
+            json: { code: 'invalid_cursor', error: 'Invalid cursor' },
+            status: 400,
+          })
+          return
+        }
+
+        if (!invalidCursorObserved) {
+          await route.fulfill({
+            contentType: 'application/json',
+            json: {
+              items: [firstItem],
+              pagination: {
+                count: 1,
+                hasMore: true,
+                limit: 50,
+                nextCursor: 'cursor-1',
+              },
+            },
+          })
+          return
+        }
+        recoveryFirstPageRequests += 1
+        if (recoveryFirstPageRequests < 3) {
+          await route.fulfill({
+            contentType: 'application/json',
+            json: { error: 'PWT recovery unavailable' },
+            status: 503,
+          })
+          return
+        }
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            items: [restartedItem],
+            pagination: {
+              count: 1,
+              hasMore: false,
+              limit: 50,
+              nextCursor: null,
+            },
+          },
+        })
+      },
+    )
+
+    await gotoSpecificationDetail(page)
+    const specificationItemsPanel = page.locator(
+      '[data-specification-detail-list-panel="items"]',
+    )
+    await specificationItemsPanel
+      .getByRole('button', { name: 'Sortera efter Kravtext' })
+      .click()
+    await expect(
+      specificationItemsPanel.getByRole('button', { name: /^PWT-PAGE-1\b/u }),
+    ).toHaveCount(1)
+    await expect(
+      specificationItemsPanel.getByRole('button', { name: /^PWT-PAGE-2\b/u }),
+    ).toHaveCount(1)
+    await expect(
+      specificationItemsPanel.getByRole('button', {
+        name: 'Läs in fler krav',
+      }),
+    ).toHaveCount(0)
+    await specificationItemsPanel
+      .getByRole('checkbox', { name: 'Markera PWT-PAGE-1' })
+      .check()
+    releaseInvalidCursor?.()
+    const recoveryAlert = specificationItemsPanel.getByRole('alert')
+    await expect(recoveryAlert).toContainText(
+      'Fortsättningen har upphört att gälla',
+    )
+    await expect(
+      specificationItemsPanel.getByRole('button', { name: /^PWT-PAGE-1\b/u }),
+    ).toHaveCount(1)
+
+    await recoveryAlert.getByRole('button', { name: 'Försök igen' }).click()
+    await expect(
+      recoveryAlert.getByRole('button', { name: 'Försök igen' }),
+    ).toBeFocused()
+    await recoveryAlert.getByRole('button', { name: 'Försök igen' }).click()
+
+    await expect(
+      specificationItemsPanel.getByText(
+        'Listan startade om från första sidan med samma fråga.',
+      ),
+    ).toHaveCount(1)
+    await expect(
+      specificationItemsPanel.getByRole('button', { name: /^PWT-PAGE-3\b/u }),
+    ).toHaveCount(1)
+    await expect(
+      specificationItemsPanel.getByText(/1 krav markerat/u),
+    ).toHaveCount(1)
+  })
+
+  test('SPEC-20: limits shared actions for more than 200 selected items', async ({
+    page,
+  }) => {
+    const items = Array.from({ length: 201 }, (_, index) => {
+      const number = String(index + 1).padStart(3, '0')
+      const isHiddenItem = index === 200
+      const requirementId = index === 0 ? 920005 : 981000 + index
+      return {
+        area: { name: 'PWT-MANUAL Playwright manual cases' },
+        deviationCount: 0,
+        hasApprovedDeviation: false,
+        hasPendingDeviation: false,
+        id: requirementId,
+        isArchived: false,
+        itemRef: `lib:${requirementId}`,
+        kind: 'library',
+        specificationItemId: requirementId,
+        uniqueId: isHiddenItem
+          ? 'PWT-LIMIT-HIDDEN'
+          : `PWT-LIMIT-KEEP-${number}`,
+        version: {
+          categoryNameEn: 'Business requirement',
+          categoryNameSv: 'Verksamhetskrav',
+          description: `PWT selected-item action limit ${number}.`,
+          priorityLevelColor: null,
+          priorityLevelIconName: null,
+          priorityLevelId: null,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+          priorityLevelSortOrder: null,
+          qualityCharacteristicNameEn: null,
+          qualityCharacteristicNameSv: null,
+          status: 3,
+          statusColor: '#22c55e',
+          statusIconName: 'CheckCircle2',
+          statusNameEn: 'Published',
+          statusNameSv: 'Publicerad',
+          typeNameEn: 'Business requirement',
+          typeNameSv: 'Verksamhetskrav',
+          verifiable: true,
+          versionNumber: 1,
+        },
+      }
+    })
+
+    await page.route(
+      `**/api/requirements-specifications/${specificationId}/items?*`,
+      async route => {
+        const params = new URL(route.request().url()).searchParams
+        const filteredItems =
+          params.get('uniqueIdSearch') === 'KEEP' ? items.slice(0, 200) : items
+        const requestedLimit = Number(params.get('limit') ?? 50)
+        const limit = Math.min(
+          Number.isInteger(requestedLimit) && requestedLimit > 0
+            ? requestedLimit
+            : 50,
+          100,
+        )
+        const offset = Number(params.get('cursor')?.replace('page-', '') ?? 0)
+        const responseItems = filteredItems.slice(offset, offset + limit)
+        const nextOffset = offset + responseItems.length
+        const hasMore = nextOffset < filteredItems.length
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            items: responseItems,
+            pagination: {
+              count: responseItems.length,
+              hasMore,
+              limit,
+              nextCursor: hasMore ? `page-${nextOffset}` : null,
+            },
+          },
+        })
+      },
+    )
+
+    await gotoSpecificationDetail(page)
+    const specificationItemsPanel = page.locator(
+      '[data-specification-detail-list-panel="items"]',
+    )
+    await specificationItemsPanel
+      .getByRole('button', { name: 'Filtrera efter Krav-ID' })
+      .click()
+    const requirementIdFilter = page.getByRole('textbox', { name: 'Krav-ID' })
+    await requirementIdFilter.fill('LIMIT')
+    await requirementIdFilter.press('Enter')
+
+    const selectionCheckboxes = specificationItemsPanel.getByRole('checkbox', {
+      name: /^Markera PWT-LIMIT-/u,
+    })
+    const loadAllVisibleItems = async (expectedCount: number) => {
+      await expect(selectionCheckboxes.first()).toBeVisible()
+      while ((await selectionCheckboxes.count()) < expectedCount) {
+        const loadedCount = await selectionCheckboxes.count()
+        await selectionCheckboxes.nth(loadedCount - 1).scrollIntoViewIfNeeded()
+        await expect
+          .poll(() => selectionCheckboxes.count())
+          .toBeGreaterThan(loadedCount)
+      }
+      await expect(selectionCheckboxes).toHaveCount(expectedCount)
+    }
+
+    await loadAllVisibleItems(201)
+    for (const checkbox of await selectionCheckboxes.all()) {
+      await checkbox.check()
+    }
+
+    const sharedActions = [
+      specificationItemsPanel.getByRole('button', {
+        name: 'Tilldela behovsreferens',
+      }),
+      specificationItemsPanel.getByRole('button', {
+        name: 'Rensa behovsreferenser',
+      }),
+      specificationItemsPanel.getByRole('button', {
+        name: 'Begär avsteg för valda (201)',
+      }),
+      specificationItemsPanel.getByRole('button', {
+        name: 'Ta bort valda (201)',
+      }),
+    ]
+    for (const action of sharedActions) {
+      await expect(action).toBeDisabled()
+    }
+    await expect(specificationItemsPanel.getByRole('status')).toContainText(
+      '201 krav markerade; inga dolda. Gemensamma åtgärder stöder högst 200 krav. Avmarkera exakt 1 krav för att fortsätta.',
+    )
+
+    await specificationItemsPanel
+      .getByRole('button', { name: /^PWT-LIMIT-KEEP-001\b/u })
+      .click()
+    await expect(
+      specificationItemsPanel.getByRole('button', {
+        name: 'Ta bort från underlaget',
+      }),
+    ).toBeEnabled()
+
+    await specificationItemsPanel
+      .getByRole('button', { name: 'Filtrera efter Krav-ID' })
+      .click()
+    await requirementIdFilter.fill('KEEP')
+    await requirementIdFilter.press('Enter')
+    await expect
+      .poll(() => selectionCheckboxes.count())
+      .toBeLessThan(items.length)
+    await loadAllVisibleItems(200)
+
+    const deselectNotShown = specificationItemsPanel.getByRole('button', {
+      name: 'Avmarkera de som inte visas (1)',
+    })
+    await expect(deselectNotShown).toBeEnabled()
+    await expect(specificationItemsPanel.getByRole('status')).toContainText(
+      '201 krav markerade; 1 är inte inläst. Gemensamma åtgärder stöder högst 200 krav. Avmarkera exakt 1 krav för att fortsätta.',
+    )
+    await deselectNotShown.click()
+
+    await expect(specificationItemsPanel.getByRole('status')).toContainText(
+      '200 krav markerade; inga dolda.',
+    )
+    await expect(specificationItemsPanel.getByRole('status')).not.toContainText(
+      'Gemensamma åtgärder stöder högst 200 krav.',
+    )
+    for (const action of [
+      specificationItemsPanel.getByRole('button', {
+        name: 'Tilldela behovsreferens',
+      }),
+      specificationItemsPanel.getByRole('button', {
+        name: 'Rensa behovsreferenser',
+      }),
+      specificationItemsPanel.getByRole('button', {
+        name: 'Begär avsteg för valda (200)',
+      }),
+      specificationItemsPanel.getByRole('button', {
+        name: 'Ta bort valda (200)',
+      }),
+    ]) {
+      await expect(action).toBeEnabled()
+    }
+  })
+
+  test('SPEC-06: adds, selects, and removes a requirement in the specification detail UI', async ({
     page,
   }) => {
     const addRequests: unknown[] = []
@@ -1298,7 +1693,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     }
     await page.route(
-      `**/api/requirements-specifications/${editSpecificationId}/items`,
+      new RegExp(
+        `/api/requirements-specifications/${editSpecificationId}/items(?:\\?.*)?$`,
+        'u',
+      ),
       async route => {
         const method = route.request().method()
         if (method === 'GET') {
@@ -1388,18 +1786,40 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect(
       specificationItemsPanel.getByRole('button', { name: /^PWT-REPORT-A\b/u }),
     ).toBeVisible({ timeout: 30_000 })
+    await expect(
+      specificationItemsPanel.getByRole('checkbox', { name: 'Markera alla' }),
+    ).toHaveCount(0)
 
-    await page
-      .getByRole('checkbox', { name: 'Markera PWT-SPEC-EDIT-SOURCE' })
-      .check()
+    const selectedRequirement = page.getByRole('checkbox', {
+      name: 'Markera PWT-SPEC-EDIT-SOURCE',
+    })
+    await selectedRequirement.check()
+    await expect(specificationItemsPanel).toContainText('1 krav markerat')
     await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
     const removeDialog = page.getByRole('alertdialog', {
       name: 'Ta bort valda (1)',
     })
     await expect(removeDialog).toHaveCount(1)
+    await expect(removeDialog).toContainText('PWT-SPEC-EDIT-SOURCE')
     await removeDialog.getByRole('button', { name: 'Avbryt' }).click()
     await expect(removeDialog).toHaveCount(0)
+    await expect(selectedRequirement).toBeChecked()
     expect(removeRequests).toEqual([])
+
+    await specificationItemsPanel
+      .getByRole('button', { name: /^PWT-SPEC-EDIT-SOURCE\b/u })
+      .click()
+    const requestDeviationAction = specificationItemsPanel.getByRole('button', {
+      name: 'Begär ett avsteg',
+    })
+    const removeFromSpecificationAction = specificationItemsPanel.getByRole(
+      'button',
+      {
+        name: 'Ta bort från underlaget',
+      },
+    )
+    await expect(requestDeviationAction).toBeVisible()
+    await expect(removeFromSpecificationAction).toBeVisible()
 
     await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
     await page
@@ -1421,213 +1841,135 @@ test.describe('Requirements specification deterministic manual cases', () => {
     ).toHaveCount(0)
   })
 
-  test('SPEC-07: creates a specification-local requirement and opens the graduation action', async ({
+  test('SPEC-07: graduates a real specification-local requirement as a copy-only draft', async ({
     page,
+    request,
   }) => {
-    const createRequests: unknown[] = []
-    let localRequirementCreated = false
-    const createdLocalRequirementItem = {
-      area: null,
-      deviationCount: 0,
-      hasApprovedDeviation: false,
-      hasPendingDeviation: false,
-      id: 920099,
-      isArchived: false,
-      isSpecificationLocal: true,
-      itemRef: 'local:920099',
-      kind: 'specificationLocal',
-      needsReference: null,
-      needsReferenceId: null,
-      normReferenceIds: [],
-      requirementPackageIds: [],
-      requirementPackages: [],
-      specificationItemId: 920099,
-      specificationItemStatusColor: '#2563eb',
-      specificationItemStatusIconName: 'check-circle',
-      specificationItemStatusId: 1,
-      specificationItemStatusNameEn: 'Included',
-      specificationItemStatusNameSv: 'Inkluderad',
-      specificationLocalRequirementId: 920099,
-      uniqueId: 'KRAV0002',
-      version: {
-        categoryNameEn: null,
-        categoryNameSv: null,
-        description: 'PWT SPEC-07 unikt krav.',
-        priorityLevelColor: null,
-        priorityLevelIconName: null,
-        priorityLevelId: null,
-        priorityLevelNameEn: null,
-        priorityLevelNameSv: null,
-        priorityLevelSortOrder: null,
-        qualityCharacteristicNameEn: null,
-        qualityCharacteristicNameSv: null,
-        verifiable: true,
-        status: 3,
-        statusColor: '#16a34a',
-        statusIconName: 'check-circle',
-        statusNameEn: 'Published',
-        statusNameSv: 'Publicerad',
-        typeNameEn: null,
-        typeNameSv: null,
-        versionNumber: 1,
-      },
-    }
-    await page.route(
-      `**/api/requirements-specifications/${editSpecificationId}/local-requirements`,
-      async route => {
-        createRequests.push(route.request().postDataJSON())
-        localRequirementCreated = true
-        await route.fulfill({
-          contentType: 'application/json',
-          json: {
-            localRequirement: {
-              id: 920099,
-              uniqueId: 'KRAV0002',
-            },
-            ok: true,
-          },
-          status: 201,
+    const description = `PWT SPEC-07 unikt krav ${Date.now()}.`
+    const editedDescription = `${description} Redigerat.`
+
+    const localRequirement =
+      await test.step('create a specification-local requirement', async () => {
+        await gotoSpecificationDetail(page, editSpecificationId)
+        await page.getByRole('button', { name: 'Nytt unikt krav' }).click()
+        const createDialog = page.getByRole('dialog').filter({
+          hasText: 'Nytt unikt krav',
         })
-      },
-    )
-    await page.route(
-      `**/api/requirements-specifications/${editSpecificationId}/local-requirements/920099`,
-      async route => {
-        await route.fulfill({
-          contentType: 'application/json',
-          json: {
-            acceptanceCriteria: 'Verifiera i UI.',
-            createdAt: '2026-04-24T09:00:00.000Z',
-            description: 'PWT SPEC-07 unikt krav.',
-            id: 920099,
-            itemRef: 'local:920099',
-            needsReference: null,
-            needsReferenceId: null,
-            normReferences: [],
-            priorityLevel: null,
-            qualityCharacteristic: null,
-            requirementArea: null,
-            requirementCategory: null,
-            requirementPackages: [],
-            requirementType: null,
-            verifiable: true,
-            specificationId: 920004,
-            specificationItemStatusColor: '#2563eb',
-            specificationItemStatusIconName: 'check-circle',
-            specificationItemStatusId: 1,
-            specificationItemStatusNameEn: 'Included',
-            specificationItemStatusNameSv: 'Inkluderad',
-            uniqueId: 'KRAV0002',
-            updatedAt: '2026-04-24T09:00:00.000Z',
-            verificationMethod: 'Playwright-test.',
-          },
-        })
-      },
-    )
-    await page.route(
-      '**/api/specification-item-deviations/local%3A920099',
-      async route => {
-        await route.fulfill({
-          contentType: 'application/json',
-          json: { deviations: [] },
-        })
-      },
-    )
-    await page.route(
-      `**/api/requirements-specifications/${editSpecificationId}/local-requirements/920099/graduation-target-areas`,
-      async route => {
-        await route.fulfill({
-          contentType: 'application/json',
-          json: {
-            areas: [
-              {
-                id: rfiAreaId,
-                name: 'PWT-MANUAL Playwright manual cases',
-                prefix: 'PWM',
-              },
-            ],
-          },
-        })
-      },
-    )
-    await page.route(
-      `**/api/requirements-specifications/${editSpecificationId}/items`,
-      async route => {
-        const response = await route.fetch()
-        const data = (await response.json()) as { items?: unknown[] }
-        let items = data.items ?? []
-        if (
-          localRequirementCreated &&
-          !items.some(
-            item =>
-              typeof item === 'object' &&
-              item !== null &&
-              'uniqueId' in item &&
-              item.uniqueId === 'KRAV0002',
+        await createDialog
+          .getByRole('textbox', { name: /Kravtext/u })
+          .fill(description)
+        await createDialog
+          .getByRole('textbox', { name: /Acceptanskriterium/u })
+          .fill('Verifiera i UI.')
+        await createDialog
+          .getByRole('checkbox', { name: 'Verifierbar' })
+          .check()
+        await createDialog
+          .getByRole('textbox', { name: /Verifieringsmetod/u })
+          .fill('Playwright-test.')
+
+        const createResponsePromise = page.waitForResponse(response => {
+          const url = new URL(response.url())
+          return (
+            response.request().method() === 'POST' &&
+            url.pathname ===
+              `/api/requirements-specifications/${editSpecificationId}/local-requirements`
           )
-        ) {
-          items = [createdLocalRequirementItem, ...items]
-        }
-        await route.fulfill({
-          contentType: 'application/json',
-          json: { items },
         })
-      },
-    )
+        await createDialog.getByRole('button', { name: 'Spara' }).click()
+        const createResponse = await createResponsePromise
+        expect(createResponse.ok()).toBe(true)
+        const created = (await createResponse.json()) as {
+          localRequirement: { id: number; uniqueId: string }
+        }
+        const localRequirement = created.localRequirement
+        const localRow = page.getByRole('button', {
+          name: new RegExp(`^${localRequirement.uniqueId}\\b`, 'u'),
+        })
+        await expect(localRow).toBeVisible({ timeout: 30_000 })
+        await localRow.click()
+        return localRequirement
+      })
 
-    await gotoSpecificationDetail(page, editSpecificationId)
-    await page.getByRole('button', { name: 'Nytt unikt krav' }).click()
-    const dialog = page.getByRole('dialog').filter({
-      hasText: 'Nytt unikt krav',
+    await test.step('edit the specification-local requirement', async () => {
+      const localDetailRow = page
+        .getByRole('row')
+        .filter({ hasText: 'Lyft till kravbiblioteket' })
+      await localDetailRow.getByRole('button', { name: 'Redigera' }).click()
+
+      const editDialog = page.getByRole('dialog', {
+        name: 'Redigera unikt krav',
+      })
+      await editDialog
+        .getByRole('textbox', { name: /Kravtext/u })
+        .fill(editedDescription)
+      await editDialog.getByRole('button', { name: 'Spara' }).click()
+      await expect(editDialog).toBeHidden()
     })
-    await expect(dialog).toBeVisible()
-    await dialog
-      .getByRole('textbox', { name: /Kravtext/u })
-      .fill('PWT SPEC-07 unikt krav.')
-    await dialog
-      .getByRole('textbox', { name: /Acceptanskriterium/u })
-      .fill('Verifiera i UI.')
-    await dialog.getByRole('checkbox', { name: 'Verifierbar' }).check()
-    await dialog
-      .getByRole('textbox', { name: /Verifieringsmetod/u })
-      .fill('Playwright-test.')
-    await dialog.getByRole('button', { name: 'Spara' }).click()
 
-    await expect
-      .poll(() => createRequests)
-      .toEqual([
-        expect.objectContaining({
-          acceptanceCriteria: 'Verifiera i UI.',
-          description: 'PWT SPEC-07 unikt krav.',
-          verifiable: true,
-          verificationMethod: 'Playwright-test.',
+    const graduation =
+      await test.step('graduate the requirement to the library', async () => {
+        const localDetailRow = page
+          .getByRole('row')
+          .filter({ hasText: 'Lyft till kravbiblioteket' })
+        await localDetailRow
+          .getByRole('button', { name: 'Lyft till kravbiblioteket' })
+          .click()
+        const liftDialog = page.getByRole('dialog', {
+          name: 'Lyft unikt krav',
+        })
+        await liftDialog
+          .getByRole('combobox', { name: 'Kravområde' })
+          .selectOption(String(rfiAreaId))
+
+        const graduationResponsePromise = page.waitForResponse(response => {
+          const url = new URL(response.url())
+          return (
+            response.request().method() === 'POST' &&
+            url.pathname ===
+              `/api/requirements-specifications/${editSpecificationId}/local-requirements/${localRequirement.id}/graduate`
+          )
+        })
+        await liftDialog.getByRole('button', { name: 'Lyft' }).click()
+        const graduationResponse = await graduationResponsePromise
+        expect(graduationResponse.ok()).toBe(true)
+        const graduation = (await graduationResponse.json()) as {
+          detail: {
+            uniqueId: string
+            versions: Array<{ description: string; status: number }>
+          }
+          newRequirementVersionNumber: number
+        }
+        expect(graduation.detail.versions[0]).toMatchObject({
+          description: editedDescription,
+          status: 1,
+        })
+        return graduation
+      })
+
+    await test.step('verify source preservation and the graduated draft', async () => {
+      const sourceResponse = await request.get(
+        `/api/requirements-specifications/${editSpecificationId}/local-requirements/${localRequirement.id}`,
+      )
+      expect(sourceResponse.ok()).toBe(true)
+      expect(await sourceResponse.json()).toMatchObject({
+        description: editedDescription,
+        id: localRequirement.id,
+        uniqueId: localRequirement.uniqueId,
+      })
+
+      await page.goto(
+        `/sv/requirements/${encodeURIComponent(graduation.detail.uniqueId)}/${graduation.newRequirementVersionNumber}`,
+      )
+      await expect(
+        page.getByRole('heading', {
+          level: 1,
+          name: graduation.detail.uniqueId,
         }),
-      ])
-
-    const localRow = page.getByRole('button', {
-      name: /KRAV0002\b/u,
+      ).toBeVisible()
+      await expect(page.locator('main')).toContainText(editedDescription)
+      await expect(page.locator('main')).toContainText('Utkast')
     })
-    await expect(localRow).toBeVisible({ timeout: 30_000 })
-    await localRow.click()
-    const localDetailRow = page
-      .getByRole('row')
-      .filter({ hasText: 'Lyft till kravbiblioteket' })
-    const editLocalButton = localDetailRow.getByRole('button', {
-      name: 'Redigera',
-    })
-    await expect(editLocalButton).toBeVisible({ timeout: 30_000 })
-    await editLocalButton.click()
-    const editDialog = page.getByRole('dialog', {
-      name: 'Redigera unikt krav',
-    })
-    await expect(editDialog).toBeVisible()
-    await editDialog.getByRole('button', { name: 'Stäng' }).click()
-    await localDetailRow
-      .getByRole('button', { name: 'Lyft till kravbiblioteket' })
-      .click()
-    const liftDialog = page.getByRole('dialog', { name: 'Lyft unikt krav' })
-    await expect(liftDialog).toBeVisible()
-    await liftDialog.getByRole('button', { name: 'Avbryt' }).click()
   })
 
   test('SPEC-09: creates, edits, and deletes needs references from the detail tab', async ({
@@ -1730,9 +2072,75 @@ test.describe('Requirements specification deterministic manual cases', () => {
         await route.continue()
       },
     )
+    const usageItem = (id: number, uniqueId: string, description: string) => ({
+      area: { name: 'PWT-MANUAL Playwright manual cases' },
+      deviationCount: 0,
+      hasApprovedDeviation: false,
+      hasPendingDeviation: false,
+      id,
+      isArchived: false,
+      itemRef: `lib:${id}`,
+      kind: 'library',
+      needsReferenceId: 920001,
+      specificationItemId: id,
+      specificationItemStatusNameSv: 'Inkluderad',
+      uniqueId,
+      version: {
+        description,
+        status: 3,
+        statusNameSv: 'Publicerad',
+        typeNameSv: 'Verksamhetskrav',
+        verifiable: true,
+        versionNumber: 1,
+      },
+    })
+    await page.route(
+      `**/api/requirements-specifications/${editSpecificationId}/items?*`,
+      async route => {
+        const query = new URL(route.request().url()).searchParams
+        if (query.get('needsReferenceIds') !== '920001') {
+          await route.continue()
+          return
+        }
+        const continuation = query.get('cursor') === 'usage-page-2'
+        const item = continuation
+          ? usageItem(
+              920102,
+              'PWT-NEEDS-USAGE-2',
+              'PWT behovsanvändning från sida två.',
+            )
+          : usageItem(
+              920101,
+              'PWT-NEEDS-USAGE-1',
+              'PWT behovsanvändning från sida ett.',
+            )
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            items: [item],
+            pagination: {
+              count: 1,
+              hasMore: !continuation,
+              limit: 100,
+              nextCursor: continuation ? null : 'usage-page-2',
+            },
+          },
+        })
+      },
+    )
 
     await gotoSpecificationDetail(page, editSpecificationId)
     await openDetailTab(page, 'Behovsreferenser')
+    const linkedNeedsReferenceRow = page
+      .getByRole('row')
+      .filter({ hasText: 'PWT-MANUAL ursprungligt behov' })
+    await linkedNeedsReferenceRow
+      .getByRole('button', {
+        name: 'Visa krav kopplade till PWT-MANUAL ursprungligt behov',
+      })
+      .click()
+    await expect(page.getByText('PWT-NEEDS-USAGE-1')).toBeVisible()
+    await expect(page.getByText('PWT-NEEDS-USAGE-2')).toBeVisible()
     const newNeedsReferenceButton = page.getByRole('button', {
       name: 'Ny behovsreferens',
     })
@@ -1849,43 +2257,161 @@ test.describe('Requirements specification deterministic manual cases', () => {
     ])
     expect(procurementTable.rows.length).toBeGreaterThan(0)
 
-    await clickMenuItem(page, 'Exportera', 'Anbuds-CSV')
-    await expect
-      .poll(() =>
-        downloadRequests.some(
-          url =>
-            url.includes(
-              `/api/requirements-specifications/${specificationId}/exports`,
-            ) && url.includes('profile=procurement'),
-        ),
-      )
-      .toBe(true)
     const procurementCsv = await getCsvExport(
       request,
-      specificationId,
+      csvExportSpecificationId,
       'procurement',
     )
-    expect(procurementCsv).toContain(
+    const procurementLines = procurementCsv
+      .replace(/^\uFEFF/u, '')
+      .split('\r\n')
+    expect(procurementLines).toHaveLength(206)
+    expect(procurementLines[1]).toMatch(/^PWT-TRACE-001;/u)
+    expect(procurementLines.at(-1)).toMatch(/^PWT-TRACE-205;/u)
+    expect(procurementLines[0]).toBe(
       'Krav-ID;Kravtext;Kvalitetsegenskap;Normreferenser;Norm-URI',
     )
-    expect(procurementCsv).not.toContain('Underlagssyfte')
 
-    await clickMenuItem(page, 'Exportera', 'Full CSV-export')
-    await expect
-      .poll(() =>
-        downloadRequests.some(
-          url =>
-            url.includes(
-              `/api/requirements-specifications/${specificationId}/exports`,
-            ) && url.includes('profile=full'),
-        ),
-      )
-      .toBe(true)
-    const fullCsv = await getCsvExport(request, specificationId, 'full')
-    expect(fullCsv).toContain(
+    const fullCsv = await getCsvExport(
+      request,
+      csvExportSpecificationId,
+      'full',
+    )
+    const fullLines = fullCsv.replace(/^\uFEFF/u, '').split('\r\n')
+    expect(fullLines).toHaveLength(206)
+    expect(fullLines[1]).toMatch(/^PWT-TRACE-001;/u)
+    expect(fullLines.at(-1)).toMatch(/^PWT-TRACE-205;/u)
+    expect(fullLines[0]).toContain(
       'Krav-ID;Kravtext;Kravområde;Kategori;Typ;Kvalitetsegenskap;Prioritet',
     )
-    expect(fullCsv).toContain('Behovsreferens;Användningsstatus')
+    expect(fullLines[0]).toContain('Behovsreferens;Användningsstatus')
+
+    await gotoSpecificationDetail(page, csvExportSpecificationId)
+    const csvRoutePattern = `**/api/requirements-specifications/${csvExportSpecificationId}/exports?**`
+    const csvBody =
+      '\uFEFFKrav-ID;Kravtext\r\nPWT-TRACE-001;PWT-MANUAL first\r\nPWT-TRACE-205;PWT-MANUAL last'
+
+    await test.step('procurement export completion', async () => {
+      const procurementRoute = await deferRoute(
+        page,
+        csvRoutePattern,
+        async route => {
+          await route.fulfill({
+            body: csvBody,
+            headers: {
+              'Content-Disposition':
+                'attachment; filename="fallback.csv"; filename*=UTF-8\'\'anbuds-export.csv',
+              'Content-Length': String(Buffer.byteLength(csvBody)),
+              'Content-Type': 'text/csv; charset=utf-8',
+            },
+            status: 200,
+          })
+        },
+      )
+
+      try {
+        const downloadPromise = page.waitForEvent('download')
+        await clickMenuItem(page, 'Exportera', 'Anbuds-CSV')
+        await procurementRoute.requestStarted
+        const progressDialog = page.getByRole('dialog', {
+          name: 'Förbereder CSV-export …',
+        })
+        await expect(progressDialog).toBeVisible()
+        await expect(
+          progressDialog.getByRole('button', { name: 'Avbryt' }),
+        ).toBeFocused()
+        procurementRoute.fulfill()
+        const download = await downloadPromise
+        expect(download.suggestedFilename()).toBe('anbuds-export.csv')
+        await expect(progressDialog).toHaveCount(0)
+        await expect(
+          page
+            .locator(
+              '[data-floating-action-menu-trigger="more-actions"]:visible',
+            )
+            .first(),
+        ).toBeFocused()
+        await expect(
+          page.getByText('Filen är klar', { exact: true }),
+        ).toBeVisible()
+      } finally {
+        await procurementRoute.cleanup()
+      }
+    })
+
+    await test.step('full-export cancellation', async () => {
+      let cancelledDownloadCount = 0
+      page.on('download', () => {
+        cancelledDownloadCount += 1
+      })
+      const fullRoute = await deferRoute(page, csvRoutePattern, async route => {
+        await route.fulfill({
+          body: csvBody,
+          headers: {
+            'Content-Disposition': 'attachment; filename="full.csv"',
+            'Content-Type': 'text/csv; charset=utf-8',
+          },
+          status: 200,
+        })
+      })
+
+      try {
+        await clickMenuItem(page, 'Exportera', 'Full CSV-export')
+        await fullRoute.requestStarted
+        const progressDialog = page.getByRole('dialog', {
+          name: 'Förbereder CSV-export …',
+        })
+        await progressDialog.getByRole('button', { name: 'Avbryt' }).click()
+        await expect(progressDialog).toHaveCount(0)
+        await expect(
+          page
+            .locator(
+              '[data-floating-action-menu-trigger="more-actions"]:visible',
+            )
+            .first(),
+        ).toBeFocused()
+      } finally {
+        await fullRoute.cleanup()
+      }
+      expect(cancelledDownloadCount).toBe(0)
+    })
+
+    await test.step('limit-failure error handling', async () => {
+      const limitFailure = async (route: Route) => {
+        await route.fulfill({
+          body: JSON.stringify({
+            code: 'output_limit_exceeded',
+            details: { limit: 100, limitKind: 'items', output: 'csv' },
+            error: 'raw requirement identifiers must not be displayed',
+          }),
+          contentType: 'application/json',
+          status: 422,
+        })
+      }
+      await page.route(csvRoutePattern, limitFailure)
+      try {
+        await clickMenuItem(page, 'Exportera', 'Full CSV-export')
+        const errorDialog = page.getByRole('alertdialog', {
+          name: 'Nedladdningen misslyckades',
+        })
+        await expect(errorDialog).toContainText(
+          'CSV-exporten innehåller fler än den tillåtna gränsen på 100 krav.',
+        )
+        await expect(errorDialog).not.toContainText(
+          'raw requirement identifiers',
+        )
+        await errorDialog.getByRole('button', { name: 'Stäng' }).click()
+        await expect(
+          page
+            .locator(
+              '[data-floating-action-menu-trigger="more-actions"]:visible',
+            )
+            .first(),
+        ).toBeFocused()
+      } finally {
+        await page.unroute(csvRoutePattern, limitFailure)
+      }
+    })
   })
 
   test('SPEC-10b: generates progress reports for Införande and Utveckling specifications', async ({
@@ -1993,49 +2519,35 @@ test.describe('Requirements specification deterministic manual cases', () => {
     expect(managementTable.rows.length).toBeGreaterThan(0)
   })
 
-  test('SPEC-10e: shows traceability only up to the 200 filtered-item limit', async ({
+  test('SPEC-10e: generates complete server-filtered traceability beyond 100 items', async ({
     page,
     request,
   }) => {
     const downloadRequests = await mockReportDownloads(page)
 
     await gotoSpecificationDetail(page, 920005)
-    const itemsResponse = await requestWithRetry(
-      'traceability source items',
-      () =>
-        request.get('/api/requirements-specifications/920005/items', {
-          timeout: 30_000,
-        }),
-    )
-    await expectApiResponseOk(itemsResponse, 'traceability source items')
-    const itemsData = (await itemsResponse.json()) as {
-      items?: Array<{ itemRef?: string }>
-    }
-    const filteredRefs =
-      itemsData.items
-        ?.map(item => item.itemRef)
-        .filter((value): value is string => Boolean(value))
-        .slice(0, 2) ?? []
-    expect(filteredRefs.length).toBeGreaterThan(0)
     await clickMenuItem(page, 'Rapporter', 'Tillämpningsspårbarhet')
     await expect
       .poll(() =>
-        downloadRequests.some(url =>
-          url.includes('/sv/specifications/920005/reports/pdf/traceability'),
+        downloadRequests.some(
+          url =>
+            url.includes(
+              '/sv/specifications/920005/reports/pdf/traceability?',
+            ) && url.includes('sortBy=uniqueId'),
         ),
       )
       .toBe(true)
     const traceabilityResponse = await requestWithRetry(
-      'traceability items for filtered refs',
+      'traceability items for filtered query',
       () =>
         request.get(
-          `/api/requirements-specifications/920005/traceability-items?refs=${filteredRefs.map(encodeURIComponent).join(',')}`,
+          '/api/requirements-specifications/920005/traceability-items?uniqueIdSearch=PWT-TRACE-00&sortBy=uniqueId&sortDirection=desc&locale=sv',
           { timeout: 30_000 },
         ),
     )
     await expectApiResponseOk(
       traceabilityResponse,
-      'traceability items for filtered refs',
+      'traceability items for filtered query',
     )
     const traceabilityData = (await traceabilityResponse.json()) as {
       items?: Array<{
@@ -2049,8 +2561,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
     expect(traceabilityData.specification?.specificationCode).toBe(
       'PWT-SPEC-TRACE-200',
     )
-    expect(traceabilityData.items?.map(item => item.itemRef)).toEqual(
-      filteredRefs,
+    expect(traceabilityData.items).toHaveLength(9)
+    expect(traceabilityData.items?.map(item => item.uniqueId)).toEqual(
+      Array.from(
+        { length: 9 },
+        (_, index) => `PWT-TRACE-${String(9 - index).padStart(3, '0')}`,
+      ),
     )
     expect(traceabilityData.items?.[0]).toMatchObject({
       uniqueId: expect.stringMatching(/^PWT-TRACE-/u),
@@ -2060,25 +2576,40 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
     await gotoSpecificationDetail(page, 920006)
     const reportsMenu = await openActionMenu(page, 'Rapporter')
-    await expect(
-      reportsMenu.getByRole('menuitem', {
-        exact: true,
-        name: 'Tillämpningsspårbarhet',
-      }),
-    ).toHaveCount(0)
     await reportsMenu
       .getByRole('menuitem', {
         exact: true,
-        name: 'Genomföranderapport',
+        name: 'Tillämpningsspårbarhet',
       })
       .click()
     await expect
       .poll(() =>
         downloadRequests.some(url =>
-          url.includes('/sv/specifications/920006/reports/pdf/progress'),
+          url.includes('/sv/specifications/920006/reports/pdf/traceability'),
         ),
       )
       .toBe(true)
+    const completeResponse = await requestWithRetry(
+      'complete traceability items beyond 100',
+      () =>
+        request.get(
+          '/api/requirements-specifications/920006/traceability-items?sortBy=uniqueId&sortDirection=asc&locale=sv',
+          { timeout: 30_000 },
+        ),
+    )
+    await expectApiResponseOk(
+      completeResponse,
+      'complete traceability items beyond 100',
+    )
+    const completeData = (await completeResponse.json()) as {
+      items?: Array<{ itemRef: string; uniqueId: string }>
+    }
+    expect(completeData.items).toHaveLength(201)
+    expect(new Set(completeData.items?.map(item => item.itemRef)).size).toBe(
+      201,
+    )
+    expect(completeData.items?.[0]?.uniqueId).toBe('PWT-TRACE-001')
+    expect(completeData.items?.at(-1)?.uniqueId).toBe('PWT-TRACE-201')
   })
 
   test('SPEC-17: imports reviewed JSON as specification-local requirements', async ({
@@ -2224,16 +2755,27 @@ test.describe('Requirements specification deterministic manual cases', () => {
     )
 
     await gotoSpecificationDetail(page, editSpecificationId)
+    const moreActionsTrigger = page
+      .locator('[data-floating-action-menu-trigger="more-actions"]:visible')
+      .first()
     await clickMenuItem(page, 'Fler åtgärder', 'Importera unika krav')
 
     const dialog = page.getByRole('dialog', {
       name: /Importera lokala krav för/,
     })
     await expect(dialog).toBeVisible()
+    await expect(dialog.locator(':focus')).toHaveCount(1)
     await expect(dialog.getByLabel('Kravområde')).toHaveCount(0)
     await expect(
       dialog.getByRole('button', { name: 'Förhandsgranska krav' }),
     ).toBeDisabled()
+
+    await dialog.getByRole('button', { name: 'Stäng' }).click()
+    await expect(dialog).toBeHidden()
+    await expect(moreActionsTrigger).toBeFocused()
+    await clickMenuItem(page, 'Fler åtgärder', 'Importera unika krav')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByLabel('Import-JSON')).toHaveValue('')
 
     await dialog.getByLabel('Import-JSON').fill(JSON.stringify(importPayload))
     await dialog.getByRole('button', { name: 'Förhandsgranska krav' }).click()
@@ -2282,6 +2824,20 @@ test.describe('Requirements specification deterministic manual cases', () => {
       specificationId: editSpecificationId,
     })
     await expect(page.getByText(/Importerade rader: 1/)).toBeVisible()
+    await expect(dialog.getByRole('status')).toHaveText('Importerade rader: 1')
+
+    const refreshedSpecificationItems = page.waitForRequest(request => {
+      const url = new URL(request.url())
+      return (
+        request.method() === 'GET' &&
+        url.pathname ===
+          `/api/requirements-specifications/${editSpecificationId}/items`
+      )
+    })
+    await dialog.getByRole('button', { name: 'Stäng' }).click()
+    await refreshedSpecificationItems
+    await expect(dialog).toBeHidden()
+    await expect(moreActionsTrigger).toBeFocused()
   })
 
   // cSpell:ignore relocks
@@ -2568,6 +3124,15 @@ test.describe('Requirements specification deterministic manual cases', () => {
           rfiQuestionId: rfiPrimaryQuestionId,
           specificationId: rfiSpecificationId,
         },
+        {
+          areaId: rfiAreaId,
+          content: 'PWT-MANUAL samtidigt granskat RFI-förslag.',
+          id: 920006,
+          isReviewRequested: false,
+          resolution: null,
+          rfiQuestionId: rfiPrimaryQuestionId,
+          specificationId: rfiSpecificationId,
+        },
       ],
     })
     const deleteRequests: number[] = []
@@ -2577,6 +3142,18 @@ test.describe('Requirements specification deterministic manual cases', () => {
       await route.fulfill({
         contentType: 'application/json',
         json: { ok: true },
+      })
+    })
+    await page.route('**/api/rfi-question-suggestions/920006', async route => {
+      rfiMock.requestSuggestionReview(920006)
+      await route.fulfill({
+        contentType: 'application/json',
+        json: {
+          code: 'conflict',
+          details: { reason: 'rfi_question_suggestion_not_draft' },
+          error: 'Only a draft RFI question suggestion can be deleted',
+        },
+        status: 409,
       })
     })
 
@@ -2598,7 +3175,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
     await page
       .getByRole('button', {
-        name: 'Visa 3 RFI-frågeförslag för PWM-RFI001',
+        name: 'Visa 4 RFI-frågeförslag för PWM-RFI001',
       })
       .click()
     suggestionsDialog = page.getByRole('dialog', {
@@ -2613,6 +3190,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect(suggestionsDialog).toContainText(
       'PWT-MANUAL RFI-förslag i granskning.',
     )
+    await expect(suggestionsDialog).toContainText(
+      'PWT-MANUAL samtidigt granskat RFI-förslag.',
+    )
     const openSuggestion = suggestionsDialog
       .locator('li')
       .filter({ hasText: 'PWT-MANUAL öppet frågeförslag.' })
@@ -2622,6 +3202,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
     const handledSuggestion = suggestionsDialog
       .locator('li')
       .filter({ hasText: 'PWT-MANUAL hanterat RFI-förslag.' })
+    const concurrentlyReviewedSuggestion = suggestionsDialog
+      .locator('li')
+      .filter({ hasText: 'PWT-MANUAL samtidigt granskat RFI-förslag.' })
     await expect(
       openSuggestion.getByRole('button', {
         name: 'Ta bort RFI-frågeförslag',
@@ -2637,6 +3220,11 @@ test.describe('Requirements specification deterministic manual cases', () => {
         name: 'Ta bort RFI-frågeförslag',
       }),
     ).toHaveCount(0)
+    await expect(
+      concurrentlyReviewedSuggestion.getByRole('button', {
+        name: 'Ta bort RFI-frågeförslag',
+      }),
+    ).toHaveCount(1)
     await openSuggestion
       .getByRole('button', { name: 'Ta bort RFI-frågeförslag' })
       .click()
@@ -2655,6 +3243,25 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect(suggestionsDialog).toContainText(
       'PWT-MANUAL RFI-förslag i granskning.',
     )
+
+    await concurrentlyReviewedSuggestion
+      .getByRole('button', { name: 'Ta bort RFI-frågeförslag' })
+      .click()
+    await page
+      .getByRole('alertdialog', { name: 'Ta bort RFI-frågeförslag' })
+      .getByRole('button', { name: 'Ta bort' })
+      .click()
+
+    await expect(
+      page.getByText(
+        'Endast ett RFI-frågeförslag i utkast kan tas bort. Förslagen har lästs in på nytt.',
+      ),
+    ).toHaveCount(1)
+    await expect(
+      concurrentlyReviewedSuggestion.getByRole('button', {
+        name: 'Ta bort RFI-frågeförslag',
+      }),
+    ).toHaveCount(0)
   })
 
   test('SPEC-16b: rejects an RFI suggestion when the specification author lacks target area authorship', async ({

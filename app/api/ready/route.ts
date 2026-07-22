@@ -5,6 +5,7 @@ import {
   readDatabaseSchemaStatus,
 } from '@/lib/database-schema-status'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { probeGeneratedOutputTempDirectory } from '@/lib/generated-output/spool'
 import { getSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
 export const dynamic = 'force-dynamic'
@@ -17,12 +18,14 @@ type ReadinessCheckName =
   | 'sql_server'
   | 'database_migration_compatibility'
   | 'oidc_discovery'
+  | 'temporary_storage'
 
 type ReadinessFailureReason =
   | 'runtime_config_invalid'
   | 'sql_server_unavailable'
   | DatabaseSchemaStatusReason
   | 'oidc_discovery_unavailable'
+  | 'temporary_storage_unavailable'
 
 interface ReadinessCheck {
   defaultReason: ReadinessFailureReason
@@ -79,6 +82,21 @@ function sanitizeError(error: unknown): string {
   return 'Error'
 }
 
+function readinessDiagnostic(
+  check: ReadinessCheckName,
+  error: unknown,
+): 'check_failed' | 'sql_server_driver_unavailable' {
+  if (
+    check === 'sql_server' &&
+    error instanceof Error &&
+    error.name === 'DriverPackageNotInstalledError'
+  ) {
+    return 'sql_server_driver_unavailable'
+  }
+
+  return 'check_failed'
+}
+
 function failureReason(
   error: unknown,
   fallback: ReadinessFailureReason,
@@ -102,6 +120,10 @@ async function checkDatabaseMigrationCompatibility() {
   if (status.status !== 'matches') {
     throw new ReadinessFailure(status.reason)
   }
+}
+
+async function checkTemporaryStorage() {
+  await probeGeneratedOutputTempDirectory()
 }
 
 async function checkOidcDiscovery() {
@@ -132,6 +154,7 @@ async function runCheck(
     const reason = failureReason(error, check.defaultReason)
     console.warn('[readiness] check failed', {
       check: check.name,
+      diagnostic: readinessDiagnostic(check.name, error),
       error: sanitizeError(error),
       reason,
     })
@@ -155,6 +178,11 @@ export async function GET() {
       defaultReason: 'database_schema_version_check_failed',
       name: 'database_migration_compatibility',
       run: checkDatabaseMigrationCompatibility,
+    },
+    {
+      defaultReason: 'temporary_storage_unavailable',
+      name: 'temporary_storage',
+      run: checkTemporaryStorage,
     },
     {
       defaultReason: 'oidc_discovery_unavailable',

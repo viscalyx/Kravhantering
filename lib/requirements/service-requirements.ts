@@ -28,7 +28,7 @@ import {
   getRequirementByUniqueId,
   getVersionHistory,
   initiateArchiving,
-  listRequirements,
+  type listRequirements,
   reactivateRequirement,
   restoreVersion,
   transitionStatus,
@@ -37,7 +37,6 @@ import { listSpecificationItemStatuses } from '@/lib/dal/specification-item-stat
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   type AuthorizationService,
-  type RequestContext,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
 import {
@@ -47,6 +46,7 @@ import {
   validationError,
 } from '@/lib/requirements/errors'
 import { isRequirementPublishedStatus } from '@/lib/requirements/lifecycle'
+import { queryRequirementList } from '@/lib/requirements/list-query'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import {
   compareMcpSearchMatches,
@@ -76,7 +76,6 @@ import type {
   RequirementDetail,
   RequirementVersionDetail,
 } from '@/lib/requirements/types'
-import { resolveRequirementListVisibility } from '@/lib/requirements/visibility'
 
 interface RequirementWorkflowDependencies {
   authorization: AuthorizationService
@@ -253,17 +252,6 @@ function lookupSearchFields(
   }
 }
 
-function requirementSearchFields(
-  row: RequirementListItem,
-): Record<string, unknown> {
-  return {
-    id: row.id,
-    uniqueId: row.uniqueId,
-    'version.acceptanceCriteria': row.version.acceptanceCriteria,
-    'version.description': row.version.description,
-  }
-}
-
 export function formatRequirementListItem(
   item: Awaited<ReturnType<typeof listRequirements>>[number],
 ) {
@@ -310,6 +298,7 @@ export function formatRequirementListItem(
       revisionToken: item.revisionToken,
       verifiable: item.verifiable,
       priorityLevelId: item.priorityLevelId,
+      priorityLevelCode: item.priorityLevelCode,
       priorityLevelNameEn: item.priorityLevelNameEn,
       priorityLevelNameSv: item.priorityLevelNameSv,
       priorityLevelColor: item.priorityLevelColor,
@@ -393,6 +382,7 @@ export function formatRequirementDetail(
         : null,
       priorityLevel: version.priorityLevel
         ? {
+            code: version.priorityLevel.code,
             id: version.priorityLevel.id,
             nameEn: version.priorityLevel.nameEn,
             nameSv: version.priorityLevel.nameSv,
@@ -533,13 +523,6 @@ function withSelectedVersions(
   }
 }
 
-async function resolveCatalogRequirementVisibility(
-  db: SqlServerDatabase,
-  context: RequestContext,
-) {
-  return resolveRequirementListVisibility(db, context)
-}
-
 export function createRequirementWorkflow({
   authorization,
   db,
@@ -576,45 +559,48 @@ export function createRequirementWorkflow({
         { catalog },
         async () => {
           if (catalog === 'requirements') {
-            const query = {
-              areaIds: input.areaIds,
-              categoryIds: input.categoryIds,
-              includeArchived: input.includeArchived,
-              locale,
-              verifiable: input.verifiable,
-              priorityLevelIds: input.priorityLevelIds,
-              sortBy: input.sortBy,
-              sortDirection: input.sortDirection,
-              statuses: input.statuses,
-              qualityCharacteristicIds: input.qualityCharacteristicIds,
-              normReferenceIds: input.normReferenceIds,
-              typeIds: input.typeIds,
-              requirementPackageIds: input.requirementPackageIds,
-              ...(await resolveCatalogRequirementVisibility(db, context)),
+            const limit = input.limit ?? 50
+            if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+              throw validationError(
+                'Requirements catalog limit must be an integer from 1 to 100',
+              )
             }
-            const rows = (await listRequirements(db, query)).map(
-              formatRequirementListItem,
-            )
-
-            if (operation === 'list') {
-              return { result: rows }
-            }
-
             const search = input.search?.trim()
-            if (!search) {
+            if (operation === 'search' && !search) {
               throw validationError('Search text is required')
             }
-
-            const result = rows.flatMap(
-              (row): Array<RequirementListItem & { match: McpSearchMatch }> => {
-                const match = findMcpSearchMatch(
-                  requirementSearchFields(row),
-                  search,
-                )
-                return match ? [{ ...row, match }] : []
+            const page = await queryRequirementList(
+              db,
+              {
+                capacityOperation: operation,
+                capacitySurface: 'mcp',
+                cursor: input.cursor,
+                filters: {
+                  areaIds: input.areaIds,
+                  categoryIds: input.categoryIds,
+                  normReferenceIds: input.normReferenceIds,
+                  priorityLevelIds: input.priorityLevelIds,
+                  qualityCharacteristicIds: input.qualityCharacteristicIds,
+                  requirementPackageIds: input.requirementPackageIds,
+                  statuses: input.statuses,
+                  typeIds: input.typeIds,
+                  verifiable: input.verifiable?.map(String),
+                },
+                includeArchived: input.includeArchived,
+                limit,
+                locale,
+                search: operation === 'search' ? search : undefined,
+                sort: {
+                  by: input.sortBy ?? 'uniqueId',
+                  direction: input.sortDirection ?? 'asc',
+                },
               },
+              { authorization, context },
             )
-            return { result }
+            return {
+              pagination: page.pagination,
+              result: page.requirements,
+            }
           }
 
           const rows = (

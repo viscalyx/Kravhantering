@@ -145,7 +145,13 @@ const MANUAL_CASE_LINKS = {
   'LIFE-11':
     'docs/governance/manuella-testfall.md#life-11-detaljrapporter-finns-per-status',
   'REQ-10':
-    'docs/governance/manuella-testfall.md#req-10-rapport-fran-kravlistan-fungerar',
+    'docs/governance/manuella-testfall.md#req-10-skapa-pdf-fran-kravlistan',
+  'REQ-10a':
+    'docs/governance/manuella-testfall.md#req-10a-avbryt-pdf-generering-fran-kravlistan',
+  'REQ-18':
+    'docs/governance/manuella-testfall.md#req-18-exportera-kravbiblioteket-till-csv',
+  'REQ-18a':
+    'docs/governance/manuella-testfall.md#req-18a-avbryt-csv-export-fran-kravbiblioteket',
   'SPEC-10':
     'docs/governance/manuella-testfall.md#spec-10-generera-upphandlingsrapport-och-anbuds-csv',
   'SPEC-10d':

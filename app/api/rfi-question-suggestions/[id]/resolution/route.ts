@@ -4,11 +4,9 @@ import {
   rfiQuestionSuggestionParamsSchema,
   rfiQuestionSuggestionResolutionSchema,
 } from '@/app/api/rfi-questions/_schemas'
-import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
 import {
   RFI_SUGGESTION_DISMISSED,
   RFI_SUGGESTION_RESOLVED,
-  resolveRfiQuestionSuggestion,
 } from '@/lib/dal/rfi-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
@@ -16,6 +14,7 @@ import {
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
+import { resolveRfiQuestionSuggestionWithAudit } from '@/lib/requirements/rfi-question-suggestion-mutations'
 
 type RfiQuestionSuggestionParams = z.infer<
   typeof rfiQuestionSuggestionParamsSchema
@@ -43,7 +42,7 @@ export const POST = secureMutationRoute({
   handler: async ({ body, context, db, params }) => {
     const activeDb = db ?? (await getRequestSqlServerDataSource())
     const actor = requireHumanActorSnapshot(context)
-    const suggestion = await resolveRfiQuestionSuggestion(
+    const suggestion = await resolveRfiQuestionSuggestionWithAudit(
       activeDb,
       params.id,
       {
@@ -54,16 +53,8 @@ export const POST = secureMutationRoute({
         resolutionMotivation: body.resolutionMotivation,
       },
       actor,
+      context,
     )
-    if (!suggestion) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
-    await recordAllowedActionAuditEvent(activeDb, context, {
-      action: 'rfi_question_suggestion.resolve',
-      details: { resolution: body.resolution },
-      targetId: suggestion.id,
-      targetKind: 'rfi_question_suggestion',
-    })
     return NextResponse.json({ suggestion })
   },
 })

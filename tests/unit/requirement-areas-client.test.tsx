@@ -189,7 +189,7 @@ describe('RequirementAreasClient', () => {
         url === '/api/requirement-areas' &&
         (init as RequestInit | undefined)?.method === 'POST',
     )
-    expect((postCall?.[1] as RequestInit).body).toBe(
+    expect((postCall?.[1] as RequestInit | undefined)?.body).toBe(
       JSON.stringify({
         description: '',
         name: 'New requirement area',
@@ -258,7 +258,7 @@ describe('RequirementAreasClient', () => {
         url === '/api/requirement-areas/1' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     )
-    expect((putCall?.[1] as RequestInit).body).toBe(
+    expect((putCall?.[1] as RequestInit | undefined)?.body).toBe(
       JSON.stringify({
         description: 'System integration',
         name: 'Updated',
@@ -583,7 +583,7 @@ describe('RequirementAreasClient', () => {
         url === '/api/requirement-areas/1' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     )
-    expect((putCall?.[1] as RequestInit).body).toBe(
+    expect((putCall?.[1] as RequestInit | undefined)?.body).toBe(
       JSON.stringify({ ownerHsaId: 'NO5560000001-next1' }),
     )
     await waitFor(() => {

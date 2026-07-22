@@ -117,7 +117,10 @@ vi.mock('next-intl', () => ({
         'Det finns inga förbättringsförslag att visa.',
       'improvementSuggestion.title': 'Förbättringsförslag',
       'specification.needsReference': 'Needs reference',
+      'specification.unlinkLibraryRequirementAction':
+        'Remove from specification',
       'deviation.downloadDeviationReviewReportPdf': 'Deviation Review Report',
+      'deviation.requestDeviation': 'Request deviation',
     }
 
     return (key: string, values?: Record<string, number | string>) => {
@@ -128,8 +131,8 @@ vi.mock('next-intl', () => ({
   },
 }))
 
-vi.mock('@/components/reports/pdf/useServerPdfDownload', () => ({
-  useServerPdfDownload: () => ({
+vi.mock('@/components/generated-output/useGeneratedOutputDownload', () => ({
+  useGeneratedOutputDownload: () => ({
     clearError: pdfDownloadState.clearError,
     dialog: null,
     download: pdfDownloadState.download,
@@ -806,6 +809,15 @@ describe('RequirementDetailClient', () => {
           nameEn: 'Maintainability',
           nameSv: 'Underhållbarhet',
         },
+        priorityLevel: {
+          code: 'P4',
+          color: '#f97316',
+          iconName: 'ArrowUpRight',
+          id: 4,
+          nameEn: 'High',
+          nameSv: 'Hög',
+          sortOrder: 4,
+        },
       }),
     ])
 
@@ -817,6 +829,9 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByText('Funktionellt')).toBeInTheDocument()
     expect(screen.getByText('Quality characteristic')).toBeInTheDocument()
     expect(screen.getByText('Underhållbarhet')).toBeInTheDocument()
+    const priorityBadge = screen.getByText('P4 – Hög').closest('.status-badge')
+    expect(priorityBadge).toHaveAttribute('data-accent-color', '#f97316')
+    expect(priorityBadge?.querySelector('svg')).toBeTruthy()
     expect(
       screen
         .getByText('Type')
@@ -827,6 +842,31 @@ describe('RequirementDetailClient', () => {
         .getByText('Quality characteristic')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'quality characteristic')
+  })
+
+  it('shows a priority code without a dangling separator when names are missing', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Priority code fallback requirement',
+        priorityLevel: {
+          code: 'P4',
+          color: '#f97316',
+          iconName: null,
+          id: 4,
+          nameEn: '',
+          nameSv: '',
+          sortOrder: 4,
+        },
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Priority code fallback requirement')
+    const priorityBadge = screen.getByText('P4').closest('.status-badge')
+    expect(priorityBadge).toBeInTheDocument()
+    expect(priorityBadge).not.toHaveTextContent('–')
   })
 
   it('renders the specification count in the detail view', async () => {
@@ -955,6 +995,53 @@ describe('RequirementDetailClient', () => {
         .getByText('Usage status')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'usage status')
+  })
+
+  it('places the standard remove action directly after request deviation in the specification rail', async () => {
+    const onRemoveFromSpecification = vi.fn()
+    setupFetch({
+      initialRequirement: makeRequirement([
+        makeVersion(1, {
+          description: 'Removable specification requirement',
+          publishedAt: '2026-03-01',
+          status: 3,
+          statusColor: '#22c55e',
+          statusNameEn: 'Published',
+          statusNameSv: 'Publicerad',
+        }),
+      ]),
+    })
+
+    renderSubject({
+      inline: true,
+      onRemoveFromSpecification,
+      requirementId: 123,
+      specificationItemId: 31,
+      specificationId: 1,
+      specificationPermissions: {
+        canEditContent: true,
+        canReviewDecisions: false,
+      },
+    })
+
+    const requestDeviation = await screen.findByRole('button', {
+      name: 'Request deviation',
+    })
+    const removeFromSpecification = screen.getByRole('button', {
+      name: 'Remove from specification',
+    })
+
+    expect(requestDeviation.nextElementSibling).toBe(removeFromSpecification)
+    expect(removeFromSpecification).toHaveClass(
+      'btn-destructive',
+      'w-full',
+      'justify-center',
+    )
+
+    fireEvent.click(removeFromSpecification)
+    expect(onRemoveFromSpecification).toHaveBeenCalledWith(
+      removeFromSpecification,
+    )
   })
 
   it('falls back to the alternate locale label when localized taxonomy names are missing', async () => {

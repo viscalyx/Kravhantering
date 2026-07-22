@@ -75,7 +75,7 @@ async function openPriorityLevelForm(page: Page, priorityLevel: PriorityLevel) {
   await page.goto('/sv/priority-levels')
 
   const row = page.getByRole('row', {
-    name: new RegExp(priorityLevel.nameSv),
+    name: priorityLevel.nameSv,
   })
   await row.getByRole('button', { name: 'Redigera' }).click()
 
@@ -176,6 +176,26 @@ test.describe('Admin statuses and workflows', () => {
       const descriptionInput = form.getByRole('textbox', {
         name: 'Beskrivning (SV) *',
       })
+      await form
+        .getByRole('button', { name: 'Hjälp: Sorteringsordning' })
+        .click()
+      await expect(
+        form.getByText(
+          'Ange ett tal som styr visningsordningen. Lägre tal visas först.',
+        ),
+      ).toBeVisible()
+      await form.getByRole('button', { name: 'Hjälp: Färg' }).click()
+      await expect(
+        form.getByText(
+          'Välj färgen som används för märket för denna prioritet.',
+        ),
+      ).toBeVisible()
+      await form.getByRole('button', { name: 'Hjälp: Ikon' }).click()
+      await expect(
+        form.getByText(
+          'Välj en godkänd ikon som visas bredvid prioritetsetiketten. Lämna tomt för ett märke med enbart text.',
+        ),
+      ).toBeVisible()
 
       await expect(saveButton).toBeDisabled()
       await descriptionInput.fill(temporaryDescription)

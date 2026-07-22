@@ -95,8 +95,9 @@ describe('apiFetch', () => {
       body: JSON.stringify({ name: 'Item' }),
     })
 
-    const headers = (fetchMock.mock.calls[0]?.[1] as RequestInit)
-      .headers as Headers
+    const headers = new Headers(
+      (fetchMock.mock.calls[0]?.[1] as RequestInit | undefined)?.headers,
+    )
 
     expect(headers.get('content-type')).toBe('application/json')
     expect(headers.get('x-requested-with')).toBe('XMLHttpRequest')

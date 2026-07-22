@@ -42,8 +42,7 @@ AISVS prompt-injection evidence aligned with the product transparency model:
 visible app instructions are inspectable, while control override and hidden /
 backend instruction extraction remain blocked. It screens `need`, repair
 `rawJson`, repair `errors`, and image MIME metadata. It does not send prompts
-or content to a live external classifier. Service options are summarized in
-[AI Safety Classifier Services Research](./ai-safety-classifier-services-research.md).
+or content to a live external classifier.
 
 AI output is screened before raw model output is emitted. The streaming route
 buffers model text until final safety and schema validation complete. Unsafe

@@ -266,7 +266,6 @@ __pycache__/
 .zprofile
 .zshrc
 
-tests/quality/spec_audits
 
 # Cookie jars produced by scripts/dev-login.mjs
 .auth/

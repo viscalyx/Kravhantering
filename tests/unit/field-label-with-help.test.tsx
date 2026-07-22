@@ -35,6 +35,7 @@ describe('FieldLabelWithHelp', () => {
     expect(helpButton).toHaveAttribute('aria-controls', 'display-name-help')
     expect(helpButton).not.toHaveAttribute('aria-describedby')
     expect(helpButton).toHaveAttribute('aria-expanded', 'false')
+    expect(helpButton).toHaveClass('min-h-6', 'min-w-6')
 
     fireEvent.click(helpButton)
 

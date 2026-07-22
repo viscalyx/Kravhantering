@@ -15,6 +15,7 @@ const TABLE_ORDER = [
   'requirement_area_co_authors',
   'requirement_categories',
   'ai_settings',
+  'application_settings',
   'ai_safety_rules',
   'ai_safety_rule_terms',
   'requirement_list_column_defaults',
@@ -559,6 +560,39 @@ const SEED_DATA = {
         500,
         60,
         600,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+    ],
+  },
+  application_settings: {
+    columns: [
+      'id',
+      'csv_export_max_requirements',
+      'csv_export_max_file_bytes',
+      'csv_export_concurrency_per_node',
+      'csv_export_timeout_seconds',
+      'pdf_report_max_requirements',
+      'pdf_report_max_file_bytes',
+      'pdf_report_concurrency_per_node',
+      'pdf_report_timeout_seconds',
+      'pdf_worker_memory_mib',
+      'created_at',
+      'updated_at',
+    ],
+    pk: ['id'],
+    rows: [
+      [
+        1,
+        1000,
+        104857600,
+        5,
+        120,
+        1000,
+        52428800,
+        3,
+        180,
+        512,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
       ],
@@ -13410,6 +13444,7 @@ const SPEC_RESPONSIBLE_BY_ID = new Map([
   [920005, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
   [920006, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
   [920007, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
+  [920008, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
 ])
 
 function seedTable(name) {
@@ -14240,9 +14275,74 @@ export const DEMO_SEED_TABLES = Object.freeze(
 
 export { seedPositionDetail }
 
+async function seedDemoLifecycleRow({
+  columns,
+  defaultSql,
+  query,
+  row,
+  table,
+}) {
+  if (table !== 'rfi_question_suggestions') return false
+
+  const value = column => row[columns.indexOf(column)]
+  const draftRow = [...row]
+  const setDraftValue = (column, nextValue) => {
+    draftRow[columns.indexOf(column)] = nextValue
+  }
+  setDraftValue('is_review_requested', 0)
+  setDraftValue('review_requested_at', null)
+  setDraftValue('resolution', null)
+  setDraftValue('resolution_motivation', null)
+  setDraftValue('updated_at', null)
+  setDraftValue('resolved_by_hsa_id', null)
+  setDraftValue('resolved_by_display_name', null)
+  setDraftValue('resolved_at', null)
+  await query(defaultSql, draftRow)
+
+  if (value('is_review_requested') === 1) {
+    await query(
+      `UPDATE [rfi_question_suggestions]
+       SET [is_review_requested] = 1,
+           [review_requested_at] = @1,
+           [updated_at] = @2
+       WHERE [id] = @0
+         AND [is_review_requested] = 0
+         AND [resolution] IS NULL`,
+      [value('id'), value('review_requested_at'), value('updated_at')],
+    )
+  }
+
+  if (value('resolution') != null) {
+    await query(
+      `UPDATE [rfi_question_suggestions]
+       SET [resolution] = @1,
+           [resolution_motivation] = @2,
+           [resolved_by_hsa_id] = @3,
+           [resolved_by_display_name] = @4,
+           [resolved_at] = @5,
+           [updated_at] = @6
+       WHERE [id] = @0
+         AND [is_review_requested] = 1
+         AND [resolution] IS NULL`,
+      [
+        value('id'),
+        value('resolution'),
+        value('resolution_motivation'),
+        value('resolved_by_hsa_id'),
+        value('resolved_by_display_name'),
+        value('resolved_at'),
+        value('updated_at'),
+      ],
+    )
+  }
+
+  return true
+}
+
 export async function seedDemoDatabase(executor) {
   return runSeedData(executor, SEED_DATA, TABLE_ORDER, {
     includeTables: DEMO_SEED_TABLES,
+    insertRow: seedDemoLifecycleRow,
   })
 }
 

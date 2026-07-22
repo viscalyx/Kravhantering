@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { expect, type Route, test } from '@playwright/test'
+import { expect, type Page, type Route, test } from '@playwright/test'
 import type { DataSource } from 'typeorm'
 import { sqlServerEntities } from '../../../lib/typeorm/entities'
 import {
@@ -159,6 +159,21 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
   })
 }
 
+async function waitForPrivacyPanelHydration(page: Page) {
+  const targetInput = page.getByRole('textbox', {
+    name: 'HSA-id att söka efter',
+  })
+  const previewButton = page.getByRole('button', { name: 'Förhandsgranska' })
+
+  await expect(async () => {
+    await targetInput.fill('SE5560000001-hydration')
+    await expect(previewButton).toBeEnabled({ timeout: 1_000 })
+  }).toPass({ timeout: 15_000 })
+
+  await targetInput.fill('')
+  await expect(previewButton).toBeDisabled()
+}
+
 test('PRIV-02/PRIV-03: admin privacy preview can export JSON and PDF for the preview target', async ({
   page,
 }) => {
@@ -187,6 +202,7 @@ test('PRIV-02/PRIV-03: admin privacy preview can export JSON and PDF for the pre
 
   await test.step('navigate to privacy preview and search the target', async () => {
     await page.goto('/sv/admin?tab=privacy')
+    await waitForPrivacyPanelHydration(page)
     await page
       .getByRole('textbox', { name: 'HSA-id att söka efter' })
       .fill('SE5560000001-linneab')
@@ -251,6 +267,7 @@ test('PRIV-04: duplicate names are previewed by exact HSA-id target only', async
 
   await test.step('preview the first duplicate display name target', async () => {
     await page.goto('/sv/admin?tab=privacy')
+    await waitForPrivacyPanelHydration(page)
     const targetInput = page.getByRole('textbox', {
       name: 'HSA-id att söka efter',
     })
@@ -325,6 +342,7 @@ test('PRIV-05: replacement-person action sends switch execution with replacement
 
   await test.step('preview replacement-person switch data', async () => {
     await page.goto('/sv/admin?tab=privacy')
+    await waitForPrivacyPanelHydration(page)
     await page
       .getByRole('textbox', { name: 'HSA-id att söka efter' })
       .fill('SE5560000001-kalle.one')
@@ -421,6 +439,7 @@ test('PRIV-06: anonymize and skip actions execute separately from one preview', 
 
   await test.step('preview and choose separate actions', async () => {
     await page.goto('/sv/admin?tab=privacy')
+    await waitForPrivacyPanelHydration(page)
     await page
       .getByRole('textbox', { name: 'HSA-id att söka efter' })
       .fill('SE5560000001-kalle.one')
@@ -487,6 +506,7 @@ test('PRIV-07: stale privacy preview is rejected and keeps the preview editable'
 
   await test.step('create a preview from the stale token', async () => {
     await page.goto('/sv/admin?tab=privacy')
+    await waitForPrivacyPanelHydration(page)
     await page
       .getByRole('textbox', { name: 'HSA-id att söka efter' })
       .fill('SE5560000001-kalle.one')
@@ -530,6 +550,7 @@ test('PRIV-08: privacy erasure anonymizes a disposable row and records the actio
   try {
     await test.step('execute erasure as privacy officer', async () => {
       await privacyPage.goto('/sv/admin?tab=privacy')
+      await waitForPrivacyPanelHydration(privacyPage)
       await privacyPage
         .getByRole('textbox', { name: 'HSA-id att söka efter' })
         .fill(PWT_PRIVACY_TARGET_HSA_ID)
@@ -619,6 +640,7 @@ test('PRIV-09: export includes the orphaned responsibility person target only', 
 
   await test.step('preview and export the orphaned target', async () => {
     await page.goto('/sv/admin?tab=privacy')
+    await waitForPrivacyPanelHydration(page)
     await page
       .getByRole('textbox', { name: 'HSA-id att söka efter' })
       .fill('SE5560000001-retentionorphan')

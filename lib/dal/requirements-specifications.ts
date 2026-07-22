@@ -10,7 +10,6 @@ import {
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
-import type { RequirementRow } from '@/lib/requirements/list-view'
 import {
   formatRequirementResponsibilityPersonName,
   type RequirementResponsibilityPersonRecord,
@@ -112,6 +111,7 @@ export interface SpecificationLocalRequirementDetail {
     uri: string | null
   }[]
   priorityLevel: {
+    code: string
     color: string
     iconName: string | null
     id: number
@@ -388,6 +388,7 @@ export async function listSpecificationTraceabilityItems(
             SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
             SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
           FROM deviations deviation
+          WHERE deviation.specification_item_id IN (${buildInClause(3, libraryItemIds)})
           GROUP BY deviation.specification_item_id
         ) deviation_counts
           ON deviation_counts.itemId = specification_item.id
@@ -444,6 +445,7 @@ export async function listSpecificationTraceabilityItems(
             SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
             SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
           FROM specification_local_requirement_deviations deviation
+          WHERE deviation.specification_local_requirement_id IN (${buildInClause(3, localRequirementIds)})
           GROUP BY deviation.specification_local_requirement_id
         ) deviation_counts
           ON deviation_counts.itemId = local_requirement.id
@@ -470,49 +472,51 @@ export async function listSpecificationTraceabilityItems(
   })
 }
 
-function createSpecificationLocalRowId(
-  specificationLocalRequirementId: number,
-): number {
-  return specificationLocalRequirementId * -1
-}
-
 function formatSpecificationLocalRequirementUniqueId(
   sequenceNumber: number,
 ): string {
   return `KRAV${String(sequenceNumber).padStart(4, '0')}`
 }
 
-function parseCsvNumberList(value: string | null): number[] {
-  if (!value) {
-    return []
-  }
-
-  return value
-    .split(',')
-    .map(entry => Number(entry))
-    .filter(entry => Number.isInteger(entry) && entry > 0)
-}
-
-function parseCsvTextList(value: string | null): string[] {
-  if (!value) {
-    return []
-  }
-
-  return value
-    .split(',')
-    .map(entry => entry.trim())
-    .filter(Boolean)
-}
-
 // ─── Specifications ──────────────────────────────────────────────────────────
+
+interface SpecificationSelection {
+  parameters: unknown[]
+  sql: string
+}
+
+function buildSpecificationSelection(options?: {
+  actorHsaId: string
+}): SpecificationSelection {
+  const parameters = options ? [options.actorHsaId] : []
+  const where = options
+    ? `WHERE specification_record.responsible_hsa_id = @0
+        OR EXISTS (
+          SELECT 1
+          FROM specification_co_authors AS actor_co_author
+          WHERE actor_co_author.specification_id = specification_record.id
+            AND actor_co_author.hsa_id = @0
+        )`
+    : ''
+  return {
+    parameters,
+    sql: `
+      WITH selected_specifications AS (
+        SELECT specification_record.id
+        FROM requirements_specifications AS specification_record
+        ${where}
+      )
+    `,
+  }
+}
 
 async function listSpecificationRows(
   db: SqlServerDatabase,
-  whereClause = '',
-  parameters: unknown[] = [],
+  selection: SpecificationSelection,
 ): Promise<Row[]> {
   return (await db.query(
     `
+      ${selection.sql}
       SELECT
         specification_record.id AS id,
         specification_record.specification_code AS specificationCode,
@@ -533,8 +537,19 @@ async function listSpecificationRows(
         implementation_type.name_sv AS implementationTypeNameSv,
         implementation_type.name_en AS implementationTypeNameEn,
         lifecycle_status.name_sv AS lifecycleStatusNameSv,
-        lifecycle_status.name_en AS lifecycleStatusNameEn
-      FROM requirements_specifications specification_record
+        lifecycle_status.name_en AS lifecycleStatusNameEn,
+        (
+          SELECT COUNT(*)
+          FROM requirements_specification_items AS library_item
+          WHERE library_item.requirements_specification_id = specification_record.id
+        ) + (
+          SELECT COUNT(*)
+          FROM specification_local_requirements AS local_requirement
+          WHERE local_requirement.specification_id = specification_record.id
+        ) AS itemCount
+      FROM selected_specifications
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = selected_specifications.id
       LEFT JOIN specification_governance_object_types governance_object_type
         ON governance_object_type.id = specification_record.specification_governance_object_type_id
       LEFT JOIN specification_implementation_types implementation_type
@@ -543,65 +558,63 @@ async function listSpecificationRows(
         ON lifecycle_status.id = specification_record.specification_lifecycle_status_id
       LEFT JOIN requirement_responsibility_people responsible_person
         ON responsible_person.hsa_id = specification_record.responsible_hsa_id
-      ${whereClause}
-      ORDER BY specification_record.name
+      ORDER BY specification_record.name ASC, specification_record.id ASC
     `,
-    parameters,
+    selection.parameters,
   )) as Row[]
 }
 
-async function mapSpecificationRows(db: SqlServerDatabase, specRows: Row[]) {
+async function mapSpecificationRows(
+  db: SqlServerDatabase,
+  specRows: Row[],
+  selection: SpecificationSelection,
+) {
+  const coAuthorHsaIdsBySpecification = new Map<number, string[]>()
   if (specRows.length === 0) {
-    return []
+    return { coAuthorHsaIdsBySpecification, specifications: [] }
   }
 
-  const specIds = [...new Set(specRows.map(row => Number(row.id)))]
-  const specIdClause = buildInClause(0, specIds)
-  const [libraryCounts, localCounts, libraryAreas] = await Promise.all([
+  const [libraryAreas, coAuthorRows] = await Promise.all([
     db.query(
       `
-          SELECT requirements_specification_id AS specificationId, COUNT(*) AS count
-          FROM requirements_specification_items
-          WHERE requirements_specification_id IN (${specIdClause})
-          GROUP BY requirements_specification_id
-        `,
-      specIds,
-    ) as Promise<Row[]>,
-    db.query(
-      `
-          SELECT specification_id AS specificationId, COUNT(*) AS count
-          FROM specification_local_requirements
-          WHERE specification_id IN (${specIdClause})
-          GROUP BY specification_id
-        `,
-      specIds,
-    ) as Promise<Row[]>,
-    db.query(
-      `
+          ${selection.sql}
           SELECT
             specification_item.requirements_specification_id AS specificationId,
             requirement_area.id AS areaId,
             requirement_area.name AS areaName
-          FROM requirements_specification_items specification_item
+          FROM selected_specifications
+          INNER JOIN requirements_specification_items specification_item
+            ON specification_item.requirements_specification_id = selected_specifications.id
           INNER JOIN requirements requirement
             ON requirement.id = specification_item.requirement_id
           INNER JOIN requirement_areas requirement_area
             ON requirement_area.id = requirement.requirement_area_id
-          WHERE specification_item.requirements_specification_id IN (${specIdClause})
           GROUP BY specification_item.requirements_specification_id, requirement_area.id, requirement_area.name
+          ORDER BY specification_item.requirements_specification_id ASC, requirement_area.name ASC, requirement_area.id ASC
         `,
-      specIds,
+      selection.parameters,
+    ) as Promise<Row[]>,
+    db.query(
+      `
+          ${selection.sql}
+          SELECT
+            co_author.specification_id AS specificationId,
+            co_author.hsa_id AS hsaId
+          FROM selected_specifications
+          INNER JOIN specification_co_authors AS co_author
+            ON co_author.specification_id = selected_specifications.id
+          ORDER BY co_author.specification_id ASC, co_author.hsa_id ASC
+        `,
+      selection.parameters,
     ) as Promise<Row[]>,
   ])
 
-  const itemCounts = new Map<number, number>()
-  for (const row of [...libraryCounts, ...localCounts]) {
+  for (const row of coAuthorRows) {
     const specificationId = Number(row.specificationId)
-    const count = Number(row.count) || 0
-    itemCounts.set(
-      specificationId,
-      (itemCounts.get(specificationId) ?? 0) + count,
-    )
+    const existing = coAuthorHsaIdsBySpecification.get(specificationId) ?? []
+    const hsaId = requireStr(row.hsaId, 'hsaId')
+    if (!existing.includes(hsaId)) existing.push(hsaId)
+    coAuthorHsaIdsBySpecification.set(specificationId, existing)
   }
 
   const requirementAreasBySpecification = new Map<number, Map<number, string>>()
@@ -615,7 +628,7 @@ async function mapSpecificationRows(db: SqlServerDatabase, specRows: Row[]) {
     requirementAreasBySpecification.set(specificationId, existing)
   }
 
-  return specRows.map(row => {
+  const specifications = specRows.map(row => {
     const id = Number(row.id)
     const specificationGovernanceObjectTypeId = toNum(
       row.specificationGovernanceObjectTypeId,
@@ -677,43 +690,58 @@ async function mapSpecificationRows(db: SqlServerDatabase, specRows: Row[]) {
                 : '',
             }
           : null,
-      itemCount: itemCounts.get(id) ?? 0,
+      itemCount: Number(row.itemCount) || 0,
       requirementAreas,
     }
   })
+  return { coAuthorHsaIdsBySpecification, specifications }
 }
 
 export async function listSpecifications(db: SqlServerDatabase) {
-  return mapSpecificationRows(db, await listSpecificationRows(db))
+  const selection = buildSpecificationSelection()
+  return (
+    await mapSpecificationRows(
+      db,
+      await listSpecificationRows(db, selection),
+      selection,
+    )
+  ).specifications
+}
+
+export async function listSpecificationsForActorCatalog(
+  db: SqlServerDatabase,
+  options: { actorHsaId: string | null; canReadAll: boolean },
+) {
+  if (options.canReadAll) {
+    const selection = buildSpecificationSelection()
+    return mapSpecificationRows(
+      db,
+      await listSpecificationRows(db, selection),
+      selection,
+    )
+  }
+
+  const actorHsaId = options.actorHsaId?.trim()
+  if (!actorHsaId) {
+    return {
+      coAuthorHsaIdsBySpecification: new Map<number, string[]>(),
+      specifications: [],
+    }
+  }
+
+  const selection = buildSpecificationSelection({ actorHsaId })
+  return mapSpecificationRows(
+    db,
+    await listSpecificationRows(db, selection),
+    selection,
+  )
 }
 
 export async function listSpecificationsForActor(
   db: SqlServerDatabase,
   options: { actorHsaId: string | null; canReadAll: boolean },
 ) {
-  if (options.canReadAll) {
-    return listSpecifications(db)
-  }
-
-  const actorHsaId = options.actorHsaId?.trim()
-  if (!actorHsaId) {
-    return []
-  }
-
-  const rows = await listSpecificationRows(
-    db,
-    `
-      WHERE specification_record.responsible_hsa_id = @0
-        OR EXISTS (
-          SELECT 1
-          FROM specification_co_authors co_author
-          WHERE co_author.specification_id = specification_record.id
-            AND co_author.hsa_id = @0
-        )
-    `,
-    [actorHsaId],
-  )
-  return mapSpecificationRows(db, rows)
+  return (await listSpecificationsForActorCatalog(db, options)).specifications
 }
 
 interface SpecificationRecord {
@@ -954,38 +982,6 @@ export async function listSpecificationCoAuthorHsaIds(
     [specificationId],
   )) as Row[]
   return rows.map(row => requireStr(row.hsaId, 'hsaId'))
-}
-
-export async function listSpecificationCoAuthorHsaIdsBySpecification(
-  db: SqlServerDatabase,
-  specificationIds: number[],
-): Promise<Map<number, string[]>> {
-  const distinctSpecificationIds = [...new Set(specificationIds)].filter(
-    id => Number.isInteger(id) && id > 0,
-  )
-  const bySpecification = new Map<number, string[]>()
-  if (distinctSpecificationIds.length === 0) {
-    return bySpecification
-  }
-
-  const rows = (await db.query(
-    `
-      SELECT specification_id AS specificationId, hsa_id AS hsaId
-      FROM specification_co_authors
-      WHERE specification_id IN (${buildInClause(0, distinctSpecificationIds)})
-      ORDER BY specification_id ASC, hsa_id ASC
-    `,
-    distinctSpecificationIds,
-  )) as Row[]
-
-  for (const row of rows) {
-    const specificationId = Number(row.specificationId)
-    const existing = bySpecification.get(specificationId) ?? []
-    existing.push(requireStr(row.hsaId, 'hsaId'))
-    bySpecification.set(specificationId, existing)
-  }
-
-  return bySpecification
 }
 
 export async function canAuthorSpecification(
@@ -2057,6 +2053,7 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
     requirement_type.name_en AS requirementTypeNameEn,
     requirement_type.name_sv AS requirementTypeNameSv,
     local_requirement.priority_level_id AS priorityLevelId,
+    priority_level.code AS priorityLevelCode,
     priority_level.color AS priorityLevelColor,
     priority_level.icon_name AS priorityLevelIconName,
     priority_level.name_en AS priorityLevelNameEn,
@@ -2149,6 +2146,7 @@ function mapSpecificationLocalRequirementDetailFlat(
     priorityLevel:
       priorityLevelId != null
         ? {
+            code: String(row.priorityLevelCode ?? ''),
             color: String(row.priorityLevelColor ?? ''),
             iconName: toStr(row.priorityLevelIconName),
             id: priorityLevelId,
@@ -2981,323 +2979,6 @@ export async function unlinkRequirementsFromSpecification(
   return deleted.length
 }
 
-// ─── Listing items in a specification ──────────────────────────────────────────────
-
-interface LibrarySpecificationItemFlatRow {
-  areaName: string | null
-  categoryNameEn: string | null
-  categoryNameSv: string | null
-  description: string | null
-  isArchived: unknown
-  needsReferenceId: number | null
-  needsReferenceText: string | null
-  normReferenceIds: string | null
-  priorityLevelColor: string | null
-  priorityLevelIconName: string | null
-  priorityLevelId: number | null
-  priorityLevelNameEn: string | null
-  priorityLevelNameSv: string | null
-  priorityLevelSortOrder: number | null
-  qualityCharacteristicNameEn: string | null
-  qualityCharacteristicNameSv: string | null
-  requirementId: number
-  requirementPackageIds: string | null
-  specificationItemId: number
-  specificationItemStatusColor: string | null
-  specificationItemStatusDescriptionEn: string | null
-  specificationItemStatusDescriptionSv: string | null
-  specificationItemStatusIconName: string | null
-  specificationItemStatusId: number
-  specificationItemStatusNameEn: string | null
-  specificationItemStatusNameSv: string | null
-  statusColor: string | null
-  statusIconName: string | null
-  statusId: number
-  statusNameEn: string | null
-  statusNameSv: string | null
-  typeNameEn: string | null
-  typeNameSv: string | null
-  uniqueId: string
-  verifiable: unknown
-  versionNumber: number
-}
-
-function mapLibrarySpecificationItemRow(
-  row: LibrarySpecificationItemFlatRow,
-): RequirementRow {
-  return {
-    area: row.areaName ? { name: row.areaName } : null,
-    id: Number(row.requirementId),
-    isArchived: toBool(row.isArchived),
-    itemRef: createLibraryItemRef(Number(row.specificationItemId)),
-    isSpecificationLocal: false,
-    kind: 'library',
-    needsReference: row.needsReferenceText ?? null,
-    needsReferenceId: row.needsReferenceId ?? null,
-    normReferenceIds: parseCsvTextList(row.normReferenceIds),
-    specificationItemId: Number(row.specificationItemId),
-    specificationItemStatusColor: row.specificationItemStatusColor ?? null,
-    specificationItemStatusIconName:
-      row.specificationItemStatusIconName ?? null,
-    specificationItemStatusDescriptionEn:
-      row.specificationItemStatusDescriptionEn ?? null,
-    specificationItemStatusDescriptionSv:
-      row.specificationItemStatusDescriptionSv ?? null,
-    specificationItemStatusId: Number(row.specificationItemStatusId),
-    specificationItemStatusNameEn: row.specificationItemStatusNameEn ?? null,
-    specificationItemStatusNameSv: row.specificationItemStatusNameSv ?? null,
-    uniqueId: row.uniqueId,
-    requirementPackageIds: parseCsvNumberList(row.requirementPackageIds),
-    version: {
-      archiveInitiatedAt: null,
-      categoryNameEn: row.categoryNameEn ?? null,
-      categoryNameSv: row.categoryNameSv ?? null,
-      description: row.description,
-      qualityCharacteristicNameEn: row.qualityCharacteristicNameEn ?? null,
-      qualityCharacteristicNameSv: row.qualityCharacteristicNameSv ?? null,
-      verifiable: toBool(row.verifiable),
-      priorityLevelColor: row.priorityLevelColor ?? null,
-      priorityLevelIconName: row.priorityLevelIconName ?? null,
-      priorityLevelId: row.priorityLevelId ?? null,
-      priorityLevelNameEn: row.priorityLevelNameEn ?? null,
-      priorityLevelNameSv: row.priorityLevelNameSv ?? null,
-      priorityLevelSortOrder: row.priorityLevelSortOrder ?? null,
-      status: Number(row.statusId),
-      statusColor: row.statusColor ?? null,
-      statusIconName: row.statusIconName ?? null,
-      statusNameEn: row.statusNameEn ?? null,
-      statusNameSv: row.statusNameSv ?? null,
-      typeNameEn: row.typeNameEn ?? null,
-      typeNameSv: row.typeNameSv ?? null,
-      versionNumber: Number(row.versionNumber),
-    },
-  }
-}
-
-interface SpecificationLocalListFlatRow {
-  description: string
-  id: number
-  needsReferenceId: number | null
-  needsReferenceText: string | null
-  normReferenceIds: string | null
-  priorityLevelColor: string | null
-  priorityLevelIconName: string | null
-  priorityLevelId: number | null
-  priorityLevelNameEn: string | null
-  priorityLevelNameSv: string | null
-  priorityLevelSortOrder: number | null
-  qualityCharacteristicNameEn: string | null
-  qualityCharacteristicNameSv: string | null
-  requirementCategoryNameEn: string | null
-  requirementCategoryNameSv: string | null
-  requirementTypeNameEn: string | null
-  requirementTypeNameSv: string | null
-  specificationItemStatusColor: string | null
-  specificationItemStatusDescriptionEn: string | null
-  specificationItemStatusDescriptionSv: string | null
-  specificationItemStatusIconName: string | null
-  specificationItemStatusId: number
-  specificationItemStatusNameEn: string | null
-  specificationItemStatusNameSv: string | null
-  uniqueId: string
-  verifiable: unknown
-}
-
-function mapSpecificationLocalRequirementListRow(
-  row: SpecificationLocalListFlatRow,
-): RequirementRow {
-  return {
-    area: null,
-    id: createSpecificationLocalRowId(Number(row.id)),
-    isArchived: false,
-    itemRef: createSpecificationLocalItemRef(Number(row.id)),
-    isSpecificationLocal: true,
-    kind: 'specificationLocal',
-    needsReference: row.needsReferenceText ?? null,
-    needsReferenceId: row.needsReferenceId ?? null,
-    normReferenceIds: parseCsvTextList(row.normReferenceIds),
-    specificationItemStatusColor: row.specificationItemStatusColor ?? null,
-    specificationItemStatusIconName:
-      row.specificationItemStatusIconName ?? null,
-    specificationItemStatusDescriptionEn:
-      row.specificationItemStatusDescriptionEn ?? null,
-    specificationItemStatusDescriptionSv:
-      row.specificationItemStatusDescriptionSv ?? null,
-    specificationItemStatusId: Number(row.specificationItemStatusId),
-    specificationItemStatusNameEn: row.specificationItemStatusNameEn ?? null,
-    specificationItemStatusNameSv: row.specificationItemStatusNameSv ?? null,
-    specificationLocalRequirementId: Number(row.id),
-    uniqueId: row.uniqueId,
-    requirementPackageIds: [],
-    version: {
-      archiveInitiatedAt: null,
-      categoryNameEn: row.requirementCategoryNameEn ?? null,
-      categoryNameSv: row.requirementCategoryNameSv ?? null,
-      description: row.description,
-      qualityCharacteristicNameEn: row.qualityCharacteristicNameEn ?? null,
-      qualityCharacteristicNameSv: row.qualityCharacteristicNameSv ?? null,
-      verifiable: toBool(row.verifiable),
-      priorityLevelColor: row.priorityLevelColor ?? null,
-      priorityLevelIconName: row.priorityLevelIconName ?? null,
-      priorityLevelId: row.priorityLevelId ?? null,
-      priorityLevelNameEn: row.priorityLevelNameEn ?? null,
-      priorityLevelNameSv: row.priorityLevelNameSv ?? null,
-      priorityLevelSortOrder: row.priorityLevelSortOrder ?? null,
-      status: STATUS_PUBLISHED,
-      statusColor: '#22c55e',
-      statusIconName: 'CheckCircle2',
-      statusNameEn: 'Published',
-      statusNameSv: 'Publicerad',
-      typeNameEn: row.requirementTypeNameEn ?? null,
-      typeNameSv: row.requirementTypeNameSv ?? null,
-      versionNumber: 1,
-    },
-  }
-}
-
-export async function listSpecificationItems(
-  db: SqlServerDatabase,
-  specificationId: number,
-): Promise<RequirementRow[]> {
-  const [libraryRows, localRows] = await Promise.all([
-    db.query(
-      `
-        SELECT
-          requirement_area.name AS areaName,
-          requirement_category.name_en AS categoryNameEn,
-          requirement_category.name_sv AS categoryNameSv,
-          requirement_version.description AS description,
-          requirement.is_archived AS isArchived,
-          specification_item.needs_reference_id AS needsReferenceId,
-          needs_reference.text AS needsReferenceText,
-          (
-            SELECT STRING_AGG(norm_reference.norm_reference_id, ',') WITHIN GROUP (ORDER BY norm_reference.norm_reference_id)
-            FROM requirement_version_norm_references vnr
-            INNER JOIN norm_references norm_reference ON norm_reference.id = vnr.norm_reference_id
-            WHERE vnr.requirement_version_id = requirement_version.id
-          ) AS normReferenceIds,
-          specification_item.id AS specificationItemId,
-          specification_item_status.color AS specificationItemStatusColor,
-          specification_item_status.icon_name AS specificationItemStatusIconName,
-          specification_item_status.description_en AS specificationItemStatusDescriptionEn,
-          specification_item_status.description_sv AS specificationItemStatusDescriptionSv,
-          specification_item.specification_item_status_id AS specificationItemStatusId,
-          specification_item_status.name_en AS specificationItemStatusNameEn,
-          specification_item_status.name_sv AS specificationItemStatusNameSv,
-          quality_characteristic.name_en AS qualityCharacteristicNameEn,
-          quality_characteristic.name_sv AS qualityCharacteristicNameSv,
-          requirement.id AS requirementId,
-          requirement_version.is_verifiable AS verifiable,
-          priority_level.color AS priorityLevelColor,
-          priority_level.icon_name AS priorityLevelIconName,
-          requirement_version.priority_level_id AS priorityLevelId,
-          priority_level.name_en AS priorityLevelNameEn,
-          priority_level.name_sv AS priorityLevelNameSv,
-          priority_level.sort_order AS priorityLevelSortOrder,
-          requirement_status.color AS statusColor,
-          requirement_status.icon_name AS statusIconName,
-          requirement_version.requirement_status_id AS statusId,
-          requirement_status.name_en AS statusNameEn,
-          requirement_status.name_sv AS statusNameSv,
-          requirement_type.name_en AS typeNameEn,
-          requirement_type.name_sv AS typeNameSv,
-          requirement.unique_id AS uniqueId,
-          (
-            SELECT STRING_AGG(CAST(rvus.requirement_package_id AS varchar(20)), ',')
-            FROM requirement_version_requirement_packages rvus
-            WHERE rvus.requirement_version_id = requirement_version.id
-          ) AS requirementPackageIds,
-          requirement_version.version_number AS versionNumber
-        FROM requirements_specification_items specification_item
-        INNER JOIN requirements requirement
-          ON requirement.id = specification_item.requirement_id
-        INNER JOIN requirement_versions requirement_version
-          ON requirement_version.id = specification_item.requirement_version_id
-        LEFT JOIN requirement_areas requirement_area
-          ON requirement_area.id = requirement.requirement_area_id
-        LEFT JOIN requirement_statuses requirement_status
-          ON requirement_status.id = requirement_version.requirement_status_id
-        LEFT JOIN requirement_categories requirement_category
-          ON requirement_category.id = requirement_version.requirement_category_id
-        LEFT JOIN requirement_types requirement_type
-          ON requirement_type.id = requirement_version.requirement_type_id
-        LEFT JOIN quality_characteristics quality_characteristic
-          ON quality_characteristic.id = requirement_version.quality_characteristic_id
-        LEFT JOIN priority_levels priority_level
-          ON priority_level.id = requirement_version.priority_level_id
-        LEFT JOIN specification_needs_references needs_reference
-          ON needs_reference.id = specification_item.needs_reference_id
-        LEFT JOIN specification_item_statuses specification_item_status
-          ON specification_item_status.id = specification_item.specification_item_status_id
-        WHERE specification_item.requirements_specification_id = @0
-        ORDER BY requirement.unique_id
-      `,
-      [specificationId],
-    ) as Promise<Row[]>,
-    db.query(
-      `
-        SELECT
-          local_requirement.id AS id,
-          local_requirement.unique_id AS uniqueId,
-          local_requirement.description AS description,
-          local_requirement.needs_reference_id AS needsReferenceId,
-          needs_reference.text AS needsReferenceText,
-          (
-            SELECT STRING_AGG(norm_reference.norm_reference_id, ',') WITHIN GROUP (ORDER BY norm_reference.norm_reference_id)
-            FROM specification_local_requirement_norm_references plrnr
-            INNER JOIN norm_references norm_reference ON norm_reference.id = plrnr.norm_reference_id
-            WHERE plrnr.specification_local_requirement_id = local_requirement.id
-          ) AS normReferenceIds,
-          specification_item_status.color AS specificationItemStatusColor,
-          specification_item_status.icon_name AS specificationItemStatusIconName,
-          specification_item_status.description_en AS specificationItemStatusDescriptionEn,
-          specification_item_status.description_sv AS specificationItemStatusDescriptionSv,
-          local_requirement.specification_item_status_id AS specificationItemStatusId,
-          specification_item_status.name_en AS specificationItemStatusNameEn,
-          specification_item_status.name_sv AS specificationItemStatusNameSv,
-          quality_characteristic.name_en AS qualityCharacteristicNameEn,
-          quality_characteristic.name_sv AS qualityCharacteristicNameSv,
-          requirement_category.name_en AS requirementCategoryNameEn,
-          requirement_category.name_sv AS requirementCategoryNameSv,
-          requirement_type.name_en AS requirementTypeNameEn,
-          requirement_type.name_sv AS requirementTypeNameSv,
-          local_requirement.is_verifiable AS verifiable,
-          priority_level.color AS priorityLevelColor,
-          priority_level.icon_name AS priorityLevelIconName,
-          local_requirement.priority_level_id AS priorityLevelId,
-          priority_level.name_en AS priorityLevelNameEn,
-          priority_level.name_sv AS priorityLevelNameSv,
-          priority_level.sort_order AS priorityLevelSortOrder
-        FROM specification_local_requirements local_requirement
-        LEFT JOIN specification_needs_references needs_reference
-          ON needs_reference.id = local_requirement.needs_reference_id
-        LEFT JOIN specification_item_statuses specification_item_status
-          ON specification_item_status.id = local_requirement.specification_item_status_id
-        LEFT JOIN quality_characteristics quality_characteristic
-          ON quality_characteristic.id = local_requirement.quality_characteristic_id
-        LEFT JOIN requirement_categories requirement_category
-          ON requirement_category.id = local_requirement.requirement_category_id
-        LEFT JOIN requirement_types requirement_type
-          ON requirement_type.id = local_requirement.requirement_type_id
-        LEFT JOIN priority_levels priority_level
-          ON priority_level.id = local_requirement.priority_level_id
-        WHERE local_requirement.specification_id = @0
-        ORDER BY local_requirement.unique_id
-      `,
-      [specificationId],
-    ) as Promise<Row[]>,
-  ])
-
-  return [
-    ...(libraryRows as unknown as LibrarySpecificationItemFlatRow[]).map(
-      mapLibrarySpecificationItemRow,
-    ),
-    ...(localRows as unknown as SpecificationLocalListFlatRow[]).map(
-      mapSpecificationLocalRequirementListRow,
-    ),
-  ].sort((left, right) => left.uniqueId.localeCompare(right.uniqueId, 'sv'))
-}
-
 // ─── Item lookup & updates ───────────────────────────────────────────────────
 
 export async function getSpecificationItemById(
@@ -3376,6 +3057,46 @@ export async function getSpecificationItemByRef(
     id: parsed.id,
     itemRef: createSpecificationLocalItemRef(parsed.id),
     kind: 'specificationLocal' as const,
+  }
+}
+
+export async function getLibrarySpecificationItemMetadata(
+  db: SqlExecutor,
+  specificationId: number,
+  specificationItemId: number,
+) {
+  const rows = (await db.query(
+    `
+      SELECT TOP (1)
+        specification_item.id AS specificationItemId,
+        specification_item.needs_reference_id AS needsReferenceId,
+        needs_reference.text AS needsReference,
+        specification_item.specification_item_status_id AS specificationItemStatusId,
+        specification_item_status.color AS specificationItemStatusColor,
+        specification_item_status.icon_name AS specificationItemStatusIconName,
+        specification_item_status.name_en AS specificationItemStatusNameEn,
+        specification_item_status.name_sv AS specificationItemStatusNameSv
+      FROM requirements_specification_items specification_item
+      LEFT JOIN specification_needs_references needs_reference
+        ON needs_reference.id = specification_item.needs_reference_id
+      LEFT JOIN specification_item_statuses specification_item_status
+        ON specification_item_status.id = specification_item.specification_item_status_id
+      WHERE specification_item.requirements_specification_id = @0
+        AND specification_item.id = @1
+    `,
+    [specificationId, specificationItemId],
+  )) as Row[]
+  const row = rows[0]
+  if (!row) return null
+  return {
+    needsReference: toStr(row.needsReference),
+    needsReferenceId: toNum(row.needsReferenceId),
+    specificationItemId: Number(row.specificationItemId),
+    specificationItemStatusColor: toStr(row.specificationItemStatusColor),
+    specificationItemStatusIconName: toStr(row.specificationItemStatusIconName),
+    specificationItemStatusId: toNum(row.specificationItemStatusId),
+    specificationItemStatusNameEn: toStr(row.specificationItemStatusNameEn),
+    specificationItemStatusNameSv: toStr(row.specificationItemStatusNameSv),
   }
 }
 

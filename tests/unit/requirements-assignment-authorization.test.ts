@@ -805,6 +805,56 @@ describe('SqlAssignmentLookup', () => {
     )
   })
 
+  it('resolves typed library deviations without querying the local table', async () => {
+    const { db, query } = makeDb([
+      [{ createdByHsaId: 'SE5560000001-library', specificationId: 42 }],
+    ])
+    const lookup = new SqlAssignmentLookup(db)
+
+    await expect(
+      lookup.resolveDeviationTarget({
+        deviationId: 5,
+        deviationKind: 'library',
+        kind: 'manage_deviation',
+        operation: 'edit',
+      }),
+    ).resolves.toEqual({
+      createdByHsaId: 'SE5560000001-library',
+      specificationId: 42,
+    })
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM deviations deviation'),
+      [5],
+    )
+  })
+
+  it('resolves typed local deviations without querying the library table', async () => {
+    const { db, query } = makeDb([
+      [{ createdByHsaId: 'SE5560000001-local', specificationId: 99 }],
+    ])
+    const lookup = new SqlAssignmentLookup(db)
+
+    await expect(
+      lookup.resolveDeviationTarget({
+        deviationId: 5,
+        deviationKind: 'specification-local',
+        kind: 'manage_deviation',
+        operation: 'edit',
+      }),
+    ).resolves.toEqual({
+      createdByHsaId: 'SE5560000001-local',
+      specificationId: 99,
+    })
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'FROM specification_local_requirement_deviations',
+      ),
+      [5],
+    )
+  })
+
   it('rejects ambiguous deviation targets that exist in both deviation tables', async () => {
     const { db, query } = makeDb([
       [{ createdByHsaId: 'SE5560000001-library', specificationId: 42 }],

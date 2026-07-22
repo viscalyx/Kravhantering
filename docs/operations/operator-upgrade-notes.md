@@ -7,6 +7,68 @@ target version.
 
 ## Unreleased
 
+### Invalid priority colors are reset during upgrade
+
+Before running `db-job migrate`, identify P1-P5 priority rows whose color is
+not an exact case-insensitive `#RRGGBB` value. Migration 0050 replaces only
+those invalid values with the corresponding canonical P1-P5 color; valid
+custom colors remain unchanged.
+
+```sql
+SELECT id, code, color
+FROM priority_levels
+WHERE code IN (N'P1', N'P2', N'P3', N'P4', N'P5')
+  AND (
+    color IS NULL
+    OR DATALENGTH(color) <> 14
+    OR color COLLATE Latin1_General_100_BIN2 NOT LIKE
+      N'#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]'
+  );
+```
+
+After upgrade, open `/sv/priority-levels` and review every priority in both
+the labeled light and dark previews. Confirm that each priority remains
+readable and visually distinct before accepting the upgraded configuration.
+
+### Access-review periods must be ordered before upgrade
+
+Before running `db-job migrate`, confirm no access-review run has a
+`period_start` later than its `period_end`. The migration adds a checked
+constraint and stops rather than modifying historical review evidence when it
+finds an invalid row.
+
+```sql
+SELECT id, period_start, period_end
+FROM access_review_runs
+WHERE period_start > period_end;
+```
+
+<!-- operator-upgrade:source pr-572 start -->
+Before rollout, review identity-provider role assignments for Admin Center users. Access is now limited to users with the Admin or PrivacyOfficer role, and users who need both general administration and privacy or archiving work must have both roles. Users without either role will no longer see the Admin Center entry point, and direct links will show an access-denied page.
+<!-- operator-upgrade:source pr-572 end -->
+
+### Export CSV and PDF generation
+
+Provision sufficient private temporary storage on every application node. If KRAVHANTERING_EXPORT_TEMP_DIR is configured, it must reference an existing absolute directory accessible only to the non-root application account. Size storage for configured concurrency and maximum file sizes.
+
+Deploy the updated reverse-proxy configuration with an extended timeout for
+generated-output routes, including numeric requirements-specification CSV
+paths. Procurement and full specification CSV reuse the existing
+`KRAVHANTERING_EXPORT_TEMP_DIR`, storage-sizing formula, CSV settings, and
+process-local pool; no new environment variable or setting is required.
+
+#### After Upgrade
+
+Review Admin Center > Settings > Exports and Reports. The common CSV limits
+apply to Requirements Library, procurement, and full specification CSV.
+
+<!-- operator-upgrade:source pr-625 start -->
+### RFI question suggestions require consistent lifecycle history
+Before upgrade, verify that existing RFI question suggestions have consistent lifecycle history. In particular, handled or dismissed suggestions must have a recorded review request, motivation, and chronologically valid lifecycle timestamps. The database migration stops and identifies affected records rather than altering historical evidence; correct them before retrying.
+Update integrations and support runbooks to follow the forward-only lifecycle: draft → review requested → handled or dismissed.
+<!-- operator-upgrade:source pr-625 end -->
+## v0.3.0 - 2026-07-09
+
 ### Requirements specifications need lifecycle status before upgrade
 
 The migration backfills requirements specifications without lifecycle status to
@@ -148,7 +210,7 @@ complete after migration.
 
 Releases with AI safety forensic logging add
 `ai_settings.ai_safety_forensic_logging_enabled` with default `1`. Review the
-Admin Center `AI` tab after migration and either route
+Admin Center `Settings` tab, section `AI`, after migration and either route
 `channel == "security-forensics"` logs with stricter access/retention controls
 or disable `Log forensic AI security data` until that routing is ready.
 

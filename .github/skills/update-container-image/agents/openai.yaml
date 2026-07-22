@@ -1,6 +1,6 @@
 interface:
   display_name: "Update Container Image"
   short_description: "Update pinned vendor container images"
-  default_prompt: "Use $update-container-image to update a specified vendor container image lock, companion refs, and release/smoke fixtures."
+  default_prompt: "Use $update-container-image to update a specified vendor container image lock and all repository references."
 policy:
   allow_implicit_invocation: false

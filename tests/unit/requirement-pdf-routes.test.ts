@@ -20,7 +20,7 @@ const routeState = vi.hoisted(() => ({
   collectMultipleRequirementListItemsForReport: vi.fn(),
   collectMultipleRequirementsForReport: vi.fn(),
   collectRequirementForReport: vi.fn(),
-  collectSpecificationOutputData: vi.fn(),
+  collectCompleteSpecificationOutputData: vi.fn(),
   collectSuggestionsForReport: vi.fn(),
   context: {
     actor: {
@@ -39,19 +39,46 @@ const routeState = vi.hoisted(() => ({
   getSpecificationById: vi.fn(),
   getSpecificationItemById: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
+  getApplicationSettings: vi.fn(),
   authorization: {
     assertAuthorized: vi.fn(),
   },
   listSpecificationRequirementSelectionQuestions: vi.fn(),
   parseLibrarySpecificationItemId: vi.fn(),
   parseSpecificationItemRef: vi.fn(),
-  queryRequirementList: vi.fn(),
+  traverseCompleteRequirementList: vi.fn(),
   renderReportModelPdfResponse: vi.fn(),
+  renderReportInWorker: vi.fn(),
   resolveSpecificationId: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/dal/application-settings', () => ({
+  getApplicationSettings: routeState.getApplicationSettings,
+}))
+
+vi.mock('@/lib/pdf/report-worker', () => ({
+  renderReportInWorker: routeState.renderReportInWorker,
+}))
+
+vi.mock('@/lib/generated-output/spool', () => ({
+  acquireGeneratedOutputSpool: vi.fn(async () => ({
+    filePath: '/tmp/generated-output-test.pdf',
+    releaseGeneration: vi.fn(),
+    releaseSpool: vi.fn(async () => {}),
+  })),
+  createGeneratedOutputFileResponse: vi.fn(
+    async (_spool, headers: HeadersInit) =>
+      new Response('%PDF', { headers, status: 200 }),
+  ),
+  generatedOutputCapacitySnapshot: vi.fn(() => ({
+    activeCsv: 0,
+    activePdf: 1,
+    reservedBytes: 50 * 1024 * 1024,
+  })),
 }))
 
 vi.mock('@/lib/reports/data/server', () => ({
@@ -67,7 +94,8 @@ vi.mock('@/lib/reports/data/server', () => ({
 }))
 
 vi.mock('@/lib/reports/data/specification-output', () => ({
-  collectSpecificationOutputData: routeState.collectSpecificationOutputData,
+  collectCompleteSpecificationOutputData:
+    routeState.collectCompleteSpecificationOutputData,
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
@@ -87,7 +115,7 @@ vi.mock('@/lib/requirements/server', () => ({
 }))
 
 vi.mock('@/lib/requirements/list-query', () => ({
-  queryRequirementList: routeState.queryRequirementList,
+  traverseCompleteRequirementList: routeState.traverseCompleteRequirementList,
 }))
 
 vi.mock('@/lib/reports/templates/list-template', () => ({
@@ -183,28 +211,6 @@ function listRequirement(id: number, uniqueId = `REQ-${id}`) {
   }
 }
 
-function listQueryPage(
-  requirements: ReturnType<typeof listRequirement>[],
-  pagination: {
-    hasMore?: boolean
-    nextOffset?: number | null
-    offset?: number
-    total?: number
-  } = {},
-) {
-  return {
-    pagination: {
-      count: requirements.length,
-      hasMore: pagination.hasMore ?? false,
-      limit: 200,
-      nextOffset: pagination.nextOffset ?? null,
-      offset: pagination.offset ?? 0,
-      total: pagination.total ?? requirements.length,
-    },
-    requirements,
-  }
-}
-
 function reportIds(count: number): string[] {
   return Array.from({ length: count }, (_, index) => String(index + 1))
 }
@@ -218,6 +224,18 @@ describe('requirement PDF routes', () => {
       context: routeState.context,
       db: { db: true },
     })
+    routeState.getApplicationSettings.mockResolvedValue({
+      csvExportConcurrencyPerNode: 5,
+      csvExportMaxFileBytes: 100 * 1024 * 1024,
+      csvExportMaxRequirements: 1000,
+      csvExportTimeoutSeconds: 120,
+      pdfReportConcurrencyPerNode: 3,
+      pdfReportMaxFileBytes: 50 * 1024 * 1024,
+      pdfReportMaxRequirements: 1000,
+      pdfReportTimeoutSeconds: 180,
+      pdfWorkerMemoryMib: 512,
+    })
+    routeState.renderReportInWorker.mockResolvedValue(4)
     routeState.collectRequirementForReport.mockResolvedValue(requirement())
     routeState.collectDeviationForReport.mockResolvedValue({
       requirementUniqueId: 'REQ-1',
@@ -230,8 +248,16 @@ describe('requirement PDF routes', () => {
       requirement('REQ-1'),
       requirement('REQ-2'),
     ])
-    routeState.queryRequirementList.mockResolvedValue(
-      listQueryPage([listRequirement(1), listRequirement(2)]),
+    routeState.traverseCompleteRequirementList.mockImplementation(
+      async (
+        _db: unknown,
+        _input: unknown,
+        _authorization: unknown,
+        visitPage: (rows: unknown[], page: number) => void | Promise<void>,
+      ) => {
+        await visitPage([listRequirement(1), listRequirement(2)], 1)
+        return { itemCount: 2, pageCount: 1 }
+      },
     )
     routeState.collectSuggestionsForReport.mockResolvedValue([])
     routeState.buildCombinedReviewReport.mockReturnValue({
@@ -245,7 +271,7 @@ describe('requirement PDF routes', () => {
     routeState.buildSpecificationProfileReport.mockReturnValue({
       kind: 'specification-profile',
     })
-    routeState.collectSpecificationOutputData.mockResolvedValue({
+    routeState.collectCompleteSpecificationOutputData.mockResolvedValue({
       items: [],
       specification: {
         businessNeedsReference: null,
@@ -357,10 +383,13 @@ describe('requirement PDF routes', () => {
       [requirement('REQ-1'), requirement('REQ-2')],
       'en',
     )
-    expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
-      { kind: 'list' },
-      'en',
-      expect.stringMatching(/^Requirements List \d{4}-\d{2}-\d{2} /),
+    expect(routeState.renderReportInWorker).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locale: 'en',
+        maxBytes: 50 * 1024 * 1024,
+        memoryLimitMib: 512,
+        model: { kind: 'list' },
+      }),
     )
   })
 
@@ -383,21 +412,87 @@ describe('requirement PDF routes', () => {
     ).toHaveBeenCalledWith({ db: true }, ids)
   })
 
+  it('authorizes and collects explicit list PDF ids only once', async () => {
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/list?ids=1,REQ-2,1,REQ-2',
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(
+      routeState.collectMultipleRequirementListItemsForReport,
+    ).toHaveBeenCalledWith({ db: true }, ['1', 'REQ-2'])
+    expect(routeState.authorization.assertAuthorized).toHaveBeenCalledTimes(2)
+  })
+
+  it('rejects explicit list PDFs above the Admin item limit', async () => {
+    const ids = reportIds(1001)
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        `http://localhost/en/requirements/reports/pdf/list?ids=${ids.join(',')}`,
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'output_limit_exceeded',
+      details: { limit: 1000, limitKind: 'items', output: 'pdf' },
+    })
+    expect(routeState.renderReportInWorker).not.toHaveBeenCalled()
+  })
+
+  it('maps PDF worker memory exhaustion to the stable 503 contract', async () => {
+    const { GeneratedOutputError } = await import(
+      '@/lib/generated-output/errors'
+    )
+    routeState.renderReportInWorker.mockRejectedValueOnce(
+      new GeneratedOutputError(
+        'pdf_worker_memory_exceeded',
+        'worker_memory_exceeded',
+        { output: 'pdf' },
+      ),
+    )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/list?ids=1',
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'pdf_worker_memory_exceeded',
+      details: { output: 'pdf' },
+    })
+  })
+
   it('resolves list PDFs from the complete active filter and sort query', async () => {
-    routeState.queryRequirementList
-      .mockResolvedValueOnce(
-        listQueryPage([listRequirement(1, 'REQ-1')], {
-          hasMore: true,
-          nextOffset: 1,
-          total: 2,
-        }),
-      )
-      .mockResolvedValueOnce(
-        listQueryPage([listRequirement(2, 'REQ-2')], {
-          offset: 1,
-          total: 2,
-        }),
-      )
+    routeState.traverseCompleteRequirementList.mockImplementationOnce(
+      async (
+        _db: unknown,
+        _input: unknown,
+        _authorization: unknown,
+        visitPage: (rows: unknown[], page: number) => void | Promise<void>,
+      ) => {
+        await visitPage([listRequirement(1, 'REQ-1')], 1)
+        await visitPage([listRequirement(2, 'REQ-2')], 2)
+        return { itemCount: 2, pageCount: 2 }
+      },
+    )
     const { GET } = await import(
       '@/app/[locale]/requirements/reports/pdf/list/route'
     )
@@ -410,8 +505,7 @@ describe('requirement PDF routes', () => {
     )
 
     expect(response.status).toBe(200)
-    expect(routeState.queryRequirementList).toHaveBeenNthCalledWith(
-      1,
+    expect(routeState.traverseCompleteRequirementList).toHaveBeenCalledWith(
       { db: true },
       {
         filters: {
@@ -429,21 +523,15 @@ describe('requirement PDF routes', () => {
           typeIds: undefined,
           uniqueIdSearch: 'REQ',
         },
-        limit: 200,
         locale: 'sv',
-        offset: 0,
         sort: { by: 'status', direction: 'desc' },
       },
       {
         authorization: routeState.authorization,
         context: routeState.context,
       },
-    )
-    expect(routeState.queryRequirementList).toHaveBeenNthCalledWith(
-      2,
-      { db: true },
-      expect.objectContaining({ offset: 1 }),
-      expect.anything(),
+      expect.any(Function),
+      expect.objectContaining({ maxItems: 1000 }),
     )
     expect(
       routeState.collectMultipleRequirementListItemsForReport,
@@ -505,7 +593,7 @@ describe('requirement PDF routes', () => {
       id: 42,
       specificationLifecycleStatusId: 3,
     })
-    routeState.collectSpecificationOutputData.mockResolvedValueOnce({
+    routeState.collectCompleteSpecificationOutputData.mockResolvedValueOnce({
       items: [],
       specification: {
         businessNeedsReference: null,
@@ -583,7 +671,17 @@ describe('requirement PDF routes', () => {
   })
 
   it('rejects filter-based list PDFs when no requirements match', async () => {
-    routeState.queryRequirementList.mockResolvedValueOnce(listQueryPage([]))
+    routeState.traverseCompleteRequirementList.mockImplementationOnce(
+      async (
+        _db: unknown,
+        _input: unknown,
+        _authorization: unknown,
+        visitPage: (rows: unknown[], page: number) => void,
+      ) => {
+        visitPage([], 1)
+        return { itemCount: 0, pageCount: 1 }
+      },
+    )
     const { GET } = await import(
       '@/app/[locale]/requirements/reports/pdf/list/route'
     )
@@ -649,10 +747,9 @@ describe('requirement PDF routes', () => {
       { kind: 'get_specification_items', specificationId: 42 },
       routeState.context,
     )
-    expect(routeState.collectSpecificationOutputData).toHaveBeenCalledWith(
-      { db: true },
-      42,
-    )
+    expect(
+      routeState.collectCompleteSpecificationOutputData,
+    ).toHaveBeenCalledWith({ db: true }, 42)
     expect(routeState.buildSpecificationProfileReport).toHaveBeenCalledWith(
       expect.objectContaining({
         specification: expect.objectContaining({ specificationCode: 'SPEC-1' }),
@@ -686,7 +783,9 @@ describe('requirement PDF routes', () => {
     })
     expect(routeState.getSpecificationById).not.toHaveBeenCalled()
     expect(routeState.authorization.assertAuthorized).not.toHaveBeenCalled()
-    expect(routeState.collectSpecificationOutputData).not.toHaveBeenCalled()
+    expect(
+      routeState.collectCompleteSpecificationOutputData,
+    ).not.toHaveBeenCalled()
   })
 
   it('rejects deviation review PDFs before collecting report data when specification authorization is denied', async () => {

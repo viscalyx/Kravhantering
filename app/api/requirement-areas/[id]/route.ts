@@ -13,6 +13,7 @@ import {
   updateAreaWithOwnerCheck,
 } from '@/lib/dal/requirement-areas'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { isForeignKeyViolation } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
   customMutationPolicy,
@@ -146,7 +147,18 @@ export const DELETE = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const deletedCount = await deleteArea(db, params.id)
+    let deletedCount: number
+    try {
+      deletedCount = await deleteArea(db, params.id)
+    } catch (error) {
+      if (isForeignKeyViolation(error)) {
+        return NextResponse.json(
+          { error: 'Cannot delete: requirement area is in use' },
+          { status: 409 },
+        )
+      }
+      throw error
+    }
     if (deletedCount === 0) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

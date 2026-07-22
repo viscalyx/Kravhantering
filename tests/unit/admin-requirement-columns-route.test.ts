@@ -20,6 +20,14 @@ const routeState = vi.hoisted(() => ({
     requestId: 'request-2',
     source: 'rest',
   })),
+  createRequestContext: vi.fn(async () => ({
+    actor: {
+      id: 'admin-sub',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    },
+  })),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   getRequirementListColumnDefaults: vi.fn(),
   recordAdminPrivilegedActionSucceeded: vi.fn(),
@@ -35,6 +43,10 @@ vi.mock('@/lib/admin/privileged-audit', () => ({
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/requirements/auth', () => ({
+  createRequestContext: routeState.createRequestContext,
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({
@@ -78,7 +90,9 @@ describe('admin requirement columns route', () => {
   })
 
   it('returns the stored column defaults payload', async () => {
-    const response = await GET()
+    const response = await GET(
+      new NextRequest('https://example.test/api/admin/requirement-columns'),
+    )
     const body = (await response.json()) as {
       columns?: Array<{ columnId: string }>
     }
@@ -103,6 +117,25 @@ describe('admin requirement columns route', () => {
     ])
   })
 
+  it('rejects a GET request without the Admin role before reading data', async () => {
+    routeState.createRequestContext.mockResolvedValueOnce({
+      actor: {
+        id: 'privacy-sub',
+        isAuthenticated: true,
+        roles: ['PrivacyOfficer'],
+        source: 'oidc',
+      },
+    })
+
+    const response = await GET(
+      new NextRequest('https://example.test/api/admin/requirement-columns'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.getRequirementListColumnDefaults).not.toHaveBeenCalled()
+  })
+
   it('returns 500 when loading stored requirement column defaults fails', async () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
@@ -112,7 +145,9 @@ describe('admin requirement columns route', () => {
     )
 
     try {
-      const response = await GET()
+      const response = await GET(
+        new NextRequest('https://example.test/api/admin/requirement-columns'),
+      )
       const body = (await response.json()) as { error?: string }
 
       expect(response.status).toBe(500)

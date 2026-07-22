@@ -105,7 +105,10 @@ describe('auth config', () => {
     ['relative', '/'],
     ['malformed', 'https://[::1'],
     ['non-HTTP(S)', 'ftp://app.example.com/'],
-  ])('throws when AUTH_OIDC_POST_LOGOUT_REDIRECT_URI is %s', (_label, value) => {
-    expectInvalidAuthUrl('AUTH_OIDC_POST_LOGOUT_REDIRECT_URI', value)
-  })
+  ])(
+    'throws when AUTH_OIDC_POST_LOGOUT_REDIRECT_URI is %s',
+    (_label, value) => {
+      expectInvalidAuthUrl('AUTH_OIDC_POST_LOGOUT_REDIRECT_URI', value)
+    },
+  )
 })

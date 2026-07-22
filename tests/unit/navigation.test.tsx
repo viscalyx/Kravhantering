@@ -511,6 +511,7 @@ describe('Navigation', () => {
   })
 
   it('traps focus in the mobile drawer and restores it to the trigger', async () => {
+    authState.value = { authenticated: true, roles: ['Admin'] }
     render(<Navigation />)
 
     const openButton = screen.getByRole('button', { name: 'nav.openMenu' })
@@ -522,7 +523,7 @@ describe('Navigation', () => {
       name: 'nav.closeMenu',
     })
     const closeButton = closeButtons[closeButtons.length - 1]
-    const lastLink = within(dialog).getByRole('link', {
+    const lastLink = await within(dialog).findByRole('link', {
       name: 'admin.settings',
     })
 
@@ -546,7 +547,8 @@ describe('Navigation', () => {
     )
   })
 
-  it('renders utility actions in the rail', () => {
+  it('renders utility actions in the rail', async () => {
+    authState.value = { authenticated: true, roles: ['Admin'] }
     const toggleHelp = vi.fn()
     helpState.value = {
       content: { sections: [], titleKey: 'help.navigation' },
@@ -567,7 +569,7 @@ describe('Navigation', () => {
       'help toggle open',
     )
     expect(
-      screen.getByRole('link', { name: 'admin.settings' }),
+      await screen.findByRole('link', { name: 'admin.settings' }),
     ).toHaveAttribute('href', '/admin')
     expect(screen.getByTestId('language-switcher')).toBeInTheDocument()
     expect(screen.getByTestId('theme-toggle')).toBeInTheDocument()
@@ -576,5 +578,57 @@ describe('Navigation', () => {
     fireEvent.click(helpButton)
 
     expect(toggleHelp).toHaveBeenCalledOnce()
+  })
+
+  it.each([['Admin'], ['PrivacyOfficer']])(
+    'shows Admin Center navigation for the eligible %s role',
+    async role => {
+      authState.value = { authenticated: true, roles: [role] }
+
+      render(<Navigation />)
+
+      expect(
+        await screen.findByRole('link', { name: 'admin.settings' }),
+      ).toHaveAttribute('href', '/admin')
+    },
+  )
+
+  it('keeps Admin Center navigation hidden for an ineligible role', async () => {
+    authState.value = { authenticated: true, roles: ['Reviewer'] }
+    areasState.value = {
+      areas: [{ permissions: { canManageAssignments: true } }],
+    }
+
+    render(<Navigation />)
+
+    expect(await screen.findByRole('link', { name: 'nav.areas' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'admin.settings' })).toBeNull()
+  })
+
+  it('keeps Admin Center navigation hidden when role loading fails', async () => {
+    areasState.value = {
+      areas: [{ permissions: { canManageAssignments: true } }],
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/api/auth/me')) {
+          return { ok: false } as Response
+        }
+        if (url.includes('/api/requirement-areas')) {
+          return okJson(areasState.value)
+        }
+        if (url.includes('/api/database-schema-status')) {
+          return okJson(databaseSchemaStatusState.value)
+        }
+        throw new Error(`Unexpected fetch ${url}`)
+      }),
+    )
+
+    render(<Navigation />)
+
+    expect(await screen.findByRole('link', { name: 'nav.areas' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'admin.settings' })).toBeNull()
   })
 })

@@ -11,6 +11,12 @@ import {
   adminMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
+import { createRequestContext } from '@/lib/requirements/auth'
+import {
+  forbiddenError,
+  isRequirementsServiceError,
+} from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { REQUIREMENT_COLUMN_ORDER } from '@/lib/requirements/list-view'
 
 const columnDefaultsEntrySchema = z
@@ -53,21 +59,46 @@ const columnDefaultsPayloadSchema = z
     }
   })
 
-export async function GET() {
+function noStore<T extends NextResponse>(response: T): T {
+  response.headers.set('Cache-Control', 'no-store')
+  return response
+}
+
+async function assertAdmin(request: Request) {
+  const context = await createRequestContext(request, 'rest')
+  if (!context.actor.roles.includes('Admin')) {
+    throw forbiddenError('Missing required role for requirement columns', {
+      actorRoles: context.actor.roles,
+      reason: 'required_role_missing',
+      requiredRoles: ['Admin'],
+    })
+  }
+}
+
+export async function GET(request: Request) {
   try {
+    await assertAdmin(request)
     const db = await getRequestSqlServerDataSource()
 
-    return NextResponse.json({
-      columns: await getRequirementListColumnDefaults(db),
-    })
+    return noStore(
+      NextResponse.json({
+        columns: await getRequirementListColumnDefaults(db),
+      }),
+    )
   } catch (error) {
+    if (isRequirementsServiceError(error)) {
+      const { body, status } = toHttpErrorPayload(error)
+      return noStore(NextResponse.json(body, { status }))
+    }
     console.error(
       'Failed to load stored requirement column defaults',
       formatUiSettingsLoadError(error),
     )
-    return NextResponse.json(
-      { error: 'Failed to load requirement column defaults.' },
-      { status: 500 },
+    return noStore(
+      NextResponse.json(
+        { error: 'Failed to load requirement column defaults.' },
+        { status: 500 },
+      ),
     )
   }
 }

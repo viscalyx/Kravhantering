@@ -27,12 +27,16 @@ import {
   STATUS_REVIEW,
 } from '@/lib/requirements/status-constants.mjs'
 import type { DeleteDraftResult } from '@/lib/requirements/types'
-import {
-  buildRequirementCountSql,
-  buildRequirementListSql,
-} from './requirements-list-sql.mjs'
+import { buildRequirementListSql } from './requirements-list-sql.mjs'
+
+export interface RequirementListSeekAnchor {
+  nullRank: 0 | 1
+  requirementId: number
+  sortValue: number | string | null
+}
 
 export interface ListRequirementsOptions {
+  after?: RequirementListSeekAnchor
   areaIds?: number[]
   categoryIds?: number[]
   descriptionSearch?: string
@@ -41,13 +45,13 @@ export interface ListRequirementsOptions {
   limit?: number
   locale?: 'en' | 'sv'
   normReferenceIds?: number[]
-  offset?: number
   priorityLevelIds?: number[]
   publishedOnly?: boolean
   publishedOrAreaIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementIds?: number[]
   requirementPackageIds?: number[]
+  search?: string
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
@@ -170,6 +174,14 @@ export async function listRequirements(
   >
 
   return rows.map(row => ({
+    cursorBoundary: {
+      nullRank: Number(row.cursorNullRank) === 1 ? 1 : 0,
+      requirementId: Number(row.id),
+      sortValue:
+        row.cursorSortValue == null || typeof row.cursorSortValue === 'string'
+          ? (row.cursorSortValue ?? null)
+          : Number(row.cursorSortValue),
+    } satisfies RequirementListSeekAnchor,
     id: Number(row.id),
     uniqueId: String(row.uniqueId ?? ''),
     requirementAreaId: Number(row.requirementAreaId),
@@ -209,6 +221,8 @@ export async function listRequirements(
         ? null
         : String(row.qualityCharacteristicNameEn),
     priorityLevelId: toNum(row.priorityLevelId),
+    priorityLevelCode:
+      row.priorityLevelCode == null ? null : String(row.priorityLevelCode),
     priorityLevelNameSv:
       row.priorityLevelNameSv == null ? null : String(row.priorityLevelNameSv),
     priorityLevelNameEn:
@@ -238,19 +252,15 @@ export async function listRequirements(
       row.requirementPackagesJson,
     ),
     suggestionCount: Number(row.suggestionCount ?? 0),
+    matchedFields: [
+      ...(toBool(row.matchId) ? ['id'] : []),
+      ...(toBool(row.matchUniqueId) ? ['uniqueId'] : []),
+      ...(toBool(row.matchDescription) ? ['version.description'] : []),
+      ...(toBool(row.matchAcceptanceCriteria)
+        ? ['version.acceptanceCriteria']
+        : []),
+    ],
   }))
-}
-
-export async function countRequirements(
-  db: SqlServerDatabase,
-  opts: ListRequirementsOptions = {},
-): Promise<number> {
-  const { parameters, sqlText } = buildRequirementCountSql(opts)
-
-  const rows = (await db.query(sqlText, parameters)) as Array<
-    Record<string, unknown>
-  >
-  return Number(rows[0]?.count ?? 0)
 }
 
 export interface SqlServerTxExecutor {
@@ -1679,6 +1689,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         quality_characteristic.requirement_type_id AS qcRequirementTypeId,
         quality_characteristic.parent_id AS qcParentId,
         priority_level.id AS rlId,
+        priority_level.code AS rlCode,
         priority_level.name_en AS rlNameEn,
         priority_level.name_sv AS rlNameSv,
         priority_level.color AS rlColor,
@@ -1834,6 +1845,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         rlId == null
           ? null
           : {
+              code: String(row.rlCode ?? ''),
               id: rlId,
               nameEn: String(row.rlNameEn ?? ''),
               nameSv: String(row.rlNameSv ?? ''),

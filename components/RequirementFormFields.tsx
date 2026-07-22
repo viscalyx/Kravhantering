@@ -1,6 +1,6 @@
 'use client'
 
-import { HelpCircle, ListChecks } from 'lucide-react'
+import { ListChecks } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   type CSSProperties,
@@ -12,10 +12,12 @@ import {
   useState,
 } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import FormModal from '@/components/FormModal'
 import QualityCharacteristicSelectOptions from '@/components/QualityCharacteristicSelectOptions'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
+import StatusBadge from '@/components/StatusBadge'
 import type {
   NormReferenceOption,
   TaxonomyOption,
@@ -105,7 +107,7 @@ export default function RequirementFormFields({
   const getOptionName = (o: TaxonomyOption) =>
     locale === 'sv' ? o.nameSv : o.nameEn
   const getPriorityName = (o: (typeof priorityLevels)[number]) =>
-    `${o.code} - ${getOptionName(o)}`
+    [o.code, getOptionName(o)].filter(Boolean).join(' – ')
   const getPriorityDescription = (o: (typeof priorityLevels)[number]) =>
     locale === 'sv' ? o.descriptionSv : o.descriptionEn
   const getPriorityAssessmentCriteria = (o: (typeof priorityLevels)[number]) =>
@@ -230,17 +232,13 @@ export default function RequirementFormFields({
     label: string,
     buttonRef?: Ref<HTMLButtonElement>,
   ) => (
-    <button
-      aria-controls={`help-${field}`}
-      aria-expanded={openHelp.has(field)}
-      aria-label={`${tc('help')}: ${label}`}
-      className="min-h-11 min-w-11 inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+    <FieldHelpButton
+      controls={`help-${field}`}
+      expanded={openHelp.has(field)}
+      label={`${tc('help')}: ${label}`}
       onClick={() => toggleHelp(field)}
       ref={buttonRef}
-      type="button"
-    >
-      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-    </button>
+    />
   )
 
   const helpPanel = (helpKey: string, field: string) => (
@@ -480,8 +478,12 @@ export default function RequirementFormFields({
                     className="rounded-xl border border-secondary-200 bg-secondary-50/70 p-4 dark:border-secondary-700 dark:bg-secondary-800/50"
                     key={priorityLevel.id}
                   >
-                    <h3 className="text-base font-semibold text-secondary-950 dark:text-secondary-50">
-                      {getPriorityName(priorityLevel)}
+                    <h3>
+                      <StatusBadge
+                        color={priorityLevel.color}
+                        iconName={priorityLevel.iconName}
+                        label={getPriorityName(priorityLevel)}
+                      />
                     </h3>
                     <dl className="mt-3 space-y-3 text-sm leading-relaxed text-secondary-700 dark:text-secondary-200">
                       <div>

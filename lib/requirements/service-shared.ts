@@ -1,6 +1,7 @@
 import { redactSensitiveText } from '@/lib/http/safe-errors'
 import {
   type CapacityMetrics,
+  type CapacityPageSurface,
   recordCapacityEvent,
 } from '@/lib/observability/capacity'
 import type {
@@ -8,7 +9,10 @@ import type {
   RequestContext,
   RequirementsAction,
 } from '@/lib/requirements/auth'
-import { validationError } from '@/lib/requirements/errors'
+import {
+  isRequirementsServiceError,
+  validationError,
+} from '@/lib/requirements/errors'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
 import type {
@@ -207,6 +211,13 @@ export async function withLogging<T>(
   operation: () => Promise<T>,
 ): Promise<T> {
   const startedAt = Date.now()
+  const surface =
+    metadata.capacity_surface === 'editor-preload' ||
+    metadata.capacity_surface === 'mcp' ||
+    metadata.capacity_surface === 'rest'
+      ? (metadata.capacity_surface as CapacityPageSurface)
+      : undefined
+  const { capacity_surface: _capacitySurface, ...logMetadata } = metadata
 
   try {
     const result = await operation()
@@ -218,7 +229,7 @@ export async function withLogging<T>(
       source: context.source,
       tool_name: context.toolName,
       duration_ms: durationMs,
-      ...metadata,
+      ...logMetadata,
     })
     recordCapacityEvent({
       correlationId: context.correlationId,
@@ -229,6 +240,7 @@ export async function withLogging<T>(
       outcome: 'success',
       requestId: context.requestId,
       source: context.source,
+      surface,
       statusCode: 200,
       toolName: context.toolName,
     })
@@ -249,7 +261,7 @@ export async function withLogging<T>(
         error instanceof Error
           ? redactSensitiveText(error.message)
           : 'Unknown requirements error',
-      ...metadata,
+      ...logMetadata,
     }
 
     if (isClientError) {
@@ -267,8 +279,14 @@ export async function withLogging<T>(
       outcome: 'failure',
       requestId: context.requestId,
       source: context.source,
+      surface,
       statusCode,
       toolName: context.toolName,
+      ...(surface &&
+      isRequirementsServiceError(error) &&
+      error.code === 'invalid_cursor'
+        ? { cursorFailureCategory: 'invalid_cursor' as const }
+        : {}),
     })
     throw error
   }
@@ -287,6 +305,12 @@ function extractCapacityMetrics(value: unknown): CapacityMetrics | undefined {
   if (!value || typeof value !== 'object') return undefined
 
   const record = value as {
+    items?: unknown
+    pagination?: {
+      count?: unknown
+      hasMore?: unknown
+      limit?: unknown
+    }
     requirements?: unknown
     stats?: {
       cost?: unknown
@@ -297,6 +321,22 @@ function extractCapacityMetrics(value: unknown): CapacityMetrics | undefined {
 
   if (Array.isArray(record.requirements)) {
     metrics.item_count = record.requirements.length
+  }
+  if (
+    Array.isArray(record.items) &&
+    record.pagination &&
+    typeof record.pagination === 'object'
+  ) {
+    metrics.returned_count =
+      typeof record.pagination.count === 'number'
+        ? record.pagination.count
+        : record.items.length
+    if (typeof record.pagination.limit === 'number') {
+      metrics.page_limit = record.pagination.limit
+    }
+    if (typeof record.pagination.hasMore === 'boolean') {
+      metrics.continuation_available = record.pagination.hasMore
+    }
   }
 
   if (record.stats && typeof record.stats === 'object') {

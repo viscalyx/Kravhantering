@@ -3,7 +3,10 @@
 import { AlertTriangle, Edit, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import DeviationDecisionModal from '@/components/DeviationDecisionModal'
-import DeviationFormModal from '@/components/DeviationFormModal'
+import DeviationFormModal, {
+  type DeviationPriorityLevel,
+} from '@/components/DeviationFormModal'
+import { devMarker } from '@/lib/developer-mode-markers'
 import RequirementReportMenu from './RequirementReportMenu'
 import type { UseDeviationWorkflowResult } from './use-deviation-workflow'
 
@@ -12,7 +15,9 @@ interface SpecificationDeviationRailProps {
   canReviewDeviationDecisions: boolean
   detailContext?: string
   locale: string
-  priorityLevel: { color: string; name: string | null } | null
+  onRemoveFromSpecification?: (anchorEl: HTMLElement) => void | Promise<void>
+  priorityLevel: DeviationPriorityLevel | null
+  removeFromSpecificationDisabled?: boolean
   requirementId: number | string
   specificationId: number
   specificationItemId: number
@@ -24,6 +29,8 @@ export default function SpecificationDeviationRail({
   canReviewDeviationDecisions,
   detailContext,
   locale,
+  onRemoveFromSpecification,
+  removeFromSpecificationDisabled,
   specificationItemId,
   specificationId,
   requirementId,
@@ -31,6 +38,7 @@ export default function SpecificationDeviationRail({
   workflow,
 }: SpecificationDeviationRailProps) {
   const td = useTranslations('deviation')
+  const ts = useTranslations('specification')
 
   return (
     <div className="flex flex-col gap-2 shrink-0">
@@ -113,6 +121,23 @@ export default function SpecificationDeviationRail({
             </button>
           ) : null}
         </>
+      ) : null}
+      {onRemoveFromSpecification ? (
+        <button
+          className="btn-destructive inline-flex items-center gap-1.5 w-full justify-center"
+          disabled={removeFromSpecificationDisabled || workflow.deviationSaving}
+          {...devMarker({
+            context: `${detailContext ?? 'requirement detail'} > specification actions`,
+            name: 'detail action',
+            priority: 291,
+            value: 'unlink library requirement',
+          })}
+          onClick={event => void onRemoveFromSpecification(event.currentTarget)}
+          type="button"
+        >
+          <Trash2 aria-hidden="true" className="h-4 w-4" />
+          {ts('unlinkLibraryRequirementAction')}
+        </button>
       ) : null}
       <DeviationFormModal
         loading={workflow.deviationSaving}

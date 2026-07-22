@@ -1,6 +1,8 @@
 ---
 name: update-guide-spec
-description: 'Add or modify steps in the Playwright user-guide generator (tests/guide/generate-guide.spec.ts)'
+description: >-
+  Update the Playwright user-guide generator spec. Use when a user asks to add
+  or modify generated guide steps, screenshots, selectors, or scenarios.
 ---
 
 ## Updating the Guide Generator

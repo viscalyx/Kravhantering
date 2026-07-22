@@ -69,10 +69,9 @@ export const IMAGE_CONFIGS = {
       'docker-compose.idp.yml',
       '.devcontainer/docker-compose.yml',
       '.devcontainer/elevated/docker-compose.yml',
-      'devfile.example.yaml',
       'containers/production/env/release.env.template',
       'docs/development/auth-developer-workflow.md',
-      'docs/development/openshift-devspaces.md',
+      'scripts/__tests__/container-release.test.mjs',
     ],
     image: 'quay.io/keycloak/keycloak',
     laneDescription: lane => `Keycloak ${lane}.x`,
@@ -251,8 +250,8 @@ function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8')
 }
 
-function writeJson(filePath, value) {
-  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`)
+function formatJson(value) {
+  return `${JSON.stringify(value, null, 2)}\n`
 }
 
 export function updateDependentServiceLock(lock, serviceRecord) {
@@ -287,13 +286,6 @@ export function updateDependentServiceLock(lock, serviceRecord) {
   }
 }
 
-function updateDependentLockFile(filePath, serviceRecord) {
-  writeJson(
-    filePath,
-    updateDependentServiceLock(readJson(filePath), serviceRecord),
-  )
-}
-
 export function branchName(config, version) {
   return `${BRANCH_PREFIX}/${config.name}-${version.tag}`
 }
@@ -302,8 +294,7 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
 
-function replaceImageRef(filePath, image, replacementRef) {
-  const source = fs.readFileSync(filePath, 'utf8')
+function replaceImageRef(source, filePath, image, replacementRef) {
   const pattern = new RegExp(`${escapeRegExp(image)}:[^\\s"'<>]+`, 'gu')
   let replacements = 0
   const updated = source.replace(pattern, () => {
@@ -315,7 +306,7 @@ function replaceImageRef(filePath, image, replacementRef) {
     throw new Error(`${filePath} does not contain ${image}:<tag>.`)
   }
 
-  if (updated !== source) fs.writeFileSync(filePath, updated)
+  return updated
 }
 
 function normalizeDigest(value, context) {
@@ -779,25 +770,36 @@ export function companionImageReference(config, filePath, candidate, identity) {
   return taggedRef
 }
 
-function updateFiles(config, currentLock, candidate, identity) {
+export function updateFiles(config, currentLock, candidate, identity) {
   const nextLock = {
     ...currentLock,
     imageId: identity.imageId,
     manifestDigest: identity.manifestDigest,
     tag: candidate.version.tag,
   }
-  writeJson(config.lockPath, nextLock)
+  const plannedUpdates = new Map([[config.lockPath, formatJson(nextLock)]])
 
   for (const filePath of config.dependentLockPaths ?? []) {
-    updateDependentLockFile(filePath, nextLock)
+    plannedUpdates.set(
+      filePath,
+      formatJson(updateDependentServiceLock(readJson(filePath), nextLock)),
+    )
   }
 
   for (const filePath of config.companionFiles) {
-    replaceImageRef(
+    plannedUpdates.set(
       filePath,
-      config.image,
-      companionImageReference(config, filePath, candidate, identity),
+      replaceImageRef(
+        readText(filePath),
+        filePath,
+        config.image,
+        companionImageReference(config, filePath, candidate, identity),
+      ),
     )
+  }
+
+  for (const [filePath, contents] of plannedUpdates) {
+    fs.writeFileSync(filePath, contents)
   }
 }
 
@@ -979,6 +981,7 @@ const PROCESS_CANDIDATE_DEPENDENCIES = {
   createOrUpdatePr,
   deleteRemoteBranch,
   findOpenPr,
+  gitStatusPorcelain,
   prBody,
   prTitle,
   pushUpdateBranch,
@@ -1004,6 +1007,13 @@ export async function processCandidate(
       `${config.name}: ${candidate.version.tag} already has PR #${existingPr.number}`,
     )
     return
+  }
+
+  const worktreeStatus = deps.gitStatusPorcelain()
+  if (worktreeStatus) {
+    throw new Error(
+      `Refusing to process ${config.name}:${candidate.version.tag} with a dirty worktree:\n${worktreeStatus}`,
+    )
   }
 
   const identity = await deps.resolveImageIdentity(
@@ -1080,6 +1090,27 @@ function selectedConfigs(image) {
   return [IMAGE_CONFIGS[image]]
 }
 
+export async function processImages(
+  configs,
+  options,
+  results,
+  dependencies = {},
+) {
+  const consoleObj = dependencies.consoleObj ?? console
+  const processImageFn = dependencies.processImage ?? processImage
+
+  for (const config of configs) {
+    try {
+      await processImageFn(config, options, results)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      consoleObj.error(`${config.name}: ${message}`)
+      results.failed.push(`${config.name}: ${message}`)
+      break
+    }
+  }
+}
+
 function appendSummary(results) {
   const summaryPath = readNonEmpty(process.env.GITHUB_STEP_SUMMARY)
   if (!summaryPath) return
@@ -1116,16 +1147,7 @@ export async function main(argv = process.argv.slice(2), env = process.env) {
   }
 
   configureGit()
-
-  for (const config of selectedConfigs(options.image)) {
-    try {
-      await processImage(config, options, results)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      console.error(`${config.name}: ${message}`)
-      results.failed.push(`${config.name}: ${message}`)
-    }
-  }
+  await processImages(selectedConfigs(options.image), options, results)
 
   if (gitStatusPorcelain()) {
     console.error('The vendor image updater left uncommitted changes.')

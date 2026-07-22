@@ -85,6 +85,10 @@ test.describe('signed-in auth boundary', () => {
     await expect(userInfoDialog).toBeVisible()
     await userInfoDialog.getByRole('button', { name: 'Logga ut' }).click()
 
+    await expect(page).toHaveURL(
+      /\/realms\/kravhantering-dev\/protocol\/openid-connect\/auth/,
+    )
+
     await expect
       .poll(async () => {
         const response = await page.request.get('/api/auth/me')

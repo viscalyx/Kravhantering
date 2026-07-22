@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SpecificationOutputData } from '@/lib/reports/data/specification-output'
 import type { SpecificationTraceabilityData } from '@/lib/reports/data/specification-traceability'
-import { buildSpecificationCsv } from '@/lib/reports/specification-csv'
+import { createSpecificationCsvFormatter } from '@/lib/reports/specification-csv'
 import {
   canExportProcurementCsvForLifecycleStatus,
   getSpecificationReportProfileForLifecycleStatus,
@@ -199,23 +199,58 @@ describe('specification report profiles', () => {
   })
 
   it('builds row-based CSV exports with the right profile columns', () => {
-    const procurementCsv = buildSpecificationCsv(
-      outputData(),
+    const data = outputData()
+    const [item] = data.items
+    if (!item) {
+      throw new Error('Expected specification item fixture')
+    }
+    const procurementFormatter = createSpecificationCsvFormatter(
       'procurement',
       'sv',
     )
+    const procurementCsv = [
+      procurementFormatter.headers.join(';'),
+      procurementFormatter.serializeRow(item),
+    ].join('\r\n')
     expect(procurementCsv.split('\r\n')[0]).toBe(
       'Krav-ID;Kravtext;Kvalitetsegenskap;Normreferenser;Norm-URI',
     )
     expect(procurementCsv).toContain('https://example.test/iso')
     expect(procurementCsv).not.toContain('Underlagssyfte')
 
-    const fullCsv = buildSpecificationCsv(outputData(), 'full', 'sv')
+    const fullFormatter = createSpecificationCsvFormatter('full', 'sv')
+    const fullCsv = [
+      fullFormatter.headers.join(';'),
+      fullFormatter.serializeRow(item),
+    ].join('\r\n')
     expect(fullCsv.split('\r\n')[0]).toBe(
       'Krav-ID;Kravtext;Kravområde;Kategori;Typ;Kvalitetsegenskap;Prioritet;Kravversionsstatus;Verifierbar;Version;Behovsreferens;Användningsstatus;Normreferenser;Kravpaket;Förbättringsförslag;ISO-kapitel;Norm-URI;Avstegssignal',
     )
     expect(fullCsv).toContain('2')
     expect(fullCsv).toContain('Väntande')
+  })
+
+  it('preserves CSV escaping, formula hardening, and English localization', () => {
+    const data = outputData()
+    const [firstItem] = data.items
+    if (!firstItem) {
+      throw new Error('Expected specification item fixture')
+    }
+    const item = {
+      ...firstItem,
+      description: '=SUM(A1;A2)\n"quoted"',
+    }
+    const formatter = createSpecificationCsvFormatter('procurement', 'en')
+
+    expect(formatter.headers.join(';')).toBe(
+      'Requirement ID;Requirement text;Quality characteristic;Norm references;Norm URI',
+    )
+    expect(formatter.serializeRow(item)).toContain(
+      '"\'=SUM(A1;A2)\n""quoted"""',
+    )
+    expect(formatter.serializeRow(item)).toContain(
+      'Security (ISO/IEC 25010 3.6)',
+    )
   })
 
   it('builds a traceability report from selected requirement applications', () => {

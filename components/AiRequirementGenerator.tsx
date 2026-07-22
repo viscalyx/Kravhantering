@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  HelpCircle,
   ImagePlus,
   Loader2,
   Lock,
@@ -29,9 +28,11 @@ import { createPortal } from 'react-dom'
 import AiRequestExplanationDialog from '@/components/AiRequestExplanationDialog'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import { modalResizableTextareaRows4ClassName } from '@/components/modal-textarea-class'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import SafeMarkdown from '@/components/SafeMarkdown'
+import StatusBadge from '@/components/StatusBadge'
 import {
   type AiRequirementGenerationAvailability,
   DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
@@ -48,6 +49,7 @@ import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import type { ImportRequirementsPayload } from '@/lib/requirements/import-schema'
 
 type AiImportMode = 'library' | 'specification-local'
+type FailureKind = 'generation' | 'generation-retry' | 'repair'
 type Phase = 'done' | 'error' | 'generating' | 'idle' | 'thinking'
 type PreviewTab =
   | 'analysis'
@@ -56,13 +58,14 @@ type PreviewTab =
   | 'rawResult'
   | 'requirements'
 
-interface AiRequirementGeneratorProps {
+export interface AiRequirementGeneratorProps {
   aiGenerationAvailability?: AiRequirementGenerationAvailability
   areas?: Array<{
     id: number
     name: string
     permissions?: { canAuthor?: boolean }
   }>
+  embedded?: boolean
   mode?: AiImportMode
   onClose: () => void
   onCreated?: () => void
@@ -133,6 +136,12 @@ interface PreviewRow {
   }
   proposedNeedsReferenceKey: string | null
   proposedNormReferenceKeys: string[]
+  resolvedPriorityLevel?: {
+    code: string
+    color: string
+    iconName: string | null
+    name: string
+  }
   reviewRowId: string
   selected: boolean
   sourceIndex: number
@@ -515,6 +524,7 @@ function previewFieldDisplay(
 export default function AiRequirementGenerator({
   aiGenerationAvailability = DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
   areas = [],
+  embedded = false,
   mode = 'library',
   onClose,
   onImportPreview,
@@ -575,7 +585,14 @@ export default function AiRequirementGenerator({
 
   const [images, setImages] = useState<AttachedImage[]>([])
   const [imageError, setImageError] = useState<string | null>(null)
+  const [errorAnnouncement, setErrorAnnouncement] = useState('')
+  const [statusAnnouncement, setStatusAnnouncement] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageSelectButtonRef = useRef<HTMLButtonElement>(null)
+  const errorSummaryHeadingRef = useRef<HTMLHeadingElement | null>(null)
+  const retryGenerateButtonRef = useRef<HTMLButtonElement | null>(null)
+  const repairButtonRef = useRef<HTMLButtonElement | null>(null)
+  const resultsHeadingRef = useRef<HTMLHeadingElement | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const favoriteModelsRef = useRef<Set<string>>(new Set())
   const manualModelSelectionRef = useRef(false)
@@ -592,6 +609,8 @@ export default function AiRequirementGenerator({
 
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [failureKind, setFailureKind] = useState<FailureKind | null>(null)
+  const [shouldFocusResults, setShouldFocusResults] = useState(false)
   const [repairing, setRepairing] = useState(false)
   const [thinking, setThinking] = useState('')
   const [rawResponse, setRawResponse] = useState('')
@@ -657,6 +676,17 @@ export default function AiRequirementGenerator({
   const formattedRawResponse = useMemo(
     () => formatRawResult(rawResponse),
     [rawResponse],
+  )
+  const reportTerminalFailure = useCallback(
+    (message: string, kind: FailureKind) => {
+      setError(message)
+      setFailureKind(kind)
+      setErrorAnnouncement(
+        `${t(kind === 'repair' ? 'repairFailed' : 'generationFailed')}: ${message}`,
+      )
+      setPhase('error')
+    },
+    [t],
   )
   const selectedRowCount = selectedRows.size
   const selectedProposalCount = selectedProposals.size
@@ -843,7 +873,7 @@ export default function AiRequirementGenerator({
   }, [cancelQueuedThinking])
 
   useEffect(() => {
-    if (!open || typeof document === 'undefined') return
+    if (!open || embedded || typeof document === 'undefined') return
 
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -851,7 +881,7 @@ export default function AiRequirementGenerator({
     return () => {
       document.body.style.overflow = previousOverflow
     }
-  }, [open])
+  }, [embedded, open])
 
   useEffect(() => {
     if (!modelMenuOpen) return
@@ -904,7 +934,36 @@ export default function AiRequirementGenerator({
     if (isVisionCapabilitySelected) return
     setImages([])
     setImageError(null)
+    setErrorAnnouncement('')
   }, [isVisionCapabilitySelected])
+
+  useEffect(() => {
+    if (phase !== 'error' || !error) return
+    const target =
+      failureKind === 'generation'
+        ? errorSummaryHeadingRef.current
+        : failureKind === 'generation-retry'
+          ? retryGenerateButtonRef.current
+          : repairButtonRef.current
+    if (!target) return
+
+    const timeout = window.setTimeout(() => {
+      target.focus()
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [error, failureKind, phase])
+
+  useEffect(() => {
+    if (phase !== 'done' || !shouldFocusResults) return
+
+    const timeout = window.setTimeout(() => {
+      resultsHeadingRef.current?.focus()
+      setShouldFocusResults(false)
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [phase, shouldFocusResults])
 
   useEffect(() => {
     if (!inProgress) return
@@ -1052,6 +1111,10 @@ export default function AiRequirementGenerator({
       setModelSearch('')
       setPhase('idle')
       setError(null)
+      setFailureKind(null)
+      setErrorAnnouncement('')
+      setStatusAnnouncement('')
+      setShouldFocusResults(false)
       setRepairing(false)
       applyThinkingImmediately('')
       setRawResponse('')
@@ -1214,42 +1277,65 @@ export default function AiRequirementGenerator({
     async (files: FileList | null) => {
       if (!files) return
       setImageError(null)
+      setErrorAnnouncement('')
       const remainingSlots = MAX_IMAGES - images.length
       if (remainingSlots <= 0) {
-        setImageError(t('imageErrorCount', { max: MAX_IMAGES }))
+        const message = t('imageErrorCount', { max: MAX_IMAGES })
+        setImageError(message)
+        setErrorAnnouncement(message)
+        imageSelectButtonRef.current?.focus()
         return
       }
+      const selectionExceedsAvailableSlots = files.length > remainingSlots
       const selectedFiles = Array.from(files).slice(0, remainingSlots)
       const nextImages: AttachedImage[] = []
+      const rejectedImageMessages: string[] = []
       for (const file of selectedFiles) {
         if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-          setImageError(t('imageErrorType', { name: file.name }))
+          rejectedImageMessages.push(t('imageErrorType', { name: file.name }))
           continue
         }
         if (file.size > MAX_IMAGE_BYTES) {
-          setImageError(t('imageErrorSize', { name: file.name }))
+          rejectedImageMessages.push(t('imageErrorSize', { name: file.name }))
           continue
         }
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(String(reader.result))
-          reader.onerror = () => reject(reader.error)
-          reader.readAsDataURL(file)
-        })
-        nextImages.push({
-          dataUrl,
-          id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
-          name: file.name,
-        })
+        try {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(String(reader.result))
+            reader.onerror = () => reject(reader.error)
+            reader.readAsDataURL(file)
+          })
+          nextImages.push({
+            dataUrl,
+            id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
+            name: file.name,
+          })
+        } catch {
+          rejectedImageMessages.push(t('imageErrorRead'))
+        }
       }
       setImages(current => [...current, ...nextImages].slice(0, MAX_IMAGES))
+      const imageErrorMessages = selectionExceedsAvailableSlots
+        ? [t('imageErrorCount', { max: MAX_IMAGES }), ...rejectedImageMessages]
+        : rejectedImageMessages
+      if (imageErrorMessages.length > 0) {
+        const message = imageErrorMessages.join(' ')
+        setImageError(message)
+        setErrorAnnouncement(message)
+      }
       if (fileInputRef.current) fileInputRef.current.value = ''
+      imageSelectButtonRef.current?.focus()
     },
     [images.length, t],
   )
 
   const resetGeneratedResult = useCallback(() => {
     setError(null)
+    setFailureKind(null)
+    setErrorAnnouncement('')
+    setStatusAnnouncement('')
+    setShouldFocusResults(false)
     applyThinkingImmediately('')
     setRawResponse('')
     setStats(null)
@@ -1277,6 +1363,8 @@ export default function AiRequirementGenerator({
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
+    const nextFailureKind: FailureKind =
+      phase === 'error' ? 'generation-retry' : 'generation'
     resetGeneratedResult()
     shouldFollowThinkingRef.current = true
     setPhase('thinking')
@@ -1342,6 +1430,9 @@ export default function AiRequirementGenerator({
             setStats((payload.stats as GenerationStats | undefined) ?? null)
             await loadPreview(generated)
             setPhase('done')
+            if (nextFailureKind === 'generation-retry') {
+              setShouldFocusResults(true)
+            }
             return
           } else if (parsed.event === 'validation_error') {
             receivedTerminalEvent = true
@@ -1351,8 +1442,10 @@ export default function AiRequirementGenerator({
             setRawResponse(String(payload.rawContent ?? ''))
             applyThinkingImmediately(String(payload.thinking ?? ''))
             setStats((payload.stats as GenerationStats | undefined) ?? null)
-            setError(String(payload.message ?? t('validationErrors')))
-            setPhase('error')
+            reportTerminalFailure(
+              String(payload.message ?? t('validationErrors')),
+              nextFailureKind,
+            )
             return
           } else if (parsed.event === 'error') {
             receivedTerminalEvent = true
@@ -1370,12 +1463,12 @@ export default function AiRequirementGenerator({
         return
       }
       flushQueuedThinking()
-      setError(
+      reportTerminalFailure(
         generateError instanceof Error
           ? generateError.message
           : t('createError'),
+        nextFailureKind,
       )
-      setPhase('error')
     } finally {
       if (abortRef.current === controller) abortRef.current = null
     }
@@ -1389,10 +1482,12 @@ export default function AiRequirementGenerator({
     mode,
     model,
     need,
+    phase,
     applyThinkingImmediately,
     cancelQueuedThinking,
     flushQueuedThinking,
     queueThinkingUpdate,
+    reportTerminalFailure,
     reasoningEffort,
     resetGeneratedResult,
     specificationId,
@@ -1407,6 +1502,9 @@ export default function AiRequirementGenerator({
 
     setRepairing(true)
     setError(null)
+    setFailureKind(null)
+    setErrorAnnouncement('')
+    setStatusAnnouncement('')
     try {
       const response = await apiFetch(
         '/api/ai/repair-requirement-import-json',
@@ -1445,13 +1543,15 @@ export default function AiRequirementGenerator({
       setSchemaIssues([])
       await loadPreview(body.payload)
       setPhase('done')
+      setStatusAnnouncement(t('repairSucceeded'))
+      setShouldFocusResults(true)
     } catch (repairError) {
-      setError(
+      reportTerminalFailure(
         repairError instanceof Error
           ? repairError.message
           : t('validationErrors'),
+        'repair',
       )
-      setPhase('error')
     } finally {
       setRepairing(false)
     }
@@ -1464,6 +1564,7 @@ export default function AiRequirementGenerator({
     rawResponse,
     reasoningEffort,
     repairing,
+    reportTerminalFailure,
     schemaIssues,
     specificationId,
     targetAreaId,
@@ -1732,11 +1833,15 @@ export default function AiRequirementGenerator({
       </div>
     ) : null
 
-  return createPortal(
+  const content = (
     <AnimatePresence>
       <motion.div
-        {...fadeMotion(shouldReduceMotion)}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-secondary-900/60 p-4 backdrop-blur-sm"
+        {...(embedded ? {} : fadeMotion(shouldReduceMotion))}
+        className={
+          embedded
+            ? 'contents'
+            : 'fixed inset-0 z-50 flex items-center justify-center bg-secondary-900/60 p-4 backdrop-blur-sm'
+        }
         role="presentation"
       >
         <motion.div
@@ -1751,6 +1856,14 @@ export default function AiRequirementGenerator({
             value: 'ai-requirement-generator',
           })}
         >
+          <div className="sr-only">
+            <p aria-atomic="true" role="alert">
+              {errorAnnouncement}
+            </p>
+            <p aria-atomic="true" role="status">
+              {statusAnnouncement}
+            </p>
+          </div>
           <header className="flex items-start justify-between gap-4 border-b border-secondary-200 px-6 py-4 dark:border-secondary-800">
             <div className="min-w-0">
               <h2
@@ -1847,16 +1960,12 @@ export default function AiRequirementGenerator({
                     >
                       {t('topicLabel')}
                     </label>
-                    <button
-                      aria-controls="ai-need-help"
-                      aria-expanded={needHelpOpen}
-                      aria-label={`${tc('help')}: ${t('topicLabel')}`}
-                      className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                    <FieldHelpButton
+                      controls="ai-need-help"
+                      expanded={needHelpOpen}
+                      label={`${tc('help')}: ${t('topicLabel')}`}
                       onClick={() => setNeedHelpOpen(open => !open)}
-                      type="button"
-                    >
-                      <HelpCircle aria-hidden className="h-4 w-4" />
-                    </button>
+                    />
                   </div>
                   <AnimatedHelpPanel id="ai-need-help" isOpen={needHelpOpen}>
                     {t.rich('topicHelp', richTags)}
@@ -1874,16 +1983,12 @@ export default function AiRequirementGenerator({
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm font-medium text-secondary-800 dark:text-secondary-100">
                       <span>{t('imageAttachLabel')}</span>
-                      <button
-                        aria-controls="ai-image-help"
-                        aria-expanded={imageHelpOpen}
-                        aria-label={`${tc('help')}: ${t('imageAttachLabel')}`}
-                        className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                      <FieldHelpButton
+                        controls="ai-image-help"
+                        expanded={imageHelpOpen}
+                        label={`${tc('help')}: ${t('imageAttachLabel')}`}
                         onClick={() => setImageHelpOpen(open => !open)}
-                        type="button"
-                      >
-                        <HelpCircle aria-hidden className="h-4 w-4" />
-                      </button>
+                      />
                     </div>
                     <AnimatedHelpPanel
                       id="ai-image-help"
@@ -1901,9 +2006,29 @@ export default function AiRequirementGenerator({
                       type="file"
                     />
                     <button
-                      className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-secondary-300 px-3 text-sm font-medium text-secondary-700 hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                      disabled={!canUseVision || images.length >= MAX_IMAGES}
-                      onClick={() => fileInputRef.current?.click()}
+                      aria-describedby={
+                        imageError ? 'ai-image-validation-error' : undefined
+                      }
+                      aria-disabled={images.length >= MAX_IMAGES}
+                      className={`inline-flex min-h-11 items-center gap-2 rounded-lg border border-secondary-300 px-3 text-sm font-medium text-secondary-700 hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 ${
+                        images.length >= MAX_IMAGES
+                          ? 'cursor-not-allowed opacity-50'
+                          : ''
+                      }`}
+                      disabled={!canUseVision}
+                      onClick={() => {
+                        if (images.length >= MAX_IMAGES) {
+                          const message = t('imageErrorCount', {
+                            max: MAX_IMAGES,
+                          })
+                          setImageError(message)
+                          setErrorAnnouncement(message)
+                          imageSelectButtonRef.current?.focus()
+                          return
+                        }
+                        fileInputRef.current?.click()
+                      }}
+                      ref={imageSelectButtonRef}
                       type="button"
                     >
                       <ImagePlus aria-hidden className="h-4 w-4" />
@@ -1913,7 +2038,10 @@ export default function AiRequirementGenerator({
                       {t('imageAttachHint')}
                     </p>
                     {imageError ? (
-                      <p className="text-xs text-red-700 dark:text-red-300">
+                      <p
+                        className="text-xs text-red-700 dark:text-red-300"
+                        id="ai-image-validation-error"
+                      >
                         {imageError}
                       </p>
                     ) : null}
@@ -1927,11 +2055,19 @@ export default function AiRequirementGenerator({
                             {image.name}
                             <button
                               aria-label={t('imageRemove')}
-                              onClick={() =>
+                              className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-200 hover:text-secondary-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-secondary-400 dark:hover:bg-secondary-700 dark:hover:text-secondary-100"
+                              {...devMarker({
+                                context: 'ai-requirement-generator',
+                                name: 'button',
+                                value: 'remove image attachment',
+                              })}
+                              onClick={() => {
                                 setImages(current =>
                                   current.filter(item => item.id !== image.id),
                                 )
-                              }
+                                setImageError(null)
+                                setErrorAnnouncement('')
+                              }}
                               type="button"
                             >
                               <X aria-hidden className="h-3 w-3" />
@@ -1954,16 +2090,12 @@ export default function AiRequirementGenerator({
                           {t('areaLabel')}
                           <RequiredFieldMarker />
                         </label>
-                        <button
-                          aria-controls="ai-area-help"
-                          aria-expanded={areaHelpOpen}
-                          aria-label={`${tc('help')}: ${t('areaLabel')}`}
-                          className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                        <FieldHelpButton
+                          controls="ai-area-help"
+                          expanded={areaHelpOpen}
+                          label={`${tc('help')}: ${t('areaLabel')}`}
                           onClick={() => setAreaHelpOpen(open => !open)}
-                          type="button"
-                        >
-                          <HelpCircle aria-hidden className="h-4 w-4" />
-                        </button>
+                        />
                       </div>
                       <AnimatedHelpPanel
                         id="ai-area-help"
@@ -2004,16 +2136,12 @@ export default function AiRequirementGenerator({
                       >
                         {t('candidateCount')}
                       </label>
-                      <button
-                        aria-controls="ai-candidate-count-help"
-                        aria-expanded={candidateCountHelpOpen}
-                        aria-label={t('candidateCountHelp')}
-                        className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                      <FieldHelpButton
+                        controls="ai-candidate-count-help"
+                        expanded={candidateCountHelpOpen}
+                        label={t('candidateCountHelp')}
                         onClick={() => setCandidateCountHelpOpen(open => !open)}
-                        type="button"
-                      >
-                        <HelpCircle aria-hidden className="h-4 w-4" />
-                      </button>
+                      />
                     </div>
                     <AnimatedHelpPanel
                       id="ai-candidate-count-help"
@@ -2053,16 +2181,12 @@ export default function AiRequirementGenerator({
                         <div className="flex min-w-0 items-center justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-secondary-800 dark:text-secondary-100">
                             <span className="truncate">{t('modelLabel')}</span>
-                            <button
-                              aria-controls="ai-model-help"
-                              aria-expanded={modelHelpOpen}
-                              aria-label={`${tc('help')}: ${t('modelLabel')}`}
-                              className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                            <FieldHelpButton
+                              controls="ai-model-help"
+                              expanded={modelHelpOpen}
+                              label={`${tc('help')}: ${t('modelLabel')}`}
                               onClick={() => setModelHelpOpen(open => !open)}
-                              type="button"
-                            >
-                              <HelpCircle aria-hidden className="h-4 w-4" />
-                            </button>
+                            />
                           </div>
                           {selectedModelPrice ? (
                             <output
@@ -2140,16 +2264,12 @@ export default function AiRequirementGenerator({
                         >
                           {t('reasoningEffortLabel')}
                         </label>
-                        <button
-                          aria-controls="ai-reasoning-help"
-                          aria-expanded={reasoningHelpOpen}
-                          aria-label={`${tc('help')}: ${t('reasoningEffortLabel')}`}
-                          className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-900 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                        <FieldHelpButton
+                          controls="ai-reasoning-help"
+                          expanded={reasoningHelpOpen}
+                          label={`${tc('help')}: ${t('reasoningEffortLabel')}`}
                           onClick={() => setReasoningHelpOpen(open => !open)}
-                          type="button"
-                        >
-                          <HelpCircle aria-hidden className="h-4 w-4" />
-                        </button>
+                        />
                       </div>
                       <AnimatedHelpPanel
                         id="ai-reasoning-help"
@@ -2348,13 +2468,30 @@ export default function AiRequirementGenerator({
 
               {phase === 'error' ? (
                 <div className="space-y-4">
-                  <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
+                  <div
+                    className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+                    {...devMarker({
+                      context: 'ai-requirement-generator',
+                      name: 'error summary',
+                      priority: 350,
+                      value: 'generation outcome',
+                    })}
+                  >
                     <div className="flex items-start gap-2">
                       <AlertTriangle aria-hidden className="mt-0.5 h-5 w-5" />
                       <div>
-                        <p className="font-medium">
-                          {error ?? t('validationErrors')}
-                        </p>
+                        <h3
+                          className="font-medium"
+                          ref={errorSummaryHeadingRef}
+                          tabIndex={-1}
+                        >
+                          {t(
+                            failureKind === 'repair'
+                              ? 'repairFailed'
+                              : 'generationFailed',
+                          )}
+                        </h3>
+                        <p>{error ?? t('validationErrors')}</p>
                         {schemaIssues.length > 0 ? (
                           <ul className="mt-2 list-disc space-y-1 pl-5">
                             {schemaIssues.map(issue => (
@@ -2381,6 +2518,7 @@ export default function AiRequirementGenerator({
                         className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={repairing || !model}
                         onClick={handleRepair}
+                        ref={repairButtonRef}
                         type="button"
                       >
                         {repairing ? (
@@ -2412,10 +2550,14 @@ export default function AiRequirementGenerator({
                 <div className="absolute inset-6 flex min-h-0 flex-col gap-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-300">
+                      <h3
+                        className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-300"
+                        ref={resultsHeadingRef}
+                        tabIndex={-1}
+                      >
                         <CheckCircle2 aria-hidden className="h-4 w-4" />
                         {t('selectedCandidates', { count: selectedRowCount })}
-                      </p>
+                      </h3>
                       {stats ? (
                         <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
                           {t('tokensCount', { count: stats.totalTokens })} · $
@@ -2566,13 +2708,6 @@ export default function AiRequirementGenerator({
                               row.labels?.qualityCharacteristic,
                               row.values.qualityCharacteristicId,
                             ),
-                            previewFieldDisplay(
-                              row,
-                              'priorityLevelId',
-                              t('detailPriorityLevel'),
-                              row.labels?.priorityLevel,
-                              row.values.priorityLevelId,
-                            ),
                           ].filter(
                             (
                               item,
@@ -2581,6 +2716,13 @@ export default function AiRequirementGenerator({
                               value: string
                               warning: ImportMessage | null
                             } => item !== null,
+                          )
+                          const priorityClassification = previewFieldDisplay(
+                            row,
+                            'priorityLevelId',
+                            t('detailPriorityLevel'),
+                            row.labels?.priorityLevel,
+                            row.values.priorityLevelId,
                           )
                           return (
                             <article
@@ -2592,6 +2734,7 @@ export default function AiRequirementGenerator({
                               key={row.reviewRowId}
                             >
                               <div className="flex items-start gap-3">
+                                {/* WCAG 2.5.8 target-size exception: spacing — separate candidate cards keep 24 CSS-pixel target circles apart; verified by ai-requirement-generator.test.tsx. */}
                                 <input
                                   aria-label={t('selectRequirement', {
                                     index: index + 1,
@@ -2616,6 +2759,37 @@ export default function AiRequirementGenerator({
                                     {row.values.description}
                                   </p>
                                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                    {row.resolvedPriorityLevel ? (
+                                      <StatusBadge
+                                        color={row.resolvedPriorityLevel.color}
+                                        iconName={
+                                          row.resolvedPriorityLevel.iconName
+                                        }
+                                        label={`${row.resolvedPriorityLevel.code} – ${row.resolvedPriorityLevel.name}`}
+                                      />
+                                    ) : priorityClassification ? (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-secondary-100 px-2 py-1 text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                        {priorityClassification.label}:{' '}
+                                        {priorityClassification.value}
+                                        {priorityClassification.warning ? (
+                                          <span
+                                            aria-label={previewFieldWarningText(
+                                              priorityClassification.warning,
+                                            )}
+                                            className="inline-flex text-amber-600 dark:text-amber-300"
+                                            role="img"
+                                            title={previewFieldWarningText(
+                                              priorityClassification.warning,
+                                            )}
+                                          >
+                                            <AlertTriangle
+                                              aria-hidden
+                                              className="h-3.5 w-3.5"
+                                            />
+                                          </span>
+                                        ) : null}
+                                      </span>
+                                    ) : null}
                                     {classificationBadges.map(badge => (
                                       <span
                                         className="inline-flex items-center gap-1 rounded-full bg-secondary-100 px-2 py-1 text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
@@ -2701,6 +2875,7 @@ export default function AiRequirementGenerator({
                               key={proposal.key}
                             >
                               <div className="flex items-start gap-3">
+                                {/* WCAG 2.5.8 target-size exception: spacing — separate norm-reference cards keep 24 CSS-pixel target circles apart; verified by ai-requirement-generator.test.tsx. */}
                                 <input
                                   aria-label={`${proposal.name} ${t('proposals')}`}
                                   checked={selected}
@@ -2847,6 +3022,7 @@ export default function AiRequirementGenerator({
                   className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={generateDisabled}
                   onClick={handleGenerate}
+                  ref={retryGenerateButtonRef}
                   title={aiGenerationDisabledMessage ?? undefined}
                   type="button"
                   {...devMarker({
@@ -2883,7 +3059,9 @@ export default function AiRequirementGenerator({
           reasoningEffortLabel={reasoningEffortLabel}
         />
       </motion.div>
-    </AnimatePresence>,
-    document.body,
+    </AnimatePresence>
   )
+
+  if (embedded) return content
+  return createPortal(content, document.body)
 }

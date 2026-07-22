@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const translate = Object.assign(
@@ -164,6 +165,82 @@ describe('AiRequirementGenerator devMarker coverage', () => {
     expect(generateButton).toHaveAttribute(
       'data-developer-mode-value',
       'generate',
+    )
+  })
+
+  it('marks the visible generation error summary', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return {
+          json: async () => ({
+            models: [
+              {
+                contextLength: 200000,
+                id: 'anthropic/claude-sonnet-4',
+                name: 'Claude Sonnet 4',
+                pricing: {
+                  completion: '0.000015',
+                  prompt: '0.000003',
+                  reasoning: '0.000015',
+                },
+                provider: 'anthropic',
+                supportedParameters: ['reasoning', 'stream', 'response_format'],
+              },
+            ],
+          }),
+          ok: true,
+        }
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return {
+          json: async () => ({
+            isFreeTier: false,
+            limit: 50,
+            limitRemaining: 37.5,
+            managementKeyMissing: false,
+            totalCredits: 50,
+            usage: 12.5,
+            usageDaily: 12.5,
+          }),
+          ok: true,
+        }
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/ai/generate-requirement-import'
+      ) {
+        return {
+          body: new ReadableStream({
+            start(controller) {
+              controller.close()
+            },
+          }),
+          ok: true,
+        }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '1')
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Audit logs')
+    await userEvent.click(
+      screen.getByRole('button', { name: 'generateButton' }),
+    )
+
+    const errorSummary = await screen.findByRole('heading', {
+      name: 'generationFailed',
+    })
+    const summaryContainer = errorSummary.closest(
+      '[data-developer-mode-name="error summary"]',
+    )
+    expect(summaryContainer).toHaveAttribute(
+      'data-developer-mode-name',
+      'error summary',
+    )
+    expect(summaryContainer).toHaveAttribute(
+      'data-developer-mode-value',
+      'generation outcome',
     )
   })
 })

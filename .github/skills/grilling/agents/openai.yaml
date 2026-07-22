@@ -1,4 +1,4 @@
 interface:
   display_name: "Grilling"
-  short_description: "Stress-test plans one decision at a time"
-  default_prompt: "Use $grilling to interrogate this plan one decision at a time and recommend an answer for each question."
+  short_description: "Stress-test plans before implementation"
+  default_prompt: "Use $grilling to stress-test this plan before implementation, one decision at a time."

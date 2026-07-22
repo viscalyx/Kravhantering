@@ -18,6 +18,10 @@ V1 throttling är process-local och in-memory. Det duger som application
 guardrail och kapacitetssignal, men skalad throttling i produktion måste flytta
 till SQL Server, Redis eller en platform rate-limiting capability.
 
+[ADR 0042](./0042-begransade-synkrona-exporter-och-rapporter.md) tillämpar
+denna modell på kravbibliotekets CSV-export och stora kravliste-PDF med slutna
+utfall, orsaker och integritetssäkra mätvärden.
+
 ## Övervägda alternativ
 
 - Lagra capacity events i applikationsdatabasen: avvisat eftersom dashboards,

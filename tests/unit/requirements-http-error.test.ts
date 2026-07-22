@@ -93,6 +93,51 @@ describe('toHttpErrorPayload', () => {
     })
   })
 
+  it.each([
+    'norm_reference_id_exists',
+    'norm_reference_id_generation_exhausted',
+  ])('allowlists the safe norm-reference conflict reason %s', reason => {
+    expect(
+      toHttpErrorPayload(
+        conflictError('Norm reference ID conflict', {
+          reason,
+        }),
+      ),
+    ).toEqual({
+      body: {
+        code: 'conflict',
+        details: { reason },
+        error: 'Norm reference ID conflict',
+      },
+      status: 409,
+    })
+  })
+
+  it.each([
+    'rfi_question_suggestion_review_already_requested',
+    'rfi_question_suggestion_review_required',
+    'rfi_question_suggestion_already_resolved',
+    'rfi_question_suggestion_not_draft',
+  ])('allowlists the safe RFI suggestion conflict reason %s', reason => {
+    expect(
+      toHttpErrorPayload(
+        conflictError('RFI question suggestion conflict', {
+          content: 'Must remain private',
+          reason,
+          resolutionMotivation: 'Must also remain private',
+          suggestionId: 77,
+        }),
+      ),
+    ).toEqual({
+      body: {
+        code: 'conflict',
+        details: { reason },
+        error: 'RFI question suggestion conflict',
+      },
+      status: 409,
+    })
+  })
+
   it('does not allowlist stale edit details on non-conflict errors', () => {
     const result = toHttpErrorPayload(
       validationError('Invalid stale edit payload', {

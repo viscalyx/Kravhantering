@@ -45,7 +45,7 @@ const ENV_LOCAL_FILES = [
 ]
 
 const USAGE = `Usage:
-  node scripts/containers/run-local-stack.mjs up [--mode <test|release-smoke>] [--run-id <id>] [--skip-build] [--release-images-from-lock]
+  node scripts/containers/run-local-stack.mjs up [--mode <test|release-smoke>] [--run-id <id>] [--skip-build] [--prune-docker-after-load] [--release-images-from-lock]
   node scripts/containers/run-local-stack.mjs down [--mode <test|release-smoke>]
 
 Options:
@@ -55,6 +55,9 @@ Options:
                          HSA integration support lock file for release-smoke
                          Kong and adapter images
   --network-name <name>   Internal Compose network name
+  --prune-docker-after-load
+                         Remove Docker build cache and unused images after
+                         loading local images into Podman
   --release-images-from-lock
                          Pull project and release-smoke test support images by
                          manifest digest from lock files
@@ -77,6 +80,7 @@ function readNonEmpty(value) {
 export function parseArgs(args) {
   const [command = '', ...rest] = args
   const options = {}
+  let pruneDockerAfterLoad = false
   let releaseImagesFromLock = false
   let skipBuild = false
 
@@ -93,6 +97,10 @@ export function parseArgs(args) {
     }
     if (key === 'release-images-from-lock') {
       releaseImagesFromLock = true
+      continue
+    }
+    if (key === 'prune-docker-after-load') {
+      pruneDockerAfterLoad = true
       continue
     }
 
@@ -119,6 +127,7 @@ export function parseArgs(args) {
     mode,
     networkName:
       readNonEmpty(options['network-name']) ?? DEFAULT_INTERNAL_NETWORK_NAME,
+    pruneDockerAfterLoad,
     releaseImagesFromLock,
     runId: readNonEmpty(options['run-id']),
     skipBuild,
@@ -229,6 +238,7 @@ export function createLocalStackConfig(options = {}) {
     networkName:
       readNonEmpty(options.networkName) ?? DEFAULT_INTERNAL_NETWORK_NAME,
     projectName,
+    pruneDockerAfterLoad: options.pruneDockerAfterLoad ?? false,
     releaseImagesFromLock: options.releaseImagesFromLock ?? false,
     runId,
     skipBuild: options.skipBuild ?? false,
@@ -388,6 +398,12 @@ function loadDockerImageIntoPodman(image, options = {}) {
       else reject(new Error(`podman load ${image} failed with ${code}`))
     })
   })
+}
+
+function pruneDockerAfterLoad(config, options = {}) {
+  if (!config.pruneDockerAfterLoad) return
+  runCommand('docker', ['buildx', 'prune', '--all', '--force'], options)
+  runCommand('docker', ['image', 'prune', '--all', '--force'], options)
 }
 
 function inspectImageId(image, options = {}) {
@@ -1199,6 +1215,7 @@ async function up(config, options = {}) {
         options,
       )
     }
+    pruneDockerAfterLoad(runtimeConfig, options)
   }
   runCommand(
     'node',

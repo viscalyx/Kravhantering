@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   filenameFromContentDisposition,
+  sanitizeAttachmentFilename,
   sanitizePdfFilename,
 } from '@/lib/pdf/filename'
 import { renderPdfResponse } from '@/lib/pdf/server-response'
@@ -45,5 +46,61 @@ describe('PDF response helpers', () => {
     expect(filenameFromContentDisposition(disposition)).toBe(
       'Granskning REQ-1.pdf',
     )
+  })
+
+  it('removes Unicode spoofing controls from server and parsed filenames', async () => {
+    const response = await renderPdfResponse(
+      createElement('mock-document'),
+      'Review\u202ePDF\u2066\u200b\ufeff.pdf',
+    )
+    const encodedFilename = encodeURIComponent(
+      'Review\u202ePDF\u2066\u200b\ufeff.pdf',
+    )
+    const encodedDisposition = `attachment; filename="fallback.pdf"; filename*=UTF-8''${encodedFilename}`
+
+    expect(response.headers.get('Content-Disposition')).toContain(
+      'filename=ReviewPDF.pdf',
+    )
+    expect(filenameFromContentDisposition(encodedDisposition)).toBe(
+      'ReviewPDF.pdf',
+    )
+    expect(
+      filenameFromContentDisposition(
+        "attachment; filename*=UTF-8''%E0%A4%A.pdf",
+      ),
+    ).toBeNull()
+  })
+
+  it('bounds parsed attachment filenames before browser download use', () => {
+    const encoded = encodeURIComponent(`Report ${'å'.repeat(200)} SPEC-123.csv`)
+    const filename = filenameFromContentDisposition(
+      `attachment; filename="fallback.csv"; filename*=UTF-8''${encoded}`,
+    )
+
+    expect(filename).not.toBeNull()
+    expect(
+      new TextEncoder().encode(filename ?? '').byteLength,
+    ).toBeLessThanOrEqual(240)
+    expect(filename).toContain('...')
+    expect(filename).toMatch(/ SPEC-123\.csv$/)
+  })
+
+  it('preserves valid attachment extensions and sanitizes unsafe characters', () => {
+    expect(
+      filenameFromContentDisposition(
+        'attachment; filename="kravbibliotek.csv"',
+      ),
+    ).toBe('kravbibliotek.csv')
+    expect(
+      filenameFromContentDisposition('attachment; filename="retry.csv"'),
+    ).toBe('retry.csv')
+    expect(
+      filenameFromContentDisposition('attachment; filename=plain.csv'),
+    ).toBe('plain.csv')
+    expect(filenameFromContentDisposition('attachment')).toBeNull()
+    expect(sanitizeAttachmentFilename('\u0000Risk:export?.csv')).toBe(
+      'Risk-export-.csv',
+    )
+    expect(sanitizePdfFilename('Risk:rapport?')).toBe('Risk-rapport-.pdf')
   })
 })

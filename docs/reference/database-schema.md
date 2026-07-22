@@ -193,6 +193,21 @@ erDiagram
         datetime2 updated_at
     }
 
+    application_settings {
+        integer id PK
+        integer csv_export_max_requirements
+        integer csv_export_max_file_bytes
+        integer csv_export_concurrency_per_node
+        integer csv_export_timeout_seconds
+        integer pdf_report_max_requirements
+        integer pdf_report_max_file_bytes
+        integer pdf_report_concurrency_per_node
+        integer pdf_report_timeout_seconds
+        integer pdf_worker_memory_mib
+        datetime2 created_at
+        datetime2 updated_at
+    }
+
     requirement_import_validation_sessions {
         integer id PK
         text token_hash UK
@@ -889,7 +904,7 @@ stakeholder needs.
 | `assessment_criteria_sv` | text | Swedish guidance for selecting the level |
 | `assessment_criteria_en` | text | English guidance for selecting the level |
 | `sort_order` | integer | Display ordering |
-| `color` | text | Hex color code for UI badges |
+| `color` | text | Admin-selected `#RRGGBB` accent; valid values stay exact |
 | `icon_name` | text | Allowed lucide icon name (nullable) |
 
 **Seed values:**
@@ -1281,7 +1296,13 @@ version and included scope are unchanged.
 Separate proposal track for new or changed RFI questions. Suggestions target a
 requirement area and may optionally point to an existing RFI question. A source
 specification reference is stored as a minimal snapshot so area authors can
-handle the suggestion without receiving full specification access.
+handle the suggestion without receiving full specification access. Lifecycle
+state is derived from the review and resolution fields: `draft` moves to
+`review_requested`, which moves once to `resolved` or `dismissed`. Only drafts
+can be deleted. Review timestamps, resolution evidence, content, targeting, and
+source snapshots are immutable after review starts. Privacy anonymization of
+actor snapshots and `specification_id` cleanup from a deleted specification
+remain allowed.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -1294,13 +1315,27 @@ handle the suggestion without receiving full specification access.
 | `source_specification_name` | text | Minimal source snapshot |
 | `content` | text | Suggestion content |
 | `is_review_requested` | integer | Whether review has been requested |
+| `review_requested_at` | text (ISO 8601) | First review-request timestamp |
 | `resolution` | integer | `1` resolved, `2` dismissed, or `NULL` |
 | `resolution_motivation` | text | Resolution reason |
 | `created_by_hsa_id` | text | Creator HSA-id snapshot |
 | `created_by_display_name` | text | Creator display-name snapshot |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last lifecycle-change timestamp |
 | `resolved_by_hsa_id` | text | Resolver HSA-id snapshot |
 | `resolved_by_display_name` | text | Resolver display-name snapshot |
+| `resolved_at` | text (ISO 8601) | Write-once resolution timestamp |
 <!-- markdownlint-enable MD013 -->
+
+**Check constraint:**
+`chk_rfi_question_suggestions_lifecycle` rejects incoherent combinations of
+review flags, lifecycle timestamps, resolution type, and resolution
+motivation.
+
+**Trigger:** `trg_rfi_question_suggestions_lifecycle` enforces set-based
+insert, update, and delete rules. It permits creation only as draft, the
+forward-only lifecycle, actor anonymization, and specification cleanup while
+rejecting evidence changes and non-draft deletion.
 
 ---
 
@@ -1440,6 +1475,36 @@ These tables store contributor- and admin-managed UI configuration.
 
 They are not business-domain reference data. They control organization-wide UI
 defaults used by the app.
+
+### `application_settings`
+
+Singleton Admin Center resource limits for generated CSV exports and large PDF
+reports. File-size values are persisted as bytes; the UI converts them to MiB.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Default | Allowed value |
+| --- | --- | --- | --- |
+| `id` | integer PK | `1` | Singleton row `1` |
+| `csv_export_max_requirements` | integer | `1000` | `1`–`5000` |
+| `csv_export_max_file_bytes` | integer | `104857600` | `1`–`1024` MiB in `1 MiB` steps |
+| `csv_export_concurrency_per_node` | integer | `5` | `1`–`20` |
+| `csv_export_timeout_seconds` | integer | `120` | `10`–`600` |
+| `pdf_report_max_requirements` | integer | `1000` | `1`–`1000` |
+| `pdf_report_max_file_bytes` | integer | `52428800` | `1`–`512` MiB in `1 MiB` steps |
+| `pdf_report_concurrency_per_node` | integer | `3` | `1`–`10` |
+| `pdf_report_timeout_seconds` | integer | `180` | `10`–`600` |
+| `pdf_worker_memory_mib` | integer | `512` | `128`–`4096` MiB |
+| `created_at` | datetime2 | Seed time | Creation timestamp |
+| `updated_at` | datetime2 | Seed time | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+Required and demo seed profiles create row `id = 1` without overwriting an
+existing row. `chk_application_settings_id` enforces the singleton identity.
+The nine field-specific `chk_application_settings_*` constraints enforce the
+ranges above; the two byte fields additionally enforce exact `1 MiB` steps.
+Each generated-output operation reads one settings snapshot after
+authorization and uses that snapshot for admission, bounds, timeout, worker
+memory, and telemetry.
 
 ### `ai_settings`
 
@@ -1918,8 +1983,10 @@ reviewer, and external evidence reference for IdP/repository review records.
 **Indexes:** `idx_access_review_runs_status`,
 `idx_access_review_runs_due_at`, `idx_access_review_runs_reviewer_hsa_id`.
 
-**Check constraint:** `chk_access_review_runs_status` limits `status` to the
-review lifecycle values above.
+**Check constraints:** `chk_access_review_runs_status` limits `status` to the
+review lifecycle values above. `chk_access_review_runs_period_order` requires
+`period_start` to be earlier than or equal to `period_end`; `due_at` remains an
+independent deadline.
 
 **Seed note:** Local privacy seed data includes two completed access-review
 runs for `SE5560000001-linneab`: one where that HSA identity created the run
@@ -2623,6 +2690,7 @@ graph LR
     end
 
     subgraph UI Settings
+        APS[application_settings]
         AIS[ai_settings]
         AIR[ai_safety_rules]
         AIRT[ai_safety_rule_terms]

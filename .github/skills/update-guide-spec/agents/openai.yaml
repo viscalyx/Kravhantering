@@ -1,6 +1,6 @@
 interface:
   display_name: "Update Guide Spec"
-  short_description: "Update the Playwright user-guide generator spec"
-  default_prompt: "Use $update-guide-spec to update the Playwright user-guide generator spec (tests/guide/generate-guide.spec.ts) according to a provided scenario or instructions."
+  short_description: "Update Playwright user-guide generator"
+  default_prompt: "Use $update-guide-spec to modify the Playwright user-guide generator spec for this scenario."
 policy:
   allow_implicit_invocation: false

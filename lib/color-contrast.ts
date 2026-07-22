@@ -15,8 +15,35 @@ const DEFAULT_BG = '#ffffff'
  */
 const DEFAULT_DARK_BG = '#0f172a'
 const DEFAULT_MIN_RATIO = 4.5
+const BADGE_TINT_OPACITY = 0.125
 const MAX_DARKEN_STEPS = 12
 const DARKEN_STEP = 0.05
+
+export interface ThemeContrastColors {
+  background: string
+  foreground: string
+  ratio: number
+}
+
+export interface BadgeContrastColors {
+  accent: string
+  dark: ThemeContrastColors
+  light: ThemeContrastColors
+}
+
+export const isStrictHexColor = (value: string): boolean =>
+  /^#[0-9a-fA-F]{6}$/.test(value)
+
+export const parseStrictHexColor = (
+  value: string,
+): [number, number, number] | null => {
+  if (!isStrictHexColor(value)) return null
+  return [
+    Number.parseInt(value.slice(1, 3), 16),
+    Number.parseInt(value.slice(3, 5), 16),
+    Number.parseInt(value.slice(5, 7), 16),
+  ]
+}
 
 function normalizeHex(hex: string): string {
   let value = hex.trim().replace(/^#/, '')
@@ -57,6 +84,25 @@ export const contrastRatio = (hex1: string, hex2: string): number => {
   const lighter = Math.max(l1, l2)
   const darker = Math.min(l1, l2)
   return (lighter + 0.05) / (darker + 0.05)
+}
+
+const rgbToHex = (rgb: [number, number, number]): string =>
+  `#${rgb.map(channel => channel.toString(16).padStart(2, '0')).join('')}`
+
+export const compositeHexColors = (
+  foregroundHex: string,
+  backgroundHex: string,
+  opacity: number,
+): string | null => {
+  const foreground = parseStrictHexColor(foregroundHex)
+  const background = parseStrictHexColor(backgroundHex)
+  if (!foreground || !background || opacity < 0 || opacity > 1) return null
+
+  return rgbToHex(
+    foreground.map((channel, index) =>
+      Math.round(channel * opacity + background[index] * (1 - opacity)),
+    ) as [number, number, number],
+  )
 }
 
 const rgbToHsl = (
@@ -190,6 +236,47 @@ export const getReadableTextColors = (
   light: clampForReadability(fgHex),
   dark: lightenForReadability(fgHex),
 })
+
+/**
+ * Derives the exact opaque colors used by a tinted status badge in both app
+ * themes. Invalid accents return `null` so renderers can omit accent styling
+ * instead of silently substituting another configured color.
+ */
+export const getBadgeContrastColors = (
+  accentHex: string,
+): BadgeContrastColors | null => {
+  if (!isStrictHexColor(accentHex)) return null
+
+  const accent = accentHex.toLowerCase()
+  const lightBackground = compositeHexColors(
+    accent,
+    DEFAULT_BG,
+    BADGE_TINT_OPACITY,
+  )
+  const darkBackground = compositeHexColors(
+    accent,
+    DEFAULT_DARK_BG,
+    BADGE_TINT_OPACITY,
+  )
+  if (!lightBackground || !darkBackground) return null
+
+  const lightForeground = clampForReadability(accent, lightBackground)
+  const darkForeground = lightenForReadability(accent, darkBackground)
+
+  return {
+    accent,
+    light: {
+      background: lightBackground,
+      foreground: lightForeground,
+      ratio: contrastRatio(lightForeground, lightBackground),
+    },
+    dark: {
+      background: darkBackground,
+      foreground: darkForeground,
+      ratio: contrastRatio(darkForeground, darkBackground),
+    },
+  }
+}
 
 /**
  * Picks `#ffffff` or `#111827` — whichever has higher contrast against

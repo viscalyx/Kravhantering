@@ -1,27 +1,57 @@
-# Project-scoped Codex defaults for the Kravhantering devcontainer.
-#
-# The default `workspace-write` sandbox blocks network access, which prevents
-# database-backed checks from resolving Compose service names such as `db`.
-# This profile keeps filesystem access scoped to the workspace while allowing
-# the local devcontainer service network.
+# Shared Codex defaults for every Kravhantering development environment.
+# Codex automatically layers the settings on top of the user configuration in ~/.codex/config.tom.
 
-approval_policy = "on-request"
-default_permissions = "kravhantering-devcontainer"
+personality = "pragmatic"
 
-[permissions.kravhantering-devcontainer]
-description = "Workspace access with Kravhantering devcontainer service network."
-extends = ":workspace"
+model = "gpt-5.6-sol"
+model_reasoning_effort = "high"
 
-[permissions.kravhantering-devcontainer.network]
+[mcp_servers.playwright]
+args = ["@playwright/mcp@latest"]
+command = "npx"
+
+[mcp_servers.playwright.tools.browser_navigate]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_click]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_close]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_fill_form]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_resize]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_tabs]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_press_key]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_hover]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_evaluate]
+approval_mode = "approve"
+
+[mcp_servers.github]
 enabled = true
-allow_local_binding = true
+url = "https://api.githubcopilot.com/mcp/"
+bearer_token_env_var = "GH_TOKEN"
 
-[permissions.kravhantering-devcontainer.network.domains]
-"db" = "allow"
-"idp" = "allow"
-"kong" = "allow"
-"hsa-directory-mock" = "allow"
-"hsa-person-lookup-adapter" = "allow"
-"localhost" = "allow"
-"127.0.0.1" = "allow"
-"::1" = "allow"
+[mcp_servers.github.tools.issue_write]
+approval_mode = "approve"
+
+[mcp_servers.github.tools.add_issue_comment]
+approval_mode = "approve"
+
+[mcp_servers.github.tools.sub_issue_write]
+approval_mode = "approve"
+
+[tui]
+terminal_title = ["activity", "app-name"]
+status_line = ["model-with-reasoning", "context-used", "context-window-size", "fast-mode", "permissions", "thread-title"]
+status_line_use_colors = true

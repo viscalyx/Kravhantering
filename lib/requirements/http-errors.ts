@@ -21,6 +21,32 @@ interface SafeStaleEditHttpDetails {
   reason: 'stale_requirement_edit'
 }
 
+const SAFE_NORM_REFERENCE_ID_CONFLICT_REASONS = [
+  'norm_reference_id_exists',
+  'norm_reference_id_generation_exhausted',
+] as const
+
+type SafeNormReferenceIdConflictReason =
+  (typeof SAFE_NORM_REFERENCE_ID_CONFLICT_REASONS)[number]
+
+interface SafeNormReferenceIdConflictHttpDetails {
+  reason: SafeNormReferenceIdConflictReason
+}
+
+const SAFE_RFI_QUESTION_SUGGESTION_CONFLICT_REASONS = [
+  'rfi_question_suggestion_review_already_requested',
+  'rfi_question_suggestion_review_required',
+  'rfi_question_suggestion_already_resolved',
+  'rfi_question_suggestion_not_draft',
+] as const
+
+type SafeRfiQuestionSuggestionConflictReason =
+  (typeof SAFE_RFI_QUESTION_SUGGESTION_CONFLICT_REASONS)[number]
+
+interface SafeRfiQuestionSuggestionConflictHttpDetails {
+  reason: SafeRfiQuestionSuggestionConflictReason
+}
+
 const SAFE_PRIVACY_ERASURE_REASONS = [
   'owner_area_references_blocking',
   'owner_references_blocking',
@@ -37,7 +63,9 @@ interface SafePrivacyErasureHttpDetails {
 }
 
 type SafeHttpErrorDetails =
+  | SafeNormReferenceIdConflictHttpDetails
   | SafePrivacyErasureHttpDetails
+  | SafeRfiQuestionSuggestionConflictHttpDetails
   | SafeStaleEditHttpDetails
 
 function isStatusError(error: unknown): error is Error & {
@@ -91,6 +119,28 @@ function toSafeHttpErrorDetails(
     return {
       latest: toSafeLatestEditSummary(details.latest),
       reason: 'stale_requirement_edit',
+    }
+  }
+
+  if (
+    code === 'conflict' &&
+    SAFE_NORM_REFERENCE_ID_CONFLICT_REASONS.includes(
+      details?.reason as SafeNormReferenceIdConflictReason,
+    )
+  ) {
+    return {
+      reason: details?.reason as SafeNormReferenceIdConflictReason,
+    }
+  }
+
+  if (
+    code === 'conflict' &&
+    SAFE_RFI_QUESTION_SUGGESTION_CONFLICT_REASONS.includes(
+      details?.reason as SafeRfiQuestionSuggestionConflictReason,
+    )
+  ) {
+    return {
+      reason: details?.reason as SafeRfiQuestionSuggestionConflictReason,
     }
   }
 

@@ -1,4 +1,4 @@
-import { expect, type Route, test } from '@playwright/test'
+import { expect, type Page, type Route, test } from '@playwright/test'
 
 const pwtRfiArea = {
   id: 920001,
@@ -87,10 +87,28 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
   })
 }
 
+async function assertWorkspaceNavigation({
+  navigate,
+  page,
+  title,
+  url,
+}: {
+  navigate: () => Promise<unknown>
+  page: Page
+  title: string
+  url: RegExp
+}) {
+  await navigate()
+  await expect(page).toHaveURL(url)
+  await expect(
+    page.getByRole('heading', { level: 1, name: title }),
+  ).toBeVisible()
+}
+
 test.describe('Stewardship navigation memory', () => {
   test.use({ viewport: { height: 720, width: 1280 } })
 
-  test('REQ-14b: returns directly to the remembered question tab from specifications', async ({
+  test('REQ-14b: remembers and navigates stewardship workspaces', async ({
     page,
   }) => {
     await test.step('browse to the question stewardship tab', async () => {
@@ -121,47 +139,54 @@ test.describe('Stewardship navigation memory', () => {
       ).toBeVisible()
     })
 
-    await test.step('return through the direct stewardship link without a package flash', async () => {
-      await page.evaluate(() => {
-        const win = window as typeof window & {
-          __stewardshipHeadingLog?: string[]
-          __stewardshipHeadingObserver?: MutationObserver
-        }
-        win.__stewardshipHeadingLog = []
-        const recordHeadings = () => {
-          const headings = Array.from(document.querySelectorAll('h1'))
-            .map(heading => heading.textContent?.trim())
-            .filter((text): text is string => Boolean(text))
-          win.__stewardshipHeadingLog?.push(...headings)
-        }
-        recordHeadings()
-        win.__stewardshipHeadingObserver = new MutationObserver(recordHeadings)
-        win.__stewardshipHeadingObserver.observe(document.body, {
-          childList: true,
-          subtree: true,
-          characterData: true,
-        })
+    await test.step('return through the direct stewardship link', async () => {
+      await assertWorkspaceNavigation({
+        navigate: () =>
+          page.getByRole('link', { name: 'Kravurvalsfrågor' }).click(),
+        page,
+        title: 'Kravurvalsfrågor',
+        url: /\/sv\/requirements\/stewardship\?tab=questions/,
       })
+    })
 
-      await page.getByRole('link', { name: 'Kravurvalsfrågor' }).click()
-
-      await expect(page).toHaveURL(
-        /\/sv\/requirements\/stewardship\?tab=questions/,
-      )
-      await expect(
-        page.getByRole('heading', { level: 1, name: 'Kravurvalsfrågor' }),
-      ).toBeVisible()
-
-      const headingLog = await page.evaluate(() => {
-        const win = window as typeof window & {
-          __stewardshipHeadingLog?: string[]
-          __stewardshipHeadingObserver?: MutationObserver
-        }
-        win.__stewardshipHeadingObserver?.disconnect()
-        return win.__stewardshipHeadingLog ?? []
+    await test.step('switch workspaces and traverse browser history without inactive headings', async () => {
+      await assertWorkspaceNavigation({
+        navigate: () => page.getByRole('link', { name: 'RFI-frågor' }).click(),
+        page,
+        title: 'RFI-frågor',
+        url: /\/sv\/requirements\/stewardship\?tab=information-requests/,
       })
-
-      expect(headingLog).not.toContain('Kravpaket')
+      await assertWorkspaceNavigation({
+        navigate: () =>
+          page.getByRole('link', { name: 'Normbibliotek' }).click(),
+        page,
+        title: 'Normbibliotek',
+        url: /\/sv\/requirements\/stewardship\?tab=norms/,
+      })
+      await assertWorkspaceNavigation({
+        navigate: () => page.goBack(),
+        page,
+        title: 'RFI-frågor',
+        url: /\/sv\/requirements\/stewardship\?tab=information-requests/,
+      })
+      await assertWorkspaceNavigation({
+        navigate: () => page.goBack(),
+        page,
+        title: 'Kravurvalsfrågor',
+        url: /\/sv\/requirements\/stewardship\?tab=questions/,
+      })
+      await assertWorkspaceNavigation({
+        navigate: () => page.goForward(),
+        page,
+        title: 'RFI-frågor',
+        url: /\/sv\/requirements\/stewardship\?tab=information-requests/,
+      })
+      await assertWorkspaceNavigation({
+        navigate: () => page.goForward(),
+        page,
+        title: 'Normbibliotek',
+        url: /\/sv\/requirements\/stewardship\?tab=norms/,
+      })
     })
   })
 
@@ -190,7 +215,7 @@ test.describe('Stewardship navigation memory', () => {
     page,
   }) => {
     const reviewRequests: number[] = []
-    const resolutionRequests: unknown[] = []
+    const resolutionRequests: Array<{ body: unknown; id: number }> = []
     let suggestions = [
       pwtRfiSuggestion({
         content: 'PWT-MANUAL öppet frågeförslag.',
@@ -244,12 +269,30 @@ test.describe('Stewardship navigation memory', () => {
       },
     )
     await page.route(
-      '**/api/rfi-question-suggestions/920002/resolution',
+      '**/api/rfi-question-suggestions/920002/request-review',
       async route => {
-        const body = route.request().postDataJSON()
-        resolutionRequests.push(body)
+        reviewRequests.push(920002)
         suggestions = suggestions.map(suggestion =>
           suggestion.id === 920002
+            ? {
+                ...suggestion,
+                isReviewRequested: true,
+                reviewRequestedAt: '2026-04-24T10:15:00.000Z',
+                updatedAt: '2026-04-24T10:15:00.000Z',
+              }
+            : suggestion,
+        )
+        await fulfillJson(route, { ok: true })
+      },
+    )
+    await page.route(
+      '**/api/rfi-question-suggestions/*/resolution',
+      async route => {
+        const id = Number(route.request().url().split('/').at(-2))
+        const body = route.request().postDataJSON()
+        resolutionRequests.push({ body, id })
+        suggestions = suggestions.map(suggestion =>
+          suggestion.id === id
             ? {
                 ...suggestion,
                 resolution: 1,
@@ -278,7 +321,6 @@ test.describe('Stewardship navigation memory', () => {
     const questionSuggestionButton = page.getByRole('button', {
       name: 'Behandla RFI-frågeförslag: PWM-RFI001',
     })
-    await expect(questionSuggestionButton.locator('svg')).toBeVisible()
     await expect(questionSuggestionButton.getByText('1')).toBeVisible()
     await questionSuggestionButton.click()
     let suggestionsDialog = page.getByRole('dialog', {
@@ -289,14 +331,14 @@ test.describe('Stewardship navigation memory', () => {
     await expect(suggestionsDialog).toContainText(
       'PWT-MANUAL öppet frågeförslag.',
     )
-    await suggestionsDialog
-      .getByRole('textbox', { name: /Beslutsmotivering/u })
-      .fill('PWT SPEC-16c skickad till granskning.')
     await expect(
-      suggestionsDialog
-        .getByRole('button', { name: 'Begär granskning' })
-        .locator('svg'),
-    ).toBeVisible()
+      suggestionsDialog.getByRole('textbox', {
+        name: /Beslutsmotivering/u,
+      }),
+    ).toHaveCount(0)
+    await expect(
+      suggestionsDialog.getByRole('button', { name: 'Markera hanterad' }),
+    ).toHaveCount(0)
     await suggestionsDialog
       .getByRole('button', { name: 'Begär granskning' })
       .click()
@@ -304,17 +346,29 @@ test.describe('Stewardship navigation memory', () => {
     await expect.poll(() => reviewRequests).toEqual([920001])
     await expect(suggestionsDialog).toContainText('I granskning')
     await expect(suggestionsDialog).toContainText('Behandlade (1)')
-    await expect(
-      suggestionsDialog
-        .getByRole('button', { name: 'Markera hanterad' })
-        .locator('svg'),
-    ).toBeVisible()
+    await suggestionsDialog
+      .getByRole('textbox', { name: /Beslutsmotivering/u })
+      .fill('PWT SPEC-16c frågeförslag hanterat efter granskning.')
+    await suggestionsDialog
+      .getByRole('button', { name: 'Markera hanterad' })
+      .click()
+    await expect
+      .poll(() => resolutionRequests)
+      .toEqual([
+        {
+          body: {
+            resolution: 'resolved',
+            resolutionMotivation:
+              'PWT SPEC-16c frågeförslag hanterat efter granskning.',
+          },
+          id: 920001,
+        },
+      ])
     await suggestionsDialog.getByRole('button', { name: 'Stäng' }).click()
 
     const areaSuggestionButton = page.getByRole('button', {
       name: 'Behandla RFI-frågeförslag: PWM PWT-MANUAL Playwright manual cases',
     })
-    await expect(areaSuggestionButton.locator('svg')).toBeVisible()
     await expect(areaSuggestionButton.getByText('1')).toBeVisible()
     await areaSuggestionButton.click()
     suggestionsDialog = page.getByRole('dialog', {
@@ -324,6 +378,15 @@ test.describe('Stewardship navigation memory', () => {
     await expect(suggestionsDialog).toContainText(
       'PWT-MANUAL öppet områdesförslag.',
     )
+    await expect(
+      suggestionsDialog.getByRole('textbox', {
+        name: /Beslutsmotivering/u,
+      }),
+    ).toHaveCount(0)
+    await suggestionsDialog
+      .getByRole('button', { name: 'Begär granskning' })
+      .click()
+    await expect.poll(() => reviewRequests).toEqual([920001, 920002])
     await suggestionsDialog
       .getByRole('textbox', { name: /Beslutsmotivering/u })
       .fill('PWT SPEC-16c hanterat i kravområdesförvaltningen.')
@@ -335,9 +398,20 @@ test.describe('Stewardship navigation memory', () => {
       .poll(() => resolutionRequests)
       .toEqual([
         {
-          resolution: 'resolved',
-          resolutionMotivation:
-            'PWT SPEC-16c hanterat i kravområdesförvaltningen.',
+          body: {
+            resolution: 'resolved',
+            resolutionMotivation:
+              'PWT SPEC-16c frågeförslag hanterat efter granskning.',
+          },
+          id: 920001,
+        },
+        {
+          body: {
+            resolution: 'resolved',
+            resolutionMotivation:
+              'PWT SPEC-16c hanterat i kravområdesförvaltningen.',
+          },
+          id: 920002,
         },
       ])
     await expect(suggestionsDialog).toContainText('Hanterad')

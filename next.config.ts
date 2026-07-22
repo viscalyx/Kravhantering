@@ -79,6 +79,39 @@ const UNSUPPORTED_WEBPACK_BUILD_MESSAGE = [
   'the Webpack aliases stay in sync.',
 ].join(' ')
 
+const stewardshipWorkspaceRewrites = [
+  ['packages', 'packages'],
+  ['questions', 'questions'],
+  ['information-requests', 'information-requests'],
+  ['norms', 'norms'],
+].map(([tab, workspace]) => ({
+  destination: `/:locale/requirements/stewardship/workspaces/${workspace}`,
+  has: [{ type: 'query' as const, key: 'tab', value: tab }],
+  source: '/:locale/requirements/stewardship',
+}))
+
+const adminWorkspaceRewrites = [
+  ['columns', 'columns'],
+  ['identity', 'identity'],
+  ['settings', 'settings'],
+  ['taxonomy', 'taxonomy'],
+  ['statusesAndWorkflows', 'statuses-and-workflows'],
+  ['accessReview', 'access-review'],
+  ['archiving', 'archiving'],
+  ['privacy', 'privacy'],
+  ['actionAuditLog', 'action-audit-log'],
+].map(([tab, workspace]) => ({
+  destination: `/:locale/admin/workspaces/${workspace}`,
+  has: [{ type: 'query' as const, key: 'tab', value: tab }],
+  source: '/:locale/admin',
+}))
+
+const adminDefaultWorkspaceRewrite = {
+  destination: '/:locale/admin/workspaces/columns',
+  missing: [{ type: 'query' as const, key: 'tab' }],
+  source: '/:locale/admin',
+}
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   typedRoutes: true,
@@ -98,11 +131,11 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/webp', 'image/avif'],
   },
-  // TypeORM v1 imports its driver factory eagerly. Keep the package external
-  // on the server and alias the unused Expo SQLite dependency below so
-  // Turbopack does not require the Expo-only optional package for this SQL
-  // Server application.
-  serverExternalPackages: ['mermaid', 'typeorm'],
+  // Keep TypeORM and the explicitly injected SQL Server driver external so
+  // Next.js traces both packages (including tedious) into standalone output.
+  // Alias the unused Expo SQLite dependency below so Turbopack does not
+  // require the Expo-only optional package for this SQL Server application.
+  serverExternalPackages: ['mermaid', 'mssql', 'typeorm'],
   allowedDevOrigins: ['0.0.0.0', '127.0.0.1'],
   // Next.js 16 production builds use Turbopack for this app. These aliases
   // swap in the right `build-target.*.ts` and developer-mode no-op modules.
@@ -123,6 +156,17 @@ const nextConfig: NextConfig = {
   },
   webpack() {
     throw new Error(UNSUPPORTED_WEBPACK_BUILD_MESSAGE)
+  },
+  async rewrites() {
+    return {
+      beforeFiles: [
+        ...stewardshipWorkspaceRewrites,
+        ...adminWorkspaceRewrites,
+        adminDefaultWorkspaceRewrite,
+      ],
+      afterFiles: [],
+      fallback: [],
+    }
   },
   // CSP is set per-request in proxy.ts (nonce-based).
   // Only static security headers are defined here.

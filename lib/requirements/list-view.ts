@@ -116,6 +116,7 @@ export interface RequirementRow {
     verifiable: boolean
     revisionToken?: string
     priorityLevelId: number | null
+    priorityLevelCode?: string | null
     priorityLevelNameEn: string | null
     priorityLevelNameSv: string | null
     priorityLevelColor: string | null
@@ -132,6 +133,11 @@ export interface RequirementRow {
     typeNameSv: string | null
     versionNumber: number
   } | null
+}
+
+export interface SpecificationItemRequirementRow extends RequirementRow {
+  itemRef: string
+  kind: 'library' | 'specificationLocal'
 }
 
 export const DEFAULT_PUBLISHED_STATUS_ID = STATUS_PUBLISHED
@@ -783,17 +789,15 @@ export function serializeRequirementColumnWidths(
 
 export function buildRequirementListParams({
   filters,
-  format,
   limit,
   locale,
-  offset,
+  cursor,
   sort,
 }: {
+  cursor?: string
   filters: FilterValues
-  format?: 'csv'
   limit?: number
   locale: string
-  offset?: number
   sort: RequirementSortState
 }): URLSearchParams {
   const params = new URLSearchParams()
@@ -804,11 +808,8 @@ export function buildRequirementListParams({
   params.set('sortBy', sort.by)
   params.set('sortDirection', sort.direction)
 
-  if (offset != null) {
-    params.set('offset', String(offset))
-  }
-  if (format) {
-    params.set('format', format)
+  if (cursor) {
+    params.set('cursor', cursor)
   }
   if (filters.uniqueIdSearch) {
     params.set('uniqueIdSearch', filters.uniqueIdSearch)

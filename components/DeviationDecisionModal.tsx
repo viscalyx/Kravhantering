@@ -1,12 +1,12 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import { modalResizableTextareaRows3ClassName } from '@/components/modal-textarea-class'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
@@ -155,16 +155,12 @@ export default function DeviationDecisionModal({
                   >
                     {td('decisionMotivation')} *
                   </label>
-                  <button
-                    aria-controls="help-decision-motivation"
-                    aria-expanded={openHelp.has('motivation')}
-                    aria-label={`${tc('help')}: ${td('decisionMotivation')}`}
-                    className="inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  <FieldHelpButton
+                    controls="help-decision-motivation"
+                    expanded={openHelp.has('motivation')}
+                    label={`${tc('help')}: ${td('decisionMotivation')}`}
                     onClick={() => toggleHelp('motivation')}
-                    type="button"
-                  >
-                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                  </button>
+                  />
                 </div>
                 <AnimatedHelpPanel
                   id="help-decision-motivation"

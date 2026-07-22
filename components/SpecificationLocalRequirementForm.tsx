@@ -1,10 +1,10 @@
 'use client'
 
-import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import FormActionRow from '@/components/FormActionRow'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
@@ -232,16 +232,12 @@ export default function SpecificationLocalRequirementForm({
         <label className="text-sm font-medium" htmlFor="plr-needs-reference">
           {tp('needsReference')}
         </label>
-        <button
-          aria-controls="help-plr-needs-reference"
-          aria-expanded={needsRefHelpOpen}
-          aria-label={`${tc('help')}: ${tp('needsReference')}`}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+        <FieldHelpButton
+          controls="help-plr-needs-reference"
+          expanded={needsRefHelpOpen}
+          label={`${tc('help')}: ${tp('needsReference')}`}
           onClick={() => setNeedsRefHelpOpen(v => !v)}
-          type="button"
-        >
-          <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-        </button>
+        />
       </div>
       <AnimatedHelpPanel
         id="help-plr-needs-reference"

@@ -9,16 +9,16 @@ See `package.json` for the full list of test-related scripts.
 ## Unit tests
 
 - Location: `tests/unit`
-- Start here: [tests/unit/test-helpers.ts](tests/unit/test-helpers.ts)
+- Start here: [unit/test-helpers.ts](unit/test-helpers.ts)
 - Run with: `npm run test`
 
 ## Integration tests
 
 - Location: `tests/integration`
-- Overview/specs: [tests/integration/smoke.md](tests/integration/smoke.md)
-- Error-boundary smoke tests and notes: [tests/integration/error-boundary-smoke.md](tests/integration/error-boundary-smoke.md)
-- Global Playwright setup: [tests/integration/global-setup.ts](tests/integration/global-setup.ts)
-- Chunk manifest: [tests/integration-chunks.manifest.json](tests/integration-chunks.manifest.json)
+- Overview/specs: [platform smoke test](integration/platform/smoke.spec.ts)
+- Error-boundary smoke tests: [error-boundary smoke test](integration/platform/error-boundary-smoke.spec.ts)
+- Global Playwright setup: [integration/global-setup.ts](integration/global-setup.ts)
+- Chunk manifest: [integration-chunks.manifest.json](integration-chunks.manifest.json)
 
 `npm run test:integration` and `npm run test:integration:prodlike` run the
 Playwright suite locally in deterministic chunks by default. Run a single
@@ -41,6 +41,36 @@ The same workflow keeps a small dev-server smoke for Developer Mode and local
 dev-server startup behavior; it does not run the full dev-server suite on every
 pull request.
 
+### Database state across chunks
+
+The normal full-suite workflow runs `npm run db:setup` once before Playwright
+starts. All chunks then share that database while the chunk runner recycles the
+application server to release memory.
+
+The shared database is intentional. It lets the required pull-request gate find
+state leakage, missing cleanup, and order-dependent tests. Resetting before
+every chunk would hide those failures, increase runtime, and reset the database
+under the externally managed prodlike server.
+
+Chunks must still be independently runnable from the clean demo seed. A chunk
+must not depend on mutations made by an earlier chunk. Tests should create
+explicit disposable fixtures or restore shared fixtures when their scenario
+changes persistent state.
+
+The
+[weekly integration isolation workflow](../.github/workflows/integration-isolation-weekly.yml)
+runs at 03:17 UTC every Sunday and can also be started manually. It reads the
+prodlike chunk IDs from the committed chunk manifest and starts one matrix job
+per chunk. Every matrix job gets a fresh runner, runs `npm run db:setup`, and
+then runs exactly one chunk. This complementary gate detects hidden
+cross-chunk dependencies and assumptions that only hold after an earlier chunk
+has changed the seed.
+
+A focused local chunk does not reset the database automatically. Run
+`npm run db:setup` first when a clean baseline is required. The command deletes
+and recreates the local development database before applying migrations and
+demo seed data.
+
 When specs move or are added, refresh and verify the committed chunk manifest:
 
 ```bash
@@ -52,10 +82,10 @@ Test-only routes (used to exercise App Router error boundaries) are gated
 behind the `ENABLE_ERROR_BOUNDARY_TEST_ROUTE` environment variable. See
 these locations:
 
-- Gate in test pages: [app/[locale]/error-boundary-test/page.tsx](app/[locale]/error-boundary-test/page.tsx)
-  and [app/[locale]/admin/error-boundary-test/page.tsx](app/[locale]/admin/error-boundary-test/page.tsx)
-- Playwright/dev configs that enable the gate: [playwright.config.ts](playwright.config.ts)
-  and [playwright.prodlike.config.ts](playwright.prodlike.config.ts)
+- Gate in test pages: [app/[locale]/error-boundary-test/page.tsx](../app/[locale]/error-boundary-test/page.tsx)
+  and [app/[locale]/admin/error-boundary-test/page.tsx](../app/[locale]/admin/error-boundary-test/page.tsx)
+- Playwright/dev configs that enable the gate: [playwright.config.ts](../playwright.config.ts)
+  and [playwright.prodlike.config.ts](../playwright.prodlike.config.ts)
 - CI usage: [.github/workflows/integration-tests.yml](../.github/workflows/integration-tests.yml)
 
 > [!NOTE]
@@ -64,7 +94,7 @@ these locations:
 
 ## Quality / Spec audits
 
-- Quality spec guidance: [tests/quality/QUALITY.md](tests/quality/QUALITY.md)
+- SQL Server invariants: `npm run test:sql-integration`
 
 ## Other notes
 
@@ -79,7 +109,7 @@ these locations:
 
 ## Release smoke tests
 
-- Location: [tests/release-smoke](tests/release-smoke)
+- Location: [release-smoke/release-smoke.md](release-smoke/release-smoke.md)
 - Config: [playwright.release-smoke.config.ts](../playwright.release-smoke.config.ts)
 - Run against a started container stack with:
 

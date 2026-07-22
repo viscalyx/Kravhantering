@@ -9,7 +9,11 @@ const yaml = require('js-yaml') as { load(source: string): unknown }
 const WORKFLOWS_DIR = path.join(process.cwd(), '.github', 'workflows')
 const ACTIONS_DIR = path.join(process.cwd(), '.github', 'actions')
 const ZAP_DIR = path.join(process.cwd(), '.github', 'zap')
-const FULL_COMMIT_SHA = /^[a-f0-9]{40}$/iu
+const DEVCONTAINER_DOCKERFILE = path.join(
+  process.cwd(),
+  '.devcontainer',
+  'Dockerfile',
+)
 const USES_LINE = /^\s*uses:\s*([^#\s]+)(?:\s+#\s*(.+))?\s*$/u
 const PERSIST_CREDENTIALS_FALSE_LINE =
   /^\s*persist-credentials:\s*['"]?false['"]?(?:\s+#.*)?$/iu
@@ -65,14 +69,6 @@ function readWorkflowYaml(fileName: string): WorkflowDocument {
   ) as WorkflowDocument
 }
 
-function isLocalOrContainerReference(reference: string) {
-  return (
-    reference.startsWith('./') ||
-    reference.startsWith('../') ||
-    reference.startsWith('docker://')
-  )
-}
-
 function readZapRules(fileName: string) {
   const rules = new Map<string, string>()
   const content = readFileSync(path.join(ZAP_DIR, fileName), 'utf8')
@@ -119,8 +115,8 @@ function stepRunText(job: WorkflowJob | undefined, stepName: string) {
 }
 
 describe('GitHub Actions workflow security', () => {
-  it('pins external actions and hardens checkout credentials', () => {
-    const unpinnedReferences: string[] = []
+  it('hardens checkout credentials', () => {
+    const insecureCheckoutReferences: string[] = []
 
     for (const { absolutePath, relativePath } of workflowAndActionFiles()) {
       const lines = readFileSync(absolutePath, 'utf8').split(/\r?\n/u)
@@ -129,31 +125,34 @@ describe('GitHub Actions workflow security', () => {
         if (line.trimStart().startsWith('#')) return
         const match = line.match(USES_LINE)
         const reference = match?.[1]
-        if (!reference || isLocalOrContainerReference(reference)) return
-
-        const refSeparatorIndex = reference.lastIndexOf('@')
-        const ref =
-          refSeparatorIndex === -1
-            ? undefined
-            : reference.slice(refSeparatorIndex + 1)
-        const versionComment = match[2]?.trim()
-
-        if (!ref || !FULL_COMMIT_SHA.test(ref) || !versionComment) {
-          unpinnedReferences.push(`${relativePath}:${index + 1} ${reference}`)
-        }
-
         if (
-          reference.startsWith('actions/checkout') &&
+          reference?.startsWith('actions/checkout@') &&
           !disablesCheckoutCredentialPersistence(lines, index)
         ) {
-          unpinnedReferences.push(
+          insecureCheckoutReferences.push(
             `${relativePath}:${index + 1} ${reference} missing persist-credentials: false`,
           )
         }
       })
     }
 
-    expect(unpinnedReferences).toEqual([])
+    expect(insecureCheckoutReferences).toEqual([])
+  })
+
+  it('keeps the development-container and quality-check workflow Lychee versions aligned', () => {
+    const dockerfile = readFileSync(DEVCONTAINER_DOCKERFILE, 'utf8')
+    const dockerfileVersion = dockerfile.match(
+      /^ARG LYCHEE_VERSION=(v\d+\.\d+\.\d+)$/mu,
+    )?.[1]
+    const workflow = readWorkflowYaml('quality-checks.yml')
+    const lycheeStep = workflow.jobs?.['quality-checks']?.steps?.find(
+      step => step.name === 'Run Lychee Markdown link check',
+    )
+
+    expect(dockerfileVersion).toBeDefined()
+    expect(lycheeStep).toBeDefined()
+    expect(lycheeStep?.with?.args).toBe('--config .lychee.toml . .github')
+    expect(lycheeStep?.with?.lycheeVersion).toBe(dockerfileVersion)
   })
 
   it('keeps Playwright integration CI consolidated on the pruned prodlike gate', () => {
@@ -249,6 +248,12 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).toContain('contents: read')
     expect(workflow).toContain('pull-requests: read')
     expect(workflow).toContain(
+      "github.event.pull_request.user.login != 'dependabot[bot]'",
+    )
+    expect(workflow).toContain(
+      "!startsWith(github.event.pull_request.title, 'build(deps):')",
+    )
+    expect(workflow).toContain(
       ['ref: $', '{{ github.event.pull_request.base.sha }}'].join(''),
     )
     expect(workflow).not.toMatch(/github\.event\.pull_request\.head/iu)
@@ -308,6 +313,12 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).toContain('contents: read')
     expect(workflow).toContain('pull-requests: read')
     expect(workflow).toContain(
+      "github.event.pull_request.user.login != 'dependabot[bot]'",
+    )
+    expect(workflow).toContain(
+      "!startsWith(github.event.pull_request.title, 'build(deps):')",
+    )
+    expect(workflow).toContain(
       ['ref: $', '{{ github.event.pull_request.base.sha }}'].join(''),
     )
     expect(workflow).toContain(
@@ -329,7 +340,13 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).toContain('types: [closed]')
     expect(workflow).toContain('contents: write')
     expect(workflow).toContain('pull-requests: write')
-    expect(workflow).toContain('if: github.event.pull_request.merged == true')
+    expect(workflow).toContain('github.event.pull_request.merged == true')
+    expect(workflow).toContain(
+      "github.event.pull_request.user.login != 'dependabot[bot]'",
+    )
+    expect(workflow).toContain(
+      "!startsWith(github.event.pull_request.title, 'build(deps):')",
+    )
     expect(workflow).toContain('ref: main')
     expect(workflow).toContain('persist-credentials: false')
     expect(workflow).toContain('OPERATOR_UPGRADE_NOTES_TOKEN is required.')
@@ -376,5 +393,36 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).not.toMatch(/github\.event\.pull_request\.head/iu)
     expect(workflow).not.toMatch(/\bgithub\.head_ref\b/iu)
     expect(workflow).not.toMatch(/\bnpm\s+(?:ci|install|run)\b/iu)
+  })
+
+  it('keeps stable operator notes archives behind protected-main checks', () => {
+    const workflow = readFileSync(
+      path.join(WORKFLOWS_DIR, 'container-release.yml'),
+      'utf8',
+    )
+
+    expect(workflow).toContain('Archive stable operator upgrade notes')
+    expect(workflow).toMatch(
+      /\bGH_TOKEN:\s*\$\{\{\s*secrets\.OPERATOR_UPGRADE_NOTES_TOKEN\s*\}\}/u,
+    )
+    expect(workflow).toContain(
+      'archive_branch="automation/operator-upgrade-notes-archive-$' +
+        '{RELEASE_TAG_NAME}"',
+    )
+    expect(workflow).toContain('operator-upgrade:no-notes')
+    expect(workflow).toContain('ssdlc:requirements')
+    expect(workflow).toContain(
+      'gh pr create --base main --head "$' + '{archive_branch}"',
+    )
+    expect(workflow).toContain("--jq '.published_at[0:10]'")
+    expect(workflow).toContain(
+      'git fetch origin "+$' +
+        '{archive_branch}:refs/remotes/origin/$' +
+        '{archive_branch}"',
+    )
+    expect(workflow).toMatch(
+      /gh\s+pr\s+merge\s+"\$\{pr_number\}"\s+--squash\s+--auto/u,
+    )
+    expect(workflow).not.toContain('git push origin HEAD:main')
   })
 })

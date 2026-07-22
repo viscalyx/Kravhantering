@@ -22,6 +22,10 @@ import FormModal from '@/components/FormModal'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import {
+  readRfiQuestionSuggestionMutationError,
+  shouldReloadRfiQuestionSuggestions,
+} from '@/lib/requirements/rfi-question-suggestion-conflicts'
 
 type RfiRelevance = 'not_relevant' | 'relevant'
 
@@ -376,7 +380,21 @@ export default function SpecificationRfiListPanel({
         jsonRequest('DELETE'),
       )
       if (!response.ok) {
-        throw new Error((await readResponseMessage(response)) ?? t('saveError'))
+        const message = await readRfiQuestionSuggestionMutationError(
+          response,
+          {
+            alreadyResolved: t('conflicts.alreadyResolved'),
+            notDraft: t('conflicts.notDraft'),
+            notFound: t('conflicts.notFound'),
+            reviewAlreadyRequested: t('conflicts.reviewAlreadyRequested'),
+            reviewRequired: t('conflicts.reviewRequired'),
+          },
+          t('saveError'),
+        )
+        if (shouldReloadRfiQuestionSuggestions(response)) {
+          await loadSuggestions(list?.items ?? [])
+        }
+        throw new Error(message)
       }
       setSuggestions(current =>
         current.filter(

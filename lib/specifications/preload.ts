@@ -1,6 +1,5 @@
 import { DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY } from '@/lib/ai/generation-availability'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
-import { countDeviationsPerItemRef } from '@/lib/dal/deviations'
 import {
   countLinkedRequirements,
   listNormReferences,
@@ -12,10 +11,8 @@ import {
   getSpecificationById,
   getSpecificationForbiddenSummaryById,
   listSpecificationCoAuthorHsaIds,
-  listSpecificationCoAuthorHsaIdsBySpecification,
-  listSpecificationItems,
   listSpecificationNeedsReferences,
-  listSpecificationsForActor,
+  listSpecificationsForActorCatalog,
 } from '@/lib/dal/requirements-specifications'
 import { listSpecificationGovernanceObjectTypes } from '@/lib/dal/specification-governance-object-types'
 import { listSpecificationImplementationTypes } from '@/lib/dal/specification-implementation-types'
@@ -34,7 +31,9 @@ import {
   type SpecificationItemStatusOption,
 } from '@/lib/requirements/list-view'
 import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
+import { createRequirementsRuntime } from '@/lib/requirements/server'
 import { createServerComponentRequestContext } from '@/lib/requirements/server-component-context'
+import { DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT } from '@/lib/requirements/specification-item-page'
 import { DEVIATED_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 import {
   canCreateSpecification,
@@ -118,6 +117,7 @@ async function loadAvailableRequirements(
   const result = await queryRequirementList(
     db,
     {
+      capacitySurface: 'editor-preload',
       filters: { statuses: [3] },
       limit: PAGE_SIZE,
       locale,
@@ -127,26 +127,9 @@ async function loadAvailableRequirements(
   )
   return {
     hasMore: result.pagination.hasMore,
+    nextCursor: result.pagination.nextCursor,
     rows: result.requirements as RequirementRow[],
   }
-}
-
-async function loadSpecificationItems(
-  db: SqlServerDatabase,
-  specificationId: number,
-): Promise<SpecificationListItem[]> {
-  const items = await listSpecificationItems(db, specificationId)
-  const deviationCounts = await countDeviationsPerItemRef(db, specificationId)
-
-  return items.map(item => {
-    const counts = item.itemRef ? deviationCounts.get(item.itemRef) : undefined
-    return {
-      ...item,
-      deviationCount: counts?.total ?? 0,
-      hasApprovedDeviation: (counts?.approved ?? 0) > 0,
-      hasPendingDeviation: (counts?.pending ?? 0) > 0,
-    }
-  }) as SpecificationListItem[]
 }
 
 function emptyDetailInitialData(
@@ -161,7 +144,7 @@ function emptyDetailInitialData(
     aiGenerationAvailability: DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
     areas: [],
     availableNeedsRefs: [],
-    availableRequirements: { hasMore: false, rows: [] },
+    availableRequirements: { hasMore: false, nextCursor: null, rows: [] },
     errors,
     leftNormReferenceOptions: [],
     requirementPackages: [],
@@ -170,7 +153,15 @@ function emptyDetailInitialData(
     ...extras,
     specificationImplementationTypes: [],
     specificationItemStatuses: [],
-    specificationItems: [],
+    specificationItems: {
+      items: [],
+      pagination: {
+        count: 0,
+        hasMore: false,
+        limit: DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT,
+        nextCursor: null,
+      },
+    },
     specificationLifecycleStatuses: [],
     specificationGovernanceObjectTypes: [],
   }
@@ -184,6 +175,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
   specificationId: number
 }): Promise<RequirementsSpecificationDetailInitialData> {
   const db = await getRequestSqlServerDataSource()
+  const { service } = createRequirementsRuntime(db)
   const context = await createServerComponentRequestContext({
     path: `/specifications/${specificationId}`,
   })
@@ -308,13 +300,37 @@ export async function loadRequirementsSpecificationDetailInitialData({
     capture<SpecificationItemStatusOption[]>('usage statuses', [], () =>
       listSpecificationItemStatusOptions(db),
     ),
-    capture<SpecificationListItem[]>('requirement applications', [], () =>
-      loadSpecificationItems(db, spec.id),
+    capture<RequirementsSpecificationDetailInitialData['specificationItems']>(
+      'requirement applications',
+      {
+        items: [],
+        pagination: {
+          count: 0,
+          hasMore: false,
+          limit: DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT,
+          nextCursor: null,
+        },
+      },
+      async () => {
+        const page = await service.getSpecificationItems(context, {
+          capacitySurface: 'editor-preload',
+          limit: DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT,
+          locale,
+          responseFormat: 'json',
+          specificationId: spec.id,
+        })
+        return {
+          items: page.items as SpecificationListItem[],
+          pagination: page.pagination,
+        }
+      },
     ),
     capture<
       RequirementsSpecificationDetailInitialData['availableRequirements']
-    >('available requirements', { hasMore: false, rows: [] }, () =>
-      loadAvailableRequirements(db, locale),
+    >(
+      'available requirements',
+      { hasMore: false, nextCursor: null, rows: [] },
+      () => loadAvailableRequirements(db, locale),
     ),
     capture<NormReferenceOption[]>('left norm references', [], () =>
       listLinkedNormReferenceOptions(db),
@@ -384,15 +400,12 @@ export async function loadRequirementsSpecificationsInitialData(): Promise<Requi
     lifecycleStatuses,
   ] = await Promise.all([
     capture<Specification[]>('requirements specifications', [], async () => {
-      const specs = (await listSpecificationsForActor(db, {
+      const catalog = await listSpecificationsForActorCatalog(db, {
         actorHsaId: context.actor.hsaId,
         canReadAll: canReadAllSpecifications(context),
-      })) as Specification[]
-      const coAuthorIdsBySpecification =
-        await listSpecificationCoAuthorHsaIdsBySpecification(
-          db,
-          specs.map(spec => spec.id),
-        )
+      })
+      const specs = catalog.specifications as Specification[]
+      const coAuthorIdsBySpecification = catalog.coAuthorHsaIdsBySpecification
       return specs.map(spec => ({
         ...spec,
         permissions: specificationPermissions(context, {

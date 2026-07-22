@@ -20,7 +20,7 @@ workflows without changing route slugs, API field names, or MCP tool
 identifiers.
 
 The global side navigation contains the settings item that links to
-`/{locale}/admin`.
+`/{locale}/admin` after an `Admin` or `PrivacyOfficer` role is confirmed.
 
 Taxonomy and status links are grouped in the Admin Center.
 
@@ -30,7 +30,7 @@ The admin center currently has nine tabs for core administration:
 
 - `Columns`
 - `Identity`
-- `AI`
+- `Settings`
 - `Taxonomy`
 - `Statuses and workflows`
 - `Access review`
@@ -39,8 +39,24 @@ The admin center currently has nine tabs for core administration:
 - `Action log`
 
 The `Action log` tab renders the action-log filters, table, pagination, and
-CSV export directly in the Admin Center. Unavailable tabs are dimmed, cannot be
-selected, and explain the missing prerequisite in a tooltip.
+CSV export directly in the Admin Center. The navigation only renders tabs that
+the current roles may use.
+
+## On-demand tab panels
+
+Admin Center loads a small shared shell for navigation, authorization, help
+content, and feedback. Each tab panel is delivered as a separate JavaScript
+module only after an authorized user activates the tab. Panels are not
+prefetched on hover or while idle, and only the active panel is mounted.
+
+A production-build check verifies that panels remain separate from the shell
+and that the shell and each panel stay within the project's compressed
+JavaScript budget. Raising a budget requires a current size report and an
+intentional implementation-value justification.
+
+Static client modules contain UI logic and public contracts, not database rows
+or secrets. Panel data is loaded after activation from APIs that verify the
+panel role on the server.
 
 ## Action Log
 
@@ -123,14 +139,21 @@ Demo seed data contains `SE5560000001` as the visible default prefix. Required
 seed data intentionally does not create any HSA-id-prefix rows, so a clean
 installation starts without organization-specific prefix policy.
 
-## AI
+## Settings
 
-The `AI` tab manages AI-assisted requirement generation directly in the AI
-panel. Its `AI assistance` section contains the requirement-generation toggle,
+The `Settings` tab is addressed by `?tab=settings` and contains fixed `AI`,
+`Exports`, and `Reports` sections. It loads AI and application settings in
+parallel, reserves the complete panel layout while loading, and reveals the
+sections together after both settings reads settle. The former `?tab=ai`
+address is intentionally unavailable rather than retained as a compatibility
+alias.
+
+The `AI` section manages AI-assisted requirement generation. Its
+`AI assistance` subsection contains the requirement-generation toggle,
 its `AI security` section contains the forensic AI safety JSON logging toggle,
 safety-rule cache time and editable AI safety-rule terms, and its
 `MCP interface` section contains the MCP request/session payload limit and MCP
-import row/TTL limits. The AI tab has no shared Save button; controls save
+import row/TTL limits. The section has no shared Save button; controls save
 directly when changed, with per-control or per-row status. Numeric controls
 show their allowed range and step directly under the control.
 
@@ -194,11 +217,23 @@ actions, targets, direct phrases/markers, and coding words. Term rows show the
 word, direction (`Input`, `Output`, or `Input and output`), whether the row is
 standard, and whether it is active. Admins can add custom terms, change a term
 direction, deactivate standard terms, delete custom terms through the selected
-rows action, and restore standard terms for a single rule. A warning icon marks
-standard terms whose active state or direction differs from the seeded
-standard. The safety filter reads active terms from the database only; if the
-rule set cannot be loaded, AI-assisted authoring fails closed before provider
-work.
+rows action, and restore standard terms for a single rule. Restoring standard
+terms requires a danger confirmation before the optimistic update and API
+request begin. A warning icon marks standard terms whose active state or
+direction differs from the seeded standard. The safety filter reads active
+terms from the database only; if the rule set cannot be loaded, AI-assisted
+authoring fails closed before provider work.
+
+The `Exports` and `Reports` sections use the singleton
+`application_settings` table through
+`GET/PATCH /api/admin/application-settings`. The nine numeric fields control
+the per-operation item cap, completed-file byte cap, per-node process-local
+concurrency, and generation timeout for CSV and PDF; PDF also has an isolated
+worker JavaScript-memory limit. File sizes are shown and edited in MiB but sent
+to the API as integer bytes. A field saves on blur or Enter. Each field has its
+own saving state and request token, so an older response cannot overwrite a
+newer edit. Every successful change is written to the privileged action log
+with the field and old/new values.
 
 When an AI safety block happens, the metadata event is always written to
 `security-audit`. If forensic AI safety logging is enabled, the same block also
@@ -437,7 +472,8 @@ inventories app-managed assignments, stores a point-in-time review run, assigns
 newly created runs to the signed-in actor from the verified IdP session, lets
 authorized handlers decide each item, cancel mistaken pending runs without
 deleting evidence, and export the review evidence as structured JSON or a PDF
-rendering of the same payload.
+rendering of the same payload. A failed run-list request remains recoverable
+through the run list's retry control.
 
 The in-app scope is deliberately limited to permissions Kravhantering owns:
 
@@ -517,6 +553,23 @@ keep the label visible and use the icon only as a decorative cue in tables,
 badges, steppers, and reports. Existing rows without an icon continue to render
 with text-only labels until an admin selects one.
 
+Priority colors remain a single administrator-selected `#RRGGBB` accent. The
+priority form uses the shared badge renderer to show labeled light- and
+dark-theme previews with the calculated contrast result for each theme.
+Administrators verify both readability and visual distinction before saving.
+An invalid stored value is shown without accent styling and produces an
+administration warning until it is corrected; valid custom colors are neither
+normalized nor replaced.
+
+Read-only browser views present a resolved priority through the shared badge
+as its stable P-code, an en dash, and the localized name. The badge also uses
+the configured accent and optional decorative icon. This applies to lists,
+details, import and AI review, priority-scale help, administration, and
+single or bulk deviation forms. Native selection controls remain text-only.
+The priority administration table combines code and name in one Priority
+column and has no standalone color marker. The color field contains a native
+color picker beside a compact hexadecimal `#RRGGBB` text field.
+
 ### Requirement Area Owner
 
 Each requirement area must have an assigned owner HSA-id. A new requirement area
@@ -544,6 +597,7 @@ If you change any of the following, update this document:
 - admin entrypoint navigation
 - taxonomy and status/workflow navigation structure
 - status, usage-status, or priority-level icon behavior
+- priority color validation, previews, or theme contrast behavior
 
 If you add a new requirement column or property, also update
 [.github/instructions/add-requirement-column.instructions.md](../../.github/instructions/add-requirement-column.instructions.md).

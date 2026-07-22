@@ -30,15 +30,29 @@ description: Audit npm dependencies in package.json, recommend safe updates for 
 9. Run `npm audit --json`.
    - If `npm audit` exits non-zero because vulnerabilities exist, treat the JSON as usable output.
 10. For each major update candidate, run `npm install <package>@<latest> --dry-run 2>&1` and capture any `ERESOLVE` or peer-dependency conflict warnings.
-11. For each transitive vulnerability reported by `npm audit`:
+11. Treat non-peer `--dry-run` failures as inconclusive:
+   a. Do not flag or exclude an update from a dry-run-only error such as
+      `EALLOWREMOTE`.
+   b. Create a temporary directory outside the repo and copy `package.json`,
+      `package-lock.json`, and the project `.npmrc` when present.
+   c. Run `npm ci --ignore-scripts`, then run the real candidate
+      `npm install <package>@<target> --ignore-scripts` without relaxing npm
+      security policy.
+   d. Run `npm ci --ignore-scripts` from the generated lockfile. Reproduce
+      repo-specific CI install flags when they differ.
+   e. Flag the update only if the real install or clean lockfile replay fails.
+      Report a dry-run-only failure as an npm dry-run anomaly.
+   f. Never add `allow-remote=all` to project configuration solely to bypass a
+      dry-run failure.
+12. For each transitive vulnerability reported by `npm audit`:
    a. Run `npm ls <vulnerable-package> --json` to identify the dependency path(s).
    b. Check if any parent dependency in the path has a patch/minor update that would pull in the fixed version — cross-reference with the main update tables. If yes, skip the override.
    c. If no parent update resolves it, determine the minimum patched version from the advisory data.
    d. Run `npm install --dry-run` with the override applied to confirm compatibility.
    e. Group multiple advisories for the same package into one override recommendation.
    f. Skip vulnerabilities that are disputed, withdrawn, or have no fix version available.
-12. Evaluate each direct dependency, dev dependency, override, and install-script approval.
-13. Render the report in the required format.
+13. Evaluate each direct dependency, dev dependency, override, and install-script approval.
+14. Render the report in the required format.
 
 ## Apply Repo Rules
 
@@ -133,6 +147,8 @@ description: Audit npm dependencies in package.json, recommend safe updates for 
 ## Check Peer Dependency Conflicts
 
 - For every package where a major update is available, run `npm install <package>@<target-version> --dry-run` and inspect stderr for `ERESOLVE` or `Could not resolve dependency` warnings.
+- Route non-peer dry-run errors through workflow step 11. Do not report them as
+  peer conflicts.
 - If a conflict is found, use the `Peer conflict` label (or append `, Peer conflict` to an existing label such as `Pinned, Peer conflict`) and name the blocking package and its peer requirement in the Recommendation cell.
 - Include a Peer dependency conflicts section after Overrides in the report listing each conflict: the package being updated, the blocker package, its peer requirement, and whether the blocker has a newer version that widens the peer range.
 - If no peer conflicts exist, still include the section and state that no conflicts were found.

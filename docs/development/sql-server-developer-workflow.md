@@ -144,6 +144,7 @@ Runtime pool defaults are conservative for a single app process:
 | `npm run db:seed:required` | Apply only required system and lookup seed data |
 | `npm run db:seed:demo` | Reset non-required rows, then apply optional demo, smoke-test, guide, and integration seed data |
 | `npm run db:reset` | Drop and recreate the database |
+| `npm run test:sql-integration` | Reset a dedicated test database and run focused SQL Server invariant tests |
 <!-- markdownlint-enable MD013 -->
 
 Under the hood `scripts/db-sqlserver-admin.mjs` builds a TypeORM `DataSource`,
@@ -157,12 +158,37 @@ local development, integration-test, guide, or smoke-test fixtures. The demo
 profile is destructive: it clears non-required data before reseeding the
 current fixtures.
 
+## Focused SQL Integration Tests
+
+Run database concurrency, constraint, transaction, rollback, and pagination
+invariants with:
+
+```bash
+npm run db:up
+npm run test:sql-integration
+```
+
+The suite derives its connection from `.env.sqlserver` and replaces the
+configured database name with `<DB_NAME>_sql_integration_tests`. It resets and
+migrates only that dedicated database. Set
+`SQLSERVER_INTEGRATION_TESTS_URL` to provide an explicit test database URL, or
+`SQLSERVER_INTEGRATION_TESTS_DB_NAME` to override only the derived database
+name.
+
+The ordinary `npm test` command excludes `tests/sql-integration/`. The
+`Integration Tests` workflow runs the SQL suite as a separate required job
+against its own test database.
+
 ## Requirement List Performance Baseline
 
 The requirement list SQL path has a required SQL Server performance check for
-`listRequirements` and `countRequirements`. It uses the same parameterized SQL
-builder as production code and seeds a dedicated medium fixture of roughly
-10,000 `PERF-*` requirements with two to four versions each.
+`listRequirements` and production-style cursor continuation. It uses the same
+parameterized SQL builder as production code and seeds a dedicated medium
+fixture of roughly 10,000 `PERF-*` requirements with two to four versions each.
+Deep scenarios obtain each next boundary from the preceding bounded page; they
+do not inject a separately resolved anchor tuple. First-page/deep-page
+comparison pairs are filtered to the dedicated `PERF-*` fixture so their
+relative cost is not distorted by unrelated demo or developer data.
 
 Use the regular check when you want to verify that the current branch still
 fits the committed baseline:
@@ -215,7 +241,7 @@ database IDs to avoid advancing normal SQL Server identity counters.
 
 For each scenario, the script:
 
-1. Builds the list and count SQL from the same helpers used by the DAL.
+1. Builds the cursor-based list SQL from the same helper used by the DAL.
 2. Captures actual SQL Server execution plans with `STATISTICS XML`.
 3. Runs warm-up queries so cold connection/setup cost is not the baseline.
 4. Runs measured samples with `STATISTICS IO` enabled.
@@ -231,7 +257,7 @@ The baseline file contains threshold counters:
 - `maxP95DurationMs`: maximum allowed 95th-percentile elapsed time. This
   catches occasional slow samples better than the median.
 - `maxLogicalReads`: maximum allowed SQL Server logical page reads reported by
-  `STATISTICS IO` for the combined list and count query. This is usually the
+  `STATISTICS IO` for the list query. This is usually the
   most stable regression signal because it tracks work done by SQL Server
   rather than host CPU noise.
 - `allowSpills`: whether execution-plan spill warnings are accepted. Keep this
@@ -255,6 +281,43 @@ Only refactor the query, add indexes, or introduce projections after the
 captured SQL Server execution plans and baseline results show a real
 bottleneck. If the update lowers thresholds after an improvement, keep the
 stricter baseline so future regressions are caught.
+
+### Requirements specification pagination baseline
+
+Run the mixed requirements specification campaign against the local SQL Server:
+
+```bash
+npm run perf:specification-items
+```
+
+The blocking CI job runs the same command for pull requests and pushes to
+`main`. It creates isolated 70/30 and 20/80
+library/specification-local fixtures at 200 and 500 items. For every supported
+sort and direction it traverses the unchanged result twice and requires exact
+stable-reference order with no missing or duplicate rows. The candidate SQL is
+checked for matching bounded seek behavior while the existing unit SQL contract
+guards `TOP (limit + 1)`, page-bounded enrichment, and the absence of counts,
+anchor lookups, offsets, and unbounded list queries.
+
+The same run records one Requirement ID traversal for both mixes at 1,000
+items. Those 1,000-item results are diagnostic artifacts only: they have no
+duration or logical-read regression threshold and do not change the supported
+500-item sizing target.
+
+The committed regression thresholds in
+`tests/performance/specification-item-pagination-baseline.json` are separate
+from product-decision response budgets. The campaign records warm complete
+traversal duration and captures representative actual plans, logical reads,
+spills, key/RID lookups, and missing-index evidence under
+`test-results/specification-item-pagination-performance/`. CI retains those
+artifacts on failure.
+
+Keep the existing membership indexes while warm traversals and logical reads
+remain inside this baseline and plans show no spill-driven or material
+missing-index regression. A key lookup alone does not justify another index.
+Replace a simple membership index with one measured covering index only when
+fresh 200/500 evidence exceeds the baseline and the captured plan identifies
+that lookup as the cause. Do not add one index per sort.
 
 ### Adding a new migration
 

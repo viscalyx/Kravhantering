@@ -1,15 +1,11 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import type { StewardshipTabParam } from '@/components/Navigation'
 import { usePathname, useRouter } from '@/i18n/routing'
-import NormReferencesClient from '../../norm-references/norm-references-client'
-import RequirementPackagesClient from '../../requirement-packages/requirement-packages-client'
-import RequirementSelectionQuestionsClient from './requirement-selection-questions-client'
-import RfiQuestionsClient from './rfi-questions-client'
 
-type StewardshipTab = 'packages' | 'questions' | 'norms' | 'rfi'
+type StewardshipTab = 'norms' | 'packages' | 'questions' | 'rfi'
 
 const STORAGE_KEY = 'requirements.stewardship.tab'
 
@@ -38,28 +34,15 @@ function getStoredTab(): StewardshipTab | null {
   return tabFromStoredValue(localStorage.getItem(STORAGE_KEY))
 }
 
-function getInitialTab(searchParams: URLSearchParams): StewardshipTab | null {
-  const tabParam = searchParams.get('tab')
-  const fromQuery = tabFromQueryValue(tabParam)
-  if (fromQuery) return fromQuery
-  if (tabParam != null) return 'packages'
-  if (typeof window === 'undefined') return null
-  return getStoredTab() ?? 'packages'
-}
-
 export default function StewardshipClient() {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState<StewardshipTab | null>(() =>
-    getInitialTab(searchParams),
-  )
 
   useEffect(() => {
     const tabParam = searchParams.get('tab')
     const fromQuery = tabFromQueryValue(tabParam)
     if (fromQuery) {
-      setActiveTab(fromQuery)
       localStorage.setItem(STORAGE_KEY, fromQuery)
       const canonicalTabParam = tabParamFromTab(fromQuery)
       if (
@@ -76,17 +59,11 @@ export default function StewardshipClient() {
 
     const nextTab =
       tabParam == null ? (getStoredTab() ?? 'packages') : 'packages'
-    setActiveTab(nextTab)
     const params = new URLSearchParams(searchParams.toString())
     params.delete('variant')
     params.set('tab', tabParamFromTab(nextTab))
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }, [pathname, router, searchParams])
 
-  if (activeTab == null) return null
-
-  if (activeTab === 'packages') return <RequirementPackagesClient />
-  if (activeTab === 'questions') return <RequirementSelectionQuestionsClient />
-  if (activeTab === 'rfi') return <RfiQuestionsClient />
-  return <NormReferencesClient />
+  return null
 }

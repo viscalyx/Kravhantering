@@ -4,17 +4,18 @@ import { Download, Plus, Printer, Sparkles, Upload } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import AiRequirementGenerator from '@/components/AiRequirementGenerator'
+import { useGeneratedOutputDownload } from '@/components/generated-output/useGeneratedOutputDownload'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
-import RequirementsImportDialog, {
+import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
+import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
-} from '@/components/RequirementsImportDialog'
+} from '@/components/LazyRequirementsImportDialog'
 import RequirementsTable from '@/components/RequirementsTable'
-import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import {
   type AiRequirementGenerationAvailability,
   DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
 } from '@/lib/ai/generation-availability'
+import { devMarker } from '@/lib/developer-mode-markers'
 import {
   type AreaOption,
   buildRequirementListParams,
@@ -212,6 +213,7 @@ function mapRequirementDetailToRow(
           qualityCharacteristicNameSv:
             version.qualityCharacteristic?.nameSv ?? null,
           priorityLevelId: version.priorityLevel?.id ?? null,
+          priorityLevelCode: version.priorityLevel?.code ?? null,
           priorityLevelNameEn: version.priorityLevel?.nameEn ?? null,
           priorityLevelNameSv: version.priorityLevel?.nameSv ?? null,
           priorityLevelColor: version.priorityLevel?.color ?? null,
@@ -242,8 +244,11 @@ export default function RequirementsClient({
   useHelpContent(REQUIREMENTS_HELP)
   const tc = useTranslations('common')
   const t = useTranslations('requirement')
+  const loadRequirementsFailedMessage = t('loadRequirementsFailed')
+  const paginationContinuationFailedMessage = t('paginationContinuationFailed')
+  const requirementListRefreshedMessage = tc('requirementListRefreshed')
   const locale = useLocale()
-  const pdfDownload = useServerPdfDownload()
+  const pdfDownload = useGeneratedOutputDownload()
   const normalizedColumnDefaults = useMemo(
     () => normalizeRequirementListColumnDefaults(initialColumnDefaults),
     [initialColumnDefaults],
@@ -267,6 +272,8 @@ export default function RequirementsClient({
   const [requirementPackages, setRequirementPackages] = useState<
     RequirementPackageOption[]
   >([])
+  const [requirementPackageCatalogStatus, setRequirementPackageCatalogStatus] =
+    useState<'failed' | 'loaded' | 'loading'>('loading')
   const [normReferenceOptions, setNormReferenceOptions] = useState<
     { id: number; normReferenceId: string; name: string }[]
   >([])
@@ -285,6 +292,8 @@ export default function RequirementsClient({
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const aiReturnFocusTargetRef = useRef<HTMLElement | null>(null)
+  const importReturnFocusTargetRef = useRef<HTMLElement | null>(null)
   const [aiInitialImport, setAiInitialImport] =
     useState<InitialRequirementsImport | null>(null)
   const isAiGenerationEnabled =
@@ -302,6 +311,12 @@ export default function RequirementsClient({
       ? undefined
       : t('aiGenerateDisabledNoAuthorableArea')
   const [hasMore, setHasMore] = useState(false)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [paginationNotice, setPaginationNotice] = useState<string | null>(null)
+  const [rowsError, setRowsError] = useState(false)
+  const [continuationError, setContinuationError] = useState<
+    'continuation' | 'recovery' | null
+  >(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasLoadedColumnPreferences, setHasLoadedColumnPreferences] =
     useState(false)
@@ -317,123 +332,177 @@ export default function RequirementsClient({
   // Can temporarily hold a uniqueId string when resolving from URL params.
   const selectedIdRef = useRef<number | string | null>(null)
   const latestRowsRequestIdRef = useRef(0)
+  const rowsAbortRef = useRef<AbortController | null>(null)
+  const rowsRetryRef = useRef<HTMLButtonElement>(null)
   const latestFetchDataRequestIdRef = useRef(0)
   const scrollToIdRef = useRef<number | null>(null)
-  if (typeof selectedIdRef.current !== 'string') {
-    selectedIdRef.current = selectedId
-  }
 
-  const refreshRows = useCallback(async () => {
-    const requestId = ++latestRowsRequestIdRef.current
-    const params = buildRequirementListParams({
-      filters,
-      limit: PAGE_SIZE,
-      locale,
-      sort: sortState,
-    })
-
-    let data: {
-      pagination?: { hasMore?: boolean }
-      requirements?: RequirementRow[]
-    } | null = null
-
-    try {
-      const res = await fetch(`/api/requirements?${params}`)
-      if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
-        return
-      }
-
-      data = (await res.json()) as {
-        pagination?: { hasMore?: boolean }
-        requirements?: RequirementRow[]
-      }
-    } catch {
-      return
+  useEffect(() => {
+    if (typeof selectedIdRef.current !== 'string') {
+      selectedIdRef.current = selectedId
     }
-    if (!data || requestId !== latestRowsRequestIdRef.current) {
-      return
-    }
+  }, [selectedId])
 
-    const newRows = data.requirements ?? []
-    const nextHasMore = data.pagination?.hasMore ?? false
-
-    // If an expanded row is no longer in the filtered results, pin it.
-    // sid can be a numeric id or a uniqueId string (from ?selected= URL param).
-    const sid = selectedIdRef.current
-    let newPinnedRow: RequirementRow | null = null
-    let resolvedNumericId: number | null = null
-
-    if (sid != null) {
-      const inResults =
-        typeof sid === 'number'
-          ? newRows.some(r => r.id === sid)
-          : newRows.some(r => r.uniqueId === sid)
-
-      // If sid is a uniqueId string, resolve the numeric id from the results
-      if (typeof sid === 'string' && inResults) {
-        const match = newRows.find(r => r.uniqueId === sid)
-        if (match) resolvedNumericId = match.id
-      }
-
-      const isCurrentRowsRequest = () =>
-        requestId === latestRowsRequestIdRef.current
-      const hasCurrentPinnedSelection = (
-        row?: Pick<RequirementRow, 'id' | 'uniqueId'>,
-      ) =>
-        isCurrentRowsRequest() &&
-        (selectedIdRef.current === sid ||
-          (row
-            ? selectionMatchesRequirementRow(selectedIdRef.current, row)
-            : false))
+  const refreshRows = useCallback(
+    async ({
+      recoveringInvalidCursor = false,
+      restoreRetryFocusOnFailure = false,
+    }: {
+      recoveringInvalidCursor?: boolean
+      restoreRetryFocusOnFailure?: boolean
+    } = {}): Promise<boolean> => {
+      const requestId = ++latestRowsRequestIdRef.current
+      rowsAbortRef.current?.abort()
+      const controller = new AbortController()
+      rowsAbortRef.current = controller
+      setLoadingMore(false)
+      setRowsError(false)
+      setContinuationError(null)
+      const params = buildRequirementListParams({
+        filters,
+        limit: PAGE_SIZE,
+        locale,
+        sort: sortState,
+      })
 
       try {
-        const singleRes = await fetch(`/api/requirements/${sid}`)
-        if (singleRes.ok && isCurrentRowsRequest()) {
-          const detail = (await singleRes.json()) as RequirementDetailRowSource
-          const row = mapRequirementDetailToRow(detail)
-          if (hasCurrentPinnedSelection(row)) {
-            newPinnedRow = row
-            resolvedNumericId = detail.id
+        const res = await fetch(`/api/requirements?${params}`, {
+          signal: controller.signal,
+        })
+        if (!res.ok) {
+          throw new Error(loadRequirementsFailedMessage)
+        }
+        const data = (await res.json()) as {
+          pagination?: { hasMore?: boolean; nextCursor?: string | null }
+          requirements?: RequirementRow[]
+        }
+        if (
+          controller.signal.aborted ||
+          requestId !== latestRowsRequestIdRef.current
+        ) {
+          return false
+        }
+
+        const newRows = Array.from(
+          new Map(
+            (data.requirements ?? []).map(row => [row.id, row] as const),
+          ).values(),
+        )
+        const nextHasMore = data.pagination?.hasMore ?? false
+        const refreshedCursor = data.pagination?.nextCursor ?? null
+
+        // If an expanded row is no longer in the filtered results, pin it.
+        // sid can be a numeric id or a uniqueId string (from ?selected= URL param).
+        const sid = selectedIdRef.current
+        let newPinnedRow: RequirementRow | null = null
+        let resolvedNumericId: number | null = null
+
+        if (sid != null) {
+          const inResults =
+            typeof sid === 'number'
+              ? newRows.some(r => r.id === sid)
+              : newRows.some(r => r.uniqueId === sid)
+
+          if (typeof sid === 'string' && inResults) {
+            const match = newRows.find(r => r.uniqueId === sid)
+            if (match) resolvedNumericId = match.id
           }
-        } else if (!singleRes.ok && hasCurrentPinnedSelection()) {
-          if (!inResults) {
-            selectedIdRef.current = null
-            setSelectedId(null)
-            scrollToIdRef.current = null
+
+          const isCurrentRowsRequest = () =>
+            !controller.signal.aborted &&
+            requestId === latestRowsRequestIdRef.current
+          const hasCurrentPinnedSelection = (
+            row?: Pick<RequirementRow, 'id' | 'uniqueId'>,
+          ) =>
+            isCurrentRowsRequest() &&
+            (selectedIdRef.current === sid ||
+              (row
+                ? selectionMatchesRequirementRow(selectedIdRef.current, row)
+                : false))
+
+          try {
+            const singleRes = await fetch(`/api/requirements/${sid}`, {
+              signal: controller.signal,
+            })
+            if (singleRes.ok && isCurrentRowsRequest()) {
+              const detail =
+                (await singleRes.json()) as RequirementDetailRowSource
+              const row = mapRequirementDetailToRow(detail)
+              if (hasCurrentPinnedSelection(row)) {
+                newPinnedRow = row
+                resolvedNumericId = detail.id
+              }
+            } else if (!singleRes.ok && hasCurrentPinnedSelection()) {
+              if (!inResults) {
+                selectedIdRef.current = null
+                setSelectedId(null)
+                scrollToIdRef.current = null
+              }
+            }
+          } catch {
+            if (hasCurrentPinnedSelection() && !inResults) {
+              selectedIdRef.current = null
+              setSelectedId(null)
+              scrollToIdRef.current = null
+            }
           }
         }
+
+        if (
+          controller.signal.aborted ||
+          requestId !== latestRowsRequestIdRef.current
+        ) {
+          return false
+        }
+
+        if (resolvedNumericId != null) {
+          selectedIdRef.current = resolvedNumericId
+          setSelectedId(resolvedNumericId)
+          if (typeof sid === 'string') {
+            scrollToIdRef.current = resolvedNumericId
+          }
+        }
+
+        setHasMore(nextHasMore)
+        setNextCursor(refreshedCursor)
+        setRows(newRows)
+        setPinnedRow(newPinnedRow)
+        if (recoveringInvalidCursor) {
+          setPaginationNotice(requirementListRefreshedMessage)
+        }
+        return true
       } catch {
-        if (hasCurrentPinnedSelection()) {
-          if (!inResults) {
-            selectedIdRef.current = null
-            setSelectedId(null)
-            scrollToIdRef.current = null
+        if (
+          controller.signal.aborted ||
+          requestId !== latestRowsRequestIdRef.current
+        ) {
+          return false
+        }
+        if (recoveringInvalidCursor) {
+          setContinuationError('recovery')
+        } else {
+          setRowsError(true)
+        }
+        if (restoreRetryFocusOnFailure) {
+          requestAnimationFrame(() => rowsRetryRef.current?.focus())
+        }
+        return false
+      } finally {
+        if (requestId === latestRowsRequestIdRef.current) {
+          if (rowsAbortRef.current === controller) {
+            rowsAbortRef.current = null
           }
         }
       }
-    }
-
-    if (requestId !== latestRowsRequestIdRef.current) {
-      return
-    }
-
-    // Keep selectedId numeric after row/detail refreshes.
-    if (resolvedNumericId != null) {
-      selectedIdRef.current = resolvedNumericId
-      setSelectedId(resolvedNumericId)
-      // URL-selected uniqueIds need one scroll after hydration. Normal numeric
-      // selection refreshes, such as lifecycle transitions, should preserve
-      // the user's current detail position.
-      if (typeof sid === 'string') {
-        scrollToIdRef.current = resolvedNumericId
-      }
-    }
-
-    // Batch both updates in one synchronous block to avoid intermediate renders
-    setHasMore(nextHasMore)
-    setRows(newRows)
-    setPinnedRow(newPinnedRow)
-  }, [filters, locale, sortState])
+    },
+    [
+      filters,
+      loadRequirementsFailedMessage,
+      locale,
+      requirementListRefreshedMessage,
+      sortState,
+    ],
+  )
 
   const applyChangedRequirementDetail = useCallback(
     (
@@ -502,46 +571,110 @@ export default function RequirementsClient({
   }, [refreshRows])
 
   const loadMore = useCallback(async () => {
-    if (loading || loadingMore || !hasMore) return
+    if (loading || loadingMore || !hasMore || !nextCursor) return
     const requestId = ++latestRowsRequestIdRef.current
+    rowsAbortRef.current?.abort()
+    const controller = new AbortController()
+    rowsAbortRef.current = controller
     setLoadingMore(true)
+    setContinuationError(null)
+    setPaginationNotice(null)
     try {
       const params = buildRequirementListParams({
         filters,
         limit: PAGE_SIZE,
         locale,
-        offset: rows.length,
+        cursor: nextCursor,
         sort: sortState,
       })
-      let data: {
-        pagination?: { hasMore?: boolean }
-        requirements?: RequirementRow[]
-      } | null = null
-
-      try {
-        const res = await fetch(`/api/requirements?${params}`)
-        if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
-          return
-        }
-
-        data = (await res.json()) as {
-          pagination?: { hasMore?: boolean }
-          requirements?: RequirementRow[]
-        }
-      } catch {
+      const res = await fetch(`/api/requirements?${params}`, {
+        signal: controller.signal,
+      })
+      if (
+        controller.signal.aborted ||
+        requestId !== latestRowsRequestIdRef.current
+      ) {
         return
       }
-      if (!data || requestId !== latestRowsRequestIdRef.current) {
+      if (res.status === 400) {
+        const body = (await res
+          .clone()
+          .json()
+          .catch(() => null)) as { code?: string } | null
+        if (body?.code === 'invalid_cursor') {
+          await refreshRows({ recoveringInvalidCursor: true })
+          return
+        }
+      }
+      if (!res.ok) {
+        throw new Error(paginationContinuationFailedMessage)
+      }
+      const data = (await res.json()) as {
+        pagination?: { hasMore?: boolean; nextCursor?: string | null }
+        requirements?: RequirementRow[]
+      }
+      if (
+        controller.signal.aborted ||
+        requestId !== latestRowsRequestIdRef.current
+      ) {
         return
       }
 
       const moreRows = data.requirements ?? []
       setHasMore(data.pagination?.hasMore ?? false)
-      setRows(prev => [...prev, ...moreRows])
+      setNextCursor(data.pagination?.nextCursor ?? null)
+      setRows(previousRows =>
+        Array.from(
+          new Map(
+            [...previousRows, ...moreRows].map(row => [row.id, row] as const),
+          ).values(),
+        ),
+      )
+    } catch {
+      if (
+        !controller.signal.aborted &&
+        requestId === latestRowsRequestIdRef.current
+      ) {
+        setContinuationError('continuation')
+      }
     } finally {
-      setLoadingMore(false)
+      if (requestId === latestRowsRequestIdRef.current) {
+        setLoadingMore(false)
+        if (rowsAbortRef.current === controller) {
+          rowsAbortRef.current = null
+        }
+      }
     }
-  }, [filters, hasMore, loading, loadingMore, locale, rows.length, sortState])
+  }, [
+    filters,
+    hasMore,
+    loading,
+    loadingMore,
+    locale,
+    nextCursor,
+    refreshRows,
+    sortState,
+    paginationContinuationFailedMessage,
+  ])
+
+  const retryRows = useCallback(async () => {
+    if (continuationError === 'continuation') {
+      await loadMore()
+      requestAnimationFrame(() => rowsRetryRef.current?.focus())
+      return
+    }
+    await refreshRows({
+      recoveringInvalidCursor: continuationError === 'recovery',
+      restoreRetryFocusOnFailure: true,
+    })
+  }, [continuationError, loadMore, refreshRows])
+
+  useEffect(
+    () => () => {
+      rowsAbortRef.current?.abort()
+    },
+    [],
+  )
 
   const getName = (opt: FilterOption) =>
     locale === 'sv' ? opt.nameSv : opt.nameEn
@@ -712,6 +845,9 @@ export default function RequirementsClient({
         setRequirementPackages(
           requirementPackagesData.requirementPackages ?? [],
         )
+        setRequirementPackageCatalogStatus('loaded')
+      } else {
+        setRequirementPackageCatalogStatus('failed')
       }
       const priorityLevelsData = await readFilterResponse<{
         priorityLevels?: PriorityLevelOption[]
@@ -889,30 +1025,23 @@ export default function RequirementsClient({
     r.pendingVersionStatusId === STATUS_REVIEW
   const anySelectedIsReview = selectedRows.some(hasReviewVersion)
   const allSelectedAreReview =
-    selectedRows.length > 0 && selectedRows.every(hasReviewVersion)
+    selectedRows.length > 0 &&
+    selectedRows.length === selectedIds.size &&
+    selectedRows.every(hasReviewVersion)
 
   const handleExport = async () => {
     const params = buildRequirementListParams({
       filters,
-      format: 'csv',
       locale,
       sort: sortState,
     })
 
-    try {
-      const res = await fetch(`/api/requirements?${params}`)
-      if (!res.ok) return
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download =
-        locale === 'sv' ? 'kravbibliotek.csv' : 'requirements-library.csv'
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch {
-      return
-    }
+    await pdfDownload.download({
+      fallbackFilename:
+        locale === 'sv' ? 'kravbibliotek.csv' : 'requirements-library.csv',
+      output: 'csv',
+      url: `/api/requirements/export?${params}`,
+    })
   }
 
   return (
@@ -932,166 +1061,217 @@ export default function RequirementsClient({
                 </p>
               </div>
             ) : (
-              <RequirementsTable
-                areas={areas}
-                categories={categories}
-                columnDefaults={normalizedColumnDefaults}
-                columnPickerPlacement="end"
-                columnWidths={columnWidths}
-                excludeColumns={['needsReference', 'specificationItemStatus']}
-                expandedId={selectedId}
-                filterValues={filters}
-                floatingActions={[
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'new requirement',
-                    ariaLabel: t('newRequirement'),
-                    href: '/requirements/new',
-                    icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-                    id: 'create',
-                    position: 'beforeColumns',
-                    variant: 'primary',
-                  },
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'ai generate',
-                    ariaLabel: t('aiGenerate'),
-                    disabled: !canOpenAiGeneration,
-                    icon: <Sparkles aria-hidden="true" className="h-4 w-4" />,
-                    id: 'ai-generate',
-                    onClick: () => {
-                      if (canOpenAiGeneration) setAiModalOpen(true)
+              <>
+                {rowsError || continuationError ? (
+                  <div
+                    className="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
+                    role="alert"
+                  >
+                    <p>
+                      {rowsError
+                        ? t('loadRequirementsFailed')
+                        : continuationError === 'recovery'
+                          ? t('paginationRecoveryFailed')
+                          : t('paginationContinuationFailed')}
+                    </p>
+                    <button
+                      className="mt-2 min-h-6 min-w-6 rounded-md px-2 py-1 font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                      onClick={() => void retryRows()}
+                      ref={rowsRetryRef}
+                      type="button"
+                    >
+                      {tc('retry')}
+                    </button>
+                  </div>
+                ) : null}
+                {paginationNotice ? (
+                  <p
+                    {...devMarker({
+                      context: 'requirements table',
+                      name: 'status',
+                      value: 'pagination refresh notice',
+                    })}
+                    className="mx-4 mt-4 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800 dark:border-primary-800 dark:bg-primary-950/40 dark:text-primary-200"
+                    role="status"
+                  >
+                    {paginationNotice}
+                  </p>
+                ) : null}
+                <RequirementsTable
+                  areas={areas}
+                  categories={categories}
+                  columnDefaults={normalizedColumnDefaults}
+                  columnPickerPlacement="end"
+                  columnWidths={columnWidths}
+                  excludeColumns={['needsReference', 'specificationItemStatus']}
+                  expandedId={selectedId}
+                  filterValues={filters}
+                  floatingActions={[
+                    {
+                      developerModeContext: 'requirements table',
+                      developerModeValue: 'new requirement',
+                      ariaLabel: t('newRequirement'),
+                      href: '/requirements/new',
+                      icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                      id: 'create',
+                      position: 'beforeColumns',
+                      variant: 'primary',
                     },
-                    position: 'beforeColumns',
-                    tooltip: aiGenerationDisabledTooltip ?? t('aiGenerate'),
-                  },
-                  {
-                    badge:
-                      selectedIds.size > 0 && anySelectedIsReview
-                        ? selectedIds.size
-                        : undefined,
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'reports',
-                    ariaLabel: tc('reports'),
-                    icon: <Printer aria-hidden="true" className="h-4 w-4" />,
-                    id: 'reports',
-                    menuItems: [
-                      {
-                        id: 'pdf-list',
-                        label: t('downloadListReportPdf'),
-                        onClick: () =>
-                          void pdfDownload.download({
-                            fallbackFilename: 'requirements-list.pdf',
-                            url: listReportPdfUrl,
-                          }),
+                    {
+                      developerModeContext: 'requirements table',
+                      developerModeValue: 'ai generate',
+                      ariaLabel: t('aiGenerate'),
+                      disabled: !canOpenAiGeneration,
+                      icon: <Sparkles aria-hidden="true" className="h-4 w-4" />,
+                      id: 'ai-generate',
+                      onClick: event => {
+                        if (canOpenAiGeneration) {
+                          aiReturnFocusTargetRef.current = event.currentTarget
+                          setAiModalOpen(true)
+                        }
                       },
-                      ...(selectedIds.size > 0 && anySelectedIsReview
-                        ? [
-                            {
-                              badge: selectedIds.size,
-                              description: !allSelectedAreReview
-                                ? t('reviewReportAllMustBeReview')
-                                : undefined,
-                              disabled: !allSelectedAreReview,
-                              id: 'review-report-pdf',
-                              label: t('downloadCombinedReportPdf'),
-                              onClick: () =>
-                                void pdfDownload.download({
-                                  fallbackFilename:
-                                    'combined-review-report.pdf',
-                                  url: `/${locale}/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
-                                }),
-                              tooltip: !allSelectedAreReview
-                                ? t('reviewReportAllMustBeReview')
-                                : undefined,
-                            },
-                          ]
-                        : []),
-                    ],
-                    tooltip: tc('reports'),
-                    variant:
-                      selectedIds.size > 0 && anySelectedIsReview
-                        ? 'warning'
-                        : undefined,
-                  },
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'import requirements',
-                    ariaLabel: t('importRequirements'),
-                    icon: <Upload aria-hidden="true" className="h-4 w-4" />,
-                    id: 'import',
-                    onClick: () => setImportDialogOpen(true),
-                    position: 'afterColumns',
-                    tooltip: t('importRequirements'),
-                  },
-                  {
-                    developerModeContext: 'requirements table',
-                    developerModeValue: 'export',
-                    ariaLabel: tc('export'),
-                    icon: <Download aria-hidden="true" className="h-4 w-4" />,
-                    id: 'export',
-                    onClick: handleExport,
-                  },
-                ]}
-                getName={getName}
-                getStatusName={getStatusName}
-                hasMore={hasMore}
-                loading={loading}
-                loadingMore={loadingMore}
-                locale={locale}
-                normReferences={normReferenceOptions}
-                onColumnWidthsChange={setColumnWidths}
-                onFilterChange={val => {
-                  setFilters(val)
-                  selectedIdRef.current = null
-                  setSelectedId(null)
-                  setPinnedRow(null)
-                  setSelectedIds(new Set())
-                }}
-                onLoadMore={loadMore}
-                onRowClick={id => {
-                  const previousSelectedId = selectedIdRef.current
-                  const nextSelectedId = previousSelectedId === id ? null : id
-                  selectedIdRef.current = nextSelectedId
-                  setSelectedId(nextSelectedId)
-                  if (previousSelectedId !== id || nextSelectedId === null) {
+                      position: 'beforeColumns',
+                      tooltip: aiGenerationDisabledTooltip ?? t('aiGenerate'),
+                    },
+                    {
+                      badge:
+                        selectedIds.size > 0 && anySelectedIsReview
+                          ? selectedIds.size
+                          : undefined,
+                      developerModeContext: 'requirements table',
+                      developerModeValue: 'reports',
+                      ariaLabel: tc('reports'),
+                      icon: <Printer aria-hidden="true" className="h-4 w-4" />,
+                      id: 'reports',
+                      menuItems: [
+                        {
+                          id: 'pdf-list',
+                          label: t('downloadListReportPdf'),
+                          onClick: returnFocusTarget =>
+                            void pdfDownload.download({
+                              fallbackFilename: 'requirements-list.pdf',
+                              restoreFocusTo: returnFocusTarget,
+                              url: listReportPdfUrl,
+                            }),
+                        },
+                        ...(selectedIds.size > 0 && anySelectedIsReview
+                          ? [
+                              {
+                                badge: selectedIds.size,
+                                description: !allSelectedAreReview
+                                  ? t('reviewReportAllMustBeReview')
+                                  : undefined,
+                                disabled: !allSelectedAreReview,
+                                id: 'review-report-pdf',
+                                label: t('downloadCombinedReportPdf'),
+                                onClick: (
+                                  returnFocusTarget?: HTMLButtonElement | null,
+                                ) =>
+                                  void pdfDownload.download({
+                                    fallbackFilename:
+                                      'combined-review-report.pdf',
+                                    restoreFocusTo: returnFocusTarget,
+                                    url: `/${locale}/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
+                                  }),
+                                tooltip: !allSelectedAreReview
+                                  ? t('reviewReportAllMustBeReview')
+                                  : undefined,
+                              },
+                            ]
+                          : []),
+                      ],
+                      tooltip: tc('reports'),
+                      variant:
+                        selectedIds.size > 0 && anySelectedIsReview
+                          ? 'warning'
+                          : undefined,
+                    },
+                    {
+                      developerModeContext: 'requirements table',
+                      developerModeValue: 'import requirements',
+                      ariaLabel: t('importRequirements'),
+                      icon: <Upload aria-hidden="true" className="h-4 w-4" />,
+                      id: 'import',
+                      onClick: event => {
+                        importReturnFocusTargetRef.current = event.currentTarget
+                        setImportDialogOpen(true)
+                      },
+                      position: 'afterColumns',
+                      tooltip: t('importRequirements'),
+                    },
+                    {
+                      developerModeContext: 'requirements table',
+                      developerModeValue: 'export',
+                      ariaLabel: tc('export'),
+                      icon: <Download aria-hidden="true" className="h-4 w-4" />,
+                      id: 'export',
+                      onClick: handleExport,
+                    },
+                  ]}
+                  getName={getName}
+                  getStatusName={getStatusName}
+                  hasMore={hasMore}
+                  loading={loading}
+                  loadingMore={loadingMore}
+                  locale={locale}
+                  normReferences={normReferenceOptions}
+                  onColumnWidthsChange={setColumnWidths}
+                  onFilterChange={val => {
+                    setFilters(val)
+                    selectedIdRef.current = null
+                    setSelectedId(null)
                     setPinnedRow(null)
-                  }
-                }}
-                onSelectionChange={setSelectedIds}
-                onSortChange={setSortState}
-                onVisibleColumnsChange={setVisibleColumns}
-                pinnedIds={pinnedIds}
-                priorityLevels={priorityLevels}
-                qualityCharacteristics={qualityCharacteristics}
-                renderExpanded={id => (
-                  <RequirementDetailClient
-                    inline
-                    onChange={detail => handleRequirementChange(id, detail)}
-                    onClose={() => {
-                      selectedIdRef.current = null
-                      setSelectedId(null)
+                    setSelectedIds(new Set())
+                  }}
+                  onLoadMore={loadMore}
+                  onRowClick={id => {
+                    const previousSelectedId = selectedIdRef.current
+                    const nextSelectedId = previousSelectedId === id ? null : id
+                    selectedIdRef.current = nextSelectedId
+                    setSelectedId(nextSelectedId)
+                    if (previousSelectedId !== id || nextSelectedId === null) {
                       setPinnedRow(null)
-                      fetchData()
-                    }}
-                    requirementId={id}
-                  />
-                )}
-                requirementPackages={requirementPackages}
-                rows={displayRows}
-                selectable
-                selectedIds={selectedIds}
-                sortState={sortState}
-                statusOptions={statusOptions}
-                types={types}
-                visibleColumns={visibleColumns}
-              />
+                    }
+                  }}
+                  onSelectionChange={setSelectedIds}
+                  onSortChange={setSortState}
+                  onVisibleColumnsChange={setVisibleColumns}
+                  pinnedIds={pinnedIds}
+                  priorityLevels={priorityLevels}
+                  qualityCharacteristics={qualityCharacteristics}
+                  renderExpanded={id => (
+                    <RequirementDetailClient
+                      inline
+                      onChange={detail => handleRequirementChange(id, detail)}
+                      onClose={() => {
+                        selectedIdRef.current = null
+                        setSelectedId(null)
+                        setPinnedRow(null)
+                        fetchData()
+                      }}
+                      requirementId={id}
+                    />
+                  )}
+                  requirementPackageCatalogStatus={
+                    requirementPackageCatalogStatus
+                  }
+                  requirementPackageFilterPresentation="compact-band"
+                  requirementPackages={requirementPackages}
+                  rows={displayRows}
+                  selectable
+                  selectedIds={selectedIds}
+                  sortState={sortState}
+                  statusOptions={statusOptions}
+                  types={types}
+                  visibleColumns={visibleColumns}
+                />
+              </>
             )}
           </div>
         </div>
       </div>
       {pdfDownload.dialog}
-      <AiRequirementGenerator
+      <LazyAiRequirementGenerator
         aiGenerationAvailability={aiGenerationAvailability}
         areas={areas}
         onClose={() => setAiModalOpen(false)}
@@ -1102,12 +1282,14 @@ export default function RequirementsClient({
             payload,
             preview: options.preview,
           })
+          importReturnFocusTargetRef.current = aiReturnFocusTargetRef.current
           setAiModalOpen(false)
           setImportDialogOpen(true)
         }}
         open={aiModalOpen}
+        returnFocusTarget={aiReturnFocusTargetRef.current}
       />
-      <RequirementsImportDialog
+      <LazyRequirementsImportDialog
         areas={areas}
         initialImport={aiInitialImport}
         mode="library"
@@ -1119,6 +1301,7 @@ export default function RequirementsClient({
           }
         }}
         open={importDialogOpen}
+        returnFocusTarget={importReturnFocusTargetRef.current}
       />
     </>
   )

@@ -1,9 +1,10 @@
 'use client'
 
-import { ExternalLink, HelpCircle } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { type ReactNode, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { getBrowserLinkUri } from '@/lib/norm-references/browser-link-uri'
@@ -68,16 +69,12 @@ export default function NormReferenceFormFields({
   }
 
   const helpButton = (field: string, label: string) => (
-    <button
-      aria-controls={`help-${idPrefix}-${field}`}
-      aria-expanded={openHelp.has(field)}
-      aria-label={`${tc('help')}: ${label}`}
-      className="min-h-11 min-w-11 inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+    <FieldHelpButton
+      controls={`help-${idPrefix}-${field}`}
+      expanded={openHelp.has(field)}
+      label={`${tc('help')}: ${label}`}
       onClick={() => toggleHelp(field)}
-      type="button"
-    >
-      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-    </button>
+    />
   )
 
   const helpPanel = (helpKey: string, field: string) => (

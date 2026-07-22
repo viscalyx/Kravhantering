@@ -17,6 +17,7 @@ export const POST = secureMutationRoute({
   errorMessage: 'Failed to revert to draft',
   paramsSchema: idParamSchema,
   policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
+    deviationKind: 'library',
     deviationId: params.id,
     kind: 'manage_deviation',
     operation: 'revert_to_draft',

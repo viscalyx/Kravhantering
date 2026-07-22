@@ -1,6 +1,9 @@
 ---
 name: playwright-generate-test
-description: 'Generate a Playwright test based on a scenario using Playwright MCP'
+description: >-
+  Generate a Playwright test from a supplied scenario using Playwright MCP. Use
+  when a user asks to turn a testing scenario into runnable test code,
+  selectors, and assertions.
 ---
 
 ## Test Generation with Playwright MCP

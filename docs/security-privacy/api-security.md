@@ -27,6 +27,25 @@ Covered by this contract:
   `409` response during fuzzing.
 - Requirement list, detail, create, edit, archive, version read,
   delete-draft, restore, reactivate, and transition routes.
+- The requirements-specification item GET route returns only bounded pages of
+  at most 100 mixed library and specification-local requirement applications.
+  Its filters and ordering apply in SQL Server over the complete result, and
+  malformed or query-mismatched continuation state returns `invalid_cursor`.
+- Requirement list continuation uses bounded opaque cursors. Cursors contain
+  null rank, the SQL sort key, the stable numeric requirement id, and a hash of
+  normalized query and visibility state. Free-text and lookup-name sort keys
+  are bounded; the system-generated unique requirement id is already bounded
+  by its domain. Cursors do not contain raw filters or the full requirement
+  text. Malformed or mismatched cursors return `invalid_cursor` with status
+  `400`.
+- `GET /api/requirements/export` is the complete Requirements Library CSV
+  contract. It accepts the documented filters, locale, and sort but no cursor
+  or page size, and uses the same authorization and SQL ordering as list pages.
+- `GET /api/requirements-specifications/{id}/exports` serves procurement and
+  full CSV only after specification read authorization and procurement
+  lifecycle validation. Both profiles use the common bounded CSV settings,
+  same-request private spool, stable capacity envelopes, and sanitized
+  terminal events.
 - Requirement detail responses include server-derived permissions for the
   current actor and requirement; there is no separate generic permissions
   endpoint in the v1 contract.
@@ -57,7 +76,8 @@ Deferred from this contract:
   and a sanitized match state; only Admin users receive the observed TypeORM
   migration `name`, and only for mismatch diagnostics.
 - CSV, PDF, and report export routes remain outside the
-  OpenAPI/Schemathesis v1 contract, except for data-subject export. Their
+  OpenAPI/Schemathesis v1 contract, except for data-subject export and
+  `GET /api/requirements/export`. Their
   useful assertions are exact columns, localized filenames, byte content,
   `Cache-Control: no-store`, and authorization-before-data checks, so focused
   route/report tests are the better coverage mechanism.
@@ -93,21 +113,31 @@ Deferred from this contract:
   stateless preview tokens, and are covered by strict schema/unit tests,
   secure-route coverage, authorization policies, and manual workflow cases
   rather than generated fuzzing in this contract slice.
-- Requirements specification CRUD, item, available-requirements, responsible,
-  local-requirement, and needs-reference routes remain outside the
-  OpenAPI/Schemathesis v1 contract. Their useful assertions are assignment
-  authorization, co-author/responsible role behavior, local-versus-library item
-  semantics, import preview tokens, duplicate handling, and UI workflow state.
+- Requirements specification CRUD, item mutation/detail,
+  available-requirements, responsible, local-requirement, and needs-reference
+  routes remain outside the OpenAPI/Schemathesis v1 contract. The bounded item
+  collection GET route is the exception documented above. The excluded routes'
+  useful assertions are assignment authorization, co-author/responsible role
+  behavior, local-versus-library item semantics, import preview tokens,
+  duplicate handling, and UI workflow state.
 - Co-author assignment management routes for requirement areas, requirements
   specifications, and requirement packages remain outside the
   OpenAPI/Schemathesis v1 contract. They are same-origin editing helpers backed
   by `secureMutationRoute`, HSA-id verification, scoped assignment permissions,
   conflict checks against owner/lead roles, and focused route/UI tests.
-- Requirements specification report-output, traceability-items, and CSV export
-  routes remain outside the OpenAPI/Schemathesis v1 contract with the other
-  specification and CSV surfaces. Their useful assertions are
+- Requirements specification report-output, traceability-items, bounded
+  selected-item resolution, and CSV export routes remain outside the
+  OpenAPI/Schemathesis v1 contract with the other specification and CSV
+  surfaces. Their useful assertions are
   authorization-before-data, lifecycle profile gating, linked-version
-  selection, selected-ref ownership checks, and exact output columns.
+  selection, normalized bounded traversal, exact output columns, no partial
+  success, and privacy-safe capacity telemetry.
+- Direct callers can submit at most 200 stable item references to the
+  specification selected-item resolution endpoint and to selected-item
+  needs-reference or removal mutations. Requests with more than 200 references
+  fail request validation before resolution or mutation work. This limit
+  bounds one shared action; it does not limit specification size, pagination,
+  display, or explicit selection.
 - Specification deviation routes, requirement-library deviation routes, and
   improvement-suggestion routes remain outside the OpenAPI/Schemathesis v1
   contract. Their useful assertions are lifecycle state machines, reviewer
@@ -119,6 +149,7 @@ Deferred from this contract:
   `POST /api/norm-references/{id}/reactivate` stay in scope; the remaining
   stewardship mutations are covered by secure-route and focused route/UI tests.
 - Admin Center settings routes such as `GET/PUT/PATCH /api/admin/ai-settings`,
+  `GET/PATCH /api/admin/application-settings`,
   `GET/POST /api/admin/ai-safety-rules`, AI safety term mutation routes, and
   `GET/PUT /api/admin/hsa-id-prefixes` remain outside the
   OpenAPI/Schemathesis v1 contract. Their useful assertions are Admin-only

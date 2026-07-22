@@ -29,6 +29,28 @@ function collectSeedInsertRows() {
   const rows: SeedInsertRow[] = []
   const executor = {
     query: vi.fn(async (sql: string, params: unknown[] = []) => {
+      if (sql.includes('UPDATE [rfi_question_suggestions]')) {
+        const seeded = rows.find(
+          seedRow =>
+            seedRow.table === 'rfi_question_suggestions' &&
+            seedRow.row.id === params[0],
+        )?.row
+        if (!seeded) return
+        if (sql.includes('[is_review_requested] = 1')) {
+          seeded.is_review_requested = 1
+          seeded.review_requested_at = params[1]
+          seeded.updated_at = params[2]
+        }
+        if (sql.includes('[resolution] = @1')) {
+          seeded.resolution = params[1]
+          seeded.resolution_motivation = params[2]
+          seeded.resolved_by_hsa_id = params[3]
+          seeded.resolved_by_display_name = params[4]
+          seeded.resolved_at = params[5]
+          seeded.updated_at = params[6]
+        }
+        return
+      }
       const match = sql.match(/INSERT INTO \[([^\]]+)\] \(([^)]+)\) VALUES/)
       if (!match) return
       const [, table, columnList] = match

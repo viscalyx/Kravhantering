@@ -8,6 +8,9 @@ applyTo: "{docs/governance/manuella-testfall.md,tests/integration/**/*.ts}"
 
 - Treat `docs/governance/manuella-testfall.md` as the source of truth for
   Playwright scenario coverage.
+- Keep manual cases to functional workflows and user-observable accessibility.
+  Do not include CSS-pixel measurements, target geometry, or visual layout
+  inspection; cover those with automated checks.
 - Keep each manual test case add, change, rename, or removal synchronized with
   the matching Playwright spec in the same change.
 - Change `tests/integration/**/*.spec.ts` only with a production

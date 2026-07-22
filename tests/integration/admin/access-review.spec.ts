@@ -134,6 +134,54 @@ function accessReviewAlert(page: Page) {
   return page.locator('#accessReview-panel').getByRole('alert')
 }
 
+test('ADMIN-08: retries the access review run list after a load failure', async ({
+  page,
+}) => {
+  let listAttempts = 0
+  let shouldFailListLoad = true
+  await page.route('**/api/admin/access-reviews', async route => {
+    listAttempts += 1
+    if (shouldFailListLoad) {
+      await route.fulfill({
+        contentType: 'application/json',
+        json: { error: 'Kunde inte läsa in testlistan' },
+        status: 500,
+      })
+      return
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      json: { runs: [accessReviewDetail().run] },
+    })
+  })
+  await page.route('**/api/admin/access-reviews/42', async route => {
+    await route.fulfill({
+      contentType: 'application/json',
+      json: accessReviewDetail(),
+    })
+  })
+
+  await page.goto('/sv/admin?tab=accessReview')
+
+  await test.step('shows the initial run-list load error once', async () => {
+    await expect(accessReviewAlert(page)).toContainText(
+      'Kunde inte läsa in testlistan',
+    )
+    await expect(
+      page.getByText('Kunde inte läsa in testlistan', { exact: true }),
+    ).toHaveCount(1)
+  })
+
+  await test.step('retries and loads the access review run list', async () => {
+    const failedAttemptCount = listAttempts
+    shouldFailListLoad = false
+    await page.getByRole('button', { name: 'Försök igen' }).click()
+
+    await expect(page.getByText('Kalle Svensson')).toBeVisible()
+    expect(listAttempts).toBe(failedAttemptCount + 1)
+  })
+})
+
 test('ADMIN-08: admin can decide and export an access review run', async ({
   page,
 }) => {

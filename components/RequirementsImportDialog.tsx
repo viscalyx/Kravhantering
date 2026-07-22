@@ -20,7 +20,6 @@ import {
 import { useLocale, useTranslations } from 'next-intl'
 import {
   type ChangeEvent,
-  type CSSProperties,
   type DragEvent,
   useCallback,
   useEffect,
@@ -37,7 +36,9 @@ import NormReferenceModal, {
 import QualityCharacteristicSelectOptions from '@/components/QualityCharacteristicSelectOptions'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
+import StatusBadge from '@/components/StatusBadge'
 import { downloadBlob } from '@/lib/browser-download'
+import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import {
@@ -77,6 +78,14 @@ interface PriorityLevelOption extends TaxonomyOption {
   color?: string
   descriptionEn: string
   descriptionSv: string
+  iconName: string | null
+}
+
+interface ResolvedPriorityLevelSnapshot {
+  code: string
+  color: string
+  iconName: string | null
+  name: string
 }
 
 interface QualityCharacteristicOption extends TaxonomyOption {
@@ -115,6 +124,7 @@ interface ImportPreviewRow {
   }
   proposedNeedsReferenceKey: string | null
   proposedNormReferenceKeys: string[]
+  resolvedPriorityLevel?: ResolvedPriorityLevelSnapshot
   reviewRowId: string
   selected: boolean
   sourceIndex: number
@@ -203,9 +213,10 @@ export interface InitialRequirementsImport {
   preview?: ImportPreviewResponse
 }
 
-interface RequirementsImportDialogProps {
+export interface RequirementsImportDialogProps {
   areas?: AreaOption[]
   destinationName?: string
+  embedded?: boolean
   initialImport?: InitialRequirementsImport | null
   mode: ImportMode
   needsReferences?: NeedsReferenceOption[]
@@ -570,25 +581,6 @@ function uniquePositiveIds(values: number[]): number[] {
   return [...new Set(values.filter(id => Number.isInteger(id) && id > 0))]
 }
 
-function colorWithAlpha(color: string, alpha: number): string | null {
-  const match = color.trim().match(/^#?([0-9a-f]{6})$/i)
-  if (!match) return null
-  const value = match[1]
-  const red = Number.parseInt(value.slice(0, 2), 16)
-  const green = Number.parseInt(value.slice(2, 4), 16)
-  const blue = Number.parseInt(value.slice(4, 6), 16)
-  return `rgb(${red} ${green} ${blue} / ${alpha})`
-}
-
-function priorityChipStyle(option: PriorityLevelOption): CSSProperties {
-  if (!option.color) return {}
-  return {
-    backgroundColor: colorWithAlpha(option.color, 0.08) ?? undefined,
-    borderColor: option.color,
-    color: option.color,
-  }
-}
-
 function RequirementSummaryText({
   allowToggle = true,
   collapseLabel,
@@ -662,9 +654,70 @@ function RequirementSummaryText({
   )
 }
 
+function ImportOutcomeFeedback({
+  errorMessage,
+  noticeMessage,
+  receiptCount = 0,
+  successLabel,
+}: {
+  errorMessage: string | null
+  noticeMessage: string | null
+  receiptCount?: number
+  successLabel: string
+}) {
+  return (
+    <>
+      {errorMessage ? (
+        <p
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+          role="alert"
+          {...devMarker({
+            context: 'requirements import',
+            name: 'error banner',
+            priority: 350,
+            value: 'import outcome',
+          })}
+        >
+          {errorMessage}
+        </p>
+      ) : null}
+      {noticeMessage ? (
+        <p
+          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+          role="status"
+          {...devMarker({
+            context: 'requirements import',
+            name: 'status banner',
+            priority: 350,
+            value: 'import notice',
+          })}
+        >
+          {noticeMessage}
+        </p>
+      ) : null}
+      {receiptCount > 0 ? (
+        <p
+          className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200"
+          role="status"
+          {...devMarker({
+            context: 'requirements import',
+            name: 'status banner',
+            priority: 350,
+            value: 'import receipt',
+          })}
+        >
+          <CheckCircle2 aria-hidden="true" className="mr-1 inline h-4 w-4" />
+          {successLabel}: {receiptCount}
+        </p>
+      ) : null}
+    </>
+  )
+}
+
 export default function RequirementsImportDialog({
   areas = EMPTY_AREA_OPTIONS,
   destinationName,
+  embedded = false,
   initialImport = null,
   mode,
   needsReferences = EMPTY_NEEDS_REFERENCE_OPTIONS,
@@ -1056,6 +1109,7 @@ export default function RequirementsImportDialog({
   useEffect(() => {
     if (
       !open ||
+      embedded ||
       typeof document === 'undefined' ||
       typeof window === 'undefined'
     ) {
@@ -1091,7 +1145,7 @@ export default function RequirementsImportDialog({
       html.style.overflow = previousHtmlOverflow
       window.scrollTo(scrollX, scrollY)
     }
-  }, [open])
+  }, [embedded, open])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -1689,9 +1743,6 @@ export default function RequirementsImportDialog({
   }
 
   const loadPreview = async () => {
-    setLoading(true)
-    setErrorMessage(null)
-    setNoticeMessage(null)
     try {
       if (rows.length > 0) {
         const ok = await confirm({
@@ -1706,6 +1757,10 @@ export default function RequirementsImportDialog({
         })
         if (!ok) return
       }
+      setLoading(true)
+      setErrorMessage(null)
+      setNoticeMessage(null)
+      setReceiptRows([])
       let payload: unknown
       try {
         payload = JSON.parse(rawJson)
@@ -1783,6 +1838,8 @@ export default function RequirementsImportDialog({
     }
     setLoading(true)
     setErrorMessage(null)
+    setNoticeMessage(null)
+    setReceiptRows([])
     try {
       const isLibrary = mode === 'library'
       const response = await apiFetch(
@@ -1946,9 +2003,13 @@ export default function RequirementsImportDialog({
   const getLocalizedName = (option: TaxonomyOption) =>
     locale === 'sv' ? option.nameSv : option.nameEn
   const getPriorityLabel = (option: PriorityLevelOption) =>
-    `${option.code} - ${getLocalizedName(option)}`
-  const getPriorityChipLabel = (option: PriorityLevelOption) =>
-    getLocalizedName(option)
+    [option.code, getLocalizedName(option)].filter(Boolean).join(' – ')
+  const getPriorityChipLabel = (
+    option: PriorityLevelOption | ResolvedPriorityLevelSnapshot,
+  ) =>
+    'name' in option
+      ? [option.code, option.name].filter(Boolean).join(' – ')
+      : getPriorityLabel(option)
   const getPriorityDescription = (option: PriorityLevelOption) =>
     locale === 'sv' ? option.descriptionSv : option.descriptionEn
   const getPriorityAssessmentCriteria = (option: PriorityLevelOption) =>
@@ -1963,14 +2024,30 @@ export default function RequirementsImportDialog({
     ]
       .filter(Boolean)
       .join(', ')
+  const backdropDialogProps = embedded
+    ? {}
+    : {
+        'aria-labelledby': titleId,
+        'aria-modal': true as const,
+        role: 'dialog' as const,
+      }
+  const panelDialogProps = embedded
+    ? {
+        'aria-labelledby': titleId,
+        'aria-modal': true as const,
+        role: 'dialog' as const,
+      }
+    : {}
 
-  return createPortal(
+  const content = (
     <>
       <div
-        aria-labelledby={titleId}
-        aria-modal="true"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-        role="dialog"
+        className={
+          embedded
+            ? 'contents'
+            : 'fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm'
+        }
+        {...backdropDialogProps}
       >
         <div
           className={`flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-secondary-950 ${
@@ -1978,6 +2055,7 @@ export default function RequirementsImportDialog({
               ? 'h-[calc(100dvh-2rem)] max-w-6xl'
               : 'max-w-xl'
           }`}
+          {...panelDialogProps}
         >
           <div className="flex items-center justify-between gap-3 border-b border-secondary-200 px-5 py-3 dark:border-secondary-800">
             <div className="min-w-0">
@@ -2131,8 +2209,14 @@ export default function RequirementsImportDialog({
                 </div>
                 {!canLoadPreview && startImportDisabledReason ? (
                   <p
-                    aria-live="polite"
                     className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+                    role="status"
+                    {...devMarker({
+                      context: 'requirements import',
+                      name: 'status banner',
+                      priority: 350,
+                      value: 'preview blocker',
+                    })}
                   >
                     <AlertTriangle
                       aria-hidden="true"
@@ -2149,16 +2233,11 @@ export default function RequirementsImportDialog({
                 >
                   {text.loadReview}
                 </button>
-                {errorMessage ? (
-                  <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
-                    {errorMessage}
-                  </p>
-                ) : null}
-                {noticeMessage ? (
-                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-                    {noticeMessage}
-                  </p>
-                ) : null}
+                <ImportOutcomeFeedback
+                  errorMessage={errorMessage}
+                  noticeMessage={noticeMessage}
+                  successLabel={text.success}
+                />
               </aside>
             ) : null}
             {hasLoadedReview ? (
@@ -2233,25 +2312,12 @@ export default function RequirementsImportDialog({
                 </div>
                 {(errorMessage || noticeMessage || receiptRows.length > 0) && (
                   <div className="space-y-2 border-b border-secondary-200 px-4 py-3 dark:border-secondary-800">
-                    {errorMessage ? (
-                      <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
-                        {errorMessage}
-                      </p>
-                    ) : null}
-                    {noticeMessage ? (
-                      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-                        {noticeMessage}
-                      </p>
-                    ) : null}
-                    {receiptRows.length > 0 ? (
-                      <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">
-                        <CheckCircle2
-                          aria-hidden="true"
-                          className="mr-1 inline h-4 w-4"
-                        />
-                        {text.success}: {receiptRows.length}
-                      </p>
-                    ) : null}
+                    <ImportOutcomeFeedback
+                      errorMessage={errorMessage}
+                      noticeMessage={noticeMessage}
+                      receiptCount={receiptRows.length}
+                      successLabel={text.success}
+                    />
                   </div>
                 )}
                 {activeReviewTab === 'proposals' ? (
@@ -2662,13 +2728,19 @@ export default function RequirementsImportDialog({
                             row.reviewRowId,
                           )
                           const rowMessageSummary = getRowMessageSummary(row)
-                          const selectedPriorityLevel =
+                          const taxonomyPriorityLevel =
                             row.values.priorityLevelId == null
                               ? null
                               : (taxonomy.priorityLevels.find(
                                   option =>
                                     option.id === row.values.priorityLevelId,
                                 ) ?? null)
+                          const selectedPriorityLevel =
+                            row.values.priorityLevelId == null
+                              ? null
+                              : (taxonomyPriorityLevel ??
+                                row.resolvedPriorityLevel ??
+                                null)
                           return (
                             <div
                               className="grid gap-2 md:grid-cols-[3rem_minmax(0,1fr)] md:items-start"
@@ -2768,16 +2840,17 @@ export default function RequirementsImportDialog({
                                     />
                                     <div className="flex flex-wrap items-center gap-2">
                                       {selectedPriorityLevel ? (
-                                        <span
-                                          className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium"
-                                          style={priorityChipStyle(
+                                        <StatusBadge
+                                          color={
+                                            selectedPriorityLevel.color ?? null
+                                          }
+                                          iconName={
+                                            selectedPriorityLevel.iconName
+                                          }
+                                          label={getPriorityChipLabel(
                                             selectedPriorityLevel,
                                           )}
-                                        >
-                                          {getPriorityChipLabel(
-                                            selectedPriorityLevel,
-                                          )}
-                                        </span>
+                                        />
                                       ) : null}
                                       {rowMessageSummary ? (
                                         <button
@@ -2937,16 +3010,16 @@ export default function RequirementsImportDialog({
                                           </option>
                                         ))}
                                       </select>
-                                      {selectedPriorityLevel ? (
+                                      {taxonomyPriorityLevel ? (
                                         <div className="mt-2 rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs leading-relaxed text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-200">
                                           <p>
                                             {getPriorityDescription(
-                                              selectedPriorityLevel,
+                                              taxonomyPriorityLevel,
                                             )}
                                           </p>
                                           <p className="mt-1 text-secondary-500 dark:text-secondary-400">
                                             {getPriorityAssessmentCriteria(
-                                              selectedPriorityLevel,
+                                              taxonomyPriorityLevel,
                                             )}
                                           </p>
                                         </div>
@@ -3616,7 +3689,9 @@ export default function RequirementsImportDialog({
           </div>
         </div>
       ) : null}
-    </>,
-    document.body,
+    </>
   )
+
+  if (embedded) return content
+  return createPortal(content, document.body)
 }

@@ -90,7 +90,7 @@ test.describe('Requirements import', () => {
             infos: [],
             labels: {
               category: null,
-              priorityLevel: null,
+              priorityLevel: 'Låg',
               qualityCharacteristic: null,
               type: 'Funktionellt',
             },
@@ -104,7 +104,7 @@ test.describe('Requirements import', () => {
               description: importedDescription,
               needsReferenceId: null,
               normReferenceIds: [1],
-              priorityLevelId: null,
+              priorityLevelId: 2,
               qualityCharacteristicId: null,
               requirementPackageIds: [],
               verifiable: true,
@@ -130,7 +130,7 @@ test.describe('Requirements import', () => {
             importMode: 'library',
             needsReferenceId: null,
             normReferences: ['SOSFS-IMPORT-1 - Importreferens'],
-            priorityLevelName: null,
+            priorityLevelName: 'P2 – Låg',
             qualityCharacteristicName: null,
             requirementPackageNames: [],
             verifiable: true,
@@ -149,36 +149,30 @@ test.describe('Requirements import', () => {
     const previewButton = dialog.getByRole('button', {
       name: 'Förhandsgranska krav',
     })
+    const importButton = page.getByRole('button', { name: 'Importera krav' })
     let selectedAreaId: number | null = null
     let selectedAreaDialogName = /Importera krav för/
 
     await test.step('open import and download supporting artifacts', async () => {
       await page.goto('/sv/requirements')
 
-      const importButton = page.getByRole('button', { name: 'Importera krav' })
       const exportButton = page.getByRole('button', { name: 'Exportera' })
       const columnsButton = page.getByRole('button', { name: 'Kolumner' })
       await expect(importButton).toBeVisible()
       await expect(exportButton).toBeVisible()
       await expect(columnsButton).toBeVisible()
-      const actionIds = await page
-        .locator(
-          '[data-floating-action-rail-placement="fixed-right"] [data-floating-action-group="primary"] [data-floating-action-item="true"]',
-        )
-        .evaluateAll(elements =>
-          elements.map(element =>
-            element.getAttribute('data-floating-action-id'),
-          ),
-        )
-      expect(actionIds.indexOf('import')).toBeLessThan(
-        actionIds.indexOf('export'),
-      )
-      expect(actionIds.indexOf('columns')).toBeGreaterThan(
-        actionIds.indexOf('export'),
-      )
 
       await importButton.click()
       await expect(dialog).toHaveCount(1)
+      await expect(dialog.locator(':focus')).toHaveCount(1)
+
+      await dialog.getByRole('button', { name: 'Stäng' }).click()
+      await expect(dialog).toHaveCount(0)
+      await expect(importButton).toBeFocused()
+
+      await importButton.click()
+      await expect(dialog).toHaveCount(1)
+      await expect(dialog.getByLabel('Import-JSON')).toHaveValue('')
 
       await dialog.getByRole('button', { name: 'Ladda ner schema' }).click()
       await dialog
@@ -261,6 +255,12 @@ test.describe('Requirements import', () => {
       await expect(
         page.getByRole('button', { name: 'Expandera alla' }),
       ).toBeEnabled()
+      const priorityBadge = page
+        .getByRole('dialog', { name: selectedAreaDialogName })
+        .locator('.status-badge')
+        .filter({ hasText: 'P2 – Låg' })
+      await expect(priorityBadge).toHaveCount(1)
+      await expect(priorityBadge).toHaveText('P2 – Låg')
     })
 
     await test.step('review imported requirement and norm reference details', async () => {
@@ -276,14 +276,6 @@ test.describe('Requirements import', () => {
       await expect(reviewDialog.getByLabel('Verifieringsmetod')).toHaveValue(
         'Demonstration',
       )
-      const typeBox = await reviewDialog.getByLabel('Typ').boundingBox()
-      const qualityBox = await reviewDialog
-        .getByLabel('Kvalitetsegenskap')
-        .boundingBox()
-      expect(typeBox).not.toBeNull()
-      expect(qualityBox).not.toBeNull()
-      expect(typeBox?.y ?? 0).toBeLessThanOrEqual(qualityBox?.y ?? 0)
-
       await page
         .getByRole('tab', { name: /Föreslagna normreferenser 1/ })
         .click()
@@ -319,6 +311,9 @@ test.describe('Requirements import', () => {
         ],
       })
       await expect(page.getByText(/Importerade rader: 1/)).toHaveCount(1)
+      await expect(
+        page.getByRole('status').filter({ hasText: 'Importerade rader: 1' }),
+      ).toHaveText('Importerade rader: 1')
       const receiptDownloadPromise = page.waitForEvent('download')
       await page.getByRole('button', { name: 'Ladda ner CSV-kvitto' }).click()
       const receiptDownload = await receiptDownloadPromise
@@ -338,6 +333,17 @@ test.describe('Requirements import', () => {
       expect(receiptCsv).toContain(
         '"SOSFS-IMPORT-1 - Importreferens","true","Demonstration","1"',
       )
+
+      const refreshedRequirements = page.waitForRequest(request => {
+        const url = new URL(request.url())
+        return (
+          request.method() === 'GET' && url.pathname === '/api/requirements'
+        )
+      })
+      await dialog.getByRole('button', { name: 'Stäng' }).click()
+      await refreshedRequirements
+      await expect(dialog).toHaveCount(0)
+      await expect(importButton).toBeFocused()
     })
   })
 })

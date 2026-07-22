@@ -23,6 +23,7 @@ import Logo from '@/components/Logo'
 import ThemeToggle from '@/components/ThemeToggle'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { Link, usePathname } from '@/i18n/routing'
+import { canAccessAdminCenter } from '@/lib/auth/roles'
 import type { BuildMetadata } from '@/lib/build-metadata'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { dispatchGlobalNavigationLayoutEvent } from '@/lib/navigation-layout-events'
@@ -250,6 +251,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   const [desktopExpanded, setDesktopExpanded] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [canOpenRequirementAreas, setCanOpenRequirementAreas] = useState(false)
+  const [canOpenAdminCenter, setCanOpenAdminCenter] = useState(false)
   const [databaseSchemaStatus, setDatabaseSchemaStatus] =
     useState<DatabaseSchemaStatusResponse | null>(null)
   const mobileCloseButtonRef = useRef<HTMLButtonElement>(null)
@@ -399,6 +401,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           ? ((await areasResponse.json()) as RequirementAreasResponse)
           : null
         const isAdmin = auth?.roles?.includes('Admin') === true
+        const canOpenAdmin = canAccessAdminCenter(auth?.roles ?? [])
         const managesArea =
           areas?.areas?.some(
             area => area.permissions?.canManageAssignments === true,
@@ -406,6 +409,9 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
 
         if (!cancelled && (isAdmin || managesArea)) {
           setCanOpenRequirementAreas(true)
+        }
+        if (!cancelled && canOpenAdmin) {
+          setCanOpenAdminCenter(true)
         }
       } catch {
         // Keep the default hidden state when navigation eligibility cannot load.
@@ -568,7 +574,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
         </NavigationSection>
         <NavigationSection expanded={expanded} label={t('utilities')}>
           {renderHelpButton(expanded, mobile ? close : undefined)}
-          {renderSettingsLink(expanded, close)}
+          {canOpenAdminCenter ? renderSettingsLink(expanded, close) : null}
           <LanguageSwitcher expanded={expanded} variant="rail" />
           <ThemeToggle expanded={expanded} variant="rail" />
           <AuthMenu expanded={expanded} variant={mobile ? 'mobile' : 'rail'} />

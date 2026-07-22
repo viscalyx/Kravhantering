@@ -329,6 +329,64 @@ place.
    exit
    ```
 
+   Verify generated-output temporary storage from inside `app-runtime` before
+   starting nginx. If `KRAVHANTERING_EXPORT_TEMP_DIR` is unset or blank in
+   `/etc/kravhantering/app.env`, the printed path is the container
+   operating-system temporary directory; the fallback must still have the
+   required permissions and capacity. The probe runs as the non-root Node.js
+   account, verifies read/write/search access, and creates and removes a file:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   COMPOSE_FILE=compose/app-node-tls.compose.yml
+   # COMPOSE_FILE=compose/app-node-http.compose.yml
+
+   podman compose --env-file /etc/kravhantering/release.env \
+     -f "$COMPOSE_FILE" exec -T app-runtime node <<'NODE'
+   const fs = require('node:fs')
+   const os = require('node:os')
+   const path = require('node:path')
+
+   const configured = process.env.KRAVHANTERING_EXPORT_TEMP_DIR?.trim()
+   const directory = configured || os.tmpdir()
+   fs.accessSync(
+     directory,
+     fs.constants.R_OK | fs.constants.W_OK | fs.constants.X_OK,
+   )
+   const probeDirectory = fs.mkdtempSync(
+     path.join(directory, 'kravhantering-storage-check-'),
+   )
+   try {
+     const probeFile = path.join(probeDirectory, 'probe')
+     fs.writeFileSync(probeFile, 'ready', { mode: 0o600 })
+   } finally {
+     fs.rmSync(probeDirectory, { recursive: true })
+   }
+   const stats = fs.statfsSync(directory, { bigint: true })
+   const availableBytes = stats.bavail * stats.bsize
+   const availableGiB = Number(availableBytes) / 1024 ** 3
+   console.log(`Temporary directory: ${directory}`)
+   console.log(`Available: ${availableBytes} bytes (${availableGiB.toFixed(2)} GiB)`)
+   NODE
+
+   exit
+   ```
+
+   Do not continue if the probe fails. Confirm that the reported available
+   space is at least:
+
+   ```text
+   (CSV concurrency per node × CSV maximum file bytes)
+   + (PDF concurrency per node × PDF maximum file bytes)
+   + site-approved filesystem headroom
+   ```
+
+   Use the application settings planned for this environment. The built-in
+   defaults require 650 MiB before filesystem headroom. `/api/ready` repeats
+   the create/write/remove check, but capacity planning remains an operator
+   check.
+
    Confirm the nginx resolver from inside the same Compose network. The
    `APP_NODE_NETWORK` variable is for this temporary `podman run` container;
    `podman compose` attaches long-running services to the network

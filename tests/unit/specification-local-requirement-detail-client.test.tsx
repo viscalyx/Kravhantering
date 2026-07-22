@@ -5,6 +5,7 @@ import SpecificationLocalRequirementDetailClient from '@/components/Specificatio
 
 const confirmMock = vi.fn(async () => false)
 const routerPushMock = vi.fn()
+const deviationFormRenderSpy = vi.hoisted(() => vi.fn())
 const translations: Record<string, string> = {
   'common.cancel': 'Cancel',
   'common.createdAt': 'Created',
@@ -93,7 +94,10 @@ vi.mock('@/components/DeviationDecisionModal', () => ({
 }))
 
 vi.mock('@/components/DeviationFormModal', () => ({
-  default: () => null,
+  default: (props: Record<string, unknown>) => {
+    deviationFormRenderSpy(props)
+    return null
+  },
 }))
 
 vi.mock('@/components/DeviationPill', () => ({
@@ -202,10 +206,13 @@ describe('SpecificationLocalRequirementDetailClient', () => {
           },
           verifiable: true,
           priorityLevel: {
+            code: 'P4',
             color: '#dc2626',
+            iconName: 'ArrowUpRight',
             id: 2,
             nameEn: 'High',
             nameSv: 'Hog',
+            sortOrder: 4,
           },
           requirementPackages: [],
           uniqueId: 'KRAV0001',
@@ -242,6 +249,11 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(screen.queryByText('Integration')).not.toBeInTheDocument()
     expect(screen.getByText('Norm references')).toBeInTheDocument()
     expect(screen.getByText('ISO27001')).toBeInTheDocument()
+    const detailPriorityBadge = screen
+      .getByText('P4 – Hog')
+      .closest('.status-badge')
+    expect(detailPriorityBadge).toHaveAttribute('data-accent-color', '#dc2626')
+    expect(detailPriorityBadge?.querySelector('svg')).toBeTruthy()
     expect(screen.queryByText('RequirementPackage')).not.toBeInTheDocument()
     expect(screen.queryByText('KRAV0001')).not.toBeInTheDocument()
     expect(
@@ -251,6 +263,19 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(
       screen.queryByText('Only exists in this specification.'),
     ).not.toBeInTheDocument()
+
+    expect(deviationFormRenderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        priorityLevel: {
+          code: 'P4',
+          color: '#dc2626',
+          iconName: 'ArrowUpRight',
+          id: 2,
+          name: 'Hog',
+          sortOrder: 4,
+        },
+      }),
+    )
 
     const editButton = await screen.findByRole('button', { name: 'Edit' })
     expect(editButton).toHaveAttribute(

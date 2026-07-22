@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { okResponse } from './test-helpers'
 
@@ -29,7 +30,25 @@ vi.mock('@/components/ConfirmModal', () => ({
 }))
 
 vi.mock('@/components/StatusBadge', () => ({
-  default: ({ label }: { label: string }) => <span>{label}</span>,
+  default: ({
+    color,
+    iconName,
+    label,
+    theme = 'auto',
+  }: {
+    color: string | null
+    iconName?: string | null
+    label: string
+    theme?: string
+  }) => (
+    <span
+      data-badge-color={color}
+      data-badge-icon={iconName}
+      data-badge-theme={theme}
+    >
+      {label}
+    </span>
+  ),
 }))
 
 const fetchMock = vi.fn()
@@ -86,10 +105,20 @@ describe('PriorityLevelsClient', () => {
       'nav.priorityLevels',
     )
     await waitFor(() => {
-      expect(screen.getByText('Low')).toBeInTheDocument()
+      expect(screen.getByText('P2 – Low')).toBeInTheDocument()
     })
-    expect(screen.getByText('P2')).toBeInTheDocument()
-    expect(screen.getByText('Medium')).toBeInTheDocument()
+    expect(screen.getByText('P3 – Medium')).toBeInTheDocument()
+    expect(
+      screen.getByRole('columnheader', {
+        name: 'priorityLevelAdmin.priority',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('columnheader', { name: 'priorityLevelAdmin.color' }),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('columnheader', { name: 'priorityLevelAdmin.code' }),
+    ).toBeNull()
     expect(screen.queryByRole('button', { name: /common\.create/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /common\.delete/i })).toBeNull()
     expect(
@@ -103,11 +132,11 @@ describe('PriorityLevelsClient', () => {
     render(<PriorityLevelsClient />)
 
     await waitFor(() => {
-      expect(screen.getByText('Låg')).toBeInTheDocument()
+      expect(screen.getByText('P2 – Låg')).toBeInTheDocument()
     })
     expect(
       screen.getByRole('columnheader', {
-        name: 'priorityLevelAdmin.designation',
+        name: 'priorityLevelAdmin.priority',
       }),
     ).toBeInTheDocument()
     expect(
@@ -141,14 +170,14 @@ describe('PriorityLevelsClient', () => {
     render(<PriorityLevelsClient />)
 
     const emptyState = await screen.findByText('priorityLevelAdmin.emptyState')
-    expect(emptyState.closest('td')).toHaveAttribute('colspan', '8')
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '6')
     expect(screen.queryByRole('button', { name: /common\.create/i })).toBeNull()
   })
 
   it('opens edit form with existing data', async () => {
     render(<PriorityLevelsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Low')).toBeInTheDocument()
+      expect(screen.getByText('P2 – Low')).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
@@ -160,15 +189,120 @@ describe('PriorityLevelsClient', () => {
         ) as HTMLInputElement
       ).value,
     ).toBe('Low')
+    expect(document.querySelector('[data-color-swatch="exact-rgb"]')).toBeNull()
+    const codeSortRow = document
+      .getElementById('priority-code')
+      ?.closest('[data-priority-form-row="code-sort"]')
+    expect(codeSortRow).toHaveClass('grid', 'sm:grid-cols-2')
+    expect(codeSortRow).toContainElement(
+      document.getElementById('priority-sort-order'),
+    )
+    const colorHexInput = screen.getByLabelText('priorityLevelAdmin.colorHex')
+    expect(colorHexInput).toHaveValue('#22c55e')
+    expect(colorHexInput).toHaveClass('max-w-36')
+    expect(screen.getByLabelText('priorityLevelAdmin.colorPicker')).toHaveValue(
+      '#22c55e',
+    )
+    const colorIconRow = document
+      .getElementById('priority-color-hex')
+      ?.closest('[data-priority-form-row="color-icon"]')
+    expect(colorIconRow).toHaveClass('grid', 'sm:grid-cols-2')
+    expect(colorIconRow).toContainElement(
+      document.getElementById('priority-icon'),
+    )
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
   })
 
+  it('shows contextual help for sort order, color, and icon fields', async () => {
+    const user = userEvent.setup()
+    render(<PriorityLevelsClient />)
+    await screen.findByText('P2 – Low')
+
+    await user.click(
+      screen.getAllByRole('button', { name: /common\.edit/i })[0],
+    )
+
+    for (const field of ['sortOrder', 'color', 'icon']) {
+      await user.click(
+        screen.getByRole('button', {
+          name: `common.help: priorityLevelAdmin.${field}`,
+        }),
+      )
+      expect(
+        await screen.findByText(`priorityLevelAdmin.${field}Help`),
+      ).toBeInTheDocument()
+    }
+  })
+
+  it('shows shared light and dark badge previews with contrast guidance', async () => {
+    render(<PriorityLevelsClient />)
+    await screen.findByText('P2 – Low')
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    await screen.findByText('common.noneAvailable')
+
+    const preview = screen.getByRole('status', {
+      name: 'priorityLevelAdmin.themePreview',
+    })
+    expect(preview).toHaveTextContent('priorityLevelAdmin.themePreviewGuidance')
+    expect(preview).toHaveTextContent('priorityLevelAdmin.lightTheme')
+    expect(preview).toHaveTextContent('priorityLevelAdmin.darkTheme')
+    expect(preview).toHaveTextContent('P2 – Low')
+    expect(preview.querySelector('[data-badge-theme="light"]')).toHaveAttribute(
+      'data-badge-icon',
+      'ArrowDownLeft',
+    )
+    expect(preview.querySelector('[data-badge-theme="dark"]')).toHaveAttribute(
+      'data-badge-color',
+      '#22c55e',
+    )
+    expect(
+      preview.querySelectorAll(
+        ':scope [data-badge-theme="light"], :scope [data-badge-theme="dark"]',
+      ),
+    ).toHaveLength(2)
+    expect(
+      document.querySelector(
+        '[data-developer-mode-name="theme contrast preview"]',
+      ),
+    ).toBeTruthy()
+  })
+
+  it('warns about invalid stored colors and omits the invalid preview', async () => {
+    fetchMock.mockResolvedValue(
+      okResponse({
+        priorityLevels: [
+          { ...samplePriorityLevels[0], color: 'invalid-color' },
+        ],
+      }),
+    )
+    render(<PriorityLevelsClient />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'priorityLevelAdmin.invalidStoredColors',
+    )
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    await screen.findByText('common.noneAvailable')
+    expect(
+      screen.getByRole('status', {
+        name: 'priorityLevelAdmin.themePreview',
+      }),
+    ).toHaveTextContent('priorityLevelAdmin.invalidColorWarning')
+    const colorHexInput = screen.getByLabelText('priorityLevelAdmin.colorHex')
+    expect(colorHexInput).toHaveValue('invalid-color')
+    expect(colorHexInput).toHaveAttribute('aria-invalid', 'true')
+    expect(document.querySelector('[data-color-swatch="exact-rgb"]')).toBeNull()
+    expect(screen.queryByLabelText('priorityLevelAdmin.colorPicker')).toBeNull()
+    expect(document.body.innerHTML).not.toContain('#000000')
+    expect(document.querySelector('[style*="invalid-color"]')).toBeNull()
+  })
+
   it('submits edits through PUT', async () => {
     render(<PriorityLevelsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Low')).toBeInTheDocument()
+      expect(screen.getByText('P2 – Low')).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
@@ -194,7 +328,7 @@ describe('PriorityLevelsClient', () => {
   it('submits a blank sort order as invalid instead of coercing to zero', async () => {
     render(<PriorityLevelsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Low')).toBeInTheDocument()
+      expect(screen.getByText('P2 – Low')).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
@@ -220,7 +354,9 @@ describe('PriorityLevelsClient', () => {
         url === '/api/priority-levels/1' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     )
-    const body = JSON.parse(String((putCall?.[1] as RequestInit).body)) as {
+    const body = JSON.parse(
+      String((putCall?.[1] as RequestInit | undefined)?.body),
+    ) as {
       sortOrder: number | null
     }
     expect(body.sortOrder).toBeNull()
@@ -258,7 +394,7 @@ describe('PriorityLevelsClient', () => {
 
     render(<PriorityLevelsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Low')).toBeInTheDocument()
+      expect(screen.getByText('P2 – Low')).toBeInTheDocument()
     })
 
     const editButtons = screen.getAllByRole('button', {
@@ -283,17 +419,20 @@ describe('PriorityLevelsClient', () => {
   })
 
   it('closes edit form on cancel', async () => {
+    const user = userEvent.setup()
     render(<PriorityLevelsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Low')).toBeInTheDocument()
+      expect(screen.getByText('P2 – Low')).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
+    await user.click(screen.getByRole('button', { name: /common\.cancel/i }))
 
-    expect(screen.queryByLabelText(/priorityLevelAdmin\.name.+SV/)).toBeNull()
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/priorityLevelAdmin\.name.+SV/)).toBeNull()
+    })
   })
 })

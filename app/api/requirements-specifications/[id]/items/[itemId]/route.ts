@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  getLibrarySpecificationItemMetadata,
   getSpecificationItemByRef,
-  listSpecificationItems,
   updateSpecificationItemFieldsByItemRef,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -19,6 +19,9 @@ import {
   routeSegmentSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+import { authorize } from '@/lib/requirements/service-shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,7 +60,7 @@ const patchSpecificationItemSchema = z
   )
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(
@@ -67,34 +70,42 @@ export async function GET(
   if (!parsedParams.ok) {
     return parsedParams.response
   }
-  const { id, itemId: numericItemId } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
-
-  const items = await listSpecificationItems(db, id)
-  const item = items.find(
-    candidate =>
-      candidate.specificationItemId === numericItemId &&
-      candidate.kind === 'library',
-  )
-
-  if (!item) {
-    return NextResponse.json(
-      { error: 'Item not found in specification' },
-      { status: 404 },
+  try {
+    const { id, itemId: numericItemId } = parsedParams.data
+    const runtime = await createRequirementsRestRuntime(request)
+    await authorize(
+      runtime.authorization,
+      { kind: 'get_specification_items', specificationId: id },
+      runtime.context,
     )
-  }
+    const item = await getLibrarySpecificationItemMetadata(
+      runtime.db,
+      id,
+      numericItemId,
+    )
 
-  return NextResponse.json({
-    needsReference: item.needsReference ?? null,
-    needsReferenceId: item.needsReferenceId ?? null,
-    specificationItemId: item.specificationItemId,
-    specificationItemStatusColor: item.specificationItemStatusColor ?? null,
-    specificationItemStatusIconName:
-      item.specificationItemStatusIconName ?? null,
-    specificationItemStatusId: item.specificationItemStatusId,
-    specificationItemStatusNameEn: item.specificationItemStatusNameEn ?? null,
-    specificationItemStatusNameSv: item.specificationItemStatusNameSv ?? null,
-  })
+    if (!item) {
+      return NextResponse.json(
+        { error: 'Item not found in specification' },
+        { status: 404 },
+      )
+    }
+
+    return NextResponse.json({
+      needsReference: item.needsReference ?? null,
+      needsReferenceId: item.needsReferenceId ?? null,
+      specificationItemId: item.specificationItemId,
+      specificationItemStatusColor: item.specificationItemStatusColor ?? null,
+      specificationItemStatusIconName:
+        item.specificationItemStatusIconName ?? null,
+      specificationItemStatusId: item.specificationItemStatusId,
+      specificationItemStatusNameEn: item.specificationItemStatusNameEn ?? null,
+      specificationItemStatusNameSv: item.specificationItemStatusNameSv ?? null,
+    })
+  } catch (error) {
+    const { body, status } = toHttpErrorPayload(error)
+    return NextResponse.json(body, { status })
+  }
 }
 
 export const PATCH = secureMutationRoute({

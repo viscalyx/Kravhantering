@@ -76,6 +76,8 @@ interface RequirementDetailClientPropsBase {
   inline?: boolean
   onChange?: (detail?: RequirementDetailResponse) => void | Promise<void>
   onClose?: () => void
+  onRemoveFromSpecification?: (anchorEl: HTMLElement) => void | Promise<void>
+  removeFromSpecificationDisabled?: boolean
   requirementId: number | string
   specificationPermissions?: SpecificationDeviationPermissions
 }
@@ -101,6 +103,8 @@ export default function RequirementDetailClient({
   inline,
   onChange,
   onClose,
+  onRemoveFromSpecification,
+  removeFromSpecificationDisabled,
   specificationPermissions,
   specificationItemId,
   specificationId,
@@ -431,7 +435,12 @@ export default function RequirementDetailClient({
         <StatusBadge
           color={selectedVersion.priorityLevel.color}
           iconName={selectedVersion.priorityLevel.iconName}
-          label={localName(selectedVersion.priorityLevel) ?? ''}
+          label={[
+            selectedVersion.priorityLevel.code,
+            localName(selectedVersion.priorityLevel),
+          ]
+            .filter(Boolean)
+            .join(' – ')}
           size="sm"
         />
       ) : (
@@ -818,8 +827,12 @@ export default function RequirementDetailClient({
 
   const priorityLevelForDeviation = selectedVersion?.priorityLevel
     ? {
+        code: selectedVersion.priorityLevel.code,
         color: selectedVersion.priorityLevel.color,
-        name: localName(selectedVersion.priorityLevel),
+        iconName: selectedVersion.priorityLevel.iconName ?? null,
+        id: selectedVersion.priorityLevel.id,
+        name: localName(selectedVersion.priorityLevel) ?? '',
+        sortOrder: selectedVersion.priorityLevel.sortOrder,
       }
     : null
 
@@ -1038,7 +1051,11 @@ export default function RequirementDetailClient({
                   }
                   detailContext={detailContext}
                   locale={locale}
+                  onRemoveFromSpecification={onRemoveFromSpecification}
                   priorityLevel={priorityLevelForDeviation}
+                  removeFromSpecificationDisabled={
+                    removeFromSpecificationDisabled
+                  }
                   requirementId={requirementId}
                   specificationId={specificationId}
                   specificationItemId={specificationItemId}

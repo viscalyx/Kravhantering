@@ -1,9 +1,9 @@
 'use client'
 
-import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { type ReactNode, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
 
 interface ComponentProps {
@@ -30,17 +30,12 @@ export default function FieldLabelWithHelp({
           {label}
           {required ? <RequiredFieldMarker /> : null}
         </label>
-        <button
-          aria-controls={helpId}
-          aria-describedby={isOpen ? helpId : undefined}
-          aria-expanded={isOpen}
-          aria-label={`${tc('help')}: ${label}`}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+        <FieldHelpButton
+          controls={helpId}
+          expanded={isOpen}
+          label={`${tc('help')}: ${label}`}
           onClick={() => setIsOpen(open => !open)}
-          type="button"
-        >
-          <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-        </button>
+        />
       </div>
       <AnimatedHelpPanel id={helpId} isOpen={isOpen}>
         {help}

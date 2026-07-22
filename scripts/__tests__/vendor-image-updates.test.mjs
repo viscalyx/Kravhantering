@@ -1,4 +1,7 @@
-import { describe, expect, it, vi } from 'vitest'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   branchName,
   companionImageReference,
@@ -7,6 +10,7 @@ import {
   parseKongTag,
   prBody,
   processCandidate,
+  processImages,
   renderVendorImagePrTemplate,
   selectCandidates,
   setTemplateChecklistState,
@@ -14,7 +18,10 @@ import {
   stalePrClosure,
   templateChecklistRow,
   updateDependentServiceLock,
+  updateFiles,
 } from '../../.github/workflows/vendor-image-updates.mjs'
+
+const tempDirs = []
 
 const KEYCLOAK_LOCK = {
   imageId:
@@ -23,6 +30,12 @@ const KEYCLOAK_LOCK = {
     'sha256:1111111111111111111111111111111111111111111111111111111111111111',
   tag: '26.6.3',
 }
+
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) {
+    fs.rmSync(dir, { force: true, recursive: true })
+  }
+})
 
 describe('vendor image updater policy', () => {
   it('covers SQL Server release and developer companion refs', () => {
@@ -38,6 +51,22 @@ describe('vendor image updater policy', () => {
     expect(IMAGE_CONFIGS.sqlserver.companionFiles).toContain(
       'containers/production/env/release.env.template',
     )
+  })
+
+  it('tracks every checked-in Keycloak image reference', () => {
+    expect(IMAGE_CONFIGS.keycloak.companionFiles).toEqual([
+      'docker-compose.idp.yml',
+      '.devcontainer/docker-compose.yml',
+      '.devcontainer/elevated/docker-compose.yml',
+      'containers/production/env/release.env.template',
+      'docs/development/auth-developer-workflow.md',
+      'scripts/__tests__/container-release.test.mjs',
+    ])
+    expect(
+      IMAGE_CONFIGS.keycloak.companionFiles.every(filePath =>
+        fs.existsSync(filePath),
+      ),
+    ).toBe(true)
   })
 
   it('supports the Kong Gateway 3.x lane', () => {
@@ -272,6 +301,45 @@ describe('vendor image updater policy', () => {
     ])
   })
 
+  it('does not write partial image updates when companion validation fails', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vendor-image-update-'))
+    tempDirs.push(dir)
+    const lockPath = path.join(dir, 'image.lock.json')
+    const validCompanionPath = path.join(dir, 'docker-compose.yml')
+    const missingCompanionPath = path.join(dir, 'missing-devfile.yaml')
+    const currentLock = {
+      ...KEYCLOAK_LOCK,
+      image: IMAGE_CONFIGS.keycloak.image,
+      name: 'keycloak',
+      role: 'identity-provider',
+      source: 'https://quay.io/repository/keycloak/keycloak',
+    }
+    const originalLock = `${JSON.stringify(currentLock, null, 2)}\n`
+    const originalCompanion = `image: ${IMAGE_CONFIGS.keycloak.image}:${currentLock.tag}\n`
+    fs.writeFileSync(lockPath, originalLock)
+    fs.writeFileSync(validCompanionPath, originalCompanion)
+
+    expect(() =>
+      updateFiles(
+        {
+          ...IMAGE_CONFIGS.keycloak,
+          companionFiles: [validCompanionPath, missingCompanionPath],
+          dependentLockPaths: [],
+          lockPath,
+        },
+        currentLock,
+        { version: { tag: '26.7.0-0' } },
+        {
+          imageId: 'sha256:new-image',
+          manifestDigest: 'sha256:new-manifest',
+        },
+      ),
+    ).toThrow(/missing-devfile\.yaml/u)
+
+    expect(fs.readFileSync(lockPath, 'utf8')).toBe(originalLock)
+    expect(fs.readFileSync(validCompanionPath, 'utf8')).toBe(originalCompanion)
+  })
+
   it('checks template checklist rows by marker while preserving row text', () => {
     const template = [
       '- [ ] Future operator wording. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
@@ -398,6 +466,80 @@ describe('vendor image updater policy', () => {
     expect(body).toMatch(
       /^- \[x\].*<!-- DO NOT REMOVE: ssdlc:requirements -->$/mu,
     )
+  })
+
+  it('stops processing images after the first image failure', async () => {
+    const results = {
+      closed: [],
+      created: [],
+      failed: [],
+      unchanged: [],
+      updated: [],
+    }
+    const consoleObj = { error: vi.fn() }
+    const processImage = vi.fn(config => {
+      if (config.name === 'keycloak') {
+        throw new Error(
+          "ENOENT: no such file or directory, open 'devfile.example.yaml'",
+        )
+      }
+      results.created.push(config.name)
+    })
+
+    await processImages(
+      [IMAGE_CONFIGS.keycloak, IMAGE_CONFIGS.kong],
+      { includeCurrent: false },
+      results,
+      { consoleObj, processImage },
+    )
+
+    expect(processImage).toHaveBeenCalledTimes(1)
+    expect(processImage).toHaveBeenCalledWith(
+      IMAGE_CONFIGS.keycloak,
+      { includeCurrent: false },
+      results,
+    )
+    expect(results.created).toEqual([])
+    expect(results.failed).toEqual([
+      "keycloak: ENOENT: no such file or directory, open 'devfile.example.yaml'",
+    ])
+    expect(consoleObj.error).toHaveBeenCalledWith(results.failed[0])
+  })
+
+  it('refuses to start a candidate update with a dirty worktree', async () => {
+    const candidate = {
+      branch: 'automation/vendor-image/keycloak-26.7.0-0',
+      lane: '26',
+      version: { tag: '26.7.0-0' },
+    }
+    const resolveImageIdentity = vi.fn()
+    const checkoutUpdateBranch = vi.fn()
+
+    await expect(
+      processCandidate(
+        IMAGE_CONFIGS.keycloak,
+        KEYCLOAK_LOCK,
+        candidate,
+        {
+          closed: [],
+          created: [],
+          failed: [],
+          unchanged: [],
+          updated: [],
+        },
+        {
+          checkoutUpdateBranch,
+          findOpenPr: vi.fn(() => null),
+          gitStatusPorcelain: vi.fn(
+            () => ' M containers/keycloak/image.lock.json',
+          ),
+          resolveImageIdentity,
+        },
+      ),
+    ).rejects.toThrow(/dirty worktree/u)
+
+    expect(resolveImageIdentity).not.toHaveBeenCalled()
+    expect(checkoutUpdateBranch).not.toHaveBeenCalled()
   })
 
   it('skips an existing candidate PR before checkout or push', async () => {

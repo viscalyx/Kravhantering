@@ -8,7 +8,7 @@ const generatedPayload = {
   requirements: [
     {
       description: generatedDescription,
-      priorityLevelId: null,
+      priorityLevelId: 2,
       verifiable: true,
       typeId: 1,
     },
@@ -51,11 +51,17 @@ function previewBody(token: string) {
         infos: [],
         labels: {
           category: null,
-          priorityLevel: null,
+          priorityLevel: 'P2 – Låg',
           qualityCharacteristic: null,
           type: 'Funktionellt',
         },
         proposedNormReferenceKeys: [],
+        resolvedPriorityLevel: {
+          code: 'P2',
+          color: '#22c55e',
+          iconName: 'ArrowDownLeft',
+          name: 'Låg',
+        },
         reviewRowId: `${token}-row-0`,
         selected: true,
         sourceIndex: 0,
@@ -65,7 +71,7 @@ function previewBody(token: string) {
           description: generatedDescription,
           needsReferenceId: null,
           normReferenceIds: [],
-          priorityLevelId: null,
+          priorityLevelId: 2,
           qualityCharacteristicId: null,
           requirementPackageIds: [],
           verifiable: true,
@@ -79,7 +85,10 @@ function previewBody(token: string) {
   }
 }
 
-async function mockAiReferenceData(page: Page) {
+async function mockAiReferenceData(
+  page: Page,
+  options: { vision?: boolean } = {},
+) {
   await page.route('**/api/ai/models?*', async route => {
     await fulfillJson(route, {
       models: [
@@ -93,7 +102,12 @@ async function mockAiReferenceData(page: Page) {
             reasoning: '0.000015',
           },
           provider: 'anthropic',
-          supportedParameters: ['reasoning', 'stream', 'response_format'],
+          supportedParameters: [
+            'reasoning',
+            'stream',
+            'response_format',
+            ...(options.vision ? ['vision'] : []),
+          ],
         },
       ],
     })
@@ -185,7 +199,13 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
   )
 
   await page.goto('/sv/requirements')
-  await page.getByRole('button', { name: 'AI-assistera' }).first().click()
+  const aiTrigger = page.getByRole('button', { name: 'AI-assistera' }).first()
+  await aiTrigger.click()
+  const initialAiDialog = page.getByRole('dialog', {
+    name: 'AI-assisterat författande',
+  })
+  await expect(initialAiDialog).toBeVisible()
+  await expect(initialAiDialog.locator(':focus')).toHaveCount(1)
   await page
     .getByRole('dialog', { name: 'AI-assisterat författande' })
     .getByLabel('Kravområde', { exact: true })
@@ -196,6 +216,10 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
   const dialog = page.getByRole('dialog', {
     name: 'AI-assisterat författande',
   })
+  const priorityBadge = dialog.locator('.status-badge').filter({
+    hasText: 'P2 – Låg',
+  })
+  await expect(priorityBadge).toHaveCount(1)
   await dialog.getByRole('button', { name: 'AI-analys' }).click()
   await expect(
     dialog.getByRole('heading', { level: 3, name: 'Analys av betygskrav' }),
@@ -210,8 +234,13 @@ test('REQ-15: AI-assisted authoring hands library candidates to requirement impo
     .getByRole('button', { name: 'Förhandsgranska krav i import' })
     .click()
 
-  await expect(page.getByLabel(/Import-JSON/)).toBeHidden()
-  await expect(page.getByText(generatedDescription)).toBeVisible()
+  const importDialog = page.getByRole('dialog', {
+    name: /Importera krav för/,
+  })
+  await expect(importDialog).toBeVisible()
+  await expect(importDialog.locator(':focus')).toHaveCount(1)
+  await expect(importDialog.getByLabel(/Import-JSON/)).toBeHidden()
+  await expect(importDialog).toContainText(generatedDescription)
   expect(preview.callCount).toBe(1)
   expect(preview.bodies[preview.bodies.length - 1]).toMatchObject({
     payload: generatedPayload,
@@ -263,6 +292,7 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
     await expect(
       dialog.getByText(
         'AI-anropet blockerades av AI-säkerhetsfiltret: Promptinjektion: instruktionsövertagande. Ändra behovet eller sammanhanget och försök igen.',
+        { exact: true },
       ),
     ).toBeVisible()
     await expect(dialog.getByText(generatedDescription)).toHaveCount(0)
@@ -283,6 +313,203 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
   }
 })
 
+test('REQ-15C: AI-assisted authoring announces failures and supports recovery', async ({
+  page,
+}) => {
+  await mockAiReferenceData(page, { vision: true })
+  await mockImportPreview(
+    page,
+    '**/api/requirements/import/preview',
+    'accessibility-preview',
+  )
+
+  let generationAttempts = 0
+  await page.route('**/api/ai/generate-requirement-import', async route => {
+    generationAttempts += 1
+    if (generationAttempts === 1) {
+      await route.fulfill({
+        body: [
+          'event: error',
+          `data: ${JSON.stringify({
+            message: 'AI-tjänsten är tillfälligt otillgänglig.',
+          })}`,
+          '',
+          '',
+        ].join('\n'),
+        contentType: 'text/event-stream',
+      })
+      return
+    }
+
+    await route.fulfill({
+      body: [
+        'event: validation_error',
+        `data: ${JSON.stringify({
+          issues: [
+            {
+              code: 'invalid_json',
+              message: 'Modellens svar var inte giltig JSON.',
+              path: '$',
+            },
+          ],
+          message: 'Genererad JSON matchade inte importens schema.',
+          rawContent: '{"requirements":',
+        })}`,
+        '',
+        '',
+      ].join('\n'),
+      contentType: 'text/event-stream',
+    })
+  })
+
+  let repairAttempts = 0
+  await page.route('**/api/ai/repair-requirement-import-json', async route => {
+    repairAttempts += 1
+    if (repairAttempts === 1) {
+      await route.fulfill({
+        body: JSON.stringify({
+          error: 'AI-tjänsten är tillfälligt otillgänglig.',
+        }),
+        contentType: 'application/json',
+        status: 503,
+      })
+      return
+    }
+
+    await fulfillJson(route, {
+      model: 'anthropic/claude-sonnet-4',
+      payload: generatedPayload,
+      rawContent: JSON.stringify(generatedPayload),
+      stats: {
+        completionTokens: 12,
+        cost: 0,
+        promptTokens: 10,
+        reasoningTokens: 2,
+        totalTokens: 24,
+      },
+      thinking: '',
+    })
+  })
+
+  const dialog = page.getByRole('dialog', {
+    name: 'AI-assisterat författande',
+  })
+  const need = dialog.getByRole('textbox', { name: 'Behov och sammanhang' })
+  const generateButton = dialog.getByRole('button', {
+    name: 'Skapa kravkandidater',
+  })
+  const generationFailure = dialog.getByRole('heading', {
+    name: 'Genereringen misslyckades',
+  })
+  const repairButton = dialog.getByRole('button', { name: 'Reparera JSON' })
+
+  await test.step('image validation', async () => {
+    await page.goto('/sv/requirements')
+    await page.getByRole('button', { name: 'AI-assistera' }).first().click()
+    await dialog.getByLabel('Kravområde', { exact: true }).selectOption({
+      index: 1,
+    })
+    await dialog.getByLabel('Vision (bildinmatning)').check()
+
+    const imageButton = dialog.getByRole('button', { name: 'Välj bilder' })
+    await dialog.locator('input[type="file"]').setInputFiles([
+      {
+        buffer: Buffer.from('image'),
+        mimeType: 'image/png',
+        name: 'diagram.png',
+      },
+      {
+        buffer: Buffer.from('not an image'),
+        mimeType: 'text/plain',
+        name: 'notes.txt',
+      },
+      {
+        buffer: Buffer.from('image'),
+        mimeType: 'image/png',
+        name: 'secondary-image.png',
+      },
+      {
+        buffer: Buffer.from('image'),
+        mimeType: 'image/png',
+        name: 'overflow.png',
+      },
+    ])
+
+    await expect(dialog.getByText('diagram.png')).toBeVisible()
+    const removeImageButton = dialog
+      .getByRole('button', { name: 'Ta bort bild' })
+      .first()
+    await expect(removeImageButton).toBeVisible()
+    const removeImageBox = await removeImageButton.boundingBox()
+    expect(removeImageBox).not.toBeNull()
+    expect(removeImageBox?.width).toBeGreaterThanOrEqual(24)
+    expect(removeImageBox?.height).toBeGreaterThanOrEqual(24)
+    await expect(imageButton).toHaveAttribute(
+      'aria-describedby',
+      'ai-image-validation-error',
+    )
+    await expect(imageButton).toBeFocused()
+    await removeImageButton.focus()
+    await expect(removeImageButton).toBeFocused()
+    await expect(dialog.getByRole('alert')).toContainText(
+      'Filtypen stöds inte: notes.txt.',
+    )
+    await expect(dialog.getByRole('alert')).toContainText(
+      'Du kan bifoga upp till 3 bilder.',
+    )
+    await dialog.getByRole('button', { name: 'Ta bort bild' }).last().click()
+    await expect(dialog.locator('#ai-image-validation-error')).toHaveCount(0)
+  })
+
+  await test.step('initial generation failure', async () => {
+    await need.fill('Behöver säkra betygsunderlag.')
+    await generateButton.click()
+
+    await expect(
+      dialog
+        .getByRole('alert')
+        .filter({ hasText: 'AI-tjänsten är tillfälligt otillgänglig.' }),
+    ).toContainText('AI-tjänsten är tillfälligt otillgänglig.')
+    await expect(generationFailure).toBeFocused()
+    await expect(need).toHaveValue('Behöver säkra betygsunderlag.')
+    await expect(dialog.getByText('diagram.png')).toBeVisible()
+  })
+
+  await test.step('retry validation error', async () => {
+    await generateButton.click()
+    await expect(
+      dialog.getByText('Genererad JSON matchade inte importens schema.', {
+        exact: true,
+      }),
+    ).toBeVisible()
+    await expect(generateButton).toBeFocused()
+  })
+
+  await test.step('repair failure', async () => {
+    await repairButton.click()
+    await expect(
+      dialog.getByRole('alert').filter({
+        hasText:
+          'Reparationen misslyckades: AI-tjänsten är tillfälligt otillgänglig.',
+      }),
+    ).toContainText(
+      'Reparationen misslyckades: AI-tjänsten är tillfälligt otillgänglig.',
+    )
+    await expect(repairButton).toBeFocused()
+  })
+
+  await test.step('repair success', async () => {
+    await repairButton.click()
+    const resultsHeading = dialog.getByRole('heading', {
+      name: '1 vald kravkandidat',
+    })
+    await expect(
+      dialog.getByText('Den genererade JSON:en reparerades.'),
+    ).toHaveAttribute('role', 'status')
+    await expect(resultsHeading).toBeFocused()
+  })
+})
+
 test('SPEC-17: AI-assisted authoring hands kravunderlag candidates to local import review', async ({
   page,
 }) => {
@@ -294,11 +521,19 @@ test('SPEC-17: AI-assisted authoring hands kravunderlag candidates to local impo
   )
 
   await page.goto(`/sv/specifications/${specificationId}`)
+  const moreActionsTrigger = page
+    .locator('[data-floating-action-menu-trigger="more-actions"]:visible')
+    .first()
   await page.getByRole('button', { name: 'Fler åtgärder' }).click()
   await page
     .getByRole('menuitem', { name: 'AI-assisterat författande' })
     .click()
 
+  const aiDialog = page.getByRole('dialog', {
+    name: 'AI-assisterat författande',
+  })
+  await expect(aiDialog).toBeVisible()
+  await expect(aiDialog.locator(':focus')).toHaveCount(1)
   await generateCandidate(page)
 
   await page
@@ -306,8 +541,14 @@ test('SPEC-17: AI-assisted authoring hands kravunderlag candidates to local impo
     .getByRole('button', { name: 'Förhandsgranska krav i import' })
     .click()
 
-  await expect(page.getByLabel(/Import-JSON/)).toBeHidden()
-  await expect(page.getByText(generatedDescription)).toBeVisible()
+  const importDialog = page.getByRole('dialog', {
+    name: /Importera lokala krav för/,
+  })
+  await expect(importDialog).toBeVisible()
+  await expect(importDialog.locator(':focus')).toHaveCount(1)
+  await expect(importDialog.getByLabel(/Import-JSON/)).toBeHidden()
+  await expect(importDialog).toContainText(generatedDescription)
+  await expect(moreActionsTrigger).not.toBeFocused()
   expect(preview.callCount).toBe(1)
   expect(preview.bodies[preview.bodies.length - 1]).toMatchObject({
     payload: generatedPayload,

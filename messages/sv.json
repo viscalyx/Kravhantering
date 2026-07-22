@@ -4,6 +4,7 @@
     "appDescription": "En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess",
     "loading": "Laddar...",
     "loadingRequirements": "Hämtar krav…",
+    "requirementListRefreshed": "Kravlistan ändrades och lästes in på nytt från början.",
     "save": "Spara",
     "saving": "Sparar…",
     "savingInProgress": "Sparning pågår…",
@@ -140,6 +141,14 @@
     "userInfoNoRoles": "Inga roller tilldelade",
     "dataExport": "Mina personuppgifter"
   },
+  "stewardshipWorkspace": {
+    "loading": "Laddar {workspace}…",
+    "loadError": {
+      "title": "Det gick inte att ladda {workspace}",
+      "description": "Arbetsytan kunde inte laddas. Ladda om sidan och försök igen.",
+      "retry": "Ladda om sidan"
+    }
+  },
   "specificationRequirementSelection": {
     "allAreas": "Alla kravområden",
     "answered": "Besvarad",
@@ -168,6 +177,13 @@
     "createSuggestion": "Skicka RFI-frågeförslag",
     "createSuggestionForArea": "Skicka RFI-frågeförslag för kravområdet {area}",
     "createSuggestionForQuestion": "Skicka RFI-frågeförslag för {code}",
+    "conflicts": {
+      "alreadyResolved": "Det här RFI-frågeförslaget har redan behandlats. Förslagen har lästs in på nytt.",
+      "notDraft": "Endast ett RFI-frågeförslag i utkast kan tas bort. Förslagen har lästs in på nytt.",
+      "notFound": "Det här RFI-frågeförslaget finns inte längre. Förslagen har lästs in på nytt.",
+      "reviewAlreadyRequested": "Granskning har redan begärts för det här RFI-frågeförslaget. Förslagen har lästs in på nytt.",
+      "reviewRequired": "Begär granskning innan RFI-frågeförslaget behandlas. Förslagen har lästs in på nytt."
+    },
     "deleteSuggestionAriaLabel": "Ta bort RFI-frågeförslag",
     "deleteSuggestionConfirm": "Ta bort det här RFI-frågeförslaget? Det går inte att ångra.",
     "deleteSuggestionTitle": "Ta bort RFI-frågeförslag",
@@ -226,6 +242,13 @@
     "area": "Kravområde",
     "areaLockedHint": "Kravområdet kan inte ändras efter att RFI-frågan har skapats.",
     "confirmArchiveQuestion": "Arkivera den här RFI-frågan?",
+    "conflicts": {
+      "alreadyResolved": "Det här RFI-frågeförslaget har redan behandlats. Förslagen har lästs in på nytt.",
+      "notDraft": "Endast ett RFI-frågeförslag i utkast kan tas bort. Förslagen har lästs in på nytt.",
+      "notFound": "Det här RFI-frågeförslaget finns inte längre. Förslagen har lästs in på nytt.",
+      "reviewAlreadyRequested": "Granskning har redan begärts för det här RFI-frågeförslaget. Förslagen har lästs in på nytt.",
+      "reviewRequired": "Begär granskning innan RFI-frågeförslaget behandlas. Förslagen har lästs in på nytt."
+    },
     "createdAt": "Skapad",
     "createdBy": "Skapad av",
     "dismiss": "Avfärda",
@@ -424,6 +447,9 @@
   },
   "requirement": {
     "title": "Kravbibliotek",
+    "loadRequirementsFailed": "Det gick inte att läsa in kravbiblioteket.",
+    "paginationContinuationFailed": "Det gick inte att läsa in nästa sida. Kraven som redan har lästs in visas fortfarande.",
+    "paginationRecoveryFailed": "Fortsättningen har upphört att gälla och omstarten från första sidan misslyckades. Redan inlästa krav, den aktuella frågan och markeringen är oförändrade.",
     "statusStepperAriaLabel": "Arbetsflöde för kravversionsstatus",
     "tableCaption": "Lista över krav",
     "uniqueId": "Krav-ID",
@@ -458,6 +484,19 @@
     "verifiableHelp": "<strong>Ange om kravversionen har objektiva villkor som kan kontrolleras.</strong>\nOm kravet markeras som verifierbart behöver du även ange en verifieringsmetod.",
     "reference": "Kravreferens",
     "requirementPackage": "Kravpaket",
+    "requirementPackages": "Kravpaket",
+    "noRequirementPackageFilterActive": "Inget kravpaketsfilter aktivt",
+    "noRequirementPackagesAvailableToFilter": "Det finns inga kravpaket att filtrera på",
+    "requirementPackageFilterButton": "Filtrera kravpaket",
+    "requirementPackageFilterButtonActive": "Filtrera kravpaket, {count, plural, one {# valt} other {# valda}}",
+    "requirementPackageChooser": "Tillgängliga kravpaket",
+    "addRequirementPackageToFilter": "Lägg till {package} i kravpaketsfiltret",
+    "removeRequirementPackageFromFilter": "Ta bort {package} från kravpaketsfiltret",
+    "clearRequirementPackageFilter": "Rensa alla kravpaket",
+    "allRequirementPackagesSelected": "Alla kravpaket är valda.",
+    "requirementPackageAdded": "{package} har lagts till i kravpaketsfiltret.",
+    "requirementPackageRemoved": "{package} har tagits bort från kravpaketsfiltret.",
+    "requirementPackageFilterCleared": "Kravpaketsfiltret har rensats.",
     "newRequirement": "Nytt krav",
     "importRequirements": "Importera krav",
     "aiGenerate": "AI-assistera",
@@ -687,8 +726,25 @@
     "noLinkedRequirements": "Inga krav använder denna behovsreferens.",
     "toggleNeedsReferenceUsage": "Visa krav kopplade till {needsReference}",
     "bulkNeedsReferenceLabel": "Behovsreferens för valda krav",
-    "bulkNeedsReferenceHelp": "Välj den behovsreferens som ska sättas på alla markerade krav i kravunderlaget, eller välj ingen behovsreferens för att rensa kopplingen.",
-    "applyNeedsReferenceSelected": "Sätt på valda ({count})",
+    "bulkNeedsReferenceHelp": "Välj den behovsreferens som ska sättas på alla markerade krav i kravunderlaget.",
+    "assignNeedsReferenceAction": "Tilldela behovsreferens",
+    "assignNeedsReferenceTitle": "Tilldela behovsreferens till valda krav",
+    "assignNeedsReferenceHelp": "Välj en befintlig behovsreferens som ska tilldelas varje berörd kravtillämpning som visas i dialogrutan.",
+    "selectNeedsReference": "Välj en behovsreferens",
+    "clearNeedsReferenceAction": "Rensa behovsreferenser",
+    "clearNeedsReferenceTitle": "Rensa länkar till behovsreferenser",
+    "clearNeedsReferenceConfirm": "Rensa länkarna till behovsreferenser för krav-ID:n: {ids}?",
+    "bulkNeedsReferencePartialFail": "Ändringen av behovsreferenser misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade.",
+    "affectedRequirementIds": "Berörda krav-ID:n",
+    "selectionStatus": "{total, plural, one {# krav markerat} other {# krav markerade}}; {hidden, plural, =0 {inga dolda} one {# är inte inläst} other {# är inte inlästa}}.",
+    "selectionActionLimitExceeded": "{total, plural, one {# krav markerat} other {# krav markerade}}; {hidden, plural, =0 {inga dolda} one {# är inte inläst} other {# är inte inlästa}}. Gemensamma åtgärder stöder högst {limit} krav. Avmarkera exakt {excess, plural, one {# krav} other {# krav}} för att fortsätta.",
+    "selectionActionsAffectAll": "Åtgärder påverkar hela den markerade mängden.",
+    "deselectHidden": "Avmarkera de som inte visas ({count})",
+    "selectionDisappeared": "Följande krav-ID:n försvann vid uppdateringen och avmarkerades: {ids}.",
+    "requirementsAdded": "Följande krav-ID:n lades till: {ids}.",
+    "paginationContinuationFailed": "Det gick inte att läsa in nästa sida. Kraven som redan har lästs in visas fortfarande.",
+    "paginationRecoveryFailed": "Fortsättningen har upphört att gälla och omstarten från första sidan misslyckades. Redan inlästa krav, den aktuella frågan och markeringen är oförändrade.",
+    "paginationRestarted": "Fortsättningen har upphört att gälla. Listan startade om från första sidan med samma fråga.",
     "newSpecification": "Nytt kravunderlag",
     "editSpecification": "Redigera kravunderlag",
     "filterByName": "Filtrera på namn",
@@ -710,11 +766,13 @@
     "selectSpecification": "Välj kravunderlag",
     "selectSpecificationHelp": "Välj det kravunderlag som kravet ska läggas till i.",
     "removeSelected": "Ta bort valda ({count})",
-    "removeConfirm": "Är du säker på att du vill ta bort {count, plural, one {1 krav} other {# krav}} från underlaget?",
+    "removeConfirm": "Ta bort {count, plural, one {1 bibliotekskrav} other {# bibliotekskrav}} från underlaget? Krav-ID:n: {ids}.",
     "removeSpecificationLocalConfirmTitle": "Ta bort unika krav",
-    "removeSpecificationLocalConfirm": "Är du säker på att du vill radera {count, plural, one {1 unikt krav} other {# unika krav}} permanent från detta kravunderlag? De kan inte återskapas.",
+    "removeSpecificationLocalConfirm": "Radera {count, plural, one {1 unikt krav} other {# unika krav}} permanent från detta kravunderlag? Krav-ID:n: {ids}. De kan inte återskapas.",
     "removeMixedConfirmTitle": "Ta bort valda objekt",
-    "removeMixedConfirm": "Är du säker på att du vill ta bort {libraryCount, plural, one {1 bibliotekskrav} other {# bibliotekskrav}} från underlaget och radera {specificationLocalCount, plural, one {1 unikt krav} other {# unika krav}} permanent? Raderade unika krav kan inte återskapas.",
+    "removeMixedConfirm": "Koppla bort {libraryCount, plural, one {1 bibliotekskrav} other {# bibliotekskrav}} ({libraryIds}) och radera {specificationLocalCount, plural, one {1 unikt krav} other {# unika krav}} ({specificationLocalIds}) permanent? Raderade unika krav kan inte återskapas.",
+    "removePartialFail": "Borttagningen misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade.",
+    "unlinkLibraryRequirementAction": "Ta bort från underlaget",
     "noItems": "Det finns inga krav kopplade till detta underlag.",
     "specificationNotFound": "Kravunderlaget hittades inte.",
     "backToSpecifications": "Tillbaka till kravunderlag",
@@ -856,7 +914,9 @@
     "reviewFailed": "Kunde inte begära granskning.",
     "revertFailed": "Kunde inte återställa till utkast.",
     "priorityLevel": "Prioritet",
-    "bulkDeviationPartialFail": "{count, plural, one {1 avstegsförfrågan misslyckades} other {# avstegsförfrågningar misslyckades}}"
+    "priorityLevels": "Prioriteter",
+    "affectedRequirementIds": "Berörda krav-ID:n",
+    "bulkDeviationPartialFail": "Avstegsförfrågningar misslyckades för krav-ID:n: {ids}. De kraven är fortfarande markerade."
   },
   "improvementSuggestion": {
     "title": "Förbättringsförslag",
@@ -908,6 +968,42 @@
     "resolvedByPlaceholder": "Ange namnet på den som granskar",
     "reviewFailed": "Kunde inte begära granskning.",
     "revertFailed": "Kunde inte återställa till utkast."
+  },
+  "generatedOutput": {
+    "fileReady": "Filen är klar",
+    "errorTitle": "Nedladdningen misslyckades",
+    "retry": "Försök igen",
+    "retryCountdown": "Försök igen om {seconds} s",
+    "phases": {
+      "pdf": {
+        "generating": "Genererar PDF …",
+        "downloading": "Laddar ned PDF …"
+      },
+      "csv": {
+        "generating": "Förbereder CSV-export …",
+        "downloading": "Laddar ned CSV …"
+      }
+    },
+    "errors": {
+      "csv": {
+        "items": "CSV-exporten innehåller fler än den tillåtna gränsen på {limit} krav. Begränsa urvalet eller be en administratör justera exportinställningarna.",
+        "bytes": "CSV-exporten överskrider den tillåtna filstorleken på {limitMiB} MiB. Begränsa urvalet eller be en administratör justera exportinställningarna.",
+        "busy": "Så många CSV-exporter som tillåts samtidigt pågår redan. Du kan försöka igen om {retryAfter} sekunder.",
+        "timeout": "CSV-exporten kunde inte slutföras inom tidsgränsen på {timeoutSeconds} sekunder. Begränsa urvalet eller be en administratör justera exportinställningarna.",
+        "storage": "CSV-exporten kunde inte skapas eftersom den temporära lagringen inte är tillgänglig. Försök igen senare eller kontakta en administratör.",
+        "unknown": "CSV-exporten kunde inte laddas ned. Försök igen."
+      },
+      "pdf": {
+        "items": "PDF-rapporten innehåller fler än den tillåtna gränsen på {limit} krav. Begränsa urvalet eller be en administratör justera rapportinställningarna.",
+        "bytes": "PDF-rapporten överskrider den tillåtna filstorleken på {limitMiB} MiB. Begränsa urvalet eller be en administratör justera rapportinställningarna.",
+        "busy": "Så många PDF-renderingar som tillåts samtidigt pågår redan. Du kan försöka igen om {retryAfter} sekunder.",
+        "timeout": "PDF-rapporten kunde inte skapas inom tidsgränsen på {timeoutSeconds} sekunder. Begränsa urvalet eller be en administratör justera rapportinställningarna.",
+        "storage": "PDF-rapporten kunde inte skapas eftersom den temporära lagringen inte är tillgänglig. Försök igen senare eller kontakta en administratör.",
+        "workerMemory": "PDF-rapporten kunde inte skapas inom den konfigurerade minnesgränsen. Minska antalet krav eller be en administratör justera rapportinställningarna.",
+        "workerFailed": "PDF-rapporten kunde inte skapas på grund av ett tillfälligt renderingsfel. Försök igen. Kontakta en administratör om felet kvarstår.",
+        "unknown": "PDF-rapporten kunde inte laddas ned. Försök igen."
+      }
+    }
   },
   "reports": {
     "errorTitle": "Fel",
@@ -1292,6 +1388,18 @@
   "admin": {
     "title": "Administrationscenter",
     "loading": "Laddar administrationscenter...",
+    "accessDenied": {
+      "title": "Du saknar behörighet till Administrationscenter",
+      "description": "Administrationscenter kräver rollen Administratör eller Dataskyddshandläggare. Kontakta din behörighetsadministratör om du behöver åtkomst."
+    },
+    "panelLoading": "Laddar {tab}…",
+    "panelLoadError": {
+      "title": "Kunde inte läsa in {tab}",
+      "description": "Ladda om sidan och försök igen.",
+      "retry": "Försök igen"
+    },
+    "tabAccessFallback": "Du saknar behörighet till den begärda fliken. {tab} visas i stället.",
+    "tabUnavailableFallback": "Den begärda fliken är inte tillgänglig. {tab} visas i stället.",
     "description": "Hantera centrala administrationsinställningar för systemet, inklusive kolumner, taxonomi, statusar och arbetsflöden, behörighetsöversyner och integritetsrelaterade funktioner.",
     "settings": "Inställningar",
     "adminCenter": "Administrationscenter",
@@ -1381,6 +1489,8 @@
       "removeSelectedTermsConfirmMessage": "{standardCount} standardord inaktiveras och {customCount} egna tillägg tas bort.",
       "removeSelectedTermsConfirmTitle": "Ta bort markerade ord?",
       "restoreRuleDefaults": "Återställ standard",
+      "restoreRuleDefaultsConfirmMessage": "Standardord aktiveras och återställs till sina standardriktningar. Egna tillägg påverkas inte.",
+      "restoreRuleDefaultsConfirmTitle": "Återställa standardord?",
       "rowSaveError": "Kunde inte spara",
       "safetyDirections": {
         "input": "Input",
@@ -1576,6 +1686,69 @@
         "controlledByOwner": "Visas som information. Kravområden och kravpaket byts automatiskt när ägarraden byts."
       }
     },
+    "applicationSettings": {
+      "title": "Inställningar",
+      "description": "Gemensamma inställningar för AI, exporter och rapporter.",
+      "loading": "Laddar inställningar…",
+      "loadError": "Kunde inte läsa applikationsinställningar.",
+      "saveError": "Kunde inte spara inställningen.",
+      "invalidValue": "Ange ett värde inom det tillåtna intervallet.",
+      "decreaseValue": "Minska {field}",
+      "increaseValue": "Öka {field}",
+      "exports": {
+        "title": "Exporter",
+        "description": "Styr resursgränser för CSV-exporter. Gränserna gäller per operation om inget annat anges."
+      },
+      "reports": {
+        "title": "Rapporter",
+        "description": "Styr resursgränser för stora servergenererade PDF-rapporter. Gränserna gäller per operation om inget annat anges."
+      },
+      "units": {
+        "exports": "exporter",
+        "mib": "MiB",
+        "renderings": "renderingar",
+        "requirements": "krav",
+        "seconds": "sekunder"
+      },
+      "fields": {
+        "csvExportMaxRequirements": {
+          "label": "Högsta antal krav per CSV-export",
+          "help": "Begränsar hur många krav en CSV-export får innehålla. Exporten avvisas innan nedladdningen börjar om resultatet överstiger gränsen. Tillåtet: 1–5 000."
+        },
+        "csvExportMaxFileBytes": {
+          "label": "Högsta CSV-filstorlek",
+          "help": "Begränsar den färdiga CSV-filens storlek. Filen levereras inte om gränsen överskrids. Använd minus eller plus för att ändra med 1 MiB, eller ange ett heltal i MiB. Tillåtet: 1–1 024 MiB."
+        },
+        "csvExportConcurrencyPerNode": {
+          "label": "Samtidiga CSV-exporter per nod",
+          "help": "Anger hur många CSV-exporter som får pågå samtidigt på varje applikationsnod. Ytterligare försök avvisas tillfälligt med möjlighet att försöka igen. Tillåtet: 1–20."
+        },
+        "csvExportTimeoutSeconds": {
+          "label": "Tidsgräns för CSV-export",
+          "help": "Avbryter en CSV-export som inte har slutförts inom den angivna tiden. Värdet anges i sekunder. Tillåtet: 10–600 sekunder."
+        },
+        "pdfReportMaxRequirements": {
+          "label": "Högsta antal krav per PDF-rapport",
+          "help": "Begränsar hur många krav en PDF-rapport får innehålla. Rapporten avvisas innan rendering börjar om resultatet överstiger gränsen. Tillåtet: 1–1 000."
+        },
+        "pdfReportMaxFileBytes": {
+          "label": "Högsta PDF-filstorlek",
+          "help": "Begränsar den färdiga PDF-filens storlek. Filen levereras inte om gränsen överskrids. Använd minus eller plus för att ändra med 1 MiB, eller ange ett heltal i MiB. Tillåtet: 1–512 MiB."
+        },
+        "pdfReportConcurrencyPerNode": {
+          "label": "Samtidiga PDF-renderingar per nod",
+          "help": "Anger hur många stora PDF-rapporter som får renderas samtidigt på varje applikationsnod. Ytterligare försök avvisas tillfälligt med möjlighet att försöka igen. Tillåtet: 1–10."
+        },
+        "pdfReportTimeoutSeconds": {
+          "label": "Tidsgräns för PDF-generering",
+          "help": "Stoppar en PDF-generering som inte har slutförts inom den angivna tiden. Värdet anges i sekunder. Tillåtet: 10–600 sekunder."
+        },
+        "pdfWorkerMemoryMib": {
+          "label": "Worker-minne per PDF-rendering",
+          "help": "Begränsar JavaScript-minnet för varje isolerad PDF-worker. Containerns minnesgräns är fortfarande det yttersta skyddet. Använd minus eller plus för att ändra med 128 MiB, eller ange ett heltal i MiB. Tillåtet: 128–4 096 MiB."
+        }
+      }
+    },
     "archiving": {
       "body": "Använd arkivering för att förhandsgranska och köra beslutade gallringspolicyer samt exportera arkivunderlag innan radering. Dataskyddsflödet ligger kvar separat för individärenden.",
       "description": "Förhandsgranska gallringskandidater, hantera undantag och exportera arkivmaterial innan data tas bort ur applikationen.",
@@ -1701,6 +1874,7 @@
     "locked": "Låst",
     "saved": "Sparat",
     "columnsSaveError": "Det gick inte att spara kolumninställningarna.",
+    "columnsLoadError": "Det gick inte att läsa in kolumninställningarna.",
     "areasDescription": "Hantera kravområden och deras prefix.",
     "categoriesDescription": "Visa kategorier som används för att klassificera kravets perspektiv.",
     "typesDescription": "Visa typer och deras kvalitetsstruktur.",
@@ -1857,7 +2031,7 @@
       },
       "filtering": {
         "heading": "Sökning och filter",
-        "body": "Använd sökfältet för fritextsökning i krav-ID och innehåll. Klicka på filterikonen i en kolumnrubrik för att begränsa listan till rätt kravområde, kravversionsstatus eller annan metadata. Aktivera \"Visa arkiverade\" när du behöver se krav som inte längre är aktiva."
+        "body": "Använd sökfältet för fritextsökning i krav-ID och innehåll. Klicka på filterikonen i en kolumnrubrik för att begränsa listan till rätt kravområde, kravversionsstatus eller annan metadata. Kravpaketsbandet ovanför listan visar alltid det aktiva kravpaketsfiltret. Håll pekaren över bandet eller aktivera filterknappen med pekare, beröring, Enter eller blanksteg för att öppna väljaren. Lägg till paket från väljaren, ta bort dem från valda märken eller rensa alla när flera är valda. Paketval använder ELLER-logik och fungerar även när den valfria kravpaketskolumnen är dold. Aktivera \"Visa arkiverade\" när du behöver se krav som inte längre är aktiva."
       },
       "columns": {
         "heading": "Kolumner",
@@ -1972,11 +2146,11 @@
       "title": "Kravunderlagsdetalj",
       "requirements": {
         "heading": "Hantera krav",
-        "body": "Klicka på \"Lägg till krav\" för att öppna väljaren och lägga till publicerade krav i underlaget. Markera en eller flera rader och klicka på \"Ta bort valda\" för att ta bort dem."
+        "body": "Klicka på \"Lägg till krav\" för att lägga till publicerade krav. Kravunderlaget börjar med en begränsad sida och läser automatiskt in senare sidor nära listans slut. Redigerare kan markera enskilda underlagsobjekt; markeringen finns kvar vid sökning, filtrering, sortering, sidinläsning och uppdatering. Åtgärder för markerade objekt påverkar alltid hela markeringen, även objekt som inte visas just nu."
       },
       "needsReference": {
         "heading": "Behovsreferens",
-        "body": "Varje kravtillämpning i underlaget kan ha en behovsreferens - en fritext som förklarar varför kravet behövs i just detta kravunderlag. Den kan också ge stöd när kravet ska verifieras. Ange den när du lägger till krav eller redigera den inline."
+        "body": "Varje kravtillämpning kan ha en behovsreferens som förklarar varför den behövs. Ange den när krav läggs till, redigera den direkt eller använd de separata åtgärderna för att tilldela och rensa på markerade objekt."
       },
       "export": {
         "heading": "Fler åtgärder",
@@ -2129,7 +2303,7 @@
       },
       "saving": {
         "heading": "Ändra och återställa",
-        "body": "Lägg till egna termer med plusknappen i en regeltyp. Ta bort markerade termer med minusknappen; egna tillägg tas bort medan standardtermer inaktiveras. Själva ordtexten redigeras inte: lägg till rätt ord och ta bort eller inaktivera det felaktiga. Återställ standard på en regel aktiverar standardtermerna och återställer deras riktning, men behåller egna tillägg."
+        "body": "Lägg till egna termer med plusknappen i en regeltyp. Ta bort markerade termer med minusknappen; egna tillägg tas bort medan standardtermer inaktiveras. Själva ordtexten redigeras inte: lägg till rätt ord och ta bort eller inaktivera det felaktiga. Återställ standard på en regel begär bekräftelse innan standardtermerna aktiveras och deras riktning återställs; egna tillägg påverkas inte."
       }
     },
     "adminPrivacy": {
@@ -2175,7 +2349,7 @@
       "title": "Behörighetsöversyn",
       "overview": {
         "heading": "Syfte",
-        "body": "Behörighetsöversynen dokumenterar vilka som har uppdrag som applikationen styr, vem som granskade dem och vilket beslut som fattades för varje rad."
+        "body": "Behörighetsöversynen dokumenterar vilka som har uppdrag som applikationen styr, vem som granskade dem och vilket beslut som fattades för varje rad. Om listan inte kan läsas in använder du Försök igen efter att felet har visats."
       },
       "scope": {
         "heading": "Omfattning",
@@ -2330,6 +2504,7 @@
   },
   "priorityLevelAdmin": {
     "editItem": "Redigera prioritet",
+    "priority": "Prioritet",
     "code": "Kod",
     "codeHelp": "Koden är systemstyrd och kan inte ändras.",
     "name": "Namn",
@@ -2338,8 +2513,20 @@
     "assessmentCriteria": "Bedömningsgrunder",
     "color": "Färg",
     "colorHex": "Färgkod (hex)",
+    "colorPicker": "Färgväljare",
+    "themePreview": "Förhandsvisning av märke",
+    "themePreviewGuidance": "Kontrollera att prioriteten är läsbar och visuellt särskiljbar från de andra prioriteterna i båda temana innan du sparar.",
+    "lightTheme": "Ljust tema",
+    "darkTheme": "Mörkt tema",
+    "contrastResult": "Kontrast {ratio}:1",
+    "contrastPass": "Uppfyller AA",
+    "invalidColorWarning": "Ange en färg som #RRGGBB för att förhandsvisa och spara prioriteten.",
+    "invalidStoredColors": "Prioriteterna {codes} har ogiltiga lagrade färger. Deras accentstilar utelämnas tills en administratör korrigerar varje värde.",
     "icon": "Ikon",
+    "iconHelp": "Välj en godkänd ikon som visas bredvid prioritetsetiketten. Lämna tomt för ett märke med enbart text.",
     "sortOrder": "Sorteringsordning",
+    "sortOrderHelp": "Ange ett tal som styr visningsordningen. Lägre tal visas först.",
+    "colorHelp": "Välj färgen som används för märket för denna prioritet.",
     "linkedRequirements": "Kopplade krav",
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
     "emptyState": "Inga prioritetsnivåer är tillgängliga."
@@ -2498,9 +2685,12 @@
     "proposals": "Föreslagna normreferenser",
     "rawResultTab": "Råresultat",
     "repair": "Reparera JSON",
+    "repairFailed": "Reparationen misslyckades",
     "repairPrompt": "Föreslagen reparationsprompt",
     "repairPromptLead": "Skicka ogiltig JSON och valideringsfel till vald modell och be den bevara innehållet men rätta importformatet.",
+    "repairSuccess": "Den genererade JSON:en reparerades.",
     "repairing": "Reparerar…",
+    "repairSucceeded": "Den genererade JSON:en reparerades.",
     "resolvedNeedsReferenceId": "Befintlig behovsreferens #{id}",
     "selectedCandidates": "{count, plural, one {# vald kravkandidat} other {# valda kravkandidater}}",
     "selectedProposals": "{count, plural, one {# valt förslag} other {# valda förslag}}",
@@ -2508,6 +2698,7 @@
     "previewFailed": "Förhandsgranskningen misslyckades",
     "missingSpecificationContext": "Kravunderlag saknas.",
     "invalidGeneratedJson": "Modellens svar var inte giltig JSON.",
+    "generationFailed": "Genereringen misslyckades",
     "generatedJsonSchemaMismatch": "Genererad JSON matchade inte importens schema.",
     "repairedJsonSchemaMismatch": "Reparerad JSON matchade inte importens schema.",
     "inputSafetyBlocked": "AI-anropet blockerades av AI-säkerhetsfiltret: {ruleType}. Ändra behovet eller sammanhanget och försök igen.",
@@ -2584,6 +2775,22 @@
     "loadingInitialImport": "Förbereder importgranskning...",
     "descriptionRequired": "Kravtext måste anges innan raden kan importeras.",
     "verificationMethodRequired": "Verifieringsmetod måste anges för verifierbara krav."
+  },
+  "onDemandFeature": {
+    "aiAuthoring": {
+      "loading": "Läser in AI-assisterat författande…",
+      "loadErrorTitle": "AI-assisterat författande kunde inte läsas in",
+      "loadErrorDescription": "Funktionskoden kunde inte läsas in. Läs om sidan och försök igen."
+    },
+    "importReview": {
+      "titleLibrary": "Importera krav",
+      "titleSpecification": "Importera lokala krav",
+      "titleWithDestination": "{title} för {destination}",
+      "loading": "Läser in importgranskning…",
+      "loadErrorTitle": "Importgranskningen kunde inte läsas in",
+      "loadErrorDescription": "Funktionskoden kunde inte läsas in. Läs om sidan och försök igen."
+    },
+    "reloadPage": "Läs om sidan"
   },
   "safeMarkdown": {
     "imageOmitted": "Bild utelämnad"

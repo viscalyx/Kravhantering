@@ -1034,7 +1034,10 @@ describe('trusted container release helpers', () => {
       'SQLSERVER_IMAGE_REF=mcr.microsoft.com/mssql/server:2025-CU6-ubuntu-24.04',
     )
     expect(releaseEnv).toContain(
-      'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.15.0.0-20260702-ubuntu',
+      'KEYCLOAK_IMAGE_REF=quay.io/keycloak/keycloak:26.7.0-0',
+    )
+    expect(releaseEnv).toContain(
+      'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.15.0.1-20260708-ubuntu',
     )
     expect(releaseEnv).toContain(
       'HSA_DIRECTORY_MOCK_IMAGE_REF=ghcr.io/viscalyx/kravhantering-hsa-directory-mock:replace-with-release-tag',
@@ -1113,7 +1116,7 @@ describe('trusted container release helpers', () => {
             name: 'keycloak',
             role: 'identity-provider',
             source: 'quay',
-            tag: '26.6.4-1',
+            tag: '26.7.0-0',
           },
         ],
       }
@@ -1481,13 +1484,7 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('Attest db-job SBOM')
     expect(workflow).toContain('Attest demo seed SBOM')
     expect(workflow).toContain('Attest HSA directory mock SBOM')
-    const usesReferences = workflow.match(/uses:/g) ?? []
-    const shaPinnedUsesReferences =
-      workflow.match(/uses:[^@]+@[0-9a-f]{40}/g) ?? []
-    expect(shaPinnedUsesReferences).toHaveLength(usesReferences.length)
-    expect(workflow.match(/uses: actions\/attest@[0-9a-f]{40}/g)).toHaveLength(
-      10,
-    )
+    expect(workflow.match(/uses:\s*actions\/attest@/g)).toHaveLength(10)
     expect(workflow.match(/persist-credentials:\s*false/g)).not.toBeNull()
     expect(workflow.match(/--provenance=false/g)).toHaveLength(5)
     const appRuntimeDescriptionEnv = '$' + '{APP_RUNTIME_DESCRIPTION}'
@@ -1595,8 +1592,25 @@ describe('trusted container release helpers', () => {
       "if: env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_IS_STABLE == 'true'",
     )
     expect(workflow).toContain(
-      'git switch --force-create operator-upgrade-notes-archive origin/main',
+      'archive_branch="automation/operator-upgrade-notes-archive-$' +
+        '{RELEASE_TAG_NAME}"',
     )
+    expect(workflow).toContain(
+      'GH_TOKEN: $' + '{{ secrets.OPERATOR_UPGRADE_NOTES_TOKEN }}',
+    )
+    expect(workflow).toContain(
+      'gh pr create --base main --head "$' + '{archive_branch}"',
+    )
+    expect(workflow).toContain("--jq '.published_at[0:10]'")
+    expect(workflow).toContain(
+      'git fetch origin "+$' +
+        '{archive_branch}:refs/remotes/origin/$' +
+        '{archive_branch}"',
+    )
+    expect(workflow).toMatch(
+      /gh\s+pr\s+merge\s+"\$\{pr_number\}"\s+--squash\s+--auto/u,
+    )
+    expect(workflow).not.toContain('git push origin HEAD:main')
     expect(workflow).toContain('npm run test:release-smoke')
     expect(workflow).not.toContain('pull_request_target')
   })

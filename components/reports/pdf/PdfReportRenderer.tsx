@@ -306,7 +306,7 @@ function PdfSectionRenderer({
     case 'diff':
       return <PdfDiff section={section} />
     case 'metadata-changes':
-      return <PdfMetadataChanges section={section} />
+      return <PdfMetadataChanges locale={locale} section={section} />
     case 'timeline-entry':
       return <PdfTimelineEntry locale={locale} section={section} />
     case 'requirement-table':
@@ -659,17 +659,27 @@ function PdfDiffSegment({ segment }: { segment: DiffSegment }) {
 }
 
 function PdfMetadataChanges({
+  locale,
   section,
 }: {
+  locale: string
   section: Extract<ReportSection, { type: 'metadata-changes' }>
 }) {
+  const labels = getReportMessages(locale).printLabels
+
   return (
     <View style={styles.table}>
-      <Text style={styles.diffSectionLabel}>Metadata Changes</Text>
+      <Text style={styles.diffSectionLabel}>{labels.metadataChanges}</Text>
       <View style={styles.tableHeader}>
-        <Text style={[styles.tableHeaderCell, { width: '30%' }]}>Field</Text>
-        <Text style={[styles.tableHeaderCell, { width: '35%' }]}>Previous</Text>
-        <Text style={[styles.tableHeaderCell, { width: '35%' }]}>New</Text>
+        <Text style={[styles.tableHeaderCell, { width: '30%' }]}>
+          {labels.metadataField}
+        </Text>
+        <Text style={[styles.tableHeaderCell, { width: '35%' }]}>
+          {labels.metadataPrevious}
+        </Text>
+        <Text style={[styles.tableHeaderCell, { width: '35%' }]}>
+          {labels.metadataNew}
+        </Text>
       </View>
       {section.changes.map((change, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: static metadata rows
@@ -728,21 +738,27 @@ function PdfTimelineEntry({
   )
 }
 
-function formatTimelineDate(entry: TimelineEntryData, locale: string): string {
+export function formatTimelineDate(
+  entry: TimelineEntryData,
+  locale: string,
+): string {
+  const labels = getReportMessages(locale).printLabels
   const parts: string[] = []
   if (entry.publishedAt)
     parts.push(
-      `Published: ${new Date(entry.publishedAt).toLocaleDateString(locale)}`,
+      `${labels.timelinePublished}: ${new Date(entry.publishedAt).toLocaleDateString(locale)}`,
     )
   if (entry.archivedAt)
     parts.push(
-      `Archived: ${new Date(entry.archivedAt).toLocaleDateString(locale)}`,
+      `${labels.timelineArchived}: ${new Date(entry.archivedAt).toLocaleDateString(locale)}`,
     )
   if (entry.editedAt)
-    parts.push(`Edited: ${new Date(entry.editedAt).toLocaleDateString(locale)}`)
+    parts.push(
+      `${labels.timelineEdited}: ${new Date(entry.editedAt).toLocaleDateString(locale)}`,
+    )
   if (parts.length === 0)
     parts.push(
-      `Created: ${new Date(entry.createdAt).toLocaleDateString(locale)}`,
+      `${labels.timelineCreated}: ${new Date(entry.createdAt).toLocaleDateString(locale)}`,
     )
   return parts.join(' \u00B7 ')
 }

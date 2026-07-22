@@ -1,0 +1,6 @@
+interface:
+  display_name: "To Spec"
+  short_description: "Synthesize conversations into issue specs"
+  default_prompt: "Use $to-spec to synthesize the current conversation into a project issue spec without interviewing the user."
+policy:
+  allow_implicit_invocation: false

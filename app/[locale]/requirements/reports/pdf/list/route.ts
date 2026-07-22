@@ -1,14 +1,34 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
+import { getApplicationSettings } from '@/lib/dal/application-settings'
 import {
-  nonNegativeIntegerStringSchema,
+  GeneratedOutputError,
+  generatedOutputErrorResponse,
+  isGeneratedOutputError,
+} from '@/lib/generated-output/errors'
+import {
+  ClientCancelledGeneratedOutputError,
+  createGeneratedOutputTerminalRecorder,
+  createGenerationDeadline,
+  GeneratedOutputTimeoutError,
+  generatedOutputErrorFromTimeout,
+  throwIfGenerationAborted,
+} from '@/lib/generated-output/operation'
+import {
+  acquireGeneratedOutputSpool,
+  createGeneratedOutputFileResponse,
+  type GeneratedOutputSpool,
+  generatedOutputCapacitySnapshot,
+} from '@/lib/generated-output/spool'
+import { pdfContentDisposition } from '@/lib/http/content-disposition'
+import {
   optionalQueryArraySchema,
   optionalSearchStringSchema,
   parseSearchParams,
   positiveIntegerStringSchema,
   queryBooleanStringSchema,
 } from '@/lib/http/validation'
+import { renderReportInWorker } from '@/lib/pdf/report-worker'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 import {
   collectMultipleRequirementListItemsForReport,
@@ -16,7 +36,10 @@ import {
 } from '@/lib/reports/data/server'
 import { getReportLabels } from '@/lib/reports/report-labels'
 import { buildListReport } from '@/lib/reports/templates/list-template'
-import { queryRequirementList } from '@/lib/requirements/list-query'
+import {
+  type RequirementListPageItem,
+  traverseCompleteRequirementList,
+} from '@/lib/requirements/list-query'
 import {
   DEFAULT_REQUIREMENT_SORT,
   type FilterValues,
@@ -35,19 +58,15 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-const REPORT_QUERY_PAGE_SIZE = 200
-
 const listReportQuerySchema = z
   .object({
     areaIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     categoryIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     descriptionSearch: optionalSearchStringSchema,
     ids: z.string().optional(),
-    limit: positiveIntegerStringSchema.optional(),
     locale: z.enum(['en', 'sv']).optional(),
     needsReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     normReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
-    offset: nonNegativeIntegerStringSchema.optional(),
     priorityLevelIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     qualityCharacteristicIds: optionalQueryArraySchema(
       positiveIntegerStringSchema,
@@ -68,10 +87,6 @@ const listReportQuerySchema = z
   .strict()
 
 type ListReportQuery = z.infer<typeof listReportQuerySchema>
-type ListQueryRequirement = Awaited<
-  ReturnType<typeof queryRequirementList>
->['requirements'][number]
-
 function reportLocale(locale: string): 'en' | 'sv' {
   return locale === 'sv' ? 'sv' : 'en'
 }
@@ -102,7 +117,7 @@ function sortFromQuery(query: ListReportQuery): RequirementSortState {
 }
 
 function listQueryRequirementToReportData(
-  requirement: ListQueryRequirement,
+  requirement: RequirementListPageItem,
 ): RequirementReportData {
   const version = requirement.version
 
@@ -169,42 +184,41 @@ async function collectFilteredRequirementsForListReport(
   runtime: ReportRuntime,
   query: ListReportQuery,
   locale: 'en' | 'sv',
+  maxRequirements: number,
+  signal: AbortSignal,
 ): Promise<RequirementReportData[]> {
   const requirements: RequirementReportData[] = []
-  let offset = 0
-
-  for (;;) {
-    const result = await queryRequirementList(
-      runtime.db,
-      {
-        filters: filtersFromQuery(query),
-        limit: REPORT_QUERY_PAGE_SIZE,
-        locale,
-        offset,
-        sort: sortFromQuery(query),
-      },
-      { authorization: runtime.authorization, context: runtime.context },
-    )
-
-    for (const requirement of result.requirements) {
-      await authorizeRequirementReportRead(
-        runtime.authorization,
-        runtime.context,
-        String(requirement.id),
-        'detail',
-      )
-      requirements.push(listQueryRequirementToReportData(requirement))
-    }
-
-    if (!result.pagination.hasMore || result.pagination.nextOffset == null) {
-      break
-    }
-
-    if (result.pagination.nextOffset <= offset) {
-      throw new ReportDataError('Invalid requirement list pagination', 500)
-    }
-    offset = result.pagination.nextOffset
-  }
+  await traverseCompleteRequirementList(
+    runtime.db,
+    {
+      filters: filtersFromQuery(query),
+      locale,
+      sort: sortFromQuery(query),
+    },
+    { authorization: runtime.authorization, context: runtime.context },
+    async page => {
+      for (const requirement of page) {
+        await authorizeRequirementReportRead(
+          runtime.authorization,
+          runtime.context,
+          String(requirement.id),
+          'detail',
+        )
+        throwIfGenerationAborted(signal)
+        requirements.push(listQueryRequirementToReportData(requirement))
+      }
+    },
+    {
+      createItemLimitError: limit =>
+        new GeneratedOutputError(
+          'output_limit_exceeded',
+          'item_limit_exceeded',
+          { limit, limitKind: 'items', output: 'pdf' },
+        ),
+      maxItems: maxRequirements,
+      signal,
+    },
+  )
 
   if (requirements.length === 0) {
     throw new ReportDataError('No requirements matched report filters', 400)
@@ -218,6 +232,8 @@ export async function GET(
   { params }: { params: ReportRouteParams },
 ) {
   const { locale } = await params
+  let spool: GeneratedOutputSpool | undefined
+  let deadline: ReturnType<typeof createGenerationDeadline> | undefined
 
   try {
     const parsedQuery = parseSearchParams(
@@ -230,35 +246,136 @@ export async function GET(
     }
 
     const runtime = await createReportRuntime(request)
-    const ids = splitCsvParam(parsedQuery.data.ids ?? null)
-    const requirements =
-      parsedQuery.data.ids == null
-        ? await collectFilteredRequirementsForListReport(
-            runtime,
-            parsedQuery.data,
-            reportLocale(locale),
-          )
-        : await (async () => {
-            if (ids.length === 0) {
-              throw new ReportDataError('No requirement IDs provided', 400)
-            }
-            for (const id of ids) {
-              await authorizeRequirementReportRead(
-                runtime.authorization,
-                runtime.context,
-                id,
-                'detail',
-              )
-            }
-            return collectMultipleRequirementListItemsForReport(runtime.db, ids)
-          })()
-    const label = getReportLabels(locale).filenames.list
-    return renderReportModelPdfResponse(
-      buildListReport(requirements, locale),
-      locale,
-      `${label} ${timestampForFilename()}.pdf`,
+    const settings = await getApplicationSettings(runtime.db)
+    const terminal = createGeneratedOutputTerminalRecorder(
+      'requirements.list_pdf_report',
+      runtime.context,
     )
+    let byteCount = 0
+    let itemCount = 0
+    const terminalMetrics = () => ({
+      activeCount: generatedOutputCapacitySnapshot().activePdf,
+      byteCount,
+      concurrencyLimit: settings.pdfReportConcurrencyPerNode,
+      itemCount,
+      itemLimit: settings.pdfReportMaxRequirements,
+      timeoutMs: settings.pdfReportTimeoutSeconds * 1000,
+      workerMemoryLimitBytes: settings.pdfWorkerMemoryMib * 1024 * 1024,
+    })
+
+    try {
+      spool = await acquireGeneratedOutputSpool({
+        concurrencyLimit: settings.pdfReportConcurrencyPerNode,
+        maxFileBytes: settings.pdfReportMaxFileBytes,
+        output: 'pdf',
+      })
+      deadline = createGenerationDeadline(
+        settings.pdfReportTimeoutSeconds,
+        request.signal,
+      )
+      const ids = splitCsvParam(parsedQuery.data.ids ?? null)
+      const uniqueIds = [...new Set(ids)]
+      const requirements =
+        parsedQuery.data.ids == null
+          ? await collectFilteredRequirementsForListReport(
+              runtime,
+              parsedQuery.data,
+              reportLocale(locale),
+              settings.pdfReportMaxRequirements,
+              deadline.signal,
+            )
+          : await (async () => {
+              if (ids.length === 0) {
+                throw new ReportDataError('No requirement IDs provided', 400)
+              }
+              if (uniqueIds.length > settings.pdfReportMaxRequirements) {
+                throw new GeneratedOutputError(
+                  'output_limit_exceeded',
+                  'item_limit_exceeded',
+                  {
+                    limit: settings.pdfReportMaxRequirements,
+                    limitKind: 'items',
+                    output: 'pdf',
+                  },
+                )
+              }
+              for (const id of uniqueIds) {
+                throwIfGenerationAborted(deadline?.signal ?? request.signal)
+                await authorizeRequirementReportRead(
+                  runtime.authorization,
+                  runtime.context,
+                  id,
+                  'detail',
+                )
+              }
+              return collectMultipleRequirementListItemsForReport(
+                runtime.db,
+                uniqueIds,
+              )
+            })()
+      itemCount = requirements.length
+      throwIfGenerationAborted(deadline.signal)
+      byteCount = await renderReportInWorker({
+        locale,
+        maxBytes: settings.pdfReportMaxFileBytes,
+        memoryLimitMib: settings.pdfWorkerMemoryMib,
+        model: buildListReport(requirements, locale),
+        outputPath: spool.filePath,
+        signal: deadline.signal,
+      })
+      throwIfGenerationAborted(deadline.signal)
+      deadline.dispose()
+      deadline = undefined
+
+      const label = getReportLabels(locale).filenames.list
+      const filename = `${label} ${timestampForFilename()}.pdf`
+      const response = await createGeneratedOutputFileResponse(
+        spool,
+        {
+          'Content-Disposition': pdfContentDisposition(filename),
+          'Content-Type': 'application/pdf',
+        },
+        {
+          onCancel: () => terminal.cancelled(terminalMetrics()),
+          onComplete: () => terminal.completed(terminalMetrics()),
+          onError: () =>
+            terminal.failed(
+              new Error('PDF response stream failed'),
+              terminalMetrics(),
+            ),
+        },
+      )
+      spool = undefined
+      return response
+    } catch (error) {
+      deadline?.dispose()
+      deadline = undefined
+      spool?.releaseGeneration()
+      await spool?.releaseSpool().catch(() => {})
+      spool = undefined
+      terminal.failed(error, terminalMetrics())
+
+      if (error instanceof GeneratedOutputTimeoutError) {
+        return generatedOutputErrorResponse(
+          generatedOutputErrorFromTimeout('pdf', error),
+        )
+      }
+      if (isGeneratedOutputError(error)) {
+        return generatedOutputErrorResponse(error)
+      }
+      if (error instanceof ClientCancelledGeneratedOutputError) {
+        return new Response(null, {
+          headers: { 'Cache-Control': 'no-store' },
+          status: 499,
+        })
+      }
+      throw error
+    }
   } catch (error) {
     return reportErrorResponse(error)
+  } finally {
+    deadline?.dispose()
+    spool?.releaseGeneration()
+    await spool?.releaseSpool().catch(() => {})
   }
 }

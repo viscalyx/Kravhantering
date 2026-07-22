@@ -45,6 +45,7 @@ const deviationCases = [
       desktop: { itemRef: 'lib:39', uniqueId: 'PWT0001' },
       mobile: { itemRef: 'lib:40', uniqueId: 'PWT0002' },
     },
+    itemKind: 'library',
     radioLabel: 'Godkänn',
   },
   {
@@ -55,7 +56,19 @@ const deviationCases = [
       desktop: { itemRef: 'lib:41', uniqueId: 'PWT0003' },
       mobile: { itemRef: 'lib:42', uniqueId: 'PWT0004' },
     },
+    itemKind: 'library',
     radioLabel: 'Avslå',
+  },
+  {
+    action: 'approve',
+    decision: 1 as const,
+    expectedStatus: 'Godkänd',
+    fixtures: {
+      desktop: { itemRef: 'local:920001', uniqueId: 'KRAV0001' },
+      mobile: { itemRef: 'local:920001', uniqueId: 'KRAV0001' },
+    },
+    itemKind: 'specification-local',
+    radioLabel: 'Godkänn',
   },
 ] as const
 
@@ -86,17 +99,23 @@ async function closeLatestPendingDeviation(
   if (!latest || latest.decision !== null) return
 
   if (latest.isReviewRequested !== 1) {
+    const reviewPath = itemRef.startsWith('local:')
+      ? `/api/specification-local-deviations/${latest.id}/request-review`
+      : `/api/deviations/${latest.id}/request-review`
     await expectApiResponseOkWithRetry(
       `request review for deviation ${latest.id}`,
       () =>
-        authorRequest.post(`/api/deviations/${latest.id}/request-review`, {
+        authorRequest.post(reviewPath, {
           timeout: 30_000,
         }),
     )
   }
 
+  const decisionPath = itemRef.startsWith('local:')
+    ? `/api/specification-local-deviations/${latest.id}/decision`
+    : `/api/deviations/${latest.id}/decision`
   await expectApiResponseOkWithRetry(`close deviation ${latest.id}`, () =>
-    reviewerRequest.post(`/api/deviations/${latest.id}/decision`, {
+    reviewerRequest.post(decisionPath, {
       data: {
         decision: 2,
         decisionMotivation: 'Closed before rerunning the Playwright flow.',
@@ -127,10 +146,13 @@ async function createDeviationInReview(
   )
   const created = (await createResponse.json()) as { id: number }
 
+  const reviewPath = itemRef.startsWith('local:')
+    ? `/api/specification-local-deviations/${created.id}/request-review`
+    : `/api/deviations/${created.id}/request-review`
   await expectApiResponseOkWithRetry(
     `request review for deviation ${created.id}`,
     () =>
-      authorRequest.post(`/api/deviations/${created.id}/request-review`, {
+      authorRequest.post(reviewPath, {
         timeout: 30_000,
       }),
   )
@@ -172,8 +194,15 @@ async function openSpecificationFixtureRow(
     specificationId?: number
   } = {},
 ) {
-  const specificationId = options.specificationId ?? SPECIFICATION_ID
-  const heading = options.heading ?? SPECIFICATION_HEADING
+  const isManualLocalFixture = uniqueId === 'KRAV0001'
+  const specificationId =
+    options.specificationId ??
+    (isManualLocalFixture ? MANUAL_SPECIFICATION_ID : SPECIFICATION_ID)
+  const heading =
+    options.heading ??
+    (isManualLocalFixture
+      ? MANUAL_SPECIFICATION_HEADING
+      : SPECIFICATION_HEADING)
 
   const itemsPanel = page.locator(
     '[data-specification-detail-list-panel="items"]',
@@ -308,7 +337,7 @@ for (const viewport of viewports) {
         'AUTHZ-09',
       ].join('/')
 
-      test(`${manualCaseIds}: can ${deviationCase.action} a deviation after review is requested`, async ({
+      test(`${manualCaseIds}: can ${deviationCase.action} a ${deviationCase.itemKind} requirement deviation after review is requested`, async ({
         browser,
         page,
         request,
@@ -317,6 +346,10 @@ for (const viewport of viewports) {
         const fixture = deviationCase.fixtures[viewport.name]
         const motivation = `${fixture.uniqueId} ${viewport.name} ${deviationCase.action} deviation`
         const decisionMotivation = `${fixture.uniqueId} ${viewport.name} ${deviationCase.action} decision`
+        const recordDecisionActionName =
+          deviationCase.itemKind === 'specification-local'
+            ? 'Registrera beslut'
+            : 'Beslutad ↗'
         let detailPane = page.locator('body')
         const reviewerRequest = await newRoleContext(testInfo, 'reviewer')
         const reviewer = await newRolePage(
@@ -333,6 +366,23 @@ for (const viewport of viewports) {
               reviewerRequest,
               fixture.itemRef,
             )
+            const shouldVerifyPreApprovalGuard =
+              deviationCase.itemKind === 'specification-local'
+                ? viewport.name === 'mobile'
+                : viewport.name === 'desktop'
+            if (shouldVerifyPreApprovalGuard) {
+              const deviatedBeforeApproval = await request.patch(
+                `/api/requirements-specifications/${fixture.itemRef.startsWith('local:') ? MANUAL_SPECIFICATION_ID : SPECIFICATION_ID}/items/${encodeURIComponent(fixture.itemRef)}`,
+                {
+                  data: { specificationItemStatusId: 5 },
+                },
+              )
+              await expectApiResponseStatus(
+                deviatedBeforeApproval,
+                400,
+                `assign Deviated before approval for ${fixture.itemRef}`,
+              )
+            }
             detailPane = await openSpecificationFixtureRow(
               page,
               fixture.uniqueId,
@@ -360,7 +410,13 @@ for (const viewport of viewports) {
               page,
               fixture.uniqueId,
             )
-            await assertActiveStepperStep(detailPane, 'Utkast')
+            if (deviationCase.itemKind === 'specification-local') {
+              await expect(
+                detailPane.getByRole('button', { name: 'Granskning ↗' }),
+              ).toBeVisible()
+            } else {
+              await assertActiveStepperStep(detailPane, 'Utkast')
+            }
             await expect(detailPane).toContainText(motivation)
           })
 
@@ -376,9 +432,17 @@ for (const viewport of viewports) {
               page,
               fixture.uniqueId,
             )
-            await assertActiveStepperStep(detailPane, 'Granskning begärd')
+            if (deviationCase.itemKind === 'specification-local') {
+              await expect(
+                detailPane.getByRole('button', { name: '← Utkast' }),
+              ).toBeVisible()
+            } else {
+              await assertActiveStepperStep(detailPane, 'Granskning begärd')
+            }
             await expect(
-              detailPane.getByRole('button', { name: 'Beslutad ↗' }),
+              detailPane.getByRole('button', {
+                name: recordDecisionActionName,
+              }),
             ).toHaveCount(0)
           })
 
@@ -387,15 +451,23 @@ for (const viewport of viewports) {
               reviewer.page,
               fixture.uniqueId,
             )
-            await assertActiveStepperStep(
-              reviewerDetailPane,
-              'Granskning begärd',
-            )
+            if (deviationCase.itemKind === 'specification-local') {
+              await expect(
+                reviewerDetailPane.getByRole('button', {
+                  name: recordDecisionActionName,
+                }),
+              ).toBeVisible()
+            } else {
+              await assertActiveStepperStep(
+                reviewerDetailPane,
+                'Granskning begärd',
+              )
+            }
             await expect(
               reviewerDetailPane.getByRole('button', { name: '← Utkast' }),
             ).toHaveCount(0)
             await reviewerDetailPane
-              .getByRole('button', { name: 'Beslutad ↗' })
+              .getByRole('button', { name: recordDecisionActionName })
               .click()
 
             const decisionDialog = reviewer.page.getByRole('dialog', {
@@ -414,16 +486,36 @@ for (const viewport of viewports) {
               fixture.uniqueId,
             )
 
-            await assertActiveStepperStep(reviewerDetailPane, 'Beslutad')
+            if (deviationCase.itemKind === 'specification-local') {
+              await expect(
+                reviewerDetailPane.getByRole('status', {
+                  name: 'Avsteg begärt med motivering:',
+                }),
+              ).toContainText(deviationCase.expectedStatus)
+            } else {
+              await assertActiveStepperStep(reviewerDetailPane, 'Beslutad')
+            }
             await expect(reviewerDetailPane).toContainText(
               deviationCase.expectedStatus,
             )
             await expect(reviewerDetailPane).toContainText(decisionMotivation)
             await expect(
-              reviewerDetailPane.getByRole('button', { name: 'Beslutad ↗' }),
+              reviewerDetailPane.getByRole('button', {
+                name: recordDecisionActionName,
+              }),
             ).toHaveCount(0)
             await expect(
               reviewerDetailPane.getByRole('button', { name: '← Utkast' }),
+            ).toHaveCount(0)
+            await expect(
+              reviewerDetailPane.getByRole('button', {
+                name: 'Redigera avsteg',
+              }),
+            ).toHaveCount(0)
+            await expect(
+              reviewerDetailPane.getByRole('button', {
+                name: 'Ta bort avsteg',
+              }),
             ).toHaveCount(0)
           })
 
@@ -436,6 +528,24 @@ for (const viewport of viewports) {
             expect(latest?.decisionMotivation).toBe(decisionMotivation)
             expect(latest?.isReviewRequested).toBe(1)
             expect(latest?.motivation).toBe(motivation)
+
+            if (viewport.name === 'desktop') {
+              const deviatedAfterDecision = await request.patch(
+                `/api/requirements-specifications/${fixture.itemRef.startsWith('local:') ? MANUAL_SPECIFICATION_ID : SPECIFICATION_ID}/items/${encodeURIComponent(fixture.itemRef)}`,
+                {
+                  data: { specificationItemStatusId: 5 },
+                },
+              )
+              if (deviationCase.decision === 1) {
+                expect(deviatedAfterDecision.ok()).toBe(true)
+              } else {
+                await expectApiResponseStatus(
+                  deviatedAfterDecision,
+                  400,
+                  `assign Deviated after rejection for ${fixture.itemRef}`,
+                )
+              }
+            }
           })
         } finally {
           await reviewer.context.close()

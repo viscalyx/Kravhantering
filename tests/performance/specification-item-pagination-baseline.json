@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-07-17T12:26:33.000Z",
+  "measurement": {
+    "engine": "Microsoft SQL Server",
+    "pageLimit": 100,
+    "warmTraversalCount": 1
+  },
+  "sqlEvidence": {
+    "maxLogicalReads": 1000
+  },
+  "thresholds": {
+    "70-30-200": {
+      "maxCompleteTraversalMs": 500
+    },
+    "70-30-500": {
+      "maxCompleteTraversalMs": 1000
+    },
+    "20-80-200": {
+      "maxCompleteTraversalMs": 500
+    },
+    "20-80-500": {
+      "maxCompleteTraversalMs": 1000
+    }
+  }
+}

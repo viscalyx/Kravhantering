@@ -86,12 +86,20 @@ agents can use it reliably.
   ```
 
 - `requirements_get_specification_items`
-  List requirement applications linked to a specific specification, with
-  optional description search. Use the numeric `specificationId` from
-  `requirements_list_specifications`. Copy linked requirement IDs from:
+  List one bounded page of requirement applications for a specification. Use
+  the numeric `specificationId` from `requirements_list_specifications` and
+  optional complete-result filters, locale, sort, direction, cursor, and a
+  limit from 1 through 100 (default 50). The response reports page count and
+  continuation availability, not an exact total. Continue with
+  `pagination.nextCursor`; on `invalid_cursor`, restart without a cursor using
+  the same query. Copy stable references for mixed-item actions. Copy an
+  `items[].id` into `requirementIds` only when that entry has
+  `kind == "library"`; a specification-local ID is not a library requirement
+  ID:
 
   ```text
-  requirements_get_specification_items.items[].id -> requirementIds
+  requirements_get_specification_items.items[].itemRef -> itemRef
+  requirements_get_specification_items.items[kind == "library"].id -> requirementIds
   ```
 
 - `requirements_list_graduation_target_areas`
@@ -177,6 +185,24 @@ The response is:
 `uniqueId` is the stable Krav-ID. The connected-ID operation includes only
 library Krav, deduplicated across linked kravversioner and sorted by `uniqueId`;
 kravunderlagslokala krav are not included.
+
+For `operation: "create"`, omit `normReferenceId` to let the service allocate
+the natural generated ID, then its deterministic suffixes through `-999` when
+needed. Concurrent creates therefore receive distinct IDs. A supplied ID is
+never rewritten: if it already exists, the tool returns `isError: true` with:
+
+```json
+{
+  "error": {
+    "code": "conflict",
+    "reason": "norm_reference_id_exists"
+  }
+}
+```
+
+If every generated candidate is unavailable, the response instead has reason
+`norm_reference_id_generation_exhausted`. Correct the supplied ID, or inspect
+the generated candidates before attempting a new create.
 
 ## Needs Reference Discovery
 
@@ -657,18 +683,26 @@ Examples:
 
 The server combines requirement search and lookup catalog reads into the same
 tool. Every call requires `catalog` and `operation`. `operation: "list"` returns
-all matching rows, and `operation: "search"` requires `search` and returns only
-matching rows with top-level `match` metadata. MCP text content is only a short
-status message; consume `structuredContent.result`.
+matching rows, and `operation: "search"` requires `search`. MCP text content is
+only a short status message; consume `structuredContent`.
 
-`requirements_query_catalog` does not accept `responseFormat`, `limit`, or
-`offset`, and it does not return pagination metadata. For requirement rows,
-search matches `id`, `uniqueId`, `version.description`, and
-`version.acceptanceCriteria`.
+For `catalog: "requirements"`, both operations return `result` plus
+`pagination` without an exact total. Pages default to 50 rows and `limit`
+accepts 1 through 100. Continue with `pagination.nextCursor`; callers may
+reduce `limit` during continuation. On `invalid_cursor`, restart without
+`cursor` while retaining the normalized filters, locale, and sort. Requirement
+search runs in SQL Server over `id`, `uniqueId`, `version.description`, and
+`version.acceptanceCriteria`. Search rows include `match.matchedFields` without
+`match.quality`.
+
+Other catalogs remain non-paginated and return `{ "result": [...] }`. Their
+search rows retain both `match.matchedFields` and `match.quality`.
 
 For requirement lists and searches, it supports:
 
 - `search` for `operation: "search"`
+- `cursor`
+- `limit`
 - `includeArchived`
 - `areaIds`
 - `categoryIds`
@@ -732,8 +766,9 @@ unchanged status fields.
 > `needsReferenceId` only when it comes from that specification's existing
 > needs-reference register, or use new `needsReferenceText` plus optional
 > `needsReferenceDescription`. For
-> `requirements_remove_from_specification`, copy
-> `requirements_get_specification_items.items[].id` -> `requirementIds`.
+> `requirements_remove_from_specification`, copy only
+> `requirements_get_specification_items.items[kind == "library"].id` ->
+> `requirementIds`; use `itemRef` for mixed-item actions.
 > Requirements must have a published version to be added to a specification.
 > Graduation is copy-only: it creates a new Draft library requirement and leaves
 > the source unique requirement unchanged. Graduation requires

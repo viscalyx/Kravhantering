@@ -1,17 +1,12 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
-import { Suspense } from 'react'
 import { routing } from '@/i18n/routing'
-import { listActionAuditEvents } from '@/lib/audit/action-audit'
-import {
-  type ActionAuditLogSearchParams,
-  actionAuditLogFiltersFromSearchParams,
-  firstSearchParamValue,
-} from '@/lib/audit/action-audit-query'
+import type { ActionAuditLogSearchParams } from '@/lib/audit/action-audit-query'
+import { canAccessAdminCenter } from '@/lib/auth/roles'
 import { getSession, isSignedIn } from '@/lib/auth/session'
-import { getRequirementListColumnDefaults } from '@/lib/dal/ui-settings'
-import { getRequestSqlServerDataSource } from '@/lib/db'
-import AdminClient from './admin-client'
+import AdminAccessDenied from './admin-access-denied'
+import { resolveAdminTab } from './admin-tabs'
 
 type PageParams = Promise<{ locale: string }>
 type SearchParams = Promise<ActionAuditLogSearchParams>
@@ -42,44 +37,15 @@ export default async function AdminPage({
 }) {
   const { locale: requestedLocale } = await params
   const locale = resolveLocale(requestedLocale)
-  const t = await getTranslations({ locale, namespace: 'admin' })
-  const db = await getRequestSqlServerDataSource()
-  const [query, session, initialColumnDefaults] = await Promise.all([
-    searchParams,
-    getSession(),
-    getRequirementListColumnDefaults(db),
-  ])
+  const [query, session] = await Promise.all([searchParams, getSession()])
   const currentUserRoles = isSignedIn(session) ? session.roles : []
-  const canManageAccessReviews = currentUserRoles.includes('Admin')
-  const actionAuditLog =
-    canManageAccessReviews &&
-    firstSearchParamValue(query.tab) === 'actionAuditLog'
-      ? {
-          query,
-          result: await listActionAuditEvents(
-            db,
-            actionAuditLogFiltersFromSearchParams(query),
-          ),
-        }
-      : undefined
+  if (!canAccessAdminCenter(currentUserRoles)) {
+    return AdminAccessDenied({ locale })
+  }
 
-  return (
-    <Suspense
-      fallback={
-        <div className="section-padding px-4 sm:px-6 lg:px-8" role="status">
-          <span className="sr-only">{t('loading')}</span>
-          <div className="container-custom space-y-6">
-            <div className="h-40 rounded-4xl border border-secondary-200/70 bg-secondary-100/70 dark:border-secondary-700/60 dark:bg-secondary-900/70" />
-            <div className="h-64 rounded-4xl border border-secondary-200/70 bg-white/70 dark:border-secondary-700/60 dark:bg-secondary-900/70" />
-          </div>
-        </div>
-      }
-    >
-      <AdminClient
-        actionAuditLog={actionAuditLog}
-        currentUserRoles={currentUserRoles}
-        initialColumnDefaults={initialColumnDefaults}
-      />
-    </Suspense>
-  )
+  const tabSearchParams = new URLSearchParams()
+  const requestedTab = Array.isArray(query.tab) ? query.tab[0] : query.tab
+  if (requestedTab) tabSearchParams.set('tab', requestedTab)
+  const { tab } = resolveAdminTab(tabSearchParams, currentUserRoles)
+  redirect(`/${locale}/admin?tab=${tab}`)
 }

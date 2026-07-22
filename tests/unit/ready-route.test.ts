@@ -4,6 +4,7 @@ const routeState = vi.hoisted(() => ({
   getAuthConfig: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   getSqlServerDatabaseUrl: vi.fn(),
+  probeGeneratedOutputTempDirectory: vi.fn(),
   readBuildMetadata: vi.fn(),
 }))
 
@@ -21,6 +22,11 @@ vi.mock('@/lib/build-metadata', () => ({
 
 vi.mock('@/lib/typeorm/sqlserver-config', () => ({
   getSqlServerDatabaseUrl: routeState.getSqlServerDatabaseUrl,
+}))
+
+vi.mock('@/lib/generated-output/spool', () => ({
+  probeGeneratedOutputTempDirectory:
+    routeState.probeGeneratedOutputTempDirectory,
 }))
 
 import * as route from '@/app/api/ready/route'
@@ -46,6 +52,7 @@ function setReadyDefaults() {
     'mssql://app:secret@db:1433/kravhantering',
   )
   routeState.getRequestSqlServerDataSource.mockResolvedValue({ query })
+  routeState.probeGeneratedOutputTempDirectory.mockResolvedValue(undefined)
   vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://app.example.com')
   vi.stubGlobal(
     'fetch',
@@ -142,6 +149,66 @@ describe('GET /api/ready', () => {
     expect(warn).toHaveBeenCalledWith(
       '[readiness] check failed',
       expect.objectContaining({ check: 'sql_server' }),
+    )
+    warn.mockRestore()
+  })
+
+  it('identifies a missing SQL Server driver in logs without exposing it publicly', async () => {
+    setReadyDefaults()
+    const error = new Error(
+      'SQL Server package has not been found installed. Please run "npm install mssql".',
+    )
+    error.name = 'DriverPackageNotInstalledError'
+    routeState.getRequestSqlServerDataSource.mockRejectedValueOnce(error)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const response = await route.GET()
+    const body = await response.text()
+
+    expect(response.status).toBe(503)
+    expect(JSON.parse(body)).toEqual({
+      failedChecks: [
+        {
+          name: 'sql_server',
+          reason: 'sql_server_unavailable',
+        },
+      ],
+      status: 'not_ready',
+    })
+    expect(body).not.toContain('mssql')
+    expect(warn).toHaveBeenCalledWith('[readiness] check failed', {
+      check: 'sql_server',
+      diagnostic: 'sql_server_driver_unavailable',
+      error: 'DriverPackageNotInstalledError',
+      reason: 'sql_server_unavailable',
+    })
+    warn.mockRestore()
+  })
+
+  it('returns a sanitized temporary-storage readiness failure', async () => {
+    setReadyDefaults()
+    routeState.probeGeneratedOutputTempDirectory.mockRejectedValueOnce(
+      new Error('/private/spool is read only'),
+    )
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const response = await route.GET()
+    const body = await response.text()
+
+    expect(response.status).toBe(503)
+    expect(JSON.parse(body)).toEqual({
+      failedChecks: [
+        {
+          name: 'temporary_storage',
+          reason: 'temporary_storage_unavailable',
+        },
+      ],
+      status: 'not_ready',
+    })
+    expect(body).not.toContain('/private/spool')
+    expect(warn).toHaveBeenCalledWith(
+      '[readiness] check failed',
+      expect.objectContaining({ check: 'temporary_storage' }),
     )
     warn.mockRestore()
   })

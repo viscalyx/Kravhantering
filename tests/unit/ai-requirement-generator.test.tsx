@@ -15,10 +15,18 @@ const translate = Object.assign(
       analysisTab: 'AI analysis',
       candidateCount: 'Number of requirement candidates',
       continueToImport: 'Preview requirements in import',
+      imageErrorCount: 'You can attach up to {max} images.',
+      imageErrorRead:
+        'Failed to read one or more image files. Please try again.',
+      generationFailed: 'Generation failed',
+      imageErrorSize: '{name} exceeds the 10 MB size limit.',
+      imageErrorType: 'Unsupported file type: {name}.',
       needsReferenceProposalRows: '{count} requirement row',
       needsReferenceProposals: 'Proposed needs references',
       noNeedsReferenceProposals: 'No proposed needs references are loaded.',
       rawResultTab: 'Raw result',
+      repairFailed: 'Repair failed',
+      repairSucceeded: 'The generated JSON was repaired successfully.',
       resolvedNeedsReferenceId: 'Existing needs reference #{id}',
       thinkingPhase: 'Analyzing need…',
       'requestExplanation.aiInstructionLabel': 'AI instruction',
@@ -146,6 +154,33 @@ function modelResponse() {
   }
 }
 
+function visionModelResponse() {
+  return {
+    json: async () => ({
+      models: [
+        {
+          contextLength: 200000,
+          id: 'anthropic/claude-sonnet-4',
+          name: 'Claude Sonnet 4',
+          pricing: {
+            completion: '0.000015',
+            prompt: '0.000003',
+            reasoning: '0.000015',
+          },
+          provider: 'anthropic',
+          supportedParameters: [
+            'reasoning',
+            'stream',
+            'response_format',
+            'vision',
+          ],
+        },
+      ],
+    }),
+    ok: true,
+  }
+}
+
 function generationStreamResponse(payload: Record<string, unknown>) {
   return {
     body: new ReadableStream({
@@ -169,6 +204,32 @@ function thinkingStreamResponse(thinkingSoFar: string) {
         controller.enqueue(
           new TextEncoder().encode(
             `event: thinking\ndata: ${JSON.stringify({ thinkingSoFar })}\n\n`,
+          ),
+        )
+        controller.close()
+      },
+    }),
+    ok: true,
+  }
+}
+
+function validationErrorStreamResponse() {
+  return {
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            `event: validation_error\ndata: ${JSON.stringify({
+              issues: [
+                {
+                  code: 'invalid_json',
+                  message: 'Generated response is not valid JSON.',
+                  path: '$',
+                },
+              ],
+              message: 'validationErrors',
+              rawContent: '{"requirements":',
+            })}\n\n`,
           ),
         )
         controller.close()
@@ -203,6 +264,12 @@ function previewResponse(
       type: string | null
     }
     priorityLevelId: number | null
+    resolvedPriorityLevel: {
+      code: string
+      color: string
+      iconName: string | null
+      name: string
+    }
     qualityCharacteristicId: number | null
     needsReferenceProposals: Array<{
       description: string | null
@@ -210,6 +277,24 @@ function previewResponse(
       referencedCount: number
       resolvedNeedsReferenceId: number | null
       text: string
+      warnings: Array<{
+        code: string
+        field?: string
+        level: 'error' | 'info' | 'warning'
+        message: string
+        originalValue?: string
+      }>
+    }>
+    proposals: Array<{
+      issuer: string
+      key: string
+      name: string
+      normReferenceId: string | null
+      reference: string
+      referencedCount: number
+      resolvedNormReferenceDbId: number | null
+      type: string
+      uri: string | null
       warnings: Array<{
         code: string
         field?: string
@@ -234,7 +319,7 @@ function previewResponse(
     json: async () => ({
       needsReferenceProposals: overrides.needsReferenceProposals ?? [],
       previewToken: 'preview-token',
-      proposals: [],
+      proposals: overrides.proposals ?? [],
       rows: [
         {
           errors: [],
@@ -248,6 +333,7 @@ function previewResponse(
           proposedNeedsReferenceKey:
             overrides.proposedNeedsReferenceKey ?? null,
           proposedNormReferenceKeys: [],
+          resolvedPriorityLevel: overrides.resolvedPriorityLevel,
           reviewRowId: overrides.reviewRowId ?? 'row-1',
           selected: true,
           sourceIndex: 0,
@@ -711,6 +797,35 @@ describe('AiRequirementGenerator', () => {
     ).toBeInTheDocument()
   })
 
+  it('keeps every AI form help target at the 24px policy default', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return visionModelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.click(screen.getByLabelText('capabilityVision'))
+    await screen.findByLabelText('help: imageAttachLabel')
+
+    for (const helpId of [
+      'ai-need-help',
+      'ai-image-help',
+      'ai-area-help',
+      'ai-candidate-count-help',
+      'ai-model-help',
+      'ai-reasoning-help',
+    ]) {
+      expect(
+        document.querySelector(`button[aria-controls="${helpId}"]`),
+      ).toHaveClass('min-h-6', 'min-w-6')
+    }
+  })
+
   it('shows locked required capabilities and reasoning level options', async () => {
     await renderOpenGenerator()
 
@@ -1108,6 +1223,174 @@ describe('AiRequirementGenerator', () => {
     })
   })
 
+  it('associates combined image validation feedback with the image control', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return visionModelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.click(screen.getByLabelText('capabilityVision'))
+
+    const imageButton = await screen.findByRole('button', {
+      name: 'imageSelectButton',
+    })
+    const fileInput =
+      document.querySelector<HTMLInputElement>('input[type="file"]')
+    expect(fileInput).not.toBeNull()
+
+    const unsupportedFile = new File(['not an image'], 'notes.txt', {
+      type: 'text/plain',
+    })
+    const oversizedFile = new File(['image'], 'large.png', {
+      type: 'image/png',
+    })
+    Object.defineProperty(oversizedFile, 'size', {
+      value: 10 * 1024 * 1024 + 1,
+    })
+    const additionalUnsupportedFile = new File(
+      ['not an image'],
+      'more-notes.txt',
+      {
+        type: 'text/plain',
+      },
+    )
+    const overflowFile = new File(['image'], 'overflow.png', {
+      type: 'image/png',
+    })
+
+    imageButton.focus()
+    fireEvent.change(fileInput as HTMLInputElement, {
+      target: {
+        files: [
+          unsupportedFile,
+          oversizedFile,
+          additionalUnsupportedFile,
+          overflowFile,
+        ],
+      },
+    })
+
+    const imageError = await screen.findByText(
+      'You can attach up to 3 images. Unsupported file type: notes.txt. large.png exceeds the 10 MB size limit. Unsupported file type: more-notes.txt.',
+      { selector: '#ai-image-validation-error' },
+    )
+    expect(imageButton).toHaveAttribute(
+      'aria-describedby',
+      'ai-image-validation-error',
+    )
+    expect(imageError).toHaveAttribute('id', 'ai-image-validation-error')
+    expect(imageButton).toHaveFocus()
+    expect(screen.getByRole('alert')).toHaveTextContent(imageError.textContent)
+  })
+
+  it('clears the image capacity error after an attached image is removed', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return visionModelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.click(screen.getByLabelText('capabilityVision'))
+
+    const imageButton = await screen.findByRole('button', {
+      name: 'imageSelectButton',
+    })
+    const fileInput =
+      document.querySelector<HTMLInputElement>('input[type="file"]')
+    expect(fileInput).not.toBeNull()
+
+    fireEvent.change(fileInput as HTMLInputElement, {
+      target: {
+        files: [
+          new File(['image'], 'diagram.png', { type: 'image/png' }),
+          new File(['image'], 'diagram-2.png', { type: 'image/png' }),
+          new File(['image'], 'diagram-3.png', { type: 'image/png' }),
+        ],
+      },
+    })
+
+    const removeButtons = await screen.findAllByRole('button', {
+      name: 'imageRemove',
+    })
+    expect(removeButtons).toHaveLength(3)
+
+    await userEvent.click(imageButton)
+    expect(
+      await screen.findByText('You can attach up to 3 images.', {
+        selector: '#ai-image-validation-error',
+      }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(removeButtons[0])
+
+    await waitFor(() => {
+      expect(imageButton).not.toHaveAttribute('aria-describedby')
+      expect(
+        screen.queryByText('You can attach up to 3 images.', {
+          selector: '#ai-image-validation-error',
+        }),
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  it('provides a 24px target for removing an attached image', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return visionModelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.click(screen.getByLabelText('capabilityVision'))
+
+    const fileInput =
+      document.querySelector<HTMLInputElement>('input[type="file"]')
+    expect(fileInput).not.toBeNull()
+
+    fireEvent.change(fileInput as HTMLInputElement, {
+      target: {
+        files: [new File(['image'], 'diagram.png', { type: 'image/png' })],
+      },
+    })
+
+    const removeButton = await screen.findByRole('button', {
+      name: 'imageRemove',
+    })
+    expect(removeButton).toHaveClass(
+      'min-h-6',
+      'min-w-6',
+      'focus-visible:ring-2',
+    )
+    expect(removeButton).toHaveAttribute(
+      'data-developer-mode-context',
+      'ai-requirement-generator',
+    )
+    expect(removeButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'remove image attachment',
+    )
+
+    await userEvent.click(removeButton)
+    expect(
+      screen.queryByRole('button', { name: 'imageRemove' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('shows tools model count from the filtered endpoint before selection', async () => {
     const baseModels = [
       {
@@ -1438,7 +1721,7 @@ describe('AiRequirementGenerator', () => {
       return url === '/api/ai/generate-requirement-import'
     })
     const generateBody = JSON.parse(
-      (generateCall?.[1] as { body: string }).body,
+      (generateCall?.[1] as { body: string } | undefined)?.body as string,
     ) as Record<string, unknown>
     expect(generateBody.reasoningEffort).toBe('xhigh')
   })
@@ -1489,7 +1772,7 @@ describe('AiRequirementGenerator', () => {
       return url === '/api/ai/generate-requirement-import'
     })
     const generateBody = JSON.parse(
-      (generateCall?.[1] as { body: string }).body,
+      (generateCall?.[1] as { body: string } | undefined)?.body as string,
     ) as Record<string, unknown>
     expect(generateBody).not.toHaveProperty('supportedParameters')
 
@@ -1625,7 +1908,22 @@ describe('AiRequirementGenerator', () => {
         typeof url === 'string' &&
         url === '/api/requirements/import/preview'
       ) {
-        return previewResponse('Generated security requirement')
+        return previewResponse('Generated security requirement', {
+          proposals: [
+            {
+              issuer: 'ISO',
+              key: 'iso-27001',
+              name: 'ISO 27001',
+              normReferenceId: null,
+              reference: 'ISO/IEC 27001:2022',
+              referencedCount: 1,
+              resolvedNormReferenceDbId: null,
+              type: 'Standard',
+              uri: null,
+              warnings: [],
+            },
+          ],
+        })
       }
       return { json: async () => ({}), ok: true }
     })
@@ -1639,6 +1937,18 @@ describe('AiRequirementGenerator', () => {
     expect(
       await screen.findByText('Generated security requirement'),
     ).toBeInTheDocument()
+    const candidateCheckbox = screen.getByRole('checkbox', {
+      name: 'selectRequirement',
+    })
+    expect(candidateCheckbox).toHaveClass('h-5', 'w-5')
+    expect(candidateCheckbox).not.toHaveClass('min-h-6', 'min-w-6')
+
+    await userEvent.click(screen.getByRole('button', { name: 'proposals (1)' }))
+    const proposalCheckbox = screen.getByRole('checkbox', {
+      name: 'ISO 27001 proposals',
+    })
+    expect(proposalCheckbox).toHaveClass('h-5', 'w-5')
+    expect(proposalCheckbox).not.toHaveClass('min-h-6', 'min-w-6')
 
     await userEvent.click(
       screen.getByRole('button', {
@@ -1943,10 +2253,143 @@ describe('AiRequirementGenerator', () => {
       screen.getByRole('button', { name: /generateButton/i }),
     )
 
-    expect(await screen.findByText('createError')).toBeInTheDocument()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Generation failed: createError')
+
+    const errorSummary = screen.getByRole('heading', {
+      name: 'Generation failed',
+    })
+    await waitFor(() => expect(errorSummary).toHaveFocus())
   })
 
-  it('styles generated priority badges from stable priority codes', async () => {
+  it('does not announce an error when an active generation is cancelled', async () => {
+    const onClose = vi.fn()
+    let generationSignal: AbortSignal | undefined
+    mockFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/ai/generate-requirement-import'
+      ) {
+        generationSignal = init?.signal ?? undefined
+        return {
+          body: new ReadableStream({
+            start() {
+              // Deliberately keep the stream open until the caller aborts it.
+            },
+          }),
+          ok: true,
+        }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator({ onClose })
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Grade access')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+    await waitFor(() => expect(generationSignal).toBeDefined())
+
+    await userEvent.click(screen.getByLabelText('close'))
+
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(generationSignal?.aborted).toBe(true)
+    expect(screen.getByRole('alert')).toBeEmptyDOMElement()
+  })
+
+  it('retains repair focus after failure and moves focus to repaired results', async () => {
+    let repairAttempt = 0
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      if (
+        typeof url === 'string' &&
+        url.startsWith('/api/requirements/import/instruction')
+      ) {
+        return {
+          ok: true,
+          text: async () => '# Import instruction\n\nUse schemaVersion.',
+        }
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/ai/generate-requirement-import'
+      ) {
+        return validationErrorStreamResponse()
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/ai/repair-requirement-import-json'
+      ) {
+        repairAttempt += 1
+        if (repairAttempt === 1) {
+          return {
+            json: async () => ({ error: 'Repair service unavailable.' }),
+            ok: false,
+          }
+        }
+        const payload = generatedImportPayload('Repaired requirement')
+        return {
+          json: async () => ({
+            payload,
+            rawContent: JSON.stringify(payload),
+            stats: {
+              completionTokens: 12,
+              cost: 0,
+              promptTokens: 10,
+              reasoningTokens: 2,
+              totalTokens: 24,
+            },
+            thinking: '',
+          }),
+          ok: true,
+        }
+      }
+      if (
+        typeof url === 'string' &&
+        url === '/api/requirements/import/preview'
+      ) {
+        return previewResponse('Repaired requirement')
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Grade access')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    const repairButton = await screen.findByRole('button', { name: 'repair' })
+    await userEvent.click(repairButton)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Repair failed: Repair service unavailable.',
+    )
+    expect(screen.getByRole('button', { name: 'repair' })).toHaveFocus()
+
+    await userEvent.click(screen.getByRole('button', { name: 'repair' }))
+
+    const resultsHeading = await screen.findByRole('heading', {
+      name: 'selectedCandidates',
+    })
+    expect(
+      screen.getByText('The generated JSON was repaired successfully.'),
+    ).toHaveAttribute('role', 'status')
+    await waitFor(() => expect(resultsHeading).toHaveFocus())
+  })
+
+  it('renders the server-resolved priority snapshot as the shared badge', async () => {
     mockFetch.mockImplementation(async (url: string) => {
       if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
         return modelResponse()
@@ -1979,13 +2422,19 @@ describe('AiRequirementGenerator', () => {
         return previewResponse('Critical generated requirement', {
           labels: {
             category: 'IT requirement',
-            priorityLevel: 'P5 - Very high',
+            priorityLevel: 'P5 – Very high',
             qualityCharacteristic: 'Functional correctness',
             type: 'Functional',
           },
           categoryId: 2,
           priorityLevelId: 42,
           qualityCharacteristicId: 3,
+          resolvedPriorityLevel: {
+            code: 'P5',
+            color: '#ef4444',
+            iconName: 'AlertTriangle',
+            name: 'Very high',
+          },
         })
       }
       return { json: async () => ({}), ok: true }
@@ -2001,9 +2450,11 @@ describe('AiRequirementGenerator', () => {
     expect(
       await screen.findByText('Critical generated requirement'),
     ).toBeInTheDocument()
-    expect(
-      screen.getByText('detailPriorityLevel: P5 - Very high'),
-    ).toBeInTheDocument()
+    const priorityBadge = screen
+      .getByText('P5 – Very high')
+      .closest('.status-badge')
+    expect(priorityBadge).toHaveAttribute('data-accent-color', '#ef4444')
+    expect(priorityBadge?.querySelector('svg')).toBeTruthy()
     expect(screen.getByText('detailType: Functional')).toBeInTheDocument()
     expect(
       screen.getByText('detailCategory: IT requirement'),

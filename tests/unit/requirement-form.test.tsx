@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, assert, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const pushMock = vi.fn()
 const backMock = vi.fn()
@@ -74,8 +74,10 @@ const samplePriorityLevels = [
     assessmentCriteriaEn: 'Low assessment criteria',
     assessmentCriteriaSv: 'Låga bedömningsgrunder',
     code: 'P2',
+    color: '#22c55e',
     descriptionEn: 'Low priority description',
     descriptionSv: 'Låg prioritetsbeskrivning',
+    iconName: 'ArrowDownLeft',
     id: 2,
     nameEn: 'Low',
     nameSv: 'Låg',
@@ -84,8 +86,10 @@ const samplePriorityLevels = [
     assessmentCriteriaEn: 'High assessment criteria',
     assessmentCriteriaSv: 'Höga bedömningsgrunder',
     code: 'P4',
+    color: '#f97316',
     descriptionEn: 'High priority description',
     descriptionSv: 'Hög prioritetsbeskrivning',
+    iconName: null,
     id: 4,
     nameEn: 'High',
     nameSv: 'Hög',
@@ -363,7 +367,16 @@ describe('RequirementForm', () => {
         c[0] === '/api/requirements' &&
         (c[1] as RequestInit)?.method === 'POST',
     )
-    const body = JSON.parse((postCall?.[1] as RequestInit).body as string)
+    assert(postCall, 'Expected a POST request')
+    const postRequest = postCall[1]
+    assert(
+      typeof postRequest === 'object' &&
+        postRequest !== null &&
+        'body' in postRequest &&
+        typeof postRequest.body === 'string',
+      'Expected POST request body to be a string',
+    )
+    const body = JSON.parse(postRequest.body)
     expect(body).toHaveProperty('verifiable', false)
 
     await waitFor(() => {
@@ -424,7 +437,16 @@ describe('RequirementForm', () => {
         c[0] === '/api/requirements/5' &&
         (c[1] as RequestInit)?.method === 'PUT',
     )
-    const body = JSON.parse((putCall?.[1] as RequestInit).body as string)
+    assert(putCall, 'Expected a PUT request')
+    const putRequest = putCall[1]
+    assert(
+      typeof putRequest === 'object' &&
+        putRequest !== null &&
+        'body' in putRequest &&
+        typeof putRequest.body === 'string',
+      'Expected PUT request body to be a string',
+    )
+    const body = JSON.parse(putRequest.body)
     expect(body.baseRevisionToken).toBe('11111111-1111-4111-8111-111111111111')
     expect(body.baseVersionId).toBe(10)
   })
@@ -685,11 +707,16 @@ describe('RequirementForm', () => {
     expect(
       screen.queryByText('Low priority description'),
     ).not.toBeInTheDocument()
-    await screen.findByRole('option', { name: 'P2 - Low' })
+    await screen.findByRole('option', { name: 'P2 – Low' })
 
     const prioritySelect = screen.getByRole('combobox', {
       name: 'requirement.priorityLevel',
     })
+    expect(prioritySelect.tagName).toBe('SELECT')
+    const originalMatches = prioritySelect.matches.bind(prioritySelect)
+    vi.spyOn(prioritySelect, 'matches').mockImplementation(
+      selector => selector === ':focus-visible' || originalMatches(selector),
+    )
     fireEvent.focus(prioritySelect)
 
     const priorityTooltip = await screen.findByRole('tooltip')
@@ -720,8 +747,13 @@ describe('RequirementForm', () => {
       ),
     ).toBeInTheDocument()
     expect(
-      within(helpPanel as HTMLElement).getByText('P2 - Low'),
+      within(helpPanel as HTMLElement).getByText('P2 – Low'),
     ).toBeInTheDocument()
+    const priorityBadges = helpPanel.querySelectorAll('.status-badge')
+    expect(priorityBadges).toHaveLength(2)
+    expect(priorityBadges[0]).toHaveTextContent('P2 – Low')
+    expect(priorityBadges[0]?.querySelector('svg')).toBeTruthy()
+    expect(priorityBadges[1]?.querySelector('svg')).toBeNull()
     expect(
       within(helpPanel as HTMLElement).getByText('Low priority description'),
     ).toBeInTheDocument()
@@ -737,6 +769,20 @@ describe('RequirementForm', () => {
         }),
       ).not.toBeInTheDocument()
     })
+  })
+
+  it('shows a priority code without a dangling separator when its localized name is empty', async () => {
+    const originalNameEn = samplePriorityLevels[0].nameEn
+    samplePriorityLevels[0].nameEn = ''
+
+    try {
+      render(<RequirementForm mode="create" />)
+
+      expect(await screen.findByRole('option', { name: 'P2' })).toBeVisible()
+      expect(screen.queryByRole('option', { name: 'P2 –' })).toBeNull()
+    } finally {
+      samplePriorityLevels[0].nameEn = originalNameEn
+    }
   })
 
   it('fetches quality characteristics when typeId is set', async () => {

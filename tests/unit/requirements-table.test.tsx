@@ -22,9 +22,11 @@ const mockPush = vi.fn()
 const resizeObserverObserve = vi.fn()
 const resizeObserverDisconnect = vi.fn()
 const DEFAULT_COLUMN_WIDTHS = [150, 360, 136, 152, 148, 176]
+const DEFAULT_VIEWPORT_HEIGHT = 768
 const DEFAULT_VIEWPORT_WIDTH = 1024
 
 let resizeObserverCallback: ResizeObserverCallback | null = null
+let resizeObserverCallbacks: ResizeObserverCallback[] = []
 
 function setViewportWidth(width: number) {
   Object.defineProperty(window, 'innerWidth', {
@@ -34,6 +36,13 @@ function setViewportWidth(width: number) {
   Object.defineProperty(document.documentElement, 'clientWidth', {
     configurable: true,
     value: width,
+  })
+}
+
+function setViewportHeight(height: number) {
+  Object.defineProperty(window, 'innerHeight', {
+    configurable: true,
+    value: height,
   })
 }
 
@@ -57,6 +66,8 @@ describe('RequirementsTable', () => {
     resizeObserverObserve.mockReset()
     resizeObserverDisconnect.mockReset()
     resizeObserverCallback = null
+    resizeObserverCallbacks = []
+    setViewportHeight(DEFAULT_VIEWPORT_HEIGHT)
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
@@ -76,6 +87,7 @@ describe('RequirementsTable', () => {
       class ResizeObserver {
         constructor(callback: ResizeObserverCallback) {
           resizeObserverCallback = callback
+          resizeObserverCallbacks.push(callback)
         }
 
         disconnect() {
@@ -107,6 +119,7 @@ describe('RequirementsTable', () => {
   })
 
   afterEach(() => {
+    setViewportHeight(DEFAULT_VIEWPORT_HEIGHT)
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
   })
 
@@ -155,6 +168,47 @@ describe('RequirementsTable', () => {
       },
       ...overrides,
     }
+  }
+
+  function ControlledCompactPackageFilter({
+    catalogStatus = 'loaded',
+    initialSelectedIds = [],
+    packages = [
+      { id: 1, name: 'Alfa' },
+      { id: 2, name: 'Beta' },
+      { id: 3, name: 'Gamma' },
+    ],
+  }: {
+    catalogStatus?: 'failed' | 'loaded' | 'loading'
+    initialSelectedIds?: number[]
+    packages?: Array<{
+      id: number
+      name: string
+      purposeAndScope?: string | null
+    }>
+  }) {
+    const [filterValues, setFilterValues] = useState<FilterValues>({
+      requirementPackageIds:
+        initialSelectedIds.length > 0 ? initialSelectedIds : undefined,
+    })
+
+    return (
+      <div>
+        <button type="button">outside-filter</button>
+        <div data-testid="package-filter-state">
+          {JSON.stringify(filterValues.requirementPackageIds ?? [])}
+        </div>
+        <RequirementsTable
+          filterValues={filterValues}
+          locale="sv"
+          onFilterChange={setFilterValues}
+          requirementPackageCatalogStatus={catalogStatus}
+          requirementPackageFilterPresentation="compact-band"
+          requirementPackages={packages}
+          rows={[makeRow()]}
+        />
+      </div>
+    )
   }
 
   function ControlledResizableTable({
@@ -633,6 +687,34 @@ describe('RequirementsTable', () => {
     expect(screen.queryByText('v2')).toBeNull()
   })
 
+  it('renders distinct, labelled icons for both verifiable states', () => {
+    render(
+      <RequirementsTable
+        locale="sv"
+        rows={[
+          makeRow(),
+          makeRow({
+            id: 2,
+            uniqueId: 'INT0002',
+            version: {
+              ...makeRow().version,
+              verifiable: false,
+            },
+          }),
+        ]}
+        visibleColumns={[...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS, 'verifiable']}
+      />,
+    )
+
+    const verifiable = screen.getByRole('img', { name: 'verifiable' })
+    const notVerifiable = screen.getByRole('img', { name: 'verifiableOff' })
+
+    expect(verifiable).toHaveAttribute('title', 'verifiable')
+    expect(verifiable.querySelector('svg')).toHaveClass('lucide-search-check')
+    expect(notVerifiable).toHaveAttribute('title', 'verifiableOff')
+    expect(notVerifiable.querySelector('svg')).toHaveClass('lucide-minus')
+  })
+
   it('renders the archiving review label when a Review row has archiveInitiatedAt set', () => {
     const rows = [
       makeRow({
@@ -711,6 +793,7 @@ describe('RequirementsTable', () => {
       makeRow({
         version: {
           ...makeRow().version,
+          priorityLevelCode: 'P3',
           priorityLevelId: 3,
           priorityLevelNameEn: 'Medium high',
           priorityLevelNameSv: 'Medelhög',
@@ -722,16 +805,6 @@ describe('RequirementsTable', () => {
     render(
       <RequirementsTable
         locale="sv"
-        priorityLevels={[
-          {
-            code: 'P3',
-            color: '#eab308',
-            id: 3,
-            nameEn: 'Medium high',
-            nameSv: 'Medelhög',
-            sortOrder: 3,
-          },
-        ]}
         rows={rows}
         visibleColumns={[
           ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
@@ -740,7 +813,33 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    expect(screen.getByText('P3 - Medelhög')).toBeTruthy()
+    expect(screen.getByText('P3 – Medelhög')).toBeTruthy()
+  })
+
+  it('retains the priority code when the snapshot name is missing', () => {
+    const rows = [
+      makeRow({
+        version: {
+          ...makeRow().version,
+          priorityLevelCode: 'P3',
+          priorityLevelId: 3,
+          priorityLevelNameEn: null,
+          priorityLevelNameSv: null,
+        },
+      }),
+    ]
+    render(
+      <RequirementsTable
+        locale="sv"
+        rows={rows}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'priorityLevel',
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('P3')).toBeTruthy()
   })
 
   it('renders read-only usage status icons as decorative badge content', () => {
@@ -1336,6 +1435,51 @@ describe('RequirementsTable', () => {
     for (const cell of stickyHeaderCells) {
       expect(cell.className).toContain('bg-secondary-50')
     }
+  })
+
+  it('keeps table selection checkboxes compact in separate header and body rows', () => {
+    render(
+      <RequirementsTable
+        locale="sv"
+        onSelectionChange={vi.fn()}
+        rows={[makeRow(), makeRow({ id: 2, uniqueId: 'INT0002' })]}
+        selectable
+        selectedIds={new Set()}
+      />,
+    )
+
+    const selectAll = screen.getByRole('checkbox', { name: 'selectAll' })
+    const rowSelections = screen.getAllByRole('checkbox', { name: 'selectRow' })
+    expect(selectAll).toHaveClass('h-4', 'w-4')
+    expect(selectAll).not.toHaveClass('min-h-6', 'min-w-6')
+    expect(rowSelections).toHaveLength(2)
+    for (const checkbox of rowSelections) {
+      expect(checkbox).toHaveClass('h-4', 'w-4')
+      expect(checkbox).not.toHaveClass('min-h-6', 'min-w-6')
+      expect(checkbox.parentElement).toHaveClass('py-2')
+    }
+  })
+
+  it('can expose individual row selection without a Select all control', () => {
+    render(
+      <RequirementsTable
+        locale="en"
+        onSelectionChange={vi.fn()}
+        rows={[makeRow()]}
+        selectable
+        selectedIds={new Set()}
+        showSelectAll={false}
+        statusRow={<div role="status">selection summary</div>}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('checkbox', { name: 'selectAll' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('checkbox', { name: 'selectRow' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('selection summary')
   })
 
   it('supports overriding the sticky top offset classes for container-scrolled tables', () => {
@@ -2006,7 +2150,7 @@ describe('RequirementsTable', () => {
     ).toBeTruthy()
   })
 
-  it('focuses action-only floating menu items when the menu opens', async () => {
+  it('focuses action-only menu items and passes the stable trigger on activation', async () => {
     const onExport = vi.fn()
 
     render(
@@ -2030,7 +2174,8 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'manage' }))
+    const trigger = screen.getByRole('button', { name: 'manage' })
+    fireEvent.click(trigger)
 
     const actionButton = await screen.findByRole('menuitem', { name: 'Export' })
 
@@ -2038,6 +2183,7 @@ describe('RequirementsTable', () => {
 
     fireEvent.click(actionButton)
     expect(onExport).toHaveBeenCalledTimes(1)
+    expect(onExport).toHaveBeenCalledWith(trigger)
   })
 
   it('uses standard wrapping utilities when description wrapping is enabled', () => {
@@ -2221,6 +2367,33 @@ describe('RequirementsTable', () => {
     vi.useRealTimers()
   })
 
+  it('keeps the column-search clear control at 24 CSS pixels inside its textbox', () => {
+    render(
+      <RequirementsTable
+        filterValues={DEFAULT_FILTERS}
+        locale="sv"
+        onFilterChange={vi.fn()}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const [filterButton] = screen.getAllByRole('button', { name: 'filterBy' })
+    expect(filterButton).toBeDefined()
+    if (!filterButton) {
+      throw new Error('Expected filter button to be rendered.')
+    }
+
+    fireEvent.click(filterButton)
+    const textbox = screen.getByRole('textbox', { name: 'uniqueId' })
+    fireEvent.change(textbox, { target: { value: 'INT0001' } })
+
+    expect(textbox).toHaveClass('pr-8')
+    expect(screen.getByRole('button', { name: 'clear' })).toHaveClass(
+      'h-6',
+      'w-6',
+    )
+  })
+
   it('merges pending search commits with newer filter updates', () => {
     vi.useFakeTimers()
 
@@ -2253,7 +2426,7 @@ describe('RequirementsTable', () => {
     vi.useRealTimers()
   })
 
-  it('renders filter buttons with 44px touch targets', () => {
+  it('keeps filter buttons at the table action size', () => {
     render(
       <RequirementsTable
         filterValues={DEFAULT_FILTERS}
@@ -2270,7 +2443,7 @@ describe('RequirementsTable', () => {
     }
   })
 
-  it('applies 44px touch targets to standard filter popover actions', () => {
+  it('keeps standard filter popover actions at their row height', () => {
     render(
       <RequirementsTable
         filterValues={DEFAULT_FILTERS}
@@ -2305,7 +2478,7 @@ describe('RequirementsTable', () => {
     expect(optionRow?.className).toContain('min-h-11')
   })
 
-  it('applies 44px touch targets to grouped filter popover actions', () => {
+  it('keeps grouped filter popover actions at their row height', () => {
     render(
       <RequirementsTable
         filterValues={{ ...DEFAULT_FILTERS, qualityCharacteristicIds: [2] }}
@@ -2348,7 +2521,7 @@ describe('RequirementsTable', () => {
     expect(optionRow?.className).toContain('min-h-11')
   })
 
-  it('applies the minimum header touch target to the sortable button itself', () => {
+  it('sizes the sortable button instead of its header wrapper', () => {
     const { container } = render(
       <RequirementsTable
         filterValues={DEFAULT_FILTERS}
@@ -2777,7 +2950,7 @@ describe('RequirementsTable', () => {
     expect(bottomSegment?.style.height).toBe('48px')
   })
 
-  it('keeps clipped resize segments below 44px from expanding their hit area', () => {
+  it('keeps clipped resize segments within their visible height', () => {
     const { container } = render(<ControlledExpandedResizableTable />)
 
     syncResizeHandleMetrics(container)
@@ -3141,7 +3314,7 @@ describe('RequirementsTable', () => {
     ])
   })
 
-  it('applies the minimum touch target sizing to row action buttons', () => {
+  it('applies the table action size to row action buttons', () => {
     render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
 
     const action = screen.getByRole('button', { name: 'INT0001' })
@@ -3526,9 +3699,16 @@ describe('RequirementsTable', () => {
     const removeIcons = container.querySelectorAll(
       '[data-developer-mode-name="header chip"] button svg',
     )
+    const removeButtons = container.querySelectorAll(
+      '[data-developer-mode-name="header chip"] button',
+    )
     expect(removeIcons.length).toBeGreaterThan(0)
+    expect(removeButtons.length).toBe(removeIcons.length)
     for (const icon of removeIcons) {
       expect(icon).toHaveAttribute('aria-hidden', 'true')
+    }
+    for (const button of removeButtons) {
+      expect(button).not.toHaveClass('min-h-6', 'min-w-6')
     }
   })
 
@@ -3634,6 +3814,13 @@ describe('RequirementsTable', () => {
       '1',
     )
     expect(requirementPackageFilter).toHaveAttribute('aria-pressed', 'true')
+    expect(requirementPackageFilter).toHaveClass('h-6', 'text-[10px]')
+    expect(requirementPackageFilter).not.toHaveClass('min-h-11', 'min-w-11')
+    const clearPackageFilters = screen.getByRole('button', {
+      name: 'clearFilters',
+    })
+    expect(clearPackageFilters).toHaveClass('h-6', 'w-6')
+    expect(clearPackageFilters).not.toHaveClass('min-h-11', 'min-w-11')
 
     fireEvent.click(requirementPackageFilter)
     expect(onFilterChange).toHaveBeenCalledWith({
@@ -3661,45 +3848,472 @@ describe('RequirementsTable', () => {
   })
 
   it('uses requirement package purpose and scope as filter pill tooltips', () => {
-    const requirementPackages = [
-      {
-        id: 1,
-        name: 'Mobil användning',
-        purposeAndScope: 'Krav för mobil användning.',
-      },
-      {
-        id: 2,
-        name: 'Tom avgränsning',
-        purposeAndScope: '   ',
-      },
-    ]
+    vi.useFakeTimers()
+    try {
+      const requirementPackages = [
+        {
+          id: 1,
+          name: 'Mobil användning',
+          purposeAndScope: 'Krav för mobil användning.',
+        },
+        {
+          id: 2,
+          name: 'Tom avgränsning',
+          purposeAndScope: '   ',
+        },
+      ]
 
+      render(
+        <RequirementsTable
+          filterValues={{}}
+          locale="sv"
+          onFilterChange={vi.fn()}
+          requirementPackages={requirementPackages}
+          rows={[makeRow()]}
+        />,
+      )
+
+      fireEvent.mouseEnter(
+        screen.getByRole('button', { name: 'Mobil användning' }),
+      )
+      act(() => vi.advanceTimersByTime(1000))
+
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'Krav för mobil användning.',
+      )
+
+      fireEvent.mouseLeave(
+        screen.getByRole('button', { name: 'Mobil användning' }),
+      )
+      fireEvent.mouseEnter(
+        screen.getByRole('button', { name: 'Tom avgränsning' }),
+      )
+
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('renders the compact package filter only after a successful catalog load', () => {
+    const { rerender } = render(
+      <ControlledCompactPackageFilter catalogStatus="loading" packages={[]} />,
+    )
+
+    expect(
+      screen.queryByRole('group', { name: 'requirementPackages' }),
+    ).not.toBeInTheDocument()
+
+    rerender(
+      <ControlledCompactPackageFilter catalogStatus="failed" packages={[]} />,
+    )
+    expect(
+      screen.queryByRole('group', { name: 'requirementPackages' }),
+    ).not.toBeInTheDocument()
+
+    rerender(
+      <ControlledCompactPackageFilter catalogStatus="loaded" packages={[]} />,
+    )
+
+    const band = screen.getByRole('group', { name: 'requirementPackages' })
+    expect(
+      within(band).getByText('noRequirementPackagesAvailableToFilter'),
+    ).toBeInTheDocument()
+    const trigger = within(band).getByRole('button', {
+      name: 'requirementPackageFilterButton',
+    })
+    expect(trigger).toBeDisabled()
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(trigger).toHaveAttribute('aria-controls')
+  })
+
+  it('sorts compact selected and available packages by locale with an id tie-breaker', () => {
     render(
-      <RequirementsTable
-        filterValues={{}}
-        locale="sv"
-        onFilterChange={vi.fn()}
-        requirementPackages={requirementPackages}
-        rows={[makeRow()]}
+      <ControlledCompactPackageFilter
+        initialSelectedIds={[4, 3, 2]}
+        packages={[
+          { id: 4, name: 'Övrigt' },
+          { id: 3, name: 'alfa' },
+          { id: 2, name: 'Alfa' },
+          { id: 1, name: 'Beta' },
+        ]}
       />,
     )
 
-    fireEvent.mouseEnter(
-      screen.getByRole('button', { name: 'Mobil användning' }),
+    const band = screen.getByRole('group', { name: 'requirementPackages' })
+    const selectedIds = within(band)
+      .getAllByRole('button', {
+        name: 'removeRequirementPackageFromFilter',
+      })
+      .map(button => button.getAttribute('data-requirement-package'))
+    expect(selectedIds).toEqual(['2', '3', '4'])
+    expect(
+      within(band).getAllByRole('button', {
+        name: 'removeRequirementPackageFromFilter',
+      })[0],
+    ).toHaveClass(
+      'bg-primary-100',
+      'text-primary-700',
+      'dark:bg-primary-900/40',
+      'dark:text-primary-300',
+    )
+    expect(
+      within(band).getByRole('button', {
+        name: 'clearRequirementPackageFilter',
+      }),
+    ).toHaveClass('h-6', 'w-6')
+
+    const trigger = within(band).getByRole('button', {
+      name: 'requirementPackageFilterButtonActive',
+    })
+    const visibleTitle = within(band).getByText('requirementPackages', {
+      selector: 'span',
+    })
+    expect(visibleTitle).toHaveClass('text-sm', 'font-medium')
+    expect(visibleTitle.parentElement).toHaveClass(
+      'flex',
+      'items-center',
+      'gap-1',
+    )
+    expect(visibleTitle.nextElementSibling).toContainElement(trigger)
+    const splitLayout = visibleTitle.closest(
+      '[data-requirement-package-filter-layout="split"]',
+    )
+    expect(splitLayout).toHaveClass(
+      'grid',
+      'grid-cols-[auto_1px_minmax(0,1fr)]',
+      'items-center',
+    )
+    expect(visibleTitle.parentElement?.nextElementSibling).toHaveAttribute(
+      'data-requirement-package-filter-divider',
+      'true',
+    )
+    const selections = band.querySelector(
+      '[data-requirement-package-filter-selections="true"]',
+    )
+    expect(selections).toContainElement(
+      within(band).getAllByRole('button', {
+        name: 'removeRequirementPackageFromFilter',
+      })[0] as HTMLElement,
+    )
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(within(trigger).getByText('3')).toHaveAttribute(
+      'data-filter-count-badge',
+      'true',
     )
 
-    expect(screen.getByRole('tooltip')).toHaveTextContent(
-      'Krav för mobil användning.',
+    fireEvent.click(trigger)
+
+    const chooser = screen.getByRole('group', {
+      name: 'requirementPackageChooser',
+    })
+    expect(
+      within(chooser)
+        .getAllByRole('button', {
+          name: 'addRequirementPackageToFilter',
+        })
+        .map(button => button.textContent),
+    ).toEqual(['Beta'])
+  })
+
+  it('keeps the chooser open and recovers focus across consecutive package changes', () => {
+    render(<ControlledCompactPackageFilter />)
+
+    const band = screen.getByRole('group', { name: 'requirementPackages' })
+    const trigger = within(band).getByRole('button', {
+      name: 'requirementPackageFilterButton',
+    })
+    fireEvent.click(trigger)
+
+    let chooser = screen.getByRole('group', {
+      name: 'requirementPackageChooser',
+    })
+    let availableButtons = within(chooser).getAllByRole('button', {
+      name: 'addRequirementPackageToFilter',
+    })
+    fireEvent.click(availableButtons[1] as HTMLButtonElement)
+
+    chooser = screen.getByRole('group', {
+      name: 'requirementPackageChooser',
+    })
+    availableButtons = within(chooser).getAllByRole('button', {
+      name: 'addRequirementPackageToFilter',
+    })
+    expect(availableButtons[1]).toHaveFocus()
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('package-filter-state')).toHaveTextContent('[2]')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'requirementPackageAdded',
     )
 
-    fireEvent.mouseLeave(
-      screen.getByRole('button', { name: 'Mobil användning' }),
-    )
-    fireEvent.mouseEnter(
-      screen.getByRole('button', { name: 'Tom avgränsning' }),
+    fireEvent.click(availableButtons[1] as HTMLButtonElement)
+    chooser = screen.getByRole('group', {
+      name: 'requirementPackageChooser',
+    })
+    availableButtons = within(chooser).getAllByRole('button', {
+      name: 'addRequirementPackageToFilter',
+    })
+    expect(availableButtons[0]).toHaveFocus()
+
+    fireEvent.click(availableButtons[0] as HTMLButtonElement)
+    expect(trigger).toHaveFocus()
+    expect(
+      within(
+        screen.getByRole('group', { name: 'requirementPackageChooser' }),
+      ).getByText('allRequirementPackagesSelected'),
+    ).toBeInTheDocument()
+
+    const selectedBeta = within(band)
+      .getAllByRole('button', {
+        name: 'removeRequirementPackageFromFilter',
+      })
+      .find(button => button.getAttribute('data-requirement-package') === '2')
+    fireEvent.click(selectedBeta as HTMLButtonElement)
+
+    const selectedGamma = within(band)
+      .getAllByRole('button', {
+        name: 'removeRequirementPackageFromFilter',
+      })
+      .find(button => button.getAttribute('data-requirement-package') === '3')
+    expect(selectedGamma).toHaveFocus()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'requirementPackageRemoved',
     )
 
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    fireEvent.click(
+      within(band).getByRole('button', {
+        name: 'clearRequirementPackageFilter',
+      }),
+    )
+    expect(trigger).toHaveFocus()
+    expect(screen.getByTestId('package-filter-state')).toHaveTextContent('[]')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'requirementPackageFilterCleared',
+    )
+  })
+
+  it('preserves selected package ids that are absent from the catalog', () => {
+    render(
+      <ControlledCompactPackageFilter
+        initialSelectedIds={[99, 1]}
+        packages={[
+          { id: 1, name: 'Alfa' },
+          { id: 2, name: 'Beta' },
+        ]}
+      />,
+    )
+
+    const band = screen.getByRole('group', { name: 'requirementPackages' })
+    fireEvent.click(
+      within(band).getByRole('button', {
+        name: 'requirementPackageFilterButtonActive',
+      }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'addRequirementPackageToFilter',
+      }),
+    )
+    expect(screen.getByTestId('package-filter-state')).toHaveTextContent(
+      '[99,1,2]',
+    )
+
+    fireEvent.click(
+      within(band).getAllByRole('button', {
+        name: 'removeRequirementPackageFromFilter',
+      })[0] as HTMLButtonElement,
+    )
+    expect(screen.getByTestId('package-filter-state')).toHaveTextContent(
+      '[99,2]',
+    )
+  })
+
+  it('recovers removal focus to the previous selection and finally the trigger', () => {
+    render(<ControlledCompactPackageFilter initialSelectedIds={[1, 2, 3]} />)
+
+    const band = screen.getByRole('group', { name: 'requirementPackages' })
+    const selectedButton = (id: string) =>
+      within(band)
+        .getAllByRole('button', {
+          name: 'removeRequirementPackageFromFilter',
+        })
+        .find(button => button.getAttribute('data-requirement-package') === id)
+    const trigger = within(band).getByRole('button', {
+      name: 'requirementPackageFilterButtonActive',
+    })
+
+    fireEvent.click(selectedButton('3') as HTMLButtonElement)
+    expect(selectedButton('2')).toHaveFocus()
+
+    fireEvent.click(selectedButton('2') as HTMLButtonElement)
+    expect(selectedButton('1')).toHaveFocus()
+    expect(
+      within(band).queryByRole('button', {
+        name: 'clearRequirementPackageFilter',
+      }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(selectedButton('1') as HTMLButtonElement)
+    expect(trigger).toHaveFocus()
+  })
+
+  it('supports transient hover, pinned disclosure, escape, outside click, and focus exit', async () => {
+    render(<ControlledCompactPackageFilter />)
+
+    const band = screen.getByRole('group', { name: 'requirementPackages' })
+    const trigger = within(band).getByRole('button', {
+      name: 'requirementPackageFilterButton',
+    })
+
+    fireEvent.pointerEnter(band, { pointerType: 'mouse' })
+    expect(
+      screen.getByRole('group', { name: 'requirementPackageChooser' }),
+    ).toBeInTheDocument()
+    fireEvent.pointerLeave(band, { pointerType: 'mouse' })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('group', { name: 'requirementPackageChooser' }),
+      ).not.toBeInTheDocument(),
+    )
+
+    fireEvent.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(trigger).toHaveFocus()
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(trigger)
+    fireEvent.pointerDown(
+      screen.getByRole('button', { name: 'outside-filter' }),
+    )
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(trigger)
+    fireEvent.focus(screen.getByRole('button', { name: 'outside-filter' }))
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('delays package tooltips on hover, opens them on focus, and exposes curated markers', () => {
+    vi.useFakeTimers()
+    try {
+      render(
+        <ControlledCompactPackageFilter
+          initialSelectedIds={[1]}
+          packages={[
+            { id: 1, name: 'Name only' },
+            {
+              id: 2,
+              name: 'Package with purpose',
+              purposeAndScope: 'Purpose and scope.',
+            },
+          ]}
+        />,
+      )
+
+      const band = screen.getByRole('group', { name: 'requirementPackages' })
+      expect(band).toHaveAttribute(
+        'data-developer-mode-name',
+        'requirements package filter',
+      )
+      const selected = within(band).getByRole('button', {
+        name: 'removeRequirementPackageFromFilter',
+      })
+      expect(selected).toHaveAttribute('aria-pressed', 'true')
+      fireEvent.mouseEnter(selected)
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      act(() => vi.advanceTimersByTime(999))
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      act(() => vi.advanceTimersByTime(1))
+      expect(screen.getByRole('tooltip')).toHaveTextContent('Name only')
+      fireEvent.mouseLeave(selected)
+
+      const trigger = within(band).getByRole('button', {
+        name: 'requirementPackageFilterButtonActive',
+      })
+      expect(trigger).toHaveAttribute(
+        'data-developer-mode-name',
+        'filter button',
+      )
+      expect(trigger).toHaveAttribute(
+        'data-developer-mode-value',
+        'requirement package',
+      )
+      fireEvent.click(trigger)
+
+      const chooser = screen.getByRole('group', {
+        name: 'requirementPackageChooser',
+      })
+      expect(chooser).toHaveAttribute(
+        'data-developer-mode-name',
+        'requirements package chooser',
+      )
+      const available = within(chooser).getByRole('button', {
+        name: 'addRequirementPackageToFilter',
+      })
+      expect(available).toHaveAttribute('aria-pressed', 'false')
+      const originalMatches = available.matches.bind(available)
+      vi.spyOn(available, 'matches').mockImplementation(
+        selector => selector === ':focus-visible' || originalMatches(selector),
+      )
+      act(() => available.focus())
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'Package with purpose Purpose and scope.',
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('clamps the floating chooser to a narrow viewport without moving the table', () => {
+    setViewportWidth(320)
+    setViewportHeight(300)
+    render(<ControlledCompactPackageFilter />)
+
+    const band = screen.getByRole('group', { name: 'requirementPackages' })
+    let bandBottom = 100
+    vi.spyOn(band, 'getBoundingClientRect').mockImplementation(() => ({
+      bottom: bandBottom,
+      height: bandBottom - 40,
+      left: -20,
+      right: 380,
+      top: 40,
+      width: 400,
+      x: -20,
+      y: 40,
+      toJSON: () => ({}),
+    }))
+    fireEvent.click(
+      within(band).getByRole('button', {
+        name: 'requirementPackageFilterButton',
+      }),
+    )
+
+    const chooser = screen.getByRole('group', {
+      name: 'requirementPackageChooser',
+    })
+    expect(chooser).toHaveStyle({
+      left: '8px',
+      maxHeight: '192px',
+      top: '100px',
+      width: '304px',
+    })
+    expect(chooser).toHaveClass('fixed')
+
+    bandBottom = 148
+    fireEvent.click(
+      within(chooser).getAllByRole('button', {
+        name: 'addRequirementPackageToFilter',
+      })[0] as HTMLButtonElement,
+    )
+    act(() => {
+      for (const callback of resizeObserverCallbacks) {
+        callback([], {} as ResizeObserver)
+      }
+    })
+    expect(chooser).toHaveStyle({
+      maxHeight: '144px',
+      top: '148px',
+    })
   })
 
   it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {

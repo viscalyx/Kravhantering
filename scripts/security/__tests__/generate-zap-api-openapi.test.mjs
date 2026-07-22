@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import yaml from 'js-yaml'
+import { dump as dumpYaml } from 'js-yaml'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   DEFAULT_ALLOWED_OPERATIONS,
@@ -116,7 +116,7 @@ describe('generateZapApiOpenApi', () => {
     const dir = makeTempDir()
     const source = path.join(dir, 'source.yaml')
     const output = path.join(dir, 'openapi.json')
-    fs.writeFileSync(source, yaml.dump(sampleDocument()))
+    fs.writeFileSync(source, dumpYaml(sampleDocument()))
 
     const generated = generateZapApiOpenApi({
       allowedOperations: [{ method: 'get', path: '/api/requirements' }],

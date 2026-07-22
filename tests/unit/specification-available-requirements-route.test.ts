@@ -195,9 +195,7 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
         count: 0,
         hasMore: false,
         limit: 15,
-        nextOffset: null,
-        offset: 0,
-        total: 0,
+        nextCursor: null,
       },
       requirements: [],
       selectionFilter: {

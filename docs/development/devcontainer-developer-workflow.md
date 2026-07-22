@@ -18,6 +18,24 @@ Before rebuilding either devcontainer profile, copy:
 cp .devcontainer/.env.example .devcontainer/.env
 ```
 
+## Codex CLI
+
+Both devcontainer profiles install the Codex CLI system-wide from OpenAI's
+standalone installer. Rebuild the devcontainer after changing branches or
+pulling this setup, then verify the installation inside the container:
+
+```bash
+codex --version
+```
+
+The command is available to the `vscode` user in both profiles. Codex keeps
+configuration, authentication, sessions, skills, and plugins under
+`/home/vscode/.codex`. On first creation, both profiles initialize
+`config.toml` from `.devcontainer/codex-config.toml` with the trust and
+permission settings required inside the devcontainer. Shared project defaults,
+including the model, MCP servers, status line, and terminal title, live in
+`.codex/config.toml` and apply in every trusted development environment.
+
 ## Local HTTPS Development
 
 The devcontainer includes `mkcert`. Use it inside the container to create the
@@ -80,14 +98,15 @@ normal development. For detailed database and auth workflows, use:
 
 ## Codex Network Sandbox
 
-The repository includes [`.codex/config.toml`](../../.codex/config.toml) with
-a project-scoped permission profile for the devcontainer. It keeps filesystem
-access scoped to the workspace, but enables network access to the local Compose
-service names used by development checks, including `db`, `idp`, `kong`, the
-HSA mock, and loopback.
+The devcontainer initializes `/home/vscode/.codex/config.toml` from
+`.devcontainer/codex-config.toml`. The template trusts `/workspace` and selects
+a devcontainer-specific permission profile. It keeps filesystem access scoped
+to the workspace, but enables network access to the local Compose service names
+used by development checks, including `db`, `idp`, `kong`, the HSA mock, and
+loopback.
 
 This is required because the default Codex `workspace-write` sandbox blocks
-network access. Without the project profile, Codex commands cannot resolve
+network access. Without the devcontainer profile, Codex commands cannot resolve
 `db` or open TCP sockets to SQL Server, even though the same command works from
 a normal devcontainer terminal. Reload or restart Codex after changing the
-project config so the new permission profile is loaded.
+user config so the new permission profile is loaded.

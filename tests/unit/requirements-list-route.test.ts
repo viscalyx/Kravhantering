@@ -7,7 +7,6 @@ vi.mock('@/lib/db', () => ({
 const mockQueryCatalog = vi.fn()
 const mockQueryRequirementList = vi.fn()
 const mockManageRequirement = vi.fn()
-const mockExportToCsv = vi.hoisted(() => vi.fn(() => 'csv-data'))
 const mockAuthorization = { assertAuthorized: vi.fn() }
 const mockRequestContext = {
   actor: {
@@ -49,16 +48,6 @@ vi.mock('@/lib/requirements/list-view', () => ({
   isRequirementSortDirection: (v: string) => ['asc', 'desc'].includes(v),
 }))
 
-vi.mock('@/lib/export-csv', () => ({
-  exportToCsv: mockExportToCsv,
-}))
-
-async function responseTextWithBom(response: Response): Promise<string> {
-  const bytes = new Uint8Array(await response.arrayBuffer())
-  expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf])
-  return new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)
-}
-
 describe('requirements route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -67,7 +56,12 @@ describe('requirements route', () => {
   describe('GET', () => {
     it('returns JSON list of requirements', async () => {
       mockQueryRequirementList.mockResolvedValue({
-        pagination: { total: 1, limit: 25, offset: 0 },
+        pagination: {
+          count: 1,
+          hasMore: false,
+          limit: 25,
+          nextCursor: null,
+        },
         requirements: [{ id: 1, uniqueId: 'TST-001' }],
       })
 
@@ -76,10 +70,10 @@ describe('requirements route', () => {
       const res = await GET(req as never)
       const json = (await res.json()) as {
         requirements: unknown[]
-        pagination: { total: number }
+        pagination: { count: number }
       }
       expect(json.requirements).toHaveLength(1)
-      expect(json.pagination.total).toBe(1)
+      expect(json.pagination.count).toBe(1)
       expect(mockCreateRequestContext).toHaveBeenCalledWith(req, 'rest')
       expect(mockQueryRequirementList).toHaveBeenCalledWith(
         expect.anything(),
@@ -88,63 +82,33 @@ describe('requirements route', () => {
       )
     })
 
-    it('returns CSV when format=csv', async () => {
-      mockQueryRequirementList.mockResolvedValue({
-        pagination: { total: 1 },
-        requirements: [{ id: 1, uniqueId: 'TST-001', version: {} }],
-      })
-
+    it('rejects the removed CSV format switch', async () => {
       const { GET } = await import('@/app/api/requirements/route')
       const req = new Request(
         'http://localhost/api/requirements?format=csv&locale=sv',
       )
       const res = await GET(req as never)
-      const body = await responseTextWithBom(res)
-      expect(res.headers.get('Content-Type')).toContain('text/csv')
-      expect(res.headers.get('Content-Disposition')).toContain(
-        'kravbibliotek.csv',
-      )
-      expect(body).toBe('\uFEFFcsv-data')
-      expect(mockExportToCsv).toHaveBeenCalledWith(
-        [
-          'Krav-ID',
-          'Kravtext',
-          'Kravområde',
-          'Kategori',
-          'Typ',
-          'Kvalitetsegenskap',
-          'Prioritet',
-          'Kravversionsstatus',
-          'Verifierbar',
-          'Version',
-          'Normreferenser',
-          'Normreferens-URI',
-        ],
-        [
-          expect.objectContaining({
-            'Krav-ID': 'TST-001',
-            Kravtext: '',
-          }),
-        ],
-      )
+
+      expect(res.status).toBe(400)
+      expect(mockQueryRequirementList).not.toHaveBeenCalled()
     })
 
     it('passes filter params to service', async () => {
       mockQueryRequirementList.mockResolvedValue({
-        pagination: { total: 0 },
+        pagination: { hasMore: false, nextCursor: null },
         requirements: [],
       })
 
       const { GET } = await import('@/app/api/requirements/route')
       const req = new Request(
-        'http://localhost/api/requirements?sortBy=uniqueId&sortDirection=desc&limit=10&offset=5&areaIds=1&statuses=1&verifiable=true&categoryIds=2&typeIds=3&qualityCharacteristicIds=4&requirementPackageIds=5',
+        'http://localhost/api/requirements?sortBy=uniqueId&sortDirection=desc&limit=10&cursor=opaque-cursor&areaIds=1&statuses=1&verifiable=true&categoryIds=2&typeIds=3&qualityCharacteristicIds=4&requirementPackageIds=5',
       )
       await GET(req as never)
       expect(mockQueryRequirementList).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
           limit: 10,
-          offset: 5,
+          cursor: 'opaque-cursor',
           sort: { by: 'uniqueId', direction: 'desc' },
           filters: expect.objectContaining({
             areaIds: [1],
@@ -158,6 +122,16 @@ describe('requirements route', () => {
         }),
         { authorization: mockAuthorization, context: mockRequestContext },
       )
+    })
+
+    it('rejects the removed offset parameter', async () => {
+      const { GET } = await import('@/app/api/requirements/route')
+      const res = await GET(
+        new Request('http://localhost/api/requirements?offset=5') as never,
+      )
+
+      expect(res.status).toBe(400)
+      expect(mockQueryRequirementList).not.toHaveBeenCalled()
     })
 
     it('returns error on failure', async () => {

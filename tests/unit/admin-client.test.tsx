@@ -7,9 +7,9 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
-import { StrictMode } from 'react'
+import { type ComponentProps, StrictMode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import AdminClient from '@/app/[locale]/admin/admin-client'
+import AdminClientShell from '@/app/[locale]/admin/admin-composed-client'
 import type { ActionAuditLogInitialState } from '@/components/admin/ActionAuditLogView'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { HelpProvider, useHelp } from '@/components/HelpPanel'
@@ -42,6 +42,21 @@ const TEST_ACCESS_REVIEW_ITEM_ID = 7
 const TEST_ACCESS_REVIEW_RUN_ID = 42
 const TEST_NEXT_ACCESS_REVIEW_RUN_ID = 43
 let retentionPoliciesResponse: Response | Promise<Response> | null = null
+let columnDefaultsResponse: Response | Promise<Response> | null = null
+
+type AdminClientTestProps = ComponentProps<typeof AdminClientShell> & {
+  initialColumnDefaults?: readonly RequirementListColumnDefault[]
+}
+
+function AdminClient({
+  initialColumnDefaults,
+  ...props
+}: AdminClientTestProps) {
+  if (initialColumnDefaults) {
+    columnDefaultsResponse = okJson({ columns: initialColumnDefaults })
+  }
+  return <AdminClientShell currentUserRoles={['Admin']} {...props} />
+}
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'sv',
@@ -71,10 +86,7 @@ vi.mock('@/i18n/routing', () => ({
       {children as React.ReactNode}
     </a>
   ),
-  useRouter: () => ({
-    refresh: routerRefresh,
-    replace: routerReplace,
-  }),
+  useRouter: () => routerMock,
 }))
 
 function okJson(body: unknown) {
@@ -98,6 +110,12 @@ function adminTestFetch(input: RequestInfo | URL, init?: RequestInit) {
   if (url === '/api/admin/archiving/policies' && method === 'GET') {
     return Promise.resolve(
       retentionPoliciesResponse ?? okJson({ policies: [] }),
+    )
+  }
+  if (url === '/api/admin/requirement-columns' && method === 'GET') {
+    return Promise.resolve(
+      columnDefaultsResponse ??
+        okJson({ columns: DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS }),
     )
   }
   return init === undefined ? fetchMock(input) : fetchMock(input, init)
@@ -450,7 +468,9 @@ async function expectLastCreatedBlobStartsWithUtf8Bom(): Promise<void> {
 describe('AdminClient', () => {
   beforeEach(() => {
     fetchMock.mockReset()
+    fetchMock.mockImplementation(() => new Promise(() => undefined))
     retentionPoliciesResponse = null
+    columnDefaultsResponse = new Promise(() => undefined)
     createObjectURLMock.mockClear()
     revokeObjectURLMock.mockClear()
     anchorClickMock.mockClear()
@@ -489,6 +509,22 @@ describe('AdminClient', () => {
     expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'taxonomy-panel')
   })
 
+  it('clears the fallback notice after the corrected URL is processed', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=missing')
+
+    const { rerender } = render(<AdminClient currentUserRoles={['Admin']} />)
+
+    expect(screen.getByText('admin.tabUnavailableFallback')).toBeVisible()
+    expect(routerReplace).toHaveBeenCalledWith('/admin', { scroll: false })
+
+    searchParamsMock.current = new URLSearchParams()
+    rerender(<AdminClient currentUserRoles={['Admin']} />)
+
+    await waitFor(() =>
+      expect(screen.queryByText('admin.tabUnavailableFallback')).toBeNull(),
+    )
+  })
+
   it('opens the statuses and workflows tab from the admin tab query parameter', () => {
     searchParamsMock.current = new URLSearchParams('tab=statusesAndWorkflows')
 
@@ -509,7 +545,7 @@ describe('AdminClient', () => {
     )
   })
 
-  it('opens the action log tab from the admin tab query parameter', () => {
+  it('opens the action log tab from the admin tab query parameter', async () => {
     searchParamsMock.current = new URLSearchParams('tab=actionAuditLog')
 
     render(
@@ -531,7 +567,7 @@ describe('AdminClient', () => {
     )
     expect(screen.queryByText('admin.auditLog.open')).toBeNull()
     expect(
-      screen.getByRole('heading', { name: 'admin.auditLog.title' }),
+      await screen.findByRole('heading', { name: 'admin.auditLog.title' }),
     ).toBeVisible()
     expect(screen.getByLabelText('admin.auditLog.action')).toHaveValue(
       'requirement.create',
@@ -564,7 +600,7 @@ describe('AdminClient', () => {
     expect(screen.getByText('REQ-42')).toBeVisible()
   })
 
-  it('shows an action log loading state while tab data is loading', () => {
+  it('shows an action log loading state while tab data is loading', async () => {
     searchParamsMock.current = new URLSearchParams('tab=actionAuditLog')
 
     render(
@@ -578,16 +614,14 @@ describe('AdminClient', () => {
       'id',
       'actionAuditLog-panel',
     )
-    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('common.loading'),
+    )
     expect(screen.queryByText('admin.auditLog.open')).toBeNull()
   })
 
   it('renders the admin title without the reference data eyebrow', () => {
-    render(
-      <AdminClient
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-      />,
-    )
+    render(<AdminClient />)
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'admin.title',
@@ -632,8 +666,8 @@ describe('AdminClient', () => {
     )
   })
 
-  it('loads and saves AI settings from the AI tab', async () => {
-    searchParamsMock.current = new URLSearchParams('tab=ai')
+  it('loads and saves AI settings from the Settings tab', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=settings')
     const initialMcpLimitBytes = addMcpMaxRequestBytesSteps(
       MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
       -1,
@@ -724,13 +758,17 @@ describe('AdminClient', () => {
     )
 
     expect(
-      await screen.findByRole('heading', { name: 'admin.ai.title' }),
+      await screen.findByRole(
+        'heading',
+        { name: 'admin.ai.title' },
+        { timeout: 3_000 },
+      ),
     ).toBeVisible()
-    expect(screen.getByRole('tab', { name: 'admin.ai.title' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'admin.settings' })).toHaveAttribute(
       'aria-selected',
       'true',
     )
-    const environmentOverrideNotice = screen.getByText(
+    const environmentOverrideNotice = await screen.findByText(
       'admin.ai.environmentOverrideNotice',
     )
     expect(environmentOverrideNotice).toBeVisible()
@@ -903,7 +941,7 @@ describe('AdminClient', () => {
   })
 
   it('reverts only the failed AI setting after concurrent optimistic saves', async () => {
-    searchParamsMock.current = new URLSearchParams('tab=ai')
+    searchParamsMock.current = new URLSearchParams('tab=settings')
     const failedMcpSave = deferred<Response>()
     fetchMock.mockImplementation(
       (input: RequestInfo | URL, init?: RequestInit) => {
@@ -988,7 +1026,7 @@ describe('AdminClient', () => {
   })
 
   it('anchors the selected safety-term removal dialog to the clicked button', async () => {
-    searchParamsMock.current = new URLSearchParams('tab=ai')
+    searchParamsMock.current = new URLSearchParams('tab=settings')
     fetchMock.mockImplementation(
       (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input)
@@ -1258,64 +1296,96 @@ describe('AdminClient', () => {
     expect(noDefaultRadio).toBeChecked()
   })
 
-  it('blocks the identity tab without Admin permission', () => {
+  it('hides the identity tab without Admin permission', () => {
     searchParamsMock.current = new URLSearchParams('tab=identity')
 
-    render(
+    renderWithConfirmModal(
       <AdminClient
         currentUserRoles={['PrivacyOfficer']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
       />,
     )
 
-    const identityTab = screen.getByRole('tab', {
-      name: 'admin.identity.title',
-    })
-    expect(identityTab).toHaveAttribute('aria-disabled', 'true')
-    expect(identityTab).toHaveAttribute(
-      'title',
-      'admin.identity.disabledTooltip',
-    )
-    expect(identityTab).toHaveAttribute('aria-selected', 'false')
-    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
+    expect(
+      screen.queryByRole('tab', { name: 'admin.identity.title' }),
+    ).toBeNull()
+    expect(
+      screen.getByRole('tab', { name: 'admin.accessReview.title' }),
+    ).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('admin.tabAccessFallback')).toBeVisible()
   })
 
   it.each([
-    ['tab=accessReview', 'admin.accessReview.title'],
-    ['tab=actionAuditLog', 'admin.auditLog.title'],
-    ['tab=ai', 'admin.ai.title'],
-  ])('falls back from unauthorized admin tab URL %s', (query, tabName) => {
-    searchParamsMock.current = new URLSearchParams(query)
+    ['tab=privacy', ['Admin'], 'admin.columns'],
+    ['tab=actionAuditLog', ['PrivacyOfficer'], 'admin.accessReview.title'],
+    ['tab=settings', ['PrivacyOfficer'], 'admin.accessReview.title'],
+  ])(
+    'falls back from unauthorized admin tab URL %s',
+    (query, roles, tabName) => {
+      searchParamsMock.current = new URLSearchParams(query)
+
+      renderWithConfirmModal(<AdminClient currentUserRoles={roles} />)
+
+      expect(screen.getByRole('tab', { name: tabName })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+      expect(screen.getByText('admin.tabAccessFallback')).toBeVisible()
+      expect(fetchMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it('shows a server fallback notice and removes its transient query state', async () => {
+    searchParamsMock.current = new URLSearchParams(
+      '_adminFallback=unauthorized',
+    )
+
+    render(
+      <AdminClient selectedTab="columns">
+        <div>authorized columns panel</div>
+      </AdminClient>,
+    )
+
+    expect(screen.getByText('admin.tabAccessFallback')).toBeVisible()
+    expect(screen.getByText('authorized columns panel')).toBeVisible()
+    await waitFor(() => {
+      expect(routerReplace).toHaveBeenCalledWith('/admin', { scroll: false })
+    })
+  })
+
+  it('preserves the PrivacyOfficer workspace while cleaning fallback state', async () => {
+    searchParamsMock.current = new URLSearchParams(
+      'tab=accessReview&_adminFallback=unauthorized',
+    )
 
     render(
       <AdminClient
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-      />,
+        currentUserRoles={['PrivacyOfficer']}
+        selectedTab="accessReview"
+      >
+        <div>authorized access review panel</div>
+      </AdminClient>,
     )
 
-    expect(screen.getByRole('tab', { name: tabName })).toHaveAttribute(
-      'aria-selected',
-      'false',
-    )
-    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(screen.getByText('admin.tabAccessFallback')).toBeVisible()
+    await waitFor(() => {
+      expect(routerReplace).toHaveBeenCalledWith('/admin?tab=accessReview', {
+        scroll: false,
+      })
+    })
   })
 
   it('removes the admin tab query when returning to the default tab', () => {
     searchParamsMock.current = new URLSearchParams('tab=taxonomy')
 
-    render(
-      <AdminClient
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-      />,
-    )
+    render(<AdminClient />)
 
     fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
 
     expect(routerReplace).toHaveBeenCalledWith('/admin', { scroll: false })
   })
 
-  it('renders icon-bearing taxonomy cards that link to the existing pages', () => {
+  it('renders icon-bearing taxonomy cards that link to the existing pages', async () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
@@ -1324,6 +1394,7 @@ describe('AdminClient', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'admin.taxonomy' }))
 
+    await screen.findByTestId('taxonomy-card-areas')
     const panel = within(screen.getByRole('tabpanel'))
 
     expect(panel.getByTestId('taxonomy-card-areas')).toHaveAttribute(
@@ -1408,7 +1479,7 @@ describe('AdminClient', () => {
     ])
   })
 
-  it('renders statuses and workflow cards separately from taxonomy', () => {
+  it('renders statuses and workflow cards separately from taxonomy', async () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
@@ -1419,6 +1490,7 @@ describe('AdminClient', () => {
       screen.getByRole('tab', { name: 'admin.statusesAndWorkflows' }),
     )
 
+    await screen.findByTestId('statuses-workflows-card-statuses')
     const panel = within(screen.getByRole('tabpanel'))
 
     expect(
@@ -1458,7 +1530,7 @@ describe('AdminClient', () => {
     ])
   })
 
-  it('exposes the admin tabs through a tablist and updates selection on click', () => {
+  it('exposes the admin tabs through a tablist and updates selection on click', async () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
@@ -1466,21 +1538,31 @@ describe('AdminClient', () => {
     )
 
     const columnsTab = screen.getByRole('tab', { name: 'admin.columns' })
+    const settingsTab = screen.getByRole('tab', { name: 'admin.settings' })
     const taxonomyTab = screen.getByRole('tab', {
       name: 'admin.taxonomy',
     })
 
     expect(columnsTab.parentElement).toHaveAttribute('role', 'tablist')
+    expect(columnsTab.parentElement).toHaveClass('flex-wrap')
+    expect(
+      settingsTab.querySelector('.lucide-sliders-horizontal'),
+    ).toHaveAttribute('aria-hidden', 'true')
     expect(columnsTab).toHaveAttribute('aria-selected', 'true')
     expect(taxonomyTab).toHaveAttribute('aria-selected', 'false')
 
     fireEvent.click(taxonomyTab)
 
     expect(taxonomyTab).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'taxonomy-panel')
+    await waitFor(() =>
+      expect(screen.getByRole('tabpanel')).toHaveAttribute(
+        'id',
+        'taxonomy-panel',
+      ),
+    )
   })
 
-  it('exposes admin tabs with accessible selection state', () => {
+  it('exposes admin tabs with accessible selection state', async () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
@@ -1501,6 +1583,7 @@ describe('AdminClient', () => {
 
     fireEvent.click(taxonomyTab)
 
+    await screen.findByTestId('taxonomy-card-areas')
     expect(taxonomyTab).toHaveAttribute('aria-controls', 'taxonomy-panel')
     expect(taxonomyTab).toHaveAttribute('aria-selected', 'true')
   })
@@ -1519,7 +1602,9 @@ describe('AdminClient', () => {
     )
 
     await waitFor(() =>
-      expect(screen.getByTestId('help-title')).toHaveTextContent('admin.title'),
+      expect(screen.getByTestId('help-title')).toHaveTextContent(
+        'adminAccessReview.title',
+      ),
     )
 
     fireEvent.click(screen.getByRole('tab', { name: 'admin.privacy.title' }))
@@ -1729,7 +1814,7 @@ describe('AdminClient', () => {
     ).toBeTruthy()
   })
 
-  it('blocks the access review tab without Admin or PrivacyOfficer permission', () => {
+  it('hides all Admin Center tabs without Admin or PrivacyOfficer permission', () => {
     searchParamsMock.current = new URLSearchParams('tab=accessReview')
 
     renderWithConfirmModal(
@@ -1739,22 +1824,10 @@ describe('AdminClient', () => {
       />,
     )
 
-    const accessReviewTab = screen.getByRole('tab', {
-      name: 'admin.accessReview.title',
-    })
-
-    expect(accessReviewTab).toHaveAttribute('aria-disabled', 'true')
-    expect(accessReviewTab).toHaveAttribute(
-      'title',
-      'admin.accessReview.disabledTooltip',
-    )
-    expect(accessReviewTab).toHaveAttribute('aria-selected', 'false')
-    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
+    expect(screen.queryAllByRole('tab')).toHaveLength(0)
+    expect(screen.queryByRole('tabpanel')).toBeNull()
     expect(screen.queryByText('Kalle Svensson')).toBeNull()
-
-    fireEvent.click(accessReviewTab)
-
-    expect(routerReplace).not.toHaveBeenCalled()
+    expect(routerReplace).toHaveBeenCalledWith('/admin', { scroll: false })
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -1930,11 +2003,11 @@ describe('AdminClient', () => {
       )
     })
     expect(createCall).toBeTruthy()
-    expect(JSON.parse((createCall?.[1] as RequestInit).body as string)).toEqual(
-      {
-        externalEvidenceReference: 'IDM-2026',
-      },
-    )
+    expect(
+      JSON.parse((createCall?.[1] as RequestInit | undefined)?.body as string),
+    ).toEqual({
+      externalEvidenceReference: 'IDM-2026',
+    })
   })
 
   it('loads access review runs under React Strict Mode', async () => {
@@ -2294,37 +2367,21 @@ describe('AdminClient', () => {
     expect(within(alert).getByText('Unauthorized')).toBeTruthy()
   })
 
-  it('dims and disables privileged tabs without Admin or PrivacyOfficer roles', () => {
+  it('does not render unauthorized tabs without Admin Center roles', () => {
     searchParamsMock.current = new URLSearchParams('tab=privacy')
 
     render(
       <AdminClient
+        currentUserRoles={[]}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
       />,
     )
 
-    const disabledTabs = [
-      ['admin.accessReview.title', 'admin.accessReview.disabledTooltip'],
-      ['admin.ai.title', 'admin.ai.disabledTooltip'],
-      ['admin.archiving.title', 'admin.archiving.disabledTooltip'],
-      ['admin.privacy.title', 'admin.privacy.disabledTooltip'],
-      ['admin.auditLog.title', 'admin.auditLog.disabledTooltip'],
-    ] as const
-
-    for (const [name, tooltip] of disabledTabs) {
-      const tab = screen.getByRole('tab', { name })
-
-      expect(tab).toHaveAttribute('aria-disabled', 'true')
-      expect(tab).toHaveAttribute('title', tooltip)
-      expect(tab).toHaveAttribute('aria-selected', 'false')
-
-      fireEvent.click(tab)
-    }
-
-    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
+    expect(screen.queryAllByRole('tab')).toHaveLength(0)
+    expect(screen.queryByRole('tabpanel')).toBeNull()
     expect(screen.queryByLabelText('admin.privacy.targetHsaId')).toBeNull()
 
-    expect(routerReplace).not.toHaveBeenCalled()
+    expect(routerReplace).toHaveBeenCalledWith('/admin', { scroll: false })
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -2349,27 +2406,20 @@ describe('AdminClient', () => {
     const privacyTab = screen.getByRole('tab', {
       name: 'admin.privacy.title',
     })
-    const actionAuditLogTab = screen.getByRole('tab', {
-      name: 'admin.auditLog.title',
-    })
-    const aiTab = screen.getByRole('tab', {
-      name: 'admin.ai.title',
-    })
-
-    expect(actionAuditLogTab).toHaveAttribute('aria-disabled', 'true')
-    expect(actionAuditLogTab).toHaveAttribute(
-      'title',
-      'admin.auditLog.disabledTooltip',
-    )
-    expect(aiTab).toHaveAttribute('aria-disabled', 'true')
-    expect(aiTab).toHaveAttribute('title', 'admin.ai.disabledTooltip')
+    expect(
+      screen.queryByRole('tab', { name: 'admin.auditLog.title' }),
+    ).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'admin.settings' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'admin.columns' })).toBeNull()
 
     fireEvent.click(accessReviewTab)
     expect(await screen.findByText('Kalle Svensson')).toBeVisible()
     expect(accessReviewTab).toHaveAttribute('aria-selected', 'true')
 
     fireEvent.click(privacyTab)
-    expect(screen.getByLabelText('admin.privacy.targetHsaId')).toBeTruthy()
+    expect(
+      await screen.findByLabelText('admin.privacy.targetHsaId'),
+    ).toBeTruthy()
     expect(privacyTab).toHaveAttribute('aria-selected', 'true')
 
     fireEvent.click(archivingTab)
@@ -2377,15 +2427,9 @@ describe('AdminClient', () => {
       await screen.findByText('admin.archiving.retention.title'),
     ).toBeTruthy()
     expect(archivingTab).toHaveAttribute('aria-selected', 'true')
-
-    routerReplace.mockClear()
-    fireEvent.click(actionAuditLogTab)
-
-    expect(routerReplace).not.toHaveBeenCalled()
-    expect(actionAuditLogTab).toHaveAttribute('aria-selected', 'false')
   })
 
-  it('shows inline help for each privacy form field', () => {
+  it('shows inline help for each privacy form field', async () => {
     searchParamsMock.current = new URLSearchParams('tab=privacy')
 
     render(
@@ -2397,6 +2441,7 @@ describe('AdminClient', () => {
       </ConfirmModalProvider>,
     )
 
+    await screen.findByLabelText('admin.privacy.targetHsaId')
     const helpButtons = [
       ['admin.privacy.targetHsaId', 'admin.privacy.fieldHelp.targetHsaId'],
       [
@@ -3779,7 +3824,7 @@ describe('AdminClient', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
+    await screen.findByTestId('admin-column-row-category')
     fireEvent.click(
       within(screen.getByTestId('admin-column-row-category')).getByRole(
         'button',
@@ -3838,7 +3883,7 @@ describe('AdminClient', () => {
 
     render(<AdminClient initialColumnDefaults={duplicateColumns} />)
 
-    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
+    await screen.findByTestId('admin-column-row-category')
 
     const categoryRow = screen.getByTestId('admin-column-row-category')
     const categoryCheckbox = within(categoryRow).getByRole('checkbox')
@@ -3891,7 +3936,7 @@ describe('AdminClient', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
+    await screen.findByTestId('admin-column-row-category')
     fireEvent.click(
       within(screen.getByTestId('admin-column-row-category')).getByRole(
         'button',
@@ -3933,7 +3978,7 @@ describe('AdminClient', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
+    await screen.findByTestId('admin-column-row-category')
     fireEvent.click(
       within(screen.getByTestId('admin-column-row-category')).getByRole(
         'button',
@@ -3982,7 +4027,7 @@ describe('AdminClient', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
+    await screen.findByTestId('admin-column-row-category')
 
     const categoryRow = screen.getByTestId('admin-column-row-category')
     const moveUpButton = within(categoryRow).getByRole('button', {

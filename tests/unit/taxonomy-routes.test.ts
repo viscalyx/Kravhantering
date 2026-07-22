@@ -356,6 +356,7 @@ vi.mock('@/lib/dal/norm-references', () => ({
   getNormReferenceById: (...a: unknown[]) => mockGetNormReferenceById(...a),
   getNormReferenceUsage: (...a: unknown[]) => mockGetNormReferenceUsage(...a),
   listNormReferences: (...a: unknown[]) => mockListNormReferences(...a),
+  MAX_GENERATED_NORM_REFERENCE_ID_ATTEMPTS: 999,
   reactivateNormReference: (...a: unknown[]) =>
     mockReactivateNormReference(...a),
   updateNormReference: (...a: unknown[]) => mockUpdateNormReference(...a),
@@ -1194,6 +1195,26 @@ describe('requirement-areas/[id] routes', () => {
 
     expect(r.status).toBe(404)
     await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
+  })
+
+  it('DELETE returns 409 without audit when the requirement area is in use', async () => {
+    mockDeleteReqArea.mockRejectedValue(
+      new Error(
+        'The DELETE statement conflicted with the REFERENCE constraint',
+      ),
+    )
+    const r = await deleteReqArea(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(409)
+    await expect(r.json()).resolves.toEqual({
+      error: 'Cannot delete: requirement area is in use',
+    })
     expect(
       auditState.recordAdminPrivilegedActionSucceeded,
     ).not.toHaveBeenCalled()
@@ -2202,6 +2223,37 @@ describe('norm-references routes', () => {
 
     expect(r.status).toBe(201)
     expect(mockCreateNormReference).toHaveBeenCalled()
+  })
+
+  it('POST returns a stable conflict for an explicit duplicate norm-reference ID', async () => {
+    mockCreateNormReference.mockRejectedValueOnce(
+      Object.assign(
+        new Error(
+          "Cannot insert duplicate key row in object 'dbo.norm_references' with unique index 'uq_norm_references_norm_reference_id'.",
+        ),
+        { number: 2601 },
+      ),
+    )
+
+    const r = await postNormReference(
+      jsonReq('POST', {
+        issuer: 'ISO',
+        name: 'ISO 27001',
+        normReferenceId: 'ISO-27001',
+        reference: 'ISO/IEC 27001:2022',
+        type: 'Standard',
+      }),
+    )
+
+    expect(r.status).toBe(409)
+    await expect(r.json()).resolves.toEqual({
+      code: 'conflict',
+      details: { reason: 'norm_reference_id_exists' },
+      error: 'Norm reference ID already exists',
+    })
+    expect(
+      actionAuditState.recordAllowedActionAuditEvent,
+    ).not.toHaveBeenCalled()
   })
 
   it('PUT returns 403 without Admin before updating', async () => {

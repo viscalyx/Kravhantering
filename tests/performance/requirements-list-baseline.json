@@ -1,7 +1,7 @@
 {
   "generatedAt": "2026-05-09T00:00:00.000Z",
   "measurement": {
-    "sampleCount": 5,
+    "sampleCount": 20,
     "warmupCount": 2
   },
   "fixture": {
@@ -52,9 +52,49 @@
     "deep-pagination": {
       "allowSpills": true,
       "maxLogicalReads": 965000,
+      "maxLogicalReadsRatio": 1.25,
       "maxMedianDurationMs": 1914,
+      "maxMedianDurationRatio": 1.5,
       "maxMissingIndexImpact": 50,
-      "maxP95DurationMs": 1923
+      "maxP95DurationMs": 1923,
+      "maxP95DurationRatio": 1.5,
+      "relativeTo": "default-published"
+    },
+    "localized-text-first": {
+      "allowSpills": true,
+      "maxLogicalReads": 1000000,
+      "maxMedianDurationMs": 2500,
+      "maxMissingIndexImpact": 50,
+      "maxP95DurationMs": 3000
+    },
+    "localized-text-deep": {
+      "allowSpills": true,
+      "maxLogicalReads": 1000000,
+      "maxLogicalReadsRatio": 1.25,
+      "maxMedianDurationMs": 2500,
+      "maxMedianDurationRatio": 1.5,
+      "maxMissingIndexImpact": 50,
+      "maxP95DurationMs": 3000,
+      "maxP95DurationRatio": 1.5,
+      "relativeTo": "localized-text-first"
+    },
+    "nullable-number-first": {
+      "allowSpills": true,
+      "maxLogicalReads": 1000000,
+      "maxMedianDurationMs": 2500,
+      "maxMissingIndexImpact": 50,
+      "maxP95DurationMs": 3000
+    },
+    "nullable-number-deep": {
+      "allowSpills": true,
+      "maxLogicalReads": 1000000,
+      "maxLogicalReadsRatio": 1.25,
+      "maxMedianDurationMs": 2500,
+      "maxMedianDurationRatio": 1.5,
+      "maxMissingIndexImpact": 50,
+      "maxP95DurationMs": 3000,
+      "maxP95DurationRatio": 1.5,
+      "relativeTo": "nullable-number-first"
     },
     "archived-included": {
       "allowSpills": true,
@@ -104,9 +144,49 @@
       "deep-pagination": {
         "allowSpills": true,
         "maxLogicalReads": 965000,
+        "maxLogicalReadsRatio": 1.25,
         "maxMedianDurationMs": 1914,
+        "maxMedianDurationRatio": 1.5,
         "maxMissingIndexImpact": 50,
-        "maxP95DurationMs": 1923
+        "maxP95DurationMs": 1923,
+        "maxP95DurationRatio": 1.5,
+        "relativeTo": "default-published"
+      },
+      "localized-text-first": {
+        "allowSpills": true,
+        "maxLogicalReads": 1000000,
+        "maxMedianDurationMs": 2500,
+        "maxMissingIndexImpact": 50,
+        "maxP95DurationMs": 3000
+      },
+      "localized-text-deep": {
+        "allowSpills": true,
+        "maxLogicalReads": 1000000,
+        "maxLogicalReadsRatio": 1.25,
+        "maxMedianDurationMs": 2500,
+        "maxMedianDurationRatio": 1.5,
+        "maxMissingIndexImpact": 50,
+        "maxP95DurationMs": 3000,
+        "maxP95DurationRatio": 1.5,
+        "relativeTo": "localized-text-first"
+      },
+      "nullable-number-first": {
+        "allowSpills": true,
+        "maxLogicalReads": 1000000,
+        "maxMedianDurationMs": 2500,
+        "maxMissingIndexImpact": 50,
+        "maxP95DurationMs": 3000
+      },
+      "nullable-number-deep": {
+        "allowSpills": true,
+        "maxLogicalReads": 1000000,
+        "maxLogicalReadsRatio": 1.25,
+        "maxMedianDurationMs": 2500,
+        "maxMedianDurationRatio": 1.5,
+        "maxMissingIndexImpact": 50,
+        "maxP95DurationMs": 3000,
+        "maxP95DurationRatio": 1.5,
+        "relativeTo": "nullable-number-first"
       },
       "archived-included": {
         "allowSpills": true,

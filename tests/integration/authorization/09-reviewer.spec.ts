@@ -28,14 +28,12 @@ test('AUTHZ-09/AUTH-10/AUTH-11: Reviewers can read broadly without privileged ad
 
     await page.goto('/sv/admin?tab=accessReview')
     await expect(
-      page.getByRole('heading', { level: 1, name: 'Administrationscenter' }),
+      page.getByRole('heading', {
+        level: 1,
+        name: 'Du saknar behörighet till Administrationscenter',
+      }),
     ).toBeVisible()
-    await expect(
-      page.getByRole('tab', { name: 'Behörighetsöversyn' }),
-    ).toHaveAttribute('aria-disabled', 'true')
-    await expect(
-      page.getByRole('tab', { name: 'Åtgärdslogg' }),
-    ).toHaveAttribute('aria-disabled', 'true')
+    await expect(page.getByRole('tab')).toHaveCount(0)
 
     const specificationsResponse = await reviewer.get(
       '/api/requirements-specifications',

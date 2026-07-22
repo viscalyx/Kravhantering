@@ -15,6 +15,10 @@
 export const CANONICAL_ROLES = ['Reviewer', 'Admin', 'PrivacyOfficer'] as const
 export type CanonicalRole = (typeof CANONICAL_ROLES)[number]
 
+export function canAccessAdminCenter(roles: readonly string[]): boolean {
+  return roles.includes('Admin') || roles.includes('PrivacyOfficer')
+}
+
 function isCanonicalRole(value: string): value is CanonicalRole {
   return (CANONICAL_ROLES as readonly string[]).includes(value)
 }

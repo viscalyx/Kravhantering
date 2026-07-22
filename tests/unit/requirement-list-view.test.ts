@@ -56,6 +56,7 @@ describe('requirement list view helpers', () => {
         statuses: [3],
         uniqueIdSearch: 'INT',
       },
+      cursor: 'cursor-1',
       limit: 200,
       locale: 'sv',
       sort: { by: 'status', direction: 'desc' },
@@ -65,21 +66,21 @@ describe('requirement list view helpers', () => {
     expect(params.get('locale')).toBe('sv')
     expect(params.get('sortBy')).toBe('status')
     expect(params.get('sortDirection')).toBe('desc')
+    expect(params.get('cursor')).toBe('cursor-1')
     expect(params.get('uniqueIdSearch')).toBe('INT')
     expect(params.getAll('needsReferenceIds')).toEqual(['10', '11'])
     expect(params.getAll('statuses')).toEqual(['3'])
   })
 
-  it('omits the page limit for csv exports when no limit is provided', () => {
+  it('omits page-only parameters when they are not provided', () => {
     const params = buildRequirementListParams({
       filters: {},
-      format: 'csv',
       locale: 'sv',
       sort: { by: 'uniqueId', direction: 'asc' },
     })
 
-    expect(params.get('format')).toBe('csv')
     expect(params.get('limit')).toBeNull()
+    expect(params.get('cursor')).toBeNull()
   })
 
   it('parses stored visible columns while restoring locked columns', () => {

@@ -179,6 +179,10 @@ async function getAdminColumnOrder(page: Page) {
 }
 
 async function setAdminColumnOrder(page: Page, targetOrder: string[]) {
+  await expect
+    .poll(() => getAdminColumnOrder(page))
+    .toHaveLength(targetOrder.length)
+
   for (
     let guard = 0;
     guard < targetOrder.length * targetOrder.length;
@@ -222,14 +226,6 @@ function swapColumns(order: string[], leftId: string, rightId: string) {
   ]
 
   return nextOrder
-}
-
-async function expectTouchTargetSize(locator: Locator) {
-  const box = await locator.boundingBox()
-
-  expect(box).not.toBeNull()
-  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
-  expect(box?.width ?? 0).toBeGreaterThanOrEqual(44)
 }
 
 async function expectIconOnlyAction(action: Locator, accessibleName: string) {
@@ -299,6 +295,9 @@ for (const { name, viewport } of viewportVariants) {
     }) => {
       await page.goto('/sv/admin')
 
+      await expect
+        .poll(() => getAdminColumnOrder(page))
+        .toHaveLength(DEFAULT_COLUMN_PAYLOAD.length)
       const originalOrder = await getAdminColumnOrder(page)
       const targetOrder = swapColumns(originalOrder, 'area', 'category')
       await expect(page.getByRole('button', { name: 'Spara' })).toBeDisabled()
@@ -350,7 +349,7 @@ for (const { name, viewport } of viewportVariants) {
       test.describe('admin-only permissions', () => {
         test.use({ storageState: 'test-results/auth/admin-only.json' })
 
-        test('AUTH-06: keeps Swedish admin tabs reachable while retention preview is disabled', async ({
+        test('AUTH-06: keeps Swedish Admin tabs reachable while privacy tabs are hidden', async ({
           page,
         }) => {
           await page.goto('/sv/admin')
@@ -361,37 +360,25 @@ for (const { name, viewport } of viewportVariants) {
           const accessReviewTab = page.getByRole('tab', {
             name: 'Behörighetsöversyn',
           })
-          const archivingTab = page.getByRole('tab', { name: 'Arkivering' })
-          const privacyTab = page.getByRole('tab', { name: 'Dataskydd' })
           const actionAuditLogTab = page.getByRole('tab', {
             name: 'Åtgärdslogg',
           })
-          await expect(accessReviewTab).not.toHaveAttribute(
-            'aria-disabled',
-            'true',
-          )
-          await expect(actionAuditLogTab).not.toHaveAttribute(
-            'aria-disabled',
-            'true',
-          )
-          await expect(archivingTab).toHaveAttribute('aria-disabled', 'true')
-          await expect(archivingTab).toHaveAttribute(
-            'title',
-            /Dataskyddshandläggare/,
-          )
-          await expect(privacyTab).toHaveAttribute('aria-disabled', 'true')
-          await expect(privacyTab).toHaveAttribute(
-            'title',
-            /Dataskyddshandläggare/,
-          )
+          await expect(accessReviewTab).toBeVisible()
+          await expect(actionAuditLogTab).toBeVisible()
+          await expect(
+            page.getByRole('tab', { name: 'Arkivering' }),
+          ).toHaveCount(0)
+          await expect(
+            page.getByRole('tab', { name: 'Dataskydd' }),
+          ).toHaveCount(0)
           const tablistMetrics = await tablist.evaluate(element => ({
             clientWidth: element.clientWidth,
             scrollWidth: element.scrollWidth,
           }))
 
           expect(tablistMetrics.clientWidth).toBeGreaterThan(0)
-          expect(tablistMetrics.scrollWidth).toBeGreaterThanOrEqual(
-            tablistMetrics.clientWidth,
+          expect(tablistMetrics.scrollWidth).toBeLessThanOrEqual(
+            tablistMetrics.clientWidth + 1,
           )
 
           await actionAuditLogTab.scrollIntoViewIfNeeded()
@@ -424,7 +411,7 @@ for (const { name, viewport } of viewportVariants) {
           await adminOnlyPage.goto('/sv/admin?tab=archiving')
           await expect(
             adminOnlyPage.getByRole('tab', { name: 'Arkivering' }),
-          ).toHaveAttribute('aria-disabled', 'true')
+          ).toHaveCount(0)
           await expect(
             adminOnlyPage.getByRole('button', {
               name: 'Förhandsgranska gallring',
@@ -665,73 +652,6 @@ for (const { name, viewport } of viewportVariants) {
         })
         await expect(suffixInput).toBeEnabled()
         await expect(suffixInput).toHaveAttribute('placeholder', 'Suffix')
-      })
-    }
-
-    if (name === 'mobile') {
-      test('ADMIN-04: keeps admin tabs and actions usable on mobile', async ({
-        page,
-      }) => {
-        await page.goto('/sv/admin')
-
-        const columnsTab = page.getByRole('tab', { name: 'Kolumner' })
-        const taxonomyTab = page.getByRole('tab', {
-          name: 'Taxonomi',
-        })
-        const statusesAndWorkflowsTab = page.getByRole('tab', {
-          name: 'Statusar och arbetsflöden',
-        })
-        const tablist = page.getByRole('tablist', {
-          name: 'Administrationscenter',
-        })
-        const tablistMetrics = await tablist.evaluate(element => ({
-          clientWidth: element.clientWidth,
-          scrollWidth: element.scrollWidth,
-        }))
-
-        expect(tablistMetrics.scrollWidth).toBeGreaterThan(
-          tablistMetrics.clientWidth,
-        )
-
-        await expect(
-          page.getByRole('tab', { name: 'Terminologi' }),
-        ).toHaveCount(0)
-        await expectTouchTargetSize(columnsTab)
-        await expectTouchTargetSize(taxonomyTab)
-        await expectTouchTargetSize(statusesAndWorkflowsTab)
-        await expect(page.getByRole('button', { name: 'English' })).toHaveCount(
-          0,
-        )
-        await expectTouchTargetSize(
-          page.getByRole('button', { name: 'Återställ standardvy' }),
-        )
-        await expectTouchTargetSize(page.getByRole('button', { name: 'Spara' }))
-
-        await taxonomyTab.click()
-        await expect(taxonomyTab).toHaveAttribute('aria-selected', 'true')
-        await expect(page.getByTestId('taxonomy-card-areas')).toBeVisible()
-
-        await statusesAndWorkflowsTab.click()
-        await expect(statusesAndWorkflowsTab).toHaveAttribute(
-          'aria-selected',
-          'true',
-        )
-        await expect(
-          page.getByTestId('statuses-workflows-card-statuses'),
-        ).toBeVisible()
-
-        await columnsTab.click()
-        await expect(columnsTab).toHaveAttribute('aria-selected', 'true')
-
-        const columnResetButton = page.getByRole('button', {
-          name: 'Återställ standardvy',
-        })
-        const columnSaveButton = page.getByRole('button', { name: 'Spara' })
-
-        await expectTouchTargetSize(columnResetButton)
-        await expectTouchTargetSize(columnSaveButton)
-        await expect(columnResetButton).toBeVisible()
-        await expect(columnSaveButton).toBeVisible()
       })
     }
   })

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  createNormReference,
   deleteNormReference,
   getNormReferenceByNormReferenceId,
   listConnectedLibraryRequirementIds,
@@ -121,5 +122,32 @@ describe('norm references DAL', () => {
       { id: 2, uniqueId: 'REQ-0002' },
       { id: 10, uniqueId: 'REQ-0010' },
     ])
+  })
+
+  it('returns stable exhaustion instead of a timestamp ID after all generated candidates exist', async () => {
+    const repository = {
+      create: vi.fn(),
+      findOne: vi.fn(async () => ({ id: 1 })),
+      save: vi.fn(),
+    }
+    const db = {
+      getRepository: vi.fn(() => repository),
+    } as unknown as Parameters<typeof createNormReference>[0]
+
+    await expect(
+      createNormReference(db, {
+        issuer: 'Riksdagen',
+        name: 'Svensk författning',
+        reference: 'SFS 2026:529',
+        type: 'Lag',
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: { reason: 'norm_reference_id_generation_exhausted' },
+      status: 409,
+    })
+
+    expect(repository.save).not.toHaveBeenCalled()
+    expect(repository.findOne).toHaveBeenCalledTimes(999)
   })
 })

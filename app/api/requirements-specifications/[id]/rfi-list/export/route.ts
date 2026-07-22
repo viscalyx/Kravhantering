@@ -6,6 +6,7 @@ import {
 } from '@/app/api/rfi-questions/_schemas'
 import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { getSpecificationRfiList } from '@/lib/dal/rfi-questions'
+import { csvContentDisposition } from '@/lib/http/content-disposition'
 import { parseRouteParams, parseSearchParams } from '@/lib/http/validation'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { renderPdfResponse } from '@/lib/pdf/server-response'
@@ -21,21 +22,6 @@ import { withUtf8Bom } from '@/lib/text-export'
 export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
-
-const RESERVED_FILENAME_CHARS = /[/\\:*?"<>|]+/g
-
-function csvContentDisposition(filename: string): string {
-  const sanitized = filename
-    .replace(RESERVED_FILENAME_CHARS, '-')
-    .replace(/\s+/g, ' ')
-    .trim()
-  const withExtension = sanitized.toLowerCase().endsWith('.csv')
-    ? sanitized
-    : `${sanitized}.csv`
-  const fallback = withExtension.replace(/[^\x20-\x7e]/g, '_')
-
-  return `attachment; filename="${fallback.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(withExtension)}`
-}
 
 function errorResponse(error: unknown) {
   const { body, status } = toHttpErrorPayload(error)

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StewardshipClient from '@/app/[locale]/requirements/stewardship/stewardship-client'
 
@@ -19,28 +19,6 @@ vi.mock('@/i18n/routing', () => ({
   useRouter: () => routerState,
 }))
 
-vi.mock(
-  '@/app/[locale]/requirement-packages/requirement-packages-client',
-  () => ({
-    default: () => <h1>Requirements packages</h1>,
-  }),
-)
-
-vi.mock(
-  '@/app/[locale]/requirements/stewardship/requirement-selection-questions-client',
-  () => ({
-    default: () => <h1>Requirement selection questions</h1>,
-  }),
-)
-
-vi.mock('@/app/[locale]/requirements/stewardship/rfi-questions-client', () => ({
-  default: () => <h1>RFI questions</h1>,
-}))
-
-vi.mock('@/app/[locale]/norm-references/norm-references-client', () => ({
-  default: () => <h1>Norm library</h1>,
-}))
-
 describe('StewardshipClient', () => {
   beforeEach(() => {
     searchParamsState.value = new URLSearchParams()
@@ -48,79 +26,22 @@ describe('StewardshipClient', () => {
     localStorage.clear()
   })
 
-  it('uses the package view title as the page heading by default', () => {
-    render(<StewardshipClient />)
+  it('routes a bare stewardship URL to packages by default', async () => {
+    const { container } = render(<StewardshipClient />)
 
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Requirements packages' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('heading', {
-        name: 'Requirements Library Stewardship',
-      }),
-    ).not.toBeInTheDocument()
+    expect(container).toBeEmptyDOMElement()
+    await waitFor(() => {
+      expect(routerState.replace).toHaveBeenCalledWith(
+        '/requirements/stewardship?tab=packages',
+        { scroll: false },
+      )
+    })
   })
 
-  it('uses the question view title as the page heading for the questions tab', () => {
-    searchParamsState.value = new URLSearchParams('tab=questions')
-
-    render(<StewardshipClient />)
-
-    expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'Requirement selection questions',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('heading', {
-        name: 'Requirements Library Stewardship',
-      }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('uses the norm library view title for the norms tab', () => {
-    searchParamsState.value = new URLSearchParams('tab=norms')
-
-    render(<StewardshipClient />)
-
-    expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'Norm library',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('heading', {
-        name: 'Requirements Library Stewardship',
-      }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('uses the RFI question view for the information requests tab', () => {
-    searchParamsState.value = new URLSearchParams('tab=information-requests')
-
-    render(<StewardshipClient />)
-
-    expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'RFI questions',
-      }),
-    ).toBeInTheDocument()
-  })
-
-  it('restores the remembered RFI tab with the canonical URL token', async () => {
+  it('restores the remembered RFI workspace with its canonical URL token', async () => {
     localStorage.setItem('requirements.stewardship.tab', 'rfi')
 
     render(<StewardshipClient />)
-
-    expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'RFI questions',
-      }),
-    ).toBeInTheDocument()
 
     await waitFor(() => {
       expect(routerState.replace).toHaveBeenCalledWith(
@@ -130,27 +51,55 @@ describe('StewardshipClient', () => {
     })
   })
 
-  it('restores the remembered question tab without first rendering packages', async () => {
-    localStorage.setItem('requirements.stewardship.tab', 'questions')
+  it('remembers a canonical workspace without replacing its URL', async () => {
+    searchParamsState.value = new URLSearchParams('tab=questions')
 
     render(<StewardshipClient />)
 
-    expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'Requirement selection questions',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('heading', {
-        level: 1,
-        name: 'Requirements packages',
-      }),
-    ).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(localStorage.getItem('requirements.stewardship.tab')).toBe(
+        'questions',
+      )
+    })
+    expect(routerState.replace).not.toHaveBeenCalled()
+  })
+
+  it('remembers the RFI storage token for information requests', async () => {
+    searchParamsState.value = new URLSearchParams('tab=information-requests')
+
+    render(<StewardshipClient />)
+
+    await waitFor(() => {
+      expect(localStorage.getItem('requirements.stewardship.tab')).toBe('rfi')
+    })
+    expect(routerState.replace).not.toHaveBeenCalled()
+  })
+
+  it('removes retired variants from an otherwise canonical workspace URL', async () => {
+    searchParamsState.value = new URLSearchParams(
+      'tab=norms&variant=legacy&filter=active',
+    )
+
+    render(<StewardshipClient />)
 
     await waitFor(() => {
       expect(routerState.replace).toHaveBeenCalledWith(
-        '/requirements/stewardship?tab=questions',
+        '/requirements/stewardship?tab=norms&filter=active',
+        { scroll: false },
+      )
+    })
+  })
+
+  it('canonicalizes an unknown workspace to packages', async () => {
+    searchParamsState.value = new URLSearchParams(
+      'tab=unknown&variant=legacy&filter=active',
+    )
+
+    render(<StewardshipClient />)
+
+    await waitFor(() => {
+      expect(routerState.replace).toHaveBeenCalledWith(
+        '/requirements/stewardship?tab=packages&filter=active',
         { scroll: false },
       )
     })

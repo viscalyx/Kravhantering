@@ -53,6 +53,19 @@ The behaviors below apply to the requirement list rendered by:
 
 ## Requirement Import
 
+AI-assisted authoring and requirement import review are loaded on demand in
+both the Requirements Library and Kravunderlag detail workflows. Activating a
+feature opens its translated modal shell immediately while the feature body is
+loaded. The initial route payload does not include either feature
+implementation. AI-to-import handoff keeps the generated payload and
+destination context while focus moves directly from AI-assisted authoring to
+import review.
+
+A load failure remains inside the requested modal and offers Close and Reload
+page actions. Ordinary close restores focus to the stable activating control.
+Loading cannot be cancelled; activation resolves to the requested feature or
+an explicit in-modal error.
+
 - Requirement import uses one strict JSON file format,
   `requirement-import.v3`, for both kravbiblioteksimport and
   kravunderlagsimport. The top-level `schemaVersion` versions the whole import
@@ -213,10 +226,32 @@ The behaviors below apply to the requirement list rendered by:
 - Status is filterable and sortable.
 - `priorityLevel` is filterable and sortable.
 - `verifiable` is filterable, but not sortable.
-- `requirementPackage` is filterable through the requirement-package chip row
+- `requirementPackage` is filterable through a persistent package-filter band
   even when the optional, non-sortable table column is hidden.
-- Requirement-package chip filters show the package purpose and scope in the
-  shared requirement-package tooltip when purpose and scope text exists.
+- The band appears after the package catalog loads successfully, including when
+  the catalog is empty. Its first column contains the `Kravpaket` title and
+  filter button, followed by a vertical divider and a second column for the
+  inactive state or selected packages. The title uses the same typography as
+  the table column titles.
+- Selected packages use locale-aware alphabetical order. Their badges stay in
+  the second column and wrap only when they need more horizontal space, growing
+  the table chrome in normal layout flow.
+- The filter button pins a floating chooser for pointer, touch, Enter, and
+  Space input. Pointer hover can open the same chooser transiently. Escape,
+  outside clicks, and focus leaving the complete filter surface close it.
+- The chooser overlays the table, contains only unselected packages, wraps
+  badges, scrolls vertically when necessary, and remains inside the viewport.
+  Its top edge follows the live bottom edge of the filter band when selected
+  badges wrap or unwrap. Adding a package does not close it. Focus recovers to
+  an adjacent package or the filter button after an add, remove, or clear
+  action.
+- Package selection preserves the existing OR query semantics. Selected badges
+  remove one package, and a clear-all control appears when at least two packages
+  are selected.
+- Package badges use the shared requirement-package tooltip. It shows the full
+  package name and includes purpose and scope when that text exists. Keyboard
+  focus shows the tooltip when focus is visibly indicated; pointer-driven focus
+  recovery after removing a badge does not open a tooltip on another badge.
 
 ## Column Visibility
 
@@ -225,6 +260,48 @@ The behaviors below apply to the requirement list rendered by:
 - Per-browser visibility preferences are persisted in `localStorage`.
 - The first visible table render waits for persisted column visibility and
   locale-specific width preferences to hydrate from `localStorage`.
+
+## List Pagination
+
+- The Requirements Library and the available-requirements panel load additional
+  rows with forward-only opaque cursors.
+- Requirements Library REST pages allow 1 through 200 rows and default to 200.
+  Their cursor carries the complete database sort boundary and query
+  fingerprint, so no previous anchor row is read. Free-text and lookup-name
+  boundaries use the same normalized, bounded SQL sort key and numeric
+  Requirement ID as the query; the system-generated unique Requirement ID uses
+  its indexed database key. Filters, locale, sort, direction, and visibility
+  are part of the query identity; page size is not, so a continuation may
+  reduce it.
+- Requirements-specification item reads use the same shared service page
+  boundary for preload, REST, and MCP. Pages default to 50 rows, allow 1 through
+  100, expose page count and continuation availability, and never expose an
+  exact result total. The editor preload contains only the first page and
+  appends later pages in database order as the user reaches the end of the
+  scrollable list.
+- Changing filters, sorting, direction, locale, or visibility scope starts
+  again from the first page.
+- The editor automatically requests the next page when the list-end sentinel
+  approaches the viewport. It does not show a manual continuation button or a
+  row-count status for a populated list. Empty-state text is shown only after an
+  authoritative empty response, and read failures use an explicit error state.
+- Unchanged result sets must not repeat or skip rows across page boundaries.
+- The list is not a frozen snapshot. Requirements changed by another user may
+  require a full refresh before they appear in their current sorted position.
+- If a continuation cursor becomes invalid, the editor keeps current rows
+  visible and retries the first page once with the same query. Success replaces
+  the rows and announces the restart without moving focus. Failure keeps the
+  rows, query, and selection and presents a labelled retry action.
+- Initial and continuation reads cancel superseded requests, suppress stale
+  responses, and defensively remove duplicate Requirement IDs before rendering.
+- Requirements Library CSV uses `/api/requirements/export`, accepts current
+  server filters, locale, and sort, and accepts neither cursor nor page size.
+  The server traverses the database-ordered result in bounded pages up to the
+  Admin-configured limit plus one. It fails on an item/byte limit, duplicates,
+  missing progress, cursor cycles, timeout, or traversal guard, and stops on
+  cancellation instead of returning a partial export.
+- A completed generated-output download closes its progress dialog, restores
+  focus to the initiating action, and shows a four-second success status.
 
 ## Floating Rail
 
@@ -500,6 +577,35 @@ down.
 - Individual row checkboxes toggle selection without triggering row click.
 - Selection is cleared when filters change.
 - Selection state is managed in `requirements-client.tsx` via `selectedIds`.
+- The specification-detail left panel is an exception: only content editors see
+  row checkboxes, and it has no header-level select-all control. Explicit
+  selection is keyed by `itemRef` and survives searching, filtering, sorting,
+  and authoritative item refreshes. It remains transient and clears on locale
+  change, view exit, or reload.
+- When a query hides selected specification items, a status row reports the
+  total and hidden counts, warns that actions affect the complete selected set,
+  and can deselect exactly the hidden set.
+- A requirements specification, its paginated display, and the explicit
+  selection have no 200- or 500-item product limit. A single shared
+  selected-item action can target at most 200 stable item references, including
+  selected items that are not shown by the current query or are not loaded.
+- At 201 or more selected items, the polite selection status row uses a warning
+  appearance and states the total, the count not shown, the 200-item maximum,
+  and the exact number to deselect. The four shared actions for assigning or
+  clearing needs references, requesting deviations, and removing selected items
+  remain visible but disabled. The user chooses what to deselect; the
+  `Deselect not shown` recovery action remains enabled and no selection is
+  truncated automatically.
+- Returning to 200 or fewer selected items removes the warning and immediately
+  enables the four shared actions. Single-item actions in expanded details are
+  unaffected because they do not use the shared selection.
+- Selected-item actions resolve the selected `itemRef` values against fresh
+  item data before confirmation and enumerate all affected Krav-ID values.
+  Assigning and clearing needs-reference links are separate actions. Successful
+  targets leave the selection; failed or unaffected targets remain selected.
+- Bulk deviation requests use one motivation to create one deviation per
+  selected application. Removal confirms library unlinking and permanent
+  deletion of unique requirements separately, including mixed selections.
 - In the specification-detail left panel, specification-local rows are visually
   marked with a dedicated icon marker so they can be distinguished from
   library requirements pinned into the specification.
@@ -516,6 +622,10 @@ down.
 - When a library requirement is opened from the specification list `Krav i underlaget`,
   its inline detail metadata also includes the specification-specific fields
   **Behovsreferens** and **Användningsstatus** in the same properties grid.
+- The library requirement's **Remove from specification** action is part of the
+  right-side specification action rail, directly after the deviation controls.
+  It uses the same full-width destructive button treatment as other delete and
+  unlink actions.
 - The specification-local content card uses the same section spacing and card chrome
   as the library requirement detail card in specification context, so the properties
   block reads with the same vertical rhythm and grouping.
@@ -538,7 +648,7 @@ down.
   appended in the same vertical rail.
 - That unique-requirement action rail also uses the same full-width button
   sizing rhythm as the library requirements specification-item rail, including
-  the shared 44px minimum touch target and stacked spacing.
+  the shared pointer-target policy and stacked spacing.
 - Edit and Delete for unique requirements are only enabled when
   **Användningsstatus** is **Inkluderad** and there is no pending deviation
   draft or review request. Otherwise the buttons stay disabled and expose a
@@ -568,7 +678,8 @@ down.
   route.
 - Passes the list view's active filters and sort order to the localized PDF
   route so the server resolves the complete matching requirement set.
-- Does not apply an application-level item-count cap to matching rows.
+- Applies the Admin-configured list-PDF item cap before rendering and creates
+  the PDF in a memory-limited isolated worker.
 - The report shows Requirement ID, requirement text, requirement area, and
   status columns.
 
@@ -587,7 +698,9 @@ down.
   - `Genomföranderapport` for lifecycle status `Införande` or `Utveckling`
   - `Förvaltningsrapport` for lifecycle status `Förvaltning`
 - Report routes always cover the whole specification. They do not accept row
-  selection query parameters.
+  selection query parameters. Lifecycle-profile reports ignore item-list
+  filters; application traceability accepts the normalized item-list filters
+  and sort state and covers that complete server result.
 - PDF routes use
   `/[locale]/specifications/[specificationId]/reports/pdf/[profile]`.
 - Both routes authorize read access to the specification before report data is
@@ -599,10 +712,28 @@ down.
 - The export dropdown also shows `Anbuds-CSV` only for lifecycle status
   `Upphandling`.
 - Specification CSV exports are generated server-side from the whole
-  specification and remain row-only without metadata rows.
+  specification and remain row-only without metadata rows. Both profiles use
+  the shared accessible generated-output dialog, server filename, localized
+  stable capacity errors, cancellation, manual retry, download announcement,
+  and focus restoration.
+- Only one specification CSV or PDF operation can run at a time in this view.
+  Both CSV actions are disabled while either profile is active.
+- Procurement and full CSV enrich bounded pages and append rows directly to a
+  private same-request spool under the shared Admin CSV item, byte, timeout,
+  and concurrency settings. A partial file is never presented as complete.
+- Complete outputs traverse bounded server pages with progress, duplicate,
+  cursor-cycle, and maximum-page protection. They never use only the rows
+  currently loaded in the editor.
 
 ## Requirement Selection Question Stewardship
 
+- The stewardship route loads only the selected workspace's client code.
+  Direct query links, remembered selection, workspace switching, and browser
+  back/forward navigation resolve the selected workspace before rendering, so
+  another workspace's heading or controls never flash. While an uncached
+  workspace loads, the page keeps the selected workspace heading and announces
+  a localized loading status. If its JavaScript chunk cannot load, an inline
+  localized alert retains the workspace heading and offers a full-page reload.
 - In `Kravbiblioteksförvaltning` > `Kravurvalsfrågor`, the question form shows
   the selected requirement area's description as small supporting text below
   `Kravområde`.
@@ -750,6 +881,17 @@ down.
 - Scope switches are disabled when the RFI list is locked or the actor cannot
   edit the specification RFI list. Relevance remains separate and is edited only
   after the list is locked.
+- RFI question suggestions move only from `Utkast` to `Granskning begärd` and
+  then to `Hanterad` or `Avfärdad`. Resolution controls are available only
+  after review has been requested, and only draft suggestions can be deleted.
+- If another actor changes or deletes a suggestion before the current action
+  completes, the UI shows localized conflict feedback and reloads suggestions.
+  A missing row is distinct from an existing suggestion in an incompatible
+  lifecycle state.
+- Creation, review request, resolution, and deletion each commit with exactly
+  one successful action-log event. The log includes target and lifecycle
+  transition metadata but excludes suggestion content and resolution
+  motivation.
 
 ## Combined Review Report In Requirements Library
 
@@ -771,9 +913,16 @@ down.
   share button.
 - Always shows "History Report".
 - Shows "Review Report" only when the current version has Review status.
-- PDF report URLs are fetched as blobs from the server route; a temporary
-  progress dialog appears only when generation takes longer than two seconds.
-- List view PDF actions use the shared blob helper.
+- PDF report URLs, Requirements Library CSV, and both requirements-specification
+  CSV profiles use the shared Blob helper. Its accessible modal opens
+  immediately, shows separate indeterminate generation/preparation and download
+  phases, and provides Cancel in both phases.
+- The helper uses the server filename when provided and otherwise the
+  caller-provided fallback filename, permits only one active operation per hook
+  even across different URLs, restores focus, and maps stable error codes to
+  localized text. Busy capacity shows a five-second countdown before manual
+  Retry; there is no automatic retry, percentage, service worker, or File
+  System Access path.
 
 For report implementation details, see
 [report-generation-developer-workflow.md](../development/report-generation-developer-workflow.md).

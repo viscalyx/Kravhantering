@@ -60,6 +60,11 @@ manually with `workflow_dispatch`. Manual runs may select `all`, `nginx`,
 `sqlserver`, `keycloak` or `kong`; the `include-current` input also refreshes
 the immutable digest metadata for the current selected lane.
 
+Before writing a lock or companion file, the updater validates and prepares
+every file change for that image. A validation or update failure stops the run
+before later images are processed, so partial changes cannot enter another
+image's branch or PR.
+
 Kong is a vendor-updated HSA integration support image. Its lock under
 `containers/kong/` is copied into
 `container-hsa-integration-support.lock.json` during container releases and is
@@ -170,6 +175,9 @@ Operator upgrade notes are maintained in
 `docs/operations/operator-upgrade-notes.md`. A separate merged-pull-request
 workflow reads completed Operator Upgrade Impact evidence from the trusted pull
 request body and appends it under `## Unreleased` with hidden source markers.
+The Operator Upgrade gate and merged-pull-request workflow both skip pull
+requests authored by `dependabot[bot]` whose title starts with `build(deps):`;
+dependency-only updates therefore do not require or persist operator notes.
 Instead of pushing directly to protected `main`, the workflow opens or updates
 the `automation/operator-upgrade-notes` PR and enables auto-merge when GitHub
 allows it. Configure an `OPERATOR_UPGRADE_NOTES_TOKEN` secret from a
@@ -177,20 +185,21 @@ fine-scoped PAT or GitHub App token for the `Viscalyxbot` machine user that can
 push branches and create pull requests so the normal PR checks run for that
 automation PR. The workflow commits those documentation changes as
 `Viscalyxbot <viscalyxbot@viscalyx.se>` before opening or updating the PR, and
-the PR title includes the latest source PR number. It
-fails when that secret is absent or cannot authenticate against the repository;
-it does not fall back to `github.token`, because that would hide token expiry
-and can suppress downstream PR workflow runs. The container release job also
-runs a local best-effort sync for the merge commit before image publication so
-a preview release can include notes even when the persistence workflow is still
-catching up. That fallback only changes the release workspace; it does not push
-documentation commits.
+the PR title includes the latest source PR number. Stable release archives use
+the same token and protected-branch PR pattern, with a version-specific branch.
+The automation fails when that secret is absent or cannot authenticate against
+the repository; it does not fall back to `github.token`, because that would
+hide token expiry and can suppress downstream PR workflow runs. The container
+release job also runs a local best-effort sync for the merge commit before
+image publication so a preview release can include notes even when the
+persistence workflow is still catching up. That fallback only changes the
+release workspace; it does not push documentation commits.
 
 Stable releases consume the visible `## Unreleased` notes into the GitHub
-Release body and then archive that same section under
-`## vX.Y.Z - YYYY-MM-DD` on `main` after the GitHub Release and assets have
-been published. Preview releases include current `## Unreleased` notes but do
-not archive them.
+Release body and then open or update an automation PR that archives the same
+section under `## vX.Y.Z - YYYY-MM-DD`. Required checks run before auto-merge
+persists the archive on `main`. Preview releases include current
+`## Unreleased` notes but do not archive them.
 
 ```mermaid
 sequenceDiagram
@@ -222,7 +231,9 @@ sequenceDiagram
     else Stable release
         Release->>Release: Read Unreleased notes from workspace
         Release->>GitHub: Publish stable release with current notes
-        Release->>Main: Archive Unreleased under version date
+        Release->>AutomationPR: Open versioned archive PR
+        AutomationPR->>AutomationPR: Merge after required checks
+        AutomationPR-->>Main: Archive Unreleased under version date
     end
 ```
 
@@ -337,9 +348,11 @@ authentication are intentional.
 
 ## Tokens and Keys
 
-The workflow uses the built-in `GITHUB_TOKEN` that GitHub Actions creates for
-the run. Normal publishing does not require private deploy keys, PAT secrets, or
-signing keys.
+Image and GitHub Release publishing use the built-in `GITHUB_TOKEN` that GitHub
+Actions creates for the run. Normal publishing does not require private deploy
+keys or signing keys. Stable operator upgrade note archiving is the exception:
+it uses the separately configured `OPERATOR_UPGRADE_NOTES_TOKEN` described
+above so its protected-branch PR triggers the required checks.
 
 The repository or organization GitHub Actions setting must allow `GITHUB_TOKEN`
 to have write permissions. The workflow requests these permissions:

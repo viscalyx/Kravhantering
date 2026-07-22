@@ -140,18 +140,44 @@ function canStartTransaction(
   return typeof (db as Partial<SqlServerDatabase>).transaction === 'function'
 }
 
-async function listRequirementPackageCoAuthorsByPackage(
-  db: QueryExecutor,
-  requirementPackageIds: number[],
-): Promise<Record<number, RequirementPackageCoAuthorRow[]>> {
-  const ids = [...new Set(requirementPackageIds)]
-  if (ids.length === 0) return {}
+function mapRequirementPackageProjection(
+  rows: Record<string, unknown>[],
+): RequirementPackageRow[] {
+  const packagesById = new Map<number, RequirementPackageRow>()
+  for (const row of rows) {
+    const id = row.id as number
+    const requirementPackage =
+      packagesById.get(id) ?? mapRequirementPackageRow(row)
+    const coAuthorHsaId = row.coAuthorHsaId as string | null | undefined
+    if (
+      coAuthorHsaId != null &&
+      !requirementPackage.coAuthors.some(
+        coAuthor => coAuthor.hsaId === coAuthorHsaId,
+      )
+    ) {
+      requirementPackage.coAuthors.push(
+        mapRequirementPackageCoAuthorRow({
+          createdAt: row.coAuthorCreatedAt,
+          email: row.coAuthorEmail,
+          givenName: row.coAuthorGivenName,
+          hsaId: coAuthorHsaId,
+          middleName: row.coAuthorMiddleName,
+          surname: row.coAuthorSurname,
+        }),
+      )
+    }
+    packagesById.set(id, requirementPackage)
+  }
+  return [...packagesById.values()]
+}
 
-  const placeholders = ids.map((_, index) => `@${index}`).join(', ')
+export async function listRequirementPackageCoAuthors(
+  db: SqlServerDatabase,
+  requirementPackageId: number,
+): Promise<RequirementPackageCoAuthorRow[]> {
   const rows = (await db.query(
     `
       SELECT
-        co_author.requirement_package_id AS requirementPackageId,
         co_author.hsa_id AS hsaId,
         person.given_name AS givenName,
         person.middle_name AS middleName,
@@ -161,36 +187,12 @@ async function listRequirementPackageCoAuthorsByPackage(
       FROM requirement_package_co_authors AS co_author
       INNER JOIN requirement_responsibility_people AS person
         ON person.hsa_id = co_author.hsa_id
-      WHERE co_author.requirement_package_id IN (${placeholders})
-      ORDER BY
-        co_author.requirement_package_id ASC,
-        person.surname ASC,
-        person.given_name ASC,
-        co_author.hsa_id ASC
+      WHERE co_author.requirement_package_id = @0
+      ORDER BY person.surname ASC, person.given_name ASC, co_author.hsa_id ASC
     `,
-    ids,
-  )) as Record<string, unknown>[]
-
-  const coAuthorsByPackage: Record<number, RequirementPackageCoAuthorRow[]> = {}
-  for (const row of rows) {
-    const requirementPackageId = row.requirementPackageId as number
-    coAuthorsByPackage[requirementPackageId] ??= []
-    coAuthorsByPackage[requirementPackageId].push(
-      mapRequirementPackageCoAuthorRow(row),
-    )
-  }
-  return coAuthorsByPackage
-}
-
-export async function listRequirementPackageCoAuthors(
-  db: SqlServerDatabase,
-  requirementPackageId: number,
-): Promise<RequirementPackageCoAuthorRow[]> {
-  const coAuthorsByPackage = await listRequirementPackageCoAuthorsByPackage(
-    db,
     [requirementPackageId],
-  )
-  return coAuthorsByPackage[requirementPackageId] ?? []
+  )) as Record<string, unknown>[]
+  return rows.map(mapRequirementPackageCoAuthorRow)
 }
 
 async function getRequirementPackageRowById(
@@ -210,24 +212,29 @@ async function getRequirementPackageRowById(
         lead_person.email AS leadEmail,
         requirementPackages.is_archived AS isArchived,
         requirementPackages.created_at AS createdAt,
-        requirementPackages.updated_at AS updatedAt
+        requirementPackages.updated_at AS updatedAt,
+        co_author.hsa_id AS coAuthorHsaId,
+        co_author_person.given_name AS coAuthorGivenName,
+        co_author_person.middle_name AS coAuthorMiddleName,
+        co_author_person.surname AS coAuthorSurname,
+        co_author_person.email AS coAuthorEmail,
+        co_author.created_at AS coAuthorCreatedAt
       FROM requirement_packages AS requirementPackages
       INNER JOIN requirement_responsibility_people AS lead_person
         ON lead_person.hsa_id = requirementPackages.lead_hsa_id
+      LEFT JOIN requirement_package_co_authors AS co_author
+        ON co_author.requirement_package_id = requirementPackages.id
+      LEFT JOIN requirement_responsibility_people AS co_author_person
+        ON co_author_person.hsa_id = co_author.hsa_id
       WHERE requirementPackages.id = @0
+      ORDER BY
+        co_author_person.surname ASC,
+        co_author_person.given_name ASC,
+        co_author.hsa_id ASC
     `,
     [id],
   )
-  const row = rows[0] ? mapRequirementPackageRow(rows[0]) : null
-  if (!row) return null
-  const coAuthorsByPackage = await listRequirementPackageCoAuthorsByPackage(
-    db,
-    [id],
-  )
-  return {
-    ...row,
-    coAuthors: coAuthorsByPackage[id] ?? [],
-  }
+  return mapRequirementPackageProjection(rows)[0] ?? null
 }
 
 export async function listRequirementPackages(
@@ -247,24 +254,32 @@ export async function listRequirementPackages(
         lead_person.email AS leadEmail,
         requirementPackages.is_archived AS isArchived,
         requirementPackages.created_at AS createdAt,
-        requirementPackages.updated_at AS updatedAt
+        requirementPackages.updated_at AS updatedAt,
+        co_author.hsa_id AS coAuthorHsaId,
+        co_author_person.given_name AS coAuthorGivenName,
+        co_author_person.middle_name AS coAuthorMiddleName,
+        co_author_person.surname AS coAuthorSurname,
+        co_author_person.email AS coAuthorEmail,
+        co_author.created_at AS coAuthorCreatedAt
       FROM requirement_packages AS requirementPackages
       INNER JOIN requirement_responsibility_people AS lead_person
         ON lead_person.hsa_id = requirementPackages.lead_hsa_id
+      LEFT JOIN requirement_package_co_authors AS co_author
+        ON co_author.requirement_package_id = requirementPackages.id
+      LEFT JOIN requirement_responsibility_people AS co_author_person
+        ON co_author_person.hsa_id = co_author.hsa_id
       WHERE @0 = 1 OR requirementPackages.is_archived = 0
-      ORDER BY requirementPackages.is_archived ASC, requirementPackages.name ASC
+      ORDER BY
+        requirementPackages.is_archived ASC,
+        requirementPackages.name ASC,
+        requirementPackages.id ASC,
+        co_author_person.surname ASC,
+        co_author_person.given_name ASC,
+        co_author.hsa_id ASC
     `,
     [options.includeArchived ? 1 : 0],
   )) as Record<string, unknown>[]
-  const packages = rows.map(mapRequirementPackageRow)
-  const coAuthorsByPackage = await listRequirementPackageCoAuthorsByPackage(
-    db,
-    packages.map(requirementPackage => requirementPackage.id),
-  )
-  return packages.map(requirementPackage => ({
-    ...requirementPackage,
-    coAuthors: coAuthorsByPackage[requirementPackage.id] ?? [],
-  }))
+  return mapRequirementPackageProjection(rows)
 }
 
 export async function countLinkedRequirementsByPackage(

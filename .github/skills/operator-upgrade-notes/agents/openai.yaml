@@ -1,6 +1,6 @@
 interface:
   display_name: "Operator Upgrade Notes"
-  short_description: "Review PR diffs for operator upgrade notes"
-  default_prompt: "Use $operator-upgrade-notes to review committed, staged, unstaged, and untracked local changes against main (falling back to origin/main) and draft any high-level operator upgrade notes needed for the PR."
+  short_description: "Identify PR operator upgrade impacts"
+  default_prompt: "Use $operator-upgrade-notes to inspect this branch's diff against main and draft PR operator upgrade notes when operations are affected."
 policy:
   allow_implicit_invocation: false

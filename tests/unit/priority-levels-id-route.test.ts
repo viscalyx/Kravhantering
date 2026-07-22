@@ -132,6 +132,55 @@ describe('priority-levels/[id] route', () => {
     ).not.toHaveBeenCalled()
   })
 
+  it.each(['#abc', '22c55e', '#22c55eff', '#22c55g', ' #22c55e'])(
+    'PUT rejects invalid priority color %s before opening the DB',
+    async color => {
+      const response = await route.PUT(
+        new NextRequest('https://example.test/api/priority-levels/1', {
+          body: JSON.stringify({ color }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT',
+        }),
+        makeParams('1'),
+      )
+
+      const body = (await response.json()) as {
+        error: string
+        issues: Array<{ path: string }>
+      }
+      expect(response.status).toBe(400)
+      expect(body.error).toBe('Invalid request')
+      expect(body.issues).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: 'color' })]),
+      )
+      expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+      expect(routeState.updatePriorityLevel).not.toHaveBeenCalled()
+    },
+  )
+
+  it('PUT preserves a valid uppercase priority color', async () => {
+    routeState.updatePriorityLevel.mockResolvedValueOnce({
+      color: '#A1B2C3',
+      id: 1,
+    })
+
+    const response = await route.PUT(
+      new NextRequest('https://example.test/api/priority-levels/1', {
+        body: JSON.stringify({ color: '#A1B2C3' }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PUT',
+      }),
+      makeParams('1'),
+    )
+
+    expect(response.status).toBe(200)
+    expect(routeState.updatePriorityLevel).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      { color: '#A1B2C3' },
+    )
+  })
+
   it('PUT updates a system priority level', async () => {
     const payload = {
       assessmentCriteriaEn: 'Low assessment',

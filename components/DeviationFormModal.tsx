@@ -1,7 +1,6 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
   useCallback,
@@ -13,7 +12,9 @@ import {
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
+import FieldHelpButton from '@/components/FieldHelpButton'
 import { modalResizableTextareaRows4ClassName } from '@/components/modal-textarea-class'
+import StatusBadge from '@/components/StatusBadge'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -25,23 +26,36 @@ const textareaClassName = `w-full rounded-lg border border-secondary-300 bg-whit
 const useClientLayoutEffect =
   typeof window === 'undefined' ? useEffect : useLayoutEffect
 
+export interface DeviationPriorityLevel {
+  code: string
+  color: string | null
+  iconName: string | null
+  id: number
+  name: string
+  sortOrder: number
+}
+
 interface DeviationFormModalProps {
+  affectedRequirementIds?: string[]
   initialMotivation?: string
   loading?: boolean
   onClose: () => void
   onSubmit: (motivation: string) => void
   open: boolean
-  priorityLevel?: { color: string | null; name: string | null } | null
+  priorityLevel?: DeviationPriorityLevel | null
+  priorityLevels?: DeviationPriorityLevel[]
   title?: string
 }
 
 export default function DeviationFormModal({
+  affectedRequirementIds = [],
   initialMotivation,
   loading,
   onClose,
   onSubmit,
   open,
   priorityLevel,
+  priorityLevels = [],
   title,
 }: DeviationFormModalProps) {
   const td = useTranslations('deviation')
@@ -55,6 +69,12 @@ export default function DeviationFormModal({
   const modalRef = useRef<HTMLDivElement>(null)
   const shouldReduceMotion = useReducedMotion()
   const confirmDiscardChanges = useDiscardChangesConfirmation()
+  const resolvedPriorityLevels =
+    priorityLevels.length > 0
+      ? priorityLevels
+      : priorityLevel
+        ? [priorityLevel]
+        : []
 
   // Reset fields when opening
   useClientLayoutEffect(() => {
@@ -140,19 +160,56 @@ export default function DeviationFormModal({
                 {title ?? td('requestDeviation')}
               </h2>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-secondary-500 dark:text-secondary-400">
-                  {td('priorityLevel')}:
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-secondary-200 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800 px-2.5 py-0.5 text-xs font-medium text-secondary-700 dark:text-secondary-300">
-                  {priorityLevel?.color && (
-                    <span
-                      className="inline-block w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: priorityLevel.color }}
-                    />
+              {affectedRequirementIds.length > 0 ? (
+                <div>
+                  <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                    {td('affectedRequirementIds')}
+                  </p>
+                  <ul className="mt-1 max-h-36 overflow-y-auto rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 font-mono text-xs text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                    {affectedRequirementIds.map(requirementId => (
+                      <li key={requirementId}>{requirementId}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              <div
+                {...devMarker({
+                  context: 'deviation-form',
+                  name: 'priority identity',
+                  priority: 350,
+                  value:
+                    resolvedPriorityLevels.length > 1 ? 'multiple' : 'single',
+                })}
+              >
+                <p className="text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                  {td(
+                    resolvedPriorityLevels.length > 1
+                      ? 'priorityLevels'
+                      : 'priorityLevel',
                   )}
-                  {priorityLevel?.name ?? '—'}
-                </span>
+                </p>
+                {resolvedPriorityLevels.length > 0 ? (
+                  <div className="mt-1.5 flex flex-wrap gap-2">
+                    {resolvedPriorityLevels.map(resolvedPriorityLevel => (
+                      <StatusBadge
+                        color={resolvedPriorityLevel.color}
+                        iconName={resolvedPriorityLevel.iconName}
+                        key={resolvedPriorityLevel.id}
+                        label={[
+                          resolvedPriorityLevel.code,
+                          resolvedPriorityLevel.name,
+                        ]
+                          .filter(Boolean)
+                          .join(' – ')}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-sm text-secondary-700 dark:text-secondary-300">
+                    —
+                  </p>
+                )}
               </div>
 
               <div>
@@ -163,16 +220,12 @@ export default function DeviationFormModal({
                   >
                     {td('motivation')} *
                   </label>
-                  <button
-                    aria-controls="help-motivation"
-                    aria-expanded={openHelp.has('motivation')}
-                    aria-label={`${tc('help')}: ${td('motivation')}`}
-                    className="inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  <FieldHelpButton
+                    controls="help-motivation"
+                    expanded={openHelp.has('motivation')}
+                    label={`${tc('help')}: ${td('motivation')}`}
                     onClick={() => toggleHelp('motivation')}
-                    type="button"
-                  >
-                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                  </button>
+                  />
                 </div>
                 <AnimatedHelpPanel
                   id="help-motivation"

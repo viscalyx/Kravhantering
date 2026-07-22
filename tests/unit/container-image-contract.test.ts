@@ -212,6 +212,65 @@ describe('container image contract', () => {
     }
   })
 
+  it('installs Codex CLI system-wide in both devcontainer profiles', () => {
+    const dockerfile = readWorkspaceFile('.devcontainer/Dockerfile')
+
+    expect(dockerfile).toContain('https://chatgpt.com/codex/install.sh')
+    expect(dockerfile).toContain('CODEX_HOME=/usr/local/lib/codex')
+    expect(dockerfile).toContain('CODEX_INSTALL_DIR=/usr/local/bin')
+    expect(dockerfile).toContain('CODEX_NON_INTERACTIVE=1')
+    expect(dockerfile).toContain('codex --version')
+
+    for (const relativePath of [
+      '.devcontainer/docker-compose.yml',
+      '.devcontainer/elevated/docker-compose.yml',
+    ]) {
+      expect(readWorkspaceFile(relativePath)).toContain(
+        'dockerfile: .devcontainer/Dockerfile',
+      )
+    }
+  })
+
+  it('shares Codex project defaults across development environments', () => {
+    const codexConfig = readWorkspaceFile('.codex/config.toml')
+
+    expect(codexConfig).toContain('model = "gpt-5.6-sol"')
+    expect(codexConfig).toContain('[mcp_servers.playwright]')
+    expect(codexConfig).toContain('[mcp_servers.github]')
+    expect(codexConfig).toContain('[tui]')
+    expect(codexConfig).toContain('terminal_title = ["activity", "app-name"]')
+    expect(codexConfig).toContain(
+      'status_line = ["model-with-reasoning", "context-used", "context-window-size", "fast-mode", "permissions", "thread-title"]',
+    )
+    expect(codexConfig).toContain('status_line_use_colors = true')
+    expect(codexConfig).not.toContain('kravhantering-devcontainer')
+  })
+
+  it('keeps Codex devcontainer permissions in the user config template', () => {
+    const codexConfig = readWorkspaceFile('.devcontainer/codex-config.toml')
+
+    expect(codexConfig).toContain('approval_policy = "never"')
+    expect(codexConfig).toContain(
+      'default_permissions = "kravhantering-devcontainer"',
+    )
+    expect(codexConfig).toContain('[projects."/workspace"]')
+    expect(codexConfig).toContain('trust_level = "trusted"')
+    expect(codexConfig).toContain(
+      '[permissions.kravhantering-devcontainer.network.domains]',
+    )
+    expect(codexConfig).not.toContain('[mcp_servers.playwright]')
+    expect(codexConfig).not.toContain('[tui]')
+
+    for (const relativePath of [
+      '.devcontainer/devcontainer.json',
+      '.devcontainer/elevated/devcontainer.json',
+    ]) {
+      expect(readWorkspaceFile(relativePath)).toContain(
+        'cp .devcontainer/codex-config.toml /home/vscode/.codex/config.toml',
+      )
+    }
+  })
+
   it('installs Podman tooling for the local container stack', () => {
     const dockerfile = readWorkspaceFile('.devcontainer/Dockerfile')
     const defaultCompose = readWorkspaceFile('.devcontainer/docker-compose.yml')
@@ -295,6 +354,33 @@ describe('container image contract', () => {
     ]) {
       expect(siteConf).toContain(`proxy_set_header ${header};`)
     }
+  })
+
+  it('grants the bounded generated-output routes the extended timeout', () => {
+    const generatedOutputConfig = readWorkspaceFile(
+      'containers/production/nginx/templates/generated-output-locations.conf',
+    )
+    const locationExpression = generatedOutputConfig.match(
+      /^location ~ (\S+) \{$/m,
+    )?.[1]
+
+    expect(locationExpression).toBeDefined()
+    const generatedOutputRoute = new RegExp(locationExpression ?? '')
+    expect(generatedOutputRoute.test('/api/requirements/export')).toBe(true)
+    expect(
+      generatedOutputRoute.test(
+        '/api/requirements-specifications/920008/exports',
+      ),
+    ).toBe(true)
+    expect(generatedOutputRoute.test('/sv/requirements/reports/pdf/list')).toBe(
+      true,
+    )
+    expect(
+      generatedOutputRoute.test(
+        '/api/requirements-specifications/920008/rfi-list/export',
+      ),
+    ).toBe(false)
+    expect(generatedOutputConfig).toContain('proxy_read_timeout 660s;')
   })
 
   it('keeps SQL Server example env scoped to the vendor database engine', () => {

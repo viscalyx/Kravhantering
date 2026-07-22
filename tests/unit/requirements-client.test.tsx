@@ -73,22 +73,22 @@ vi.mock('@/components/HelpPanel', () => ({
   useHelpContent: helpPanelState.useHelpContent,
 }))
 
-vi.mock('@/components/AiRequirementGenerator', () => ({
+vi.mock('@/components/LazyAiRequirementGenerator', () => ({
   default: (props: Record<string, unknown>) => {
     aiGeneratorState.renderSpy(props)
     return props.open ? <div data-testid="ai-generator-modal" /> : null
   },
 }))
 
-vi.mock('@/components/RequirementsImportDialog', () => ({
+vi.mock('@/components/LazyRequirementsImportDialog', () => ({
   default: (props: Record<string, unknown>) => {
     importDialogState.renderSpy(props)
     return props.open ? <div data-testid="requirements-import-dialog" /> : null
   },
 }))
 
-vi.mock('@/components/reports/pdf/useServerPdfDownload', () => ({
-  useServerPdfDownload: () => ({
+vi.mock('@/components/generated-output/useGeneratedOutputDownload', () => ({
+  useGeneratedOutputDownload: () => ({
     clearError: pdfDownloadState.clearError,
     dialog: null,
     download: pdfDownloadState.download,
@@ -116,6 +116,9 @@ vi.mock('@/components/RequirementsTable', () => ({
       onSortChange,
       onVisibleColumnsChange,
       renderExpanded,
+      requirementPackageCatalogStatus,
+      requirementPackageFilterPresentation,
+      requirementPackages,
       rows,
       selectedIds,
       sortState,
@@ -139,6 +142,9 @@ vi.mock('@/components/RequirementsTable', () => ({
       sortState,
       statusOptions: statusOptions ?? [],
       qualityCharacteristics: qualityCharacteristics ?? [],
+      requirementPackageCatalogStatus,
+      requirementPackageFilterPresentation,
+      requirementPackages: requirementPackages ?? [],
       types: types ?? [],
       visibleColumns: visibleColumns ?? [],
     })
@@ -525,14 +531,13 @@ function mockCommonFetches() {
   fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
     const url = String(input)
 
+    if (url.startsWith('/api/requirements/export?')) {
+      return {
+        blob: async () => new Blob(['csv']),
+        ok: true,
+      } as Response
+    }
     if (url.startsWith('/api/requirements?')) {
-      if (url.includes('format=csv')) {
-        return {
-          blob: async () => new Blob(['csv']),
-          ok: true,
-        } as Response
-      }
-
       return okJson({
         pagination: { hasMore: false },
         requirements: [makeRequirementRow(1)],
@@ -739,7 +744,7 @@ describe('RequirementsClient', () => {
   it('waits for hydrated preferences and the first row response before mounting the table', async () => {
     const columnWidthsStorageKey = getRequirementColumnWidthsStorageKey('sv')
     const initialRequirementsResponse = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
 
@@ -802,6 +807,44 @@ describe('RequirementsClient', () => {
       rows: [expect.objectContaining({ uniqueId: 'INT0001' })],
       visibleColumns: ['uniqueId', 'description', 'area', 'status'],
     })
+    await waitFor(() =>
+      expect(tableState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+        requirementPackageCatalogStatus: 'loaded',
+        requirementPackageFilterPresentation: 'compact-band',
+        requirementPackages: [],
+      }),
+    )
+  })
+
+  it('preserves the existing failure surface when the package catalog fails', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return okJson({
+          pagination: { hasMore: false },
+          requirements: [makeRequirementRow(1)],
+        })
+      }
+      if (url === '/api/requirement-packages') {
+        return { ok: false } as Response
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) return metadataResponse
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(tableState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+        requirementPackageCatalogStatus: 'failed',
+        requirementPackageFilterPresentation: 'compact-band',
+        requirementPackages: [],
+      }),
+    )
   })
 
   it('disables AI generation when availability is disabled by Admin Center', async () => {
@@ -904,6 +947,48 @@ describe('RequirementsClient', () => {
     })
   })
 
+  it('preserves the stable trigger through AI-to-import handoff', async () => {
+    mockCommonFetches()
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('requirements-table')).toBeTruthy(),
+    )
+    const aiButton = screen.getByRole('button', { name: 'aiGenerate' })
+    fireEvent.click(aiButton)
+
+    const aiProps = aiGeneratorState.renderSpy.mock.calls.at(-1)?.[0] as {
+      onImportPreview: (
+        payload: string,
+        options: { areaId?: number; preview?: unknown },
+      ) => void
+      open: boolean
+      returnFocusTarget?: HTMLElement | null
+    }
+    expect(aiProps.open).toBe(true)
+    expect(aiProps.returnFocusTarget).toBe(aiButton)
+
+    act(() => {
+      aiProps.onImportPreview('{"requirements":[]}', { areaId: 1 })
+    })
+
+    const importProps = importDialogState.renderSpy.mock.calls.at(-1)?.[0] as {
+      initialImport?: { areaId?: number; payload?: string }
+      open: boolean
+      returnFocusTarget?: HTMLElement | null
+    }
+    expect(importProps).toMatchObject({
+      initialImport: {
+        areaId: 1,
+        payload: '{"requirements":[]}',
+      },
+      open: true,
+    })
+    expect(importProps.returnFocusTarget).toBe(aiButton)
+  })
+
   it('clears the initial loading state when the first row request rejects', async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
@@ -996,8 +1081,14 @@ describe('RequirementsClient', () => {
       screen.getByRole('button', { name: 'importRequirements' }).dataset
         .floatingActionVariant,
     ).toBe('default')
-    fireEvent.click(screen.getByRole('button', { name: 'importRequirements' }))
+    const importButton = screen.getByRole('button', {
+      name: 'importRequirements',
+    })
+    fireEvent.click(importButton)
     expect(screen.getByTestId('requirements-import-dialog')).toBeTruthy()
+    expect(
+      importDialogState.renderSpy.mock.calls.at(-1)?.[0].returnFocusTarget,
+    ).toBe(importButton)
     expect(screen.getByTestId('sort-state').textContent).toBe('uniqueId:asc')
     expect(screen.getByTestId('column-widths').textContent).toBe(
       '{"status":220}',
@@ -1008,17 +1099,23 @@ describe('RequirementsClient', () => {
     expect(storageGetItem).toHaveBeenCalledWith(columnWidthsStorageKey)
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('sortBy=uniqueId'),
+      expect.objectContaining({ signal: expect.anything() }),
     )
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('sortDirection=asc'),
+      expect.objectContaining({ signal: expect.anything() }),
     )
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('locale=sv'))
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('locale=sv'),
+      expect.objectContaining({ signal: expect.anything() }),
+    )
 
     fireEvent.click(screen.getByText('change-sort'))
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1050,17 +1147,18 @@ describe('RequirementsClient', () => {
     fireEvent.click(screen.getByRole('button', { name: 'export' }))
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('format=csv'),
+      expect(pdfDownloadState.download).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fallbackFilename: 'kravbibliotek.csv',
+          output: 'csv',
+          url: expect.stringContaining('/api/requirements/export?'),
+        }),
       ),
     )
-    const exportRequest = fetchMock.mock.calls
-      .map(([input]) => String(input))
-      .find(url => url.includes('format=csv'))
-    expect(exportRequest).toBeTruthy()
+    const exportRequest = String(
+      pdfDownloadState.download.mock.calls.at(-1)?.[0]?.url,
+    )
     expect(exportRequest).not.toContain('limit=')
-    expect(createObjectURLMock).toHaveBeenCalledTimes(1)
-    expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:requirements-export')
   })
 
   it('uses localized filter-based report URLs for floating actions', async () => {
@@ -1071,7 +1169,7 @@ describe('RequirementsClient', () => {
 
       if (url.startsWith('/api/requirements?')) {
         return okJson({
-          pagination: { hasMore: true },
+          pagination: { hasMore: true, nextCursor: 'cursor-1' },
           requirements: [reviewRow],
         })
       }
@@ -1102,15 +1200,19 @@ describe('RequirementsClient', () => {
     expect(reportsAction?.badge).toBeUndefined()
     expect(reportsAction?.variant).toBeUndefined()
     expect(pdfListItem).toBeTruthy()
+    const reportsTrigger = screen.getByRole('button', {
+      name: 'reports',
+    }) as HTMLButtonElement
     if (
       pdfListItem &&
       !('kind' in pdfListItem) &&
       typeof pdfListItem.onClick === 'function'
     ) {
-      pdfListItem.onClick()
+      pdfListItem.onClick(reportsTrigger)
     }
     expect(pdfDownloadState.download).toHaveBeenCalledWith({
       fallbackFilename: 'requirements-list.pdf',
+      restoreFocusTo: reportsTrigger,
       url: '/sv/requirements/reports/pdf/list?locale=sv&sortBy=uniqueId&sortDirection=asc&statuses=3',
     })
 
@@ -1148,10 +1250,11 @@ describe('RequirementsClient', () => {
       !('kind' in reviewPdfItem) &&
       typeof reviewPdfItem.onClick === 'function'
     ) {
-      reviewPdfItem.onClick()
+      reviewPdfItem.onClick(reportsTrigger)
     }
     expect(pdfDownloadState.download).toHaveBeenLastCalledWith({
       fallbackFilename: 'combined-review-report.pdf',
+      restoreFocusTo: reportsTrigger,
       url: '/sv/requirements/reports/pdf/review-combined?ids=1',
     })
   })
@@ -1212,15 +1315,64 @@ describe('RequirementsClient', () => {
     })
   })
 
-  it('ignores export failures without starting a download', async () => {
+  it('disables the combined report when a selected row is absent after refresh', async () => {
+    const firstReviewRow = makeRequirementRow(1)
+    firstReviewRow.version.status = 2
+    const secondReviewRow = makeRequirementRow(2)
+    secondReviewRow.version.status = 2
+
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = String(input)
 
       if (url.startsWith('/api/requirements?')) {
-        if (url.includes('format=csv')) {
-          return Promise.reject(new Error('Export failed'))
-        }
+        return okJson({
+          pagination: { hasMore: false },
+          requirements: url.includes('sortBy=status')
+            ? [firstReviewRow]
+            : [firstReviewRow, secondReviewRow],
+        })
+      }
 
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001,INT0002'),
+    )
+    fireEvent.click(screen.getByText('select-first-two-rows'))
+    fireEvent.click(screen.getByText('change-sort'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+
+    const reviewPdfItem = latestFloatingActions()
+      .find(action => action.id === 'reports')
+      ?.menuItems?.find(item => item.id === 'review-report-pdf')
+
+    expect(reviewPdfItem).toMatchObject({
+      badge: 2,
+      disabled: true,
+      tooltip: 'reviewReportAllMustBeReview',
+    })
+  })
+
+  it('delegates CSV export failures to the shared download flow', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements/export?')) {
+        return Promise.reject(new Error('Export failed'))
+      }
+      if (url.startsWith('/api/requirements?')) {
         return okJson({
           pagination: { hasMore: false },
           requirements: [makeRequirementRow(1)],
@@ -1245,26 +1397,26 @@ describe('RequirementsClient', () => {
     fireEvent.click(screen.getByRole('button', { name: 'export' }))
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('format=csv'),
+      expect(pdfDownloadState.download).toHaveBeenCalledWith(
+        expect.objectContaining({
+          output: 'csv',
+          url: expect.stringContaining('/api/requirements/export?'),
+        }),
       ),
     )
-
-    expect(createObjectURLMock).not.toHaveBeenCalled()
-    expect(revokeObjectURLMock).not.toHaveBeenCalled()
   })
 
   it('ignores stale refresh responses and pinned-row fetches once a newer refresh wins', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const staleList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const freshList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const stalePinned =
@@ -1330,6 +1482,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1351,6 +1504,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortDirection=desc'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1417,11 +1571,11 @@ describe('RequirementsClient', () => {
 
   it('prepends a pinned row when status sort metadata is unavailable', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const pinnedList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const pinnedDetail =
@@ -1478,6 +1632,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1496,7 +1651,10 @@ describe('RequirementsClient', () => {
     })
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/1'),
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements/1',
+        expect.objectContaining({ signal: expect.anything() }),
+      ),
     )
 
     pinnedDetail.resolve(
@@ -1520,11 +1678,11 @@ describe('RequirementsClient', () => {
 
   it('clears a pinned row immediately when selecting a different row', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const pinnedList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const pinnedDetail =
@@ -1578,6 +1736,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1587,7 +1746,10 @@ describe('RequirementsClient', () => {
     })
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/1'),
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements/1',
+        expect.objectContaining({ signal: expect.anything() }),
+      ),
     )
 
     fireEvent.click(screen.getByText('row-3'))
@@ -1604,15 +1766,15 @@ describe('RequirementsClient', () => {
 
   it('clears a pinned row immediately when the expanded detail closes', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const pinnedList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const closeRefresh = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const pinnedDetail =
@@ -1670,6 +1832,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1679,7 +1842,10 @@ describe('RequirementsClient', () => {
     })
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/1'),
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements/1',
+        expect.objectContaining({ signal: expect.anything() }),
+      ),
     )
 
     pinnedDetail.resolve(makeRequirementDetail(1, { uniqueId: 'PINNED-0001' }))
@@ -1712,15 +1878,15 @@ describe('RequirementsClient', () => {
 
   it('ignores stale load-more responses after a newer refresh replaces the list', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const staleLoadMore = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const freshRefresh = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
 
@@ -1728,7 +1894,7 @@ describe('RequirementsClient', () => {
       const url = String(input)
 
       if (url.startsWith('/api/requirements?')) {
-        if (url.includes('offset=1')) {
+        if (url.includes('cursor=cursor-1')) {
           return staleLoadMore.promise
         }
         if (
@@ -1757,7 +1923,7 @@ describe('RequirementsClient', () => {
     render(<RequirementsClient />)
 
     initialList.resolve({
-      pagination: { hasMore: true },
+      pagination: { hasMore: true, nextCursor: 'cursor-1' },
       requirements: [makeRequirementRow(1)],
     })
 
@@ -1772,7 +1938,8 @@ describe('RequirementsClient', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('offset=1'),
+        expect.stringContaining('cursor=cursor-1'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1789,7 +1956,7 @@ describe('RequirementsClient', () => {
     expect(screen.getByTestId('has-more').textContent).toBe('false')
 
     staleLoadMore.resolve({
-      pagination: { hasMore: true },
+      pagination: { hasMore: true, nextCursor: 'cursor-1' },
       requirements: [makeRequirementRow(3)],
     })
 
@@ -1802,13 +1969,91 @@ describe('RequirementsClient', () => {
     expect(screen.getByTestId('has-more').textContent).toBe('false')
   })
 
+  it('ignores stale invalid-cursor recovery after a newer refresh replaces the list', async () => {
+    const initialList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean; nextCursor?: string | null }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const freshRefresh = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean; nextCursor?: string | null }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    let resolveStaleLoadMore: ((response: Response) => void) | undefined
+    const staleLoadMore = new Promise<Response>(resolve => {
+      resolveStaleLoadMore = resolve
+    })
+    let firstPageRequests = 0
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (url.includes('cursor=cursor-1')) {
+          return staleLoadMore
+        }
+        firstPageRequests += 1
+        if (url.includes('sortBy=status')) {
+          return freshRefresh.promise
+        }
+        return initialList.promise
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) return metadataResponse
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+    initialList.resolve({
+      pagination: { hasMore: true, nextCursor: 'cursor-1' },
+      requirements: [makeRequirementRow(1)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+    fireEvent.click(screen.getByText('load-more'))
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('cursor=cursor-1'),
+        expect.objectContaining({ signal: expect.anything() }),
+      ),
+    )
+
+    fireEvent.click(screen.getByText('change-sort'))
+    freshRefresh.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(2)],
+    })
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0002'),
+    )
+
+    resolveStaleLoadMore?.({
+      clone() {
+        return this
+      },
+      json: async () => ({ code: 'invalid_cursor' }),
+      ok: false,
+      status: 400,
+    } as Response)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('loading-more').textContent).toBe('false'),
+    )
+    expect(firstPageRequests).toBe(2)
+    expect(screen.getByTestId('row-ids').textContent).toBe('INT0002')
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
   it('does not start load more while a refresh is already in flight', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const refreshedList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
 
@@ -1842,7 +2087,7 @@ describe('RequirementsClient', () => {
     render(<RequirementsClient />)
 
     initialList.resolve({
-      pagination: { hasMore: true },
+      pagination: { hasMore: true, nextCursor: 'cursor-1' },
       requirements: [makeRequirementRow(1)],
     })
 
@@ -1858,6 +2103,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
     await waitFor(() =>
@@ -1870,7 +2116,7 @@ describe('RequirementsClient', () => {
       fetchMock.mock.calls.some(
         ([input]) =>
           String(input).startsWith('/api/requirements?') &&
-          String(input).includes('offset=1'),
+          String(input).includes('cursor=cursor-1'),
       ),
     ).toBe(false)
     expect(screen.getByTestId('loading-more').textContent).toBe('false')
@@ -1888,11 +2134,11 @@ describe('RequirementsClient', () => {
 
   it('keeps refreshed rows when the pinned-row fetch rejects', async () => {
     const initialList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
     const refreshedList = createDeferredJsonResponse<{
-      pagination: { hasMore: boolean }
+      pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
 
@@ -1944,6 +2190,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('sortBy=status'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
 
@@ -1969,7 +2216,7 @@ describe('RequirementsClient', () => {
       if (url.startsWith('/api/requirements?')) {
         return Promise.resolve(
           okJson({
-            pagination: { hasMore: true },
+            pagination: { hasMore: true, nextCursor: 'cursor-1' },
             requirements: [makeRequirementRow(1)],
           }),
         )
@@ -2398,12 +2645,12 @@ describe('RequirementsClient', () => {
       const url = String(input)
 
       if (url.startsWith('/api/requirements?')) {
-        if (url.includes('offset=1')) {
+        if (url.includes('cursor=cursor-1')) {
           return Promise.reject(new Error('Load more failed'))
         }
 
         return okJson({
-          pagination: { hasMore: true },
+          pagination: { hasMore: true, nextCursor: 'cursor-1' },
           requirements: [makeRequirementRow(1)],
         })
       }
@@ -2432,6 +2679,56 @@ describe('RequirementsClient', () => {
 
     expect(screen.getByTestId('row-ids').textContent).toBe('INT0001')
     expect(screen.getByTestId('has-more').textContent).toBe('true')
+  })
+
+  it('refreshes from the first page and announces an invalid cursor', async () => {
+    let firstPageRequests = 0
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (url.includes('cursor=cursor-1')) {
+          const body = { code: 'invalid_cursor' }
+          return {
+            clone() {
+              return this
+            },
+            json: async () => body,
+            ok: false,
+            status: 400,
+          } as Response
+        }
+
+        firstPageRequests += 1
+        return okJson({
+          pagination:
+            firstPageRequests === 1
+              ? { hasMore: true, nextCursor: 'cursor-1' }
+              : { hasMore: false, nextCursor: null },
+          requirements: [makeRequirementRow(firstPageRequests)],
+        })
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) return metadataResponse
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+
+    fireEvent.click(screen.getByText('load-more'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0002'),
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'requirementListRefreshed',
+    )
+    expect(screen.getByTestId('has-more').textContent).toBe('false')
   })
 
   it('falls back to default column preferences when local storage is invalid', async () => {
@@ -2523,6 +2820,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/api/requirements?'),
+        expect.objectContaining({ signal: expect.anything() }),
       ),
     )
   })

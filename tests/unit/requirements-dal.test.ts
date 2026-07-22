@@ -297,6 +297,7 @@ describe('requirements DAL (SQL Server path)', () => {
           qcRequirementTypeId: 5,
           qcParentId: null,
           rlId: 1,
+          rlCode: 'P4',
           rlNameEn: 'High',
           rlNameSv: 'Hög',
           rlColor: '#ff0000',
@@ -372,6 +373,7 @@ describe('requirements DAL (SQL Server path)', () => {
       nameSv: 'Funktionell',
     })
     expect(version?.priorityLevel).toEqual({
+      code: 'P4',
       id: 1,
       nameEn: 'High',
       nameSv: 'Hög',
@@ -1034,6 +1036,66 @@ describe('archiving helpers (atomicity & strict-target rule)', () => {
   })
 
   describe('transitionStatus', () => {
+    it('publishes a successor and archives its predecessor with one timestamp inside the transaction', async () => {
+      const { db, query, transaction } = createSqlServerDb()
+      const publishedAt = new Date('2026-07-17T10:00:00.000Z')
+      query
+        .mockResolvedValueOnce([{ id: 3 }])
+        .mockResolvedValueOnce([
+          {
+            archiveInitiatedAt: null,
+            description: 'review successor',
+            id: 22,
+            revisionToken: '11111111-1111-4111-8111-111111111111',
+            statusId: 2,
+            verifiable: 0,
+          },
+        ])
+        .mockResolvedValueOnce([{ isArchived: 0 }])
+        .mockResolvedValueOnce([{ id: 12 }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            acceptanceCriteria: null,
+            archiveInitiatedAt: null,
+            archivedAt: null,
+            createdAt: publishedAt,
+            createdBy: 'Reviewer',
+            createdByHsaId: 'SE5560000001-reviewer1',
+            description: 'review successor',
+            editedAt: null,
+            hasSpecificationItemHistory: 0,
+            id: 22,
+            priorityLevelId: null,
+            publishedAt,
+            qualityCharacteristicId: null,
+            requirementCategoryId: null,
+            requirementId: 7,
+            requirementTypeId: null,
+            revisionToken: '22222222-2222-4222-8222-222222222222',
+            statusId: 3,
+            statusUpdatedAt: publishedAt,
+            verifiable: 0,
+            verificationMethod: null,
+            versionNumber: 2,
+          },
+        ])
+
+      await transitionStatus(db, 7, 3)
+
+      expect(transaction).toHaveBeenCalledTimes(1)
+      const predecessorArchive = query.mock.calls[4]
+      const successorPublish = query.mock.calls[7]
+      expect(String(predecessorArchive?.[0])).toContain(
+        'SET requirement_status_id = 4',
+      )
+      expect(String(successorPublish?.[0])).toContain('published_at = @2')
+      expect(predecessorArchive?.[1]?.[0]).toBe(successorPublish?.[1]?.[1])
+      expect(predecessorArchive?.[1]?.[0]).toBe(successorPublish?.[1]?.[2])
+    })
+
     it('maps published-version unique index violations to conflict', async () => {
       const { db, query } = createSqlServerDb()
       query

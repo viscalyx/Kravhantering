@@ -8,7 +8,7 @@ import {
 } from '@/app/[locale]/requirements/reports/pdf/route-helpers'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
 import { ReportDataError } from '@/lib/reports/data/server'
-import { collectSpecificationOutputData } from '@/lib/reports/data/specification-output'
+import { collectCompleteSpecificationOutputData } from '@/lib/reports/data/specification-output'
 import { getReportLabels } from '@/lib/reports/report-labels'
 import {
   getSpecificationReportProfileForLifecycleStatus,
@@ -57,7 +57,7 @@ export async function GET(
       )
     }
 
-    const data = await collectSpecificationOutputData(
+    const data = await collectCompleteSpecificationOutputData(
       runtime.db,
       specification.id,
     )

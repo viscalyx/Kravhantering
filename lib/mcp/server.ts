@@ -18,6 +18,7 @@ import {
   isRequirementsServiceError,
   type RequirementsErrorCode,
 } from '@/lib/requirements/errors'
+import { REQUIREMENT_SORT_FIELDS } from '@/lib/requirements/list-view'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import {
   buildRequirementViewUri,
@@ -51,6 +52,7 @@ const DEFAULT_MCP_RUNTIME_SETTINGS: McpRuntimeSettings = Object.freeze({
 const READABLE_MCP_ERROR_CODES = new Set<RequirementsErrorCode>([
   'not_found',
   'validation',
+  'invalid_cursor',
   'conflict',
   'unauthorized',
   'forbidden',
@@ -96,14 +98,28 @@ const ImportSchemaOutputSchema = z
 
 const QueryCatalogOutputSchema = z
   .object({
+    pagination: z
+      .object({
+        count: z.number().int().nonnegative(),
+        hasMore: z.boolean(),
+        limit: z.number().int().positive(),
+        nextCursor: z.string().max(512).nullable(),
+      })
+      .strict()
+      .optional()
+      .describe(
+        'Present only for catalog "requirements"; use nextCursor for forward continuation.',
+      ),
     result: z
       .array(z.record(z.string(), z.unknown()))
       .describe(
-        'Catalog rows for operation "list" or "search". Search rows include top-level match metadata.',
+        'Catalog rows for operation "list" or "search". Requirement search rows include match.matchedFields; lookup search rows also include match.quality.',
       ),
   })
   .strict()
-  .describe('Structured catalog output. Rows are always in result.')
+  .describe(
+    'Structured catalog output. Requirements return result plus pagination without a total; lookup catalogs return only result.',
+  )
 
 const McpSearchMatchOutputSchema = z
   .object({
@@ -331,14 +347,35 @@ const ConnectedNormReferenceRequirementSchema = z
   })
   .strict()
 
+const NormReferenceIdConflictReasonSchema = z.enum([
+  'norm_reference_id_exists',
+  'norm_reference_id_generation_exhausted',
+])
+
+const NormReferenceManagementErrorOutputSchema = z
+  .object({
+    error: z
+      .object({
+        code: z.literal('conflict'),
+        reason: NormReferenceIdConflictReasonSchema,
+      })
+      .strict(),
+  })
+  .strict()
+
 const ManageNormReferenceOutputSchema = z
   .object({
+    error: NormReferenceManagementErrorOutputSchema.shape.error.optional(),
     normReference: NormReferenceOutputSchema.optional(),
     requirements: z.array(ConnectedNormReferenceRequirementSchema).optional(),
     result: z.array(NormReferenceOutputSchema).optional(),
   })
   .strict()
   .superRefine((val, ctx) => {
+    if (Object.hasOwn(val, 'error')) {
+      rejectUnexpectedFields(ctx, val, ['error'])
+      return
+    }
     if (Object.hasOwn(val, 'result')) {
       rejectUnexpectedFields(ctx, val, ['result'])
       return
@@ -351,7 +388,7 @@ const ManageNormReferenceOutputSchema = z
     rejectUnexpectedFields(ctx, val, ['normReference'])
   })
   .describe(
-    'Normbibliotek management result. Shape depends on operation: result, normReference, or requirements.',
+    'Normbibliotek management result. Shape depends on operation: result, normReference, requirements, or error.',
   )
 
 const RequirementVersionOutputSchema = z
@@ -581,10 +618,40 @@ function formatError(error: unknown) {
     content: [
       {
         type: 'text' as const,
-        text: `Error: ${message}`,
+        text:
+          isRequirementsServiceError(error) && error.code === 'invalid_cursor'
+            ? `Error [invalid_cursor]: ${message}. Restart without cursor while retaining the normalized filters, locale, and sort.`
+            : `Error: ${message}`,
       },
     ],
     isError: true,
+  }
+}
+
+function formatNormReferenceError(error: unknown) {
+  const reason =
+    isRequirementsServiceError(error) && error.code === 'conflict'
+      ? error.details?.reason
+      : undefined
+  const parsedReason = NormReferenceIdConflictReasonSchema.safeParse(reason)
+  if (!parsedReason.success || !isRequirementsServiceError(error)) {
+    return formatError(error)
+  }
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: `Error: ${error.message}`,
+      },
+    ],
+    isError: true,
+    structuredContent: {
+      error: {
+        code: 'conflict' as const,
+        reason: parsedReason.data,
+      },
+    },
   }
 }
 
@@ -776,6 +843,14 @@ function createQueryCatalogSchema() {
         .describe(
           'Requirement category IDs. Applies only to catalog "requirements".',
         ),
+      cursor: z
+        .string()
+        .min(1)
+        .max(512)
+        .optional()
+        .describe(
+          'Opaque forward cursor from pagination.nextCursor. Applies only to catalog "requirements". On invalid_cursor, restart without cursor while retaining filters, locale, and sort.',
+        ),
       includeArchived: z
         .boolean()
         .optional()
@@ -783,6 +858,15 @@ function createQueryCatalogSchema() {
           'Whether archived requirements are included. Applies only to catalog "requirements".',
         ),
       locale: ResponseLocaleSchema,
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .default(50)
+        .describe(
+          'Bounded page size for catalog "requirements"; defaults to 50 and accepts 1 through 100.',
+        ),
       normReferenceIds: z
         .array(z.number().int().positive())
         .optional()
@@ -884,6 +968,17 @@ function createQueryCatalogSchema() {
           code: 'custom',
           message: 'search is allowed only for operation "search".',
           path: ['search'],
+        })
+      }
+      if (
+        val.catalog !== 'requirements' &&
+        (val.cursor != null || val.limit !== 50)
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            'cursor and non-default limit apply only to catalog "requirements".',
+          path: ['catalog'],
         })
       }
     })
@@ -1510,8 +1605,10 @@ function toCatalogInput(
     areaIds: input.areaIds,
     catalog: input.catalog,
     categoryIds: input.categoryIds,
+    cursor: input.cursor,
     includeArchived: input.includeArchived,
     locale: toResponseLocale(input.locale),
+    limit: input.limit,
     normReferenceIds: input.normReferenceIds,
     operation: input.operation,
     verifiable: input.verifiable,
@@ -1640,7 +1737,7 @@ export function createKravhanteringMcpServer(
   const addRequirementIdsCopyPath =
     'Copy requirements_query_catalog.result[].id -> requirementIds.'
   const removeRequirementIdsCopyPath =
-    'Copy requirements_get_specification_items.items[].id -> requirementIds.'
+    'For requirements_remove_from_specification, copy only requirements_get_specification_items.items[] where kind === "library": items[].id -> requirementIds. Use itemRef for mixed-item actions; specification-local IDs are not library requirementIds.'
 
   const requirementResourceTemplate = new ResourceTemplate(
     'requirements://requirement/{uniqueId}',
@@ -1744,7 +1841,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List or search the requirements library and lookup catalogs: requirements, areas, categories, types, quality_characteristics, priority_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Requirement filters and sorting apply when catalog is "requirements"; typeId filters quality_characteristics.',
+        'List or search the requirements library and lookup catalogs: requirements, areas, categories, types, quality_characteristics, priority_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Catalog "requirements" uses bounded forward pages in result plus pagination, defaults to 50 rows, and returns no exact total; continue with pagination.nextCursor. Requirement search is SQL Server-authoritative and returns match.matchedFields without match.quality. On invalid_cursor, restart without cursor while retaining normalized filters, locale, and sort. Other catalogs keep the non-paginated { result: [...] } contract; typeId filters quality_characteristics.',
       inputSchema: createQueryCatalogSchema(),
       outputSchema: QueryCatalogOutputSchema,
       title: 'Query Requirements Library',
@@ -1941,7 +2038,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'List, search, get, create, or inspect connected library Krav IDs for Normbibliotek norm references. Use list/search to resolve normReferenceIds before generating a Kravimportfil; these discovery operations return full norm-reference properties but no connected krav rows, IDs, or counts. Use get with exactly one of id or normReferenceId for an exact lookup, including archived rows, and use list_connected_requirement_ids with the same selector to return connected library Krav IDs as {id, uniqueId}. Archived norm references are excluded from list/search by default and are not valid for import.',
+        'List, search, get, create, or inspect connected library Krav IDs for Normbibliotek norm references. Use list/search to resolve normReferenceIds before generating a Kravimportfil; these discovery operations return full norm-reference properties but no connected krav rows, IDs, or counts. Use get with exactly one of id or normReferenceId for an exact lookup, including archived rows, and use list_connected_requirement_ids with the same selector to return connected library Krav IDs as {id, uniqueId}. Create allocates missing IDs as a deterministic base or suffix. An explicit duplicate or generated-ID exhaustion returns isError with structuredContent.error {code:"conflict", reason:"norm_reference_id_exists"|"norm_reference_id_generation_exhausted"}. Archived norm references are excluded from list/search by default and are not valid for import.',
       inputSchema: createManageNormReferenceSchema(),
       outputSchema: ManageNormReferenceOutputSchema,
       title: 'Manage Norm Reference',
@@ -1967,7 +2064,7 @@ export function createKravhanteringMcpServer(
           structuredContent: payload,
         }
       } catch (error) {
-        return formatError(error)
+        return formatNormReferenceError(error)
       }
     },
   )
@@ -2227,16 +2324,65 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: true,
       },
-      description: `List requirements (krav) linked to a specific requirements specification, with optional description search. Identify the specification with specificationId from requirements_list_specifications. ${specificationIdCopyPath}`,
+      description: `List one bounded, database-ordered page of library and specification-local requirements linked to a requirements specification. Filters apply to the complete result. Continue with pagination.nextCursor; on invalid_cursor, restart without cursor using the same filters, locale, and sort. Identify the specification with specificationId from requirements_list_specifications. ${specificationIdCopyPath} ${removeRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
+          areaIds: z.array(z.number().int().positive()).max(100).optional(),
+          categoryIds: z.array(z.number().int().positive()).max(100).optional(),
+          cursor: z
+            .string()
+            .min(1)
+            .max(512)
+            .optional()
+            .describe(
+              'Opaque continuation cursor from pagination.nextCursor. Omit to start again from the first page.',
+            ),
           descriptionSearch: z
             .string()
+            .max(250)
             .optional()
             .describe(
               'Case-insensitive substring filter on the requirement description.',
             ),
+          limit: z
+            .number()
+            .int()
+            .min(1)
+            .max(100)
+            .default(50)
+            .describe(
+              'Maximum page size from 1 through 100. Defaults to 50 and may be reduced during continuation.',
+            ),
           locale: ResponseLocaleSchema,
+          needsReferenceIds: z
+            .array(z.number().int().positive())
+            .max(100)
+            .optional(),
+          normReferenceIds: z
+            .array(z.number().int().positive())
+            .max(100)
+            .optional(),
+          priorityLevelIds: z
+            .array(z.number().int().positive())
+            .max(100)
+            .optional(),
+          qualityCharacteristicIds: z
+            .array(z.number().int().positive())
+            .max(100)
+            .optional(),
+          requirementPackageIds: z
+            .array(z.number().int().positive())
+            .max(100)
+            .optional(),
+          sortBy: z
+            .enum(REQUIREMENT_SORT_FIELDS)
+            .default('uniqueId')
+            .describe('Whitelisted field used for database ordering.'),
+          sortDirection: z.enum(['asc', 'desc']).default('asc'),
+          specificationItemStatusIds: z
+            .array(z.number().int().positive())
+            .max(100)
+            .optional(),
           specificationId: z
             .number()
             .int()
@@ -2244,6 +2390,10 @@ export function createKravhanteringMcpServer(
             .describe(
               `Numeric ID of the requirements specification. ${specificationIdCopyPath}`,
             ),
+          statuses: z.array(z.number().int().positive()).max(100).optional(),
+          typeIds: z.array(z.number().int().positive()).max(100).optional(),
+          uniqueIdSearch: z.string().max(250).optional(),
+          verifiable: z.array(z.boolean()).max(2).optional(),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
         .strict(),
@@ -2256,6 +2406,8 @@ export function createKravhanteringMcpServer(
                 category: z.string().nullable(),
                 description: z.string().nullable(),
                 id: z.number(),
+                itemRef: z.string(),
+                kind: z.enum(['library', 'specificationLocal']),
                 needsReference: z.string().nullable(),
                 status: z.string().nullable(),
                 type: z.string().nullable(),
@@ -2264,6 +2416,14 @@ export function createKravhanteringMcpServer(
               .strict(),
           ),
           message: z.string(),
+          pagination: z
+            .object({
+              count: z.number().int().nonnegative(),
+              hasMore: z.boolean(),
+              limit: z.number().int().min(1).max(100),
+              nextCursor: z.string().max(512).nullable(),
+            })
+            .strict(),
           specificationId: z.number(),
         })
         .strict(),
@@ -2274,15 +2434,54 @@ export function createKravhanteringMcpServer(
         const payload = await service.getSpecificationItems(
           await getBaseContext(request, 'requirements_get_specification_items'),
           {
-            descriptionSearch: input.descriptionSearch,
+            ...input,
+            capacitySurface: 'mcp',
             locale: toResponseLocale(input.locale),
             specificationId: input.specificationId,
             responseFormat: toResponseFormat(input.responseFormat),
+            verifiable: input.verifiable?.map(String),
           },
         )
+        const locale = toResponseLocale(input.locale)
+        const items = payload.items.flatMap(item => {
+          if (!item.itemRef || !item.kind) return []
+
+          return [
+            {
+              area: item.area?.name ?? null,
+              category:
+                locale === 'sv'
+                  ? (item.version?.categoryNameSv ?? null)
+                  : (item.version?.categoryNameEn ?? null),
+              description: item.version?.description ?? null,
+              id: item.id,
+              itemRef: item.itemRef,
+              kind: item.kind,
+              needsReference: item.needsReference ?? null,
+              status:
+                locale === 'sv'
+                  ? (item.version?.statusNameSv ?? null)
+                  : (item.version?.statusNameEn ?? null),
+              type:
+                locale === 'sv'
+                  ? (item.version?.typeNameSv ?? null)
+                  : (item.version?.typeNameEn ?? null),
+              uniqueId: item.uniqueId,
+            },
+          ]
+        })
+        const structuredPayload = {
+          items,
+          message: payload.message,
+          pagination: { ...payload.pagination, count: items.length },
+          specificationId: payload.specificationId,
+        }
         return {
           content: [{ text: payload.message, type: 'text' }],
-          structuredContent: payload as unknown as Record<string, unknown>,
+          structuredContent: structuredPayload as unknown as Record<
+            string,
+            unknown
+          >,
         }
       } catch (error) {
         return formatError(error)
