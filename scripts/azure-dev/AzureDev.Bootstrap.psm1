@@ -256,6 +256,30 @@ function Test-AzureDevBootstrapSecrets {
   }
 }
 
+function Test-AzureDevGitIdentity {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Config
+  )
+
+  $required = [ordered]@{
+    AZURE_DEV_GIT_USER_NAME = $Config.GitUserName
+    AZURE_DEV_GIT_USER_EMAIL = $Config.GitUserEmail
+  }
+  foreach ($item in $required.GetEnumerator()) {
+    if ([string]::IsNullOrWhiteSpace($item.Value)) {
+      throw (
+        "$($item.Key) could not be resolved. Set it in the session environment, " +
+        'an Azure development environment file, or the local Git configuration.'
+      )
+    }
+    if ($item.Value.Contains("`r") -or $item.Value.Contains("`n")) {
+      throw "$($item.Key) must not contain newline characters."
+    }
+  }
+}
+
 function Copy-AzureDevServiceEnvironmentFiles {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
@@ -390,6 +414,7 @@ function Invoke-AzureDevBootstrap {
   $remoteZshrcPath = '/tmp/krav-azure-dev/zshrc'
   $remoteCodexConfigPath = '/tmp/krav-azure-dev/codex'
   $remoteServiceEnvironmentPath = '/tmp/krav-azure-dev/service-env'
+  Test-AzureDevGitIdentity -Config $Context.Config
   Copy-AzureDevBootstrapFile `
     -Context $Context `
     -RemotePath $remoteBootstrapPath
@@ -406,6 +431,11 @@ function Invoke-AzureDevBootstrap {
     -Context $Context `
     -RemotePath $remoteServiceEnvironmentPath
 
+  $gitUserNameLiteral = ConvertTo-AzureDevShellLiteral `
+    -Value $Context.Config.GitUserName
+  $gitUserEmailLiteral = ConvertTo-AzureDevShellLiteral `
+    -Value $Context.Config.GitUserEmail
+
   $command = @(
     'if command -v cloud-init >/dev/null 2>&1; then sudo cloud-init status --wait || true; fi'
     "chmod 0755 $remoteBootstrapPath"
@@ -415,6 +445,8 @@ function Invoke-AzureDevBootstrap {
       "AZURE_DEV_CODEX_CONFIG_SOURCE=$remoteCodexConfigPath/codex-config.toml " +
       "AZURE_DEV_CODEX_CONFIG_MERGER=$remoteCodexConfigPath/merge-codex-config.py " +
       "AZURE_DEV_SERVICE_ENV_SOURCE=$remoteServiceEnvironmentPath " +
+      "AZURE_DEV_GIT_USER_NAME=$gitUserNameLiteral " +
+      "AZURE_DEV_GIT_USER_EMAIL=$gitUserEmailLiteral " +
       "bash $remoteBootstrapPath"
     )
   ) -join ' && '
@@ -427,6 +459,7 @@ function Invoke-AzureDevBootstrap {
 }
 
 Export-ModuleMember -Function `
+  ConvertTo-AzureDevShellLiteral, `
   Copy-AzureDevBootstrapFile, `
   Copy-AzureDevQuadletFiles, `
   Copy-AzureDevZshTemplate, `
@@ -434,4 +467,5 @@ Export-ModuleMember -Function `
   Copy-AzureDevServiceEnvironmentFiles, `
   Invoke-AzureDevBootstrap, `
   Invoke-AzureDevRemoteCommand, `
-  Test-AzureDevBootstrapSecrets
+  Test-AzureDevBootstrapSecrets, `
+  Test-AzureDevGitIdentity

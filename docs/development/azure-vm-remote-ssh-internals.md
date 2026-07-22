@@ -156,7 +156,14 @@ Precedence is:
 1. Session environment variables.
 2. `.env.azure.development.local`.
 3. `.env.azure.development`.
-4. Built-in defaults.
+4. Effective Git configuration for the local checkout, for the two Git
+   identity values only.
+5. Built-in defaults, which intentionally omit a Git identity.
+
+`Get-AzureDevConfig` resolves `user.name` and `user.email` through the native
+command wrapper only when the corresponding Azure Git identity value remains
+empty after the environment overlays. Setup validates both values before any
+Azure mutation, including during `setup -WhatIf`.
 
 The complete service-principal triple is:
 
@@ -303,10 +310,15 @@ VM, waits for cloud-init when available, and runs:
 <!-- markdownlint-disable MD013 -->
 
 ```text
-sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet AZURE_DEV_ZSHRC_SOURCE=/tmp/krav-azure-dev/zshrc AZURE_DEV_CODEX_CONFIG_SOURCE=/tmp/krav-azure-dev/codex/codex-config.toml AZURE_DEV_CODEX_CONFIG_MERGER=/tmp/krav-azure-dev/codex/merge-codex-config.py bash /tmp/krav-bootstrap-host.sh
+sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet AZURE_DEV_ZSHRC_SOURCE=/tmp/krav-azure-dev/zshrc AZURE_DEV_CODEX_CONFIG_SOURCE=/tmp/krav-azure-dev/codex/codex-config.toml AZURE_DEV_CODEX_CONFIG_MERGER=/tmp/krav-azure-dev/codex/merge-codex-config.py AZURE_DEV_GIT_USER_NAME='<full-name>' AZURE_DEV_GIT_USER_EMAIL='<email-address>' bash /tmp/krav-bootstrap-host.sh
 ```
 
 <!-- markdownlint-enable MD013 -->
+
+The Git identity values are shell-quoted before being added to the bootstrap
+command. Bootstrap writes them to `/home/vscode/.gitconfig` with
+`git config --global` while running as `vscode`; it does not alter the
+workstation configuration.
 
 The ignored `scripts/azure-dev/templates/zshrc.template` is the local override.
 When it is absent, setup uploads the tracked
@@ -501,6 +513,7 @@ Validation must prove these implementation contracts:
   mounted as described in the storage invariants.
 - rootless Podman graphroot is
   `/home/vscode/.local/share/containers/storage`.
+- the remote global Git name and email exactly match the resolved setup values.
 - expected major tools are installed: Node 24, npm, .NET 8.0, Git, GitHub CLI,
   Codex CLI, GitHub Copilot CLI, Docker CLI, Compose, Buildx, Podman,
   `podman-compose`, Python, `dotenv-linter`, Lychee, and Playwright.

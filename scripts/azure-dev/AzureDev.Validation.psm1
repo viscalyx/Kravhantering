@@ -107,6 +107,8 @@ function Invoke-AzureDevSmokeValidation {
 
   $remoteScript = @'
 set -euo pipefail
+expected_git_user_name="$1"
+expected_git_user_email="$2"
 export HOME=/home/vscode
 export XDG_CONFIG_HOME="${HOME}/.config"
 export XDG_DATA_HOME="${HOME}/.local/share"
@@ -313,6 +315,8 @@ node --version 2>/dev/null | grep -Eq '^v24\.'
 npm --version >/dev/null 2>&1
 dotnet --version 2>/dev/null | grep -Eq '^8\.'
 git --version >/dev/null 2>&1
+test "$(git config --global --get user.name)" = "${expected_git_user_name}"
+test "$(git config --global --get user.email)" = "${expected_git_user_email}"
 gh --version >/dev/null 2>&1
 codex --version >/dev/null 2>&1
 copilot --version >/dev/null 2>&1
@@ -399,8 +403,14 @@ run_workspace_command_or_diagnose 'SQL Server health check' npm run db:health
 run_workspace_command_or_diagnose 'Playwright dry-run install check' ./node_modules/.bin/playwright install --dry-run chromium
 '@
 
-  $command = "bash -lc " + (
-    "'" + $remoteScript.Replace("'", "'\''") + "'"
+  $remoteScriptLiteral = ConvertTo-AzureDevShellLiteral -Value $remoteScript
+  $gitUserNameLiteral = ConvertTo-AzureDevShellLiteral `
+    -Value $Context.Config.GitUserName
+  $gitUserEmailLiteral = ConvertTo-AzureDevShellLiteral `
+    -Value $Context.Config.GitUserEmail
+  $command = (
+    "bash -lc $remoteScriptLiteral -- " +
+    "$gitUserNameLiteral $gitUserEmailLiteral"
   )
 
   if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Run smoke validation')) {

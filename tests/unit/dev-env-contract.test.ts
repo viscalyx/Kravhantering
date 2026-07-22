@@ -128,6 +128,55 @@ describe('development environment contract', () => {
     )
   })
 
+  it('configures the Azure VM Git identity before Remote SSH use', () => {
+    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+    const envExample = readWorkspaceFile('.env.azure.development.example')
+    const configModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Config.psm1',
+    )
+    const bootstrapModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Bootstrap.psm1',
+    )
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+    const validationModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Validation.psm1',
+    )
+
+    expect(envExample).toContain('# AZURE_DEV_GIT_USER_NAME=')
+    expect(envExample).toContain('# AZURE_DEV_GIT_USER_EMAIL=')
+    expect(configModule).toContain(
+      "-Arguments @('-C', $RepositoryRoot, 'config', '--get', $Key)",
+    )
+    expect(configModule).toContain("-Key 'user.name'")
+    expect(configModule).toContain("-Key 'user.email'")
+    expect(configModule).toContain(
+      'GitUserName = $values.AZURE_DEV_GIT_USER_NAME',
+    )
+    expect(configModule).toContain(
+      'GitUserEmail = $values.AZURE_DEV_GIT_USER_EMAIL',
+    )
+    expect(entryScript).toContain(
+      'Test-AzureDevGitIdentity -Config $Context.Config',
+    )
+    expect(bootstrapModule).toContain(
+      'AZURE_DEV_GIT_USER_NAME=$gitUserNameLiteral',
+    )
+    expect(bootstrapModule).toContain(
+      'AZURE_DEV_GIT_USER_EMAIL=$gitUserEmailLiteral',
+    )
+    expect(hostBootstrap).toContain('configure_git_identity')
+    expect(hostBootstrap).toContain(
+      'git config --global user.name "${GIT_USER_NAME}"',
+    )
+    expect(hostBootstrap).toContain(
+      'git config --global user.email "${GIT_USER_EMAIL}"',
+    )
+    expect(validationModule).toContain('git config --global --get user.name')
+    expect(validationModule).toContain('git config --global --get user.email')
+  })
+
   it('classifies only allowlisted Bicep WhatIf false positives', () => {
     const azureModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Azure.psm1',

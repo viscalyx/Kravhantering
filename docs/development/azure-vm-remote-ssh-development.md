@@ -403,6 +403,20 @@ The parser intentionally supports only `KEY=value`, optional quotes, blank
 lines, and full-line comments. It does not evaluate shell expressions,
 `export`, variable expansion, or command substitution.
 
+Setup configures global `user.name` and `user.email` values for the remote
+`vscode` user before the first VS Code connection. By default, it copies the
+effective values from the workstation's Git configuration for this checkout.
+Set either value explicitly when the remote identity should differ:
+
+```env
+AZURE_DEV_GIT_USER_NAME=<full-name>
+AZURE_DEV_GIT_USER_EMAIL=<email-address>
+```
+
+Each value resolves independently, so an explicit email can be combined with a
+name copied from local Git configuration. Setup stops before changing Azure
+resources when it cannot resolve both values.
+
 ## Step 5: Configure `.env.azure.development.local`
 
 Create this file only when you need per-workstation overrides or secrets:
@@ -579,7 +593,8 @@ Precedence is:
 1. session environment variables
 2. `.env.azure.development.local`
 3. `.env.azure.development`
-4. built-in defaults
+4. the effective local Git configuration, for Git identity values only
+5. built-in defaults, which do not provide a Git identity
 
 That means a shell `AZURE_CLIENT_SECRET` overrides the value in
 `.env.azure.development.local`. If the shell does not define it, the value from
@@ -662,7 +677,8 @@ Use `-Yes` for non-interactive confirmation. The command creates a dedicated
 SSH key if missing, provisions Azure resources, installs the managed SSH config
 block with SSH agent forwarding enabled when approved, waits for SSH, uploads
 the local bootstrap and Quadlet templates, the selected Zsh profile, and the
-Azure Codex configuration, reruns the VM bootstrap, and runs smoke validation.
+Azure Codex configuration, configures the remote Git identity, reruns the VM
+bootstrap, and runs smoke validation.
 If the VM already exists but was deallocated by `stop` or auto-shutdown, `setup`
 starts it before waiting for SSH.
 
@@ -866,9 +882,10 @@ VM device from the Tailscale admin console.
 ## Step 10: Validate
 
 Default smoke validation checks SSH, the data-disk bind mounts, `/workspace`,
-major tool versions including Codex CLI, GitHub Copilot CLI, and Lychee,
-rootless Podman units, loopback-only support ports, HSA lookup through Kong,
-`npm run db:setup`, `npm run db:health`, and Playwright browser availability.
+major tool versions including Codex CLI, GitHub Copilot CLI, and Lychee, the
+configured global Git identity, rootless Podman units, loopback-only support
+ports, HSA lookup through Kong, `npm run db:setup`, `npm run db:health`, and
+Playwright browser availability.
 
 Optional heavier checks after the environment is accepted:
 

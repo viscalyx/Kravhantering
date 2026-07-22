@@ -20,6 +20,8 @@ ZSHRC_SOURCE="${AZURE_DEV_ZSHRC_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templ
 SERVICE_ENV_SOURCE_DIR="${AZURE_DEV_SERVICE_ENV_SOURCE:-}"
 CODEX_CONFIG_SOURCE="${AZURE_DEV_CODEX_CONFIG_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/codex-config.toml}"
 CODEX_CONFIG_MERGER="${AZURE_DEV_CODEX_CONFIG_MERGER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/merge-codex-config.py}"
+GIT_USER_NAME="${AZURE_DEV_GIT_USER_NAME:-}"
+GIT_USER_EMAIL="${AZURE_DEV_GIT_USER_EMAIL:-}"
 CODEX_INSTALL_HOME="/usr/local/lib/codex"
 SSHD_ROOT_LOGIN_CONFIG="/etc/ssh/sshd_config.d/00-kravhantering-root-login.conf"
 SSHD_ENVIRONMENT_CONFIG="/etc/ssh/sshd_config.d/01-kravhantering-environment.conf"
@@ -62,6 +64,18 @@ ensure_vscode_user() {
   printf '%s ALL=(ALL) NOPASSWD:ALL\n' "${VSCODE_USER}" \
     > /etc/sudoers.d/90-krav-vscode
   chmod 0440 /etc/sudoers.d/90-krav-vscode
+}
+
+configure_git_identity() {
+  if [ -z "${GIT_USER_NAME}" ] || [ -z "${GIT_USER_EMAIL}" ]; then
+    log 'Git user name and email are required for the vscode user'
+    return 1
+  fi
+
+  runuser -u "${VSCODE_USER}" -- env HOME="${VSCODE_HOME}" \
+    git config --global user.name "${GIT_USER_NAME}"
+  runuser -u "${VSCODE_USER}" -- env HOME="${VSCODE_HOME}" \
+    git config --global user.email "${GIT_USER_EMAIL}"
 }
 
 configure_ssh_access() {
@@ -1021,6 +1035,7 @@ main() {
   install_lychee
   configure_optional_ubuntu_pro
   ensure_vscode_user
+  configure_git_identity
   configure_codex_sandbox
   configure_ssh_access
   install_service_environment_files

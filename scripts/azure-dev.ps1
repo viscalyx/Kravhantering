@@ -305,6 +305,7 @@ function Invoke-AzureDevSetup {
   )
 
   Assert-AzureDevTerminalFontInstalled
+  Test-AzureDevGitIdentity -Config $Context.Config
 
   if (-not $WhatIfPreference) {
     Test-AzureDevBootstrapSecrets -Config $Context.Config

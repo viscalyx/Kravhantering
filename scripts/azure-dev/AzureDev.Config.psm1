@@ -12,6 +12,8 @@ function Get-AzureDevDefaultConfig {
   return [ordered]@{
     AZURE_CLIENT_ID = ''
     AZURE_CLIENT_SECRET = ''
+    AZURE_DEV_GIT_USER_EMAIL = ''
+    AZURE_DEV_GIT_USER_NAME = ''
     AZURE_DEV_TAILSCALE_AUTH_KEY = ''
     AZURE_DEV_TAILSCALE_TAILNET = ''
     AZURE_DEV_UBUNTU_PRO_TOKEN = ''
@@ -35,6 +37,34 @@ function Get-AzureDevDefaultConfig {
     KEYCLOAK_ADMIN_PASSWORD = ''
     MSSQL_SA_PASSWORD = ''
   }
+}
+
+function Get-AzureDevLocalGitConfigValue {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepositoryRoot,
+
+    [Parameter(Mandatory = $true)]
+    [ValidateSet('user.name', 'user.email')]
+    [string]$Key
+  )
+
+  if ($null -eq (Get-Command git -ErrorAction SilentlyContinue)) {
+    return ''
+  }
+
+  $result = Invoke-AzureDevNativeCommand `
+    -FilePath 'git' `
+    -Arguments @('-C', $RepositoryRoot, 'config', '--get', $Key)
+  if ($result.ExitCode -eq 1) {
+    return ''
+  }
+  if ($result.ExitCode -ne 0) {
+    throw "Failed to read $Key from the local Git configuration.`n$($result.Text.Trim())"
+  }
+
+  return $result.Text.Trim()
 }
 
 function Import-AzureDevEnvFile {
@@ -195,6 +225,17 @@ function Get-AzureDevConfig {
     }
   }
 
+  if ([string]::IsNullOrWhiteSpace($values.AZURE_DEV_GIT_USER_NAME)) {
+    $values.AZURE_DEV_GIT_USER_NAME = Get-AzureDevLocalGitConfigValue `
+      -RepositoryRoot $RepositoryRoot `
+      -Key 'user.name'
+  }
+  if ([string]::IsNullOrWhiteSpace($values.AZURE_DEV_GIT_USER_EMAIL)) {
+    $values.AZURE_DEV_GIT_USER_EMAIL = Get-AzureDevLocalGitConfigValue `
+      -RepositoryRoot $RepositoryRoot `
+      -Key 'user.email'
+  }
+
   $privateKeyPath = Resolve-AzureDevPath `
     -Path $values.AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH
   $publicKeyPath = "$privateKeyPath.pub"
@@ -231,6 +272,8 @@ function Get-AzureDevConfig {
     TenantId = $values.AZURE_TENANT_ID
     ClientId = $values.AZURE_CLIENT_ID
     ClientSecret = $values.AZURE_CLIENT_SECRET
+    GitUserName = $values.AZURE_DEV_GIT_USER_NAME
+    GitUserEmail = $values.AZURE_DEV_GIT_USER_EMAIL
     KeycloakAdminPassword = $values.KEYCLOAK_ADMIN_PASSWORD
     SqlServerSaPassword = $values.MSSQL_SA_PASSWORD
     TailscaleAuthKey = $values.AZURE_DEV_TAILSCALE_AUTH_KEY
@@ -349,6 +392,7 @@ Export-ModuleMember -Function `
   ConvertTo-AzureDevBoolean, `
   Get-AzureDevConfig, `
   Get-AzureDevDefaultConfig, `
+  Get-AzureDevLocalGitConfigValue, `
   Get-AzureDevTags, `
   Import-AzureDevEnvFile, `
   New-AzureDevContext, `
