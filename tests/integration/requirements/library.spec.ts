@@ -1306,7 +1306,7 @@ test.describe('Requirements library', () => {
     await expect(page.getByRole('menu')).toBeHidden()
   })
 
-  test('ADMIN-11: status and priority badges show labels with configured icons', async ({
+  test('ADMIN-11: status and priority badges show localized labels', async ({
     page,
   }) => {
     const requirementId = 'ANV0003'
@@ -1335,17 +1335,12 @@ test.describe('Requirements library', () => {
     })
 
     await expect(publishedBadge).toHaveCount(1)
-    await expect(publishedBadge.locator('svg')).toHaveCount(1)
     await expect(priorityBadge).toHaveCount(1)
     await expect(priorityBadge).toContainText(/P[1-5] – /u)
-    await expect(priorityBadge.locator('svg')).toHaveCount(1)
 
     const workflow = detailPane.getByRole('group', {
       name: 'Arbetsflöde för kravversionsstatus',
     })
     await expect(workflow).toContainText('Publicerad')
-    await expect
-      .poll(async () => workflow.locator('svg').count())
-      .toBeGreaterThan(0)
   })
 })

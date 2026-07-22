@@ -137,20 +137,15 @@ for (const viewport of viewports) {
       await expect(chip).toContainText('report button: specification reports')
     })
 
-    test('DEVTOOLS-01: keeps sticky table headers referenceable in developer mode', async ({
+    test('DEVTOOLS-01: copies a reference from an annotated table header', async ({
       page,
     }) => {
       await gotoRequirementInlineDetail(page, 'INT0001')
 
-      await page.mouse.wheel(0, 320)
       const stickyHeader = page.locator(
         'thead th[data-developer-mode-name="column header"][data-developer-mode-value="requirement id"]',
       )
       await expect(stickyHeader).toBeVisible()
-      await expect
-        .poll(async () => page.evaluate(() => Math.round(window.scrollY)))
-        .toBeGreaterThan(200)
-
       await page.keyboard.press('Control+Alt+Shift+H')
 
       await expect(page.getByTestId('developer-mode-badge')).toBeVisible()

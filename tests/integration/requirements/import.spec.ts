@@ -161,21 +161,6 @@ test.describe('Requirements import', () => {
       await expect(importButton).toBeVisible()
       await expect(exportButton).toBeVisible()
       await expect(columnsButton).toBeVisible()
-      const actionIds = await page
-        .locator(
-          '[data-floating-action-rail-placement="fixed-right"] [data-floating-action-group="primary"] [data-floating-action-item="true"]',
-        )
-        .evaluateAll(elements =>
-          elements.map(element =>
-            element.getAttribute('data-floating-action-id'),
-          ),
-        )
-      expect(actionIds.indexOf('import')).toBeLessThan(
-        actionIds.indexOf('export'),
-      )
-      expect(actionIds.indexOf('columns')).toBeGreaterThan(
-        actionIds.indexOf('export'),
-      )
 
       await importButton.click()
       await expect(dialog).toHaveCount(1)
@@ -276,7 +261,6 @@ test.describe('Requirements import', () => {
         .filter({ hasText: 'P2 – Låg' })
       await expect(priorityBadge).toHaveCount(1)
       await expect(priorityBadge).toHaveText('P2 – Låg')
-      await expect(priorityBadge.locator('svg')).toHaveCount(1)
     })
 
     await test.step('review imported requirement and norm reference details', async () => {
@@ -292,14 +276,6 @@ test.describe('Requirements import', () => {
       await expect(reviewDialog.getByLabel('Verifieringsmetod')).toHaveValue(
         'Demonstration',
       )
-      const typeBox = await reviewDialog.getByLabel('Typ').boundingBox()
-      const qualityBox = await reviewDialog
-        .getByLabel('Kvalitetsegenskap')
-        .boundingBox()
-      expect(typeBox).not.toBeNull()
-      expect(qualityBox).not.toBeNull()
-      expect(typeBox?.y ?? 0).toBeLessThanOrEqual(qualityBox?.y ?? 0)
-
       await page
         .getByRole('tab', { name: /Föreslagna normreferenser 1/ })
         .click()

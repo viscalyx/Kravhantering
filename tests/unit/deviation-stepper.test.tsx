@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import DeviationStepper from '@/components/DeviationStepper'
+import { contrastRatio } from '@/lib/color-contrast'
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -11,6 +12,39 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+function findActiveSlider(
+  container: HTMLElement,
+  expectedRgb: string,
+): HTMLElement | undefined {
+  return Array.from(container.querySelectorAll('div')).find(
+    element => element.style.backgroundColor === expectedRgb,
+  )
+}
+
+const STEP_CASES = [
+  {
+    background: '#3b82f6',
+    backgroundRgb: 'rgb(59, 130, 246)',
+    foreground: '#111827',
+    label: 'stepDraft',
+    step: 'draft',
+  },
+  {
+    background: '#eab308',
+    backgroundRgb: 'rgb(234, 179, 8)',
+    foreground: '#111827',
+    label: 'stepReviewRequested',
+    step: 'review_requested',
+  },
+  {
+    background: '#22c55e',
+    backgroundRgb: 'rgb(34, 197, 94)',
+    foreground: '#111827',
+    label: 'stepDecided',
+    step: 'decided',
+  },
+] as const
+
 describe('DeviationStepper', () => {
   it('renders three step labels', () => {
     render(<DeviationStepper currentStep="draft" />)
@@ -20,30 +54,21 @@ describe('DeviationStepper', () => {
     expect(screen.getByText('stepDecided')).toBeInTheDocument()
   })
 
-  it('highlights the draft step with blue', () => {
-    const { container } = render(<DeviationStepper currentStep="draft" />)
+  it.each(STEP_CASES)(
+    'keeps the shipped $step background and renders readable text',
+    ({ background, backgroundRgb, foreground, label, step }) => {
+      const { container } = render(<DeviationStepper currentStep={step} />)
 
-    const activeStep = container.querySelector('.text-white')
-    expect(activeStep).toHaveStyle({ backgroundColor: '#3b82f6' })
-  })
-
-  it('highlights the review_requested step with yellow', () => {
-    const { container } = render(
-      <DeviationStepper currentStep="review_requested" />,
-    )
-
-    const activeStep = container.querySelector('.text-white')
-    expect(activeStep).toHaveStyle({ backgroundColor: '#eab308' })
-    expect(screen.getAllByText('stepReviewRequested')).toHaveLength(2)
-  })
-
-  it('highlights the decided step with green', () => {
-    const { container } = render(<DeviationStepper currentStep="decided" />)
-
-    const activeStep = container.querySelector('.text-white')
-    expect(activeStep).toHaveStyle({ backgroundColor: '#22c55e' })
-    expect(screen.getAllByText('stepDecided')).toHaveLength(2)
-  })
+      const activeStep = findActiveSlider(container, backgroundRgb)
+      expect(activeStep).toHaveStyle({
+        backgroundColor: background,
+        color: foreground,
+      })
+      expect(activeStep?.style.transition).toContain('color 300ms ease-out')
+      expect(contrastRatio(foreground, background)).toBeGreaterThanOrEqual(4.5)
+      expect(screen.getAllByText(label)).toHaveLength(2)
+    },
+  )
 
   it('handles resize observer callbacks', () => {
     let resizeObserverCallback: ResizeObserverCallback | null = null
@@ -63,7 +88,7 @@ describe('DeviationStepper', () => {
     const { container } = render(<DeviationStepper currentStep="draft" />)
 
     expect(resizeObserverCallback).toBeTruthy()
-    expect(container.querySelector('.text-white')).toBeTruthy()
+    expect(findActiveSlider(container, 'rgb(59, 130, 246)')).toBeTruthy()
   })
 
   it('exposes role="group" and a translated aria-label on the container (WCAG 4.1.2)', () => {
@@ -94,5 +119,40 @@ describe('DeviationStepper', () => {
     // slider also renders one. Icons are aria-hidden SVGs.
     const icons = container.querySelectorAll('svg[aria-hidden="true"]')
     expect(icons.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('preserves developer-mode metadata for the stepper and every step', () => {
+    const developerModeContext =
+      'specification detail > deviation dialog: DEV-123'
+    const { container } = render(
+      <DeviationStepper
+        currentStep="review_requested"
+        developerModeContext={developerModeContext}
+      />,
+    )
+
+    expect(
+      container.querySelector('[data-developer-mode-name="deviation stepper"]'),
+    ).toHaveAttribute('data-developer-mode-context', developerModeContext)
+
+    const stepMarkers = Array.from(
+      container.querySelectorAll('[data-developer-mode-name="deviation step"]'),
+    )
+    expect(stepMarkers).toHaveLength(3)
+    expect(
+      stepMarkers.map(marker =>
+        marker.getAttribute('data-developer-mode-value'),
+      ),
+    ).toEqual(['draft', 'review_requested', 'decided'])
+    for (const marker of stepMarkers) {
+      expect(marker).toHaveAttribute(
+        'data-developer-mode-name',
+        'deviation step',
+      )
+      expect(marker).toHaveAttribute(
+        'data-developer-mode-context',
+        developerModeContext,
+      )
+    }
   })
 })

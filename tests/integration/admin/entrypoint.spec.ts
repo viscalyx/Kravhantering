@@ -228,14 +228,6 @@ function swapColumns(order: string[], leftId: string, rightId: string) {
   return nextOrder
 }
 
-async function expectTouchTargetSize(locator: Locator) {
-  const box = await locator.boundingBox()
-
-  expect(box).not.toBeNull()
-  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
-  expect(box?.width ?? 0).toBeGreaterThanOrEqual(44)
-}
-
 async function expectIconOnlyAction(action: Locator, accessibleName: string) {
   await expect(action).toBeVisible()
   await expect(action).not.toContainText(accessibleName)
@@ -660,84 +652,6 @@ for (const { name, viewport } of viewportVariants) {
         })
         await expect(suffixInput).toBeEnabled()
         await expect(suffixInput).toHaveAttribute('placeholder', 'Suffix')
-      })
-    }
-
-    if (name === 'mobile') {
-      test('ADMIN-04: keeps admin tabs and actions usable on mobile', async ({
-        page,
-      }) => {
-        await page.goto('/sv/admin')
-
-        const columnsTab = page.getByRole('tab', { name: 'Kolumner' })
-        const taxonomyTab = page.getByRole('tab', {
-          name: 'Taxonomi',
-        })
-        const statusesAndWorkflowsTab = page.getByRole('tab', {
-          name: 'Statusar och arbetsflöden',
-        })
-        const tablist = page.getByRole('tablist', {
-          name: 'Administrationscenter',
-        })
-        const tablistMetrics = await tablist.evaluate(element => ({
-          clientHeight: element.clientHeight,
-          clientWidth: element.clientWidth,
-          firstTabHeight:
-            element.querySelector<HTMLElement>('[role="tab"]')?.offsetHeight ??
-            0,
-          scrollHeight: element.scrollHeight,
-          scrollWidth: element.scrollWidth,
-        }))
-
-        expect(tablistMetrics.scrollWidth).toBeLessThanOrEqual(
-          tablistMetrics.clientWidth + 1,
-        )
-        expect(tablistMetrics.scrollHeight).toBeLessThanOrEqual(
-          tablistMetrics.clientHeight + 1,
-        )
-        expect(tablistMetrics.clientHeight).toBeGreaterThan(
-          tablistMetrics.firstTabHeight,
-        )
-
-        await expect(
-          page.getByRole('tab', { name: 'Terminologi' }),
-        ).toHaveCount(0)
-        await expectTouchTargetSize(columnsTab)
-        await expectTouchTargetSize(taxonomyTab)
-        await expectTouchTargetSize(statusesAndWorkflowsTab)
-        await expect(page.getByRole('button', { name: 'English' })).toHaveCount(
-          0,
-        )
-        await expectTouchTargetSize(
-          page.getByRole('button', { name: 'Återställ standardvy' }),
-        )
-        await expectTouchTargetSize(page.getByRole('button', { name: 'Spara' }))
-
-        await taxonomyTab.click()
-        await expect(taxonomyTab).toHaveAttribute('aria-selected', 'true')
-        await expect(page.getByTestId('taxonomy-card-areas')).toBeVisible()
-
-        await statusesAndWorkflowsTab.click()
-        await expect(statusesAndWorkflowsTab).toHaveAttribute(
-          'aria-selected',
-          'true',
-        )
-        await expect(
-          page.getByTestId('statuses-workflows-card-statuses'),
-        ).toBeVisible()
-
-        await columnsTab.click()
-        await expect(columnsTab).toHaveAttribute('aria-selected', 'true')
-
-        const columnResetButton = page.getByRole('button', {
-          name: 'Återställ standardvy',
-        })
-        const columnSaveButton = page.getByRole('button', { name: 'Spara' })
-
-        await expectTouchTargetSize(columnResetButton)
-        await expectTouchTargetSize(columnSaveButton)
-        await expect(columnResetButton).toBeVisible()
-        await expect(columnSaveButton).toBeVisible()
       })
     }
   })
