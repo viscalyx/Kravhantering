@@ -249,7 +249,7 @@ sudo -n test -f /etc/ssh/sshd_config.d/00-kravhantering-root-login.conf
 root_login_policy="$(
   sudo -n /usr/sbin/sshd -T \
     -C user=root,host=localhost,addr=127.0.0.1 \
-    | awk '$1 == "permitrootlogin" { print $2; exit }'
+    | awk '$1 == "permitrootlogin" { print $2 }'
 )"
 test "${root_login_policy}" = "no"
 findmnt /mnt/krav-azure-dev-data >/dev/null

@@ -59,6 +59,7 @@ ensure_vscode_user() {
 }
 
 configure_ssh_access() {
+  log "configuring SSH root-login policy"
   install -d -m 0755 /etc/ssh/sshd_config.d
   printf '%s\n' \
     '# Managed by Kravhantering Azure development setup.' \
@@ -67,19 +68,19 @@ configure_ssh_access() {
   chmod 0644 "${SSHD_ROOT_LOGIN_CONFIG}"
 
   /usr/sbin/sshd -t
+  systemctl reload ssh.service
 
   local root_login_policy
   root_login_policy="$(
     /usr/sbin/sshd -T \
       -C user=root,host=localhost,addr=127.0.0.1 \
-      | awk '$1 == "permitrootlogin" { print $2; exit }'
+      | awk '$1 == "permitrootlogin" { print $2 }'
   )"
   if [ "${root_login_policy}" != "no" ]; then
     log "effective SSH root-login policy is ${root_login_policy:-unset}; expected no"
     return 1
   fi
-
-  systemctl reload ssh.service
+  log "SSH root-login policy configured and validated"
 }
 
 configure_repositories() {

@@ -295,7 +295,45 @@ describe('development environment contract', () => {
     expect(validationModule).toContain(
       'test "${root_login_policy}" = "no"',
     )
+    expect(hostBootstrap).not.toContain(
+      'awk \'$1 == "permitrootlogin" { print $2; exit }\'',
+    )
+    expect(validationModule).not.toContain(
+      'awk \'$1 == "permitrootlogin" { print $2; exit }\'',
+    )
+
+    const configureSshAccess = hostBootstrap.slice(
+      hostBootstrap.indexOf('configure_ssh_access()'),
+      hostBootstrap.indexOf('\nconfigure_repositories()'),
+    )
+    const configWriteIndex = configureSshAccess.indexOf(
+      "'PermitRootLogin no'",
+    )
+    const syntaxValidationIndex = configureSshAccess.indexOf(
+      '/usr/sbin/sshd -t',
+    )
+    const reloadIndex = configureSshAccess.indexOf(
+      'systemctl reload ssh.service',
+    )
+    const effectiveValidationIndex = configureSshAccess.indexOf(
+      'root_login_policy="$(',
+    )
+
+    expect(configWriteIndex).toBeGreaterThanOrEqual(0)
+    expect(syntaxValidationIndex).toBeGreaterThan(configWriteIndex)
+    expect(reloadIndex).toBeGreaterThan(syntaxValidationIndex)
+    expect(effectiveValidationIndex).toBeGreaterThan(reloadIndex)
     expect(internalsGuide).toContain('PermitRootLogin no')
+  })
+
+  it('includes the SSH exit code when a remote command fails', () => {
+    const bootstrapModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Bootstrap.psm1',
+    )
+
+    expect(bootstrapModule).toContain(
+      'Remote command failed with exit code $($result.ExitCode)',
+    )
   })
 
   it('generates HSA lookup Swagger UI for the Next dev server', () => {

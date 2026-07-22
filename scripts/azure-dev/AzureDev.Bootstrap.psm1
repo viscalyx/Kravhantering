@@ -26,7 +26,7 @@ function Invoke-AzureDevRemoteCommand {
         $Command
       )
     if ($result.ExitCode -ne 0) {
-      throw "Remote command failed: $Description`n$($result.Text.Trim())"
+      throw "Remote command failed with exit code $($result.ExitCode): $Description`n$($result.Text.Trim())"
     }
   }
 }
