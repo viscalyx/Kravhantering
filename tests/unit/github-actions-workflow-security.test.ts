@@ -14,6 +14,13 @@ const DEVCONTAINER_DOCKERFILE = path.join(
   '.devcontainer',
   'Dockerfile',
 )
+const AZURE_HOST_BOOTSTRAP = path.join(
+  process.cwd(),
+  'scripts',
+  'azure-dev',
+  'templates',
+  'bootstrap-host.sh',
+)
 const USES_LINE = /^\s*uses:\s*([^#\s]+)(?:\s+#\s*(.+))?\s*$/u
 const PERSIST_CREDENTIALS_FALSE_LINE =
   /^\s*persist-credentials:\s*['"]?false['"]?(?:\s+#.*)?$/iu
@@ -139,17 +146,31 @@ describe('GitHub Actions workflow security', () => {
     expect(insecureCheckoutReferences).toEqual([])
   })
 
-  it('keeps the development-container and quality-check workflow Lychee versions aligned', () => {
+  it('keeps Azure, devcontainer, and CI Lychee versions aligned', () => {
     const dockerfile = readFileSync(DEVCONTAINER_DOCKERFILE, 'utf8')
     const dockerfileVersion = dockerfile.match(
       /^ARG LYCHEE_VERSION=(v\d+\.\d+\.\d+)$/mu,
     )?.[1]
+    const azureHostBootstrap = readFileSync(AZURE_HOST_BOOTSTRAP, 'utf8')
+    const azureHostVersion = azureHostBootstrap.match(
+      /^LYCHEE_VERSION="(v\d+\.\d+\.\d+)"$/mu,
+    )?.[1]
+    const sha256Pattern = /lychee_sha256='([a-f\d]{64})'/gu
+    const dockerfileHashes = [...dockerfile.matchAll(sha256Pattern)].map(
+      match => match[1],
+    )
+    const azureHostHashes = [...azureHostBootstrap.matchAll(sha256Pattern)].map(
+      match => match[1],
+    )
     const workflow = readWorkflowYaml('quality-checks.yml')
     const lycheeStep = workflow.jobs?.['quality-checks']?.steps?.find(
       step => step.name === 'Run Lychee Markdown link check',
     )
 
     expect(dockerfileVersion).toBeDefined()
+    expect(azureHostVersion).toBe(dockerfileVersion)
+    expect(dockerfileHashes).toHaveLength(2)
+    expect(azureHostHashes).toEqual(dockerfileHashes)
     expect(lycheeStep).toBeDefined()
     expect(lycheeStep?.with?.args).toBe('--config .lychee.toml . .github')
     expect(lycheeStep?.with?.lycheeVersion).toBe(dockerfileVersion)

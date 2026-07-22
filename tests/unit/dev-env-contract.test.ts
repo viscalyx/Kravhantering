@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: Contract tests assert literal shell interpolation syntax.
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
@@ -203,24 +204,18 @@ describe('development environment contract', () => {
       'scripts/azure-dev/AzureDev.Validation.psm1',
     )
 
-    expect(gitignore).toContain(
-      '/scripts/azure-dev/templates/zshrc.template',
-    )
+    expect(gitignore).toContain('/scripts/azure-dev/templates/zshrc.template')
     expect(bootstrapModule).toContain(
       "$customPath = Join-Path $templatesPath 'zshrc.template'",
     )
     expect(bootstrapModule).toContain(
       "$examplePath = Join-Path $templatesPath 'zshrc.template.example'",
     )
-    expect(bootstrapModule).toContain(
-      'AZURE_DEV_ZSHRC_SOURCE=$remoteZshrcPath',
-    )
+    expect(bootstrapModule).toContain('AZURE_DEV_ZSHRC_SOURCE=$remoteZshrcPath')
     expect(hostBootstrap).toContain('custom/themes/powerlevel10k')
     expect(hostBootstrap).toContain('"${ZSHRC_SOURCE}"')
     expect(hostBootstrap).toContain('"${VSCODE_HOME}/.zshrc"')
-    expect(zshExample).toContain(
-      'ZSH_THEME="powerlevel10k/powerlevel10k"',
-    )
+    expect(zshExample).toContain('ZSH_THEME="powerlevel10k/powerlevel10k"')
     expect(zshExample).toContain('POWERLEVEL9K_MODE=nerdfont-v3')
     expect(zshExample).toContain('POWERLEVEL9K_TRANSIENT_PROMPT=always')
     expect(zshExample).toContain('zsh-autosuggestions')
@@ -228,9 +223,7 @@ describe('development environment contract', () => {
     expect(zshExample).not.toContain('OP_SERVICE_ACCOUNT_TOKEN')
     expect(zshExample).not.toContain('/Users/')
     expect(entryScript).toContain('Assert-AzureDevTerminalFontInstalled')
-    expect(entryScript).toContain(
-      'p10k configure to customize the prompt.',
-    )
+    expect(entryScript).toContain('p10k configure to customize the prompt.')
     expect(validationModule).toContain(
       "$script:AzureDevTerminalFontFamily = 'MesloLGS Nerd Font Mono'",
     )
@@ -245,6 +238,58 @@ describe('development environment contract', () => {
     )
   })
 
+  it('installs and smoke-validates Lychee on the Azure VM', () => {
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+    const validationModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Validation.psm1',
+    )
+
+    expect(hostBootstrap).toContain('install_lychee()')
+    expect(hostBootstrap).toContain('/usr/local/bin/lychee')
+    expect(hostBootstrap).toContain('sha256sum --check --status')
+    expect(validationModule).toContain('lychee --version >/dev/null 2>&1')
+  })
+
+  it('provisions a working Codex sandbox and profile on the Azure VM', () => {
+    const bootstrapModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Bootstrap.psm1',
+    )
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+    const codexConfig = readWorkspaceFile(
+      'scripts/azure-dev/templates/codex-config.toml',
+    )
+    const validationModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Validation.psm1',
+    )
+    const developmentGuide = readWorkspaceFile(
+      'docs/development/azure-vm-remote-ssh-development.md',
+    )
+
+    expect(hostBootstrap).toContain('apparmor-profiles')
+    expect(hostBootstrap).toContain('apparmor-utils')
+    expect(hostBootstrap).toContain('bubblewrap')
+    expect(hostBootstrap).toContain('configure_codex_sandbox')
+    expect(hostBootstrap).toContain('bwrap-userns-restrict')
+    expect(hostBootstrap).toContain('merge-codex-config.py')
+    expect(bootstrapModule).toContain('Copy-AzureDevCodexConfigFiles')
+    expect(bootstrapModule).toContain('AZURE_DEV_CODEX_CONFIG_SOURCE')
+    expect(bootstrapModule).toContain('AZURE_DEV_CODEX_CONFIG_MERGER')
+    expect(codexConfig).toContain(
+      'default_permissions = "kravhantering-azure-dev"',
+    )
+    expect(codexConfig).toContain('"127.0.0.1" = "allow"')
+    expect(validationModule).toContain('/usr/bin/bwrap')
+    expect(validationModule).toContain(
+      "config['default_permissions'] == 'kravhantering-azure-dev'",
+    )
+    expect(developmentGuide).toContain('### Codex in Remote SSH')
+    expect(developmentGuide).toContain('preserves existing personal settings')
+  })
+
   it('prints a regular SSH command after Azure VM setup', () => {
     const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
     const developmentGuide = readWorkspaceFile(
@@ -255,9 +300,9 @@ describe('development environment contract', () => {
       '$identityFile = $Context.Config.SshPrivateKeyPath',
     )
     expect(entryScript).toContain(
-      'Write-Host "ssh -i `"$identityFile`" -o IdentitiesOnly=yes ' +
-        'vscode@$hostName"',
+      '"ssh -i `"$identityFile`" -o IdentitiesOnly=yes " +',
     )
+    expect(entryScript).toContain('"-o SendEnv=GH_TOKEN vscode@$hostName"')
     expect(entryScript).not.toContain('Write-Host "SSH target:')
     const standardSshHeading = entryScript.indexOf(
       "Write-Host 'For administration tasks, connect using standard SSH:'",
@@ -272,8 +317,44 @@ describe('development environment contract', () => {
     expect(developmentEnvironmentHeading).toBeGreaterThan(standardSshHeading)
     expect(extensionsHeading).toBeGreaterThan(developmentEnvironmentHeading)
     expect(developmentGuide).toContain(
-      'ssh -i "<private-key-path>" -o IdentitiesOnly=yes',
+      '-o SendEnv=GH_TOKEN vscode@<public-ip-or-tailscale-name>',
     )
+  })
+
+  it('forwards GH_TOKEN without persisting or printing its value', () => {
+    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+    const sshModule = readWorkspaceFile('scripts/azure-dev/AzureDev.Ssh.psm1')
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+    const validationModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Validation.psm1',
+    )
+    const developmentGuide = readWorkspaceFile(
+      'docs/development/azure-vm-remote-ssh-development.md',
+    )
+    const internalsGuide = readWorkspaceFile(
+      'docs/development/azure-vm-remote-ssh-internals.md',
+    )
+
+    expect(sshModule).toContain("'    SendEnv GH_TOKEN'")
+    expect(hostBootstrap).toContain("'AcceptEnv GH_TOKEN'")
+    expect(hostBootstrap).toContain('01-kravhantering-environment.conf')
+    expect(validationModule).toContain('01-kravhantering-environment.conf')
+    expect(validationModule).toContain(
+      "grep -Eq '^acceptenv (.* )?GH_TOKEN( |$)'",
+    )
+    expect(entryScript).toContain(
+      'GitHub authentication for the remote development environment:',
+    )
+    expect(entryScript).toContain('PowerShell: $env:GH_TOKEN = gh auth token')
+    expect(entryScript).toContain('For SAML SSO authorization instructions')
+    expect(entryScript).toContain('Never print the token value.')
+    expect(developmentGuide).toContain("workstation's secure credential store")
+    expect(developmentGuide).toContain('SendEnv GH_TOKEN')
+    expect(developmentGuide).toContain('AcceptEnv GH_TOKEN')
+    expect(developmentGuide).toContain('SAML SSO')
+    expect(internalsGuide).toContain('never written to the managed block')
   })
 
   it('offers explicit VS Code Remote SSH extension installation choices', () => {
@@ -293,10 +374,8 @@ describe('development environment contract', () => {
     expect(entryScript).toContain(
       'Extensions: Install Workspace Recommended Extensions',
     )
-    expect(developmentGuide).toContain(
-      'always-installed Remote SSH extensions',
-    )
-    expect(developmentGuide).toContain(
+    expect(developmentGuide).toContain('always-installed Remote SSH extensions')
+    expect(developmentGuide.replaceAll(/\s+/g, ' ')).toContain(
       'does not change the application-wide VS Code setting',
     )
   })
@@ -321,9 +400,7 @@ describe('development environment contract', () => {
     expect(validationModule).toContain(
       '-C user=root,host=localhost,addr=127.0.0.1',
     )
-    expect(validationModule).toContain(
-      'test "${root_login_policy}" = "no"',
-    )
+    expect(validationModule).toContain('test "${root_login_policy}" = "no"')
     const sshHardeningValidation = validationModule.slice(
       validationModule.indexOf(
         'sudo -n test -f /etc/ssh/sshd_config.d/00-kravhantering-root-login.conf',
@@ -343,12 +420,9 @@ describe('development environment contract', () => {
       hostBootstrap.indexOf('configure_ssh_access()'),
       hostBootstrap.indexOf('\nconfigure_repositories()'),
     )
-    const configWriteIndex = configureSshAccess.indexOf(
-      "'PermitRootLogin no'",
-    )
-    const syntaxValidationIndex = configureSshAccess.indexOf(
-      '/usr/sbin/sshd -t',
-    )
+    const configWriteIndex = configureSshAccess.indexOf("'PermitRootLogin no'")
+    const syntaxValidationIndex =
+      configureSshAccess.indexOf('/usr/sbin/sshd -t')
     const reloadIndex = configureSshAccess.indexOf(
       'systemctl reload ssh.service',
     )
@@ -378,9 +452,7 @@ describe('development environment contract', () => {
       'scripts/azure-dev/AzureDev.Bootstrap.psm1',
     )
 
-    expect(bootstrapModule).toContain(
-      'function ConvertTo-AzureDevShellLiteral',
-    )
+    expect(bootstrapModule).toContain('function ConvertTo-AzureDevShellLiteral')
     expect(bootstrapModule).toContain(
       'rm -rf -- $remotePathLiteral && mkdir -p -- $remotePathLiteral',
     )

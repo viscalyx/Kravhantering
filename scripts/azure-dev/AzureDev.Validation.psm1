@@ -242,19 +242,54 @@ print('Kong HSA route hsa-directory-person-lookup-rest not found')
 sys.exit(1)
 PY
 
+python3 - <<'PY'
+from pathlib import Path
+import tomllib
+
+config = tomllib.loads(
+    Path('/home/vscode/.codex/config.toml').read_text(encoding='utf-8')
+)
+assert config['approval_policy'] == 'never'
+assert config['default_permissions'] == 'kravhantering-azure-dev'
+assert config['projects']['/workspace']['trust_level'] == 'trusted'
+profile = config['permissions']['kravhantering-azure-dev']
+assert profile['extends'] == ':workspace'
+assert profile['network']['enabled'] is True
+assert profile['network']['allow_local_binding'] is True
+assert profile['network']['domains'] == {
+    'localhost': 'allow',
+    '127.0.0.1': 'allow',
+    '::1': 'allow',
+}
+PY
+
+sudo -n test -f /etc/apparmor.d/bwrap-userns-restrict
+/usr/bin/bwrap \
+  --ro-bind / / \
+  --dev /dev \
+  --proc /proc \
+  --unshare-user \
+  --unshare-pid \
+  --unshare-net \
+  -- /bin/true
+
 test -d /workspace
 test "$(stat -c '%U' /workspace)" = "vscode"
 test -d /workspace/.git
 if ! {
   sudo -n test -f /etc/ssh/sshd_config.d/00-kravhantering-root-login.conf &&
+    sudo -n test -f /etc/ssh/sshd_config.d/01-kravhantering-environment.conf &&
     root_login_policy="$(
       sudo -n /usr/sbin/sshd -T \
         -C user=root,host=localhost,addr=127.0.0.1 \
         | awk '$1 == "permitrootlogin" { print $2 }'
     )" &&
-    test "${root_login_policy}" = "no"
+    test "${root_login_policy}" = "no" &&
+    sudo -n /usr/sbin/sshd -T \
+      -C user=vscode,host=localhost,addr=127.0.0.1 \
+      | grep -Eq '^acceptenv (.* )?GH_TOKEN( |$)'
 }; then
-  printf 'SSH root-login hardening validation failed.\n'
+  printf 'SSH root-login or environment validation failed.\n'
   dump_smoke_diagnostics
   exit 1
 fi
@@ -286,6 +321,7 @@ podman --version >/dev/null 2>&1
 podman-compose --version >/dev/null 2>&1
 python3 --version >/dev/null 2>&1
 dotenv-linter --version >/dev/null 2>&1
+lychee --version >/dev/null 2>&1
 test -x /workspace/node_modules/.bin/playwright
 /workspace/node_modules/.bin/playwright --version >/dev/null 2>&1
 loginctl show-user vscode -p Linger | grep -q 'Linger=yes'

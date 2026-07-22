@@ -183,7 +183,20 @@ function Write-AzureDevSshInstructions {
   $hostName = Get-AzureDevHostName -Context $Context
   $identityFile = $Context.Config.SshPrivateKeyPath
   Write-Host 'For administration tasks, connect using standard SSH:'
-  Write-Host "ssh -i `"$identityFile`" -o IdentitiesOnly=yes vscode@$hostName"
+  Write-Host (
+    "ssh -i `"$identityFile`" -o IdentitiesOnly=yes " +
+    "-o SendEnv=GH_TOKEN vscode@$hostName"
+  )
+
+  Write-Host ''
+  Write-Host 'GitHub authentication for the remote development environment:'
+  Write-Host '  The managed SSH configuration forwards GH_TOKEN from this workstation.'
+  Write-Host '  Set GH_TOKEN in the environment that launches VS Code. For example:'
+  Write-Host '    PowerShell: $env:GH_TOKEN = gh auth token'
+  Write-Host '    Bash/Zsh:   export GH_TOKEN="$(gh auth token)"'
+  Write-Host '  For SAML SSO authorization instructions, see:'
+  Write-Host '    docs/development/azure-vm-remote-ssh-development.md#prepare-github-authentication'
+  Write-Host '  Then start a new Remote SSH connection. Never print the token value.'
 
   $codeCommand = Get-AzureDevCodeCommand -Context $Context
   Write-Host ''

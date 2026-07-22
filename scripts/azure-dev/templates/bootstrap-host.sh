@@ -18,7 +18,11 @@ HOST_STATE_DIR="/var/lib/krav-azure-dev"
 QUADLET_SOURCE_DIR="${AZURE_DEV_QUADLET_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/quadlet}"
 ZSHRC_SOURCE="${AZURE_DEV_ZSHRC_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/zshrc.template.example}"
 SERVICE_ENV_SOURCE_DIR="${AZURE_DEV_SERVICE_ENV_SOURCE:-}"
+CODEX_CONFIG_SOURCE="${AZURE_DEV_CODEX_CONFIG_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/codex-config.toml}"
+CODEX_CONFIG_MERGER="${AZURE_DEV_CODEX_CONFIG_MERGER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/merge-codex-config.py}"
 SSHD_ROOT_LOGIN_CONFIG="/etc/ssh/sshd_config.d/00-kravhantering-root-login.conf"
+SSHD_ENVIRONMENT_CONFIG="/etc/ssh/sshd_config.d/01-kravhantering-environment.conf"
+LYCHEE_VERSION="v0.24.2"
 
 log() {
   printf '[krav-azure-bootstrap] %s\n' "$*"
@@ -60,13 +64,18 @@ ensure_vscode_user() {
 }
 
 configure_ssh_access() {
-  log "configuring SSH root-login policy"
+  log "configuring SSH root-login and environment policies"
   install -d -m 0755 /etc/ssh/sshd_config.d
   printf '%s\n' \
     '# Managed by Kravhantering Azure development setup.' \
     'PermitRootLogin no' \
     > "${SSHD_ROOT_LOGIN_CONFIG}"
   chmod 0644 "${SSHD_ROOT_LOGIN_CONFIG}"
+  printf '%s\n' \
+    '# Managed by Kravhantering Azure development setup.' \
+    'AcceptEnv GH_TOKEN' \
+    > "${SSHD_ENVIRONMENT_CONFIG}"
+  chmod 0644 "${SSHD_ENVIRONMENT_CONFIG}"
 
   /usr/sbin/sshd -t
   systemctl reload ssh.service
@@ -81,7 +90,13 @@ configure_ssh_access() {
     log "effective SSH root-login policy is ${root_login_policy:-unset}; expected no"
     return 1
   fi
-  log "SSH root-login policy configured and validated"
+  if ! /usr/sbin/sshd -T \
+    -C user=vscode,host=localhost,addr=127.0.0.1 \
+    | grep -Eq '^acceptenv (.* )?GH_TOKEN( |$)'; then
+    log "effective SSH environment policy does not accept GH_TOKEN"
+    return 1
+  fi
+  log "SSH root-login and environment policies configured and validated"
 }
 
 configure_repositories() {
@@ -125,7 +140,10 @@ install_host_packages() {
   apt-get update
   DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     aardvark-dns \
+    apparmor-profiles \
+    apparmor-utils \
     build-essential \
+    bubblewrap \
     dbus-user-session \
     docker-buildx-plugin \
     docker-ce \
@@ -167,6 +185,50 @@ install_host_packages() {
   fi
 }
 
+install_lychee() {
+  local expected_version="${LYCHEE_VERSION#v}"
+  if command -v lychee >/dev/null 2>&1 &&
+    [ "$(lychee --version 2>/dev/null)" = "lychee ${expected_version}" ]; then
+    return
+  fi
+
+  local lychee_target lychee_sha256
+  case "$(dpkg --print-architecture)" in
+    amd64)
+      lychee_target='x86_64-unknown-linux-gnu'
+      lychee_sha256='1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a'
+      ;;
+    arm64)
+      lychee_target='aarch64-unknown-linux-gnu'
+      lychee_sha256='91a7bd65685da41b90ccb9bc867a3d649a7818042dae04ff405e55a25bddee4c'
+      ;;
+    *)
+      log "unsupported Lychee architecture: $(dpkg --print-architecture)"
+      return 1
+      ;;
+  esac
+
+  local lychee_archive lychee_temp_dir
+  lychee_temp_dir="$(mktemp -d /tmp/krav-lychee.XXXXXX)"
+  lychee_archive="${lychee_temp_dir}/lychee-${lychee_target}.tar.gz"
+  if ! curl -fsSLo "${lychee_archive}" \
+    "https://github.com/lycheeverse/lychee/releases/download/lychee-${LYCHEE_VERSION}/lychee-${lychee_target}.tar.gz"; then
+    rm -rf "${lychee_temp_dir}"
+    return 1
+  fi
+  if ! printf '%s  %s\n' "${lychee_sha256}" "${lychee_archive}" \
+    | sha256sum --check --status; then
+    log "Lychee ${LYCHEE_VERSION} archive checksum validation failed"
+    rm -rf "${lychee_temp_dir}"
+    return 1
+  fi
+
+  tar -xzf "${lychee_archive}" --strip-components=1 -C "${lychee_temp_dir}"
+  install -m 0755 "${lychee_temp_dir}/lychee" /usr/local/bin/lychee
+  rm -rf "${lychee_temp_dir}"
+  lychee --version
+}
+
 configure_optional_ubuntu_pro() {
   local attach_config="${SERVICE_ENV_SOURCE_DIR}/ubuntu-pro-attach.yaml"
   if [ -z "${SERVICE_ENV_SOURCE_DIR}" ] || [ ! -s "${attach_config}" ]; then
@@ -188,6 +250,37 @@ configure_optional_ubuntu_pro() {
       ;;
   esac
   rm -f "${attach_config}"
+}
+
+configure_codex_sandbox() {
+  local profile_source="/usr/share/apparmor/extra-profiles/bwrap-userns-restrict"
+  local profile_target="/etc/apparmor.d/bwrap-userns-restrict"
+
+  if [ ! -x /usr/bin/bwrap ]; then
+    log "bubblewrap is not installed at /usr/bin/bwrap"
+    return 1
+  fi
+  if [ ! -f "${profile_source}" ]; then
+    log "Bubblewrap AppArmor profile is missing: ${profile_source}"
+    return 1
+  fi
+
+  install -m 0644 "${profile_source}" "${profile_target}"
+  apparmor_parser -r "${profile_target}"
+
+  if ! runuser -u "${VSCODE_USER}" -- \
+    /usr/bin/bwrap \
+      --ro-bind / / \
+      --dev /dev \
+      --proc /proc \
+      --unshare-user \
+      --unshare-pid \
+      --unshare-net \
+      -- /bin/true; then
+    log "Bubblewrap cannot create the user and network namespaces required by Codex"
+    return 1
+  fi
+  log "Codex Bubblewrap sandbox configured and validated"
 }
 
 mount_data_disk() {
@@ -472,12 +565,22 @@ configure_codex_home() {
     "${VSCODE_HOME}/.codex/sqlite" \
     "${VSCODE_HOME}/.codex/tmp"
 
-  if [ ! -f "${VSCODE_HOME}/.codex/config.toml" ] &&
-    [ -f "${WORKSPACE_DIR}/.devcontainer/codex-config.toml" ]; then
-    install -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0644 \
-      "${WORKSPACE_DIR}/.devcontainer/codex-config.toml" \
-      "${VSCODE_HOME}/.codex/config.toml"
+  if [ ! -f "${CODEX_CONFIG_SOURCE}" ]; then
+    log "Azure Codex configuration is missing: ${CODEX_CONFIG_SOURCE}"
+    return 1
   fi
+  if [ ! -f "${CODEX_CONFIG_MERGER}" ]; then
+    log "Azure Codex configuration merger is missing: ${CODEX_CONFIG_MERGER}"
+    return 1
+  fi
+
+  runuser -u "${VSCODE_USER}" -- \
+    python3 "${CODEX_CONFIG_MERGER}" \
+      "${CODEX_CONFIG_SOURCE}" \
+      "${VSCODE_HOME}/.codex/config.toml"
+  chown "${VSCODE_USER}:${VSCODE_USER}" "${VSCODE_HOME}/.codex/config.toml"
+  chmod 0600 "${VSCODE_HOME}/.codex/config.toml"
+  log "Azure Codex permission profile merged into ${VSCODE_HOME}/.codex/config.toml"
 }
 
 link_playwright_chrome() {
@@ -896,8 +999,10 @@ validate_loopback_ports() {
 main() {
   log "starting host bootstrap"
   install_host_packages
+  install_lychee
   configure_optional_ubuntu_pro
   ensure_vscode_user
+  configure_codex_sandbox
   configure_ssh_access
   install_service_environment_files
   stop_user_quadlet_services_before_storage_change

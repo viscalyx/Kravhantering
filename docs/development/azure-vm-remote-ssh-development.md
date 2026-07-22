@@ -101,7 +101,8 @@ OS disk
     |   |-- fstab
     |   |-- krav-dev/                         -> optional Tailscale env read
     |   |-- ssh/sshd_config.d/
-    |   |   `-- 00-kravhantering-root-login.conf
+    |   |   |-- 00-kravhantering-root-login.conf
+    |   |   `-- 01-kravhantering-environment.conf
     |   `-- sudoers.d/
     |       `-- 90-krav-vscode
     |
@@ -282,6 +283,7 @@ Install these tools on the workstation:
 - Azure CLI
 - OpenSSH client, `ssh-keygen`, and `scp`
 - VS Code with Remote SSH
+- GitHub CLI when GitHub access is required from the remote environment
 - MesloLGS Nerd Font Mono installed on the workstation
 - Optional: Tailscale CLI for Tailscale cleanup checks
 
@@ -310,6 +312,49 @@ Service-principal automation may use `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`,
 and `AZURE_CLIENT_SECRET` from the shell or `.env.azure.development.local`.
 When all three values are set, real Azure commands log in with the service
 principal before checking any existing Azure CLI user login.
+
+### Prepare GitHub authentication
+
+The Azure VM setup does not copy or persist a GitHub token. Keep the token in
+the workstation's secure credential store and expose it as `GH_TOKEN` only in
+the environment that launches the Remote SSH connection. For example, when the
+GitHub CLI is already authenticated with the intended account:
+
+```powershell
+$env:GH_TOKEN = gh auth token
+```
+
+For Bash or Zsh:
+
+```sh
+export GH_TOKEN="$(gh auth token)"
+```
+
+Do not echo the variable or put its value in the repository, an Azure
+development environment file, the SSH config, or a shell profile. Use a
+repository-limited, expiring token with only the permissions the development
+workflow needs.
+
+Fine-grained personal access tokens receive organization authorization during
+creation. A classic personal access token requires a separate SAML SSO
+authorization: authenticate with the organization identity provider once, open
+GitHub **Settings > Developer settings > Personal access tokens**, choose
+**Configure SSO** for the token, and then choose **Authorize** for the
+organization. See
+[GitHub's SAML SSO token authorization guide](https://docs.github.com/authentication/authenticating-with-saml-single-sign-on/authorizing-a-personal-access-token-for-use-with-saml-single-sign-on).
+
+Setup adds `SendEnv GH_TOKEN` to the managed workstation SSH host block and
+configures the VM with `AcceptEnv GH_TOKEN`. OpenSSH transfers the value through
+the encrypted SSH session, and the VS Code Server and its child processes
+inherit it. The setup scripts never inspect, print, or persist the token value.
+
+After changing or rotating the token, close the Remote SSH connection and open
+a new one so the VS Code Server receives the current value. Verify forwarding
+without displaying the token:
+
+```sh
+test -n "${GH_TOKEN:-}" && gh auth status
+```
 
 ## Step 4: Configure `.env.azure.development`
 
@@ -616,8 +661,8 @@ every charge. It does not run the Azure deployment preview; use
 Use `-Yes` for non-interactive confirmation. The command creates a dedicated
 SSH key if missing, provisions Azure resources, installs the managed SSH config
 block when approved, waits for SSH, uploads the local bootstrap and Quadlet
-templates and the selected Zsh profile, reruns the VM bootstrap, and runs smoke
-validation.
+templates, the selected Zsh profile, and the Azure Codex configuration, reruns
+the VM bootstrap, and runs smoke validation.
 If the VM already exists but was deallocated by `stop` or auto-shutdown, `setup`
 starts it before waiting for SSH.
 
@@ -628,17 +673,41 @@ disk at `/mnt/krav-azure-dev-data`, bind-mounts
 bind-mounts the data-disk-backed Podman storage directory to
 `/home/vscode/.local/share/containers/storage`. It clones the repo to
 `/workspace`, configures rootless Podman to use its normal home storage path,
-runs `npm install`, restores .NET tools, installs Playwright browsers, verifies
-the checked-out Kong config, builds HSA support images with Podman, recreates
-the managed support containers from the current Quadlet templates and
-checked-out Kong config while preserving named volumes, starts Quadlet services,
-and runs smoke validation.
+runs `npm install`, restores .NET tools, installs the pinned Lychee link checker
+and Playwright browsers, verifies the checked-out Kong config, builds HSA
+support images with Podman, recreates the managed support containers from the
+current Quadlet templates and checked-out Kong config while preserving named
+volumes, starts Quadlet services, and runs smoke validation.
+
+### Codex in Remote SSH
+
+Azure setup installs the distribution `bubblewrap` package and the Ubuntu
+24.04 AppArmor profile required for unprivileged user namespaces. Bootstrap
+tests Bubblewrap as `vscode` with an isolated network namespace, and smoke
+validation repeats that test. Setup fails early if the Codex sandbox cannot
+initialize loopback networking.
+
+Setup also uploads `scripts/azure-dev/templates/codex-config.toml` and merges
+its Azure-specific settings into `/home/vscode/.codex/config.toml`. The merge
+preserves existing personal settings such as the selected model and MCP
+servers. It manages the default permission profile, `/workspace` trust, and
+the `kravhantering-azure-dev` profile on every setup run, even when the user
+configuration already exists.
+
+The profile grants workspace access and network access to the loopback
+addresses used by host-side development and the Podman support services. The
+devcontainer profile in `.devcontainer/codex-config.toml` is separate and is
+not installed on the Azure VM.
+
+After setup repairs Codex configuration on an already connected VM, reload the
+VS Code Remote SSH window and start a new Codex session so the extension reads
+the updated profile.
 
 For administration tasks, use the generated regular SSH command:
 
 ```sh
 ssh -i "<private-key-path>" -o IdentitiesOnly=yes \
-  vscode@<public-ip-or-tailscale-name>
+  -o SendEnv=GH_TOKEN vscode@<public-ip-or-tailscale-name>
 ```
 
 Setup fills in the configured private-key path and the resolved remote host.
@@ -650,6 +719,13 @@ OpenSSH; Azure control-plane operations, Run Command, VM Access, and Serial
 Console remain available for management and recovery. After using an Azure
 recovery action that resets or rewrites SSH configuration, rerun `setup` to
 restore and validate the managed policy.
+
+The generated managed SSH host block also contains `SendEnv GH_TOKEN`, and the
+VM accepts that named GitHub environment variable in addition to its standard
+OpenSSH environment policy. Before running either generated connection
+command, set `GH_TOKEN` in the workstation environment as described in
+[Prepare GitHub authentication](#prepare-github-authentication). Setup prints
+the same reminder after a successful setup or start operation.
 
 To start a development environment, use the generated VS Code command:
 
@@ -778,9 +854,9 @@ VM device from the Tailscale admin console.
 ## Step 10: Validate
 
 Default smoke validation checks SSH, the data-disk bind mounts, `/workspace`,
-major tool versions, rootless Podman units, loopback-only support ports, HSA
-lookup through Kong, `npm run db:setup`, `npm run db:health`, and Playwright
-browser availability.
+major tool versions including Lychee, rootless Podman units, loopback-only
+support ports, HSA lookup through Kong, `npm run db:setup`,
+`npm run db:health`, and Playwright browser availability.
 
 Optional heavier checks after the environment is accepted:
 

@@ -180,7 +180,8 @@ function Get-AzureDevSshConfigBlock {
     '    User vscode',
     "    IdentityFile $identityFile",
     '    IdentitiesOnly yes',
-    '    StrictHostKeyChecking accept-new'
+    '    StrictHostKeyChecking accept-new',
+    '    SendEnv GH_TOKEN'
   )
   foreach ($port in $script:AzureDevForwardedPorts) {
     $lines += "    LocalForward 127.0.0.1:$port 127.0.0.1:$port"

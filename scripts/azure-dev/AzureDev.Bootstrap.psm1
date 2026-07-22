@@ -174,6 +174,57 @@ function Copy-AzureDevZshTemplate {
   }
 }
 
+function Copy-AzureDevCodexConfigFiles {
+  [CmdletBinding(SupportsShouldProcess = $true)]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RemotePath
+  )
+
+  if ($RemotePath.Length -le 1 -or -not $RemotePath.StartsWith('/')) {
+    throw "Codex configuration remote path must be absolute: $RemotePath"
+  }
+
+  $templatesPath = Split-Path -Parent $Context.BootstrapPath
+  $sourcePaths = @(
+    (Join-Path $templatesPath 'codex-config.toml'),
+    (Join-Path $templatesPath 'merge-codex-config.py')
+  )
+  foreach ($sourcePath in $sourcePaths) {
+    if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+      throw "Codex configuration file is missing: $sourcePath"
+    }
+  }
+
+  if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Upload Codex configuration files')) {
+    $remotePathLiteral = ConvertTo-AzureDevShellLiteral -Value $RemotePath
+    Invoke-AzureDevRemoteCommand `
+      -Context $Context `
+      -Command "rm -rf -- $remotePathLiteral && mkdir -p -- $remotePathLiteral" `
+      -Description 'Prepare Codex configuration upload directory'
+
+    $arguments = @(
+      '-o',
+      'BatchMode=yes',
+      '-o',
+      'ClearAllForwardings=yes',
+      '-o',
+      'StrictHostKeyChecking=accept-new'
+    )
+    $arguments += $sourcePaths
+    $arguments += "$($Context.Config.SshHostAlias):$RemotePath/"
+    $result = Invoke-AzureDevNativeCommand `
+      -FilePath 'scp' `
+      -Arguments $arguments
+    if ($result.ExitCode -ne 0) {
+      throw "Codex configuration upload failed.`n$($result.Text.Trim())"
+    }
+  }
+}
+
 function Test-AzureDevBootstrapSecrets {
   [CmdletBinding()]
   param(
@@ -337,6 +388,7 @@ function Invoke-AzureDevBootstrap {
   $remoteBootstrapPath = '/tmp/krav-bootstrap-host.sh'
   $remoteQuadletPath = '/tmp/krav-azure-dev/quadlet'
   $remoteZshrcPath = '/tmp/krav-azure-dev/zshrc'
+  $remoteCodexConfigPath = '/tmp/krav-azure-dev/codex'
   $remoteServiceEnvironmentPath = '/tmp/krav-azure-dev/service-env'
   Copy-AzureDevBootstrapFile `
     -Context $Context `
@@ -347,6 +399,9 @@ function Invoke-AzureDevBootstrap {
   Copy-AzureDevZshTemplate `
     -Context $Context `
     -RemotePath $remoteZshrcPath
+  Copy-AzureDevCodexConfigFiles `
+    -Context $Context `
+    -RemotePath $remoteCodexConfigPath
   Copy-AzureDevServiceEnvironmentFiles `
     -Context $Context `
     -RemotePath $remoteServiceEnvironmentPath
@@ -357,6 +412,8 @@ function Invoke-AzureDevBootstrap {
     (
       "sudo env AZURE_DEV_QUADLET_SOURCE=$remoteQuadletPath " +
       "AZURE_DEV_ZSHRC_SOURCE=$remoteZshrcPath " +
+      "AZURE_DEV_CODEX_CONFIG_SOURCE=$remoteCodexConfigPath/codex-config.toml " +
+      "AZURE_DEV_CODEX_CONFIG_MERGER=$remoteCodexConfigPath/merge-codex-config.py " +
       "AZURE_DEV_SERVICE_ENV_SOURCE=$remoteServiceEnvironmentPath " +
       "bash $remoteBootstrapPath"
     )
@@ -373,6 +430,7 @@ Export-ModuleMember -Function `
   Copy-AzureDevBootstrapFile, `
   Copy-AzureDevQuadletFiles, `
   Copy-AzureDevZshTemplate, `
+  Copy-AzureDevCodexConfigFiles, `
   Copy-AzureDevServiceEnvironmentFiles, `
   Invoke-AzureDevBootstrap, `
   Invoke-AzureDevRemoteCommand, `

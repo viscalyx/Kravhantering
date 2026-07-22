@@ -253,7 +253,14 @@ operator's current public IPv4 address and converts it to a `/32` when
 The managed OpenSSH block is bounded by markers and is the only part of
 `~/.ssh/config` the tool may change. The block uses the configured host alias,
 the `vscode` user, `IdentitiesOnly yes`, the configured private key, and the
-local forwards documented in the development guide.
+local forwards documented in the development guide. It also contains
+`SendEnv GH_TOKEN`; the token value remains in the launching workstation
+environment and is never written to the managed block.
+
+The setup and start connection output explains that `GH_TOKEN` must exist in
+the workstation environment that launches VS Code. It may show commands that
+retrieve the token from the local GitHub CLI credential store, but it must
+never retrieve, interpolate, print, or persist the token value.
 
 The setup and start connection output must present both supported extension
 installation choices. It points to `.vscode/extensions.json` as the source for
@@ -277,28 +284,47 @@ address and does not enable Tailscale SSH.
 
 Guest bootstrap writes
 `/etc/ssh/sshd_config.d/00-kravhantering-root-login.conf` with
-`PermitRootLogin no`. It validates the complete OpenSSH configuration and the
-effective root-specific policy before reloading `ssh.service`. Direct root SSH
-is unavailable; operators connect as `vscode` and use passwordless `sudo`.
-Azure control-plane operations and agent- or console-based recovery remain
-independent of this OpenSSH restriction. Rerun setup after any recovery action
-that resets or rewrites guest SSH configuration.
+`PermitRootLogin no` and
+`/etc/ssh/sshd_config.d/01-kravhantering-environment.conf` with
+`AcceptEnv GH_TOKEN`. It validates the complete OpenSSH configuration, the
+effective root-specific policy, and the narrowly scoped GitHub environment
+policy before reloading `ssh.service`. Direct root SSH is unavailable;
+operators connect as `vscode` and use passwordless `sudo`. Azure control-plane
+operations and agent- or console-based recovery remain independent of this
+OpenSSH restriction. Rerun setup after any recovery action that resets or
+rewrites guest SSH configuration.
 
 ## Guest Bootstrap
 
 `AzureDev.Bootstrap.psm1` uploads the current local bootstrap script, Quadlet
-templates, and Zsh profile to `/tmp` on the VM, waits for cloud-init when
-available, and runs:
+templates, Zsh profile, and Azure Codex configuration files to `/tmp` on the
+VM, waits for cloud-init when available, and runs:
+
+<!-- markdownlint-disable MD013 -->
 
 ```text
-sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet AZURE_DEV_ZSHRC_SOURCE=/tmp/krav-azure-dev/zshrc bash /tmp/krav-bootstrap-host.sh
+sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet AZURE_DEV_ZSHRC_SOURCE=/tmp/krav-azure-dev/zshrc AZURE_DEV_CODEX_CONFIG_SOURCE=/tmp/krav-azure-dev/codex/codex-config.toml AZURE_DEV_CODEX_CONFIG_MERGER=/tmp/krav-azure-dev/codex/merge-codex-config.py bash /tmp/krav-bootstrap-host.sh
 ```
+
+<!-- markdownlint-enable MD013 -->
 
 The ignored `scripts/azure-dev/templates/zshrc.template` is the local override.
 When it is absent, setup uploads the tracked
 `scripts/azure-dev/templates/zshrc.template.example`. Bootstrap installs the
 selected file as `/home/vscode/.zshrc` and installs the Oh My Zsh plugins and
 theme required by the default profile.
+
+Bootstrap installs Bubblewrap and the Ubuntu 24.04
+`bwrap-userns-restrict` AppArmor profile, then proves that the `vscode` user
+can create the user, PID, and network namespaces Codex requires. It does not
+disable `kernel.apparmor_restrict_unprivileged_userns` globally.
+
+The tracked Azure Codex template is separate from the devcontainer template.
+`merge-codex-config.py` atomically updates the existing user configuration. It
+preserves unrelated user keys and tables, replaces Azure-owned root settings,
+updates `/workspace` trust, removes a legacy devcontainer profile if one was
+previously copied onto the VM, and writes the managed Azure permission profile.
+Repeated merges produce the same configuration.
 
 Do not move bootstrap into Azure `customData`. Azure does not allow changing
 `customData` on an existing VM, while this workflow must be able to rerun the
@@ -461,6 +487,10 @@ Validation must prove these implementation contracts:
 
 - SSH reaches the generated host alias as `vscode`.
 - the effective root-specific OpenSSH policy is `PermitRootLogin no`.
+- the effective OpenSSH environment policy accepts `GH_TOKEN`.
+- Bubblewrap can create the unprivileged network namespace used by Codex.
+- `/home/vscode/.codex/config.toml` selects the managed
+  `kravhantering-azure-dev` profile while preserving unrelated user settings.
 - `/workspace` exists, is owned by `vscode`, and contains the repo.
 - the data disk, `/workspace`, host state, and rootless Podman storage are
   mounted as described in the storage invariants.
@@ -468,7 +498,7 @@ Validation must prove these implementation contracts:
   `/home/vscode/.local/share/containers/storage`.
 - expected major tools are installed: Node 24, npm, .NET 8.0, Git, GitHub CLI,
   Docker CLI, Compose, Buildx, Podman, `podman-compose`, Python,
-  `dotenv-linter`, and Playwright.
+  `dotenv-linter`, Lychee, and Playwright.
 - user lingering is enabled.
 - managed Quadlet services are active.
 - support ports are bound only to loopback.
