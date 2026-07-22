@@ -17,6 +17,9 @@ param vmSize string
 @minValue(64)
 param dataDiskGiB int
 
+@description('Whether the named managed data disk already exists.')
+param dataDiskExists bool = false
+
 @description('Linux administrator and SSH user.')
 param adminUsername string = 'vscode'
 
@@ -70,6 +73,19 @@ var osDiskName = '${vmName}-osdisk'
 var dataDiskName = '${vmName}-data'
 var sshPublicKeyName = '${namePrefix}-ssh-key'
 var autoShutdownName = 'shutdown-computevm-${vmName}'
+var dataDiskProfile = union({
+  lun: 0
+  name: dataDiskName
+  createOption: 'Empty'
+  caching: 'None'
+  deleteOption: 'Delete'
+  managedDisk: {
+    storageAccountType: 'Premium_LRS'
+  }
+  toBeDetached: false
+}, dataDiskExists ? {} : {
+  diskSizeGB: dataDiskGiB
+})
 
 var sshRules = connectivityMode == 'public-ssh' ? [
   {
@@ -217,18 +233,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
         }
       }
       dataDisks: [
-        {
-          lun: 0
-          name: dataDiskName
-          createOption: 'Empty'
-          caching: 'None'
-          deleteOption: 'Delete'
-          diskSizeGB: dataDiskGiB
-          managedDisk: {
-            storageAccountType: 'Premium_LRS'
-          }
-          toBeDetached: false
-        }
+        dataDiskProfile
       ]
     }
   }

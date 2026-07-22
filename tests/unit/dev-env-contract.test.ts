@@ -38,6 +38,78 @@ function expectDocsMentionEnvVars(content: string, names: readonly string[]) {
 }
 
 describe('development environment contract', () => {
+  it('anchors Azure VM configuration to the repository root', () => {
+    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+    const configModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Config.psm1',
+    )
+
+    expect(entryScript).toContain(
+      'if ([string]::IsNullOrWhiteSpace($RepositoryRoot))',
+    )
+    expect(entryScript).toContain(
+      '$RepositoryRoot = Split-Path -Parent $scriptRoot',
+    )
+    expect(entryScript).toContain('[string]$RepositoryRoot')
+    expect(entryScript).toContain('-RepositoryRoot $RepositoryRoot')
+    expect(configModule).toContain('[string]$RepositoryRoot')
+    expect(configModule).toContain(
+      '$primaryPath = Join-Path $RepositoryRoot $EnvironmentFile',
+    )
+    expect(configModule).not.toContain('$repoRoot = (Get-Location).Path')
+  })
+
+  it('preserves the immutable image reference of an existing Azure VM', () => {
+    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+    const azureModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Azure.psm1',
+    )
+
+    expect(entryScript).toContain(
+      '$image = Get-AzureDevDeploymentImage -Config $Context.Config',
+    )
+    expect(azureModule).toContain("'storageProfile.imageReference'")
+    expect(azureModule).toContain(
+      '$existingImage = Get-AzureDevVmImage -Config $Config',
+    )
+    expect(azureModule).toContain(
+      'return Get-AzureDevUbuntuImage -Config $Config',
+    )
+  })
+
+  it('cleans up Azure CLI stderr capture during WhatIf', () => {
+    const azureModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Azure.psm1',
+    )
+
+    expect(azureModule).toContain('$WhatIfPreference = $false')
+    expect(azureModule).toContain('[System.IO.File]::Delete($stderrPath)')
+  })
+
+  it('manages Azure data disk size outside the VM deployment', () => {
+    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+    const azureModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Azure.psm1',
+    )
+    const bicepTemplate = readWorkspaceFile(
+      'scripts/azure-dev/templates/main.bicep',
+    )
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+
+    expect(entryScript).toContain('Set-AzureDevDataDiskSize')
+    expect(azureModule).toContain("'Expand Azure managed data disk'")
+    expect(azureModule).toContain(
+      'Azure managed disks cannot be shrunk. Setup will preserve the existing',
+    )
+    expect(bicepTemplate).toContain('param dataDiskExists bool = false')
+    expect(bicepTemplate).toContain(
+      'dataDiskExists ? {} : {\n  diskSizeGB: dataDiskGiB',
+    )
+    expect(hostBootstrap).toContain('resize2fs "${DATA_DEVICE}"')
+  })
+
   it('keeps Azure VM support-service passwords in untracked configuration', () => {
     const envExample = readWorkspaceFile('.env.azure.development.example')
     const configModule = readWorkspaceFile(

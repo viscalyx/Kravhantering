@@ -86,11 +86,12 @@ before calling Azure.
 The command flow is intentionally narrow:
 
 - `estimate-cost` prints local cost drivers only.
-- `setup` validates prerequisites, resolves SSH CIDR and Ubuntu image, creates
-  or verifies the SSH key, checks existing VM SSH-key drift, converges the
-  resource group and Bicep deployment, starts the VM when needed, waits for SSH,
-  uploads templates, reruns bootstrap, runs smoke validation, writes state, and
-  prints SSH instructions.
+- `setup` validates prerequisites, resolves SSH CIDR, preserves an existing
+  VM's immutable image reference or resolves the latest image for a new VM,
+  creates or verifies the SSH key, checks existing VM SSH-key drift, converges
+  the resource group and Bicep deployment, starts the VM when needed, waits for
+  SSH, uploads templates, reruns bootstrap, runs smoke validation, writes state,
+  and prints SSH instructions.
 - `start` starts the VM, refreshes SSH config, waits for SSH, and prints
   connection instructions.
 - `stop` deallocates the VM.
@@ -134,6 +135,11 @@ Configuration is a strict dotenv subset:
 The parser rejects `export`, shell evaluation, variable expansion, command
 substitution, and unterminated quoted values. It expands `~` only for paths the
 implementation explicitly resolves.
+
+The entry point uses its optional `-RepositoryRoot` value or derives the
+repository root from `scripts/azure-dev.ps1` when the parameter is omitted. It
+resolves both environment files and all local state paths from that root. It
+does not depend on PowerShell's current location.
 
 Precedence is:
 
@@ -217,6 +223,13 @@ created with a different key and fails with a remove-and-recreate instruction.
 
 The OS and data disks use `deleteOption: Delete` in Bicep so VM teardown deletes
 them with the VM instead of leaving detached managed disks behind.
+
+For an existing managed data disk, Bicep omits `diskSizeGB` from the VM update.
+Setup compares the live disk with `AZURE_DEV_VM_DATA_DISK_GIB`. It updates the
+managed disk resource before deployment when expansion is requested, and host
+bootstrap rescans the device and grows its ext4 filesystem. A smaller requested
+size produces a warning and preserves the live disk; shrinking requires
+removing and recreating the disposable environment.
 
 ## SSH And Connectivity
 

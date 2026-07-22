@@ -104,6 +104,7 @@ install_host_packages() {
     docker-ce-cli \
     docker-compose-plugin \
     dotnet-sdk-8.0 \
+    e2fsprogs \
     fuse-overlayfs \
     gh \
     git \
@@ -148,8 +149,28 @@ mount_data_disk() {
     return 1
   fi
 
+  local data_block_device
+  local data_block_name
+  local data_rescan_path
+  data_block_device="$(readlink -f "${DATA_DEVICE}")"
+  data_block_name="$(basename "${data_block_device}")"
+  data_rescan_path="/sys/class/block/${data_block_name}/device/rescan"
+  if [ ! -w "${data_rescan_path}" ]; then
+    log "Azure data disk rescan path is unavailable: ${data_rescan_path}"
+    return 1
+  fi
+  printf '1\n' > "${data_rescan_path}"
+
   if ! blkid "${DATA_DEVICE}" >/dev/null 2>&1; then
     mkfs.ext4 -F "${DATA_DEVICE}"
+  else
+    local data_fstype
+    data_fstype="$(blkid -s TYPE -o value "${DATA_DEVICE}")"
+    if [ "${data_fstype}" != "${DATA_FSTYPE}" ]; then
+      log "Azure data disk uses ${data_fstype}; expected ${DATA_FSTYPE}"
+      return 1
+    fi
+    resize2fs "${DATA_DEVICE}"
   fi
 
   local uuid

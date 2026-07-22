@@ -13,7 +13,9 @@ function Invoke-AzCli {
   Write-Verbose "Running $commandLine"
 
   $stderrPath = [System.IO.Path]::GetTempFileName()
+  $callerWhatIfPreference = $WhatIfPreference
   try {
+    $WhatIfPreference = $false
     $output = & az @Arguments 2> $stderrPath
     $exitCode = $LASTEXITCODE
     $stdoutText = $output | Out-String
@@ -46,7 +48,8 @@ function Invoke-AzCli {
     }
     return $text
   } finally {
-    Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
+    $WhatIfPreference = $callerWhatIfPreference
+    [System.IO.File]::Delete($stderrPath)
   }
 }
 
@@ -313,6 +316,74 @@ function Get-AzureDevUbuntuImage {
   }
 }
 
+function Get-AzureDevVmImage {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Config
+  )
+
+  try {
+    $image = Invoke-AzCli -Arguments @(
+      'vm',
+      'show',
+      '--subscription',
+      $Config.SubscriptionId,
+      '--resource-group',
+      $Config.ResourceGroup,
+      '--name',
+      $Config.VmName,
+      '--query',
+      'storageProfile.imageReference',
+      '--output',
+      'json'
+    ) -Json
+  } catch {
+    if (
+      $_.Exception.Message -match
+      '(?i)(ResourceGroupNotFound|ResourceNotFound|could not be found|was not found)'
+    ) {
+      return $null
+    }
+    throw
+  }
+
+  if ($null -eq $image) {
+    return $null
+  }
+
+  foreach ($propertyName in @('publisher', 'offer', 'sku', 'version')) {
+    $property = $image.PSObject.Properties[$propertyName]
+    if ($null -eq $property -or [string]::IsNullOrWhiteSpace($property.Value)) {
+      return $null
+    }
+  }
+
+  return [pscustomobject]@{
+    publisher = $image.publisher
+    offer = $image.offer
+    sku = $image.sku
+    version = $image.version
+    urn = "$($image.publisher):$($image.offer):$($image.sku):$($image.version)"
+    plan = $null
+  }
+}
+
+function Get-AzureDevDeploymentImage {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Config
+  )
+
+  $existingImage = Get-AzureDevVmImage -Config $Config
+  if ($null -ne $existingImage) {
+    return $existingImage
+  }
+
+  return Get-AzureDevUbuntuImage -Config $Config
+}
+
 function Get-AzureDevResourceGroup {
   [CmdletBinding()]
   param(
@@ -443,6 +514,83 @@ function Get-AzureDevExpectedResourceNames {
   }
 }
 
+function Get-AzureDevDataDisk {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Config
+  )
+
+  $names = Get-AzureDevExpectedResourceNames -Config $Config
+  try {
+    return Invoke-AzCli -Arguments @(
+      'disk',
+      'show',
+      '--subscription',
+      $Config.SubscriptionId,
+      '--resource-group',
+      $Config.ResourceGroup,
+      '--name',
+      $names.dataDisk,
+      '--output',
+      'json'
+    ) -Json
+  } catch {
+    if (
+      $_.Exception.Message -match
+      '(?i)(ResourceGroupNotFound|ResourceNotFound|could not be found|was not found)'
+    ) {
+      return $null
+    }
+    throw
+  }
+}
+
+function Set-AzureDevDataDiskSize {
+  [CmdletBinding(SupportsShouldProcess = $true)]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context,
+
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$DataDisk
+  )
+
+  $currentSizeGiB = [int]$DataDisk.diskSizeGB
+  $requestedSizeGiB = [int]$Context.Config.DataDiskGiB
+  if ($requestedSizeGiB -lt $currentSizeGiB) {
+    Write-Warning (
+      "AZURE_DEV_VM_DATA_DISK_GIB requests $requestedSizeGiB GiB, but the " +
+      "existing managed disk $($DataDisk.name) is $currentSizeGiB GiB. " +
+      'Azure managed disks cannot be shrunk. Setup will preserve the existing ' +
+      'disk and continue. Remove and recreate the disposable environment to ' +
+      'use a smaller data disk.'
+    )
+    return
+  }
+  if ($requestedSizeGiB -eq $currentSizeGiB) {
+    return
+  }
+
+  $target = "$($DataDisk.name) ($currentSizeGiB GiB to $requestedSizeGiB GiB)"
+  if ($PSCmdlet.ShouldProcess($target, 'Expand Azure managed data disk')) {
+    Invoke-AzCli -Arguments @(
+      'disk',
+      'update',
+      '--subscription',
+      $Context.Config.SubscriptionId,
+      '--resource-group',
+      $Context.Config.ResourceGroup,
+      '--name',
+      $DataDisk.name,
+      '--size-gb',
+      $requestedSizeGiB.ToString(),
+      '--output',
+      'json'
+    ) -Json | Out-Null
+  }
+}
+
 function Get-AzureDevDeploymentParameters {
   [CmdletBinding()]
   param(
@@ -456,7 +604,10 @@ function Get-AzureDevDeploymentParameters {
     [string]$SshPublicKey,
 
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Image
+    [pscustomobject]$Image,
+
+    [Parameter(Mandatory = $true)]
+    [bool]$DataDiskExists
   )
 
   $config = $Context.Config
@@ -466,6 +617,7 @@ function Get-AzureDevDeploymentParameters {
     "vmName=$($config.VmName)",
     "vmSize=$($config.VmSize)",
     "dataDiskGiB=$($config.DataDiskGiB)",
+    "dataDiskExists=$($DataDiskExists.ToString().ToLowerInvariant())",
     "adminUsername=vscode",
     "sshPublicKey=$SshPublicKey",
     "connectivityMode=$($config.ConnectivityMode)",
@@ -495,6 +647,9 @@ function New-AzureDevDeployment {
     [Parameter(Mandatory = $true)]
     [pscustomobject]$Image,
 
+    [Parameter(Mandatory = $true)]
+    [bool]$DataDiskExists,
+
     [switch]$Preview
   )
 
@@ -502,7 +657,8 @@ function New-AzureDevDeployment {
     -Context $Context `
     -AllowedSshCidr $AllowedSshCidr `
     -SshPublicKey $SshPublicKey `
-    -Image $Image
+    -Image $Image `
+    -DataDiskExists $DataDiskExists
 
   $baseArgs = @(
     'deployment',
@@ -808,10 +964,12 @@ Export-ModuleMember -Function `
   Get-AzureDevAccount, `
   Get-AzureDevDeploymentOutputs, `
   Get-AzureDevDeploymentParameters, `
+  Get-AzureDevDataDisk, `
   Get-AzureDevExpectedResourceNames, `
   Get-AzureDevManagedResources, `
   Get-AzureDevPublicIpAddress, `
   Get-AzureDevResourceGroup, `
+  Get-AzureDevDeploymentImage, `
   Get-AzureDevUbuntuImage, `
   Get-AzureDevVisibleSubscriptions, `
   Get-AzureDevVmAdminSshPublicKeys, `
@@ -820,6 +978,7 @@ Export-ModuleMember -Function `
   New-AzureDevDeployment, `
   New-AzureDevResourceGroup, `
   Remove-AzureDevManagedResources, `
+  Set-AzureDevDataDiskSize, `
   Set-AzureDevSubscription, `
   Get-AzureDevManagedResourcesForDeletion, `
   Start-AzureDevAzureVm, `

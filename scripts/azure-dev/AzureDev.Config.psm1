@@ -148,6 +148,9 @@ function Get-AzureDevTags {
 function Get-AzureDevConfig {
   [CmdletBinding()]
   param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepositoryRoot,
+
     [string]$EnvironmentFile = '.env.azure.development',
 
     [switch]$RequireEnvironmentFile,
@@ -155,9 +158,8 @@ function Get-AzureDevConfig {
     [switch]$AllowMissingAzureScope
   )
 
-  $repoRoot = (Get-Location).Path
-  $primaryPath = Join-Path $repoRoot $EnvironmentFile
-  $localPath = Join-Path $repoRoot '.env.azure.development.local'
+  $primaryPath = Join-Path $RepositoryRoot $EnvironmentFile
+  $localPath = Join-Path $RepositoryRoot '.env.azure.development.local'
   $values = Get-AzureDevDefaultConfig
 
   $primaryValues = Import-AzureDevEnvFile `
@@ -198,7 +200,7 @@ function Get-AzureDevConfig {
   $environmentId = $values.AZURE_DEV_VM_ENVIRONMENT_ID
 
   $config = [pscustomobject]@{
-    RepoRoot = $repoRoot
+    RepoRoot = $RepositoryRoot
     EnvironmentFilePath = $primaryPath
     LocalEnvironmentFilePath = $localPath
     SubscriptionId = $values.AZURE_DEV_VM_SUBSCRIPTION_ID

@@ -7,6 +7,11 @@ only SQL Server, Keycloak, Kong, and HSA support services in rootless Podman.
 Use the devcontainer for normal local work. Use this VM when you need a larger
 remote Linux host opened from VS Code Remote SSH.
 
+Run every `azure-dev.ps1` command in this guide directly from a PowerShell 7
+session. Open a PowerShell 7 terminal, change to the repository root, and keep
+that session open for the workflow. Do not prefix the script commands with
+`pwsh`.
+
 ## Get the tenant ID and subscription ID
 
 The simplest lookup path is Azure Portal Cloud Shell:
@@ -44,8 +49,8 @@ Get-AzSubscription | Select-Object Name, Id, TenantId
 ## Login to the Tenant
 
 Log Azure CLI into the tenant. The setup script uses the subscription ID from
-`.env.azure.development`, so that subscription must be visible in the active
-Azure CLI login.
+the merged Azure development configuration, so that subscription must be
+visible in the active Azure CLI login.
 
 Make sure Azure CLI is using the public Azure cloud, then sign in directly to
 the tenant:
@@ -68,19 +73,19 @@ az account list --all \
 Review the configured cost drivers after choosing or editing
 `.env.azure.development`:
 
-```sh
-pwsh ./scripts/azure-dev.ps1 estimate-cost
+```powershell
+./scripts/azure-dev.ps1 estimate-cost
 ```
 
 This command reads local configuration only. It does not require Azure login,
 subscription visibility, resource-group permissions, or provider registration.
 It also does not fetch live Azure prices.
 
-The environment can bill for compute, the OS disk, the 256 GiB data disk,
+The environment can bill for compute, the OS disk, the configured data disk,
 static public IP, network traffic, and taxes. The setup, stop, and remove
 commands are covered in the setup and management sections below. The data disk
-is used for the repository checkout, VM host state, and rootless Podman
-storage. `/workspace`, `/var/lib/krav-azure-dev`, and
+is used for the repository checkout, VM host state, and rootless Podman storage.
+`/workspace`, `/var/lib/krav-azure-dev`, and
 `/home/vscode/.local/share/containers/storage` are bind mounts into the data
 disk. The bootstrap fails if the data disk is missing.
 
@@ -269,7 +274,7 @@ az provider register --subscription "<subscription-id>" \
 
 Install these tools on the workstation:
 
-- PowerShell 7+, run as `pwsh`
+- PowerShell 7+ terminal
 - Azure CLI
 - OpenSSH client, `ssh-keygen`, and `scp`
 - VS Code with Remote SSH
@@ -282,36 +287,42 @@ principal before checking any existing Azure CLI user login.
 
 ## Step 4: Configure `.env.azure.development`
 
-Copy the example and edit the required Azure values:
+Copy the example and edit the required non-secret Azure values:
 
 ```sh
 cp .env.azure.development.example .env.azure.development
 ```
 
-Required values:
+Required non-secret values:
 
 ```env
-AZURE_DEV_VM_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000
 AZURE_DEV_VM_RESOURCE_GROUP=rg-krav-dev-personal
 AZURE_DEV_VM_LOCATION=eastus2
-AZURE_DEV_VM_ENVIRONMENT_ID=<stable-environment-id>
 ```
 
-Set these common non-secret values deliberately:
+The other non-secret Azure VM values use code defaults and can be left
+unchanged:
 
 ```env
-AZURE_DEV_VM_NAME_PREFIX=krav-dev
-AZURE_DEV_VM_NAME=krav-dev-vm
-AZURE_DEV_VM_SIZE=Standard_D8s_v5
-AZURE_DEV_VM_FALLBACK_SIZE=Standard_D8as_v5
-AZURE_DEV_VM_CONNECTIVITY_MODE=public-ssh
 AZURE_DEV_VM_ALLOWED_SSH_CIDR=auto
-AZURE_DEV_VM_SSH_HOST_ALIAS=kravhantering-azure-dev
-AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH=~/.ssh/kravhantering_azure_dev_ed25519
 AZURE_DEV_VM_AUTO_STOP_ENABLED=true
 AZURE_DEV_VM_AUTO_STOP_TIME=2200
 AZURE_DEV_VM_AUTO_STOP_TIME_ZONE=UTC
+AZURE_DEV_VM_CONNECTIVITY_MODE=public-ssh
+AZURE_DEV_VM_DATA_DISK_GIB=256
+AZURE_DEV_VM_ENVIRONMENT_ID=personal
+AZURE_DEV_VM_FALLBACK_SIZE=Standard_D8as_v5
+AZURE_DEV_VM_NAME=krav-dev-vm
+AZURE_DEV_VM_NAME_PREFIX=krav-dev
+AZURE_DEV_VM_SIZE=Standard_D8s_v5
+AZURE_DEV_VM_SSH_HOST_ALIAS=kravhantering-azure-dev
 ```
+
+`AZURE_DEV_VM_DATA_DISK_GIB` sets the size for a new managed data disk. If an
+existing disk is smaller, setup expands the managed disk and its ext4
+filesystem. If an existing disk is larger, setup warns, preserves that size,
+and continues because Azure managed disks cannot be shrunk. Run `remove` and
+recreate the disposable environment to use a smaller disk.
 
 Use `AZURE_DEV_VM_ALLOWED_SSH_CIDR=auto` for the normal path. Setup detects
 your current public IPv4 address and proposes it as a `/32`. Do not use
@@ -331,6 +342,20 @@ touch .env.azure.development.local
 
 The file is gitignored by the existing `.env.*.local` rule. Put secrets here
 only when session environment variables are not practical.
+
+Treat the subscription ID as secret configuration and give it a real value:
+
+```env
+AZURE_DEV_VM_SUBSCRIPTION_ID=<subscription-id>
+```
+
+The SSH private-key path is also treated as secret configuration. Its code
+default is `~/.ssh/kravhantering_azure_dev_ed25519`. Set an override here only
+when needed:
+
+```env
+AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH=<private-key-path>
+```
 
 Set unique passwords for the VM-local SQL Server and Keycloak services before
 the first real setup:
@@ -477,10 +502,20 @@ That means a shell `AZURE_CLIENT_SECRET` overrides the value in
 
 ## Step 6: Run Setup
 
-Run the read-only Azure readiness preflight before setup:
+In the PowerShell session at the repository root, run the read-only Azure
+readiness preflight before setup. The script resolves both Azure development
+environment files relative to the repository root:
 
-```sh
-pwsh ./scripts/azure-dev.ps1 setup -WhatIf
+```powershell
+./scripts/azure-dev.ps1 setup -WhatIf
+```
+
+By default, the script calculates the repository root from its own location.
+Use `-RepositoryRoot` to override it when the environment files, local state,
+and templates belong to another repository root:
+
+```powershell
+./scripts/azure-dev.ps1 setup -WhatIf -RepositoryRoot /path/to/Kravhantering
 ```
 
 This checks tools, Azure login, subscription visibility, SKU availability,
@@ -494,10 +529,14 @@ marked `NoEffect`, or standalone managed disks marked `Ignore`. Treat those as
 noise when no create, delete, or meaningful update is listed for managed
 resources.
 
-When preflight is clean, create or repair the environment:
+For an existing VM, setup reuses its exact Marketplace image reference because
+Azure does not allow `imageReference` to change in place. Setup resolves the
+latest validated Ubuntu image only when it creates a new VM.
 
-```sh
-pwsh ./scripts/azure-dev.ps1 setup -Yes
+When preflight is clean, run setup to create or repair the environment:
+
+```powershell
+./scripts/azure-dev.ps1 setup -Yes
 ```
 
 `setup` prints a cost summary before it creates resources. It does not estimate
@@ -551,14 +590,14 @@ The app runs directly on the VM host. Containers run only the support services.
 
 Start the VM:
 
-```sh
-pwsh ./scripts/azure-dev.ps1 start
+```powershell
+./scripts/azure-dev.ps1 start
 ```
 
 Stop compute charges:
 
-```sh
-pwsh ./scripts/azure-dev.ps1 stop
+```powershell
+./scripts/azure-dev.ps1 stop
 ```
 
 `stop` deallocates the VM and stops compute charges. Disks and public IP
@@ -566,21 +605,21 @@ resources can still bill.
 
 Show current state:
 
-```sh
-pwsh ./scripts/azure-dev.ps1 status
+```powershell
+./scripts/azure-dev.ps1 status
 ```
 
 Refresh only the SSH source CIDR after your public IP changes:
 
-```sh
-pwsh ./scripts/azure-dev.ps1 update-cidr
+```powershell
+./scripts/azure-dev.ps1 update-cidr
 ```
 
 Print or apply the managed SSH block:
 
-```sh
-pwsh ./scripts/azure-dev.ps1 ssh-config
-pwsh ./scripts/azure-dev.ps1 ssh-config -Apply
+```powershell
+./scripts/azure-dev.ps1 ssh-config
+./scripts/azure-dev.ps1 ssh-config -Apply
 ```
 
 Forwarded ports are `3000`, `3001`, `4443`, `1433`, `8080`, `18000`, `9323`,
@@ -644,14 +683,14 @@ npm run test:integration
 
 Preview deletion:
 
-```sh
-pwsh ./scripts/azure-dev.ps1 remove -WhatIf
+```powershell
+./scripts/azure-dev.ps1 remove -WhatIf
 ```
 
 Delete managed Azure resources and owned local state:
 
-```sh
-pwsh ./scripts/azure-dev.ps1 remove
+```powershell
+./scripts/azure-dev.ps1 remove
 ```
 
 `remove` deletes the managed resources and is the full managed-resource cost
@@ -676,9 +715,9 @@ happen if an earlier dry run created resources with the placeholder key.
 
 Preview and then remove the managed environment:
 
-```sh
-pwsh ./scripts/azure-dev.ps1 remove -WhatIf
-pwsh ./scripts/azure-dev.ps1 remove
+```powershell
+./scripts/azure-dev.ps1 remove -WhatIf
+./scripts/azure-dev.ps1 remove
 ```
 
 Then rerun setup so the VM is created with the local SSH key.

@@ -5,6 +5,8 @@ param(
   [ValidateSet('estimate-cost', 'setup', 'start', 'stop', 'status', 'update-cidr', 'ssh-config', 'remove')]
   [string]$Command = 'status',
 
+  [string]$RepositoryRoot,
+
   [string]$EnvironmentFile = '.env.azure.development',
 
   [string]$AllowedSshCidr,
@@ -30,6 +32,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
+  $RepositoryRoot = Split-Path -Parent $scriptRoot
+}
 $moduleRoot = Join-Path $scriptRoot 'azure-dev'
 foreach ($module in @(
   'AzureDev.Config.psm1',
@@ -71,7 +76,10 @@ function Write-AzureDevCostSummary {
     [pscustomobject]$Context,
 
     [AllowNull()]
-    [pscustomobject]$Image
+    [pscustomobject]$Image,
+
+    [AllowNull()]
+    [pscustomobject]$DataDisk
   )
 
   $subscription = if ([string]::IsNullOrWhiteSpace($Context.Config.SubscriptionId)) {
@@ -89,6 +97,21 @@ function Write-AzureDevCostSummary {
   } else {
     'Canonical Ubuntu 24.04 LTS Server, resolved during setup'
   }
+  $dataDiskSize = if (
+    $null -ne $DataDisk -and
+    [int]$DataDisk.diskSizeGB -gt $Context.Config.DataDiskGiB
+  ) {
+    "$([int]$DataDisk.diskSizeGB) GiB Premium SSD " +
+      "(configured $($Context.Config.DataDiskGiB) GiB; existing disk preserved)"
+  } elseif (
+    $null -ne $DataDisk -and
+    [int]$DataDisk.diskSizeGB -lt $Context.Config.DataDiskGiB
+  ) {
+    "$($Context.Config.DataDiskGiB) GiB Premium SSD " +
+      "(currently $([int]$DataDisk.diskSizeGB) GiB; expansion planned)"
+  } else {
+    "$($Context.Config.DataDiskGiB) GiB Premium SSD"
+  }
 
   Write-Host 'Azure VM development environment cost summary'
   Write-Host "  Subscription: $subscription"
@@ -96,7 +119,7 @@ function Write-AzureDevCostSummary {
   Write-Host "  Location: $($Context.Config.Location)"
   Write-Host "  VM size: $($Context.Config.VmSize)"
   Write-Host "  OS disk: managed Premium SSD"
-  Write-Host "  Data disk: $($Context.Config.DataDiskGiB) GiB Premium SSD"
+  Write-Host "  Data disk: $dataDiskSize"
   Write-Host "  Static public IP: $($Context.Config.ConnectivityMode -eq 'public-ssh')"
   Write-Host "  Auto-shutdown: $($Context.Config.AutoStopEnabled) at $($Context.Config.AutoStopTime) $($Context.Config.AutoStopTimeZone)"
   Write-Host "  Image: $imageUrn"
@@ -112,7 +135,7 @@ function Write-AzureDevCostEstimate {
     [pscustomobject]$Context
   )
 
-  Write-AzureDevCostSummary -Context $Context -Image $null
+  Write-AzureDevCostSummary -Context $Context -Image $null -DataDisk $null
   Write-Host ''
   Write-Host 'This command reads local configuration only. It does not call Azure CLI,'
   Write-Host 'validate subscription access, check SKU availability, or create resources.'
@@ -270,8 +293,13 @@ function Invoke-AzureDevSetup {
       $publicKey = Get-AzureDevSshPublicKey -Config $Context.Config
     }
 
-    $image = Get-AzureDevUbuntuImage -Config $Context.Config
-    Write-AzureDevCostSummary -Context $Context -Image $image
+    $image = Get-AzureDevDeploymentImage -Config $Context.Config
+    $dataDisk = Get-AzureDevDataDisk -Config $Context.Config
+    $dataDiskExists = $null -ne $dataDisk
+    Write-AzureDevCostSummary `
+      -Context $Context `
+      -Image $image `
+      -DataDisk $dataDisk
     Test-AzureDevVmSshPublicKeyDrift `
       -Context $Context `
       -SshPublicKey $publicKey
@@ -280,6 +308,13 @@ function Invoke-AzureDevSetup {
     New-AzureDevResourceGroup `
       -Context $Context `
       -WhatIf:$WhatIfPreference
+
+    if ($dataDiskExists) {
+      Set-AzureDevDataDiskSize `
+        -Context $Context `
+        -DataDisk $dataDisk `
+        -WhatIf:$WhatIfPreference
+    }
 
     if ($WhatIfPreference -and $null -eq (Get-AzureDevResourceGroup -Config $Context.Config)) {
       Write-Warning (
@@ -295,6 +330,7 @@ function Invoke-AzureDevSetup {
         -AllowedSshCidr $allowedCidr `
         -SshPublicKey $publicKey `
         -Image $image `
+        -DataDiskExists $dataDiskExists `
         -Preview
 
       Write-Host 'setup -WhatIf completed. No Azure resources, SSH files, local state, locks, or logs were created or modified.'
@@ -306,6 +342,7 @@ function Invoke-AzureDevSetup {
       -AllowedSshCidr $allowedCidr `
       -SshPublicKey $publicKey `
       -Image $image `
+      -DataDiskExists $dataDiskExists `
       -WhatIf:$WhatIfPreference
 
     $hostName = Get-AzureDevHostName -Context $Context
@@ -625,6 +662,7 @@ function Invoke-AzureDevCommand {
 $requireEnv = $Command -eq 'setup'
 $allowMissingAzureScope = $Command -eq 'estimate-cost'
 $config = Get-AzureDevConfig `
+  -RepositoryRoot $RepositoryRoot `
   -EnvironmentFile $EnvironmentFile `
   -RequireEnvironmentFile:$requireEnv `
   -AllowMissingAzureScope:$allowMissingAzureScope
