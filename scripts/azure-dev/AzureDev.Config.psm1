@@ -31,6 +31,8 @@ function Get-AzureDevDefaultConfig {
     AZURE_DEV_VM_RESOURCE_GROUP = ''
     AZURE_DEV_VM_SUBSCRIPTION_ID = ''
     AZURE_TENANT_ID = ''
+    KEYCLOAK_ADMIN_PASSWORD = ''
+    MSSQL_SA_PASSWORD = ''
   }
 }
 
@@ -226,6 +228,8 @@ function Get-AzureDevConfig {
     TenantId = $values.AZURE_TENANT_ID
     ClientId = $values.AZURE_CLIENT_ID
     ClientSecret = $values.AZURE_CLIENT_SECRET
+    KeycloakAdminPassword = $values.KEYCLOAK_ADMIN_PASSWORD
+    SqlServerSaPassword = $values.MSSQL_SA_PASSWORD
     TailscaleAuthKey = $values.AZURE_DEV_TAILSCALE_AUTH_KEY
     TailscaleTailnet = $values.AZURE_DEV_TAILSCALE_TAILNET
   }

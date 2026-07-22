@@ -164,6 +164,16 @@ mutates local Azure CLI state.
 Never print or log secret values. State files must contain only non-secret
 cache data that can be rebuilt from Azure or config.
 
+Real setup requires `MSSQL_SA_PASSWORD` and
+`KEYCLOAK_ADMIN_PASSWORD`. PowerShell writes only the two support-service env
+files to a mode `0700` temporary directory with mode `0600` files, uploads them
+to a mode `0700` remote staging directory, and removes the local copies.
+Bootstrap installs the files as mode `0600` under
+`/home/vscode/.config/krav-dev` and removes the remote staging copies. Do not
+pass these values in SSH command arguments or write them to Azure state.
+Treat failure to remove the local temporary directory as a setup failure,
+including after a successful upload.
+
 ## Azure Provisioning
 
 PowerShell shells out to Azure CLI for:

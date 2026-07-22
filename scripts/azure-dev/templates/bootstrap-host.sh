@@ -16,10 +16,23 @@ SYSTEMD_USER_DIR="${VSCODE_HOME}/.config/containers/systemd"
 KRAV_CONFIG_DIR="${VSCODE_HOME}/.config/krav-dev"
 HOST_STATE_DIR="/var/lib/krav-azure-dev"
 QUADLET_SOURCE_DIR="${AZURE_DEV_QUADLET_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/quadlet}"
+SERVICE_ENV_SOURCE_DIR="${AZURE_DEV_SERVICE_ENV_SOURCE:-}"
 
 log() {
   printf '[krav-azure-bootstrap] %s\n' "$*"
 }
+
+cleanup_service_environment_source() {
+  if [ -z "${SERVICE_ENV_SOURCE_DIR}" ]; then
+    return
+  fi
+  rm -f \
+    "${SERVICE_ENV_SOURCE_DIR}/sqlserver.env" \
+    "${SERVICE_ENV_SOURCE_DIR}/keycloak.env"
+  rmdir "${SERVICE_ENV_SOURCE_DIR}" 2>/dev/null || true
+}
+
+trap cleanup_service_environment_source EXIT
 
 run_as_vscode() {
   runuser -u "${VSCODE_USER}" -- env \
@@ -241,6 +254,26 @@ EOF
   chown -R "${VSCODE_USER}:${VSCODE_USER}" "${PODMAN_STORAGE_DIR}"
 }
 
+install_service_environment_files() {
+  if [ -z "${SERVICE_ENV_SOURCE_DIR}" ] ||
+    [ ! -f "${SERVICE_ENV_SOURCE_DIR}/sqlserver.env" ] ||
+    [ ! -f "${SERVICE_ENV_SOURCE_DIR}/keycloak.env" ]; then
+    log 'support-service environment files are missing; configure MSSQL_SA_PASSWORD and KEYCLOAK_ADMIN_PASSWORD before setup'
+    return 1
+  fi
+
+  install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700 \
+    "${KRAV_CONFIG_DIR}"
+  install -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0600 \
+    "${SERVICE_ENV_SOURCE_DIR}/sqlserver.env" \
+    "${KRAV_CONFIG_DIR}/sqlserver.env"
+  install -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0600 \
+    "${SERVICE_ENV_SOURCE_DIR}/keycloak.env" \
+    "${KRAV_CONFIG_DIR}/keycloak.env"
+  cleanup_service_environment_source
+  SERVICE_ENV_SOURCE_DIR=''
+}
+
 stop_user_quadlet_services_before_storage_change() {
   local uid
   uid="$(id -u "${VSCODE_USER}" 2>/dev/null || true)"
@@ -457,19 +490,6 @@ install_quadlet_units() {
     "${quadlet_files[@]}" \
     "${SYSTEMD_USER_DIR}/"
 
-  if [ ! -f "${KRAV_CONFIG_DIR}/sqlserver.env" ]; then
-    cat > "${KRAV_CONFIG_DIR}/sqlserver.env" <<'EOF'
-ACCEPT_EULA=Y
-MSSQL_PID=Developer
-MSSQL_SA_PASSWORD=YourStrong!Passw0rd
-EOF
-  fi
-  if [ ! -f "${KRAV_CONFIG_DIR}/keycloak.env" ]; then
-    cat > "${KRAV_CONFIG_DIR}/keycloak.env" <<'EOF'
-KEYCLOAK_ADMIN=admin
-KEYCLOAK_ADMIN_PASSWORD=admin
-EOF
-  fi
   chown -R "${VSCODE_USER}:${VSCODE_USER}" "${KRAV_CONFIG_DIR}"
   chmod 0600 "${KRAV_CONFIG_DIR}"/*.env
 }
@@ -797,6 +817,7 @@ main() {
   log "starting host bootstrap"
   install_host_packages
   ensure_vscode_user
+  install_service_environment_files
   stop_user_quadlet_services_before_storage_change
   mount_data_disk
   configure_podman_storage

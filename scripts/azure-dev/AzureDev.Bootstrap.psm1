@@ -111,6 +111,124 @@ function Copy-AzureDevQuadletFiles {
   }
 }
 
+function Test-AzureDevBootstrapSecrets {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Config
+  )
+
+  $required = [ordered]@{
+    KEYCLOAK_ADMIN_PASSWORD = $Config.KeycloakAdminPassword
+    MSSQL_SA_PASSWORD = $Config.SqlServerSaPassword
+  }
+  foreach ($item in $required.GetEnumerator()) {
+    if ([string]::IsNullOrWhiteSpace($item.Value)) {
+      throw (
+        "$($item.Key) is required for setup. Set it in the session environment " +
+        'or .env.azure.development.local.'
+      )
+    }
+    if ($item.Value.Contains("`r") -or $item.Value.Contains("`n")) {
+      throw "$($item.Key) must not contain newline characters."
+    }
+  }
+}
+
+function Copy-AzureDevServiceEnvironmentFiles {
+  [CmdletBinding(SupportsShouldProcess = $true)]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RemotePath
+  )
+
+  Test-AzureDevBootstrapSecrets -Config $Context.Config
+
+  $localPath = Join-Path `
+    ([System.IO.Path]::GetTempPath()) `
+    "krav-azure-dev-env-$([guid]::NewGuid().ToString('N'))"
+  New-Item -ItemType Directory -Path $localPath | Out-Null
+  $uploadCompleted = $false
+
+  try {
+    if (-not $IsWindows) {
+      & chmod 0700 $localPath
+      if ($LASTEXITCODE -ne 0) {
+        throw 'Failed to secure the temporary support-service environment directory.'
+      }
+    }
+
+    $sqlServerPath = Join-Path $localPath 'sqlserver.env'
+    $keycloakPath = Join-Path $localPath 'keycloak.env'
+    $encoding = [System.Text.UTF8Encoding]::new($false)
+    [System.IO.File]::WriteAllLines(
+      $sqlServerPath,
+      @(
+        'ACCEPT_EULA=Y',
+        'MSSQL_PID=Developer',
+        "MSSQL_SA_PASSWORD=$($Context.Config.SqlServerSaPassword)"
+      ),
+      $encoding
+    )
+    [System.IO.File]::WriteAllLines(
+      $keycloakPath,
+      @(
+        'KEYCLOAK_ADMIN=admin',
+        "KEYCLOAK_ADMIN_PASSWORD=$($Context.Config.KeycloakAdminPassword)"
+      ),
+      $encoding
+    )
+
+    if (-not $IsWindows) {
+      & chmod 0600 $sqlServerPath $keycloakPath
+      if ($LASTEXITCODE -ne 0) {
+        throw 'Failed to secure the temporary support-service environment files.'
+      }
+    }
+
+    if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Upload support-service environment files')) {
+      Invoke-AzureDevRemoteCommand `
+        -Context $Context `
+        -Command (
+          "mkdir -p $RemotePath && chmod 0700 $RemotePath && " +
+          "rm -f $RemotePath/sqlserver.env $RemotePath/keycloak.env"
+        ) `
+        -Description 'Prepare support-service environment upload directory'
+
+      $result = Invoke-AzureDevNativeCommand `
+        -FilePath 'scp' `
+        -Arguments @(
+          '-o',
+          'BatchMode=yes',
+          '-o',
+          'ClearAllForwardings=yes',
+          '-o',
+          'StrictHostKeyChecking=accept-new',
+          $sqlServerPath,
+          $keycloakPath,
+          "$($Context.Config.SshHostAlias):$RemotePath/"
+        )
+      if ($result.ExitCode -ne 0) {
+        throw "Support-service environment upload failed.`n$($result.Text.Trim())"
+      }
+      $uploadCompleted = $true
+    }
+  } finally {
+    try {
+      Remove-Item -LiteralPath $localPath -Recurse -Force -ErrorAction Stop
+      if (Test-Path -LiteralPath $localPath) {
+        throw 'The temporary support-service environment directory still exists after removal.'
+      }
+    } catch {
+      $stage = if ($uploadCompleted) { 'after a successful upload' } else { 'before upload completed' }
+      throw "Failed to remove local support-service environment files $stage. $($_.Exception.Message)"
+    }
+  }
+}
+
 function Invoke-AzureDevBootstrap {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
@@ -120,17 +238,25 @@ function Invoke-AzureDevBootstrap {
 
   $remoteBootstrapPath = '/tmp/krav-bootstrap-host.sh'
   $remoteQuadletPath = '/tmp/krav-azure-dev/quadlet'
+  $remoteServiceEnvironmentPath = '/tmp/krav-azure-dev/service-env'
   Copy-AzureDevBootstrapFile `
     -Context $Context `
     -RemotePath $remoteBootstrapPath
   Copy-AzureDevQuadletFiles `
     -Context $Context `
     -RemotePath $remoteQuadletPath
+  Copy-AzureDevServiceEnvironmentFiles `
+    -Context $Context `
+    -RemotePath $remoteServiceEnvironmentPath
 
   $command = @(
     'if command -v cloud-init >/dev/null 2>&1; then sudo cloud-init status --wait || true; fi'
     "chmod 0755 $remoteBootstrapPath"
-    "sudo env AZURE_DEV_QUADLET_SOURCE=$remoteQuadletPath bash $remoteBootstrapPath"
+    (
+      "sudo env AZURE_DEV_QUADLET_SOURCE=$remoteQuadletPath " +
+      "AZURE_DEV_SERVICE_ENV_SOURCE=$remoteServiceEnvironmentPath " +
+      "bash $remoteBootstrapPath"
+    )
   ) -join ' && '
   if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Run host bootstrap')) {
     Invoke-AzureDevRemoteCommand `
@@ -143,5 +269,7 @@ function Invoke-AzureDevBootstrap {
 Export-ModuleMember -Function `
   Copy-AzureDevBootstrapFile, `
   Copy-AzureDevQuadletFiles, `
+  Copy-AzureDevServiceEnvironmentFiles, `
   Invoke-AzureDevBootstrap, `
-  Invoke-AzureDevRemoteCommand
+  Invoke-AzureDevRemoteCommand, `
+  Test-AzureDevBootstrapSecrets

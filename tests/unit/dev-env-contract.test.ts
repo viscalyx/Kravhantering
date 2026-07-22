@@ -38,6 +38,42 @@ function expectDocsMentionEnvVars(content: string, names: readonly string[]) {
 }
 
 describe('development environment contract', () => {
+  it('keeps Azure VM support-service passwords in untracked configuration', () => {
+    const envExample = readWorkspaceFile('.env.azure.development.example')
+    const configModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Config.psm1',
+    )
+    const bootstrapModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Bootstrap.psm1',
+    )
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+
+    expect(envExample).toContain('# KEYCLOAK_ADMIN_PASSWORD=')
+    expect(envExample).toContain('# MSSQL_SA_PASSWORD=')
+    expect(configModule).toContain(
+      'KeycloakAdminPassword = $values.KEYCLOAK_ADMIN_PASSWORD',
+    )
+    expect(configModule).toContain(
+      'SqlServerSaPassword = $values.MSSQL_SA_PASSWORD',
+    )
+    expect(bootstrapModule).toContain(
+      'AZURE_DEV_SERVICE_ENV_SOURCE=$remoteServiceEnvironmentPath',
+    )
+    expect(bootstrapModule).toContain(
+      'Test-AzureDevBootstrapSecrets -Config $Context.Config',
+    )
+    expect(bootstrapModule).toContain(
+      'Remove-Item -LiteralPath $localPath -Recurse -Force -ErrorAction Stop',
+    )
+    expect(bootstrapModule).toContain(
+      'Failed to remove local support-service environment files $stage.',
+    )
+    expect(hostBootstrap).not.toContain('MSSQL_SA_PASSWORD=YourStrong!Passw0rd')
+    expect(hostBootstrap).not.toContain('KEYCLOAK_ADMIN_PASSWORD=admin')
+  })
+
   it('generates HSA lookup Swagger UI for the Next dev server', () => {
     const packageJson = JSON.parse(readWorkspaceFile('package.json'))
     const scripts = packageJson.scripts

@@ -244,6 +244,10 @@ function Invoke-AzureDevSetup {
   )
 
   if (-not $WhatIfPreference) {
+    Test-AzureDevBootstrapSecrets -Config $Context.Config
+  }
+
+  if (-not $WhatIfPreference) {
     New-AzureDevLock -Context $Context -CommandName 'setup'
   }
 

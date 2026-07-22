@@ -339,6 +339,26 @@ touch .env.azure.development.local
 The file is gitignored by the existing `.env.*.local` rule. Put secrets here
 only when session environment variables are not practical.
 
+Set unique passwords for the VM-local SQL Server and Keycloak services before
+the first real setup:
+
+```env
+MSSQL_SA_PASSWORD=<strong-unique-sql-server-password>
+KEYCLOAK_ADMIN_PASSWORD=<strong-unique-keycloak-password>
+```
+
+A real `setup` fails before creating or updating Azure resources when either
+password is missing. The setup tool uploads only these support-service values
+through temporary mode `0600` files; it does not include them in command-line
+arguments, logs, or Azure state. `setup -WhatIf` does not require them because
+it does not bootstrap the VM. Setup fails if it cannot remove the local
+temporary files after transferring them.
+
+Choose the values before SQL Server and Keycloak initialize their persistent
+data. Changing these variables later does not rotate credentials inside an
+existing SQL Server database or Keycloak realm; recreate the disposable
+environment or perform the corresponding service credential rotation first.
+
 Optional service-principal login:
 
 Use this when setup should run as the service principal instead of your current
