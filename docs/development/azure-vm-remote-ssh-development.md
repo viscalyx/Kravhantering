@@ -882,10 +882,10 @@ VM device from the Tailscale admin console.
 ## Step 10: Validate
 
 Default smoke validation checks SSH, the data-disk bind mounts, `/workspace`,
-major tool versions including Codex CLI, GitHub Copilot CLI, and Lychee, the
-configured global Git identity, rootless Podman units, loopback-only support
-ports, HSA lookup through Kong, `npm run db:setup`, `npm run db:health`, and
-Playwright browser availability.
+major tool versions including `btop`, Codex CLI, GitHub Copilot CLI, and Lychee,
+the configured global Git identity, rootless Podman units, loopback-only
+support ports, HSA lookup through Kong, `npm run db:setup`,
+`npm run db:health`, and Playwright browser availability.
 
 Optional heavier checks after the environment is accepted:
 

@@ -158,6 +158,7 @@ install_host_packages() {
     apparmor-profiles \
     apparmor-utils \
     build-essential \
+    btop \
     bubblewrap \
     dbus-user-session \
     docker-buildx-plugin \

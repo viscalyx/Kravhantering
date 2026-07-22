@@ -318,6 +318,7 @@ git --version >/dev/null 2>&1
 test "$(git config --global --get user.name)" = "${expected_git_user_name}"
 test "$(git config --global --get user.email)" = "${expected_git_user_email}"
 gh --version >/dev/null 2>&1
+btop --version >/dev/null 2>&1
 codex --version >/dev/null 2>&1
 copilot --version >/dev/null 2>&1
 docker --version >/dev/null 2>&1

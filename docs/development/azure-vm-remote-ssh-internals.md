@@ -515,7 +515,7 @@ Validation must prove these implementation contracts:
   `/home/vscode/.local/share/containers/storage`.
 - the remote global Git name and email exactly match the resolved setup values.
 - expected major tools are installed: Node 24, npm, .NET 8.0, Git, GitHub CLI,
-  Codex CLI, GitHub Copilot CLI, Docker CLI, Compose, Buildx, Podman,
+  `btop`, Codex CLI, GitHub Copilot CLI, Docker CLI, Compose, Buildx, Podman,
   `podman-compose`, Python, `dotenv-linter`, Lychee, and Playwright.
 - user lingering is enabled.
 - managed Quadlet services are active.

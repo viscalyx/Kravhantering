@@ -315,6 +315,18 @@ describe('development environment contract', () => {
     expect(validationModule).toContain('lychee --version >/dev/null 2>&1')
   })
 
+  it('installs and smoke-validates btop on the Azure VM', () => {
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+    const validationModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Validation.psm1',
+    )
+
+    expect(hostBootstrap).toContain('    btop \\')
+    expect(validationModule).toContain('btop --version >/dev/null 2>&1')
+  })
+
   it('installs and smoke-validates both AI command-line tools', () => {
     const hostBootstrap = readWorkspaceFile(
       'scripts/azure-dev/templates/bootstrap-host.sh',
