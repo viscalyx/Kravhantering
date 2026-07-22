@@ -72,7 +72,9 @@ describe('development environment contract', () => {
     expect(azureModule).toContain(
       '$existingImage = Get-AzureDevVmImage -Config $Config',
     )
-    expect(azureModule).toContain('return $existingImage')
+    expect(azureModule).toContain(
+      'if ($null -ne $existingImage) {\n    return $existingImage\n  }',
+    )
     expect(azureModule).toContain(
       'return Get-AzureDevUbuntuImage -Config $Config',
     )
@@ -132,7 +134,7 @@ describe('development environment contract', () => {
     )
   })
 
-  it('keeps Azure VM support-service passwords in untracked configuration', () => {
+  it('keeps Azure VM bootstrap secrets out of command arguments and tracked files', () => {
     const envExample = readWorkspaceFile('.env.azure.development.example')
     const configModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Config.psm1',
@@ -146,11 +148,15 @@ describe('development environment contract', () => {
 
     expect(envExample).toContain('# KEYCLOAK_ADMIN_PASSWORD=')
     expect(envExample).toContain('# MSSQL_SA_PASSWORD=')
+    expect(envExample).toContain('# AZURE_DEV_UBUNTU_PRO_TOKEN=')
     expect(configModule).toContain(
       'KeycloakAdminPassword = $values.KEYCLOAK_ADMIN_PASSWORD',
     )
     expect(configModule).toContain(
       'SqlServerSaPassword = $values.MSSQL_SA_PASSWORD',
+    )
+    expect(configModule).toContain(
+      'UbuntuProToken = $values.AZURE_DEV_UBUNTU_PRO_TOKEN',
     )
     expect(bootstrapModule).toContain(
       'AZURE_DEV_SERVICE_ENV_SOURCE=$remoteServiceEnvironmentPath',
@@ -166,6 +172,17 @@ describe('development environment contract', () => {
     )
     expect(bootstrapModule).toContain('$operationError = $_')
     expect(bootstrapModule).toContain('Write-Warning $cleanupMessage')
+    expect(bootstrapModule).toContain("'ubuntu-pro-attach.yaml'")
+    expect(bootstrapModule).not.toContain(
+      'AZURE_DEV_UBUNTU_PRO_TOKEN=$($Context.Config.UbuntuProToken)',
+    )
+    expect(hostBootstrap).toContain(
+      'pro attach --attach-config "${attach_config}"',
+    )
+    expect(hostBootstrap).toContain(
+      '"${SERVICE_ENV_SOURCE_DIR}/ubuntu-pro-attach.yaml"',
+    )
+    expect(hostBootstrap).not.toContain('AZURE_DEV_UBUNTU_PRO_TOKEN')
     expect(hostBootstrap).not.toContain('MSSQL_SA_PASSWORD=YourStrong!Passw0rd')
     expect(hostBootstrap).not.toContain('KEYCLOAK_ADMIN_PASSWORD=admin')
   })
@@ -356,7 +373,7 @@ describe('development environment contract', () => {
     )
   })
 
-  it('quotes Azure bootstrap upload paths as remote shell literals', () => {
+  it('quotes remote shell paths without passing literal quotes to scp', () => {
     const bootstrapModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Bootstrap.psm1',
     )
@@ -374,6 +391,18 @@ describe('development environment contract', () => {
     expect(bootstrapModule).toContain("$RemotePath.StartsWith('/')")
     expect(bootstrapModule).toContain(
       "$remoteDirectory = if ($lastSlash -eq 0) { '/' }",
+    )
+    expect(bootstrapModule).toContain(
+      '"$($Context.Config.SshHostAlias):$RemotePath/"',
+    )
+    expect(bootstrapModule).toContain(
+      '"$($Context.Config.SshHostAlias):$RemotePath"',
+    )
+    expect(bootstrapModule).not.toContain(
+      '"$($Context.Config.SshHostAlias):$remoteUploadPathLiteral"',
+    )
+    expect(bootstrapModule).not.toContain(
+      '"$($Context.Config.SshHostAlias):$remotePathLiteral"',
     )
   })
 

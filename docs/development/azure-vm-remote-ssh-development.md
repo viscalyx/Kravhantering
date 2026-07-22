@@ -398,6 +398,20 @@ arguments, logs, or Azure state. `setup -WhatIf` does not require them because
 it does not bootstrap the VM. Setup fails if it cannot remove the local
 temporary files after transferring them.
 
+Optional Ubuntu Pro attachment:
+
+```env
+AZURE_DEV_UBUNTU_PRO_TOKEN=<ubuntu-pro-token>
+```
+
+Get the token from the
+[Ubuntu Pro dashboard](https://ubuntu.com/pro/dashboard). When the value is
+set, setup transfers it in a temporary mode `0600` attach-config file and runs
+`pro attach` on the VM. Ubuntu Pro enables the services selected by the
+subscription's defaults. When the value is unset, setup does not attach or
+detach Ubuntu Pro; a new VM remains unattached. Removing the value on a later
+setup does not detach a VM that is already attached.
+
 Choose the values before SQL Server and Keycloak initialize their persistent
 data. Changing these variables later does not rotate credentials inside an
 existing SQL Server database or Keycloak realm; recreate the disposable

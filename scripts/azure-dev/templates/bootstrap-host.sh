@@ -30,7 +30,8 @@ cleanup_service_environment_source() {
   fi
   rm -f \
     "${SERVICE_ENV_SOURCE_DIR}/sqlserver.env" \
-    "${SERVICE_ENV_SOURCE_DIR}/keycloak.env"
+    "${SERVICE_ENV_SOURCE_DIR}/keycloak.env" \
+    "${SERVICE_ENV_SOURCE_DIR}/ubuntu-pro-attach.yaml"
   rmdir "${SERVICE_ENV_SOURCE_DIR}" 2>/dev/null || true
 }
 
@@ -154,6 +155,7 @@ install_host_packages() {
     sudo \
     uidmap \
     unzip \
+    ubuntu-pro-client \
     wget \
     zsh
 
@@ -163,6 +165,29 @@ install_host_packages() {
     curl -sSfL https://raw.githubusercontent.com/dotenv-linter/dotenv-linter/master/install.sh \
       | sh -s -- -b /usr/local/bin
   fi
+}
+
+configure_optional_ubuntu_pro() {
+  local attach_config="${SERVICE_ENV_SOURCE_DIR}/ubuntu-pro-attach.yaml"
+  if [ -z "${SERVICE_ENV_SOURCE_DIR}" ] || [ ! -s "${attach_config}" ]; then
+    return
+  fi
+
+  local attach_exit=0
+  pro attach --attach-config "${attach_config}" || attach_exit=$?
+  case "${attach_exit}" in
+    0)
+      log 'attached VM to Ubuntu Pro'
+      ;;
+    2)
+      log 'VM is already attached to Ubuntu Pro'
+      ;;
+    *)
+      log "Ubuntu Pro attach failed with exit code ${attach_exit}"
+      return "${attach_exit}"
+      ;;
+  esac
+  rm -f "${attach_config}"
 }
 
 mount_data_disk() {
@@ -871,6 +896,7 @@ validate_loopback_ports() {
 main() {
   log "starting host bootstrap"
   install_host_packages
+  configure_optional_ubuntu_pro
   ensure_vscode_user
   configure_ssh_access
   install_service_environment_files

@@ -175,14 +175,16 @@ Never print or log secret values. State files must contain only non-secret
 cache data that can be rebuilt from Azure or config.
 
 Real setup requires `MSSQL_SA_PASSWORD` and
-`KEYCLOAK_ADMIN_PASSWORD`. PowerShell writes only the two support-service env
-files to a mode `0700` temporary directory with mode `0600` files, uploads them
-to a mode `0700` remote staging directory, and removes the local copies.
-Bootstrap installs the files as mode `0600` under
-`/home/vscode/.config/krav-dev` and removes the remote staging copies. Do not
-pass these values in SSH command arguments or write them to Azure state.
-Treat failure to remove the local temporary directory as a setup failure,
-including after a successful upload.
+`KEYCLOAK_ADMIN_PASSWORD`. PowerShell writes the two support-service env files
+and, when `AZURE_DEV_UBUNTU_PRO_TOKEN` is set, an Ubuntu Pro attach-config file
+to a mode `0700` temporary directory with mode `0600` files. It uploads them to
+a mode `0700` remote staging directory and removes the local copies. Bootstrap
+installs the support-service files as mode `0600` under
+`/home/vscode/.config/krav-dev`. It passes the optional attach-config file to
+`pro attach` and removes all remote staging copies. Do not pass these values in
+SSH command arguments or write them to Azure state. Treat failure to remove
+the local temporary directory as a setup failure, including after a successful
+upload.
 
 ## Azure Provisioning
 
@@ -303,9 +305,11 @@ Do not move bootstrap into Azure `customData`. Azure does not allow changing
 current local bootstrap against an existing development VM.
 
 Bootstrap is idempotent and is expected to repair safe drift. It installs host
-packages, prepares the `vscode` user, mounts storage, clones or updates the
-repository, configures rootless Podman, writes managed local app environment,
-builds local HSA images, installs Quadlet units, and starts services.
+packages, optionally attaches the host to Ubuntu Pro, prepares the `vscode`
+user, mounts storage, clones or updates the repository, configures rootless
+Podman, writes managed local app environment, builds local HSA images, installs
+Quadlet units, and starts services. An absent Ubuntu Pro attach-config file is
+a no-op and does not detach an existing attachment.
 
 Package setup intentionally installs .NET SDK 8.0 from Ubuntu 24.04 package
 feeds. Do not add the Microsoft package feed unless the devcontainer path is

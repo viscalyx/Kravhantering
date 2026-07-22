@@ -14,6 +14,7 @@ function Get-AzureDevDefaultConfig {
     AZURE_CLIENT_SECRET = ''
     AZURE_DEV_TAILSCALE_AUTH_KEY = ''
     AZURE_DEV_TAILSCALE_TAILNET = ''
+    AZURE_DEV_UBUNTU_PRO_TOKEN = ''
     AZURE_DEV_VM_ENVIRONMENT_ID = 'personal'
     AZURE_DEV_VM_NAME_PREFIX = 'krav-dev'
     AZURE_DEV_VM_NAME = 'krav-dev-vm'
@@ -234,6 +235,7 @@ function Get-AzureDevConfig {
     SqlServerSaPassword = $values.MSSQL_SA_PASSWORD
     TailscaleAuthKey = $values.AZURE_DEV_TAILSCALE_AUTH_KEY
     TailscaleTailnet = $values.AZURE_DEV_TAILSCALE_TAILNET
+    UbuntuProToken = $values.AZURE_DEV_UBUNTU_PRO_TOKEN
   }
 
   Test-AzureDevConfig `

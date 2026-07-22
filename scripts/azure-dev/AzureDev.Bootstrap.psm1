@@ -110,8 +110,7 @@ function Copy-AzureDevQuadletFiles {
       'StrictHostKeyChecking=accept-new'
     )
     $arguments += @($quadletFiles | ForEach-Object { $_.FullName })
-    $remoteUploadPathLiteral = ConvertTo-AzureDevShellLiteral -Value "$RemotePath/"
-    $arguments += "$($Context.Config.SshHostAlias):$remoteUploadPathLiteral"
+    $arguments += "$($Context.Config.SshHostAlias):$RemotePath/"
 
     $result = Invoke-AzureDevNativeCommand `
       -FilePath 'scp' `
@@ -167,7 +166,7 @@ function Copy-AzureDevZshTemplate {
         '-o',
         'StrictHostKeyChecking=accept-new',
         $sourcePath,
-        "$($Context.Config.SshHostAlias):$(ConvertTo-AzureDevShellLiteral -Value $RemotePath)"
+        "$($Context.Config.SshHostAlias):$RemotePath"
       )
     if ($result.ExitCode -ne 0) {
       throw "Zsh template upload failed.`n$($result.Text.Trim())"
@@ -196,6 +195,13 @@ function Test-AzureDevBootstrapSecrets {
     if ($item.Value.Contains("`r") -or $item.Value.Contains("`n")) {
       throw "$($item.Key) must not contain newline characters."
     }
+  }
+
+  if (
+    -not [string]::IsNullOrWhiteSpace($Config.UbuntuProToken) -and
+    ($Config.UbuntuProToken.Contains("`r") -or $Config.UbuntuProToken.Contains("`n"))
+  ) {
+    throw 'AZURE_DEV_UBUNTU_PRO_TOKEN must not contain newline characters.'
   }
 }
 
@@ -228,6 +234,7 @@ function Copy-AzureDevServiceEnvironmentFiles {
 
     $sqlServerPath = Join-Path $localPath 'sqlserver.env'
     $keycloakPath = Join-Path $localPath 'keycloak.env'
+    $ubuntuProAttachConfigPath = Join-Path $localPath 'ubuntu-pro-attach.yaml'
     $encoding = [System.Text.UTF8Encoding]::new($false)
     [System.IO.File]::WriteAllLines(
       $sqlServerPath,
@@ -247,10 +254,23 @@ function Copy-AzureDevServiceEnvironmentFiles {
       $encoding
     )
 
+    $uploadPaths = @($sqlServerPath, $keycloakPath)
+    if (-not [string]::IsNullOrWhiteSpace($Context.Config.UbuntuProToken)) {
+      $ubuntuProAttachConfig = [ordered]@{
+        token = $Context.Config.UbuntuProToken
+      } | ConvertTo-Json -Compress
+      [System.IO.File]::WriteAllText(
+        $ubuntuProAttachConfigPath,
+        "$ubuntuProAttachConfig`n",
+        $encoding
+      )
+      $uploadPaths += $ubuntuProAttachConfigPath
+    }
+
     if (-not $IsWindows) {
-      & chmod 0600 $sqlServerPath $keycloakPath
+      & chmod 0600 $uploadPaths
       if ($LASTEXITCODE -ne 0) {
-        throw 'Failed to secure the temporary support-service environment files.'
+        throw 'Failed to secure the temporary bootstrap secret files.'
       }
     }
 
@@ -258,27 +278,29 @@ function Copy-AzureDevServiceEnvironmentFiles {
       $remotePathLiteral = ConvertTo-AzureDevShellLiteral -Value $RemotePath
       $sqlServerRemotePathLiteral = ConvertTo-AzureDevShellLiteral -Value "$RemotePath/sqlserver.env"
       $keycloakRemotePathLiteral = ConvertTo-AzureDevShellLiteral -Value "$RemotePath/keycloak.env"
+      $ubuntuProRemotePathLiteral = ConvertTo-AzureDevShellLiteral -Value "$RemotePath/ubuntu-pro-attach.yaml"
       Invoke-AzureDevRemoteCommand `
         -Context $Context `
         -Command (
           "mkdir -p -- $remotePathLiteral && chmod 0700 -- $remotePathLiteral && " +
-          "rm -f -- $sqlServerRemotePathLiteral $keycloakRemotePathLiteral"
+          "rm -f -- $sqlServerRemotePathLiteral $keycloakRemotePathLiteral " +
+          $ubuntuProRemotePathLiteral
         ) `
         -Description 'Prepare support-service environment upload directory'
 
+      $arguments = @(
+        '-o',
+        'BatchMode=yes',
+        '-o',
+        'ClearAllForwardings=yes',
+        '-o',
+        'StrictHostKeyChecking=accept-new'
+      )
+      $arguments += $uploadPaths
+      $arguments += "$($Context.Config.SshHostAlias):$RemotePath/"
       $result = Invoke-AzureDevNativeCommand `
         -FilePath 'scp' `
-        -Arguments @(
-          '-o',
-          'BatchMode=yes',
-          '-o',
-          'ClearAllForwardings=yes',
-          '-o',
-          'StrictHostKeyChecking=accept-new',
-          $sqlServerPath,
-          $keycloakPath,
-          "$($Context.Config.SshHostAlias):$(ConvertTo-AzureDevShellLiteral -Value "$RemotePath/")"
-        )
+        -Arguments $arguments
       if ($result.ExitCode -ne 0) {
         throw "Support-service environment upload failed.`n$($result.Text.Trim())"
       }
@@ -297,7 +319,7 @@ function Copy-AzureDevServiceEnvironmentFiles {
       $stage = if ($uploadCompleted) { 'after a successful upload' } else { 'before upload completed' }
       $cleanupMessage = "Failed to remove local support-service environment files $stage. $($_.Exception.Message)"
       if ($null -ne $operationError) {
-        Write-Warning $cleanupMessage
+        Write-Warning $cleanupMessage -WarningAction Continue
       } else {
         throw $cleanupMessage
       }
