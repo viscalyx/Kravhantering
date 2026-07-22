@@ -1,5 +1,14 @@
 Set-StrictMode -Version Latest
 
+function ConvertTo-AzureDevShellLiteral {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Value
+  )
+
+  return "'" + $Value.Replace("'", "'\''") + "'"
+}
+
 function Invoke-AzureDevRemoteCommand {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
@@ -86,9 +95,10 @@ function Copy-AzureDevQuadletFiles {
   }
 
   if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Upload Quadlet templates')) {
+    $remotePathLiteral = ConvertTo-AzureDevShellLiteral -Value $RemotePath
     Invoke-AzureDevRemoteCommand `
       -Context $Context `
-      -Command "rm -rf $RemotePath && mkdir -p $RemotePath" `
+      -Command "rm -rf -- $remotePathLiteral && mkdir -p -- $remotePathLiteral" `
       -Description 'Prepare Quadlet upload directory'
 
     $arguments = @(
@@ -100,7 +110,8 @@ function Copy-AzureDevQuadletFiles {
       'StrictHostKeyChecking=accept-new'
     )
     $arguments += @($quadletFiles | ForEach-Object { $_.FullName })
-    $arguments += "$($Context.Config.SshHostAlias):$RemotePath/"
+    $remoteUploadPathLiteral = ConvertTo-AzureDevShellLiteral -Value "$RemotePath/"
+    $arguments += "$($Context.Config.SshHostAlias):$remoteUploadPathLiteral"
 
     $result = Invoke-AzureDevNativeCommand `
       -FilePath 'scp' `
@@ -136,13 +147,14 @@ function Copy-AzureDevZshTemplate {
 
   if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Upload Zsh template')) {
     $lastSlash = $RemotePath.LastIndexOf('/')
-    if ($lastSlash -le 0) {
+    if ($RemotePath.Length -le 1 -or -not $RemotePath.StartsWith('/')) {
       throw "Zsh template remote path must be absolute: $RemotePath"
     }
-    $remoteDirectory = $RemotePath.Substring(0, $lastSlash)
+    $remoteDirectory = if ($lastSlash -eq 0) { '/' } else { $RemotePath.Substring(0, $lastSlash) }
+    $remoteDirectoryLiteral = ConvertTo-AzureDevShellLiteral -Value $remoteDirectory
     Invoke-AzureDevRemoteCommand `
       -Context $Context `
-      -Command "mkdir -p $remoteDirectory" `
+      -Command "mkdir -p -- $remoteDirectoryLiteral" `
       -Description 'Prepare Zsh template upload directory'
 
     $result = Invoke-AzureDevNativeCommand `
@@ -155,7 +167,7 @@ function Copy-AzureDevZshTemplate {
         '-o',
         'StrictHostKeyChecking=accept-new',
         $sourcePath,
-        "$($Context.Config.SshHostAlias):$RemotePath"
+        "$($Context.Config.SshHostAlias):$(ConvertTo-AzureDevShellLiteral -Value $RemotePath)"
       )
     if ($result.ExitCode -ne 0) {
       throw "Zsh template upload failed.`n$($result.Text.Trim())"
@@ -204,6 +216,7 @@ function Copy-AzureDevServiceEnvironmentFiles {
     "krav-azure-dev-env-$([guid]::NewGuid().ToString('N'))"
   New-Item -ItemType Directory -Path $localPath | Out-Null
   $uploadCompleted = $false
+  $operationError = $null
 
   try {
     if (-not $IsWindows) {
@@ -242,11 +255,14 @@ function Copy-AzureDevServiceEnvironmentFiles {
     }
 
     if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Upload support-service environment files')) {
+      $remotePathLiteral = ConvertTo-AzureDevShellLiteral -Value $RemotePath
+      $sqlServerRemotePathLiteral = ConvertTo-AzureDevShellLiteral -Value "$RemotePath/sqlserver.env"
+      $keycloakRemotePathLiteral = ConvertTo-AzureDevShellLiteral -Value "$RemotePath/keycloak.env"
       Invoke-AzureDevRemoteCommand `
         -Context $Context `
         -Command (
-          "mkdir -p $RemotePath && chmod 0700 $RemotePath && " +
-          "rm -f $RemotePath/sqlserver.env $RemotePath/keycloak.env"
+          "mkdir -p -- $remotePathLiteral && chmod 0700 -- $remotePathLiteral && " +
+          "rm -f -- $sqlServerRemotePathLiteral $keycloakRemotePathLiteral"
         ) `
         -Description 'Prepare support-service environment upload directory'
 
@@ -261,13 +277,16 @@ function Copy-AzureDevServiceEnvironmentFiles {
           'StrictHostKeyChecking=accept-new',
           $sqlServerPath,
           $keycloakPath,
-          "$($Context.Config.SshHostAlias):$RemotePath/"
+          "$($Context.Config.SshHostAlias):$(ConvertTo-AzureDevShellLiteral -Value "$RemotePath/")"
         )
       if ($result.ExitCode -ne 0) {
         throw "Support-service environment upload failed.`n$($result.Text.Trim())"
       }
       $uploadCompleted = $true
     }
+  } catch {
+    $operationError = $_
+    throw
   } finally {
     try {
       Remove-Item -LiteralPath $localPath -Recurse -Force -ErrorAction Stop
@@ -276,7 +295,12 @@ function Copy-AzureDevServiceEnvironmentFiles {
       }
     } catch {
       $stage = if ($uploadCompleted) { 'after a successful upload' } else { 'before upload completed' }
-      throw "Failed to remove local support-service environment files $stage. $($_.Exception.Message)"
+      $cleanupMessage = "Failed to remove local support-service environment files $stage. $($_.Exception.Message)"
+      if ($null -ne $operationError) {
+        Write-Warning $cleanupMessage
+      } else {
+        throw $cleanupMessage
+      }
     }
   }
 }

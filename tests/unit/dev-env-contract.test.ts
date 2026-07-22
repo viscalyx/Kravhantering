@@ -72,6 +72,7 @@ describe('development environment contract', () => {
     expect(azureModule).toContain(
       '$existingImage = Get-AzureDevVmImage -Config $Config',
     )
+    expect(azureModule).toContain('return $existingImage')
     expect(azureModule).toContain(
       'return Get-AzureDevUbuntuImage -Config $Config',
     )
@@ -163,6 +164,8 @@ describe('development environment contract', () => {
     expect(bootstrapModule).toContain(
       'Failed to remove local support-service environment files $stage.',
     )
+    expect(bootstrapModule).toContain('$operationError = $_')
+    expect(bootstrapModule).toContain('Write-Warning $cleanupMessage')
     expect(hostBootstrap).not.toContain('MSSQL_SA_PASSWORD=YourStrong!Passw0rd')
     expect(hostBootstrap).not.toContain('KEYCLOAK_ADMIN_PASSWORD=admin')
   })
@@ -238,6 +241,19 @@ describe('development environment contract', () => {
       'Write-Host "ssh -i `"$identityFile`" -o IdentitiesOnly=yes ' +
         'vscode@$hostName"',
     )
+    expect(entryScript).not.toContain('Write-Host "SSH target:')
+    const standardSshHeading = entryScript.indexOf(
+      "Write-Host 'For administration tasks, connect using standard SSH:'",
+    )
+    const developmentEnvironmentHeading = entryScript.indexOf(
+      "Write-Host 'Use this to start a development environment:'",
+    )
+    const extensionsHeading = entryScript.indexOf(
+      "Write-Host 'VS Code extensions: choose one installation option:'",
+    )
+    expect(standardSshHeading).toBeGreaterThan(-1)
+    expect(developmentEnvironmentHeading).toBeGreaterThan(standardSshHeading)
+    expect(extensionsHeading).toBeGreaterThan(developmentEnvironmentHeading)
     expect(developmentGuide).toContain(
       'ssh -i "<private-key-path>" -o IdentitiesOnly=yes',
     )
@@ -254,15 +270,11 @@ describe('development environment contract', () => {
     expect(entryScript).toContain(
       'VS Code extensions: choose one installation option:',
     )
-    expect(entryScript).toContain(
-      "Join-Path $Context.Config.RepoRoot '.vscode/extensions.json'",
-    )
     expect(entryScript).toContain('remote.SSH.defaultExtensions')
+    expect(entryScript).toContain('in repository file:')
+    expect(entryScript).toContain("Write-Host '     .vscode/extensions.json'")
     expect(entryScript).toContain(
       'Extensions: Install Workspace Recommended Extensions',
-    )
-    expect(entryScript).toContain(
-      '.vscode/extensions.json remains the source of truth.',
     )
     expect(developmentGuide).toContain(
       'always-installed Remote SSH extensions',
@@ -295,6 +307,14 @@ describe('development environment contract', () => {
     expect(validationModule).toContain(
       'test "${root_login_policy}" = "no"',
     )
+    const sshHardeningValidation = validationModule.slice(
+      validationModule.indexOf(
+        'sudo -n test -f /etc/ssh/sshd_config.d/00-kravhantering-root-login.conf',
+      ),
+      validationModule.indexOf('findmnt /mnt/krav-azure-dev-data'),
+    )
+    expect(sshHardeningValidation).toContain('dump_smoke_diagnostics')
+    expect(sshHardeningValidation).toContain('exit 1')
     expect(hostBootstrap).not.toContain(
       'awk \'$1 == "permitrootlogin" { print $2; exit }\'',
     )
@@ -333,6 +353,27 @@ describe('development environment contract', () => {
 
     expect(bootstrapModule).toContain(
       'Remote command failed with exit code $($result.ExitCode)',
+    )
+  })
+
+  it('quotes Azure bootstrap upload paths as remote shell literals', () => {
+    const bootstrapModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Bootstrap.psm1',
+    )
+
+    expect(bootstrapModule).toContain(
+      'function ConvertTo-AzureDevShellLiteral',
+    )
+    expect(bootstrapModule).toContain(
+      'rm -rf -- $remotePathLiteral && mkdir -p -- $remotePathLiteral',
+    )
+    expect(bootstrapModule).toContain('mkdir -p -- $remoteDirectoryLiteral')
+    expect(bootstrapModule).toContain(
+      'rm -f -- $sqlServerRemotePathLiteral $keycloakRemotePathLiteral',
+    )
+    expect(bootstrapModule).toContain("$RemotePath.StartsWith('/')")
+    expect(bootstrapModule).toContain(
+      "$remoteDirectory = if ($lastSlash -eq 0) { '/' }",
     )
   })
 

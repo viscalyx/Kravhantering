@@ -620,7 +620,24 @@ the managed support containers from the current Quadlet templates and
 checked-out Kong config while preserving named volumes, starts Quadlet services,
 and runs smoke validation.
 
-The generated VS Code command is:
+For administration tasks, use the generated regular SSH command:
+
+```sh
+ssh -i "<private-key-path>" -o IdentitiesOnly=yes \
+  vscode@<public-ip-or-tailscale-name>
+```
+
+Setup fills in the configured private-key path and the resolved remote host.
+The matching public key is installed on the VM and is not passed to the SSH
+client. `IdentitiesOnly=yes` ensures that SSH offers only that private key.
+Bootstrap explicitly disables direct SSH login as `root`. Connect as `vscode`
+and use `sudo` for administrative commands. This restriction applies only to
+OpenSSH; Azure control-plane operations, Run Command, VM Access, and Serial
+Console remain available for management and recovery. After using an Azure
+recovery action that resets or rewrites SSH configuration, rerun `setup` to
+restore and validate the managed policy.
+
+To start a development environment, use the generated VS Code command:
 
 ```sh
 code --remote ssh-remote+kravhantering-azure-dev /workspace
@@ -643,23 +660,6 @@ installs the extensions while VS Code establishes the first Remote SSH session,
 because the matching VS Code Server does not exist before that connection. See
 the VS Code documentation for
 [always-installed Remote SSH extensions](https://code.visualstudio.com/docs/remote/ssh#_always-installed-extensions).
-
-The generated regular SSH command is:
-
-```sh
-ssh -i "<private-key-path>" -o IdentitiesOnly=yes \
-  vscode@<public-ip-or-tailscale-name>
-```
-
-Setup fills in the configured private-key path and the resolved remote host.
-The matching public key is installed on the VM and is not passed to the SSH
-client. `IdentitiesOnly=yes` ensures that SSH offers only that private key.
-Bootstrap explicitly disables direct SSH login as `root`. Connect as `vscode`
-and use `sudo` for administrative commands. This restriction applies only to
-OpenSSH; Azure control-plane operations, Run Command, VM Access, and Serial
-Console remain available for management and recovery. After using an Azure
-recovery action that resets or rewrites SSH configuration, rerun `setup` to
-restore and validate the managed policy.
 
 After VS Code connects, optionally open its integrated terminal and run
 `p10k configure` to customize the prompt. The repository defaults are already

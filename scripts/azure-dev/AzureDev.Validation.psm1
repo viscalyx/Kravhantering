@@ -245,13 +245,19 @@ PY
 test -d /workspace
 test "$(stat -c '%U' /workspace)" = "vscode"
 test -d /workspace/.git
-sudo -n test -f /etc/ssh/sshd_config.d/00-kravhantering-root-login.conf
-root_login_policy="$(
-  sudo -n /usr/sbin/sshd -T \
-    -C user=root,host=localhost,addr=127.0.0.1 \
-    | awk '$1 == "permitrootlogin" { print $2 }'
-)"
-test "${root_login_policy}" = "no"
+if ! {
+  sudo -n test -f /etc/ssh/sshd_config.d/00-kravhantering-root-login.conf &&
+    root_login_policy="$(
+      sudo -n /usr/sbin/sshd -T \
+        -C user=root,host=localhost,addr=127.0.0.1 \
+        | awk '$1 == "permitrootlogin" { print $2 }'
+    )" &&
+    test "${root_login_policy}" = "no"
+}; then
+  printf 'SSH root-login hardening validation failed.\n'
+  dump_smoke_diagnostics
+  exit 1
+fi
 findmnt /mnt/krav-azure-dev-data >/dev/null
 findmnt /workspace >/dev/null
 findmnt /var/lib/krav-azure-dev >/dev/null
