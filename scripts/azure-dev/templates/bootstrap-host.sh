@@ -20,6 +20,7 @@ ZSHRC_SOURCE="${AZURE_DEV_ZSHRC_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templ
 SERVICE_ENV_SOURCE_DIR="${AZURE_DEV_SERVICE_ENV_SOURCE:-}"
 CODEX_CONFIG_SOURCE="${AZURE_DEV_CODEX_CONFIG_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/codex-config.toml}"
 CODEX_CONFIG_MERGER="${AZURE_DEV_CODEX_CONFIG_MERGER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/merge-codex-config.py}"
+CODEX_INSTALL_HOME="/usr/local/lib/codex"
 SSHD_ROOT_LOGIN_CONFIG="/etc/ssh/sshd_config.d/00-kravhantering-root-login.conf"
 SSHD_ENVIRONMENT_CONFIG="/etc/ssh/sshd_config.d/01-kravhantering-environment.conf"
 LYCHEE_VERSION="v0.24.2"
@@ -183,6 +184,20 @@ install_host_packages() {
     curl -sSfL https://raw.githubusercontent.com/dotenv-linter/dotenv-linter/master/install.sh \
       | sh -s -- -b /usr/local/bin
   fi
+}
+
+install_ai_tools() {
+  install -d -m 0755 "${CODEX_INSTALL_HOME}"
+  curl -fsSL https://chatgpt.com/codex/install.sh |
+    CODEX_HOME="${CODEX_INSTALL_HOME}" \
+      CODEX_INSTALL_DIR=/usr/local/bin \
+      CODEX_NON_INTERACTIVE=1 \
+      sh
+
+  npm_config_ignore_scripts=false npm install --global @github/copilot
+
+  codex --version
+  copilot --version
 }
 
 install_lychee() {
@@ -482,7 +497,10 @@ clone_or_update_repo() {
     run_as_vscode "cd '${clone_dir}' && tar cf - . | tar -C '${WORKSPACE_DIR}' -xf -"
     rm -rf "${clone_dir}"
   fi
-  git config --system --add safe.directory "${WORKSPACE_DIR}" || true
+  if ! git config --system --get-all safe.directory |
+    grep -Fxq -- "${WORKSPACE_DIR}"; then
+    git config --system --add safe.directory "${WORKSPACE_DIR}"
+  fi
   chown -R "${VSCODE_USER}:${VSCODE_USER}" "${WORKSPACE_DIR}"
 }
 
@@ -999,6 +1017,7 @@ validate_loopback_ports() {
 main() {
   log "starting host bootstrap"
   install_host_packages
+  install_ai_tools
   install_lychee
   configure_optional_ubuntu_pro
   ensure_vscode_user

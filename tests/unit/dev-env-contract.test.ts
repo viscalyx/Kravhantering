@@ -114,6 +114,20 @@ describe('development environment contract', () => {
     expect(hostBootstrap).toContain('resize2fs "${DATA_DEVICE}"')
   })
 
+  it('adds the Azure workspace to Git safe directories only once', () => {
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+
+    expect(hostBootstrap).toContain(
+      'git config --system --get-all safe.directory |\n' +
+        '    grep -Fxq -- "${WORKSPACE_DIR}"',
+    )
+    expect(hostBootstrap).toContain(
+      'git config --system --add safe.directory "${WORKSPACE_DIR}"',
+    )
+  })
+
   it('classifies only allowlisted Bicep WhatIf false positives', () => {
     const azureModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Azure.psm1',
@@ -252,6 +266,26 @@ describe('development environment contract', () => {
     expect(validationModule).toContain('lychee --version >/dev/null 2>&1')
   })
 
+  it('installs and smoke-validates both AI command-line tools', () => {
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+    const validationModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Validation.psm1',
+    )
+
+    expect(hostBootstrap).toContain('install_ai_tools()')
+    expect(hostBootstrap).toContain('https://chatgpt.com/codex/install.sh')
+    expect(hostBootstrap).toContain('CODEX_INSTALL_HOME="/usr/local/lib/codex"')
+    expect(hostBootstrap).toContain('CODEX_INSTALL_DIR=/usr/local/bin')
+    expect(hostBootstrap).toContain('CODEX_NON_INTERACTIVE=1')
+    expect(hostBootstrap).toContain(
+      'npm_config_ignore_scripts=false npm install --global @github/copilot',
+    )
+    expect(validationModule).toContain('codex --version >/dev/null 2>&1')
+    expect(validationModule).toContain('copilot --version >/dev/null 2>&1')
+  })
+
   it('provisions a working Codex sandbox and profile on the Azure VM', () => {
     const bootstrapModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Bootstrap.psm1',
@@ -286,7 +320,9 @@ describe('development environment contract', () => {
     expect(validationModule).toContain(
       "config['default_permissions'] == 'kravhantering-azure-dev'",
     )
-    expect(developmentGuide).toContain('### Codex in Remote SSH')
+    expect(developmentGuide).toContain(
+      '### Codex and GitHub Copilot CLIs in Remote SSH',
+    )
     expect(developmentGuide).toContain('preserves existing personal settings')
   })
 
@@ -319,6 +355,12 @@ describe('development environment contract', () => {
     expect(developmentGuide).toContain(
       '-o SendEnv=GH_TOKEN vscode@<public-ip-or-tailscale-name>',
     )
+  })
+
+  it('enables SSH agent forwarding in the managed host block', () => {
+    const sshModule = readWorkspaceFile('scripts/azure-dev/AzureDev.Ssh.psm1')
+
+    expect(sshModule).toContain("'    ForwardAgent yes'")
   })
 
   it('forwards GH_TOKEN without persisting or printing its value', () => {

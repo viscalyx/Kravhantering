@@ -252,9 +252,9 @@ operator's current public IPv4 address and converts it to a `/32` when
 
 The managed OpenSSH block is bounded by markers and is the only part of
 `~/.ssh/config` the tool may change. The block uses the configured host alias,
-the `vscode` user, `IdentitiesOnly yes`, the configured private key, and the
-local forwards documented in the development guide. It also contains
-`SendEnv GH_TOKEN`; the token value remains in the launching workstation
+the `vscode` user, `IdentitiesOnly yes`, `ForwardAgent yes`, the configured
+private key, and the local forwards documented in the development guide. It
+also contains `SendEnv GH_TOKEN`; the token value remains in the workstation
 environment and is never written to the managed block.
 
 The setup and start connection output explains that `GH_TOKEN` must exist in
@@ -318,6 +318,11 @@ Bootstrap installs Bubblewrap and the Ubuntu 24.04
 `bwrap-userns-restrict` AppArmor profile, then proves that the `vscode` user
 can create the user, PID, and network namespaces Codex requires. It does not
 disable `kernel.apparmor_restrict_unprivileged_userns` globally.
+
+Bootstrap installs Codex CLI with OpenAI's non-interactive standalone installer
+under `/usr/local/lib/codex` and exposes `codex` through `/usr/local/bin`. It
+installs GitHub Copilot CLI globally from the `@github/copilot` npm package.
+Both installers converge to their current stable releases on every setup run.
 
 The tracked Azure Codex template is separate from the devcontainer template.
 `merge-codex-config.py` atomically updates the existing user configuration. It
@@ -497,8 +502,8 @@ Validation must prove these implementation contracts:
 - rootless Podman graphroot is
   `/home/vscode/.local/share/containers/storage`.
 - expected major tools are installed: Node 24, npm, .NET 8.0, Git, GitHub CLI,
-  Docker CLI, Compose, Buildx, Podman, `podman-compose`, Python,
-  `dotenv-linter`, Lychee, and Playwright.
+  Codex CLI, GitHub Copilot CLI, Docker CLI, Compose, Buildx, Podman,
+  `podman-compose`, Python, `dotenv-linter`, Lychee, and Playwright.
 - user lingering is enabled.
 - managed Quadlet services are active.
 - support ports are bound only to loopback.

@@ -186,8 +186,8 @@ Data disk
 ```
 
 Package installation also writes normal Ubuntu, Node.js, Docker, GitHub CLI,
-and .NET package-manager files under standard system locations such as `/usr`,
-`/lib`, and `/var`.
+Codex CLI, GitHub Copilot CLI, and .NET package-manager files under standard
+system locations such as `/usr`, `/lib`, and `/var`.
 
 `/home/vscode` intentionally remains on the OS disk. Moving the full home
 directory to the data disk is possible, for example by bind-mounting a data
@@ -660,9 +660,9 @@ every charge. It does not run the Azure deployment preview; use
 
 Use `-Yes` for non-interactive confirmation. The command creates a dedicated
 SSH key if missing, provisions Azure resources, installs the managed SSH config
-block when approved, waits for SSH, uploads the local bootstrap and Quadlet
-templates, the selected Zsh profile, and the Azure Codex configuration, reruns
-the VM bootstrap, and runs smoke validation.
+block with SSH agent forwarding enabled when approved, waits for SSH, uploads
+the local bootstrap and Quadlet templates, the selected Zsh profile, and the
+Azure Codex configuration, reruns the VM bootstrap, and runs smoke validation.
 If the VM already exists but was deallocated by `stop` or auto-shutdown, `setup`
 starts it before waiting for SSH.
 
@@ -673,13 +673,22 @@ disk at `/mnt/krav-azure-dev-data`, bind-mounts
 bind-mounts the data-disk-backed Podman storage directory to
 `/home/vscode/.local/share/containers/storage`. It clones the repo to
 `/workspace`, configures rootless Podman to use its normal home storage path,
-runs `npm install`, restores .NET tools, installs the pinned Lychee link checker
-and Playwright browsers, verifies the checked-out Kong config, builds HSA
-support images with Podman, recreates the managed support containers from the
-current Quadlet templates and checked-out Kong config while preserving named
-volumes, starts Quadlet services, and runs smoke validation.
+runs `npm install`, restores .NET tools, installs Codex CLI, GitHub Copilot CLI,
+the pinned Lychee link checker, and Playwright browsers, verifies the checked-out
+Kong config, builds HSA support images with Podman, recreates the managed support
+containers from the current Quadlet templates and checked-out Kong config while
+preserving named volumes, starts Quadlet services, and runs smoke validation.
 
-### Codex in Remote SSH
+### Codex and GitHub Copilot CLIs in Remote SSH
+
+Setup installs the current stable Codex CLI and GitHub Copilot CLI releases
+system-wide and verifies that the `codex` and `copilot` commands start. Rerun
+`setup` to install updates on an existing VM.
+
+Codex authentication is separate from GitHub authentication. Run `codex login`
+and complete its browser flow before first use. GitHub Copilot CLI can use the
+`GH_TOKEN` forwarded from the workstation. The token's user must have an active
+Copilot plan, and the organization policy must allow Copilot CLI.
 
 Azure setup installs the distribution `bubblewrap` package and the Ubuntu
 24.04 AppArmor profile required for unprivileged user namespaces. Bootstrap
@@ -713,6 +722,9 @@ ssh -i "<private-key-path>" -o IdentitiesOnly=yes \
 Setup fills in the configured private-key path and the resolved remote host.
 The matching public key is installed on the VM and is not passed to the SSH
 client. `IdentitiesOnly=yes` ensures that SSH offers only that private key.
+The managed host block sets `ForwardAgent yes`, allowing remote Git processes
+to request signatures from the workstation's SSH agent without copying private
+keys to the VM.
 Bootstrap explicitly disables direct SSH login as `root`. Connect as `vscode`
 and use `sudo` for administrative commands. This restriction applies only to
 OpenSSH; Azure control-plane operations, Run Command, VM Access, and Serial
@@ -854,9 +866,9 @@ VM device from the Tailscale admin console.
 ## Step 10: Validate
 
 Default smoke validation checks SSH, the data-disk bind mounts, `/workspace`,
-major tool versions including Lychee, rootless Podman units, loopback-only
-support ports, HSA lookup through Kong, `npm run db:setup`,
-`npm run db:health`, and Playwright browser availability.
+major tool versions including Codex CLI, GitHub Copilot CLI, and Lychee,
+rootless Podman units, loopback-only support ports, HSA lookup through Kong,
+`npm run db:setup`, `npm run db:health`, and Playwright browser availability.
 
 Optional heavier checks after the environment is accepted:
 

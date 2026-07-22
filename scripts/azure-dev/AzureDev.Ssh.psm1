@@ -180,6 +180,7 @@ function Get-AzureDevSshConfigBlock {
     '    User vscode',
     "    IdentityFile $identityFile",
     '    IdentitiesOnly yes',
+    '    ForwardAgent yes',
     '    StrictHostKeyChecking accept-new',
     '    SendEnv GH_TOKEN'
   )

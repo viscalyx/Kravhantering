@@ -314,6 +314,8 @@ npm --version >/dev/null 2>&1
 dotnet --version 2>/dev/null | grep -Eq '^8\.'
 git --version >/dev/null 2>&1
 gh --version >/dev/null 2>&1
+codex --version >/dev/null 2>&1
+copilot --version >/dev/null 2>&1
 docker --version >/dev/null 2>&1
 docker compose version >/dev/null 2>&1
 docker buildx version >/dev/null 2>&1
