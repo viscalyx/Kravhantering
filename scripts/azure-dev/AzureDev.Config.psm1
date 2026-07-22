@@ -282,10 +282,12 @@ function Test-AzureDevConfig {
   }
 
   $servicePrincipalValues = @(
-    $Config.TenantId,
-    $Config.ClientId,
-    $Config.ClientSecret
-  ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    @(
+      $Config.TenantId,
+      $Config.ClientId,
+      $Config.ClientSecret
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+  )
   if (
     $servicePrincipalValues.Count -gt 0 -and
     $servicePrincipalValues.Count -lt 3
