@@ -185,7 +185,9 @@ runs if the configured target is not local.
 6. Runs the [`zaproxy/action-baseline`](https://github.com/zaproxy/action-baseline)
    action against `http://localhost:3001/sv` with the captured cookie
    injected as a `Cookie` header on every request via ZAP's `replacer`
-   add-on.
+   add-on. The workflow passes `-j --ajax-spider` so updates to the action's
+   mutable `stable` container image cannot switch the modern crawler from the
+   AJAX Spider to the Client Spider.
 7. Installs Nuclei with <!-- cSpell:ignore nuclei projectdiscovery -->
    [`projectdiscovery/nuclei-action@v3`](https://github.com/projectdiscovery/nuclei-action),
    pins the Nuclei binary to `v3.8.0`, downloads the ProjectDiscovery
@@ -222,9 +224,8 @@ enough to require a separate lifecycle.
   worth taking on every PR against a developer's branch.
 - **Fast enough for per-PR runs.** A baseline + AJAX spider with a
   10-minute cap fits inside the existing integration-test budget.
-- **Already containerized.** The official action provides a pinned
-  Docker image (no client-side install on the runner) and emits
-  consistent report artifacts.
+- **Already containerized.** The official action runs its scanner image without
+  a client-side install on the runner and emits consistent report artifacts.
 - **Tunable per-rule.** ZAP exposes per-rule IGNORE/WARN/FAIL via a
   `rules.<scenario>.tsv` file checked into the repo, so policy decisions
   live next to the workflow and can be code-reviewed.

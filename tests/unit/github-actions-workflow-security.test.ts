@@ -41,6 +41,7 @@ type WorkflowStep = {
   env?: Record<string, unknown>
   name?: unknown
   run?: unknown
+  uses?: unknown
   with?: Record<string, unknown>
 }
 
@@ -323,6 +324,38 @@ describe('GitHub Actions workflow security', () => {
     }
 
     expect(readZapRules('rules.api.tsv').get('100001')).toBe('INFO')
+  })
+
+  it('keeps the ZAP modern spider choice explicit', () => {
+    let modernSpiderSteps = 0
+
+    for (const fileName of [
+      'security-dast.yml',
+      'security-dast-full.yml',
+      'security-dast-roles.yml',
+    ]) {
+      const workflow = readWorkflowYaml(fileName)
+
+      for (const job of Object.values(workflow.jobs ?? {})) {
+        for (const step of job.steps ?? []) {
+          if (
+            typeof step.uses !== 'string' ||
+            !step.uses.startsWith('zaproxy/action-') ||
+            typeof step.with?.cmd_options !== 'string' ||
+            !/(?:^|\s)-j(?:\s|$)/u.test(step.with.cmd_options)
+          ) {
+            continue
+          }
+
+          modernSpiderSteps += 1
+          expect(step.with.cmd_options).toMatch(
+            /(?:^|\s)--ajax-spider(?:\s|$)/u,
+          )
+        }
+      }
+    }
+
+    expect(modernSpiderSteps).toBe(4)
   })
 
   it('keeps DAST app-log publication from overriding the scan outcome', () => {

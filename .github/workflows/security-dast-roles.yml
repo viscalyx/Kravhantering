@@ -141,6 +141,7 @@ jobs:
           artifact_name: zap-role-${{ matrix.user.artifact }}
           cmd_options: >-
             -j
+            --ajax-spider
             -m 5
             -T 10
             -z "-config replacer.full_list(0).description=session-cookie
