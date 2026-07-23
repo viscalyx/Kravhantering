@@ -1160,7 +1160,8 @@
     "unvalidated",
     "unpdf",
     "fokusmarkering",
-    "infografik"
+    "infografik",
+    "mktemp"
   ],
   "flagWords": [],
   "ignorePaths": [
