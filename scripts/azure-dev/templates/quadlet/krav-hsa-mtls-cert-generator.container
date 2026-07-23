@@ -1,0 +1,24 @@
+[Unit]
+Description=Kravhantering HSA mTLS certificate generator
+Requires=krav-hsa-mtls-certs-volume.service
+After=krav-hsa-mtls-certs-volume.service
+
+[Container]
+ContainerName=hsa-mtls-cert-generator
+Image=localhost/kravhantering/hsa-person-lookup-adapter:local
+User=0:0
+Volume=krav-hsa-mtls-certs.volume:/run/hsa-mtls:Z
+Exec=npm run generate-certs
+
+[Service]
+Environment=HOME=%h
+Environment=XDG_CONFIG_HOME=%h/.config
+Environment=XDG_DATA_HOME=%h/.local/share
+Environment=XDG_RUNTIME_DIR=%t
+Environment=CONTAINERS_CONF=%h/.config/containers/containers.conf
+Environment=CONTAINERS_STORAGE_CONF=%h/.config/containers/storage.conf
+Type=oneshot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target

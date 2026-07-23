@@ -1,0 +1,32 @@
+[Unit]
+Description=Kravhantering HSA person lookup REST adapter
+Requires=krav-support-network.service krav-hsa-mtls-certs-volume.service krav-hsa-directory-mock.service
+After=krav-support-network.service krav-hsa-directory-mock.service
+
+[Container]
+ContainerName=hsa-person-lookup-adapter
+Image=localhost/kravhantering/hsa-person-lookup-adapter:local
+Network=krav-support.network
+Volume=krav-hsa-mtls-certs.volume:/run/hsa-mtls:ro,Z
+Environment=HSA_SOAP_ENDPOINT_URL=https://hsa-directory-mock:8443/svr-hsaws2/hsaws
+Environment=HSA_SOAP_TIMEOUT_MS=5000
+Environment=PORT=8080
+HealthCmd=node --input-type=module -e "const response = await fetch('http://127.0.0.1:8080/health'); if (!response.ok) process.exit(1);"
+HealthInterval=10s
+HealthRetries=12
+HealthStartPeriod=10s
+HealthTimeout=5s
+HealthOnFailure=kill
+
+[Service]
+Environment=HOME=%h
+Environment=XDG_CONFIG_HOME=%h/.config
+Environment=XDG_DATA_HOME=%h/.local/share
+Environment=XDG_RUNTIME_DIR=%t
+Environment=CONTAINERS_CONF=%h/.config/containers/containers.conf
+Environment=CONTAINERS_STORAGE_CONF=%h/.config/containers/storage.conf
+Restart=on-failure
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

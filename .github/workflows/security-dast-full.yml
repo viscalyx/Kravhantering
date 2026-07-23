@@ -96,6 +96,7 @@ jobs:
           artifact_name: zap-full-authenticated
           cmd_options: >-
             -j
+            --ajax-spider
             -m 10
             -T 90
             -z "-config replacer.full_list(0).description=session-cookie
@@ -117,6 +118,7 @@ jobs:
           artifact_name: zap-full-unauthenticated
           cmd_options: >-
             -j
+            --ajax-spider
             -m 5
             -T 45
 

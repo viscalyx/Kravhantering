@@ -1,0 +1,20 @@
+# Codex settings managed on the Kravhantering Azure development VM.
+
+approval_policy = "never"
+default_permissions = "kravhantering-azure-dev"
+
+[projects."/workspace"]
+trust_level = "trusted"
+
+[permissions.kravhantering-azure-dev]
+description = "Workspace access with Kravhantering Azure VM service network."
+extends = ":workspace"
+
+[permissions.kravhantering-azure-dev.network]
+enabled = true
+allow_local_binding = true
+
+[permissions.kravhantering-azure-dev.network.domains]
+"localhost" = "allow"
+"127.0.0.1" = "allow"
+"::1" = "allow"

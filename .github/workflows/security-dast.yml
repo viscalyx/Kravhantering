@@ -82,14 +82,18 @@ jobs:
           #     it because that would only fail on rules explicitly
           #     marked FAIL, which requires enumerating every rule.
           # Other flags:
-          #   -j         : also run the AJAX spider so client-rendered
-          #                routes are reachable.
+          #   -j --ajax-spider
+          #              : also run the AJAX spider so client-rendered
+          #                routes are reachable. Select it explicitly because
+          #                ZAP's mutable stable image defaults -j to the Client
+          #                Spider as of July 2026.
           #   -m 5 -T 10 : 5 minute spider, 10 minute total timeout.
           #   -z ...     : ZAP `replacer` add-on injects the iron-session
           #                cookie on every outgoing request so
           #                authenticated pages are scanned.
           cmd_options: >-
             -j
+            --ajax-spider
             -m 5
             -T 10
             -z "-config replacer.full_list(0).description=session-cookie
@@ -385,6 +389,7 @@ jobs:
 
       - name: Upload app log
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: dast-app-log
