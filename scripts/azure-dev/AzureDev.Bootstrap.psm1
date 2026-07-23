@@ -256,6 +256,21 @@ function Test-AzureDevBootstrapSecrets {
   }
 }
 
+<#
+.SYNOPSIS
+Validates the Git identity required by Azure development setup.
+
+.DESCRIPTION
+Verifies that the resolved Git user name and email are present and do not
+contain newline characters.
+
+.PARAMETER Config
+The resolved Azure development configuration containing GitUserName and
+GitUserEmail.
+
+.EXAMPLE
+Test-AzureDevGitIdentity -Config $Context.Config
+#>
 function Test-AzureDevGitIdentity {
   [CmdletBinding()]
   param(

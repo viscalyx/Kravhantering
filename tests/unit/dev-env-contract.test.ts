@@ -6,6 +6,10 @@ function readWorkspaceFile(path: string) {
   return readFileSync(path, 'utf8')
 }
 
+function withoutSingleQuotedLiterals(content: string) {
+  return content.replace(/'(?:''|[^'\r\n])*'/gu, "''")
+}
+
 const hsaPersonLookupEnvVars = [
   'HSA_PERSON_LOOKUP_TIMEOUT_MS',
   'HSA_PERSON_LOOKUP_URL',
@@ -120,11 +124,10 @@ describe('development environment contract', () => {
     )
 
     expect(hostBootstrap).toContain(
-      'git config --system --get-all safe.directory |\n' +
-        '    grep -Fxq -- "${WORKSPACE_DIR}"',
-    )
-    expect(hostBootstrap).toContain(
-      'git config --system --add safe.directory "${WORKSPACE_DIR}"',
+      '  if ! git config --system --get-all safe.directory |\n' +
+        '    grep -Fxq -- "${WORKSPACE_DIR}"; then\n' +
+        '    git config --system --add safe.directory "${WORKSPACE_DIR}"\n' +
+        '  fi',
     )
   })
 
@@ -364,13 +367,30 @@ describe('development environment contract', () => {
     )
 
     expect(hostBootstrap).toContain('install_ai_tools()')
-    expect(hostBootstrap).toContain('https://chatgpt.com/codex/install.sh')
+    expect(hostBootstrap).not.toContain('https://chatgpt.com/codex/install.sh')
     expect(hostBootstrap).toContain('CODEX_INSTALL_HOME="/usr/local/lib/codex"')
+    expect(hostBootstrap).not.toMatch(/^CODEX_VERSION=/mu)
+    expect(hostBootstrap).not.toMatch(/^COPILOT_VERSION=/mu)
+    expect(hostBootstrap).not.toMatch(
+      /releases\/download\/rust-v\d[^"'\s]*\/install\.sh/u,
+    )
+    expect(hostBootstrap).not.toMatch(/@github\/copilot@\d/u)
+    expect(hostBootstrap).toContain(
+      'https://api.github.com/repos/openai/codex/releases/latest',
+    )
+    expect(hostBootstrap).toContain(
+      '"https://github.com/openai/codex/releases/download/${codex_release_tag}/install.sh"',
+    )
+    expect(hostBootstrap).toContain('.name == "install.sh"')
+    expect(hostBootstrap).toContain('select(startswith("sha256:"))')
+    expect(hostBootstrap).toContain('sha256sum --check --status')
     expect(hostBootstrap).toContain('CODEX_INSTALL_DIR=/usr/local/bin')
     expect(hostBootstrap).toContain('CODEX_NON_INTERACTIVE=1')
+    expect(hostBootstrap).toContain('CODEX_RELEASE="${codex_version}"')
     expect(hostBootstrap).toContain(
-      'npm_config_ignore_scripts=false npm install --global @github/copilot',
+      'npm install --global @github/copilot@latest',
     )
+    expect(hostBootstrap).toContain('COPILOT_AUTO_UPDATE=false')
     expect(validationModule).toContain('codex --version >/dev/null 2>&1')
     expect(validationModule).toContain('copilot --version >/dev/null 2>&1')
   })
@@ -489,6 +509,25 @@ describe('development environment contract', () => {
     expect(developmentGuide).toContain('AcceptEnv GH_TOKEN')
     expect(developmentGuide).toContain('SAML SSO')
     expect(internalsGuide).toContain('never written to the managed block')
+
+    const powerShellTokenOutput =
+      /^(?=[^\r\n]*\$(?:(?:env:)?GH_TOKEN\b|\{(?:env:)?GH_TOKEN\}))[^\r\n]*\b(?:Write-(?:Debug|Error|Host|Information|Output|Verbose|Warning)|Out-(?:Default|File|Host|String)|Tee-Object|echo)\b/imu
+    const shellTokenOutput =
+      /^(?=[^\r\n]*\$(?:GH_TOKEN\b|\{GH_TOKEN\b))[^\r\n]*\b(?:echo|log|logger|printf)\b/imu
+    const shellPrintEnvToken = /\bprintenv(?:\s+--)?\s+GH_TOKEN\b/iu
+
+    expect(withoutSingleQuotedLiterals(entryScript)).not.toMatch(
+      powerShellTokenOutput,
+    )
+    expect(withoutSingleQuotedLiterals(sshModule)).not.toMatch(
+      powerShellTokenOutput,
+    )
+    expect(withoutSingleQuotedLiterals(hostBootstrap)).not.toMatch(
+      shellTokenOutput,
+    )
+    expect(withoutSingleQuotedLiterals(hostBootstrap)).not.toMatch(
+      shellPrintEnvToken,
+    )
   })
 
   it('offers explicit VS Code Remote SSH extension installation choices', () => {
