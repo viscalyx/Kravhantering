@@ -380,6 +380,36 @@ describe('development environment contract', () => {
     expect(validationModule).toContain('btop --version >/dev/null 2>&1')
   })
 
+  it('provisions writable standard directories for the remote user', () => {
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+    const validationModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Validation.psm1',
+    )
+
+    expect(hostBootstrap).toContain(
+      'install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0750',
+    )
+    expect(hostBootstrap).toContain(
+      'install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700',
+    )
+    for (const directory of [
+      '${VSCODE_HOME}/.cache',
+      '${VSCODE_HOME}/.config',
+      '${VSCODE_HOME}/.local/share',
+      '${VSCODE_HOME}/.local/state',
+    ]) {
+      expect(hostBootstrap).toContain(`"${directory}"`)
+    }
+    expect(validationModule).toContain(
+      'mktemp "${user_directory}/.krav-write-probe.XXXXXX"',
+    )
+    expect(validationModule).toContain(
+      "printf 'User directory is not writable: %s\\n'",
+    )
+  })
+
   it('installs and smoke-validates both AI command-line tools', () => {
     const hostBootstrap = readWorkspaceFile(
       'scripts/azure-dev/templates/bootstrap-host.sh',

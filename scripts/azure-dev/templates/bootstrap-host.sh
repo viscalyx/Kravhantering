@@ -61,6 +61,14 @@ ensure_vscode_user() {
   fi
   usermod --shell /bin/zsh "${VSCODE_USER}"
   usermod --append --groups sudo,docker "${VSCODE_USER}" || true
+  install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0750 \
+    "${VSCODE_HOME}"
+  install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700 \
+    "${VSCODE_HOME}/.cache" \
+    "${VSCODE_HOME}/.config" \
+    "${VSCODE_HOME}/.local" \
+    "${VSCODE_HOME}/.local/share" \
+    "${VSCODE_HOME}/.local/state"
   install -d -m 0755 /etc/sudoers.d
   printf '%s ALL=(ALL) NOPASSWD:ALL\n' "${VSCODE_USER}" \
     > /etc/sudoers.d/90-krav-vscode

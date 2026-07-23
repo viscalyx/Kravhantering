@@ -276,6 +276,22 @@ sudo -n test -f /etc/apparmor.d/bwrap-userns-restrict
   --unshare-net \
   -- /bin/true
 
+user_directories=(
+  "${HOME}"
+  "${HOME}/.cache"
+  "${XDG_CONFIG_HOME}"
+  "${XDG_DATA_HOME}"
+  "${HOME}/.local/state"
+)
+for user_directory in "${user_directories[@]}"; do
+  if ! write_probe="$(mktemp "${user_directory}/.krav-write-probe.XXXXXX")"; then
+    printf 'User directory is not writable: %s\n' "${user_directory}"
+    dump_smoke_diagnostics
+    exit 1
+  fi
+  rm -f "${write_probe}"
+done
+
 test -d /workspace
 test "$(stat -c '%U' /workspace)" = "vscode"
 test -d /workspace/.git
