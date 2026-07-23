@@ -322,7 +322,8 @@ the workflow run summary. It contains:
 
 The application log captured during the scan is uploaded separately as
 **`dast-app-log`** and is the first thing to inspect when ZAP cannot
-reach the app.
+reach the app. This diagnostic upload is best-effort: an artifact-service
+failure does not override the DAST scan outcome.
 
 Download the **`nuclei_scan`** artifact for Nuclei triage. It contains JSONL,
 SARIF, Markdown exports, stdout/stderr logs, and the local target file used by

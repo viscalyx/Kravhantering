@@ -37,6 +37,7 @@ type WorkflowJob = {
 }
 
 type WorkflowStep = {
+  'continue-on-error'?: unknown
   env?: Record<string, unknown>
   name?: unknown
   run?: unknown
@@ -322,6 +323,16 @@ describe('GitHub Actions workflow security', () => {
     }
 
     expect(readZapRules('rules.api.tsv').get('100001')).toBe('INFO')
+  })
+
+  it('keeps DAST app-log publication from overriding the scan outcome', () => {
+    const workflow = readWorkflowYaml('security-dast.yml')
+    const appLogUpload = workflow.jobs?.['zap-baseline']?.steps?.find(
+      step => step.name === 'Upload app log',
+    )
+
+    expect(appLogUpload).toBeDefined()
+    expect(appLogUpload?.['continue-on-error']).toBe(true)
   })
 
   it('keeps the fork-compatible operator upgrade gate on trusted base code', () => {
