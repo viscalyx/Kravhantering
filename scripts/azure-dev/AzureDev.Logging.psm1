@@ -1,5 +1,7 @@
 Set-StrictMode -Version Latest
 
+$script:AzureDevEmailPattern = '(?i)(?<![A-Z0-9._%+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+(?![A-Z0-9._%+-])'
+
 function New-AzureDevDirectory {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
@@ -68,7 +70,25 @@ function ConvertTo-AzureDevRedactedValue {
   ) {
     return '[redacted]'
   }
+  $piiSafeText = ConvertTo-AzureDevPiiSafeText -Value $text
+  if ($piiSafeText -ne $text) {
+    return $piiSafeText
+  }
   return $Value
+}
+
+function ConvertTo-AzureDevPiiSafeText {
+  [CmdletBinding()]
+  param(
+    [AllowNull()]
+    [string]$Value
+  )
+
+  if ($null -eq $Value) {
+    return $null
+  }
+
+  return $Value -replace $script:AzureDevEmailPattern, '[email redacted]'
 }
 
 function Format-AzureDevCommandArgument {
@@ -116,6 +136,7 @@ function Format-AzureDevCommand {
     } else {
       $argument
     }
+    $displayArgument = ConvertTo-AzureDevPiiSafeText -Value $displayArgument
 
     $redactedArguments.Add($displayArgument)
     if ($argument -match '(?i)^--?(password|client-secret|secret|token|auth-key)$') {
@@ -142,7 +163,8 @@ function Invoke-AzureDevNativeCommand {
   $result = & $FilePath @Arguments 2>&1
   $exitCode = $LASTEXITCODE
   $text = $result | Out-String
-  Write-Debug "Output from $commandLine`:$([Environment]::NewLine)$text"
+  $displayText = ConvertTo-AzureDevPiiSafeText -Value $text
+  Write-Debug "Output from $commandLine`:$([Environment]::NewLine)$displayText"
 
   return [pscustomobject]@{
     ExitCode = $exitCode
@@ -315,6 +337,7 @@ function Remove-AzureDevLocalState {
 }
 
 Export-ModuleMember -Function `
+  ConvertTo-AzureDevPiiSafeText, `
   ConvertTo-AzureDevRedactedValue, `
   Format-AzureDevCommand, `
   Format-AzureDevCommandArgument, `

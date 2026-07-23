@@ -1,3 +1,5 @@
+using module ./AzureDev.Logging.psm1
+
 Set-StrictMode -Version Latest
 
 $script:AzureDevManagedBy = 'kravhantering-azure-dev'

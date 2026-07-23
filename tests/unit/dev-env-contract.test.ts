@@ -48,7 +48,6 @@ describe('development environment contract', () => {
     const configModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Config.psm1',
     )
-
     expect(entryScript).toContain(
       'if ([string]::IsNullOrWhiteSpace($RepositoryRoot))',
     )
@@ -159,6 +158,9 @@ describe('development environment contract', () => {
     const configModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Config.psm1',
     )
+    const loggingModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Logging.psm1',
+    )
     const bootstrapModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Bootstrap.psm1',
     )
@@ -177,6 +179,7 @@ describe('development environment contract', () => {
     expect(configModule).toContain(
       "-Arguments @('-C', $RepositoryRoot, 'config', '--get', $Key)",
     )
+    expect(configModule).toContain('using module ./AzureDev.Logging.psm1')
     expect(configModule).toContain("-Key 'user.name'")
     expect(configModule).toContain("-Key 'user.email'")
     expect(configModule).toContain("-Key 'gpg.format'")
@@ -195,6 +198,40 @@ describe('development environment contract', () => {
     expect(configModule).toContain('private-key path with a matching .pub file')
     expect(entryScript).toContain(
       'Test-AzureDevGitIdentity -Config $Context.Config',
+    )
+    const gitIdentityCheckIndex = entryScript.indexOf(
+      'Test-AzureDevGitIdentity -Config $Context.Config',
+    )
+    const firstRemoteSshOperationIndex = entryScript.indexOf('Wait-AzureDevSsh')
+    const firstBootstrapOperationIndex = entryScript.indexOf(
+      'Invoke-AzureDevBootstrap -Context $Context',
+    )
+    const setupStateStart = entryScript.indexOf(
+      'function Set-AzureDevSetupState',
+    )
+    const setupStateEnd = entryScript.indexOf(
+      '\nfunction Invoke-AzureDevSetup',
+      setupStateStart,
+    )
+    const persistedSetupState = entryScript.slice(
+      setupStateStart,
+      setupStateEnd,
+    )
+    expect(gitIdentityCheckIndex).toBeGreaterThanOrEqual(0)
+    expect(firstRemoteSshOperationIndex).toBeGreaterThan(gitIdentityCheckIndex)
+    expect(firstBootstrapOperationIndex).toBeGreaterThan(gitIdentityCheckIndex)
+    expect(setupStateStart).toBeGreaterThanOrEqual(0)
+    expect(setupStateEnd).toBeGreaterThan(setupStateStart)
+    expect(persistedSetupState).not.toContain('GitUserEmail')
+    expect(loggingModule).toContain('function ConvertTo-AzureDevPiiSafeText')
+    expect(loggingModule).toContain(
+      '$piiSafeText = ConvertTo-AzureDevPiiSafeText -Value $text',
+    )
+    expect(loggingModule).toContain(
+      '$displayArgument = ConvertTo-AzureDevPiiSafeText -Value $displayArgument',
+    )
+    expect(loggingModule).toContain(
+      '$displayText = ConvertTo-AzureDevPiiSafeText -Value $text',
     )
     expect(bootstrapModule).toContain(
       'AZURE_DEV_GIT_USER_NAME=$gitUserNameLiteral',
