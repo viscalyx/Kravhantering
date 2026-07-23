@@ -403,6 +403,14 @@ view. The data disk is introduced underneath it with a bind mount. This avoids
 Netavark and rootless networking issues that can appear when graphroot is moved
 to an unusual system path.
 
+The two local HSA image builds share a guarded recovery path for persisted
+Podman image-layer corruption. A failed build is retried only when its output
+contains Podman's `layer not known` or local-image corruption diagnostics.
+Bootstrap prunes external layer remnants and unused containers, images,
+networks, and build cache before rebuilding both HSA images with `--no-cache`.
+The recovery never passes `--volumes`; named support-service data remains
+intact.
+
 When changing storage behavior, update bootstrap and smoke validation together.
 Validation must prove that the data mount source is the Azure data disk and
 that `/workspace`, host state, and Podman storage are on the same device as the

@@ -789,11 +789,43 @@ install_quadlet_units() {
   chmod 0600 "${KRAV_CONFIG_DIR}"/*.env
 }
 
+build_hsa_images_once() {
+  local no_cache_option=""
+  if [ "${1:-}" = "no-cache" ]; then
+    no_cache_option="--no-cache "
+  fi
+
+  run_as_vscode \
+    "cd '${WORKSPACE_DIR}' && podman build ${no_cache_option}--tag localhost/kravhantering/hsa-person-lookup-adapter:local --file containers/hsa-person-lookup-adapter/Dockerfile containers/hsa-person-lookup-adapter" ||
+    return
+  run_as_vscode \
+    "cd '${WORKSPACE_DIR}' && podman build ${no_cache_option}--tag localhost/kravhantering/hsa-directory-mock:local --file containers/hsa-directory-mock/Dockerfile containers/hsa-directory-mock"
+}
+
 build_hsa_images() {
-  run_as_vscode \
-    "cd '${WORKSPACE_DIR}' && podman build --tag localhost/kravhantering/hsa-person-lookup-adapter:local --file containers/hsa-person-lookup-adapter/Dockerfile containers/hsa-person-lookup-adapter"
-  run_as_vscode \
-    "cd '${WORKSPACE_DIR}' && podman build --tag localhost/kravhantering/hsa-directory-mock:local --file containers/hsa-directory-mock/Dockerfile containers/hsa-directory-mock"
+  local build_log
+  build_log="$(mktemp /tmp/krav-podman-build.XXXXXX)"
+
+  if build_hsa_images_once 2>&1 | tee "${build_log}"; then
+    rm -f "${build_log}"
+    return
+  fi
+
+  if ! grep -Eqi \
+    'layer not known|exists in local storage but may be corrupted' \
+    "${build_log}"; then
+    rm -f "${build_log}"
+    return 1
+  fi
+  rm -f "${build_log}"
+
+  log "Podman image-layer metadata is inconsistent; pruning disposable build state and retrying without cache"
+  run_as_vscode "podman system prune --external --force" ||
+    log "Podman external-layer cleanup reported an error; continuing with unused-image cleanup"
+  run_as_vscode "podman system prune --all --build --force" ||
+    log "Podman unused-image cleanup reported an error; continuing with a cache-free rebuild"
+
+  build_hsa_images_once no-cache
 }
 
 run_user_systemctl() {

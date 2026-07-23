@@ -118,6 +118,28 @@ describe('development environment contract', () => {
     expect(hostBootstrap).toContain('resize2fs "${DATA_DEVICE}"')
   })
 
+  it('repairs disposable Podman build state without pruning named volumes', () => {
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+    const recoveryStart = hostBootstrap.indexOf('build_hsa_images()')
+    const recoveryEnd = hostBootstrap.indexOf(
+      '\nrun_user_systemctl()',
+      recoveryStart,
+    )
+    const recovery = hostBootstrap.slice(recoveryStart, recoveryEnd)
+
+    expect(recoveryStart).toBeGreaterThanOrEqual(0)
+    expect(recoveryEnd).toBeGreaterThan(recoveryStart)
+    expect(recovery).toContain(
+      "'layer not known|exists in local storage but may be corrupted'",
+    )
+    expect(recovery).toContain('podman system prune --external --force')
+    expect(recovery).toContain('podman system prune --all --build --force')
+    expect(recovery).toContain('build_hsa_images_once no-cache')
+    expect(recovery).not.toContain('--volumes')
+  })
+
   it('adds the Azure workspace to Git safe directories only once', () => {
     const hostBootstrap = readWorkspaceFile(
       'scripts/azure-dev/templates/bootstrap-host.sh',
