@@ -356,6 +356,37 @@ without displaying the token:
 test -n "${GH_TOKEN:-}" && gh auth status
 ```
 
+### Prepare SSH commit signing
+
+Setup mirrors workstation SSH commit signing when all three effective Git
+settings are present for this checkout:
+
+```sh
+git config --get gpg.format
+git config --get --bool commit.gpgsign
+git config --get user.signingKey
+```
+
+The first two commands must print `ssh` and `true`. `user.signingKey` must be an
+inline `key::` public key, a public-key file, or a private-key path with a
+matching `.pub` file. Setup reads and uploads only the public key. It never
+copies the private key.
+
+Load the matching private key into the workstation SSH agent before setup and
+before each Remote SSH connection:
+
+```sh
+ssh-add -l
+```
+
+The public key must also be registered with GitHub as a signing key when commits
+need GitHub's **Verified** badge. Setup cannot change GitHub account signing
+keys.
+
+The managed SSH host block enables agent forwarding. A remote process can ask
+the forwarded agent to sign while the connection is open, but it cannot read
+the private key. Enable this workflow only for a VM you trust.
+
 ## Step 4: Configure `.env.azure.development`
 
 Copy the example and edit the required non-secret Azure values:
@@ -416,6 +447,16 @@ AZURE_DEV_GIT_USER_EMAIL=<email-address>
 Each value resolves independently, so an explicit email can be combined with a
 name copied from local Git configuration. Setup stops before changing Azure
 resources when it cannot resolve both values.
+
+When local Git does not expose the intended SSH signing key, set a non-secret
+public-key override:
+
+```env
+AZURE_DEV_GIT_SSH_SIGNING_KEY=~/.ssh/id_ed25519.pub
+```
+
+The override accepts the same public forms as `user.signingKey`. Never put
+private-key content in an Azure development environment file.
 
 ## Step 5: Configure `.env.azure.development.local`
 
@@ -593,7 +634,7 @@ Precedence is:
 1. session environment variables
 2. `.env.azure.development.local`
 3. `.env.azure.development`
-4. the effective local Git configuration, for Git identity values only
+4. the effective local Git configuration, for Git identity and SSH signing
 5. built-in defaults, which do not provide a Git identity
 
 That means a shell `AZURE_CLIENT_SECRET` overrides the value in
@@ -677,8 +718,8 @@ Use `-Yes` for non-interactive confirmation. The command creates a dedicated
 SSH key if missing, provisions Azure resources, installs the managed SSH config
 block with SSH agent forwarding enabled when approved, waits for SSH, uploads
 the local bootstrap and Quadlet templates, the selected Zsh profile, and the
-Azure Codex configuration, configures the remote Git identity, reruns the VM
-bootstrap, and runs smoke validation.
+Azure Codex configuration, configures the remote Git identity and SSH commit
+signing, reruns the VM bootstrap, and runs smoke validation.
 If the VM already exists but was deallocated by `stop` or auto-shutdown, `setup`
 starts it before waiting for SSH.
 
@@ -740,7 +781,10 @@ The matching public key is installed on the VM and is not passed to the SSH
 client. `IdentitiesOnly=yes` ensures that SSH offers only that private key.
 The managed host block sets `ForwardAgent yes`, allowing remote Git processes
 to request signatures from the workstation's SSH agent without copying private
-keys to the VM.
+keys to the VM. Bootstrap stores the selected public key inline in the remote
+Git configuration, enables `commit.gpgSign`, selects the SSH signature format,
+and removes any workstation-specific `gpg.ssh.program` override. Smoke
+validation creates a temporary signed commit through the forwarded agent.
 Bootstrap explicitly disables direct SSH login as `root`. Connect as `vscode`
 and use `sudo` for administrative commands. This restriction applies only to
 OpenSSH; Azure control-plane operations, Run Command, VM Access, and Serial
@@ -883,8 +927,8 @@ VM device from the Tailscale admin console.
 
 Default smoke validation checks SSH, the data-disk bind mounts, `/workspace`,
 major tool versions including `btop`, Codex CLI, GitHub Copilot CLI, and Lychee,
-the configured global Git identity, rootless Podman units, loopback-only
-support ports, HSA lookup through Kong, `npm run db:setup`,
+the configured global Git identity and SSH signing behavior, rootless Podman
+units, loopback-only support ports, HSA lookup through Kong, `npm run db:setup`,
 `npm run db:health`, and Playwright browser availability.
 
 Optional heavier checks after the environment is accepted:

@@ -109,6 +109,7 @@ function Invoke-AzureDevSmokeValidation {
 set -euo pipefail
 expected_git_user_name="$1"
 expected_git_user_email="$2"
+expected_git_ssh_signing_public_key="$3"
 export HOME=/home/vscode
 export XDG_CONFIG_HOME="${HOME}/.config"
 export XDG_DATA_HOME="${HOME}/.local/share"
@@ -317,6 +318,50 @@ dotnet --version 2>/dev/null | grep -Eq '^8\.'
 git --version >/dev/null 2>&1
 test "$(git config --global --get user.name)" = "${expected_git_user_name}"
 test "$(git config --global --get user.email)" = "${expected_git_user_email}"
+if [ -n "${expected_git_ssh_signing_public_key}" ]; then
+  test "$(git config --global --get gpg.format)" = "ssh"
+  test "$(git config --global --get commit.gpgsign)" = "true"
+  test "$(git config --global --get user.signingkey)" = \
+    "key::${expected_git_ssh_signing_public_key}"
+  if git config --global --get gpg.ssh.program >/dev/null; then
+    printf 'Remote gpg.ssh.program must use the Linux default.\n'
+    exit 1
+  fi
+  if [ -z "${SSH_AUTH_SOCK:-}" ] || [ ! -S "${SSH_AUTH_SOCK}" ]; then
+    printf 'SSH agent forwarding is unavailable for Git commit signing.\n'
+    exit 1
+  fi
+  expected_signing_key_identity="$(
+    printf '%s\n' "${expected_git_ssh_signing_public_key}" |
+      awk '{ print $1 " " $2 }'
+  )"
+  forwarded_signing_keys="$(ssh-add -L 2>/dev/null || true)"
+  if ! printf '%s\n' "${forwarded_signing_keys}" |
+    awk 'NF >= 2 { print $1 " " $2 }' |
+    grep -Fqx -- "${expected_signing_key_identity}"; then
+    printf 'The configured Git signing key is not available from the forwarded SSH agent.\n'
+    exit 1
+  fi
+
+  signing_probe_dir="$(mktemp -d)"
+  git init -q "${signing_probe_dir}"
+  signing_probe_tree="$(git -C "${signing_probe_dir}" mktree </dev/null)"
+  if ! signing_probe_commit="$(
+    printf 'Azure SSH signing probe\n' |
+      git -C "${signing_probe_dir}" commit-tree -S "${signing_probe_tree}"
+  )"; then
+    rm -rf "${signing_probe_dir}"
+    printf 'Git could not create a commit with the forwarded SSH signing key.\n'
+    exit 1
+  fi
+  if ! git -C "${signing_probe_dir}" cat-file commit "${signing_probe_commit}" |
+    grep -Fq 'gpgsig -----BEGIN SSH SIGNATURE-----'; then
+    rm -rf "${signing_probe_dir}"
+    printf 'Git signing probe did not contain an SSH signature.\n'
+    exit 1
+  fi
+  rm -rf "${signing_probe_dir}"
+fi
 gh --version >/dev/null 2>&1
 btop --version >/dev/null 2>&1
 codex --version >/dev/null 2>&1
@@ -409,9 +454,18 @@ run_workspace_command_or_diagnose 'Playwright dry-run install check' ./node_modu
     -Value $Context.Config.GitUserName
   $gitUserEmailLiteral = ConvertTo-AzureDevShellLiteral `
     -Value $Context.Config.GitUserEmail
+  $gitSshSigningPublicKeyLiteral = if (
+    [string]::IsNullOrWhiteSpace($Context.Config.GitSshSigningPublicKey)
+  ) {
+    "''"
+  } else {
+    ConvertTo-AzureDevShellLiteral `
+      -Value $Context.Config.GitSshSigningPublicKey
+  }
   $command = (
     "bash -lc $remoteScriptLiteral -- " +
-    "$gitUserNameLiteral $gitUserEmailLiteral"
+    "$gitUserNameLiteral $gitUserEmailLiteral " +
+    $gitSshSigningPublicKeyLiteral
   )
 
   if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Run smoke validation')) {

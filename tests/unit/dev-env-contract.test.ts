@@ -146,17 +146,28 @@ describe('development environment contract', () => {
 
     expect(envExample).toContain('# AZURE_DEV_GIT_USER_NAME=')
     expect(envExample).toContain('# AZURE_DEV_GIT_USER_EMAIL=')
+    expect(envExample).toContain(
+      '# AZURE_DEV_GIT_SSH_SIGNING_KEY=~/.ssh/id_ed25519.pub',
+    )
     expect(configModule).toContain(
       "-Arguments @('-C', $RepositoryRoot, 'config', '--get', $Key)",
     )
     expect(configModule).toContain("-Key 'user.name'")
     expect(configModule).toContain("-Key 'user.email'")
+    expect(configModule).toContain("-Key 'gpg.format'")
+    expect(configModule).toContain("-Key 'commit.gpgsign'")
+    expect(configModule).toContain("-Key 'user.signingkey'")
     expect(configModule).toContain(
       'GitUserName = $values.AZURE_DEV_GIT_USER_NAME',
     )
     expect(configModule).toContain(
       'GitUserEmail = $values.AZURE_DEV_GIT_USER_EMAIL',
     )
+    expect(configModule).toContain('Resolve-AzureDevGitSshSigningPublicKey')
+    expect(configModule).toContain(
+      'GitSshSigningPublicKey = $gitSshSigningPublicKey',
+    )
+    expect(configModule).toContain('private-key path with a matching .pub file')
     expect(entryScript).toContain(
       'Test-AzureDevGitIdentity -Config $Context.Config',
     )
@@ -166,6 +177,9 @@ describe('development environment contract', () => {
     expect(bootstrapModule).toContain(
       'AZURE_DEV_GIT_USER_EMAIL=$gitUserEmailLiteral',
     )
+    expect(bootstrapModule).toContain(
+      'AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY=$gitSshSigningPublicKeyLiteral',
+    )
     expect(hostBootstrap).toContain('configure_git_identity')
     expect(hostBootstrap).toContain(
       'git config --global user.name "${GIT_USER_NAME}"',
@@ -173,8 +187,22 @@ describe('development environment contract', () => {
     expect(hostBootstrap).toContain(
       'git config --global user.email "${GIT_USER_EMAIL}"',
     )
+    expect(hostBootstrap).toContain('git config --global gpg.format ssh')
+    expect(hostBootstrap).toContain(
+      'git config --global user.signingkey "key::${GIT_SSH_SIGNING_PUBLIC_KEY}"',
+    )
+    expect(hostBootstrap).toContain('git config --global commit.gpgsign true')
+    expect(hostBootstrap).toContain(
+      'git config --global --unset-all gpg.ssh.program',
+    )
     expect(validationModule).toContain('git config --global --get user.name')
     expect(validationModule).toContain('git config --global --get user.email')
+    expect(validationModule).toContain(
+      'The configured Git signing key is not available from the forwarded SSH agent.',
+    )
+    expect(validationModule).toContain(
+      'git -C "${signing_probe_dir}" commit-tree -S',
+    )
   })
 
   it('classifies only allowlisted Bicep WhatIf false positives', () => {

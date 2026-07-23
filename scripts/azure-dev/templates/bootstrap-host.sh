@@ -22,6 +22,7 @@ CODEX_CONFIG_SOURCE="${AZURE_DEV_CODEX_CONFIG_SOURCE:-${WORKSPACE_DIR}/scripts/a
 CODEX_CONFIG_MERGER="${AZURE_DEV_CODEX_CONFIG_MERGER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/merge-codex-config.py}"
 GIT_USER_NAME="${AZURE_DEV_GIT_USER_NAME:-}"
 GIT_USER_EMAIL="${AZURE_DEV_GIT_USER_EMAIL:-}"
+GIT_SSH_SIGNING_PUBLIC_KEY="${AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY:-}"
 CODEX_INSTALL_HOME="/usr/local/lib/codex"
 SSHD_ROOT_LOGIN_CONFIG="/etc/ssh/sshd_config.d/00-kravhantering-root-login.conf"
 SSHD_ENVIRONMENT_CONFIG="/etc/ssh/sshd_config.d/01-kravhantering-environment.conf"
@@ -76,6 +77,23 @@ configure_git_identity() {
     git config --global user.name "${GIT_USER_NAME}"
   runuser -u "${VSCODE_USER}" -- env HOME="${VSCODE_HOME}" \
     git config --global user.email "${GIT_USER_EMAIL}"
+
+  if [ -z "${GIT_SSH_SIGNING_PUBLIC_KEY}" ]; then
+    return
+  fi
+  if [[ ! "${GIT_SSH_SIGNING_PUBLIC_KEY}" =~ ^(ssh-|ecdsa-|sk-)[^[:space:]]+[[:space:]]+[A-Za-z0-9+/]+=*([[:space:]].*)?$ ]]; then
+    log 'Git SSH signing public key is invalid'
+    return 1
+  fi
+
+  runuser -u "${VSCODE_USER}" -- env HOME="${VSCODE_HOME}" \
+    git config --global gpg.format ssh
+  runuser -u "${VSCODE_USER}" -- env HOME="${VSCODE_HOME}" \
+    git config --global user.signingkey "key::${GIT_SSH_SIGNING_PUBLIC_KEY}"
+  runuser -u "${VSCODE_USER}" -- env HOME="${VSCODE_HOME}" \
+    git config --global commit.gpgsign true
+  runuser -u "${VSCODE_USER}" -- env HOME="${VSCODE_HOME}" \
+    git config --global --unset-all gpg.ssh.program || true
 }
 
 configure_ssh_access() {

@@ -12,6 +12,7 @@ function Get-AzureDevDefaultConfig {
   return [ordered]@{
     AZURE_CLIENT_ID = ''
     AZURE_CLIENT_SECRET = ''
+    AZURE_DEV_GIT_SSH_SIGNING_KEY = ''
     AZURE_DEV_GIT_USER_EMAIL = ''
     AZURE_DEV_GIT_USER_NAME = ''
     AZURE_DEV_TAILSCALE_AUTH_KEY = ''
@@ -46,7 +47,13 @@ function Get-AzureDevLocalGitConfigValue {
     [string]$RepositoryRoot,
 
     [Parameter(Mandatory = $true)]
-    [ValidateSet('user.name', 'user.email')]
+    [ValidateSet(
+      'commit.gpgsign',
+      'gpg.format',
+      'user.email',
+      'user.name',
+      'user.signingkey'
+    )]
     [string]$Key
   )
 
@@ -65,6 +72,91 @@ function Get-AzureDevLocalGitConfigValue {
   }
 
   return $result.Text.Trim()
+}
+
+function Test-AzureDevSshPublicKey {
+  [CmdletBinding()]
+  param(
+    [AllowNull()]
+    [string]$Value
+  )
+
+  if (
+    [string]::IsNullOrWhiteSpace($Value) -or
+    $Value.Contains("`r") -or
+    $Value.Contains("`n")
+  ) {
+    return $false
+  }
+
+  $parts = @($Value.Trim() -split '[ \t]+', 3)
+  if (
+    $parts.Count -lt 2 -or
+    $parts[0] -notmatch '^(?:ssh-|ecdsa-|sk-)[A-Za-z0-9@._+-]+$'
+  ) {
+    return $false
+  }
+
+  try {
+    $decoded = [Convert]::FromBase64String($parts[1])
+    return $decoded.Length -gt 0
+  } catch {
+    return $false
+  }
+}
+
+function Resolve-AzureDevGitSshSigningPublicKey {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepositoryRoot,
+
+    [AllowEmptyString()]
+    [string]$Value
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Value)) {
+    return ''
+  }
+
+  $candidate = $Value.Trim()
+  if ($candidate.StartsWith('key::')) {
+    $candidate = $candidate.Substring(5).Trim()
+    if (-not (Test-AzureDevSshPublicKey -Value $candidate)) {
+      throw 'The configured Git SSH signing key contains an invalid inline public key.'
+    }
+    return $candidate
+  }
+  if (Test-AzureDevSshPublicKey -Value $candidate) {
+    return $candidate
+  }
+  if ($candidate.Contains("`r") -or $candidate.Contains("`n")) {
+    throw 'The configured Git SSH signing key must not contain newline characters.'
+  }
+
+  $configuredPath = Resolve-AzureDevPath -Path $candidate
+  if (-not [System.IO.Path]::IsPathRooted($configuredPath)) {
+    $configuredPath = Join-Path $RepositoryRoot $configuredPath
+  }
+  $publicKeyPath = if ($configuredPath.EndsWith('.pub')) {
+    $configuredPath
+  } elseif (Test-Path -LiteralPath "$configuredPath.pub" -PathType Leaf) {
+    "$configuredPath.pub"
+  } else {
+    throw (
+      'The configured Git SSH signing key must be an inline public key, a public-key ' +
+      "file, or a private-key path with a matching .pub file: $configuredPath"
+    )
+  }
+  if (-not (Test-Path -LiteralPath $publicKeyPath -PathType Leaf)) {
+    throw "Git SSH signing public-key file was not found: $publicKeyPath"
+  }
+
+  $publicKey = (Get-Content -LiteralPath $publicKeyPath -Raw).Trim()
+  if (-not (Test-AzureDevSshPublicKey -Value $publicKey)) {
+    throw "Git SSH signing public-key file is invalid: $publicKeyPath"
+  }
+  return $publicKey
 }
 
 function Import-AzureDevEnvFile {
@@ -236,6 +328,27 @@ function Get-AzureDevConfig {
       -Key 'user.email'
   }
 
+  $gitSshSigningKey = $values.AZURE_DEV_GIT_SSH_SIGNING_KEY
+  if ([string]::IsNullOrWhiteSpace($gitSshSigningKey)) {
+    $localGitSigningFormat = Get-AzureDevLocalGitConfigValue `
+      -RepositoryRoot $RepositoryRoot `
+      -Key 'gpg.format'
+    $localCommitSigning = Get-AzureDevLocalGitConfigValue `
+      -RepositoryRoot $RepositoryRoot `
+      -Key 'commit.gpgsign'
+    if (
+      $localGitSigningFormat -eq 'ssh' -and
+      (ConvertTo-AzureDevBoolean -Value $localCommitSigning)
+    ) {
+      $gitSshSigningKey = Get-AzureDevLocalGitConfigValue `
+        -RepositoryRoot $RepositoryRoot `
+        -Key 'user.signingkey'
+    }
+  }
+  $gitSshSigningPublicKey = Resolve-AzureDevGitSshSigningPublicKey `
+    -RepositoryRoot $RepositoryRoot `
+    -Value $gitSshSigningKey
+
   $privateKeyPath = Resolve-AzureDevPath `
     -Path $values.AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH
   $publicKeyPath = "$privateKeyPath.pub"
@@ -272,6 +385,7 @@ function Get-AzureDevConfig {
     TenantId = $values.AZURE_TENANT_ID
     ClientId = $values.AZURE_CLIENT_ID
     ClientSecret = $values.AZURE_CLIENT_SECRET
+    GitSshSigningPublicKey = $gitSshSigningPublicKey
     GitUserName = $values.AZURE_DEV_GIT_USER_NAME
     GitUserEmail = $values.AZURE_DEV_GIT_USER_EMAIL
     KeycloakAdminPassword = $values.KEYCLOAK_ADMIN_PASSWORD
@@ -396,5 +510,7 @@ Export-ModuleMember -Function `
   Get-AzureDevTags, `
   Import-AzureDevEnvFile, `
   New-AzureDevContext, `
+  Resolve-AzureDevGitSshSigningPublicKey, `
   Resolve-AzureDevPath, `
+  Test-AzureDevSshPublicKey, `
   Test-AzureDevConfig

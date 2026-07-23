@@ -435,6 +435,14 @@ function Invoke-AzureDevBootstrap {
     -Value $Context.Config.GitUserName
   $gitUserEmailLiteral = ConvertTo-AzureDevShellLiteral `
     -Value $Context.Config.GitUserEmail
+  $gitSshSigningPublicKeyLiteral = if (
+    [string]::IsNullOrWhiteSpace($Context.Config.GitSshSigningPublicKey)
+  ) {
+    "''"
+  } else {
+    ConvertTo-AzureDevShellLiteral `
+      -Value $Context.Config.GitSshSigningPublicKey
+  }
 
   $command = @(
     'if command -v cloud-init >/dev/null 2>&1; then sudo cloud-init status --wait || true; fi'
@@ -447,6 +455,7 @@ function Invoke-AzureDevBootstrap {
       "AZURE_DEV_SERVICE_ENV_SOURCE=$remoteServiceEnvironmentPath " +
       "AZURE_DEV_GIT_USER_NAME=$gitUserNameLiteral " +
       "AZURE_DEV_GIT_USER_EMAIL=$gitUserEmailLiteral " +
+      "AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY=$gitSshSigningPublicKeyLiteral " +
       "bash $remoteBootstrapPath"
     )
   ) -join ' && '
