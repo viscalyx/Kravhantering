@@ -10,6 +10,7 @@ import {
   type RequirementAreaResponse,
   ROLE_STORAGE_STATE,
   referenceManualCases,
+  seedAuthorizationResponsibilityPeople,
 } from './authorization-test-helpers'
 
 let fixture: AuthorizationFixture
@@ -34,6 +35,19 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
   const temporaryCoAuthor = HSA.admin
 
   try {
+    await seedAuthorizationResponsibilityPeople()
+    await page.route(
+      '**/api/requirement-responsibility-people/verify',
+      async route => {
+        const payload = route.request().postDataJSON() as Record<
+          string,
+          unknown
+        >
+        await route.continue({
+          postData: JSON.stringify({ ...payload, mode: 'reuse_local' }),
+        })
+      },
+    )
     const coAuthorLoadGate: { release?: () => void } = {}
     const coAuthorLoadStarted = new Promise<void>(resolve => {
       void page.route(
