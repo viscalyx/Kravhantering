@@ -297,6 +297,15 @@ export default function RequirementForm({
   const associationSelectionsValid =
     form.normReferenceIds.length <= ARRAY_INPUT_MAX_ITEMS &&
     form.requirementPackageIds.length <= ARRAY_INPUT_MAX_ITEMS
+  const associationSelectionLimitHintIds =
+    [
+      form.normReferenceIds.length > ARRAY_INPUT_MAX_ITEMS &&
+        'normReferences-selection-limit',
+      form.requirementPackageIds.length > ARRAY_INPUT_MAX_ITEMS &&
+        'requirementPackage-selection-limit',
+    ]
+      .filter(Boolean)
+      .join(' ') || undefined
   const normRefFormDirty =
     createDirtySnapshot(toNormReferencePayload(normRefForm)) !==
     createDirtySnapshot(toNormReferencePayload(EMPTY_NORM_REFERENCE_FORM))
@@ -560,16 +569,19 @@ export default function RequirementForm({
       <div className="flex flex-col gap-3 pt-4 mt-5 border-t">
         <FormActionRow
           hint={
-            taxonomyOptions.readiness.canSave ? undefined : (
+            !associationSelectionsValid ? null : taxonomyOptions.readiness
+                .canSave ? undefined : (
               <ReferenceDataSaveHint id={referenceDataSaveHintId} />
             )
           }
         >
           <DirtyStateButton
             aria-describedby={
-              taxonomyOptions.readiness.canSave
-                ? undefined
-                : referenceDataSaveHintId
+              !associationSelectionsValid
+                ? associationSelectionLimitHintIds
+                : taxonomyOptions.readiness.canSave
+                  ? undefined
+                  : referenceDataSaveHintId
             }
             className="btn-primary"
             dirty={formDirty}

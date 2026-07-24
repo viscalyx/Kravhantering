@@ -212,6 +212,81 @@ describe('RequirementForm', () => {
     expect(categoryAttempts).toBe(2)
   })
 
+  it('prioritizes association-limit hints over reference-data save blocking', async () => {
+    const selectedIds = Array.from(
+      { length: 201 },
+      (_value, index) => index + 1,
+    )
+    const successfulFetch = fetchMock.getMockImplementation() as (
+      url: string,
+      options?: RequestInit,
+    ) => Promise<ReturnType<typeof okJson>>
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url.includes('/api/requirement-categories')) {
+        return Promise.resolve(errJson({}, 503, 'Unavailable'))
+      }
+      if (url.includes('/api/requirement-packages')) {
+        return Promise.resolve(
+          okJson({
+            requirementPackages: selectedIds.map(id => ({
+              id,
+              name: `Package ${id}`,
+            })),
+          }),
+        )
+      }
+      if (url.includes('/api/norm-references')) {
+        return Promise.resolve(
+          okJson({
+            normReferences: selectedIds.map(id => ({
+              id,
+              name: `Norm ${id}`,
+              normReferenceId: `NR-${id}`,
+            })),
+          }),
+        )
+      }
+      return successfulFetch(url, options)
+    })
+
+    render(
+      <RequirementForm
+        initialData={{ areaId: '1', description: 'Over the limit' }}
+        initialNormReferenceIds={selectedIds}
+        initialRequirementPackageIds={selectedIds}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+
+    const packageOne = await screen.findByRole('checkbox', {
+      name: 'Package 1',
+    })
+    const normOne = screen.getByRole('checkbox', { name: 'NR-1 Norm 1' })
+    const save = screen.getByRole('button', { name: /common\.save/i })
+
+    expect(save).toBeDisabled()
+    expect(save).toHaveAttribute(
+      'aria-describedby',
+      'normReferences-selection-limit requirementPackage-selection-limit',
+    )
+    expect(screen.queryByText('referenceData.saveBlocked')).toBeNull()
+
+    fireEvent.click(packageOne)
+    expect(save).toHaveAttribute(
+      'aria-describedby',
+      'normReferences-selection-limit',
+    )
+
+    fireEvent.click(normOne)
+    expect(save).toHaveAttribute('aria-describedby')
+    const saveHintId = save.getAttribute('aria-describedby')
+    expect(saveHintId).not.toBeNull()
+    expect(document.getElementById(saveHintId as string)).toHaveTextContent(
+      'referenceData.saveBlocked',
+    )
+  })
+
   it('removes archived associations locally so they cannot be re-added', async () => {
     const successfulFetch = fetchMock.getMockImplementation() as (
       url: string,
