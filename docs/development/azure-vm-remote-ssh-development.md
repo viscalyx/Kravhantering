@@ -315,45 +315,48 @@ principal before checking any existing Azure CLI user login.
 
 ### Prepare GitHub authentication
 
-The Azure VM setup does not copy or persist a GitHub token. Keep the token in
-the workstation's secure credential store and expose it as `GH_TOKEN` only in
-the environment that launches the Remote SSH connection. For example, when the
-GitHub CLI is already authenticated with the intended account:
+The Azure VM setup does not copy or persist GitHub tokens. Keep both tokens in
+the workstation's secure credential store and expose them only in the
+environment that launches the Remote SSH connection:
 
-```powershell
-$env:GH_TOKEN = gh auth token
-```
+- `GH_TOKEN` supplies the classic personal access token used by the Codex
+  GitHub MCP server.
+- `COPILOT_GITHUB_TOKEN` supplies the personal-account fine-grained token used
+  by GitHub Copilot CLI. Grant it the account-level `Copilot Requests`
+  permission.
 
-For Bash or Zsh:
+GitHub Copilot CLI checks `COPILOT_GITHUB_TOKEN` before `GH_TOKEN`, which keeps
+the classic token available to Codex without Copilot CLI selecting it. Do not
+echo either variable or put its value in the repository, an Azure development
+environment file, the SSH config, or a shell profile. Use expiring tokens with
+only the permissions each development workflow needs.
 
-```sh
-export GH_TOKEN="$(gh auth token)"
-```
-
-Do not echo the variable or put its value in the repository, an Azure
-development environment file, the SSH config, or a shell profile. Use a
-repository-limited, expiring token with only the permissions the development
-workflow needs.
-
-Fine-grained personal access tokens receive organization authorization during
-creation. A classic personal access token requires a separate SAML SSO
-authorization: authenticate with the organization identity provider once, open
-GitHub **Settings > Developer settings > Personal access tokens**, choose
+A classic personal access token may require separate SAML SSO authorization:
+authenticate with the organization identity provider once, open GitHub
+**Settings > Developer settings > Personal access tokens**, choose
 **Configure SSO** for the token, and then choose **Authorize** for the
 organization. See
 [GitHub's SAML SSO token authorization guide](https://docs.github.com/authentication/authenticating-with-saml-single-sign-on/authorizing-a-personal-access-token-for-use-with-saml-single-sign-on).
 
-Setup adds `SendEnv GH_TOKEN` to the managed workstation SSH host block and
-configures the VM with `AcceptEnv GH_TOKEN`. OpenSSH transfers the value through
+Setup adds `SendEnv` entries for both variables to the managed workstation SSH
+host block and configures the VM with
+`AcceptEnv GH_TOKEN COPILOT_GITHUB_TOKEN`. OpenSSH transfers the values through
 the encrypted SSH session, and the VS Code Server and its child processes
-inherit it. The setup scripts never inspect, print, or persist the token value.
+inherit them. The setup scripts never read the values, include them in terminal
+or log output, or store them.
 
-After changing or rotating the token, close the Remote SSH connection and open
-a new one so the VS Code Server receives the current value. Verify forwarding
-without displaying the token:
+Warning: processes in the destination `vscode` user's Remote SSH process tree
+can read the forwarded values. Connect only to trusted VMs and workspaces, and
+use short-lived, least-privilege tokens.
+
+After changing or rotating either token, close the Remote SSH connection and
+open a new one so the VS Code Server receives the current values. Verify
+forwarding without displaying them:
 
 ```sh
-test -n "${GH_TOKEN:-}" && gh auth status
+test -n "${GH_TOKEN:-}" &&
+  test -n "${COPILOT_GITHUB_TOKEN:-}" &&
+  gh auth status
 ```
 
 ### Prepare SSH commit signing
@@ -742,9 +745,10 @@ Setup installs the current stable Codex CLI and GitHub Copilot CLI releases
 system-wide and verifies that the `codex` and `copilot` commands start. Rerun
 `setup` to install updates on an existing VM.
 
-Codex authentication is separate from GitHub authentication. Run `codex login`
-and complete its browser flow before first use. GitHub Copilot CLI can use the
-`GH_TOKEN` forwarded from the workstation. The token's user must have an active
+Codex service authentication is separate from GitHub authentication. Run
+`codex login` and complete its browser flow before first use. The Codex GitHub
+MCP server uses the classic token in `GH_TOKEN`. GitHub Copilot CLI uses the
+fine-grained token in `COPILOT_GITHUB_TOKEN`; its user must have an active
 Copilot plan, and the organization policy must allow Copilot CLI.
 
 Azure setup installs the distribution `bubblewrap` package and the Ubuntu
@@ -773,7 +777,8 @@ For administration tasks, use the generated regular SSH command:
 
 ```sh
 ssh -i "<private-key-path>" -o IdentitiesOnly=yes \
-  -o SendEnv=GH_TOKEN vscode@<public-ip-or-tailscale-name>
+  -o SendEnv=GH_TOKEN -o SendEnv=COPILOT_GITHUB_TOKEN \
+  vscode@<public-ip-or-tailscale-name>
 ```
 
 Setup fills in the configured private-key path and the resolved remote host.
@@ -792,10 +797,11 @@ Console remain available for management and recovery. After using an Azure
 recovery action that resets or rewrites SSH configuration, rerun `setup` to
 restore and validate the managed policy.
 
-The generated managed SSH host block also contains `SendEnv GH_TOKEN`, and the
-VM accepts that named GitHub environment variable in addition to its standard
-OpenSSH environment policy. Before running either generated connection
-command, set `GH_TOKEN` in the workstation environment as described in
+The generated managed SSH host block also contains `SendEnv` entries for
+`GH_TOKEN` and `COPILOT_GITHUB_TOKEN`. The VM accepts both named GitHub
+environment variables in addition to its standard OpenSSH environment policy.
+Before running either generated connection command, set both variables in the
+workstation environment as described in
 [Prepare GitHub authentication](#prepare-github-authentication). Setup prints
 the same reminder after a successful setup or start operation.
 
@@ -960,6 +966,57 @@ SSH private and public key files are preserved by default. Use `-CleanupKeys`
 only when you intentionally want to remove the generated key pair.
 
 ## Troubleshooting
+
+### VS Code uses stale forwarded GitHub tokens
+
+The VS Code Server captures forwarded environment variables when its process
+starts. If regular SSH receives the current `GH_TOKEN` and
+`COPILOT_GITHUB_TOKEN`, but a VS Code terminal has an old or missing value,
+VS Code has reused an existing server process.
+
+Save any remote work and close every VS Code window connected to the VM. From
+the workstation, force-stop all VS Code Server processes owned by the remote
+user:
+
+```sh
+ssh kravhantering-azure-dev '
+  pkill -TERM -u "$(id -u)" -f "[.]vscode-server" 2>/dev/null || true
+  sleep 2
+  pkill -KILL -u "$(id -u)" -f "[.]vscode-server" 2>/dev/null || true
+'
+```
+
+This ends every VS Code session, extension host, and remote task running as
+that user. Confirm that the processes stopped:
+
+```sh
+ssh kravhantering-azure-dev '
+  if pgrep -u "$(id -u)" -f "[.]vscode-server" >/dev/null; then
+    echo "VS Code Server still running"
+  else
+    echo "VS Code Server stopped"
+  fi
+'
+```
+
+Ensure both variables are set in the workstation shell, then reconnect from
+that shell:
+
+```sh
+code --remote ssh-remote+kravhantering-azure-dev /workspace
+```
+
+Verify the new VS Code terminal without displaying either value:
+
+```sh
+for name in GH_TOKEN COPILOT_GITHUB_TOKEN; do
+  if printenv "$name" >/dev/null 2>&1; then
+    printf '%s=set\n' "$name"
+  else
+    printf '%s=missing\n' "$name"
+  fi
+done
+```
 
 If Azure recreates the VM and SSH reports a host-key mismatch, run the exact
 command printed by the tool:

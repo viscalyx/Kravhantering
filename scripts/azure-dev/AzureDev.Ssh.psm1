@@ -182,7 +182,8 @@ function Get-AzureDevSshConfigBlock {
     '    IdentitiesOnly yes',
     '    ForwardAgent yes',
     '    StrictHostKeyChecking accept-new',
-    '    SendEnv GH_TOKEN'
+    '    SendEnv GH_TOKEN',
+    '    SendEnv COPILOT_GITHUB_TOKEN'
   )
   foreach ($port in $script:AzureDevForwardedPorts) {
     $lines += "    LocalForward 127.0.0.1:$port 127.0.0.1:$port"

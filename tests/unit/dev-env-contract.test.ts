@@ -536,7 +536,9 @@ describe('development environment contract', () => {
     expect(entryScript).toContain(
       '"ssh -i `"$identityFile`" -o IdentitiesOnly=yes " +',
     )
-    expect(entryScript).toContain('"-o SendEnv=GH_TOKEN vscode@$hostName"')
+    expect(entryScript).toContain(
+      '"-o SendEnv=GH_TOKEN -o SendEnv=COPILOT_GITHUB_TOKEN vscode@$hostName"',
+    )
     expect(entryScript).not.toContain('Write-Host "SSH target:')
     const standardSshHeading = entryScript.indexOf(
       "Write-Host 'For administration tasks, connect using standard SSH:'",
@@ -551,7 +553,7 @@ describe('development environment contract', () => {
     expect(developmentEnvironmentHeading).toBeGreaterThan(standardSshHeading)
     expect(extensionsHeading).toBeGreaterThan(developmentEnvironmentHeading)
     expect(developmentGuide).toContain(
-      '-o SendEnv=GH_TOKEN vscode@<public-ip-or-tailscale-name>',
+      '-o SendEnv=GH_TOKEN -o SendEnv=COPILOT_GITHUB_TOKEN',
     )
   })
 
@@ -561,7 +563,7 @@ describe('development environment contract', () => {
     expect(sshModule).toContain("'    ForwardAgent yes'")
   })
 
-  it('forwards GH_TOKEN without persisting or printing its value', () => {
+  it('forwards separate GitHub tokens without persisting or exposing them', () => {
     const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
     const sshModule = readWorkspaceFile('scripts/azure-dev/AzureDev.Ssh.psm1')
     const hostBootstrap = readWorkspaceFile(
@@ -576,47 +578,100 @@ describe('development environment contract', () => {
     const internalsGuide = readWorkspaceFile(
       'docs/development/azure-vm-remote-ssh-internals.md',
     )
+    const devcontainerGuide = readWorkspaceFile(
+      'docs/development/devcontainer-developer-workflow.md',
+    )
+    const normalizedDevelopmentGuide = developmentGuide.replaceAll(/\s+/gu, ' ')
+    const normalizedInternalsGuide = internalsGuide.replaceAll(/\s+/gu, ' ')
+    const normalizedDevcontainerGuide = devcontainerGuide.replaceAll(
+      /\s+/gu,
+      ' ',
+    )
 
     expect(sshModule).toContain("'    SendEnv GH_TOKEN'")
-    expect(hostBootstrap).toContain("'AcceptEnv GH_TOKEN'")
+    expect(sshModule).toContain("'    SendEnv COPILOT_GITHUB_TOKEN'")
+    expect(hostBootstrap).toContain("'AcceptEnv GH_TOKEN COPILOT_GITHUB_TOKEN'")
     expect(hostBootstrap).toContain('01-kravhantering-environment.conf')
     expect(validationModule).toContain('01-kravhantering-environment.conf')
-    const safeAcceptEnvCheck =
+    const safeGhTokenAcceptEnvCheck =
       "grep -E '^acceptenv (.* )?GH_TOKEN( |$)' >/dev/null"
-    expect(hostBootstrap).toContain(safeAcceptEnvCheck)
-    expect(validationModule).toContain(safeAcceptEnvCheck)
+    const safeCopilotTokenAcceptEnvCheck =
+      "grep -E '^acceptenv (.* )?COPILOT_GITHUB_TOKEN( |$)' >/dev/null"
+    expect(hostBootstrap).toContain(safeGhTokenAcceptEnvCheck)
+    expect(hostBootstrap).toContain(safeCopilotTokenAcceptEnvCheck)
+    expect(validationModule).toContain(safeGhTokenAcceptEnvCheck)
+    expect(validationModule).toContain(safeCopilotTokenAcceptEnvCheck)
     expect(hostBootstrap).not.toContain("grep -Eq '^acceptenv")
     expect(validationModule).not.toContain("grep -Eq '^acceptenv")
     expect(entryScript).toContain(
       'GitHub authentication for the remote development environment:',
     )
-    expect(entryScript).toContain('PowerShell: $env:GH_TOKEN = gh auth token')
+    expect(entryScript).toContain('GH_TOKEN for Codex')
+    expect(entryScript).toContain('COPILOT_GITHUB_TOKEN for GitHub Copilot CLI')
     expect(entryScript).toContain('For SAML SSO authorization instructions')
-    expect(entryScript).toContain('Never print the token value.')
+    expect(entryScript.replace(/'\s*\+\s*'/gu, '')).toContain(
+      'Do not display the value of either token in terminal output or logs.',
+    )
     expect(developmentGuide).toContain("workstation's secure credential store")
-    expect(developmentGuide).toContain('SendEnv GH_TOKEN')
-    expect(developmentGuide).toContain('AcceptEnv GH_TOKEN')
+    expect(developmentGuide).toContain('GH_TOKEN` supplies the classic')
+    expect(developmentGuide).toContain(
+      '`COPILOT_GITHUB_TOKEN` supplies the personal-account fine-grained token',
+    )
+    expect(developmentGuide).toContain(
+      '`AcceptEnv GH_TOKEN COPILOT_GITHUB_TOKEN`',
+    )
+    expect(normalizedDevelopmentGuide).toContain(
+      "destination `vscode` user's Remote SSH process tree",
+    )
+    expect(normalizedDevelopmentGuide).toContain(
+      'trusted VMs and workspaces, and use short-lived, least-privilege tokens',
+    )
     expect(developmentGuide).toContain('SAML SSO')
     expect(internalsGuide).toContain('never written to the managed block')
+    expect(normalizedInternalsGuide).toContain(
+      "destination `vscode` user's Remote SSH process tree",
+    )
+    expect(devcontainerGuide).toContain(
+      '`COPILOT_GITHUB_TOKEN` supplies the fine-grained personal access token',
+    )
+    expect(normalizedDevcontainerGuide).toContain(
+      'including workspace tasks and remote extensions',
+    )
+    expect(normalizedDevcontainerGuide).toContain(
+      'trusted devcontainers, workspaces, tasks, and extensions',
+    )
 
-    const powerShellTokenOutput =
-      /^(?=[^\r\n]*\$(?:(?:env:)?GH_TOKEN\b|\{(?:env:)?GH_TOKEN\}))[^\r\n]*\b(?:Write-(?:Debug|Error|Host|Information|Output|Verbose|Warning)|Out-(?:Default|File|Host|String)|Tee-Object|echo)\b/imu
-    const shellTokenOutput =
-      /^(?=[^\r\n]*\$(?:GH_TOKEN\b|\{GH_TOKEN\b))[^\r\n]*\b(?:echo|log|logger|printf)\b/imu
-    const shellPrintEnvToken = /\bprintenv(?:\s+--)?\s+GH_TOKEN\b/iu
+    for (const relativePath of [
+      '.devcontainer/devcontainer.json',
+      '.devcontainer/elevated/devcontainer.json',
+    ]) {
+      const devcontainer = readWorkspaceFile(relativePath)
+      expect(devcontainer).toContain(
+        '"COPILOT_GITHUB_TOKEN": "${localEnv:COPILOT_GITHUB_TOKEN}"',
+      )
+      expect(devcontainer).toContain('"GH_TOKEN": "${localEnv:GH_TOKEN}"')
+    }
 
-    expect(withoutSingleQuotedLiterals(entryScript)).not.toMatch(
-      powerShellTokenOutput,
-    )
-    expect(withoutSingleQuotedLiterals(sshModule)).not.toMatch(
-      powerShellTokenOutput,
-    )
-    expect(withoutSingleQuotedLiterals(hostBootstrap)).not.toMatch(
-      shellTokenOutput,
-    )
-    expect(withoutSingleQuotedLiterals(hostBootstrap)).not.toMatch(
-      shellPrintEnvToken,
-    )
+    const powerShellTokenOutputs = [
+      /^(?=[^\r\n]*\$(?:(?:env:)?GH_TOKEN\b|\{(?:env:)?GH_TOKEN\}))[^\r\n]*\b(?:Write-(?:Debug|Error|Host|Information|Output|Verbose|Warning)|Out-(?:Default|File|Host|String)|Tee-Object|echo)\b/imu,
+      /^(?=[^\r\n]*\$(?:(?:env:)?COPILOT_GITHUB_TOKEN\b|\{(?:env:)?COPILOT_GITHUB_TOKEN\}))[^\r\n]*\b(?:Write-(?:Debug|Error|Host|Information|Output|Verbose|Warning)|Out-(?:Default|File|Host|String)|Tee-Object|echo)\b/imu,
+    ]
+    const shellTokenOutputs = [
+      /^(?=[^\r\n]*\$(?:GH_TOKEN\b|\{GH_TOKEN\b))[^\r\n]*\b(?:echo|log|logger|printf)\b/imu,
+      /^(?=[^\r\n]*\$(?:COPILOT_GITHUB_TOKEN\b|\{COPILOT_GITHUB_TOKEN\b))[^\r\n]*\b(?:echo|log|logger|printf)\b/imu,
+    ]
+    const shellPrintEnvTokens = [
+      /\bprintenv(?:\s+--)?\s+GH_TOKEN\b/iu,
+      /\bprintenv(?:\s+--)?\s+COPILOT_GITHUB_TOKEN\b/iu,
+    ]
+
+    for (const pattern of powerShellTokenOutputs) {
+      expect(withoutSingleQuotedLiterals(entryScript)).not.toMatch(pattern)
+      expect(withoutSingleQuotedLiterals(sshModule)).not.toMatch(pattern)
+    }
+    for (const pattern of [...shellTokenOutputs, ...shellPrintEnvTokens]) {
+      expect(withoutSingleQuotedLiterals(hostBootstrap)).not.toMatch(pattern)
+    }
   })
 
   it('offers explicit VS Code Remote SSH extension installation choices', () => {

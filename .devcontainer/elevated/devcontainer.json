@@ -14,6 +14,7 @@
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
   "remoteEnv": {
+    "COPILOT_GITHUB_TOKEN": "${localEnv:COPILOT_GITHUB_TOKEN}",
     "GH_TOKEN": "${localEnv:GH_TOKEN}",
     "OPENROUTER_API_KEY": "${localEnv:OPENROUTER_API_KEY}",
     "OPENROUTER_MGMT_API_KEY": "${localEnv:OPENROUTER_MGMT_API_KEY}"

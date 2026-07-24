@@ -28,6 +28,8 @@
     "nerdfont",
     "nodlokal",
     "nodsdrift",
+    "pgrep",
+    "pkill",
     "postbuild",
     "POWERLEVEL",
     "Powerlevel10k",

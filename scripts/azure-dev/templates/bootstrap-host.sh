@@ -114,7 +114,7 @@ configure_ssh_access() {
   chmod 0644 "${SSHD_ROOT_LOGIN_CONFIG}"
   printf '%s\n' \
     '# Managed by Kravhantering Azure development setup.' \
-    'AcceptEnv GH_TOKEN' \
+    'AcceptEnv GH_TOKEN COPILOT_GITHUB_TOKEN' \
     > "${SSHD_ENVIRONMENT_CONFIG}"
   chmod 0644 "${SSHD_ENVIRONMENT_CONFIG}"
 
@@ -135,6 +135,12 @@ configure_ssh_access() {
     -C user=vscode,host=localhost,addr=127.0.0.1 \
     | grep -E '^acceptenv (.* )?GH_TOKEN( |$)' >/dev/null; then
     log "effective SSH environment policy does not accept GH_TOKEN"
+    return 1
+  fi
+  if ! /usr/sbin/sshd -T \
+    -C user=vscode,host=localhost,addr=127.0.0.1 \
+    | grep -E '^acceptenv (.* )?COPILOT_GITHUB_TOKEN( |$)' >/dev/null; then
+    log "effective SSH environment policy does not accept COPILOT_GITHUB_TOKEN"
     return 1
   fi
   log "SSH root-login and environment policies configured and validated"
