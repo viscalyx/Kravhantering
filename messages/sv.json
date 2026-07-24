@@ -115,8 +115,8 @@
     },
     "errorTitle": "Vissa katalogdata kunde inte läsas in",
     "loading": {
-      "qualityCharacteristics": "Laddar kvalitetsegenskaper…",
-      "types": "Laddar kravtyper…"
+      "qualityCharacteristics": "Läser in kvalitetsegenskaper…",
+      "types": "Läser in kravtyper…"
     },
     "reasons": {
       "invalidResponse": "Tjänsten returnerade ett ogiltigt svar.",
