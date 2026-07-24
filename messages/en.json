@@ -90,6 +90,25 @@
     "unexpectedError": "An unexpected error occurred",
     "emptyState": "No items yet."
   },
+  "referenceData": {
+    "loading": "Loading the reference data used by this form…",
+    "refreshing": "Refreshing reference data. The current options remain available.",
+    "loadFailed": "Some reference data could not be loaded. Saving is unavailable.",
+    "refreshFailed": "Some reference data could not be refreshed. The last loaded options remain available.",
+    "configurationBlocked": "The form cannot be saved because required reference data has not been configured.",
+    "failedCatalogs": "Affected catalogs: {catalogs}.",
+    "saveBlocked": "Save is unavailable until all required reference data has loaded.",
+    "catalogs": {
+      "areas": "requirement areas",
+      "categories": "categories",
+      "needsReferences": "needs references",
+      "normReferences": "norm references",
+      "priorityLevels": "priorities",
+      "qualityCharacteristics": "quality characteristics",
+      "requirementPackages": "requirements packages",
+      "types": "types"
+    }
+  },
   "nav": {
     "catalog": "Requirements Library",
     "stewardship": "Requirements Library Stewardship",
@@ -584,6 +603,7 @@
     "normReference": "Norm reference",
     "normReferences": "Norm references",
     "normReferencesHelp": "<strong>Select one or more norm references governing this requirement.</strong>\nNorm references are for example governing laws, regulations, standards, and guidelines that the requirement is derived from or must comply with.",
+    "associationSelectionLimit": "You can select up to {limit} values in this field. Remove a selected value before adding another.",
     "addNewNormReference": "Create new norm reference",
     "newNormReferenceWarning": "The norm reference you create is shared and available to all requirements in the system. Make sure you enter a correct and official norm reference.",
     "normReferenceIdLabel": "Norm reference ID",
@@ -2092,6 +2112,10 @@
       "lifecycle": {
         "heading": "Lifecycle",
         "body": "A newly created requirement starts as a Draft. It must be submitted for review and then published before it can be added to a requirements specification."
+      },
+      "referenceData": {
+        "heading": "Reference data",
+        "body": "The form opens immediately while reference data loads. You can start writing requirement text, but Save and affected choices remain unavailable until every required catalog has loaded. Try again after a failure without losing your edits."
       }
     },
     "requirementDetail": {
@@ -2118,6 +2142,10 @@
       "form": {
         "heading": "Saving",
         "body": "Use \"After save, go to\" to choose where you land after saving — the list view or the detail page. Changes are not auto-saved; click Save to commit them."
+      },
+      "referenceData": {
+        "heading": "Reference data",
+        "body": "The form keeps loaded options available during an unsuccessful refresh. If the requirement type changes, Save remains unavailable until matching quality characteristics have loaded. Try again after a failure without losing your edits or selections."
       }
     },
     "versionDetail": {
@@ -2151,6 +2179,10 @@
       "needsReference": {
         "heading": "Needs reference",
         "body": "Each requirement application can have a needs reference that explains why it is needed. Set it while adding requirements, edit it inline, or use the distinct assign and clear actions for selected items."
+      },
+      "referenceData": {
+        "heading": "Reference data in requirement forms",
+        "body": "Requirement forms open immediately while reference data loads. You can continue writing independent text, but Save and affected choices remain unavailable until every required catalog has loaded. If a catalog fails, use Try again; your edits and selections remain in the form."
       },
       "export": {
         "heading": "More actions",

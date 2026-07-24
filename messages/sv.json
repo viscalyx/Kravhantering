@@ -90,6 +90,25 @@
     "unexpectedError": "Ett oväntat fel uppstod",
     "emptyState": "Inga poster ännu."
   },
+  "referenceData": {
+    "loading": "Läser in referensdata som används i formuläret…",
+    "refreshing": "Uppdaterar referensdata. De aktuella alternativen är fortfarande tillgängliga.",
+    "loadFailed": "Vissa referensdata kunde inte läsas in. Det går inte att spara.",
+    "refreshFailed": "Vissa referensdata kunde inte uppdateras. De senast inlästa alternativen är fortfarande tillgängliga.",
+    "configurationBlocked": "Formuläret kan inte sparas eftersom obligatoriska referensdata inte har konfigurerats.",
+    "failedCatalogs": "Berörda kataloger: {catalogs}.",
+    "saveBlocked": "Det går inte att spara förrän alla obligatoriska referensdata har lästs in.",
+    "catalogs": {
+      "areas": "kravområden",
+      "categories": "kategorier",
+      "needsReferences": "behovsreferenser",
+      "normReferences": "normreferenser",
+      "priorityLevels": "prioriteter",
+      "qualityCharacteristics": "kvalitetsegenskaper",
+      "requirementPackages": "kravpaket",
+      "types": "typer"
+    }
+  },
   "nav": {
     "catalog": "Kravbibliotek",
     "stewardship": "Kravbiblioteksförvaltning",
@@ -584,6 +603,7 @@
     "normReference": "Normreferens",
     "normReferences": "Normreferenser",
     "normReferencesHelp": "<strong>Välj en eller flera normreferenser som styr detta krav.</strong>\nNormreferenser är till exempel styrande lagar, förordningar, standarder och riktlinjer som kravet härleds från eller måste uppfylla.",
+    "associationSelectionLimit": "Du kan välja högst {limit} värden i det här fältet. Ta bort ett valt värde innan du lägger till ett nytt.",
     "addNewNormReference": "Skapa ny normreferens",
     "newNormReferenceWarning": "Normreferensen du skapar är gemensam och tillgänglig för alla krav i systemet. Säkerställ att du anger en korrekt och officiell normreferens.",
     "normReferenceIdLabel": "Normreferens-ID",
@@ -2092,6 +2112,10 @@
       "lifecycle": {
         "heading": "Livscykel",
         "body": "Ett nyskapat krav startar som Utkast. Det måste skickas för granskning och sedan publiceras innan det kan läggas till i ett kravunderlag."
+      },
+      "referenceData": {
+        "heading": "Referensdata",
+        "body": "Formuläret öppnas direkt medan referensdata läses in. Du kan börja skriva kravtext, men Spara och berörda val är inte tillgängliga förrän alla obligatoriska kataloger har lästs in. Försök igen efter ett fel utan att dina ändringar försvinner."
       }
     },
     "requirementDetail": {
@@ -2118,6 +2142,10 @@
       "form": {
         "heading": "Spara",
         "body": "Använd \"Gå till efter sparning\" för att välja var du hamnar efter att ha sparat - listvyn eller detaljsidan. Ändringar sparas inte automatiskt; klicka Spara för att bekräfta dem."
+      },
+      "referenceData": {
+        "heading": "Referensdata",
+        "body": "Formuläret behåller inlästa alternativ när en uppdatering misslyckas. Om kravtypen ändras är Spara inte tillgänglig förrän matchande kvalitetsegenskaper har lästs in. Försök igen efter ett fel utan att dina ändringar eller val försvinner."
       }
     },
     "versionDetail": {
@@ -2151,6 +2179,10 @@
       "needsReference": {
         "heading": "Behovsreferens",
         "body": "Varje kravtillämpning kan ha en behovsreferens som förklarar varför den behövs. Ange den när krav läggs till, redigera den direkt eller använd de separata åtgärderna för att tilldela och rensa på markerade objekt."
+      },
+      "referenceData": {
+        "heading": "Referensdata i kravformulär",
+        "body": "Kravformulär öppnas direkt medan referensdata läses in. Du kan fortsätta skriva i oberoende textfält, men Spara och berörda val är inte tillgängliga förrän alla obligatoriska kataloger har lästs in. Om en katalog inte kan läsas in använder du Försök igen; dina ändringar och val finns kvar i formuläret."
       },
       "export": {
         "heading": "Fler åtgärder",

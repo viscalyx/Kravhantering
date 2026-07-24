@@ -1,17 +1,26 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldHelpButton from '@/components/FieldHelpButton'
 import FormActionRow from '@/components/FormActionRow'
+import ReferenceDataStatus, {
+  ReferenceDataSaveHint,
+} from '@/components/ReferenceDataStatus'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
+import type { AsyncResourceState } from '@/hooks/useAsyncResource'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
-import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
+import {
+  createReferenceDataReadiness,
+  mergeReferenceDataReadiness,
+  useTaxonomyOptions,
+} from '@/hooks/useTaxonomyOptions'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
+import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation-constants'
 
 export interface SpecificationLocalRequirementSubmitPayload {
   acceptanceCriteria: string | null
@@ -30,7 +39,7 @@ interface SpecificationLocalRequirementFormProps {
   initialValue?: Partial<
     RequirementFormFieldValues & { needsReferenceId: string }
   >
-  needsReferences: { id: number; text: string }[]
+  needsReferencesResource: AsyncResourceState<{ id: number; text: string }[]>
   onCancel: () => void
   onDirtyChange?: (dirty: boolean) => void
   onSubmit: (
@@ -138,7 +147,7 @@ function createInitialValueSignature(
 
 export default function SpecificationLocalRequirementForm({
   initialValue,
-  needsReferences,
+  needsReferencesResource,
   onCancel,
   onDirtyChange,
   onSubmit,
@@ -173,8 +182,21 @@ export default function SpecificationLocalRequirementForm({
 
   const taxonomyOptions = useTaxonomyOptions(
     fields.typeId,
-    fields.normReferenceIds,
+    initialFields.normReferenceIds,
+    { variant: 'specificationLocal' },
   )
+  const referenceDataReadiness = mergeReferenceDataReadiness(
+    taxonomyOptions.readiness,
+    createReferenceDataReadiness([
+      {
+        catalog: 'needsReferences',
+        resource: needsReferencesResource,
+      },
+    ]),
+  )
+  const referenceDataStatusId = useId()
+  const referenceDataSaveHintId = useId()
+  const needsReferences = needsReferencesResource.data ?? []
 
   useEffect(() => {
     if (appliedInitialValueSignatureRef.current === initialValueSignature) {
@@ -195,6 +217,8 @@ export default function SpecificationLocalRequirementForm({
 
   const formDirty =
     baselineSignature !== createSubmitSignature(fields, needsReferenceId)
+  const associationSelectionsValid =
+    fields.normReferenceIds.length <= ARRAY_INPUT_MAX_ITEMS
 
   useEffect(() => {
     onDirtyChange?.(formDirty)
@@ -202,7 +226,13 @@ export default function SpecificationLocalRequirementForm({
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!formDirty) return
+    if (
+      !formDirty ||
+      !associationSelectionsValid ||
+      !referenceDataReadiness.canSave
+    ) {
+      return
+    }
     setError(null)
     setIsSubmitting(true)
 
@@ -246,8 +276,13 @@ export default function SpecificationLocalRequirementForm({
         {tp('needsReferenceHelp')}
       </AnimatedHelpPanel>
       <select
+        aria-describedby={
+          needsReferencesResource.data === undefined
+            ? referenceDataStatusId
+            : undefined
+        }
         className="w-full rounded-xl border dark:border-secondary-600 bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-        disabled={isSubmitting}
+        disabled={isSubmitting || needsReferencesResource.data === undefined}
         id="plr-needs-reference"
         onChange={e => setNeedsReferenceId(e.target.value)}
         value={needsReferenceId}
@@ -264,12 +299,19 @@ export default function SpecificationLocalRequirementForm({
 
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
+      <ReferenceDataStatus
+        id={referenceDataStatusId}
+        readiness={referenceDataReadiness}
+      />
+
       <RequirementFormFields
         areaRequired={false}
         extraFieldsAfterPriorityLevel={needsReferenceField}
         idPrefix="plr"
         layout="sidebar"
         onChange={setFields}
+        referenceDataReadiness={referenceDataReadiness}
+        referenceDataStatusId={referenceDataStatusId}
         showArea={false}
         showRequirementPackages={false}
         taxonomyOptions={taxonomyOptions}
@@ -282,11 +324,28 @@ export default function SpecificationLocalRequirementForm({
         </p>
       ) : null}
 
-      <FormActionRow>
+      <FormActionRow
+        hint={
+          referenceDataReadiness.canSave ? undefined : (
+            <ReferenceDataSaveHint id={referenceDataSaveHintId} />
+          )
+        }
+      >
         <DirtyStateButton
+          aria-describedby={
+            !associationSelectionsValid
+              ? 'plr-normReferences-selection-limit'
+              : referenceDataReadiness.canSave
+                ? undefined
+                : referenceDataSaveHintId
+          }
           className="btn-primary"
           dirty={formDirty}
-          disabled={isSubmitting}
+          disabled={
+            isSubmitting ||
+            !associationSelectionsValid ||
+            !referenceDataReadiness.canSave
+          }
           type="submit"
         >
           {isSubmitting ? tc('saving') : submitLabel}

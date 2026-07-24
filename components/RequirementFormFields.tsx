@@ -1,6 +1,6 @@
 'use client'
 
-import { ListChecks } from 'lucide-react'
+import { CircleAlert, ListChecks } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   type CSSProperties,
@@ -20,9 +20,13 @@ import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePur
 import StatusBadge from '@/components/StatusBadge'
 import type {
   NormReferenceOption,
+  ReferenceDataCatalog,
+  ReferenceDataReadiness,
   TaxonomyOption,
   TaxonomyOptions,
 } from '@/hooks/useTaxonomyOptions'
+import { devMarker } from '@/lib/developer-mode-markers'
+import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation-constants'
 
 export interface RequirementFormFieldValues {
   acceptanceCriteria: string
@@ -52,6 +56,8 @@ export interface RequirementFormFieldsProps {
   /** Extra actions rendered after norm reference list (e.g. "Create" button) */
   normReferenceActions?: ReactNode
   onChange: (values: RequirementFormFieldValues) => void
+  referenceDataReadiness: ReferenceDataReadiness
+  referenceDataStatusId: string
   /** Hide area for contexts where requirements are not owned by a requirement area */
   showArea?: boolean
   /** Hide requirement-package selection for contexts outside the requirements library */
@@ -84,6 +90,8 @@ export default function RequirementFormFields({
   layout = 'sidebar',
   normReferenceActions,
   onChange,
+  referenceDataReadiness,
+  referenceDataStatusId,
   showArea = true,
   showRequirementPackages = true,
   taxonomyOptions,
@@ -92,6 +100,7 @@ export default function RequirementFormFields({
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
   const tNormReference = useTranslations('normReference')
+  const tRequirementPackage = useTranslations('requirementPackage')
   const locale = useLocale()
 
   const {
@@ -103,6 +112,14 @@ export default function RequirementFormFields({
     priorityLevels,
     types,
   } = taxonomyOptions
+  const blockedCatalogs = new Set<ReferenceDataCatalog>([
+    ...referenceDataReadiness.emptyRequiredCatalogs,
+    ...referenceDataReadiness.failedCatalogs,
+    ...referenceDataReadiness.loadingCatalogs,
+  ])
+  const catalogIsBlocked = (catalog: ReferenceDataCatalog) =>
+    blockedCatalogs.has(catalog)
+  const fid = (name: string) => (idPrefix ? `${idPrefix}-${name}` : name)
 
   const getOptionName = (o: TaxonomyOption) =>
     locale === 'sv' ? o.nameSv : o.nameEn
@@ -173,6 +190,46 @@ export default function RequirementFormFields({
       ...additionalNormReferences.filter(nr => !existingIds.has(nr.id)),
     ]
   }, [normReferences, additionalNormReferences])
+  const visibleNormReferences = allNormReferences.filter(
+    normReference =>
+      normReference.isArchived !== true ||
+      values.normReferenceIds.includes(normReference.id),
+  )
+  const visibleRequirementPackages = requirementPackages.filter(
+    requirementPackage =>
+      requirementPackage.isArchived !== true ||
+      values.requirementPackageIds.includes(requirementPackage.id),
+  )
+  const normReferenceLimitReached =
+    values.normReferenceIds.length >= ARRAY_INPUT_MAX_ITEMS
+  const requirementPackageLimitReached =
+    values.requirementPackageIds.length >= ARRAY_INPUT_MAX_ITEMS
+  const normReferenceLimitStatusId = fid('normReferences-selection-limit')
+  const requirementPackageLimitStatusId = fid(
+    'requirementPackage-selection-limit',
+  )
+  const associationLimitStatus = (
+    id: string,
+    reached: boolean,
+    value: 'norm references' | 'requirements packages',
+  ) =>
+    reached ? (
+      <p
+        className="mb-2 flex items-start gap-2 text-sm text-amber-800 dark:text-amber-200"
+        id={id}
+        role="status"
+        {...devMarker({
+          context: 'requirement form',
+          name: 'selection limit',
+          value,
+        })}
+      >
+        <CircleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>
+          {t('associationSelectionLimit', { limit: ARRAY_INPUT_MAX_ITEMS })}
+        </span>
+      </p>
+    ) : null
   const renderNormReferenceLabel = (nr: NormReferenceOption) => (
     <span>
       <span className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
@@ -224,8 +281,6 @@ export default function RequirementFormFields({
       return next
     })
   }
-
-  const fid = (name: string) => (idPrefix ? `${idPrefix}-${name}` : name)
 
   const helpButton = (
     field: string,
@@ -286,7 +341,11 @@ export default function RequirementFormFields({
             fid('areaId'),
           )}
           <select
+            aria-describedby={
+              catalogIsBlocked('areas') ? referenceDataStatusId : undefined
+            }
             className={selectClassName}
+            disabled={catalogIsBlocked('areas')}
             id={fid('areaId')}
             onChange={e => handleChange('areaId', e.target.value)}
             required={areaRequired}
@@ -354,7 +413,11 @@ export default function RequirementFormFields({
           </div>
           {helpPanel('categoryHelp', fid('categoryId'))}
           <select
+            aria-describedby={
+              catalogIsBlocked('categories') ? referenceDataStatusId : undefined
+            }
             className={selectClassName}
+            disabled={catalogIsBlocked('categories')}
             id={fid('categoryId')}
             onChange={e => handleChange('categoryId', e.target.value)}
             value={values.categoryId}
@@ -377,7 +440,11 @@ export default function RequirementFormFields({
           </div>
           {helpPanel('typeHelp', fid('typeId'))}
           <select
+            aria-describedby={
+              catalogIsBlocked('types') ? referenceDataStatusId : undefined
+            }
             className={selectClassName}
+            disabled={catalogIsBlocked('types')}
             id={fid('typeId')}
             onChange={e => handleChange('typeId', e.target.value)}
             value={values.typeId}
@@ -407,8 +474,15 @@ export default function RequirementFormFields({
         </div>
         {helpPanel('qualityCharacteristicHelp', fid('qualityCharacteristicId'))}
         <select
+          aria-describedby={
+            catalogIsBlocked('qualityCharacteristics')
+              ? referenceDataStatusId
+              : undefined
+          }
           className={`${selectClassName} disabled:cursor-not-allowed disabled:opacity-70`}
-          disabled={!values.typeId}
+          disabled={
+            !values.typeId || catalogIsBlocked('qualityCharacteristics')
+          }
           id={fid('qualityCharacteristicId')}
           onChange={e =>
             handleChange('qualityCharacteristicId', e.target.value)
@@ -436,6 +510,7 @@ export default function RequirementFormFields({
             <button
               aria-label={t('priorityLevelScaleAction')}
               className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+              disabled={catalogIsBlocked('priorityLevels')}
               onClick={() => setShowPriorityScale(true)}
               ref={priorityScaleButtonRef}
               title={t('priorityLevelScaleAction')}
@@ -451,7 +526,13 @@ export default function RequirementFormFields({
             wrapperClassName="block w-full"
           >
             <select
+              aria-describedby={
+                catalogIsBlocked('priorityLevels')
+                  ? referenceDataStatusId
+                  : undefined
+              }
               className={selectClassName}
+              disabled={catalogIsBlocked('priorityLevels')}
               id={priorityLevelFieldId}
               onChange={e => handleChange('priorityLevelId', e.target.value)}
               value={values.priorityLevelId}
@@ -565,35 +646,67 @@ export default function RequirementFormFields({
           {helpButton(fid('requirementPackage'), t('requirementPackage'))}
         </div>
         {helpPanel('requirementPackageHelp', fid('requirementPackage'))}
+        {associationLimitStatus(
+          requirementPackageLimitStatusId,
+          requirementPackageLimitReached,
+          'requirements packages',
+        )}
         <div className={associationListClassName}>
-          {requirementPackages.map(s => (
-            <RequirementPackagePurposeTooltip
-              key={s.id}
-              maxWidth={320}
-              purposeAndScope={s.purposeAndScope}
-              wrapperClassName="flex min-w-0"
-            >
-              <label className="flex min-w-0 cursor-pointer items-center gap-2 text-sm">
-                <input
-                  checked={values.requirementPackageIds.includes(s.id)}
-                  className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                  onChange={e => {
-                    const checked = e.target.checked
-                    onChange({
-                      ...values,
-                      requirementPackageIds: checked
-                        ? [...values.requirementPackageIds, s.id]
-                        : values.requirementPackageIds.filter(
-                            id => id !== s.id,
-                          ),
-                    })
-                  }}
-                  type="checkbox"
-                />
-                <span className="min-w-0 wrap-break-word">{s.name}</span>
-              </label>
-            </RequirementPackagePurposeTooltip>
-          ))}
+          {visibleRequirementPackages.map(s => {
+            const isSelected = values.requirementPackageIds.includes(s.id)
+            const isDisabled =
+              catalogIsBlocked('requirementPackages') ||
+              (requirementPackageLimitReached && !isSelected)
+            return (
+              <RequirementPackagePurposeTooltip
+                key={s.id}
+                maxWidth={320}
+                purposeAndScope={s.purposeAndScope}
+                wrapperClassName="flex min-w-0"
+              >
+                <label
+                  className={`flex min-w-0 items-center gap-2 text-sm ${
+                    isDisabled
+                      ? 'cursor-not-allowed opacity-60'
+                      : 'cursor-pointer'
+                  }`}
+                >
+                  <input
+                    aria-describedby={
+                      catalogIsBlocked('requirementPackages')
+                        ? referenceDataStatusId
+                        : requirementPackageLimitReached
+                          ? requirementPackageLimitStatusId
+                          : undefined
+                    }
+                    checked={isSelected}
+                    className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                    disabled={isDisabled}
+                    onChange={e => {
+                      const checked = e.target.checked
+                      onChange({
+                        ...values,
+                        requirementPackageIds: checked
+                          ? [...values.requirementPackageIds, s.id]
+                          : values.requirementPackageIds.filter(
+                              id => id !== s.id,
+                            ),
+                      })
+                    }}
+                    type="checkbox"
+                  />
+                  <span className="min-w-0 wrap-break-word">
+                    {s.name}
+                    {s.isArchived ? (
+                      <span className="ml-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                        {tRequirementPackage('archived')}
+                      </span>
+                    ) : null}
+                  </span>
+                </label>
+              </RequirementPackagePurposeTooltip>
+            )
+          })}
         </div>
       </fieldset>
     )
@@ -610,10 +723,15 @@ export default function RequirementFormFields({
         {normReferenceActions}
       </div>
       {helpPanel('normReferencesHelp', fid('normReferences'))}
+      {associationLimitStatus(
+        normReferenceLimitStatusId,
+        normReferenceLimitReached,
+        'norm references',
+      )}
       <div className={associationListClassName}>
-        {allNormReferences.map(nr => {
+        {visibleNormReferences.map(nr => {
           const isSelected = values.normReferenceIds.includes(nr.id)
-          const isDisabled = nr.isArchived === true && !isSelected
+          const isDisabled = normReferenceLimitReached && !isSelected
           return (
             <label
               className={`flex items-center gap-2 text-sm ${
@@ -622,9 +740,16 @@ export default function RequirementFormFields({
               key={nr.id}
             >
               <input
+                aria-describedby={
+                  catalogIsBlocked('normReferences')
+                    ? referenceDataStatusId
+                    : normReferenceLimitReached
+                      ? normReferenceLimitStatusId
+                      : undefined
+                }
                 checked={isSelected}
                 className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                disabled={isDisabled}
+                disabled={catalogIsBlocked('normReferences') || isDisabled}
                 onChange={e => {
                   const checked = e.target.checked
                   onChange({
@@ -668,35 +793,67 @@ export default function RequirementFormFields({
                 'requirementPackageHelp',
                 fid('requirementPackage-legend'),
               )}
+              {associationLimitStatus(
+                requirementPackageLimitStatusId,
+                requirementPackageLimitReached,
+                'requirements packages',
+              )}
               <div className="mt-2 space-y-2">
-                {requirementPackages.map(s => (
-                  <RequirementPackagePurposeTooltip
-                    key={s.id}
-                    maxWidth={360}
-                    purposeAndScope={s.purposeAndScope}
-                    wrapperClassName="flex min-w-0"
-                  >
-                    <label className="flex min-w-0 items-center gap-2 text-sm">
-                      <input
-                        checked={values.requirementPackageIds.includes(s.id)}
-                        className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                        onChange={e => {
-                          const checked = e.target.checked
-                          onChange({
-                            ...values,
-                            requirementPackageIds: checked
-                              ? [...values.requirementPackageIds, s.id]
-                              : values.requirementPackageIds.filter(
-                                  id => id !== s.id,
-                                ),
-                          })
-                        }}
-                        type="checkbox"
-                      />
-                      <span className="min-w-0 wrap-break-word">{s.name}</span>
-                    </label>
-                  </RequirementPackagePurposeTooltip>
-                ))}
+                {visibleRequirementPackages.map(s => {
+                  const isSelected = values.requirementPackageIds.includes(s.id)
+                  const isDisabled =
+                    catalogIsBlocked('requirementPackages') ||
+                    (requirementPackageLimitReached && !isSelected)
+                  return (
+                    <RequirementPackagePurposeTooltip
+                      key={s.id}
+                      maxWidth={360}
+                      purposeAndScope={s.purposeAndScope}
+                      wrapperClassName="flex min-w-0"
+                    >
+                      <label
+                        className={`flex min-w-0 items-center gap-2 text-sm ${
+                          isDisabled
+                            ? 'cursor-not-allowed opacity-60'
+                            : 'cursor-pointer'
+                        }`}
+                      >
+                        <input
+                          aria-describedby={
+                            catalogIsBlocked('requirementPackages')
+                              ? referenceDataStatusId
+                              : requirementPackageLimitReached
+                                ? requirementPackageLimitStatusId
+                                : undefined
+                          }
+                          checked={isSelected}
+                          className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                          disabled={isDisabled}
+                          onChange={e => {
+                            const checked = e.target.checked
+                            onChange({
+                              ...values,
+                              requirementPackageIds: checked
+                                ? [...values.requirementPackageIds, s.id]
+                                : values.requirementPackageIds.filter(
+                                    id => id !== s.id,
+                                  ),
+                            })
+                          }}
+                          type="checkbox"
+                        />
+                        <span className="min-w-0 wrap-break-word">
+                          {s.name}
+                          {s.isArchived ? (
+                            <span className="ml-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                              {tRequirementPackage('archived')}
+                            </span>
+                          ) : null}
+                        </span>
+                      </label>
+                    </RequirementPackagePurposeTooltip>
+                  )
+                })}
               </div>
             </fieldset>
           )}
@@ -708,10 +865,15 @@ export default function RequirementFormFields({
               </span>
             </legend>
             {helpPanel('normReferencesHelp', fid('normReferences-legend'))}
+            {associationLimitStatus(
+              normReferenceLimitStatusId,
+              normReferenceLimitReached,
+              'norm references',
+            )}
             <div className="mt-2 max-h-56 space-y-2 overflow-y-auto pr-1">
-              {allNormReferences.map(nr => {
+              {visibleNormReferences.map(nr => {
                 const isSelected = values.normReferenceIds.includes(nr.id)
-                const isDisabled = nr.isArchived === true && !isSelected
+                const isDisabled = normReferenceLimitReached && !isSelected
                 return (
                   <label
                     className={`flex items-start gap-2 text-sm ${
@@ -722,9 +884,18 @@ export default function RequirementFormFields({
                     key={nr.id}
                   >
                     <input
+                      aria-describedby={
+                        catalogIsBlocked('normReferences')
+                          ? referenceDataStatusId
+                          : normReferenceLimitReached
+                            ? normReferenceLimitStatusId
+                            : undefined
+                      }
                       checked={isSelected}
                       className="mt-0.5 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                      disabled={isDisabled}
+                      disabled={
+                        catalogIsBlocked('normReferences') || isDisabled
+                      }
                       onChange={e => {
                         const checked = e.target.checked
                         onChange({

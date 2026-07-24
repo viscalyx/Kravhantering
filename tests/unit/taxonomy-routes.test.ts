@@ -293,6 +293,9 @@ const mockListRequirementPackageCoAuthors = vi.fn<
   >
 >(async () => [])
 const mockReplaceRequirementPackageCoAuthors = vi.fn()
+const mockListRequirementPackages = vi.fn(async (..._args: unknown[]) => [
+  { id: 1 },
+])
 const mockGetRequirementPackageById = vi.fn(
   async (
     ..._args: unknown[]
@@ -311,7 +314,8 @@ const mockGetRequirementPackageById = vi.fn(
   }),
 )
 vi.mock('@/lib/dal/requirement-packages', () => ({
-  listRequirementPackages: async () => [{ id: 1 }],
+  listRequirementPackages: (...args: unknown[]) =>
+    mockListRequirementPackages(...args),
   countLinkedRequirementsByPackage: async () => ({}),
   createRequirementPackage: (...a: unknown[]) =>
     mockCreateRequirementPackage(...a),
@@ -1678,6 +1682,57 @@ describe('requirement-packages routes', () => {
     const r = await getRequirementPackages(new Request('http://l'))
     const j = (await r.json()) as { requirementPackages: { id: number }[] }
     expect(j.requirementPackages).toHaveLength(1)
+    expect(mockListRequirementPackages).toHaveBeenCalledWith(
+      expect.anything(),
+      { includeArchived: false, includeIds: undefined },
+    )
+  })
+  it('GET includes bounded selected package IDs', async () => {
+    const r = await getRequirementPackages(
+      new Request('http://l?includeIds=7&includeIds=8'),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockListRequirementPackages).toHaveBeenCalledWith(
+      expect.anything(),
+      { includeArchived: false, includeIds: [7, 8] },
+    )
+  })
+  it('GET accepts 200 selected package IDs and rejects a 201st', async () => {
+    const acceptedParams = new URLSearchParams()
+    for (let id = 1; id <= 200; id += 1) {
+      acceptedParams.append('includeIds', String(id))
+    }
+
+    const accepted = await getRequirementPackages(
+      new Request(`http://l?${acceptedParams.toString()}`),
+    )
+
+    expect(accepted.status).toBe(200)
+    expect(mockListRequirementPackages).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        includeArchived: false,
+        includeIds: Array.from({ length: 200 }, (_value, index) => index + 1),
+      },
+    )
+
+    acceptedParams.append('includeIds', '201')
+    vi.clearAllMocks()
+    const rejected = await getRequirementPackages(
+      new Request(`http://l?${acceptedParams.toString()}`),
+    )
+
+    expect(rejected.status).toBe(400)
+    await expectInvalidRequest(rejected, 'includeIds')
+    expect(mockListRequirementPackages).not.toHaveBeenCalled()
+  })
+  it('GET rejects invalid selected package IDs', async () => {
+    const r = await getRequirementPackages(new Request('http://l?includeIds=0'))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(mockListRequirementPackages).not.toHaveBeenCalled()
   })
   it('GET returns 400 for invalid query parameters', async () => {
     const r = await getRequirementPackages(
@@ -2181,6 +2236,33 @@ describe('norm-references routes', () => {
       includeArchived: true,
       includeIds: [7, 8],
     })
+  })
+
+  it('GET accepts 200 selected norm IDs and rejects a 201st', async () => {
+    const acceptedParams = new URLSearchParams()
+    for (let id = 1; id <= 200; id += 1) {
+      acceptedParams.append('includeIds', String(id))
+    }
+
+    const accepted = await getNormReferences(
+      new Request(`http://l/api/norm-references?${acceptedParams.toString()}`),
+    )
+
+    expect(accepted.status).toBe(200)
+    expect(mockListNormReferences).toHaveBeenCalledWith(expect.anything(), {
+      includeArchived: false,
+      includeIds: Array.from({ length: 200 }, (_value, index) => index + 1),
+    })
+
+    acceptedParams.append('includeIds', '201')
+    vi.clearAllMocks()
+    const rejected = await getNormReferences(
+      new Request(`http://l/api/norm-references?${acceptedParams.toString()}`),
+    )
+
+    expect(rejected.status).toBe(400)
+    await expectInvalidRequest(rejected, 'includeIds')
+    expect(mockListNormReferences).not.toHaveBeenCalled()
   })
 
   it('GET returns 400 for invalid includeArchived', async () => {

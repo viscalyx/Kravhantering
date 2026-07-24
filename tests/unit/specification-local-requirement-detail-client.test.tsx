@@ -3,6 +3,15 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
 
+const emptyNeedsReferencesResource = {
+  data: [],
+  error: null,
+  loading: false,
+  refreshError: null,
+  refreshing: false,
+  reload: async () => [],
+}
+
 const confirmMock = vi.fn(async () => false)
 const routerPushMock = vi.fn()
 const deviationFormRenderSpy = vi.hoisted(() => vi.fn())
@@ -228,7 +237,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     render(
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
-        needsReferences={[]}
+        needsReferencesResource={emptyNeedsReferencesResource}
         permissions={editablePermissions}
         specificationId={1}
       />,
@@ -336,7 +345,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     render(
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
-        needsReferences={[]}
+        needsReferencesResource={emptyNeedsReferencesResource}
         permissions={editablePermissions}
         specificationId={1}
       />,
@@ -415,7 +424,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     render(
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
-        needsReferences={[]}
+        needsReferencesResource={emptyNeedsReferencesResource}
         permissions={editablePermissions}
         specificationId={1}
       />,
@@ -496,7 +505,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     render(
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
-        needsReferences={[]}
+        needsReferencesResource={emptyNeedsReferencesResource}
         onChange={onChange}
         permissions={editablePermissions}
         specificationId={1}
@@ -576,7 +585,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     render(
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
-        needsReferences={[]}
+        needsReferencesResource={emptyNeedsReferencesResource}
         permissions={editablePermissions}
         specificationId={1}
       />,
@@ -645,7 +654,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     const { rerender } = render(
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
-        needsReferences={[]}
+        needsReferencesResource={emptyNeedsReferencesResource}
         permissions={editablePermissions}
         specificationId={1}
         usageStatus={{
@@ -674,7 +683,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     rerender(
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
-        needsReferences={[]}
+        needsReferencesResource={emptyNeedsReferencesResource}
         permissions={editablePermissions}
         specificationId={1}
         usageStatus={{
@@ -749,7 +758,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     render(
       <SpecificationLocalRequirementDetailClient
         localRequirementId={1}
-        needsReferences={[]}
+        needsReferencesResource={emptyNeedsReferencesResource}
         permissions={editablePermissions}
         specificationId={1}
       />,

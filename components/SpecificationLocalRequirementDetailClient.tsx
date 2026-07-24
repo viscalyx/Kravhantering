@@ -16,6 +16,7 @@ import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
 } from '@/components/SpecificationLocalRequirementForm'
 import StatusBadge from '@/components/StatusBadge'
+import type { AsyncResourceState } from '@/hooks/useAsyncResource'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { useRouter } from '@/i18n/routing'
@@ -130,7 +131,7 @@ interface GraduationTargetArea {
 
 interface SpecificationLocalRequirementDetailClientProps {
   localRequirementId: number
-  needsReferences: { id: number; text: string }[]
+  needsReferencesResource: AsyncResourceState<{ id: number; text: string }[]>
   onChange?: () => void | Promise<void>
   permissions?: {
     canEditContent: boolean
@@ -166,7 +167,7 @@ interface GraduationTargetAreaModalProps {
 }
 
 interface SpecificationLocalRequirementEditModalProps {
-  needsReferences: { id: number; text: string }[]
+  needsReferencesResource: AsyncResourceState<{ id: number; text: string }[]>
   onClose: () => void
   onSubmit: (
     payload: SpecificationLocalRequirementSubmitPayload,
@@ -318,7 +319,7 @@ function GraduationTargetAreaModal({
 }
 
 function SpecificationLocalRequirementEditModal({
-  needsReferences,
+  needsReferencesResource,
   onClose,
   onSubmit,
   open,
@@ -437,7 +438,7 @@ function SpecificationLocalRequirementEditModal({
 
               <SpecificationLocalRequirementForm
                 initialValue={initialValue}
-                needsReferences={needsReferences}
+                needsReferencesResource={needsReferencesResource}
                 onCancel={() => {
                   setFormDirty(false)
                   onClose()
@@ -457,7 +458,7 @@ function SpecificationLocalRequirementEditModal({
 
 export default function SpecificationLocalRequirementDetailClient({
   localRequirementId,
-  needsReferences,
+  needsReferencesResource,
   onChange,
   permissions,
   specificationId,
@@ -508,6 +509,13 @@ export default function SpecificationLocalRequirementDetailClient({
   const [selectedGraduationAreaId, setSelectedGraduationAreaId] =
     useState<string>('')
   const [showGraduationModal, setShowGraduationModal] = useState(false)
+
+  const handleOpenEditForm = useCallback(() => {
+    setShowEditForm(true)
+    if (needsReferencesResource.data === undefined) {
+      void needsReferencesResource.reload()
+    }
+  }, [needsReferencesResource])
   const usageStatusRef = useRef(usageStatus)
 
   const latestDeviation = useMemo(() => {
@@ -1223,7 +1231,7 @@ export default function SpecificationLocalRequirementDetailClient({
       />
 
       <SpecificationLocalRequirementEditModal
-        needsReferences={needsReferences}
+        needsReferencesResource={needsReferencesResource}
         onClose={() => setShowEditForm(false)}
         onSubmit={handleEditSubmit}
         open={showEditForm}
@@ -1406,7 +1414,7 @@ export default function SpecificationLocalRequirementDetailClient({
                                 priority: 290,
                                 value: 'edit local requirement',
                               })}
-                              onClick={() => setShowEditForm(true)}
+                              onClick={handleOpenEditForm}
                               type="button"
                             >
                               <Pencil aria-hidden="true" className="h-4 w-4" />

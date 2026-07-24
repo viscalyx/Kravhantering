@@ -131,6 +131,23 @@ describe('requirement-packages DAL', () => {
     expect(query).toHaveBeenCalledTimes(1)
   })
 
+  it('returns active packages plus normalized explicitly selected archived IDs', async () => {
+    const query = vi.fn().mockResolvedValue([])
+
+    await listRequirementPackages(
+      { query } as unknown as Parameters<typeof listRequirementPackages>[0],
+      { includeIds: [8, 8, -1, 7] },
+    )
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('(requirementPackages.id IN (@1, @2))'),
+      [0, 8, 7],
+    )
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      '(@0 = 1 OR requirementPackages.is_archived = 0) OR',
+    )
+  })
+
   it('creates a requirement package with the required timestamp columns', async () => {
     const { db, query } = createSqlServerDb()
 

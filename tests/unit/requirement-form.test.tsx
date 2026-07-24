@@ -157,10 +157,476 @@ describe('RequirementForm', () => {
       name: /requirement\.description/,
     })
     fireEvent.change(desc, { target: { value: 'My desc' } })
-    expect(saveButton).toBeEnabled()
+    await waitFor(() => expect(saveButton).toBeEnabled())
 
     fireEvent.change(desc, { target: { value: '   ' } })
     expect(saveButton).toBeDisabled()
+  })
+
+  it('preserves edits, blocks programmatic submit, and retries only failed reference data', async () => {
+    const successfulFetch = fetchMock.getMockImplementation() as (
+      url: string,
+      options?: RequestInit,
+    ) => Promise<ReturnType<typeof okJson>>
+    let categoryAttempts = 0
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url.includes('/api/requirement-categories')) {
+        categoryAttempts += 1
+        return Promise.resolve(
+          categoryAttempts === 1
+            ? errJson({}, 503, 'Unavailable')
+            : okJson({ categories: sampleCategories }),
+        )
+      }
+      return successfulFetch(url, options)
+    })
+
+    const { container } = render(<RequirementForm mode="create" />)
+    const description = screen.getByRole('textbox', {
+      name: /requirement\.description/,
+    })
+    fireEvent.change(description, {
+      target: { value: 'Unsaved while catalogs recover' },
+    })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('referenceData.loadFailed')
+    const save = screen.getByRole('button', { name: /common\.save/i })
+    expect(save).toBeDisabled()
+    expect(save).toHaveAttribute('aria-describedby')
+
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, options]) =>
+          url === '/api/requirements' &&
+          (options as RequestInit | undefined)?.method === 'POST',
+      ),
+    ).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.retry' }))
+
+    await screen.findByRole('option', { name: 'Cat' })
+    expect(description).toHaveValue('Unsaved while catalogs recover')
+    await waitFor(() => expect(save).toBeEnabled())
+    expect(categoryAttempts).toBe(2)
+  })
+
+  it('prioritizes association-limit hints over reference-data save blocking', async () => {
+    const selectedIds = Array.from(
+      { length: 201 },
+      (_value, index) => index + 1,
+    )
+    const successfulFetch = fetchMock.getMockImplementation() as (
+      url: string,
+      options?: RequestInit,
+    ) => Promise<ReturnType<typeof okJson>>
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url.includes('/api/requirement-categories')) {
+        return Promise.resolve(errJson({}, 503, 'Unavailable'))
+      }
+      if (url.includes('/api/requirement-packages')) {
+        return Promise.resolve(
+          okJson({
+            requirementPackages: selectedIds.map(id => ({
+              id,
+              name: `Package ${id}`,
+            })),
+          }),
+        )
+      }
+      if (url.includes('/api/norm-references')) {
+        return Promise.resolve(
+          okJson({
+            normReferences: selectedIds.map(id => ({
+              id,
+              name: `Norm ${id}`,
+              normReferenceId: `NR-${id}`,
+            })),
+          }),
+        )
+      }
+      return successfulFetch(url, options)
+    })
+
+    render(
+      <RequirementForm
+        initialData={{ areaId: '1', description: 'Over the limit' }}
+        initialNormReferenceIds={selectedIds}
+        initialRequirementPackageIds={selectedIds}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+
+    const packageOne = await screen.findByRole('checkbox', {
+      name: 'Package 1',
+    })
+    const normOne = screen.getByRole('checkbox', { name: 'NR-1 Norm 1' })
+    const save = screen.getByRole('button', { name: /common\.save/i })
+
+    expect(save).toBeDisabled()
+    expect(save).toHaveAttribute(
+      'aria-describedby',
+      'normReferences-selection-limit requirementPackage-selection-limit',
+    )
+    expect(screen.queryByText('referenceData.saveBlocked')).toBeNull()
+
+    fireEvent.click(packageOne)
+    expect(save).toHaveAttribute(
+      'aria-describedby',
+      'normReferences-selection-limit',
+    )
+
+    fireEvent.click(normOne)
+    expect(save).toHaveAttribute('aria-describedby')
+    const saveHintId = save.getAttribute('aria-describedby')
+    expect(saveHintId).not.toBeNull()
+    expect(document.getElementById(saveHintId as string)).toHaveTextContent(
+      'referenceData.saveBlocked',
+    )
+  })
+
+  it('removes archived associations locally so they cannot be re-added', async () => {
+    const successfulFetch = fetchMock.getMockImplementation() as (
+      url: string,
+      options?: RequestInit,
+    ) => Promise<ReturnType<typeof okJson>>
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url.includes('/api/requirement-packages')) {
+        return Promise.resolve(
+          okJson({
+            requirementPackages: [
+              { id: 1, name: 'Active package' },
+              { id: 7, isArchived: true, name: 'Selected archived package' },
+              { id: 8, isArchived: true, name: 'Other archived package' },
+            ],
+          }),
+        )
+      }
+      if (url.includes('/api/norm-references')) {
+        return Promise.resolve(
+          okJson({
+            normReferences: [
+              {
+                id: 7,
+                isArchived: true,
+                name: 'Selected archived norm',
+                normReferenceId: 'NR-7',
+              },
+              {
+                id: 8,
+                isArchived: true,
+                name: 'Other archived norm',
+                normReferenceId: 'NR-8',
+              },
+            ],
+          }),
+        )
+      }
+      return successfulFetch(url, options)
+    })
+
+    render(
+      <RequirementForm
+        initialData={{ areaId: '1', description: 'Existing' }}
+        initialNormReferenceIds={[7]}
+        initialRequirementPackageIds={[7]}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+
+    const selectedArchived = await screen.findByRole('checkbox', {
+      name: /Selected archived package/,
+    })
+    const selectedArchivedNorm = screen.getByRole('checkbox', {
+      name: /Selected archived norm/,
+    })
+    expect(selectedArchived).toBeChecked()
+    expect(selectedArchived).toBeEnabled()
+    expect(selectedArchivedNorm).toBeChecked()
+    expect(selectedArchivedNorm).toBeEnabled()
+    expect(
+      screen.queryByRole('checkbox', { name: /Other archived package/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('checkbox', { name: /Other archived norm/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.getAllByText('requirementPackage.archived')).toHaveLength(1)
+    expect(screen.getAllByText('normReference.archived')).toHaveLength(1)
+
+    const packageCallsBeforeRemoval = fetchMock.mock.calls.filter(([url]) =>
+      String(url).includes('/api/requirement-packages'),
+    ).length
+    const normCallsBeforeRemoval = fetchMock.mock.calls.filter(([url]) =>
+      String(url).includes('/api/norm-references'),
+    ).length
+
+    fireEvent.click(selectedArchived)
+    fireEvent.click(selectedArchivedNorm)
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('checkbox', {
+          name: /Selected archived package/,
+        }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('checkbox', { name: /Selected archived norm/ }),
+      ).not.toBeInTheDocument()
+    })
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).includes('/api/requirement-packages'),
+      ),
+    ).toHaveLength(packageCallsBeforeRemoval)
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).includes('/api/norm-references'),
+      ),
+    ).toHaveLength(normCallsBeforeRemoval)
+  })
+
+  it('keeps authoritative hydration URLs and trusted options stable during association edits', async () => {
+    const successfulFetch = fetchMock.getMockImplementation() as (
+      url: string,
+      options?: RequestInit,
+    ) => Promise<ReturnType<typeof okJson>>
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url.includes('/api/requirement-packages')) {
+        return Promise.resolve(
+          okJson({
+            requirementPackages: [
+              { id: 1, name: 'Package One' },
+              { id: 2, name: 'Package Two' },
+            ],
+          }),
+        )
+      }
+      if (url.includes('/api/norm-references')) {
+        return Promise.resolve(
+          okJson({
+            normReferences: [
+              { id: 1, name: 'Norm One', normReferenceId: 'NR-1' },
+              { id: 2, name: 'Norm Two', normReferenceId: 'NR-2' },
+            ],
+          }),
+        )
+      }
+      return successfulFetch(url, options)
+    })
+
+    render(
+      <RequirementForm
+        initialData={{ areaId: '1', description: 'Existing' }}
+        initialNormReferenceIds={[1]}
+        initialRequirementPackageIds={[1]}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+
+    const packageTwo = await screen.findByRole('checkbox', {
+      name: 'Package Two',
+    })
+    const normTwo = screen.getByRole('checkbox', { name: /Norm Two/ })
+    const packageCallsBeforeEdits = fetchMock.mock.calls.filter(([url]) =>
+      String(url).includes('/api/requirement-packages'),
+    )
+    const normCallsBeforeEdits = fetchMock.mock.calls.filter(([url]) =>
+      String(url).includes('/api/norm-references'),
+    )
+
+    fireEvent.click(packageTwo)
+    fireEvent.click(normTwo)
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'Package One',
+      }),
+    )
+    fireEvent.click(screen.getByRole('checkbox', { name: /Norm One/ }))
+    fireEvent.change(
+      screen.getByRole('combobox', { name: /requirement\.type/ }),
+      { target: { value: '1' } },
+    )
+
+    await screen.findByRole('checkbox', { name: 'Package Two' })
+    expect(screen.getByRole('checkbox', { name: /Norm Two/ })).toBeChecked()
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).includes('/api/requirement-packages'),
+      ),
+    ).toEqual(packageCallsBeforeEdits)
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).includes('/api/norm-references'),
+      ),
+    ).toEqual(normCallsBeforeEdits)
+    expect(packageCallsBeforeEdits[0]?.[0]).toBe(
+      '/api/requirement-packages?includeIds=1',
+    )
+    expect(normCallsBeforeEdits[0]?.[0]).toBe(
+      '/api/norm-references?includeIds=1',
+    )
+  })
+
+  it('adopts association hydration IDs from a newer authoritative initial version', async () => {
+    const successfulFetch = fetchMock.getMockImplementation() as (
+      url: string,
+      options?: RequestInit,
+    ) => Promise<ReturnType<typeof okJson>>
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url.includes('/api/requirement-packages')) {
+        return Promise.resolve(
+          okJson({
+            requirementPackages: [
+              { id: 7, isArchived: true, name: 'Old archived package' },
+              { id: 8, isArchived: true, name: 'New archived package' },
+            ],
+          }),
+        )
+      }
+      if (url.includes('/api/norm-references')) {
+        return Promise.resolve(
+          okJson({
+            normReferences: [
+              {
+                id: 7,
+                isArchived: true,
+                name: 'Old archived norm',
+                normReferenceId: 'NR-7',
+              },
+              {
+                id: 8,
+                isArchived: true,
+                name: 'New archived norm',
+                normReferenceId: 'NR-8',
+              },
+            ],
+          }),
+        )
+      }
+      return successfulFetch(url, options)
+    })
+
+    const { rerender } = render(
+      <RequirementForm
+        initialData={{ areaId: '1', description: 'Version one' }}
+        initialNormReferenceIds={[7]}
+        initialRequirementPackageIds={[7]}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+
+    await screen.findByRole('checkbox', { name: /Old archived package/ })
+
+    rerender(
+      <RequirementForm
+        initialData={{ areaId: '1', description: 'Version two' }}
+        initialNormReferenceIds={[8]}
+        initialRequirementPackageIds={[8]}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+
+    expect(
+      await screen.findByRole('checkbox', { name: /New archived package/ }),
+    ).toBeChecked()
+    expect(
+      screen.getByRole('checkbox', { name: /New archived norm/ }),
+    ).toBeChecked()
+    expect(
+      screen.getByRole('textbox', { name: /requirement\.description/ }),
+    ).toHaveValue('Version two')
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/requirement-packages?includeIds=8',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/norm-references?includeIds=8',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+  })
+
+  it('prevents a 201st association independently while selected values remain removable', async () => {
+    const packages = Array.from({ length: 201 }, (_value, index) => ({
+      id: index + 1,
+      name: `Package ${index + 1}`,
+    }))
+    const norms = Array.from({ length: 201 }, (_value, index) => ({
+      id: index + 1,
+      name: `Norm ${index + 1}`,
+      normReferenceId: `NR-${index + 1}`,
+    }))
+    const selectedIds = Array.from(
+      { length: 200 },
+      (_value, index) => index + 1,
+    )
+    const successfulFetch = fetchMock.getMockImplementation() as (
+      url: string,
+      options?: RequestInit,
+    ) => Promise<ReturnType<typeof okJson>>
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url.includes('/api/requirement-packages')) {
+        return Promise.resolve(okJson({ requirementPackages: packages }))
+      }
+      if (url.includes('/api/norm-references')) {
+        return Promise.resolve(okJson({ normReferences: norms }))
+      }
+      return successfulFetch(url, options)
+    })
+
+    render(
+      <RequirementForm
+        initialData={{ areaId: '1', description: 'At the limit' }}
+        initialNormReferenceIds={selectedIds}
+        initialRequirementPackageIds={selectedIds}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+
+    const package201 = await screen.findByRole('checkbox', {
+      name: 'Package 201',
+    })
+    const norm201 = screen.getByRole('checkbox', {
+      name: 'NR-201 Norm 201',
+    })
+    const packageOne = screen.getByRole('checkbox', { name: 'Package 1' })
+    const normOne = screen.getByRole('checkbox', { name: 'NR-1 Norm 1' })
+    const createNormReference = screen.getByRole('button', {
+      name: /common\.create/i,
+    })
+
+    expect(package201).toBeDisabled()
+    expect(norm201).toBeDisabled()
+    expect(packageOne).toBeEnabled()
+    expect(normOne).toBeEnabled()
+    expect(createNormReference).toBeDisabled()
+    const limitStatuses = screen
+      .getAllByRole('status')
+      .filter(status =>
+        status.textContent?.includes('requirement.associationSelectionLimit'),
+      )
+    expect(limitStatuses).toHaveLength(2)
+    expect(limitStatuses[0]).toHaveAttribute(
+      'data-developer-mode-name',
+      'selection limit',
+    )
+
+    fireEvent.click(packageOne)
+    expect(package201).toBeEnabled()
+    expect(norm201).toBeDisabled()
+
+    fireEvent.click(normOne)
+    expect(norm201).toBeEnabled()
+    expect(createNormReference).toBeEnabled()
+    expect(
+      screen.queryByText('requirement.associationSelectionLimit'),
+    ).not.toBeInTheDocument()
   })
 
   it('confirms before cancelling a dirty create form', async () => {
@@ -203,9 +669,18 @@ describe('RequirementForm', () => {
   it('fetches options on mount', async () => {
     render(<RequirementForm mode="create" />)
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-categories')
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-types')
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-areas',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-categories',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-types',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      )
     })
   })
 
@@ -213,7 +688,10 @@ describe('RequirementForm', () => {
     render(<RequirementForm mode="create" />)
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-areas',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      )
     })
 
     const createNormReference = screen.getByRole('button', {
@@ -344,7 +822,10 @@ describe('RequirementForm', () => {
     const { container } = render(<RequirementForm mode="create" />)
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-areas',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      )
     })
 
     fireEvent.change(
@@ -415,7 +896,10 @@ describe('RequirementForm', () => {
     )
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-areas',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      )
     })
 
     fireEvent.change(
@@ -663,7 +1147,10 @@ describe('RequirementForm', () => {
   it('navigates back on cancel', async () => {
     render(<RequirementForm mode="create" />)
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-areas',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      )
     })
     const cancelBtn = screen.getByRole('button', { name: /common\.cancel/i })
     fireEvent.click(cancelBtn)

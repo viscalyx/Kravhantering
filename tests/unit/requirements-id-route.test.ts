@@ -224,6 +224,38 @@ describe('requirements/[id] route', () => {
       )
     })
 
+    it('accepts 200 values in each edited requirement association field', async () => {
+      const associationIds = Array.from(
+        { length: 200 },
+        (_value, index) => index + 1,
+      )
+      mockManageRequirement.mockResolvedValue({ result: 2 })
+      const req = new NextRequest('http://localhost/api/requirements/1', {
+        method: 'PUT',
+        body: JSON.stringify({
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
+          description: 'Updated',
+          normReferenceIds: associationIds,
+          requirementPackageIds: associationIds,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      const res = await PUT(req, makeParams('1'))
+
+      expect(res.status).toBe(200)
+      expect(mockManageRequirement).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          requirement: expect.objectContaining({
+            normReferenceIds: associationIds,
+            requirementPackageIds: associationIds,
+          }),
+        }),
+      )
+    })
+
     it('returns stale edit conflicts with details from the service', async () => {
       mockManageRequirement.mockRejectedValue(
         Object.assign(new Error('This requirement was updated'), {

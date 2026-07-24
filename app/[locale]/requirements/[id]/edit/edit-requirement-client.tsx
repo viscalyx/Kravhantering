@@ -24,6 +24,11 @@ const EDIT_REQUIREMENT_HELP: HelpContent = {
       bodyKey: 'editRequirement.form.body',
       headingKey: 'editRequirement.form.heading',
     },
+    {
+      kind: 'text',
+      bodyKey: 'editRequirement.referenceData.body',
+      headingKey: 'editRequirement.referenceData.heading',
+    },
   ],
   titleKey: 'editRequirement.title',
 }

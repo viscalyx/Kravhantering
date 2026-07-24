@@ -194,6 +194,41 @@ describe('requirements route', () => {
       )
     })
 
+    it('accepts 200 values in each requirement association field', async () => {
+      const associationIds = Array.from(
+        { length: 200 },
+        (_value, index) => index + 1,
+      )
+      mockManageRequirement.mockResolvedValue({
+        result: { id: 42, uniqueId: 'TST-042' },
+      })
+
+      const { POST } = await import('@/app/api/requirements/route')
+      const req = new Request('http://localhost/api/requirements', {
+        method: 'POST',
+        body: JSON.stringify({
+          areaId: 1,
+          description: 'New requirement',
+          normReferenceIds: associationIds,
+          requirementPackageIds: associationIds,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      const res = await POST(req as never)
+
+      expect(res.status).toBe(201)
+      expect(mockManageRequirement).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          requirement: expect.objectContaining({
+            normReferenceIds: associationIds,
+            requirementPackageIds: associationIds,
+          }),
+        }),
+      )
+    })
+
     it('returns 400 when POST contains invalid requirement package ids', async () => {
       const { POST } = await import('@/app/api/requirements/route')
       const req = new Request('http://localhost/api/requirements', {
