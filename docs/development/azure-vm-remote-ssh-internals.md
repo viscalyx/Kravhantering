@@ -267,13 +267,14 @@ The managed OpenSSH block is bounded by markers and is the only part of
 `~/.ssh/config` the tool may change. The block uses the configured host alias,
 the `vscode` user, `IdentitiesOnly yes`, `ForwardAgent yes`, the configured
 private key, and the local forwards documented in the development guide. It
-also contains `SendEnv GH_TOKEN`; the token value remains in the workstation
-environment and is never written to the managed block.
+also contains `SendEnv` entries for `GH_TOKEN` and
+`COPILOT_GITHUB_TOKEN`; both token values remain in the workstation
+environment and are never written to the managed block.
 
-The setup and start connection output explains that `GH_TOKEN` must exist in
-the workstation environment that launches VS Code. It may show commands that
-retrieve the token from the local GitHub CLI credential store, but it must
-never retrieve, interpolate, print, or persist the token value.
+The setup and start connection output explains that `GH_TOKEN` and
+`COPILOT_GITHUB_TOKEN` must exist in the workstation environment that launches
+VS Code. It must never read the values, include them in terminal or log output,
+or store them.
 
 The setup and start connection output must present both supported extension
 installation choices. It points to `.vscode/extensions.json` as the source for
@@ -299,13 +300,13 @@ Guest bootstrap writes
 `/etc/ssh/sshd_config.d/00-kravhantering-root-login.conf` with
 `PermitRootLogin no` and
 `/etc/ssh/sshd_config.d/01-kravhantering-environment.conf` with
-`AcceptEnv GH_TOKEN`. It validates the complete OpenSSH configuration, the
-effective root-specific policy, and the narrowly scoped GitHub environment
-policy before reloading `ssh.service`. Direct root SSH is unavailable;
-operators connect as `vscode` and use passwordless `sudo`. Azure control-plane
-operations and agent- or console-based recovery remain independent of this
-OpenSSH restriction. Rerun setup after any recovery action that resets or
-rewrites guest SSH configuration.
+`AcceptEnv GH_TOKEN COPILOT_GITHUB_TOKEN`. It validates the complete OpenSSH
+configuration, the effective root-specific policy, and the narrowly scoped
+GitHub environment policy before reloading `ssh.service`. Direct root SSH is
+unavailable; operators connect as `vscode` and use passwordless `sudo`. Azure
+control-plane operations and agent- or console-based recovery remain
+independent of this OpenSSH restriction. Rerun setup after any recovery action
+that resets or rewrites guest SSH configuration.
 
 ## Guest Bootstrap
 
@@ -521,7 +522,8 @@ Validation must prove these implementation contracts:
 
 - SSH reaches the generated host alias as `vscode`.
 - the effective root-specific OpenSSH policy is `PermitRootLogin no`.
-- the effective OpenSSH environment policy accepts `GH_TOKEN`.
+- the effective OpenSSH environment policy accepts `GH_TOKEN` and
+  `COPILOT_GITHUB_TOKEN`.
 - Bubblewrap can create the unprivileged network namespace used by Codex.
 - `/home/vscode/.codex/config.toml` selects the managed
   `kravhantering-azure-dev` profile while preserving unrelated user settings.

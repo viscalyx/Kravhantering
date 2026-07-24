@@ -306,7 +306,10 @@ if ! {
     test "${root_login_policy}" = "no" &&
     sudo -n /usr/sbin/sshd -T \
       -C user=vscode,host=localhost,addr=127.0.0.1 \
-      | grep -E '^acceptenv (.* )?GH_TOKEN( |$)' >/dev/null
+      | grep -E '^acceptenv (.* )?GH_TOKEN( |$)' >/dev/null &&
+    sudo -n /usr/sbin/sshd -T \
+      -C user=vscode,host=localhost,addr=127.0.0.1 \
+      | grep -E '^acceptenv (.* )?COPILOT_GITHUB_TOKEN( |$)' >/dev/null
 }; then
   printf 'SSH root-login or environment validation failed.\n'
   dump_smoke_diagnostics

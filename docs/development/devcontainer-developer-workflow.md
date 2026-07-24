@@ -18,6 +18,26 @@ Before rebuilding either devcontainer profile, copy:
 cp .devcontainer/.env.example .devcontainer/.env
 ```
 
+## GitHub Token Forwarding
+
+Both devcontainer profiles forward two GitHub tokens from the environment that
+launches VS Code:
+
+- `GH_TOKEN` supplies the classic personal access token used by the Codex
+  GitHub MCP server.
+- `COPILOT_GITHUB_TOKEN` supplies the fine-grained personal access token used
+  by GitHub Copilot CLI. The token requires the account-level
+  `Copilot Requests` permission.
+
+GitHub Copilot CLI checks `COPILOT_GITHUB_TOKEN` before `GH_TOKEN`, so the
+classic token is never selected for Copilot authentication when both variables
+are available. Keep both values in the workstation's secure credential store;
+do not put them in the repository, `.devcontainer/.env`, or a shell profile.
+
+After adding or rotating either variable, rebuild or reopen the devcontainer so
+the VS Code remote extension host and its child processes receive the current
+values.
+
 ## Codex CLI
 
 Both devcontainer profiles install the Codex CLI system-wide from OpenAI's
