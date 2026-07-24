@@ -513,10 +513,17 @@ describe('development environment contract', () => {
     expect(codexConfig).toContain(
       'default_permissions = "kravhantering-azure-dev"',
     )
+    expect(codexConfig).toContain(
+      '[permissions.kravhantering-azure-dev.filesystem.":workspace_roots"]',
+    )
+    expect(codexConfig).toContain('".git" = "write"')
     expect(codexConfig).toContain('"127.0.0.1" = "allow"')
     expect(validationModule).toContain('/usr/bin/bwrap')
     expect(validationModule).toContain(
       "config['default_permissions'] == 'kravhantering-azure-dev'",
+    )
+    expect(validationModule).toContain(
+      "profile['filesystem'][':workspace_roots']",
     )
     expect(developmentGuide).toContain(
       '### Codex and GitHub Copilot CLIs in Remote SSH',

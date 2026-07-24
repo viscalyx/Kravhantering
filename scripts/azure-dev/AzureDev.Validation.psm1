@@ -257,6 +257,9 @@ assert config['default_permissions'] == 'kravhantering-azure-dev'
 assert config['projects']['/workspace']['trust_level'] == 'trusted'
 profile = config['permissions']['kravhantering-azure-dev']
 assert profile['extends'] == ':workspace'
+assert profile['filesystem'][':workspace_roots'] == {
+    '.git': 'write',
+}
 assert profile['network']['enabled'] is True
 assert profile['network']['allow_local_binding'] is True
 assert profile['network']['domains'] == {

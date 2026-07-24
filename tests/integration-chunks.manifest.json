@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 44,
+  "discoveredSpecCount": 45,
   "suites": {
     "dev": {
       "chunks": [
@@ -19,7 +19,7 @@
         {
           "id": "dev-admin",
           "paths": ["tests/integration/admin"],
-          "specCount": 7
+          "specCount": 8
         },
         {
           "id": "dev-archiving",
@@ -88,7 +88,7 @@
         }
       ],
       "ignoredSpecs": ["tests/integration/mcp/seeded-scan.spec.ts"],
-      "includedSpecCount": 43
+      "includedSpecCount": 44
     },
     "prodlike": {
       "chunks": [
@@ -100,7 +100,7 @@
         {
           "id": "prodlike-admin",
           "paths": ["tests/integration/admin"],
-          "specCount": 7
+          "specCount": 8
         },
         {
           "id": "prodlike-archiving",
@@ -169,7 +169,7 @@
         }
       ],
       "ignoredSpecs": ["tests/integration/developer-mode/overlay.spec.ts"],
-      "includedSpecCount": 43
+      "includedSpecCount": 44
     }
   }
 }

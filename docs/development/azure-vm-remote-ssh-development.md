@@ -764,10 +764,12 @@ servers. It manages the default permission profile, `/workspace` trust, and
 the `kravhantering-azure-dev` profile on every setup run, even when the user
 configuration already exists.
 
-The profile grants workspace access and network access to the loopback
-addresses used by host-side development and the Podman support services. The
-devcontainer profile in `.devcontainer/codex-config.toml` is separate and is
-not installed on the Azure VM.
+The profile grants workspace access, including write access to `.git` so Codex
+can stage and commit changes. The inherited workspace protections for
+`.codex` and `.agents` remain read-only. The profile also grants network access
+to the loopback addresses used by host-side development and the Podman support
+services. The devcontainer profile in `.devcontainer/codex-config.toml` is
+separate and is not installed on the Azure VM.
 
 After setup repairs Codex configuration on an already connected VM, reload the
 VS Code Remote SSH window and start a new Codex session so the extension reads

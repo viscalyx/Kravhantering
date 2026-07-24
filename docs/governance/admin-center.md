@@ -530,6 +530,16 @@ routes for:
 - governance object types
 - implementation types
 
+The requirement-types page loads requirement types and quality characteristics
+as independent required catalogs. Requirement-type cards remain available when
+quality characteristics cannot be loaded, and each card identifies the
+characteristic section as unavailable instead of presenting a false empty
+result. If requirement types are unavailable after quality characteristics
+load, the page explains that the loaded characteristics cannot be organized
+until the types recover. One alert identifies only the unavailable sources and
+offers a retry that reloads those sources without discarding successful catalog
+data.
+
 The `Statuses and workflows` tab is the curated navigation surface for status
 catalogs that control lifecycle and use-state behavior. It links to the
 existing stable routes for:

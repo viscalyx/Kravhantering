@@ -109,6 +109,32 @@
       "types": "types"
     }
   },
+  "requirementTypesPage": {
+    "empty": {
+      "types": "No requirement types are available."
+    },
+    "errorTitle": "Some catalog data could not be loaded",
+    "loading": {
+      "qualityCharacteristics": "Loading quality characteristics…",
+      "types": "Loading requirement types…"
+    },
+    "reasons": {
+      "invalidResponse": "The service returned an invalid response.",
+      "network": "The service could not be reached.",
+      "server": "The service is temporarily unavailable."
+    },
+    "recovered": "Catalog data is available again.",
+    "retrying": "Trying again…",
+    "sources": {
+      "qualityCharacteristics": "Quality characteristics",
+      "types": "Requirement types"
+    },
+    "unavailable": {
+      "qualityCharacteristics": "Quality characteristics are unavailable.",
+      "types": "Requirement types are unavailable.",
+      "typesWithQualityLoaded": "Quality characteristics loaded, but cannot be organized until requirement types are available."
+    }
+  },
   "nav": {
     "catalog": "Requirements Library",
     "stewardship": "Requirements Library Stewardship",
@@ -2442,6 +2468,10 @@
       "quality": {
         "heading": "Quality characteristics",
         "body": "The type controls which quality characteristics can be linked to a requirement. Non-functional types can be associated with the ISO/IEC 25010:2023 quality characteristic hierarchy."
+      },
+      "recovery": {
+        "heading": "Loading and recovery",
+        "body": "Requirement types and quality characteristics load independently. Available catalog data remains visible if one source is unavailable. Use Try again to reload only the unavailable source."
       }
     },
     "requirementPackages": {

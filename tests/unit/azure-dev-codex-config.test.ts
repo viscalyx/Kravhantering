@@ -48,6 +48,10 @@ trust_level = "untrusted"
       'default_permissions = "kravhantering-azure-dev"',
     )
     expect(firstMerge).toContain('[permissions.kravhantering-azure-dev]')
+    expect(firstMerge).toContain(
+      '[permissions.kravhantering-azure-dev.filesystem.":workspace_roots"]',
+    )
+    expect(firstMerge).toContain('".git" = "write"')
     expect(firstMerge).toContain('allow_local_binding = true')
     expect(firstMerge).toContain('"127.0.0.1" = "allow"')
     expect(firstMerge.match(/\[projects\."\/workspace"\]/g)).toHaveLength(1)
