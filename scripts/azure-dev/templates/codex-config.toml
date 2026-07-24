@@ -10,6 +10,9 @@ trust_level = "trusted"
 description = "Workspace access with Kravhantering Azure VM service network."
 extends = ":workspace"
 
+[permissions.kravhantering-azure-dev.filesystem.":workspace_roots"]
+".git" = "write"
+
 [permissions.kravhantering-azure-dev.network]
 enabled = true
 allow_local_binding = true

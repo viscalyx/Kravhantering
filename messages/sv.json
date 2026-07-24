@@ -109,6 +109,32 @@
       "types": "typer"
     }
   },
+  "requirementTypesPage": {
+    "empty": {
+      "types": "Det finns inga kravtyper."
+    },
+    "errorTitle": "Vissa katalogdata kunde inte läsas in",
+    "loading": {
+      "qualityCharacteristics": "Laddar kvalitetsegenskaper…",
+      "types": "Laddar kravtyper…"
+    },
+    "reasons": {
+      "invalidResponse": "Tjänsten returnerade ett ogiltigt svar.",
+      "network": "Tjänsten kunde inte nås.",
+      "server": "Tjänsten är tillfälligt otillgänglig."
+    },
+    "recovered": "Katalogdata är tillgängliga igen.",
+    "retrying": "Försöker igen…",
+    "sources": {
+      "qualityCharacteristics": "Kvalitetsegenskaper",
+      "types": "Kravtyper"
+    },
+    "unavailable": {
+      "qualityCharacteristics": "Kvalitetsegenskaper är inte tillgängliga.",
+      "types": "Kravtyper är inte tillgängliga.",
+      "typesWithQualityLoaded": "Kvalitetsegenskaperna har lästs in men kan inte ordnas förrän kravtyperna är tillgängliga."
+    }
+  },
   "nav": {
     "catalog": "Kravbibliotek",
     "stewardship": "Kravbiblioteksförvaltning",
@@ -2442,6 +2468,10 @@
       "quality": {
         "heading": "Kvalitetsegenskaper",
         "body": "Typen styr vilka kvalitetsegenskaper som kan kopplas till ett krav. Icke-funktionella typer kan kopplas till ISO/IEC 25010:2023-hierarkin för kvalitetsegenskaper."
+      },
+      "recovery": {
+        "heading": "Inläsning och återställning",
+        "body": "Kravtyper och kvalitetsegenskaper läses in oberoende av varandra. Tillgängliga katalogdata ligger kvar om en källa inte är tillgänglig. Använd Försök igen för att bara läsa in den otillgängliga källan på nytt."
       }
     },
     "requirementPackages": {

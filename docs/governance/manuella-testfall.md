@@ -1677,6 +1677,20 @@ nyare värde, och exakt ett fält auditeras med gammalt/nytt värde. Runtime
 använder den nya inställningssnapshoten. `?tab=ai` betraktas som otillgänglig
 och omdirigeras enligt vanlig flikfallback.
 
+### ADMIN-16: kravtypskatalogen återhämtar en felande datakälla
+
+**Steg:** Öppna `/sv/requirement-types` som Admin och simulera att den första
+inläsningen av kvalitetsegenskaper misslyckas medan kravtyperna läses in.
+Kontrollera felinformationen och kravtypskorten. Välj `Försök igen` och låt
+kvalitetsegenskaperna läsas in.
+
+**Förväntat resultat:** Rubriken och de svenska kravtypskorten ligger kvar.
+Ett felmeddelande identifierar bara kvalitetsegenskaperna och deras säkra
+felorsak. Kvalitetssektionerna visar att data inte är tillgängliga, aldrig
+`Inga resultat hittades`. Försök igen är inaktiverad under omladdningen. Efter
+återställning visas de lokaliserade kvalitetsegenskaperna och en synlig
+statusbekräftelse.
+
 ## Dataskydd och personuppgifter
 
 ### PRIV-01: egen personuppgiftsexport

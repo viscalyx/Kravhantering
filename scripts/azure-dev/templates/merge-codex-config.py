@@ -133,6 +133,17 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
     )
     description = require_string(profile.get("description"), "permission description")
     extends = require_string(profile.get("extends"), "permission extends")
+    filesystem = require_table(profile.get("filesystem"), "permission filesystem")
+    workspace_roots = require_table(
+        filesystem.get(":workspace_roots"),
+        "permission filesystem workspace roots",
+    )
+    git_access = require_string(
+        workspace_roots.get(".git"),
+        "permission .git access",
+    )
+    if git_access != "write":
+        raise ValueError("permission .git access must be write")
     network = require_table(profile.get("network"), "permission network")
     enabled = network.get("enabled")
     allow_local_binding = network.get("allow_local_binding")
@@ -153,6 +164,9 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
         f"[permissions.{default_permissions}]",
         f"description = {toml_string(description)}",
         f"extends = {toml_string(extends)}",
+        "",
+        f'[permissions.{default_permissions}.filesystem.":workspace_roots"]',
+        f'{toml_string(".git")} = {toml_string(git_access)}',
         "",
         f"[permissions.{default_permissions}.network]",
         f"enabled = {str(enabled).lower()}",
