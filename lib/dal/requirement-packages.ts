@@ -239,8 +239,21 @@ async function getRequirementPackageRowById(
 
 export async function listRequirementPackages(
   db: SqlServerDatabase,
-  options: { includeArchived?: boolean } = {},
+  options: { includeArchived?: boolean; includeIds?: number[] } = {},
 ): Promise<RequirementPackageRow[]> {
+  const params: number[] = [options.includeArchived ? 1 : 0]
+  const conditions = ['@0 = 1 OR requirementPackages.is_archived = 0']
+  const includeIds = [...new Set(options.includeIds ?? [])].filter(
+    id => Number.isInteger(id) && id > 0,
+  )
+  if (includeIds.length > 0) {
+    const placeholders = includeIds.map(id => {
+      params.push(id)
+      return `@${params.length - 1}`
+    })
+    conditions.push(`requirementPackages.id IN (${placeholders.join(', ')})`)
+  }
+
   const rows = (await db.query(
     `
       SELECT
@@ -268,7 +281,7 @@ export async function listRequirementPackages(
         ON co_author.requirement_package_id = requirementPackages.id
       LEFT JOIN requirement_responsibility_people AS co_author_person
         ON co_author_person.hsa_id = co_author.hsa_id
-      WHERE @0 = 1 OR requirementPackages.is_archived = 0
+      WHERE ${conditions.map(condition => `(${condition})`).join(' OR ')}
       ORDER BY
         requirementPackages.is_archived ASC,
         requirementPackages.name ASC,
@@ -277,7 +290,7 @@ export async function listRequirementPackages(
         co_author_person.given_name ASC,
         co_author.hsa_id ASC
     `,
-    [options.includeArchived ? 1 : 0],
+    params,
   )) as Record<string, unknown>[]
   return mapRequirementPackageProjection(rows)
 }

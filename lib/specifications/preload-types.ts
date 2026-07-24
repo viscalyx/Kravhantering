@@ -7,6 +7,10 @@ import type {
 } from '@/lib/requirements/list-view'
 import type { SpecificationPermissions } from '@/lib/specifications/permissions'
 
+export const SPECIFICATION_PRELOAD_ERROR_KEYS = {
+  needsReferences: 'specification needs references',
+} as const
+
 export interface SpecificationPreloadError {
   key: string
   message: string

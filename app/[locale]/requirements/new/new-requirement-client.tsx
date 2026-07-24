@@ -16,6 +16,11 @@ const NEW_REQUIREMENT_HELP: HelpContent = {
       bodyKey: 'newRequirement.lifecycle.body',
       headingKey: 'newRequirement.lifecycle.heading',
     },
+    {
+      kind: 'text',
+      bodyKey: 'newRequirement.referenceData.body',
+      headingKey: 'newRequirement.referenceData.heading',
+    },
   ],
   titleKey: 'newRequirement.title',
 }

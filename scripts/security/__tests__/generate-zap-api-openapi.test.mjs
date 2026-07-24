@@ -141,4 +141,26 @@ describe('generateZapApiOpenApi', () => {
     expect(generated.paths).toHaveProperty('/api/priority-levels')
     expect(fs.existsSync(DEFAULT_SOURCE)).toBe(true)
   })
+
+  it('documents the 200-item requirement association boundary', () => {
+    const dir = makeTempDir()
+    const output = path.join(dir, 'openapi.json')
+    const generated = generateZapApiOpenApi({ output })
+    const includeIdsLimit = operationPath =>
+      generated.paths[operationPath].get.parameters.find(
+        parameter => parameter.name === 'includeIds',
+      ).schema.maxItems
+
+    expect(includeIdsLimit('/api/requirement-packages')).toBe(200)
+    expect(includeIdsLimit('/api/norm-references')).toBe(200)
+
+    for (const schemaName of [
+      'RequirementCreateMutation',
+      'RequirementEditMutation',
+    ]) {
+      const schema = generated.components.schemas[schemaName]
+      expect(schema.properties.normReferenceIds.maxItems).toBe(200)
+      expect(schema.properties.requirementPackageIds.maxItems).toBe(200)
+    }
+  })
 })

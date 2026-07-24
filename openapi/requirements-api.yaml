@@ -735,6 +735,14 @@ paths:
         - name: includeArchived
           in: query
           schema: { type: string, enum: ['true', 'false'] }
+        - name: includeIds
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
       responses:
         '200': { $ref: '#/components/responses/JsonObject' }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -776,7 +784,7 @@ paths:
           in: query
           schema:
             type: array
-            maxItems: 100
+            maxItems: 200
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
@@ -1495,13 +1503,13 @@ components:
         normReferenceIds:
           type: array
           nullable: true
-          maxItems: 100
+          maxItems: 200
           items: { type: integer, minimum: 1 }
         qualityCharacteristicId: { type: integer, minimum: 1, nullable: true }
         requirementPackageIds:
           type: array
           nullable: true
-          maxItems: 100
+          maxItems: 200
           items: { type: integer, minimum: 1 }
         verifiable: { type: boolean }
         priorityLevelId: { type: integer, minimum: 1, nullable: true }
@@ -1527,13 +1535,13 @@ components:
         normReferenceIds:
           type: array
           nullable: true
-          maxItems: 100
+          maxItems: 200
           items: { type: integer, minimum: 1 }
         qualityCharacteristicId: { type: integer, minimum: 1, nullable: true }
         requirementPackageIds:
           type: array
           nullable: true
-          maxItems: 100
+          maxItems: 200
           items: { type: integer, minimum: 1 }
         verifiable: { type: boolean }
         priorityLevelId: { type: integer, minimum: 1, nullable: true }

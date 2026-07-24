@@ -81,15 +81,16 @@ import {
   type RequirementRow,
   type RequirementSortState,
 } from '@/lib/requirements/list-view'
-import type {
-  AvailableRequirementsData,
-  NormReferenceOption,
-  RequirementsSpecificationDetailInitialData,
-  SpecificationItemsPageData,
-  SpecificationListItem,
-  SpecificationMeta,
-  SpecificationNeedsReference,
-  SpecificationTaxonomyItem,
+import {
+  type AvailableRequirementsData,
+  type NormReferenceOption,
+  type RequirementsSpecificationDetailInitialData,
+  SPECIFICATION_PRELOAD_ERROR_KEYS,
+  type SpecificationItemsPageData,
+  type SpecificationListItem,
+  type SpecificationMeta,
+  type SpecificationNeedsReference,
+  type SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
 import { SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT } from '@/lib/specifications/selection-action-limit'
 
@@ -104,6 +105,11 @@ const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
       kind: 'text',
       bodyKey: 'requirementsSpecificationDetail.needsReference.body',
       headingKey: 'requirementsSpecificationDetail.needsReference.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'requirementsSpecificationDetail.referenceData.body',
+      headingKey: 'requirementsSpecificationDetail.referenceData.heading',
     },
     {
       kind: 'text',
@@ -804,7 +810,11 @@ export default function KravunderlagDetailClient({
     },
     getErrorMessage: error =>
       error instanceof Error ? error.message : t('failedToLoadNeedsReferences'),
-    initialData: initialData.availableNeedsRefs,
+    ...(initialData.errors.some(
+      error => error.key === SPECIFICATION_PRELOAD_ERROR_KEYS.needsReferences,
+    )
+      ? {}
+      : { initialData: initialData.availableNeedsRefs }),
     key: `specification-needs-references:${specificationId}`,
     loadOnMount: false,
   })
@@ -1538,12 +1548,12 @@ export default function KravunderlagDetailClient({
     setCreateLocalRequirementFormDirty(false)
     setShowCreateLocalRequirementModal(true)
 
-    if (availableNeedsRefs.length > 0) {
+    if (needsReferencesResource.data !== undefined) {
       return
     }
 
     await needsReferencesResource.reload()
-  }, [availableNeedsRefs.length, needsReferencesResource])
+  }, [needsReferencesResource])
 
   const handleConfirmAdd = useCallback(async () => {
     if (pendingAddIds.length === 0) return
@@ -2813,7 +2823,7 @@ export default function KravunderlagDetailClient({
               </div>
 
               <SpecificationLocalRequirementForm
-                needsReferences={availableNeedsRefs}
+                needsReferencesResource={needsReferencesResource}
                 onCancel={() => {
                   setCreateLocalRequirementFormDirty(false)
                   setShowCreateLocalRequirementModal(false)
@@ -3710,7 +3720,7 @@ export default function KravunderlagDetailClient({
                               localRequirementId={
                                 item.specificationLocalRequirementId
                               }
-                              needsReferences={availableNeedsRefs}
+                              needsReferencesResource={needsReferencesResource}
                               onChange={async () => {
                                 await Promise.all([
                                   fetchSpecificationItems(),

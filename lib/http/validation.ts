@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
 import { type ZodError, type ZodType, z } from 'zod'
-import { BUSINESS_TEXT_MAX_LENGTH } from '@/lib/http/validation-constants'
+import {
+  ARRAY_INPUT_MAX_ITEMS,
+  BUSINESS_TEXT_MAX_LENGTH,
+} from '@/lib/http/validation-constants'
 
-export const ARRAY_INPUT_MAX_ITEMS = 200
 export const DB_STRING_MAX_LENGTH = 450
 export const SEARCH_STRING_MAX_LENGTH = 250
 export const SQL_SERVER_INT_MAX = 2_147_483_647
-export { BUSINESS_TEXT_MAX_LENGTH }
+export { ARRAY_INPUT_MAX_ITEMS, BUSINESS_TEXT_MAX_LENGTH }
 
 export interface InvalidRequestIssue {
   code: string

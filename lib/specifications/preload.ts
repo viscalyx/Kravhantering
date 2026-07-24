@@ -41,16 +41,17 @@ import {
   canReadSpecification,
   specificationPermissions,
 } from '@/lib/specifications/permissions'
-import type {
-  NormReferenceOption,
-  RequirementsSpecificationDetailInitialData,
-  RequirementsSpecificationsInitialData,
-  Specification,
-  SpecificationListItem,
-  SpecificationMeta,
-  SpecificationNeedsReference,
-  SpecificationPreloadError,
-  SpecificationTaxonomyItem,
+import {
+  type NormReferenceOption,
+  type RequirementsSpecificationDetailInitialData,
+  type RequirementsSpecificationsInitialData,
+  SPECIFICATION_PRELOAD_ERROR_KEYS,
+  type Specification,
+  type SpecificationListItem,
+  type SpecificationMeta,
+  type SpecificationNeedsReference,
+  type SpecificationPreloadError,
+  type SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
 
 const PAGE_SIZE = 200
@@ -278,7 +279,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
       })),
     ),
     capture<SpecificationNeedsReference[]>(
-      'specification needs references',
+      SPECIFICATION_PRELOAD_ERROR_KEYS.needsReferences,
       [],
       () => listSpecificationNeedsReferences(db, spec.id),
     ),

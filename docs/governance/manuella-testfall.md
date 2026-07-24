@@ -881,6 +881,45 @@ spara kravet på både mobil och desktop.
 kravbiblioteket och den skapade kravversionen visas i inline-detalj utan
 `undefined` i URL:en.
 
+### LIFE-01A: referensdata återhämtas i kravbibliotekets kravformulär
+
+Detta testfall är manuellt endast enligt undantaget för issue `#510`. Det har
+avsiktligt inget nytt eller ändrat Playwright-scenario.
+
+**Steg:**
+
+1. Blockera en av formulärets katalogförfrågningar i webbläsarens
+   utvecklarverktyg och öppna `/sv/requirements/new`.
+1. Skriv kravtext medan katalogerna läses in. Kontrollera statusen, det
+   berörda inaktiverade valet och förklaringen vid `Spara`.
+1. Låt förfrågningen misslyckas, kontrollera den översatta katalogbenämningen
+   och försök skicka formuläret programmatiskt.
+1. Ta bort blockeringen och välj `Försök igen`. Kontrollera att kravtext och
+   gjorda val finns kvar och spara sedan.
+1. Redigera ett krav med en vald arkiverad normreferens och ett valt arkiverat
+   kravpaket. Kontrollera märkningarna och ta bort båda. Kontrollera att de
+   försvinner direkt, inte kan läggas till igen och att inget nytt
+   kataloganrop görs. Kontrollera att aktiva värden fortfarande kan väljas.
+1. Använd testdata med 201 aktiva normreferenser och 201 aktiva kravpaket.
+   Välj 200 värden i vardera fältet. Kontrollera den lokaliserade
+   fältvägledningen, att ett 201:a värde inte kan väljas och att ett valt värde
+   fortfarande kan tas bort. Upprepa gränsen oberoende för båda fälten.
+1. Byt kravtyp och kontrollera att `Spara` är inaktiverad tills matchande
+   kvalitetsegenskaper har lästs in.
+1. Behåll formuläret öppet med en osparad ändring i flik A. Öppna
+   applikationen i flik B i samma webbläsarsession och logga ut genom
+   användarmenyn. Gå tillbaka till flik A och ändra kravtyp så att
+   kvalitetsegenskaper begärs.
+
+**Förväntat resultat:** Formuläret öppnas direkt och oberoende fält kan
+redigeras. Misslyckad inläsning blockerar både vanlig och programmatisk
+sändning utan att rensa formuläret. Endast misslyckade kataloger läses in på
+nytt. Fokus återgår till `Försök igen` efter ännu ett fel. En lyckad
+uppdatering gör formuläret sparbart. Arkiverade val kan tas bort men inte
+läggas till igen, och varje associationsfält stoppar ett 201:a val utan att
+låsa val som behöver tas bort. Efter utloggningen visar flik A den befintliga
+dialogen för utgången session och skickar sedan användaren till inloggningen.
+
 ### LIFE-02: validera obligatoriska fält vid skapande
 
 **Steg:** Kontrollera att ett helt oförändrat formulär inte kan skickas. Gör
@@ -1137,6 +1176,44 @@ Redigering sker i modal och lyftåtgärden är tillgänglig från det
 kravunderlagslokala kravets inline-detalj. Ett nytt utkast visas i valt
 kravområde i kravbiblioteket medan det ursprungliga kravunderlagslokala kravet
 finns kvar oförändrat.
+
+### SPEC-07A: referensdata återhämtas för unikt krav
+
+Detta testfall är manuellt endast enligt undantaget för issue `#510`. Det har
+avsiktligt inget nytt eller ändrat Playwright-scenario.
+
+**Steg:**
+
+1. Blockera behovsreferenser i webbläsarens utvecklarverktyg.
+1. Öppna `Nytt unikt krav` och kontrollera att dialogen visas direkt.
+1. Skriv kravtext, ändra verifierbarhet och gör tillgängliga val medan
+   referensdata läses in.
+1. Låt förfrågningen misslyckas och kontrollera status, varning, inaktiverade
+   beroende val och förklaringen vid `Spara`.
+1. Ta bort blockeringen och välj `Försök igen`. Upprepa först med ett nytt fel
+   för att kontrollera fokus och låt sedan försöket lyckas.
+1. Spara kravet och upprepa återhämtningen vid redigering av det unika kravet.
+1. Ladda om kravunderlagssidan utan blockering och vänta tills
+   behovsreferenser har lästs in. Blockera därefter
+   `/api/requirements-specifications/{specificationId}/needs-references`.
+1. Öppna `Lägg till markerade krav` för att utlösa åtgärdens ordinarie
+   omläsning av behovsreferenser och låt omläsningen misslyckas. Öppna sedan
+   `Nytt unikt krav`.
+1. Kontrollera att tidigare tillförlitliga val finns kvar, att varningen om
+   misslyckad uppdatering visas och att `Spara` kan användas efter en ändring.
+   Välj `Försök igen` medan blockeringen finns kvar och kontrollera att
+   redigeringarna finns kvar. Ta bort blockeringen och låt nästa försök lyckas.
+1. Utför kontrollen av utgången session enligt `LIFE-01A`; upprepa inte
+   flödet separat här.
+
+**Förväntat resultat:** Dialogen, redigering och `Avbryt` är tillgängliga under
+inläsningen. `Spara` och programmatisk sändning blockeras utan att kravtext,
+verifierbarhet eller val försvinner. Endast misslyckade kataloger försöks igen,
+fokus återgår efter ett nytt fel och kravet kan sparas när alla obligatoriska
+kataloger är tillförlitliga. Inga anrop görs till kravområden eller kravpaket
+för det unika kravformuläret. En misslyckad omläsning behåller den senast
+tillförlitliga behovsreferenslistan, visar uppdateringsvarningen och blockerar
+inte `Spara`. Det krävs inte att testaren hinner se en kort laddningsindikator.
 
 ### SPEC-08: uppdatera användningsstatus
 

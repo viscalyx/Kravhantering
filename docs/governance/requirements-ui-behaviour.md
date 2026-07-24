@@ -51,6 +51,44 @@ The behaviors below apply to the requirement list rendered by:
   inside the form. The separate priority-scale button still opens the full
   priority-scale modal.
 
+## Requirement Form Reference Data
+
+- Requirements Library and unique-requirement forms open immediately while
+  their reference-data catalogs load. Requirement text, acceptance criteria,
+  verifier selection, and other independent fields remain editable.
+- A successful empty optional catalog is ready. An empty requirement-area
+  catalog blocks a Requirements Library save because no valid owner context can
+  be selected.
+- Controls backed by a catalog remain unavailable until that catalog has a
+  trustworthy snapshot. Save is unavailable until every catalog shown by the
+  form variant is ready, and the submit handler repeats this check for
+  programmatic submissions.
+- The unique-requirement form does not request requirement areas or requirements
+  packages because those fields do not belong to a unique requirement.
+- Archived norm references and requirements packages are hydrated from the
+  authoritative associations supplied when the form session starts. Checkbox
+  changes do not change the hydration request or discard a trusted catalog
+  snapshot. Loading a newer authoritative requirement version starts a new
+  hydration seed.
+- A normal refresh retains a complete last-known-good snapshot if the refresh
+  fails. A dependency-key change, including a changed requirement type, does
+  not reuse quality characteristics from the previous key.
+- Failures identify translated catalog names and provide one manual retry
+  action. Retry requests only failed catalogs, preserves form edits and
+  selections, and returns focus to the retry action if the retry also fails.
+- Selected archived norm references and requirements packages remain visible,
+  labelled as archived, and removable. Once removed, an archived value
+  disappears for the rest of that form session and cannot be re-added. Active
+  values remain available for reselection without a catalog request.
+- Each association field accepts at most 200 selections independently. At the
+  limit, selected values remain removable, unselected values cannot be added,
+  and accessible localized field guidance explains how to continue.
+- Loading and refreshing use a polite form-level status. Failures use one
+  form-level alert. Disabled dependent controls reference that message, and a
+  visible action-row explanation describes why Save is unavailable.
+- Browser requests use the shared authenticated API client so an expired
+  session enters the platform reauthentication flow.
+
 ## Requirement Import
 
 AI-assisted authoring and requirement import review are loaded on demand in

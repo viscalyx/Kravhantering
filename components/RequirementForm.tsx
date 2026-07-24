@@ -3,11 +3,14 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { AlertTriangle, ExternalLink, Plus, RotateCcw } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FormActionRow from '@/components/FormActionRow'
 import NormReferenceModal from '@/components/NormReferenceModal'
+import ReferenceDataStatus, {
+  ReferenceDataSaveHint,
+} from '@/components/ReferenceDataStatus'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
@@ -16,6 +19,7 @@ import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { useRouter } from '@/i18n/routing'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation-constants'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
 
 interface RequirementFormProps {
@@ -249,7 +253,16 @@ export default function RequirementForm({
     initialRequirementSignature,
   )
 
-  const taxonomyOptions = useTaxonomyOptions(form.typeId, form.normReferenceIds)
+  const taxonomyOptions = useTaxonomyOptions(
+    form.typeId,
+    initialNormReferenceIds,
+    {
+      selectedRequirementPackageIds: initialRequirementPackageIds,
+      variant: 'library',
+    },
+  )
+  const referenceDataStatusId = useId()
+  const referenceDataSaveHintId = useId()
 
   const appliedInitialRequirementSignature = useRef(initialRequirementSignature)
 
@@ -281,13 +294,22 @@ export default function RequirementForm({
 
   const currentSignature = createRequirementPayloadSignature(form, mode)
   const formDirty = baselineSignature !== currentSignature
+  const associationSelectionsValid =
+    form.normReferenceIds.length <= ARRAY_INPUT_MAX_ITEMS &&
+    form.requirementPackageIds.length <= ARRAY_INPUT_MAX_ITEMS
   const normRefFormDirty =
     createDirtySnapshot(toNormReferencePayload(normRefForm)) !==
     createDirtySnapshot(toNormReferencePayload(EMPTY_NORM_REFERENCE_FORM))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formDirty) return
+    if (
+      !formDirty ||
+      !associationSelectionsValid ||
+      !taxonomyOptions.readiness.canSave
+    ) {
+      return
+    }
     setSubmitting(true)
     setError(null)
     setStaleConflict(null)
@@ -382,8 +404,19 @@ export default function RequirementForm({
 
   const normReferenceCreateButton = (
     <button
+      aria-describedby={
+        form.normReferenceIds.length >= ARRAY_INPUT_MAX_ITEMS
+          ? 'normReferences-selection-limit'
+          : taxonomyOptions.readiness.canSave
+            ? undefined
+            : referenceDataStatusId
+      }
       className="inline-flex items-center gap-1 text-sm text-primary-700 dark:text-primary-300 hover:underline min-h-11 min-w-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
-      disabled={isRefreshing}
+      disabled={
+        isRefreshing ||
+        !taxonomyOptions.readiness.canSave ||
+        form.normReferenceIds.length >= ARRAY_INPUT_MAX_ITEMS
+      }
       onClick={() => setShowCreateNormRef(true)}
       type="button"
     >
@@ -397,11 +430,18 @@ export default function RequirementForm({
       onSubmit={handleSubmit}
       {...offsetPanelMotion(shouldReduceMotion)}
     >
+      <ReferenceDataStatus
+        id={referenceDataStatusId}
+        readiness={taxonomyOptions.readiness}
+      />
+
       <RequirementFormFields
         additionalNormReferences={createdNormRefs}
         layout="sidebar"
         normReferenceActions={normReferenceCreateButton}
         onChange={handleFieldsChange}
+        referenceDataReadiness={taxonomyOptions.readiness}
+        referenceDataStatusId={referenceDataStatusId}
         taxonomyOptions={taxonomyOptions}
         values={form}
       />
@@ -446,10 +486,10 @@ export default function RequirementForm({
                       ])
                       setForm(prev => ({
                         ...prev,
-                        normReferenceIds: [
-                          ...prev.normReferenceIds,
-                          created.id,
-                        ],
+                        normReferenceIds:
+                          prev.normReferenceIds.length < ARRAY_INPUT_MAX_ITEMS
+                            ? [...prev.normReferenceIds, created.id]
+                            : prev.normReferenceIds,
                       }))
                       setNormRefForm(EMPTY_NORM_REFERENCE_FORM)
                       setShowCreateNormRef(false)
@@ -518,11 +558,27 @@ export default function RequirementForm({
       )}
 
       <div className="flex flex-col gap-3 pt-4 mt-5 border-t">
-        <FormActionRow>
+        <FormActionRow
+          hint={
+            taxonomyOptions.readiness.canSave ? undefined : (
+              <ReferenceDataSaveHint id={referenceDataSaveHintId} />
+            )
+          }
+        >
           <DirtyStateButton
+            aria-describedby={
+              taxonomyOptions.readiness.canSave
+                ? undefined
+                : referenceDataSaveHintId
+            }
             className="btn-primary"
             dirty={formDirty}
-            disabled={submitting || isRefreshing}
+            disabled={
+              submitting ||
+              isRefreshing ||
+              !associationSelectionsValid ||
+              !taxonomyOptions.readiness.canSave
+            }
             type="submit"
           >
             {submitting ? tc('saving') : tc('save')}

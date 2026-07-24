@@ -14,7 +14,9 @@ import {
 import {
   boundedDbStringSchema,
   businessTextSchema,
+  optionalQueryArraySchema,
   parseSearchParams,
+  positiveIntegerStringSchema,
   queryBooleanSchema,
 } from '@/lib/http/validation'
 import {
@@ -34,6 +36,7 @@ const requirementPackageSchema = z
 const querySchema = z
   .object({
     includeArchived: queryBooleanSchema.optional().default(false),
+    includeIds: optionalQueryArraySchema(positiveIntegerStringSchema),
   })
   .passthrough()
 
@@ -50,6 +53,7 @@ export async function GET(request: Request) {
   const [requirementPackages, counts] = await Promise.all([
     listRequirementPackages(db, {
       includeArchived: parsedQuery.data.includeArchived,
+      includeIds: parsedQuery.data.includeIds,
     }),
     countLinkedRequirementsByPackage(db),
   ])
