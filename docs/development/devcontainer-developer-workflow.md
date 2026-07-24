@@ -34,6 +34,11 @@ classic token is never selected for Copilot authentication when both variables
 are available. Keep both values in the workstation's secure credential store;
 do not put them in the repository, `.devcontainer/.env`, or a shell profile.
 
+Processes running as `vscode` inside the container, including workspace tasks
+and remote extensions, can read the forwarded values. Use only trusted
+devcontainers, workspaces, tasks, and extensions, and use short-lived,
+least-privilege tokens.
+
 After adding or rotating either variable, rebuild or reopen the devcontainer so
 the VS Code remote extension host and its child processes receive the current
 values.

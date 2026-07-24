@@ -581,6 +581,12 @@ describe('development environment contract', () => {
     const devcontainerGuide = readWorkspaceFile(
       'docs/development/devcontainer-developer-workflow.md',
     )
+    const normalizedDevelopmentGuide = developmentGuide.replaceAll(/\s+/gu, ' ')
+    const normalizedInternalsGuide = internalsGuide.replaceAll(/\s+/gu, ' ')
+    const normalizedDevcontainerGuide = devcontainerGuide.replaceAll(
+      /\s+/gu,
+      ' ',
+    )
 
     expect(sshModule).toContain("'    SendEnv GH_TOKEN'")
     expect(sshModule).toContain("'    SendEnv COPILOT_GITHUB_TOKEN'")
@@ -614,10 +620,25 @@ describe('development environment contract', () => {
     expect(developmentGuide).toContain(
       '`AcceptEnv GH_TOKEN COPILOT_GITHUB_TOKEN`',
     )
+    expect(normalizedDevelopmentGuide).toContain(
+      "destination `vscode` user's Remote SSH process tree",
+    )
+    expect(normalizedDevelopmentGuide).toContain(
+      'trusted VMs and workspaces, and use short-lived, least-privilege tokens',
+    )
     expect(developmentGuide).toContain('SAML SSO')
     expect(internalsGuide).toContain('never written to the managed block')
+    expect(normalizedInternalsGuide).toContain(
+      "destination `vscode` user's Remote SSH process tree",
+    )
     expect(devcontainerGuide).toContain(
       '`COPILOT_GITHUB_TOKEN` supplies the fine-grained personal access token',
+    )
+    expect(normalizedDevcontainerGuide).toContain(
+      'including workspace tasks and remote extensions',
+    )
+    expect(normalizedDevcontainerGuide).toContain(
+      'trusted devcontainers, workspaces, tasks, and extensions',
     )
 
     for (const relativePath of [

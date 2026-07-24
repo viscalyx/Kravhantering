@@ -345,6 +345,10 @@ the encrypted SSH session, and the VS Code Server and its child processes
 inherit them. The setup scripts never read the values, include them in terminal
 or log output, or store them.
 
+Warning: processes in the destination `vscode` user's Remote SSH process tree
+can read the forwarded values. Connect only to trusted VMs and workspaces, and
+use short-lived, least-privilege tokens.
+
 After changing or rotating either token, close the Remote SSH connection and
 open a new one so the VS Code Server receives the current values. Verify
 forwarding without displaying them:
@@ -962,6 +966,57 @@ SSH private and public key files are preserved by default. Use `-CleanupKeys`
 only when you intentionally want to remove the generated key pair.
 
 ## Troubleshooting
+
+### VS Code uses stale forwarded GitHub tokens
+
+The VS Code Server captures forwarded environment variables when its process
+starts. If regular SSH receives the current `GH_TOKEN` and
+`COPILOT_GITHUB_TOKEN`, but a VS Code terminal has an old or missing value,
+VS Code has reused an existing server process.
+
+Save any remote work and close every VS Code window connected to the VM. From
+the workstation, force-stop all VS Code Server processes owned by the remote
+user:
+
+```sh
+ssh kravhantering-azure-dev '
+  pkill -TERM -u "$(id -u)" -f "[.]vscode-server" 2>/dev/null || true
+  sleep 2
+  pkill -KILL -u "$(id -u)" -f "[.]vscode-server" 2>/dev/null || true
+'
+```
+
+This ends every VS Code session, extension host, and remote task running as
+that user. Confirm that the processes stopped:
+
+```sh
+ssh kravhantering-azure-dev '
+  if pgrep -u "$(id -u)" -f "[.]vscode-server" >/dev/null; then
+    echo "VS Code Server still running"
+  else
+    echo "VS Code Server stopped"
+  fi
+'
+```
+
+Ensure both variables are set in the workstation shell, then reconnect from
+that shell:
+
+```sh
+code --remote ssh-remote+kravhantering-azure-dev /workspace
+```
+
+Verify the new VS Code terminal without displaying either value:
+
+```sh
+for name in GH_TOKEN COPILOT_GITHUB_TOKEN; do
+  if printenv "$name" >/dev/null 2>&1; then
+    printf '%s=set\n' "$name"
+  else
+    printf '%s=missing\n' "$name"
+  fi
+done
+```
 
 If Azure recreates the VM and SSH reports a host-key mismatch, run the exact
 command printed by the tool:

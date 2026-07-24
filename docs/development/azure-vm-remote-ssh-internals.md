@@ -276,6 +276,10 @@ The setup and start connection output explains that `GH_TOKEN` and
 VS Code. It must never read the values, include them in terminal or log output,
 or store them.
 
+Forwarded values are readable by processes in the destination `vscode` user's
+Remote SSH process tree. The workflow must require trusted VMs and workspaces
+and short-lived, least-privilege tokens.
+
 The setup and start connection output must present both supported extension
 installation choices. It points to `.vscode/extensions.json` as the source for
 `remote.SSH.defaultExtensions`, warns that the setting applies to every Remote
