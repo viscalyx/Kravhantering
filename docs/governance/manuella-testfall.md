@@ -1622,15 +1622,16 @@ fel.
 ### ADMIN-07: åtgärdslogg filtrerar och exporterar CSV
 
 **Steg:** Öppna åtgärdslogg direkt och via fliken `Åtgärdslogg` i
-Admincenter. Filtrera på aktör eller händelse och exportera. Starta exporten
-igen medan den första förbereds och prova även ett urval som överskrider den
-konfigurerade CSV-radgränsen.
+Admincenter. Ange en kombination av aktör, händelse, måltyp, mål-ID samt från-
+och till-datum, filtrera och exportera. Starta exporten igen medan den första
+förbereds och prova även ett urval som överskrider den konfigurerade
+CSV-radgränsen.
 
 **Förväntat resultat:** Listan filtreras och CSV innehåller alla matchande
-rader i stabil ordning, även utanför den synliga sidan. Sidan lämnas inte,
-dubbel export blockeras och förberedelse samt nedladdning meddelas
-tillgängligt. Ett för stort urval visar ett lokaliserat fel utan nedladdning
-eller partiell fil, och fokus återgår till exportknappen.
+rader för hela filterkombinationen i stabil ordning, även utanför den synliga
+sidan. Sidan lämnas inte, dubbel export blockeras och förberedelse samt
+nedladdning meddelas tillgängligt. Ett för stort urval visar ett lokaliserat
+fel utan nedladdning eller partiell fil, och fokus återgår till exportknappen.
 
 ### ADMIN-08: åtkomstöversyn, beslut och export
 

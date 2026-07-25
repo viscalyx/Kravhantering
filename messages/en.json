@@ -1583,6 +1583,7 @@
       "eyebrow": "Action log",
       "description": "Search application mutations and authorization denials recorded in the database.",
       "exportCsv": "Export CSV",
+      "exportLoadError": "Could not load the CSV export. Try again.",
       "actorHsaId": "Actor HSA-id",
       "action": "Action",
       "targetKind": "Target type",

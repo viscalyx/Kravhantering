@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   type ActionAuditEventRow,
-  actionAuditEventsToCsv,
+  actionAuditCsvHeaders,
+  actionAuditEventToCsvRow,
   listActionAuditEvents,
   recordActionAuditEvent,
   recordAllowedActionAuditEventWithExecutor,
@@ -223,32 +224,34 @@ describe('action audit helper', () => {
   }
 
   it('exports client IP and localized decisions to default English CSV', () => {
-    const csv = actionAuditEventsToCsv([exportEvent])
+    const headers = actionAuditCsvHeaders()
+    const row = actionAuditEventToCsvRow(exportEvent)
 
-    expect(csv).toContain('Client IP')
-    expect(csv).toContain('Allowed')
-    expect(csv).toContain('203.0.113.23')
+    expect(headers).toContain('Client IP')
+    expect(row).toContain('Allowed')
+    expect(row).toContain('203.0.113.23')
   })
 
   it('exports localized Swedish CSV headers and decisions', () => {
-    const csv = actionAuditEventsToCsv(
-      [
-        exportEvent,
+    const headers = actionAuditCsvHeaders('sv').join(';')
+    const rows = [
+      actionAuditEventToCsvRow(exportEvent, 'sv'),
+      actionAuditEventToCsvRow(
         {
           ...exportEvent,
           decision: 'denied',
           denialReason: 'required_role_missing',
           id: '2',
         },
-      ],
-      'sv',
-    )
+        'sv',
+      ),
+    ].join('\r\n')
 
-    expect(csv).toContain('Tidpunkt;Aktörstyp')
-    expect(csv).toContain('Beslut')
-    expect(csv).toContain('Tillåten')
-    expect(csv).toContain('Nekad')
-    expect(csv).toContain('requirement.create')
+    expect(headers).toContain('Tidpunkt;Aktörstyp')
+    expect(headers).toContain('Beslut')
+    expect(rows).toContain('Tillåten')
+    expect(rows).toContain('Nekad')
+    expect(rows).toContain('requirement.create')
   })
 
   it('traverses more than 200 filtered rows in stable equal-time ID order', async () => {

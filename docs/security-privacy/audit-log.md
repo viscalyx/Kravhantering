@@ -73,9 +73,11 @@ CSV downloads use UTF-8 with BOM, localize column headers and decision values
 for the requested locale, and keep action names, target kinds, request IDs and
 details JSON as stored evidence identifiers. CSV ignores `page` and `pageSize`
 and traverses the complete filtered result in `occurred_at DESC, id DESC`
-order. Membership is anchored to the highest event ID present when generation
-starts; later inserts are excluded, while privacy erasure may still affect
-rows not yet read.
+order. The highest event ID present when generation starts excludes later
+inserts. It does not freeze actor-filter membership: privacy erasure can change
+or remove actor data before a row is read so that the row no longer matches.
+Materialized matching IDs or a consistent snapshot would be required to
+preserve the initial actor-filter membership.
 
 Generation uses private bounded spool storage and the shared Admin CSV row,
 byte, timeout, and per-node concurrency limits. It reads at most the configured

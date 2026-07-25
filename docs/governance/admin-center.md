@@ -73,7 +73,10 @@ identifiers. The export button keeps the user on the page, blocks duplicate
 requests while generation is pending, and announces progress and localized
 errors. Export ignores interactive pagination and downloads the complete
 filtered result in stable time-and-ID order, subject to the shared Admin CSV
-row, byte, timeout, and concurrency limits.
+row, byte, timeout, and concurrency limits. For actor filters, concurrent
+privacy erasure can change membership before a row is read; a complete result
+therefore means all rows that still match during traversal, not a frozen
+filter snapshot.
 
 The database action log is separate from the platform `security-audit`
 JSON stream. The database log is intended for application action review and

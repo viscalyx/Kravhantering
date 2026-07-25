@@ -31,7 +31,11 @@ describe('Action-log CSV export traversal', () => {
          details_json
        )
        SELECT
-         CONVERT(datetime2(3), '2026-07-25T10:00:00.000'),
+         DATEADD(
+           millisecond,
+           value,
+           CONVERT(datetime2(3), '2026-07-25T10:00:00.000')
+         ),
          N'SE5560000001-export1',
          N'Export Test',
          N'user',

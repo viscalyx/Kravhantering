@@ -191,9 +191,19 @@ describe('generated output operation contract', () => {
   })
 
   it('records privacy-safe Action-log CSV telemetry', () => {
+    const actorHsaId = 'SE5560000001-telemetry'
+    const actorDisplayName = 'Capacity Telemetry Sentinel'
+    const privacyContext = {
+      ...context,
+      actor: {
+        ...context.actor,
+        displayName: actorDisplayName,
+        hsaId: actorHsaId,
+      },
+    } satisfies RequestContext
     const recorder = createGeneratedOutputTerminalRecorder(
       'admin.action_log_csv_export',
-      context,
+      privacyContext,
     )
     recorder.completed({
       byteCount: 2048,
@@ -217,8 +227,8 @@ describe('generated output operation contract', () => {
     const payload = JSON.stringify(
       observability.recordCapacityEvent.mock.calls[0],
     )
-    expect(payload).not.toContain(context.actor.hsaId)
-    expect(payload).not.toContain(context.actor.displayName)
+    expect(payload).not.toContain(actorHsaId)
+    expect(payload).not.toContain(actorDisplayName)
     expect(payload).not.toContain('filter')
     expect(payload).not.toContain('/private/')
   })

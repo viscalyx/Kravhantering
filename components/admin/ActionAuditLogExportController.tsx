@@ -3,17 +3,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useGeneratedOutputDownload } from '@/components/generated-output/useGeneratedOutputDownload'
 import { devMarker } from '@/lib/developer-mode-markers'
-import type { ActionAuditLogExportButtonProps } from './ActionAuditLogExportButton'
+import {
+  ACTION_LOG_EXPORT_DEV_MARKER,
+  type ActionAuditLogExportControllerProps,
+} from './ActionAuditLogExport.shared'
 
 export default function ActionAuditLogExportController({
   fallbackFilename,
   href,
   label,
-}: ActionAuditLogExportButtonProps) {
+}: ActionAuditLogExportControllerProps) {
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const downloadStartedRef = useRef(false)
   const startedRef = useRef(false)
   const [starting, setStarting] = useState(true)
-  const { dialog, download, downloading } = useGeneratedOutputDownload()
+  const { dialog, download, downloading, error } = useGeneratedOutputDownload()
 
   const startDownload = useCallback(async () => {
     setStarting(true)
@@ -31,9 +35,23 @@ export default function ActionAuditLogExportController({
 
   useEffect(() => {
     if (startedRef.current) return
-    startedRef.current = true
-    void startDownload()
+    const timer = window.setTimeout(() => {
+      startedRef.current = true
+      void startDownload()
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [startDownload])
+
+  useEffect(() => {
+    if (downloading) {
+      downloadStartedRef.current = true
+      return
+    }
+    if (downloadStartedRef.current && !error) {
+      downloadStartedRef.current = false
+      buttonRef.current?.focus()
+    }
+  }, [downloading, error])
 
   return (
     <>
@@ -43,11 +61,7 @@ export default function ActionAuditLogExportController({
         onClick={() => void startDownload()}
         ref={buttonRef}
         type="button"
-        {...devMarker({
-          context: 'action log',
-          name: 'CSV export button',
-          priority: 330,
-        })}
+        {...devMarker(ACTION_LOG_EXPORT_DEV_MARKER)}
       >
         {label}
       </button>

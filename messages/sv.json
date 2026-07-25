@@ -1583,6 +1583,7 @@
       "eyebrow": "Åtgärdslogg",
       "description": "Sök bland applikationsändringar och nekade behörighetsförsök som lagrats i databasen.",
       "exportCsv": "Exportera CSV",
+      "exportLoadError": "CSV-exporten kunde inte läsas in. Försök igen.",
       "actorHsaId": "Aktörens HSA-id",
       "action": "Åtgärd",
       "targetKind": "Måltyp",

@@ -324,10 +324,11 @@ row-wise exporters produce CSV with the following conventions:
   server filters, locale, and database sort, starts from the first page, and
   accepts no cursor or page-size parameter.
 - Action-log CSV is served by `GET /api/admin/audit-events?format=csv` to Admin
-  users. It ignores interactive `page` and `pageSize`, anchors membership to
-  the current maximum action-log ID, and keyset-traverses the complete filtered
-  result in `occurred_at DESC, id DESC` order. Zero matches return the localized
-  header only.
+  users. It ignores interactive `page` and `pageSize`, excludes IDs above the
+  current maximum action-log ID, and keyset-traverses the filtered result in
+  `occurred_at DESC, id DESC` order. Actor-filter membership can change during
+  concurrent privacy erasure unless matching IDs are materialized or a
+  consistent snapshot is used. Zero matches return the localized header only.
 - Requirements Library CSV, specification CSV, Action-log CSV, and filtered
   list PDF
   collection traverse internal bounded pages and fetch at most the Admin item

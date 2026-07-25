@@ -487,7 +487,9 @@ function buildActionAuditFilterSql(
   return { addParam, params, where }
 }
 
-const ACTION_AUDIT_EVENT_SELECT = `SELECT
+function actionAuditEventSelect(topParameter?: string): string {
+  const topSql = topParameter ? ` TOP (${topParameter})` : ''
+  return `SELECT${topSql}
       id,
       occurred_at AS occurredAt,
       actor_hsa_id AS actorHsaId,
@@ -505,6 +507,7 @@ const ACTION_AUDIT_EVENT_SELECT = `SELECT
       client_ip AS clientIp,
       details_json AS detailsJson
     FROM action_audit_events`
+}
 
 export async function listActionAuditEvents(
   db: SqlServerDatabase,
@@ -523,7 +526,7 @@ export async function listActionAuditEvents(
   )) as Array<Record<string, unknown>>
   const total = Number(countRows[0]?.count ?? 0)
   const rows = (await db.query(
-    `${ACTION_AUDIT_EVENT_SELECT}
+    `${actionAuditEventSelect()}
     ${whereSql}
     ORDER BY occurred_at DESC, id DESC
     OFFSET ${addParam(offset)} ROWS FETCH NEXT ${addParam(currentPageSize)} ROWS ONLY`,
@@ -553,16 +556,6 @@ export function actionAuditEventToCsvRow(
   return ACTION_AUDIT_CSV_COLUMNS.map(column =>
     escapeCsvField(column.value(event, locale)),
   ).join(';')
-}
-
-export function actionAuditEventsToCsv(
-  events: ActionAuditEventRow[],
-  locale: ActionAuditCsvLocale = 'en',
-): string {
-  return [
-    actionAuditCsvHeaders(locale).map(escapeCsvField).join(';'),
-    ...events.map(event => actionAuditEventToCsvRow(event, locale)),
-  ].join('\r\n')
 }
 
 interface ActionAuditCursor {
@@ -617,11 +610,9 @@ export async function traverseActionAuditEventsForCsv(
     }
 
     const fetchSize = Math.min(EXPORT_PAGE_SIZE, remaining)
+    const fetchSizeParameter = addParam(fetchSize)
     const rows = (await db.query(
-      `${ACTION_AUDIT_EVENT_SELECT.replace(
-        'SELECT',
-        `SELECT TOP (${addParam(fetchSize)})`,
-      )}
+      `${actionAuditEventSelect(fetchSizeParameter)}
        WHERE ${where.join(' AND ')}
        ORDER BY occurred_at DESC, id DESC`,
       params,

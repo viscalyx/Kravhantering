@@ -49,6 +49,7 @@ function auditLogLabels(
     description: t('description'),
     empty: t('empty'),
     exportCsv: t('exportCsv'),
+    exportLoadError: t('exportLoadError'),
     eyebrow: t('eyebrow'),
     filter: t('filter'),
     from: t('from'),
