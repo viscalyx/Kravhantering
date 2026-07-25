@@ -1,10 +1,9 @@
 'use client'
 
-import { useRef } from 'react'
-import { useGeneratedOutputDownload } from '@/components/generated-output/useGeneratedOutputDownload'
+import { type ComponentType, useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
 
-interface ActionAuditLogExportButtonProps {
+export interface ActionAuditLogExportButtonProps {
   fallbackFilename: string
   href: string
   label: string
@@ -15,33 +14,40 @@ export default function ActionAuditLogExportButton({
   href,
   label,
 }: ActionAuditLogExportButtonProps) {
-  const buttonRef = useRef<HTMLButtonElement>(null)
-  const download = useGeneratedOutputDownload()
+  const [Controller, setController] =
+    useState<ComponentType<ActionAuditLogExportButtonProps>>()
+
+  if (Controller) {
+    return (
+      <Controller
+        fallbackFilename={fallbackFilename}
+        href={href}
+        label={label}
+      />
+    )
+  }
 
   return (
-    <>
-      <button
-        className="btn-secondary"
-        disabled={download.downloading}
-        onClick={() => {
-          void download.download({
-            fallbackFilename,
-            output: 'csv',
-            restoreFocusTo: buttonRef.current,
-            url: href,
-          })
-        }}
-        ref={buttonRef}
-        type="button"
-        {...devMarker({
-          context: 'action log',
-          name: 'CSV export button',
-          priority: 330,
-        })}
-      >
-        {label}
-      </button>
-      {download.dialog}
-    </>
+    <button
+      className="btn-secondary"
+      onClick={event => {
+        const button = event.currentTarget
+        button.disabled = true
+        void import('./ActionAuditLogExportController').then(
+          module => setController(() => module.default),
+          () => {
+            button.disabled = false
+          },
+        )
+      }}
+      type="button"
+      {...devMarker({
+        context: 'action log',
+        name: 'CSV export button',
+        priority: 330,
+      })}
+    >
+      {label}
+    </button>
   )
 }
