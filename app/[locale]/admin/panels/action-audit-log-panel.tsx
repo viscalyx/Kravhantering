@@ -36,7 +36,6 @@ export default function ActionAuditLogPanel({
     description: ta('auditLog.description'),
     empty: ta('auditLog.empty'),
     exportCsv: ta('auditLog.exportCsv'),
-    exportLoadError: ta('auditLog.exportLoadError'),
     eyebrow: ta('auditLog.eyebrow'),
     filter: ta('auditLog.filter'),
     from: ta('auditLog.from'),

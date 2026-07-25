@@ -22,7 +22,6 @@ export type ActionAuditLogLabels = {
   description: string
   empty: string
   exportCsv: string
-  exportLoadError: string
   eyebrow: string
   filter: string
   from: string
@@ -105,7 +104,6 @@ export default function ActionAuditLogView({
               fallbackFilename={csvFilename}
               href={csvHref}
               label={labels.exportCsv}
-              loadErrorLabel={labels.exportLoadError}
             />
           </div>
         </section>
@@ -164,7 +162,6 @@ export default function ActionAuditLogView({
             fallbackFilename={csvFilename}
             href={csvHref}
             label={labels.exportCsv}
-            loadErrorLabel={labels.exportLoadError}
           />
         </div>
       </section>

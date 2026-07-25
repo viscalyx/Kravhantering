@@ -66,8 +66,8 @@ export const ADMIN_WORKSPACES = [
 export const ADMIN_WORKSPACE_GZIP_MAX_BYTES = {
   // 2026-07-20 isolated-route baseline: 13,236 gzip bytes plus 5% headroom.
   accessReview: 13_898,
-  // 2026-07-25 lazy export-controller baseline: 6,741 gzip bytes plus 5% headroom.
-  actionAuditLog: 7_079,
+  // 2026-07-25 eager bounded-export baseline: 10,101 gzip bytes plus 5% headroom.
+  actionAuditLog: 10_607,
   // 2026-07-20 isolated-route baseline: 7,676 gzip bytes plus 5% headroom.
   archiving: 8_060,
   // 2026-07-20 isolated-route baseline: 9,265 gzip bytes plus 5% headroom.
