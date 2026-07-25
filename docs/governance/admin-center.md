@@ -506,9 +506,21 @@ that created the request. Each item starts as `pending` and must be changed to
 `approved`,
 `revoke_required`, `changed`, or `not_applicable` before the run can be
 completed. Decision updates record the deciding actor, timestamp, and optional
-comment. Completion is blocked while any item remains pending. Cancelling a run
-marks it as `cancelled` and keeps the snapshot rows as historical evidence
-instead of hard-deleting them.
+comment. Comments are stored without surrounding whitespace, and blank
+comments are stored as `null`. An authorized handler may revise a decision or
+comment while the run remains open, and each actual revision produces new
+Action-log evidence. Retrying an identical normalized decision and comment is
+an accepted no-op: it preserves the original decision timestamp and does not
+duplicate the Action-log event.
+
+Completion is blocked while any item remains pending. Completion and
+cancellation are terminal states: after either transition, decision fields are
+immutable through the Access review workflow. Retrying the terminal transition
+that already won is an accepted no-op, while requesting the opposing terminal
+transition returns a conflict. Cancelling a run marks it as `cancelled` and
+keeps the snapshot rows as historical evidence instead of hard-deleting them.
+Authorized privacy erasure may still anonymize identity snapshots on closed
+reviews; terminal immutability does not block that privacy operation.
 
 The JSON export uses schema version `access-review-export.v1` and is the
 authoritative evidence payload. The PDF button requests a server-rendered PDF
@@ -522,6 +534,11 @@ Action-log events are emitted for run creation, item decisions, cancellation,
 completion, and export. Action-log detail contains review id, counts, delivery,
 decision, and status
 where relevant; it does not contain the raw list of reviewed HSA-id values.
+Each applied decision, completion, or cancellation and its database-backed
+Action-log event commit in one transaction. An Action-log insertion failure
+therefore rolls back the Access review state change. Accepted no-op retries do
+not insert duplicate Action-log events; the separate Platform Security event
+records `changed: false`.
 
 ## Taxonomy And Statuses
 

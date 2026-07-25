@@ -23,32 +23,40 @@ export const POST = secureMutationRoute({
   handler: async ({ context, params, request }) => {
     try {
       const db = await getRequestSqlServerDataSource()
-      const detail = await cancelAccessReviewRun(
+      const result = await cancelAccessReviewRun(
         db,
         params.id,
         accessReviewServiceActor(context),
-      )
-      await recordAccessReviewActionSucceeded(context, {
-        action: 'access_review.cancel',
-        detail: {
-          itemCount: detail.run.summary.itemCount,
-          reviewId: params.id,
-          status: detail.run.status,
+        {
+          audit: (executor, auditDetail) =>
+            recordAccessReviewActionSucceeded(
+              context,
+              {
+                action: 'access_review.cancel',
+                detail: {
+                  itemCount: auditDetail.itemCount,
+                  reviewId: auditDetail.runId,
+                  status: auditDetail.status,
+                },
+                targetId: auditDetail.runId,
+              },
+              executor,
+            ),
         },
-        targetId: params.id,
-      })
+      )
       recordSecurityEvent({
         actor: accessReviewAuditActor(context),
         detail: {
-          itemCount: detail.run.summary.itemCount,
+          changed: result.applied,
+          itemCount: result.detail.run.summary.itemCount,
           reviewId: params.id,
-          status: detail.run.status,
+          status: result.detail.run.status,
         },
         event: 'access_review.cancelled',
         outcome: 'success',
         request: context.request ?? request,
       })
-      return NextResponse.json(detail)
+      return NextResponse.json(result.detail)
     } catch (error) {
       await recordAccessReviewAuthorizationDenied(
         context,

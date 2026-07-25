@@ -3,6 +3,7 @@ import { CsrfError } from '@/lib/auth/csrf'
 import { forbiddenError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
+  auditExecutor: { query: vi.fn() },
   buildAccessReviewExport: vi.fn(),
   cancelAccessReviewRun: vi.fn(),
   completeAccessReviewRun: vi.fn(),
@@ -175,21 +176,57 @@ describe('access review routes', () => {
     routeState.createAccessReviewRun.mockResolvedValue(reviewDetail())
     routeState.listAccessReviewRuns.mockResolvedValue([reviewDetail().run])
     routeState.getAccessReviewRun.mockResolvedValue(reviewDetail())
-    routeState.decideAccessReviewItem.mockResolvedValue({
-      ...reviewDetail(),
-      run: {
-        ...reviewDetail().run,
-        summary: { ...reviewDetail().run.summary, pendingCount: 0 },
+    routeState.decideAccessReviewItem.mockImplementation(
+      async (_db, runId, itemId, input, _actor, options) => {
+        await options?.audit?.(routeState.auditExecutor, {
+          decision: input.decision,
+          itemId,
+          runId,
+        })
+        return {
+          applied: true,
+          detail: {
+            ...reviewDetail(),
+            run: {
+              ...reviewDetail().run,
+              summary: { ...reviewDetail().run.summary, pendingCount: 0 },
+            },
+          },
+        }
       },
-    })
-    routeState.completeAccessReviewRun.mockResolvedValue({
-      ...reviewDetail(),
-      run: { ...reviewDetail().run, status: 'completed' },
-    })
-    routeState.cancelAccessReviewRun.mockResolvedValue({
-      ...reviewDetail(),
-      run: { ...reviewDetail().run, status: 'cancelled' },
-    })
+    )
+    routeState.completeAccessReviewRun.mockImplementation(
+      async (_db, runId, _actor, options) => {
+        await options?.audit?.(routeState.auditExecutor, {
+          itemCount: 1,
+          runId,
+          status: 'completed',
+        })
+        return {
+          applied: true,
+          detail: {
+            ...reviewDetail(),
+            run: { ...reviewDetail().run, status: 'completed' },
+          },
+        }
+      },
+    )
+    routeState.cancelAccessReviewRun.mockImplementation(
+      async (_db, runId, _actor, options) => {
+        await options?.audit?.(routeState.auditExecutor, {
+          itemCount: 1,
+          runId,
+          status: 'cancelled',
+        })
+        return {
+          applied: true,
+          detail: {
+            ...reviewDetail(),
+            run: { ...reviewDetail().run, status: 'cancelled' },
+          },
+        }
+      },
+    )
     routeState.renderPdfResponse.mockClear()
     routeState.buildAccessReviewExport.mockResolvedValue({
       ...reviewDetail(),
@@ -400,10 +437,25 @@ describe('access review routes', () => {
       7,
       { comment: 'Still needed', decision: 'approved' },
       expect.objectContaining({ hsaId: 'SE5560000001-admin1' }),
+      expect.objectContaining({ audit: expect.any(Function) }),
+    )
+    expect(routeState.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
+      routeState.auditExecutor,
+      expect.objectContaining({ requestId: 'request-1' }),
+      expect.objectContaining({
+        action: 'access_review.item_decide',
+        targetId: 42,
+        targetKind: 'AccessReview',
+      }),
     )
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        detail: { decision: 'approved', itemId: 7, reviewId: 42 },
+        detail: {
+          changed: true,
+          decision: 'approved',
+          itemId: 7,
+          reviewId: 42,
+        },
         event: 'access_review.item_decided',
       }),
     )
@@ -465,11 +517,61 @@ describe('access review routes', () => {
       { db: true },
       42,
       expect.objectContaining({ hsaId: 'SE5560000001-admin1' }),
+      expect.objectContaining({ audit: expect.any(Function) }),
+    )
+    expect(routeState.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
+      routeState.auditExecutor,
+      expect.objectContaining({ requestId: 'request-1' }),
+      expect.objectContaining({
+        action: 'access_review.cancel',
+        targetId: 42,
+        targetKind: 'AccessReview',
+      }),
     )
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        detail: { itemCount: 1, reviewId: 42, status: 'cancelled' },
+        detail: {
+          changed: true,
+          itemCount: 1,
+          reviewId: 42,
+          status: 'cancelled',
+        },
         event: 'access_review.cancelled',
+      }),
+    )
+  })
+
+  it('preserves the response contract and logs changed false for accepted no-op completion retries', async () => {
+    const completedDetail = {
+      ...reviewDetail(),
+      run: { ...reviewDetail().run, status: 'completed' },
+    }
+    routeState.completeAccessReviewRun.mockResolvedValueOnce({
+      applied: false,
+      detail: completedDetail,
+    })
+    const { POST } = await import(
+      '@/app/api/admin/access-reviews/[id]/complete/route'
+    )
+    const response = await POST(
+      new Request('http://localhost/api/admin/access-reviews/42/complete', {
+        method: 'POST',
+      }) as never,
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual(completedDetail)
+    expect(routeState.recordAllowedActionAuditEvent).not.toHaveBeenCalled()
+    expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: {
+          changed: false,
+          itemCount: 1,
+          reviewId: 42,
+          status: 'completed',
+        },
+        event: 'access_review.completed',
       }),
     )
   })

@@ -47,25 +47,33 @@ export const PATCH = secureMutationRoute({
   handler: async ({ body, context, params, request }) => {
     try {
       const db = await getRequestSqlServerDataSource()
-      const detail = await decideAccessReviewItem(
+      const result = await decideAccessReviewItem(
         db,
         params.id,
         params.itemId,
         body,
         accessReviewServiceActor(context),
-      )
-      await recordAccessReviewActionSucceeded(context, {
-        action: 'access_review.item_decide',
-        detail: {
-          decision: body.decision,
-          itemId: params.itemId,
-          reviewId: params.id,
+        {
+          audit: (executor, auditDetail) =>
+            recordAccessReviewActionSucceeded(
+              context,
+              {
+                action: 'access_review.item_decide',
+                detail: {
+                  decision: auditDetail.decision,
+                  itemId: auditDetail.itemId,
+                  reviewId: auditDetail.runId,
+                },
+                targetId: auditDetail.runId,
+              },
+              executor,
+            ),
         },
-        targetId: params.id,
-      })
+      )
       recordSecurityEvent({
         actor: accessReviewAuditActor(context),
         detail: {
+          changed: result.applied,
           decision: body.decision,
           itemId: params.itemId,
           reviewId: params.id,
@@ -74,7 +82,7 @@ export const PATCH = secureMutationRoute({
         outcome: 'success',
         request: context.request ?? request,
       })
-      return NextResponse.json(detail)
+      return NextResponse.json(result.detail)
     } catch (error) {
       await recordAccessReviewAuthorizationDenied(
         context,
