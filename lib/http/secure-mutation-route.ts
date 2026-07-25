@@ -19,10 +19,12 @@ import {
 } from '@/lib/requirements/auth'
 import {
   forbiddenError,
+  internalError,
   isRequirementsServiceError,
   unauthorizedError,
 } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { recordAuthorizationDeniedAuditFailure } from '@/lib/requirements/security-audit'
 
 export type MutationRouteContext = {
   params?: Promise<unknown>
@@ -188,30 +190,46 @@ async function recordAuthorizationDeniedForPolicy<TBody, TParams>(
     typeof error.details?.reason === 'string'
       ? error.details.reason
       : error.code
-  const auditDb = db ?? (await getRequestSqlServerDataSource())
-  await recordDeniedActionAuditEvent(auditDb, context, {
-    action:
-      policy.kind === 'admin'
-        ? 'admin.authorization.denied'
-        : policy.kind === 'custom'
-          ? `${policy.name}.denied`
-          : 'requirements.authorization.denied',
-    denialReason: reason,
-    details: {
+  try {
+    const auditDb = db ?? (await getRequestSqlServerDataSource())
+    await recordDeniedActionAuditEvent(auditDb, context, {
+      action:
+        policy.kind === 'admin'
+          ? 'admin.authorization.denied'
+          : policy.kind === 'custom'
+            ? `${policy.name}.denied`
+            : 'requirements.authorization.denied',
+      denialReason: reason,
+      details: {
+        errorCode: error.code,
+        policyKind: policy.kind,
+        requestSource: context.source,
+      },
+      targetKind: policy.kind,
+    })
+  } catch (auditError) {
+    recordAuthorizationDeniedAuditFailure(context, auditError, {
       errorCode: error.code,
       policyKind: policy.kind,
-      requestSource: context.source,
-    },
-    targetKind: policy.kind,
-  })
+      reason,
+    })
+    throw internalError()
+  }
 }
 
-async function recordPolicyAuthorizationDenied<TBody, TParams>(
+async function authorizationErrorResponse<TBody, TParams>(
   policy: MutationPolicy<TBody, TParams>,
-  args: SecureMutationHandlerArgs<TBody, TParams>,
+  context: RequestContext,
   error: unknown,
-): Promise<void> {
-  await recordAuthorizationDeniedForPolicy(policy, args.context, error, args.db)
+  errorMessage: string,
+  db?: SqlServerDatabase,
+): Promise<NextResponse> {
+  try {
+    await recordAuthorizationDeniedForPolicy(policy, context, error, db)
+    return errorResponse(errorMessage, error)
+  } catch (auditError) {
+    return errorResponse(errorMessage, auditError)
+  }
 }
 
 export function secureMutationRoute<TBody = undefined, TParams = undefined>(
@@ -234,8 +252,13 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
         return preParseResponse
       }
     } catch (error) {
-      await recordAuthorizationDeniedForPolicy(options.policy, context, error)
-      return decorateErrorResponse(options, errorResponse(errorMessage, error))
+      const response = await authorizationErrorResponse(
+        options.policy,
+        context,
+        error,
+        errorMessage,
+      )
+      return decorateErrorResponse(options, response)
     }
 
     const parsedParams =
@@ -269,8 +292,14 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
     try {
       await authorizeMutation(options.policy, args)
     } catch (error) {
-      await recordPolicyAuthorizationDenied(options.policy, args, error)
-      return decorateErrorResponse(options, errorResponse(errorMessage, error))
+      const response = await authorizationErrorResponse(
+        options.policy,
+        context,
+        error,
+        errorMessage,
+        args.db,
+      )
+      return decorateErrorResponse(options, response)
     }
 
     try {

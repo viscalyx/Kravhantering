@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   RequestContext,
   RequirementsAction,
@@ -38,7 +38,43 @@ function context(): RequestContext {
 }
 
 describe('requirements security audit', () => {
-  it('emits a redacted diagnostic when denied-action audit persistence fails', async () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.getRequestSqlServerDataSource.mockResolvedValue({
+      transaction: vi.fn(
+        async (
+          callback: (manager: { query: ReturnType<typeof vi.fn> }) => unknown,
+        ) => callback({ query: vi.fn() }),
+      ),
+    })
+  })
+
+  it('persists required Action log evidence for an authorization denial', async () => {
+    const denied = forbiddenError('Blocked by policy', {
+      reason: 'policy_missing',
+      requiredRoles: ['Admin'],
+    })
+    const action: RequirementsAction = {
+      kind: 'manage_import',
+      operation: 'validate',
+    }
+
+    await expect(
+      recordAuthorizationDenied(context(), action, denied),
+    ).resolves.toBeUndefined()
+
+    expect(mocks.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ source: 'mcp' }),
+      expect.objectContaining({
+        action: 'manage_import.denied',
+        denialReason: 'policy_missing',
+        targetKind: 'manage_import',
+      }),
+    )
+  })
+
+  it('fails closed with a redacted diagnostic when denial evidence cannot persist', async () => {
     const infoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)
@@ -57,7 +93,11 @@ describe('requirements security audit', () => {
 
       await expect(
         recordAuthorizationDenied(context(), action, denied),
-      ).resolves.toBeUndefined()
+      ).rejects.toMatchObject({
+        code: 'internal',
+        message: 'An internal error occurred',
+        status: 500,
+      })
 
       expect(mocks.recordDeniedActionAuditEvent).not.toHaveBeenCalled()
       const events = infoSpy.mock.calls.map(

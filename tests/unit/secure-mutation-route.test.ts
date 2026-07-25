@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { CsrfError } from '@/lib/auth/csrf'
 import {
@@ -92,8 +92,11 @@ function jsonRequest(body: unknown, method = 'POST') {
 }
 
 describe('secureMutationRoute', () => {
+  let infoSpy: ReturnType<typeof vi.spyOn>
+
   beforeEach(() => {
     vi.clearAllMocks()
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined)
     adminAuditState.createAdminPrivilegedAuditContext.mockResolvedValue(
       context(),
     )
@@ -109,6 +112,10 @@ describe('secureMutationRoute', () => {
     auditState.getRequestSqlServerDataSource.mockResolvedValue({
       transaction: auditState.transaction,
     })
+  })
+
+  afterEach(() => {
+    infoSpy.mockRestore()
   })
 
   it('passes parsed body, params and context to the handler', async () => {
@@ -341,6 +348,71 @@ describe('secureMutationRoute', () => {
       expect.stringContaining('INSERT INTO action_audit_events'),
       expect.arrayContaining(['deny.denied', 'custom', 'denied']),
     )
+  })
+
+  it('returns a sanitized internal error when policy denial evidence cannot persist', async () => {
+    auditState.query.mockRejectedValueOnce(
+      new Error('DATABASE_URL password=supersecret rejected the audit insert'),
+    )
+    const handler = vi.fn(() => NextResponse.json({ ok: true }))
+    const route = secureMutationRoute({
+      handler,
+      policy: customMutationPolicy('deny', () => {
+        throw forbiddenError('Nope')
+      }),
+    })
+
+    const response = await route(jsonRequest({}))
+    const body = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({
+      code: 'internal',
+      error: 'An internal error occurred',
+    })
+    expect(JSON.stringify(body)).not.toContain('supersecret')
+    expect(handler).not.toHaveBeenCalled()
+
+    const events = infoSpy.mock.calls.map(
+      (call: unknown[]) =>
+        JSON.parse(String(call[0])) as Record<string, unknown>,
+    )
+    expect(events).toEqual([
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          auditFailure: 'denied_action_audit_write_failed',
+          policyKind: 'custom',
+        }),
+        event: 'auth.authorization.denied.audit_failed',
+      }),
+    ])
+    expect(JSON.stringify(events)).not.toContain('supersecret')
+  })
+
+  it('returns a sanitized internal error when unauthenticated denial evidence cannot persist', async () => {
+    adminAuditState.createAdminPrivilegedAuditContext.mockResolvedValueOnce({
+      ...context([]),
+      actor: { ...context([]).actor, isAuthenticated: false },
+    })
+    auditState.getRequestSqlServerDataSource.mockRejectedValueOnce(
+      new Error('DATABASE_URL password=supersecret is unavailable'),
+    )
+    const handler = vi.fn(() => NextResponse.json({ ok: true }))
+    const route = secureMutationRoute({
+      handler,
+      policy: adminMutationPolicy(),
+    })
+
+    const response = await route(jsonRequest({}))
+    const body = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({
+      code: 'internal',
+      error: 'An internal error occurred',
+    })
+    expect(JSON.stringify(body)).not.toContain('supersecret')
+    expect(handler).not.toHaveBeenCalled()
   })
 
   it('maps CSRF failures from context creation', async () => {

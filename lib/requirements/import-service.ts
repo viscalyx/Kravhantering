@@ -1824,7 +1824,8 @@ async function assertMcpImportDestinationAuthorized(
   destination: McpImportDestinationRef,
 ): Promise<void> {
   if (destination.kind === 'requirements_library') {
-    await authorization.assertAuthorized(
+    await authorize(
+      authorization,
       {
         areaId: destination.areaId,
         kind: 'manage_requirement',
@@ -1835,7 +1836,8 @@ async function assertMcpImportDestinationAuthorized(
     return
   }
 
-  await authorization.assertAuthorized(
+  await authorize(
+    authorization,
     {
       kind: 'manage_specification_local_requirement',
       operation: 'create',
@@ -3147,7 +3149,8 @@ export function createRequirementsImportWorkflow({
       context: RequestContext,
       input: ImportExecuteBody & { areaId: number },
     ): Promise<RequirementsImportExecuteResult> {
-      await authorization.assertAuthorized(
+      await authorize(
+        authorization,
         {
           areaId: input.areaId,
           kind: 'manage_requirement',
@@ -3221,7 +3224,8 @@ export function createRequirementsImportWorkflow({
         db,
         input.specificationId,
       )
-      await authorization.assertAuthorized(
+      await authorize(
+        authorization,
         {
           kind: 'manage_specification_local_requirement',
           operation: 'create',
@@ -3308,7 +3312,8 @@ export function createRequirementsImportWorkflow({
         payload: ImportRequirementsPayload
       },
     ): Promise<RequirementsImportPreview> {
-      await authorization.assertAuthorized(
+      await authorize(
+        authorization,
         {
           areaId: input.areaId,
           kind: 'manage_requirement',
@@ -3338,7 +3343,8 @@ export function createRequirementsImportWorkflow({
         db,
         input.specificationId,
       )
-      await authorization.assertAuthorized(
+      await authorize(
+        authorization,
         {
           kind: 'manage_specification_local_requirement',
           operation: 'create',

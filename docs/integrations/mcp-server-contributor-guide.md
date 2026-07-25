@@ -494,6 +494,11 @@ Rules:
   their user-facing message.
 - Unexpected errors and `internal` domain errors must return only
   `Error: An internal error occurred`.
+- Authorization denial evidence is required and fail-closed. If its action-log
+  write fails, keep the protected work blocked, emit the redacted
+  `auth.authorization.denied.audit_failed` security event, and throw an
+  `internal` domain error. MCP must return only the generic internal message,
+  without authorization or persistence details.
 - REST routes should map errors with `toHttpErrorPayload`.
 - Do not leak stack traces or raw database errors into tool results.
 

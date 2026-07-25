@@ -20,6 +20,14 @@ ska payloads vara begränsade och redigerade: inga hemligheter, tokens,
 inskickad fritext, kravtext, råa target HSA-id values eller andra onödiga
 personuppgifter ska skrivas som details.
 
+Åtgärdsloggens bevis för auktoriseringsavslag är obligatoriskt. Om raden inte
+kan lagras förblir arbetet nekat och REST- eller MCP-gränsen returnerar ett
+generiskt internt fel utan auktoriserings- eller persistensdetaljer.
+Säkerhetsloggen får samtidigt händelsen
+`auth.authorization.denied.audit_failed` med redigerad diagnostik så att
+driften kan upptäcka felet utan att den mindre varaktiga kanalen ersätter
+Åtgärdsloggens bevis.
+
 ## Övervägda alternativ
 
 - Lagra allt bevisunderlag i `action_audit_events`: avvisat eftersom auth och

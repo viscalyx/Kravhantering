@@ -17,6 +17,7 @@ import type {
   RequirementsAction,
 } from '@/lib/requirements/auth'
 import {
+  internalError,
   isRequirementsServiceError,
   type RequirementsServiceError,
 } from '@/lib/requirements/errors'
@@ -395,7 +396,29 @@ function safeAuditFailureMessage(error: unknown): string {
   }
 }
 
-async function recordDeniedActionAuditEventBestEffort(
+export function recordAuthorizationDeniedAuditFailure(
+  context: RequestContext,
+  auditError: unknown,
+  detail: SecurityAuditDetailInput = {},
+): void {
+  recordSecurityEvent({
+    actor: securityActorFromContext(context.actor),
+    detail: compactDetail({
+      ...detail,
+      auditFailure: 'denied_action_audit_write_failed',
+      auditFailureMessage: safeAuditFailureMessage(auditError),
+      auditFailureName:
+        auditError instanceof Error ? auditError.name : undefined,
+      requestSource: context.source,
+      toolName: context.toolName,
+    }),
+    event: 'auth.authorization.denied.audit_failed',
+    outcome: 'failure',
+    request: securityRequestFromContext(context, '/requirements/authorization'),
+  })
+}
+
+async function recordDeniedActionAuditEventRequired(
   context: RequestContext,
   action: RequirementsAction,
   authorizationError: RequirementsServiceError,
@@ -418,27 +441,13 @@ async function recordDeniedActionAuditEventBestEffort(
       ...targetForAuthorizationDenied(action),
     })
   } catch (auditError) {
-    recordSecurityEvent({
-      actor: securityActorFromContext(context.actor),
-      detail: compactDetail({
-        ...actionAuditDetail(action),
-        auditFailure: 'denied_action_audit_write_failed',
-        auditFailureMessage: safeAuditFailureMessage(auditError),
-        auditFailureName:
-          auditError instanceof Error ? auditError.name : undefined,
-        errorCode: authorizationError.code,
-        reason,
-        requestSource: context.source,
-        requiredRoles,
-        toolName: context.toolName,
-      }),
-      event: 'auth.authorization.denied.audit_failed',
-      outcome: 'failure',
-      request: securityRequestFromContext(
-        context,
-        '/requirements/authorization',
-      ),
+    recordAuthorizationDeniedAuditFailure(context, auditError, {
+      ...actionAuditDetail(action),
+      errorCode: authorizationError.code,
+      reason,
+      requiredRoles,
     })
+    throw internalError()
   }
 }
 
@@ -472,7 +481,7 @@ export async function recordAuthorizationDenied(
     request: securityRequestFromContext(context, '/requirements/authorization'),
   })
 
-  await recordDeniedActionAuditEventBestEffort(
+  await recordDeniedActionAuditEventRequired(
     context,
     action,
     error,

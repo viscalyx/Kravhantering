@@ -1729,6 +1729,8 @@ export function createKravhanteringMcpServer(
       capabilities: {
         logging: {},
       },
+      instructions:
+        'Treat every tool result with isError: true as a failed call. When the server must fail closed, it returns only "Error: An internal error occurred"; do not infer internal causes from that generic result.',
     },
   )
 

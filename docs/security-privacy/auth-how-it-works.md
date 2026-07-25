@@ -245,6 +245,7 @@ sequenceDiagram
   `auth.session.rejected`, `auth.token.rejected`,
   `auth.mcp.token.accepted`, `auth.roles.changed`,
   `auth.csrf.rejected`, `auth.authorization.denied`,
+  `auth.authorization.denied.audit_failed`,
   `privacy.data_subject_export.generated`, `privacy.erasure.executed`,
   `privacy.erasure.previewed`, and
   `requirements.sensitive_mutation.succeeded`.
@@ -308,6 +309,11 @@ sequenceDiagram
   this stream. They are database records for successful app-owned mutations and
   authorization denials, include request/correlation IDs and optional validated
   client IP, and can be viewed by Admins at `/{locale}/admin/audit-log`.
+- Authorization-denial rows are required evidence. When such a row cannot be
+  persisted, protected work remains denied and REST or MCP returns only a
+  generic internal error. The security stream also receives
+  `auth.authorization.denied.audit_failed` with redacted operational
+  diagnostics; that fallback does not replace the required database evidence.
 - The audit writer is intentionally transport-free: it does not push directly
   to Kafka, a webhook, a SIEM, or a database. It writes structured events to
   the process log stream and does not buffer them in the app.

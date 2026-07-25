@@ -39,6 +39,16 @@ import {
 } from '@/lib/requirements/import-schema'
 import { createRequirementsImportWorkflow } from '@/lib/requirements/import-service'
 
+const auditState = vi.hoisted(() => ({
+  getRequestSqlServerDataSource: vi.fn(),
+  query: vi.fn(),
+  transaction: vi.fn(),
+}))
+
+vi.mock('@/lib/db', () => ({
+  getRequestSqlServerDataSource: auditState.getRequestSqlServerDataSource,
+}))
+
 vi.mock('@/lib/dal/norm-references', () => ({
   listNormReferences: vi.fn(),
 }))
@@ -197,6 +207,17 @@ describe('requirements import service', () => {
   })
 
   beforeEach(() => {
+    auditState.query.mockReset().mockResolvedValue([])
+    auditState.transaction
+      .mockReset()
+      .mockImplementation(
+        async (
+          callback: (manager: { query: typeof auditState.query }) => unknown,
+        ) => callback({ query: auditState.query }),
+      )
+    auditState.getRequestSqlServerDataSource.mockReset().mockResolvedValue({
+      transaction: auditState.transaction,
+    })
     vi.mocked(listCategories).mockResolvedValue([])
     vi.mocked(listRequirementPackages).mockResolvedValue([])
     vi.mocked(listPriorityLevels).mockResolvedValue([])
@@ -555,9 +576,10 @@ describe('requirements import service', () => {
       reason: 'policy_missing',
     })
     const authorization = {
-      assertAuthorized: vi.fn(async () => {
-        throw denied
-      }),
+      assertAuthorized: vi
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(denied),
     }
     const workflow = createRequirementsImportWorkflow({
       authorization,
@@ -576,12 +598,76 @@ describe('requirements import service', () => {
       }),
     ).rejects.toBe(denied)
 
-    expect(authorization.assertAuthorized).toHaveBeenCalledWith(
+    expect(authorization.assertAuthorized).toHaveBeenNthCalledWith(
+      2,
       {
-        kind: 'manage_import',
-        operation: 'validate',
+        areaId: 987_654,
+        kind: 'manage_requirement',
+        operation: 'create',
       },
       context,
+    )
+    expect(auditState.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO action_audit_events'),
+      expect.arrayContaining([
+        'requirement.create.denied',
+        'denied',
+        'policy_missing',
+      ]),
+    )
+    expect(getAreaById).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when MCP destination-denial evidence cannot persist', async () => {
+    const denied = forbiddenError('Blocked by destination policy', {
+      reason: 'area_author_required',
+    })
+    const authorization = {
+      assertAuthorized: vi
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(denied),
+    }
+    auditState.query.mockRejectedValueOnce(
+      new Error('DATABASE_URL password=supersecret rejected the audit insert'),
+    )
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: makeManageImportDb().db as never,
+    })
+    const context = makeContext('requirements_manage_import')
+
+    await expect(
+      workflow.manageImport(context, {
+        destination: { areaId: 7, kind: 'requirements_library' },
+        operation: 'validate',
+        payload: {
+          requirements: [{ description: 'Systemet ska logga händelser.' }],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: 'internal',
+      message: 'An internal error occurred',
+      status: 500,
+    })
+
+    expect(authorization.assertAuthorized).toHaveBeenNthCalledWith(
+      2,
+      {
+        areaId: 7,
+        kind: 'manage_requirement',
+        operation: 'create',
+      },
+      context,
+    )
+    expect(auditState.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO action_audit_events'),
+      expect.arrayContaining([
+        'requirement.create.denied',
+        'denied',
+        'area_author_required',
+      ]),
     )
     expect(getAreaById).not.toHaveBeenCalled()
   })

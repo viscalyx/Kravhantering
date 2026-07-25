@@ -838,6 +838,15 @@ describe('createRequirementsService', () => {
       message: 'Blocked by policy',
     })
     expect(authorization.assertAuthorized).toHaveBeenCalled()
+    expect(mocks.auditQuery).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO action_audit_events'),
+      expect.arrayContaining([
+        'query_catalog.denied',
+        'query_catalog',
+        'denied',
+        'policy_missing',
+      ]),
+    )
     expect(emittedSecurityEvents()).toEqual([
       expect.objectContaining({
         actor: expect.objectContaining({ source: 'oidc', sub: 'alice' }),
@@ -854,6 +863,60 @@ describe('createRequirementsService', () => {
         request: expect.objectContaining({ requestId: 'req-1' }),
       }),
     ])
+  })
+
+  it('fails closed for MCP when required denial evidence cannot persist', async () => {
+    const authorization = {
+      assertAuthorized: vi.fn().mockRejectedValueOnce(
+        forbiddenError('Blocked by policy', {
+          reason: 'policy_missing',
+          requiredRoles: ['Admin'],
+        }),
+      ),
+    }
+    mocks.auditQuery.mockRejectedValueOnce(
+      new Error('DATABASE_URL password=supersecret rejected the audit insert'),
+    )
+    const service = createRequirementsService({} as never, {
+      authorization,
+      logger,
+    })
+    const mcpContext = {
+      ...makeContext(),
+      actor: {
+        ...makeContext().actor,
+        source: 'mcp' as const,
+      },
+      source: 'mcp' as const,
+      toolName: 'requirements_query_catalog',
+    }
+
+    await expect(
+      service.queryCatalog(mcpContext, {
+        catalog: 'requirements',
+        operation: 'list',
+      }),
+    ).rejects.toMatchObject({
+      code: 'internal',
+      message: 'An internal error occurred',
+      status: 500,
+    })
+
+    expect(mocks.listRequirements).not.toHaveBeenCalled()
+    expect(emittedSecurityEvents()).toEqual([
+      expect.objectContaining({
+        event: 'auth.authorization.denied',
+      }),
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          auditFailure: 'denied_action_audit_write_failed',
+          requestSource: 'mcp',
+          toolName: 'requirements_query_catalog',
+        }),
+        event: 'auth.authorization.denied.audit_failed',
+      }),
+    ])
+    expect(JSON.stringify(emittedSecurityEvents())).not.toContain('supersecret')
   })
 
   it('queries areas catalog', async () => {

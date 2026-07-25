@@ -357,6 +357,15 @@ describe('handleRequirementsMcpRequest', () => {
       return tools.find(tool => tool.name === name)
     }
 
+    it('advertises the generic fail-closed error contract', () => {
+      const instructions = toolSchemaClient?.client.getInstructions()
+
+      expect(instructions).toContain('isError: true')
+      expect(instructions).toContain('failed call')
+      expect(instructions).toContain('Error: An internal error occurred')
+      expect(instructions).toContain('do not infer internal causes')
+    })
+
     it('lists the exact documented MCP tool allowlist', async () => {
       expect(tools.map(tool => tool.name).sort()).toEqual(
         [
@@ -1384,6 +1393,40 @@ describe('handleRequirementsMcpRequest', () => {
     })
     expect(content[0]?.text).not.toContain('secret-token')
     expect(content[0]?.text).not.toContain('SELECT')
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns denial-audit persistence failures as generic isError results', async () => {
+    const fakeService = createFakeService()
+    fakeService.getRequirement.mockRejectedValueOnce(
+      new RequirementsServiceError(
+        'internal',
+        'DATABASE_URL password=supersecret rejected the audit insert',
+      ),
+    )
+    serviceState.getService.mockReturnValue(fakeService)
+
+    const { client, transport } = await createClient()
+    const result = await client.callTool({
+      arguments: {
+        uniqueId: 'INT0001',
+      },
+      name: 'requirements_get_requirement',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          text: 'Error: An internal error occurred',
+          type: 'text',
+        }),
+      ]),
+    )
+    expect(JSON.stringify(result)).not.toContain('supersecret')
+    expect(JSON.stringify(result)).not.toContain('DATABASE_URL')
 
     await client.close()
     await transport.close()

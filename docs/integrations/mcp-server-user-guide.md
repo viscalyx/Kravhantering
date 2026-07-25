@@ -341,6 +341,13 @@ JSON-RPC error body. MCP does not use browser cookies and is intentionally
 excluded from browser CSRF checks. Tool handlers build their actor context only
 from the verified token attached at the HTTP edge.
 
+Authorization denials remain fail-closed. If the server cannot record the
+required denial evidence, it keeps the requested work blocked and returns a
+tool result with `isError: true` whose only message is
+`Error: An internal error occurred`. The result contains no authorization,
+persistence, or other internal cause details. Treat the call as failed; do not
+infer the cause from the generic result.
+
 ## Run It Locally
 
 The MCP server is part of the Next.js app and uses the same SQL Server +
