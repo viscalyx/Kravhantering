@@ -14275,6 +14275,20 @@ export const DEMO_SEED_TABLES = Object.freeze(
 
 export { seedPositionDetail }
 
+function assertDemoLifecycleTransitionAffectedRows(
+  result,
+  { recordId, table, transition },
+) {
+  const affectedRows = Array.isArray(result)
+    ? Number(result[0]?.affectedRows)
+    : Number.NaN
+  if (affectedRows === 1) return
+
+  throw new Error(
+    `Guarded demo seed transition '${transition}' for table='${table}' id=${String(recordId)} expected 1 affected row but received ${Number.isFinite(affectedRows) ? String(affectedRows) : 'an unknown count'}`,
+  )
+}
+
 async function seedDemoLifecycleRow({
   columns,
   defaultSql,
@@ -14309,7 +14323,7 @@ async function seedDemoLifecycleRow({
   await query(defaultSql, draftRow)
 
   if (value('is_review_requested') === 1) {
-    await query(
+    const reviewResult = await query(
       `UPDATE [${table}]
        SET [is_review_requested] = 1,
            [review_requested_at] = @1,
@@ -14321,13 +14335,19 @@ async function seedDemoLifecycleRow({
          AND [resolution_motivation] IS NULL
          AND [resolved_by_hsa_id] IS NULL
          AND [${resolvedByDisplayColumn}] IS NULL
-         AND [resolved_at] IS NULL`,
+         AND [resolved_at] IS NULL;
+       SELECT @@ROWCOUNT AS [affectedRows]`,
       [value('id'), value('review_requested_at'), value('updated_at')],
     )
+    assertDemoLifecycleTransitionAffectedRows(reviewResult, {
+      recordId: value('id'),
+      table,
+      transition: 'draft-to-review',
+    })
   }
 
   if (value('resolution') != null) {
-    await query(
+    const resolutionResult = await query(
       `UPDATE [${table}]
        SET [resolution] = @1,
            [resolution_motivation] = @2,
@@ -14342,7 +14362,8 @@ async function seedDemoLifecycleRow({
          AND [resolution_motivation] IS NULL
          AND [resolved_by_hsa_id] IS NULL
          AND [${resolvedByDisplayColumn}] IS NULL
-         AND [resolved_at] IS NULL`,
+         AND [resolved_at] IS NULL;
+       SELECT @@ROWCOUNT AS [affectedRows]`,
       [
         value('id'),
         value('resolution'),
@@ -14353,6 +14374,11 @@ async function seedDemoLifecycleRow({
         value('updated_at'),
       ],
     )
+    assertDemoLifecycleTransitionAffectedRows(resolutionResult, {
+      recordId: value('id'),
+      table,
+      transition: 'review-to-resolution',
+    })
   }
 
   return true

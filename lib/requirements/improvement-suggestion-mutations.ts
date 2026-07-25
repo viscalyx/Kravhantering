@@ -5,6 +5,7 @@ import {
   requestReview,
   revertToDraft,
   type SqlExecutor,
+  SUGGESTION_RESOLVED,
   updateSuggestion,
 } from '@/lib/dal/improvement-suggestions'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -12,6 +13,7 @@ import type { RequestContext } from '@/lib/requirements/auth'
 import {
   recordSensitiveMutationActionAuditEvent,
   recordSensitiveMutationSecurityEvent,
+  type SensitiveMutationAuditDetail,
 } from '@/lib/requirements/security-audit'
 
 type ImprovementSuggestionResolutionData = Parameters<
@@ -25,6 +27,29 @@ function runLifecycleMutation(
   ) => Promise<ImprovementSuggestionMutationTarget>,
 ): Promise<ImprovementSuggestionMutationTarget> {
   return db.transaction(manager => mutation(manager))
+}
+
+async function runAuditedLifecycleMutation(
+  db: SqlServerDatabase,
+  context: RequestContext,
+  mutation: (
+    manager: SqlExecutor,
+  ) => Promise<ImprovementSuggestionMutationTarget>,
+  actionAuditDetail: SensitiveMutationAuditDetail,
+  securityEventDetail: SensitiveMutationAuditDetail,
+): Promise<ImprovementSuggestionMutationTarget> {
+  const target = await db.transaction(async manager => {
+    const mutated = await mutation(manager)
+    await recordSensitiveMutationActionAuditEvent(
+      manager,
+      context,
+      actionAuditDetail,
+    )
+    return mutated
+  })
+
+  recordSensitiveMutationSecurityEvent(context, securityEventDetail)
+  return target
 }
 
 export function updateImprovementSuggestion(
@@ -61,24 +86,20 @@ export async function resolveImprovementSuggestionWithAudit(
   data: ImprovementSuggestionResolutionData,
   context: RequestContext,
 ): Promise<ImprovementSuggestionMutationTarget> {
-  const target = await db.transaction(async manager => {
-    const resolved = await recordResolution(manager, suggestionId, data)
-    await recordSensitiveMutationActionAuditEvent(manager, context, {
-      action: 'suggestion.resolution.recorded',
-      operation: data.resolution === 1 ? 'resolve' : 'dismiss',
-      resolution: data.resolution,
-      suggestionId,
-    })
-    return resolved
-  })
-
-  recordSensitiveMutationSecurityEvent(context, {
+  const detail: SensitiveMutationAuditDetail = {
     action: 'suggestion.resolution.recorded',
-    operation: data.resolution === 1 ? 'resolve' : 'dismiss',
+    operation: data.resolution === SUGGESTION_RESOLVED ? 'resolve' : 'dismiss',
     resolution: data.resolution,
     suggestionId,
-  })
-  return target
+  }
+
+  return runAuditedLifecycleMutation(
+    db,
+    context,
+    manager => recordResolution(manager, suggestionId, data),
+    detail,
+    detail,
+  )
 }
 
 export async function deleteImprovementSuggestionWithAudit(
@@ -86,20 +107,17 @@ export async function deleteImprovementSuggestionWithAudit(
   suggestionId: number,
   context: RequestContext,
 ): Promise<ImprovementSuggestionMutationTarget> {
-  const target = await db.transaction(async manager => {
-    const deleted = await deleteSuggestion(manager, suggestionId)
-    await recordSensitiveMutationActionAuditEvent(manager, context, {
-      action: 'suggestion.deleted',
-      operation: 'delete',
-      suggestionId,
-    })
-    return deleted
-  })
-
-  recordSensitiveMutationSecurityEvent(context, {
+  const detail: SensitiveMutationAuditDetail = {
     action: 'suggestion.deleted',
     operation: 'delete',
     suggestionId,
-  })
-  return target
+  }
+
+  return runAuditedLifecycleMutation(
+    db,
+    context,
+    manager => deleteSuggestion(manager, suggestionId),
+    detail,
+    detail,
+  )
 }

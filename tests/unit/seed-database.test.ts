@@ -25,7 +25,12 @@ interface SeedInsertRow {
   table: string
 }
 
-function collectSeedInsertRows() {
+function collectSeedInsertRows(
+  failedLifecycleTransition:
+    | 'draft-to-review'
+    | 'review-to-resolution'
+    | null = null,
+) {
   const rows: SeedInsertRow[] = []
   const executor = {
     query: vi.fn(async (sql: string, params: unknown[] = []) => {
@@ -40,12 +45,19 @@ function collectSeedInsertRows() {
             seedRow.table === lifecycleTable && seedRow.row.id === params[0],
         )?.row
         if (!seeded) return
-        if (sql.includes('[is_review_requested] = 1')) {
+        const transition = sql.includes('SET [resolution] = @1')
+          ? 'review-to-resolution'
+          : 'draft-to-review'
+        const affectedRows = transition === failedLifecycleTransition ? 0 : 1
+        if (
+          affectedRows === 1 &&
+          sql.includes('SET [is_review_requested] = 1')
+        ) {
           seeded.is_review_requested = 1
           seeded.review_requested_at = params[1]
           seeded.updated_at = params[2]
         }
-        if (sql.includes('[resolution] = @1')) {
+        if (affectedRows === 1 && sql.includes('SET [resolution] = @1')) {
           seeded.resolution = params[1]
           seeded.resolution_motivation = params[2]
           seeded.resolved_by_hsa_id = params[3]
@@ -57,7 +69,7 @@ function collectSeedInsertRows() {
           seeded.resolved_at = params[5]
           seeded.updated_at = params[6]
         }
-        return
+        return [{ affectedRows }]
       }
       const match = sql.match(/INSERT INTO \[([^\]]+)\] \(([^)]+)\) VALUES/)
       if (!match) return
@@ -126,6 +138,17 @@ describe('seed profiles', () => {
     expect(message).not.toContain('row=')
     expect(message).not.toContain('SFS 2018:218')
   })
+
+  it.each(['draft-to-review', 'review-to-resolution'] as const)(
+    'fails loudly when the %s demo seed transition affects zero rows',
+    async transition => {
+      const { executor } = collectSeedInsertRows(transition)
+
+      await expect(seedDemoDatabase(executor)).rejects.toThrow(
+        `Guarded demo seed transition '${transition}' for table='improvement_suggestions' id=1 expected 1 affected row but received 0`,
+      )
+    },
+  )
 
   it('seedPositionDetail formats table/rowIndex/pk correctly', () => {
     expect(

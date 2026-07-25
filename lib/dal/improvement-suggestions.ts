@@ -47,6 +47,62 @@ interface ImprovementSuggestionState {
   resolution: number | null
 }
 
+const DRAFT_SUGGESTION_PREDICATES = [
+  'is_review_requested = 0',
+  'review_requested_at IS NULL',
+  'resolution IS NULL',
+  'resolution_motivation IS NULL',
+  'resolved_by IS NULL',
+  'resolved_by_hsa_id IS NULL',
+  'resolved_at IS NULL',
+] as const
+
+const REVIEWED_SUGGESTION_PREDICATES = [
+  'is_review_requested = 1',
+  'review_requested_at IS NOT NULL',
+  'resolution IS NULL',
+  'resolution_motivation IS NULL',
+  'resolved_by IS NULL',
+  'resolved_by_hsa_id IS NULL',
+  'resolved_at IS NULL',
+] as const
+
+interface GuardedSuggestionMutationSqlOptions {
+  outputAlias: 'DELETED' | 'INSERTED'
+  predicates: readonly string[]
+  statement: string
+}
+
+function buildGuardedSuggestionMutationSql({
+  outputAlias,
+  predicates,
+  statement,
+}: GuardedSuggestionMutationSqlOptions): string {
+  const predicateSql = predicates
+    .map(predicate => `        AND ${predicate}`)
+    .join('\n')
+
+  return `
+      DECLARE @mutationTarget TABLE (
+        id int NOT NULL,
+        requirementId int NOT NULL,
+        requirementVersionId int NULL
+      );
+
+      ${statement}
+      OUTPUT
+        ${outputAlias}.id,
+        ${outputAlias}.requirement_id,
+        ${outputAlias}.requirement_version_id
+      INTO @mutationTarget (id, requirementId, requirementVersionId)
+      WHERE id = @0
+${predicateSql};
+
+      SELECT id, requirementId, requirementVersionId
+      FROM @mutationTarget
+    `
+}
+
 function toIsoString(value: unknown): string | null {
   if (value == null) {
     return null
@@ -327,33 +383,13 @@ export async function updateSuggestion(
   }
 
   const rows = (await db.query(
-    `
-      DECLARE @updated TABLE (
-        id int NOT NULL,
-        requirementId int NOT NULL,
-        requirementVersionId int NULL
-      );
-
-      UPDATE improvement_suggestions
+    buildGuardedSuggestionMutationSql({
+      outputAlias: 'INSERTED',
+      predicates: DRAFT_SUGGESTION_PREDICATES,
+      statement: `UPDATE improvement_suggestions
       SET content = CASE WHEN @1 IS NULL THEN content ELSE @1 END,
-          updated_at = SYSUTCDATETIME()
-      OUTPUT
-        INSERTED.id,
-        INSERTED.requirement_id,
-        INSERTED.requirement_version_id
-      INTO @updated (id, requirementId, requirementVersionId)
-      WHERE id = @0
-        AND is_review_requested = 0
-        AND review_requested_at IS NULL
-        AND resolution IS NULL
-        AND resolution_motivation IS NULL
-        AND resolved_by IS NULL
-        AND resolved_by_hsa_id IS NULL
-        AND resolved_at IS NULL;
-
-      SELECT id, requirementId, requirementVersionId
-      FROM @updated
-    `,
+          updated_at = SYSUTCDATETIME()`,
+    }),
     [suggestionId, data.content?.trim() ?? null],
   )) as ImprovementSuggestionMutationTarget[]
   if (rows[0]) return mapMutationTarget(rows[0])
@@ -396,37 +432,17 @@ export async function recordResolution(
   }
 
   const rows = (await db.query(
-    `
-      DECLARE @resolved TABLE (
-        id int NOT NULL,
-        requirementId int NOT NULL,
-        requirementVersionId int NULL
-      );
-
-      UPDATE improvement_suggestions
+    buildGuardedSuggestionMutationSql({
+      outputAlias: 'INSERTED',
+      predicates: REVIEWED_SUGGESTION_PREDICATES,
+      statement: `UPDATE improvement_suggestions
       SET resolution = @1,
           resolution_motivation = @2,
           resolved_by = @3,
           resolved_by_hsa_id = @4,
           resolved_at = SYSUTCDATETIME(),
-          updated_at = SYSUTCDATETIME()
-      OUTPUT
-        INSERTED.id,
-        INSERTED.requirement_id,
-        INSERTED.requirement_version_id
-      INTO @resolved (id, requirementId, requirementVersionId)
-      WHERE id = @0
-        AND is_review_requested = 1
-        AND review_requested_at IS NOT NULL
-        AND resolution IS NULL
-        AND resolution_motivation IS NULL
-        AND resolved_by IS NULL
-        AND resolved_by_hsa_id IS NULL
-        AND resolved_at IS NULL;
-
-      SELECT id, requirementId, requirementVersionId
-      FROM @resolved
-    `,
+          updated_at = SYSUTCDATETIME()`,
+    }),
     [
       suggestionId,
       data.resolution,
@@ -461,31 +477,11 @@ export async function deleteSuggestion(
   suggestionId: number,
 ): Promise<ImprovementSuggestionMutationTarget> {
   const rows = (await db.query(
-    `
-      DECLARE @deleted TABLE (
-        id int NOT NULL,
-        requirementId int NOT NULL,
-        requirementVersionId int NULL
-      );
-
-      DELETE FROM improvement_suggestions
-      OUTPUT
-        DELETED.id,
-        DELETED.requirement_id,
-        DELETED.requirement_version_id
-      INTO @deleted (id, requirementId, requirementVersionId)
-      WHERE id = @0
-        AND is_review_requested = 0
-        AND review_requested_at IS NULL
-        AND resolution IS NULL
-        AND resolution_motivation IS NULL
-        AND resolved_by IS NULL
-        AND resolved_by_hsa_id IS NULL
-        AND resolved_at IS NULL;
-
-      SELECT id, requirementId, requirementVersionId
-      FROM @deleted
-    `,
+    buildGuardedSuggestionMutationSql({
+      outputAlias: 'DELETED',
+      predicates: DRAFT_SUGGESTION_PREDICATES,
+      statement: 'DELETE FROM improvement_suggestions',
+    }),
     [suggestionId],
   )) as ImprovementSuggestionMutationTarget[]
   if (rows[0]) return mapMutationTarget(rows[0])
@@ -560,34 +556,14 @@ export async function requestReview(
   suggestionId: number,
 ): Promise<ImprovementSuggestionMutationTarget> {
   const rows = (await db.query(
-    `
-      DECLARE @reviewed TABLE (
-        id int NOT NULL,
-        requirementId int NOT NULL,
-        requirementVersionId int NULL
-      );
-
-      UPDATE improvement_suggestions
+    buildGuardedSuggestionMutationSql({
+      outputAlias: 'INSERTED',
+      predicates: DRAFT_SUGGESTION_PREDICATES,
+      statement: `UPDATE improvement_suggestions
       SET is_review_requested = 1,
           review_requested_at = SYSUTCDATETIME(),
-          updated_at = SYSUTCDATETIME()
-      OUTPUT
-        INSERTED.id,
-        INSERTED.requirement_id,
-        INSERTED.requirement_version_id
-      INTO @reviewed (id, requirementId, requirementVersionId)
-      WHERE id = @0
-        AND is_review_requested = 0
-        AND review_requested_at IS NULL
-        AND resolution IS NULL
-        AND resolution_motivation IS NULL
-        AND resolved_by IS NULL
-        AND resolved_by_hsa_id IS NULL
-        AND resolved_at IS NULL;
-
-      SELECT id, requirementId, requirementVersionId
-      FROM @reviewed
-    `,
+          updated_at = SYSUTCDATETIME()`,
+    }),
     [suggestionId],
   )) as ImprovementSuggestionMutationTarget[]
   if (rows[0]) return mapMutationTarget(rows[0])
@@ -616,34 +592,14 @@ export async function revertToDraft(
   suggestionId: number,
 ): Promise<ImprovementSuggestionMutationTarget> {
   const rows = (await db.query(
-    `
-      DECLARE @reverted TABLE (
-        id int NOT NULL,
-        requirementId int NOT NULL,
-        requirementVersionId int NULL
-      );
-
-      UPDATE improvement_suggestions
+    buildGuardedSuggestionMutationSql({
+      outputAlias: 'INSERTED',
+      predicates: REVIEWED_SUGGESTION_PREDICATES,
+      statement: `UPDATE improvement_suggestions
       SET is_review_requested = 0,
           review_requested_at = NULL,
-          updated_at = SYSUTCDATETIME()
-      OUTPUT
-        INSERTED.id,
-        INSERTED.requirement_id,
-        INSERTED.requirement_version_id
-      INTO @reverted (id, requirementId, requirementVersionId)
-      WHERE id = @0
-        AND is_review_requested = 1
-        AND review_requested_at IS NOT NULL
-        AND resolution IS NULL
-        AND resolution_motivation IS NULL
-        AND resolved_by IS NULL
-        AND resolved_by_hsa_id IS NULL
-        AND resolved_at IS NULL;
-
-      SELECT id, requirementId, requirementVersionId
-      FROM @reverted
-    `,
+          updated_at = SYSUTCDATETIME()`,
+    }),
     [suggestionId],
   )) as ImprovementSuggestionMutationTarget[]
   if (rows[0]) return mapMutationTarget(rows[0])
