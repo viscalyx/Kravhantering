@@ -15,6 +15,7 @@ export type RequirementListResourceAction =
   | { type: 'refresh-succeeded' }
   | { type: 'refresh-failed' }
   | { cursor: string; type: 'page-started' }
+  | { type: 'page-succeeded' }
   | { cursor: string; type: 'page-failed' }
   | { type: 'cursor-recovery-started' }
   | { type: 'cursor-recovery-failed' }
@@ -38,6 +39,7 @@ export function requirementListResourceReducer(
         ? INITIAL_REQUIREMENT_LIST_RESOURCE_STATE
         : { status: 'refreshing' }
     case 'refresh-succeeded':
+    case 'page-succeeded':
       return { status: 'ready' }
     case 'refresh-failed':
       return state.status === 'initial-loading'

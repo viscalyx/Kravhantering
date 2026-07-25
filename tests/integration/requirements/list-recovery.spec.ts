@@ -28,31 +28,38 @@ test.describe('Requirements Library list recovery', () => {
       })
     })
 
-    await page.goto('/sv/requirements')
-
     const alert = page.getByRole('alert').filter({
       hasText: 'Informationen i kravbiblioteket är inte tillgänglig.',
     })
-    await expect(alert).toHaveCount(1)
-    await expect(
-      page.getByRole('table', { name: 'Lista över krav' }),
-    ).toHaveCount(0)
-    await expect(page.getByText('Inga resultat hittades')).toHaveCount(0)
-
-    await alert.getByRole('button', { name: 'Försök igen' }).click()
-
     const retryButton = alert.getByRole('button', { name: 'Försök igen' })
-    await expect(retryButton).toBeFocused()
-    expect(listRequests).toBe(2)
 
-    await retryButton.click()
+    await test.step('verify the initial list failure', async () => {
+      await page.goto('/sv/requirements')
 
-    await expect(
-      page.getByRole('table', { name: 'Lista över krav' }),
-    ).toHaveCount(1)
-    await expect(page.getByText('Inga resultat hittades')).toHaveCount(1)
-    await expect(alert).toHaveCount(0)
-    expect(listRequests).toBe(3)
+      await expect(alert).toHaveCount(1)
+      await expect(
+        page.getByRole('table', { name: 'Lista över krav' }),
+      ).toHaveCount(0)
+      await expect(page.getByText('Inga resultat hittades')).toHaveCount(0)
+    })
+
+    await test.step('retry the failed list request', async () => {
+      await retryButton.click()
+
+      await expect(retryButton).toBeFocused()
+      expect(listRequests).toBe(2)
+    })
+
+    await test.step('verify the successful retry', async () => {
+      await retryButton.click()
+
+      await expect(
+        page.getByRole('table', { name: 'Lista över krav' }),
+      ).toHaveCount(1)
+      await expect(page.getByText('Inga resultat hittades')).toHaveCount(1)
+      await expect(alert).toHaveCount(0)
+      expect(listRequests).toBe(3)
+    })
   })
 
   test('REQ-20: populated rows survive a stale refresh warning and recover', async ({
@@ -91,19 +98,24 @@ test.describe('Requirements Library list recovery', () => {
       })
     })
 
-    await page.getByRole('button', { name: 'Sortera efter Krav-ID' }).click()
-
     const alert = page.getByRole('alert').filter({
       hasText:
         'Kraven som visas kan vara inaktuella eller inte stämma med aktiva filter',
     })
-    await expect(alert).toHaveCount(1)
-    await expect(seededRow).toHaveCount(1)
 
-    await alert.getByRole('button', { name: 'Försök igen' }).click()
+    await test.step('verify the refresh failure', async () => {
+      await page.getByRole('button', { name: 'Sortera efter Krav-ID' }).click()
 
-    await expect(alert).toHaveCount(0)
-    await expect(seededRow).toHaveCount(1)
-    expect(refreshRequests).toBe(2)
+      await expect(alert).toHaveCount(1)
+      await expect(seededRow).toHaveCount(1)
+    })
+
+    await test.step('retry and recover the stale list', async () => {
+      await alert.getByRole('button', { name: 'Försök igen' }).click()
+
+      await expect(alert).toHaveCount(0)
+      await expect(seededRow).toHaveCount(1)
+      expect(refreshRequests).toBe(2)
+    })
   })
 })

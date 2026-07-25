@@ -58,6 +58,11 @@ describe('requirementListResourceReducer', () => {
     })
     expect(
       requirementListResourceReducer(loading, {
+        type: 'page-succeeded',
+      }),
+    ).toEqual({ status: 'ready' })
+    expect(
+      requirementListResourceReducer(loading, {
         cursor: 'cursor-1',
         type: 'page-failed',
       }),

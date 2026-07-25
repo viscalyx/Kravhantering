@@ -673,7 +673,7 @@ export default function RequirementsClient({
             ).values(),
           ),
         )
-        dispatchResourceState({ type: 'refresh-succeeded' })
+        dispatchResourceState({ type: 'page-succeeded' })
         return true
       } catch {
         if (

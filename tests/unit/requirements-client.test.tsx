@@ -1160,49 +1160,51 @@ describe('RequirementsClient', () => {
     let statusSortRequests = 0
     const reauthListener = vi.fn()
     window.addEventListener(AUTH_REAUTH_REQUIRED_EVENT, reauthListener)
-    fetchMock.mockImplementation((input: RequestInfo | URL) => {
-      const url = String(input)
+    try {
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input)
 
-      if (url.startsWith('/api/requirements?')) {
-        if (url.includes('sortBy=status')) {
-          statusSortRequests += 1
-          return Promise.resolve({
-            json: async () => ({ error: 'Unauthorized' }),
-            ok: false,
-            status: 401,
-          } as Response)
+        if (url.startsWith('/api/requirements?')) {
+          if (url.includes('sortBy=status')) {
+            statusSortRequests += 1
+            return Promise.resolve({
+              json: async () => ({ error: 'Unauthorized' }),
+              ok: false,
+              status: 401,
+            } as Response)
+          }
+          return Promise.resolve(
+            okJson({
+              pagination: { hasMore: false },
+              requirements: [makeRequirementRow(1)],
+            }),
+          )
         }
-        return Promise.resolve(
-          okJson({
-            pagination: { hasMore: false },
-            requirements: [makeRequirementRow(1)],
-          }),
-        )
-      }
 
-      const metadataResponse = mockMetadataFetch(url)
-      if (metadataResponse) {
-        return Promise.resolve(metadataResponse)
-      }
+        const metadataResponse = mockMetadataFetch(url)
+        if (metadataResponse) {
+          return Promise.resolve(metadataResponse)
+        }
 
-      throw new Error(`Unhandled fetch: ${url}`)
-    })
-    vi.stubGlobal('fetch', fetchMock)
+        throw new Error(`Unhandled fetch: ${url}`)
+      })
+      vi.stubGlobal('fetch', fetchMock)
 
-    render(<RequirementsClient />)
-    await waitFor(() =>
-      expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001'),
-    )
+      render(<RequirementsClient />)
+      await waitFor(() =>
+        expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001'),
+      )
 
-    fireEvent.click(screen.getByText('change-sort'))
+      fireEvent.click(screen.getByText('change-sort'))
 
-    await waitFor(() => expect(reauthListener).toHaveBeenCalledTimes(1))
-    expect(statusSortRequests).toBe(1)
-    expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001')
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'retry' })).toBeNull()
-
-    window.removeEventListener(AUTH_REAUTH_REQUIRED_EVENT, reauthListener)
+      await waitFor(() => expect(reauthListener).toHaveBeenCalledTimes(1))
+      expect(statusSortRequests).toBe(1)
+      expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001')
+      expect(screen.queryByRole('alert')).toBeNull()
+      expect(screen.queryByRole('button', { name: 'retry' })).toBeNull()
+    } finally {
+      window.removeEventListener(AUTH_REAUTH_REQUIRED_EVENT, reauthListener)
+    }
   })
 
   it('hydrates saved columns and widths and sends sort params in list requests', async () => {
