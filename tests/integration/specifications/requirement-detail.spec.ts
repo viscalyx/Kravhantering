@@ -2395,7 +2395,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
           name: 'Nedladdningen misslyckades',
         })
         await expect(errorDialog).toContainText(
-          'CSV-exporten innehåller fler än den tillåtna gränsen på 100 krav.',
+          'CSV-exporten innehåller fler än den tillåtna gränsen på 100 CSV-rader.',
         )
         await expect(errorDialog).not.toContainText(
           'raw requirement identifiers',
