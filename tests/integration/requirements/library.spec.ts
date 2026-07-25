@@ -212,6 +212,8 @@ test.describe('Requirements library', () => {
       await page.getByRole('button', { name: 'Filtrera efter Krav-ID' }).click()
       await page.getByRole('textbox', { name: 'Krav-ID' }).fill('INT0001')
       await page.keyboard.press('Enter')
+      await page.mouse.move(0, 0)
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false')
 
       await expect(
         page.getByRole('button', { name: /^INT0001\b/ }),
@@ -627,7 +629,6 @@ test.describe('Requirements library', () => {
         })
 
         await test.step('reposition the chooser below the grown package band', async () => {
-          const grownBandBox = await band.boundingBox()
           await expect
             .poll(async () => {
               const [currentBandBox, currentChooserBox] = await Promise.all([
@@ -640,12 +641,20 @@ test.describe('Requirements library', () => {
               )
             })
             .toBeLessThanOrEqual(1)
-          const tableHeaderBox = await page
-            .locator('[data-sticky-table-header="true"]')
-            .boundingBox()
-          expect(tableHeaderBox?.y ?? 0).toBeGreaterThanOrEqual(
-            (grownBandBox?.y ?? 0) + (grownBandBox?.height ?? 0),
-          )
+          await expect
+            .poll(async () => {
+              const [currentBandBox, currentTableHeaderBox] = await Promise.all([
+                band.boundingBox(),
+                page
+                  .locator('[data-sticky-table-header="true"]')
+                  .boundingBox(),
+              ])
+              return (
+                (currentTableHeaderBox?.y ?? 0) -
+                ((currentBandBox?.y ?? 0) + (currentBandBox?.height ?? 0))
+              )
+            })
+            .toBeGreaterThanOrEqual(0)
         })
 
         await test.step('dismiss the tooltip after removing its package', async () => {
