@@ -643,12 +643,14 @@ test.describe('Requirements library', () => {
             .toBeLessThanOrEqual(1)
           await expect
             .poll(async () => {
-              const [currentBandBox, currentTableHeaderBox] = await Promise.all([
-                band.boundingBox(),
-                page
-                  .locator('[data-sticky-table-header="true"]')
-                  .boundingBox(),
-              ])
+              const [currentBandBox, currentTableHeaderBox] = await Promise.all(
+                [
+                  band.boundingBox(),
+                  page
+                    .locator('[data-sticky-table-header="true"]')
+                    .boundingBox(),
+                ],
+              )
               return (
                 (currentTableHeaderBox?.y ?? 0) -
                 ((currentBandBox?.y ?? 0) + (currentBandBox?.height ?? 0))
