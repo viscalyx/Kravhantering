@@ -492,9 +492,11 @@
   },
   "requirement": {
     "title": "Kravbibliotek",
-    "loadRequirementsFailed": "Det gick inte att läsa in kravbiblioteket.",
-    "paginationContinuationFailed": "Det gick inte att läsa in nästa sida. Kraven som redan har lästs in visas fortfarande.",
-    "paginationRecoveryFailed": "Fortsättningen har upphört att gälla och omstarten från första sidan misslyckades. Redan inlästa krav, den aktuella frågan och markeringen är oförändrade.",
+    "loadRequirementsFailed": "Informationen i kravbiblioteket är inte tillgänglig.",
+    "refreshingRequirements": "Kravlistan uppdateras. Befintliga resultat är fortfarande tillgängliga.",
+    "refreshRequirementsFailed": "Det gick inte att uppdatera kravlistan. Kraven som visas kan vara inaktuella eller inte stämma med aktiva filter och aktuell sortering.",
+    "paginationContinuationFailed": "Det gick inte att läsa in nästa sida. Kraven som visas kan vara ofullständiga eller inaktuella.",
+    "paginationRecoveryFailed": "Fortsättningen har upphört att gälla och omstarten från första sidan misslyckades. Kraven som visas kan vara ofullständiga eller inaktuella; den aktiva frågan och markeringen är oförändrade.",
     "statusStepperAriaLabel": "Arbetsflöde för kravversionsstatus",
     "tableCaption": "Lista över krav",
     "uniqueId": "Krav-ID",
@@ -2078,6 +2080,10 @@
       "filtering": {
         "heading": "Sökning och filter",
         "body": "Använd sökfältet för fritextsökning i krav-ID och innehåll. Klicka på filterikonen i en kolumnrubrik för att begränsa listan till rätt kravområde, kravversionsstatus eller annan metadata. Kravpaketsbandet ovanför listan visar alltid det aktiva kravpaketsfiltret. Håll pekaren över bandet eller aktivera filterknappen med pekare, beröring, Enter eller blanksteg för att öppna väljaren. Lägg till paket från väljaren, ta bort dem från valda märken eller rensa alla när flera är valda. Paketval använder ELLER-logik och fungerar även när den valfria kravpaketskolumnen är dold. Aktivera \"Visa arkiverade\" när du behöver se krav som inte längre är aktiva."
+      },
+      "recovery": {
+        "heading": "Inläsning och återhämtning",
+        "body": "Kravbiblioteket skiljer mellan otillgänglig information och ett bekräftat tomt resultat. Om den första inläsningen misslyckas använder du Försök igen. Om en senare uppdatering eller nästa sida misslyckas finns kraven som redan visas kvar tillsammans med en varning; använd Försök igen för att upprepa den misslyckade begäran. Filter och sortering är tillgängliga under uppdateringen, och ett nyare val ersätter den pågående begäran."
       },
       "columns": {
         "heading": "Kolumner",

@@ -870,6 +870,33 @@ sedan `Avbryt` innan nedladdningen börjar.
 fokus återgår till exportknappen. Ingen CSV eller delfil laddas ned och den
 privata spoolfilen tas bort.
 
+### REQ-19: första inläsningsfelet skiljs från ett tomt resultat
+
+**Steg:** Simulera ett tillfälligt fel för den första listförfrågan och öppna
+`/sv/requirements`. Kontrollera felinformationen och välj `Försök igen`.
+Låt även försöket misslyckas och kontrollera fokus. Välj sedan
+`Försök igen` och låt den nya förfrågan lyckas med ett tomt resultat.
+
+**Förväntat resultat:** Under den första förfrågan visas laddningsytan. Efter
+felet visas ett översatt fel med `Försök igen`; tabellen och
+`Inga resultat hittades` visas inte. Ett andra försök kan inte startas medan
+förfrågan pågår, och fokus återgår till `Försök igen` om förfrågan misslyckas.
+Efter den lyckade tomma förfrågan visas tabellen och
+`Inga resultat hittades`.
+
+### REQ-20: inlästa krav behålls vid uppdateringsfel
+
+**Steg:** Öppna ett kravbibliotek med inlästa krav. Simulera ett tillfälligt
+fel för nästa listförfrågan och ändra sortering eller filter. Kontrollera
+varningen och kraven som visas. Ta bort felet och välj `Försök igen`.
+
+**Förväntat resultat:** En artig status meddelar att listan uppdateras.
+Filter och sortering kan fortfarande användas. Efter felet ligger kraven och
+den senaste frågan kvar, och en varning anger att resultatet kan vara
+inaktuellt eller inte stämma med den aktiva frågan. Vanlig sidinläsning är
+inte tillgänglig före en lyckad uppdatering. `Försök igen` upprepar den senaste
+frågan och tar bort varningen först när uppdateringen lyckas.
+
 ## Skapa krav och livscykel
 
 ### LIFE-01: skapa krav från UI

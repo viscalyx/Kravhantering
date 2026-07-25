@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsClient from '@/app/[locale]/requirements/requirements-client'
 import type { RequirementsTableProps } from '@/components/RequirementsTable'
+import { AUTH_REAUTH_REQUIRED_EVENT } from '@/lib/auth/client-events'
 import {
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   getRequirementColumnWidthsStorageKey,
@@ -717,6 +718,11 @@ describe('RequirementsClient', () => {
         },
         {
           kind: 'text',
+          bodyKey: 'requirements.recovery.body',
+          headingKey: 'requirements.recovery.heading',
+        },
+        {
+          kind: 'text',
           bodyKey: 'requirements.columns.body',
           headingKey: 'requirements.columns.heading',
         },
@@ -989,7 +995,7 @@ describe('RequirementsClient', () => {
     expect(importProps.returnFocusTarget).toBe(aiButton)
   })
 
-  it('clears the initial loading state when the first row request rejects', async () => {
+  it('shows an initial failure without mounting an empty table', async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
 
@@ -1012,9 +1018,191 @@ describe('RequirementsClient', () => {
       expect(screen.queryByTestId('requirements-card-loading')).toBeNull(),
     )
 
-    expect(screen.getByTestId('requirements-table')).toBeTruthy()
-    expect(screen.getByTestId('row-ids').textContent).toBe('')
-    expect(screen.getByTestId('loading').textContent).toBe('false')
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('loadRequirementsFailed')
+    expect(alert.querySelector('svg[aria-hidden="true"]')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'retry' })).toBeEnabled()
+    expect(screen.queryByTestId('requirements-table')).toBeNull()
+  })
+
+  it('retries an initial failure and confirms an empty successful snapshot', async () => {
+    let rowRequestCount = 0
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        rowRequestCount += 1
+        return rowRequestCount === 1
+          ? Promise.reject(new Error('Requirements fetch failed'))
+          : Promise.resolve(
+              okJson({
+                pagination: { hasMore: false },
+                requirements: [],
+              }),
+            )
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return Promise.resolve(metadataResponse)
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'retry',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('requirements-table')).toBeInTheDocument(),
+    )
+    expect(screen.getByTestId('row-ids')).toHaveTextContent('')
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(rowRequestCount).toBe(2)
+  })
+
+  it('restores focus to Retry when a user-triggered retry fails', async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return Promise.reject(new Error('Requirements fetch failed'))
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return Promise.resolve(metadataResponse)
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'retry' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'retry' })).toHaveFocus(),
+    )
+    expect(screen.queryByTestId('requirements-table')).toBeNull()
+  })
+
+  it('retains rows and warns when a refresh fails for the active query', async () => {
+    let statusSortRequests = 0
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (url.includes('sortBy=status')) {
+          statusSortRequests += 1
+          return statusSortRequests === 1
+            ? Promise.reject(new Error('Refresh failed'))
+            : Promise.resolve(
+                okJson({
+                  pagination: { hasMore: false },
+                  requirements: [makeRequirementRow(2)],
+                }),
+              )
+        }
+        return Promise.resolve(
+          okJson({
+            pagination: { hasMore: true, nextCursor: 'cursor-1' },
+            requirements: [makeRequirementRow(1)],
+          }),
+        )
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return Promise.resolve(metadataResponse)
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001'),
+    )
+
+    fireEvent.click(screen.getByText('change-sort'))
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'refreshRequirementsFailed',
+      ),
+    )
+    expect(
+      screen.getByRole('alert').querySelector('svg[aria-hidden="true"]'),
+    ).toBeTruthy()
+    expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001')
+    expect(screen.getByTestId('has-more')).toHaveTextContent('false')
+    expect(screen.getByTestId('loading')).toHaveTextContent('false')
+
+    fireEvent.click(screen.getByRole('button', { name: 'retry' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0002'),
+    )
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(statusSortRequests).toBe(2)
+  })
+
+  it('hands a refresh 401 to AuthExpiryGuard without a local error', async () => {
+    let statusSortRequests = 0
+    const reauthListener = vi.fn()
+    window.addEventListener(AUTH_REAUTH_REQUIRED_EVENT, reauthListener)
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (url.includes('sortBy=status')) {
+          statusSortRequests += 1
+          return Promise.resolve({
+            json: async () => ({ error: 'Unauthorized' }),
+            ok: false,
+            status: 401,
+          } as Response)
+        }
+        return Promise.resolve(
+          okJson({
+            pagination: { hasMore: false },
+            requirements: [makeRequirementRow(1)],
+          }),
+        )
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return Promise.resolve(metadataResponse)
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001'),
+    )
+
+    fireEvent.click(screen.getByText('change-sort'))
+
+    await waitFor(() => expect(reauthListener).toHaveBeenCalledTimes(1))
+    expect(statusSortRequests).toBe(1)
+    expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001')
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'retry' })).toBeNull()
+
+    window.removeEventListener(AUTH_REAUTH_REQUIRED_EVENT, reauthListener)
   })
 
   it('hydrates saved columns and widths and sends sort params in list requests', async () => {
@@ -1507,6 +1695,13 @@ describe('RequirementsClient', () => {
         expect.objectContaining({ signal: expect.anything() }),
       ),
     )
+    const staleRefreshCall = fetchMock.mock.calls.find(([input]) => {
+      const url = String(input)
+      return url.includes('sortBy=status') && url.includes('sortDirection=asc')
+    })
+    expect(
+      (staleRefreshCall?.[1] as RequestInit | undefined)?.signal,
+    ).toMatchObject({ aborted: true })
 
     freshList.resolve({
       pagination: { hasMore: false },
@@ -2047,7 +2242,7 @@ describe('RequirementsClient', () => {
     expect(screen.queryByRole('status')).toBeNull()
   })
 
-  it('does not start load more while a refresh is already in flight', async () => {
+  it('keeps controls active but disables pagination while refreshing', async () => {
     const initialList = createDeferredJsonResponse<{
       pagination: { hasMore: boolean; nextCursor?: string | null }
       requirements: ReturnType<typeof makeRequirementRow>[]
@@ -2107,8 +2302,15 @@ describe('RequirementsClient', () => {
       ),
     )
     await waitFor(() =>
-      expect(screen.getByTestId('loading').textContent).toBe('true'),
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'refreshingRequirements',
+      ),
     )
+    expect(
+      screen.getByRole('status').querySelector('svg[aria-hidden="true"]'),
+    ).toBeTruthy()
+    expect(screen.getByTestId('loading').textContent).toBe('false')
+    expect(screen.getByTestId('has-more').textContent).toBe('false')
 
     fireEvent.click(screen.getByText('load-more'))
 
@@ -2640,13 +2842,21 @@ describe('RequirementsClient', () => {
     ).toBe(false)
   })
 
-  it('resets load-more state when the next page request rejects', async () => {
+  it('retries an additional-page failure with the same cursor', async () => {
+    let cursorRequestCount = 0
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = String(input)
 
       if (url.startsWith('/api/requirements?')) {
         if (url.includes('cursor=cursor-1')) {
-          return Promise.reject(new Error('Load more failed'))
+          cursorRequestCount += 1
+          if (cursorRequestCount === 1) {
+            return Promise.reject(new Error('Load more failed'))
+          }
+          return okJson({
+            pagination: { hasMore: false },
+            requirements: [makeRequirementRow(2)],
+          })
         }
 
         return okJson({
@@ -2678,7 +2888,18 @@ describe('RequirementsClient', () => {
     )
 
     expect(screen.getByTestId('row-ids').textContent).toBe('INT0001')
-    expect(screen.getByTestId('has-more').textContent).toBe('true')
+    expect(screen.getByTestId('has-more').textContent).toBe('false')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'paginationContinuationFailed',
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'retry' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001,INT0002'),
+    )
+    expect(cursorRequestCount).toBe(2)
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('refreshes from the first page and announces an invalid cursor', async () => {
@@ -2729,6 +2950,69 @@ describe('RequirementsClient', () => {
       'requirementListRefreshed',
     )
     expect(screen.getByTestId('has-more').textContent).toBe('false')
+  })
+
+  it('keeps rows when invalid-cursor recovery fails and retries the first page', async () => {
+    let firstPageRequests = 0
+    let cursorRequests = 0
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (url.includes('cursor=cursor-1')) {
+          cursorRequests += 1
+          return {
+            clone() {
+              return this
+            },
+            json: async () => ({ code: 'invalid_cursor' }),
+            ok: false,
+            status: 400,
+          } as Response
+        }
+
+        firstPageRequests += 1
+        if (firstPageRequests === 2) {
+          throw new Error('Recovery failed')
+        }
+        return okJson({
+          pagination:
+            firstPageRequests === 1
+              ? { hasMore: true, nextCursor: 'cursor-1' }
+              : { hasMore: false },
+          requirements: [makeRequirementRow(firstPageRequests)],
+        })
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) return metadataResponse
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001'),
+    )
+
+    fireEvent.click(screen.getByText('load-more'))
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'paginationRecoveryFailed',
+      ),
+    )
+    expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001')
+    expect(screen.getByTestId('has-more')).toHaveTextContent('false')
+
+    fireEvent.click(screen.getByRole('button', { name: 'retry' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0003'),
+    )
+    expect(firstPageRequests).toBe(3)
+    expect(cursorRequests).toBe(1)
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('falls back to default column preferences when local storage is invalid', async () => {

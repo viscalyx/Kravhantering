@@ -1,9 +1,24 @@
 'use client'
 
-import { Download, Plus, Printer, Sparkles, Upload } from 'lucide-react'
+import {
+  AlertTriangle,
+  Download,
+  Plus,
+  Printer,
+  RefreshCw,
+  Sparkles,
+  Upload,
+} from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react'
 import { useGeneratedOutputDownload } from '@/components/generated-output/useGeneratedOutputDownload'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
@@ -16,6 +31,13 @@ import {
   DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
 } from '@/lib/ai/generation-availability'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
+import {
+  hasRequirementListSnapshot,
+  INITIAL_REQUIREMENT_LIST_RESOURCE_STATE,
+  isRequirementListRequestActive,
+  requirementListResourceReducer,
+} from '@/lib/requirements/list-resource-state'
 import {
   type AreaOption,
   buildRequirementListParams,
@@ -149,6 +171,11 @@ const REQUIREMENTS_HELP: HelpContent = {
     },
     {
       kind: 'text',
+      bodyKey: 'requirements.recovery.body',
+      headingKey: 'requirements.recovery.heading',
+    },
+    {
+      kind: 'text',
       bodyKey: 'requirements.columns.body',
       headingKey: 'requirements.columns.heading',
     },
@@ -244,8 +271,6 @@ export default function RequirementsClient({
   useHelpContent(REQUIREMENTS_HELP)
   const tc = useTranslations('common')
   const t = useTranslations('requirement')
-  const loadRequirementsFailedMessage = t('loadRequirementsFailed')
-  const paginationContinuationFailedMessage = t('paginationContinuationFailed')
   const requirementListRefreshedMessage = tc('requirementListRefreshed')
   const locale = useLocale()
   const pdfDownload = useGeneratedOutputDownload()
@@ -286,7 +311,10 @@ export default function RequirementsClient({
     defaultVisibleColumns,
   )
   const [columnWidths, setColumnWidths] = useState<RequirementColumnWidths>({})
-  const [loading, setLoading] = useState(true)
+  const [resourceState, dispatchResourceState] = useReducer(
+    requirementListResourceReducer,
+    INITIAL_REQUIREMENT_LIST_RESOURCE_STATE,
+  )
   const searchParams = useSearchParams()
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
@@ -313,14 +341,8 @@ export default function RequirementsClient({
   const [hasMore, setHasMore] = useState(false)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [paginationNotice, setPaginationNotice] = useState<string | null>(null)
-  const [rowsError, setRowsError] = useState(false)
-  const [continuationError, setContinuationError] = useState<
-    'continuation' | 'recovery' | null
-  >(null)
-  const [loadingMore, setLoadingMore] = useState(false)
   const [hasLoadedColumnPreferences, setHasLoadedColumnPreferences] =
     useState(false)
-  const [hasResolvedInitialRows, setHasResolvedInitialRows] = useState(false)
   const [hydratedColumnWidthsStorageKey, setHydratedColumnWidthsStorageKey] =
     useState<string | null>(null)
   const columnWidthsStorageKey = getRequirementColumnWidthsStorageKey(locale)
@@ -334,7 +356,6 @@ export default function RequirementsClient({
   const latestRowsRequestIdRef = useRef(0)
   const rowsAbortRef = useRef<AbortController | null>(null)
   const rowsRetryRef = useRef<HTMLButtonElement>(null)
-  const latestFetchDataRequestIdRef = useRef(0)
   const scrollToIdRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -355,9 +376,12 @@ export default function RequirementsClient({
       rowsAbortRef.current?.abort()
       const controller = new AbortController()
       rowsAbortRef.current = controller
-      setLoadingMore(false)
-      setRowsError(false)
-      setContinuationError(null)
+      dispatchResourceState({
+        type: recoveringInvalidCursor
+          ? 'cursor-recovery-started'
+          : 'refresh-started',
+      })
+      setPaginationNotice(null)
       const params = buildRequirementListParams({
         filters,
         limit: PAGE_SIZE,
@@ -366,11 +390,22 @@ export default function RequirementsClient({
       })
 
       try {
-        const res = await fetch(`/api/requirements?${params}`, {
+        const res = await apiFetch(`/api/requirements?${params}`, {
           signal: controller.signal,
         })
+        if (res.status === 401) {
+          if (requestId === latestRowsRequestIdRef.current) {
+            dispatchResourceState({ type: 'authentication-expired' })
+            latestRowsRequestIdRef.current += 1
+            controller.abort()
+            if (rowsAbortRef.current === controller) {
+              rowsAbortRef.current = null
+            }
+          }
+          return false
+        }
         if (!res.ok) {
-          throw new Error(loadRequirementsFailedMessage)
+          throw new Error('Requirements request failed')
         }
         const data = (await res.json()) as {
           pagination?: { hasMore?: boolean; nextCursor?: string | null }
@@ -421,9 +456,20 @@ export default function RequirementsClient({
                 : false))
 
           try {
-            const singleRes = await fetch(`/api/requirements/${sid}`, {
+            const singleRes = await apiFetch(`/api/requirements/${sid}`, {
               signal: controller.signal,
             })
+            if (singleRes.status === 401) {
+              if (requestId === latestRowsRequestIdRef.current) {
+                dispatchResourceState({ type: 'authentication-expired' })
+                latestRowsRequestIdRef.current += 1
+                controller.abort()
+                if (rowsAbortRef.current === controller) {
+                  rowsAbortRef.current = null
+                }
+              }
+              return false
+            }
             if (singleRes.ok && isCurrentRowsRequest()) {
               const detail =
                 (await singleRes.json()) as RequirementDetailRowSource
@@ -467,6 +513,7 @@ export default function RequirementsClient({
         setNextCursor(refreshedCursor)
         setRows(newRows)
         setPinnedRow(newPinnedRow)
+        dispatchResourceState({ type: 'refresh-succeeded' })
         if (recoveringInvalidCursor) {
           setPaginationNotice(requirementListRefreshedMessage)
         }
@@ -479,9 +526,9 @@ export default function RequirementsClient({
           return false
         }
         if (recoveringInvalidCursor) {
-          setContinuationError('recovery')
+          dispatchResourceState({ type: 'cursor-recovery-failed' })
         } else {
-          setRowsError(true)
+          dispatchResourceState({ type: 'refresh-failed' })
         }
         if (restoreRetryFocusOnFailure) {
           requestAnimationFrame(() => rowsRetryRef.current?.focus())
@@ -495,13 +542,7 @@ export default function RequirementsClient({
         }
       }
     },
-    [
-      filters,
-      loadRequirementsFailedMessage,
-      locale,
-      requirementListRefreshedMessage,
-      sortState,
-    ],
+    [filters, locale, requirementListRefreshedMessage, sortState],
   )
 
   const applyChangedRequirementDetail = useCallback(
@@ -558,119 +599,129 @@ export default function RequirementsClient({
   )
 
   const fetchData = useCallback(async () => {
-    const requestId = ++latestFetchDataRequestIdRef.current
-    setLoading(true)
-    try {
-      await refreshRows()
-    } finally {
-      if (requestId === latestFetchDataRequestIdRef.current) {
-        setLoading(false)
-        setHasResolvedInitialRows(true)
-      }
-    }
+    await refreshRows()
   }, [refreshRows])
 
-  const loadMore = useCallback(async () => {
-    if (loading || loadingMore || !hasMore || !nextCursor) return
-    const requestId = ++latestRowsRequestIdRef.current
-    rowsAbortRef.current?.abort()
-    const controller = new AbortController()
-    rowsAbortRef.current = controller
-    setLoadingMore(true)
-    setContinuationError(null)
-    setPaginationNotice(null)
-    try {
-      const params = buildRequirementListParams({
-        filters,
-        limit: PAGE_SIZE,
-        locale,
-        cursor: nextCursor,
-        sort: sortState,
-      })
-      const res = await fetch(`/api/requirements?${params}`, {
-        signal: controller.signal,
-      })
-      if (
-        controller.signal.aborted ||
-        requestId !== latestRowsRequestIdRef.current
-      ) {
-        return
-      }
-      if (res.status === 400) {
-        const body = (await res
-          .clone()
-          .json()
-          .catch(() => null)) as { code?: string } | null
-        if (body?.code === 'invalid_cursor') {
-          await refreshRows({ recoveringInvalidCursor: true })
-          return
+  const requestAdditionalPage = useCallback(
+    async (
+      cursor: string,
+      { restoreRetryFocusOnFailure = false } = {},
+    ): Promise<boolean> => {
+      const requestId = ++latestRowsRequestIdRef.current
+      rowsAbortRef.current?.abort()
+      const controller = new AbortController()
+      rowsAbortRef.current = controller
+      dispatchResourceState({ cursor, type: 'page-started' })
+      setPaginationNotice(null)
+      try {
+        const params = buildRequirementListParams({
+          cursor,
+          filters,
+          limit: PAGE_SIZE,
+          locale,
+          sort: sortState,
+        })
+        const res = await apiFetch(`/api/requirements?${params}`, {
+          signal: controller.signal,
+        })
+        if (
+          controller.signal.aborted ||
+          requestId !== latestRowsRequestIdRef.current
+        ) {
+          return false
         }
-      }
-      if (!res.ok) {
-        throw new Error(paginationContinuationFailedMessage)
-      }
-      const data = (await res.json()) as {
-        pagination?: { hasMore?: boolean; nextCursor?: string | null }
-        requirements?: RequirementRow[]
-      }
-      if (
-        controller.signal.aborted ||
-        requestId !== latestRowsRequestIdRef.current
-      ) {
-        return
-      }
+        if (res.status === 401) {
+          dispatchResourceState({ type: 'authentication-expired' })
+          latestRowsRequestIdRef.current += 1
+          controller.abort()
+          if (rowsAbortRef.current === controller) {
+            rowsAbortRef.current = null
+          }
+          return false
+        }
+        if (res.status === 400) {
+          const body = (await res
+            .clone()
+            .json()
+            .catch(() => null)) as { code?: string } | null
+          if (body?.code === 'invalid_cursor') {
+            await refreshRows({ recoveringInvalidCursor: true })
+            return false
+          }
+        }
+        if (!res.ok) {
+          throw new Error('Requirements continuation request failed')
+        }
+        const data = (await res.json()) as {
+          pagination?: { hasMore?: boolean; nextCursor?: string | null }
+          requirements?: RequirementRow[]
+        }
+        if (
+          controller.signal.aborted ||
+          requestId !== latestRowsRequestIdRef.current
+        ) {
+          return false
+        }
 
-      const moreRows = data.requirements ?? []
-      setHasMore(data.pagination?.hasMore ?? false)
-      setNextCursor(data.pagination?.nextCursor ?? null)
-      setRows(previousRows =>
-        Array.from(
-          new Map(
-            [...previousRows, ...moreRows].map(row => [row.id, row] as const),
-          ).values(),
-        ),
-      )
-    } catch {
-      if (
-        !controller.signal.aborted &&
-        requestId === latestRowsRequestIdRef.current
-      ) {
-        setContinuationError('continuation')
-      }
-    } finally {
-      if (requestId === latestRowsRequestIdRef.current) {
-        setLoadingMore(false)
-        if (rowsAbortRef.current === controller) {
-          rowsAbortRef.current = null
+        const moreRows = data.requirements ?? []
+        setHasMore(data.pagination?.hasMore ?? false)
+        setNextCursor(data.pagination?.nextCursor ?? null)
+        setRows(previousRows =>
+          Array.from(
+            new Map(
+              [...previousRows, ...moreRows].map(row => [row.id, row] as const),
+            ).values(),
+          ),
+        )
+        dispatchResourceState({ type: 'refresh-succeeded' })
+        return true
+      } catch {
+        if (
+          controller.signal.aborted ||
+          requestId !== latestRowsRequestIdRef.current
+        ) {
+          return false
+        }
+        dispatchResourceState({ cursor, type: 'page-failed' })
+        if (restoreRetryFocusOnFailure) {
+          requestAnimationFrame(() => rowsRetryRef.current?.focus())
+        }
+        return false
+      } finally {
+        if (requestId === latestRowsRequestIdRef.current) {
+          if (rowsAbortRef.current === controller) {
+            rowsAbortRef.current = null
+          }
         }
       }
+    },
+    [filters, locale, refreshRows, sortState],
+  )
+
+  const loadMore = useCallback(async () => {
+    if (resourceState.status !== 'ready' || !hasMore || !nextCursor) {
+      return
     }
-  }, [
-    filters,
-    hasMore,
-    loading,
-    loadingMore,
-    locale,
-    nextCursor,
-    refreshRows,
-    sortState,
-    paginationContinuationFailedMessage,
-  ])
+    await requestAdditionalPage(nextCursor)
+  }, [hasMore, nextCursor, requestAdditionalPage, resourceState.status])
 
   const retryRows = useCallback(async () => {
-    if (continuationError === 'continuation') {
-      await loadMore()
-      requestAnimationFrame(() => rowsRetryRef.current?.focus())
+    if (resourceState.status === 'page-failure') {
+      await requestAdditionalPage(resourceState.cursor, {
+        restoreRetryFocusOnFailure: true,
+      })
       return
     }
     await refreshRows({
-      recoveringInvalidCursor: continuationError === 'recovery',
+      recoveringInvalidCursor:
+        resourceState.status === 'cursor-recovery-failure',
       restoreRetryFocusOnFailure: true,
     })
-  }, [continuationError, loadMore, refreshRows])
+  }, [refreshRows, requestAdditionalPage, resourceState])
 
   useEffect(
     () => () => {
+      latestRowsRequestIdRef.current += 1
       rowsAbortRef.current?.abort()
     },
     [],
@@ -694,14 +745,14 @@ export default function RequirementsClient({
     const sel = searchParams.get('selected')
     if (!sel) return
 
-    let cancelled = false
+    const controller = new AbortController()
     const numId = Number(sel)
     const numericSelectedId =
       !Number.isNaN(numId) && Number.isInteger(numId) && numId > 0
         ? numId
         : null
     const urlSelectionStillCurrent = () =>
-      !cancelled &&
+      !controller.signal.aborted &&
       (selectedIdRef.current === sel ||
         (numericSelectedId != null &&
           selectedIdRef.current === numericSelectedId))
@@ -719,8 +770,9 @@ export default function RequirementsClient({
 
     const hydrateSelectedRequirement = async () => {
       try {
-        const singleRes = await fetch(
+        const singleRes = await apiFetch(
           `/api/requirements/${encodeURIComponent(sel)}`,
+          { signal: controller.signal },
         )
         if (!singleRes.ok || !urlSelectionStillCurrent()) return
 
@@ -739,7 +791,7 @@ export default function RequirementsClient({
 
     const resolveSelectedRequirement = async () => {
       await Promise.allSettled([hydrateSelectedRequirement(), refreshRows()])
-      if (cancelled) return
+      if (controller.signal.aborted) return
 
       // Clean up the params after hydration so selected-row pinning cannot be
       // cancelled before the row is available in the table.
@@ -750,19 +802,17 @@ export default function RequirementsClient({
 
     void resolveSelectedRequirement()
 
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
   }, [searchParams, refreshRows])
 
   // Scroll to the selected requirement once the expanded detail row is in the
   // DOM. This effect runs after React commits a render that includes the new
   // pinnedRow / rows, so the element exists by the time we look for it.
-  // We also depend on hasResolvedInitialRows because the table is hidden behind
-  // a loading spinner until that flag is true — without it the effect could fire
-  // when rows/pinnedRow are set but before the table is actually rendered.
+  // We also depend on the resource status because the table is hidden behind a
+  // loading shell until a successful snapshot exists.
   // biome-ignore lint/correctness/useExhaustiveDependencies: deps are intentional triggers to re-run scroll check when DOM updates
   useEffect(() => {
+    if (!hasRequirementListSnapshot(resourceState)) return
     const id = scrollToIdRef.current
     if (id == null) return
     const el = document.getElementById(`requirement-row-detail-${id}`)
@@ -770,9 +820,10 @@ export default function RequirementsClient({
       scrollToIdRef.current = null
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
-  }, [pinnedRow, rows, hasResolvedInitialRows])
+  }, [pinnedRow, resourceState, rows])
 
   useEffect(() => {
+    const controller = new AbortController()
     const readFilterResponse = async <T,>(
       result: PromiseSettledResult<Response>,
     ): Promise<T | null> => {
@@ -797,18 +848,28 @@ export default function RequirementsClient({
         requirementPackagesRes,
         priorityLevelsRes,
       ] = await Promise.allSettled([
-        fetch('/api/requirement-areas'),
-        fetch('/api/requirement-categories'),
-        fetch('/api/requirement-types'),
-        fetch('/api/quality-characteristics'),
-        fetch('/api/requirement-statuses'),
-        fetch('/api/requirement-packages'),
-        fetch('/api/priority-levels'),
+        apiFetch('/api/requirement-areas', { signal: controller.signal }),
+        apiFetch('/api/requirement-categories', {
+          signal: controller.signal,
+        }),
+        apiFetch('/api/requirement-types', { signal: controller.signal }),
+        apiFetch('/api/quality-characteristics', {
+          signal: controller.signal,
+        }),
+        apiFetch('/api/requirement-statuses', {
+          signal: controller.signal,
+        }),
+        apiFetch('/api/requirement-packages', {
+          signal: controller.signal,
+        }),
+        apiFetch('/api/priority-levels', { signal: controller.signal }),
       ])
+      if (controller.signal.aborted) return
 
       const areasData = await readFilterResponse<{ areas?: AreaOption[] }>(
         areasRes,
       )
+      if (controller.signal.aborted) return
       if (areasData) {
         setAreas(areasData.areas ?? [])
       }
@@ -858,6 +919,7 @@ export default function RequirementsClient({
     }
 
     void fetchFilters()
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
@@ -868,7 +930,9 @@ export default function RequirementsClient({
     for (const s of statuses) {
       params.append('statuses', String(s))
     }
-    fetch(`/api/norm-references?${params}`, { signal: controller.signal })
+    apiFetch(`/api/norm-references?${params}`, {
+      signal: controller.signal,
+    })
       .then(res => (res.ok ? res.json() : null))
       .then((data: unknown) => {
         if (controller.signal.aborted) return
@@ -915,7 +979,8 @@ export default function RequirementsClient({
   }, [defaultVisibleColumns, normalizedColumnDefaults])
 
   useEffect(() => {
-    setHasResolvedInitialRows(false)
+    dispatchResourceState({ type: 'reset' })
+    setPaginationNotice(null)
 
     try {
       setColumnWidths(
@@ -1005,8 +1070,18 @@ export default function RequirementsClient({
     () => (pinnedRow ? new Set([pinnedRow.id]) : undefined),
     [pinnedRow],
   )
+  const requestActive = isRequirementListRequestActive(resourceState)
   const shouldShowInitialLoadingState =
-    !columnPreferencesReady || !hasResolvedInitialRows
+    !columnPreferencesReady || resourceState.status === 'initial-loading'
+  const shouldShowInitialFailure =
+    columnPreferencesReady && resourceState.status === 'initial-failure'
+  const isRefreshing =
+    resourceState.status === 'refreshing' ||
+    resourceState.status === 'cursor-recovering'
+  const hasListWarning =
+    resourceState.status === 'refresh-failure' ||
+    resourceState.status === 'page-failure' ||
+    resourceState.status === 'cursor-recovery-failure'
 
   const selectedRows = useMemo(
     () => rows.filter(r => selectedIds.has(r.id)),
@@ -1051,6 +1126,11 @@ export default function RequirementsClient({
           <div className="relative rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:border-secondary-700 dark:bg-secondary-900/60">
             {shouldShowInitialLoadingState ? (
               <div
+                {...devMarker({
+                  context: 'requirements table',
+                  name: 'status',
+                  value: 'initial loading',
+                })}
                 aria-live="polite"
                 className="flex min-h-80 flex-col items-center justify-center gap-3 px-6 py-16"
                 data-testid="requirements-card-loading"
@@ -1060,22 +1140,78 @@ export default function RequirementsClient({
                   {tc('loadingRequirements')}
                 </p>
               </div>
+            ) : shouldShowInitialFailure ? (
+              <div
+                {...devMarker({
+                  context: 'requirements table',
+                  name: 'alert',
+                  value: 'initial load failure',
+                })}
+                className="flex min-h-80 flex-col items-center justify-center gap-3 px-6 py-16 text-center"
+                role="alert"
+              >
+                <AlertTriangle
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400"
+                />
+                <p className="max-w-xl text-secondary-700 dark:text-secondary-300">
+                  {t('loadRequirementsFailed')}
+                </p>
+                <button
+                  className="min-h-6 min-w-6 rounded-md px-3 py-2 font-medium text-primary-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 dark:text-primary-300"
+                  disabled={requestActive}
+                  onClick={() => void retryRows()}
+                  ref={rowsRetryRef}
+                  type="button"
+                >
+                  {tc('retry')}
+                </button>
+              </div>
             ) : (
               <>
-                {rowsError || continuationError ? (
+                {isRefreshing ? (
+                  <p
+                    {...devMarker({
+                      context: 'requirements table',
+                      name: 'status',
+                      value: 'refreshing requirements',
+                    })}
+                    className="mx-4 mt-4 flex items-center gap-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800 dark:border-primary-800 dark:bg-primary-950/40 dark:text-primary-200"
+                    role="status"
+                  >
+                    <RefreshCw
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0"
+                    />
+                    {t('refreshingRequirements')}
+                  </p>
+                ) : null}
+                {hasListWarning ? (
                   <div
+                    {...devMarker({
+                      context: 'requirements table',
+                      name: 'alert',
+                      value: resourceState.status,
+                    })}
                     className="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
                     role="alert"
                   >
-                    <p>
-                      {rowsError
-                        ? t('loadRequirementsFailed')
-                        : continuationError === 'recovery'
-                          ? t('paginationRecoveryFailed')
-                          : t('paginationContinuationFailed')}
+                    <p className="flex items-start gap-2">
+                      <AlertTriangle
+                        aria-hidden="true"
+                        className="mt-0.5 h-4 w-4 shrink-0"
+                      />
+                      <span>
+                        {resourceState.status === 'refresh-failure'
+                          ? t('refreshRequirementsFailed')
+                          : resourceState.status === 'cursor-recovery-failure'
+                            ? t('paginationRecoveryFailed')
+                            : t('paginationContinuationFailed')}
+                      </span>
                     </p>
                     <button
                       className="mt-2 min-h-6 min-w-6 rounded-md px-2 py-1 font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                      disabled={requestActive}
                       onClick={() => void retryRows()}
                       ref={rowsRetryRef}
                       type="button"
@@ -1210,9 +1346,9 @@ export default function RequirementsClient({
                   ]}
                   getName={getName}
                   getStatusName={getStatusName}
-                  hasMore={hasMore}
-                  loading={loading}
-                  loadingMore={loadingMore}
+                  hasMore={hasMore && resourceState.status === 'ready'}
+                  loading={false}
+                  loadingMore={resourceState.status === 'page-loading'}
                   locale={locale}
                   normReferences={normReferenceOptions}
                   onColumnWidthsChange={setColumnWidths}

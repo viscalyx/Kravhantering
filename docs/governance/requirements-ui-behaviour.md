@@ -599,11 +599,44 @@ down.
 
 ## Loading and Empty State
 
-- The empty state is rendered only after a list request finishes with zero rows.
+- The list uses one explicit resource state for initial loading and failure,
+  confirmed snapshots, refresh, pagination, and invalid-cursor recovery.
+- The empty state is rendered only after a list request succeeds with zero
+  rows.
 - While the first rows request is pending, the table is not mounted yet and the
   card-level loading state is shown instead.
-- During later filter or sort refreshes, the current rows stay visible and the
-  delayed in-table spinner may appear if the refresh lasts long enough.
+- If the first rows request fails, a translated alert and Retry action replace
+  the loading state. The table is not mounted and the empty state is not shown.
+- A successful retry mounts the table, including when the confirmed result is
+  empty. A failed user-triggered retry restores focus to Retry.
+- During later filter or sort refreshes, the current rows stay visible and a
+  polite status announces the refresh. Filters and sorting remain usable so a
+  newer choice can cancel and supersede the active request.
+- A failed refresh retains the rows and the latest filter and sort controls.
+  Its alert explains that the rows may be outdated or may not match the active
+  query. Retry requests the first page with that latest query.
+- If an empty successful snapshot later fails to refresh, the ordinary empty
+  state remains visible together with the stale-data alert.
+- A failed additional page retains the rows and failed cursor. Its alert
+  explains that the list may be incomplete or outdated, and Retry repeats the
+  same cursor.
+- After a refresh failure, ordinary row and detail interactions remain
+  available, but additional-page loading stays unavailable until a first-page
+  refresh succeeds.
+- An invalid cursor starts a first-page recovery request. If recovery fails,
+  the existing rows remain and Retry starts again from the first page.
+- Starting Retry replaces the warning with the corresponding loading or
+  refreshing state. A warning clears only after success and returns if the
+  retry fails. Requests are not retried automatically.
+- Refresh and pagination share one exclusive request channel. A replacement or
+  unmount aborts the active request, and only the latest response can update
+  the list.
+- URL-selected requirement hydration, metadata loading, and status-dependent
+  norm-reference loading use separate cancellable request channels.
+- Every same-origin read uses the shared authenticated request path. A `401`
+  leaves the last successful rows, or the initial loading state when no
+  snapshot exists, without a local Retry alert. The session-expiry guard owns
+  reauthentication and redirect behavior.
 
 ## Row Selection
 

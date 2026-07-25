@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 45,
+  "discoveredSpecCount": 46,
   "suites": {
     "dev": {
       "chunks": [
@@ -74,7 +74,7 @@
         {
           "id": "dev-requirements",
           "paths": ["tests/integration/requirements"],
-          "specCount": 9
+          "specCount": 10
         },
         {
           "id": "dev-specifications",
@@ -88,7 +88,7 @@
         }
       ],
       "ignoredSpecs": ["tests/integration/mcp/seeded-scan.spec.ts"],
-      "includedSpecCount": 44
+      "includedSpecCount": 45
     },
     "prodlike": {
       "chunks": [
@@ -150,7 +150,7 @@
         {
           "id": "prodlike-requirements",
           "paths": ["tests/integration/requirements"],
-          "specCount": 9
+          "specCount": 10
         },
         {
           "id": "prodlike-specifications",
@@ -169,7 +169,7 @@
         }
       ],
       "ignoredSpecs": ["tests/integration/developer-mode/overlay.spec.ts"],
-      "includedSpecCount": 44
+      "includedSpecCount": 45
     }
   }
 }
