@@ -1,9 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { toSpecificationMutationErrorResponse } from '@/app/api/requirements-specifications/error-response'
 import { createSpecificationSchema } from '@/app/api/requirements-specifications/schema'
-import {
-  createSpecification,
-  isSpecificationCodeTaken,
-} from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   customMutationPolicy,
@@ -14,6 +11,7 @@ import { forbiddenError, validationError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+import { createSpecificationWithAudit } from '@/lib/requirements/specification-mutations'
 import { canCreateSpecification } from '@/lib/specifications/permissions'
 
 export async function GET(request: NextRequest) {
@@ -55,20 +53,23 @@ export const POST = secureMutationRoute({
     }
 
     const db = await getRequestSqlServerDataSource()
-    if (await isSpecificationCodeTaken(db, body.specificationCode)) {
-      return NextResponse.json(
-        { error: 'specification_code_taken' },
-        { status: 409 },
-      )
-    }
-
     const responsiblePerson =
       await resolveVerifiedRequirementResponsibilityPerson(db, responsibleHsaId)
-    const spec = await createSpecification(db, {
-      ...body,
-      responsibleHsaId,
-      responsiblePerson,
-    })
-    return NextResponse.json(spec, { status: 201 })
+    try {
+      const specification = await createSpecificationWithAudit(
+        db,
+        {
+          ...body,
+          responsibleHsaId,
+          responsiblePerson,
+        },
+        context,
+      )
+      return NextResponse.json(specification, { status: 201 })
+    } catch (error) {
+      const response = toSpecificationMutationErrorResponse(error)
+      if (response) return response
+      throw error
+    }
   },
 })

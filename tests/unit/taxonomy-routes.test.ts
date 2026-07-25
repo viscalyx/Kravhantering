@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { validationError } from '@/lib/requirements/errors'
+import { conflictError, validationError } from '@/lib/requirements/errors'
 
 /* ── shared request DB mocks ─────────────────────────────────────── */
 
@@ -277,6 +277,20 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   deleteSpecification: (...a: unknown[]) => mockDeletePkg(...a),
   getSpecificationById: async (_db: unknown, id: number) => ({ id }),
   isSpecificationCodeTaken: async () => false,
+}))
+
+vi.mock('@/lib/requirements/specification-mutations', () => ({
+  createSpecificationWithAudit: (...a: unknown[]) => mockCreatePkg(...a),
+  deleteSpecificationWithAudit: (...a: unknown[]) => mockDeletePkg(...a),
+  isSpecificationCodeTakenConflict: (error: unknown) =>
+    Boolean(
+      error &&
+        typeof error === 'object' &&
+        'details' in error &&
+        (error as { details?: { reason?: unknown } }).details?.reason ===
+          'specification_code_taken',
+    ),
+  updateSpecificationWithAudit: (...a: unknown[]) => mockUpdatePkg(...a),
 }))
 
 const mockCreateRequirementPackage = vi.fn(async (..._args: unknown[]) => ({
@@ -1248,6 +1262,12 @@ describe('requirement-specifications routes', () => {
       source: 'oidc',
     }
     routeState.query.mockResolvedValue([])
+    mockCreatePkg.mockResolvedValue({ id: 2 })
+    mockDeletePkg.mockResolvedValue({ status: 'deleted' })
+    mockUpdatePkg.mockResolvedValue({
+      specification: { id: 1 },
+      status: 'updated',
+    })
     specificationPermissionState.canAuthorSpecification.mockResolvedValue(true)
     specificationPermissionState.canManageSpecificationAssignments.mockResolvedValue(
       true,
@@ -1335,6 +1355,7 @@ describe('requirement-specifications routes', () => {
       expect.objectContaining({
         specificationCode: 'PLAYWRIGHT-LIFECYCLE-2026',
       }),
+      authState.context,
     )
   })
   it('POST returns 400 for malformed JSON bodies', async () => {
@@ -1436,6 +1457,7 @@ describe('requirement-specifications routes', () => {
           hsaId: 'SE5560000001-route',
         }),
       }),
+      authState.context,
     )
   })
   it('POST accepts the authenticated actor as the specification lead HSA-id', async () => {
@@ -1457,6 +1479,7 @@ describe('requirement-specifications routes', () => {
           hsaId: 'SE5560000001-route',
         }),
       }),
+      authState.context,
     )
   })
   it('POST rejects a client-selected specification lead HSA-id', async () => {
@@ -1494,10 +1517,93 @@ describe('requirement-specifications routes', () => {
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })
   it('PUT updates', async () => {
-    mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(jsonReq('PUT', { name: 'X' }), makeParams('1'))
+    expect(r.status).toBe(200)
     await expect(r.json()).resolves.toEqual({ id: 1 })
+    expect(mockUpdatePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      { name: 'X' },
+      authState.context,
+    )
   })
+  it.each([
+    ['POST', 'create', mockCreatePkg],
+    ['PUT', 'update', mockUpdatePkg],
+  ] as const)(
+    '%s preserves specification_code_taken for a named uniqueness race',
+    async (method, _operation, mutation) => {
+      mutation.mockRejectedValueOnce(
+        conflictError('Specification code is already taken', {
+          reason: 'specification_code_taken',
+        }),
+      )
+
+      const r =
+        method === 'POST'
+          ? await postPkg(jsonReq('POST', specificationCreateBody()))
+          : await putPkg(
+              jsonReq('PUT', { specificationCode: 'TAKEN-CODE' }),
+              makeParams('1'),
+            )
+
+      expect(r.status).toBe(409)
+      await expect(r.json()).resolves.toEqual({
+        error: 'specification_code_taken',
+      })
+    },
+  )
+  it.each(['update', 'delete'] as const)(
+    '%s returns 404 when the audited workflow reports not_found',
+    async operation => {
+      if (operation === 'update') {
+        mockUpdatePkg.mockResolvedValueOnce({ status: 'not_found' })
+      } else {
+        mockDeletePkg.mockResolvedValueOnce({ status: 'not_found' })
+      }
+
+      const r =
+        operation === 'update'
+          ? await putPkg(jsonReq('PUT', { name: 'X' }), makeParams('404'))
+          : await deletePkg(
+              new NextRequest('http://l', { method: 'DELETE' }),
+              makeParams('404'),
+            )
+
+      expect(r.status).toBe(404)
+      await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+    },
+  )
+  it.each(['create', 'update', 'delete'] as const)(
+    'returns a sanitized 500 when %s audit persistence fails',
+    async operation => {
+      const injected =
+        "Injected audit SQL failure for table action_audit_events token='secret'"
+      if (operation === 'create') {
+        mockCreatePkg.mockRejectedValueOnce(new Error(injected))
+      } else if (operation === 'update') {
+        mockUpdatePkg.mockRejectedValueOnce(new Error(injected))
+      } else {
+        mockDeletePkg.mockRejectedValueOnce(new Error(injected))
+      }
+
+      const r =
+        operation === 'create'
+          ? await postPkg(jsonReq('POST', specificationCreateBody()))
+          : operation === 'update'
+            ? await putPkg(jsonReq('PUT', { name: 'X' }), makeParams('1'))
+            : await deletePkg(
+                new NextRequest('http://l', { method: 'DELETE' }),
+                makeParams('1'),
+              )
+      const payload = await r.json()
+
+      expect(r.status).toBe(500)
+      expect(payload).toEqual({ error: 'Failed to process mutation' })
+      expect(JSON.stringify(payload)).not.toContain('action_audit_events')
+      expect(JSON.stringify(payload)).not.toContain('secret')
+    },
+  )
   it('PUT rejects invalid updated specificationCode before persistence', async () => {
     const r = await putPkg(
       jsonReq('PUT', { specificationCode: '123' }),
@@ -1655,12 +1761,17 @@ describe('requirement-specifications routes', () => {
     )
   })
   it('DELETE deletes', async () => {
-    mockDeletePkg.mockResolvedValue(undefined)
     const r = await deletePkg(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('1'),
     )
+    expect(r.status).toBe(200)
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
+    expect(mockDeletePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      authState.context,
+    )
   })
 })
 

@@ -43,12 +43,24 @@ affected answer IDs, affected package/requirement IDs, source action, and route
 or retention metadata. They reuse the surrounding request and correlation IDs
 when cleanup happens inside a user-triggered mutation.
 
+Top-level requirements specification create, update, and delete actions use
+`specification.create`, `specification.update`, and `specification.delete`.
+Their target kind is `RequirementsSpecification`, target ID is the numeric
+database ID, and target unique ID is the specification code. Create and delete
+details contain only the specification lifecycle-status ID. Update details
+contain sorted changed-field names and, when the lifecycle status changes, the
+previous and new lifecycle-status IDs. Names, business-needs text, HSA-id
+values, display names, and full before/after payloads are excluded.
+
 ## Failure Mode
 
 Action-log writes are fail-closed. If an action-log insert fails, the mutation
 or denial response fails instead of silently losing the action-log row. Where
 the underlying service owns a database transaction, the action-audit insert is
-executed in that transaction.
+executed in that transaction. Requirements specification create, update, and
+delete always persist the business mutation and its success evidence in one
+transaction. Update and delete lock and snapshot the target before changing it,
+so a missing target produces neither a business mutation nor a success row.
 
 ## Admin Access
 

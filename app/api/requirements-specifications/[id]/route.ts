@@ -1,13 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { toSpecificationMutationErrorResponse } from '@/app/api/requirements-specifications/error-response'
 import { updateSpecificationSchema } from '@/app/api/requirements-specifications/schema'
 import {
   canAuthorSpecification,
-  deleteSpecification,
   getSpecificationById,
-  isSpecificationCodeTaken,
   listSpecificationCoAuthorHsaIds,
-  updateSpecification,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
@@ -22,6 +20,10 @@ import {
 import { forbiddenError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { authorize } from '@/lib/requirements/service-shared'
+import {
+  deleteSpecificationWithAudit,
+  updateSpecificationWithAudit,
+} from '@/lib/requirements/specification-mutations'
 import { specificationPermissions } from '@/lib/specifications/permissions'
 
 export const dynamic = 'force-dynamic'
@@ -96,25 +98,21 @@ export const PUT = secureMutationRoute({
       }
     },
   ),
-  handler: async ({ body, params }) => {
+  handler: async ({ body, context, params }) => {
     const { id } = params
     const db = await getRequestSqlServerDataSource()
 
-    const spec = await getSpecificationById(db, id)
-    if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-    if (
-      body.specificationCode &&
-      (await isSpecificationCodeTaken(db, body.specificationCode, spec.id))
-    ) {
-      return NextResponse.json(
-        { error: 'specification_code_taken' },
-        { status: 409 },
-      )
+    try {
+      const result = await updateSpecificationWithAudit(db, id, body, context)
+      if (result.status === 'not_found') {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      return NextResponse.json(result.specification)
+    } catch (error) {
+      const response = toSpecificationMutationErrorResponse(error)
+      if (response) return response
+      throw error
     }
-
-    const updated = await updateSpecification(db, spec.id, body)
-    return NextResponse.json(updated)
   },
 })
 
@@ -141,12 +139,13 @@ export const DELETE = secureMutationRoute({
       }
     },
   ),
-  handler: async ({ params }) => {
+  handler: async ({ context, params }) => {
     const { id } = params
     const db = await getRequestSqlServerDataSource()
-    const spec = await getSpecificationById(db, id)
-    if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    await deleteSpecification(db, spec.id)
+    const result = await deleteSpecificationWithAudit(db, id, context)
+    if (result.status === 'not_found') {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
     return NextResponse.json({ ok: true })
   },
 })
