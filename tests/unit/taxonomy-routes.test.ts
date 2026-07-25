@@ -279,17 +279,10 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   isSpecificationCodeTaken: async () => false,
 }))
 
-vi.mock('@/lib/requirements/specification-mutations', () => ({
+vi.mock('@/lib/requirements/specification-mutations', async importOriginal => ({
+  ...(await importOriginal()),
   createSpecificationWithAudit: (...a: unknown[]) => mockCreatePkg(...a),
   deleteSpecificationWithAudit: (...a: unknown[]) => mockDeletePkg(...a),
-  isSpecificationCodeTakenConflict: (error: unknown) =>
-    Boolean(
-      error &&
-        typeof error === 'object' &&
-        'details' in error &&
-        (error as { details?: { reason?: unknown } }).details?.reason ===
-          'specification_code_taken',
-    ),
   updateSpecificationWithAudit: (...a: unknown[]) => mockUpdatePkg(...a),
 }))
 

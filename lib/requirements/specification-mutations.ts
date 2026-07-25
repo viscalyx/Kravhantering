@@ -6,6 +6,7 @@ import {
   type SpecificationCreateData,
   type SpecificationRecord,
   type SpecificationUpdateData,
+  type SqlExecutor,
   updateSpecificationWithExecutor,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -89,9 +90,7 @@ async function withSpecificationCodeConflictMapping<T>(
 }
 
 async function lockSpecificationSnapshot(
-  executor: {
-    query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
-  },
+  executor: SqlExecutor,
   id: number,
 ): Promise<SpecificationAuditSnapshot | null> {
   const rows = await executor.query<SpecificationAuditSnapshot[]>(

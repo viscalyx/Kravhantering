@@ -17,6 +17,12 @@ import {
   DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
   DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
 } from '@/lib/specification-item-status-constants'
+import {
+  SPECIFICATION_LIFECYCLE_STATUS_DEVELOPMENT_ID,
+  SPECIFICATION_LIFECYCLE_STATUS_IMPLEMENTATION_ID,
+  SPECIFICATION_LIFECYCLE_STATUS_MANAGEMENT_ID,
+  SPECIFICATION_LIFECYCLE_STATUS_PROCUREMENT_ID,
+} from '@/lib/specifications/lifecycle-status-constants'
 import { createAppDataSource } from '@/lib/typeorm/data-source'
 import { tryGetSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
@@ -124,6 +130,39 @@ async function seedLookups(target: SqlServerDatabase): Promise<void> {
            (from_requirement_status_id, to_requirement_status_id)
            VALUES (@0, @1)`,
       [from, to],
+    )
+  }
+
+  const specificationLifecycleStatuses: Array<[number, string, string]> = [
+    [
+      SPECIFICATION_LIFECYCLE_STATUS_PROCUREMENT_ID,
+      'Upphandling',
+      'Procurement',
+    ],
+    [
+      SPECIFICATION_LIFECYCLE_STATUS_IMPLEMENTATION_ID,
+      'Införande',
+      'Implementation',
+    ],
+    [
+      SPECIFICATION_LIFECYCLE_STATUS_DEVELOPMENT_ID,
+      'Utveckling',
+      'Development',
+    ],
+    [SPECIFICATION_LIFECYCLE_STATUS_MANAGEMENT_ID, 'Förvaltning', 'Management'],
+  ]
+  for (const [id, nameSv, nameEn] of specificationLifecycleStatuses) {
+    await target.query(
+      `IF NOT EXISTS (
+         SELECT 1 FROM specification_lifecycle_statuses WHERE id = @0
+       )
+         BEGIN
+           SET IDENTITY_INSERT specification_lifecycle_statuses ON;
+           INSERT INTO specification_lifecycle_statuses (id, name_sv, name_en)
+             VALUES (@0, @1, @2);
+           SET IDENTITY_INSERT specification_lifecycle_statuses OFF;
+         END`,
+      [id, nameSv, nameEn],
     )
   }
 
