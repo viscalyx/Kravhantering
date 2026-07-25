@@ -1034,7 +1034,7 @@
     },
     "errors": {
       "csv": {
-        "items": "The CSV export contains more than the allowed limit of {limit} requirements. Narrow the selection or ask an administrator to adjust the export settings.",
+        "items": "The CSV export contains more than the allowed limit of {limit} CSV rows. Narrow the selection or ask an administrator to adjust the export settings.",
         "bytes": "The CSV export exceeds the allowed file size of {limitMiB} MiB. Narrow the selection or ask an administrator to adjust the export settings.",
         "busy": "The maximum number of CSV exports allowed at the same time are already in progress. You can try again in {retryAfter} seconds.",
         "timeout": "The CSV export could not be completed within the {timeoutSeconds}-second time limit. Narrow the selection or ask an administrator to adjust the export settings.",
@@ -1756,12 +1756,13 @@
         "mib": "MiB",
         "renderings": "renderings",
         "requirements": "requirements",
+        "rows": "CSV rows",
         "seconds": "seconds"
       },
       "fields": {
-        "csvExportMaxRequirements": {
-          "label": "Maximum requirements per CSV export",
-          "help": "Limits how many requirements a CSV export may contain. The export is rejected before download begins when the result exceeds the limit. Allowed: 1–5,000."
+        "csvExportMaxItems": {
+          "label": "Maximum rows per CSV export",
+          "help": "Limits how many data rows a CSV export may contain. The export is rejected before download begins when the result exceeds the limit. Allowed: 1–5,000."
         },
         "csvExportMaxFileBytes": {
           "label": "Maximum CSV file size",

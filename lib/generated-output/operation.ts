@@ -45,6 +45,7 @@ export interface GeneratedOutputTerminalRecorder {
 }
 
 export type GeneratedOutputOperation =
+  | 'admin.action_log_csv_export'
   | 'requirements.library_csv_export'
   | 'requirements.list_pdf_report'
   | 'requirements.specification_csv_export'
@@ -58,6 +59,10 @@ const GENERATED_OUTPUT_OPERATIONS: Record<
   GeneratedOutputOperation,
   GeneratedOutputOperationDefinition
 > = {
+  'admin.action_log_csv_export': {
+    output: 'csv',
+    surface: 'export',
+  },
   'requirements.library_csv_export': {
     output: 'csv',
     surface: 'export',

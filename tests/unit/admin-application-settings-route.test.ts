@@ -169,7 +169,7 @@ describe('admin application settings route', () => {
         pdfReportConcurrencyPerNode: 2,
       },
       { csvExportMaxFileBytes: MIB + 1 },
-      { csvExportMaxRequirements: 100, unknown: 1 },
+      { csvExportMaxItems: 100, unknown: 1 },
     ]) {
       const response = await PATCH(
         new NextRequest('https://example.test/api/admin/application-settings', {

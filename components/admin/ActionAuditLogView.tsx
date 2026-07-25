@@ -7,6 +7,7 @@ import {
   firstSearchParamValue,
 } from '@/lib/audit/action-audit-query'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
+import ActionAuditLogExportButton from './ActionAuditLogExportButton'
 
 export type ActionAuditLogLabels = {
   action: string
@@ -80,6 +81,8 @@ export default function ActionAuditLogView({
     titleElement === 'h1'
       ? `${showEyebrow ? 'mt-3 ' : ''}text-3xl font-semibold tracking-tight text-secondary-950 dark:text-secondary-50`
       : 'text-xl font-semibold text-secondary-950 dark:text-secondary-50'
+  const csvHref = actionAuditLogCsvHref(query, locale)
+  const csvFilename = locale === 'sv' ? 'atgardslogg.csv' : 'action-log.csv'
 
   if (!result) {
     return (
@@ -97,12 +100,11 @@ export default function ActionAuditLogView({
                 {labels.description}
               </p>
             </div>
-            <a
-              className="btn-secondary"
-              href={actionAuditLogCsvHref(query, locale)}
-            >
-              {labels.exportCsv}
-            </a>
+            <ActionAuditLogExportButton
+              fallbackFilename={csvFilename}
+              href={csvHref}
+              label={labels.exportCsv}
+            />
           </div>
         </section>
 
@@ -156,12 +158,11 @@ export default function ActionAuditLogView({
               {labels.description}
             </p>
           </div>
-          <a
-            className="btn-secondary"
-            href={actionAuditLogCsvHref(query, locale)}
-          >
-            {labels.exportCsv}
-          </a>
+          <ActionAuditLogExportButton
+            fallbackFilename={csvFilename}
+            href={csvHref}
+            label={labels.exportCsv}
+          />
         </div>
       </section>
 

@@ -260,7 +260,7 @@ export const REQUIRED_SEED_DATA = {
   application_settings: {
     columns: [
       'id',
-      'csv_export_max_requirements',
+      'csv_export_max_items',
       'csv_export_max_file_bytes',
       'csv_export_concurrency_per_node',
       'csv_export_timeout_seconds',

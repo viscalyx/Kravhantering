@@ -227,7 +227,7 @@ describe('requirement PDF routes', () => {
     routeState.getApplicationSettings.mockResolvedValue({
       csvExportConcurrencyPerNode: 5,
       csvExportMaxFileBytes: 100 * 1024 * 1024,
-      csvExportMaxRequirements: 1000,
+      csvExportMaxItems: 1000,
       csvExportTimeoutSeconds: 120,
       pdfReportConcurrencyPerNode: 3,
       pdfReportMaxFileBytes: 50 * 1024 * 1024,

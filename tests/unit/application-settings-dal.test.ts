@@ -10,7 +10,7 @@ function persistedRow() {
     createdAt: '2026-07-18T10:00:00.000Z',
     csvExportConcurrencyPerNode: '5',
     csvExportMaxFileBytes: '104857600',
-    csvExportMaxRequirements: '1000',
+    csvExportMaxItems: '1000',
     csvExportTimeoutSeconds: '120',
     id: 1,
     pdfReportConcurrencyPerNode: '3',
@@ -40,7 +40,7 @@ describe('application settings DAL', () => {
     const { executor, query } = queryExecutor([persistedRow()])
     const settings = await getApplicationSettings(executor)
 
-    expect(settings.csvExportMaxRequirements).toBe(1000)
+    expect(settings.csvExportMaxItems).toBe(1000)
     expect(settings.pdfReportMaxFileBytes).toBe(50 * 1024 * 1024)
     expect(Object.isFrozen(settings)).toBe(true)
     expect(query.mock.calls[0]?.[0]).not.toContain('UPDLOCK')

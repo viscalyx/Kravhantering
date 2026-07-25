@@ -101,7 +101,7 @@ describe('specification output routes', () => {
     routeState.getApplicationSettings.mockResolvedValue({
       csvExportConcurrencyPerNode: 5,
       csvExportMaxFileBytes: 100 * 1024 * 1024,
-      csvExportMaxRequirements: 1000,
+      csvExportMaxItems: 1000,
       csvExportTimeoutSeconds: 120,
     })
     routeState.createSpecificationCsvFormatter.mockReturnValue({
@@ -234,7 +234,7 @@ describe('specification output routes', () => {
       routeState.getApplicationSettings.mockResolvedValueOnce({
         csvExportConcurrencyPerNode: 5,
         csvExportMaxFileBytes: 100 * 1024 * 1024,
-        csvExportMaxRequirements: 2,
+        csvExportMaxItems: 2,
         csvExportTimeoutSeconds: 120,
       })
       routeState.visitSpecificationOutputPages.mockImplementationOnce(
@@ -278,7 +278,7 @@ describe('specification output routes', () => {
       routeState.getApplicationSettings.mockResolvedValueOnce({
         csvExportConcurrencyPerNode: 5,
         csvExportMaxFileBytes: 100 * 1024 * 1024,
-        csvExportMaxRequirements: 2,
+        csvExportMaxItems: 2,
         csvExportTimeoutSeconds: 120,
       })
       routeState.visitSpecificationOutputPages.mockImplementationOnce(
@@ -318,7 +318,7 @@ describe('specification output routes', () => {
       routeState.getApplicationSettings.mockResolvedValueOnce({
         csvExportConcurrencyPerNode: 5,
         csvExportMaxFileBytes: 8,
-        csvExportMaxRequirements: 1000,
+        csvExportMaxItems: 1000,
         csvExportTimeoutSeconds: 120,
       })
       const { GET } = await import(

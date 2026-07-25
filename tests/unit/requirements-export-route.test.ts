@@ -72,7 +72,7 @@ describe('requirements export route', () => {
     mocks.getApplicationSettings.mockResolvedValue({
       csvExportConcurrencyPerNode: 5,
       csvExportMaxFileBytes: 100 * 1024 * 1024,
-      csvExportMaxRequirements: 1000,
+      csvExportMaxItems: 1000,
       csvExportTimeoutSeconds: 120,
       pdfReportConcurrencyPerNode: 3,
       pdfReportMaxFileBytes: 50 * 1024 * 1024,
@@ -141,7 +141,7 @@ describe('requirements export route', () => {
   it('returns the stable item-limit envelope before delivery', async () => {
     mocks.getApplicationSettings.mockResolvedValueOnce({
       ...(await mocks.getApplicationSettings()),
-      csvExportMaxRequirements: 2,
+      csvExportMaxItems: 2,
     })
     mocks.traverseCompleteRequirementList.mockImplementationOnce(
       async (

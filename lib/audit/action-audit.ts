@@ -1,6 +1,7 @@
 import { isValidClientIp } from '@/lib/auth/client-ip'
 import type { SqlServerDatabase } from '@/lib/db'
-import { exportToCsv } from '@/lib/export-csv'
+import { escapeCsvField } from '@/lib/export-csv'
+import { throwIfGenerationAborted } from '@/lib/generated-output/operation'
 import type { RequestContext } from '@/lib/requirements/auth'
 import { forbiddenError, unauthorizedError } from '@/lib/requirements/errors'
 import type {
@@ -82,6 +83,17 @@ export interface ActionAuditEventListResult {
 }
 
 export type ActionAuditCsvLocale = 'en' | 'sv'
+export type ActionAuditEventExportFilters = Omit<
+  ActionAuditEventFilters,
+  'page' | 'pageSize'
+>
+
+export interface ActionAuditEventCsvTraversalOptions {
+  locale?: ActionAuditCsvLocale
+  maxItems: number
+  signal: AbortSignal
+  writeRow: (serializedRow: string) => Promise<void>
+}
 
 interface ActionAuditCsvColumn {
   header: Record<ActionAuditCsvLocale, string>
@@ -169,6 +181,7 @@ const MAX_DETAIL_STRING_LENGTH = 255
 const MAX_DETAIL_ARRAY_LENGTH = 50
 const MAX_PAGE_SIZE = 200
 const DEFAULT_PAGE_SIZE = 50
+const EXPORT_PAGE_SIZE = 200
 const REDACTED_DETAIL_VALUE = '[REDACTED]'
 
 const DETAIL_KEY_DENY_LIST: readonly RegExp[] = [
@@ -430,13 +443,18 @@ function page(value: number | undefined): number {
   return Math.max(Math.trunc(value), 1)
 }
 
-export async function listActionAuditEvents(
-  db: SqlServerDatabase,
-  filters: ActionAuditEventFilters = {},
-): Promise<ActionAuditEventListResult> {
+interface FilterSql {
+  addParam: (value: unknown) => string
+  params: unknown[]
+  where: string[]
+}
+
+function buildActionAuditFilterSql(
+  filters: ActionAuditEventExportFilters,
+): FilterSql {
   const where: string[] = []
   const params: unknown[] = []
-  const addParam = (value: unknown) => {
+  const addParam = (value: unknown): string => {
     params.push(value)
     return `@${params.length - 1}`
   }
@@ -466,18 +484,10 @@ export async function listActionAuditEvents(
     where.push(`occurred_at <= ${addParam(filters.to)}`)
   }
 
-  const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : ''
-  const currentPage = page(filters.page)
-  const currentPageSize = pageSize(filters.pageSize)
-  const offset = (currentPage - 1) * currentPageSize
+  return { addParam, params, where }
+}
 
-  const countRows = (await db.query(
-    `SELECT COUNT(*) AS count FROM action_audit_events ${whereSql}`,
-    params,
-  )) as Array<Record<string, unknown>>
-  const total = Number(countRows[0]?.count ?? 0)
-  const rows = (await db.query(
-    `SELECT
+const ACTION_AUDIT_EVENT_SELECT = `SELECT
       id,
       occurred_at AS occurredAt,
       actor_hsa_id AS actorHsaId,
@@ -494,7 +504,26 @@ export async function listActionAuditEvents(
       correlation_id AS correlationId,
       client_ip AS clientIp,
       details_json AS detailsJson
-    FROM action_audit_events
+    FROM action_audit_events`
+
+export async function listActionAuditEvents(
+  db: SqlServerDatabase,
+  filters: ActionAuditEventFilters = {},
+): Promise<ActionAuditEventListResult> {
+  const { addParam, params, where } = buildActionAuditFilterSql(filters)
+
+  const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : ''
+  const currentPage = page(filters.page)
+  const currentPageSize = pageSize(filters.pageSize)
+  const offset = (currentPage - 1) * currentPageSize
+
+  const countRows = (await db.query(
+    `SELECT COUNT(*) AS count FROM action_audit_events ${whereSql}`,
+    params,
+  )) as Array<Record<string, unknown>>
+  const total = Number(countRows[0]?.count ?? 0)
+  const rows = (await db.query(
+    `${ACTION_AUDIT_EVENT_SELECT}
     ${whereSql}
     ORDER BY occurred_at DESC, id DESC
     OFFSET ${addParam(offset)} ROWS FETCH NEXT ${addParam(currentPageSize)} ROWS ONLY`,
@@ -511,22 +540,121 @@ export async function listActionAuditEvents(
   }
 }
 
+export function actionAuditCsvHeaders(
+  locale: ActionAuditCsvLocale = 'en',
+): string[] {
+  return ACTION_AUDIT_CSV_COLUMNS.map(column => column.header[locale])
+}
+
+export function actionAuditEventToCsvRow(
+  event: ActionAuditEventRow,
+  locale: ActionAuditCsvLocale = 'en',
+): string {
+  return ACTION_AUDIT_CSV_COLUMNS.map(column =>
+    escapeCsvField(column.value(event, locale)),
+  ).join(';')
+}
+
 export function actionAuditEventsToCsv(
   events: ActionAuditEventRow[],
   locale: ActionAuditCsvLocale = 'en',
 ): string {
-  const headers = ACTION_AUDIT_CSV_COLUMNS.map(column => column.header[locale])
-  return exportToCsv(
-    headers,
-    events.map(event =>
-      Object.fromEntries(
-        ACTION_AUDIT_CSV_COLUMNS.map(column => [
-          column.header[locale],
-          column.value(event, locale),
-        ]),
-      ),
-    ),
-  )
+  return [
+    actionAuditCsvHeaders(locale).map(escapeCsvField).join(';'),
+    ...events.map(event => actionAuditEventToCsvRow(event, locale)),
+  ].join('\r\n')
+}
+
+interface ActionAuditCursor {
+  id: string
+  occurredAt: string
+}
+
+function assertDescendingProgress(
+  previous: ActionAuditCursor,
+  current: ActionAuditCursor,
+): void {
+  const previousTime = new Date(previous.occurredAt).getTime()
+  const currentTime = new Date(current.occurredAt).getTime()
+  const progresses =
+    currentTime < previousTime ||
+    (currentTime === previousTime && BigInt(current.id) < BigInt(previous.id))
+  if (!progresses) {
+    throw new Error('Action log CSV traversal did not make progress')
+  }
+}
+
+export async function traverseActionAuditEventsForCsv(
+  db: SqlServerDatabase,
+  filters: ActionAuditEventExportFilters,
+  options: ActionAuditEventCsvTraversalOptions,
+): Promise<void> {
+  throwIfGenerationAborted(options.signal)
+  const anchorRows = (await db.query(
+    'SELECT MAX(id) AS anchorId FROM action_audit_events',
+  )) as Array<Record<string, unknown>>
+  throwIfGenerationAborted(options.signal)
+  const rawAnchorId = anchorRows[0]?.anchorId
+  if (rawAnchorId == null) return
+  const anchorId = String(rawAnchorId)
+  const seenIds = new Set<string>()
+  let cursor: ActionAuditCursor | undefined
+  let visited = 0
+
+  while (visited <= options.maxItems) {
+    throwIfGenerationAborted(options.signal)
+    const remaining = options.maxItems + 1 - visited
+    if (remaining <= 0) return
+    const { addParam, params, where } = buildActionAuditFilterSql(filters)
+    where.push(`id <= ${addParam(anchorId)}`)
+
+    if (cursor) {
+      const occurredAtParam = addParam(new Date(cursor.occurredAt))
+      const idParam = addParam(cursor.id)
+      where.push(
+        `(occurred_at < ${occurredAtParam} OR (occurred_at = ${occurredAtParam} AND id < ${idParam}))`,
+      )
+    }
+
+    const fetchSize = Math.min(EXPORT_PAGE_SIZE, remaining)
+    const rows = (await db.query(
+      `${ACTION_AUDIT_EVENT_SELECT.replace(
+        'SELECT',
+        `SELECT TOP (${addParam(fetchSize)})`,
+      )}
+       WHERE ${where.join(' AND ')}
+       ORDER BY occurred_at DESC, id DESC`,
+      params,
+    )) as Array<Record<string, unknown>>
+    throwIfGenerationAborted(options.signal)
+    if (rows.length === 0) return
+
+    const events = rows.map(mapRow)
+    let previous = cursor
+    for (const event of events) {
+      const current = { id: event.id, occurredAt: event.occurredAt }
+      if (previous) assertDescendingProgress(previous, current)
+      if (seenIds.has(event.id)) {
+        throw new Error('Action log CSV traversal returned a duplicate ID')
+      }
+      seenIds.add(event.id)
+      visited += 1
+      throwIfGenerationAborted(options.signal)
+      await options.writeRow(actionAuditEventToCsvRow(event, options.locale))
+      throwIfGenerationAborted(options.signal)
+      previous = current
+    }
+
+    const nextCursor = previous
+    if (!nextCursor) {
+      throw new Error('Action log CSV traversal did not advance its cursor')
+    }
+    // Every row is checked against the preceding row and the incoming cursor
+    // in the strict (occurred_at, id) order. Reusing any earlier cursor would
+    // therefore fail assertDescendingProgress before it could form a cycle.
+    cursor = nextCursor
+    if (rows.length < fetchSize) return
+  }
 }
 
 export function assertAdminForActionAudit(context: RequestContext): void {

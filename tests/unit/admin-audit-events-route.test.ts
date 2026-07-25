@@ -5,6 +5,8 @@ const routeState = vi.hoisted(() => ({
   db: { db: true },
   getRequestSqlServerDataSource: vi.fn(),
   listActionAuditEvents: vi.fn(),
+  runBoundedCsvOutput: vi.fn(),
+  traverseActionAuditEventsForCsv: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -17,8 +19,13 @@ vi.mock('@/lib/audit/action-audit', async importOriginal => {
   return {
     ...actual,
     listActionAuditEvents: routeState.listActionAuditEvents,
+    traverseActionAuditEventsForCsv: routeState.traverseActionAuditEventsForCsv,
   }
 })
+
+vi.mock('@/lib/generated-output/csv-runner', () => ({
+  runBoundedCsvOutput: routeState.runBoundedCsvOutput,
+}))
 
 vi.mock('@/lib/requirements/auth', async importOriginal => {
   const actual =
@@ -84,6 +91,29 @@ describe('admin audit events route', () => {
     routeState.listActionAuditEvents.mockResolvedValue({
       events: [auditEvent],
       pagination: { page: 1, pageSize: 50, total: 1 },
+    })
+    routeState.traverseActionAuditEventsForCsv.mockImplementation(
+      async (_db, _filters, options) => {
+        await options.writeRow(
+          options.locale === 'sv'
+            ? '2026-05-16T09:00:00.000Z;user;SE5560000001-admin1;Ada Admin;;requirement.create;Requirement;42;AUTH-42;Tillåten;;;correlation-1;203.0.113.30;'
+            : '2026-05-16T09:00:00.000Z;user;SE5560000001-admin1;Ada Admin;;requirement.create;Requirement;42;AUTH-42;Allowed;;;correlation-1;203.0.113.30;',
+        )
+      },
+    )
+    routeState.runBoundedCsvOutput.mockImplementation(async options => {
+      const rows: string[] = []
+      await options.generateRows({
+        maxItems: 1000,
+        signal: new AbortController().signal,
+        writeRow: async (row: string) => {
+          rows.push(row)
+        },
+      })
+      return new Response(
+        `\uFEFF${options.headers.join(';')}\r\n${rows.join('\r\n')}`,
+        { headers: options.responseHeaders },
+      )
     })
   })
 
@@ -175,7 +205,20 @@ describe('admin audit events route', () => {
     expect(csv).toContain('Allowed')
     expect(csv).toContain('requirement.create')
     expect(csv).toContain('203.0.113.30')
-    expect(routeState.listActionAuditEvents).toHaveBeenCalledTimes(1)
+    expect(routeState.listActionAuditEvents).not.toHaveBeenCalled()
+    expect(routeState.runBoundedCsvOutput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: expect.objectContaining({ requestId: 'request-1' }),
+        db: routeState.db,
+        operation: 'admin.action_log_csv_export',
+        requestSignal: expect.any(AbortSignal),
+      }),
+    )
+    expect(routeState.traverseActionAuditEventsForCsv).toHaveBeenCalledWith(
+      routeState.db,
+      expect.objectContaining({ action: 'requirement.create' }),
+      expect.objectContaining({ locale: 'en', maxItems: 1000 }),
+    )
   })
 
   it('exports filtered action-log events as Swedish CSV when locale=sv', async () => {
@@ -196,6 +239,47 @@ describe('admin audit events route', () => {
     expect(csv).toContain('Tillåten')
     expect(csv).toContain('requirement.create')
     expect(csv).toContain('203.0.113.30')
+  })
+
+  it('accepts but ignores interactive pagination for CSV', async () => {
+    const { GET } = await import('@/app/api/admin/audit-events/route')
+    const response = await GET(
+      new Request(
+        'http://localhost/api/admin/audit-events?format=csv&page=9&pageSize=1',
+      ) as never,
+    )
+
+    expect(response.status).toBe(200)
+    expect(routeState.listActionAuditEvents).not.toHaveBeenCalled()
+    expect(routeState.traverseActionAuditEventsForCsv).toHaveBeenCalledWith(
+      routeState.db,
+      expect.not.objectContaining({ page: expect.anything() }),
+      expect.any(Object),
+    )
+  })
+
+  it('returns capacity failures without partial download headers', async () => {
+    routeState.runBoundedCsvOutput.mockResolvedValueOnce(
+      Response.json(
+        {
+          code: 'output_limit_exceeded',
+          details: { limit: 2, limitKind: 'items', output: 'csv' },
+          error: 'Output exceeds its configured limit.',
+        },
+        { status: 422 },
+      ),
+    )
+    const { GET } = await import('@/app/api/admin/audit-events/route')
+    const response = await GET(
+      new Request(
+        'http://localhost/api/admin/audit-events?format=csv',
+      ) as never,
+    )
+
+    expect(response.status).toBe(422)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(response.headers.get('Content-Disposition')).toBeNull()
+    expect(response.headers.get('Content-Type')).toContain('application/json')
   })
 
   it('accepts blank filter fields from the admin form', async () => {

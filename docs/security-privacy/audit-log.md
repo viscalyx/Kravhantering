@@ -64,14 +64,23 @@ Supported filters:
 - `client_ip`
 - `decision`
 - `from` / `to`
-- `page` / `pageSize`
+- `page` / `pageSize` for the interactive JSON list
 - `format=csv`
 - `locale` (`en` or `sv`) for CSV labels; omitted locale defaults to English
 
 The action-log read and CSV export do not themselves create action-log rows.
 CSV downloads use UTF-8 with BOM, localize column headers and decision values
 for the requested locale, and keep action names, target kinds, request IDs and
-details JSON as stored evidence identifiers.
+details JSON as stored evidence identifiers. CSV ignores `page` and `pageSize`
+and traverses the complete filtered result in `occurred_at DESC, id DESC`
+order. Membership is anchored to the highest event ID present when generation
+starts; later inserts are excluded, while privacy erasure may still affect
+rows not yet read.
+
+Generation uses private bounded spool storage and the shared Admin CSV row,
+byte, timeout, and per-node concurrency limits. It reads at most the configured
+row limit plus one and exposes no download headers or partial body when the
+result is too large. Zero matches produce a header-only CSV.
 
 ## Privacy
 

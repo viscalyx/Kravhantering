@@ -88,9 +88,9 @@ test.describe('Admin settings', () => {
   }) => {
     const original = await getApplicationSettings(request)
     const changedLimit =
-      original.csvExportMaxRequirements < 5000
-        ? original.csvExportMaxRequirements + 1
-        : original.csvExportMaxRequirements - 1
+      original.csvExportMaxItems < 5000
+        ? original.csvExportMaxItems + 1
+        : original.csvExportMaxItems - 1
 
     try {
       await page.goto('/sv/admin?tab=settings')
@@ -189,10 +189,8 @@ test.describe('Admin settings', () => {
         panel.getByText(/Använd minus eller plus för att ändra med 128 MiB/),
       ).toBeVisible()
       await expect(
-        panel.locator(
-          '#admin-application-setting-csvExportMaxRequirements-unit',
-        ),
-      ).toHaveText('krav')
+        panel.locator('#admin-application-setting-csvExportMaxItems-unit'),
+      ).toHaveText('CSV-rader')
       await expect(
         panel.locator('#admin-application-setting-csvExportMaxFileBytes-unit'),
       ).toHaveText('MiB')
@@ -213,26 +211,25 @@ test.describe('Admin settings', () => {
       ).toHaveText('renderingar')
       await expect(
         panel.getByRole('button', {
-          name: 'Hjälp: Högsta antal krav per CSV-export',
+          name: 'Hjälp: Högsta antal rader per CSV-export',
         }),
       ).toBeVisible()
 
       const csvLimit = page.locator(
-        '#admin-application-setting-csvExportMaxRequirements',
+        '#admin-application-setting-csvExportMaxItems',
       )
       await csvLimit.fill(String(changedLimit))
       await csvLimit.press('Enter')
       await expect(csvLimit).toHaveValue(String(changedLimit))
       await expect
         .poll(
-          async () =>
-            (await getApplicationSettings(request)).csvExportMaxRequirements,
+          async () => (await getApplicationSettings(request)).csvExportMaxItems,
         )
         .toBe(changedLimit)
       await expect(panel.getByText('Sparat', { exact: true })).toBeVisible()
     } finally {
       await patchApplicationSetting(request, {
-        csvExportMaxRequirements: original.csvExportMaxRequirements,
+        csvExportMaxItems: original.csvExportMaxItems,
       })
     }
   })

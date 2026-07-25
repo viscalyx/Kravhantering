@@ -8,7 +8,7 @@ export interface ApplicationSettingEntity {
   createdAt: Date
   csvExportConcurrencyPerNode: number
   csvExportMaxFileBytes: number
-  csvExportMaxRequirements: number
+  csvExportMaxItems: number
   csvExportTimeoutSeconds: number
   id: number
   pdfReportConcurrencyPerNode: number
@@ -30,9 +30,9 @@ export const applicationSettingEntity =
         primary: true,
         type: 'int',
       },
-      csvExportMaxRequirements: {
+      csvExportMaxItems: {
         default: 1000,
-        name: 'csv_export_max_requirements',
+        name: 'csv_export_max_items',
         type: 'int',
       },
       csvExportMaxFileBytes: {
@@ -84,8 +84,8 @@ export const applicationSettingEntity =
         name: 'chk_application_settings_id',
       },
       {
-        expression: `[csv_export_max_requirements] >= ${APPLICATION_SETTING_CONSTRAINTS.csvExportMaxRequirements.min} AND [csv_export_max_requirements] <= ${APPLICATION_SETTING_CONSTRAINTS.csvExportMaxRequirements.max}`,
-        name: 'chk_application_settings_csv_export_max_requirements',
+        expression: `[csv_export_max_items] >= ${APPLICATION_SETTING_CONSTRAINTS.csvExportMaxItems.min} AND [csv_export_max_items] <= ${APPLICATION_SETTING_CONSTRAINTS.csvExportMaxItems.max}`,
+        name: 'chk_application_settings_csv_export_max_items',
       },
       {
         expression: `[csv_export_max_file_bytes] >= ${APPLICATION_SETTING_CONSTRAINTS.csvExportMaxFileBytes.min} AND [csv_export_max_file_bytes] <= ${APPLICATION_SETTING_CONSTRAINTS.csvExportMaxFileBytes.max} AND [csv_export_max_file_bytes] % ${MIB} = 0`,

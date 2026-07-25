@@ -144,7 +144,7 @@ export function actionAuditLogCsvHref(
   const params = new URLSearchParams()
 
   for (const [key, value] of Object.entries(pickActionAuditLogQuery(query))) {
-    if (value) {
+    if (value && key !== 'page' && key !== 'pageSize') {
       params.set(key, value)
     }
   }

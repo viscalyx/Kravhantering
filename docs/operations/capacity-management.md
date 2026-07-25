@@ -107,21 +107,24 @@ V1 measures:
 Large report PDFs are rendered in isolated Node worker threads from the
 production-bundled report renderer so production CSP can stay strict without
 `unsafe-eval` or `wasm-unsafe-eval`. Requirements Library CSV, procurement and
-full requirements-specification CSV, and large report-list PDF use
-Admin-configured item, byte, timeout, and per-node concurrency limits. Both
-specification CSV profiles reuse the Requirements Library CSV settings and
-process-local pool. PDF workers additionally have an Admin-configured
-JavaScript heap limit. Each operation uses one database settings snapshot.
+full requirements-specification CSV, Action-log CSV, and large report-list PDF
+use Admin-configured item, byte, timeout, and per-node concurrency limits. All
+CSV operations reuse the generalized CSV row settings and process-local pool.
+PDF workers additionally have an Admin-configured JavaScript heap limit. Each
+operation uses one database settings snapshot.
 
-These flows use `operation == "requirements.library_csv_export"`,
+These flows use `operation == "admin.action_log_csv_export"`,
+`operation == "requirements.library_csv_export"`,
 `operation == "requirements.specification_csv_export"`, or
 `operation == "requirements.list_pdf_report"` with `surface == "export"` or
 `surface == "report"` and `source == "rest"`. Both specification profiles use
 the same operation name. Terminal reason is one of
 `item_limit_exceeded`, `byte_limit_exceeded`, `generation_timeout`,
 `temporary_storage_unavailable`, `worker_memory_exceeded`, `worker_failed`,
-`client_cancelled`, or `concurrency_limit`. Events never include raw errors,
-paths, filters, requirement IDs, or requirement text.
+`client_cancelled`, or `concurrency_limit`. Action-log CSV telemetry includes
+only the common bounded metrics and operation name. Events never include raw
+errors, temporary paths, filters, identities, action-log contents, requirement
+IDs, or requirement text.
 
 Generated files are written before response headers to a private spool root
 selected by `KRAVHANTERING_EXPORT_TEMP_DIR`, or the operating-system temporary

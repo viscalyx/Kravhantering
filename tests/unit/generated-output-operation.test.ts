@@ -189,4 +189,37 @@ describe('generated output operation contract', () => {
       JSON.stringify(observability.recordCapacityEvent.mock.calls),
     ).not.toContain('full')
   })
+
+  it('records privacy-safe Action-log CSV telemetry', () => {
+    const recorder = createGeneratedOutputTerminalRecorder(
+      'admin.action_log_csv_export',
+      context,
+    )
+    recorder.completed({
+      byteCount: 2048,
+      itemCount: 201,
+      itemLimit: 1000,
+    })
+
+    expect(observability.recordCapacityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'capacity.operation.completed',
+        metrics: expect.objectContaining({
+          byte_count: 2048,
+          item_count: 201,
+          item_limit: 1000,
+        }),
+        operation: 'admin.action_log_csv_export',
+        source: 'rest',
+        surface: 'export',
+      }),
+    )
+    const payload = JSON.stringify(
+      observability.recordCapacityEvent.mock.calls[0],
+    )
+    expect(payload).not.toContain(context.actor.hsaId)
+    expect(payload).not.toContain(context.actor.displayName)
+    expect(payload).not.toContain('filter')
+    expect(payload).not.toContain('/private/')
+  })
 })

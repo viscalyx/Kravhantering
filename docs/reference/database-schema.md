@@ -195,7 +195,7 @@ erDiagram
 
     application_settings {
         integer id PK
-        integer csv_export_max_requirements
+        integer csv_export_max_items
         integer csv_export_max_file_bytes
         integer csv_export_concurrency_per_node
         integer csv_export_timeout_seconds
@@ -1479,13 +1479,15 @@ defaults used by the app.
 ### `application_settings`
 
 Singleton Admin Center resource limits for generated CSV exports and large PDF
-reports. File-size values are persisted as bytes; the UI converts them to MiB.
+reports. `csv_export_max_items` counts CSV data rows across every CSV dataset;
+it is not requirement-specific. File-size values are persisted as bytes; the
+UI converts them to MiB.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Default | Allowed value |
 | --- | --- | --- | --- |
 | `id` | integer PK | `1` | Singleton row `1` |
-| `csv_export_max_requirements` | integer | `1000` | `1`–`5000` |
+| `csv_export_max_items` | integer | `1000` | `1`–`5000` |
 | `csv_export_max_file_bytes` | integer | `104857600` | `1`–`1024` MiB in `1 MiB` steps |
 | `csv_export_concurrency_per_node` | integer | `5` | `1`–`20` |
 | `csv_export_timeout_seconds` | integer | `120` | `10`–`600` |
@@ -2064,7 +2066,9 @@ of related business data.
 `idx_action_audit_events_actor_hsa_id_occurred_at`,
 `idx_action_audit_events_target_occurred_at`,
 `idx_action_audit_events_action_occurred_at`,
-`idx_action_audit_events_client_ip_occurred_at`.
+`idx_action_audit_events_client_ip_occurred_at`. Every index appends `id DESC`
+after `occurred_at DESC` to support deterministic keyset traversal without
+copying identity snapshots or JSON into a covering index.
 
 **Check constraints:** `chk_action_audit_events_actor_kind` and
 `chk_action_audit_events_decision`.
@@ -2567,11 +2571,11 @@ its purpose and the table/column(s) it covers.
 | `idx_access_review_items_principal_hsa_id` | `access_review_items` | `principal_hsa_id` | Speed up privacy lookup for reviewed principals |
 | `idx_access_review_items_source_key` | `access_review_items` | `source_key` | Speed up source-family review evidence queries |
 | `idx_access_review_items_decided_by_hsa_id` | `access_review_items` | `decided_by_hsa_id` | Speed up privacy lookup for decision actors |
-| `idx_action_audit_events_occurred_at` | `action_audit_events` | `occurred_at` | Speed up recent action-log browsing |
-| `idx_action_audit_events_actor_hsa_id_occurred_at` | `action_audit_events` | `(actor_hsa_id, occurred_at)` | Speed up actor filtering and privacy erasure/export lookup |
-| `idx_action_audit_events_target_occurred_at` | `action_audit_events` | `(target_kind, target_id, occurred_at)` | Speed up target-focused audit review |
-| `idx_action_audit_events_action_occurred_at` | `action_audit_events` | `(action, occurred_at)` | Speed up action-name filtering |
-| `idx_action_audit_events_client_ip_occurred_at` | `action_audit_events` | `(client_ip, occurred_at)` | Speed up client-IP filtering during audit review |
+| `idx_action_audit_events_occurred_at` | `action_audit_events` | `(occurred_at, id)` | Speed up recent action-log browsing and stable export traversal |
+| `idx_action_audit_events_actor_hsa_id_occurred_at` | `action_audit_events` | `(actor_hsa_id, occurred_at, id)` | Speed up actor filtering and privacy erasure/export lookup |
+| `idx_action_audit_events_target_occurred_at` | `action_audit_events` | `(target_kind, target_id, occurred_at, id)` | Speed up target-focused audit review and export |
+| `idx_action_audit_events_action_occurred_at` | `action_audit_events` | `(action, occurred_at, id)` | Speed up action-name filtering and export |
+| `idx_action_audit_events_client_ip_occurred_at` | `action_audit_events` | `(client_ip, occurred_at, id)` | Speed up client-IP filtering and export |
 | `idx_archiving_retention_policies_enabled` | `archiving_retention_policies` | `is_enabled` | Speed up listing executable retention policies |
 | `idx_archiving_retention_runs_policy_id` | `archiving_retention_runs` | `policy_id` | Speed up latest-run lookups per retention policy |
 | `idx_archiving_retention_runs_started_at` | `archiving_retention_runs` | `started_at` | Speed up retention execution history ordering |

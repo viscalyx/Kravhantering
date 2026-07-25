@@ -37,11 +37,11 @@ const applicationSettingsPatchSchema = z
       .max(APPLICATION_SETTING_CONSTRAINTS.csvExportMaxFileBytes.max)
       .multipleOf(APPLICATION_SETTING_CONSTRAINTS.csvExportMaxFileBytes.step)
       .optional(),
-    csvExportMaxRequirements: z
+    csvExportMaxItems: z
       .number()
       .int()
-      .min(APPLICATION_SETTING_CONSTRAINTS.csvExportMaxRequirements.min)
-      .max(APPLICATION_SETTING_CONSTRAINTS.csvExportMaxRequirements.max)
+      .min(APPLICATION_SETTING_CONSTRAINTS.csvExportMaxItems.min)
+      .max(APPLICATION_SETTING_CONSTRAINTS.csvExportMaxItems.max)
       .optional(),
     csvExportTimeoutSeconds: z
       .number()

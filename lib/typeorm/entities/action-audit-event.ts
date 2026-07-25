@@ -120,23 +120,23 @@ export const actionAuditEventEntity = new EntitySchema<ActionAuditEventEntity>({
   },
   indices: [
     {
-      columns: ['occurredAt'],
+      columns: ['occurredAt', 'id'],
       name: 'idx_action_audit_events_occurred_at',
     },
     {
-      columns: ['actorHsaId', 'occurredAt'],
+      columns: ['actorHsaId', 'occurredAt', 'id'],
       name: 'idx_action_audit_events_actor_hsa_id_occurred_at',
     },
     {
-      columns: ['targetKind', 'targetId', 'occurredAt'],
+      columns: ['targetKind', 'targetId', 'occurredAt', 'id'],
       name: 'idx_action_audit_events_target_occurred_at',
     },
     {
-      columns: ['action', 'occurredAt'],
+      columns: ['action', 'occurredAt', 'id'],
       name: 'idx_action_audit_events_action_occurred_at',
     },
     {
-      columns: ['clientIp', 'occurredAt'],
+      columns: ['clientIp', 'occurredAt', 'id'],
       name: 'idx_action_audit_events_client_ip_occurred_at',
     },
   ],

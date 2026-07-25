@@ -2,6 +2,10 @@ import { access, mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  actionAuditCsvHeaders,
+  traverseActionAuditEventsForCsv,
+} from '@/lib/audit/action-audit'
 import { runBoundedCsvOutput } from '@/lib/generated-output/csv-runner'
 
 const mocks = vi.hoisted(() => ({
@@ -30,7 +34,7 @@ beforeEach(async () => {
   mocks.getApplicationSettings.mockResolvedValue({
     csvExportConcurrencyPerNode: 2,
     csvExportMaxFileBytes: 1024,
-    csvExportMaxRequirements: 2,
+    csvExportMaxItems: 2,
     csvExportTimeoutSeconds: 120,
   })
 })
@@ -63,6 +67,41 @@ function run(
 }
 
 describe('bounded CSV runner', () => {
+  it('returns a localized header-only action-log CSV for zero matches', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ anchorId: '42' }])
+      .mockResolvedValueOnce([])
+    const db = { query } as never
+    const headers = actionAuditCsvHeaders('sv')
+
+    const response = await runBoundedCsvOutput({
+      context,
+      db,
+      generateRows: async output => {
+        await traverseActionAuditEventsForCsv(
+          db,
+          { action: 'no.matching.action' },
+          { ...output, locale: 'sv' },
+        )
+      },
+      headers,
+      operation: 'admin.action_log_csv_export',
+      responseHeaders: {
+        'Content-Disposition': 'attachment; filename="atgardslogg.csv"',
+        'Content-Type': 'text/csv; charset=utf-8',
+      },
+    })
+    const bytes = new Uint8Array(await response.arrayBuffer())
+    const csv = new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)
+
+    expect(response.status).toBe(200)
+    expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf])
+    expect(csv).toBe(`\uFEFF${headers.join(';')}`)
+    expect(query).toHaveBeenCalledTimes(2)
+    expect(query.mock.calls[1]?.[0]).toContain('action = @0')
+  })
+
   it('streams the completed file and cleans it when delivery is cancelled', async () => {
     const response = await run(async ({ writeRow }) => {
       await writeRow('BEH0001')
@@ -81,7 +120,7 @@ describe('bounded CSV runner', () => {
     mocks.getApplicationSettings.mockResolvedValueOnce({
       csvExportConcurrencyPerNode: 2,
       csvExportMaxFileBytes: 1024,
-      csvExportMaxRequirements: 1,
+      csvExportMaxItems: 1,
       csvExportTimeoutSeconds: 120,
     })
 
@@ -113,7 +152,7 @@ describe('bounded CSV runner', () => {
     mocks.getApplicationSettings.mockResolvedValueOnce({
       csvExportConcurrencyPerNode: 2,
       csvExportMaxFileBytes: 1024,
-      csvExportMaxRequirements: 2,
+      csvExportMaxItems: 2,
       csvExportTimeoutSeconds: 0,
     })
 

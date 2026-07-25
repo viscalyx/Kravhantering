@@ -1034,7 +1034,7 @@
     },
     "errors": {
       "csv": {
-        "items": "CSV-exporten innehåller fler än den tillåtna gränsen på {limit} krav. Begränsa urvalet eller be en administratör justera exportinställningarna.",
+        "items": "CSV-exporten innehåller fler än den tillåtna gränsen på {limit} CSV-rader. Begränsa urvalet eller be en administratör justera exportinställningarna.",
         "bytes": "CSV-exporten överskrider den tillåtna filstorleken på {limitMiB} MiB. Begränsa urvalet eller be en administratör justera exportinställningarna.",
         "busy": "Så många CSV-exporter som tillåts samtidigt pågår redan. Du kan försöka igen om {retryAfter} sekunder.",
         "timeout": "CSV-exporten kunde inte slutföras inom tidsgränsen på {timeoutSeconds} sekunder. Begränsa urvalet eller be en administratör justera exportinställningarna.",
@@ -1756,12 +1756,13 @@
         "mib": "MiB",
         "renderings": "renderingar",
         "requirements": "krav",
+        "rows": "CSV-rader",
         "seconds": "sekunder"
       },
       "fields": {
-        "csvExportMaxRequirements": {
-          "label": "Högsta antal krav per CSV-export",
-          "help": "Begränsar hur många krav en CSV-export får innehålla. Exporten avvisas innan nedladdningen börjar om resultatet överstiger gränsen. Tillåtet: 1–5 000."
+        "csvExportMaxItems": {
+          "label": "Högsta antal rader per CSV-export",
+          "help": "Begränsar hur många datarader en CSV-export får innehålla. Exporten avvisas innan nedladdningen börjar om resultatet överstiger gränsen. Tillåtet: 1–5 000."
         },
         "csvExportMaxFileBytes": {
           "label": "Högsta CSV-filstorlek",

@@ -21,7 +21,7 @@ describe('application settings contract', () => {
     expect(DEFAULT_APPLICATION_SETTINGS).toEqual({
       csvExportConcurrencyPerNode: 5,
       csvExportMaxFileBytes: 100 * MIB,
-      csvExportMaxRequirements: 1000,
+      csvExportMaxItems: 1000,
       csvExportTimeoutSeconds: 120,
       pdfReportConcurrencyPerNode: 3,
       pdfReportMaxFileBytes: 50 * MIB,
@@ -67,6 +67,11 @@ describe('application settings contract', () => {
     expect(applicationSettingEntity.options.columns?.id).toMatchObject({
       primary: true,
     })
+    expect(
+      applicationSettingEntity.options.columns?.csvExportMaxItems,
+    ).toMatchObject({
+      name: 'csv_export_max_items',
+    })
     expect(applicationSettingEntity.options.checks).toHaveLength(10)
     expect(
       applicationSettingEntity.options.checks?.map(check => check.name),
@@ -111,7 +116,35 @@ describe('application settings contract', () => {
     for (const seedFile of ['typeorm/seed-required.mjs', 'typeorm/seed.mjs']) {
       const source = await readFile(seedFile, 'utf8')
       expect(source).toContain('application_settings')
+      expect(source).toContain('csv_export_max_items')
       expect(source).toContain('pdf_worker_memory_mib')
     }
+  })
+
+  it('renames the CSV row limit losslessly and extends Action-log indexes', async () => {
+    const migration = await import(
+      '@/typeorm/migrations/0051_action_log_csv_export.mjs'
+    )
+    const queryRunner = {
+      query: vi.fn(async (_statement: string) => {}),
+    }
+    const Migration = migration.default
+    const instance = new Migration()
+
+    await instance.up(queryRunner)
+    const upSql = queryRunner.query.mock.calls
+      .map(([statement]) => String(statement))
+      .join('\n')
+    expect(upSql).toContain('sp_rename')
+    expect(upSql).toContain('csv_export_max_items')
+    expect(upSql).toContain('[actor_hsa_id], [occurred_at] DESC, [id] DESC')
+
+    queryRunner.query.mockClear()
+    await instance.down(queryRunner)
+    const downSql = queryRunner.query.mock.calls
+      .map(([statement]) => String(statement))
+      .join('\n')
+    expect(downSql).toContain('csv_export_max_requirements')
+    expect(downSql).toContain('[actor_hsa_id], [occurred_at] DESC')
   })
 })

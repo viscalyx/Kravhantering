@@ -576,11 +576,8 @@ describe('AdminClient', () => {
       '203.0.113.10',
     )
     expect(
-      screen.getByRole('link', { name: 'admin.auditLog.exportCsv' }),
-    ).toHaveAttribute(
-      'href',
-      '/api/admin/audit-events?action=requirement.create&client_ip=203.0.113.10&page=2&pageSize=25&locale=sv&format=csv',
-    )
+      screen.getByRole('button', { name: 'admin.auditLog.exportCsv' }),
+    ).toBeEnabled()
     expect(
       screen.getByRole('link', { name: 'admin.auditLog.clear' }),
     ).toHaveAttribute('href', '/sv/admin?tab=actionAuditLog')

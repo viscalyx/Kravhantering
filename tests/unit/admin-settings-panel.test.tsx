@@ -94,7 +94,7 @@ describe('SettingsPanel', () => {
     expect(
       screen
         .getByLabelText(
-          'admin.applicationSettings.fields.csvExportMaxRequirements.label',
+          'admin.applicationSettings.fields.csvExportMaxItems.label',
         )
         .closest('.grid'),
     ).toHaveClass('lg:grid-cols-2')
@@ -109,7 +109,7 @@ describe('SettingsPanel', () => {
     const expectedUnits = {
       csvExportConcurrencyPerNode: 'exports',
       csvExportMaxFileBytes: 'mib',
-      csvExportMaxRequirements: 'requirements',
+      csvExportMaxItems: 'rows',
       csvExportTimeoutSeconds: 'seconds',
       pdfReportConcurrencyPerNode: 'renderings',
       pdfReportMaxFileBytes: 'mib',
@@ -344,7 +344,7 @@ describe('SettingsPanel', () => {
     await waitFor(() =>
       expect(
         screen.getByLabelText(
-          'admin.applicationSettings.fields.csvExportMaxRequirements.label',
+          'admin.applicationSettings.fields.csvExportMaxItems.label',
         ),
       ).toBeEnabled(),
     )
@@ -355,7 +355,7 @@ describe('SettingsPanel', () => {
     render(<SettingsPanel />)
 
     const input = await screen.findByLabelText(
-      'admin.applicationSettings.fields.csvExportMaxRequirements.label',
+      'admin.applicationSettings.fields.csvExportMaxItems.label',
     )
     input.focus()
     fireEvent.change(input, { target: { value: '5001' } })

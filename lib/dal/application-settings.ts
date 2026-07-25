@@ -13,7 +13,7 @@ interface ApplicationSettingsRow {
   createdAt: Date | string
   csvExportConcurrencyPerNode: number | string
   csvExportMaxFileBytes: number | string
-  csvExportMaxRequirements: number | string
+  csvExportMaxItems: number | string
   csvExportTimeoutSeconds: number | string
   id: number | string
   pdfReportConcurrencyPerNode: number | string
@@ -51,7 +51,7 @@ const COLUMN_BY_FIELD: Readonly<Record<ApplicationSettingField, string>> =
   Object.freeze({
     csvExportConcurrencyPerNode: 'csv_export_concurrency_per_node',
     csvExportMaxFileBytes: 'csv_export_max_file_bytes',
-    csvExportMaxRequirements: 'csv_export_max_requirements',
+    csvExportMaxItems: 'csv_export_max_items',
     csvExportTimeoutSeconds: 'csv_export_timeout_seconds',
     pdfReportConcurrencyPerNode: 'pdf_report_concurrency_per_node',
     pdfReportMaxFileBytes: 'pdf_report_max_file_bytes',
@@ -63,7 +63,7 @@ const COLUMN_BY_FIELD: Readonly<Record<ApplicationSettingField, string>> =
 const APPLICATION_SETTINGS_SELECT = `
   SELECT
     [id],
-    [csv_export_max_requirements] AS [csvExportMaxRequirements],
+    [csv_export_max_items] AS [csvExportMaxItems],
     [csv_export_max_file_bytes] AS [csvExportMaxFileBytes],
     [csv_export_concurrency_per_node] AS [csvExportConcurrencyPerNode],
     [csv_export_timeout_seconds] AS [csvExportTimeoutSeconds],
@@ -82,7 +82,7 @@ function rowToSettings(row: ApplicationSettingsRow): ApplicationSettings {
   return {
     csvExportConcurrencyPerNode: Number(row.csvExportConcurrencyPerNode),
     csvExportMaxFileBytes: Number(row.csvExportMaxFileBytes),
-    csvExportMaxRequirements: Number(row.csvExportMaxRequirements),
+    csvExportMaxItems: Number(row.csvExportMaxItems),
     csvExportTimeoutSeconds: Number(row.csvExportTimeoutSeconds),
     pdfReportConcurrencyPerNode: Number(row.pdfReportConcurrencyPerNode),
     pdfReportMaxFileBytes: Number(row.pdfReportMaxFileBytes),

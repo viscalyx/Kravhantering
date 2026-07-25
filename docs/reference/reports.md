@@ -323,7 +323,13 @@ row-wise exporters produce CSV with the following conventions:
   and is served only by `GET /api/requirements/export`. It applies the requested
   server filters, locale, and database sort, starts from the first page, and
   accepts no cursor or page-size parameter.
-- Requirements Library CSV, specification CSV, and filtered list PDF
+- Action-log CSV is served by `GET /api/admin/audit-events?format=csv` to Admin
+  users. It ignores interactive `page` and `pageSize`, anchors membership to
+  the current maximum action-log ID, and keyset-traverses the complete filtered
+  result in `occurred_at DESC, id DESC` order. Zero matches return the localized
+  header only.
+- Requirements Library CSV, specification CSV, Action-log CSV, and filtered
+  list PDF
   collection traverse internal bounded pages and fetch at most the Admin item
   limit plus one row. They fail rather than return partial output if a page
   repeats a stable identifier, does not make progress, repeats a cursor, or
@@ -332,11 +338,11 @@ row-wise exporters produce CSV with the following conventions:
 ## Bounded Synchronous Output
 
 Requirements Library CSV, procurement and full requirements-specification CSV,
-and the requirements-list PDF are same-request, all-or-error operations. After
-authorization they read one `application_settings` snapshot, acquire a
-process-local per-node slot, reserve the configured maximum file size against
-temporary-storage capacity, and create a private spool file. Both specification
-profiles share the Requirements Library CSV item, byte, timeout, and concurrency
+Action-log CSV, and the requirements-list PDF are same-request, all-or-error
+operations. After authorization they read one `application_settings` snapshot,
+acquire a process-local per-node slot, reserve the configured maximum file size
+against temporary-storage capacity, and create a private spool file. All CSV
+operations share the generalized CSV row, byte, timeout, and concurrency
 settings and the same CSV pool. No response headers are sent until generation
 has completed within all configured bounds.
 

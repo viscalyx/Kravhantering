@@ -29,7 +29,7 @@ type CsvOutputSettings = Pick<
   ApplicationSettings,
   | 'csvExportConcurrencyPerNode'
   | 'csvExportMaxFileBytes'
-  | 'csvExportMaxRequirements'
+  | 'csvExportMaxItems'
   | 'csvExportTimeoutSeconds'
 >
 
@@ -67,7 +67,7 @@ export async function runBoundedCsvOutput(
     byteCount,
     concurrencyLimit: settings?.csvExportConcurrencyPerNode,
     itemCount,
-    itemLimit: settings?.csvExportMaxRequirements,
+    itemLimit: settings?.csvExportMaxItems,
     timeoutMs:
       settings == null ? undefined : settings.csvExportTimeoutSeconds * 1000,
   })
@@ -96,7 +96,7 @@ export async function runBoundedCsvOutput(
     )
 
     const generationSignal = deadline.signal
-    const maxItems = settings.csvExportMaxRequirements
+    const maxItems = settings.csvExportMaxItems
     await options.generateRows({
       maxItems,
       signal: generationSignal,

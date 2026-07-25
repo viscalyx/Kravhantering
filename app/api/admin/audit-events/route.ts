@@ -1,18 +1,19 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
-  actionAuditEventsToCsv,
+  actionAuditCsvHeaders,
   assertAdminForActionAudit,
   listActionAuditEvents,
+  traverseActionAuditEventsForCsv,
 } from '@/lib/audit/action-audit'
 import { isValidClientIp } from '@/lib/auth/client-ip'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { runBoundedCsvOutput } from '@/lib/generated-output/csv-runner'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import { parseSearchParams } from '@/lib/http/validation'
 import { createRequestContext } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
-import { withUtf8Bom } from '@/lib/text-export'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,7 +75,7 @@ const auditEventsQuerySchema = z
   })
   .strict()
 
-function noStore<T extends NextResponse>(response: T): T {
+function noStore<T extends Response>(response: T): T {
   response.headers.set('Cache-Control', 'no-store')
   return response
 }
@@ -91,36 +92,49 @@ export async function GET(request: NextRequest) {
     const context = await createRequestContext(request, 'rest')
     assertAdminForActionAudit(context)
     const db = await getRequestSqlServerDataSource()
-    const result = await listActionAuditEvents(db, {
+    const filters = {
       action: parsedQuery.data.action,
       actorHsaId: parsedQuery.data.actor_hsa_id,
       clientIp: parsedQuery.data.client_ip,
       decision: parsedQuery.data.decision,
       from: parsedQuery.data.from,
-      page: parsedQuery.data.page,
-      pageSize: parsedQuery.data.pageSize,
       targetId: parsedQuery.data.target_id,
       targetKind: parsedQuery.data.target_kind,
       to: parsedQuery.data.to,
-    })
+    }
 
     if (parsedQuery.data.format === 'csv') {
       const filename =
         parsedQuery.data.locale === 'sv' ? 'atgardslogg.csv' : 'action-log.csv'
       return noStore(
-        new NextResponse(
-          withUtf8Bom(
-            actionAuditEventsToCsv(result.events, parsedQuery.data.locale),
-          ),
-          {
-            headers: {
-              'Content-Disposition': `attachment; filename="${filename}"`,
-              'Content-Type': 'text/csv; charset=utf-8',
-            },
+        await runBoundedCsvOutput({
+          context,
+          db,
+          generateRows: async ({ maxItems, signal, writeRow }) => {
+            await traverseActionAuditEventsForCsv(db, filters, {
+              locale: parsedQuery.data.locale,
+              maxItems,
+              signal,
+              writeRow,
+            })
           },
-        ),
+          headers: actionAuditCsvHeaders(parsedQuery.data.locale),
+          operation: 'admin.action_log_csv_export',
+          requestSignal: request.signal,
+          responseHeaders: {
+            'Cache-Control': 'no-store',
+            'Content-Disposition': `attachment; filename="${filename}"`,
+            'Content-Type': 'text/csv; charset=utf-8',
+          },
+        }),
       )
     }
+
+    const result = await listActionAuditEvents(db, {
+      ...filters,
+      page: parsedQuery.data.page,
+      pageSize: parsedQuery.data.pageSize,
+    })
 
     return noStore(NextResponse.json(result))
   } catch (error) {

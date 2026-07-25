@@ -31,11 +31,11 @@ interface SettingDefinition {
   field: ApplicationSettingField
   stepper?: boolean
   storedAsBytes?: boolean
-  unit: 'exports' | 'mib' | 'renderings' | 'requirements' | 'seconds'
+  unit: 'exports' | 'mib' | 'renderings' | 'requirements' | 'rows' | 'seconds'
 }
 
 const EXPORT_SETTINGS: readonly SettingDefinition[] = [
-  { field: 'csvExportMaxRequirements', unit: 'requirements' },
+  { field: 'csvExportMaxItems', unit: 'rows' },
   {
     adjustmentStep: 1,
     field: 'csvExportMaxFileBytes',

@@ -77,7 +77,10 @@ Deferred from this contract:
   migration `name`, and only for mismatch diagnostics.
 - CSV, PDF, and report export routes remain outside the
   OpenAPI/Schemathesis v1 contract, except for data-subject export and
-  `GET /api/requirements/export`. Their
+  `GET /api/requirements/export`. The Admin-only
+  `GET /api/admin/audit-events` Action-log JSON and CSV endpoint is also
+  intentionally excluded and governed by focused authorization, traversal,
+  capacity-envelope, and download tests. The excluded routes'
   useful assertions are exact columns, localized filenames, byte content,
   `Cache-Control: no-store`, and authorization-before-data checks, so focused
   route/report tests are the better coverage mechanism.

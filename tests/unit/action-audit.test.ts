@@ -6,7 +6,9 @@ import {
   recordActionAuditEvent,
   recordAllowedActionAuditEventWithExecutor,
   recordDeniedActionAuditEvent,
+  traverseActionAuditEventsForCsv,
 } from '@/lib/audit/action-audit'
+import { createCsvItemLimitError } from '@/lib/generated-output/csv-runner'
 import type { RequestContext } from '@/lib/requirements/auth'
 
 function context(overrides: Partial<RequestContext> = {}): RequestContext {
@@ -247,5 +249,200 @@ describe('action audit helper', () => {
     expect(csv).toContain('Tillåten')
     expect(csv).toContain('Nekad')
     expect(csv).toContain('requirement.create')
+  })
+
+  it('traverses more than 200 filtered rows in stable equal-time ID order', async () => {
+    const occurredAt = new Date('2026-05-16T09:00:00Z')
+    const rows = Array.from({ length: 301 }, (_, index) => ({
+      ...exportEvent,
+      action: 'requirement.create',
+      actorHsaId: 'SE5560000001-admin1',
+      clientIp: '203.0.113.23',
+      decision: 'allowed',
+      id: String(301 - index),
+      occurredAt,
+      targetId: '42',
+      targetKind: 'Requirement',
+    }))
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ anchorId: '301' }])
+      .mockResolvedValueOnce(rows.slice(0, 200))
+      .mockResolvedValueOnce(rows.slice(200))
+    const serializedRows: string[] = []
+
+    await traverseActionAuditEventsForCsv(
+      { query } as never,
+      {
+        action: 'requirement.create',
+        actorHsaId: 'SE5560000001-admin1',
+        clientIp: '203.0.113.23',
+        decision: 'allowed',
+        from: new Date('2026-05-01T00:00:00Z'),
+        targetId: '42',
+        targetKind: 'Requirement',
+        to: new Date('2026-05-31T23:59:59Z'),
+      },
+      {
+        locale: 'sv',
+        maxItems: 500,
+        signal: new AbortController().signal,
+        writeRow: async row => {
+          serializedRows.push(row)
+        },
+      },
+    )
+
+    expect(serializedRows).toHaveLength(301)
+    expect(serializedRows[0]).toContain('Tillåten')
+    expect(query).toHaveBeenCalledTimes(3)
+    expect(query.mock.calls[1]?.[0]).toContain('TOP (@9)')
+    expect(query.mock.calls[1]?.[0]).toContain('id <= @8')
+    expect(query.mock.calls[1]?.[0]).toContain(
+      'ORDER BY occurred_at DESC, id DESC',
+    )
+    expect(query.mock.calls[2]?.[0]).toContain('occurred_at < @9')
+    expect(query.mock.calls[2]?.[0]).toContain('id < @10')
+    expect(query.mock.calls[1]?.[1]).toEqual(
+      expect.arrayContaining([
+        'SE5560000001-admin1',
+        '203.0.113.23',
+        'requirement.create',
+        'Requirement',
+        '42',
+        'allowed',
+        expect.any(Date),
+        expect.any(Date),
+        '301',
+        200,
+      ]),
+    )
+  })
+
+  it('allows the exact row limit and probes only one extra row', async () => {
+    const rows = ['2', '1'].map(id => ({
+      ...exportEvent,
+      id,
+      occurredAt: new Date('2026-05-16T09:00:00Z'),
+    }))
+    const exactQuery = vi
+      .fn()
+      .mockResolvedValueOnce([{ anchorId: '2' }])
+      .mockResolvedValueOnce(rows)
+    const exactRows: string[] = []
+
+    await traverseActionAuditEventsForCsv(
+      { query: exactQuery } as never,
+      {},
+      {
+        maxItems: 2,
+        signal: new AbortController().signal,
+        writeRow: async row => {
+          exactRows.push(row)
+        },
+      },
+    )
+
+    expect(exactRows).toHaveLength(2)
+    expect(exactQuery.mock.calls[1]?.[1]).toContain(3)
+
+    const tooManyQuery = vi
+      .fn()
+      .mockResolvedValueOnce([{ anchorId: '3' }])
+      .mockResolvedValueOnce([
+        { ...rows[0], id: '3' },
+        { ...rows[0], id: '2' },
+        { ...rows[0], id: '1' },
+      ])
+    let count = 0
+    await expect(
+      traverseActionAuditEventsForCsv(
+        { query: tooManyQuery } as never,
+        {},
+        {
+          maxItems: 2,
+          signal: new AbortController().signal,
+          writeRow: async () => {
+            if (count >= 2) throw createCsvItemLimitError(2)
+            count += 1
+          },
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: 'output_limit_exceeded',
+      details: { limit: 2, limitKind: 'items', output: 'csv' },
+    })
+  })
+
+  it('stops on cancellation and rejects duplicate or non-progressing pages', async () => {
+    const cancelled = new AbortController()
+    cancelled.abort()
+    const cancelledQuery = vi.fn()
+    await expect(
+      traverseActionAuditEventsForCsv(
+        { query: cancelledQuery } as never,
+        {},
+        {
+          maxItems: 10,
+          signal: cancelled.signal,
+          writeRow: vi.fn(),
+        },
+      ),
+    ).rejects.toThrow()
+    expect(cancelledQuery).not.toHaveBeenCalled()
+
+    const duplicateQuery = vi
+      .fn()
+      .mockResolvedValueOnce([{ anchorId: '3' }])
+      .mockResolvedValueOnce([
+        {
+          ...exportEvent,
+          id: '2',
+          occurredAt: new Date('2026-05-16T09:00:00Z'),
+        },
+        {
+          ...exportEvent,
+          id: '2',
+          occurredAt: new Date('2026-05-16T08:00:00Z'),
+        },
+      ])
+    await expect(
+      traverseActionAuditEventsForCsv(
+        { query: duplicateQuery } as never,
+        {},
+        {
+          maxItems: 10,
+          signal: new AbortController().signal,
+          writeRow: vi.fn(),
+        },
+      ),
+    ).rejects.toThrow('duplicate ID')
+
+    const stalledQuery = vi
+      .fn()
+      .mockResolvedValueOnce([{ anchorId: '3' }])
+      .mockResolvedValueOnce([
+        {
+          ...exportEvent,
+          id: '2',
+          occurredAt: new Date('2026-05-16T09:00:00Z'),
+        },
+        {
+          ...exportEvent,
+          id: '3',
+          occurredAt: new Date('2026-05-16T09:00:00Z'),
+        },
+      ])
+    await expect(
+      traverseActionAuditEventsForCsv(
+        { query: stalledQuery } as never,
+        {},
+        {
+          maxItems: 10,
+          signal: new AbortController().signal,
+          writeRow: vi.fn(),
+        },
+      ),
+    ).rejects.toThrow('did not make progress')
   })
 })
