@@ -41,6 +41,9 @@ Covered by this contract:
 - `GET /api/requirements/export` is the complete Requirements Library CSV
   contract. It accepts the documented filters, locale, and sort but no cursor
   or page size, and uses the same authorization and SQL ordering as list pages.
+  Node can reject an oversized request target before application routing with
+  `431`; the contract documents that runtime response without weakening status
+  conformance for other responses or routes.
 - `GET /api/requirements-specifications/{id}/exports` serves procurement and
   full CSV only after specification read authorization and procurement
   lifecycle validation. Both profiles use the common bounded CSV settings,

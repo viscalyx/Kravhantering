@@ -371,6 +371,8 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '431':
+          $ref: '#/components/responses/RequestHeaderFieldsTooLarge'
 
   /api/requirements/{id}:
     parameters:
@@ -990,6 +992,10 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
+    RequestHeaderFieldsTooLarge:
+      description: >-
+        Request target or header fields exceed the HTTP runtime limit. This
+        response can be generated before application routing.
     NoStoreBadRequest:
       description: Invalid request.
       headers:
