@@ -2,18 +2,26 @@
 
 ## Supported Versions
 
-We actively support and provide security updates for the following versions of
-Kravhantering:
+Kravhantering follows a roll-forward security model. Security fixes are
+implemented on `main` and become available in the first tagged release that
+contains the fix. That release can also contain functional changes, breaking
+changes, and other bug fixes already present on `main`.
+
+The latest tagged release is supported until a newer tagged release is
+published. Support does not mean that an existing tag receives fixes. Tagged
+releases are never rebuilt, and fixes are not backported to earlier versions or
+maintained release branches.
+
+For example, a vulnerability affecting version 2.0 is resolved by upgrading to
+version 2.1 or later. No security-fixed version of 2.0 is published.
 
 <!-- markdownlint-disable MD013 -->
-| Branch / Release          | Security-supported? |
-| ------------------------- | ------------------- |
-| `main` (latest)           | :white_check_mark:  |
-| Latest tagged release.    | :x:                 |
+| Code line / release | Security status |
+| --- | --- |
+| `main` | Receives security fixes and is the source of the next tagged release. |
+| Latest tagged release | Supported until the next tagged release is published; does not receive in-place fixes. |
+| Older tagged releases | Unsupported; no fixes or backports are provided. |
 <!-- markdownlint-enable MD013 -->
-
-The latest version in the main branch is what is normally published
-automatically.
 
 ## Reporting a Vulnerability
 

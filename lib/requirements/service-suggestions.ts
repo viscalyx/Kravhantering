@@ -1,14 +1,9 @@
 import {
   countSuggestionsByRequirement,
   createSuggestion,
-  deleteSuggestion,
   listSuggestionsForRequirement,
-  recordResolution,
-  requestReview,
-  revertToDraft,
   SUGGESTION_DISMISSED,
   SUGGESTION_RESOLVED,
-  updateSuggestion,
 } from '@/lib/dal/improvement-suggestions'
 import { getRequirementByUniqueId } from '@/lib/dal/requirements'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -17,8 +12,14 @@ import {
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
 import { notFoundError, validationError } from '@/lib/requirements/errors'
+import {
+  deleteImprovementSuggestionWithAudit,
+  requestImprovementSuggestionReview,
+  resolveImprovementSuggestionWithAudit,
+  revertImprovementSuggestionToDraft,
+  updateImprovementSuggestion,
+} from '@/lib/requirements/improvement-suggestion-mutations'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
-import { recordSensitiveMutationSucceeded } from '@/lib/requirements/security-audit'
 import type { RequirementsService } from '@/lib/requirements/service'
 import {
   authorize,
@@ -175,7 +176,7 @@ export function createSuggestionWorkflow({
             if (!trimmedContent) {
               throw validationError('Content is required for editing')
             }
-            await updateSuggestion(db, input.suggestionId, {
+            await updateImprovementSuggestion(db, input.suggestionId, {
               content: trimmedContent,
             })
             const summary =
@@ -195,7 +196,7 @@ export function createSuggestionWorkflow({
           }
 
           if (input.operation === 'request_review') {
-            await requestReview(db, input.suggestionId)
+            await requestImprovementSuggestionReview(db, input.suggestionId)
             const summary =
               locale === 'sv'
                 ? `Förbättringsförslag ${input.suggestionId} skickat för granskning.`
@@ -213,7 +214,7 @@ export function createSuggestionWorkflow({
           }
 
           if (input.operation === 'revert_to_draft') {
-            await revertToDraft(db, input.suggestionId)
+            await revertImprovementSuggestionToDraft(db, input.suggestionId)
             const summary =
               locale === 'sv'
                 ? `Förbättringsförslag ${input.suggestionId} återställt till utkast.`
@@ -240,18 +241,17 @@ export function createSuggestionWorkflow({
               throw validationError('Resolution motivation is required')
             }
             const actor = requireHumanActorSnapshot(context)
-            await recordResolution(db, input.suggestionId, {
-              resolution,
-              resolutionMotivation: trimmedMotivation,
-              resolvedBy: actor.displayName,
-              resolvedByHsaId: actor.hsaId,
-            })
-            await recordSensitiveMutationSucceeded(context, {
-              action: 'suggestion.resolution.recorded',
-              operation: input.operation,
-              resolution,
-              suggestionId: input.suggestionId,
-            })
+            await resolveImprovementSuggestionWithAudit(
+              db,
+              input.suggestionId,
+              {
+                resolution,
+                resolutionMotivation: trimmedMotivation,
+                resolvedBy: actor.displayName,
+                resolvedByHsaId: actor.hsaId,
+              },
+              context,
+            )
             const resolutionLabel =
               resolution === SUGGESTION_RESOLVED
                 ? locale === 'sv'
@@ -280,12 +280,11 @@ export function createSuggestionWorkflow({
           }
 
           if (input.operation === 'delete') {
-            await deleteSuggestion(db, input.suggestionId)
-            await recordSensitiveMutationSucceeded(context, {
-              action: 'suggestion.deleted',
-              operation: input.operation,
-              suggestionId: input.suggestionId,
-            })
+            await deleteImprovementSuggestionWithAudit(
+              db,
+              input.suggestionId,
+              context,
+            )
             const summary =
               locale === 'sv'
                 ? `Förbättringsförslag ${input.suggestionId} borttaget.`

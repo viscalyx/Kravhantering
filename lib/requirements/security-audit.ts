@@ -494,6 +494,15 @@ export async function recordSensitiveMutationSucceededWithExecutor(
   context: RequestContext,
   detail: SensitiveMutationAuditDetail,
 ): Promise<void> {
+  await recordSensitiveMutationActionAuditEvent(executor, context, detail)
+  recordSensitiveMutationSecurityEvent(context, detail)
+}
+
+export async function recordSensitiveMutationActionAuditEvent(
+  executor: QueryExecutor,
+  context: RequestContext,
+  detail: SensitiveMutationAuditDetail,
+): Promise<void> {
   await recordAllowedActionAuditEvent(executor, context, {
     action: normalizeSensitiveMutationAction(detail),
     details: compactDetail({
@@ -503,6 +512,12 @@ export async function recordSensitiveMutationSucceededWithExecutor(
     }),
     ...targetForSensitiveMutation(detail),
   })
+}
+
+export function recordSensitiveMutationSecurityEvent(
+  context: RequestContext,
+  detail: SensitiveMutationAuditDetail,
+): void {
   recordSecurityEvent({
     actor: securityActorFromContext(context.actor),
     detail: compactDetail({

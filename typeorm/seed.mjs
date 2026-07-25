@@ -14282,9 +14282,18 @@ async function seedDemoLifecycleRow({
   row,
   table,
 }) {
-  if (table !== 'rfi_question_suggestions') return false
+  if (
+    table !== 'improvement_suggestions' &&
+    table !== 'rfi_question_suggestions'
+  ) {
+    return false
+  }
 
   const value = column => row[columns.indexOf(column)]
+  const resolvedByDisplayColumn =
+    table === 'improvement_suggestions'
+      ? 'resolved_by'
+      : 'resolved_by_display_name'
   const draftRow = [...row]
   const setDraftValue = (column, nextValue) => {
     draftRow[columns.indexOf(column)] = nextValue
@@ -14295,41 +14304,51 @@ async function seedDemoLifecycleRow({
   setDraftValue('resolution_motivation', null)
   setDraftValue('updated_at', null)
   setDraftValue('resolved_by_hsa_id', null)
-  setDraftValue('resolved_by_display_name', null)
+  setDraftValue(resolvedByDisplayColumn, null)
   setDraftValue('resolved_at', null)
   await query(defaultSql, draftRow)
 
   if (value('is_review_requested') === 1) {
     await query(
-      `UPDATE [rfi_question_suggestions]
+      `UPDATE [${table}]
        SET [is_review_requested] = 1,
            [review_requested_at] = @1,
            [updated_at] = @2
        WHERE [id] = @0
          AND [is_review_requested] = 0
-         AND [resolution] IS NULL`,
+         AND [review_requested_at] IS NULL
+         AND [resolution] IS NULL
+         AND [resolution_motivation] IS NULL
+         AND [resolved_by_hsa_id] IS NULL
+         AND [${resolvedByDisplayColumn}] IS NULL
+         AND [resolved_at] IS NULL`,
       [value('id'), value('review_requested_at'), value('updated_at')],
     )
   }
 
   if (value('resolution') != null) {
     await query(
-      `UPDATE [rfi_question_suggestions]
+      `UPDATE [${table}]
        SET [resolution] = @1,
            [resolution_motivation] = @2,
            [resolved_by_hsa_id] = @3,
-           [resolved_by_display_name] = @4,
+           [${resolvedByDisplayColumn}] = @4,
            [resolved_at] = @5,
            [updated_at] = @6
        WHERE [id] = @0
          AND [is_review_requested] = 1
-         AND [resolution] IS NULL`,
+         AND [review_requested_at] IS NOT NULL
+         AND [resolution] IS NULL
+         AND [resolution_motivation] IS NULL
+         AND [resolved_by_hsa_id] IS NULL
+         AND [${resolvedByDisplayColumn}] IS NULL
+         AND [resolved_at] IS NULL`,
       [
         value('id'),
         value('resolution'),
         value('resolution_motivation'),
         value('resolved_by_hsa_id'),
-        value('resolved_by_display_name'),
+        value(resolvedByDisplayColumn),
         value('resolved_at'),
         value('updated_at'),
       ],

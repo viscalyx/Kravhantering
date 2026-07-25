@@ -2445,13 +2445,12 @@ draft → review requested → resolved or dismissed.
 `idx_improvement_suggestions_created_by_hsa_id`,
 `idx_improvement_suggestions_resolved_by_hsa_id`.
 
-**Triggers:**
-
-- `enforce_requirement_version_match_insert` — BEFORE INSERT: when
-  `requirement_version_id` is not null, aborts if the referenced version does
-  not belong to the same `requirement_id`.
-- `enforce_requirement_version_match_update` — BEFORE UPDATE: same guard as
-  above, applied on updates.
+**Constraints:** `chk_improvement_suggestions_lifecycle` permits only coherent
+draft, review-requested, resolved, and dismissed states. Drafts contain no
+review or resolution evidence. Review-requested suggestions retain their first
+review timestamp. Resolved and dismissed suggestions require a valid decision,
+non-blank motivation, and ordered review and resolution timestamps. Resolver
+identity snapshots remain nullable so privacy erasure can anonymize them.
 
 ---
 

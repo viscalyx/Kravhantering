@@ -40,6 +40,21 @@ const SAFE_RFI_QUESTION_SUGGESTION_CONFLICT_REASONS = [
   'rfi_question_suggestion_not_draft',
 ] as const
 
+const SAFE_IMPROVEMENT_SUGGESTION_CONFLICT_REASONS = [
+  'improvement_suggestion_already_draft',
+  'improvement_suggestion_already_resolved',
+  'improvement_suggestion_not_draft',
+  'improvement_suggestion_review_already_requested',
+  'improvement_suggestion_review_required',
+] as const
+
+type SafeImprovementSuggestionConflictReason =
+  (typeof SAFE_IMPROVEMENT_SUGGESTION_CONFLICT_REASONS)[number]
+
+interface SafeImprovementSuggestionConflictHttpDetails {
+  reason: SafeImprovementSuggestionConflictReason
+}
+
 type SafeRfiQuestionSuggestionConflictReason =
   (typeof SAFE_RFI_QUESTION_SUGGESTION_CONFLICT_REASONS)[number]
 
@@ -63,6 +78,7 @@ interface SafePrivacyErasureHttpDetails {
 }
 
 type SafeHttpErrorDetails =
+  | SafeImprovementSuggestionConflictHttpDetails
   | SafeNormReferenceIdConflictHttpDetails
   | SafePrivacyErasureHttpDetails
   | SafeRfiQuestionSuggestionConflictHttpDetails
@@ -130,6 +146,17 @@ function toSafeHttpErrorDetails(
   ) {
     return {
       reason: details?.reason as SafeNormReferenceIdConflictReason,
+    }
+  }
+
+  if (
+    code === 'conflict' &&
+    SAFE_IMPROVEMENT_SUGGESTION_CONFLICT_REASONS.includes(
+      details?.reason as SafeImprovementSuggestionConflictReason,
+    )
+  ) {
+    return {
+      reason: details?.reason as SafeImprovementSuggestionConflictReason,
     }
   }
 

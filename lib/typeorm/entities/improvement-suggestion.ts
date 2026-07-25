@@ -77,6 +77,45 @@ export const improvementSuggestionEntity =
         nullable: true,
       },
     },
+    checks: [
+      {
+        expression: `(
+          (
+            [is_review_requested] = 0
+            AND [review_requested_at] IS NULL
+            AND [resolution] IS NULL
+            AND [resolution_motivation] IS NULL
+            AND [resolved_by] IS NULL
+            AND [resolved_by_hsa_id] IS NULL
+            AND [resolved_at] IS NULL
+          )
+          OR
+          (
+            [is_review_requested] = 1
+            AND [review_requested_at] IS NOT NULL
+            AND [review_requested_at] >= [created_at]
+            AND
+            (
+              (
+                [resolution] IS NULL
+                AND [resolution_motivation] IS NULL
+                AND [resolved_by] IS NULL
+                AND [resolved_by_hsa_id] IS NULL
+                AND [resolved_at] IS NULL
+              )
+              OR
+              (
+                [resolution] IN (1, 2)
+                AND NULLIF(LTRIM(RTRIM([resolution_motivation])), N'') IS NOT NULL
+                AND [resolved_at] IS NOT NULL
+                AND [resolved_at] >= [review_requested_at]
+              )
+            )
+          )
+        )`,
+        name: 'chk_improvement_suggestions_lifecycle',
+      },
+    ],
     indices: [
       {
         name: 'idx_improvement_suggestions_requirement_id',

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { validationError } from '@/lib/requirements/errors'
+import { conflictError, validationError } from '@/lib/requirements/errors'
 
 const mocks = vi.hoisted(() => {
   const context = {
@@ -224,6 +224,32 @@ describe('improvement suggestion REST service boundary', () => {
         suggestionId: 9,
       },
     )
+  })
+
+  it('returns a reason-coded 409 for a repeated review request', async () => {
+    mocks.service.manageSuggestion.mockRejectedValueOnce(
+      conflictError('Review has already been requested', {
+        reason: 'improvement_suggestion_review_already_requested',
+        suggestionId: 9,
+      }),
+    )
+
+    const response = await requestSuggestionReview(
+      new NextRequest(
+        'http://localhost/api/improvement-suggestions/9/request-review',
+        { method: 'POST' },
+      ),
+      makeParams('9'),
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      code: 'conflict',
+      details: {
+        reason: 'improvement_suggestion_review_already_requested',
+      },
+      error: 'Review has already been requested',
+    })
   })
 
   it('maps REST resolution values to service suggestion operations', async () => {

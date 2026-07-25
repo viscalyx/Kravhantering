@@ -1992,6 +1992,41 @@ describe('createRequirementsService', () => {
     ])
   })
 
+  it('preserves suggestion review success messages and reason-coded conflicts', async () => {
+    const service = createTestRequirementsService()
+
+    await expect(
+      service.manageSuggestion(makeContext(), {
+        operation: 'request_review',
+        responseFormat: 'markdown',
+        suggestionId: 12,
+      }),
+    ).resolves.toEqual({
+      message:
+        '## Improvement suggestion\nImprovement suggestion 12 sent for review.',
+      result: { id: 12 },
+    })
+
+    mocks.requestReview.mockRejectedValueOnce(
+      conflictError('Review has already been requested', {
+        reason: 'improvement_suggestion_review_already_requested',
+        suggestionId: 12,
+      }),
+    )
+    await expect(
+      service.manageSuggestion(makeContext(), {
+        operation: 'request_review',
+        suggestionId: 12,
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: {
+        reason: 'improvement_suggestion_review_already_requested',
+      },
+      status: 409,
+    })
+  })
+
   it('emits security audit events for suggestion resolutions', async () => {
     const service = createTestRequirementsService()
 

@@ -7,6 +7,17 @@ target version.
 
 ## Unreleased
 
+### Improvement suggestion lifecycle history is normalized
+
+Migration 0052 automatically normalizes incoherent pre-production Improvement
+suggestion rows before adding
+`chk_improvement_suggestions_lifecycle`. It retains handled state only when the
+decision, motivation, and ordered timestamps are complete; otherwise it keeps a
+valid review-requested state or resets the row to draft without inventing
+missing evidence. After upgrade, integrations must treat lifecycle conflicts
+as deterministic `409` responses and must not retry a repeated review request
+as a successful write.
+
 ### Invalid priority colors are reset during upgrade
 
 Before running `db-job migrate`, identify P1-P5 priority rows whose color is
