@@ -139,7 +139,7 @@ function accessReviewMutationDb(
       const count = options.itemUpdateCount ?? 1
       if (count === 1) {
         decision = String(parameters?.[0])
-        comment = parameters?.[4] == null ? null : String(parameters?.[4] ?? '')
+        comment = parameters?.[4] == null ? null : String(parameters[4])
       }
       return Array.from({ length: count }, () => ({ id: 7 }))
     }
@@ -701,6 +701,39 @@ describe('access review service', () => {
         query.sql.includes('UPDATE access_review_runs'),
       ),
     ).toBe(false)
+  })
+
+  it.each([
+    ['deadlock victim', { number: 1205 }],
+    ['lock timeout', { driverError: { number: '1222' } }],
+  ])(
+    'maps a transient SQL Server %s failure to a retryable service error',
+    async (_failure, transactionError) => {
+      const db = {
+        transaction: vi.fn().mockRejectedValue(transactionError),
+      }
+
+      await expect(
+        completeAccessReviewRun(db as never, 42, adminActor),
+      ).rejects.toMatchObject({
+        code: 'service_unavailable',
+        details: { reason: 'access_review_completion_retry' },
+        status: 503,
+      })
+    },
+  )
+
+  it('preserves unrelated database failures during completion', async () => {
+    const transactionError = Object.assign(new Error('SQL failure'), {
+      number: 2627,
+    })
+    const db = {
+      transaction: vi.fn().mockRejectedValue(transactionError),
+    }
+
+    await expect(
+      completeAccessReviewRun(db as never, 42, adminActor),
+    ).rejects.toBe(transactionError)
   })
 
   it('returns the winning terminal retry as a no-op and rejects the opposing transition', async () => {

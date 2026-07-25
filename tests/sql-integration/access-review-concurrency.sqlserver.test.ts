@@ -130,6 +130,7 @@ function successfulAudit(action: string) {
 }
 
 async function failingAudit(executor: QueryExecutor): Promise<void> {
+  // invalid_actor_kind is intentional; the actor_kind schema constraint should reject it and trigger rollback.
   await executor.query(
     `INSERT INTO action_audit_events (
         occurred_at,

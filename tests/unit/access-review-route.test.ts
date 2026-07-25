@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CsrfError } from '@/lib/auth/csrf'
-import { forbiddenError } from '@/lib/requirements/errors'
+import {
+  forbiddenError,
+  serviceUnavailableError,
+} from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
   auditExecutor: { query: vi.fn() },
@@ -574,6 +577,32 @@ describe('access review routes', () => {
         event: 'access_review.completed',
       }),
     )
+  })
+
+  it('maps a retryable completion conflict to service unavailable', async () => {
+    routeState.completeAccessReviewRun.mockRejectedValueOnce(
+      serviceUnavailableError(
+        'Access review completion was interrupted by a database conflict. Try again.',
+        { reason: 'access_review_completion_retry' },
+      ),
+    )
+    const { POST } = await import(
+      '@/app/api/admin/access-reviews/[id]/complete/route'
+    )
+    const response = await POST(
+      new Request('http://localhost/api/admin/access-reviews/42/complete', {
+        method: 'POST',
+      }) as never,
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toEqual({
+      code: 'service_unavailable',
+      error:
+        'Access review completion was interrupted by a database conflict. Try again.',
+    })
+    expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
   })
 
   it('rejects cancelling when CSRF validation fails before opening the database', async () => {

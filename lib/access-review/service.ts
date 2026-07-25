@@ -13,7 +13,9 @@ import type { SqlServerDatabase } from '@/lib/db'
 import {
   conflictError,
   forbiddenError,
+  isRequirementsServiceError,
   notFoundError,
+  serviceUnavailableError,
   validationError,
 } from '@/lib/requirements/errors'
 
@@ -109,6 +111,7 @@ const ADMIN_ROLE = 'Admin'
 const PRIVACY_OFFICER_ROLE = 'PrivacyOfficer'
 const ACCESS_REVIEW_ITEM_INSERT_BATCH_SIZE = 150
 const ACCESS_REVIEW_ITEM_INSERT_PARAMETER_COUNT = 10
+const TRANSIENT_SQL_SERVER_TRANSACTION_ERROR_NUMBERS = new Set([1205, 1222])
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
@@ -198,6 +201,35 @@ function numberValue(value: unknown): number {
 
 function dateParam(date: Date): string {
   return date.toISOString()
+}
+
+function sqlServerErrorNumber(error: unknown): number | null {
+  if (!error || typeof error !== 'object') return null
+
+  const errorMetadata = error as {
+    driverError?: unknown
+    number?: unknown
+  }
+  if (typeof errorMetadata.number === 'number') {
+    return errorMetadata.number
+  }
+  if (
+    typeof errorMetadata.number === 'string' &&
+    /^\d+$/.test(errorMetadata.number)
+  ) {
+    return Number(errorMetadata.number)
+  }
+  return errorMetadata.driverError === error
+    ? null
+    : sqlServerErrorNumber(errorMetadata.driverError)
+}
+
+function isTransientSqlServerTransactionError(error: unknown): boolean {
+  const errorNumber = sqlServerErrorNumber(error)
+  return (
+    errorNumber !== null &&
+    TRANSIENT_SQL_SERVER_TRANSACTION_ERROR_NUMBERS.has(errorNumber)
+  )
 }
 
 function assertValidAccessReviewDate(value: Date, field: string): void {
@@ -737,6 +769,17 @@ function assertSingleUpdatedRow(rows: Row[], mutation: string): void {
   )
 }
 
+function withSerializableAccessReviewTx<T>(
+  db: SqlServerDatabase,
+  callback: (tx: QueryExecutor) => Promise<T>,
+): Promise<T> {
+  return db.transaction('SERIALIZABLE', manager =>
+    callback({
+      query: (sql, params) => manager.query(sql, params),
+    }),
+  )
+}
+
 export async function decideAccessReviewItem(
   db: SqlServerDatabase,
   runId: number,
@@ -748,10 +791,7 @@ export async function decideAccessReviewItem(
   const decidedBy = assertCanDecideRun(actor)
   const normalizedComment = input.comment?.trim() || null
 
-  return db.transaction('SERIALIZABLE', async manager => {
-    const tx: QueryExecutor = {
-      query: (sql, params) => manager.query(sql, params),
-    }
+  return withSerializableAccessReviewTx(db, async tx => {
     const status = await lockAccessReviewRun(tx, runId)
     if (status === 'completed' || status === 'cancelled') {
       throw conflictError('Access review run is no longer editable', {
@@ -842,10 +882,7 @@ export async function completeAccessReviewRun(
 ): Promise<AccessReviewMutationResult> {
   const completedBy = requireAccessReviewRole(actor)
 
-  return db.transaction('SERIALIZABLE', async manager => {
-    const tx: QueryExecutor = {
-      query: (sql, params) => manager.query(sql, params),
-    }
+  return withSerializableAccessReviewTx(db, async tx => {
     const status = await lockAccessReviewRun(tx, runId)
     if (status === 'completed') {
       return {
@@ -905,6 +942,17 @@ export async function completeAccessReviewRun(
       status: 'completed',
     })
     return { applied: true, detail }
+  }).catch(error => {
+    if (
+      isRequirementsServiceError(error) ||
+      !isTransientSqlServerTransactionError(error)
+    ) {
+      throw error
+    }
+    throw serviceUnavailableError(
+      'Access review completion was interrupted by a database conflict. Try again.',
+      { reason: 'access_review_completion_retry' },
+    )
   })
 }
 
@@ -916,10 +964,7 @@ export async function cancelAccessReviewRun(
 ): Promise<AccessReviewMutationResult> {
   requireAccessReviewRole(actor)
 
-  return db.transaction('SERIALIZABLE', async manager => {
-    const tx: QueryExecutor = {
-      query: (sql, params) => manager.query(sql, params),
-    }
+  return withSerializableAccessReviewTx(db, async tx => {
     const status = await lockAccessReviewRun(tx, runId)
     if (status === 'cancelled') {
       return {
