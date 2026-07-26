@@ -23,6 +23,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -132,6 +133,9 @@ const SPECIFICATION_ITEM_RESOLUTION_CHUNK_SIZE = 50
 const SPECIFICATION_ITEMS_PAGE_SIZE = 50
 const SPECIFICATION_NEEDS_REFERENCE_USAGE_PAGE_SIZE = 100
 
+const useClientLayoutEffect =
+  typeof window === 'undefined' ? useEffect : useLayoutEffect
+
 interface ResolvedSpecificationItem {
   itemRef: string
   kind: 'library' | 'specificationLocal'
@@ -205,7 +209,7 @@ function BulkNeedsReferenceModal({
   const [needsReferenceId, setNeedsReferenceId] = useState('')
   const [showHelp, setShowHelp] = useState(false)
 
-  useEffect(() => {
+  useClientLayoutEffect(() => {
     if (!open) return
     setNeedsReferenceId('')
     setShowHelp(false)
