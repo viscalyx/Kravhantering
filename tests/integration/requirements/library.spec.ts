@@ -688,7 +688,7 @@ test.describe('Requirements library', () => {
       releaseCatalog = resolve
     })
 
-    await test.step('keep package controls hidden while the catalog is loading', async () => {
+    await test.step('show the package catalog loading state while loading', async () => {
       await page.route('**/api/requirement-packages', async route => {
         await catalogGate
         await route.fulfill({ json: { requirementPackages: [] } })
@@ -698,8 +698,11 @@ test.describe('Requirements library', () => {
       await expect(
         page.getByRole('button', { name: 'Filtrera efter Krav-ID' }),
       ).toHaveCount(1)
+      band = page.getByRole('group', { exact: true, name: 'Kravpaket' })
+      await expect(band).toHaveAttribute('aria-busy', 'true')
+      await expect(band.getByRole('status')).toHaveText('Läser in kravpaket…')
       await expect(
-        page.getByRole('group', { exact: true, name: 'Kravpaket' }),
+        band.getByRole('button', { name: 'Filtrera kravpaket' }),
       ).toHaveCount(0)
     })
 
@@ -718,7 +721,7 @@ test.describe('Requirements library', () => {
       ).toBeDisabled()
     })
 
-    await test.step('hide package controls when catalog loading fails', async () => {
+    await test.step('show the package catalog failure state when loading fails', async () => {
       await page.unroute('**/api/requirement-packages')
       await page.route('**/api/requirement-packages', async route => {
         await route.fulfill({
@@ -727,8 +730,12 @@ test.describe('Requirements library', () => {
         })
       })
       await page.reload()
+      band = page.getByRole('group', { exact: true, name: 'Kravpaket' })
+      await expect(band.getByRole('status')).toHaveText(
+        'Kravpaketen kunde inte läsas in.',
+      )
       await expect(
-        page.getByRole('group', { exact: true, name: 'Kravpaket' }),
+        band.getByRole('button', { name: 'Filtrera kravpaket' }),
       ).toHaveCount(0)
     })
 
