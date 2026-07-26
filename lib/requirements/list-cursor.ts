@@ -1,6 +1,9 @@
-import { createHash } from 'node:crypto'
 import { z } from 'zod'
-import { invalidCursorError } from '@/lib/requirements/errors'
+import {
+  createVersionedCursorCodec,
+  fingerprintCursorQuery,
+  type VersionedCursorPayload,
+} from '@/lib/requirements/cursor-codec'
 
 const CURSOR_VERSION = 4
 export const REQUIREMENT_LIST_CURSOR_MAX_LENGTH = 8192
@@ -13,25 +16,12 @@ const boundarySchema = z
   })
   .strict()
 
-const cursorPayloadSchema = z
-  .object({
-    boundary: boundarySchema,
-    queryFingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
-    version: z.literal(CURSOR_VERSION),
-  })
-  .strict()
-
 export type RequirementListPageBoundary = z.infer<typeof boundarySchema>
 
-export interface RequirementListCursorPayload {
-  boundary: RequirementListPageBoundary
-  queryFingerprint: string
-  version: typeof CURSOR_VERSION
-}
-
-function invalidCursor(): never {
-  throw invalidCursorError()
-}
+export type RequirementListCursorPayload = VersionedCursorPayload<
+  RequirementListPageBoundary,
+  typeof CURSOR_VERSION
+>
 
 function stableValue(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -53,44 +43,31 @@ function stableValue(value: unknown): unknown {
 }
 
 export function fingerprintRequirementListQuery(value: unknown): string {
-  return createHash('sha256')
-    .update(JSON.stringify(stableValue(value)))
-    .digest('hex')
+  return fingerprintCursorQuery(value, stableValue)
 }
+
+const cursorCodec = createVersionedCursorCodec({
+  boundarySchema,
+  maxLength: REQUIREMENT_LIST_CURSOR_MAX_LENGTH,
+  version: CURSOR_VERSION,
+})
 
 export function encodeRequirementListCursor(
   boundary: RequirementListPageBoundary,
   queryFingerprint: string,
 ): string {
-  const payload = cursorPayloadSchema.parse({
-    boundary,
-    queryFingerprint,
-    version: CURSOR_VERSION,
-  }) satisfies RequirementListCursorPayload
-  const cursor = Buffer.from(JSON.stringify(payload)).toString('base64url')
-  if (cursor.length > REQUIREMENT_LIST_CURSOR_MAX_LENGTH) invalidCursor()
-  return cursor
+  return cursorCodec.encode(boundary, queryFingerprint)
 }
 
 export function decodeRequirementListCursor(
   cursor: string,
 ): RequirementListCursorPayload {
-  if (!cursor || cursor.length > REQUIREMENT_LIST_CURSOR_MAX_LENGTH) {
-    return invalidCursor()
-  }
-
-  try {
-    const decoded = Buffer.from(cursor, 'base64url').toString('utf8')
-    if (Buffer.from(decoded).toString('base64url') !== cursor) invalidCursor()
-    return cursorPayloadSchema.parse(JSON.parse(decoded))
-  } catch {
-    return invalidCursor()
-  }
+  return cursorCodec.decode(cursor)
 }
 
 export function assertRequirementListCursorMatches(
   payload: RequirementListCursorPayload,
   queryFingerprint: string,
 ): void {
-  if (payload.queryFingerprint !== queryFingerprint) invalidCursor()
+  cursorCodec.assertMatches(payload, queryFingerprint)
 }

@@ -544,6 +544,8 @@
     "requirementPackageAdded": "Added {package} to the requirements package filter.",
     "requirementPackageRemoved": "Removed {package} from the requirements package filter.",
     "requirementPackageFilterCleared": "Cleared the requirements package filter.",
+    "requirementPackageCatalogFailed": "Requirements packages could not be loaded.",
+    "requirementPackageCatalogLoading": "Loading requirements packages…",
     "newRequirement": "New requirement",
     "importRequirements": "Import requirements",
     "aiGenerate": "AI assist",
@@ -790,6 +792,7 @@
     "deselectHidden": "Deselect not shown ({count})",
     "selectionDisappeared": "The following Requirement IDs disappeared during refresh and were deselected: {ids}.",
     "requirementsAdded": "Added Requirement IDs: {ids}.",
+    "requirementsAddedHiddenByFilters": "Added Requirement IDs: {ids}. One or more added requirements are hidden by the current filters.",
     "paginationContinuationFailed": "Could not load the next page. The requirements already loaded are still shown.",
     "paginationRecoveryFailed": "The continuation expired and restarting from the first page failed. The requirements already loaded, the current query, and the selection are unchanged.",
     "paginationRestarted": "The continuation expired. The list restarted from the first page with the same query.",
@@ -863,6 +866,7 @@
     "loadSpecificationFailed": "Could not load the requirements specification.",
     "loadSpecificationItemsFailed": "Could not load requirements in the specification.",
     "loadAvailableRequirementsFailed": "Could not load available requirements.",
+    "loadRequirementPackagesFailed": "Could not load requirements packages for the specification.",
     "loadNormReferencesFailed": "Could not load norm references.",
     "partialDataLoadWarning": "Some specification data could not be loaded. Existing data is still shown where available.",
     "noSpecificationsAvailable": "There are no requirements specifications to add this requirement to. Create a specification first.",
@@ -2207,7 +2211,7 @@
       "title": "Specification Detail",
       "requirements": {
         "heading": "Managing requirements",
-        "body": "Click \"Add requirements\" to add published requirements. The specification starts with one bounded page and loads later pages automatically near the end of the list. Editors can select individual specification items; the selection remains active while searching, filtering, sorting, paging, or refreshing. Selected-item actions always affect the complete selection, including items not currently shown."
+        "body": "Click \"Add requirements\" to add published requirements. Both lists use independent compact requirements-package filters. Available requirements offer every active package, while Requirements in specification offers only packages currently linked to a library requirement anywhere in the specification. Unique requirements do not match package filters. The specification starts with one bounded page and loads later pages automatically near the end of the list. Editors can select individual specification items; the selection remains active while searching, filtering, sorting, paging, or refreshing. Selected-item actions always affect the complete selection, including items not currently shown."
       },
       "needsReference": {
         "heading": "Needs reference",

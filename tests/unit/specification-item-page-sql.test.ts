@@ -29,6 +29,13 @@ describe('specification item page SQL', () => {
     expect(sqlText).toContain('ORDER BY candidate.nullRank ASC')
     expect(sqlText).not.toMatch(/\bOFFSET\b/iu)
     expect(sqlText).not.toMatch(/\bCOUNT\s*\(/iu)
+    expect(sqlText).toContain(
+      'current_package_version.requirement_id = requirement.id',
+    )
+    expect(sqlText).toContain(
+      'current_package_version.requirement_status_id = 3',
+    )
+    expect(sqlText).toContain('page_package.is_archived = 0')
     expect(parameters).toContain(51)
   })
 
@@ -59,6 +66,23 @@ describe('specification item page SQL', () => {
     expect(parameters).toEqual(
       expect.arrayContaining([1, 0, 'Integration', 42, 'INT0042']),
     )
+  })
+
+  it('restricts match probes to requested library requirement IDs', () => {
+    const { parameters, sqlText } = buildSpecificationItemPageCandidateSql({
+      filters: { requirementIds: [31, 32] },
+      limit: 3,
+      locale: 'en',
+      sortBy: 'uniqueId',
+      sortDirection: 'asc',
+      specificationId: 7,
+    })
+
+    expect(sqlText).toContain(
+      'requirement.id IN (SELECT TRY_CONVERT(int, [value]) FROM OPENJSON(',
+    )
+    expect(sqlText).toContain('1 = 0')
+    expect(parameters).toContain(JSON.stringify([31, 32]))
   })
 
   it.each(
@@ -134,6 +158,12 @@ describe('specification item page SQL', () => {
     expect(rows[0]?.specificationItemStatusId).toBeNull()
     expect(rows[1]?.specificationItemStatusId).toBe(1)
     expect(query).toHaveBeenCalledTimes(2)
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'current_package_version.requirement_id = requirement.id',
+    )
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'current_package_version.requirement_status_id = 3',
+    )
     expect(query.mock.calls[0]?.[1]).toEqual([7, 31])
     expect(query.mock.calls[1]?.[1]).toEqual([7, 41])
     expect(String(query.mock.calls[0]?.[0])).toContain(

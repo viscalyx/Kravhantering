@@ -9,6 +9,8 @@ import type { SpecificationPermissions } from '@/lib/specifications/permissions'
 
 export const SPECIFICATION_PRELOAD_ERROR_KEYS = {
   needsReferences: 'specification needs references',
+  requirementPackages: 'requirement packages',
+  specificationRequirementPackages: 'specification requirement packages',
 } as const
 
 export interface SpecificationPreloadError {
@@ -50,6 +52,17 @@ export interface SpecificationItemsPageData {
     limit: number
     nextCursor: string | null
   }
+}
+
+export interface SpecificationRequirementPackageCatalogPageData {
+  pagination: {
+    count: number
+    hasMore: boolean
+    limit: number
+    nextCursor: string | null
+  }
+  requirementPackages: RequirementPackageOption[]
+  selectedRequirementPackages: RequirementPackageOption[]
 }
 
 export interface SpecificationNeedsReference {
@@ -100,6 +113,7 @@ export interface RequirementsSpecificationDetailInitialData {
     }
   }
   leftNormReferenceOptions: NormReferenceOption[]
+  leftRequirementPackageCatalog: SpecificationRequirementPackageCatalogPageData
   notFound?: boolean
   requirementPackages: RequirementPackageOption[]
   rightNormReferenceOptions: NormReferenceOption[]

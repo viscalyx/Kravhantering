@@ -1508,6 +1508,7 @@ describe('createRequirementsService', () => {
       cursor: 'current-page',
       limit: 25,
       locale: 'sv',
+      probeRequirementIds: [31, 32],
       sortBy: 'category',
       sortDirection: 'desc',
       specificationId: 7,
@@ -1526,7 +1527,10 @@ describe('createRequirementsService', () => {
       expect.anything(),
       expect.objectContaining({
         cursor: 'current-page',
-        filters: expect.objectContaining({ categoryIds: [4] }),
+        filters: expect.objectContaining({
+          categoryIds: [4],
+          requirementIds: [31, 32],
+        }),
         limit: 25,
         locale: 'sv',
         sort: { by: 'category', direction: 'desc' },

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "requirement-import.v3",
+  "proposedNormReferences": [
+    {
+      "key": "DICOM-PS3.2",
+      "name": "Digital Imaging and Communications in Medicine Part 2",
+      "type": "Standard",
+      "reference": "DICOM PS3.2",
+      "issuer": "National Electrical Manufacturers Association (NEMA)",
+      "normReferenceId": null,
+      "uri": "https://dicom.nema.org/medical/dicom/current/output/html/part02.html",
+      "version": null
+    }
+  ],
+  "requirements": [
+    {
+      "description": "Leverantören ska bifoga DICOM Conformance Statement.",
+      "acceptanceCriteria": "Dokumentet ska beskriva stödda DICOM-tjänster och överföringssyntaxer.",
+      "proposedNormReferenceKeys": ["DICOM-PS3.2"],
+      "verifiable": true,
+      "verificationMethod": "Dokumentgranskning"
+    }
+  ]
+}

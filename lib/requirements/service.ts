@@ -207,6 +207,7 @@ export interface GetSpecificationItemsInput
   cursor?: string
   limit?: number
   locale?: ResponseLocale
+  probeRequirementIds?: number[]
   responseFormat?: ResponseFormat
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection

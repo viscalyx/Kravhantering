@@ -87,6 +87,7 @@ export function normalizeSpecificationItemFilters(
     normReferenceIds: normalizeIds(filters?.normReferenceIds),
     priorityLevelIds: normalizeIds(filters?.priorityLevelIds),
     qualityCharacteristicIds: normalizeIds(filters?.qualityCharacteristicIds),
+    requirementIds: normalizeIds(filters?.requirementIds),
     requirementPackageIds: normalizeIds(filters?.requirementPackageIds),
     specificationItemStatusIds: normalizeIds(
       filters?.specificationItemStatusIds,

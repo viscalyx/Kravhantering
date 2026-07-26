@@ -1,7 +1,7 @@
 <!-- AUTO-GENERERAD — redigera inte manuellt. Kör: npm run generate:guide -->
 # Kravhantering — Användarguide
 
-> Guiden genererades automatiskt av Playwright 2026-06-27.
+> Guiden genererades automatiskt av Playwright 2026-07-26.
 > Alla skärmdumpar visar det svenska gränssnittet.
 
 ## Innehållsförteckning
@@ -258,8 +258,20 @@ rubriken byts när du växlar tabb: tabben för krav har kravtabellens verktyg,
 medan tabben för behovsreferenser har åtgärden för att skapa en ny referens.
 Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag.
 Knappen **"Fler åtgärder"** innehåller AI-assisterat författande, import,
-rapporter och exporter när de är tillgängliga.
-Klicka på en rad för att se kravets fullständiga detaljer.
+rapporter och exporter när de är tillgängliga. Klicka på en rad för att se
+kravets fullständiga detaljer.
+
+Ovanför båda kravlistorna finns samma kompakta kravpaketsfilter som i
+kravbiblioteket. I **Tillgängliga krav** kan du välja bland alla aktiva
+kravpaket, även om ett paket inte ger någon träff med de övriga filtren. I
+**Krav i underlaget** visas bara aktiva paket som något bibliotekskrav i hela
+underlaget tillhör enligt kravets aktuella medlemskap. Unika krav i underlaget
+har inga kravpaket. Paketvalen är separata för vänster och höger lista och finns
+kvar när du byter tabb på detaljsidan.
+
+Vänster katalog läses in oberoende av kravlistan i avgränsade omgångar. Om
+inläsningen tar längre än en sekund visas dess status direkt i
+kravpaketsfilterraden; kravlistan kan användas medan katalogen färdigställs.
 
 ![Kravunderlagsdetalj — delad vy](images/024-kravunderlagsdetalj.png)
 
@@ -369,9 +381,9 @@ Importfunktionen använder JSON enligt `requirement-import.v3`. **AI-assisterat
 författande** använder samma importkontrakt och samma redigerbara
 importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya
 utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt
-i ett kravunderlag. Importen laddar först en granskning där rader, metadata och
-föreslagna normreferenser och föreslagna behovsreferenser kan kontrolleras
-innan något sparas.
+i ett kravunderlag. Importen laddar först en granskning där rader, metadata,
+föreslagna normreferenser och föreslagna behovsreferenser kan kontrolleras innan
+något sparas.
 
 ### AI-assisterat författande — behov och modell
 
@@ -487,8 +499,8 @@ applikationen med kravområdets prefix, till exempel `BET0001`, `BET0002`,
 ### Kravbiblioteksimport — välj mål och importfil
 
 Klicka på **"Importera krav"** i kravbiblioteket, välj kravområde och klistra in
-eller välj en JSON-fil. Exemplet använder importfilen `/tmp/krav5.txt`, som
-innehåller DICOM-krav och en föreslagen normreferens.
+eller välj en JSON-fil. Exemplet använder importfilen `/tmp/krav-import.json`,
+som innehåller DICOM-krav och en föreslagen normreferens.
 
 ![Kravbiblioteksimport — välj mål och importfil](images/049-import-kravbibliotek-fil.png)
 
@@ -535,9 +547,9 @@ CSV-kvittot kan laddas ned vid behov.
 
 ### Kravunderlagsimport — importfil
 
-I ett kravunderlag öppnar du **"Fler åtgärder"** och väljer
-**"Importera unika krav"**. Importen använder samma importfilformat, men målet
-är det aktuella kravunderlaget. Därför väljs inget kravområde i dialogen.
+I ett kravunderlag öppnar du **"Fler åtgärder"** och väljer **"Importera unika
+krav"**. Importen använder samma importfilformat, men målet är det aktuella
+kravunderlaget. Därför väljs inget kravområde i dialogen.
 
 ![Kravunderlagsimport — importfil](images/055-import-kravunderlag-fil.png)
 

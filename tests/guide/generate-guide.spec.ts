@@ -139,9 +139,12 @@ const AI_GUIDE_PAYLOAD = {
 const GUIDE_SPECIFICATION_ID = 8
 const GUIDE_SPECIFICATION_CODE = 'ETJANST-UPP-2026'
 const GUIDE_SPECIFICATION_NAME = 'Upphandling av e-tjänstplattform'
-const GUIDE_SPECIFICATION_IMPORT_TITLE = `Importera krav för ${GUIDE_SPECIFICATION_NAME}`
+const GUIDE_SPECIFICATION_IMPORT_TITLE = `Importera lokala krav för ${GUIDE_SPECIFICATION_NAME}`
 const GUIDE_DEVIATION_REQUIREMENT_ID = 'BEH0002'
-const IMPORT_SAMPLE_PATH = '/tmp/krav5.txt'
+const IMPORT_SAMPLE_FIXTURE_PATH = path.resolve(
+  'tests/fixtures/guide/krav-import.json',
+)
+const IMPORT_SAMPLE_PATH = '/tmp/krav-import.json'
 const STATUS_REVIEW_ID = 2
 const STATUS_PUBLISHED_ID = 3
 const SPECIFICATION_ITEMS_PANEL_SELECTOR =
@@ -149,7 +152,8 @@ const SPECIFICATION_ITEMS_PANEL_SELECTOR =
 const GUIDE_DEBUG = process.env.GUIDE_DEBUG !== '0'
 
 function loadImportSampleJson(): string | null {
-  if (!fs.existsSync(IMPORT_SAMPLE_PATH)) return null
+  if (!fs.existsSync(IMPORT_SAMPLE_FIXTURE_PATH)) return null
+  fs.copyFileSync(IMPORT_SAMPLE_FIXTURE_PATH, IMPORT_SAMPLE_PATH)
   const raw = fs.readFileSync(IMPORT_SAMPLE_PATH, 'utf-8')
   return JSON.stringify(JSON.parse(raw), null, 2)
 }
@@ -1646,11 +1650,22 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await expect(
         page.getByText(/^Det gick inte att läsa in tillgängliga krav:/),
       ).toBeHidden({ timeout: 10_000 })
+      const leftRequirementPackageFilter = page
+        .locator(SPECIFICATION_ITEMS_PANEL_SELECTOR)
+        .getByRole('group', { name: 'Kravpaket' })
+      await expect(leftRequirementPackageFilter).not.toHaveAttribute(
+        'aria-busy',
+        'true',
+        { timeout: 30_000 },
+      )
+      await expect(leftRequirementPackageFilter).not.toContainText(
+        'Kravpaketen kunde inte läsas in.',
+      )
       await snap(
         page,
         'kravunderlagsdetalj',
         'Kravunderlagsdetalj — delad vy',
-        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna **Krav i underlaget** och **Behovsreferenser** i listans rubrik, och **höger panel** har tabbarna **Tillgängliga krav** och **Kravurvalsfrågor** i samma typ av sticky rubrik. I tabben för krav visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i rubriken byts när du växlar tabb: tabben för krav har kravtabellens verktyg, medan tabben för behovsreferenser har åtgärden för att skapa en ny referens. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Knappen **"Fler åtgärder"** innehåller AI-assisterat författande, import, rapporter och exporter när de är tillgängliga. Klicka på en rad för att se kravets fullständiga detaljer.',
+        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna **Krav i underlaget** och **Behovsreferenser** i listans rubrik, och **höger panel** har tabbarna **Tillgängliga krav** och **Kravurvalsfrågor** i samma typ av sticky rubrik. I tabben för krav visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i rubriken byts när du växlar tabb: tabben för krav har kravtabellens verktyg, medan tabben för behovsreferenser har åtgärden för att skapa en ny referens. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Knappen **"Fler åtgärder"** innehåller AI-assisterat författande, import, rapporter och exporter när de är tillgängliga. Klicka på en rad för att se kravets fullständiga detaljer.\n\nOvanför båda kravlistorna finns samma kompakta kravpaketsfilter som i kravbiblioteket. I **Tillgängliga krav** kan du välja bland alla aktiva kravpaket, även om ett paket inte ger någon träff med de övriga filtren. I **Krav i underlaget** visas bara aktiva paket som något bibliotekskrav i hela underlaget tillhör enligt kravets aktuella medlemskap. Unika krav i underlaget har inga kravpaket. Paketvalen är separata för vänster och höger lista och finns kvar när du byter tabb på detaljsidan.\n\nVänster katalog läses in oberoende av kravlistan i avgränsade omgångar. Om inläsningen tar längre än en sekund visas dess status direkt i kravpaketsfilterraden; kravlistan kan användas medan katalogen färdigställs.',
         { fullPage: false },
       )
     })
@@ -1887,28 +1902,53 @@ test.describe('Kravhantering — Guidegenerering', () => {
       })
 
       await guideStep(page, 'Avsteg — beslut', async () => {
-        const decidedBtn = page.getByRole('button', { name: /Beslutad\s*↗/ })
+        const reviewer = await getReviewerPage()
+        await guideGoto(
+          reviewer,
+          `/sv/specifications/${GUIDE_SPECIFICATION_ID}`,
+        )
+        const reviewerItemsPanel = reviewer.locator(
+          SPECIFICATION_ITEMS_PANEL_SELECTOR,
+        )
+        await expect(reviewerItemsPanel).toBeVisible({ timeout: 15_000 })
+        const reviewerRow = reviewerItemsPanel.locator('tbody tr').filter({
+          hasText: GUIDE_DEVIATION_REQUIREMENT_ID,
+        })
+        await expect(reviewerRow).toHaveCount(1)
+        await reviewerRow
+          .first()
+          .evaluate((el: Element) => (el as HTMLElement).click())
+        const reviewerDetail = reviewer.locator(
+          '[data-expanded-detail-cell="true"]',
+        )
+        await expect(reviewerDetail).toBeVisible({ timeout: 10_000 })
+        const decidedBtn = reviewerDetail.getByRole('button', {
+          name: /Beslutad\s*↗/,
+        })
         await expect(
           decidedBtn,
           `Guide generation expects the review-requested deviation for ${GUIDE_DEVIATION_REQUIREMENT_ID} to expose the decision transition.`,
         ).toBeVisible({ timeout: 10_000 })
         await decidedBtn.click()
-        await expect(page.locator('[role="dialog"]')).toBeVisible({
+        await expect(reviewer.locator('[role="dialog"]')).toBeVisible({
           timeout: 5_000,
         })
 
         await snap(
-          page,
+          reviewer,
           'avsteg-beslut-formular',
           'Registrera beslut',
           '**Steg 6 — Registrera beslut.** Kravgranskaren anger en **beslutsmotivering**, vem som fattat beslutet och datum. Välj sedan **"Godkänn"** eller **"Avslå"** för att slutföra beslutet.',
           { fullPage: false },
         )
 
-        await page.keyboard.press('Escape')
-        await expect(page.locator('[role="dialog"]')).toBeHidden({
+        await reviewer.keyboard.press('Escape')
+        await expect(reviewer.locator('[role="dialog"]')).toBeHidden({
           timeout: 5_000,
         })
+        await reviewerContext?.close()
+        reviewerContext = null
+        reviewerPage = null
       })
 
       await guideStep(page, 'Avsteg — granskningsrapport', async () => {

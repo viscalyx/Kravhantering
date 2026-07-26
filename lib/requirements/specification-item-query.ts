@@ -16,6 +16,7 @@ export const specificationItemQueryStateSchema = z
     needsReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     normReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     priorityLevelIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    probeRequirementIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     qualityCharacteristicIds: optionalQueryArraySchema(
       positiveIntegerStringSchema,
     ),
@@ -52,6 +53,7 @@ export interface SpecificationItemQueryState {
   needsReferenceIds?: number[]
   normReferenceIds?: number[]
   priorityLevelIds?: number[]
+  probeRequirementIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementPackageIds?: number[]
   sortBy?: (typeof REQUIREMENT_SORT_FIELDS)[number]
@@ -76,6 +78,7 @@ export function toSpecificationItemPageInput(
       normReferenceIds: query.normReferenceIds,
       priorityLevelIds: query.priorityLevelIds,
       qualityCharacteristicIds: query.qualityCharacteristicIds,
+      requirementIds: query.probeRequirementIds,
       requirementPackageIds: query.requirementPackageIds,
       specificationItemStatusIds: query.specificationItemStatusIds,
       statuses: query.statuses,

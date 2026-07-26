@@ -1196,8 +1196,27 @@ panel.
 
 **Steg:** Lägg till ett krav och kontrollera att det syns. Kontrollera att
 underlagets kravlista har individuella markeringsrutor men ingen Markera alla.
+Kontrollera att båda kravlistorna använder det kompakta kravpaketsbandet och
+att vänster och höger paketval är oberoende. Höger väljare ska visa hela den
+aktiva katalogen, även paket utan tillgängliga träffar. Vänster väljare ska
+bara visa aktiva paket med aktuellt medlemskap för bibliotekskrav någonstans i
+hela underlaget, även när kravet finns på en senare resultatsida. Kontrollera
+med en katalog på fler än 50 paket att vänster katalog hämtas i flera
+avgränsade API-sidor och att alla paket blir tillgängliga i väljaren, samtidigt
+som kravlistan kan användas under kataloghämtningen. Fördröj katalogsvaret och
+kontrollera att ingen laddningstext blinkar under den första sekunden men att
+filterraden därefter visar laddningstillståndet. Kontrollera
+att lokala krav visas utan aktivt paketfilter men inte matchar när ett paket
+väljs. Växla mellan detaljens tabbar och kontrollera att respektive val finns
+kvar.
 Filtrera tillgängliga krav med ett arkiverat kravpaket som endast har historisk
 medlemskap och kontrollera att dess arkiverade krav inte kan väljas.
+Lägg till och ta bort bibliotekskrav och kontrollera att vänster katalog och
+inaktuella paketval uppdateras. Lägg till ett krav som döljs av ett annat
+vänsterfilter och kontrollera att filtret finns kvar och att en tydlig
+återkoppling visas. Kontrollera även laddning, lyckad tom katalog och
+katalogfel samt svenska och engelska texter, tillgänglighetsattribut och
+Developer Mode-markörer.
 Markera ett bibliotekskrav, kontrollera markeringssammanfattningen och öppna
 borttagningsdialogen. Kontrollera att dialogen visar berört krav-ID och att
 avbrytning bevarar markeringen. Expandera bibliotekskravet och kontrollera att
@@ -1209,6 +1228,12 @@ bevaras tills användaren avmarkerar eller åtgärden lyckas. Bekräftelsen skil
 frånkoppling av bibliotekskrav från permanent radering av unika krav, visar
 alla berörda krav-ID:n och kopplingen tas bort korrekt. Arkiverad
 kravpaketshistorik gör inte ett krav praktiskt valbart för kravunderlaget.
+Kravpaketsbanden följer kravbibliotekets interaktion och OR-logik inom
+paketvalet, medan övriga filter kombineras med AND-logik. Vänster katalog
+beräknas över hela underlaget från kravens aktuella medlemskap och påverkas
+inte av paginering eller övriga filter. Katalogfel visas inte som en tom
+katalog eller med inaktuella paketkontroller, och övrig listfunktion fortsätter
+fungera.
 
 ### SPEC-07: skapa, redigera och lyft unikt krav i kravunderlag
 

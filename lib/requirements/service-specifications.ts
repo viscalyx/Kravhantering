@@ -279,6 +279,7 @@ export function createSpecificationWorkflow({
             normReferenceIds: input.normReferenceIds,
             priorityLevelIds: input.priorityLevelIds,
             qualityCharacteristicIds: input.qualityCharacteristicIds,
+            requirementIds: input.probeRequirementIds,
             requirementPackageIds: input.requirementPackageIds,
             specificationItemStatusIds: input.specificationItemStatusIds,
             statuses: input.statuses,

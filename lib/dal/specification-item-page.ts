@@ -223,6 +223,17 @@ function buildBranchConditions(
     addIdsCondition(
       conditions,
       builder,
+      filters.requirementIds,
+      'requirement.id',
+    )
+  } else if (filters.requirementIds?.length) {
+    conditions.push('1 = 0')
+  }
+
+  if (library) {
+    addIdsCondition(
+      conditions,
+      builder,
       filters.areaIds,
       'requirement.requirement_area_id',
     )
@@ -314,7 +325,20 @@ function buildBranchConditions(
     } else {
       const json = builder.push(JSON.stringify(filters.requirementPackageIds))
       conditions.push(
-        `EXISTS (SELECT 1 FROM requirement_version_requirement_packages page_vrp WHERE page_vrp.requirement_version_id = requirement_version.id AND page_vrp.requirement_package_id IN (SELECT TRY_CONVERT(int, [value]) FROM OPENJSON(${json})))`,
+        `EXISTS (
+          SELECT 1
+          FROM requirement_versions current_package_version
+          INNER JOIN requirement_version_requirement_packages page_vrp
+            ON page_vrp.requirement_version_id = current_package_version.id
+          INNER JOIN requirement_packages page_package
+            ON page_package.id = page_vrp.requirement_package_id
+           AND page_package.is_archived = 0
+          WHERE current_package_version.requirement_id = requirement.id
+            AND current_package_version.requirement_status_id = ${STATUS_PUBLISHED}
+            AND page_vrp.requirement_package_id IN (
+              SELECT TRY_CONVERT(int, [value]) FROM OPENJSON(${json})
+            )
+        )`,
       )
     }
   }
@@ -622,8 +646,14 @@ async function enrichLibraryItems(
           INNER JOIN norm_references norm_reference ON norm_reference.id = version_norm_reference.norm_reference_id
           WHERE version_norm_reference.requirement_version_id = requirement_version.id) AS normReferenceIds,
         (SELECT STRING_AGG(CAST(version_package.requirement_package_id AS varchar(20)), ',')
-          FROM requirement_version_requirement_packages version_package
-          WHERE version_package.requirement_version_id = requirement_version.id) AS requirementPackageIds,
+          FROM requirement_versions current_package_version
+          INNER JOIN requirement_version_requirement_packages version_package
+            ON version_package.requirement_version_id = current_package_version.id
+          INNER JOIN requirement_packages current_package
+            ON current_package.id = version_package.requirement_package_id
+           AND current_package.is_archived = 0
+          WHERE current_package_version.requirement_id = requirement.id
+            AND current_package_version.requirement_status_id = ${STATUS_PUBLISHED}) AS requirementPackageIds,
         (SELECT COUNT(*) FROM deviations deviation WHERE deviation.specification_item_id = specification_item.id) AS deviationTotal,
         (SELECT COUNT(*) FROM deviations deviation WHERE deviation.specification_item_id = specification_item.id AND deviation.decision IS NULL) AS deviationPending,
         (SELECT COUNT(*) FROM deviations deviation WHERE deviation.specification_item_id = specification_item.id AND deviation.decision = 1) AS deviationApproved

@@ -1585,7 +1585,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
     for (const action of sharedActions) {
       await expect(action).toBeDisabled()
     }
-    await expect(specificationItemsPanel.getByRole('status')).toContainText(
+    const selectionStatus = specificationItemsPanel
+      .locator('div[role="status"]')
+      .filter({ hasText: /krav markerad/u })
+    await expect(selectionStatus).toContainText(
       '201 krav markerade; inga dolda. Gemensamma åtgärder stöder högst 200 krav. Avmarkera exakt 1 krav för att fortsätta.',
     )
 
@@ -1612,15 +1615,15 @@ test.describe('Requirements specification deterministic manual cases', () => {
       name: 'Avmarkera de som inte visas (1)',
     })
     await expect(deselectNotShown).toBeEnabled()
-    await expect(specificationItemsPanel.getByRole('status')).toContainText(
+    await expect(selectionStatus).toContainText(
       '201 krav markerade; 1 är inte inläst. Gemensamma åtgärder stöder högst 200 krav. Avmarkera exakt 1 krav för att fortsätta.',
     )
     await deselectNotShown.click()
 
-    await expect(specificationItemsPanel.getByRole('status')).toContainText(
+    await expect(selectionStatus).toContainText(
       '200 krav markerade; inga dolda.',
     )
-    await expect(specificationItemsPanel.getByRole('status')).not.toContainText(
+    await expect(selectionStatus).not.toContainText(
       'Gemensamma åtgärder stöder högst 200 krav.',
     )
     for (const action of [
@@ -1643,11 +1646,49 @@ test.describe('Requirements specification deterministic manual cases', () => {
 
   test('SPEC-06: adds, selects, and removes a requirement in the specification detail UI', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const developerModeMarkersEnabled =
+      testInfo.config.configFile?.endsWith('playwright.prodlike.config.ts') !==
+      true
     const addRequests: unknown[] = []
+    const catalogPageRequests: string[] = []
+    const leftPackageFilterRequests: string[] = []
     const removeRequests: unknown[] = []
+    const rightPackageFilterRequests: string[] = []
     let reportRequirementAdded = false
     let editSourceRemoved = false
+    let catalogState: 'empty' | 'failed' | 'loaded' = 'loaded'
+    let holdNextCatalogRefresh = false
+    let signalCatalogRefreshStarted: (() => void) | undefined
+    let releaseCatalogRefresh: (() => void) | undefined
+    const catalogRefreshStarted = new Promise<void>(resolve => {
+      signalCatalogRefreshStarted = resolve
+    })
+    const catalogRefreshGate = new Promise<void>(resolve => {
+      releaseCatalogRefresh = resolve
+    })
+    const sourcePackage = {
+      id: 920001,
+      name: 'PWT-MANUAL källpaket',
+      purposeAndScope:
+        'Paket som används för att verifiera att publicering ersätter medlemskap.',
+    }
+    const replacementPackage = {
+      id: 920002,
+      name: 'PWT-MANUAL ersättningspaket',
+      purposeAndScope:
+        'Paket som används för att verifiera nytt publicerat medlemskap.',
+    }
+    const firstCatalogPage = [
+      sourcePackage,
+      ...Array.from({ length: 49 }, (_, index) => ({
+        id: 921000 + index,
+        name: `PWT-MANUAL paket ${String(index + 1).padStart(2, '0')}`,
+        purposeAndScope: `Paket ${index + 1} på katalogens första API-sida.`,
+      })),
+    ]
+    const secondCatalogPage = [replacementPackage]
+    const completeCatalog = [...firstCatalogPage, ...secondCatalogPage]
     const reportRequirementItem = {
       area: { name: 'PWT-MANUAL Playwright manual cases' },
       deviationCount: 0,
@@ -1694,14 +1735,163 @@ test.describe('Requirements specification deterministic manual cases', () => {
     }
     await page.route(
       new RegExp(
+        `/api/specification-item-resolutions/${editSpecificationId}(?:\\?.*)?$`,
+        'u',
+      ),
+      async route => {
+        const response = await route.fetch()
+        const data = (await response.json()) as {
+          items?: Array<{
+            itemRef: string
+            kind: string
+            needsReference: string | null
+            uniqueId: string
+          }>
+        }
+        const refs = new URL(route.request().url()).searchParams.getAll('refs')
+        const items = (data.items ?? []).filter(
+          item => !editSourceRemoved || item.itemRef !== 'lib:920001',
+        )
+        if (
+          reportRequirementAdded &&
+          refs.includes(reportRequirementItem.itemRef) &&
+          !items.some(item => item.itemRef === reportRequirementItem.itemRef)
+        ) {
+          items.push({
+            itemRef: reportRequirementItem.itemRef,
+            kind: 'library',
+            needsReference: reportRequirementItem.needsReference,
+            uniqueId: reportRequirementItem.uniqueId,
+          })
+        }
+        await route.fulfill({
+          contentType: 'application/json',
+          json: { items },
+        })
+      },
+    )
+    await page.route(
+      new RegExp(
+        `/api/requirements-specifications/${editSpecificationId}/available-requirements(?:\\?.*)?$`,
+        'u',
+      ),
+      async route => {
+        const requestUrl = new URL(route.request().url())
+        const packageIds = requestUrl.searchParams.getAll(
+          'requirementPackageIds',
+        )
+        if (packageIds.length === 0) {
+          await route.continue()
+          return
+        }
+        rightPackageFilterRequests.push(requestUrl.search)
+        if (
+          packageIds.length === 1 &&
+          packageIds[0] === String(replacementPackage.id)
+        ) {
+          await route.fulfill({
+            contentType: 'application/json',
+            json: {
+              pagination: {
+                count: 0,
+                hasMore: false,
+                limit: 50,
+                nextCursor: null,
+              },
+              requirements: [],
+            },
+          })
+          return
+        }
+        await route.continue()
+      },
+    )
+    await page.route(
+      new RegExp(
+        `/api/requirements-specifications/${editSpecificationId}/requirement-packages(?:\\?.*)?$`,
+        'u',
+      ),
+      async route => {
+        const requestUrl = new URL(route.request().url())
+        catalogPageRequests.push(requestUrl.search)
+        if (holdNextCatalogRefresh) {
+          holdNextCatalogRefresh = false
+          signalCatalogRefreshStarted?.()
+          await catalogRefreshGate
+        }
+        if (catalogState === 'failed') {
+          await route.fulfill({
+            contentType: 'application/json',
+            json: { code: 'internal', error: 'An internal error occurred' },
+            status: 500,
+          })
+          return
+        }
+
+        const includeIds = requestUrl.searchParams.getAll('includeIds')
+        const selectedRequirementPackages = [
+          sourcePackage,
+          replacementPackage,
+        ].filter(requirementPackage =>
+          includeIds.includes(String(requirementPackage.id)),
+        )
+        if (catalogState === 'empty') {
+          await route.fulfill({
+            contentType: 'application/json',
+            json: {
+              pagination: {
+                count: 0,
+                hasMore: false,
+                limit: 50,
+                nextCursor: null,
+              },
+              requirementPackages: [],
+              selectedRequirementPackages: [],
+            },
+          })
+          return
+        }
+
+        const continuation =
+          requestUrl.searchParams.get('cursor') === 'package-page-2'
+        const requirementPackages = continuation
+          ? secondCatalogPage
+          : firstCatalogPage
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            pagination: {
+              count: requirementPackages.length,
+              hasMore: !continuation,
+              limit: 50,
+              nextCursor: continuation ? null : 'package-page-2',
+            },
+            requirementPackages,
+            selectedRequirementPackages,
+          },
+        })
+      },
+    )
+    await page.route(
+      new RegExp(
         `/api/requirements-specifications/${editSpecificationId}/items(?:\\?.*)?$`,
         'u',
       ),
       async route => {
         const method = route.request().method()
         if (method === 'GET') {
+          const requestUrl = new URL(route.request().url())
+          if (
+            requestUrl.searchParams.has('requirementPackageIds') &&
+            !requestUrl.searchParams.has('probeRequirementIds')
+          ) {
+            leftPackageFilterRequests.push(requestUrl.search)
+          }
           const response = await route.fetch()
-          const data = (await response.json()) as { items?: unknown[] }
+          const data = (await response.json()) as {
+            items?: unknown[]
+            pagination?: unknown
+          }
           let items = data.items ?? []
           if (editSourceRemoved) {
             items = items.filter(
@@ -1716,6 +1906,18 @@ test.describe('Requirements specification deterministic manual cases', () => {
           }
           if (
             reportRequirementAdded &&
+            (!requestUrl.searchParams.has('requirementPackageIds') ||
+              requestUrl.searchParams
+                .getAll('requirementPackageIds')
+                .includes(String(sourcePackage.id))) &&
+            (!requestUrl.searchParams.has('uniqueIdSearch') ||
+              reportRequirementItem.uniqueId.includes(
+                requestUrl.searchParams.get('uniqueIdSearch') ?? '',
+              )) &&
+            (!requestUrl.searchParams.has('probeRequirementIds') ||
+              requestUrl.searchParams
+                .getAll('probeRequirementIds')
+                .includes(String(reportRequirementItem.id))) &&
             !items.some(
               item =>
                 typeof item === 'object' &&
@@ -1728,7 +1930,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
           }
           await route.fulfill({
             contentType: 'application/json',
-            json: { items },
+            json: {
+              ...data,
+              items,
+            },
           })
           return
         }
@@ -1743,11 +1948,24 @@ test.describe('Requirements specification deterministic manual cases', () => {
           return
         }
         if (method === 'DELETE') {
-          removeRequests.push(route.request().postDataJSON())
-          editSourceRemoved = true
+          const body = route.request().postDataJSON() as {
+            itemRefs?: string[]
+          }
+          removeRequests.push(body)
+          if (body.itemRefs?.includes('lib:920001')) {
+            editSourceRemoved = true
+            catalogState = 'empty'
+          }
+          if (body.itemRefs?.includes('lib:920005')) {
+            reportRequirementAdded = false
+            catalogState = 'failed'
+          }
           await route.fulfill({
             contentType: 'application/json',
-            json: { ok: true },
+            json: {
+              ok: true,
+              removedCount: body.itemRefs?.length ?? 0,
+            },
           })
           return
         }
@@ -1755,90 +1973,378 @@ test.describe('Requirements specification deterministic manual cases', () => {
       },
     )
 
-    await gotoSpecificationDetail(page, editSpecificationId)
-
-    await filterAvailableRequirementById(page, 'PWT-REPORT-A')
-    await page.getByRole('checkbox', { name: 'Markera PWT-REPORT-A' }).check()
-    await page.getByRole('button', { name: 'Lägg till valda (1)' }).click()
-    const addDialog = page.getByRole('dialog').filter({
-      hasText: 'Lägger till 1 krav i underlaget',
-    })
-    await expect(addDialog).toBeVisible()
-    await addDialog
-      .getByRole('combobox', { name: 'Behovsreferens (valfri)' })
-      .selectOption('new')
-    await addDialog
-      .getByRole('textbox', { name: 'Ny behovsreferens' })
-      .fill('PWT SPEC-06 behov')
-    await addDialog.getByRole('button', { name: 'Lägg till' }).click()
-
-    await expect
-      .poll(() => addRequests)
-      .toEqual([
-        expect.objectContaining({
-          needsReferenceText: 'PWT SPEC-06 behov',
-          requirementIds: expect.arrayContaining([920005]),
-        }),
-      ])
     const specificationItemsPanel = page.locator(
       '[data-specification-detail-list-panel="items"]',
     )
-    await expect(
-      specificationItemsPanel.getByRole('button', { name: /^PWT-REPORT-A\b/u }),
-    ).toBeVisible({ timeout: 30_000 })
-    await expect(
-      specificationItemsPanel.getByRole('checkbox', { name: 'Markera alla' }),
-    ).toHaveCount(0)
-
-    const selectedRequirement = page.getByRole('checkbox', {
-      name: 'Markera PWT-SPEC-EDIT-SOURCE',
+    const availableRequirementsPanel = page.locator(
+      '[data-specification-detail-list-panel="available"]',
+    )
+    const leftPackageBand = specificationItemsPanel.getByRole('group', {
+      name: 'Kravpaket',
     })
-    await selectedRequirement.check()
-    await expect(specificationItemsPanel).toContainText('1 krav markerat')
-    await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
-    const removeDialog = page.getByRole('alertdialog', {
-      name: 'Ta bort valda (1)',
+    const rightPackageBand = availableRequirementsPanel.getByRole('group', {
+      name: 'Kravpaket',
     })
-    await expect(removeDialog).toHaveCount(1)
-    await expect(removeDialog).toContainText('PWT-SPEC-EDIT-SOURCE')
-    await removeDialog.getByRole('button', { name: 'Avbryt' }).click()
-    await expect(removeDialog).toHaveCount(0)
-    await expect(selectedRequirement).toBeChecked()
-    expect(removeRequests).toEqual([])
-
-    await specificationItemsPanel
-      .getByRole('button', { name: /^PWT-SPEC-EDIT-SOURCE\b/u })
-      .click()
-    const requestDeviationAction = specificationItemsPanel.getByRole('button', {
-      name: 'Begär ett avsteg',
+    const rightPackageTrigger = rightPackageBand.getByRole('button', {
+      name: 'Filtrera kravpaket',
     })
-    const removeFromSpecificationAction = specificationItemsPanel.getByRole(
+    const leftPackageTrigger = leftPackageBand.getByRole('button', {
+      name: 'Filtrera kravpaket',
+    })
+    const leftSelectedPackage = leftPackageBand.getByRole('button', {
+      name: 'Ta bort PWT-MANUAL källpaket från kravpaketsfiltret',
+    })
+    const rightSelectedReplacementPackage = rightPackageBand.getByRole(
       'button',
       {
-        name: 'Ta bort från underlaget',
+        name: 'Ta bort PWT-MANUAL ersättningspaket från kravpaketsfiltret',
       },
     )
-    await expect(requestDeviationAction).toBeVisible()
-    await expect(removeFromSpecificationAction).toBeVisible()
 
-    await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
-    await page
-      .getByRole('alertdialog', { name: 'Ta bort valda (1)' })
-      .getByRole('button', { name: 'Ta bort' })
-      .click()
+    await test.step('use independent package filters across both list tabs', async () => {
+      await gotoSpecificationDetail(page, editSpecificationId)
 
-    await expect
-      .poll(() => removeRequests)
-      .toEqual([
-        expect.objectContaining({
-          itemRefs: expect.arrayContaining(['lib:920001']),
+      await expect(
+        specificationItemsPanel.getByRole('button', { name: /^KRAV0001\b/u }),
+      ).toBeVisible()
+      await specificationItemsPanel
+        .locator('[data-requirement-header-label="uniqueId"]')
+        .click()
+
+      if (developerModeMarkersEnabled) {
+        await expect(leftPackageBand).toHaveAttribute(
+          'data-developer-mode-name',
+          'requirements package filter',
+        )
+        await expect(rightPackageBand).toHaveAttribute(
+          'data-developer-mode-name',
+          'requirements package filter',
+        )
+      }
+
+      await rightPackageTrigger.click()
+      const rightPackageChooser = page.getByRole('group', {
+        name: 'Tillgängliga kravpaket',
+      })
+      if (developerModeMarkersEnabled) {
+        await expect(rightPackageChooser).toHaveAttribute(
+          'data-developer-mode-name',
+          'requirements package chooser',
+        )
+      }
+      await expect(
+        rightPackageChooser.getByRole('button', {
+          name: 'Lägg till PWT-MANUAL källpaket i kravpaketsfiltret',
         }),
-      ])
-    await expect(
-      specificationItemsPanel.getByRole('button', {
-        name: /^PWT-SPEC-EDIT-SOURCE\b/u,
-      }),
-    ).toHaveCount(0)
+      ).toBeVisible()
+      await rightPackageChooser
+        .getByRole('button', {
+          name: 'Lägg till PWT-MANUAL ersättningspaket i kravpaketsfiltret',
+        })
+        .click()
+      await expect(rightSelectedReplacementPackage).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      await expect
+        .poll(() => rightPackageFilterRequests.at(-1))
+        .toContain('requirementPackageIds=920002')
+      await expect(
+        availableRequirementsPanel.locator('tbody').getByRole('checkbox'),
+      ).toHaveCount(0)
+      await expect(
+        rightPackageChooser.getByRole('button', {
+          name: 'Lägg till PWT-MANUAL källpaket i kravpaketsfiltret',
+        }),
+      ).toBeVisible()
+      await page.keyboard.press('Escape')
+
+      if (developerModeMarkersEnabled) {
+        await expect(leftPackageTrigger).toHaveAttribute(
+          'data-developer-mode-name',
+          'filter button',
+        )
+      }
+      await leftPackageTrigger.click()
+      const leftPackageChooser = page.getByRole('group', {
+        name: 'Tillgängliga kravpaket',
+      })
+      await leftPackageChooser
+        .getByRole('button', {
+          name: 'Lägg till PWT-MANUAL källpaket i kravpaketsfiltret',
+        })
+        .click()
+      await expect(leftSelectedPackage).toHaveAttribute('aria-pressed', 'true')
+      await expect(rightSelectedReplacementPackage).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      await expect(
+        specificationItemsPanel.getByRole('button', { name: /^KRAV0001\b/u }),
+      ).toHaveCount(0)
+
+      await specificationItemsPanel
+        .getByRole('tab', { name: /Behovsreferenser/u })
+        .click()
+      await page.getByRole('tab', { name: /Krav i underlaget/u }).click()
+      await expect(leftSelectedPackage).toHaveAttribute('aria-pressed', 'true')
+
+      await availableRequirementsPanel
+        .getByRole('tab', { name: /Kravurvalsfrågor/u })
+        .click()
+      await availableRequirementsPanel
+        .getByRole('tab', { name: /Tillgängliga krav/u })
+        .click()
+      await rightSelectedReplacementPackage.click()
+      await page.keyboard.press('Escape')
+      await expect(rightPackageTrigger).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      )
+    })
+
+    await test.step('add a requirement hidden by the active left filter', async () => {
+      await specificationItemsPanel
+        .getByRole('button', { name: 'Filtrera efter Krav-ID' })
+        .click()
+      const leftRequirementIdFilter = page.getByRole('textbox', {
+        name: 'Krav-ID',
+      })
+      await leftRequirementIdFilter.fill('DOES-NOT-MATCH')
+      await leftRequirementIdFilter.press('Enter')
+
+      await filterAvailableRequirementById(page, 'PWT-REPORT-A')
+      await page.getByRole('checkbox', { name: 'Markera PWT-REPORT-A' }).check()
+      await page.getByRole('button', { name: 'Lägg till valda (1)' }).click()
+      const addDialog = page.getByRole('dialog').filter({
+        hasText: 'Lägger till 1 krav i underlaget',
+      })
+      await expect(addDialog).toBeVisible()
+      await addDialog
+        .getByRole('combobox', { name: 'Behovsreferens (valfri)' })
+        .selectOption('new')
+      await addDialog
+        .getByRole('textbox', { name: 'Ny behovsreferens' })
+        .fill('PWT SPEC-06 behov')
+      holdNextCatalogRefresh = true
+      catalogPageRequests.length = 0
+      await addDialog.getByRole('button', { name: 'Lägg till' }).click()
+      await catalogRefreshStarted
+      await expect(leftPackageBand).toHaveCount(1)
+      await expect(leftPackageBand).not.toContainText('Läser in kravpaket…')
+      await expect(leftPackageBand).toContainText('Läser in kravpaket…')
+      releaseCatalogRefresh?.()
+      await expect(leftPackageBand).not.toContainText('Läser in kravpaket…')
+      await expect.poll(() => catalogPageRequests).toHaveLength(2)
+      expect(new URLSearchParams(catalogPageRequests[0]).get('limit')).toBe(
+        '50',
+      )
+      expect(new URLSearchParams(catalogPageRequests[0]).has('cursor')).toBe(
+        false,
+      )
+      expect(new URLSearchParams(catalogPageRequests[1]).get('cursor')).toBe(
+        'package-page-2',
+      )
+
+      await expect
+        .poll(() => addRequests)
+        .toEqual([
+          expect.objectContaining({
+            needsReferenceText: 'PWT SPEC-06 behov',
+            requirementIds: expect.arrayContaining([920005]),
+          }),
+        ])
+      await expect(
+        specificationItemsPanel.getByRole('status').filter({
+          hasText:
+            'Ett eller flera tillagda krav döljs av de aktuella filtren.',
+        }),
+      ).toContainText(
+        'Ett eller flera tillagda krav döljs av de aktuella filtren.',
+      )
+
+      await specificationItemsPanel
+        .getByRole('button', { name: 'Filtrera efter Krav-ID' })
+        .click()
+      await page.getByRole('textbox', { name: 'Krav-ID' }).fill('PWT-REPORT-A')
+      await page.getByRole('textbox', { name: 'Krav-ID' }).press('Enter')
+      await leftPackageTrigger.click()
+      const refreshedLeftPackageChooser = page.getByRole('group', {
+        name: 'Tillgängliga kravpaket',
+      })
+      await expect(leftSelectedPackage).toHaveAttribute('aria-pressed', 'true')
+      await expect(
+        refreshedLeftPackageChooser.locator('[data-requirement-package]'),
+      ).toHaveCount(50)
+      for (const requirementPackage of completeCatalog) {
+        await expect(
+          page.locator(`[data-requirement-package="${requirementPackage.id}"]`),
+        ).toHaveCount(1)
+      }
+      await expect(
+        refreshedLeftPackageChooser.getByRole('button', {
+          name: 'Lägg till PWT-MANUAL paket 49 i kravpaketsfiltret',
+        }),
+      ).toBeVisible()
+      await expect(
+        refreshedLeftPackageChooser.getByRole('button', {
+          name: 'Lägg till PWT-MANUAL ersättningspaket i kravpaketsfiltret',
+        }),
+      ).toBeVisible()
+      await refreshedLeftPackageChooser
+        .getByRole('button', {
+          name: 'Lägg till PWT-MANUAL ersättningspaket i kravpaketsfiltret',
+        })
+        .click()
+      await page.keyboard.press('Escape')
+      await expect
+        .poll(() => leftPackageFilterRequests.at(-1))
+        .toContain('requirementPackageIds=920001')
+      await expect
+        .poll(() => leftPackageFilterRequests.at(-1))
+        .toContain('requirementPackageIds=920002')
+      await expect
+        .poll(() => leftPackageFilterRequests.at(-1))
+        .toContain('uniqueIdSearch=PWT-REPORT-A')
+      await expect(
+        specificationItemsPanel.getByRole('button', {
+          name: /^PWT-REPORT-A\b/u,
+        }),
+      ).toBeVisible({ timeout: 30_000 })
+      await expect(
+        specificationItemsPanel.getByRole('checkbox', { name: 'Markera alla' }),
+      ).toHaveCount(0)
+
+      await specificationItemsPanel
+        .getByRole('button', { name: 'Filtrera efter Krav-ID' })
+        .click()
+      await page.getByRole('textbox', { name: 'Krav-ID' }).fill('')
+      await page.getByRole('textbox', { name: 'Krav-ID' }).press('Enter')
+      await leftPackageBand
+        .getByRole('button', {
+          name: 'Ta bort PWT-MANUAL ersättningspaket från kravpaketsfiltret',
+        })
+        .click()
+      await page.keyboard.press('Escape')
+      await expect(leftPackageTrigger).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    await test.step('cancel removal and inspect the expanded row actions', async () => {
+      const selectedRequirement = page.getByRole('checkbox', {
+        name: 'Markera PWT-SPEC-EDIT-SOURCE',
+      })
+      await selectedRequirement.check()
+      await expect(specificationItemsPanel).toContainText('1 krav markerat')
+      await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
+      const removeDialog = page.getByRole('alertdialog', {
+        name: 'Ta bort valda (1)',
+      })
+      await expect(removeDialog).toHaveCount(1)
+      await expect(removeDialog).toContainText('PWT-SPEC-EDIT-SOURCE')
+      await removeDialog.getByRole('button', { name: 'Avbryt' }).click()
+      await expect(removeDialog).toHaveCount(0)
+      await expect(selectedRequirement).toBeChecked()
+      expect(removeRequests).toEqual([])
+
+      await specificationItemsPanel
+        .getByRole('button', { name: /^PWT-SPEC-EDIT-SOURCE\b/u })
+        .click()
+      const requestDeviationAction = specificationItemsPanel.getByRole(
+        'button',
+        {
+          name: 'Begär ett avsteg',
+        },
+      )
+      const removeFromSpecificationAction = specificationItemsPanel.getByRole(
+        'button',
+        {
+          name: 'Ta bort från underlaget',
+        },
+      )
+      await expect(requestDeviationAction).toBeVisible()
+      await expect(removeFromSpecificationAction).toBeVisible()
+    })
+
+    await test.step('confirm removal and refresh the left package catalog', async () => {
+      await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
+      await page
+        .getByRole('alertdialog', { name: 'Ta bort valda (1)' })
+        .getByRole('button', { name: 'Ta bort' })
+        .click()
+
+      await expect
+        .poll(() => removeRequests)
+        .toEqual([
+          expect.objectContaining({
+            itemRefs: expect.arrayContaining(['lib:920001']),
+          }),
+        ])
+      await expect(
+        specificationItemsPanel.getByRole('button', {
+          name: /^PWT-SPEC-EDIT-SOURCE\b/u,
+        }),
+      ).toHaveCount(0)
+      await expect(leftPackageBand).toContainText(
+        'Det finns inga kravpaket att filtrera på',
+      )
+      await expect(
+        leftPackageBand.getByRole('button', { name: 'Filtrera kravpaket' }),
+      ).toBeDisabled()
+    })
+
+    await test.step('distinguish a failed catalog from an empty catalog', async () => {
+      const reportRequirement = specificationItemsPanel.getByRole('checkbox', {
+        name: 'Markera PWT-REPORT-A',
+      })
+      await reportRequirement.check()
+      await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
+      await page
+        .getByRole('alertdialog', { name: 'Ta bort valda (1)' })
+        .getByRole('button', { name: 'Ta bort' })
+        .click()
+
+      await expect.poll(() => removeRequests).toHaveLength(2)
+      await expect(leftPackageBand).toHaveCount(1)
+      await expect(leftPackageBand).toContainText(
+        'Kravpaketen kunde inte läsas in.',
+      )
+      await expect(
+        page.getByRole('status').filter({
+          hasText: 'Det gick inte att läsa in kravpaket för kravunderlaget.',
+        }),
+      ).toContainText('Det gick inte att läsa in kravpaket för kravunderlaget.')
+      await expect(
+        specificationItemsPanel.getByRole('button', { name: /^KRAV0001\b/u }),
+      ).toBeVisible()
+    })
+
+    await test.step('expose the package controls in English as well as Swedish', async () => {
+      catalogState = 'loaded'
+      await page.goto(`/en/specifications/${editSpecificationId}`, {
+        waitUntil: 'domcontentloaded',
+      })
+      await expect(
+        page.getByRole('tab', { name: 'RFI question list' }),
+      ).toBeVisible({
+        timeout: 30_000,
+      })
+      const englishItemsPanel = page.locator(
+        '[data-specification-detail-list-panel="items"]',
+      )
+      const englishAvailablePanel = page.locator(
+        '[data-specification-detail-list-panel="available"]',
+      )
+      await expect(
+        englishItemsPanel.getByRole('group', {
+          name: 'Requirements packages',
+        }),
+      ).toBeVisible()
+      await expect(
+        englishAvailablePanel.getByRole('button', {
+          name: 'Filter requirements packages',
+        }),
+      ).toBeVisible()
+    })
   })
 
   test('SPEC-07: graduates a real specification-local requirement as a copy-only draft', async ({

@@ -40,6 +40,23 @@ interface RequirementPackageUsage {
   libraryRequirementCount: number
 }
 
+interface SpecificationRequirementPackageRow {
+  id: number
+  name: string
+  purposeAndScope: string | null
+}
+
+interface SpecificationRequirementPackagePageBoundary {
+  id: number
+  name: string
+}
+
+interface ListSpecificationRequirementPackagePageOptions {
+  after?: SpecificationRequirementPackagePageBoundary
+  limit: number
+  search?: string
+}
+
 interface RequirementPackageMutationResult {
   cleanup: RequirementSelectionCleanupResult
   requirementPackage: RequirementPackageRow
@@ -81,6 +98,8 @@ export type {
   RequirementPackageMutationResult,
   RequirementPackageRow,
   RequirementPackageUsage,
+  SpecificationRequirementPackagePageBoundary,
+  SpecificationRequirementPackageRow,
 }
 
 function mapRequirementPackageRow(
@@ -293,6 +312,111 @@ export async function listRequirementPackages(
     params,
   )) as Record<string, unknown>[]
   return mapRequirementPackageProjection(rows)
+}
+
+function mapSpecificationRequirementPackageRows(
+  rows: Array<Record<string, unknown>>,
+): SpecificationRequirementPackageRow[] {
+  return rows.map(row => ({
+    id: Number(row.id),
+    name: String(row.name ?? ''),
+    purposeAndScope:
+      row.purposeAndScope == null ? null : String(row.purposeAndScope),
+  }))
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_[]/gu, match => `\\${match}`)
+}
+
+const specificationRequirementPackageMembershipCte = `
+  WITH specification_requirement_packages AS (
+    SELECT DISTINCT
+      requirement_package.id AS id,
+      requirement_package.name AS name,
+      requirement_package.purpose_and_scope AS purposeAndScope
+    FROM requirements_specification_items AS specification_item
+    INNER JOIN requirement_versions AS current_version
+      ON current_version.requirement_id = specification_item.requirement_id
+     AND current_version.requirement_status_id = @1
+    INNER JOIN requirement_version_requirement_packages AS package_link
+      ON package_link.requirement_version_id = current_version.id
+    INNER JOIN requirement_packages AS requirement_package
+      ON requirement_package.id = package_link.requirement_package_id
+     AND requirement_package.is_archived = 0
+    WHERE specification_item.requirements_specification_id = @0
+  )
+`
+
+export async function listSpecificationRequirementPackagePage(
+  db: SqlServerDatabase,
+  specificationId: number,
+  options: ListSpecificationRequirementPackagePageOptions,
+): Promise<SpecificationRequirementPackageRow[]> {
+  const parameters: unknown[] = [
+    specificationId,
+    STATUS_PUBLISHED,
+    options.limit,
+  ]
+  const conditions: string[] = []
+  if (options.search) {
+    parameters.push(`%${escapeLike(options.search)}%`)
+    conditions.push(
+      `requirement_package.name LIKE @${parameters.length - 1} ESCAPE '\\'`,
+    )
+  }
+  if (options.after) {
+    parameters.push(options.after.name, options.after.id)
+    const nameParameter = `@${parameters.length - 2}`
+    const idParameter = `@${parameters.length - 1}`
+    conditions.push(
+      `(requirement_package.name > ${nameParameter} OR (requirement_package.name = ${nameParameter} AND requirement_package.id > ${idParameter}))`,
+    )
+  }
+
+  const rows = (await db.query(
+    `
+      ${specificationRequirementPackageMembershipCte}
+      SELECT TOP (@2)
+        requirement_package.id AS id,
+        requirement_package.name AS name,
+        requirement_package.purposeAndScope AS purposeAndScope
+      FROM specification_requirement_packages AS requirement_package
+      ${conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''}
+      ORDER BY requirement_package.name ASC, requirement_package.id ASC
+    `,
+    parameters,
+  )) as Array<Record<string, unknown>>
+
+  return mapSpecificationRequirementPackageRows(rows)
+}
+
+export async function resolveSpecificationRequirementPackages(
+  db: SqlServerDatabase,
+  specificationId: number,
+  includeIds: number[],
+): Promise<SpecificationRequirementPackageRow[]> {
+  if (includeIds.length === 0) return []
+  const parameters: unknown[] = [specificationId, STATUS_PUBLISHED]
+  const placeholders = includeIds.map(id => {
+    parameters.push(id)
+    return `@${parameters.length - 1}`
+  })
+  const rows = (await db.query(
+    `
+      ${specificationRequirementPackageMembershipCte}
+      SELECT
+        requirement_package.id AS id,
+        requirement_package.name AS name,
+        requirement_package.purposeAndScope AS purposeAndScope
+      FROM specification_requirement_packages AS requirement_package
+      WHERE requirement_package.id IN (${placeholders.join(', ')})
+      ORDER BY requirement_package.name ASC, requirement_package.id ASC
+    `,
+    parameters,
+  )) as Array<Record<string, unknown>>
+
+  return mapSpecificationRequirementPackageRows(rows)
 }
 
 export async function countLinkedRequirementsByPackage(

@@ -493,6 +493,15 @@ paths:
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
+        - name: probeRequirementIds
+          in: query
+          description: Restrict the page to specific library requirements when probing whether known requirements match the active filters.
+          schema:
+            type: array
+            maxItems: 200
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
         - name: statuses
           in: query
           schema:
@@ -552,6 +561,55 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /api/requirements-specifications/{id}/requirement-packages:
+    parameters:
+      - $ref: '#/components/parameters/SpecificationId'
+    get:
+      tags: [requirements]
+      operationId: listRequirementsSpecificationRequirementPackages
+      summary: List one bounded page of requirement packages represented in a requirements specification.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          description: Opaque continuation cursor for the same specification and search.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 2048
+        - name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 250
+        - name: includeIds
+          in: query
+          description: Resolve selected package IDs against the same specification-scoped catalog.
+          schema:
+            type: array
+            maxItems: 200
+            uniqueItems: true
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Bounded requirement-package catalog page and authoritative selected-package resolution.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpecificationRequirementPackagePageResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
   /api/requirements/{id}/versions/{version}:
     parameters:
       - $ref: '#/components/parameters/RequirementId'
@@ -987,6 +1045,11 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
+    InternalServerError:
+      description: Internal server error.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
     Conflict:
       description: Conflict.
       content:
@@ -1326,6 +1389,49 @@ components:
               type: string
               nullable: true
               maxLength: 512
+    SpecificationRequirementPackage:
+      type: object
+      required: [id, name, purposeAndScope]
+      additionalProperties: false
+      properties:
+        id: { type: integer, minimum: 1 }
+        name: { type: string, maxLength: 450 }
+        purposeAndScope:
+          type: string
+          nullable: true
+          maxLength: 10000
+    SpecificationRequirementPackagePageResponse:
+      type: object
+      required:
+        - pagination
+        - requirementPackages
+        - selectedRequirementPackages
+      additionalProperties: false
+      properties:
+        pagination:
+          type: object
+          required: [count, hasMore, limit, nextCursor]
+          additionalProperties: false
+          properties:
+            count: { type: integer, minimum: 0, maximum: 100 }
+            hasMore: { type: boolean }
+            limit: { type: integer, minimum: 1, maximum: 100 }
+            nextCursor:
+              type: string
+              nullable: true
+              maxLength: 2048
+        requirementPackages:
+          type: array
+          minItems: 0
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/SpecificationRequirementPackage'
+        selectedRequirementPackages:
+          type: array
+          minItems: 0
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/SpecificationRequirementPackage'
     SpecificationItemSummary:
       type: object
       required: [id, isArchived, itemRef, kind, uniqueId, version]

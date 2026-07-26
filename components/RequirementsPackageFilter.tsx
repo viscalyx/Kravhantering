@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Filter, FilterX, X } from 'lucide-react'
+import { Filter, FilterX, LoaderCircle, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
   type PointerEvent as ReactPointerEvent,
@@ -39,6 +39,7 @@ interface PendingFocus {
 
 const VIEWPORT_MARGIN = 8
 const HOVER_CLOSE_DELAY_MS = 80
+const CATALOG_LOADING_DELAY_MS = 1000
 
 function packageName(requirementPackage: RequirementPackageOption): string {
   return requirementPackage.name.trim() || String(requirementPackage.id)
@@ -74,6 +75,7 @@ export default function RequirementsPackageFilter({
   const [chooserPosition, setChooserPosition] =
     useState<ChooserPosition | null>(null)
   const [supportsPopover, setSupportsPopover] = useState(false)
+  const [showLoadingStatus, setShowLoadingStatus] = useState(false)
 
   const collator = useMemo(
     () =>
@@ -129,6 +131,18 @@ export default function RequirementsPackageFilter({
   useEffect(() => {
     setSupportsPopover(typeof HTMLElement.prototype.showPopover === 'function')
   }, [])
+
+  useEffect(() => {
+    if (catalogStatus !== 'loading') {
+      setShowLoadingStatus(false)
+      return
+    }
+    const timer = setTimeout(
+      () => setShowLoadingStatus(true),
+      CATALOG_LOADING_DELAY_MS,
+    )
+    return () => clearTimeout(timer)
+  }, [catalogStatus])
 
   const closeChooser = useCallback(
     (suppressHover = false) => {
@@ -313,7 +327,46 @@ export default function RequirementsPackageFilter({
   )
 
   if (catalogStatus !== 'loaded') {
-    return null
+    const failed = catalogStatus === 'failed'
+    return (
+      <fieldset
+        aria-busy={catalogStatus === 'loading'}
+        className="relative m-0 min-w-0 border-x-0 border-t-0 border-b border-secondary-200 bg-white/80 px-3 py-2 text-sm backdrop-blur-sm dark:border-secondary-700 dark:bg-secondary-900/80"
+        {...devMarker({
+          context: 'requirements table',
+          name: 'requirements package filter',
+          priority: 320,
+          value: catalogStatus,
+        })}
+      >
+        <legend className="sr-only">{t('requirementPackages')}</legend>
+        <div className="flex min-h-6 min-w-0 items-center gap-2">
+          <span className="shrink-0 text-sm font-medium text-secondary-700 dark:text-secondary-300">
+            {t('requirementPackages')}
+          </span>
+          {failed ? (
+            <span
+              className="flex min-w-0 items-center gap-1.5 text-xs text-red-700 dark:text-red-300"
+              role="status"
+            >
+              <FilterX aria-hidden="true" className="h-4 w-4 shrink-0" />
+              {t('requirementPackageCatalogFailed')}
+            </span>
+          ) : showLoadingStatus ? (
+            <span
+              className="flex min-w-0 items-center gap-1.5 text-xs text-secondary-600 dark:text-secondary-300"
+              role="status"
+            >
+              <LoaderCircle
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0 motion-safe:animate-spin"
+              />
+              {t('requirementPackageCatalogLoading')}
+            </span>
+          ) : null}
+        </div>
+      </fieldset>
+    )
   }
 
   const addPackage = (

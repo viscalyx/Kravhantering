@@ -269,6 +269,44 @@ describe('requirements-specifications/[id]/items route', () => {
     expect(mocks.getSpecificationItems).not.toHaveBeenCalled()
   })
 
+  it('passes bounded requirement match probes to the shared item query', async () => {
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/items?limit=2&probeRequirementIds=31&probeRequirementIds=32',
+      ),
+      makeParams('5'),
+    )
+
+    expect(response.status).toBe(200)
+    expect(mocks.getSpecificationItems).toHaveBeenCalledWith(mockContext, {
+      capacitySurface: 'rest',
+      limit: 2,
+      locale: 'en',
+      probeRequirementIds: [31, 32],
+      responseFormat: 'json',
+      specificationId: 5,
+    })
+  })
+
+  it('rejects more than 200 requirement match probes before database work', async () => {
+    const params = new URLSearchParams({ limit: '100' })
+    for (let id = 1; id <= 201; id += 1) {
+      params.append('probeRequirementIds', String(id))
+    }
+
+    const response = await GET(
+      new NextRequest(
+        `http://localhost/api/requirements-specifications/5/items?${params}`,
+      ),
+      makeParams('5'),
+    )
+
+    expect(response.status).toBe(400)
+    await expectInvalidRequest(response, 'probeRequirementIds')
+    expect(mocks.getSpecificationById).not.toHaveBeenCalled()
+    expect(mocks.getSpecificationItems).not.toHaveBeenCalled()
+  })
+
   it('maps malformed continuation state to invalid_cursor', async () => {
     mocks.getSpecificationItems.mockRejectedValueOnce(invalidCursorError())
 

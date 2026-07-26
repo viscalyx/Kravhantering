@@ -107,7 +107,7 @@ förvaltning utan tydligt kravbibliotekssammanhang.
 
 **Kravbiblioteksfilter**:
 Ett filter som begränsar vilka krav som visas i kravbiblioteket utifrån en
-bestämd egenskap. Kravpaketsfilter är en typ av kravbiblioteksfilter.
+bestämd egenskap.
 
 - `en`: Requirements library filter
 
@@ -703,8 +703,10 @@ arkiverad status.
 _Avoid_: Kravunderlag, referensdata, historik över kravversioner.
 
 **Kravpaketsfilter**:
-Ett kravbiblioteksfilter som begränsar listan till krav som ingår i ett eller
-flera valda kravpaket. Valda kravpaket är filtrets aktiva urval.
+Ett filter som begränsar en lista av bibliotekskrav till krav som ingår i ett
+eller flera valda kravpaket. Filtret kan användas både i kravbiblioteket och
+när bibliotekskrav hanteras i ett kravunderlag. Valda kravpaket är filtrets
+aktiva urval.
 
 - `en`: Requirements package filter
 

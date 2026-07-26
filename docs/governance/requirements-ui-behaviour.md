@@ -266,11 +266,14 @@ an explicit in-modal error.
 - `verifiable` is filterable, but not sortable.
 - `requirementPackage` is filterable through a persistent package-filter band
   even when the optional, non-sortable table column is hidden.
-- The band appears after the package catalog loads successfully, including when
-  the catalog is empty. Its first column contains the `Kravpaket` title and
-  filter button, followed by a vertical divider and a second column for the
-  inactive state or selected packages. The title uses the same typography as
-  the table column titles.
+- The band remains present while its package catalog loads. To avoid flashing
+  during fast refreshes, it shows translated loading feedback only when loading
+  lasts at least one second. A failed load replaces that feedback with an
+  explicit failed state; stale package controls are not left active. After a
+  successful load, including a confirmed empty catalog, its first column
+  contains the `Kravpaket` title and filter button, followed by a vertical
+  divider and a second column for the inactive state or selected packages. The
+  title uses the same typography as the table column titles.
 - Selected packages use locale-aware alphabetical order. Their badges stay in
   the second column and wrap only when they need more horizontal space, growing
   the table chrome in normal layout flow.
@@ -290,6 +293,29 @@ an explicit in-modal error.
   package name and includes purpose and scope when that text exists. Keyboard
   focus shows the tooltip when focus is visibly indicated; pointer-driven focus
   recovery after removing a badge does not open a tooltip on another badge.
+- The same compact package-filter band is used for both requirement lists in a
+  requirements specification. The two selections are independent and remain
+  in component state when the user changes specification-detail tabs.
+- The available-requirements list offers the complete active package catalog,
+  including packages that currently yield no available rows. Its package filter
+  combines with the requirement-selection filter and the other list filters.
+- The specification-items list offers only active packages with current
+  published-version membership for at least one library requirement anywhere
+  in the complete specification. The server computes this facet independently
+  of paging and active filters; specification-local requirements never
+  contribute packages or match an active package filter.
+- The specification-items package catalog uses its own cursor-paginated REST
+  resource, with 50 packages per page by default. The server preloads the first
+  bounded page and the client continues through the remaining pages in the
+  background before enabling the chooser. Item pages load independently and do
+  not carry or wait for the package catalog.
+- Adding or removing library requirements refreshes the specification-items
+  package facet. Selections that are no longer present in the refreshed facet
+  are cleared. Other left-list filters remain unchanged, and a status message
+  explains when newly added requirements are hidden by those filters.
+- Loading, successful empty, and failed package catalogs remain distinct.
+  Catalog failure does not disable the other list controls or present the
+  catalog as successfully empty.
 
 ## Column Visibility
 

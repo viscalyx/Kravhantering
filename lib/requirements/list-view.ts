@@ -8,6 +8,7 @@ export interface FilterValues {
   normReferenceIds?: number[]
   priorityLevelIds?: number[]
   qualityCharacteristicIds?: number[]
+  requirementIds?: number[]
   requirementPackageIds?: number[]
   specificationItemStatusIds?: number[]
   statuses?: number[]

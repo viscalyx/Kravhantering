@@ -4,7 +4,9 @@ import {
   deleteRequirementPackage,
   getLinkedRequirementsForPackage,
   listRequirementPackages,
+  listSpecificationRequirementPackagePage,
   replaceRequirementPackageCoAuthors,
+  resolveSpecificationRequirementPackages,
   updateRequirementPackage,
 } from '@/lib/dal/requirement-packages'
 
@@ -129,6 +131,108 @@ describe('requirement-packages DAL', () => {
       ),
     ).resolves.toEqual([])
     expect(query).toHaveBeenCalledTimes(1)
+  })
+
+  it('lists only active packages from current published membership across the specification', async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        id: 8,
+        name: 'Current package',
+        purposeAndScope: 'Current published membership.',
+      },
+    ])
+
+    await expect(
+      listSpecificationRequirementPackagePage(
+        {
+          query,
+        } as unknown as Parameters<
+          typeof listSpecificationRequirementPackagePage
+        >[0],
+        42,
+        { limit: 51 },
+      ),
+    ).resolves.toEqual([
+      {
+        id: 8,
+        name: 'Current package',
+        purposeAndScope: 'Current published membership.',
+      },
+    ])
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'current_version.requirement_id = specification_item.requirement_id',
+      ),
+      [42, 3, 51],
+    )
+    expect(query.mock.calls[0]?.[0]).toContain('SELECT TOP (@2)')
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'WITH specification_requirement_packages',
+    )
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'current_version.requirement_status_id = @1',
+    )
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'requirement_package.is_archived = 0',
+    )
+    expect(query.mock.calls[0]?.[0]).not.toContain(
+      'specification_item.requirement_version_id',
+    )
+  })
+
+  it('seeks by package name and id while escaping bounded name search', async () => {
+    const query = vi.fn().mockResolvedValue([])
+
+    await listSpecificationRequirementPackagePage(
+      {
+        query,
+      } as unknown as Parameters<
+        typeof listSpecificationRequirementPackagePage
+      >[0],
+      42,
+      {
+        after: { id: 9, name: 'Beta' },
+        limit: 101,
+        search: '50% [_]',
+      },
+    )
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '(requirement_package.name > @4 OR (requirement_package.name = @4 AND requirement_package.id > @5))',
+      ),
+      [42, 3, 101, '%50\\% \\[\\_]%', 'Beta', 9],
+    )
+    expect(query.mock.calls[0]?.[0]).toContain(
+      "requirement_package.name LIKE @3 ESCAPE '\\'",
+    )
+  })
+
+  it('resolves selected package IDs against the same scoped membership', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValue([{ id: 8, name: 'Selected', purposeAndScope: null }])
+
+    await expect(
+      resolveSpecificationRequirementPackages(
+        {
+          query,
+        } as unknown as Parameters<
+          typeof resolveSpecificationRequirementPackages
+        >[0],
+        42,
+        [8, 11],
+      ),
+    ).resolves.toEqual([{ id: 8, name: 'Selected', purposeAndScope: null }])
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE requirement_package.id IN (@2, @3)'),
+      [42, 3, 8, 11],
+    )
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'WITH specification_requirement_packages',
+    )
   })
 
   it('returns active packages plus normalized explicitly selected archived IDs', async () => {

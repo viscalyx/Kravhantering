@@ -31,6 +31,11 @@ Covered by this contract:
   at most 100 mixed library and specification-local requirement applications.
   Its filters and ordering apply in SQL Server over the complete result, and
   malformed or query-mismatched continuation state returns `invalid_cursor`.
+- The requirements-specification requirement-package catalog GET route returns
+  bounded pages of at most 100 active packages represented by current published
+  library requirements in that specification. Its opaque cursor is bound to the
+  specification and normalized name search, while `includeIds` authoritatively
+  resolves at most 200 selected package IDs against the same scoped membership.
 - Requirement list continuation uses bounded opaque cursors. Cursors contain
   null rank, the SQL sort key, the stable numeric requirement id, and a hash of
   normalized query and visibility state. Free-text and lookup-name sort keys

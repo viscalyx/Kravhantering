@@ -51,6 +51,7 @@ describe('querySpecificationItemPage', () => {
       normalizeSpecificationItemFilters({
         areaIds: [3, 1, 3, -1],
         descriptionSearch: '  secure  ',
+        requirementIds: [32, 31, 32, 0],
         uniqueIdSearch: '   ',
         verifiable: ['false', 'true', 'false', 'invalid'],
       }),
@@ -58,6 +59,7 @@ describe('querySpecificationItemPage', () => {
       expect.objectContaining({
         areaIds: [1, 3],
         descriptionSearch: 'secure',
+        requirementIds: [31, 32],
         uniqueIdSearch: undefined,
         verifiable: ['false', 'true'],
       }),

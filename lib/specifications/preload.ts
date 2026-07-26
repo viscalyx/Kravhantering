@@ -34,6 +34,10 @@ import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import { createServerComponentRequestContext } from '@/lib/requirements/server-component-context'
 import { DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT } from '@/lib/requirements/specification-item-page'
+import {
+  DEFAULT_SPECIFICATION_REQUIREMENT_PACKAGE_PAGE_LIMIT,
+  querySpecificationRequirementPackagePage,
+} from '@/lib/requirements/specification-requirement-packages'
 import { DEVIATED_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 import {
   canCreateSpecification,
@@ -147,6 +151,16 @@ function emptyDetailInitialData(
     availableNeedsRefs: [],
     availableRequirements: { hasMore: false, nextCursor: null, rows: [] },
     errors,
+    leftRequirementPackageCatalog: {
+      pagination: {
+        count: 0,
+        hasMore: false,
+        limit: DEFAULT_SPECIFICATION_REQUIREMENT_PACKAGE_PAGE_LIMIT,
+        nextCursor: null,
+      },
+      requirementPackages: [],
+      selectedRequirementPackages: [],
+    },
     leftNormReferenceOptions: [],
     requirementPackages: [],
     rightNormReferenceOptions: [],
@@ -260,6 +274,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
     specificationItemStatuses,
     specificationItems,
     availableRequirements,
+    leftRequirementPackageCatalog,
     leftNormReferenceOptions,
     rightNormReferenceOptions,
   ] = await Promise.all([
@@ -271,12 +286,15 @@ export async function loadRequirementsSpecificationDetailInitialData({
     capture<AreaOption[]>('requirement areas', [], async () =>
       (await listAreas(db)).map(area => ({ id: area.id, name: area.name })),
     ),
-    capture<RequirementPackageOption[]>('requirement packages', [], async () =>
-      (await listRequirementPackages(db)).map(pkg => ({
-        id: pkg.id,
-        name: pkg.name,
-        purposeAndScope: pkg.purposeAndScope,
-      })),
+    capture<RequirementPackageOption[]>(
+      SPECIFICATION_PRELOAD_ERROR_KEYS.requirementPackages,
+      [],
+      async () =>
+        (await listRequirementPackages(db)).map(pkg => ({
+          id: pkg.id,
+          name: pkg.name,
+          purposeAndScope: pkg.purposeAndScope,
+        })),
     ),
     capture<SpecificationNeedsReference[]>(
       SPECIFICATION_PRELOAD_ERROR_KEYS.needsReferences,
@@ -333,6 +351,26 @@ export async function loadRequirementsSpecificationDetailInitialData({
       { hasMore: false, nextCursor: null, rows: [] },
       () => loadAvailableRequirements(db, locale),
     ),
+    capture<
+      RequirementsSpecificationDetailInitialData['leftRequirementPackageCatalog']
+    >(
+      SPECIFICATION_PRELOAD_ERROR_KEYS.specificationRequirementPackages,
+      {
+        pagination: {
+          count: 0,
+          hasMore: false,
+          limit: DEFAULT_SPECIFICATION_REQUIREMENT_PACKAGE_PAGE_LIMIT,
+          nextCursor: null,
+        },
+        requirementPackages: [],
+        selectedRequirementPackages: [],
+      },
+      () =>
+        querySpecificationRequirementPackagePage(db, {
+          limit: DEFAULT_SPECIFICATION_REQUIREMENT_PACKAGE_PAGE_LIMIT,
+          specificationId: spec.id,
+        }),
+    ),
     capture<NormReferenceOption[]>('left norm references', [], () =>
       listLinkedNormReferenceOptions(db),
     ),
@@ -357,10 +395,12 @@ export async function loadRequirementsSpecificationDetailInitialData({
       specificationItemStatuses.error,
       specificationItems.error,
       availableRequirements.error,
+      leftRequirementPackageCatalog.error,
       leftNormReferenceOptions.error,
       rightNormReferenceOptions.error,
       aiGenerationAvailability.error,
     ].filter((error): error is SpecificationPreloadError => !!error),
+    leftRequirementPackageCatalog: leftRequirementPackageCatalog.value,
     leftNormReferenceOptions: leftNormReferenceOptions.value,
     requirementPackages: requirementPackages.value,
     rightNormReferenceOptions: rightNormReferenceOptions.value,

@@ -544,6 +544,8 @@
     "requirementPackageAdded": "{package} har lagts till i kravpaketsfiltret.",
     "requirementPackageRemoved": "{package} har tagits bort från kravpaketsfiltret.",
     "requirementPackageFilterCleared": "Kravpaketsfiltret har rensats.",
+    "requirementPackageCatalogFailed": "Kravpaketen kunde inte läsas in.",
+    "requirementPackageCatalogLoading": "Läser in kravpaket…",
     "newRequirement": "Nytt krav",
     "importRequirements": "Importera krav",
     "aiGenerate": "AI-assistera",
@@ -790,6 +792,7 @@
     "deselectHidden": "Avmarkera de som inte visas ({count})",
     "selectionDisappeared": "Följande krav-ID:n försvann vid uppdateringen och avmarkerades: {ids}.",
     "requirementsAdded": "Följande krav-ID:n lades till: {ids}.",
+    "requirementsAddedHiddenByFilters": "Följande krav-ID:n lades till: {ids}. Ett eller flera tillagda krav döljs av de aktuella filtren.",
     "paginationContinuationFailed": "Det gick inte att läsa in nästa sida. Kraven som redan har lästs in visas fortfarande.",
     "paginationRecoveryFailed": "Fortsättningen har upphört att gälla och omstarten från första sidan misslyckades. Redan inlästa krav, den aktuella frågan och markeringen är oförändrade.",
     "paginationRestarted": "Fortsättningen har upphört att gälla. Listan startade om från första sidan med samma fråga.",
@@ -863,6 +866,7 @@
     "loadSpecificationFailed": "Det gick inte att läsa in kravunderlaget.",
     "loadSpecificationItemsFailed": "Det gick inte att läsa in krav i underlaget.",
     "loadAvailableRequirementsFailed": "Det gick inte att läsa in tillgängliga krav.",
+    "loadRequirementPackagesFailed": "Det gick inte att läsa in kravpaket för kravunderlaget.",
     "loadNormReferencesFailed": "Det gick inte att läsa in normreferenser.",
     "partialDataLoadWarning": "Vissa underlagsdata kunde inte läsas in. Befintliga data visas fortfarande där de finns.",
     "noSpecificationsAvailable": "Det finns inga kravunderlag att lägga till kravet i. Skapa ett kravunderlag först.",
@@ -2207,7 +2211,7 @@
       "title": "Kravunderlagsdetalj",
       "requirements": {
         "heading": "Hantera krav",
-        "body": "Klicka på \"Lägg till krav\" för att lägga till publicerade krav. Kravunderlaget börjar med en begränsad sida och läser automatiskt in senare sidor nära listans slut. Redigerare kan markera enskilda underlagsobjekt; markeringen finns kvar vid sökning, filtrering, sortering, sidinläsning och uppdatering. Åtgärder för markerade objekt påverkar alltid hela markeringen, även objekt som inte visas just nu."
+        "body": "Klicka på \"Lägg till krav\" för att lägga till publicerade krav. Båda listorna använder oberoende kompakta kravpaketsfilter. Tillgängliga krav erbjuder alla aktiva paket, medan Krav i underlaget bara erbjuder paket som är aktuellt kopplade till ett bibliotekskrav någonstans i underlaget. Unika krav matchar inte paketfilter. Kravunderlaget börjar med en begränsad sida och läser automatiskt in senare sidor nära listans slut. Redigerare kan markera enskilda underlagsobjekt; markeringen finns kvar vid sökning, filtrering, sortering, sidinläsning och uppdatering. Åtgärder för markerade objekt påverkar alltid hela markeringen, även objekt som inte visas just nu."
       },
       "needsReference": {
         "heading": "Behovsreferens",

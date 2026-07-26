@@ -21,6 +21,7 @@ import type {
   SpecificationListItem,
   SpecificationPreloadError,
 } from '@/lib/specifications/preload-types'
+import { SPECIFICATION_PRELOAD_ERROR_KEYS } from '@/lib/specifications/preload-types'
 
 const requirementsTableMock = vi.fn()
 const lazyFeatureState = vi.hoisted(() => ({
@@ -187,6 +188,8 @@ vi.mock('@/components/RequirementsTable', () => ({
     ) => void
     onSelectionChange?: (ids: Set<number>) => void
     onSortChange?: (value: RequirementSortState) => void
+    requirementPackageCatalogStatus?: 'failed' | 'loaded' | 'loading'
+    requirementPackageFilterPresentation?: 'chips' | 'compact-band'
     requirementPackages?: { id: number; name: string }[]
     rows: { id: number; itemRef?: string; requirementPackageIds?: number[] }[]
     renderExpanded?: (id: number) => ReactNode
@@ -370,6 +373,9 @@ let specificationItemsGetItems: SpecificationListItem[]
 let specificationItemsGetHandler:
   | ((url: string) => Promise<unknown>)
   | undefined
+let specificationRequirementPackagesGetHandler:
+  | ((url: string) => Promise<unknown>)
+  | undefined
 let failedDeviationItemRefs: Set<string>
 let availableRequirementsSelectionFilter:
   | RequirementsSpecificationDetailInitialData['availableRequirements']['selectionFilter']
@@ -471,6 +477,25 @@ function createSpecificationItemsPage(
   }
 }
 
+function createRequirementPackageCatalogPage(
+  requirementPackages: RequirementPackageOption[],
+  pagination: Partial<
+    RequirementsSpecificationDetailInitialData['leftRequirementPackageCatalog']['pagination']
+  > = {},
+): RequirementsSpecificationDetailInitialData['leftRequirementPackageCatalog'] {
+  return {
+    pagination: {
+      count: requirementPackages.length,
+      hasMore: false,
+      limit: 50,
+      nextCursor: null,
+      ...pagination,
+    },
+    requirementPackages,
+    selectedRequirementPackages: [],
+  }
+}
+
 function createInitialData(): RequirementsSpecificationDetailInitialData {
   return {
     aiGenerationAvailability: {
@@ -485,6 +510,7 @@ function createInitialData(): RequirementsSpecificationDetailInitialData {
       rows: [initialAvailableRequirement],
     },
     errors: [] as SpecificationPreloadError[],
+    leftRequirementPackageCatalog: createRequirementPackageCatalogPage([]),
     leftNormReferenceOptions: [],
     requirementPackages: [] as RequirementPackageOption[],
     rightNormReferenceOptions: [],
@@ -558,6 +584,16 @@ function latestItemsTableProps() {
   return itemsTable as NonNullable<typeof itemsTable>
 }
 
+function latestAvailableTableProps() {
+  const calls = requirementsTableMock.mock.calls.map(([props]) => props)
+  const availableTable = calls
+    .slice()
+    .reverse()
+    .find(props => props.excludeColumns?.includes('needsReference'))
+  expect(availableTable).toBeDefined()
+  return availableTable as NonNullable<typeof availableTable>
+}
+
 describe('RequirementsSpecificationDetailClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -582,6 +618,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     availableRequirementsGetHandler = undefined
     specificationItemsGetItems = [initialSpecificationItem]
     specificationItemsGetHandler = undefined
+    specificationRequirementPackagesGetHandler = undefined
     failedDeviationItemRefs = new Set()
     availableRequirementsSelectionFilter = undefined
     fetchMock.mockImplementation(
@@ -743,6 +780,27 @@ describe('RequirementsSpecificationDetailClient', () => {
                 limit: 50,
                 nextCursor: null,
               },
+            }),
+          )
+        }
+
+        if (
+          url.startsWith(`${specificationApiPath('/requirement-packages')}?`) &&
+          method === 'GET'
+        ) {
+          if (specificationRequirementPackagesGetHandler) {
+            return specificationRequirementPackagesGetHandler(url)
+          }
+          return Promise.resolve(
+            okJson({
+              pagination: {
+                count: 0,
+                hasMore: false,
+                limit: 50,
+                nextCursor: null,
+              },
+              requirementPackages: [],
+              selectedRequirementPackages: [],
             }),
           )
         }
@@ -2130,6 +2188,8 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     renderRequirementsSpecificationDetailClient({
       ...createInitialData(),
+      leftRequirementPackageCatalog:
+        createRequirementPackageCatalogPage(requirementPackages),
       requirementPackages,
       specificationItems: createSpecificationItemsPage([firstItem, secondItem]),
     })
@@ -2167,6 +2227,306 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(
       screen.getByTestId('requirements-table-items-rows'),
     ).not.toHaveTextContent('lib:32')
+  })
+
+  it('uses independent compact package filters with distinct server catalogs', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      leftRequirementPackageCatalog: createRequirementPackageCatalogPage([
+        { id: 2, name: 'Specification package' },
+      ]),
+      requirementPackages: [
+        { id: 1, name: 'Library package' },
+        { id: 2, name: 'Specification package' },
+      ],
+    })
+    await waitForInitialAvailableRequirementsRefresh()
+
+    expect(latestItemsTableProps()).toEqual(
+      expect.objectContaining({
+        requirementPackageCatalogStatus: 'loaded',
+        requirementPackageFilterPresentation: 'compact-band',
+        requirementPackages: [{ id: 2, name: 'Specification package' }],
+      }),
+    )
+    expect(latestAvailableTableProps()).toEqual(
+      expect.objectContaining({
+        requirementPackageCatalogStatus: 'loaded',
+        requirementPackageFilterPresentation: 'compact-band',
+        requirementPackages: [
+          { id: 1, name: 'Library package' },
+          { id: 2, name: 'Specification package' },
+        ],
+      }),
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'filter-package-items-2' }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'filter-package-available-1' }),
+    )
+
+    await waitFor(() => {
+      expect(latestItemsTableProps().filterValues).toEqual({
+        requirementPackageIds: [2],
+      })
+      expect(latestAvailableTableProps().filterValues).toEqual({
+        requirementPackageIds: [1],
+      })
+    })
+  })
+
+  it('keeps the item list usable while traversing every catalog page independently', async () => {
+    let resolveSecondPage: ((value: unknown) => void) | undefined
+    specificationRequirementPackagesGetHandler = async url => {
+      expect(searchParamsFromPath(url).get('cursor')).toBe('package-page-2')
+      return new Promise(resolve => {
+        resolveSecondPage = resolve
+      })
+    }
+
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      leftRequirementPackageCatalog: createRequirementPackageCatalogPage(
+        [{ id: 1, name: 'First package' }],
+        { hasMore: true, nextCursor: 'package-page-2' },
+      ),
+    })
+
+    expect(
+      screen.getByTestId('requirements-table-items-rows'),
+    ).toHaveTextContent('lib:31')
+    await waitFor(() => {
+      expect(latestItemsTableProps()).toEqual(
+        expect.objectContaining({
+          requirementPackageCatalogStatus: 'loading',
+          requirementPackages: [{ id: 1, name: 'First package' }],
+        }),
+      )
+    })
+
+    await act(async () => {
+      resolveSecondPage?.(
+        okJson({
+          pagination: {
+            count: 1,
+            hasMore: false,
+            limit: 50,
+            nextCursor: null,
+          },
+          requirementPackages: [{ id: 51, name: 'Later package' }],
+          selectedRequirementPackages: [],
+        }),
+      )
+    })
+
+    await waitFor(() => {
+      expect(latestItemsTableProps()).toEqual(
+        expect.objectContaining({
+          requirementPackageCatalogStatus: 'loaded',
+          requirementPackages: [
+            { id: 1, name: 'First package' },
+            { id: 51, name: 'Later package' },
+          ],
+        }),
+      )
+    })
+  })
+
+  it('distinguishes failed package catalogs from successful empty catalogs', async () => {
+    const initialData = createInitialData()
+    initialData.errors = [
+      {
+        key: SPECIFICATION_PRELOAD_ERROR_KEYS.requirementPackages,
+        message: 'right failed',
+      },
+      {
+        key: SPECIFICATION_PRELOAD_ERROR_KEYS.specificationRequirementPackages,
+        message: 'left failed',
+      },
+    ]
+
+    renderRequirementsSpecificationDetailClient(initialData)
+    await waitForInitialAvailableRequirementsRefresh()
+
+    expect(latestItemsTableProps()).toEqual(
+      expect.objectContaining({
+        requirementPackageCatalogStatus: 'failed',
+        requirementPackages: [],
+      }),
+    )
+    expect(latestAvailableTableProps()).toEqual(
+      expect.objectContaining({
+        requirementPackageCatalogStatus: 'failed',
+        requirementPackages: [],
+      }),
+    )
+  })
+
+  it('refreshes the left package facet and clears a package that becomes irrelevant after removal', async () => {
+    const packageOption = { id: 9, name: 'Current package' }
+    const item = {
+      ...initialSpecificationItem,
+      requirementPackageIds: [9],
+    }
+    const remainingItem = {
+      ...initialSpecificationItem,
+      id: 102,
+      itemRef: 'library:32',
+      requirementPackageIds: [],
+      uniqueId: 'REQ-002',
+    }
+    specificationItemsGetItems = [item, remainingItem]
+    let resolveCatalogRefresh: (() => void) | undefined
+    specificationItemsGetHandler = async url => {
+      const packageIds = searchParamsFromPath(url)
+        .getAll('requirementPackageIds')
+        .map(Number)
+      const items =
+        packageIds.length > 0
+          ? specificationItemsGetItems.filter(candidate =>
+              candidate.requirementPackageIds?.some(id =>
+                packageIds.includes(id),
+              ),
+            )
+          : specificationItemsGetItems
+      return okJson({
+        items,
+        pagination: {
+          count: items.length,
+          hasMore: false,
+          limit: 50,
+          nextCursor: null,
+        },
+      })
+    }
+    specificationRequirementPackagesGetHandler = async url =>
+      new Promise(resolve => {
+        expect(searchParamsFromPath(url).getAll('includeIds')).toEqual(['9'])
+        const response = okJson({
+          pagination: {
+            count: 0,
+            hasMore: false,
+            limit: 50,
+            nextCursor: null,
+          },
+          requirementPackages: [],
+          selectedRequirementPackages: [],
+        })
+        resolveCatalogRefresh = () => resolve(response)
+      })
+
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      leftRequirementPackageCatalog: createRequirementPackageCatalogPage([
+        packageOption,
+      ]),
+      requirementPackages: [packageOption],
+      specificationItems: createSpecificationItemsPage([item, remainingItem]),
+    })
+    await waitForInitialAvailableRequirementsRefresh()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'filter-package-items-9' }),
+    )
+    await waitFor(() => {
+      expect(latestItemsTableProps().filterValues).toEqual({
+        requirementPackageIds: [9],
+      })
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.removeSelected' }),
+    )
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'common.delete' }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements-specifications/8/items',
+        expect.objectContaining({ method: 'DELETE' }),
+      )
+    })
+    await waitFor(() => {
+      expect(latestItemsTableProps()).toEqual(
+        expect.objectContaining({
+          requirementPackageCatalogStatus: 'loading',
+          requirementPackages: [packageOption],
+        }),
+      )
+    })
+    act(() => resolveCatalogRefresh?.())
+    await waitFor(() => {
+      expect(latestItemsTableProps().requirementPackages).toEqual([])
+      expect(
+        latestItemsTableProps().filterValues?.requirementPackageIds,
+      ).toBeUndefined()
+      expect(latestItemsTableProps().rows).toEqual([remainingItem])
+    })
+    expect(latestAvailableTableProps().requirementPackages).toEqual([
+      packageOption,
+    ])
+  })
+
+  it('marks a failed package catalog refresh as failed without treating stale options as loaded', async () => {
+    const packageOption = { id: 9, name: 'Stale package' }
+    const item = {
+      ...initialSpecificationItem,
+      requirementPackageIds: [9],
+    }
+    const remainingItem = {
+      ...initialSpecificationItem,
+      id: 102,
+      itemRef: 'lib:32',
+      requirementPackageIds: [],
+      specificationItemId: 32,
+      uniqueId: 'BEH0002',
+    }
+    specificationItemsGetItems = [item, remainingItem]
+    specificationItemsGetHandler = async () =>
+      okJson({
+        items: specificationItemsGetItems,
+        pagination: {
+          count: specificationItemsGetItems.length,
+          hasMore: false,
+          limit: 50,
+          nextCursor: null,
+        },
+      })
+    specificationRequirementPackagesGetHandler = async () => ({
+      json: async () => ({ error: 'facet unavailable' }),
+      ok: false,
+    })
+
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      leftRequirementPackageCatalog: createRequirementPackageCatalogPage([
+        packageOption,
+      ]),
+      requirementPackages: [packageOption],
+      specificationItems: createSpecificationItemsPage([item, remainingItem]),
+    })
+    await waitForInitialAvailableRequirementsRefresh()
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.removeSelected' }),
+    )
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'common.delete' }),
+    )
+
+    await waitFor(() => {
+      expect(latestItemsTableProps()).toEqual(
+        expect.objectContaining({
+          requirementPackageCatalogStatus: 'failed',
+          requirementPackages: [],
+        }),
+      )
+    })
   })
 
   it('sorts the complete requirement application list in both directions', async () => {
@@ -2380,6 +2740,128 @@ describe('RequirementsSpecificationDetailClient', () => {
       'alert',
     )
     expect(dialog).toBeInTheDocument()
+  })
+
+  it('announces when added requirements remain hidden by the left filters', async () => {
+    specificationItemsGetHandler = async () =>
+      okJson({
+        items: [],
+        pagination: {
+          count: 0,
+          hasMore: false,
+          limit: 50,
+          nextCursor: null,
+        },
+      })
+
+    renderRequirementsSpecificationDetailClient()
+    await waitForInitialAvailableRequirementsRefresh()
+
+    act(() => {
+      latestItemsTableProps().onFilterChange?.({
+        uniqueIdSearch: 'DOES-NOT-MATCH',
+      } as never)
+    })
+    await waitFor(() => {
+      expect(latestItemsTableProps().filterValues).toEqual({
+        uniqueIdSearch: 'DOES-NOT-MATCH',
+      })
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.addSelectedToSpecification',
+      }),
+    )
+    await screen.findByRole('dialog')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.confirmAdd' }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'specification.requirementsAddedHiddenByFilters',
+      )
+    })
+    expect(latestItemsTableProps().filterValues).toEqual({
+      uniqueIdSearch: 'DOES-NOT-MATCH',
+    })
+  })
+
+  it('does not announce a matching added requirement as hidden when it is on a later page', async () => {
+    const firstMatchingItem = {
+      ...initialSpecificationItem,
+      id: 303,
+      itemRef: 'lib:303',
+      specificationItemId: 303,
+      uniqueId: 'IAM0001',
+    }
+    const addedMatchingItem = {
+      ...initialSpecificationItem,
+      id: initialAvailableRequirement.id,
+      itemRef: 'lib:202',
+      specificationItemId: 202,
+      uniqueId: initialAvailableRequirement.uniqueId,
+    }
+    specificationItemsGetHandler = async url => {
+      const params = searchParamsFromPath(url)
+      const isMatchProbe = params
+        .getAll('probeRequirementIds')
+        .includes(String(initialAvailableRequirement.id))
+      const items = isMatchProbe ? [addedMatchingItem] : [firstMatchingItem]
+      return okJson({
+        items,
+        pagination: {
+          count: items.length,
+          hasMore: !isMatchProbe,
+          limit: Number(params.get('limit') ?? 50),
+          nextCursor: isMatchProbe ? null : 'later-page',
+        },
+      })
+    }
+
+    renderRequirementsSpecificationDetailClient()
+    await waitForInitialAvailableRequirementsRefresh()
+
+    act(() => {
+      latestItemsTableProps().onFilterChange?.({
+        uniqueIdSearch: 'IAM',
+      } as never)
+    })
+    await waitFor(() => {
+      expect(latestItemsTableProps().rows).toEqual([firstMatchingItem])
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.addSelectedToSpecification',
+      }),
+    )
+    await screen.findByRole('dialog')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.confirmAdd' }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'specification.requirementsAdded',
+      )
+    })
+    expect(screen.getByRole('status')).not.toHaveTextContent(
+      'specification.requirementsAddedHiddenByFilters',
+    )
+    expect(
+      fetchMock.mock.calls.some(([input]) => {
+        const url = typeof input === 'string' ? input : input.url
+        return (
+          url.startsWith(`${specificationApiPath('/items')}?`) &&
+          searchParamsFromPath(url).getAll('probeRequirementIds')[0] ===
+            String(initialAvailableRequirement.id)
+        )
+      }),
+    ).toBe(true)
   })
 
   it('shows a warning when loading more available requirements fails', async () => {
@@ -2695,6 +3177,9 @@ describe('RequirementsSpecificationDetailClient', () => {
     }
     const initialData = {
       ...createInitialData(),
+      leftRequirementPackageCatalog: createRequirementPackageCatalogPage([
+        { id: 9, name: 'Security package' },
+      ]),
       requirementPackages: [
         { id: 9, name: 'Security package' },
       ] as RequirementPackageOption[],
@@ -2773,6 +3258,10 @@ describe('RequirementsSpecificationDetailClient', () => {
     }))
     const initialData = {
       ...createInitialData(),
+      leftRequirementPackageCatalog: createRequirementPackageCatalogPage([
+        { id: 1, name: 'Shown package' },
+        { id: 2, name: 'Hidden package' },
+      ]),
       requirementPackages: [
         { id: 1, name: 'Shown package' },
         { id: 2, name: 'Hidden package' },
@@ -3547,6 +4036,10 @@ describe('RequirementsSpecificationDetailClient', () => {
     specificationItemsGetItems = [firstItem, secondItem]
     renderRequirementsSpecificationDetailClient({
       ...createInitialData(),
+      leftRequirementPackageCatalog: createRequirementPackageCatalogPage([
+        { id: 1, name: 'First package' },
+        { id: 2, name: 'Second package' },
+      ]),
       requirementPackages: [
         { id: 1, name: 'First package' },
         { id: 2, name: 'Second package' },

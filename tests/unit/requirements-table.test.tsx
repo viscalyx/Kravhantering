@@ -3895,36 +3895,57 @@ describe('RequirementsTable', () => {
     }
   })
 
-  it('renders the compact package filter only after a successful catalog load', () => {
-    const { rerender } = render(
-      <ControlledCompactPackageFilter catalogStatus="loading" packages={[]} />,
-    )
+  it('shows delayed loading and failed states in the compact filter band', () => {
+    vi.useFakeTimers()
+    try {
+      const { rerender } = render(
+        <ControlledCompactPackageFilter
+          catalogStatus="loading"
+          packages={[]}
+        />,
+      )
 
-    expect(
-      screen.queryByRole('group', { name: 'requirementPackages' }),
-    ).not.toBeInTheDocument()
+      let band = screen.getByRole('group', { name: 'requirementPackages' })
+      expect(band).toHaveAttribute('aria-busy', 'true')
+      expect(
+        within(band).queryByText('requirementPackageCatalogLoading'),
+      ).not.toBeInTheDocument()
 
-    rerender(
-      <ControlledCompactPackageFilter catalogStatus="failed" packages={[]} />,
-    )
-    expect(
-      screen.queryByRole('group', { name: 'requirementPackages' }),
-    ).not.toBeInTheDocument()
+      act(() => vi.advanceTimersByTime(999))
+      expect(
+        within(band).queryByText('requirementPackageCatalogLoading'),
+      ).not.toBeInTheDocument()
+      act(() => vi.advanceTimersByTime(1))
+      expect(within(band).getByRole('status')).toHaveTextContent(
+        'requirementPackageCatalogLoading',
+      )
 
-    rerender(
-      <ControlledCompactPackageFilter catalogStatus="loaded" packages={[]} />,
-    )
+      rerender(
+        <ControlledCompactPackageFilter catalogStatus="failed" packages={[]} />,
+      )
+      band = screen.getByRole('group', { name: 'requirementPackages' })
+      expect(band).toHaveAttribute('aria-busy', 'false')
+      expect(within(band).getByRole('status')).toHaveTextContent(
+        'requirementPackageCatalogFailed',
+      )
 
-    const band = screen.getByRole('group', { name: 'requirementPackages' })
-    expect(
-      within(band).getByText('noRequirementPackagesAvailableToFilter'),
-    ).toBeInTheDocument()
-    const trigger = within(band).getByRole('button', {
-      name: 'requirementPackageFilterButton',
-    })
-    expect(trigger).toBeDisabled()
-    expect(trigger).toHaveAttribute('aria-expanded', 'false')
-    expect(trigger).toHaveAttribute('aria-controls')
+      rerender(
+        <ControlledCompactPackageFilter catalogStatus="loaded" packages={[]} />,
+      )
+
+      band = screen.getByRole('group', { name: 'requirementPackages' })
+      expect(
+        within(band).getByText('noRequirementPackagesAvailableToFilter'),
+      ).toBeInTheDocument()
+      const trigger = within(band).getByRole('button', {
+        name: 'requirementPackageFilterButton',
+      })
+      expect(trigger).toBeDisabled()
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(trigger).toHaveAttribute('aria-controls')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('sorts compact selected and available packages by locale with an id tie-breaker', () => {
