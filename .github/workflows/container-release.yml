@@ -326,42 +326,42 @@ jobs:
           upload-artifact: false
 
       - name: Attest app-runtime provenance
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-name: ${{ env.APP_RUNTIME_IMAGE }}
           subject-digest: ${{ env.APP_RUNTIME_MANIFEST_DIGEST }}
           push-to-registry: false
 
       - name: Attest db-job provenance
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-name: ${{ env.DB_JOB_IMAGE }}
           subject-digest: ${{ env.DB_JOB_MANIFEST_DIGEST }}
           push-to-registry: false
 
       - name: Attest demo seed provenance
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-name: ${{ env.DEMO_SEED_IMAGE }}
           subject-digest: ${{ env.DEMO_SEED_MANIFEST_DIGEST }}
           push-to-registry: false
 
       - name: Attest HSA directory mock provenance
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-name: ${{ env.HSA_DIRECTORY_MOCK_IMAGE }}
           subject-digest: ${{ env.HSA_DIRECTORY_MOCK_MANIFEST_DIGEST }}
           push-to-registry: false
 
       - name: Attest HSA person lookup adapter provenance
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-name: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_IMAGE }}
           subject-digest: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST }}
           push-to-registry: false
 
       - name: Attest app-runtime SBOM
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-name: ${{ env.APP_RUNTIME_IMAGE }}
           subject-digest: ${{ env.APP_RUNTIME_MANIFEST_DIGEST }}
@@ -369,7 +369,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest db-job SBOM
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-name: ${{ env.DB_JOB_IMAGE }}
           subject-digest: ${{ env.DB_JOB_MANIFEST_DIGEST }}
@@ -377,7 +377,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest demo seed SBOM
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-name: ${{ env.DEMO_SEED_IMAGE }}
           subject-digest: ${{ env.DEMO_SEED_MANIFEST_DIGEST }}
@@ -385,7 +385,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest HSA directory mock SBOM
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-name: ${{ env.HSA_DIRECTORY_MOCK_IMAGE }}
           subject-digest: ${{ env.HSA_DIRECTORY_MOCK_MANIFEST_DIGEST }}
@@ -393,7 +393,7 @@ jobs:
           push-to-registry: false
 
       - name: Attest HSA person lookup adapter SBOM
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-name: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_IMAGE }}
           subject-digest: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST }}
