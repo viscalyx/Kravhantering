@@ -258,6 +258,9 @@ describe('trusted container release helpers', () => {
       isReleaseRelevantPath('docs/operations/rhel10-production-deploy.md'),
     ).toBe(true)
     expect(
+      isReleaseRelevantPath('docs/operations/api-docs-edge-verification.md'),
+    ).toBe(true)
+    expect(
       isReleaseRelevantPath(
         'docs/operations/rhel10-production-disconnected.md',
       ),
@@ -1216,6 +1219,9 @@ describe('trusted container release helpers', () => {
         'docs/operations/rhel10-production-deploy.md',
       )
       expect(result.files).toContain(
+        'docs/operations/api-docs-edge-verification.md',
+      )
+      expect(result.files).toContain(
         'docs/operations/rhel10-production-disconnected.md',
       )
       expect(result.files).toContain(
@@ -1262,6 +1268,18 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain(
         'api-docs/hsa-person-lookup/swagger-ui-bundle.js',
       )
+      expect(result.files).toContain(
+        'api-docs/hsa-person-lookup/swagger-initializer.js',
+      )
+      expect(result.files).toContain(
+        'api-docs/hsa-person-lookup/swagger-ui-override.css',
+      )
+      expect(result.files).not.toContain(
+        'api-docs/hsa-person-lookup/swagger-ui-standalone-preset.js',
+      )
+      expect(result.files).toContain(
+        'nginx/templates/api-docs-security-headers.conf',
+      )
       expect(result.files).toContain('kong/kong.yml')
       expect(result.files).toContain('bin/kravhantering-images.sh')
       expect(result.files).toContain(
@@ -1301,6 +1319,9 @@ describe('trusted container release helpers', () => {
         expect(compose).toContain('name: kravhantering-internal')
         expect(compose).toContain(
           '../api-docs:/usr/share/nginx/html/api-docs:ro',
+        )
+        expect(compose).toContain(
+          '../nginx/templates/api-docs-security-headers.conf:/etc/nginx/snippets/api-docs-security-headers.conf:ro',
         )
         expect(compose).not.toContain(
           'kravhantering-app-node_kravhantering-internal',

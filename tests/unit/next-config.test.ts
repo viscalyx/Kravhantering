@@ -64,11 +64,9 @@ function expectWebpackBuildUnsupported(config: NextConfig) {
   )
 }
 
-async function getStaticHeaderKeys(config: NextConfig): Promise<string[]> {
+async function getStaticHeaderRoutes(config: NextConfig) {
   expect(config.headers).toBeTypeOf('function')
-  const routes = await config.headers?.()
-  const allHeaders = routes?.flatMap(route => route.headers) ?? []
-  return allHeaders.map(header => header.key)
+  return (await config.headers?.()) ?? []
 }
 
 async function getBeforeFilesRewrites(config: NextConfig) {
@@ -304,16 +302,41 @@ describe('next.config Admin workspace routing', () => {
 })
 
 describe('next.config static security headers', () => {
-  it('keeps X-Frame-Options as a static fallback while CSP stays nonce-based', async () => {
+  it('keeps the global fallback nonce-free and gives API docs a strict CSP', async () => {
     const config = await loadNextConfig({
       BUILD_TARGET: 'prod',
       NODE_ENV: 'production',
     })
 
-    const headerKeys = await getStaticHeaderKeys(config)
+    const routes = await getStaticHeaderRoutes(config)
+    const catchAll = routes.find(route => route.source === '/(.*)')
+    const apiDocs = routes.find(route => route.source === '/api-docs/:path*')
 
-    expect(headerKeys).toContain('X-Frame-Options')
-    expect(headerKeys).not.toContain('Content-Security-Policy')
+    expect(catchAll?.headers.map(header => header.key)).toContain(
+      'X-Frame-Options',
+    )
+    expect(catchAll?.headers.map(header => header.key)).not.toContain(
+      'Content-Security-Policy',
+    )
+    expect(apiDocs?.headers).toEqual([
+      {
+        key: 'Content-Security-Policy',
+        value:
+          "default-src 'none'; script-src 'self'; script-src-attr 'none'; " +
+          "style-src 'self'; style-src-attr 'none'; img-src 'self' data:; " +
+          "font-src 'self'; connect-src 'self'; object-src 'none'; " +
+          "frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+      },
+    ])
+  })
+
+  it('preserves trailing-slash normalization outside the API docs route', async () => {
+    const config = await loadNextConfig({
+      BUILD_TARGET: 'prod',
+      NODE_ENV: 'production',
+    })
+
+    expect(config.skipTrailingSlashRedirect).toBe(true)
   })
 })
 

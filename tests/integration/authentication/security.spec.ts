@@ -6,6 +6,10 @@ import {
   test,
 } from '@playwright/test'
 import {
+  expectApiDocsSecurityHeaders,
+  expectApiDocsToRenderWithoutCspErrors,
+} from '../../helpers/api-docs-security-headers'
+import {
   expectApiResponseOk,
   expectApiResponseStatus,
 } from '../api-response-assertions'
@@ -24,6 +28,9 @@ async function expectAnonymousTextAsset(
   const response = await request.get(path)
   await expectApiResponseOk(response, `anonymous GET ${path}`)
   expect(response.headers()['content-type']).toMatch(contentType)
+  if (path.startsWith('/api-docs/')) {
+    expectApiDocsSecurityHeaders(response)
+  }
 
   const body = await response.text()
   expect(body).toMatch(content)
@@ -37,6 +44,9 @@ async function expectAnonymousPng(
   const response = await request.get(path)
   await expectApiResponseOk(response, `anonymous GET ${path}`)
   expect(response.headers()['content-type']).toMatch(/^image\/png(?:;|$)/)
+  if (path.startsWith('/api-docs/')) {
+    expectApiDocsSecurityHeaders(response)
+  }
 
   const body = await response.body()
   expect([...body.subarray(0, 8)]).toEqual([
@@ -77,6 +87,7 @@ test.describe('signed-out auth boundary', () => {
   })
 
   test('AUTH-03: reviewed public assets and Next.js framework resources stay anonymous', async ({
+    page,
     request,
   }) => {
     await test.step('serve reviewed application assets with their real content', async () => {
@@ -110,11 +121,28 @@ test.describe('signed-out auth boundary', () => {
 
     await test.step('serve the generated Swagger UI assets anonymously', async () => {
       const swaggerBase = '/api-docs/hsa-person-lookup'
+      const trailingSlashResponse = await request.get(`${swaggerBase}/`, {
+        maxRedirects: 0,
+      })
+      await expectApiResponseStatus(
+        trailingSlashResponse,
+        307,
+        'anonymous GET Swagger UI trailing-slash redirect',
+      )
+      expectApiDocsSecurityHeaders(trailingSlashResponse)
+      expect(
+        new URL(
+          trailingSlashResponse.headers().location ?? '',
+          trailingSlashResponse.url(),
+        ).pathname,
+      ).toBe(`${swaggerBase}/index.html`)
+
       const swaggerRootResponse = await request.get(`${swaggerBase}/`)
       await expectApiResponseOk(
         swaggerRootResponse,
         'anonymous GET Swagger UI root',
       )
+      expectApiDocsSecurityHeaders(swaggerRootResponse)
       expect(swaggerRootResponse.url()).toBe(
         `${resolveIntegrationBaseUrl(test.info(), {
           stripTrailingSlash: true,
@@ -140,9 +168,15 @@ test.describe('signed-out auth boundary', () => {
       )
       await expectAnonymousTextAsset(
         request,
-        `${swaggerBase}/swagger-ui-standalone-preset.js`,
+        `${swaggerBase}/swagger-initializer.js`,
         /^(?:application|text)\/javascript(?:;|$)/,
-        /SwaggerUIStandalonePreset/,
+        /layout:\s*'BaseLayout'/,
+      )
+      await expectAnonymousTextAsset(
+        request,
+        `${swaggerBase}/swagger-ui-override.css`,
+        /^text\/css(?:;|$)/,
+        /body\s*\{/,
       )
       await expectAnonymousTextAsset(
         request,
@@ -152,6 +186,8 @@ test.describe('signed-out auth boundary', () => {
       )
       await expectAnonymousPng(request, `${swaggerBase}/favicon-16x16.png`)
       await expectAnonymousPng(request, `${swaggerBase}/favicon-32x32.png`)
+
+      await expectApiDocsToRenderWithoutCspErrors(page, `${swaggerBase}/`)
     })
 
     await test.step('load a real anonymous Next.js framework asset', async () => {

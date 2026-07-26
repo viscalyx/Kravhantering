@@ -59,6 +59,7 @@ const RELEVANT_PATH_PREFIXES = [
   'package.json',
   'public/',
   'docs/images/',
+  'docs/operations/api-docs-edge-verification.md',
   'docs/operations/operator-upgrade-notes.md',
   'docs/operations/rhel10-production-deploy.md',
   'docs/operations/rhel10-production-disconnected.md',
@@ -86,6 +87,10 @@ const RELEVANT_PATH_PREFIXES = [
 ]
 
 export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
+  {
+    source: 'docs/operations/api-docs-edge-verification.md',
+    target: 'docs/operations/api-docs-edge-verification.md',
+  },
   {
     source: 'docs/operations/rhel10-production-deploy.md',
     target: 'docs/operations/rhel10-production-deploy.md',

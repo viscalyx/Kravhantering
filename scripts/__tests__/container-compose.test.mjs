@@ -147,6 +147,12 @@ describe('container Compose generation', () => {
     expect(compose).toContain('- ./containers/sqlserver/.env.sqlserver.local')
     expect(compose).toContain('"127.0.0.1:15433:1433"')
     expect(compose).toContain('./tmp/test-tls/ca.crt')
+    expect(compose).toContain(
+      './containers/production/nginx/templates/api-docs-security-headers.conf:/etc/nginx/snippets/api-docs-security-headers.conf:ro',
+    )
+    expect(compose).toContain(
+      './public/api-docs:/usr/share/nginx/html/api-docs:ro',
+    )
     expect(compose).toContain('name: "kravhantering-internal"')
     expect(compose).toContain('name: "kravhantering-test-sqlserver-data"')
     expect(compose).toContain('db-bootstrap:')

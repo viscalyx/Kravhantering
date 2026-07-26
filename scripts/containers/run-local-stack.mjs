@@ -1096,6 +1096,11 @@ async function up(config, options = {}) {
     ],
     options,
   )
+  runCommand(
+    'npm',
+    ['run', 'openapi:hsa-person-lookup:generate:public'],
+    options,
+  )
   if (!runtimeConfig.releaseImagesFromLock && !runtimeConfig.skipBuild) {
     runCommand('npm', ['run', 'container:build:app-runtime'], options)
     runCommand('npm', ['run', 'container:build:db-job'], options)

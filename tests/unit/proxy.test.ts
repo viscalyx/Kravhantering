@@ -130,6 +130,60 @@ function parseSecurityEvents(
 }
 
 describe('proxy', () => {
+  it('passes the API docs trailing-slash root through to its route handler', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await proxy(
+        buildRequest('http://localhost/api-docs/hsa-person-lookup/'),
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('x-middleware-next')).toBe('1')
+      expect(response.headers.get('location')).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+
+  it.each([
+    {
+      routeClass: 'localized page',
+      source: '/sv/requirements/?view=active',
+      target: '/sv/requirements?view=active',
+    },
+    {
+      routeClass: 'auth endpoint',
+      source: '/api/auth/me/?probe=anonymous',
+      target: '/api/auth/me?probe=anonymous',
+    },
+    {
+      routeClass: 'public static resource',
+      source: '/logo-small.png/?variant=small',
+      target: '/logo-small.png?variant=small',
+    },
+    {
+      routeClass: 'Next.js framework resource',
+      source: '/_next/static/chunks/app.js/?build=current',
+      target: '/_next/static/chunks/app.js?build=current',
+    },
+  ])(
+    'preserves canonical trailing-slash redirects for $routeClass routes',
+    async ({ source, target }) => {
+      const restore = withEnv(AUTH_ON_ENV)
+      try {
+        const response = await proxy(buildRequest(`http://localhost${source}`))
+
+        expect(response.status).toBe(308)
+        expect(response.headers.get('location')).toBe(
+          `http://localhost${target}`,
+        )
+        expect(response.headers.get('refresh')).toBe(`0;url=${target}`)
+      } finally {
+        restore()
+      }
+    },
+  )
+
   it('redirects unauthenticated browser GET to /api/auth/login', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
@@ -381,6 +435,26 @@ describe('proxy', () => {
     }
   })
 
+  it('returns 401 before normalizing unauthenticated trailing-slash REST mutations', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await proxy(
+        buildRequest('http://localhost/api/requirement-areas/', {
+          method: 'POST',
+        }),
+      )
+
+      expect(response.status).toBe(401)
+      expect(response.headers.get('location')).toBeNull()
+      await expect(response.json()).resolves.toMatchObject({
+        error: 'Unauthorized',
+        detail: 'Sign in required.',
+      })
+    } finally {
+      restore()
+    }
+  })
+
   it('returns 401 JSON for expired API sessions', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
@@ -499,8 +573,11 @@ describe('proxy', () => {
       '/unknown/path/file.json',
       '/_next/data/build-id/page.json',
       '/_next/images',
+      '/_next/static/chunks/app.js/',
       '/_next/static-files/chunks/app.js',
+      '/api-docs/hsa-person-lookup/',
       '/api-docs/hsa-person-lookup/extra.js',
+      '/api-docs/hsa-person-lookup/swagger-ui-standalone-preset.js',
       '/api-docs/hsa-person-lookup/swagger-ui.css.map',
       '/build.json/preview',
       '/favicon.ico/preview',
@@ -576,6 +653,29 @@ describe('proxy', () => {
     }
   })
 
+  it('returns 403 before normalizing trailing-slash REST mutations that fail CSRF', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const cookie = await writeSignedInCookie()
+      const response = await proxy(
+        buildRequest('http://localhost/api/requirement-areas/', {
+          cookie,
+          method: 'POST',
+          origin: 'http://localhost',
+        }),
+      )
+
+      expect(response.status).toBe(403)
+      expect(response.headers.get('location')).toBeNull()
+      await expect(response.json()).resolves.toEqual({
+        error: 'Forbidden',
+        detail: 'Missing X-Requested-With header.',
+      })
+    } finally {
+      restore()
+    }
+  })
+
   it('rejects signed-in cross-origin REST mutations', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
@@ -616,6 +716,31 @@ describe('proxy', () => {
       ).split(',')
       expect(overrides).not.toContain('x-user-id')
       expect(overrides).not.toContain('x-user-roles')
+    } finally {
+      restore()
+    }
+  })
+
+  it('normalizes trailing-slash REST mutations after auth and CSRF succeed', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const cookie = await writeSignedInCookie()
+      const response = await proxy(
+        buildRequest('http://localhost/api/requirement-areas/?view=active', {
+          cookie,
+          method: 'POST',
+          origin: 'http://localhost',
+          xRequestedWith: 'XMLHttpRequest',
+        }),
+      )
+
+      expect(response.status).toBe(308)
+      expect(response.headers.get('location')).toBe(
+        'http://localhost/api/requirement-areas?view=active',
+      )
+      expect(response.headers.get('refresh')).toBe(
+        '0;url=/api/requirement-areas?view=active',
+      )
     } finally {
       restore()
     }

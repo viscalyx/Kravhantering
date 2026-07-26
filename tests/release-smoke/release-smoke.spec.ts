@@ -1,4 +1,8 @@
 import { expect, request as playwrightRequest, test } from '@playwright/test'
+import {
+  expectApiDocsSecurityHeaders,
+  expectApiDocsToRenderWithoutCspErrors,
+} from '../helpers/api-docs-security-headers'
 import { RELEASE_SMOKE_ADMIN } from './global-setup'
 
 interface AuthMeResponse {
@@ -216,6 +220,66 @@ test.describe('Release smoke container flow', () => {
       expect(readBack.id).toBe(created.requirement.id)
       expect(readBack.uniqueId).toBe(created.requirement.uniqueId)
       expect(readBack.versions?.[0]?.description).toBe(description)
+    })
+  })
+
+  test('serves strict CSP-compatible API docs directly from nginx', async ({
+    page,
+    request,
+  }) => {
+    const swaggerBase = '/api-docs/hsa-person-lookup'
+
+    await test.step('verify the no-follow redirect and its headers', async () => {
+      const response = await request.get(swaggerBase, { maxRedirects: 0 })
+
+      expect(response.status()).toBe(308)
+      const redirectLocation = response.headers().location
+      expect(redirectLocation).toBeDefined()
+      expect(new URL(redirectLocation ?? '', response.url()).pathname).toBe(
+        `${swaggerBase}/`,
+      )
+      expectApiDocsSecurityHeaders(response)
+    })
+
+    await test.step('verify representative static files and a 404', async () => {
+      const assets = [
+        {
+          content: /id="swagger-ui"/,
+          contentType: /^text\/html(?:;|$)/,
+          path: `${swaggerBase}/index.html`,
+        },
+        {
+          content: /layout:\s*'BaseLayout'/,
+          contentType: /^(?:application|text)\/javascript(?:;|$)/,
+          path: `${swaggerBase}/swagger-initializer.js`,
+        },
+        {
+          content: /title:\s*Kravhantering HSA Person Lookup Facade/,
+          contentType:
+            /^(?:application|text)\/(?:octet-stream|yaml|x-yaml|plain)(?:;|$)/,
+          path: `${swaggerBase}/hsa-person-lookup.yaml`,
+        },
+      ]
+
+      for (const asset of assets) {
+        const response = await request.get(asset.path)
+        expect(response.status(), asset.path).toBe(200)
+        expect(response.headers()['content-type'], asset.path).toMatch(
+          asset.contentType,
+        )
+        expect(await response.text(), asset.path).toMatch(asset.content)
+        expectApiDocsSecurityHeaders(response)
+      }
+
+      const missingResponse = await request.get(
+        '/api-docs/missing-release-smoke-asset.js',
+      )
+      expect(missingResponse.status()).toBe(404)
+      expectApiDocsSecurityHeaders(missingResponse)
+    })
+
+    await test.step('render the specification without CSP console errors', async () => {
+      await expectApiDocsToRenderWithoutCspErrors(page, `${swaggerBase}/`)
     })
   })
 

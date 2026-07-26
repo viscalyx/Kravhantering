@@ -1576,16 +1576,26 @@ podman compose --env-file /etc/kravhantering/release.env \
 exit
 ```
 
-Check readiness and the static HSA-person lookup Swagger UI through nginx:
+Check readiness:
 
 ```bash
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/health
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/ready
-curl --fail --silent --show-error \
-  https://kravhantering.example.internal/api-docs/hsa-person-lookup/
 ```
+
+### API Documentation Edge Contract
+
+The final public edge must implement the application-defined header contract
+for every path below `/api-docs/`. Run
+[API Documentation Edge Verification](api-docs-edge-verification.md) against
+the final public HTTPS origin after checking readiness.
+
+The canonical procedure covers bundled nginx and any external load balancer,
+reverse proxy or CDN. It verifies successful files, redirects, errors, future
+documentation ownership and duplicate-header prevention. A failed check blocks
+deployment.
 
 If the host uses the temporary self-signed certificate from Appendix A, or the
 operator workstation does not yet trust the issuing CA, use `--insecure` for a

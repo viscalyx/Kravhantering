@@ -9,11 +9,11 @@ const DEFAULT_OPENAPI_PATH = 'openapi/hsa-person-lookup.yaml'
 const DEFAULT_OUTPUT_DIR = 'tmp/openapi/hsa-person-lookup'
 const SWAGGER_ASSETS = [
   'swagger-ui-bundle.js',
-  'swagger-ui-standalone-preset.js',
   'swagger-ui.css',
   'favicon-16x16.png',
   'favicon-32x32.png',
 ]
+const GENERATED_ASSETS = ['swagger-initializer.js', 'swagger-ui-override.css']
 
 function readArg(args, name, fallback) {
   const index = args.indexOf(name)
@@ -31,7 +31,6 @@ function normalizeAssetBasePath(assetBasePath = './') {
 
 export function swaggerHtml({
   assetBasePath = './',
-  specFileName = 'hsa-person-lookup.yaml',
   title = 'Kravhantering HSA Person Lookup Facade',
 } = {}) {
   const assetBaseUrl = normalizeAssetBasePath(assetBasePath)
@@ -42,43 +41,50 @@ export function swaggerHtml({
     <meta charset="utf-8">
     <title>${title}</title>
     <link rel="stylesheet" href="${assetBaseUrl}swagger-ui.css">
+    <link rel="stylesheet" href="${assetBaseUrl}swagger-ui-override.css">
     <link rel="icon" href="${assetBaseUrl}favicon-32x32.png" sizes="32x32">
     <link rel="icon" href="${assetBaseUrl}favicon-16x16.png" sizes="16x16">
-    <style>
-      body {
-        margin: 0;
-      }
-    </style>
   </head>
   <body>
     <div id="swagger-ui"></div>
     <script src="${assetBaseUrl}swagger-ui-bundle.js"></script>
-    <script src="${assetBaseUrl}swagger-ui-standalone-preset.js"></script>
-    <script>
-      window.addEventListener('load', () => {
-        window.ui = SwaggerUIBundle({
-          dom_id: '#swagger-ui',
-          layout: 'StandaloneLayout',
-          presets: [
-            SwaggerUIBundle.presets.apis,
-            SwaggerUIStandalonePreset,
-          ],
-          plugins: [
-            () => ({
-              components: {
-                authorizationPopup: () => null,
-                authorizeBtn: () => null,
-                authorizeOperationBtn: () => null,
-              },
-            }),
-          ],
-          supportedSubmitMethods: [],
-          url: '${assetBaseUrl}${specFileName}',
-        })
-      })
-    </script>
+    <script src="${assetBaseUrl}swagger-initializer.js"></script>
   </body>
 </html>
+`
+}
+
+export function swaggerInitializer({
+  assetBasePath = './',
+  specFileName = 'hsa-person-lookup.yaml',
+} = {}) {
+  const specUrl = `${normalizeAssetBasePath(assetBasePath)}${specFileName}`
+
+  return `window.ui = SwaggerUIBundle({
+  dom_id: '#swagger-ui',
+  layout: 'BaseLayout',
+  presets: [
+    SwaggerUIBundle.presets.apis,
+  ],
+  plugins: [
+    () => ({
+      components: {
+        authorizationPopup: () => null,
+        authorizeBtn: () => null,
+        authorizeOperationBtn: () => null,
+      },
+    }),
+  ],
+  supportedSubmitMethods: [],
+  url: ${JSON.stringify(specUrl)},
+})
+`
+}
+
+export function swaggerOverrideCss() {
+  return `body {
+  margin: 0;
+}
 `
 }
 
@@ -104,12 +110,25 @@ export function generateHsaPersonLookupSwaggerUi({
   }
   fsImpl.writeFileSync(
     path.join(outputDir, 'index.html'),
-    swaggerHtml({ assetBasePath, specFileName }),
+    swaggerHtml({ assetBasePath }),
+  )
+  fsImpl.writeFileSync(
+    path.join(outputDir, 'swagger-initializer.js'),
+    swaggerInitializer({ assetBasePath, specFileName }),
+  )
+  fsImpl.writeFileSync(
+    path.join(outputDir, 'swagger-ui-override.css'),
+    swaggerOverrideCss(),
   )
 
   return {
     outputDir,
-    files: ['index.html', specFileName, ...SWAGGER_ASSETS].sort(),
+    files: [
+      'index.html',
+      specFileName,
+      ...SWAGGER_ASSETS,
+      ...GENERATED_ASSETS,
+    ].sort(),
   }
 }
 

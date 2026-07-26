@@ -259,7 +259,8 @@ Each trusted run also writes runtime evidence:
   tag and expected database schema migration `name` embedded in the tested app
   image.
 - `api-docs/hsa-person-lookup/` contains the static Swagger UI for the
-  HSA-person lookup REST contract.
+  HSA-person lookup REST contract. Its generated initializer and override
+  stylesheet keep the UI compatible with the strict documentation CSP.
 
 The workflow uploads these artifact groups:
 
@@ -280,7 +281,21 @@ verified local images into a transport bundle, and load and tag that bundle on
 a disconnected host.
 The bundled nginx Compose files mount `api-docs/` and serve the HSA-person
 lookup Swagger UI at `/api-docs/hsa-person-lookup/` on the same public origin
-as the application.
+as the application. They also mount the shared
+`nginx/templates/api-docs-security-headers.conf` contract. Release smoke
+therefore exercises static files from nginx rather than from the app-runtime
+image and verifies the redirect, representative files, a 404 response, exact
+single-value security headers, rendered specification and absence of CSP
+console violations.
+
+Nginx is the bundled reference implementation, not a universal production
+requirement. An external load balancer, reverse proxy or CDN that serves files
+below `/api-docs/` owns their final headers and must implement equivalent
+values for success, redirect and error responses. It must strip or replace
+upstream values instead of appending duplicates. The deployment bundle
+includes the canonical
+[API Documentation Edge Verification](../operations/api-docs-edge-verification.md)
+procedure, which the production deploy and upgrade guides reference.
 
 The production deployment bundle is also uploaded to GitHub Releases as:
 

@@ -902,17 +902,26 @@ The full start command reads the corrected value from
 The app-facing public URLs in `app.env` must still use the external HTTPS
 origin exposed by the load balancer.
 
-After either alternative, check readiness and the static HSA-person lookup
-Swagger UI through nginx:
+After either alternative, check readiness:
 
 ```bash
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/health
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/ready
-curl --fail --silent --show-error \
-  https://kravhantering.example.internal/api-docs/hsa-person-lookup/
 ```
+
+### API Documentation Edge Contract
+
+The final public edge must implement the application-defined header contract
+for every path below `/api-docs/`. Run
+[API Documentation Edge Verification](api-docs-edge-verification.md) against
+the final public HTTPS origin after checking readiness.
+
+The canonical procedure covers bundled nginx and alternative load balancers,
+reverse proxies and CDNs. It verifies successful files, redirects, errors,
+future documentation ownership and duplicate-header prevention. A failed check
+blocks deployment.
 
 If the host uses a self-signed certificate, or the operator workstation does
 not yet trust the issuing CA, use `--insecure` for a manual readiness probe

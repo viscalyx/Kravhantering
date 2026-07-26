@@ -24,6 +24,7 @@ const intlMiddleware = createMiddleware(routing)
 // Keep the two lists in sync.
 const LOCALES = ['sv', 'en'] as const
 const DEFAULT_LOCALE: (typeof LOCALES)[number] = 'sv'
+const API_DOCS_SWAGGER_ROOT = '/api-docs/hsa-person-lookup/'
 
 // Inbound headers that an attacker could try to use to impersonate a user.
 // Always stripped before requests reach app handlers.
@@ -144,6 +145,26 @@ function redirectSwedishRequirementRouteToRequirements(
   return ensureRedirectContentType(
     stripRedirectBody(NextResponse.redirect(target, { status: 307 })),
   )
+}
+
+function handleTrailingSlash(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl
+  if (!pathname.endsWith('/') || pathname === '/') return null
+
+  // Let the route handler create this redirect after next.config.ts headers
+  // have been selected. Next.js's automatic redirect runs too early to retain
+  // either the static security baseline or the API-documentation CSP.
+  if (pathname === API_DOCS_SWAGGER_ROOT) {
+    return NextResponse.next()
+  }
+
+  // skipTrailingSlashRedirect is global, so explicitly preserve Next.js's
+  // default no-trailing-slash behavior for every other application path.
+  const target = new URL(request.url)
+  target.pathname = pathname.slice(0, -1)
+  const response = NextResponse.redirect(target, { status: 308 })
+  response.headers.set('Refresh', `0;url=${target.pathname}${target.search}`)
+  return response
 }
 
 // Production CSP with per-request nonce for inline scripts.
@@ -426,6 +447,15 @@ function applyPageHeaders(
 
 export default async function proxy(request: NextRequest) {
   const ids = resolveRequestCorrelationIds(request.headers)
+  const deferTrailingSlashUntilAfterSecurity =
+    isApiPath(request.nextUrl.pathname) && isMutatingMethod(request.method)
+
+  if (!deferTrailingSlashUntilAfterSecurity) {
+    const trailingSlashResponse = handleTrailingSlash(request)
+    if (trailingSlashResponse) {
+      return finalizeResponse(trailingSlashResponse, ids)
+    }
+  }
 
   const methodResponse = rejectUnsupportedApiMethod(request)
   if (methodResponse) return finalizeResponse(methodResponse, ids)
@@ -441,6 +471,13 @@ export default async function proxy(request: NextRequest) {
 
   const csrfResponse = enforceRestCsrf(request)
   if (csrfResponse) return finalizeResponse(csrfResponse, ids)
+
+  if (deferTrailingSlashUntilAfterSecurity) {
+    const trailingSlashResponse = handleTrailingSlash(request)
+    if (trailingSlashResponse) {
+      return finalizeResponse(trailingSlashResponse, ids)
+    }
+  }
 
   if (isLocaleRootPath(request.nextUrl.pathname)) {
     return finalizeResponse(redirectLocaleRootToRequirements(request), ids)
@@ -462,7 +499,8 @@ export const config = {
   // Keep matcher values literal so Next.js can statically analyze them.
   // Keep reviewed bypass paths aligned with `lib/auth/proxy-public-paths.ts`.
   matcher: [
+    '/((?:.*)/)',
     '/api/:path*',
-    '/((?!_next/static(?:/|$)|_next/image$|_next/webpack-hmr$|api-docs/hsa-person-lookup(?:/?|/(?:favicon-16x16\\.png|favicon-32x32\\.png|hsa-person-lookup\\.yaml|index\\.html|swagger-ui-bundle\\.js|swagger-ui-standalone-preset\\.js|swagger-ui\\.css))$|build\\.json$|favicon\\.ico$|logo-small\\.png$|robots\\.txt$|sitemap\\.xml$|api(?:/|$)).*)',
+    '/((?!_next/static(?:/|$)|_next/image$|_next/webpack-hmr$|api-docs/hsa-person-lookup(?:/(?:favicon-16x16\\.png|favicon-32x32\\.png|hsa-person-lookup\\.yaml|index\\.html|swagger-initializer\\.js|swagger-ui-bundle\\.js|swagger-ui-override\\.css|swagger-ui\\.css))?$|build\\.json$|favicon\\.ico$|logo-small\\.png$|robots\\.txt$|sitemap\\.xml$|api(?:/|$)).*)',
   ],
 }

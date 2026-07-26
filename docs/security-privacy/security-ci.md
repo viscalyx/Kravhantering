@@ -421,9 +421,26 @@ workflows back to `app.pid` unless the startup and cleanup model changes.
 ## Static security headers
 
 Static (per-response, non-nonce) security headers are set in the
-`headers()` block of [next.config.ts](../../next.config.ts) and apply to
-every route. CSP is intentionally **not** set there — it carries a
-per-request nonce and is set in [proxy.ts](../../proxy.ts) instead.
+`headers()` block of [next.config.ts](../../next.config.ts). The baseline
+applies to every route. Application pages receive their per-request nonce CSP
+from [proxy.ts](../../proxy.ts), while `/api-docs/:path*` receives a separate
+static CSP from `next.config.ts`.
+
+The API documentation CSP permits only same-origin scripts, styles, fonts,
+connections and specification loading, plus `data:` images required by Swagger
+icons. It denies inline scripts, inline styles, inline attributes, dynamic
+evaluation, framing, objects, forms and base-URL changes. The generated Swagger
+UI uses `BaseLayout` with external initializer and override stylesheet files so
+it can render under this policy.
+
+For files served by an external edge, the application configuration remains
+the header contract and the edge owns the final response headers. The bundled
+nginx configuration applies the same CSP and baseline from
+`api-docs-security-headers.conf` to every response below `/api-docs/`, including
+redirects and errors. Alternative load balancers, reverse proxies and CDNs
+must emit equivalent single values rather than append duplicates. Missing,
+duplicate or conflicting values fail deployment verification.
+
 The supported browser baseline is modern Chrome, Edge, Firefox, Safari, and
 current platform WebViews. IE and pre-CSP2 browser engines are unsupported, so
 CSP `frame-ancestors` is the primary clickjacking control for page responses.
@@ -466,6 +483,12 @@ Current static headers and rationale:
   (no `SharedArrayBuffer`, no high-resolution timers needed).
 - `Permissions-Policy: …=()` — denies every powerful browser feature
   the app does not use.
+
+Focused prodlike authentication coverage verifies the direct Next.js
+documentation responses, rendered HSA person lookup specification and absence
+of CSP console violations. Release smoke verifies the real nginx-served
+redirect, HTML, JavaScript, YAML and 404 paths, exact single-value headers,
+rendered specification and absence of CSP console violations.
 
 ## Out of scope (for the PR workflow)
 

@@ -1,5 +1,5 @@
 ---
-applyTo: "{app/api/**/*.ts,package.json}"
+applyTo: "{app/api/**/*.ts,next.config.ts,package.json}"
 ---
 
 # Next.js Runtime
@@ -35,3 +35,12 @@ applyTo: "{app/api/**/*.ts,package.json}"
 - Use derived `DB_*` values for local scaffold defaults when a full URL is not
   needed.
 - Prod-like validation uses `npm run build` and `npm run start:prodlike`.
+
+## API Documentation Security Headers
+
+- When changing the API documentation header contract in `next.config.ts`,
+  update:
+  - `containers/production/nginx/templates/api-docs-security-headers.conf`
+  - `tests/helpers/api-docs-security-headers.ts`
+  - `docs/operations/api-docs-edge-verification.md`
+  - any other relevant file referencing header contract unless it is already covered

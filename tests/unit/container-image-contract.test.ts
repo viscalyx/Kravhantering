@@ -344,7 +344,6 @@ describe('container image contract', () => {
     )
     expect(siteConf).toContain('proxy_pass http://app-runtime:3000;')
     expect(siteConf).toContain('proxy_pass http://keycloak:8080/;')
-
     for (const header of [
       'Host $host',
       'X-Forwarded-Proto https',

@@ -24,10 +24,12 @@ server {
     ssl_prefer_server_ciphers off;
 
     location = /api-docs/hsa-person-lookup {
+        include /etc/nginx/snippets/api-docs-security-headers.conf;
         return 308 /api-docs/hsa-person-lookup/;
     }
 
     location /api-docs/ {
+        include /etc/nginx/snippets/api-docs-security-headers.conf;
         root /usr/share/nginx/html;
         index index.html;
         try_files $uri $uri/ =404;

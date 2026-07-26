@@ -161,6 +161,9 @@ samtidigt som granskade publika resurser förblir tillgängliga.
    `/api-docs/hsa-person-lookup/` utan sessionscookie. Bekräfta att
    Swagger-sökvägen omdirigerar till
    `/api-docs/hsa-person-lookup/index.html`.
+1. Öppna Swagger-sidan och bekräfta att rubriken
+   **Kravhantering HSA Person Lookup Facade** visas och att specifikationen går
+   att läsa och navigera utan inloggning.
 1. Öppna `/auth/error?locale=sv&code=invalid_callback_request` i den utloggade
    webbläsarsessionen.
 
@@ -168,7 +171,8 @@ samtidigt som granskade publika resurser förblir tillgängliga.
 `{ "authenticated": false }`. Skyddade API:er svarar HTTP 401 med JSON-body.
 Ingen HTML-login returneras från API-anropet. De granskade publika resurserna
 returnerar sina avsedda JSON-, bild-, text-, XML- och HTML-innehåll utan
-inloggningsomdirigering. Auth-felsidan renderas med sina Next.js-resurser.
+inloggningsomdirigering. Swagger-sidan visar en läsbar och navigerbar
+specifikation. Auth-felsidan renderas med sina Next.js-resurser.
 
 ### AUTH-04: sessionsprojektion döljer råa tokenvärden
 

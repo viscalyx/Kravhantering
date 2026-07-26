@@ -112,10 +112,29 @@ const adminDefaultWorkspaceRewrite = {
   source: '/:locale/admin',
 }
 
+const API_DOCS_CONTENT_SECURITY_POLICY = [
+  "default-src 'none'",
+  "script-src 'self'",
+  "script-src-attr 'none'",
+  "style-src 'self'",
+  "style-src-attr 'none'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ')
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   typedRoutes: true,
   output: 'standalone',
+  // Next.js normally removes every trailing slash before route headers are
+  // applied. proxy.ts recreates that default for every other path while
+  // allowing the Swagger root through so its route headers are retained.
+  skipTrailingSlashRedirect: true,
   compress: true,
   poweredByHeader: false,
   generateEtags: true,
@@ -168,8 +187,8 @@ const nextConfig: NextConfig = {
       fallback: [],
     }
   },
-  // CSP is set per-request in proxy.ts (nonce-based).
-  // Only static security headers are defined here.
+  // Application pages receive a nonce-based CSP from proxy.ts. Static API
+  // documentation bypasses the proxy and receives its inline-free CSP here.
   async headers() {
     return [
       {
@@ -234,6 +253,15 @@ const nextConfig: NextConfig = {
               'web-share=()',
               'xr-spatial-tracking=()',
             ].join(', '),
+          },
+        ],
+      },
+      {
+        source: '/api-docs/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: API_DOCS_CONTENT_SECURITY_POLICY,
           },
         ],
       },

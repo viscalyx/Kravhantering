@@ -5,7 +5,8 @@
 This suite is the narrow Playwright proof for the container stack. It runs
 against `https://kravhantering.test` after the Podman Compose stack is already
 started, signs in through Keycloak via nginx, and verifies the release-critical
-path without duplicating the full integration suite.
+path, including nginx-served API documentation, without duplicating the full
+integration suite.
 
 ## Data Model
 
@@ -15,6 +16,7 @@ path without duplicating the full integration suite.
 | `storageState` | `tests/release-smoke/global-setup.ts` | Reuses the `release-smoke-user` and `release-smoke-admin` browser sessions. |
 | `RELEASE_SMOKE_RUN_ID` | Environment | Optional stable prefix for created smoke requirements. |
 | `build.json` | `/build.json` | Public build metadata embedded in the app image. |
+| API docs | `public/api-docs/` | Static Swagger UI mounted directly into nginx. |
 | HSA fixture | `containers/hsa-directory-mock/fixtures/hsa-personer.json` | Provides deterministic person data through Kong and the adapter. |
 | `AUTHZ` requirement area | `typeorm/seed.mjs` | Gives the no-role smoke user a deterministic kravområdesmedförfattare assignment for the write proof. |
 <!-- markdownlint-enable MD013 -->
@@ -48,7 +50,8 @@ flowchart TD
     K --> L[Attach build metadata]
     L --> M[POST /api/requirements]
     M --> N[GET /api/requirements/:id]
-    N --> O[Admin verifies HSA person through Kong and adapter]
+    N --> O[Verify nginx API docs headers, assets, rendering and 404]
+    O --> P[Admin verifies HSA person through Kong and adapter]
 ```
 
 ## Test Setup
@@ -129,6 +132,46 @@ sequenceDiagram
     PW->>APP: GET /api/requirements/:id
     APP->>DB: Read created requirement
     Note over PW,DB: ✓ SQL Server write path is proven
+```
+
+## serves strict CSP-compatible API docs directly from nginx
+
+### API Documentation Purpose
+
+This test proves that the release-smoke nginx serves the static API
+documentation itself, applies the application-defined security-header contract
+to every documentation response, and renders Swagger without CSP violations.
+
+### API Documentation Flow
+
+1. Request `/api-docs/hsa-person-lookup` without following redirects and
+   verify HTTP 308, the trailing-slash target, and exact security headers.
+2. Request the HTML, external initializer JavaScript, and OpenAPI YAML.
+3. Verify each successful response has the expected content type, content,
+   and exactly one value for every required security header.
+4. Request a missing path below `/api-docs/` and verify HTTP 404 with the same
+   exact headers.
+5. Open the Swagger UI in Chromium, verify the HSA person lookup title, and
+   assert that the browser console contains no CSP violations.
+
+### API Documentation Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant PW as Playwright
+    participant N as nginx
+    participant FS as Mounted API docs
+
+    PW->>N: GET /api-docs/hsa-person-lookup without redirects
+    N-->>PW: 308 plus exact security headers
+    PW->>N: GET HTML, JavaScript and YAML
+    N->>FS: Read static files
+    FS-->>N: Static API documentation
+    N-->>PW: 200 plus exact security headers
+    PW->>N: GET missing /api-docs asset
+    N-->>PW: 404 plus exact security headers
+    PW->>N: Open Swagger UI in Chromium
+    Note over PW,N: Specification renders without CSP violations
 ```
 
 ## verifies HSA person lookup through Kong, adapter and the HSA mock
