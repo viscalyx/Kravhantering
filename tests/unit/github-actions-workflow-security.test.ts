@@ -39,6 +39,7 @@ type WorkflowJob = {
 type WorkflowStep = {
   'continue-on-error'?: unknown
   env?: Record<string, unknown>
+  if?: unknown
   name?: unknown
   run?: unknown
   uses?: unknown
