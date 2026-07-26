@@ -2332,7 +2332,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       })
       await expect(
         page.getByRole('tab', { name: 'RFI question list' }),
-      ).toBeVisible()
+      ).toHaveCount(1)
       const englishItemsPanel = page.locator(
         '[data-specification-detail-list-panel="items"]',
       )
