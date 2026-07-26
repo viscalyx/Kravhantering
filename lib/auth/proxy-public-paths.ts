@@ -8,6 +8,8 @@ export const REVIEWED_PROXY_BYPASS_EXACT_PATHS = [
   '/_next/image',
   '/_next/static',
   '/_next/webpack-hmr',
+  '/api-docs/hsa-person-lookup',
+  '/api-docs/hsa-person-lookup/',
   '/api-docs/hsa-person-lookup/favicon-16x16.png',
   '/api-docs/hsa-person-lookup/favicon-32x32.png',
   '/api-docs/hsa-person-lookup/hsa-person-lookup.yaml',

@@ -110,6 +110,16 @@ test.describe('signed-out auth boundary', () => {
 
     await test.step('serve the generated Swagger UI assets anonymously', async () => {
       const swaggerBase = '/api-docs/hsa-person-lookup'
+      const swaggerRootResponse = await request.get(`${swaggerBase}/`)
+      await expectApiResponseOk(
+        swaggerRootResponse,
+        'anonymous GET Swagger UI root',
+      )
+      expect(swaggerRootResponse.url()).toBe(
+        `${resolveIntegrationBaseUrl(test.info(), {
+          stripTrailingSlash: true,
+        })}${swaggerBase}/index.html`,
+      )
       await expectAnonymousTextAsset(
         request,
         `${swaggerBase}/index.html`,

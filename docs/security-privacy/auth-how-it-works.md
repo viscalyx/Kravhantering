@@ -32,8 +32,9 @@ It is intentionally not a replacement for the more detailed workflow docs:
   public asset paths. The proxy matcher itself skips only those framework,
   metadata, and exact public asset paths. All other paths, including dynamic
   page and API paths containing dots, enter the authentication boundary. The
-  generated HSA Swagger files remain public assets, while the
-  `/api-docs/hsa-person-lookup` page route remains protected.
+  generated HSA Swagger files remain public assets. The public
+  `/api-docs/hsa-person-lookup/` route redirects to the generated
+  `index.html` without requiring a session.
 - Browser sign-in uses two separate `iron-session` cookies:
   a short-lived login-state cookie from
   [`lib/auth/login-state.ts`](../../lib/auth/login-state.ts) and the main

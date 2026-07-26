@@ -500,7 +500,6 @@ describe('proxy', () => {
       '/_next/data/build-id/page.json',
       '/_next/images',
       '/_next/static-files/chunks/app.js',
-      '/api-docs/hsa-person-lookup',
       '/api-docs/hsa-person-lookup/extra.js',
       '/api-docs/hsa-person-lookup/swagger-ui.css.map',
       '/build.json/preview',

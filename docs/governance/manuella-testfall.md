@@ -158,7 +158,9 @@ samtidigt som granskade publika resurser förblir tillgängliga.
    sessionskontrollen är maskinläsbar utan HTML-redirect.
 1. Kör en skyddad API-yta anonymt, till exempel `/api/requirements`.
 1. Hämta `/build.json`, `/logo-small.png`, `/robots.txt`, `/sitemap.xml` och
-   `/api-docs/hsa-person-lookup/index.html` utan sessionscookie.
+   `/api-docs/hsa-person-lookup/` utan sessionscookie. Bekräfta att
+   Swagger-sökvägen omdirigerar till
+   `/api-docs/hsa-person-lookup/index.html`.
 1. Öppna `/auth/error?locale=sv&code=invalid_callback_request` i den utloggade
    webbläsarsessionen.
 

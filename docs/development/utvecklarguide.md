@@ -102,8 +102,10 @@ låter Next.js utvecklingsserver exponera den på samma ursprung som
 applikationen:
 
 ```text
-http://localhost:3000/api-docs/hsa-person-lookup
+http://localhost:3000/api-docs/hsa-person-lookup/
 ```
+
+Sökvägen är publik och omdirigerar till den genererade `index.html`.
 
 [auth-hsa-lookup]: ./auth-developer-workflow.md#local-hsa-id-lookup-support
 

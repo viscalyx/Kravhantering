@@ -463,6 +463,6 @@ export const config = {
   // Keep reviewed bypass paths aligned with `lib/auth/proxy-public-paths.ts`.
   matcher: [
     '/api/:path*',
-    '/((?!_next/static(?:/|$)|_next/image$|_next/webpack-hmr$|api-docs/hsa-person-lookup/(?:favicon-16x16\\.png|favicon-32x32\\.png|hsa-person-lookup\\.yaml|index\\.html|swagger-ui-bundle\\.js|swagger-ui-standalone-preset\\.js|swagger-ui\\.css)$|build\\.json$|favicon\\.ico$|logo-small\\.png$|robots\\.txt$|sitemap\\.xml$|api(?:/|$)).*)',
+    '/((?!_next/static(?:/|$)|_next/image$|_next/webpack-hmr$|api-docs/hsa-person-lookup(?:/?|/(?:favicon-16x16\\.png|favicon-32x32\\.png|hsa-person-lookup\\.yaml|index\\.html|swagger-ui-bundle\\.js|swagger-ui-standalone-preset\\.js|swagger-ui\\.css))$|build\\.json$|favicon\\.ico$|logo-small\\.png$|robots\\.txt$|sitemap\\.xml$|api(?:/|$)).*)',
   ],
 }
