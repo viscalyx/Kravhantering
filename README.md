@@ -274,7 +274,8 @@ npm run start:prodlike
 ```
 
 `npm run start:prodlike` rebuilds with `NODE_ENV=production` and then starts
-the built app on port `3001`.
+the built app on port `3001`. Its build preparation also generates the static
+HSA person lookup Swagger UI under `/api-docs/hsa-person-lookup/`.
 
 ## Security CI
 

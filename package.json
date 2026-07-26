@@ -65,7 +65,7 @@
     "container:release": "node scripts/release/container-release.mjs",
     "container:status": "node scripts/containers/collect-status.mjs",
     "container:hashes": "node scripts/containers/write-hashes.mjs",
-    "prebuild:local-prod": "node ./scripts/prebuild.js",
+    "prebuild:local-prod": "node ./scripts/prebuild.js && npm run openapi:hsa-person-lookup:generate:public",
     "build:local-prod": "dotenv -e .env.prodlike -- cross-env NODE_ENV=production BUILD_TARGET=local-prod next build",
     "postbuild:local-prod": "npm run bundle:check && npm run standalone:check",
     "start": "next start",

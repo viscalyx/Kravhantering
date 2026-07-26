@@ -819,6 +819,16 @@ describe('development environment contract', () => {
     )
   })
 
+  it('generates HSA lookup Swagger UI before a clean prod-like build', () => {
+    const packageJson = JSON.parse(readWorkspaceFile('package.json'))
+    const scripts = packageJson.scripts
+
+    expect(scripts['prebuild:local-prod']).toBe(
+      'node ./scripts/prebuild.js && npm run openapi:hsa-person-lookup:generate:public',
+    )
+    expect(scripts['build:local-prod']).toContain('next build')
+  })
+
   it('ships the devcontainer Kong HSA lookup URL in the committed dev env', () => {
     const env = readWorkspaceFile('.env.development')
 
