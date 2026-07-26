@@ -31,7 +31,6 @@
     "mtxr.sqltools",
     "mtxr.sqltools-driver-mssql",
     "ms-python.python",
-    "ms-python.debugpy",
 
     // GitHub Copilot
     "GitHub.copilot-chat",

@@ -72,7 +72,7 @@
         "ms-azuretools.vscode-docker",
 
         // Extensions from .vscode/extensions.json
-        // cSpell:ignore davidanson kohler errorlens bpruitt-goddard bierner bradlc gruntfuggly qwtel usernamehw debugpy
+        // cSpell:ignore davidanson kohler errorlens bpruitt-goddard bierner bradlc gruntfuggly qwtel usernamehw
         "biomejs.biome",
         "DavidAnson.vscode-markdownlint",
         "streetsidesoftware.code-spell-checker",
@@ -91,8 +91,7 @@
         "mtxr.sqltools",
         "mtxr.sqltools-driver-mssql",
         "ms-python.python",
-        "ms-python.vscode-pylance",
-        "ms-python.debugpy"
+        "ms-python.vscode-pylance"
       ],
       "settings": {
         // Editor settings
