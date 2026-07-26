@@ -3,6 +3,7 @@ import createMiddleware from 'next-intl/middleware'
 import { routing } from '@/i18n/routing'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { assertSameOriginRequest, CsrfError } from '@/lib/auth/csrf'
+import { isReviewedProxyBypassPath } from '@/lib/auth/proxy-public-paths'
 import {
   getSessionFromRequestWithDiagnostics,
   isSignedIn,
@@ -204,26 +205,21 @@ function applyRequestHeaderOverrides(response: NextResponse, headers: Headers) {
 }
 
 const ALLOWED_UNAUTH_API_PREFIXES = ['/api/auth/']
-const ALLOWED_UNAUTH_NON_API_PREFIXES = ['/_next/', '/favicon']
 const ALLOWED_UNAUTH_EXACT = new Set([
   '/api/health',
   '/api/ready',
   '/auth/error',
-  '/favicon.ico',
-  '/robots.txt',
-  '/sitemap.xml',
 ])
 
 function isAllowedWithoutAuth(pathname: string): boolean {
+  if (isReviewedProxyBypassPath(pathname)) return true
   if (ALLOWED_UNAUTH_EXACT.has(pathname)) return true
   if (pathname.startsWith('/api/')) {
     return ALLOWED_UNAUTH_API_PREFIXES.some(prefix =>
       pathname.startsWith(prefix),
     )
   }
-  return ALLOWED_UNAUTH_NON_API_PREFIXES.some(prefix =>
-    pathname.startsWith(prefix),
-  )
+  return false
 }
 
 function wantsJsonResponse(request: NextRequest): boolean {
@@ -463,5 +459,10 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/:path*', '/((?!api|_next|_vercel|.*\\..*).*)'],
+  // Keep matcher values literal so Next.js can statically analyze them.
+  // Keep reviewed bypass paths aligned with `lib/auth/proxy-public-paths.ts`.
+  matcher: [
+    '/api/:path*',
+    '/((?!_next/static(?:/|$)|_next/image$|_next/webpack-hmr$|api-docs/hsa-person-lookup/(?:favicon-16x16\\.png|favicon-32x32\\.png|hsa-person-lookup\\.yaml|index\\.html|swagger-ui-bundle\\.js|swagger-ui-standalone-preset\\.js|swagger-ui\\.css)$|build\\.json$|favicon\\.ico$|logo-small\\.png$|robots\\.txt$|sitemap\\.xml$|api(?:/|$)).*)',
+  ],
 }

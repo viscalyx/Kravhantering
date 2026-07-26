@@ -428,8 +428,9 @@ The supported browser baseline is modern Chrome, Edge, Firefox, Safari, and
 current platform WebViews. IE and pre-CSP2 browser engines are unsupported, so
 CSP `frame-ancestors` is the primary clickjacking control for page responses.
 `X-Frame-Options` remains as a static fallback because the proxy matcher
-intentionally skips dotted paths such as asset probes, while static headers
-still apply to those responses.
+intentionally skips reviewed framework resources, metadata routes, and public
+assets, while static headers still apply to those responses. Other paths,
+including dynamic paths containing dots, remain inside the proxy boundary.
 
 > **Filename note.** This app keeps the entry gate in `proxy.ts`.
 > On `next@16.2.9`, the proxy runs as Node.js middleware and records the

@@ -1,28 +1,63 @@
 import {
+  type APIRequestContext,
   expect,
   request as playwrightRequest,
   type TestInfo,
   test,
 } from '@playwright/test'
-import { expectApiResponseStatus } from '../api-response-assertions'
+import {
+  expectApiResponseOk,
+  expectApiResponseStatus,
+} from '../api-response-assertions'
 import { resolveIntegrationBaseUrl } from '../base-url'
 
 function getStorageState(testInfo: TestInfo) {
   return testInfo.project.use.storageState ?? 'test-results/auth/admin.json'
 }
 
+async function expectAnonymousTextAsset(
+  request: APIRequestContext,
+  path: string,
+  contentType: RegExp,
+  content: RegExp,
+): Promise<string> {
+  const response = await request.get(path)
+  await expectApiResponseOk(response, `anonymous GET ${path}`)
+  expect(response.headers()['content-type']).toMatch(contentType)
+
+  const body = await response.text()
+  expect(body).toMatch(content)
+  return body
+}
+
+async function expectAnonymousPng(
+  request: APIRequestContext,
+  path: string,
+): Promise<void> {
+  const response = await request.get(path)
+  await expectApiResponseOk(response, `anonymous GET ${path}`)
+  expect(response.headers()['content-type']).toMatch(/^image\/png(?:;|$)/)
+
+  const body = await response.body()
+  expect([...body.subarray(0, 8)]).toEqual([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+  ])
+}
+
 test.describe('signed-out auth boundary', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
-  test('AUTH-02: browser navigation reaches the login flow', async ({
-    page,
-  }) => {
-    await page.goto('/sv/requirements')
+  for (const path of ['/sv/requirements', '/sv/requirements/policy.v2']) {
+    test(`AUTH-02: browser navigation to ${path} reaches the login flow`, async ({
+      page,
+    }) => {
+      await page.goto(path)
 
-    await expect(page).toHaveURL(
-      /\/api\/auth\/login|\/realms\/kravhantering-dev\/protocol\/openid-connect/,
-    )
-  })
+      await expect(page).toHaveURL(
+        /\/api\/auth\/login|\/realms\/kravhantering-dev\/protocol\/openid-connect/,
+      )
+    })
+  }
 
   test('AUTH-03: protected API requests return 401 JSON while auth/me stays a safe anonymous probe', async ({
     request,
@@ -38,6 +73,98 @@ test.describe('signed-out auth boundary', () => {
     await expectApiResponseStatus(response, 401, 'anonymous requirements list')
     await expect(response.json()).resolves.toMatchObject({
       error: 'Unauthorized',
+    })
+  })
+
+  test('AUTH-03: reviewed public assets and Next.js framework resources stay anonymous', async ({
+    request,
+  }) => {
+    await test.step('serve reviewed application assets with their real content', async () => {
+      const buildResponse = await request.get('/build.json')
+      await expectApiResponseOk(buildResponse, 'anonymous GET build metadata')
+      expect(buildResponse.headers()['content-type']).toMatch(
+        /^application\/json(?:;|$)/,
+      )
+      await expect(buildResponse.json()).resolves.toMatchObject({
+        builtAt: expect.any(String),
+        commitSha: expect.any(String),
+        expectedDatabaseSchemaVersion: expect.any(String),
+        imageTag: expect.any(String),
+        version: expect.any(String),
+      })
+
+      await expectAnonymousPng(request, '/logo-small.png')
+      await expectAnonymousTextAsset(
+        request,
+        '/robots.txt',
+        /^text\/plain(?:;|$)/,
+        /Disallow:\s*\//,
+      )
+      await expectAnonymousTextAsset(
+        request,
+        '/sitemap.xml',
+        /^(?:application|text)\/xml(?:;|$)/,
+        /<urlset[\s>]/,
+      )
+    })
+
+    await test.step('serve the generated Swagger UI assets anonymously', async () => {
+      const swaggerBase = '/api-docs/hsa-person-lookup'
+      await expectAnonymousTextAsset(
+        request,
+        `${swaggerBase}/index.html`,
+        /^text\/html(?:;|$)/,
+        /id="swagger-ui"/,
+      )
+      await expectAnonymousTextAsset(
+        request,
+        `${swaggerBase}/hsa-person-lookup.yaml`,
+        /^(?:application|text)\/(?:octet-stream|yaml|x-yaml|plain)(?:;|$)/,
+        /title:\s*Kravhantering HSA Person Lookup Facade/,
+      )
+      await expectAnonymousTextAsset(
+        request,
+        `${swaggerBase}/swagger-ui-bundle.js`,
+        /^(?:application|text)\/javascript(?:;|$)/,
+        /SwaggerUIBundle/,
+      )
+      await expectAnonymousTextAsset(
+        request,
+        `${swaggerBase}/swagger-ui-standalone-preset.js`,
+        /^(?:application|text)\/javascript(?:;|$)/,
+        /SwaggerUIStandalonePreset/,
+      )
+      await expectAnonymousTextAsset(
+        request,
+        `${swaggerBase}/swagger-ui.css`,
+        /^text\/css(?:;|$)/,
+        /\.swagger-ui/,
+      )
+      await expectAnonymousPng(request, `${swaggerBase}/favicon-16x16.png`)
+      await expectAnonymousPng(request, `${swaggerBase}/favicon-32x32.png`)
+    })
+
+    await test.step('load a real anonymous Next.js framework asset', async () => {
+      const errorPageResponse = await request.get(
+        '/auth/error?locale=sv&code=invalid_callback_request',
+        { headers: { Accept: 'text/html' } },
+      )
+      await expectApiResponseOk(errorPageResponse, 'anonymous auth error page')
+      const errorPageHtml = await errorPageResponse.text()
+      const frameworkAssetPath = errorPageHtml.match(
+        /["'](\/_next\/static\/[^"']+\.(?:css|js)(?:\?[^"']*)?)["']/,
+      )?.[1]
+
+      expect(frameworkAssetPath).toBeDefined()
+      const frameworkResponse = await request.get(frameworkAssetPath as string)
+      await expectApiResponseOk(
+        frameworkResponse,
+        `anonymous GET ${frameworkAssetPath}`,
+      )
+      expect(frameworkResponse.headers()['content-type']).toMatch(
+        /^(?:application|text)\/(?:css|javascript)(?:;|$)/,
+      )
+      expect((await frameworkResponse.body()).byteLength).toBeGreaterThan(100)
     })
   })
 
@@ -67,6 +194,20 @@ test.describe('signed-out auth boundary', () => {
 })
 
 test.describe('signed-in auth boundary', () => {
+  test('AUTH-02: authenticated dotted page paths receive proxy security processing', async ({
+    page,
+  }) => {
+    const response = await page.goto('/sv/requirements/policy.v2')
+
+    expect(response).not.toBeNull()
+    await expect(page).toHaveURL(/\/sv\/requirements\/policy\.v2$/)
+
+    const contentSecurityPolicy =
+      response?.headers()['content-security-policy'] ?? ''
+    expect(contentSecurityPolicy).toMatch(/script-src 'self' 'nonce-[^']+'/)
+    expect(contentSecurityPolicy).toContain("frame-ancestors 'none'")
+  })
+
   test('AUTH-02: logout from Admincenter removes access before reopening protected pages', async ({
     page,
   }) => {

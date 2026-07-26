@@ -84,33 +84,40 @@ async function writeSignedInCookie(): Promise<string> {
 }
 
 describe('proxy production CSP', () => {
-  it('emits the strict production policy and request nonce override', async () => {
-    const restore = withEnv(AUTH_ON_ENV)
-    try {
-      const cookie = await writeSignedInCookie()
-      const response = await proxy(
-        buildRequest('http://localhost/sv/requirements', cookie),
-      )
+  it.each(['/sv/requirements', '/sv/requirements/policy.v2'])(
+    'emits the strict production policy and sanitized request headers for %s',
+    async path => {
+      const restore = withEnv(AUTH_ON_ENV)
+      try {
+        const cookie = await writeSignedInCookie()
+        const response = await proxy(
+          buildRequest(`http://localhost${path}`, cookie),
+        )
 
-      const csp = response.headers.get('content-security-policy') ?? ''
-      const nonceMatch = csp.match(/script-src 'self' 'nonce-([^']+)'/)
-      const requestNonce = response.headers.get('x-middleware-request-x-nonce')
+        const csp = response.headers.get('content-security-policy') ?? ''
+        const nonceMatch = csp.match(/script-src 'self' 'nonce-([^']+)'/)
+        const requestNonce = response.headers.get(
+          'x-middleware-request-x-nonce',
+        )
 
-      expect(csp).toContain("frame-ancestors 'none'")
-      expect(csp).not.toContain("'unsafe-eval'")
-      expect(csp).not.toContain('ws://localhost:*')
-      expect(nonceMatch?.[1]).toBeTruthy()
-      expect(requestNonce).toBe(nonceMatch?.[1])
-      expect(response.headers.get('x-user-id')).toBeNull()
-      expect(response.headers.get('x-user-roles')).toBeNull()
-      expect(response.headers.get('x-middleware-request-x-user-id')).toBeNull()
-      expect(
-        response.headers.get('x-middleware-request-x-user-roles'),
-      ).toBeNull()
-    } finally {
-      restore()
-    }
-  })
+        expect(csp).toContain("frame-ancestors 'none'")
+        expect(csp).not.toContain("'unsafe-eval'")
+        expect(csp).not.toContain('ws://localhost:*')
+        expect(nonceMatch?.[1]).toBeTruthy()
+        expect(requestNonce).toBe(nonceMatch?.[1])
+        expect(response.headers.get('x-user-id')).toBeNull()
+        expect(response.headers.get('x-user-roles')).toBeNull()
+        expect(
+          response.headers.get('x-middleware-request-x-user-id'),
+        ).toBeNull()
+        expect(
+          response.headers.get('x-middleware-request-x-user-roles'),
+        ).toBeNull()
+      } finally {
+        restore()
+      }
+    },
+  )
 
   it('redirects missing sessions without emitting a production nonce', async () => {
     const restore = withEnv(AUTH_ON_ENV)

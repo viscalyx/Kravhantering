@@ -130,17 +130,24 @@ Admin-behörighet.
 **Steg:**
 
 1. Logga in och öppna `/sv/admin`.
-1. Logga ut via användarmenyn.
+1. För pekaren över användarmenyn i navigeringslisten så att popupen
+   **Kontouppgifter** öppnas.
+1. För pekaren till popupen och klicka på **Logga ut**.
 1. Öppna en skyddad arbetsyta, till exempel `/sv/requirements`.
+1. Öppna en skyddad dynamisk sökväg som innehåller en punkt, till exempel
+   `/sv/requirements/policy.v2`.
 
-**Förväntat resultat:** Sessionen är borttagen och skyddade arbetsytor skickar
-användaren till inloggning innan ny åtkomst ges.
+**Förväntat resultat:** Popupen förblir öppen när pekaren förs från
+navigeringslisten över mellanrummet till popupen. Sessionen är borttagen och
+både vanliga skyddade arbetsytor och skyddade dynamiska sökvägar med punkter
+skickar användaren till inloggning innan ny åtkomst ges.
 
 <a id="auth-03-anonym-api-begaran-ger-json-401"></a>
 
 ### AUTH-03: anonym API-begäran ger JSON 401
 
-**Syfte:** Bekräfta att skyddade API:er returnerar maskinläsbart 401-svar.
+**Syfte:** Bekräfta att skyddade API:er returnerar maskinläsbart 401-svar
+samtidigt som granskade publika resurser förblir tillgängliga.
 
 **Användare:** Ingen inloggad användare.
 
@@ -150,10 +157,16 @@ användaren till inloggning innan ny åtkomst ges.
 1. Kör `scripts/dev-curl.sh GET /api/auth/me --anonymous` och bekräfta att
    sessionskontrollen är maskinläsbar utan HTML-redirect.
 1. Kör en skyddad API-yta anonymt, till exempel `/api/requirements`.
+1. Hämta `/build.json`, `/logo-small.png`, `/robots.txt`, `/sitemap.xml` och
+   `/api-docs/hsa-person-lookup/index.html` utan sessionscookie.
+1. Öppna `/auth/error?locale=sv&code=invalid_callback_request` i den utloggade
+   webbläsarsessionen.
 
 **Förväntat resultat:** `/api/auth/me` svarar HTTP 200 med
 `{ "authenticated": false }`. Skyddade API:er svarar HTTP 401 med JSON-body.
-Ingen HTML-login returneras från API-anropet.
+Ingen HTML-login returneras från API-anropet. De granskade publika resurserna
+returnerar sina avsedda JSON-, bild-, text-, XML- och HTML-innehåll utan
+inloggningsomdirigering. Auth-felsidan renderas med sina Next.js-resurser.
 
 ### AUTH-04: sessionsprojektion döljer råa tokenvärden
 

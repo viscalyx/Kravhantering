@@ -1,5 +1,10 @@
+import { unstable_doesMiddlewareMatch as unstable_doesProxyMatch } from 'next/experimental/testing/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { describe, expect, it, vi } from 'vitest'
+import {
+  REVIEWED_PROXY_BYPASS_EXACT_PATHS,
+  REVIEWED_PROXY_BYPASS_PREFIXES,
+} from '@/lib/auth/proxy-public-paths'
 
 // cSpell:ignore PROPFIND
 
@@ -31,6 +36,11 @@ const AUTH_ON_ENV: Record<string, string> = {
   AUTH_OIDC_POST_LOGOUT_REDIRECT_URI: 'http://localhost/',
   AUTH_SESSION_COOKIE_PASSWORD: COOKIE_PASSWORD,
 }
+
+const REVIEWED_PROXY_BYPASS_PATHS = [
+  ...REVIEWED_PROXY_BYPASS_EXACT_PATHS,
+  ...REVIEWED_PROXY_BYPASS_PREFIXES.map(prefix => `${prefix}chunks/app.js`),
+] as const
 
 function withEnv(env: Record<string, string | undefined>) {
   const previous: Record<string, string | undefined> = {}
@@ -144,6 +154,27 @@ describe('proxy', () => {
       restore()
     }
   })
+
+  it.each(['/sv/requirements/policy.v2', '/unknown/path/file.json'])(
+    'keeps signed-out dotted page path %s behind login',
+    async path => {
+      const restore = withEnv(AUTH_ON_ENV)
+      try {
+        const response = await proxy(
+          buildRequest(`http://localhost${path}`, {
+            accept: 'text/html',
+          }),
+        )
+
+        expect(response.status).toBe(302)
+        expect(response.headers.get('location') ?? '').toContain(
+          '/api/auth/login',
+        )
+      } finally {
+        restore()
+      }
+    },
+  )
 
   it('allows the auth error page without a signed-in session', async () => {
     const restore = withEnv(AUTH_ON_ENV)
@@ -431,25 +462,20 @@ describe('proxy', () => {
     },
   )
 
-  it('passes through /sitemap.xml without auth', async () => {
-    const restore = withEnv(AUTH_ON_ENV)
-    try {
-      const response = await proxy(buildRequest('http://localhost/sitemap.xml'))
-      expect(response.status).toBe(200)
-    } finally {
-      restore()
-    }
-  })
-
-  it('passes through /robots.txt without auth', async () => {
-    const restore = withEnv(AUTH_ON_ENV)
-    try {
-      const response = await proxy(buildRequest('http://localhost/robots.txt'))
-      expect(response.status).toBe(200)
-    } finally {
-      restore()
-    }
-  })
+  it.each(REVIEWED_PROXY_BYPASS_PATHS)(
+    'passes through reviewed public path %s without auth',
+    async path => {
+      const restore = withEnv(AUTH_ON_ENV)
+      try {
+        const response = await proxy(buildRequest(`http://localhost${path}`))
+        expect(response.status).toBe(200)
+        expect(response.headers.get('x-middleware-next')).toBe('1')
+        expect(response.headers.get('location')).toBeNull()
+      } finally {
+        restore()
+      }
+    },
+  )
 
   it('requires auth for dotted api paths', async () => {
     const restore = withEnv(AUTH_ON_ENV)
@@ -465,8 +491,43 @@ describe('proxy', () => {
     }
   })
 
-  it('matches api paths explicitly so dotted routes stay behind auth', () => {
-    expect(config.matcher).toContain('/api/:path*')
+  describe('matcher boundary', () => {
+    it.each([
+      '/api/files/report.json',
+      '/api/health',
+      '/sv/requirements/policy.v2',
+      '/unknown/path/file.json',
+      '/_next/data/build-id/page.json',
+      '/_next/images',
+      '/_next/static-files/chunks/app.js',
+      '/api-docs/hsa-person-lookup',
+      '/api-docs/hsa-person-lookup/extra.js',
+      '/api-docs/hsa-person-lookup/swagger-ui.css.map',
+      '/build.json/preview',
+      '/favicon.ico/preview',
+      '/logo-small.png.backup',
+      '/robots.txt/preview',
+      '/sitemap.xml.bak',
+    ])('runs proxy for protected or near-miss path %s', path => {
+      expect(
+        unstable_doesProxyMatch({
+          config,
+          url: `http://localhost${path}`,
+        }),
+      ).toBe(true)
+    })
+
+    it.each(REVIEWED_PROXY_BYPASS_PATHS)(
+      'skips proxy for reviewed public path %s',
+      path => {
+        expect(
+          unstable_doesProxyMatch({
+            config,
+            url: `http://localhost${path}`,
+          }),
+        ).toBe(false)
+      },
+    )
   })
 
   it('requires Authorization: Bearer for /api/mcp', async () => {

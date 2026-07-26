@@ -26,6 +26,14 @@ It is intentionally not a replacement for the more detailed workflow docs:
   allows public paths, redirects unauthenticated browser page requests to
   `/api/auth/login`, returns `401` for unauthenticated API requests, and
   requires a Bearer header to be present for `/api/mcp`.
+- The public authentication exceptions are limited to authentication endpoints,
+  health and readiness probes, the authentication error page, reviewed
+  Next.js framework resources and metadata routes, and exact repository-owned
+  public asset paths. The proxy matcher itself skips only those framework,
+  metadata, and exact public asset paths. All other paths, including dynamic
+  page and API paths containing dots, enter the authentication boundary. The
+  generated HSA Swagger files remain public assets, while the
+  `/api-docs/hsa-person-lookup` page route remains protected.
 - Browser sign-in uses two separate `iron-session` cookies:
   a short-lived login-state cookie from
   [`lib/auth/login-state.ts`](../../lib/auth/login-state.ts) and the main
@@ -136,6 +144,10 @@ sequenceDiagram
   sign-in flow instead of leaving the user on a stale page.
 - The sign-in link in `AuthMenu` points to
   `/api/auth/login?returnTo=<locale-prefixed-path>`.
+- On desktop, the signed-in user popup opens on hover, focus, or click. A short
+  pointer-leave grace period keeps the rail popup mounted while the pointer
+  crosses its visual gap; blur, outside pointer presses, and Escape still close
+  it.
 - `POST /api/auth/logout` is the real logout operation. It:
   checks same-origin and `X-Requested-With`, records `auth.logout`,
   destroys the session cookie, discovers the IdP end-session URL when
@@ -229,7 +241,8 @@ sequenceDiagram
   an auth endpoint with CSRF and audit but no business authorization policy.
   `/api/mcp` remains the documented exception because it is guarded by Bearer
   JWT verification and MCP tool schemas instead of the REST mutation wrapper.
-- Page responses get a per-request CSP nonce from `proxy.ts`.
+- Authenticated page responses, including dynamic paths containing dots, get a
+  per-request CSP nonce from `proxy.ts`.
 - Security audit events are emitted through
   [`lib/auth/audit.ts`](../../lib/auth/audit.ts). The current event set is:
   `access_review.cancelled`, `access_review.completed`,

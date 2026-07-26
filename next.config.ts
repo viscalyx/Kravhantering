@@ -178,8 +178,9 @@ const nextConfig: NextConfig = {
           {
             key: 'X-Frame-Options',
             // CSP frame-ancestors is the primary clickjacking control for
-            // page responses, but the proxy intentionally skips dotted paths
-            // such as asset probes. Keep this static fallback on every route.
+            // page responses, but reviewed framework, metadata, and public
+            // assets intentionally skip the proxy. Keep this static fallback
+            // on every route.
             value: 'DENY',
           },
           { key: 'X-Content-Type-Options', value: 'nosniff' },

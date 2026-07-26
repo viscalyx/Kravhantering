@@ -32,6 +32,8 @@ const ROLE_KEY_BY_CANONICAL: Record<string, string> = {
   PrivacyOfficer: 'privacyOfficer',
 }
 
+const POPUP_POINTER_GRACE_MS = 250
+
 interface AuthLogoutButtonProps {
   className: string
   errorLabel: string
@@ -212,9 +214,33 @@ export default function AuthMenu({
   const popupId = useId()
   const shouldReduceMotion = useReducedMotion()
   const [isPopupOpen, setIsPopupOpen] = useState(false)
+  const popupCloseTimeoutRef = useRef<number | null>(null)
   const popupRootRef = useRef<HTMLDivElement | null>(null)
   const suppressNextFocusOpenRef = useRef(false)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
+
+  const cancelPendingPopupClose = () => {
+    if (popupCloseTimeoutRef.current === null) return
+    window.clearTimeout(popupCloseTimeoutRef.current)
+    popupCloseTimeoutRef.current = null
+  }
+
+  const closePopupAfterPointerGrace = () => {
+    cancelPendingPopupClose()
+    popupCloseTimeoutRef.current = window.setTimeout(() => {
+      popupCloseTimeoutRef.current = null
+      setIsPopupOpen(false)
+    }, POPUP_POINTER_GRACE_MS)
+  }
+
+  useEffect(
+    () => () => {
+      if (popupCloseTimeoutRef.current !== null) {
+        window.clearTimeout(popupCloseTimeoutRef.current)
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!isPopupOpen) return
@@ -389,7 +415,10 @@ export default function AuthMenu({
           }
           setIsPopupOpen(false)
         }}
-        onMouseEnter={() => setIsPopupOpen(true)}
+        onMouseEnter={() => {
+          cancelPendingPopupClose()
+          setIsPopupOpen(true)
+        }}
         onMouseLeave={() => {
           const activeElement = document.activeElement
           if (
@@ -398,7 +427,7 @@ export default function AuthMenu({
           ) {
             return
           }
-          setIsPopupOpen(false)
+          closePopupAfterPointerGrace()
         }}
         ref={popupRootRef}
       >
