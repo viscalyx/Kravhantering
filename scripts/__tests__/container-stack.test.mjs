@@ -817,6 +817,12 @@ describe('container stack helpers', () => {
     expect(appRuntimeIndex).toBeGreaterThan(-1)
     expect(commands[appRuntimeIndex]).toContain('--no-hosts')
     expect(nginxIndex).toBeGreaterThan(appRuntimeIndex)
+    expect(commands[nginxIndex]).toContain(
+      '/containers/production/nginx/templates/api-docs-security-headers.conf:/etc/nginx/snippets/api-docs-security-headers.conf:ro',
+    )
+    expect(commands[nginxIndex]).toContain(
+      '/public/api-docs:/usr/share/nginx/html/api-docs:ro',
+    )
     expect(nginxWaitIndex).toBeGreaterThan(nginxIndex)
   })
 
