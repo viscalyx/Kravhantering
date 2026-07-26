@@ -77,6 +77,7 @@ export function swaggerInitializer({
   ],
   supportedSubmitMethods: [],
   url: ${JSON.stringify(specUrl)},
+  validatorUrl: null,
 })
 `
 }

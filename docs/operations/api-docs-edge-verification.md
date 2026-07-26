@@ -12,8 +12,9 @@ nginx is not required at an external production edge.
 
 The component that serves API documentation files to the public owns the final
 headers. An external load balancer, reverse proxy or CDN must configure values
-equivalent to `nginx/templates/api-docs-security-headers.conf`. An edge that
-only forwards requests to the bundled nginx must preserve nginx's values.
+equivalent to
+`containers/production/nginx/templates/api-docs-security-headers.conf`. An edge
+that only forwards requests to the bundled nginx must preserve nginx's values.
 
 Do not append another copy of a header supplied by the selected owner. Strip
 or replace upstream values so each response contains exactly one required
@@ -78,14 +79,12 @@ check_api_docs_response() {
     expected="${EXPECTED_API_DOCS_HEADERS[$name]}"
     count="$(
       awk -v target="$name" \
-        'BEGIN { IGNORECASE=1 }
-         $1 == target ":" { count++ }
+        'tolower($1) == target ":" { count++ }
          END { print count + 0 }' "$header_file"
     )"
     actual="$(
       awk -v target="$name" \
-        'BEGIN { IGNORECASE=1 }
-         $1 == target ":" {
+        'tolower($1) == target ":" {
            sub(/^[^:]*:[[:space:]]*/, "")
            sub(/\r$/, "")
            print

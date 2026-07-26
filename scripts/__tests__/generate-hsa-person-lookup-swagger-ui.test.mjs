@@ -42,6 +42,7 @@ describe('HSA person lookup Swagger UI generator', () => {
     expect(initializer).toContain(
       'url: "/api-docs/hsa-person-lookup/hsa-person-lookup.yaml"',
     )
+    expect(initializer).toContain('validatorUrl: null')
     expect(initializer).toContain('supportedSubmitMethods: []')
     expect(initializer).toContain('authorizationPopup: () => null')
     expect(initializer).toContain('authorizeBtn: () => null')
