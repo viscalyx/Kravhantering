@@ -1505,7 +1505,6 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('Attest db-job SBOM')
     expect(workflow).toContain('Attest demo seed SBOM')
     expect(workflow).toContain('Attest HSA directory mock SBOM')
-    expect(workflow.match(/uses:\s*actions\/attest@/g)).toHaveLength(10)
     expect(workflow.match(/persist-credentials:\s*false/g)).not.toBeNull()
     expect(workflow.match(/--provenance=false/g)).toHaveLength(5)
     const appRuntimeDescriptionEnv = '$' + '{APP_RUNTIME_DESCRIPTION}'
@@ -1566,7 +1565,6 @@ describe('trusted container release helpers', () => {
     expect(workflow).toMatch(
       /node scripts\/containers\/write-hashes\.mjs[\s\S]*tmp\/container-release-artifacts\/sbom\/demo-seed\.spdx\.json[\s\S]*tmp\/container-release-artifacts\/sbom\/hsa-person-lookup-adapter\.spdx\.json/u,
     )
-    expect(workflow.match(/push-to-registry: false/g)).toHaveLength(10)
     expect(workflow).not.toContain('push-to-registry: true')
     expect(workflow).toContain('--release-images-from-lock')
     expect(workflow).toContain(

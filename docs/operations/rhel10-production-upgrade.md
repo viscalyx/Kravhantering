@@ -49,6 +49,8 @@ place.
 
    curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz"
    curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
+   curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz.sigstore.json"
+   curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz.trusted-root.jsonl"
    curl -fLO "${RELEASE_DOWNLOAD_URL}/container-stack.lock.json"
    sha256sum -c "kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
    jq -r '
@@ -56,6 +58,13 @@ place.
      | "\(.name) manifest=\(.manifestDigest) imageId=\(.imageId)"
    ' container-stack.lock.json
    ```
+
+   Optionally verify provenance before the extraction in step 5 by following
+   [Optionally Verify The Deployment Archive](./release-artifact-and-image-verification.md#optionally-verify-the-deployment-archive).
+   Use the exact source commit, source ref, and release tag from the GitHub
+   Release notes or approved internal release record. If selected, this check
+   must succeed before extraction. Skipping it does not replace the required
+   SHA-256 check above.
 
    Ensure the site has approved tag-style image refs for every app-node image
    named in the target release lock. Each configured ref must resolve to the

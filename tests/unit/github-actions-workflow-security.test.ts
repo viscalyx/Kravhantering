@@ -460,6 +460,58 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).not.toMatch(/\bnpm\s+(?:ci|install|run)\b/iu)
   })
 
+  it('configures the deployment archive as a file attestation', () => {
+    const workflow = readWorkflowYaml('container-release.yml')
+    const releaseJob = workflow.jobs?.['trusted-release']
+    const attestStep = releaseJob?.steps?.find(
+      step => step.name === 'Attest production deployment archive',
+    )
+
+    expect(attestStep?.uses).toBe(
+      'actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26',
+    )
+    expect(attestStep?.with).toMatchObject({
+      'predicate-path':
+        'tmp/container-release-artifacts/metadata/deployment-release-predicate.json',
+      'predicate-type':
+        'https://github.com/viscalyx/Kravhantering/attestations/deployment-release/v1',
+      'push-to-registry': false,
+      'subject-path':
+        'tmp/container-release-artifacts/kravhantering-production-deploy-$' +
+        '{{ env.RELEASE_VERSION }}.tar.gz',
+    })
+    expect(
+      releaseJob?.steps?.some(
+        step => step.name === 'Verify deployment archive provenance',
+      ),
+    ).toBe(true)
+    expect(
+      releaseJob?.steps?.some(
+        step => step.name === 'Append deployment provenance release notes',
+      ),
+    ).toBe(true)
+    const stepNames = releaseJob?.steps?.map(step => step.name) ?? []
+    expect(stepNames).toContain('Stage deployment archive verification guide')
+    expect(
+      stepNames.indexOf('Stage deployment archive verification guide'),
+    ).toBeLessThan(stepNames.indexOf('Archive production deployment bundle'))
+    expect(
+      stepNames.indexOf('Archive production deployment bundle'),
+    ).toBeLessThan(stepNames.indexOf('Attest production deployment archive'))
+    for (const stepName of [
+      'Stage deployment archive verification guide',
+      'Write deployment archive release predicate',
+      'Attest production deployment archive',
+      'Stage deployment provenance assets',
+      'Verify deployment archive provenance',
+      'Append deployment provenance release notes',
+    ]) {
+      expect(releaseJob?.steps?.find(step => step.name === stepName)?.if).toBe(
+        "always() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'",
+      )
+    }
+  })
+
   it('keeps stable operator notes archives behind protected-main checks', () => {
     const workflow = readFileSync(
       path.join(WORKFLOWS_DIR, 'container-release.yml'),
