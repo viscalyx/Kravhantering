@@ -1214,7 +1214,9 @@ medlemskap och kontrollera att dess arkiverade krav inte kan väljas.
 Lägg till och ta bort bibliotekskrav och kontrollera att vänster katalog och
 inaktuella paketval uppdateras. Lägg till ett krav som döljs av ett annat
 vänsterfilter och kontrollera att filtret finns kvar och att en tydlig
-återkoppling visas. Kontrollera även laddning, lyckad tom katalog och
+återkoppling visas. Ändra filtret så att det tillagda kravet visas och
+kontrollera att återkopplingen inte längre uppger att kravet döljs.
+Kontrollera även laddning, lyckad tom katalog och
 katalogfel samt svenska och engelska texter, tillgänglighetsattribut och
 Developer Mode-markörer.
 Markera ett bibliotekskrav, kontrollera markeringssammanfattningen och öppna

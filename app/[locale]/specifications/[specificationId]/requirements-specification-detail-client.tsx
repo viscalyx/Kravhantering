@@ -163,6 +163,19 @@ const DEFAULT_RIGHT_COLS: RequirementColumnId[] = [
 ]
 type SpecificationDetailLeftTab = 'items' | 'needs-references' | 'rfi'
 
+type SpecificationSelectionNotice =
+  | {
+      evaluatedQueryKey: string
+      hiddenByFilters: boolean
+      kind: 'requirementsAdded'
+      requirementIds: number[]
+      requirementUniqueIds: string[]
+    }
+  | {
+      kind: 'message'
+      text: string
+    }
+
 function groupedFloatingActionMenuItems(
   groups: Array<{ id: string; items: FloatingActionMenuItem[] }>,
 ): FloatingActionMenuItem[] {
@@ -744,7 +757,8 @@ export default function KravunderlagDetailClient({
   >([])
   const [bulkActionSaving, setBulkActionSaving] = useState(false)
   const [bulkActionResolving, setBulkActionResolving] = useState(false)
-  const [selectionNotice, setSelectionNotice] = useState<string | null>(null)
+  const [selectionNotice, setSelectionNotice] =
+    useState<SpecificationSelectionNotice | null>(null)
   const [bulkNeedsReferenceError, setBulkNeedsReferenceError] = useState<
     string | null
   >(null)
@@ -1637,6 +1651,75 @@ export default function KravunderlagDetailClient({
     [specificationId, specificationItemsParams, t],
   )
 
+  useEffect(() => {
+    if (
+      selectionNotice?.kind !== 'requirementsAdded' ||
+      selectionNotice.evaluatedQueryKey === specificationItemsParams
+    ) {
+      return
+    }
+
+    if (!hasSpecificationListFilters(leftFilters)) {
+      setSelectionNotice(current =>
+        current !== selectionNotice
+          ? current
+          : {
+              ...current,
+              evaluatedQueryKey: specificationItemsParams,
+              hiddenByFilters: false,
+            },
+      )
+      return
+    }
+
+    let cancelled = false
+    void fetchMatchingSpecificationRequirementIds(
+      selectionNotice.requirementIds,
+    )
+      .then(matchingRequirementIds => {
+        if (cancelled) return
+        setSelectionNotice(current =>
+          current !== selectionNotice
+            ? current
+            : {
+                ...current,
+                evaluatedQueryKey: specificationItemsParams,
+                hiddenByFilters: current.requirementIds.some(
+                  id => !matchingRequirementIds.has(id),
+                ),
+              },
+        )
+      })
+      .catch(() => {
+        // The list request presents its own error. Keep this notice neutral
+        // until the added requirements can be checked against the new filters.
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    fetchMatchingSpecificationRequirementIds,
+    leftFilters,
+    selectionNotice,
+    specificationItemsParams,
+  ])
+
+  const selectionNoticeText =
+    selectionNotice?.kind === 'message'
+      ? selectionNotice.text
+      : selectionNotice
+        ? t(
+            selectionNotice.evaluatedQueryKey === specificationItemsParams &&
+              selectionNotice.hiddenByFilters
+              ? 'requirementsAddedHiddenByFilters'
+              : 'requirementsAdded',
+            {
+              ids: selectionNotice.requirementUniqueIds.join(', '),
+            },
+          )
+        : null
+
   const fetchNeedsReferences = useCallback(
     async ({ throwOnError = false }: { throwOnError?: boolean } = {}) => {
       const refreshed = await needsReferencesResource.reload()
@@ -1840,16 +1923,13 @@ export default function KravunderlagDetailClient({
       const addedRequirementsHidden =
         hasActiveLeftFilters &&
         pendingAddIds.some(id => !matchingAddedRequirementIds.has(id))
-      setSelectionNotice(
-        t(
-          addedRequirementsHidden
-            ? 'requirementsAddedHiddenByFilters'
-            : 'requirementsAdded',
-          {
-            ids: pendingAddRequirementUniqueIds.join(', '),
-          },
-        ),
-      )
+      setSelectionNotice({
+        evaluatedQueryKey: specificationItemsParams,
+        hiddenByFilters: addedRequirementsHidden,
+        kind: 'requirementsAdded',
+        requirementIds: [...pendingAddIds],
+        requirementUniqueIds: [...pendingAddRequirementUniqueIds],
+      })
     } catch {
       setAddModalError(tc('error'))
     } finally {
@@ -1868,7 +1948,7 @@ export default function KravunderlagDetailClient({
     specificationId,
     pendingAddIds,
     pendingAddRequirementUniqueIds,
-    t,
+    specificationItemsParams,
     tc,
   ])
 
@@ -2112,13 +2192,14 @@ export default function KravunderlagDetailClient({
           for (const itemRef of disappeared) next.delete(itemRef)
           return next
         })
-        setSelectionNotice(
-          t('selectionDisappeared', {
+        setSelectionNotice({
+          kind: 'message',
+          text: t('selectionDisappeared', {
             ids: disappeared
               .map(itemRef => knownByRef.get(itemRef)?.uniqueId ?? itemRef)
               .join(', '),
           }),
-        )
+        })
       }
 
       return [...itemRefs]
@@ -3848,7 +3929,7 @@ export default function KravunderlagDetailClient({
                 </div>
               ) : specificationItems.length === 0 &&
                 !hasSpecificationListFilters(leftFilters) &&
-                !selectionNotice &&
+                !selectionNoticeText &&
                 !specificationItemsLoading &&
                 !specificationItemsError ? (
                 <div
@@ -4080,9 +4161,9 @@ export default function KravunderlagDetailClient({
                                     total: leftSelectedItemRefs.size,
                                   })} ${t('selectionActionsAffectAll')}`}
                               </span>
-                              {selectionNotice ? (
+                              {selectionNoticeText ? (
                                 <p className="mt-1 font-medium">
-                                  {selectionNotice}
+                                  {selectionNoticeText}
                                 </p>
                               ) : null}
                               {bulkNeedsReferenceError &&
@@ -4108,12 +4189,12 @@ export default function KravunderlagDetailClient({
                             </button>
                           ) : null}
                         </div>
-                      ) : selectionNotice || bulkNeedsReferenceError ? (
+                      ) : selectionNoticeText || bulkNeedsReferenceError ? (
                         <div
                           className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100"
                           role="status"
                         >
-                          {selectionNotice ?? bulkNeedsReferenceError}
+                          {selectionNoticeText ?? bulkNeedsReferenceError}
                         </div>
                       ) : null
                     }

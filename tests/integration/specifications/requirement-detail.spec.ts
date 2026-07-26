@@ -2212,6 +2212,13 @@ test.describe('Requirements specification deterministic manual cases', () => {
         }),
       ).toBeVisible({ timeout: 30_000 })
       await expect(
+        specificationItemsPanel.getByRole('status').filter({
+          hasText: 'Följande krav-ID:n lades till: PWT-REPORT-A.',
+        }),
+      ).not.toContainText(
+        'Ett eller flera tillagda krav döljs av de aktuella filtren.',
+      )
+      await expect(
         specificationItemsPanel.getByRole('checkbox', { name: 'Markera alla' }),
       ).toHaveCount(0)
 

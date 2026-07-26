@@ -2742,17 +2742,29 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(dialog).toBeInTheDocument()
   })
 
-  it('announces when added requirements remain hidden by the left filters', async () => {
-    specificationItemsGetHandler = async () =>
-      okJson({
-        items: [],
+  it('updates the added-requirements notice when the left filters reveal the requirement', async () => {
+    const addedItem = {
+      ...initialSpecificationItem,
+      id: initialAvailableRequirement.id,
+      itemRef: 'lib:202',
+      specificationItemId: 202,
+      uniqueId: initialAvailableRequirement.uniqueId,
+    }
+    specificationItemsGetHandler = async url => {
+      const matchesAddedRequirement =
+        searchParamsFromPath(url).get('uniqueIdSearch') ===
+        initialAvailableRequirement.uniqueId
+      const items = matchesAddedRequirement ? [addedItem] : []
+      return okJson({
+        items,
         pagination: {
-          count: 0,
+          count: items.length,
           hasMore: false,
           limit: 50,
           nextCursor: null,
         },
       })
+    }
 
     renderRequirementsSpecificationDetailClient()
     await waitForInitialAvailableRequirementsRefresh()
@@ -2787,6 +2799,22 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(latestItemsTableProps().filterValues).toEqual({
       uniqueIdSearch: 'DOES-NOT-MATCH',
     })
+
+    act(() => {
+      latestItemsTableProps().onFilterChange?.({
+        uniqueIdSearch: initialAvailableRequirement.uniqueId,
+      } as never)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(
+        /^specification\.requirementsAdded$/,
+      )
+    })
+    expect(screen.getByRole('status')).not.toHaveTextContent(
+      'specification.requirementsAddedHiddenByFilters',
+    )
+    expect(latestItemsTableProps().rows).toEqual([addedItem])
   })
 
   it('does not announce a matching added requirement as hidden when it is on a later page', async () => {

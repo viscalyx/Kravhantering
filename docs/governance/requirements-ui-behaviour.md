@@ -312,7 +312,9 @@ an explicit in-modal error.
 - Adding or removing library requirements refreshes the specification-items
   package facet. Selections that are no longer present in the refreshed facet
   are cleared. Other left-list filters remain unchanged, and a status message
-  explains when newly added requirements are hidden by those filters.
+  explains when newly added requirements are hidden by those filters. The
+  message is re-evaluated when the filters change and stops claiming that the
+  added requirements are hidden once they match the current filters.
 - Loading, successful empty, and failed package catalogs remain distinct.
   Catalog failure does not disable the other list controls or present the
   catalog as successfully empty.
