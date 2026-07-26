@@ -2364,8 +2364,9 @@ describe('RequirementsSpecificationDetailClient', () => {
     )
   })
 
-  it('refreshes the left package facet and clears a package that becomes irrelevant after removal', async () => {
+  it('prunes a resolved package while preserving a selection made during refresh', async () => {
     const packageOption = { id: 9, name: 'Current package' }
+    const replacementPackageOption = { id: 10, name: 'Replacement package' }
     const item = {
       ...initialSpecificationItem,
       requirementPackageIds: [9],
@@ -2374,7 +2375,7 @@ describe('RequirementsSpecificationDetailClient', () => {
       ...initialSpecificationItem,
       id: 102,
       itemRef: 'library:32',
-      requirementPackageIds: [],
+      requirementPackageIds: [10],
       uniqueId: 'REQ-002',
     }
     specificationItemsGetItems = [item, remainingItem]
@@ -2421,6 +2422,7 @@ describe('RequirementsSpecificationDetailClient', () => {
       ...createInitialData(),
       leftRequirementPackageCatalog: createRequirementPackageCatalogPage([
         packageOption,
+        replacementPackageOption,
       ]),
       requirementPackages: [packageOption],
       specificationItems: createSpecificationItemsPage([item, remainingItem]),
@@ -2454,16 +2456,24 @@ describe('RequirementsSpecificationDetailClient', () => {
       expect(latestItemsTableProps()).toEqual(
         expect.objectContaining({
           requirementPackageCatalogStatus: 'loading',
-          requirementPackages: [packageOption],
+          requirementPackages: [packageOption, replacementPackageOption],
         }),
       )
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'filter-package-items-10' }),
+    )
+    await waitFor(() => {
+      expect(latestItemsTableProps().filterValues).toEqual({
+        requirementPackageIds: [9, 10],
+      })
     })
     act(() => resolveCatalogRefresh?.())
     await waitFor(() => {
       expect(latestItemsTableProps().requirementPackages).toEqual([])
       expect(
         latestItemsTableProps().filterValues?.requirementPackageIds,
-      ).toBeUndefined()
+      ).toEqual([10])
       expect(latestItemsTableProps().rows).toEqual([remainingItem])
     })
     expect(latestAvailableTableProps().requirementPackages).toEqual([

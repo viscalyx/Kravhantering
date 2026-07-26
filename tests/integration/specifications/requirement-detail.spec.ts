@@ -2036,7 +2036,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
         rightPackageChooser.getByRole('button', {
           name: 'Lägg till PWT-MANUAL källpaket i kravpaketsfiltret',
         }),
-      ).toBeVisible()
+      ).toHaveCount(1)
       await rightPackageChooser
         .getByRole('button', {
           name: 'Lägg till PWT-MANUAL ersättningspaket i kravpaketsfiltret',
@@ -2056,7 +2056,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
         rightPackageChooser.getByRole('button', {
           name: 'Lägg till PWT-MANUAL källpaket i kravpaketsfiltret',
         }),
-      ).toBeVisible()
+      ).toHaveCount(1)
       await page.keyboard.press('Escape')
 
       if (developerModeMarkersEnabled) {
@@ -2210,7 +2210,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
         specificationItemsPanel.getByRole('button', {
           name: /^PWT-REPORT-A\b/u,
         }),
-      ).toBeVisible({ timeout: 30_000 })
+      ).toHaveCount(1)
       await expect(
         specificationItemsPanel.getByRole('status').filter({
           hasText: 'Följande krav-ID:n lades till: PWT-REPORT-A.',
@@ -2268,8 +2268,8 @@ test.describe('Requirements specification deterministic manual cases', () => {
           name: 'Ta bort från underlaget',
         },
       )
-      await expect(requestDeviationAction).toBeVisible()
-      await expect(removeFromSpecificationAction).toBeVisible()
+      await expect(requestDeviationAction).toHaveCount(1)
+      await expect(removeFromSpecificationAction).toHaveCount(1)
     })
 
     await test.step('confirm removal and refresh the left package catalog', async () => {
@@ -2332,9 +2332,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
       })
       await expect(
         page.getByRole('tab', { name: 'RFI question list' }),
-      ).toBeVisible({
-        timeout: 30_000,
-      })
+      ).toBeVisible()
       const englishItemsPanel = page.locator(
         '[data-specification-detail-list-panel="items"]',
       )

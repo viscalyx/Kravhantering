@@ -664,7 +664,9 @@ export default function KravunderlagDetailClient({
     preFilterAreaId ? { areaIds: [preFilterAreaId] } : {},
   )
   const leftFiltersRef = useRef(leftFilters)
-  leftFiltersRef.current = leftFilters
+  useEffect(() => {
+    leftFiltersRef.current = leftFilters
+  }, [leftFilters])
   const [leftSort, setLeftSort] = useState<RequirementSortState>(
     DEFAULT_REQUIREMENT_SORT,
   )
@@ -885,6 +887,7 @@ export default function KravunderlagDetailClient({
         setLeftRequirementPackageCatalogError(null)
 
         if (selectedIds.length > 0) {
+          const snapshottedSelectedIds = new Set(selectedIds)
           const resolvedSelectedIds = new Set(
             selectedRequirementPackages.map(
               requirementPackage => requirementPackage.id,
@@ -892,8 +895,9 @@ export default function KravunderlagDetailClient({
           )
           setLeftFilters(current => {
             const currentPackageIds = current.requirementPackageIds ?? []
-            const nextPackageIds = currentPackageIds.filter(id =>
-              resolvedSelectedIds.has(id),
+            const nextPackageIds = currentPackageIds.filter(
+              id =>
+                !snapshottedSelectedIds.has(id) || resolvedSelectedIds.has(id),
             )
             if (nextPackageIds.length === currentPackageIds.length) {
               return current
