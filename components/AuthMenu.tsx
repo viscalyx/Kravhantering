@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { FileDown, LogIn, LogOut, UserCircle2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Link, usePathname } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
@@ -219,10 +219,25 @@ export default function AuthMenu({
   const suppressNextFocusOpenRef = useRef(false)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
 
-  const cancelPendingPopupClose = () => {
+  const cancelPendingPopupClose = useCallback(() => {
     if (popupCloseTimeoutRef.current === null) return
     window.clearTimeout(popupCloseTimeoutRef.current)
     popupCloseTimeoutRef.current = null
+  }, [])
+
+  const openPopup = useCallback(() => {
+    cancelPendingPopupClose()
+    setIsPopupOpen(true)
+  }, [cancelPendingPopupClose])
+
+  const closePopupImmediately = useCallback(() => {
+    cancelPendingPopupClose()
+    setIsPopupOpen(false)
+  }, [cancelPendingPopupClose])
+
+  const togglePopup = () => {
+    cancelPendingPopupClose()
+    setIsPopupOpen(open => !open)
   }
 
   const closePopupAfterPointerGrace = () => {
@@ -235,11 +250,9 @@ export default function AuthMenu({
 
   useEffect(
     () => () => {
-      if (popupCloseTimeoutRef.current !== null) {
-        window.clearTimeout(popupCloseTimeoutRef.current)
-      }
+      cancelPendingPopupClose()
     },
-    [],
+    [cancelPendingPopupClose],
   )
 
   useEffect(() => {
@@ -249,14 +262,14 @@ export default function AuthMenu({
       const target = event.target
       if (!(target instanceof Node)) return
       if (popupRootRef.current?.contains(target)) return
-      setIsPopupOpen(false)
+      closePopupImmediately()
     }
 
     document.addEventListener('pointerdown', handlePointerDown)
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown)
     }
-  }, [isPopupOpen])
+  }, [closePopupImmediately, isPopupOpen])
 
   if (!me) {
     return null
@@ -413,12 +426,9 @@ export default function AuthMenu({
           ) {
             return
           }
-          setIsPopupOpen(false)
+          closePopupImmediately()
         }}
-        onMouseEnter={() => {
-          cancelPendingPopupClose()
-          setIsPopupOpen(true)
-        }}
+        onMouseEnter={openPopup}
         onMouseLeave={() => {
           const activeElement = document.activeElement
           if (
@@ -441,14 +451,14 @@ export default function AuthMenu({
               ? 'inline-flex min-h-11 w-full min-w-11 items-center justify-center gap-3 rounded-xl px-3 py-2 text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950'
               : 'inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950'
           }
-          onClick={() => setIsPopupOpen(open => !open)}
+          onClick={togglePopup}
           onFocus={event => {
             if (suppressNextFocusOpenRef.current) {
               suppressNextFocusOpenRef.current = false
               return
             }
             if (isFocusVisibleTarget(event.currentTarget)) {
-              setIsPopupOpen(true)
+              openPopup()
             }
           }}
           ref={triggerRef}
@@ -477,7 +487,7 @@ export default function AuthMenu({
                 if (event.key !== 'Escape') return
                 event.preventDefault()
                 suppressNextFocusOpenRef.current = true
-                setIsPopupOpen(false)
+                closePopupImmediately()
                 triggerRef.current?.focus()
               }}
               role="dialog"

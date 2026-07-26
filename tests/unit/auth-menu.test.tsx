@@ -422,6 +422,60 @@ describe('AuthMenu', () => {
     }
   })
 
+  it('keeps the popup open when keyboard focus reopens it before pointer grace expires', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        authenticated: true,
+        sub: 'user-1',
+        hsaId: 'SE5560000001-admin1',
+        givenName: 'Ada',
+        familyName: 'Admin',
+        name: 'Ada Admin',
+        email: 'ada@example.test',
+        roles: ['Admin'],
+        expiresAt: 123,
+      }),
+    })
+
+    render(<AuthMenu variant="rail" />)
+
+    const trigger = await screen.findByRole('button', {
+      name: 'signedInAs Ada Admin',
+    })
+    const popupRoot = trigger.parentElement
+    expect(popupRoot).not.toBeNull()
+    const focusVisibleSpy = vi
+      .spyOn(trigger, 'matches')
+      .mockImplementation(selector => selector === ':focus-visible')
+
+    vi.useFakeTimers()
+    try {
+      fireEvent.mouseEnter(popupRoot as HTMLElement)
+      expect(
+        screen.getByRole('dialog', { name: 'userInfoTitle' }),
+      ).toBeInTheDocument()
+
+      fireEvent.mouseLeave(popupRoot as HTMLElement)
+      fireEvent.pointerDown(document.body)
+      expect(screen.queryByRole('dialog', { name: 'userInfoTitle' })).toBeNull()
+
+      fireEvent.focus(trigger)
+      expect(
+        screen.getByRole('dialog', { name: 'userInfoTitle' }),
+      ).toBeInTheDocument()
+
+      act(() => vi.runAllTimers())
+
+      expect(
+        screen.getByRole('dialog', { name: 'userInfoTitle' }),
+      ).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+      focusVisibleSpy.mockRestore()
+    }
+  })
+
   it('still closes the rail popup immediately on an outside pointer press', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
