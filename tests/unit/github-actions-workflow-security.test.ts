@@ -468,9 +468,9 @@ describe('GitHub Actions workflow security', () => {
       step => step.name === 'Attest production deployment archive',
     )
 
-    expect(attestStep?.uses).toBe(
-      'actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26',
-    )
+    // Dependabot owns action revision updates. Assert immutable pinning without
+    // coupling this behavior test to the specific commit it currently selects.
+    expect(attestStep?.uses).toMatch(/^actions\/attest@[a-f\d]{40}$/u)
     expect(attestStep?.with).toMatchObject({
       'predicate-path':
         'tmp/container-release-artifacts/metadata/deployment-release-predicate.json',
