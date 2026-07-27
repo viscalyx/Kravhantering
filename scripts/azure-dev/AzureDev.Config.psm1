@@ -33,6 +33,9 @@ function Get-AzureDevDefaultConfig {
     AZURE_DEV_VM_AUTO_STOP_ENABLED = 'true'
     AZURE_DEV_VM_AUTO_STOP_TIME = '2200'
     AZURE_DEV_VM_AUTO_STOP_TIME_ZONE = 'UTC'
+    AZURE_DEV_VM_IMAGE_OFFER = 'ubuntu-24_04-lts'
+    AZURE_DEV_VM_IMAGE_PUBLISHER = 'Canonical'
+    AZURE_DEV_VM_IMAGE_SKU = 'server'
     AZURE_DEV_VM_LOCATION = 'eastus2'
     AZURE_DEV_VM_RESOURCE_GROUP = ''
     AZURE_DEV_VM_SUBSCRIPTION_ID = ''
@@ -363,6 +366,9 @@ function Get-AzureDevConfig {
     SubscriptionId = $values.AZURE_DEV_VM_SUBSCRIPTION_ID
     ResourceGroup = $values.AZURE_DEV_VM_RESOURCE_GROUP
     Location = $values.AZURE_DEV_VM_LOCATION
+    ImagePublisher = $values.AZURE_DEV_VM_IMAGE_PUBLISHER
+    ImageOffer = $values.AZURE_DEV_VM_IMAGE_OFFER
+    ImageSku = $values.AZURE_DEV_VM_IMAGE_SKU
     EnvironmentId = $environmentId
     NamePrefix = $values.AZURE_DEV_VM_NAME_PREFIX
     VmName = $values.AZURE_DEV_VM_NAME
@@ -415,17 +421,34 @@ function Test-AzureDevConfig {
   $required = if ($AllowMissingAzureScope) {
     [ordered]@{
       AZURE_DEV_VM_LOCATION = $Config.Location
+      AZURE_DEV_VM_IMAGE_PUBLISHER = $Config.ImagePublisher
+      AZURE_DEV_VM_IMAGE_OFFER = $Config.ImageOffer
+      AZURE_DEV_VM_IMAGE_SKU = $Config.ImageSku
     }
   } else {
     [ordered]@{
       AZURE_DEV_VM_SUBSCRIPTION_ID = $Config.SubscriptionId
       AZURE_DEV_VM_RESOURCE_GROUP = $Config.ResourceGroup
       AZURE_DEV_VM_LOCATION = $Config.Location
+      AZURE_DEV_VM_IMAGE_PUBLISHER = $Config.ImagePublisher
+      AZURE_DEV_VM_IMAGE_OFFER = $Config.ImageOffer
+      AZURE_DEV_VM_IMAGE_SKU = $Config.ImageSku
     }
   }
   foreach ($item in $required.GetEnumerator()) {
     if ([string]::IsNullOrWhiteSpace($item.Value)) {
       throw "$($item.Key) is required."
+    }
+  }
+
+  $imageCoordinates = [ordered]@{
+    AZURE_DEV_VM_IMAGE_PUBLISHER = $Config.ImagePublisher
+    AZURE_DEV_VM_IMAGE_OFFER = $Config.ImageOffer
+    AZURE_DEV_VM_IMAGE_SKU = $Config.ImageSku
+  }
+  foreach ($item in $imageCoordinates.GetEnumerator()) {
+    if ($item.Value -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') {
+      throw "$($item.Key) contains unsupported characters."
     }
   }
 

@@ -76,11 +76,142 @@ describe('development environment contract', () => {
     expect(azureModule).toContain(
       '$existingImage = Get-AzureDevVmImage -Config $Config',
     )
+    expect(azureModule).toContain('if ($null -ne $existingImage)')
     expect(azureModule).toContain(
-      'if ($null -ne $existingImage) {\n    return $existingImage\n  }',
+      'Write-AzureDevImageDeprecationWarning `\n' +
+        '      -Config $Config `\n' +
+        '      -Image $existingImage',
     )
+    expect(azureModule).toContain('return $existingImage')
     expect(azureModule).toContain(
       'return Get-AzureDevUbuntuImage -Config $Config',
+    )
+  })
+
+  it('warns when configured image coordinates differ from an existing VM', () => {
+    const azureModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Azure.psm1',
+    )
+    const resolverStart = azureModule.indexOf(
+      'function Get-AzureDevDeploymentImage',
+    )
+    const resolverEnd = azureModule.indexOf(
+      '\nfunction Get-AzureDevResourceGroup',
+      resolverStart,
+    )
+    const resolver = azureModule.slice(resolverStart, resolverEnd)
+
+    expect(resolverStart).toBeGreaterThanOrEqual(0)
+    expect(resolverEnd).toBeGreaterThan(resolverStart)
+    expect(resolver).toContain(
+      '$existingImage.publisher -ine $Config.ImagePublisher',
+    )
+    expect(resolver).toContain('$existingImage.offer -ine $Config.ImageOffer')
+    expect(resolver).toContain('$existingImage.sku -ine $Config.ImageSku')
+    expect(resolver).toContain('if ($imageFamilyChanged)')
+    expect(resolver).toContain('Azure cannot change the image publisher, " +')
+    expect(resolver).toContain(
+      "'preserve the existing image and attached disks and continue repairing ' +",
+    )
+    expect(resolver).toContain(
+      "'the managed OS and data disks are deleted during removal.'",
+    )
+    expect(resolver).toContain('return $existingImage')
+  })
+
+  it('checks exact existing image deprecation during setup and status', () => {
+    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+    const azureModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Azure.psm1',
+    )
+    const warningStart = azureModule.indexOf(
+      'function Write-AzureDevImageDeprecationWarning',
+    )
+    const warningEnd = azureModule.indexOf(
+      '\nfunction Get-AzureDevDeploymentImage',
+      warningStart,
+    )
+    const warningFunction = azureModule.slice(warningStart, warningEnd)
+
+    expect(warningStart).toBeGreaterThanOrEqual(0)
+    expect(warningEnd).toBeGreaterThan(warningStart)
+    expect(warningFunction).toContain("'image',\n      'show'")
+    expect(warningFunction).toContain('$Image.urn')
+    expect(warningFunction).toContain("-Name 'imageDeprecationStatus'")
+    expect(warningFunction).toContain(
+      "if ($imageState -eq 'ScheduledForDeprecation')",
+    )
+    expect(warningFunction).toContain("-Name 'scheduledDeprecationTime'")
+    expect(warningFunction).toContain(`"yyyy-MM-dd HH:mm:ss 'UTC'"`)
+    expect(warningFunction).toContain(
+      "'continue using the existing VM and OS disk. Check Azure Advisor",
+    )
+    expect(entryScript).toContain(
+      '$image = Get-AzureDevVmImage -Config $Context.Config',
+    )
+    expect(entryScript).toContain(
+      'Write-AzureDevImageDeprecationWarning `\n' +
+        '      -Config $Context.Config `\n' +
+        '      -Image $image',
+    )
+    expect(entryScript).toContain('Write-Host "Image: $(if ($null -eq $image)')
+  })
+
+  it('resolves an active stable Ubuntu LTS image for a new Azure VM', () => {
+    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+    const azureModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Azure.psm1',
+    )
+    const configModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Config.psm1',
+    )
+    const envExample = readWorkspaceFile('.env.azure.development.example')
+    const resolverStart = azureModule.indexOf(
+      'function Get-AzureDevUbuntuImage',
+    )
+    const resolverEnd = azureModule.indexOf(
+      '\nfunction Get-AzureDevVmImage',
+      resolverStart,
+    )
+    const resolver = azureModule.slice(resolverStart, resolverEnd)
+
+    expect(resolverStart).toBeGreaterThanOrEqual(0)
+    expect(resolverEnd).toBeGreaterThan(resolverStart)
+    expect(configModule).toContain("AZURE_DEV_VM_IMAGE_PUBLISHER = 'Canonical'")
+    expect(configModule).toContain(
+      "AZURE_DEV_VM_IMAGE_OFFER = 'ubuntu-24_04-lts'",
+    )
+    expect(configModule).toContain("AZURE_DEV_VM_IMAGE_SKU = 'server'")
+    expect(configModule).toContain(
+      'ImagePublisher = $values.AZURE_DEV_VM_IMAGE_PUBLISHER',
+    )
+    expect(configModule).toContain(
+      'ImageOffer = $values.AZURE_DEV_VM_IMAGE_OFFER',
+    )
+    expect(configModule).toContain('ImageSku = $values.AZURE_DEV_VM_IMAGE_SKU')
+    expect(envExample).toContain('AZURE_DEV_VM_IMAGE_PUBLISHER=Canonical')
+    expect(envExample).toContain('AZURE_DEV_VM_IMAGE_OFFER=ubuntu-24_04-lts')
+    expect(envExample).toContain('AZURE_DEV_VM_IMAGE_SKU=server')
+    expect(resolver).toContain('$publisher = $Config.ImagePublisher')
+    expect(resolver).toContain('$offer = $Config.ImageOffer')
+    expect(resolver).toContain('$sku = $Config.ImageSku')
+    expect(resolver).toContain(
+      '$latestUrn = "${publisher}:${offer}:${sku}:latest"',
+    )
+    expect(resolver).toContain("-Name 'imageDeprecationStatus'")
+    expect(resolver).toContain("if ($imageState -ne 'Active')")
+    expect(resolver).toContain("-Name 'hyperVGeneration'")
+    expect(resolver).toContain("if ($hyperVGeneration -ne 'V2')")
+    expect(resolver).toContain(
+      '$urn = "${publisher}:${offer}:${sku}:${version}"',
+    )
+    expect(resolver).not.toContain("'image',\n    'list'")
+    expect(resolver).not.toContain('Sort-Object -Property version')
+    expect(entryScript).toContain(
+      '"$($Context.Config.ImagePublisher):$($Context.Config.ImageOffer):" +',
+    )
+    expect(entryScript).toContain(
+      '"$($Context.Config.ImageSku):latest, resolved during setup"',
     )
   })
 

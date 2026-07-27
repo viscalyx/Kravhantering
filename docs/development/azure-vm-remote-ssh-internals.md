@@ -89,11 +89,18 @@ The command flow is intentionally narrow:
 - `estimate-cost` prints local cost drivers only.
 - `setup` verifies the workstation Powerlevel10k font before any Azure
   mutation, validates prerequisites, resolves SSH CIDR, preserves an existing
-  VM's immutable image reference or resolves the latest image for a new VM,
-  creates or verifies the SSH key, checks existing VM SSH-key drift, converges
-  the resource group and Bicep deployment, starts the VM when needed, waits for
-  SSH, uploads templates, reruns bootstrap, runs smoke validation, writes state,
-  and prints SSH instructions.
+  VM's immutable image reference or resolves the latest active Gen2 image from
+  the configured Marketplace publisher, offer, and SKU for a new VM, creates or
+  verifies the SSH key, checks existing VM SSH-key drift, converges the resource
+  group and Bicep deployment, starts the VM when needed, waits for SSH, uploads
+  templates, reruns bootstrap, runs smoke validation, writes state, and prints
+  SSH instructions.
+- When an existing VM's publisher, offer, or SKU differs from configuration,
+  setup warns about immutable image and Hyper-V generation drift, preserves the
+  existing image and disks, and continues converging mutable resources.
+- `setup` and `status` query the existing exact image version's Marketplace
+  deprecation state. Scheduled, non-active, missing, or unavailable metadata
+  produces a non-blocking warning; active metadata remains quiet.
 - `start` starts the VM, refreshes SSH config, waits for SSH, and prints
   connection instructions.
 - `stop` deallocates the VM.
