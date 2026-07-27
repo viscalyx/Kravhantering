@@ -255,42 +255,10 @@ function Get-AzureDevUbuntuImage {
     [pscustomobject]$Config
   )
 
-  $images = Invoke-AzCli -Arguments @(
-    'vm',
-    'image',
-    'list',
-    '--subscription',
-    $Config.SubscriptionId,
-    '--publisher',
-    'Canonical',
-    '--offer',
-    'ubuntu-24_04-lts',
-    '--sku',
-    'server',
-    '--location',
-    $Config.Location,
-    '--all',
-    '--output',
-    'json'
-  ) -Json
-
-  $latest = @($images) |
-    Where-Object { $_.version -and $_.version -ne 'latest' } |
-    Sort-Object -Property version |
-    Select-Object -Last 1
-
-  if ($null -eq $latest) {
-    return [pscustomobject]@{
-      publisher = 'Canonical'
-      offer = 'ubuntu-24_04-lts'
-      sku = 'server'
-      version = 'latest'
-      urn = 'Canonical:ubuntu-24_04-lts:server:latest'
-      plan = $null
-    }
-  }
-
-  $urn = "$($latest.publisher):$($latest.offer):$($latest.sku):$($latest.version)"
+  $publisher = $Config.ImagePublisher
+  $offer = $Config.ImageOffer
+  $sku = $Config.ImageSku
+  $latestUrn = "${publisher}:${offer}:${sku}:latest"
   $details = Invoke-AzCli -Arguments @(
     'vm',
     'image',
@@ -298,21 +266,61 @@ function Get-AzureDevUbuntuImage {
     '--subscription',
     $Config.SubscriptionId,
     '--urn',
-    $urn,
+    $latestUrn,
     '--location',
     $Config.Location,
     '--output',
     'json'
   ) -Json
 
-  $planProperty = $details.PSObject.Properties['plan']
-  $plan = if ($null -ne $planProperty) { $planProperty.Value } else { $null }
+  $version = Get-AzureDevJsonProperty -InputObject $details -Name 'name'
+  if ([string]::IsNullOrWhiteSpace($version) -or $version -eq 'latest') {
+    throw "Azure did not resolve $latestUrn to an exact image version in $($Config.Location)."
+  }
+
+  $deprecationStatus = Get-AzureDevJsonProperty `
+    -InputObject $details `
+    -Name 'imageDeprecationStatus'
+  $imageState = Get-AzureDevJsonProperty `
+    -InputObject $deprecationStatus `
+    -Name 'imageState'
+  if ($imageState -ne 'Active') {
+    $reportedState = if ([string]::IsNullOrWhiteSpace($imageState)) {
+      '<missing>'
+    } else {
+      $imageState
+    }
+    throw (
+      "Azure resolved $latestUrn to version $version with image state " +
+      "$reportedState; setup requires an Active image."
+    )
+  }
+
+  $hyperVGeneration = Get-AzureDevJsonProperty `
+    -InputObject $details `
+    -Name 'hyperVGeneration'
+  if ($hyperVGeneration -ne 'V2') {
+    $reportedGeneration = if (
+      [string]::IsNullOrWhiteSpace($hyperVGeneration)
+    ) {
+      '<missing>'
+    } else {
+      $hyperVGeneration
+    }
+    throw (
+      "Azure resolved $latestUrn to version $version with Hyper-V generation " +
+      "$reportedGeneration; setup requires a Gen2 image."
+    )
+  }
+
+  $plan = Get-AzureDevJsonProperty -InputObject $details -Name 'plan'
+  $urn = "${publisher}:${offer}:${sku}:${version}"
 
   return [pscustomobject]@{
-    publisher = $latest.publisher
-    offer = $latest.offer
-    sku = $latest.sku
-    version = $latest.version
+    publisher = $publisher
+    offer = $offer
+    sku = $sku
+    version = $version
     urn = $urn
     plan = $plan
   }
@@ -371,6 +379,93 @@ function Get-AzureDevVmImage {
   }
 }
 
+function Write-AzureDevImageDeprecationWarning {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Config,
+
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Image
+  )
+
+  try {
+    $details = Invoke-AzCli -Arguments @(
+      'vm',
+      'image',
+      'show',
+      '--subscription',
+      $Config.SubscriptionId,
+      '--urn',
+      $Image.urn,
+      '--location',
+      $Config.Location,
+      '--output',
+      'json'
+    ) -Json
+  } catch {
+    Write-Warning (
+      "Could not verify Marketplace deprecation status for existing image " +
+      "$($Image.urn). The Azure image lookup failed, but this command will " +
+      'continue using the existing VM and OS disk. Check Azure Advisor or the ' +
+      'image version manually before relying on Marketplace reimage support.'
+    )
+    return
+  }
+
+  $deprecationStatus = Get-AzureDevJsonProperty `
+    -InputObject $details `
+    -Name 'imageDeprecationStatus'
+  $imageState = Get-AzureDevJsonProperty `
+    -InputObject $deprecationStatus `
+    -Name 'imageState'
+  if ($imageState -eq 'Active') {
+    return
+  }
+
+  if ($imageState -eq 'ScheduledForDeprecation') {
+    $scheduledTime = Get-AzureDevJsonProperty `
+      -InputObject $deprecationStatus `
+      -Name 'scheduledDeprecationTime'
+    $scheduledText = if ([string]::IsNullOrWhiteSpace($scheduledTime)) {
+      '<unknown date>'
+    } elseif ($scheduledTime -is [DateTimeOffset]) {
+      $scheduledTime.ToUniversalTime().ToString(
+        "yyyy-MM-dd HH:mm:ss 'UTC'",
+        [Globalization.CultureInfo]::InvariantCulture
+      )
+    } elseif ($scheduledTime -is [DateTime]) {
+      $scheduledTime.ToUniversalTime().ToString(
+        "yyyy-MM-dd HH:mm:ss 'UTC'",
+        [Globalization.CultureInfo]::InvariantCulture
+      )
+    } else {
+      $scheduledTime
+    }
+    Write-Warning (
+      "Existing VM image $($Image.urn) is scheduled for Marketplace " +
+      "deprecation at $scheduledText. The VM can continue using its OS disk, " +
+      'and this command will continue. To retain an active Marketplace source ' +
+      'for future creation or reimage, back up required data and recreate the ' +
+      'disposable environment from the configured latest image.'
+    )
+    return
+  }
+
+  $reportedState = if ([string]::IsNullOrWhiteSpace($imageState)) {
+    '<missing>'
+  } else {
+    $imageState
+  }
+  Write-Warning (
+    "Existing VM image $($Image.urn) reports Marketplace image state " +
+    "$reportedState. The VM can continue using its OS disk, and this command " +
+    'will continue, but Marketplace creation or reimage support might be ' +
+    'unavailable. Check Azure Advisor and recreate from an active image when ' +
+    'appropriate.'
+  )
+}
+
 function Get-AzureDevDeploymentImage {
   [CmdletBinding()]
   param(
@@ -380,6 +475,30 @@ function Get-AzureDevDeploymentImage {
 
   $existingImage = Get-AzureDevVmImage -Config $Config
   if ($null -ne $existingImage) {
+    Write-AzureDevImageDeprecationWarning `
+      -Config $Config `
+      -Image $existingImage
+    $configuredImageFamily = (
+      "$($Config.ImagePublisher):$($Config.ImageOffer):" +
+      "$($Config.ImageSku):latest"
+    )
+    $imageFamilyChanged = (
+      $existingImage.publisher -ine $Config.ImagePublisher -or
+      $existingImage.offer -ine $Config.ImageOffer -or
+      $existingImage.sku -ine $Config.ImageSku
+    )
+    if ($imageFamilyChanged) {
+      Write-Warning (
+        "Existing VM $($Config.VmName) uses immutable Marketplace image " +
+        "$($existingImage.urn), while configuration targets " +
+        "$configuredImageFamily. Azure cannot change the image publisher, " +
+        'offer, SKU, version, or Hyper-V generation in place. Setup will ' +
+        'preserve the existing image and attached disks and continue repairing ' +
+        'mutable configuration. To apply the configured image, back up any ' +
+        'required data, remove the disposable environment, and run setup again; ' +
+        'the managed OS and data disks are deleted during removal.'
+      )
+    }
     return $existingImage
   }
 
@@ -1283,6 +1402,7 @@ Export-ModuleMember -Function `
   Get-AzureDevUbuntuImage, `
   Get-AzureDevVisibleSubscriptions, `
   Get-AzureDevVmAdminSshPublicKeys, `
+  Write-AzureDevImageDeprecationWarning, `
   Get-AzureDevVmPowerState, `
   Invoke-AzCli, `
   New-AzureDevDeployment, `

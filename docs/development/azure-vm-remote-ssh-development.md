@@ -417,6 +417,9 @@ AZURE_DEV_VM_CONNECTIVITY_MODE=public-ssh
 AZURE_DEV_VM_DATA_DISK_GIB=256
 AZURE_DEV_VM_ENVIRONMENT_ID=personal
 AZURE_DEV_VM_FALLBACK_SIZE=Standard_D8as_v5
+AZURE_DEV_VM_IMAGE_OFFER=ubuntu-24_04-lts
+AZURE_DEV_VM_IMAGE_PUBLISHER=Canonical
+AZURE_DEV_VM_IMAGE_SKU=server
 AZURE_DEV_VM_NAME=krav-dev-vm
 AZURE_DEV_VM_NAME_PREFIX=krav-dev
 AZURE_DEV_VM_SIZE=Standard_D8s_v5
@@ -428,6 +431,12 @@ existing disk is smaller, setup expands the managed disk and its ext4
 filesystem. If an existing disk is larger, setup warns, preserves that size,
 and continues because Azure managed disks cannot be shrunk. Run `remove` and
 recreate the disposable environment to use a smaller disk.
+
+The three `AZURE_DEV_VM_IMAGE_*` values identify the Marketplace image family
+used only when creating a VM. Setup derives a `latest` URN from them, resolves
+and deploys the exact version, and requires Azure to report both an `Active`
+image state and Hyper-V generation V2. Existing VMs retain their immutable
+image reference even when these configuration values change.
 
 Use `AZURE_DEV_VM_ALLOWED_SSH_CIDR=auto` for the normal path. Setup detects
 your current public IPv4 address and proposes it as a `/32`. Do not use
@@ -705,7 +714,23 @@ automatically assigned or default properties as deleted. See the
 
 For an existing VM, setup reuses its exact Marketplace image reference because
 Azure does not allow `imageReference` to change in place. Setup resolves the
-latest validated Ubuntu image only when it creates a new VM.
+latest image from the configured publisher, offer, and SKU only when it creates
+a new VM. The resolved exact version must report an `Active` Marketplace image
+state and Hyper-V generation V2 or setup fails before deployment.
+
+When an existing VM's publisher, offer, or SKU differs from configuration,
+setup warns that the image family, exact version, and Hyper-V generation cannot
+change in place. It preserves the existing image and attached disks and
+continues converging mutable configuration. Applying the configured image
+requires backing up required data and using `remove` followed by `setup`;
+`remove` deletes the managed OS and data disks.
+
+Both `setup` and `status` query the existing VM's exact Marketplace image
+version. Active images produce no deprecation warning. A scheduled or
+non-active image produces a non-blocking warning with the scheduled enforcement
+date when Azure provides it. If Marketplace metadata is no longer available,
+the commands warn that status could not be verified and continue using the
+existing VM and OS disk.
 
 When preflight is clean, run setup to create or repair the environment:
 

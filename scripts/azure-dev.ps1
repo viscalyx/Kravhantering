@@ -95,7 +95,10 @@ function Write-AzureDevCostSummary {
   $imageUrn = if ($null -ne $Image -and -not [string]::IsNullOrWhiteSpace($Image.urn)) {
     $Image.urn
   } else {
-    'Canonical Ubuntu 24.04 LTS Server, resolved during setup'
+    (
+      "$($Context.Config.ImagePublisher):$($Context.Config.ImageOffer):" +
+      "$($Context.Config.ImageSku):latest, resolved during setup"
+    )
   }
   $dataDiskSize = if (
     $null -ne $DataDisk -and
@@ -528,6 +531,12 @@ function Get-AzureDevStatus {
   $state = Get-AzureDevState -Context $Context
   $publicIp = Get-AzureDevPublicIpAddress -Config $Context.Config
   $powerState = Get-AzureDevVmPowerState -Config $Context.Config
+  $image = Get-AzureDevVmImage -Config $Context.Config
+  if ($null -ne $image) {
+    Write-AzureDevImageDeprecationWarning `
+      -Config $Context.Config `
+      -Image $image
+  }
   $allowedCidr = if ($null -ne $state) {
     $state.lastKnownAllowedCidr
   } else {
@@ -537,6 +546,7 @@ function Get-AzureDevStatus {
 
   Write-Host "Resource group: $($Context.Config.ResourceGroup)"
   Write-Host "VM: $($Context.Config.VmName)"
+  Write-Host "Image: $(if ($null -eq $image) { '<not found>' } else { $image.urn })"
   Write-Host "Power state: $powerState"
   Write-Host "Connectivity mode: $($Context.Config.ConnectivityMode)"
   Write-Host "Public IP: $publicIp"
