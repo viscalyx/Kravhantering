@@ -6,7 +6,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 COPY package.json package-lock.json .npmrc ./
-RUN npm install --global "npm@$(node -p \"require('./package.json').packageManager.slice(4)\")"
+RUN npm install --global "npm@$(node -p 'require("./package.json").packageManager.slice(4)')"
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
 FROM node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf

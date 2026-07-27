@@ -6,7 +6,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /workspace
 
 COPY package.json package-lock.json .npmrc ./
-RUN npm install --global "npm@$(node -p \"require('./package.json').packageManager.slice(4)\")"
+RUN npm install --global "npm@$(node -p 'require("./package.json").packageManager.slice(4)')"
 RUN npm ci
 
 FROM dependencies AS app-build
@@ -37,7 +37,7 @@ ENV NODE_ENV=production
 WORKDIR /workspace
 
 COPY package.json package-lock.json .npmrc ./
-RUN npm install --global "npm@$(node -p \"require('./package.json').packageManager.slice(4)\")"
+RUN npm install --global "npm@$(node -p 'require("./package.json").packageManager.slice(4)')"
 RUN <<'EOF'
 set -eu
 node <<'NODE'

@@ -12,7 +12,7 @@ verify the release/smoke/test surfaces that consume it.
 ## Workflow
 
 1. Identify the requested image and old state.
-   - Read `.github/workflows/vendor-image-updates.mjs`.
+   - Read `.github/workflows/dependency-drift.mjs`.
    - Match by `IMAGE_CONFIGS` key, `image`, or `lockPath`.
    - Read the matching `containers/<image>/image.lock.json`.
    - If the image is not in `IMAGE_CONFIGS`, search for a matching
@@ -34,7 +34,7 @@ verify the release/smoke/test surfaces that consume it.
      "amd64" }`, then fetch that platform manifest.
    - Update `tag`, `manifestDigest`, and `imageId` together in
      `containers/<image>/image.lock.json`.
-   - Use `.github/workflows/vendor-image-updates.mjs` as the source of truth
+   - Use `.github/workflows/dependency-drift.mjs` as the source of truth
      for registry host, repository, accepted media types, and digest
      normalization.
 
@@ -44,7 +44,7 @@ verify the release/smoke/test surfaces that consume it.
    - Any time this task changes a file because it contains a hardcoded image
      reference, release example, devcontainer/devfile example, or active
      deployment/doc workflow reference, update
-     `.github/workflows/vendor-image-updates.mjs` in the same change so
+     `.github/workflows/dependency-drift.mjs` in the same change so
      `IMAGE_CONFIGS[image].companionFiles` or the replacement logic covers
      that file for future automated updates.
    - Known companion files:
@@ -91,7 +91,7 @@ rg --hidden -n "OLD_TAG|NEW_TAG|docker.io/library/nginx|NGINX_IMAGE_REF|stable-a
 
 7. Verify.
    - Run targeted tests for changed scripts when useful.
-   - Run `node --check .github/workflows/vendor-image-updates.mjs` when the
+   - Run `node --check .github/workflows/dependency-drift.mjs` when the
      updater changed.
    - Run `npm run check` before final response unless the user asked for a
      narrower pass or the change is documentation-only.
@@ -100,7 +100,7 @@ rg --hidden -n "OLD_TAG|NEW_TAG|docker.io/library/nginx|NGINX_IMAGE_REF|stable-a
 
 ## Safety Rules
 
-- Do not run `.github/workflows/vendor-image-updates.mjs` locally unless the
+- Do not run `.github/workflows/dependency-drift.mjs` locally unless the
   user explicitly wants the workflow branch/PR behavior and the GitHub env is
   configured. It switches branches, commits, pushes, and opens PRs.
 - Do not update only the tag in an image lock. Digest and image ID must move

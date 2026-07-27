@@ -25,18 +25,27 @@ install and the normal dependency-maintenance quality gate.
 
 ## Normal Install
 
-Use the normal npm commands unless dependency state is visibly broken:
+Bootstrap the repository npm version after cloning or when the canonical npm
+version changes:
 
 ```sh
 node scripts/install-repository-npm.mjs
+```
+
+For everyday local development and intentional dependency updates, run:
+
+```sh
 npm install
+```
+
+Alternatively, for a clean, lockfile-exact install such as CI or disposable
+local validation, run:
+
+```sh
 npm ci
 ```
 
-Run the npm bootstrap after cloning or when the canonical npm version changes.
-Use `npm install` during everyday local development and after intentional
-dependency updates. Use `npm ci` for clean, lockfile-exact installs such as CI
-or disposable local validation.
+Do not run both install alternatives sequentially.
 
 ## Purge Install
 

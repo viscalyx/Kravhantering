@@ -21,14 +21,14 @@ import {
   readNodeCurrent,
   renderIssueBody,
   selectAvailableVersion,
-} from '../../.github/workflows/vendor-image-updates.mjs'
+} from '../../.github/workflows/dependency-drift.mjs'
 
 const temporaryDirectories = []
 const digest = character => `sha256:${character.repeat(64)}`
 
 function temporaryDirectory() {
   const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'vendor-image-updates-test-'),
+    path.join(os.tmpdir(), 'dependency-drift-test-'),
   )
   temporaryDirectories.push(directory)
   return directory
@@ -482,14 +482,21 @@ describe('issue contract', () => {
     ])
   })
 
-  it('lists every issue so the hidden marker remains authoritative', () => {
+  it('lists labeled detector issues so the hidden marker remains authoritative', () => {
     const run = vi.fn(() => '[{"number":1}]')
     expect(listDetectorIssues(run)).toEqual([{ number: 1 }])
-    expect(run).toHaveBeenCalledWith(
-      'gh',
-      expect.arrayContaining(['--state', 'all']),
-    )
-    expect(run.mock.calls[0][1]).not.toContain('--label')
+    expect(run).toHaveBeenCalledWith('gh', [
+      'issue',
+      'list',
+      '--state',
+      'all',
+      '--label',
+      'automation:dependency-drift',
+      '--limit',
+      '1000',
+      '--json',
+      'number,state,title,body',
+    ])
   })
 
   it('executes issue edits with all required labels', () => {
@@ -520,6 +527,59 @@ describe('issue contract', () => {
         'automation:dependency-drift,dependencies,ready-for-agent',
       ]),
     )
+  })
+
+  it('preserves callback failures when the body directory is already absent', () => {
+    const run = vi.fn((_command, args) => {
+      const bodyFileIndex = args.indexOf('--body-file')
+      fs.rmSync(path.dirname(args[bodyFileIndex + 1]), {
+        force: true,
+        recursive: true,
+      })
+      throw new Error('GitHub command failed')
+    })
+
+    expect(() =>
+      executeIssueActions(
+        [
+          {
+            body: 'body',
+            title: 'Dependency drift: npm-toolchain',
+            type: 'create',
+            unit: 'npm-toolchain',
+          },
+        ],
+        run,
+      ),
+    ).toThrow('GitHub command failed')
+  })
+
+  it('writes the workflow summary through the injected environment', async () => {
+    const root = temporaryDirectory()
+    const summaryPath = path.join(root, 'summary.md')
+    const results = {
+      closed: [],
+      created: ['npm-toolchain'],
+      reopened: [],
+      unchanged: [],
+      updated: [],
+    }
+
+    await expect(
+      main(
+        ['--unit', 'npm'],
+        { GITHUB_STEP_SUMMARY: summaryPath },
+        {
+          detectNpmDrift: async () => drift('npm-toolchain'),
+          executeIssueActions: () => results,
+          listDetectorIssues: () => [],
+          root: process.cwd(),
+          run: vi.fn(),
+          validateDependencyMaintenance: () => [],
+        },
+      ),
+    ).resolves.toBe(0)
+    expect(fs.readFileSync(summaryPath, 'utf8')).toContain('- npm-toolchain')
   })
 
   it('does not mutate GitHub when remote detection fails', async () => {

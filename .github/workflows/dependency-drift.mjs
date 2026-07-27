@@ -593,6 +593,8 @@ export function listDetectorIssues(runCommand = run) {
       'list',
       '--state',
       'all',
+      '--label',
+      AUTOMATION_LABEL,
       '--limit',
       ISSUE_LIST_LIMIT,
       '--json',
@@ -691,7 +693,7 @@ function withBodyFile(body, callback) {
     fs.writeFileSync(bodyPath, body)
     return callback(bodyPath)
   } finally {
-    fs.rmSync(temporaryDirectory, { recursive: true })
+    fs.rmSync(temporaryDirectory, { force: true, recursive: true })
   }
 }
 
@@ -809,8 +811,8 @@ export async function detectUnits(units, root, dependencies = {}) {
   return detections
 }
 
-function appendSummary(results) {
-  const summaryPath = readNonEmpty(process.env.GITHUB_STEP_SUMMARY)
+function appendSummary(results, env) {
+  const summaryPath = readNonEmpty(env.GITHUB_STEP_SUMMARY)
   if (!summaryPath) return
   const sections = [
     ['Created issues', results.created],
@@ -864,7 +866,7 @@ export async function main(
     actions,
     runCommand,
   )
-  appendSummary(results)
+  appendSummary(results, env)
   return 0
 }
 

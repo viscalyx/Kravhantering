@@ -287,7 +287,7 @@ används behöver motsvarande pipelines finnas där.
 - `Container PR Smoke` (`.github/workflows/container-pr-smoke.yml`) körs på
   pull requests. Den bygger containerstacken, verifierar OCI-arkiv och kör
   release-smoke innan ändringen slås ihop.
-- `Dependency Drift` (`.github/workflows/vendor-image-updates.yml`) körs
+- `Dependency Drift` (`.github/workflows/dependency-drift.yml`) körs
   schemalagt och manuellt. Den kontrollerar npm-verktygskedjan och samordnade
   produktionsavbildningar och underhåller åtgärdsärenden.
 

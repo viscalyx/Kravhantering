@@ -74,7 +74,7 @@ npm run devcontainer:kong:recreate
 
 `image.lock.json` pins the upstream image by tag, manifest digest and image ID.
 
-The normal update path is `.github/workflows/vendor-image-updates.yml`. It runs
+The normal update path is `.github/workflows/dependency-drift.yml`. It runs
 weekly from `main` and can also be started manually with `workflow_dispatch`.
 The updater opens or refreshes one PR per Kong Gateway major-version lane,
 updates `tag`, `manifestDigest` and `imageId` together, keeps devcontainer
@@ -95,7 +95,7 @@ policy:
 4. Update `tag`, `manifestDigest` and `imageId` together.
 5. Run `npm run devcontainer:kong:pull`, `npm run devcontainer:kong:up` and
    `npm run devcontainer:kong:status`.
-6. Verify that `.github/workflows/vendor-image-updates.yml` still runs the
+6. Verify that `.github/workflows/dependency-drift.yml` still runs the
    updater that keeps both devcontainer Compose files digest-pinned and the
    `release.env.template` public test-support example tag-only.
 

@@ -51,4 +51,4 @@ jobs:
           package-manager-cache: false
 
       - name: Reconcile dependency drift issues
-        run: node .github/workflows/vendor-image-updates.mjs
+        run: node .github/workflows/dependency-drift.mjs

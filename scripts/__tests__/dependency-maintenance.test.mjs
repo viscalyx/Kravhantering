@@ -16,6 +16,7 @@ import {
   workflowsMissingNpmBootstrap,
   workflowsWithEarlyNpmCache,
 } from '../dependency-maintenance.mjs'
+import { packageManagerVersion } from '../install-repository-npm.mjs'
 
 const temporaryDirectories = []
 
@@ -37,6 +38,12 @@ function copy(root, relativePath) {
   const target = path.join(root, relativePath)
   fs.mkdirSync(path.dirname(target), { recursive: true })
   fs.copyFileSync(path.join(process.cwd(), relativePath), target)
+}
+
+function expectedNpmVersion(root) {
+  return packageManagerVersion(
+    JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')),
+  )
 }
 
 function fixture() {
@@ -285,6 +292,7 @@ FROM \${BASE_IMAGE}
 
   it('catches npm version drift and missing fail-closed policy', () => {
     const root = fixture()
+    const npmVersion = expectedNpmVersion(root)
     const manifestPath = 'containers/hsa-directory-mock/package.json'
     const manifest = JSON.parse(fs.readFileSync(path.join(root, manifestPath)))
     manifest.packageManager = 'npm@12.1.0'
@@ -295,7 +303,7 @@ FROM \${BASE_IMAGE}
       'strict-allow-scripts=false\n',
     )
     const errors = validateDependencyMaintenance(root)
-    expect(errors).toContain(`${manifestPath} must pin npm@12.0.1.`)
+    expect(errors).toContain(`${manifestPath} must pin npm@${npmVersion}.`)
     expect(errors).toContain(
       'containers/hsa-person-lookup-adapter/.npmrc must enable strict-allow-scripts.',
     )
@@ -360,6 +368,7 @@ FROM \${BASE_IMAGE}
 
   it('catches malformed manifest and stale install surfaces', () => {
     const root = fixture()
+    const npmVersion = expectedNpmVersion(root)
     const manifest = JSON.parse(
       fs.readFileSync(
         path.join(root, 'containers/hsa-directory-mock/package.json'),
@@ -378,7 +387,7 @@ FROM \${BASE_IMAGE}
       devcontainerPath,
       fs
         .readFileSync(path.join(root, devcontainerPath), 'utf8')
-        .replace('"npmVersion": "12.0.1"', '"npmVersion": "latest"'),
+        .replace(`"npmVersion": "${npmVersion}"`, '"npmVersion": "latest"'),
     )
     const dockerfilePath = 'containers/hsa-directory-mock/Dockerfile'
     write(
@@ -406,11 +415,73 @@ FROM \${BASE_IMAGE}
       expect.arrayContaining([
         'containers/hsa-directory-mock/package.json must fail on npm version drift.',
         'containers/hsa-directory-mock/package.json must declare allowScripts.',
-        '.devcontainer/devcontainer.json must install npm 12.0.1.',
+        `.devcontainer/devcontainer.json must install npm ${npmVersion}.`,
         'containers/hsa-directory-mock/Dockerfile must derive npm from its copied package.json.',
         'Azure bootstrap must install the canonical repository npm as root.',
         'docs/development/floating.md contains a floating npm install.',
       ]),
+    )
+  })
+
+  it('reports invalid manifests and missing lockfiles as policy errors', () => {
+    const invalidRootManifest = fixture()
+    write(invalidRootManifest, 'package.json', '{invalid json\n')
+    expect(validateDependencyMaintenance(invalidRootManifest)).toEqual(
+      expect.arrayContaining([
+        'package.json must declare packageManager as an exact npm version.',
+        'package.json must contain valid JSON.',
+      ]),
+    )
+
+    const invalidManifestRoot = fixture()
+    write(
+      invalidManifestRoot,
+      'containers/hsa-directory-mock/package.json',
+      '{invalid json\n',
+    )
+    expect(validateDependencyMaintenance(invalidManifestRoot)).toContain(
+      'containers/hsa-directory-mock/package.json must contain valid JSON.',
+    )
+
+    const missingLockRoot = fixture()
+    fs.rmSync(
+      path.join(
+        missingLockRoot,
+        'containers/hsa-person-lookup-adapter/package-lock.json',
+      ),
+    )
+    expect(validateDependencyMaintenance(missingLockRoot)).toContain(
+      'containers/hsa-person-lookup-adapter/package-lock.json is required for npm project "containers/hsa-person-lookup-adapter".',
+    )
+  })
+
+  it('normalizes missing registry units before policy validation', () => {
+    const root = fixture()
+    const registry = JSON.parse(
+      fs.readFileSync(path.join(root, '.github/dependency-maintenance.json')),
+    )
+    delete registry.units
+
+    expect(validateDependencyMaintenance(root, registry)).toContain(
+      'npm project "." routes to 0 maintenance lanes.',
+    )
+  })
+
+  it('accepts shell-safe Docker npm bootstrap formatting variations', () => {
+    const root = fixture()
+    const dockerfilePath = 'containers/hsa-directory-mock/Dockerfile'
+    const source = fs.readFileSync(path.join(root, dockerfilePath), 'utf8')
+    write(
+      root,
+      dockerfilePath,
+      source.replace(
+        /^RUN npm install --global.*$/mu,
+        `RUN npm   install   --global npm@$( node -p "require( './package.json' ).packageManager.slice( 4 )" )`,
+      ),
+    )
+
+    expect(validateDependencyMaintenance(root)).not.toContain(
+      `${dockerfilePath} must derive npm from its copied package.json.`,
     )
   })
 

@@ -16,6 +16,8 @@ const IGNORED_DIRECTORY_NAMES = new Set([
 const PINNABLE_PACKAGE_VERSION_PATTERN =
   /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u
 const PACKAGE_MANAGER_PATTERN = /^npm@(\d+\.\d+\.\d+)$/u
+const DOCKER_NPM_BOOTSTRAP_PATTERN =
+  /\bnpm\s+install\s+--global\s+"?npm@\$\(\s*node\s+-p\s+(?:'require\(\s*"\.\/package\.json"\s*\)\s*\.packageManager\s*\.slice\(\s*4\s*\)'|"require\(\s*'\.\/package\.json'\s*\)\s*\.packageManager\s*\.slice\(\s*4\s*\)")\s*\)"?/u
 const DEPENDENCY_DRIFT_SKILL = 'resolve-dependency-drift'
 const DEPENDABOT_KIND_ECOSYSTEMS = {
   'devcontainer-features': 'devcontainers',
@@ -482,9 +484,26 @@ function validateRegistryShape(registry) {
 }
 
 function canonicalNpmVersion(root) {
-  return readJson(root, 'package.json').packageManager?.match(
-    PACKAGE_MANAGER_PATTERN,
-  )?.[1]
+  try {
+    return readJson(root, 'package.json').packageManager?.match(
+      PACKAGE_MANAGER_PATTERN,
+    )?.[1]
+  } catch {
+    return undefined
+  }
+}
+
+function readNpmProjectJson(root, relativePath, missingMessage) {
+  try {
+    return { value: readJson(root, relativePath) }
+  } catch (error) {
+    return {
+      error:
+        error?.code === 'ENOENT'
+          ? missingMessage
+          : `${relativePath} must contain valid JSON.`,
+    }
+  }
 }
 
 function validateNpmProjects(root, registry, expectedVersion) {
@@ -514,8 +533,26 @@ function validateNpmProjects(root, registry, expectedVersion) {
         ? 'package-lock.json'
         : `${projectPath}/package-lock.json`
     const npmrcPath = projectPath === '.' ? '.npmrc' : `${projectPath}/.npmrc`
-    const packageJson = readJson(root, manifestPath)
-    const packageLock = readJson(root, lockPath)
+    const manifestResult = readNpmProjectJson(
+      root,
+      manifestPath,
+      `${manifestPath} is required for npm project "${projectPath}".`,
+    )
+    if (manifestResult.error) {
+      errors.push(manifestResult.error)
+      continue
+    }
+    const lockResult = readNpmProjectJson(
+      root,
+      lockPath,
+      `${lockPath} is required for npm project "${projectPath}".`,
+    )
+    if (lockResult.error) {
+      errors.push(lockResult.error)
+      continue
+    }
+    const packageJson = manifestResult.value
+    const packageLock = lockResult.value
     const packageManagerMatch = packageJson.packageManager?.match(
       PACKAGE_MANAGER_PATTERN,
     )
@@ -860,9 +897,7 @@ function validateInstallSurfaces(root, expectedVersion) {
     const source = readText(root, dockerfilePath)
     if (
       /\bnpm ci\b/u.test(source) &&
-      !source.includes(
-        `npm install --global "npm@$(node -p \\"require('./package.json').packageManager.slice(4)\\")"`,
-      )
+      !DOCKER_NPM_BOOTSTRAP_PATTERN.test(source)
     ) {
       errors.push(
         `${dockerfilePath} must derive npm from its copied package.json.`,
@@ -893,15 +928,19 @@ export function validateDependencyMaintenance(
   now = new Date(),
   options = {},
 ) {
+  const normalizedRegistry = {
+    ...registry,
+    units: registry.units ?? [],
+  }
   const expectedNpmVersion = canonicalNpmVersion(root)
   return [
-    ...validateRegistryShape(registry),
-    ...validateDeferrals(registry, now, {
+    ...validateRegistryShape(normalizedRegistry),
+    ...validateDeferrals(normalizedRegistry, now, {
       allowExpired: options.allowExpiredDeferrals,
     }),
-    ...validateNpmProjects(root, registry, expectedNpmVersion),
-    ...validateImageCoverage(root, registry),
-    ...validateDependabot(root, registry, now),
+    ...validateNpmProjects(root, normalizedRegistry, expectedNpmVersion),
+    ...validateImageCoverage(root, normalizedRegistry),
+    ...validateDependabot(root, normalizedRegistry, now),
     ...validateInstallSurfaces(root, expectedNpmVersion),
   ]
 }

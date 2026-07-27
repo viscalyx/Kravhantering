@@ -66,7 +66,7 @@ local images, `run-local-stack.mjs` passes that path to
 
 ## Dependency Drift Detection
 
-`.github/workflows/vendor-image-updates.yml` checks the npm toolchain,
+`.github/workflows/dependency-drift.yml` checks the npm toolchain,
 production Node base image, nginx, SQL Server, Keycloak, and Kong weekly from
 `main`. A manual run can select one maintenance unit or all units. Every image
 scan checks both newer supported tags and immutable identity drift for the

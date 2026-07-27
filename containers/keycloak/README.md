@@ -73,7 +73,7 @@ any exposed environment.
 
 `image.lock.json` pins the upstream image by tag, manifest digest and image ID.
 
-The normal update path is `.github/workflows/vendor-image-updates.yml`. It runs
+The normal update path is `.github/workflows/dependency-drift.yml`. It runs
 weekly from `main` and can also be started manually with `workflow_dispatch`.
 The updater opens or refreshes one PR per Keycloak major-version lane, updates
 `tag`, `manifestDigest` and `imageId` together, and keeps static Keycloak

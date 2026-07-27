@@ -55,7 +55,7 @@ nginx has no env file in this phase. These mounted values are sensitive:
 
 `image.lock.json` pins the upstream image by tag, manifest digest and image ID.
 
-The normal update path is `.github/workflows/vendor-image-updates.yml`. It runs
+The normal update path is `.github/workflows/dependency-drift.yml`. It runs
 weekly from `main` and can also be started manually with `workflow_dispatch`.
 The updater opens or refreshes one PR per image lane, updates `tag`,
 `manifestDigest` and `imageId` together, and keeps the public direct-pull
