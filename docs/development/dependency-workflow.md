@@ -7,6 +7,8 @@ This document covers npm dependency installation and recovery workflows.
 Root `package.json` is canonical for the exact reviewed npm version. The
 devcontainers, CI jobs, production Dockerfiles, nested HSA packages, and Azure
 bootstrap install that same version before running repository installs.
+GitHub Actions disables setup-node's automatic npm cache discovery until the
+canonical npm version is active, then restores the npm cache in a second step.
 
 Every npm project enables `strict-allow-scripts` in its project `.npmrc`.
 `allowScripts` in the matching `package.json` records version-pinned approvals

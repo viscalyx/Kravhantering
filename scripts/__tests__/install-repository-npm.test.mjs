@@ -49,7 +49,17 @@ describe('repository npm bootstrap', () => {
       1,
       'npm',
       ['install', '--global', 'npm@12.0.1'],
-      { stdio: 'inherit' },
+      {
+        cwd: expect.stringContaining('repository-npm-bootstrap-'),
+        stdio: 'inherit',
+      },
+    )
+    expect(execFileSync).toHaveBeenNthCalledWith(2, 'npm', ['--version'], {
+      cwd: expect.stringContaining('repository-npm-bootstrap-'),
+      encoding: 'utf8',
+    })
+    expect(execFileSync.mock.calls[0][2].cwd).toBe(
+      execFileSync.mock.calls[1][2].cwd,
     )
   })
 

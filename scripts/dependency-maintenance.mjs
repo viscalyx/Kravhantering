@@ -377,6 +377,40 @@ export function workflowsMissingNpmBootstrap(root) {
   return failures
 }
 
+export function workflowsWithEarlyNpmCache(root) {
+  const failures = []
+  const workflows = walkFiles(path.join(root, '.github', 'workflows'), name =>
+    /\.ya?ml$/u.test(name),
+  )
+
+  for (const workflowPath of workflows) {
+    const relativePath = `.github/workflows/${workflowPath}`
+    for (const [index, job] of workflowJobBlocks(
+      readText(root, relativePath),
+    ).entries()) {
+      const bootstrapIndex = job.indexOf(
+        'node scripts/install-repository-npm.mjs',
+      )
+      for (const match of job.matchAll(
+        /^\s+- name:[^\n]*\n\s+uses: actions\/setup-node@[^\n]*\n\s+with:\n(?<inputs>(?:\s{10,}\S[^\n]*\n)*)/gmu,
+      )) {
+        const inputs = match.groups?.inputs ?? ''
+        const setupIndex = match.index ?? 0
+        const runsBeforeBootstrap =
+          bootstrapIndex === -1 || setupIndex < bootstrapIndex
+        if (
+          runsBeforeBootstrap &&
+          (!inputs.includes('package-manager-cache: false') ||
+            inputs.includes("cache: 'npm'"))
+        ) {
+          failures.push(`${relativePath} job ${index + 1}`)
+        }
+      }
+    }
+  }
+  return failures
+}
+
 function activePolicyFiles(root) {
   const roots = [
     '.github/workflows',
@@ -800,6 +834,11 @@ function validateInstallSurfaces(root, expectedVersion) {
 
   for (const workflow of workflowsMissingNpmBootstrap(root)) {
     errors.push(`${workflow} uses npm without the canonical npm bootstrap.`)
+  }
+  for (const workflow of workflowsWithEarlyNpmCache(root)) {
+    errors.push(
+      `${workflow} must disable setup-node npm caching before the canonical npm bootstrap.`,
+    )
   }
   for (const relativePath of floatingNpmInstallPaths(root)) {
     errors.push(`${relativePath} contains a floating npm install.`)

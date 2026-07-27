@@ -14,6 +14,7 @@ import {
   validateDeferrals,
   validateDependencyMaintenance,
   workflowsMissingNpmBootstrap,
+  workflowsWithEarlyNpmCache,
 } from '../dependency-maintenance.mjs'
 
 const temporaryDirectories = []
@@ -504,6 +505,62 @@ FROM \${BASE_IMAGE}
       '.github/workflows/check.yml job 1',
     ])
     expect(floatingNpmInstallPaths(root)).toEqual(['docs/development/setup.md'])
+  })
+
+  it('requires setup-node cache discovery to run after the npm bootstrap', () => {
+    const root = temporaryDirectory()
+    write(
+      root,
+      '.github/workflows/check.yml',
+      `jobs:
+  check:
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@pinned
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - name: Install repository npm
+        run: node scripts/install-repository-npm.mjs
+`,
+    )
+    write(
+      root,
+      '.github/workflows/node-only.yml',
+      `jobs:
+  check:
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@pinned
+        with:
+          node-version-file: '.nvmrc'
+`,
+    )
+    write(
+      root,
+      '.github/workflows/safe.yml',
+      `jobs:
+  check:
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@pinned
+        with:
+          node-version-file: '.nvmrc'
+          package-manager-cache: false
+      - name: Install repository npm
+        run: node scripts/install-repository-npm.mjs
+      - name: Restore npm cache
+        uses: actions/setup-node@pinned
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+`,
+    )
+
+    expect(workflowsWithEarlyNpmCache(root)).toEqual([
+      '.github/workflows/check.yml job 1',
+      '.github/workflows/node-only.yml job 1',
+    ])
   })
 
   it('catches unexplained exclusions and expired deferrals', () => {

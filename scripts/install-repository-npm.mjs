@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import childProcess from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -22,15 +23,26 @@ export function installRepositoryNpm(
     fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
   )
   const version = packageManagerVersion(packageJson)
+  const bootstrapDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'repository-npm-bootstrap-'),
+  )
 
-  execFileSync('npm', ['install', '--global', `npm@${version}`], {
-    stdio: 'inherit',
-  })
-  const installed = execFileSync('npm', ['--version'], {
-    encoding: 'utf8',
-  }).trim()
-  if (installed !== version) {
-    throw new Error(`Expected npm ${version}, but npm ${installed} is active.`)
+  try {
+    execFileSync('npm', ['install', '--global', `npm@${version}`], {
+      cwd: bootstrapDirectory,
+      stdio: 'inherit',
+    })
+    const installed = execFileSync('npm', ['--version'], {
+      cwd: bootstrapDirectory,
+      encoding: 'utf8',
+    }).trim()
+    if (installed !== version) {
+      throw new Error(
+        `Expected npm ${version}, but npm ${installed} is active.`,
+      )
+    }
+  } finally {
+    fs.rmSync(bootstrapDirectory, { recursive: true })
   }
 
   console.log(`Using repository npm ${version}.`)
