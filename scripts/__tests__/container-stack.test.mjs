@@ -886,6 +886,15 @@ describe('container stack helpers', () => {
         'podman run --name kravhantering-container-stack-release-smoke-smoke_app-runtime_1 --detach',
       ),
     )
+    const hsaCertGeneratorIndex = commands.findIndex(
+      command =>
+        command.includes(
+          'kravhantering-container-stack-release-smoke-smoke_hsa-mtls-cert-generator_1',
+        ) &&
+        command.endsWith(
+          'localhost/kravhantering/hsa-person-lookup-adapter:local node src/generate-certs.mjs',
+        ),
+    )
     const hsaIndex = commands.findIndex(command =>
       command.includes(
         'podman run --name kravhantering-container-stack-release-smoke-smoke_hsa-directory-mock_1 --detach',
@@ -904,7 +913,8 @@ describe('container stack helpers', () => {
     expect(commands).toContain('npm run container:build:hsa-directory-mock')
     expect(commands.join('\n')).not.toContain('/workspace/typeorm/seed.mjs')
     expect(seedDemoIndex).toBeGreaterThan(-1)
-    expect(hsaIndex).toBeGreaterThan(seedDemoIndex)
+    expect(hsaCertGeneratorIndex).toBeGreaterThan(seedDemoIndex)
+    expect(hsaIndex).toBeGreaterThan(hsaCertGeneratorIndex)
     expect(kongIndex).toBeGreaterThan(hsaIndex)
     expect(appRuntimeIndex).toBeGreaterThan(kongIndex)
     expect(commands[appRuntimeIndex]).toContain(

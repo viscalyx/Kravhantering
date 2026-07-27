@@ -1003,9 +1003,8 @@ function runHsaMtlsCertGenerator(config, options = {}) {
       podmanComposeNetworkName(config),
       ...podmanLabelArgs(config, 'hsa-mtls-cert-generator'),
       config.hsaPersonLookupAdapterImageReference,
-      'npm',
-      'run',
-      'generate-certs',
+      'node',
+      'src/generate-certs.mjs',
     ],
     options,
   )
