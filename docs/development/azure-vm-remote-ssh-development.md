@@ -435,8 +435,9 @@ recreate the disposable environment to use a smaller disk.
 The three `AZURE_DEV_VM_IMAGE_*` values identify the Marketplace image family
 used only when creating a VM. Setup derives a `latest` URN from them, resolves
 and deploys the exact version, and requires Azure to report both an `Active`
-image state and Hyper-V generation V2. Existing VMs retain their immutable
-image reference even when these configuration values change.
+image state, Hyper-V generation V2, and Trusted Launch support. Existing VMs
+retain their immutable image reference even when these configuration values
+change.
 
 Use `AZURE_DEV_VM_ALLOWED_SSH_CIDR=auto` for the normal path. Setup detects
 your current public IPv4 address and proposes it as a `/32`. Do not use
@@ -716,14 +717,48 @@ For an existing VM, setup reuses its exact Marketplace image reference because
 Azure does not allow `imageReference` to change in place. Setup resolves the
 latest image from the configured publisher, offer, and SKU only when it creates
 a new VM. The resolved exact version must report an `Active` Marketplace image
-state and Hyper-V generation V2 or setup fails before deployment.
+state, Hyper-V generation V2, and Trusted Launch support or setup fails before
+deployment. The configured VM sizes must also report Gen2 support and must not
+report `TrustedLaunchDisabled=True`.
 
 When an existing VM's publisher, offer, or SKU differs from configuration,
-setup warns that the image family, exact version, and Hyper-V generation cannot
-change in place. It preserves the existing image and attached disks and
-continues converging mutable configuration. Applying the configured image
-requires backing up required data and using `remove` followed by `setup`;
-`remove` deletes the managed OS and data disks.
+setup warns that the image family and exact version cannot change in place. It
+preserves the existing image and attached disks and continues converging
+mutable configuration. Applying the configured image requires backing up
+required data and using `remove` followed by `setup`; `remove` deletes the
+managed OS and data disks.
+
+New VMs use Trusted Launch with Secure Boot and vTPM enabled. For an existing
+Standard Gen2 VM, setup checks the image, current VM size, hibernation, and
+guest Secure Boot readiness before deallocating it and enabling the same
+security profile. For an eligible Canonical Marketplace Gen1 VM, setup also
+checks that the boot disk uses GPT, contains an EFI system partition, and has a
+`/boot/efi` entry in `/etc/fstab`. It then converts the VM to Gen2 Trusted
+Launch, starts it, and requires SSH readiness before continuing the deployment.
+The setup approval explicitly identifies this downtime and the irreversible
+Gen1-to-Gen2 conversion. Take a backup or restore point first when the OS disk
+contains anything that cannot be recreated.
+
+If guest validation cannot connect, detects DKMS kernel modules that need
+manual Secure Boot validation, or finds an incompatible boot layout, setup
+warns and preserves the existing security profile. Azure can also reject the
+upgrade for platform prerequisites such as an incompatible Backup policy. A
+rejected update is non-blocking when Azure has not changed the security type:
+setup omits `securityProfile` from Bicep and continues repairing mutable
+configuration. Rerunning setup is idempotent; a compliant VM is not
+deallocated again.
+
+Azure retains a converted Gen1 VM's original Gen1 Marketplace image reference.
+Do not use Azure reimage on that converted VM. Recreating the disposable
+environment is still the clean way to receive both the configured Gen2 image
+and Trusted Launch. See Microsoft's documentation for
+[upgrading Gen1 VMs to Trusted Launch](https://learn.microsoft.com/en-us/azure/virtual-machines/trusted-launch-existing-vm-gen-1)
+and
+[enabling Trusted Launch on existing Gen2 VMs](https://learn.microsoft.com/en-us/azure/virtual-machines/trusted-launch-existing-vm).
+
+`setup -WhatIf` performs only readiness discovery and reports the planned
+deallocation/security update; it never performs it. `status` prints the live
+Hyper-V generation, security type, Secure Boot state, and vTPM state.
 
 Both `setup` and `status` query the existing VM's exact Marketplace image
 version. Active images produce no deprecation warning. A scheduled or

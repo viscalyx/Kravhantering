@@ -90,14 +90,24 @@ The command flow is intentionally narrow:
 - `setup` verifies the workstation Powerlevel10k font before any Azure
   mutation, validates prerequisites, resolves SSH CIDR, preserves an existing
   VM's immutable image reference or resolves the latest active Gen2 image from
-  the configured Marketplace publisher, offer, and SKU for a new VM, creates or
-  verifies the SSH key, checks existing VM SSH-key drift, converges the resource
+  the configured Marketplace publisher, offer, and SKU for a new VM, resolves
+  the live VM security state, creates or verifies the SSH key, checks existing
+  VM SSH-key drift, reconciles Trusted Launch when safe, converges the resource
   group and Bicep deployment, starts the VM when needed, waits for SSH, uploads
   templates, reruns bootstrap, runs smoke validation, writes state, and prints
   SSH instructions.
 - When an existing VM's publisher, offer, or SKU differs from configuration,
-  setup warns about immutable image and Hyper-V generation drift, preserves the
-  existing image and disks, and continues converging mutable resources.
+  setup warns about immutable image drift, preserves the existing image and
+  disks, and continues converging mutable resources. Eligible Gen1 VMs can be
+  converted to Gen2 Trusted Launch, but the original Gen1 image reference
+  remains.
+- New VMs require a Trusted Launch-capable active Gen2 image and VM size. Bicep
+  explicitly enables Trusted Launch, Secure Boot, and vTPM. Existing Standard
+  Gen2 and eligible Canonical Marketplace Gen1 VMs are deallocated and upgraded
+  after platform and read-only guest checks pass. When checks fail or Azure
+  rejects an unchanged VM, setup warns, omits the Bicep security profile, and
+  continues mutable repair. A successful Gen1 conversion is irreversible and
+  Azure reimage must not be used because the retained source reference is Gen1.
 - `setup` and `status` query the existing exact image version's Marketplace
   deprecation state. Scheduled, non-active, missing, or unavailable metadata
   produces a non-blocking warning; active metadata remains quiet.
@@ -105,6 +115,8 @@ The command flow is intentionally narrow:
   connection instructions.
 - `stop` deallocates the VM.
 - `status` reads Azure state plus local state and prints a compact status.
+  The Azure portion includes image, Hyper-V generation, security type, Secure
+  Boot, and vTPM.
 - `update-cidr` updates only the SSH NSG rule and managed SSH config.
 - `ssh-config` prints the managed OpenSSH block or applies it when requested.
 - `remove` deletes only live resources selected by ownership tags, then removes
@@ -262,6 +274,13 @@ managed disk resource before deployment when expansion is requested, and host
 bootstrap rescans the device and grows its ext4 filesystem. A smaller requested
 size produces a warning and preserves the live disk; shrinking requires
 removing and recreating the disposable environment.
+
+The VM `securityProfile` is also conditional. Setup passes
+`trustedLaunchEnabled=true` for new or compliant VMs and after a verified
+upgrade. It passes `false` only for an existing VM whose Trusted Launch
+eligibility could not be established, preventing an ordinary idempotent Bicep
+repair from forcing an invalid or unsafe conversion. The desired profile is
+`TrustedLaunch` with both `secureBootEnabled` and `vTpmEnabled` set to `true`.
 
 ## SSH And Connectivity
 

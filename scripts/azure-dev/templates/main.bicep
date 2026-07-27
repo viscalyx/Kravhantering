@@ -57,6 +57,9 @@ param imageSku string
 @description('Ubuntu Marketplace image version.')
 param imageVersion string
 
+@description('Apply Trusted Launch with Secure Boot and vTPM to the VM.')
+param trustedLaunchEnabled bool = true
+
 var commonTags = {
   'managed-by': 'kravhantering-azure-dev'
   'environment-id': environmentId
@@ -191,7 +194,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
   name: vmName
   location: location
   tags: commonTags
-  properties: {
+  properties: union({
     hardwareProfile: {
       vmSize: vmSize
     }
@@ -236,7 +239,15 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
         dataDiskProfile
       ]
     }
-  }
+  }, trustedLaunchEnabled ? {
+    securityProfile: {
+      securityType: 'TrustedLaunch'
+      uefiSettings: {
+        secureBootEnabled: true
+        vTpmEnabled: true
+      }
+    }
+  } : {})
 }
 
 resource autoShutdown 'Microsoft.DevTestLab/schedules@2018-09-15' = if (autoStopEnabled) {

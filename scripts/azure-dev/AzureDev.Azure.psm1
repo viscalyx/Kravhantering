@@ -1,6 +1,7 @@
 Set-StrictMode -Version Latest
 
 $script:AzureDevWhatIfDocumentationUrl = 'https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-what-if'
+$script:AzureDevTrustedLaunchSkuSupportCache = @{}
 
 function Invoke-AzCli {
   [CmdletBinding()]
@@ -217,6 +218,107 @@ function Test-AzureDevPrerequisites {
   Test-AzureDevSkuAvailability -Config $Context.Config | Out-Null
 }
 
+function Get-AzureDevSkuCapabilityValue {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Sku,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Name
+  )
+
+  $capabilities = Get-AzureDevJsonProperty `
+    -InputObject $Sku `
+    -Name 'capabilities'
+  $capability = @($capabilities) |
+    Where-Object {
+      (Get-AzureDevJsonProperty -InputObject $_ -Name 'name') -ieq $Name
+    } |
+    Select-Object -First 1
+  return Get-AzureDevJsonProperty -InputObject $capability -Name 'value'
+}
+
+function Get-AzureDevTrustedLaunchSkuSupport {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Config,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Size
+  )
+
+  $cacheKey = (
+    "$($Config.SubscriptionId)|$($Config.Location)|$Size"
+  ).ToLowerInvariant()
+  if ($script:AzureDevTrustedLaunchSkuSupportCache.ContainsKey($cacheKey)) {
+    return $script:AzureDevTrustedLaunchSkuSupportCache[$cacheKey]
+  }
+
+  $skus = Invoke-AzCli -Arguments @(
+    'vm',
+    'list-skus',
+    '--subscription',
+    $Config.SubscriptionId,
+    '--location',
+    $Config.Location,
+    '--size',
+    $Size,
+    '--resource-type',
+    'virtualMachines',
+    '--all',
+    '--output',
+    'json'
+  ) -Json
+  $sku = @($skus) |
+    Where-Object {
+      (Get-AzureDevJsonProperty -InputObject $_ -Name 'name') -ieq $Size
+    } |
+    Select-Object -First 1
+  if ($null -eq $sku) {
+    $result = [pscustomobject]@{
+      Supported = $false
+      Reason = "VM SKU $Size is not available in $($Config.Location)."
+    }
+    $script:AzureDevTrustedLaunchSkuSupportCache[$cacheKey] = $result
+    return $result
+  }
+
+  $generations = Get-AzureDevSkuCapabilityValue `
+    -Sku $sku `
+    -Name 'HyperVGenerations'
+  $generationValues = @("$generations".Split(',')) |
+    ForEach-Object { $_.Trim() }
+  if ('V2' -notin $generationValues) {
+    $result = [pscustomobject]@{
+      Supported = $false
+      Reason = "VM SKU $Size does not report Hyper-V generation V2 support."
+    }
+    $script:AzureDevTrustedLaunchSkuSupportCache[$cacheKey] = $result
+    return $result
+  }
+
+  $trustedLaunchDisabled = Get-AzureDevSkuCapabilityValue `
+    -Sku $sku `
+    -Name 'TrustedLaunchDisabled'
+  if ("$trustedLaunchDisabled" -ieq 'True') {
+    $result = [pscustomobject]@{
+      Supported = $false
+      Reason = "VM SKU $Size reports TrustedLaunchDisabled=True."
+    }
+    $script:AzureDevTrustedLaunchSkuSupportCache[$cacheKey] = $result
+    return $result
+  }
+
+  $result = [pscustomobject]@{
+    Supported = $true
+    Reason = $null
+  }
+  $script:AzureDevTrustedLaunchSkuSupportCache[$cacheKey] = $result
+  return $result
+}
+
 function Test-AzureDevSkuAvailability {
   [CmdletBinding()]
   param(
@@ -226,23 +328,14 @@ function Test-AzureDevSkuAvailability {
 
   $sizes = @($Config.VmSize, $Config.FallbackVmSize) | Select-Object -Unique
   foreach ($size in $sizes) {
-    $skus = Invoke-AzCli -Arguments @(
-      'vm',
-      'list-skus',
-      '--subscription',
-      $Config.SubscriptionId,
-      '--location',
-      $Config.Location,
-      '--size',
-      $size,
-      '--resource-type',
-      'virtualMachines',
-      '--all',
-      '--output',
-      'json'
-    ) -Json
-    if (@($skus).Count -eq 0) {
-      throw "VM SKU $size is not available in $($Config.Location)."
+    $support = Get-AzureDevTrustedLaunchSkuSupport `
+      -Config $Config `
+      -Size $size
+    if (-not $support.Supported) {
+      throw (
+        "$($support.Reason) Azure Dev requires a VM size that supports " +
+        'Trusted Launch.'
+      )
     }
   }
   return $true
@@ -313,6 +406,31 @@ function Get-AzureDevUbuntuImage {
     )
   }
 
+  $features = Get-AzureDevJsonProperty -InputObject $details -Name 'features'
+  $securityTypeFeature = @($features) |
+    Where-Object {
+      (Get-AzureDevJsonProperty -InputObject $_ -Name 'name') -ieq
+        'SecurityType'
+    } |
+    Select-Object -First 1
+  $supportedSecurityTypes = Get-AzureDevJsonProperty `
+    -InputObject $securityTypeFeature `
+    -Name 'value'
+  if ("$supportedSecurityTypes" -notmatch '(?i)TrustedLaunch') {
+    $reportedSecurityTypes = if (
+      [string]::IsNullOrWhiteSpace("$supportedSecurityTypes")
+    ) {
+      '<missing>'
+    } else {
+      "$supportedSecurityTypes"
+    }
+    throw (
+      "Azure resolved $latestUrn to version $version with SecurityType " +
+      "feature $reportedSecurityTypes; setup requires a Trusted Launch-capable " +
+      'image.'
+    )
+  }
+
   $plan = Get-AzureDevJsonProperty -InputObject $details -Name 'plan'
   $urn = "${publisher}:${offer}:${sku}:${version}"
 
@@ -376,6 +494,423 @@ function Get-AzureDevVmImage {
     version = $image.version
     urn = "$($image.publisher):$($image.offer):$($image.sku):$($image.version)"
     plan = $null
+  }
+}
+
+function Get-AzureDevVmSecurityState {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Config
+  )
+
+  try {
+    $vm = Invoke-AzCli -Arguments @(
+      'vm',
+      'show',
+      '--subscription',
+      $Config.SubscriptionId,
+      '--resource-group',
+      $Config.ResourceGroup,
+      '--name',
+      $Config.VmName,
+      '--output',
+      'json'
+    ) -Json
+  } catch {
+    if (
+      $_.Exception.Message -match
+      '(?i)(ResourceGroupNotFound|ResourceNotFound|could not be found|was not found)'
+    ) {
+      return [pscustomobject]@{
+        Exists = $false
+        SecurityType = $null
+        SecureBootEnabled = $false
+        VTpmEnabled = $false
+        HyperVGeneration = $null
+        VmSize = $null
+        OsType = $null
+        ImagePublisher = $null
+        ImageOffer = $null
+        ImageSku = $null
+        ImageVersion = $null
+        HibernationEnabled = $false
+        IsCompliant = $false
+      }
+    }
+    throw
+  }
+
+  $securityProfile = Get-AzureDevJsonProperty `
+    -InputObject $vm `
+    -Name 'securityProfile'
+  $securityType = Get-AzureDevJsonProperty `
+    -InputObject $securityProfile `
+    -Name 'securityType'
+  if ([string]::IsNullOrWhiteSpace("$securityType")) {
+    $securityType = 'Standard'
+  }
+  $uefiSettings = Get-AzureDevJsonProperty `
+    -InputObject $securityProfile `
+    -Name 'uefiSettings'
+  $secureBootEnabled = (
+    (Get-AzureDevJsonProperty `
+      -InputObject $uefiSettings `
+      -Name 'secureBootEnabled') -eq $true
+  )
+  $vTpmEnabled = (
+    (Get-AzureDevJsonProperty `
+      -InputObject $uefiSettings `
+      -Name 'vTpmEnabled') -eq $true
+  )
+
+  $hardwareProfile = Get-AzureDevJsonProperty `
+    -InputObject $vm `
+    -Name 'hardwareProfile'
+  $vmSize = Get-AzureDevJsonProperty `
+    -InputObject $hardwareProfile `
+    -Name 'vmSize'
+  $storageProfile = Get-AzureDevJsonProperty `
+    -InputObject $vm `
+    -Name 'storageProfile'
+  $osDisk = Get-AzureDevJsonProperty `
+    -InputObject $storageProfile `
+    -Name 'osDisk'
+  $osType = Get-AzureDevJsonProperty -InputObject $osDisk -Name 'osType'
+  $managedDisk = Get-AzureDevJsonProperty `
+    -InputObject $osDisk `
+    -Name 'managedDisk'
+  $osDiskId = Get-AzureDevJsonProperty -InputObject $managedDisk -Name 'id'
+  $hyperVGeneration = '<unknown>'
+  if (-not [string]::IsNullOrWhiteSpace("$osDiskId")) {
+    try {
+      $disk = Invoke-AzCli -Arguments @(
+        'disk',
+        'show',
+        '--subscription',
+        $Config.SubscriptionId,
+        '--ids',
+        $osDiskId,
+        '--output',
+        'json'
+      ) -Json
+      $hyperVGeneration = Get-AzureDevJsonProperty `
+        -InputObject $disk `
+        -Name 'hyperVGeneration'
+    } catch {
+      Write-Verbose (
+        "Could not read Hyper-V generation for OS disk $osDiskId`: " +
+        "$($_.Exception.Message)"
+      )
+    }
+  }
+  if ([string]::IsNullOrWhiteSpace("$hyperVGeneration")) {
+    $hyperVGeneration = '<unknown>'
+  }
+
+  $imageReference = Get-AzureDevJsonProperty `
+    -InputObject $storageProfile `
+    -Name 'imageReference'
+  $additionalCapabilities = Get-AzureDevJsonProperty `
+    -InputObject $vm `
+    -Name 'additionalCapabilities'
+  $hibernationEnabled = (
+    (Get-AzureDevJsonProperty `
+      -InputObject $additionalCapabilities `
+      -Name 'hibernationEnabled') -eq $true
+  )
+
+  return [pscustomobject]@{
+    Exists = $true
+    SecurityType = "$securityType"
+    SecureBootEnabled = $secureBootEnabled
+    VTpmEnabled = $vTpmEnabled
+    HyperVGeneration = "$hyperVGeneration"
+    VmSize = "$vmSize"
+    OsType = "$osType"
+    ImagePublisher = Get-AzureDevJsonProperty `
+      -InputObject $imageReference `
+      -Name 'publisher'
+    ImageOffer = Get-AzureDevJsonProperty `
+      -InputObject $imageReference `
+      -Name 'offer'
+    ImageSku = Get-AzureDevJsonProperty `
+      -InputObject $imageReference `
+      -Name 'sku'
+    ImageVersion = Get-AzureDevJsonProperty `
+      -InputObject $imageReference `
+      -Name 'version'
+    HibernationEnabled = $hibernationEnabled
+    IsCompliant = (
+      "$securityType" -ieq 'TrustedLaunch' -and
+      $secureBootEnabled -and
+      $vTpmEnabled -and
+      "$hyperVGeneration" -eq 'V2'
+    )
+  }
+}
+
+function New-AzureDevTrustedLaunchPlan {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$State,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Action,
+
+    [Parameter(Mandatory = $true)]
+    [bool]$TemplateEnabled,
+
+    [Parameter(Mandatory = $true)]
+    [bool]$RequiresGuestValidation,
+
+    [AllowNull()]
+    [string]$Reason
+  )
+
+  return [pscustomobject]@{
+    State = $State
+    Action = $Action
+    TemplateEnabled = $TemplateEnabled
+    RequiresGuestValidation = $RequiresGuestValidation
+    Reason = $Reason
+  }
+}
+
+function Get-AzureDevTrustedLaunchPlan {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Config
+  )
+
+  $state = Get-AzureDevVmSecurityState -Config $Config
+  if (-not $state.Exists) {
+    return New-AzureDevTrustedLaunchPlan `
+      -State $state `
+      -Action 'Create' `
+      -TemplateEnabled $true `
+      -RequiresGuestValidation $false `
+      -Reason $null
+  }
+  if ($state.IsCompliant) {
+    return New-AzureDevTrustedLaunchPlan `
+      -State $state `
+      -Action 'None' `
+      -TemplateEnabled $true `
+      -RequiresGuestValidation $false `
+      -Reason $null
+  }
+  if ($state.HibernationEnabled) {
+    return New-AzureDevTrustedLaunchPlan `
+      -State $state `
+      -Action 'Unsupported' `
+      -TemplateEnabled $false `
+      -RequiresGuestValidation $false `
+      -Reason 'Linux VM hibernation is not supported with Trusted Launch.'
+  }
+
+  try {
+    $sizeSupport = Get-AzureDevTrustedLaunchSkuSupport `
+      -Config $Config `
+      -Size $state.VmSize
+  } catch {
+    return New-AzureDevTrustedLaunchPlan `
+      -State $state `
+      -Action 'Unsupported' `
+      -TemplateEnabled $false `
+      -RequiresGuestValidation $false `
+      -Reason (
+        "Azure could not verify Trusted Launch support for current VM size " +
+        "$($state.VmSize): $($_.Exception.Message)"
+      )
+  }
+  if (-not $sizeSupport.Supported) {
+    return New-AzureDevTrustedLaunchPlan `
+      -State $state `
+      -Action 'Unsupported' `
+      -TemplateEnabled $false `
+      -RequiresGuestValidation $false `
+      -Reason $sizeSupport.Reason
+  }
+  if ($state.OsType -ine 'Linux') {
+    return New-AzureDevTrustedLaunchPlan `
+      -State $state `
+      -Action 'Unsupported' `
+      -TemplateEnabled $false `
+      -RequiresGuestValidation $false `
+      -Reason "Existing OS type $($state.OsType) is not supported by this Linux setup."
+  }
+  if ($state.SecurityType -notin @('Standard', 'TrustedLaunch')) {
+    return New-AzureDevTrustedLaunchPlan `
+      -State $state `
+      -Action 'Unsupported' `
+      -TemplateEnabled $false `
+      -RequiresGuestValidation $false `
+      -Reason "Existing security type $($state.SecurityType) cannot be changed to TrustedLaunch by setup."
+  }
+  if ($state.ImagePublisher -ine 'Canonical') {
+    $publisher = if ([string]::IsNullOrWhiteSpace("$($state.ImagePublisher)")) {
+      '<custom or missing>'
+    } else {
+      $state.ImagePublisher
+    }
+    return New-AzureDevTrustedLaunchPlan `
+      -State $state `
+      -Action 'Unsupported' `
+      -TemplateEnabled $false `
+      -RequiresGuestValidation $false `
+      -Reason (
+        "Existing image publisher $publisher is not a supported Canonical " +
+        'Marketplace source for automatic conversion.'
+      )
+  }
+
+  if ($state.SecurityType -ieq 'TrustedLaunch') {
+    if ($state.HyperVGeneration -ne 'V2') {
+      return New-AzureDevTrustedLaunchPlan `
+        -State $state `
+        -Action 'Unsupported' `
+        -TemplateEnabled $false `
+        -RequiresGuestValidation $false `
+        -Reason (
+          "Existing VM reports TrustedLaunch with Hyper-V generation " +
+          "$($state.HyperVGeneration); setup will not modify an inconsistent " +
+          'security state.'
+        )
+    }
+    return New-AzureDevTrustedLaunchPlan `
+      -State $state `
+      -Action 'EnableFeatures' `
+      -TemplateEnabled $true `
+      -RequiresGuestValidation $true `
+      -Reason $null
+  }
+
+  if ($state.HyperVGeneration -eq 'V2') {
+    return New-AzureDevTrustedLaunchPlan `
+      -State $state `
+      -Action 'UpgradeGen2' `
+      -TemplateEnabled $true `
+      -RequiresGuestValidation $true `
+      -Reason $null
+  }
+  if ($state.HyperVGeneration -eq 'V1') {
+    return New-AzureDevTrustedLaunchPlan `
+      -State $state `
+      -Action 'UpgradeGen1' `
+      -TemplateEnabled $true `
+      -RequiresGuestValidation $true `
+      -Reason $null
+  }
+
+  return New-AzureDevTrustedLaunchPlan `
+    -State $state `
+    -Action 'Unsupported' `
+    -TemplateEnabled $false `
+    -RequiresGuestValidation $false `
+    -Reason (
+      "Existing OS disk reports unknown Hyper-V generation " +
+      "$($state.HyperVGeneration)."
+    )
+}
+
+function Set-AzureDevTrustedLaunch {
+  [CmdletBinding(SupportsShouldProcess = $true)]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context,
+
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Plan
+  )
+
+  if ($Plan.Action -notin @('EnableFeatures', 'UpgradeGen2', 'UpgradeGen1')) {
+    return [pscustomobject]@{
+      Succeeded = $Plan.State.IsCompliant
+      State = $Plan.State
+    }
+  }
+  if (-not $PSCmdlet.ShouldProcess(
+      $Context.Config.VmName,
+      'Deallocate VM and enable Trusted Launch, Secure Boot, and vTPM'
+    )) {
+    return [pscustomobject]@{
+      Succeeded = $false
+      State = $Plan.State
+    }
+  }
+
+  Stop-AzureDevAzureVm -Context $Context
+  try {
+    Invoke-AzCli -Arguments @(
+      'vm',
+      'update',
+      '--subscription',
+      $Context.Config.SubscriptionId,
+      '--resource-group',
+      $Context.Config.ResourceGroup,
+      '--name',
+      $Context.Config.VmName,
+      '--security-type',
+      'TrustedLaunch',
+      '--enable-secure-boot',
+      'true',
+      '--enable-vtpm',
+      'true',
+      '--output',
+      'json'
+    ) -Json | Out-Null
+  } catch {
+    $updateError = $_
+    $refreshedState = Get-AzureDevVmSecurityState -Config $Context.Config
+    if ($refreshedState.IsCompliant) {
+      return [pscustomobject]@{
+        Succeeded = $true
+        State = $refreshedState
+      }
+    }
+    if ($refreshedState.SecurityType -ine $Plan.State.SecurityType) {
+      throw (
+        'Azure reported a Trusted Launch update failure after changing the VM ' +
+        "security state to $($refreshedState.SecurityType). Setup stopped to " +
+        'avoid applying further changes. Inspect the VM in Azure before retrying.'
+      )
+    }
+    try {
+      Start-AzureDevAzureVm -Context $Context
+    } catch {
+      Write-Warning (
+        "Azure also could not restart existing VM " +
+        "$($Context.Config.VmName) after the rejected Trusted Launch update: " +
+        "$($_.Exception.Message)"
+      )
+    }
+    Write-Warning (
+      "Azure could not enable Trusted Launch on existing VM " +
+      "$($Context.Config.VmName): $($updateError.Exception.Message) " +
+      'Setup will preserve the existing security profile and continue repairing ' +
+      'mutable configuration.'
+    )
+    return [pscustomobject]@{
+      Succeeded = $false
+      State = $refreshedState
+    }
+  }
+
+  $updatedState = Get-AzureDevVmSecurityState -Config $Context.Config
+  if (-not $updatedState.IsCompliant) {
+    throw (
+      'Azure accepted the Trusted Launch update, but verification did not ' +
+      'report TrustedLaunch with Hyper-V generation V2, Secure Boot enabled, ' +
+      'and vTPM enabled. Setup stopped before applying further changes.'
+    )
+  }
+
+  return [pscustomobject]@{
+    Succeeded = $true
+    State = $updatedState
   }
 }
 
@@ -492,11 +1027,13 @@ function Get-AzureDevDeploymentImage {
         "Existing VM $($Config.VmName) uses immutable Marketplace image " +
         "$($existingImage.urn), while configuration targets " +
         "$configuredImageFamily. Azure cannot change the image publisher, " +
-        'offer, SKU, version, or Hyper-V generation in place. Setup will ' +
-        'preserve the existing image and attached disks and continue repairing ' +
-        'mutable configuration. To apply the configured image, back up any ' +
-        'required data, remove the disposable environment, and run setup again; ' +
-        'the managed OS and data disks are deleted during removal.'
+        'offer, SKU, or version in place. Eligible Gen1 VMs can be converted to ' +
+        'Gen2 Trusted Launch, but Azure retains their original Gen1 image ' +
+        'reference. Setup will preserve the existing image and attached disks ' +
+        'and continue repairing mutable configuration. To apply the configured ' +
+        'image, back up any required data, remove the disposable environment, ' +
+        'and run setup again; the managed OS and data disks are deleted during ' +
+        'removal.'
       )
     }
     return $existingImage
@@ -728,7 +1265,10 @@ function Get-AzureDevDeploymentParameters {
     [pscustomobject]$Image,
 
     [Parameter(Mandatory = $true)]
-    [bool]$DataDiskExists
+    [bool]$DataDiskExists,
+
+    [Parameter(Mandatory = $true)]
+    [bool]$TrustedLaunchEnabled
   )
 
   $config = $Context.Config
@@ -749,7 +1289,8 @@ function Get-AzureDevDeploymentParameters {
     "imagePublisher=$($Image.publisher)",
     "imageOffer=$($Image.offer)",
     "imageSku=$($Image.sku)",
-    "imageVersion=$($Image.version)"
+    "imageVersion=$($Image.version)",
+    "trustedLaunchEnabled=$($TrustedLaunchEnabled.ToString().ToLowerInvariant())"
   )
 }
 
@@ -1074,6 +1615,9 @@ function New-AzureDevDeployment {
     [Parameter(Mandatory = $true)]
     [bool]$DataDiskExists,
 
+    [Parameter(Mandatory = $true)]
+    [bool]$TrustedLaunchEnabled,
+
     [switch]$Preview
   )
 
@@ -1082,7 +1626,8 @@ function New-AzureDevDeployment {
     -AllowedSshCidr $AllowedSshCidr `
     -SshPublicKey $SshPublicKey `
     -Image $Image `
-    -DataDiskExists $DataDiskExists
+    -DataDiskExists $DataDiskExists `
+    -TrustedLaunchEnabled $TrustedLaunchEnabled
 
   $baseArgs = @(
     'deployment',
@@ -1399,9 +1944,12 @@ Export-ModuleMember -Function `
   Get-AzureDevPublicIpAddress, `
   Get-AzureDevResourceGroup, `
   Get-AzureDevDeploymentImage, `
+  Get-AzureDevTrustedLaunchPlan, `
+  Get-AzureDevTrustedLaunchSkuSupport, `
   Get-AzureDevUbuntuImage, `
   Get-AzureDevVisibleSubscriptions, `
   Get-AzureDevVmAdminSshPublicKeys, `
+  Get-AzureDevVmSecurityState, `
   Write-AzureDevImageDeprecationWarning, `
   Get-AzureDevVmPowerState, `
   Invoke-AzCli, `
@@ -1410,6 +1958,7 @@ Export-ModuleMember -Function `
   Remove-AzureDevManagedResources, `
   Set-AzureDevDataDiskSize, `
   Set-AzureDevSubscription, `
+  Set-AzureDevTrustedLaunch, `
   Get-AzureDevManagedResourcesForDeletion, `
   Start-AzureDevAzureVm, `
   Stop-AzureDevAzureVm, `

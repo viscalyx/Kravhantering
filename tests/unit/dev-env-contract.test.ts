@@ -111,11 +111,15 @@ describe('development environment contract', () => {
     expect(resolver).toContain('if ($imageFamilyChanged)')
     expect(resolver).toContain('Azure cannot change the image publisher, " +')
     expect(resolver).toContain(
-      "'preserve the existing image and attached disks and continue repairing ' +",
+      "'Gen2 Trusted Launch, but Azure retains their original Gen1 image ' +",
     )
     expect(resolver).toContain(
-      "'the managed OS and data disks are deleted during removal.'",
+      "'reference. Setup will preserve the existing image and attached disks ' +",
     )
+    expect(resolver).toContain(
+      "'and run setup again; the managed OS and data disks are deleted during ' +",
+    )
+    expect(resolver).toContain("'removal.'")
     expect(resolver).toContain('return $existingImage')
   })
 
@@ -202,6 +206,10 @@ describe('development environment contract', () => {
     expect(resolver).toContain("if ($imageState -ne 'Active')")
     expect(resolver).toContain("-Name 'hyperVGeneration'")
     expect(resolver).toContain("if ($hyperVGeneration -ne 'V2')")
+    expect(resolver).toContain("'SecurityType'")
+    expect(resolver).toContain(
+      `"$supportedSecurityTypes" -notmatch '(?i)TrustedLaunch'`,
+    )
     expect(resolver).toContain(
       '$urn = "${publisher}:${offer}:${sku}:${version}"',
     )
@@ -213,6 +221,91 @@ describe('development environment contract', () => {
     expect(entryScript).toContain(
       '"$($Context.Config.ImageSku):latest, resolved during setup"',
     )
+  })
+
+  it('provisions and converges Trusted Launch without breaking unsupported existing VMs', () => {
+    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+    const azureModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Azure.psm1',
+    )
+    const bicepTemplate = readWorkspaceFile(
+      'scripts/azure-dev/templates/main.bicep',
+    )
+
+    expect(bicepTemplate).toContain(
+      'param trustedLaunchEnabled bool = true',
+    )
+    expect(bicepTemplate).toContain(
+      "securityType: 'TrustedLaunch'\n      uefiSettings: {",
+    )
+    expect(bicepTemplate).toContain('secureBootEnabled: true')
+    expect(bicepTemplate).toContain('vTpmEnabled: true')
+    expect(bicepTemplate).toContain(
+      '}, trustedLaunchEnabled ? {\n    securityProfile:',
+    )
+
+    expect(azureModule).toContain(
+      'function Get-AzureDevVmSecurityState',
+    )
+    expect(azureModule).toContain(
+      'function Get-AzureDevTrustedLaunchPlan',
+    )
+    expect(azureModule).toContain(
+      "if ($state.HyperVGeneration -eq 'V1')",
+    )
+    expect(azureModule).toContain("-Action 'UpgradeGen1'")
+    expect(azureModule).toContain("-Action 'UpgradeGen2'")
+    expect(azureModule).toContain("-Action 'EnableFeatures'")
+    expect(azureModule).toContain("-Action 'Unsupported'")
+    expect(azureModule).toContain(
+      "if (\"$trustedLaunchDisabled\" -ieq 'True')",
+    )
+    expect(azureModule).toContain(
+      "'--security-type',\n      'TrustedLaunch',",
+    )
+    expect(azureModule).toContain(
+      "'--enable-secure-boot',\n      'true',",
+    )
+    expect(azureModule).toContain("'--enable-vtpm',\n      'true',")
+    expect(azureModule).toContain(
+      'trustedLaunchEnabled=$($TrustedLaunchEnabled.ToString().ToLowerInvariant())',
+    )
+
+    expect(entryScript).toContain(
+      'Test-AzureDevTrustedLaunchGuestReadiness',
+    )
+    expect(entryScript).toContain(
+      'Wait-AzureDevTrustedLaunchGuestReadiness',
+    )
+    expect(entryScript).toContain(
+      "'Guest readiness validation did not pass: ' +",
+    )
+    expect(entryScript).toContain(
+      "'preserve the current VM and disks, and continue repairing mutable ' +",
+    )
+    expect(entryScript).toContain(
+      '-TrustedLaunchEnabled $trustedLaunchPlan.TemplateEnabled',
+    )
+    expect(entryScript).toContain(
+      'Start-AzureDevAzureVm -Context $Context\n' +
+        '          Wait-AzureDevTrustedLaunchGuestReadiness',
+    )
+    expect(entryScript).toContain(
+      "'This irreversibly converts the VM from Gen1 to Gen2; Azure retains ' +",
+    )
+    expect(entryScript).toContain(
+      "if ($WhatIfPreference) {\n        Write-Host (",
+    )
+    expect(entryScript).toContain(
+      'Write-Host "Hyper-V generation: $generationText"',
+    )
+    expect(entryScript).toContain(
+      'Write-Host "Security type: $securityTypeText"',
+    )
+    expect(entryScript).toContain(
+      'Write-Host "Secure Boot: $secureBootText"',
+    )
+    expect(entryScript).toContain('Write-Host "vTPM: $vTpmText"')
   })
 
   it('cleans up Azure CLI stderr capture during WhatIf', () => {
