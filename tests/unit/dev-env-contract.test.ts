@@ -106,14 +106,10 @@ describe('development environment contract', () => {
     expect(resolver).toContain(
       '$existingImage.publisher -ine $Config.ImagePublisher',
     )
-    expect(resolver).toContain(
-      '$existingImage.offer -ine $Config.ImageOffer',
-    )
+    expect(resolver).toContain('$existingImage.offer -ine $Config.ImageOffer')
     expect(resolver).toContain('$existingImage.sku -ine $Config.ImageSku')
     expect(resolver).toContain('if ($imageFamilyChanged)')
-    expect(resolver).toContain(
-      'Azure cannot change the image publisher, " +',
-    )
+    expect(resolver).toContain('Azure cannot change the image publisher, " +')
     expect(resolver).toContain(
       "'preserve the existing image and attached disks and continue repairing ' +",
     )
@@ -158,9 +154,7 @@ describe('development environment contract', () => {
         '      -Config $Context.Config `\n' +
         '      -Image $image',
     )
-    expect(entryScript).toContain(
-      'Write-Host "Image: $(if ($null -eq $image)',
-    )
+    expect(entryScript).toContain('Write-Host "Image: $(if ($null -eq $image)')
   })
 
   it('resolves an active stable Ubuntu LTS image for a new Azure VM', () => {
@@ -183,9 +177,7 @@ describe('development environment contract', () => {
 
     expect(resolverStart).toBeGreaterThanOrEqual(0)
     expect(resolverEnd).toBeGreaterThan(resolverStart)
-    expect(configModule).toContain(
-      "AZURE_DEV_VM_IMAGE_PUBLISHER = 'Canonical'",
-    )
+    expect(configModule).toContain("AZURE_DEV_VM_IMAGE_PUBLISHER = 'Canonical'")
     expect(configModule).toContain(
       "AZURE_DEV_VM_IMAGE_OFFER = 'ubuntu-24_04-lts'",
     )
@@ -196,15 +188,9 @@ describe('development environment contract', () => {
     expect(configModule).toContain(
       'ImageOffer = $values.AZURE_DEV_VM_IMAGE_OFFER',
     )
-    expect(configModule).toContain(
-      'ImageSku = $values.AZURE_DEV_VM_IMAGE_SKU',
-    )
-    expect(envExample).toContain(
-      'AZURE_DEV_VM_IMAGE_PUBLISHER=Canonical',
-    )
-    expect(envExample).toContain(
-      'AZURE_DEV_VM_IMAGE_OFFER=ubuntu-24_04-lts',
-    )
+    expect(configModule).toContain('ImageSku = $values.AZURE_DEV_VM_IMAGE_SKU')
+    expect(envExample).toContain('AZURE_DEV_VM_IMAGE_PUBLISHER=Canonical')
+    expect(envExample).toContain('AZURE_DEV_VM_IMAGE_OFFER=ubuntu-24_04-lts')
     expect(envExample).toContain('AZURE_DEV_VM_IMAGE_SKU=server')
     expect(resolver).toContain('$publisher = $Config.ImagePublisher')
     expect(resolver).toContain('$offer = $Config.ImageOffer')
