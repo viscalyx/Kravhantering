@@ -7,6 +7,10 @@ function readWorkspaceFile(path: string) {
   return readFileSync(path, 'utf8')
 }
 
+function collapseAdjacentPowerShellStringLiterals(content: string) {
+  return content.replace(/(['"])\s*\+\r?\n\s*\1/gu, '')
+}
+
 function withoutSingleQuotedLiterals(content: string) {
   return content.replace(/'(?:''|[^'\r\n])*'/gu, "''")
 }
@@ -247,6 +251,8 @@ describe('development environment contract', () => {
 
   it('provisions and converges Trusted Launch without breaking unsupported existing VMs', () => {
     const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+    const entryScriptText =
+      collapseAdjacentPowerShellStringLiterals(entryScript)
     const azureModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Azure.psm1',
     )
@@ -261,6 +267,8 @@ describe('development environment contract', () => {
       readinessStart,
     )
     const readinessFunction = entryScript.slice(readinessStart, readinessEnd)
+    const readinessCommandText =
+      collapseAdjacentPowerShellStringLiterals(readinessFunction)
     const setupStart = entryScript.indexOf('function Invoke-AzureDevSetup')
     const setupEnd = entryScript.indexOf(
       '\nfunction Start-AzureDevEnvironment',
@@ -338,9 +346,11 @@ describe('development environment contract', () => {
     expect(readinessFunction).toContain(
       'DKMS kernel modules require manual Secure Boot validation',
     )
-    expect(readinessFunction).toContain('Boot disk is not GPT')
-    expect(readinessFunction).toContain('EFI system partition is missing')
-    expect(readinessFunction).toContain('/boot/efi is missing from /etc/fstab')
+    expect(readinessCommandText).toContain('Boot disk is not GPT')
+    expect(readinessCommandText).toContain('EFI system partition is missing')
+    expect(readinessCommandText).toContain(
+      '/boot/efi is missing from /etc/fstab',
+    )
     expect(planEvaluation).toContain(
       'if ($WhatIfPreference -and $trustedLaunchPlan.RequiresGuestValidation)',
     )
@@ -380,8 +390,8 @@ describe('development environment contract', () => {
     expect(startIndex).toBeGreaterThanOrEqual(0)
     expect(readinessIndex).toBeGreaterThan(startIndex)
     expect(updateIndex).toBeGreaterThan(readinessIndex)
-    expect(entryScript).toContain(
-      "'This irreversibly converts the VM from Gen1 to Gen2; Azure retains ' +",
+    expect(entryScriptText).toContain(
+      'This irreversibly converts the VM from Gen1 to Gen2; Azure retains',
     )
     expect(entryScript).toContain(
       'if ($WhatIfPreference) {\n        Write-Host (',
