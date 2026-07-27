@@ -544,6 +544,7 @@ function Invoke-AzureDevSetup {
             )
           }
         } else {
+          Start-AzureDevAzureVm -Context $Context
           $trustedLaunchHostName = Get-AzureDevHostName -Context $Context
           $sshConfigApplied = Set-AzureDevManagedSshConfig `
             -Context $Context `
@@ -554,7 +555,6 @@ function Invoke-AzureDevSetup {
               'config is applied. Rerun setup with -Apply or -Yes.'
             )
           }
-          Start-AzureDevAzureVm -Context $Context
           Wait-AzureDevTrustedLaunchGuestReadiness `
             -Context $Context `
             -Plan $trustedLaunchPlan `
@@ -820,12 +820,20 @@ function Get-AzureDevStatus {
   } else {
     '<not found>'
   }
-  $secureBootText = if ($null -ne $securityState -and $securityState.Exists) {
+  $secureBootText = if (
+    $null -ne $securityState -and
+    $securityState.Exists -and
+    $null -ne $securityState.SecureBootEnabled
+  ) {
     $securityState.SecureBootEnabled
   } else {
     '<not found>'
   }
-  $vTpmText = if ($null -ne $securityState -and $securityState.Exists) {
+  $vTpmText = if (
+    $null -ne $securityState -and
+    $securityState.Exists -and
+    $null -ne $securityState.VTpmEnabled
+  ) {
     $securityState.VTpmEnabled
   } else {
     '<not found>'

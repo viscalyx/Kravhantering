@@ -278,6 +278,7 @@ describe('development environment contract', () => {
     const planEvaluationEnd = setupFunction.indexOf(
       '    $dataDisk = Get-AzureDevDataDisk',
     )
+    expect(planEvaluationEnd).toBeGreaterThanOrEqual(0)
     const planEvaluation = setupFunction.slice(0, planEvaluationEnd)
     const skuSupportStart = azureModule.indexOf(
       'function Get-AzureDevTrustedLaunchSkuSupport',
