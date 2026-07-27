@@ -104,7 +104,7 @@ describe('deployment release provenance', () => {
       'https://github.com/viscalyx/Kravhantering/attestations/123',
     )
 
-    expect(notes).toContain('## Optional provenance verification')
+    expect(notes).toContain('## Deployment archive provenance verification')
     expect(notes).toContain('The SHA-256 checksum proves transfer integrity.')
     expect(notes).toContain(
       '[GitHub attestation for this archive digest](https://github.com/viscalyx/Kravhantering/attestations/123)',
@@ -190,6 +190,22 @@ describe('deployment release provenance', () => {
     try {
       expect(verificationMatchesPolicy(fixture, options)).toBe(true)
       expect(verificationMatchesPolicy({}, options)).toBe(false)
+      expect(() =>
+        verificationMatchesPolicy(
+          verificationFixture(subject, statement => {
+            delete statement.predicate.release.version
+          }),
+          verificationOptions(subject, { releaseVersion: undefined }),
+        ),
+      ).toThrow('Missing required option --release-version')
+      expect(() =>
+        verificationMatchesPolicy(
+          verificationFixture(subject, statement => {
+            delete statement.predicate.release.tag
+          }),
+          verificationOptions(subject, { releaseTag: undefined }),
+        ),
+      ).toThrow('Missing required option --release-tag')
 
       const mutations = [
         statement => {
@@ -249,7 +265,7 @@ describe('deployment release provenance', () => {
       expect(execFileSyncImpl).toHaveBeenCalledWith(
         'gh',
         buildGhVerificationArgs(options),
-        { encoding: 'utf8' },
+        { encoding: 'utf8', timeout: 30_000 },
       )
       expect(() =>
         verifyDeploymentProvenance(options, {
@@ -346,7 +362,7 @@ describe('deployment release provenance', () => {
         ]),
       ).resolves.toBe(0)
       expect(fs.readFileSync(notesPath, 'utf8')).toMatch(
-        /^# Existing notes\n\n## Optional provenance verification/u,
+        /^# Existing notes\n\n## Deployment archive provenance verification/u,
       )
 
       await expect(

@@ -6,10 +6,13 @@ ett versionssatt driftsättningspaket med Compose-filer,
 konfigurationsmallar, driftsättningsguide, release-metadata och checksummor.
 Varje publicerat driftsättningspaket har också en identitetsbunden attestering
 med ett projekthanterat predikat samt en nedladdningsbar Sigstore-bunt och
-aktuellt betrott rotmaterial. Attesteringsverifiering är ett frivilligt
-operatörssteg före extrahering. Checksumman används fortsatt för
-överföringsintegritet, medan attesteringen styrker ursprung från förväntat
-repository, release-workflow, käll-commit, käll-ref och releaseidentitet.
+aktuellt betrott rotmaterial. Attesteringsverifiering är ett obligatoriskt
+operatörssteg före extrahering. Frånkopplade platser använder den procedur för
+offlineverifiering som följer med releasen; endast ett dokumenterat och godkänt
+undantag för frånkopplad drift får avstå från verifieringen. Checksumman används
+fortsatt för överföringsintegritet, medan attesteringen styrker ursprung från
+förväntat repository, release-workflow, käll-commit, käll-ref och
+releaseidentitet.
 
 Release-låset registrerar varje images registry manifest digest för
 proveniens, signering, attestations och upstream release smoke tests, och

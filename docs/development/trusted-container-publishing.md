@@ -144,11 +144,11 @@ The GitHub Release page already shows the release tag, commit and workflow
 provenance. The generated release body therefore focuses on the `Container
 Images` section with semantic GHCR tags for normal pulls, the immutable GHCR
 manifest digest references for `app-runtime` and `db-job` verification, and
-the production deployment bundle assets. It also includes `Optional provenance
-verification` with the exact archive attestation page, source identity, and
-downloadable bundle and trusted roots. Stable releases use normal GitHub
-Releases; preview releases are marked as pre-releases and are kept as part of
-the release evidence.
+the production deployment bundle assets. It also includes
+`Deployment archive provenance verification` with the exact archive attestation
+page, source identity, and downloadable bundle and trusted roots. Stable
+releases use normal GitHub Releases; preview releases are marked as pre-releases
+and are kept as part of the release evidence.
 
 The `Container Images` section groups entries by container package, adds a
 short purpose description for each image, and lists every published tag for

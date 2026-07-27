@@ -522,7 +522,7 @@ jobs:
           cat "${archive}.sha256" >> hashes.sha256
 
       - name: Write deployment archive release predicate
-        if: always() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         run: |
           node scripts/release/deployment-provenance.mjs predicate \
             --plan tmp/container-release-artifacts/metadata/release-plan.json \
@@ -530,7 +530,7 @@ jobs:
 
       - name: Attest production deployment archive
         id: deployment-archive-attestation
-        if: always() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-path: tmp/container-release-artifacts/kravhantering-production-deploy-${{ env.RELEASE_VERSION }}.tar.gz
@@ -539,7 +539,7 @@ jobs:
           push-to-registry: false
 
       - name: Stage deployment provenance assets
-        if: always() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         env:
           ATTESTATION_BUNDLE_PATH: ${{ steps.deployment-archive-attestation.outputs.bundle-path }}
           GH_TOKEN: ${{ github.token }}
@@ -556,7 +556,7 @@ jobs:
           test -s "${artifact_dir}/${archive}.trusted-root.jsonl"
 
       - name: Verify deployment archive provenance
-        if: always() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -647,7 +647,7 @@ jobs:
             --output tmp/container-release-artifacts/release-notes.md
 
       - name: Append deployment provenance release notes
-        if: always() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
         run: |
           node scripts/release/deployment-provenance.mjs append-notes \
             --plan tmp/container-release-artifacts/metadata/release-plan.json \

@@ -56,12 +56,12 @@ configuration change.
    ' container-stack.lock.json
    ```
 
-   Optionally verify provenance before the extraction in step 5 by following
-   [Optionally Verify The Deployment Archive](./release-artifact-and-image-verification.md#optionally-verify-the-deployment-archive).
+   Verify provenance before the extraction in step 5 by following
+   [Verify The Deployment Archive](./release-artifact-and-image-verification.md#verify-the-deployment-archive).
    Use the exact source commit, source ref, and release tag from the GitHub
-   Release notes or approved internal release record. If selected, this check
-   must succeed before extraction. Skipping it does not replace the required
-   SHA-256 check above.
+   Release notes or approved internal release record. This check must succeed
+   before extraction. The required SHA-256 check above remains a separate
+   transfer-integrity control.
 
    Ensure the site has approved tag-style image refs for every single-node
    image named in the target release lock. Each configured ref must resolve to

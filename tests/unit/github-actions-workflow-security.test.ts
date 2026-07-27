@@ -461,7 +461,7 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).not.toMatch(/\bnpm\s+(?:ci|install|run)\b/iu)
   })
 
-  it('configures the deployment archive as a file attestation', () => {
+  it('attests the deployment archive only for successful releases', () => {
     const workflow = readWorkflowYaml('container-release.yml')
     const releaseJob = workflow.jobs?.['trusted-release']
     const attestStep = releaseJob?.steps?.find(
@@ -499,8 +499,12 @@ describe('GitHub Actions workflow security', () => {
     expect(
       stepNames.indexOf('Archive production deployment bundle'),
     ).toBeLessThan(stepNames.indexOf('Attest production deployment archive'))
+    expect(
+      releaseJob?.steps?.find(
+        step => step.name === 'Stage deployment archive verification guide',
+      )?.if,
+    ).toBe("always() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'")
     for (const stepName of [
-      'Stage deployment archive verification guide',
       'Write deployment archive release predicate',
       'Attest production deployment archive',
       'Stage deployment provenance assets',
@@ -508,7 +512,19 @@ describe('GitHub Actions workflow security', () => {
       'Append deployment provenance release notes',
     ]) {
       expect(releaseJob?.steps?.find(step => step.name === stepName)?.if).toBe(
-        "always() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'",
+        "success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'",
+      )
+    }
+    for (const stepName of [
+      'Stop container stack',
+      'Write artifact hashes',
+      'Stage production deployment bundle',
+      'Archive production deployment bundle',
+      'Write release notes',
+      'Stage release artifacts',
+    ]) {
+      expect(releaseJob?.steps?.find(step => step.name === stepName)?.if).toBe(
+        'always()',
       )
     }
   })

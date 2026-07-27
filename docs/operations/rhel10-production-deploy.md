@@ -253,12 +253,12 @@ curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.ta
 sha256sum -c "kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
 ```
 
-Optionally verify provenance now, before extraction, by following
-[Optionally Verify The Deployment Archive](./release-artifact-and-image-verification.md#optionally-verify-the-deployment-archive).
+Verify provenance now, before extraction, by following
+[Verify The Deployment Archive](./release-artifact-and-image-verification.md#verify-the-deployment-archive).
 Use the exact source commit, source ref, and release tag from the GitHub Release
-notes or the approved internal release record. If this optional check is
-selected, do not continue when it fails. Skipping it does not replace the
-required SHA-256 check above.
+notes or the approved internal release record. The check must succeed before
+extraction; do not continue when it fails. The required SHA-256 check above
+remains a separate transfer-integrity control.
 
 Install and label the bundle:
 

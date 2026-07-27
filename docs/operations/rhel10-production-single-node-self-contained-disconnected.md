@@ -88,13 +88,12 @@ sha256sum -c "${RELEASE_ARCHIVE}.sha256"
 
 ```
 
-Optionally verify provenance now, before extracting the release archive, by
-following
-[Optionally Verify The Deployment Archive](./release-artifact-and-image-verification.md#optionally-verify-the-deployment-archive).
-Use `SOURCE_COMMIT`, `SOURCE_REF`, and `RELEASE_TAG` above. If selected, do not
-continue when verification fails. Skipping it does not replace the SHA-256
-check. Regardless of that choice, retain the attestation bundle and trusted
-roots for the disconnected handoff.
+Verify provenance now, before extracting the release archive, by following
+[Verify The Deployment Archive](./release-artifact-and-image-verification.md#verify-the-deployment-archive).
+Use `SOURCE_COMMIT`, `SOURCE_REF`, and `RELEASE_TAG` above. Do not continue when
+verification fails. Only an explicitly approved disconnected exception may
+skip verification; the SHA-256 check remains required. Retain the attestation
+bundle and trusted roots for the disconnected handoff.
 
 ```bash
 tar -xzf "$RELEASE_ARCHIVE" -C "$OFFLINE_WORK" --strip-components=1
@@ -438,9 +437,9 @@ tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
 (cd "$OFFLINE_ROOT/release" && sha256sum -c "${RELEASE_ARCHIVE}.sha256")
 ```
 
-Optionally verify provenance offline now, before preparing the release
-directory. Read the exact expected values from `offline-manifest.json`, change
-to `$OFFLINE_ROOT/release`, and follow
+Verify provenance offline now, before preparing the release directory. Read the
+exact expected values from `offline-manifest.json`, change to
+`$OFFLINE_ROOT/release`, and follow
 [Offline Verification](./release-artifact-and-image-verification.md#offline-verification)
 with:
 
@@ -454,8 +453,9 @@ cd "$OFFLINE_ROOT/release"
 ```
 
 Use the organization-approved GitHub CLI already transferred to the
-disconnected environment; no executable is embedded in the handoff. If this
-optional check is selected, do not extract the release archive when it fails.
+disconnected environment; no executable is embedded in the handoff. Do not
+extract the release archive when verification fails. Only an explicitly
+approved disconnected exception may skip verification.
 
 Prepare the release directory without switching `current`:
 
@@ -621,8 +621,8 @@ tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
 (cd "$OFFLINE_ROOT/release" && sha256sum -c "${RELEASE_ARCHIVE}.sha256")
 ```
 
-Optionally verify provenance offline now, before preparing the target release
-directory. Read `RELEASE_TAG`, `SOURCE_COMMIT`, and `SOURCE_REF` from
+Verify provenance offline now, before preparing the target release directory.
+Read `RELEASE_TAG`, `SOURCE_COMMIT`, and `SOURCE_REF` from
 `offline-manifest.json` and follow the
 [Offline Verification](./release-artifact-and-image-verification.md#offline-verification)
 procedure from `$OFFLINE_ROOT/release`:
@@ -637,8 +637,9 @@ cd "$OFFLINE_ROOT/release"
 ```
 
 Use the organization-approved GitHub CLI already transferred to the
-disconnected environment. If selected, do not extract the release archive when
-verification fails.
+disconnected environment. Do not extract the release archive when verification
+fails. Only an explicitly approved disconnected exception may skip
+verification.
 
 Prepare the target release directory without switching `current`:
 

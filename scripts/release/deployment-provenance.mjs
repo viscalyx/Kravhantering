@@ -9,6 +9,8 @@ import { pathToFileURL } from 'node:url'
 export const RELEASE_ATTESTATION_PREDICATE_TYPE =
   'https://github.com/viscalyx/Kravhantering/attestations/deployment-release/v1'
 
+const GH_ATTESTATION_VERIFY_TIMEOUT_MS = 30_000
+
 const USAGE = `Usage:
   node scripts/release/deployment-provenance.mjs predicate --plan <path> --output <path>
   node scripts/release/deployment-provenance.mjs stage-guide --plan <path> --deployment-dir <path> --guide <path>
@@ -94,9 +96,9 @@ export function renderDeploymentProvenanceNotes(plan, attestationUrl) {
   const guideUrl = `https://github.com/${plan.repository}/blob/${plan.commitSha}/docs/operations/release-artifact-and-image-verification.md`
 
   return [
-    '## Optional provenance verification',
+    '## Deployment archive provenance verification',
     '',
-    'The SHA-256 checksum proves transfer integrity. The identity-bound attestation separately proves the archive origin when an operator chooses to verify it before extraction.',
+    'The SHA-256 checksum proves transfer integrity. The identity-bound attestation separately proves the archive origin and must be verified before extraction. Disconnected sites use the bundled evidence or require an approved exception.',
     '',
     `- [GitHub attestation for this archive digest](${required(attestationUrl, 'attestation-url')})`,
     `- [\`${bundle}\`](${releaseAssetUrl(plan, bundle)})`,
@@ -148,6 +150,8 @@ function sha256File(filePath, fsImpl = fs) {
 }
 
 export function verificationMatchesPolicy(verification, options, fsImpl = fs) {
+  const releaseVersion = required(options.releaseVersion, 'release-version')
+  const releaseTag = required(options.releaseTag, 'release-tag')
   if (!Array.isArray(verification)) return false
   const subject = required(options.subject, 'subject')
   const digest = sha256File(subject, fsImpl)
@@ -162,8 +166,8 @@ export function verificationMatchesPolicy(verification, options, fsImpl = fs) {
       predicate?.repository === options.repository &&
       predicate?.source?.commitSha === options.sourceDigest &&
       predicate?.source?.ref === options.sourceRef &&
-      predicate?.release?.version === options.releaseVersion &&
-      predicate?.release?.tag === options.releaseTag &&
+      predicate?.release?.version === releaseVersion &&
+      predicate?.release?.tag === releaseTag &&
       statement?.subject?.some(
         candidate =>
           candidate?.name === name && candidate?.digest?.sha256 === digest,
@@ -177,6 +181,7 @@ export function verifyDeploymentProvenance(options, dependencies = {}) {
   const run = dependencies.execFileSyncImpl ?? execFileSync
   const output = run('gh', buildGhVerificationArgs(options), {
     encoding: 'utf8',
+    timeout: GH_ATTESTATION_VERIFY_TIMEOUT_MS,
   })
   let verification
   try {

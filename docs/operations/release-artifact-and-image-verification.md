@@ -14,10 +14,10 @@ see
 ## Release Source Of Truth
 
 Release notes contain the `Container Images` section and immutable manifest
-digest references. They also contain the `Optional provenance verification`
-section for the exact production deployment archive digest. Use semantic tags
-for normal pulls and manifest digest references for image attestation
-verification.
+digest references. They also contain the
+`Deployment archive provenance verification` section for the exact production
+deployment archive digest. Use semantic tags for normal pulls and manifest
+digest references for image attestation verification.
 
 Treat the GitHub Release notes, `container-stack.lock.json`, and semantic image
 tags as the release source of truth. Do not use GHCR `sha256-*` evidence
@@ -25,7 +25,7 @@ entries as production image tags. Those entries may represent registry-pushed
 attestations or signature helper artifacts, not runnable `app-runtime` or
 `db-job` release images.
 
-## Optionally Verify The Deployment Archive
+## Verify The Deployment Archive
 
 SHA-256 verification and provenance verification answer different questions:
 
@@ -34,9 +34,12 @@ SHA-256 verification and provenance verification answer different questions:
 - The identity-bound attestation proves that the exact archive digest was
   attested by the expected Kravhantering repository and release workflow.
 
-Provenance verification is optional. A site that skips it must still perform
-the existing SHA-256 check. When a site chooses provenance verification,
-perform it before extracting the archive.
+Connected sites must complete provenance verification before extracting the
+archive. Disconnected sites must use the
+[offline verification procedure](#offline-verification). A site may skip
+provenance verification only under an explicitly approved disconnected
+exception and must record that approval in the release handoff. The SHA-256
+check remains required in every case.
 
 Use an organization-approved GitHub CLI version for which
 `gh attestation verify --help` lists `--signer-workflow`, `--source-digest`,
@@ -75,8 +78,8 @@ PREDICATE_TYPE="https://github.com/viscalyx/Kravhantering/attestations/deploymen
 ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
 ```
 
-For connected verification, GitHub CLI retrieves the attestation associated
-with the archive digest:
+For required connected verification, GitHub CLI retrieves the attestation
+associated with the archive digest:
 
 <!-- markdownlint-disable MD013 -->
 ```bash
@@ -134,8 +137,8 @@ authenticated release-handoff procedure and retain the approval record or an
 out-of-band digest. An adjacent checksum alone does not establish that a
 replacement trusted-root file is authentic.
 
-After setting the same expected values as in connected verification, verify
-without network access:
+Before extraction, set the same expected values as in connected verification
+and verify without network access:
 
 <!-- markdownlint-disable MD013 -->
 ```bash
