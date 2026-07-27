@@ -1,6 +1,6 @@
 # RHEL 10 Self-Contained Single-Node Disconnected Deployment And Upgrade
 
-<!-- cSpell:words coreutils fLO readlink resolv -->
+<!-- cSpell:words coreutils fLO jsonl readlink resolv Sigstore -->
 
 This guide describes how to prepare and import disconnected release artifacts
 for the self-contained single-node RHEL 10 production topology, where nginx,
@@ -64,6 +64,14 @@ OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 OFFLINE_WORK="/tmp/kravhantering-offline-work-${VERSION}-${TOPOLOGY}"
 OFFLINE_BUNDLE="${OFFLINE_ROOT}.tar.gz"
 RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
+RELEASE_ATTESTATION="${RELEASE_ARCHIVE}.sigstore.json"
+RELEASE_TRUSTED_ROOT="${RELEASE_ARCHIVE}.trusted-root.jsonl"
+RELEASE_TAG="v${VERSION}"
+SOURCE_COMMIT="<exact 40-character commit from the release notes>"
+# Stable:
+SOURCE_REF="refs/tags/${RELEASE_TAG}"
+# Preview instead:
+# SOURCE_REF="refs/heads/main"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 DEMO_SEED_ARCHIVE_NAME="kravhantering-demo-seed-${VERSION}.oci.tar.gz"
 
@@ -74,8 +82,20 @@ cd "$OFFLINE_ROOT/release"
 
 curl -fLO "${RELEASE_DOWNLOAD_URL}/${RELEASE_ARCHIVE}"
 curl -fLO "${RELEASE_DOWNLOAD_URL}/${RELEASE_ARCHIVE}.sha256"
+curl -fLO "${RELEASE_DOWNLOAD_URL}/${RELEASE_ATTESTATION}"
+curl -fLO "${RELEASE_DOWNLOAD_URL}/${RELEASE_TRUSTED_ROOT}"
 sha256sum -c "${RELEASE_ARCHIVE}.sha256"
 
+```
+
+Verify provenance now, before extracting the release archive, by following
+[Verify The Deployment Archive](./release-artifact-and-image-verification.md#verify-the-deployment-archive).
+Use `SOURCE_COMMIT`, `SOURCE_REF`, and `RELEASE_TAG` above. Do not continue when
+verification fails. Only an explicitly approved disconnected exception may
+skip verification; the SHA-256 check remains required. Retain the attestation
+bundle and trusted roots for the disconnected handoff.
+
+```bash
 tar -xzf "$RELEASE_ARCHIVE" -C "$OFFLINE_WORK" --strip-components=1
 cp "$OFFLINE_WORK/env/release.env.template" "$OFFLINE_ROOT/release.env"
 ```
@@ -299,6 +319,11 @@ jq -n \
   --arg topology "$TOPOLOGY" \
   --arg releaseArchive "release/$RELEASE_ARCHIVE" \
   --arg releaseChecksum "release/${RELEASE_ARCHIVE}.sha256" \
+  --arg releaseAttestation "release/$RELEASE_ATTESTATION" \
+  --arg releaseTrustedRoot "release/$RELEASE_TRUSTED_ROOT" \
+  --arg releaseTag "$RELEASE_TAG" \
+  --arg sourceCommit "$SOURCE_COMMIT" \
+  --arg sourceRef "$SOURCE_REF" \
   --arg imageBundle "images/$IMAGE_BUNDLE_NAME" \
   --arg appRuntime "$APP_RUNTIME_IMAGE_REF" \
   --arg dbJob "$DB_JOB_IMAGE_REF" \
@@ -316,6 +341,13 @@ jq -n \
     topology: $topology,
     releaseArchive: $releaseArchive,
     releaseChecksum: $releaseChecksum,
+    releaseAttestation: $releaseAttestation,
+    releaseTrustedRoot: $releaseTrustedRoot,
+    releaseTag: $releaseTag,
+    source: {
+      commitSha: $sourceCommit,
+      ref: $sourceRef
+    },
     imageBundle: $imageBundle,
     imageRefs: (({
       "app-runtime": $appRuntime,
@@ -340,6 +372,8 @@ jq -n \
     offline-manifest.json
     "release/$RELEASE_ARCHIVE"
     "release/${RELEASE_ARCHIVE}.sha256"
+    "release/$RELEASE_ATTESTATION"
+    "release/$RELEASE_TRUSTED_ROOT"
     "images/$IMAGE_BUNDLE_NAME"
   )
   if [ -n "$DEMO_SEED_ARCHIVE_PATH" ]; then
@@ -387,6 +421,8 @@ TOPOLOGY=single-node
 OFFLINE_BUNDLE="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}.tar.gz"
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
+RELEASE_ATTESTATION="${RELEASE_ARCHIVE}.sigstore.json"
+RELEASE_TRUSTED_ROOT="${RELEASE_ARCHIVE}.trusted-root.jsonl"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 
 # Start from a clean staging area for this version and topology.
@@ -400,6 +436,26 @@ tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
 (cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256)
 (cd "$OFFLINE_ROOT/release" && sha256sum -c "${RELEASE_ARCHIVE}.sha256")
 ```
+
+Verify provenance offline now, before preparing the release directory. Read the
+exact expected values from `offline-manifest.json`, change to
+`$OFFLINE_ROOT/release`, and follow
+[Offline Verification](./release-artifact-and-image-verification.md#offline-verification)
+with:
+
+```bash
+RELEASE_TAG="$(jq -r '.releaseTag' "$OFFLINE_ROOT/offline-manifest.json")"
+SOURCE_COMMIT="$(
+  jq -r '.source.commitSha' "$OFFLINE_ROOT/offline-manifest.json"
+)"
+SOURCE_REF="$(jq -r '.source.ref' "$OFFLINE_ROOT/offline-manifest.json")"
+cd "$OFFLINE_ROOT/release"
+```
+
+Use the organization-approved GitHub CLI already transferred to the
+disconnected environment; no executable is embedded in the handoff. Do not
+extract the release archive when verification fails. Only an explicitly
+approved disconnected exception may skip verification.
 
 Prepare the release directory without switching `current`:
 
@@ -549,6 +605,8 @@ TOPOLOGY=single-node
 OFFLINE_BUNDLE="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}.tar.gz"
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
+RELEASE_ATTESTATION="${RELEASE_ARCHIVE}.sigstore.json"
+RELEASE_TRUSTED_ROOT="${RELEASE_ARCHIVE}.trusted-root.jsonl"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 
 # Start from a clean staging area for this version and topology.
@@ -562,6 +620,26 @@ tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
 (cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256)
 (cd "$OFFLINE_ROOT/release" && sha256sum -c "${RELEASE_ARCHIVE}.sha256")
 ```
+
+Verify provenance offline now, before preparing the target release directory.
+Read `RELEASE_TAG`, `SOURCE_COMMIT`, and `SOURCE_REF` from
+`offline-manifest.json` and follow the
+[Offline Verification](./release-artifact-and-image-verification.md#offline-verification)
+procedure from `$OFFLINE_ROOT/release`:
+
+```bash
+RELEASE_TAG="$(jq -r '.releaseTag' "$OFFLINE_ROOT/offline-manifest.json")"
+SOURCE_COMMIT="$(
+  jq -r '.source.commitSha' "$OFFLINE_ROOT/offline-manifest.json"
+)"
+SOURCE_REF="$(jq -r '.source.ref' "$OFFLINE_ROOT/offline-manifest.json")"
+cd "$OFFLINE_ROOT/release"
+```
+
+Use the organization-approved GitHub CLI already transferred to the
+disconnected environment. Do not extract the release archive when verification
+fails. Only an explicitly approved disconnected exception may skip
+verification.
 
 Prepare the target release directory without switching `current`:
 

@@ -37,6 +37,8 @@ The internal release repository must provide these files from the same release:
 
 - `kravhantering-production-deploy-<version>.tar.gz`
 - `kravhantering-production-deploy-<version>.tar.gz.sha256`
+- `kravhantering-production-deploy-<version>.tar.gz.sigstore.json`
+- `kravhantering-production-deploy-<version>.tar.gz.trusted-root.jsonl`
 - `container-stack.lock.json`
 - `public/build.json`
 - `release-metadata.json`
@@ -246,8 +248,17 @@ cd "/tmp/kravhantering-${VERSION}"
 
 curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz"
 curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
+curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz.sigstore.json"
+curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz.trusted-root.jsonl"
 sha256sum -c "kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
 ```
+
+Verify provenance now, before extraction, by following
+[Verify The Deployment Archive](./release-artifact-and-image-verification.md#verify-the-deployment-archive).
+Use the exact source commit, source ref, and release tag from the GitHub Release
+notes or the approved internal release record. The check must succeed before
+extraction; do not continue when it fails. The required SHA-256 check above
+remains a separate transfer-integrity control.
 
 Install and label the bundle:
 

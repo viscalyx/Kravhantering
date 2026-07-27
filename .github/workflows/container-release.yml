@@ -499,6 +499,14 @@ jobs:
             --sbom-dir tmp/container-release-artifacts/sbom \
             --output-dir tmp/container-release-artifacts/deployment
 
+      - name: Stage deployment archive verification guide
+        if: always() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
+        run: |
+          node scripts/release/deployment-provenance.mjs stage-guide \
+            --plan tmp/container-release-artifacts/metadata/release-plan.json \
+            --deployment-dir tmp/container-release-artifacts/deployment \
+            --guide docs/operations/release-artifact-and-image-verification.md
+
       - name: Archive production deployment bundle
         if: always()
         run: |
@@ -513,6 +521,120 @@ jobs:
             tee "${archive}.sha256"
           cat "${archive}.sha256" >> hashes.sha256
 
+      - name: Write deployment archive release predicate
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
+        run: |
+          node scripts/release/deployment-provenance.mjs predicate \
+            --plan tmp/container-release-artifacts/metadata/release-plan.json \
+            --output tmp/container-release-artifacts/metadata/deployment-release-predicate.json
+
+      - name: Attest production deployment archive
+        id: deployment-archive-attestation
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: tmp/container-release-artifacts/kravhantering-production-deploy-${{ env.RELEASE_VERSION }}.tar.gz
+          predicate-type: https://github.com/viscalyx/Kravhantering/attestations/deployment-release/v1
+          predicate-path: tmp/container-release-artifacts/metadata/deployment-release-predicate.json
+          push-to-registry: false
+
+      - name: Stage deployment provenance assets
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
+        env:
+          ATTESTATION_BUNDLE_PATH: ${{ steps.deployment-archive-attestation.outputs.bundle-path }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          artifact_dir="tmp/container-release-artifacts"
+          archive="kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz"
+          test -n "${ATTESTATION_BUNDLE_PATH}"
+          test -s "${ATTESTATION_BUNDLE_PATH}"
+          cp "${ATTESTATION_BUNDLE_PATH}" \
+            "${artifact_dir}/${archive}.sigstore.json"
+          gh attestation trusted-root \
+            > "${artifact_dir}/${archive}.trusted-root.jsonl"
+          test -s "${artifact_dir}/${archive}.trusted-root.jsonl"
+
+      - name: Verify deployment archive provenance
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          artifact_dir="tmp/container-release-artifacts"
+          archive="${artifact_dir}/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz"
+          bundle="${archive}.sigstore.json"
+          trusted_root="${archive}.trusted-root.jsonl"
+          signer_workflow="${GITHUB_REPOSITORY}/.github/workflows/container-release.yml"
+          source_ref="${GITHUB_REF}"
+          verify_command=(
+            node scripts/release/deployment-provenance.mjs verify
+            --subject "${archive}"
+            --repository "${GITHUB_REPOSITORY}"
+            --signer-workflow "${signer_workflow}"
+            --source-digest "${GITHUB_SHA}"
+            --source-ref "${source_ref}"
+            --release-version "${RELEASE_VERSION}"
+            --release-tag "${RELEASE_TAG_NAME}"
+          )
+
+          expect_verification_failure() {
+            local label="$1"
+            shift
+            if "$@" >/dev/null 2>&1; then
+              echo "::error::Expected provenance verification failure: ${label}"
+              return 1
+            fi
+            echo "Rejected ${label} as expected."
+          }
+
+          "${verify_command[@]}"
+          "${verify_command[@]}" \
+            --bundle "${bundle}" \
+            --trusted-root "${trusted_root}"
+
+          altered_archive="${archive}.altered"
+          cp "${archive}" "${altered_archive}"
+          printf 'altered\n' >> "${altered_archive}"
+          expect_verification_failure "altered archive" \
+            "${verify_command[@]}" \
+            --subject "${altered_archive}" \
+            --bundle "${bundle}" \
+            --trusted-root "${trusted_root}"
+          rm -f -- "${altered_archive}"
+
+          expect_verification_failure "unrelated repository" \
+            "${verify_command[@]}" \
+            --repository "${GITHUB_REPOSITORY}-unexpected" \
+            --bundle "${bundle}" \
+            --trusted-root "${trusted_root}"
+
+          expect_verification_failure "untrusted signer workflow" \
+            "${verify_command[@]}" \
+            --signer-workflow \
+            "${GITHUB_REPOSITORY}/.github/workflows/untrusted.yml" \
+            --bundle "${bundle}" \
+            --trusted-root "${trusted_root}"
+
+          expect_verification_failure "wrong source commit" \
+            "${verify_command[@]}" \
+            --source-digest \
+            "0000000000000000000000000000000000000000" \
+            --bundle "${bundle}" \
+            --trusted-root "${trusted_root}"
+
+          expect_verification_failure "wrong source ref" \
+            "${verify_command[@]}" \
+            --source-ref "refs/heads/untrusted" \
+            --bundle "${bundle}" \
+            --trusted-root "${trusted_root}"
+
+          expect_verification_failure "mismatched release" \
+            "${verify_command[@]}" \
+            --release-version "${RELEASE_VERSION}-unexpected" \
+            --bundle "${bundle}" \
+            --trusted-root "${trusted_root}"
+
       - name: Write release notes
         if: always()
         env:
@@ -523,6 +645,14 @@ jobs:
             --metadata tmp/container-release-artifacts/metadata/release-metadata.json \
             --hashes hashes.sha256 \
             --output tmp/container-release-artifacts/release-notes.md
+
+      - name: Append deployment provenance release notes
+        if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
+        run: |
+          node scripts/release/deployment-provenance.mjs append-notes \
+            --plan tmp/container-release-artifacts/metadata/release-plan.json \
+            --notes tmp/container-release-artifacts/release-notes.md \
+            --attestation-url "${{ steps.deployment-archive-attestation.outputs.attestation-url }}"
 
       - name: Stage release artifacts
         if: always()
@@ -612,6 +742,8 @@ jobs:
             tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json \
             tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz \
             tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz.sha256 \
+            tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz.sigstore.json \
+            tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz.trusted-root.jsonl \
             --clobber
 
       - name: Archive stable operator upgrade notes
@@ -737,5 +869,7 @@ jobs:
           path: |
             tmp/container-release-artifacts/kravhantering-production-deploy-*.tar.gz
             tmp/container-release-artifacts/kravhantering-production-deploy-*.tar.gz.sha256
+            tmp/container-release-artifacts/kravhantering-production-deploy-*.tar.gz.sigstore.json
+            tmp/container-release-artifacts/kravhantering-production-deploy-*.tar.gz.trusted-root.jsonl
           if-no-files-found: warn
           retention-days: 30

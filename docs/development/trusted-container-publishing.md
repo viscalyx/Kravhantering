@@ -33,6 +33,18 @@ treating digest-derived attestation tags as the newest installable package
 version while keeping the Buildx metadata shape stable enough to record both
 `manifestDigest` and `imageId`.
 
+After creating each production deployment archive, the workflow creates a
+separate file attestation with the Kravhantering-owned
+`attestations/deployment-release/v1` predicate. The signed predicate records
+the repository, release version and tag, and source commit and ref. The
+predicate-type URI identifies this repository-owned contract; neither the
+workflow nor the verifier fetches executable code or trust material from that
+URI. Cryptographic trust comes from the GitHub OIDC certificate, Sigstore
+bundle, and trusted roots. The
+workflow does not push this evidence or any signature helper artifact to GHCR.
+It publishes the Sigstore bundle and current trusted-root material beside the
+archive instead.
+
 ## Reproducibility
 
 The workflow uses the Node version from `.nvmrc` and installs dependencies with
@@ -132,9 +144,11 @@ The GitHub Release page already shows the release tag, commit and workflow
 provenance. The generated release body therefore focuses on the `Container
 Images` section with semantic GHCR tags for normal pulls, the immutable GHCR
 manifest digest references for `app-runtime` and `db-job` verification, and
-the production deployment bundle assets. Stable releases use normal GitHub
-Releases; preview releases are marked as pre-releases and are kept as part of
-the release evidence.
+the production deployment bundle assets. It also includes
+`Deployment archive provenance verification` with the exact archive attestation
+page, source identity, and downloadable bundle and trusted roots. Stable
+releases use normal GitHub Releases; preview releases are marked as pre-releases
+and are kept as part of the release evidence.
 
 The `Container Images` section groups entries by container package, adds a
 short purpose description for each image, and lists every published tag for
@@ -271,7 +285,7 @@ The workflow uploads these artifact groups:
 - `container-release-playwright-*` for the release-smoke report,
   screenshots, traces and test results.
 - `container-release-deployment-*` for the production deployment bundle and
-  its flat checksum.
+  its flat checksum, Sigstore bundle and trusted-root material.
 
 The production deployment bundle includes `bin/kravhantering-images.sh`, a
 Bash and jq helper for explicit operator verification. It can verify configured
@@ -301,6 +315,8 @@ The production deployment bundle is also uploaded to GitHub Releases as:
 
 - `kravhantering-production-deploy-<version>.tar.gz`
 - `kravhantering-production-deploy-<version>.tar.gz.sha256`
+- `kravhantering-production-deploy-<version>.tar.gz.sigstore.json`
+- `kravhantering-production-deploy-<version>.tar.gz.trusted-root.jsonl`
 
 Markdown files in the deployment bundle bring along local image links. Keep
 release-guide diagrams under `docs/images/`. Use `public/` only for content
@@ -317,7 +333,8 @@ Keycloak.
 The bundle also includes the matching topology-specific disconnected guides,
 upgrade guides and uninstall guides. The disconnected guides document how
 operators create a transferable bundle that contains the production deployment
-archive, its checksum, exported images, image refs and hashes.
+archive, its checksum, attestation bundle, trusted roots, exported images,
+image refs and hashes.
 
 Operator verification of published release evidence is documented in
 [Release Artifact And Image Verification](../operations/release-artifact-and-image-verification.md).
