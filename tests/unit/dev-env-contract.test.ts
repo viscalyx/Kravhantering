@@ -1,4 +1,5 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: Contract tests assert literal shell interpolation syntax.
+// cSpell:words uefi vtpm
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
@@ -277,13 +278,8 @@ describe('development environment contract', () => {
       '\nfunction Test-AzureDevSkuAvailability',
       skuSupportStart,
     )
-    const skuSupportFunction = azureModule.slice(
-      skuSupportStart,
-      skuSupportEnd,
-    )
-    const restrictionIndex = skuSupportFunction.indexOf(
-      "-Name 'restrictions'",
-    )
+    const skuSupportFunction = azureModule.slice(skuSupportStart, skuSupportEnd)
+    const restrictionIndex = skuSupportFunction.indexOf("-Name 'restrictions'")
     const capabilityIndex = skuSupportFunction.indexOf(
       "-Name 'HyperVGenerations'",
     )
@@ -325,7 +321,7 @@ describe('development environment contract', () => {
       '$script:AzureDevTrustedLaunchSkuSupportCache[$cacheKey] = $result',
     )
     expect(azureModule).toContain(
-      'The VM remains deallocated; inspect \' +\n' +
+      "The VM remains deallocated; inspect ' +\n" +
         "        'it in Azure and restart it manually before retrying.'",
     )
     expect(azureModule).toContain(
@@ -344,14 +340,12 @@ describe('development environment contract', () => {
     )
     expect(readinessFunction).toContain('Boot disk is not GPT')
     expect(readinessFunction).toContain('EFI system partition is missing')
-    expect(readinessFunction).toContain(
-      '/boot/efi is missing from /etc/fstab',
-    )
+    expect(readinessFunction).toContain('/boot/efi is missing from /etc/fstab')
     expect(planEvaluation).toContain(
       'if ($WhatIfPreference -and $trustedLaunchPlan.RequiresGuestValidation)',
     )
     expect(planEvaluation).toContain(
-      'live guest validation is skipped during \' +',
+      "live guest validation is skipped during ' +",
     )
     expect(planEvaluation).toContain(
       "'assumes the guest readiness checks will pass during setup.'",
