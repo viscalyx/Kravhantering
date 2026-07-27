@@ -756,9 +756,11 @@ and Trusted Launch. See Microsoft's documentation for
 and
 [enabling Trusted Launch on existing Gen2 VMs](https://learn.microsoft.com/en-us/azure/virtual-machines/trusted-launch-existing-vm).
 
-`setup -WhatIf` performs only readiness discovery and reports the planned
-deallocation/security update; it never performs it. `status` prints the live
-Hyper-V generation, security type, Secure Boot state, and vTPM state.
+`setup -WhatIf` performs Azure platform readiness discovery and reports the
+planned deallocation/security update; it never performs it. It skips the live
+SSH guest-readiness probe and explicitly reports that the preview assumes those
+checks will pass during real setup. `status` prints the live Hyper-V generation,
+security type, Secure Boot state, and vTPM state.
 
 Both `setup` and `status` query the existing VM's exact Marketplace image
 version. Active images produce no deprecation warning. A scheduled or

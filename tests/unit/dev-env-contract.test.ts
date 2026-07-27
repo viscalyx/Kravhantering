@@ -150,15 +150,36 @@ describe('development environment contract', () => {
     expect(warningFunction).toContain(
       "'continue using the existing VM and OS disk. Check Azure Advisor",
     )
-    expect(entryScript).toContain(
-      '$image = Get-AzureDevVmImage -Config $Context.Config',
+    const statusStart = entryScript.indexOf('function Get-AzureDevStatus')
+    const statusEnd = entryScript.indexOf(
+      '\nfunction Update-AzureDevCidr',
+      statusStart,
     )
-    expect(entryScript).toContain(
+    const statusFunction = entryScript.slice(statusStart, statusEnd)
+
+    expect(statusStart).toBeGreaterThanOrEqual(0)
+    expect(statusEnd).toBeGreaterThan(statusStart)
+    expect(statusFunction.indexOf('$securityState =')).toBeLessThan(
+      statusFunction.indexOf('$image ='),
+    )
+    expect(statusFunction).toContain('$hasMarketplaceImage = (')
+    expect(statusFunction).toContain(
+      '"$($securityState.ImagePublisher):$($securityState.ImageOffer):" +',
+    )
+    expect(statusFunction).toContain(
+      '"$($securityState.ImageSku):$($securityState.ImageVersion)"',
+    )
+    expect(statusFunction).toContain(
+      'Get-AzureDevVmImage -Config $Context.Config',
+    )
+    expect(statusFunction).toContain(
       'Write-AzureDevImageDeprecationWarning `\n' +
         '      -Config $Context.Config `\n' +
         '      -Image $image',
     )
-    expect(entryScript).toContain('Write-Host "Image: $(if ($null -eq $image)')
+    expect(statusFunction).toContain(
+      'Write-Host "Image: $(if ($null -eq $image)',
+    )
   })
 
   it('resolves an active stable Ubuntu LTS image for a new Azure VM', () => {
@@ -231,10 +252,43 @@ describe('development environment contract', () => {
     const bicepTemplate = readWorkspaceFile(
       'scripts/azure-dev/templates/main.bicep',
     )
-
-    expect(bicepTemplate).toContain(
-      'param trustedLaunchEnabled bool = true',
+    const readinessStart = entryScript.indexOf(
+      'function Wait-AzureDevTrustedLaunchGuestReadiness',
     )
+    const readinessEnd = entryScript.indexOf(
+      '\nfunction Set-AzureDevSetupState',
+      readinessStart,
+    )
+    const readinessFunction = entryScript.slice(readinessStart, readinessEnd)
+    const setupStart = entryScript.indexOf('function Invoke-AzureDevSetup')
+    const setupEnd = entryScript.indexOf(
+      '\nfunction Start-AzureDevEnvironment',
+      setupStart,
+    )
+    const setupFunction = entryScript.slice(setupStart, setupEnd)
+    const planEvaluationEnd = setupFunction.indexOf(
+      '    $dataDisk = Get-AzureDevDataDisk',
+    )
+    const planEvaluation = setupFunction.slice(0, planEvaluationEnd)
+    const skuSupportStart = azureModule.indexOf(
+      'function Get-AzureDevTrustedLaunchSkuSupport',
+    )
+    const skuSupportEnd = azureModule.indexOf(
+      '\nfunction Test-AzureDevSkuAvailability',
+      skuSupportStart,
+    )
+    const skuSupportFunction = azureModule.slice(
+      skuSupportStart,
+      skuSupportEnd,
+    )
+    const restrictionIndex = skuSupportFunction.indexOf(
+      "-Name 'restrictions'",
+    )
+    const capabilityIndex = skuSupportFunction.indexOf(
+      "-Name 'HyperVGenerations'",
+    )
+
+    expect(bicepTemplate).toContain('param trustedLaunchEnabled bool = true')
     expect(bicepTemplate).toContain(
       "securityType: 'TrustedLaunch'\n      uefiSettings: {",
     )
@@ -244,37 +298,65 @@ describe('development environment contract', () => {
       '}, trustedLaunchEnabled ? {\n    securityProfile:',
     )
 
-    expect(azureModule).toContain(
-      'function Get-AzureDevVmSecurityState',
-    )
-    expect(azureModule).toContain(
-      'function Get-AzureDevTrustedLaunchPlan',
-    )
-    expect(azureModule).toContain(
-      "if ($state.HyperVGeneration -eq 'V1')",
-    )
+    expect(azureModule).toContain('function Get-AzureDevVmSecurityState')
+    expect(azureModule).toContain('function Get-AzureDevTrustedLaunchPlan')
+    expect(azureModule).toContain("if ($state.HyperVGeneration -eq 'V1')")
     expect(azureModule).toContain("-Action 'UpgradeGen1'")
     expect(azureModule).toContain("-Action 'UpgradeGen2'")
     expect(azureModule).toContain("-Action 'EnableFeatures'")
     expect(azureModule).toContain("-Action 'Unsupported'")
-    expect(azureModule).toContain(
-      "if (\"$trustedLaunchDisabled\" -ieq 'True')",
-    )
-    expect(azureModule).toContain(
-      "'--security-type',\n      'TrustedLaunch',",
-    )
-    expect(azureModule).toContain(
-      "'--enable-secure-boot',\n      'true',",
-    )
+    expect(azureModule).toContain('if ("$trustedLaunchDisabled" -ieq \'True\')')
+    expect(azureModule).toContain("'--security-type',\n      'TrustedLaunch',")
+    expect(azureModule).toContain("'--enable-secure-boot',\n      'true',")
     expect(azureModule).toContain("'--enable-vtpm',\n      'true',")
     expect(azureModule).toContain(
       'trustedLaunchEnabled=$($TrustedLaunchEnabled.ToString().ToLowerInvariant())',
     )
-
-    expect(entryScript).toContain(
-      'Test-AzureDevTrustedLaunchGuestReadiness',
+    expect(skuSupportStart).toBeGreaterThanOrEqual(0)
+    expect(skuSupportEnd).toBeGreaterThan(skuSupportStart)
+    expect(restrictionIndex).toBeGreaterThanOrEqual(0)
+    expect(capabilityIndex).toBeGreaterThan(restrictionIndex)
+    expect(skuSupportFunction).toContain("'NotAvailableForSubscription'")
+    expect(skuSupportFunction).toContain("'QuotaId'")
+    expect(skuSupportFunction).toContain(
+      "$restrictionType -in @('Location', 'Zone')",
     )
-    expect(entryScript).toContain(
+    expect(skuSupportFunction).toContain(
+      '$script:AzureDevTrustedLaunchSkuSupportCache[$cacheKey] = $result',
+    )
+    expect(azureModule).toContain(
+      'The VM remains deallocated; inspect \' +\n' +
+        "        'it in Azure and restart it manually before retrying.'",
+    )
+    expect(azureModule).toContain(
+      "'remains deallocated and must be restarted manually after inspection.'",
+    )
+
+    expect(readinessStart).toBeGreaterThanOrEqual(0)
+    expect(readinessEnd).toBeGreaterThan(readinessStart)
+    expect(entryScript).not.toContain(
+      'function Test-AzureDevTrustedLaunchGuestReadiness',
+    )
+    expect(readinessFunction).toContain('StrictHostKeyChecking=accept-new')
+    expect(readinessFunction).toContain('$Context.Config.SshHostAlias')
+    expect(readinessFunction).toContain(
+      'DKMS kernel modules require manual Secure Boot validation',
+    )
+    expect(readinessFunction).toContain('Boot disk is not GPT')
+    expect(readinessFunction).toContain('EFI system partition is missing')
+    expect(readinessFunction).toContain(
+      '/boot/efi is missing from /etc/fstab',
+    )
+    expect(planEvaluation).toContain(
+      'if ($WhatIfPreference -and $trustedLaunchPlan.RequiresGuestValidation)',
+    )
+    expect(planEvaluation).toContain(
+      'live guest validation is skipped during \' +',
+    )
+    expect(planEvaluation).toContain(
+      "'assumes the guest readiness checks will pass during setup.'",
+    )
+    expect(planEvaluation).not.toContain(
       'Wait-AzureDevTrustedLaunchGuestReadiness',
     )
     expect(entryScript).toContain(
@@ -286,15 +368,29 @@ describe('development environment contract', () => {
     expect(entryScript).toContain(
       '-TrustedLaunchEnabled $trustedLaunchPlan.TemplateEnabled',
     )
-    expect(entryScript).toContain(
-      'Start-AzureDevAzureVm -Context $Context\n' +
-        '          Wait-AzureDevTrustedLaunchGuestReadiness',
+    expect(setupFunction).toContain(
+      'Set-AzureDevManagedSshConfig `\n' +
+        '            -Context $Context `\n' +
+        '            -HostName $trustedLaunchHostName',
     )
+    const startIndex = setupFunction.indexOf(
+      '          Start-AzureDevAzureVm -Context $Context',
+    )
+    const readinessIndex = setupFunction.indexOf(
+      '          Wait-AzureDevTrustedLaunchGuestReadiness',
+      startIndex,
+    )
+    const updateIndex = setupFunction.indexOf(
+      '          $trustedLaunchResult = Set-AzureDevTrustedLaunch',
+    )
+    expect(startIndex).toBeGreaterThanOrEqual(0)
+    expect(readinessIndex).toBeGreaterThan(startIndex)
+    expect(updateIndex).toBeGreaterThan(readinessIndex)
     expect(entryScript).toContain(
       "'This irreversibly converts the VM from Gen1 to Gen2; Azure retains ' +",
     )
     expect(entryScript).toContain(
-      "if ($WhatIfPreference) {\n        Write-Host (",
+      'if ($WhatIfPreference) {\n        Write-Host (',
     )
     expect(entryScript).toContain(
       'Write-Host "Hyper-V generation: $generationText"',
@@ -302,9 +398,7 @@ describe('development environment contract', () => {
     expect(entryScript).toContain(
       'Write-Host "Security type: $securityTypeText"',
     )
-    expect(entryScript).toContain(
-      'Write-Host "Secure Boot: $secureBootText"',
-    )
+    expect(entryScript).toContain('Write-Host "Secure Boot: $secureBootText"')
     expect(entryScript).toContain('Write-Host "vTPM: $vTpmText"')
   })
 

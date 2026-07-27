@@ -285,6 +285,43 @@ function Get-AzureDevTrustedLaunchSkuSupport {
     return $result
   }
 
+  $restrictions = Get-AzureDevJsonProperty `
+    -InputObject $sku `
+    -Name 'restrictions'
+  $blockingRestrictions = @($restrictions) |
+    Where-Object {
+      $reasonCode = Get-AzureDevJsonProperty `
+        -InputObject $_ `
+        -Name 'reasonCode'
+      $restrictionType = Get-AzureDevJsonProperty `
+        -InputObject $_ `
+        -Name 'type'
+      $reasonCode -in @('NotAvailableForSubscription', 'QuotaId') -or
+        $restrictionType -in @('Location', 'Zone')
+    }
+  if (@($blockingRestrictions).Count -gt 0) {
+    $restrictionSummary = @($blockingRestrictions) |
+      ForEach-Object {
+        $reasonCode = Get-AzureDevJsonProperty `
+          -InputObject $_ `
+          -Name 'reasonCode'
+        $restrictionType = Get-AzureDevJsonProperty `
+          -InputObject $_ `
+          -Name 'type'
+        "$restrictionType/$reasonCode".Trim('/')
+      } |
+      Select-Object -Unique
+    $result = [pscustomobject]@{
+      Supported = $false
+      Reason = (
+        "VM SKU $Size is restricted for this subscription or location: " +
+        "$($restrictionSummary -join ', ')."
+      )
+    }
+    $script:AzureDevTrustedLaunchSkuSupportCache[$cacheKey] = $result
+    return $result
+  }
+
   $generations = Get-AzureDevSkuCapabilityValue `
     -Sku $sku `
     -Name 'HyperVGenerations'
@@ -875,7 +912,8 @@ function Set-AzureDevTrustedLaunch {
       throw (
         'Azure reported a Trusted Launch update failure after changing the VM ' +
         "security state to $($refreshedState.SecurityType). Setup stopped to " +
-        'avoid applying further changes. Inspect the VM in Azure before retrying.'
+        'avoid applying further changes. The VM remains deallocated; inspect ' +
+        'it in Azure and restart it manually before retrying.'
       )
     }
     try {
@@ -904,7 +942,8 @@ function Set-AzureDevTrustedLaunch {
     throw (
       'Azure accepted the Trusted Launch update, but verification did not ' +
       'report TrustedLaunch with Hyper-V generation V2, Secure Boot enabled, ' +
-      'and vTPM enabled. Setup stopped before applying further changes.'
+      'and vTPM enabled. Setup stopped before applying further changes. The VM ' +
+      'remains deallocated and must be restarted manually after inspection.'
     )
   }
 

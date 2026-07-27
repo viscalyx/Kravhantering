@@ -270,32 +270,19 @@ function Test-AzureDevVmSshPublicKeyDrift {
   )
 }
 
-function Test-AzureDevTrustedLaunchGuestReadiness {
+function Wait-AzureDevTrustedLaunchGuestReadiness {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
     [pscustomobject]$Context,
 
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Plan
-  )
+    [pscustomobject]$Plan,
 
-  $hostName = Get-AzureDevHostName -Context $Context
-  if (
-    [string]::IsNullOrWhiteSpace($hostName) -or
-    $hostName -eq '<public-ip-or-tailscale-name>'
-  ) {
-    return [pscustomobject]@{
-      Ready = $false
-      Reason = 'The existing VM hostname could not be resolved for guest readiness checks.'
-    }
-  }
-  if (-not (Test-Path -LiteralPath $Context.Config.SshPrivateKeyPath -PathType Leaf)) {
-    return [pscustomobject]@{
-      Ready = $false
-      Reason = "The SSH private key is missing: $($Context.Config.SshPrivateKeyPath)"
-    }
-  }
+    [int]$TimeoutSeconds = 300,
+
+    [switch]$NonBlocking
+  )
 
   $commands = @(
     'set -eu',
@@ -333,68 +320,45 @@ function Test-AzureDevTrustedLaunchGuestReadiness {
   }
   $commands += 'echo AZURE_DEV_TRUSTED_LAUNCH_READY'
 
-  $result = Invoke-AzureDevNativeCommand `
-    -FilePath 'ssh' `
-    -Arguments @(
-      '-o',
-      'BatchMode=yes',
-      '-o',
-      'ClearAllForwardings=yes',
-      '-o',
-      'ConnectTimeout=15',
-      '-o',
-      'IdentitiesOnly=yes',
-      '-o',
-      'StrictHostKeyChecking=yes',
-      '-i',
-      $Context.Config.SshPrivateKeyPath,
-      "vscode@$hostName",
-      ($commands -join '; ')
-    )
-  if (
-    $result.ExitCode -eq 0 -and
-    $result.Text -match 'AZURE_DEV_TRUSTED_LAUNCH_READY'
-  ) {
-    return [pscustomobject]@{
-      Ready = $true
-      Reason = $null
-    }
-  }
-
-  $reason = $result.Text.Trim()
-  if ([string]::IsNullOrWhiteSpace($reason)) {
-    $reason = "SSH readiness check exited with code $($result.ExitCode)."
-  }
-  return [pscustomobject]@{
-    Ready = $false
-    Reason = $reason
-  }
-}
-
-function Wait-AzureDevTrustedLaunchGuestReadiness {
-  [CmdletBinding()]
-  param(
-    [Parameter(Mandatory = $true)]
-    [pscustomobject]$Context,
-
-    [Parameter(Mandatory = $true)]
-    [pscustomobject]$Plan,
-
-    [int]$TimeoutSeconds = 300
-  )
-
   $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-  $lastResult = $null
+  $lastReason = ''
   do {
-    $lastResult = Test-AzureDevTrustedLaunchGuestReadiness `
-      -Context $Context `
-      -Plan $Plan
-    if ($lastResult.Ready) {
-      return $true
+    $result = Invoke-AzureDevNativeCommand `
+      -FilePath 'ssh' `
+      -Arguments @(
+        '-o',
+        'BatchMode=yes',
+        '-o',
+        'ClearAllForwardings=yes',
+        '-o',
+        'ConnectTimeout=15',
+        '-o',
+        'StrictHostKeyChecking=accept-new',
+        $Context.Config.SshHostAlias,
+        ($commands -join '; ')
+      )
+    if (
+      $result.ExitCode -eq 0 -and
+      $result.Text -match 'AZURE_DEV_TRUSTED_LAUNCH_READY'
+    ) {
+      return [pscustomobject]@{
+        Ready = $true
+        Reason = $null
+      }
+    }
+    $lastReason = $result.Text.Trim()
+    if ([string]::IsNullOrWhiteSpace($lastReason)) {
+      $lastReason = "SSH readiness check exited with code $($result.ExitCode)."
     }
     Start-Sleep -Seconds 10
   } while ((Get-Date) -lt $deadline)
 
+  if ($NonBlocking) {
+    return [pscustomobject]@{
+      Ready = $false
+      Reason = $lastReason
+    }
+  }
   $generationRecovery = if ($Plan.Action -eq 'UpgradeGen1') {
     (
       'A Gen1-to-Gen2 conversion cannot be rolled back in place. Restore the ' +
@@ -409,7 +373,7 @@ function Wait-AzureDevTrustedLaunchGuestReadiness {
   throw (
     'Azure enabled Trusted Launch, but the VM did not return a successful SSH ' +
     "readiness check within $TimeoutSeconds seconds. Last result: " +
-    "$($lastResult.Reason) $generationRecovery"
+    "$lastReason $generationRecovery"
   )
 }
 
@@ -490,19 +454,12 @@ function Invoke-AzureDevSetup {
     $image = Get-AzureDevDeploymentImage -Config $Context.Config
     $trustedLaunchPlan = Get-AzureDevTrustedLaunchPlan `
       -Config $Context.Config
-    if ($trustedLaunchPlan.RequiresGuestValidation) {
-      $guestReadiness = Test-AzureDevTrustedLaunchGuestReadiness `
-        -Context $Context `
-        -Plan $trustedLaunchPlan
-      if (-not $guestReadiness.Ready) {
-        $trustedLaunchPlan.Action = 'Unsupported'
-        $trustedLaunchPlan.TemplateEnabled = $false
-        $trustedLaunchPlan.RequiresGuestValidation = $false
-        $trustedLaunchPlan.Reason = (
-          'Guest readiness validation did not pass: ' +
-          $guestReadiness.Reason
-        )
-      }
+    if ($WhatIfPreference -and $trustedLaunchPlan.RequiresGuestValidation) {
+      Write-Host (
+        'Trusted Launch preview: live guest validation is skipped during ' +
+        '-WhatIf. The preview preserves the Azure metadata-based plan and ' +
+        'assumes the guest readiness checks will pass during setup.'
+      )
     }
     if ($trustedLaunchPlan.Action -eq 'Unsupported') {
       Write-Warning (
@@ -578,19 +535,61 @@ function Invoke-AzureDevSetup {
           'and vTPM before deployment.'
         )
       } else {
-        $trustedLaunchResult = Set-AzureDevTrustedLaunch `
-          -Context $Context `
-          -Plan $trustedLaunchPlan
-        $trustedLaunchPlan.State = $trustedLaunchResult.State
-        $trustedLaunchPlan.TemplateEnabled = $trustedLaunchResult.Succeeded
-        if ($trustedLaunchResult.Succeeded) {
+        $guestReadiness = if ($Context.SkipSshConfig) {
+          [pscustomobject]@{
+            Ready = $false
+            Reason = (
+              'Trusted Launch validation requires the managed SSH alias. ' +
+              'Rerun setup without -SkipSshConfig to enable conversion.'
+            )
+          }
+        } else {
+          $trustedLaunchHostName = Get-AzureDevHostName -Context $Context
+          $sshConfigApplied = Set-AzureDevManagedSshConfig `
+            -Context $Context `
+            -HostName $trustedLaunchHostName
+          if (-not $sshConfigApplied) {
+            throw (
+              'Setup cannot validate Trusted Launch until the managed SSH ' +
+              'config is applied. Rerun setup with -Apply or -Yes.'
+            )
+          }
           Start-AzureDevAzureVm -Context $Context
           Wait-AzureDevTrustedLaunchGuestReadiness `
             -Context $Context `
-            -Plan $trustedLaunchPlan | Out-Null
+            -Plan $trustedLaunchPlan `
+            -NonBlocking
+        }
+        if (-not $guestReadiness.Ready) {
+          $trustedLaunchPlan.Action = 'Unsupported'
+          $trustedLaunchPlan.TemplateEnabled = $false
+          $trustedLaunchPlan.RequiresGuestValidation = $false
+          $trustedLaunchPlan.Reason = (
+            'Guest readiness validation did not pass: ' +
+            $guestReadiness.Reason
+          )
+          Write-Warning (
+            "Existing VM $($Context.Config.VmName) cannot be changed " +
+            'automatically to Trusted Launch with Secure Boot and vTPM: ' +
+            "$($trustedLaunchPlan.Reason) Setup will omit the security " +
+            'profile, preserve the current VM and disks, and continue ' +
+            'repairing mutable configuration.'
+          )
+        } else {
+          $trustedLaunchResult = Set-AzureDevTrustedLaunch `
+            -Context $Context `
+            -Plan $trustedLaunchPlan
+          $trustedLaunchPlan.State = $trustedLaunchResult.State
+          $trustedLaunchPlan.TemplateEnabled = $trustedLaunchResult.Succeeded
+          if ($trustedLaunchResult.Succeeded) {
+            Start-AzureDevAzureVm -Context $Context
+            Wait-AzureDevTrustedLaunchGuestReadiness `
+              -Context $Context `
+              -Plan $trustedLaunchPlan | Out-Null
+          }
         }
         if (
-          $trustedLaunchResult.Succeeded -and
+          $trustedLaunchPlan.TemplateEnabled -and
           $trustedLaunchPlan.Action -eq 'UpgradeGen1'
         ) {
           Write-Warning (
@@ -776,8 +775,30 @@ function Get-AzureDevStatus {
   $state = Get-AzureDevState -Context $Context
   $publicIp = Get-AzureDevPublicIpAddress -Config $Context.Config
   $powerState = Get-AzureDevVmPowerState -Config $Context.Config
-  $image = Get-AzureDevVmImage -Config $Context.Config
   $securityState = Get-AzureDevVmSecurityState -Config $Context.Config
+  $hasMarketplaceImage = (
+    $null -ne $securityState -and
+    $securityState.Exists -and
+    -not [string]::IsNullOrWhiteSpace("$($securityState.ImagePublisher)") -and
+    -not [string]::IsNullOrWhiteSpace("$($securityState.ImageOffer)") -and
+    -not [string]::IsNullOrWhiteSpace("$($securityState.ImageSku)") -and
+    -not [string]::IsNullOrWhiteSpace("$($securityState.ImageVersion)")
+  )
+  $image = if ($hasMarketplaceImage) {
+    [pscustomobject]@{
+      publisher = $securityState.ImagePublisher
+      offer = $securityState.ImageOffer
+      sku = $securityState.ImageSku
+      version = $securityState.ImageVersion
+      urn = (
+        "$($securityState.ImagePublisher):$($securityState.ImageOffer):" +
+        "$($securityState.ImageSku):$($securityState.ImageVersion)"
+      )
+      plan = $null
+    }
+  } else {
+    Get-AzureDevVmImage -Config $Context.Config
+  }
   if ($null -ne $image) {
     Write-AzureDevImageDeprecationWarning `
       -Config $Context.Config `
@@ -789,22 +810,22 @@ function Get-AzureDevStatus {
     $Context.Config.AllowedSshCidr
   }
   $validation = Get-AzureDevValidationStatus -State $state
-  $generationText = if ($securityState.Exists) {
+  $generationText = if ($null -ne $securityState -and $securityState.Exists) {
     $securityState.HyperVGeneration
   } else {
     '<not found>'
   }
-  $securityTypeText = if ($securityState.Exists) {
+  $securityTypeText = if ($null -ne $securityState -and $securityState.Exists) {
     $securityState.SecurityType
   } else {
     '<not found>'
   }
-  $secureBootText = if ($securityState.Exists) {
+  $secureBootText = if ($null -ne $securityState -and $securityState.Exists) {
     $securityState.SecureBootEnabled
   } else {
     '<not found>'
   }
-  $vTpmText = if ($securityState.Exists) {
+  $vTpmText = if ($null -ne $securityState -and $securityState.Exists) {
     $securityState.VTpmEnabled
   } else {
     '<not found>'
