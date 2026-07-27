@@ -2,8 +2,16 @@
   "name": "@kravhantering/hsa-person-lookup-adapter",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@12.0.1",
   "type": "module",
   "description": "REST to SOAP GetHsaPerson adapter for HSA person lookup",
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "version": "12.0.1",
+      "onFail": "error"
+    }
+  },
   "scripts": {
     "generate-certs": "node src/generate-certs.mjs",
     "start": "node src/server.mjs",
@@ -11,5 +19,6 @@
   },
   "dependencies": {
     "saxes": "6.0.0"
-  }
+  },
+  "allowScripts": {}
 }

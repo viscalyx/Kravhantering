@@ -5,7 +5,8 @@ FROM node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e4
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /workspace
 
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
+RUN npm install --global "npm@$(node -p \"require('./package.json').packageManager.slice(4)\")"
 RUN npm ci
 
 FROM dependencies AS app-build
@@ -35,7 +36,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 WORKDIR /workspace
 
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
+RUN npm install --global "npm@$(node -p \"require('./package.json').packageManager.slice(4)\")"
 RUN <<'EOF'
 set -eu
 node <<'NODE'

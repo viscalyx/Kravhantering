@@ -398,9 +398,10 @@ Package setup intentionally installs .NET SDK 8.0 from Ubuntu 24.04 package
 feeds. Do not add the Microsoft package feed unless the devcontainer path is
 changed at the same time and the reason is documented.
 
-Repository setup uses `npm install`, not `npm ci`, to match the current
-devcontainer behavior. If deterministic install becomes a requirement, change
-the devcontainer and Azure VM bootstrap together.
+Repository setup installs the exact npm version declared by root
+`package.json`, then uses `npm install`, not `npm ci`, to match the current
+devcontainer behavior. If deterministic dependency installation becomes a
+requirement, change the devcontainer and Azure VM bootstrap together.
 
 ## Storage Invariants
 

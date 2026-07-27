@@ -246,7 +246,8 @@ schedule, and manual dispatch. It uses `pull_request`, never
 
 The workflow:
 
-1. Installs Node dependencies with `npm ci`.
+1. Installs the exact npm version declared by root `package.json`, then
+   installs Node dependencies with `npm ci`.
 2. Installs pinned `schemathesis==4.15.2` with Python.
 3. Starts SQL Server with `.env.sqlserver.ci` and runs `npm run db:setup`.
 4. Starts the local Keycloak realm.

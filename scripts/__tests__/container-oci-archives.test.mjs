@@ -345,7 +345,6 @@ describe('container OCI archive helpers', () => {
     expect(workflow).toContain('pull_request:')
     expect(workflow).toContain('contents: read')
     expect(workflow).toContain('persist-credentials: false')
-    expect(workflow).toContain('npm install -g npm@latest')
     expect(workflow).toContain('--skip-build')
     expect(workflow).toContain('--prune-docker-after-load')
     expect(workflow).toContain('container:oci:export')

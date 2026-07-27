@@ -26,7 +26,7 @@
       "nodeGitTagPrefix": "v",
       "version": "24",
       "nvmVersion": "latest",
-      "npmVersion": "latest"
+      "npmVersion": "12.0.1"
     },
     "ghcr.io/devcontainers/features/dotnet:2": {
       "version": "8.0"

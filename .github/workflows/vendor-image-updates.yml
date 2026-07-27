@@ -1,24 +1,21 @@
-name: Vendor Image Updates
+name: Dependency Drift
 
 on:
   workflow_dispatch:
     inputs:
-      image:
-        description: Vendor image to check
+      unit:
+        description: Maintenance unit to check
         required: false
         default: all
         type: choice
         options:
           - all
+          - npm
+          - node
           - nginx
           - sqlserver
           - keycloak
           - kong
-      include-current:
-        description: Refresh the saved manifest digest and image ID for the tag already in use, even when no newer tag exists
-        required: false
-        default: false
-        type: boolean
   schedule:
     - cron: '17 5 * * 1'
 
@@ -27,26 +24,24 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+  issues: write
 
 jobs:
-  vendor-image-updates:
-    name: Check Vendor Image Locks
+  dependency-drift:
+    name: Reconcile Dependency Drift Issues
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     env:
-      GH_TOKEN: ${{ secrets.VENDOR_IMAGE_UPDATE_TOKEN || github.token }}
-      VENDOR_IMAGE_UPDATE_IMAGE: ${{ github.event.inputs.image || 'all' }}
-      VENDOR_IMAGE_UPDATE_INCLUDE_CURRENT: ${{ github.event.inputs['include-current'] || 'false' }}
+      GH_TOKEN: ${{ github.token }}
+      DEPENDENCY_DRIFT_UNIT: ${{ github.event.inputs.unit || 'all' }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node.js
@@ -54,5 +49,5 @@ jobs:
         with:
           node-version-file: '.nvmrc'
 
-      - name: Create or update vendor image PRs
+      - name: Reconcile dependency drift issues
         run: node .github/workflows/vendor-image-updates.mjs

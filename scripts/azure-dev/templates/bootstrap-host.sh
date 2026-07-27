@@ -225,8 +225,6 @@ install_host_packages() {
     wget \
     zsh
 
-  npm install --global npm@latest
-
   if ! command -v dotenv-linter >/dev/null 2>&1; then
     curl -sSfL https://raw.githubusercontent.com/dotenv-linter/dotenv-linter/master/install.sh \
       | sh -s -- -b /usr/local/bin
@@ -747,6 +745,10 @@ link_playwright_chrome() {
 }
 
 run_repository_setup() {
+  (
+    cd "${WORKSPACE_DIR}"
+    node scripts/install-repository-npm.mjs
+  )
   run_as_vscode "cd '${WORKSPACE_DIR}' && npm install"
   run_as_vscode "cd '${WORKSPACE_DIR}' && dotnet tool restore"
   run_as_vscode "cd '${WORKSPACE_DIR}' && npx playwright install --with-deps"

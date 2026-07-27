@@ -5,10 +5,16 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
-    ignore:
-      # Ignore TailwindCSS major version 4+ (stay on v3.x)
-      - dependency-name: 'tailwindcss'
-        versions: ['>=4.0.0']
+
+  - package-ecosystem: 'npm'
+    directory: '/containers/hsa-directory-mock'
+    schedule:
+      interval: 'weekly'
+
+  - package-ecosystem: 'npm'
+    directory: '/containers/hsa-person-lookup-adapter'
+    schedule:
+      interval: 'weekly'
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: 'github-actions'
@@ -18,12 +24,6 @@ updates:
 
   # Enable version updates for Docker images
   - package-ecosystem: 'docker'
-    directory: '/.devcontainer'
-    schedule:
-      interval: 'weekly'
-
-  # Enable version updates for Docker Compose
-  - package-ecosystem: 'docker-compose'
     directory: '/.devcontainer'
     schedule:
       interval: 'weekly'

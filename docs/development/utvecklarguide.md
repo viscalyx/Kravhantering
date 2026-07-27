@@ -256,7 +256,7 @@ releaseflöden på ett reproducerbart sätt.
 
 Den behöver stödja:
 
-- Node.js 24 och `npm ci`.
+- Node.js 24, den exakt deklarerade npm-versionen och `npm ci`.
 - Körning av `npm run check`.
 - Playwright-tester med Playwrights webbläsare.
 - Docker eller annan OCI-kompatibel containerbyggare.
@@ -287,9 +287,9 @@ används behöver motsvarande pipelines finnas där.
 - `Container PR Smoke` (`.github/workflows/container-pr-smoke.yml`) körs på
   pull requests. Den bygger containerstacken, verifierar OCI-arkiv och kör
   release-smoke innan ändringen slås ihop.
-- `Vendor Image Updates` (`.github/workflows/vendor-image-updates.yml`) körs
-  schemalagt och manuellt. Den kontrollerar låsta nginx-, SQL Server-,
-  Keycloak- och Kong-avbildningar och skapar versionsspecifika PR:er.
+- `Dependency Drift` (`.github/workflows/vendor-image-updates.yml`) körs
+  schemalagt och manuellt. Den kontrollerar npm-verktygskedjan och samordnade
+  produktionsavbildningar och underhåller åtgärdsärenden.
 
 #### Tests
 

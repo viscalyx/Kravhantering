@@ -4,39 +4,41 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { validateDependencyMaintenance } from '../../scripts/dependency-maintenance.mjs'
+import { packageManagerVersion } from '../../scripts/install-repository-npm.mjs'
 
-const MAIN_BRANCH = 'main'
-const BRANCH_PREFIX = 'automation/vendor-image'
-const OPEN_PR_LIST_LIMIT = '1000'
-const PR_TEMPLATE_PATH = '.github/pull_request_template.md'
+const AUTOMATION_LABEL = 'automation:dependency-drift'
+const ISSUE_LABELS = [AUTOMATION_LABEL, 'dependencies', 'ready-for-agent']
+const ISSUE_LIST_LIMIT = '1000'
 const PLATFORM = {
   architecture: 'amd64',
   os: 'linux',
 }
-
-const OPERATOR_NO_NOTES_MARKER = 'operator-upgrade:no-notes'
-const OPERATOR_NOTES_START_MARKER =
-  '<!-- DO NOT REMOVE: operator-upgrade:notes start -->'
-const OPERATOR_NOTES_END_MARKER =
-  '<!-- DO NOT REMOVE: operator-upgrade:notes end -->'
-const SSDLC_REQUIREMENTS_MARKER = 'ssdlc:requirements'
-
 const ACCEPT_MANIFESTS = [
   'application/vnd.oci.image.index.v1+json',
   'application/vnd.docker.distribution.manifest.list.v2+json',
   'application/vnd.oci.image.manifest.v1+json',
   'application/vnd.docker.distribution.manifest.v2+json',
 ].join(', ')
-
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/iu
 
 export const IMAGE_CONFIGS = {
+  node: {
+    image: 'docker.io/library/node',
+    listTags: listNodeLtsTags,
+    name: 'node',
+    parseTag: parseNodeTag,
+    paths: [
+      'containers/app/Dockerfile',
+      'containers/hsa-directory-mock/Dockerfile',
+      'containers/hsa-person-lookup-adapter/Dockerfile',
+    ],
+    registryHost: 'registry-1.docker.io',
+    registryRepository: 'library/node',
+    versionSortValue: version => [version.major],
+  },
   nginx: {
-    companionFiles: ['containers/production/env/release.env.template'],
     image: 'docker.io/library/nginx',
-    laneDescription: lane => `nginx ${lane}.x`,
-    laneFromVersion: version => String(version.major),
-    laneSortValue: lane => Number(lane),
     listTags: () => fetchDockerHubTags('library', 'nginx'),
     lockPath: 'containers/nginx/image.lock.json',
     name: 'nginx',
@@ -46,16 +48,7 @@ export const IMAGE_CONFIGS = {
     versionSortValue: version => [version.major, version.minor, version.patch],
   },
   sqlserver: {
-    companionFiles: [
-      'docker-compose.sqlserver.yml',
-      '.devcontainer/docker-compose.yml',
-      '.devcontainer/elevated/docker-compose.yml',
-      'containers/production/env/release.env.template',
-    ],
     image: 'mcr.microsoft.com/mssql/server',
-    laneDescription: lane => `SQL Server ${lane}`,
-    laneFromVersion: version => String(version.year),
-    laneSortValue: lane => Number(lane),
     listTags: () => fetchRegistryTags('mcr.microsoft.com', 'mssql/server'),
     lockPath: 'containers/sqlserver/image.lock.json',
     name: 'sqlserver',
@@ -65,18 +58,7 @@ export const IMAGE_CONFIGS = {
     versionSortValue: version => [version.year, version.cu],
   },
   keycloak: {
-    companionFiles: [
-      'docker-compose.idp.yml',
-      '.devcontainer/docker-compose.yml',
-      '.devcontainer/elevated/docker-compose.yml',
-      'containers/production/env/release.env.template',
-      'docs/development/auth-developer-workflow.md',
-      'scripts/__tests__/container-release.test.mjs',
-    ],
     image: 'quay.io/keycloak/keycloak',
-    laneDescription: lane => `Keycloak ${lane}.x`,
-    laneFromVersion: version => String(version.major),
-    laneSortValue: lane => Number(lane),
     listTags: () => fetchRegistryTags('quay.io', 'keycloak/keycloak'),
     lockPath: 'containers/keycloak/image.lock.json',
     name: 'keycloak',
@@ -91,17 +73,7 @@ export const IMAGE_CONFIGS = {
     ],
   },
   kong: {
-    companionFiles: [
-      '.devcontainer/docker-compose.yml',
-      '.devcontainer/elevated/docker-compose.yml',
-      'containers/production/env/release.env.template',
-      'scripts/__tests__/container-release.test.mjs',
-    ],
-    dependentLockPaths: ['container-hsa-integration-support.lock.json'],
     image: 'docker.io/kong/kong-gateway',
-    laneDescription: lane => `Kong Gateway ${lane}.x`,
-    laneFromVersion: version => String(version.major),
-    laneSortValue: lane => Number(lane),
     listTags: () => fetchDockerHubTags('kong', 'kong-gateway'),
     lockPath: 'containers/kong/image.lock.json',
     name: 'kong',
@@ -124,41 +96,54 @@ function readNonEmpty(value) {
   return trimmed.length > 0 ? trimmed : undefined
 }
 
-function parseBoolean(value) {
-  return /^(?:1|true|yes)$/iu.test(String(value ?? '').trim())
+function readJson(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'))
+}
+
+function compareArrays(left, right) {
+  const length = Math.max(left.length, right.length)
+  for (let index = 0; index < length; index += 1) {
+    const leftValue = left[index] ?? 0
+    const rightValue = right[index] ?? 0
+    if (leftValue > rightValue) return 1
+    if (leftValue < rightValue) return -1
+  }
+  return 0
+}
+
+function compareVersions(config, left, right) {
+  return compareArrays(
+    config.versionSortValue(left),
+    config.versionSortValue(right),
+  )
 }
 
 export function parseArgs(argv, env) {
   const options = {
-    image: readNonEmpty(env.VENDOR_IMAGE_UPDATE_IMAGE) ?? 'all',
-    includeCurrent: parseBoolean(env.VENDOR_IMAGE_UPDATE_INCLUDE_CURRENT),
+    unit: readNonEmpty(env.DEPENDENCY_DRIFT_UNIT) ?? 'all',
   }
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
-    if (arg === '--include-current') {
-      options.includeCurrent = true
-      continue
+    if (arg !== '--unit') {
+      throw new Error(`Unexpected argument: ${arg}`)
     }
-    if (arg === '--image') {
-      const value = argv[index + 1]
-      if (!value || value.startsWith('--')) {
-        throw new Error('Missing value for --image.')
-      }
-      options.image = value
-      index += 1
-      continue
+    const value = argv[index + 1]
+    if (!value || value.startsWith('--')) {
+      throw new Error(`Missing value for ${arg}.`)
     }
-    throw new Error(`Unexpected argument: ${arg}`)
+    options.unit = value
+    index += 1
   }
-
-  if (options.image !== 'all' && !IMAGE_CONFIGS[options.image]) {
-    throw new Error(
-      `Unsupported image "${options.image}". Expected all, nginx, sqlserver, keycloak or kong.`,
-    )
-  }
-
   return options
+}
+
+export function parseNodeTag(tag) {
+  const match = tag.match(/^(?<major>[1-9]\d*)-bookworm-slim$/u)
+  if (!match?.groups) return null
+  const major = Number(match.groups.major)
+  if (major % 2 !== 0) return null
+  return { major, tag }
 }
 
 export function parseKeycloakTag(tag) {
@@ -216,124 +201,9 @@ export function parseKongTag(tag) {
   }
 }
 
-function compareArrays(left, right) {
-  const length = Math.max(left.length, right.length)
-  for (let index = 0; index < length; index += 1) {
-    const leftValue = left[index] ?? 0
-    const rightValue = right[index] ?? 0
-    if (leftValue > rightValue) return 1
-    if (leftValue < rightValue) return -1
-  }
-  return 0
-}
-
-function compareVersions(config, left, right) {
-  return compareArrays(
-    config.versionSortValue(left),
-    config.versionSortValue(right),
-  )
-}
-
-function compareLanes(config, left, right) {
-  const leftValue = config.laneSortValue(left)
-  const rightValue = config.laneSortValue(right)
-  if (leftValue > rightValue) return 1
-  if (leftValue < rightValue) return -1
-  return 0
-}
-
-function readJson(filePath) {
-  return JSON.parse(fs.readFileSync(filePath, 'utf8'))
-}
-
-function readText(filePath) {
-  return fs.readFileSync(filePath, 'utf8')
-}
-
-function formatJson(value) {
-  return `${JSON.stringify(value, null, 2)}\n`
-}
-
-export function updateDependentServiceLock(lock, serviceRecord) {
-  if (!Array.isArray(lock?.services)) {
-    throw new Error('Dependent image lock must contain services[].')
-  }
-
-  let found = false
-  const services = lock.services.map(service => {
-    if (service?.name !== serviceRecord.name) return service
-    found = true
-    return {
-      ...service,
-      image: serviceRecord.image,
-      imageId: serviceRecord.imageId,
-      manifestDigest: serviceRecord.manifestDigest,
-      role: serviceRecord.role,
-      source: serviceRecord.source,
-      tag: serviceRecord.tag,
-    }
-  })
-
-  if (!found) {
-    throw new Error(
-      `Dependent image lock is missing service "${serviceRecord.name}".`,
-    )
-  }
-
-  return {
-    ...lock,
-    services,
-  }
-}
-
-export function branchName(config, version) {
-  return `${BRANCH_PREFIX}/${config.name}-${version.tag}`
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-}
-
-function replaceImageRef(source, filePath, image, replacementRef) {
-  const pattern = new RegExp(`${escapeRegExp(image)}:[^\\s"'<>]+`, 'gu')
-  let replacements = 0
-  const updated = source.replace(pattern, () => {
-    replacements += 1
-    return replacementRef
-  })
-
-  if (replacements === 0) {
-    throw new Error(`${filePath} does not contain ${image}:<tag>.`)
-  }
-
-  return updated
-}
-
-function normalizeDigest(value, context) {
-  const digest = readNonEmpty(value)
-  if (!digest || !DIGEST_PATTERN.test(digest)) {
-    throw new Error(`${context} did not resolve to a sha256 digest.`)
-  }
-  return digest
-}
-
-function authHeader(headers) {
-  const token =
-    readNonEmpty(process.env.DOCKERHUB_TOKEN) ??
-    readNonEmpty(process.env.DOCKER_HUB_TOKEN)
-  if (!token) return headers
-  return {
-    ...headers,
-    Authorization: `Bearer ${token}`,
-  }
-}
-
 async function fetchOk(url, options = {}) {
   const headers = options.headers ?? {}
-  let response = await fetch(url, {
-    ...options,
-    headers,
-  })
+  let response = await fetch(url, { ...options, headers })
 
   if (response.status === 401) {
     const token = await tokenFromChallenge(
@@ -342,21 +212,16 @@ async function fetchOk(url, options = {}) {
     if (token) {
       response = await fetch(url, {
         ...options,
-        headers: {
-          ...headers,
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { ...headers, Authorization: `Bearer ${token}` },
       })
     }
   }
-
   if (!response.ok) {
     const body = await response.text().catch(() => '')
     throw new Error(
       `Request failed for ${url}: ${response.status} ${response.statusText}${body ? ` ${body.slice(0, 240)}` : ''}`,
     )
   }
-
   return response
 }
 
@@ -364,25 +229,21 @@ function parseChallengeParameters(value) {
   const parameters = {}
   const challenge = readNonEmpty(value)
   if (!challenge) return parameters
-
   for (const match of challenge.matchAll(
     /(?<key>[a-z][a-z0-9_-]*)="(?<value>[^"]*)"/giu,
   )) {
     if (match.groups) parameters[match.groups.key] = match.groups.value
   }
-
   return parameters
 }
 
 async function tokenFromChallenge(challenge) {
   const parameters = parseChallengeParameters(challenge)
   if (!parameters.realm) return null
-
   const tokenUrl = new URL(parameters.realm)
   for (const key of ['service', 'scope']) {
     if (parameters[key]) tokenUrl.searchParams.set(key, parameters[key])
   }
-
   const response = await fetch(tokenUrl)
   if (!response.ok) return null
   const payload = await response.json()
@@ -394,36 +255,49 @@ async function fetchJson(url, options) {
   return response.json()
 }
 
+function dockerHubHeaders() {
+  const token =
+    readNonEmpty(process.env.DOCKERHUB_TOKEN) ??
+    readNonEmpty(process.env.DOCKER_HUB_TOKEN)
+  return token
+    ? { Accept: 'application/json', Authorization: `Bearer ${token}` }
+    : { Accept: 'application/json' }
+}
+
 async function fetchDockerHubTags(namespace, repository) {
   const tags = []
   let url =
     `https://hub.docker.com/v2/repositories/${namespace}/${repository}` +
     '/tags?page_size=100'
-
   while (url) {
-    const payload = await fetchJson(url, {
-      headers: authHeader({
-        Accept: 'application/json',
-      }),
-    })
+    const payload = await fetchJson(url, { headers: dockerHubHeaders() })
     for (const item of payload.results ?? []) {
       if (typeof item.name === 'string') tags.push(item.name)
     }
     url = readNonEmpty(payload.next)
   }
-
   return tags
+}
+
+function nextLink(header, host) {
+  const link = readNonEmpty(header)
+  if (!link) return null
+  for (const part of link.split(',')) {
+    const match = part.match(/<(?<url>[^>]+)>;\s*rel="?next"?/u)
+    if (!match?.groups?.url) continue
+    return match.groups.url.startsWith('http')
+      ? match.groups.url
+      : `https://${host}${match.groups.url}`
+  }
+  return null
 }
 
 async function fetchRegistryTags(host, repository) {
   const tags = []
   let url = `https://${host}/v2/${repository}/tags/list?n=1000`
-
   while (url) {
     const response = await fetchOk(url, {
-      headers: {
-        Accept: 'application/json',
-      },
+      headers: { Accept: 'application/json' },
     })
     const payload = await response.json()
     for (const tag of payload.tags ?? []) {
@@ -431,22 +305,29 @@ async function fetchRegistryTags(host, repository) {
     }
     url = nextLink(response.headers.get('link'), host)
   }
-
   return tags
 }
 
-function nextLink(header, host) {
-  const link = readNonEmpty(header)
-  if (!link) return null
-
-  for (const part of link.split(',')) {
-    const match = part.match(/<(?<url>[^>]+)>;\s*rel="?next"?/u)
-    if (!match?.groups?.url) continue
-    if (match.groups.url.startsWith('http')) return match.groups.url
-    return `https://${host}${match.groups.url}`
+async function listNodeLtsTags() {
+  const releases = await fetchJson('https://nodejs.org/dist/index.json')
+  const majors = new Set()
+  for (const release of releases) {
+    const match = String(release.version ?? '').match(/^v(?<major>\d+)\./u)
+    const major = Number(match?.groups?.major)
+    if (release.lts && major % 2 === 0) majors.add(major)
   }
+  if (majors.size === 0) {
+    throw new Error('Node.js release index returned no even LTS releases.')
+  }
+  return [...majors].map(major => `${major}-bookworm-slim`)
+}
 
-  return null
+function normalizeDigest(value, context) {
+  const digest = readNonEmpty(value)
+  if (!digest || !DIGEST_PATTERN.test(digest)) {
+    throw new Error(`${context} did not resolve to a sha256 digest.`)
+  }
+  return digest
 }
 
 function isImageIndex(manifest) {
@@ -454,15 +335,13 @@ function isImageIndex(manifest) {
 }
 
 function isImageManifest(manifest) {
-  return manifest?.config?.digest
+  return Boolean(manifest?.config?.digest)
 }
 
 async function fetchManifest(config, reference) {
   const url = `https://${config.registryHost}/v2/${config.registryRepository}/manifests/${reference}`
   const response = await fetchOk(url, {
-    headers: {
-      Accept: ACCEPT_MANIFESTS,
-    },
+    headers: { Accept: ACCEPT_MANIFESTS },
   })
   return {
     digest: response.headers.get('docker-content-digest'),
@@ -478,26 +357,22 @@ function selectPlatformManifest(manifest, config, tag) {
       platform.architecture === PLATFORM.architecture
     )
   })
-
   if (!descriptor?.digest) {
     throw new Error(
       `${config.name}:${tag} does not include ${PLATFORM.os}/${PLATFORM.architecture}.`,
     )
   }
-
   return descriptor.digest
 }
 
-async function resolveImageIdentity(config, tag) {
+export async function resolveImageIdentity(config, tag) {
   const first = await fetchManifest(config, tag)
-
   if (isImageIndex(first.manifest)) {
     const platformDigest = selectPlatformManifest(first.manifest, config, tag)
     const second = await fetchManifest(config, platformDigest)
     if (!isImageManifest(second.manifest)) {
       throw new Error(`${config.name}:${tag} platform manifest has no config.`)
     }
-
     return {
       imageId: normalizeDigest(
         second.manifest.config.digest,
@@ -509,11 +384,9 @@ async function resolveImageIdentity(config, tag) {
       ),
     }
   }
-
   if (!isImageManifest(first.manifest)) {
     throw new Error(`${config.name}:${tag} manifest has no config.`)
   }
-
   return {
     imageId: normalizeDigest(
       first.manifest.config.digest,
@@ -526,45 +399,184 @@ async function resolveImageIdentity(config, tag) {
   }
 }
 
-export function selectCandidates(config, tags, currentLock, includeCurrent) {
-  const currentVersion = config.parseTag(currentLock.tag)
-  if (!currentVersion) {
-    throw new Error(
-      `${config.lockPath} tag "${currentLock.tag}" is not supported by the updater.`,
-    )
+function isSameReleaseLane(config, left, right) {
+  return config.versionSortValue(left)[0] === config.versionSortValue(right)[0]
+}
+
+export function selectAvailableVersion(config, tags, currentTag, options = {}) {
+  const current = config.parseTag(currentTag)
+  if (!current) {
+    throw new Error(`${config.name} tag "${currentTag}" is unsupported.`)
   }
-
-  const currentLane = config.laneFromVersion(currentVersion)
-  const latestByLane = new Map()
-
+  let selected = current
   for (const tag of tags) {
-    const version = config.parseTag(tag)
-    if (!version) continue
+    const candidate = config.parseTag(tag)
+    if (
+      candidate &&
+      (!options.sameLaneOnly ||
+        isSameReleaseLane(config, candidate, current)) &&
+      compareVersions(config, candidate, current) >= 0 &&
+      compareVersions(config, candidate, selected) > 0
+    ) {
+      selected = candidate
+    }
+  }
+  return selected
+}
 
-    const lane = config.laneFromVersion(version)
-    if (compareLanes(config, lane, currentLane) < 0) continue
+function imageStatesDiffer(current, available) {
+  return (
+    current.tag !== available.tag ||
+    current.manifestDigest !== available.manifestDigest ||
+    (current.imageId !== null && current.imageId !== available.imageId)
+  )
+}
 
-    const comparedToCurrent = compareVersions(config, version, currentVersion)
-    if (comparedToCurrent < 0) continue
-    if (comparedToCurrent === 0 && !includeCurrent) continue
-
-    const previous = latestByLane.get(lane)
-    if (!previous || compareVersions(config, version, previous.version) > 0) {
-      latestByLane.set(lane, {
-        branch: branchName(config, version),
-        lane,
-        version,
+export function readNodeCurrent(config, root = process.cwd()) {
+  const states = []
+  for (const dockerfilePath of config.paths) {
+    const source = fs.readFileSync(path.join(root, dockerfilePath), 'utf8')
+    for (const match of source.matchAll(
+      /^FROM node:(?<tag>[^@\s]+)@(?<digest>sha256:[a-f0-9]{64})(?:\s+AS\s+\S+)?$/gimu,
+    )) {
+      states.push({
+        manifestDigest: match.groups.digest,
+        tag: match.groups.tag,
       })
     }
   }
-
-  return {
-    candidates: [...latestByLane.values()].sort((left, right) =>
-      compareLanes(config, left.lane, right.lane),
-    ),
-    currentLane,
-    currentVersion,
+  if (states.length === 0) {
+    throw new Error('No production Node base image references were found.')
   }
+  const unique = new Set(
+    states.map(state => `${state.tag}@${state.manifestDigest}`),
+  )
+  if (unique.size !== 1) {
+    throw new Error('Production Node base image references are not aligned.')
+  }
+  return { ...states[0], imageId: null }
+}
+
+function readLockCurrent(config, root) {
+  const current = readJson(path.join(root, config.lockPath))
+  if (current.image !== config.image) {
+    throw new Error(`${config.lockPath} does not match ${config.image}.`)
+  }
+  return {
+    imageId: normalizeDigest(current.imageId, `${config.name} image ID`),
+    manifestDigest: normalizeDigest(
+      current.manifestDigest,
+      `${config.name} manifest digest`,
+    ),
+    tag: current.tag,
+  }
+}
+
+export async function detectImageDrift(
+  unit,
+  root = process.cwd(),
+  dependencies = {},
+) {
+  const config = IMAGE_CONFIGS[unit.detector]
+  if (!config) throw new Error(`Unknown image detector "${unit.detector}".`)
+  const listTags = dependencies.listTags ?? config.listTags
+  const resolveIdentity =
+    dependencies.resolveImageIdentity ?? resolveImageIdentity
+  const current =
+    config.name === 'node'
+      ? readNodeCurrent(config, root)
+      : readLockCurrent(config, root)
+  const tags = await listTags()
+  const sameLaneVersion = selectAvailableVersion(config, tags, current.tag, {
+    sameLaneOnly: true,
+  })
+  const sameLaneIdentity = await resolveIdentity(config, sameLaneVersion.tag)
+  const sameLaneAvailable = {
+    ...sameLaneIdentity,
+    tag: sameLaneVersion.tag,
+  }
+  if (imageStatesDiffer(current, sameLaneAvailable)) {
+    return {
+      available: sameLaneAvailable,
+      current,
+      drift: true,
+      skill: unit.skill,
+      unit: unit.id,
+    }
+  }
+
+  const availableVersion = selectAvailableVersion(config, tags, current.tag)
+  const available =
+    availableVersion.tag === sameLaneVersion.tag
+      ? sameLaneAvailable
+      : {
+          ...(await resolveIdentity(config, availableVersion.tag)),
+          tag: availableVersion.tag,
+        }
+  return {
+    available,
+    current,
+    drift: imageStatesDiffer(current, available),
+    skill: unit.skill,
+    unit: unit.id,
+  }
+}
+
+export async function detectNpmDrift(unit, root = process.cwd(), dependencies) {
+  const fetchLatest =
+    dependencies?.fetchLatest ??
+    (async () => {
+      const payload = await fetchJson('https://registry.npmjs.org/npm/latest')
+      return payload.version
+    })
+  const packageJson = readJson(path.join(root, 'package.json'))
+  const current = packageManagerVersion(packageJson)
+  const available = await fetchLatest()
+  if (!/^\d+\.\d+\.\d+$/u.test(String(available))) {
+    throw new Error('npm registry returned an invalid latest version.')
+  }
+  return {
+    available: { version: available },
+    current: { version: current },
+    drift: current !== available,
+    skill: unit.skill,
+    unit: unit.id,
+  }
+}
+
+function issueMarker(unit) {
+  return `<!-- dependency-drift:${unit} -->`
+}
+
+export function formatState(state) {
+  if (state.version) return `npm ${state.version}`
+  const parts = [`tag ${state.tag}`, `manifest ${state.manifestDigest}`]
+  if (state.imageId) parts.push(`image ${state.imageId}`)
+  return parts.join('; ')
+}
+
+export function renderIssueBody(detection, detectedAt) {
+  return [
+    issueMarker(detection.unit),
+    '',
+    `- Maintenance unit: \`${detection.unit}\``,
+    `- Current state: \`${formatState(detection.current)}\``,
+    `- Available state: \`${formatState(detection.available)}\``,
+    `- Skill: \`$${detection.skill}\``,
+    `- Detected: \`${detectedAt.toISOString()}\``,
+    '',
+    '## Completion checklist',
+    '',
+    '- [ ] Bring the maintenance unit to the available state.',
+    '- [ ] Preserve compatibility and immutable identity policy.',
+    '- [ ] Run all dynamically relevant verification.',
+    '- [ ] Confirm a successful detector scan reports no drift.',
+    '',
+  ].join('\n')
+}
+
+function issueTitle(unit) {
+  return `Dependency drift: ${unit}`
 }
 
 function run(command, args, options = {}) {
@@ -574,589 +586,286 @@ function run(command, args, options = {}) {
   })
 }
 
-function tryRun(command, args, options = {}) {
-  try {
-    return {
-      ok: true,
-      stdout: run(command, args, options),
-    }
-  } catch (error) {
-    return {
-      error,
-      ok: false,
-      stdout: '',
-    }
-  }
-}
-
-function configureGit() {
-  const token =
-    readNonEmpty(process.env.GH_TOKEN) ?? readNonEmpty(process.env.GITHUB_TOKEN)
-  const repository = readNonEmpty(process.env.GITHUB_REPOSITORY)
-  if (!token) throw new Error('GH_TOKEN or GITHUB_TOKEN must be set.')
-  if (!repository) throw new Error('GITHUB_REPOSITORY must be set.')
-
-  run('git', ['config', 'user.name', 'github-actions[bot]'])
-  run('git', [
-    'config',
-    'user.email',
-    '41898282+github-actions[bot]@users.noreply.github.com',
-  ])
-  run('git', [
-    'remote',
-    'set-url',
-    'origin',
-    `https://x-access-token:${token}@github.com/${repository}.git`,
-  ])
-  run('git', ['fetch', 'origin', MAIN_BRANCH])
-}
-
-function remoteBranchExists(branch) {
-  const result = tryRun('git', [
-    'ls-remote',
-    '--exit-code',
-    '--heads',
-    'origin',
-    branch,
-  ])
-  if (result.ok) return true
-  if (result.error?.status === 2) return false
-  throw result.error
-}
-
-function updateBranchRemoteTrackingRef(branch) {
-  const remoteTrackingRef = `refs/remotes/origin/${branch}`
-  if (!remoteBranchExists(branch)) {
-    run('git', ['update-ref', '-d', remoteTrackingRef])
-    return
-  }
-
-  run('git', ['fetch', 'origin', `+refs/heads/${branch}:${remoteTrackingRef}`])
-}
-
-function gitStatusPorcelain() {
-  return run('git', ['status', '--porcelain']).trim()
-}
-
-function changedFiles() {
-  const output = run('git', ['diff', '--name-only', 'HEAD']).trim()
-  if (!output) return []
-  return output.split(/\r?\n/u).filter(Boolean).sort()
-}
-
-export function checkoutUpdateBranch(branch) {
-  updateBranchRemoteTrackingRef(branch)
-  run('git', ['switch', '--force-create', branch, `origin/${MAIN_BRANCH}`])
-}
-
-function pushUpdateBranch(branch) {
-  run('git', ['push', '--force-with-lease', 'origin', `HEAD:${branch}`], {
-    stdio: 'inherit',
-  })
-}
-
-function deleteRemoteBranch(branch) {
-  tryRun('git', ['push', 'origin', '--delete', branch], {
-    stdio: 'inherit',
-  })
-}
-
-function listOpenAutomationPrs(config) {
-  const output = run('gh', [
-    'pr',
-    'list',
-    '--state',
-    'open',
-    '--json',
-    'number,headRefName,title',
-    '--limit',
-    OPEN_PR_LIST_LIMIT,
-  ])
-  const prefix = `${BRANCH_PREFIX}/${config.name}-`
-  return JSON.parse(output).filter(pr => pr.headRefName?.startsWith(prefix))
-}
-
-export function findOpenPr(branch) {
-  const output = run('gh', [
-    'pr',
-    'list',
-    '--state',
-    'open',
-    '--json',
-    'number,headRefName,title',
-    '--limit',
-    OPEN_PR_LIST_LIMIT,
-  ])
-  return JSON.parse(output).find(pr => pr.headRefName === branch) ?? null
-}
-
-function laneFromBranch(config, branch) {
-  const prefix = `${BRANCH_PREFIX}/${config.name}-`
-  if (!branch.startsWith(prefix)) return null
-  const lane = branch.slice(prefix.length)
-  return readNonEmpty(lane) ?? null
-}
-
-export function stalePrClosure(
-  config,
-  currentVersion,
-  branch,
-  expectedBranches,
-) {
-  if (expectedBranches.has(branch)) return null
-
-  const suffix = laneFromBranch(config, branch)
-  if (!suffix) return null
-
-  const version = config.parseTag(suffix)
-  if (version) {
-    const comparison = compareVersions(config, version, currentVersion)
-    const reason =
-      comparison < 0
-        ? `${config.name} has already advanced past ${version.tag} on main.`
-        : `${config.name} on main already contains this update version, or the upstream tag is no longer selected.`
-    return {
-      reason,
-      summary: `${config.name} ${version.tag}: ${reason}`,
-    }
-  }
-
-  const currentLane = config.laneFromVersion(currentVersion)
-  const comparison = compareLanes(config, suffix, currentLane)
-  const reason =
-    comparison < 0
-      ? `${config.name} has already advanced past ${config.laneDescription(suffix)} on main.`
-      : `${config.name} automation branch ${branch} uses retired lane branch naming or an unsupported version tag.`
-  return {
-    reason,
-    summary: `${config.name} ${suffix}: ${reason}`,
-  }
-}
-
-function closePr(pr, branch, comment) {
-  const result = tryRun(
-    'gh',
-    ['pr', 'close', String(pr.number), '--comment', comment, '--delete-branch'],
-    { stdio: 'inherit' },
+export function listDetectorIssues(runCommand = run) {
+  return JSON.parse(
+    runCommand('gh', [
+      'issue',
+      'list',
+      '--state',
+      'all',
+      '--limit',
+      ISSUE_LIST_LIMIT,
+      '--json',
+      'number,state,title,body',
+    ]),
   )
-  if (!result.ok) {
-    run('gh', ['pr', 'close', String(pr.number), '--comment', comment], {
-      stdio: 'inherit',
+}
+
+function detectionTarget(detection) {
+  return detection.available.version ?? detection.available.tag
+}
+
+function activeDeferral(registry, detection, now) {
+  const today = now.toISOString().slice(0, 10)
+  return (registry.deferrals ?? []).find(
+    deferral =>
+      deferral.unit === detection.unit &&
+      deferral.available === detectionTarget(detection) &&
+      deferral.expiresOn >= today,
+  )
+}
+
+function issuesForUnit(issues, unit) {
+  const marker = issueMarker(unit)
+  return issues
+    .filter(issue => issue.body?.includes(marker))
+    .sort((left, right) => left.number - right.number)
+}
+
+export function planIssueActions(detections, issues, registry, now) {
+  const actions = []
+  for (const detection of detections) {
+    const matching = issuesForUnit(issues, detection.unit)
+    const primary =
+      matching.find(issue => issue.state === 'OPEN') ?? matching[0] ?? null
+    for (const duplicate of matching.filter(issue => issue !== primary)) {
+      if (duplicate.state === 'OPEN') {
+        actions.push({
+          issue: duplicate.number,
+          reason: 'not planned',
+          type: 'close',
+          unit: detection.unit,
+        })
+      }
+    }
+
+    const deferred = activeDeferral(registry, detection, now)
+    if (!detection.drift || deferred) {
+      if (primary?.state === 'OPEN') {
+        actions.push({
+          issue: primary.number,
+          reason: deferred ? 'not planned' : 'completed',
+          type: 'close',
+          unit: detection.unit,
+        })
+      } else {
+        actions.push({ type: 'unchanged', unit: detection.unit })
+      }
+      continue
+    }
+
+    const body = renderIssueBody(detection, now)
+    if (!primary) {
+      actions.push({
+        body,
+        title: issueTitle(detection.unit),
+        type: 'create',
+        unit: detection.unit,
+      })
+      continue
+    }
+    if (primary.state !== 'OPEN') {
+      actions.push({
+        issue: primary.number,
+        type: 'reopen',
+        unit: detection.unit,
+      })
+    }
+    actions.push({
+      body,
+      issue: primary.number,
+      title: issueTitle(detection.unit),
+      type: 'edit',
+      unit: detection.unit,
     })
-    deleteRemoteBranch(branch)
   }
+  return actions
 }
 
-function closeStalePrs(config, currentVersion, expectedBranches, results) {
-  for (const pr of listOpenAutomationPrs(config)) {
-    const closure = stalePrClosure(
-      config,
-      currentVersion,
-      pr.headRefName,
-      expectedBranches,
-    )
-    if (!closure) continue
-
-    closePr(pr, pr.headRefName, closure.reason)
-    results.closed.push(closure.summary)
-  }
-}
-
-export function companionImageReference(config, filePath, candidate, identity) {
-  const taggedRef = `${config.image}:${candidate.version.tag}`
-  if (config.name === 'kong' && filePath.startsWith('.devcontainer/')) {
-    return `${taggedRef}@${identity.manifestDigest}`
-  }
-  return taggedRef
-}
-
-export function updateFiles(config, currentLock, candidate, identity) {
-  const nextLock = {
-    ...currentLock,
-    imageId: identity.imageId,
-    manifestDigest: identity.manifestDigest,
-    tag: candidate.version.tag,
-  }
-  const plannedUpdates = new Map([[config.lockPath, formatJson(nextLock)]])
-
-  for (const filePath of config.dependentLockPaths ?? []) {
-    plannedUpdates.set(
-      filePath,
-      formatJson(updateDependentServiceLock(readJson(filePath), nextLock)),
-    )
-  }
-
-  for (const filePath of config.companionFiles) {
-    plannedUpdates.set(
-      filePath,
-      replaceImageRef(
-        readText(filePath),
-        filePath,
-        config.image,
-        companionImageReference(config, filePath, candidate, identity),
-      ),
-    )
-  }
-
-  for (const [filePath, contents] of plannedUpdates) {
-    fs.writeFileSync(filePath, contents)
-  }
-}
-
-function prTitle(config, candidate, currentLock) {
-  const action =
-    candidate.version.tag === currentLock.tag ? 'refresh' : 'update'
-  return `chore: ${action} ${config.name} container to ${candidate.version.tag}`
-}
-
-export function setTemplateSectionBody(template, heading, body) {
-  let found = false
-  const pattern = new RegExp(
-    `(^|\\r?\\n)(## ${escapeRegExp(heading)}\\r?\\n)[\\s\\S]*?(?=\\r?\\n## |$)`,
-    'u',
+function withBodyFile(body, callback) {
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'dependency-drift-'),
   )
-  const updated = template.replace(
-    pattern,
-    (_match, leadingNewline, prefix) => {
-      found = true
-      const trimmedBody = body.trimEnd()
-      return trimmedBody
-        ? `${leadingNewline}${prefix}\n${trimmedBody}\n`
-        : `${leadingNewline}${prefix}\n`
-    },
-  )
-  if (!found) {
-    throw new Error(`Pull request template is missing section: ${heading}`)
+  const bodyPath = path.join(temporaryDirectory, 'issue.md')
+  try {
+    fs.writeFileSync(bodyPath, body)
+    return callback(bodyPath)
+  } finally {
+    fs.rmSync(temporaryDirectory, { recursive: true })
   }
-  return updated
 }
 
-export function setTemplateChecklistState(template, marker, checked) {
-  const pattern = new RegExp(
-    `^([ \\t]*- \\[)[ xX](\\].*${escapeRegExp(marker)}.*)$`,
-    'mu',
-  )
-  if (!pattern.test(template)) {
-    throw new Error(
-      `Pull request template is missing checklist row marker: ${marker}`,
-    )
-  }
-  return template.replace(
-    pattern,
-    (_match, prefix, suffix) => `${prefix}${checked ? 'x' : ' '}${suffix}`,
-  )
-}
-
-export function templateChecklistRow(template, marker, checked) {
-  const pattern = new RegExp(
-    `^([ \\t]*- \\[)[ xX](\\].*${escapeRegExp(marker)}.*)$`,
-    'mu',
-  )
-  const match = template.match(pattern)
-  if (!match) {
-    throw new Error(
-      `Pull request template is missing checklist row marker: ${marker}`,
-    )
-  }
-  return `${match[1]}${checked ? 'x' : ' '}${match[2]}`
-}
-
-export function renderVendorImagePrTemplate(template, details) {
-  let body = template
-  body = setTemplateSectionBody(body, 'Description', details.description)
-  body = setTemplateSectionBody(
-    body,
-    'Related Issues',
-    details.relatedIssues ?? 'Relates to automated vendor image maintenance.',
-  )
-  body = setTemplateSectionBody(body, 'Reviewer Notes', details.reviewerNotes)
-  body = setTemplateSectionBody(
-    body,
-    'Operator Upgrade Impact',
-    [
-      templateChecklistRow(template, OPERATOR_NO_NOTES_MARKER, true),
-      '',
-      OPERATOR_NOTES_START_MARKER,
-      'No operator notes needed for this vendor image lock update.',
-      OPERATOR_NOTES_END_MARKER,
-    ].join('\n'),
-  )
-  body = setTemplateSectionBody(
-    body,
-    'SSDLC (Secure Software Development Life Cycle) Gate',
-    [
-      templateChecklistRow(template, SSDLC_REQUIREMENTS_MARKER, true),
-      '',
-      'Automated vendor image maintenance was reviewed for security, data protection, threat-model, and security-testing impacts.',
-      'Normal pull request CI validates the generated lock and companion-file changes.',
-    ].join('\n'),
-  )
-  return `${body.trimEnd()}\n`
-}
-
-export function prBody(config, candidate, currentLock, identity, files) {
-  const description = [
-    `### ${config.name} ${candidate.version.tag}`,
-    '',
-    `Updates the ${config.name} vendor image lock from main to ${candidate.version.tag}.`,
-    '',
-    `Lane: \`${config.laneDescription(candidate.lane)}\``,
-    '',
-    '| Field | Previous | Proposed |',
-    '| --- | --- | --- |',
-    `| Tag | \`${currentLock.tag}\` | \`${candidate.version.tag}\` |`,
-    `| Manifest digest | \`${currentLock.manifestDigest}\` | \`${identity.manifestDigest}\` |`,
-    `| Image ID | \`${currentLock.imageId}\` | \`${identity.imageId}\` |`,
-    '',
-    `Branch: \`${candidate.branch}\``,
-    `Platform: \`${PLATFORM.os}/${PLATFORM.architecture}\``,
-  ].join('\n')
-
-  const reviewerNotes = [
-    'Files changed by policy:',
-    '',
-    ...files.map(file => `- \`${file}\``),
-    '',
-    'Normal pull request CI performs validation for this update.',
-  ].join('\n')
-
-  return renderVendorImagePrTemplate(readText(PR_TEMPLATE_PATH), {
-    description,
-    reviewerNotes,
-  })
-}
-
-function writeBodyFile(body) {
-  const filePath = path.join(
-    os.tmpdir(),
-    `vendor-image-update-${process.pid}-${Date.now()}.md`,
-  )
-  fs.writeFileSync(filePath, body)
-  return filePath
-}
-
-function createOrUpdatePr(branch, title, body) {
-  const bodyFile = writeBodyFile(body)
-  const existingPr = findOpenPr(branch)
-  if (existingPr) {
-    run(
-      'gh',
-      [
-        'pr',
-        'edit',
-        String(existingPr.number),
-        '--title',
-        title,
-        '--body-file',
-        bodyFile,
-      ],
-      { stdio: 'inherit' },
-    )
-    return 'updated'
-  }
-
-  run(
+function ensureAutomationLabel(runCommand) {
+  runCommand(
     'gh',
     [
-      'pr',
+      'label',
       'create',
-      '--base',
-      MAIN_BRANCH,
-      '--head',
-      branch,
-      '--title',
-      title,
-      '--body-file',
-      bodyFile,
+      AUTOMATION_LABEL,
+      '--color',
+      '8250df',
+      '--description',
+      'Created and maintained by dependency drift detection',
+      '--force',
     ],
     { stdio: 'inherit' },
   )
-  return 'created'
 }
 
-const PROCESS_CANDIDATE_DEPENDENCIES = {
-  changedFiles,
-  checkoutUpdateBranch,
-  closePr,
-  createOrUpdatePr,
-  deleteRemoteBranch,
-  findOpenPr,
-  gitStatusPorcelain,
-  prBody,
-  prTitle,
-  pushUpdateBranch,
-  resolveImageIdentity,
-  run,
-  updateFiles,
-}
-
-export async function processCandidate(
-  config,
-  currentLock,
-  candidate,
-  results,
-  dependencies,
-) {
-  const deps = {
-    ...PROCESS_CANDIDATE_DEPENDENCIES,
-    ...dependencies,
+export function executeIssueActions(actions, runCommand = run) {
+  const results = {
+    closed: [],
+    created: [],
+    reopened: [],
+    unchanged: [],
+    updated: [],
   }
-  const existingPr = deps.findOpenPr(candidate.branch)
-  if (existingPr) {
-    results.unchanged.push(
-      `${config.name}: ${candidate.version.tag} already has PR #${existingPr.number}`,
-    )
-    return
-  }
-
-  const worktreeStatus = deps.gitStatusPorcelain()
-  if (worktreeStatus) {
-    throw new Error(
-      `Refusing to process ${config.name}:${candidate.version.tag} with a dirty worktree:\n${worktreeStatus}`,
-    )
-  }
-
-  const identity = await deps.resolveImageIdentity(
-    config,
-    candidate.version.tag,
-  )
-
-  deps.checkoutUpdateBranch(candidate.branch)
-  deps.updateFiles(config, currentLock, candidate, identity)
-
-  const files = deps.changedFiles()
-  if (files.length === 0) {
-    const pr = deps.findOpenPr(candidate.branch)
-    if (pr) {
-      deps.closePr(
-        pr,
-        candidate.branch,
-        `${config.name} on main already contains ${candidate.version.tag}.`,
+  for (const action of actions) {
+    if (action.type === 'unchanged') {
+      results.unchanged.push(action.unit)
+    } else if (action.type === 'close') {
+      runCommand(
+        'gh',
+        ['issue', 'close', String(action.issue), '--reason', action.reason],
+        { stdio: 'inherit' },
       )
-      results.closed.push(`${config.name} ${candidate.lane}: already on main`)
-    } else {
-      deps.deleteRemoteBranch(candidate.branch)
-      results.unchanged.push(`${config.name} ${candidate.lane}`)
-    }
-    return
-  }
-
-  deps.run('git', ['add', ...files])
-  deps.run(
-    'git',
-    ['commit', '-m', deps.prTitle(config, candidate, currentLock)],
-    {
-      stdio: 'inherit',
-    },
-  )
-  deps.pushUpdateBranch(candidate.branch)
-
-  const body = deps.prBody(config, candidate, currentLock, identity, files)
-  const action = deps.createOrUpdatePr(
-    candidate.branch,
-    deps.prTitle(config, candidate, currentLock),
-    body,
-  )
-  results[action].push(`${config.name}: ${candidate.version.tag}`)
-}
-
-async function processImage(config, options, results) {
-  const currentLock = readJson(config.lockPath)
-  const tags = await config.listTags()
-  const { candidates, currentVersion } = selectCandidates(
-    config,
-    tags,
-    currentLock,
-    options.includeCurrent,
-  )
-  const expectedBranches = new Set(
-    candidates.map(candidate => candidate.branch),
-  )
-
-  closeStalePrs(config, currentVersion, expectedBranches, results)
-
-  if (candidates.length === 0) {
-    results.unchanged.push(config.name)
-    return
-  }
-
-  for (const candidate of candidates) {
-    await processCandidate(config, currentLock, candidate, results)
-  }
-}
-
-function selectedConfigs(image) {
-  if (image === 'all') return Object.values(IMAGE_CONFIGS)
-  return [IMAGE_CONFIGS[image]]
-}
-
-export async function processImages(
-  configs,
-  options,
-  results,
-  dependencies = {},
-) {
-  const consoleObj = dependencies.consoleObj ?? console
-  const processImageFn = dependencies.processImage ?? processImage
-
-  for (const config of configs) {
-    try {
-      await processImageFn(config, options, results)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      consoleObj.error(`${config.name}: ${message}`)
-      results.failed.push(`${config.name}: ${message}`)
-      break
+      results.closed.push(`${action.unit} (#${action.issue})`)
+    } else if (action.type === 'reopen') {
+      runCommand('gh', ['issue', 'reopen', String(action.issue)], {
+        stdio: 'inherit',
+      })
+      results.reopened.push(`${action.unit} (#${action.issue})`)
+    } else if (action.type === 'create') {
+      withBodyFile(action.body, bodyPath => {
+        runCommand(
+          'gh',
+          [
+            'issue',
+            'create',
+            '--title',
+            action.title,
+            '--body-file',
+            bodyPath,
+            '--label',
+            ISSUE_LABELS.join(','),
+          ],
+          { stdio: 'inherit' },
+        )
+      })
+      results.created.push(action.unit)
+    } else if (action.type === 'edit') {
+      withBodyFile(action.body, bodyPath => {
+        runCommand(
+          'gh',
+          [
+            'issue',
+            'edit',
+            String(action.issue),
+            '--title',
+            action.title,
+            '--body-file',
+            bodyPath,
+            '--add-label',
+            ISSUE_LABELS.join(','),
+          ],
+          { stdio: 'inherit' },
+        )
+      })
+      results.updated.push(`${action.unit} (#${action.issue})`)
     }
   }
+  return results
+}
+
+function selectedUnits(registry, selection) {
+  const issueUnits = registry.units.filter(unit => unit.lane === 'issue')
+  if (selection === 'all') return issueUnits
+  const selected = issueUnits.filter(
+    unit => unit.id === selection || unit.detector === selection,
+  )
+  if (selected.length !== 1) {
+    throw new Error(`Unknown dependency drift unit "${selection}".`)
+  }
+  return selected
+}
+
+export async function detectUnits(units, root, dependencies = {}) {
+  const detections = []
+  for (const unit of units) {
+    detections.push(
+      unit.kind === 'npm-toolchain'
+        ? await (dependencies.detectNpmDrift ?? detectNpmDrift)(
+            unit,
+            root,
+            dependencies,
+          )
+        : await (dependencies.detectImageDrift ?? detectImageDrift)(
+            unit,
+            root,
+            dependencies,
+          ),
+    )
+  }
+  return detections
 }
 
 function appendSummary(results) {
   const summaryPath = readNonEmpty(process.env.GITHUB_STEP_SUMMARY)
   if (!summaryPath) return
-
   const sections = [
-    ['Created PRs', results.created],
-    ['Updated PRs', results.updated],
-    ['Closed PRs', results.closed],
-    ['No Update', results.unchanged],
-    ['Failures', results.failed],
+    ['Created issues', results.created],
+    ['Updated issues', results.updated],
+    ['Reopened issues', results.reopened],
+    ['Closed issues', results.closed],
+    ['No action', results.unchanged],
   ]
-  const lines = ['# Vendor Image Updates', '']
-
+  const lines = ['# Dependency Drift', '']
   for (const [title, values] of sections) {
     lines.push(`## ${title}`, '')
-    if (values.length === 0) {
-      lines.push('- None', '')
-    } else {
-      lines.push(...values.map(value => `- ${value}`), '')
-    }
+    lines.push(
+      ...(values.length ? values.map(value => `- ${value}`) : ['- None']),
+    )
+    lines.push('')
   }
-
   fs.appendFileSync(summaryPath, lines.join('\n'))
 }
 
-export async function main(argv = process.argv.slice(2), env = process.env) {
+export async function main(
+  argv = process.argv.slice(2),
+  env = process.env,
+  dependencies = {},
+) {
+  const root = dependencies.root ?? process.cwd()
   const options = parseArgs(argv, env)
-  const results = {
-    closed: [],
-    created: [],
-    failed: [],
-    unchanged: [],
-    updated: [],
+  const registry = readJson(
+    path.join(root, '.github/dependency-maintenance.json'),
+  )
+  const now = dependencies.now ?? new Date()
+  const validationErrors = (
+    dependencies.validateDependencyMaintenance ?? validateDependencyMaintenance
+  )(root, registry, now, { allowExpiredDeferrals: true })
+  if (validationErrors.length > 0) {
+    throw new Error(
+      `Dependency maintenance registry is invalid:\n${validationErrors.map(error => `- ${error}`).join('\n')}`,
+    )
   }
 
-  configureGit()
-  await processImages(selectedConfigs(options.image), options, results)
+  const units = selectedUnits(registry, options.unit)
+  const detections = await detectUnits(units, root, dependencies)
+  const runCommand = dependencies.run ?? run
 
-  if (gitStatusPorcelain()) {
-    console.error('The vendor image updater left uncommitted changes.')
-    results.failed.push('The updater left uncommitted changes.')
-  }
-
+  // All registry and remote detection work succeeds before any GitHub mutation.
+  ensureAutomationLabel(runCommand)
+  const issues = (dependencies.listDetectorIssues ?? listDetectorIssues)(
+    runCommand,
+  )
+  const actions = planIssueActions(detections, issues, registry, now)
+  const results = (dependencies.executeIssueActions ?? executeIssueActions)(
+    actions,
+    runCommand,
+  )
   appendSummary(results)
-
-  return results.failed.length > 0 ? 1 : 0
+  return 0
 }
 
 const isDirectRun =
@@ -1164,13 +873,8 @@ const isDirectRun =
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 
 if (isDirectRun) {
-  main().then(
-    exitCode => {
-      process.exitCode = exitCode
-    },
-    error => {
-      console.error(error)
-      process.exitCode = 1
-    },
-  )
+  main().catch(error => {
+    console.error(error)
+    process.exitCode = 1
+  })
 }

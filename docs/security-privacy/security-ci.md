@@ -90,7 +90,8 @@ Protection owns the secret-detection surface.
 
 ### Repository workflow steps
 
-1. Checks out the PR and installs dependencies with `npm ci`, using the Node
+1. Checks out the PR, installs the exact npm version declared by root
+   `package.json`, and installs dependencies with `npm ci`, using the Node
    version pinned in [.nvmrc](../../.nvmrc).
 2. Runs `npm audit --audit-level=high`.
 3. Runs Trivy filesystem vulnerability scanning for `HIGH` and `CRITICAL`
@@ -153,8 +154,9 @@ runs if the configured target is not local.
 
 ### What the workflow does
 
-1. Checks out the PR and installs dependencies with `npm ci`, using the
-   Node version pinned in [.nvmrc](../../.nvmrc).
+1. Checks out the PR, installs the exact npm version declared by root
+   `package.json`, and installs dependencies with `npm ci`, using the Node
+   version pinned in [.nvmrc](../../.nvmrc).
 2. Brings up the same disposable stack the integration tests use:
    - SQL Server via `npm run db:up && npm run db:setup`.
    - A local Keycloak realm via `npm run idp:up`, which waits for OIDC

@@ -54,10 +54,11 @@ You can follow their progress in the integrated terminal.
 ### Post-create (runs once when the container is first built)
 
 ```text
-npm install -g npm@latest && npm install && npx playwright install --with-deps
+npm install && npx playwright install --with-deps
 ```
 
-This installs all Node.js dependencies and the Playwright
+The devcontainer feature installs the exact npm version declared by the
+repository before this command installs Node.js dependencies and Playwright
 browser binaries. It can take a few minutes on first creation.
 
 ### Post-start (runs on every container start/restart)

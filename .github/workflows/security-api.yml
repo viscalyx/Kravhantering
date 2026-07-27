@@ -49,6 +49,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install repository npm
+        run: node scripts/install-repository-npm.mjs
+
       - name: Install dependencies
         run: npm ci
 

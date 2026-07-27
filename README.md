@@ -259,6 +259,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor checklist and links
 to the detailed development workflows. The condensed local flow is:
 
 ```bash
+node scripts/install-repository-npm.mjs
 npm install
 docker compose -f docker-compose.sqlserver.yml up -d
 npm run db:setup

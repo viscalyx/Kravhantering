@@ -281,6 +281,7 @@ Install dependencies after the first clone, after changing branches, or
 after `package-lock.json` changes:
 
 ```sh
+node scripts/install-repository-npm.mjs
 npm ci
 ```
 

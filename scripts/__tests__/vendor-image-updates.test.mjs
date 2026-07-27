@@ -3,599 +3,541 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  branchName,
-  companionImageReference,
+  detectImageDrift,
+  detectNpmDrift,
+  detectUnits,
+  executeIssueActions,
+  formatState,
   IMAGE_CONFIGS,
+  listDetectorIssues,
+  main,
   parseArgs,
+  parseKeycloakTag,
   parseKongTag,
-  prBody,
-  processCandidate,
-  processImages,
-  renderVendorImagePrTemplate,
-  selectCandidates,
-  setTemplateChecklistState,
-  setTemplateSectionBody,
-  stalePrClosure,
-  templateChecklistRow,
-  updateDependentServiceLock,
-  updateFiles,
+  parseNginxTag,
+  parseNodeTag,
+  parseSqlServerTag,
+  planIssueActions,
+  readNodeCurrent,
+  renderIssueBody,
+  selectAvailableVersion,
 } from '../../.github/workflows/vendor-image-updates.mjs'
 
-const tempDirs = []
+const temporaryDirectories = []
+const digest = character => `sha256:${character.repeat(64)}`
 
-const KEYCLOAK_LOCK = {
-  imageId:
-    'sha256:0000000000000000000000000000000000000000000000000000000000000000',
-  manifestDigest:
-    'sha256:1111111111111111111111111111111111111111111111111111111111111111',
-  tag: '26.6.3',
+function temporaryDirectory() {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'vendor-image-updates-test-'),
+  )
+  temporaryDirectories.push(directory)
+  return directory
+}
+
+function write(root, relativePath, contents) {
+  const absolutePath = path.join(root, relativePath)
+  fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
+  fs.writeFileSync(absolutePath, contents)
+}
+
+function drift(unit = 'keycloak') {
+  return {
+    available: {
+      imageId: digest('b'),
+      manifestDigest: digest('c'),
+      tag: '26.8.0',
+    },
+    current: {
+      imageId: digest('d'),
+      manifestDigest: digest('e'),
+      tag: '26.7.0',
+    },
+    drift: true,
+    skill: 'resolve-dependency-drift',
+    unit,
+  }
 }
 
 afterEach(() => {
-  for (const dir of tempDirs.splice(0)) {
-    fs.rmSync(dir, { force: true, recursive: true })
+  for (const directory of temporaryDirectories.splice(0)) {
+    fs.rmSync(directory, { recursive: true })
   }
+  vi.restoreAllMocks()
 })
 
-describe('vendor image updater policy', () => {
-  it('covers SQL Server release and developer companion refs', () => {
-    expect(IMAGE_CONFIGS.sqlserver.companionFiles).toContain(
-      'docker-compose.sqlserver.yml',
-    )
-    expect(IMAGE_CONFIGS.sqlserver.companionFiles).toContain(
-      '.devcontainer/docker-compose.yml',
-    )
-    expect(IMAGE_CONFIGS.sqlserver.companionFiles).toContain(
-      '.devcontainer/elevated/docker-compose.yml',
-    )
-    expect(IMAGE_CONFIGS.sqlserver.companionFiles).toContain(
-      'containers/production/env/release.env.template',
-    )
+describe('dependency drift selection', () => {
+  it('parses workflow input', () => {
+    expect(parseArgs([], {})).toEqual({ unit: 'all' })
+    expect(parseArgs([], { DEPENDENCY_DRIFT_UNIT: 'npm' })).toEqual({
+      unit: 'npm',
+    })
+    expect(parseArgs(['--unit', 'node'], {})).toEqual({ unit: 'node' })
+    expect(() => parseArgs(['--unit'], {})).toThrow('Missing value')
+    expect(() => parseArgs(['--unknown'], {})).toThrow('Unexpected argument')
   })
 
-  it('tracks every checked-in Keycloak image reference', () => {
-    expect(IMAGE_CONFIGS.keycloak.companionFiles).toEqual([
-      'docker-compose.idp.yml',
-      '.devcontainer/docker-compose.yml',
-      '.devcontainer/elevated/docker-compose.yml',
-      'containers/production/env/release.env.template',
-      'docs/development/auth-developer-workflow.md',
-      'scripts/__tests__/container-release.test.mjs',
-    ])
-    expect(
-      IMAGE_CONFIGS.keycloak.companionFiles.every(filePath =>
-        fs.existsSync(filePath),
-      ),
-    ).toBe(true)
-  })
-
-  it('supports the Kong Gateway 3.x lane', () => {
-    const parsed = parseKongTag('3.10.0.8-20260210-ubuntu')
-
-    expect(parsed).toMatchObject({
-      buildDate: 20260210,
-      major: 3,
-      minor: 10,
-      patch: 0,
-      revision: 8,
-      tag: '3.10.0.8-20260210-ubuntu',
-    })
-    expect(parseKongTag('3.10')).toBeNull()
-    expect(IMAGE_CONFIGS.kong).toMatchObject({
-      image: 'docker.io/kong/kong-gateway',
-      lockPath: 'containers/kong/image.lock.json',
-      name: 'kong',
-      registryRepository: 'kong/kong-gateway',
-    })
-    expect(IMAGE_CONFIGS.kong.laneFromVersion(parsed)).toBe('3')
-    expect(IMAGE_CONFIGS.kong.companionFiles).toContain(
-      '.devcontainer/docker-compose.yml',
-    )
-    expect(IMAGE_CONFIGS.kong.companionFiles).toContain(
-      'containers/production/env/release.env.template',
-    )
-    expect(IMAGE_CONFIGS.kong.companionFiles).toContain(
-      'scripts/__tests__/container-release.test.mjs',
-    )
-    expect(IMAGE_CONFIGS.kong.dependentLockPaths).toContain(
-      'container-hsa-integration-support.lock.json',
-    )
-    expect(parseArgs(['--image', 'kong'], {})).toMatchObject({
-      image: 'kong',
+  it('parses supported image lanes', () => {
+    expect(parseNodeTag('24-bookworm-slim')).toMatchObject({ major: 24 })
+    expect(parseNodeTag('25-bookworm-slim')).toBeNull()
+    expect(parseNginxTag('1.29.4-alpine')).toMatchObject({ minor: 29 })
+    expect(parseSqlServerTag('2025-CU6-ubuntu-24.04')).toMatchObject({ cu: 6 })
+    expect(parseKeycloakTag('26.7.0-1')).toMatchObject({ revision: 1 })
+    expect(parseKongTag('3.15.0.1-20260708-ubuntu')).toMatchObject({
+      buildDate: 20260708,
+      revision: 1,
     })
   })
 
-  it('keeps Kong devcontainer refs digest-pinned but release env refs tag-only', () => {
-    const candidate = {
-      version: {
-        tag: '3.11.1.0-20260601-ubuntu',
-      },
-    }
-    const identity = {
-      manifestDigest: 'sha256:kong-manifest',
-    }
-
-    expect(
-      companionImageReference(
-        IMAGE_CONFIGS.kong,
-        '.devcontainer/docker-compose.yml',
-        candidate,
-        identity,
-      ),
-    ).toBe(
-      'docker.io/kong/kong-gateway:3.11.1.0-20260601-ubuntu@sha256:kong-manifest',
-    )
-    expect(
-      companionImageReference(
-        IMAGE_CONFIGS.kong,
-        'containers/production/env/release.env.template',
-        candidate,
-        identity,
-      ),
-    ).toBe('docker.io/kong/kong-gateway:3.11.1.0-20260601-ubuntu')
-  })
-
-  it('uses exact image versions in automation branches', () => {
-    const config = IMAGE_CONFIGS.keycloak
-    const version = config.parseTag('26.6.4-1')
-
-    expect(branchName(config, version)).toBe(
-      'automation/vendor-image/keycloak-26.6.4-1',
-    )
-  })
-
-  it('selects the latest tag per lane with an exact-version branch', () => {
-    const { candidates, currentLane, currentVersion } = selectCandidates(
+  it('selects the newest supported current-or-newer version', () => {
+    const selected = selectAvailableVersion(
       IMAGE_CONFIGS.keycloak,
-      ['25.0.6', '26.6.3', '26.6.4-1', '26.7.0', '27.0.0', '27.0.1'],
-      KEYCLOAK_LOCK,
-      false,
+      ['25.0.0', '26.7.1', '27.0.0', 'latest'],
+      '26.7.0',
+    )
+    expect(selected.tag).toBe('27.0.0')
+    expect(
+      selectAvailableVersion(
+        IMAGE_CONFIGS.keycloak,
+        ['26.7.1', '27.0.0'],
+        '26.7.0',
+        { sameLaneOnly: true },
+      ).tag,
+    ).toBe('26.7.1')
+  })
+
+  it('keeps the current version when no newer supported tag exists', () => {
+    expect(
+      selectAvailableVersion(
+        IMAGE_CONFIGS.nginx,
+        ['1.28.0-alpine', 'mainline'],
+        '1.29.4-alpine',
+      ).tag,
+    ).toBe('1.29.4-alpine')
+  })
+})
+
+describe('drift detection', () => {
+  it('requires every production Node Dockerfile to use one identity', () => {
+    const root = temporaryDirectory()
+    for (const dockerfilePath of IMAGE_CONFIGS.node.paths) {
+      write(
+        root,
+        dockerfilePath,
+        `FROM node:24-bookworm-slim@${digest('a')} AS runtime\n`,
+      )
+    }
+
+    expect(readNodeCurrent(IMAGE_CONFIGS.node, root)).toEqual({
+      imageId: null,
+      manifestDigest: digest('a'),
+      tag: '24-bookworm-slim',
+    })
+
+    write(
+      root,
+      IMAGE_CONFIGS.node.paths[2],
+      `FROM node:24-bookworm-slim@${digest('b')} AS runtime\n`,
+    )
+    expect(() => readNodeCurrent(IMAGE_CONFIGS.node, root)).toThrow(
+      'not aligned',
+    )
+  })
+
+  it('detects a same-tag manifest refresh for production Node', async () => {
+    const root = temporaryDirectory()
+    for (const dockerfilePath of IMAGE_CONFIGS.node.paths) {
+      write(
+        root,
+        dockerfilePath,
+        `FROM node:24-bookworm-slim@${digest('a')} AS runtime\n`,
+      )
+    }
+    const result = await detectImageDrift(
+      {
+        detector: 'node',
+        id: 'production-node',
+        skill: 'resolve-dependency-drift',
+      },
+      root,
+      {
+        listTags: async () => ['24-bookworm-slim'],
+        resolveImageIdentity: async () => ({
+          imageId: digest('c'),
+          manifestDigest: digest('b'),
+        }),
+      },
     )
 
-    expect(currentLane).toBe('26')
-    expect(currentVersion.tag).toBe('26.6.3')
-    expect(
-      candidates.map(candidate => ({
-        branch: candidate.branch,
-        lane: candidate.lane,
-        tag: candidate.version.tag,
-      })),
-    ).toEqual([
-      {
-        branch: 'automation/vendor-image/keycloak-26.7.0',
-        lane: '26',
+    expect(result.drift).toBe(true)
+    expect(result.available.manifestDigest).toBe(digest('b'))
+  })
+
+  it('reports same-lane image maintenance before a newer major', async () => {
+    const root = temporaryDirectory()
+    write(
+      root,
+      IMAGE_CONFIGS.keycloak.lockPath,
+      JSON.stringify({
+        image: IMAGE_CONFIGS.keycloak.image,
+        imageId: digest('a'),
+        manifestDigest: digest('b'),
         tag: '26.7.0',
-      },
+      }),
+    )
+    const resolveIdentity = vi.fn(async (_config, tag) => ({
+      imageId: tag === '26.7.0' ? digest('a') : digest('c'),
+      manifestDigest: tag === '26.7.0' ? digest('b') : digest('d'),
+    }))
+
+    const result = await detectImageDrift(
       {
-        branch: 'automation/vendor-image/keycloak-27.0.1',
-        lane: '27',
-        tag: '27.0.1',
+        detector: 'keycloak',
+        id: 'keycloak',
+        skill: 'resolve-dependency-drift',
       },
-    ])
-  })
-
-  it('uses an exact-version branch when refreshing the current tag', () => {
-    const { candidates } = selectCandidates(
-      IMAGE_CONFIGS.keycloak,
-      ['26.6.3'],
-      KEYCLOAK_LOCK,
-      true,
-    )
-
-    expect(candidates).toHaveLength(1)
-    expect(candidates[0]).toMatchObject({
-      branch: 'automation/vendor-image/keycloak-26.6.3',
-      lane: '26',
-      version: { tag: '26.6.3' },
-    })
-  })
-
-  it('keeps the selected exact-version branch out of stale cleanup', () => {
-    const currentVersion = IMAGE_CONFIGS.keycloak.parseTag('26.6.3')
-    const expectedBranches = new Set([
-      'automation/vendor-image/keycloak-26.7.0',
-    ])
-
-    expect(
-      stalePrClosure(
-        IMAGE_CONFIGS.keycloak,
-        currentVersion,
-        'automation/vendor-image/keycloak-26.7.0',
-        expectedBranches,
-      ),
-    ).toBeNull()
-  })
-
-  it('closes superseded exact-version and retired lane branches', () => {
-    const currentVersion = IMAGE_CONFIGS.keycloak.parseTag('26.6.3')
-    const expectedBranches = new Set([
-      'automation/vendor-image/keycloak-26.7.0',
-    ])
-
-    expect(
-      stalePrClosure(
-        IMAGE_CONFIGS.keycloak,
-        currentVersion,
-        'automation/vendor-image/keycloak-26.6.4-1',
-        expectedBranches,
-      ),
-    ).toMatchObject({
-      summary:
-        'keycloak 26.6.4-1: keycloak on main already contains this update version, or the upstream tag is no longer selected.',
-    })
-
-    expect(
-      stalePrClosure(
-        IMAGE_CONFIGS.keycloak,
-        currentVersion,
-        'automation/vendor-image/keycloak-26',
-        expectedBranches,
-      ),
-    ).toMatchObject({
-      reason:
-        'keycloak automation branch automation/vendor-image/keycloak-26 uses retired lane branch naming or an unsupported version tag.',
-    })
-  })
-
-  it('closes exact-version branches that main has advanced past', () => {
-    const currentVersion = IMAGE_CONFIGS.keycloak.parseTag('27.0.0')
-
-    expect(
-      stalePrClosure(
-        IMAGE_CONFIGS.keycloak,
-        currentVersion,
-        'automation/vendor-image/keycloak-26.7.0',
-        new Set(),
-      ),
-    ).toMatchObject({
-      reason: 'keycloak has already advanced past 26.7.0 on main.',
-    })
-  })
-
-  it('updates dependent service locks from the primary vendor lock', () => {
-    const lock = {
-      schemaVersion: 1,
-      services: [
-        {
-          image: 'docker.io/kong/kong-gateway',
-          imageId: 'sha256:old-image',
-          manifestDigest: 'sha256:old-manifest',
-          name: 'kong',
-          role: 'api-management',
-          source: 'https://hub.docker.com/r/kong/kong-gateway',
-          tag: '3.10.0.8-20260210-ubuntu',
-        },
-        {
-          image: 'ghcr.io/viscalyx/kravhantering-hsa-person-lookup-adapter',
-          imageId: 'sha256:adapter-image',
-          manifestDigest: 'sha256:adapter-manifest',
-          name: 'hsa-person-lookup-adapter',
-          role: 'hsa-person-lookup-adapter',
-          source: 'ghcr-release',
-          tag: '1.2.3',
-        },
-      ],
-    }
-
-    const updated = updateDependentServiceLock(lock, {
-      image: 'docker.io/kong/kong-gateway',
-      imageId: 'sha256:new-image',
-      manifestDigest: 'sha256:new-manifest',
-      name: 'kong',
-      role: 'api-management',
-      source: 'https://hub.docker.com/r/kong/kong-gateway',
-      tag: '3.15.0.0-20260702-ubuntu',
-    })
-
-    expect(updated.services).toEqual([
+      root,
       {
-        image: 'docker.io/kong/kong-gateway',
-        imageId: 'sha256:new-image',
-        manifestDigest: 'sha256:new-manifest',
-        name: 'kong',
-        role: 'api-management',
-        source: 'https://hub.docker.com/r/kong/kong-gateway',
-        tag: '3.15.0.0-20260702-ubuntu',
+        listTags: async () => ['26.7.0', '26.7.1', '27.0.0'],
+        resolveImageIdentity: resolveIdentity,
       },
-      lock.services[1],
-    ])
+    )
+
+    expect(result.available.tag).toBe('26.7.1')
+    expect(resolveIdentity).toHaveBeenCalledTimes(1)
   })
 
-  it('does not write partial image updates when companion validation fails', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vendor-image-update-'))
-    tempDirs.push(dir)
-    const lockPath = path.join(dir, 'image.lock.json')
-    const validCompanionPath = path.join(dir, 'docker-compose.yml')
-    const missingCompanionPath = path.join(dir, 'missing-devfile.yaml')
-    const currentLock = {
-      ...KEYCLOAK_LOCK,
-      image: IMAGE_CONFIGS.keycloak.image,
-      name: 'keycloak',
-      role: 'identity-provider',
-      source: 'https://quay.io/repository/keycloak/keycloak',
-    }
-    const originalLock = `${JSON.stringify(currentLock, null, 2)}\n`
-    const originalCompanion = `image: ${IMAGE_CONFIGS.keycloak.image}:${currentLock.tag}\n`
-    fs.writeFileSync(lockPath, originalLock)
-    fs.writeFileSync(validCompanionPath, originalCompanion)
-
-    expect(() =>
-      updateFiles(
-        {
-          ...IMAGE_CONFIGS.keycloak,
-          companionFiles: [validCompanionPath, missingCompanionPath],
-          dependentLockPaths: [],
-          lockPath,
-        },
-        currentLock,
-        { version: { tag: '26.7.0-0' } },
-        {
-          imageId: 'sha256:new-image',
-          manifestDigest: 'sha256:new-manifest',
-        },
-      ),
-    ).toThrow(/missing-devfile\.yaml/u)
-
-    expect(fs.readFileSync(lockPath, 'utf8')).toBe(originalLock)
-    expect(fs.readFileSync(validCompanionPath, 'utf8')).toBe(originalCompanion)
-  })
-
-  it('checks template checklist rows by marker while preserving row text', () => {
-    const template = [
-      '- [ ] Future operator wording. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-      '- [ ] Future SSDLC wording. <!-- DO NOT REMOVE: ssdlc:requirements -->',
-    ].join('\n')
-
-    expect(
-      setTemplateChecklistState(template, 'operator-upgrade:no-notes', true),
-    ).toContain(
-      '- [x] Future operator wording. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
+  it('reports a current-lane digest refresh before a newer major', async () => {
+    const root = temporaryDirectory()
+    write(
+      root,
+      IMAGE_CONFIGS.keycloak.lockPath,
+      JSON.stringify({
+        image: IMAGE_CONFIGS.keycloak.image,
+        imageId: digest('a'),
+        manifestDigest: digest('b'),
+        tag: '26.7.0',
+      }),
     )
-    expect(
-      setTemplateChecklistState(template, 'ssdlc:requirements', false),
-    ).toContain(
-      '- [ ] Future SSDLC wording. <!-- DO NOT REMOVE: ssdlc:requirements -->',
-    )
-    expect(
-      templateChecklistRow(template, 'operator-upgrade:no-notes', true),
-    ).toBe(
-      '- [x] Future operator wording. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-    )
-  })
+    const resolveIdentity = vi.fn(async (_config, tag) => ({
+      imageId: tag === '26.7.0' ? digest('a') : digest('c'),
+      manifestDigest: tag === '26.7.0' ? digest('c') : digest('d'),
+    }))
 
-  it('sets template section bodies without requiring optional comments', () => {
-    const template = [
-      '## Description',
-      '',
-      '## Related Issues',
-      '',
-      '## Reviewer Notes',
-      '',
-      '## Operator Upgrade Impact',
-      '',
-      '- [ ] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->',
-      '',
-      '<!-- DO NOT REMOVE: operator-upgrade:notes start -->',
-      'Write operator upgrade notes here...',
-      '<!-- DO NOT REMOVE: operator-upgrade:notes end -->',
-      '',
-      '## SSDLC (Secure Software Development Life Cycle) Gate',
-      '',
-      '- [ ] SSDLC row. <!-- DO NOT REMOVE: ssdlc:requirements -->',
-    ].join('\n')
-
-    expect(
-      setTemplateSectionBody(template, 'Reviewer Notes', 'Generated notes'),
-    ).toContain(`## Reviewer Notes\n\nGenerated notes`)
-
-    const body = renderVendorImagePrTemplate(template, {
-      description: 'Generated description',
-      reviewerNotes: 'Generated notes',
-    })
-
-    expect(body).toContain('Generated description')
-    expect(body).toContain('Generated notes')
-    expect(body).toContain('Relates to automated vendor image maintenance.')
-    expect(body).toContain(
-      'No operator notes needed for this vendor image lock update.',
-    )
-    expect(body).toContain(
-      'Automated vendor image maintenance was reviewed for security, data protection, threat-model, and security-testing impacts.',
-    )
-    expect(body).toMatch(
-      /^- \[x\].*<!-- DO NOT REMOVE: operator-upgrade:no-notes -->$/mu,
-    )
-    expect(body).toMatch(
-      /^- \[x\].*<!-- DO NOT REMOVE: ssdlc:requirements -->$/mu,
-    )
-  })
-
-  it('renders vendor image PRs through the repository pull request template', () => {
-    const body = prBody(
-      IMAGE_CONFIGS.kong,
+    const result = await detectImageDrift(
       {
-        branch: 'automation/vendor-image/kong-3.15.0.0-20260702-ubuntu',
-        lane: '3',
-        version: {
-          tag: '3.15.0.0-20260702-ubuntu',
-        },
+        detector: 'keycloak',
+        id: 'keycloak',
+        skill: 'resolve-dependency-drift',
       },
+      root,
       {
-        imageId: 'sha256:old-image',
-        manifestDigest: 'sha256:old-manifest',
-        tag: '3.10.0.8-20260210-ubuntu',
+        listTags: async () => ['26.7.0', '27.0.0'],
+        resolveImageIdentity: resolveIdentity,
       },
-      {
-        imageId: 'sha256:new-image',
-        manifestDigest: 'sha256:new-manifest',
-      },
-      ['containers/kong/image.lock.json'],
     )
 
-    expect(body).toContain('## Description')
-    expect(body).toContain('## Operator Upgrade Impact')
-    expect(body).toContain(
-      '## SSDLC (Secure Software Development Life Cycle) Gate',
-    )
-    expect(body).toContain('### kong 3.15.0.0-20260702-ubuntu')
-    expect(body).toContain('Lane: `Kong Gateway 3.x`')
-    expect(body).not.toContain('| Lane |')
-    expect(body).toContain(
-      '| `3.10.0.8-20260210-ubuntu` | `3.15.0.0-20260702-ubuntu` |',
-    )
-    expect(body).not.toContain(
-      '<!-- Fixes #123, Closes #123, or Relates to #123 -->',
-    )
-    expect(body).not.toContain(
-      '<!-- Optional: screenshots, test notes, rollout notes, or review context. -->',
-    )
-    expect(body).not.toContain('<!-- Optional: what changed and why? -->')
-    expect(body).not.toContain('Complete this section for every PR.')
-    expect(body).not.toContain('Write operator upgrade notes here...')
-    expect(body).not.toContain('request a security review')
-    expect(body).toContain('Relates to automated vendor image maintenance.')
-    expect(body).toContain(
-      'No operator notes needed for this vendor image lock update.',
-    )
-    expect(body).toContain(
-      'Automated vendor image maintenance was reviewed for security, data protection, threat-model, and security-testing impacts.',
-    )
-    expect(body).toMatch(
-      /^- \[x\].*<!-- DO NOT REMOVE: operator-upgrade:no-notes -->$/mu,
-    )
-    expect(body).toMatch(
-      /^- \[x\].*<!-- DO NOT REMOVE: ssdlc:requirements -->$/mu,
-    )
+    expect(result.available.tag).toBe('26.7.0')
+    expect(result.available.manifestDigest).toBe(digest('c'))
+    expect(resolveIdentity).toHaveBeenCalledTimes(1)
   })
 
-  it('stops processing images after the first image failure', async () => {
-    const results = {
-      closed: [],
-      created: [],
-      failed: [],
-      unchanged: [],
-      updated: [],
-    }
-    const consoleObj = { error: vi.fn() }
-    const processImage = vi.fn(config => {
-      if (config.name === 'keycloak') {
-        throw new Error(
-          "ENOENT: no such file or directory, open 'devfile.example.yaml'",
-        )
-      }
-      results.created.push(config.name)
-    })
+  it('reports a newer major after confirming the current lane is unchanged', async () => {
+    const root = temporaryDirectory()
+    write(
+      root,
+      IMAGE_CONFIGS.keycloak.lockPath,
+      JSON.stringify({
+        image: IMAGE_CONFIGS.keycloak.image,
+        imageId: digest('a'),
+        manifestDigest: digest('b'),
+        tag: '26.7.0',
+      }),
+    )
+    const resolveIdentity = vi.fn(async (_config, tag) => ({
+      imageId: tag === '26.7.0' ? digest('a') : digest('c'),
+      manifestDigest: tag === '26.7.0' ? digest('b') : digest('d'),
+    }))
 
-    await processImages(
-      [IMAGE_CONFIGS.keycloak, IMAGE_CONFIGS.kong],
-      { includeCurrent: false },
-      results,
-      { consoleObj, processImage },
+    const result = await detectImageDrift(
+      {
+        detector: 'keycloak',
+        id: 'keycloak',
+        skill: 'resolve-dependency-drift',
+      },
+      root,
+      {
+        listTags: async () => ['26.7.0', '27.0.0'],
+        resolveImageIdentity: resolveIdentity,
+      },
     )
 
-    expect(processImage).toHaveBeenCalledTimes(1)
-    expect(processImage).toHaveBeenCalledWith(
-      IMAGE_CONFIGS.keycloak,
-      { includeCurrent: false },
-      results,
-    )
-    expect(results.created).toEqual([])
-    expect(results.failed).toEqual([
-      "keycloak: ENOENT: no such file or directory, open 'devfile.example.yaml'",
-    ])
-    expect(consoleObj.error).toHaveBeenCalledWith(results.failed[0])
+    expect(result.available.tag).toBe('27.0.0')
+    expect(result.drift).toBe(true)
+    expect(resolveIdentity).toHaveBeenCalledTimes(2)
   })
 
-  it('refuses to start a candidate update with a dirty worktree', async () => {
-    const candidate = {
-      branch: 'automation/vendor-image/keycloak-26.7.0-0',
-      lane: '26',
-      version: { tag: '26.7.0-0' },
-    }
-    const resolveImageIdentity = vi.fn()
-    const checkoutUpdateBranch = vi.fn()
+  it('detects npm drift from the canonical root manifest', async () => {
+    const root = temporaryDirectory()
+    write(
+      root,
+      'package.json',
+      JSON.stringify({ packageManager: 'npm@12.0.1' }),
+    )
 
     await expect(
-      processCandidate(
-        IMAGE_CONFIGS.keycloak,
-        KEYCLOAK_LOCK,
-        candidate,
+      detectNpmDrift(
         {
-          closed: [],
-          created: [],
-          failed: [],
-          unchanged: [],
-          updated: [],
+          id: 'npm-toolchain',
+          skill: 'resolve-dependency-drift',
         },
-        {
-          checkoutUpdateBranch,
-          findOpenPr: vi.fn(() => null),
-          gitStatusPorcelain: vi.fn(
-            () => ' M containers/keycloak/image.lock.json',
-          ),
-          resolveImageIdentity,
-        },
+        root,
+        { fetchLatest: async () => '12.1.0' },
       ),
-    ).rejects.toThrow(/dirty worktree/u)
-
-    expect(resolveImageIdentity).not.toHaveBeenCalled()
-    expect(checkoutUpdateBranch).not.toHaveBeenCalled()
+    ).resolves.toMatchObject({
+      available: { version: '12.1.0' },
+      current: { version: '12.0.1' },
+      drift: true,
+    })
   })
 
-  it('skips an existing candidate PR before checkout or push', async () => {
-    const candidate = {
-      branch: 'automation/vendor-image/keycloak-26.7.0',
-      lane: '26',
-      version: {
-        tag: '26.7.0',
-      },
-    }
-    const results = {
-      closed: [],
-      created: [],
-      failed: [],
-      unchanged: [],
-      updated: [],
-    }
-    const findOpenPr = vi.fn(() => ({
-      headRefName: candidate.branch,
-      number: 42,
-      title: 'chore: update keycloak container to 26.7.0',
-    }))
-    const resolveImageIdentity = vi.fn(() => {
-      throw new Error('resolveImageIdentity should not run')
+  it('stops detection before later units after a failure', async () => {
+    const detectImage = vi.fn()
+    const detectNpm = vi.fn(async () => {
+      throw new Error('registry unavailable')
     })
-    const checkoutUpdateBranch = vi.fn(() => {
-      throw new Error('checkoutUpdateBranch should not run')
-    })
-    const pushUpdateBranch = vi.fn(() => {
-      throw new Error('pushUpdateBranch should not run')
-    })
-    const createOrUpdatePr = vi.fn(() => {
-      throw new Error('createOrUpdatePr should not run')
-    })
+    await expect(
+      detectUnits(
+        [{ kind: 'npm-toolchain' }, { kind: 'image-lock' }],
+        '/workspace',
+        {
+          detectImageDrift: detectImage,
+          detectNpmDrift: detectNpm,
+        },
+      ),
+    ).rejects.toThrow('registry unavailable')
+    expect(detectImage).not.toHaveBeenCalled()
+  })
+})
 
-    await processCandidate(
-      IMAGE_CONFIGS.keycloak,
-      KEYCLOAK_LOCK,
-      candidate,
-      results,
-      {
-        checkoutUpdateBranch,
-        createOrUpdatePr,
-        findOpenPr,
-        pushUpdateBranch,
-        resolveImageIdentity,
-      },
+describe('issue contract', () => {
+  const now = new Date('2026-07-27T12:34:56.000Z')
+  const registry = { deferrals: [] }
+
+  it('renders outcome-focused detector fields', () => {
+    const body = renderIssueBody(drift(), now)
+    expect(body).toContain('<!-- dependency-drift:keycloak -->')
+    expect(body).toContain('Maintenance unit: `keycloak`')
+    expect(body).toContain('Skill: `$resolve-dependency-drift`')
+    expect(body).toContain('Detected: `2026-07-27T12:34:56.000Z`')
+    expect(body).toContain('## Completion checklist')
+  })
+
+  it('formats npm and immutable image state', () => {
+    expect(formatState({ version: '12.0.1' })).toBe('npm 12.0.1')
+    expect(
+      formatState({
+        imageId: digest('a'),
+        manifestDigest: digest('b'),
+        tag: '1.2.3',
+      }),
+    ).toContain(`image ${digest('a')}`)
+  })
+
+  it('creates one issue when no marker exists', () => {
+    expect(planIssueActions([drift()], [], registry, now)).toEqual([
+      expect.objectContaining({
+        title: 'Dependency drift: keycloak',
+        type: 'create',
+        unit: 'keycloak',
+      }),
+    ])
+  })
+
+  it('refreshes an open issue identified by its marker', () => {
+    const actions = planIssueActions(
+      [drift()],
+      [
+        {
+          body: '<!-- dependency-drift:keycloak -->',
+          number: 42,
+          state: 'OPEN',
+          title: 'renamed manually',
+        },
+      ],
+      registry,
+      now,
     )
+    expect(actions).toEqual([
+      expect.objectContaining({ issue: 42, type: 'edit' }),
+    ])
+  })
 
-    expect(findOpenPr).toHaveBeenCalledWith(candidate.branch)
-    expect(results.unchanged).toEqual(['keycloak: 26.7.0 already has PR #42'])
-    expect(results.created).toEqual([])
-    expect(results.updated).toEqual([])
-    expect(resolveImageIdentity).not.toHaveBeenCalled()
-    expect(checkoutUpdateBranch).not.toHaveBeenCalled()
-    expect(pushUpdateBranch).not.toHaveBeenCalled()
-    expect(createOrUpdatePr).not.toHaveBeenCalled()
+  it('reopens a manually closed issue while drift remains', () => {
+    const actions = planIssueActions(
+      [drift()],
+      [
+        {
+          body: '<!-- dependency-drift:keycloak -->',
+          number: 42,
+          state: 'CLOSED',
+        },
+      ],
+      registry,
+      now,
+    )
+    expect(actions.map(action => action.type)).toEqual(['reopen', 'edit'])
+  })
+
+  it('closes resolved drift and active reviewed deferrals', () => {
+    const issue = {
+      body: '<!-- dependency-drift:keycloak -->',
+      number: 42,
+      state: 'OPEN',
+    }
+    expect(
+      planIssueActions([{ ...drift(), drift: false }], [issue], registry, now),
+    ).toEqual([expect.objectContaining({ reason: 'completed', type: 'close' })])
+    expect(
+      planIssueActions(
+        [drift()],
+        [issue],
+        {
+          deferrals: [
+            {
+              available: '26.8.0',
+              expiresOn: '2026-07-28',
+              rationale: 'Reviewed compatibility hold.',
+              unit: 'keycloak',
+            },
+          ],
+        },
+        now,
+      ),
+    ).toEqual([
+      expect.objectContaining({ reason: 'not planned', type: 'close' }),
+    ])
+  })
+
+  it('does not let a major deferral suppress same-lane drift', () => {
+    expect(
+      planIssueActions(
+        [drift()],
+        [],
+        {
+          deferrals: [
+            {
+              available: '27.0.0',
+              expiresOn: '2026-07-28',
+              rationale: 'Reviewed major compatibility hold.',
+              unit: 'keycloak',
+            },
+          ],
+        },
+        now,
+      ),
+    ).toEqual([expect.objectContaining({ type: 'create', unit: 'keycloak' })])
+  })
+
+  it('resumes issue creation after a deferral expires', () => {
+    expect(
+      planIssueActions(
+        [drift()],
+        [],
+        {
+          deferrals: [
+            {
+              available: '26.8.0',
+              expiresOn: '2026-07-26',
+              rationale: 'Reviewed compatibility hold.',
+              unit: 'keycloak',
+            },
+          ],
+        },
+        now,
+      ),
+    ).toEqual([expect.objectContaining({ type: 'create', unit: 'keycloak' })])
+  })
+
+  it('closes duplicate open markers and keeps one authoritative issue', () => {
+    const actions = planIssueActions(
+      [drift()],
+      [
+        {
+          body: '<!-- dependency-drift:keycloak -->',
+          number: 4,
+          state: 'OPEN',
+        },
+        {
+          body: '<!-- dependency-drift:keycloak -->',
+          number: 8,
+          state: 'OPEN',
+        },
+      ],
+      registry,
+      now,
+    )
+    expect(actions).toEqual([
+      expect.objectContaining({ issue: 8, type: 'close' }),
+      expect.objectContaining({ issue: 4, type: 'edit' }),
+    ])
+  })
+
+  it('lists every issue so the hidden marker remains authoritative', () => {
+    const run = vi.fn(() => '[{"number":1}]')
+    expect(listDetectorIssues(run)).toEqual([{ number: 1 }])
+    expect(run).toHaveBeenCalledWith(
+      'gh',
+      expect.arrayContaining(['--state', 'all']),
+    )
+    expect(run.mock.calls[0][1]).not.toContain('--label')
+  })
+
+  it('executes issue edits with all required labels', () => {
+    const calls = []
+    const run = vi.fn((_command, args) => {
+      calls.push(args)
+      const bodyFileIndex = args.indexOf('--body-file')
+      if (bodyFileIndex !== -1) {
+        expect(fs.readFileSync(args[bodyFileIndex + 1], 'utf8')).toBe('body')
+      }
+      return ''
+    })
+    const results = executeIssueActions(
+      [
+        {
+          body: 'body',
+          title: 'Dependency drift: npm-toolchain',
+          type: 'create',
+          unit: 'npm-toolchain',
+        },
+      ],
+      run,
+    )
+    expect(results.created).toEqual(['npm-toolchain'])
+    expect(calls[0]).toEqual(
+      expect.arrayContaining([
+        '--label',
+        'automation:dependency-drift,dependencies,ready-for-agent',
+      ]),
+    )
+  })
+
+  it('does not mutate GitHub when remote detection fails', async () => {
+    const run = vi.fn()
+    await expect(
+      main(
+        ['--unit', 'npm'],
+        {},
+        {
+          detectNpmDrift: async () => {
+            throw new Error('npm registry failed')
+          },
+          root: process.cwd(),
+          run,
+          validateDependencyMaintenance: () => [],
+        },
+      ),
+    ).rejects.toThrow('npm registry failed')
+    expect(run).not.toHaveBeenCalled()
   })
 })

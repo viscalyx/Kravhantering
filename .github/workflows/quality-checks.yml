@@ -74,8 +74,14 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'npm'
 
+      - name: Install repository npm
+        run: node scripts/install-repository-npm.mjs
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Validate dependency maintenance
+        run: npm run dependency-maintenance:check
 
       - name: Run formatting check
         run: npm run format:check

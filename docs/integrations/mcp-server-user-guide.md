@@ -354,7 +354,9 @@ The MCP server is part of the Next.js app and uses the same SQL Server +
 TypeORM stack. For the full developer setup, see
 [sql-server-developer-workflow.md](../development/sql-server-developer-workflow.md).
 
-1. Install dependencies with `npm install`.
+1. Install the canonical npm with
+   `node scripts/install-repository-npm.mjs`, then install dependencies with
+   `npm install`.
 2. Start the local SQL Server with `npm run db:up`.
 3. Migrate and seed the local database with `npm run db:setup`.
 4. Start the app with `npm run dev`.

@@ -2,11 +2,19 @@
   "name": "kravhantering",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@12.0.1",
   "description": "En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess",
   "license": "MIT",
   "author": "Viscalyx",
   "engines": {
     "node": "24"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "version": "12.0.1",
+      "onFail": "error"
+    }
   },
   "scripts": {
     "predev": "npm run dev:prepare",
@@ -73,7 +81,8 @@
     "start:prodlike-pruned": "NODE_ENV=production BUILD_TARGET=local-prod node --env-file=.env.prodlike node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3001",
     "dotenv:check": "dotenv-linter check . --exclude .env.sqlserver --exclude .env.local --exclude .env.*.local && dotenv-linter check .devcontainer --recursive --exclude .devcontainer/.env --exclude .devcontainer/elevated/.env",
     "dotenv:fix": "dotenv-linter fix . --no-backup --exclude .env.sqlserver --exclude .env.local --exclude .env.*.local && dotenv-linter fix .devcontainer --no-backup --exclude .devcontainer/.env --exclude .devcontainer/elevated/.env",
-    "check": "npm run type-check && npm run lint:py && npm run dotenv:check && npm run format:check && npm run spell:check && npm run lint && npm run lint:md && npm run lint:links && npm run test && npm run test:hsa-support",
+    "check": "npm run dependency-maintenance:check && npm run type-check && npm run lint:py && npm run dotenv:check && npm run format:check && npm run spell:check && npm run lint && npm run lint:md && npm run lint:links && npm run test && npm run test:hsa-support",
+    "dependency-maintenance:check": "node scripts/dependency-maintenance.mjs",
     "test": "cross-env NODE_ENV=test vitest run",
     "test:sql-integration": "dotenv -e .env.sqlserver -- cross-env NODE_ENV=test vitest run --config vitest.sql-integration.config.ts",
     "test:hsa-mock": "cross-env-shell NODE_ENV=test \"npm --prefix containers/hsa-directory-mock ci && npm --prefix containers/hsa-directory-mock test\"",
@@ -229,6 +238,8 @@
   "allowScripts": {
     "@parcel/watcher@2.5.6": true,
     "@swc/core@1.15.32": true,
-    "@scarf/scarf": false
+    "@scarf/scarf": false,
+    "fsevents@2.3.2": true,
+    "fsevents@2.3.3": true
   }
 }

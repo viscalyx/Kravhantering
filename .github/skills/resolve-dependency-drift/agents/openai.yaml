@@ -1,0 +1,6 @@
+interface:
+  display_name: "Resolve Dependency Drift"
+  short_description: "Resolve detected dependency maintenance drift"
+  default_prompt: "Use $resolve-dependency-drift to resolve the detected dependency drift across this repository."
+policy:
+  allow_implicit_invocation: false

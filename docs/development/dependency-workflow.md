@@ -2,15 +2,36 @@
 
 This document covers npm dependency installation and recovery workflows.
 
+## Toolchain and Lifecycle Policy
+
+Root `package.json` is canonical for the exact reviewed npm version. The
+devcontainers, CI jobs, production Dockerfiles, nested HSA packages, and Azure
+bootstrap install that same version before running repository installs.
+
+Every npm project enables `strict-allow-scripts` in its project `.npmrc`.
+`allowScripts` in the matching `package.json` records version-pinned approvals
+and explicit denials. Review pending scripts with:
+
+```sh
+npm approve-scripts --allow-scripts-pending
+npm --prefix containers/hsa-directory-mock approve-scripts --allow-scripts-pending
+npm --prefix containers/hsa-person-lookup-adapter approve-scripts --allow-scripts-pending
+```
+
+Do not approve all scripts. A new unreviewed lifecycle script fails a clean
+install and the normal dependency-maintenance quality gate.
+
 ## Normal Install
 
 Use the normal npm commands unless dependency state is visibly broken:
 
 ```sh
+node scripts/install-repository-npm.mjs
 npm install
 npm ci
 ```
 
+Run the npm bootstrap after cloning or when the canonical npm version changes.
 Use `npm install` during everyday local development and after intentional
 dependency updates. Use `npm ci` for clean, lockfile-exact installs such as CI
 or disposable local validation.
@@ -46,6 +67,19 @@ follow the repository package-update instructions and keep changes scoped:
 
 - [.github/instructions/package-updates.instructions.md](../../.github/instructions/package-updates.instructions.md)
 - [.github/instructions/node-version.instructions.md](../../.github/instructions/node-version.instructions.md)
+
+`.github/dependency-maintenance.json` routes each active package and image
+input to either native Dependabot or a detector-created issue. Run its
+discovery and policy invariant after changing package, image, CI, or install
+surfaces:
+
+```sh
+npm run dependency-maintenance:check
+```
+
+Native npm Dependabot lanes update one dependency per pull request. Coordinated
+npm toolchain and production image drift creates issues labeled
+`automation:dependency-drift`, `dependencies`, and `ready-for-agent`.
 
 Run the relevant checks after dependency changes. At minimum, run:
 

@@ -47,10 +47,10 @@ archive instead.
 
 ## Reproducibility
 
-The workflow uses the Node version from `.nvmrc` and installs dependencies with
-`npm ci` using the npm bundled with that pinned runtime. Do not add
-`npm install -g npm@latest` to this workflow. If npm must be upgraded
-explicitly, pin the exact npm version and document the reason here.
+The workflow uses the Node version from `.nvmrc`, installs the exact npm
+version declared by root `package.json`, and then installs dependencies with
+`npm ci`. Change that canonical npm pin only through the reviewed dependency
+maintenance workflow.
 
 Stable and preview releases use the semantic version as the primary
 `app-runtime` and `db-job` image tag recorded in `container-stack.lock.json`.
@@ -64,18 +64,17 @@ Local and release-smoke stack startup honor `--lock-file`. When the stack builds
 local images, `run-local-stack.mjs` passes that path to
 `generate-stack-lock.mjs` before `generate-compose.mjs` reads it.
 
-## Vendor Image Lock Updates
+## Dependency Drift Detection
 
-`.github/workflows/vendor-image-updates.yml` checks nginx, SQL Server,
-Keycloak and Kong upstream tags weekly from `main` and can also be run
-manually with `workflow_dispatch`. Manual runs may select `all`, `nginx`,
-`sqlserver`, `keycloak` or `kong`; the `include-current` input also refreshes
-the immutable digest metadata for the current selected lane.
+`.github/workflows/vendor-image-updates.yml` checks the npm toolchain,
+production Node base image, nginx, SQL Server, Keycloak, and Kong weekly from
+`main`. A manual run can select one maintenance unit or all units. Every image
+scan checks both newer supported tags and immutable identity drift for the
+current tag.
 
-Before writing a lock or companion file, the updater validates and prepares
-every file change for that image. A validation or update failure stops the run
-before later images are processed, so partial changes cannot enter another
-image's branch or PR.
+The workflow completes registry validation and all selected remote detection
+before changing any issue. A failure leaves existing detector-owned issues
+untouched and fails the workflow.
 
 Kong is a vendor-updated HSA integration support image. Its lock under
 `containers/kong/` is copied into
@@ -84,59 +83,27 @@ used by the test-only `single-node-demo` topology. Kong is not part of the
 required production runtime topology.
 
 The HSA person lookup adapter and HSA directory mock are project-owned support
-images, not vendor images. The container release workflow builds and publishes
+images. The container release workflow builds and publishes
 `kravhantering-hsa-person-lookup-adapter` and
 `kravhantering-hsa-directory-mock` to GHCR with the same release tags as
 `app-runtime` and `db-job`. The adapter is recorded in
 `container-hsa-integration-support.lock.json`; the mock is recorded in
 `container-test-support.lock.json`. Both images get SBOM and provenance
-attestations and are excluded from the vendor-image updater because their
-source lives in this repository.
+attestations. Their npm dependencies use native Dependabot lanes, while their
+shared production Node base image uses coordinated drift detection.
 
-The updater selects the newest candidate tag in each current-or-newer image
-lane. A lane is the image name plus the target major line, or the SQL Server
-product year. Each selected tag gets an exact-version branch and PR:
+Detector-created issues carry `automation:dependency-drift`, `dependencies`,
+and `ready-for-agent`. A stable hidden marker owns deduplication. A successful
+scan updates changed drift, closes resolved drift, and reopens unresolved drift
+after manual closure. Active reviewed deferrals live in
+`.github/dependency-maintenance.json` with the exact available version or tag,
+a rationale, and an expiry date. A deferral applies only to that target, so a
+same-lane patch or digest refresh remains actionable.
 
-- `automation/vendor-image/keycloak-26.6.4-1`
-- `automation/vendor-image/keycloak-27.0.0`
-- `automation/vendor-image/nginx-1.29.4-alpine`
-- `automation/vendor-image/sqlserver-2025-CU3-ubuntu-24.04`
-- `automation/vendor-image/kong-3.12.0.0-20260101-ubuntu`
-
-Within a lane, newer patch and minor releases create a new exact-version PR
-instead of updating the earlier version branch. For example, a Keycloak
-`26.7.1` release creates `automation/vendor-image/keycloak-26.7.1` instead of
-rewriting an open `automation/vendor-image/keycloak-26.6.4-1` PR. Later runs
-leave an already-open exact-version PR unchanged so reviewer-added tests,
-documentation, and other manually required companion changes are not
-force-pushed away by automation. When `main` already contains the version
-update, when `main` has advanced past an older version, or when an upstream tag
-is no longer selected, the workflow closes the stale PR and deletes the branch.
-
-The updater resolves `linux/amd64` registry manifests and records both the
-platform manifest digest and the image config digest in the matching
-`containers/<image>/image.lock.json` file. Keycloak updates also keep
-`docker-compose.idp.yml`, both devcontainer Compose files and the developer
-auth documentation on the same tag. Kong updates keep both devcontainer
-Compose files digest-pinned, keep
-`container-hsa-integration-support.lock.json` synchronized with
-`containers/kong/image.lock.json`, and keep the public direct-pull example in
-`containers/production/env/release.env.template` plus its release-helper test
-assertion aligned with the lock. SQL Server updates keep
-`docker-compose.sqlserver.yml` and both devcontainer Compose files on the same
-tag. nginx updates keep the public direct-pull example in
-`containers/production/env/release.env.template` aligned with the lock; nginx
-has no static devcontainer or integration-test Compose reference outside the
-generated stack.
-
-The updater workflow does not run the full test suite. It creates or updates
-the PR, and the normal PR workflows validate the change. To make those PR
-workflows run automatically from automation-created PRs, configure a
-`VENDOR_IMAGE_UPDATE_TOKEN` secret from a fine-scoped PAT or GitHub App token
-that can push branches and create pull requests. If the secret is absent, the
-workflow falls back to `github.token`; that fallback can update branches and
-PRs when repository settings allow it, but GitHub may suppress downstream PR
-workflow runs that are triggered by the built-in token.
+Use the exact skill named in the issue. The skill discovers all synchronized
+repository surfaces dynamically, resolves compatibility work and immutable
+identity, and runs the relevant verification. The detector never edits a
+branch or pull request.
 
 ## Release Evidence
 

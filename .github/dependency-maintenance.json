@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "deferrals": [],
+  "dependabotExclusions": [],
+  "units": [
+    {
+      "id": "npm-root",
+      "kind": "npm-package",
+      "path": ".",
+      "lane": "dependabot",
+      "ecosystem": "npm",
+      "directory": "/"
+    },
+    {
+      "id": "npm-hsa-directory-mock",
+      "kind": "npm-package",
+      "path": "containers/hsa-directory-mock",
+      "lane": "dependabot",
+      "ecosystem": "npm",
+      "directory": "/containers/hsa-directory-mock"
+    },
+    {
+      "id": "npm-hsa-person-lookup-adapter",
+      "kind": "npm-package",
+      "path": "containers/hsa-person-lookup-adapter",
+      "lane": "dependabot",
+      "ecosystem": "npm",
+      "directory": "/containers/hsa-person-lookup-adapter"
+    },
+    {
+      "id": "npm-toolchain",
+      "kind": "npm-toolchain",
+      "lane": "issue",
+      "detector": "npm",
+      "skill": "resolve-dependency-drift"
+    },
+    {
+      "id": "github-actions",
+      "kind": "github-actions",
+      "lane": "dependabot",
+      "ecosystem": "github-actions",
+      "directory": "/"
+    },
+    {
+      "id": "devcontainer-features",
+      "kind": "devcontainer-features",
+      "lane": "dependabot",
+      "ecosystem": "devcontainers",
+      "directory": "/"
+    },
+    {
+      "id": "devcontainer-base",
+      "kind": "dockerfile-image",
+      "lane": "dependabot",
+      "ecosystem": "docker",
+      "directory": "/.devcontainer",
+      "image": "mcr.microsoft.com/devcontainers/base",
+      "paths": [".devcontainer/Dockerfile"]
+    },
+    {
+      "id": "production-node",
+      "kind": "dockerfile-image",
+      "lane": "issue",
+      "detector": "node",
+      "skill": "resolve-dependency-drift",
+      "image": "docker.io/library/node",
+      "paths": [
+        "containers/app/Dockerfile",
+        "containers/hsa-directory-mock/Dockerfile",
+        "containers/hsa-person-lookup-adapter/Dockerfile"
+      ]
+    },
+    {
+      "id": "nginx",
+      "kind": "image-lock",
+      "lane": "issue",
+      "detector": "nginx",
+      "skill": "resolve-dependency-drift",
+      "image": "docker.io/library/nginx",
+      "lockPath": "containers/nginx/image.lock.json"
+    },
+    {
+      "id": "sqlserver",
+      "kind": "image-lock",
+      "lane": "issue",
+      "detector": "sqlserver",
+      "skill": "resolve-dependency-drift",
+      "image": "mcr.microsoft.com/mssql/server",
+      "lockPath": "containers/sqlserver/image.lock.json"
+    },
+    {
+      "id": "keycloak",
+      "kind": "image-lock",
+      "lane": "issue",
+      "detector": "keycloak",
+      "skill": "resolve-dependency-drift",
+      "image": "quay.io/keycloak/keycloak",
+      "lockPath": "containers/keycloak/image.lock.json"
+    },
+    {
+      "id": "kong",
+      "kind": "image-lock",
+      "lane": "issue",
+      "detector": "kong",
+      "skill": "resolve-dependency-drift",
+      "image": "docker.io/kong/kong-gateway",
+      "lockPath": "containers/kong/image.lock.json"
+    }
+  ]
+}
