@@ -654,7 +654,11 @@ function Get-AzureDevAgePath {
   [CmdletBinding()]
   param()
 
-  $existing = Get-Command age -ErrorAction SilentlyContinue
+  $existing = Get-Command `
+    -Name age `
+    -CommandType Application `
+    -ErrorAction SilentlyContinue |
+    Select-Object -First 1
   if ($null -eq $existing) {
     throw (
       'age 1.2.1 or later must be installed manually and available on PATH. ' +
@@ -664,26 +668,25 @@ function Get-AzureDevAgePath {
   $versionResult = Invoke-AzureDevNativeCommand `
     -FilePath $existing.Source `
     -Arguments @('--version')
-  if (
-    $versionResult.ExitCode -eq 0 -and
-    $versionResult.Text -match '(?m)^\s*(?:age\s+)?v?(\d+)\.(\d+)\.(\d+)' -and
-    (
-      [int]$Matches[1] -gt 1 -or
-      (
-        [int]$Matches[1] -eq 1 -and
-        (
-          [int]$Matches[2] -gt 2 -or
-          (
-            [int]$Matches[2] -eq 2 -and
-            [int]$Matches[3] -ge 1
-          )
-        )
-      )
+  $versionMatch = [regex]::Match(
+    $versionResult.Text,
+    '(?<!\d)v?(?<version>\d+\.\d+\.\d+)(?!\d)'
+  )
+  if ($versionResult.ExitCode -ne 0 -or -not $versionMatch.Success) {
+    throw (
+      'Could not determine the version of the age binary on PATH. ' +
+      "age --version returned: $($versionResult.Text.Trim())"
     )
-  ) {
-    return $existing.Source
   }
-  throw 'The age binary on PATH must be version 1.2.1 or later.'
+  $installedVersion = [version]$versionMatch.Groups['version'].Value
+  $minimumVersion = [version]'1.2.1'
+  if ($installedVersion -lt $minimumVersion) {
+    throw (
+      "The age binary on PATH is version $installedVersion; " +
+      "version $minimumVersion or later is required."
+    )
+  }
+  return $existing.Source
 }
 
 function New-AzureDevWorkstationPackage {

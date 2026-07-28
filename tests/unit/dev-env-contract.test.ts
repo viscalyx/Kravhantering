@@ -1136,15 +1136,17 @@ describe('development environment contract', () => {
     const normalizedDevelopmentGuide = developmentGuide.replaceAll(/\s+/gu, ' ')
     const normalizedInternalsGuide = internalsGuide.replaceAll(/\s+/gu, ' ')
 
-    expect(workstationModule).toContain(
-      '$existing = Get-Command age -ErrorAction SilentlyContinue',
-    )
+    expect(workstationModule).toContain('-CommandType Application `')
     expect(workstationModule).toContain(
       'age 1.2.1 or later must be installed manually and available on PATH.',
     )
     expect(workstationModule).toContain(
-      "$versionResult.Text -match '(?m)^\\s*(?:age\\s+)?v?(\\d+)\\.(\\d+)\\.(\\d+)'",
+      "'(?<!\\d)v?(?<version>\\d+\\.\\d+\\.\\d+)(?!\\d)'",
     )
+    expect(workstationModule).toContain(
+      "$installedVersion = [version]$versionMatch.Groups['version'].Value",
+    )
+    expect(workstationModule).toContain("$minimumVersion = [version]'1.2.1'")
     expect(workstationModule).not.toContain('Invoke-WebRequest')
     expect(workstationModule).not.toContain('Install-AzureDevTransferTool')
     expect(entryScript).not.toContain("'install-transfer-tool'")
