@@ -738,7 +738,7 @@ function Install-AzureDevTransferTool {
     -not (
       Confirm-AzureDevWorkstationAction `
         -Context $Context `
-        -Prompt "Download verified age v$script:AgeVersion to $installDirectory?"
+        -Prompt "Download verified age v$script:AgeVersion to ${installDirectory}?"
     )
   ) {
     throw 'age installation was cancelled.'
@@ -1504,7 +1504,7 @@ function Remove-AzureDevExtractedPackage {
     -not (
       Confirm-AzureDevWorkstationAction `
         -Context $Context `
-        -Prompt "Remove the extracted plaintext package at $DestinationPath?"
+        -Prompt "Remove the extracted plaintext package at ${DestinationPath}?"
     )
   ) {
     throw 'Package cleanup was cancelled.'
@@ -1639,7 +1639,7 @@ function Remove-AzureDevWorkstationCidr {
     -not (
       Confirm-AzureDevWorkstationAction `
         -Context $Context `
-        -Prompt "Remove CIDR $WorkstationName/$AccessName?"
+        -Prompt "Remove CIDR $WorkstationName/${AccessName}?"
     )
   ) {
     throw 'CIDR removal was cancelled.'

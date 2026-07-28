@@ -1132,6 +1132,10 @@ describe('development environment contract', () => {
     expect(workstationModule).toContain(
       'The downloaded age archive checksum does not match the pinned value.',
     )
+    expect(workstationModule).toContain(
+      '-Prompt "Download verified age v$script:AgeVersion to ${installDirectory}?"',
+    )
+    expect(workstationModule).not.toMatch(/\$[A-Za-z_][A-Za-z0-9_]*\?"/u)
     expect(workstationModule).toContain('Invoke-WebRequest -Uri $url')
     expect(workstationModule).toMatch(
       /Invoke-AzureDevNativeCommand[\s`]*-FilePath\s+\$age[\s`]*-Arguments\s+@\('-R',\s*\$recipientPath,\s*'-o',\s*\$OutputPath,\s*\$zipPath\)/u,
