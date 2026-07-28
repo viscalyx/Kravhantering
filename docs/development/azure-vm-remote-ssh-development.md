@@ -1148,8 +1148,10 @@ when this command first runs on the existing workstation:
 ```
 
 It creates and verifies the named rule and managed key marker before removing
-the legacy rule. This migration path is removed before the feature merges after
-the sole existing environment reports schema version 2.
+the legacy rule. It also repairs a missing schema-version tag if an interrupted
+attempt already created the named rule and removed the legacy rule. This
+migration path is removed before the feature merges after the sole existing
+environment reports schema version 2.
 
 ## Step 10: Manage Support Services
 

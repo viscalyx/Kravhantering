@@ -312,9 +312,12 @@ share one NAT address.
 
 The temporary migration path in `prepare-workstation-access` creates and
 verifies the schema-version-2 rule, marks the current public key in guest
-`authorized_keys`, removes the legacy `AllowSshFromOperator` rule, and writes
-the NSG `ssh-access-schema=2` tag. The path exists only until the sole deployed
-environment is migrated on the implementation branch.
+`authorized_keys`, writes and verifies the NSG `ssh-access-schema=2` tag, and
+only then removes the legacy `AllowSshFromOperator` rule. If a previous attempt
+already removed the legacy rule but failed while writing the tag, the same
+command detects the named rules and repairs the missing tag. The path exists
+only until the sole deployed environment is migrated on the implementation
+branch.
 
 The managed OpenSSH block is bounded by markers and is the only part of
 `~/.ssh/config` the tool may change. The block uses the configured host alias,

@@ -1051,17 +1051,35 @@ describe('development environment contract', () => {
     expect(bicepTemplate).toContain('sourceAddressPrefix: rule.cidr')
     expect(bicepTemplate).not.toContain('param allowedSshCidr string')
     expect(azureModule).toContain('function Get-AzureDevSshAccessRules')
+    expect(azureModule).toContain('function Get-AzureDevSshAccessSchema')
     expect(azureModule).toContain('function Set-AzureDevSshAccessRule')
     expect(azureModule).toContain('$script:AzureDevSshRuleLimit = 64')
     expect(azureModule).toContain("'tags.ssh-access-schema=2'")
     expect(azureModule).toContain("'--source-port-ranges=*'")
     expect(azureModule).toContain("'--destination-address-prefixes=*'")
+    expect(azureModule).toContain(
+      "'--force-string',\n      'true',\n      '--set',\n      'tags.ssh-access-schema=2'",
+    )
     expect(entryScript).toMatch(
       /\$sshAccessRules\s*=\s*@\([\s`]*Get-AzureDevSetupSshAccessRules[\s`]*-Context\s+\$Context[\s`]*-InitialCidr\s+\$allowedCidr[\s`]*-WorkstationName\s+\$WorkstationName/u,
     )
     expect(entryScript).toContain('-SshAccessRules $sshAccessRules')
     expect(workstationModule).toContain(
       '$value = [System.Environment]::MachineName',
+    )
+    expect(workstationModule).toContain(
+      'Recovered the schema version 2 tag for the named SSH rules.',
+    )
+    const migrationStart = workstationModule.indexOf(
+      'function Invoke-AzureDevPrepareWorkstationAccess',
+    )
+    const migrationEnd = workstationModule.indexOf(
+      '\nfunction Add-AzureDevWorkstationCidr',
+      migrationStart,
+    )
+    const migration = workstationModule.slice(migrationStart, migrationEnd)
+    expect(migration.indexOf('Set-AzureDevSshAccessSchema')).toBeLessThan(
+      migration.indexOf('Remove-AzureDevSshAccessRule'),
     )
     expect(entryScript).toContain('-WorkstationName $effectiveWorkstationName')
     expect(entryScript).toMatch(

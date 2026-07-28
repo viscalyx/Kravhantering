@@ -2143,12 +2143,49 @@ function Set-AzureDevSshAccessSchema {
       $Context.Config.ResourceGroup,
       '--name',
       $names.networkSecurityGroup,
+      '--force-string',
+      'true',
       '--set',
       'tags.ssh-access-schema=2',
       '--output',
       'json'
     ) -Json | Out-Null
   }
+}
+
+function Get-AzureDevSshAccessSchema {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Config
+  )
+
+  $names = Get-AzureDevExpectedResourceNames -Config $Config
+  $nsg = Invoke-AzCli -Arguments @(
+    'network',
+    'nsg',
+    'show',
+    '--subscription',
+    $Config.SubscriptionId,
+    '--resource-group',
+    $Config.ResourceGroup,
+    '--name',
+    $names.networkSecurityGroup,
+    '--output',
+    'json'
+  ) -Json
+  if ($null -eq $nsg) {
+    return ''
+  }
+  $tags = $nsg.PSObject.Properties['tags']
+  if ($null -eq $tags -or $null -eq $tags.Value) {
+    return ''
+  }
+  $schema = $tags.Value.PSObject.Properties['ssh-access-schema']
+  if ($null -eq $schema) {
+    return ''
+  }
+  return [string]$schema.Value
 }
 
 function Start-AzureDevAzureVm {
@@ -2318,6 +2355,7 @@ Export-ModuleMember -Function `
   Get-AzureDevDataDisk, `
   Get-AzureDevExpectedResourceNames, `
   Get-AzureDevSshAccessRuleName, `
+  Get-AzureDevSshAccessSchema, `
   Get-AzureDevNextSshRulePriority, `
   Get-AzureDevManagedResources, `
   Get-AzureDevPublicIpAddress, `

@@ -1558,18 +1558,52 @@ function Invoke-AzureDevPrepareWorkstationAccess {
       if ($verified.Count -ne 1 -or $verified[0].cidr -ne $legacy[0].cidr) {
         throw 'The named CIDR rule could not be verified after migration.'
       }
+      Set-AzureDevSshAccessSchema -Context $Context
+      if (
+        -not $WhatIfPreference -and
+        (Get-AzureDevSshAccessSchema -Config $Context.Config) -ne '2'
+      ) {
+        throw 'The SSH access schema tag could not be verified after migration.'
+      }
       Remove-AzureDevSshAccessRule `
         -Context $Context `
         -RuleName $legacy[0].name
-      Set-AzureDevSshAccessSchema -Context $Context
       Write-Host 'Migrated the legacy single-CIDR rule to schema version 2.'
     } catch {
       if ($null -ne $newRule) {
-        Write-Warning (
-          "Migration did not finish. The legacy rule remains. Review named rule $($newRule.name)."
-        )
+        $migrationError = $_
+        $legacyStillExists = $true
+        try {
+          $legacyStillExists = @(
+            Get-AzureDevSshAccessRules -Config $Context.Config |
+              Where-Object { $_.name -eq $legacy[0].name }
+          ).Count -gt 0
+        } catch {
+          Write-Warning 'Could not inspect the legacy rule after migration failed.'
+        }
+        $migrationState = if ($legacyStillExists) {
+          'The legacy rule remains'
+        } else {
+          'The named rule remains and the legacy rule was already removed'
+        }
+        Write-Warning "$migrationState. Review named rule $($newRule.name)."
+        throw $migrationError
       }
       throw
+    }
+  } elseif (
+    @($rules | Where-Object { -not $_.legacy }).Count -gt 0 -and
+    (Get-AzureDevSshAccessSchema -Config $Context.Config) -ne '2'
+  ) {
+    Set-AzureDevSshAccessSchema -Context $Context
+    if (
+      -not $WhatIfPreference -and
+      (Get-AzureDevSshAccessSchema -Config $Context.Config) -ne '2'
+    ) {
+      throw 'The SSH access schema tag could not be verified during recovery.'
+    }
+    if (-not $WhatIfPreference) {
+      Write-Host 'Recovered the schema version 2 tag for the named SSH rules.'
     }
   }
 
