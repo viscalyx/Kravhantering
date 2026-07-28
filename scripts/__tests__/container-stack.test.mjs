@@ -135,7 +135,7 @@ describe('container stack helpers', () => {
             'nginx',
             'tls-proxy',
             'docker.io/library/nginx',
-            '1.31.2-alpine',
+            '1.31.3-alpine',
             'sha256:nginx',
             'sha256:nginx-image',
           ),
