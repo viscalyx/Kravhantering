@@ -1119,32 +1119,57 @@ describe('development environment contract', () => {
     expect(workstationModule).toContain('$process.Dispose()')
   })
 
-  it('encrypts response packages with a pinned user-local age binary', () => {
+  it('requires a manually installed age binary for response packages', () => {
+    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
     const workstationModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Workstation.psm1',
     )
+    const developmentGuide = readWorkspaceFile(
+      'docs/development/azure-vm-remote-ssh-development.md',
+    )
+    const internalsGuide = readWorkspaceFile(
+      'docs/development/azure-vm-remote-ssh-internals.md',
+    )
+    const normalizedDevelopmentGuide = developmentGuide.replaceAll(/\s+/gu, ' ')
 
-    expect(workstationModule).toContain("$script:AgeVersion = '1.3.1'")
     expect(workstationModule).toContain(
-      'https://github.com/FiloSottile/age/releases/download/v$script:AgeVersion/',
-    )
-    expect(workstationModule).not.toContain('/age/latest')
-    expect(workstationModule).toContain(
-      'The downloaded age archive checksum does not match the pinned value.',
+      '$existing = Get-Command age -ErrorAction SilentlyContinue',
     )
     expect(workstationModule).toContain(
-      '-Prompt "Download verified age v$script:AgeVersion to ${installDirectory}?"',
+      'age 1.2.1 or later must be installed manually and available on PATH.',
     )
-    expect(workstationModule).not.toMatch(/\$[A-Za-z_][A-Za-z0-9_]*\?"/u)
-    expect(workstationModule).toContain('Invoke-WebRequest -Uri $url')
+    expect(workstationModule).toContain(
+      "$versionResult.Text -match '(?m)^\\s*(?:age\\s+)?v?(\\d+)\\.(\\d+)\\.(\\d+)'",
+    )
+    expect(workstationModule).not.toContain('Invoke-WebRequest')
+    expect(workstationModule).not.toContain('Install-AzureDevTransferTool')
+    expect(entryScript).not.toContain("'install-transfer-tool'")
+    expect(developmentGuide).toContain(
+      'The Azure development script never downloads or installs it.',
+    )
+    expect(developmentGuide).toContain(
+      'winget install --id FiloSottile.age --exact --scope user',
+    )
+    expect(developmentGuide).toContain(
+      'run the WinGet command from a normal, non-elevated PowerShell',
+    )
+    expect(developmentGuide).toContain(
+      'Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression',
+    )
+    expect(developmentGuide).toContain('scoop install age')
+    expect(normalizedDevelopmentGuide).toContain(
+      'does not require administrator privileges',
+    )
+    expect(developmentGuide).not.toContain(
+      'The transfer workflow can install a pinned, verified copy',
+    )
+    expect(developmentGuide).toContain('brew install age')
+    expect(internalsGuide).toContain(
+      'installed manually and available on `PATH`',
+    )
+    expect(internalsGuide).not.toContain('pinned user-local copy')
     expect(workstationModule).toMatch(
       /Invoke-AzureDevNativeCommand[\s`]*-FilePath\s+\$age[\s`]*-Arguments\s+@\('-R',\s*\$recipientPath,\s*'-o',\s*\$OutputPath,\s*\$zipPath\)/u,
-    )
-    expect(workstationModule).toContain(
-      "Join-Path $env:LOCALAPPDATA 'Kravhantering/tools/age'",
-    )
-    expect(workstationModule).toContain(
-      "Join-Path $HOME 'Library/Application Support/Kravhantering/tools/age'",
     )
     expect(workstationModule).toContain(
       "'reference/destination-public-key.pub'",
@@ -1217,6 +1242,7 @@ describe('development environment contract', () => {
     expect(workstationModule).toContain(
       'Pass -WorkstationName with a stable name for this workstation.',
     )
+    expect(workstationModule).not.toMatch(/\$[A-Za-z_][A-Za-z0-9_]*\?"/u)
     expect(sshModule).toContain("-Arguments @('700', $directory)")
   })
 

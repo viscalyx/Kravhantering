@@ -285,9 +285,8 @@ Install these tools on the workstation:
 - VS Code with Remote SSH
 - GitHub CLI when GitHub access is required from the remote environment
 - MesloLGS Nerd Font Mono installed on the workstation
-- Optional: `age` for encrypted workstation-transfer packages. The transfer
-  workflow can install a pinned, verified copy in the user data directory
-  without administrator access.
+- Optional: `age` 1.2.1 or later for encrypted workstation-transfer packages.
+  Install it manually as described in [Install age](#install-age).
 - Optional: Tailscale CLI for Tailscale cleanup checks
 
 Powerlevel10k is rendered on the workstation even when the shell runs on the
@@ -1043,18 +1042,58 @@ same request for copy and paste. It uses the normalized local machine name as
 the workstation name; pass `-WorkstationName "<name>"` to override it. Transfer
 only the request. The private key never leaves the destination workstation.
 
-### Approve the request
+### Install age
 
-On an already authorized workstation, install the transfer tool if `age` is
-not already available:
+The workstation package workflow uses `age` to encrypt and decrypt response
+packages. Install `age` 1.2.1 or later manually and ensure that it is available
+on `PATH`. The Azure development script never downloads or installs it.
+
+Use the package manager appropriate for the workstation:
 
 ```powershell
-./scripts/azure-dev.ps1 install-transfer-tool
+# Windows, current user without administrator privileges
+winget install --id FiloSottile.age --exact --scope user
+
+# macOS or Linux with Homebrew
+brew install age
 ```
 
-The command offers to download a pinned official binary, verifies its SHA-256
-digest, and installs it in the current user's data directory. It does not
-require administrator access or change `PATH`.
+On Windows, run the WinGet command from a normal, non-elevated PowerShell
+session. The explicit `--scope user` requirement installs the portable package
+for the current user. WinGet stores user-scoped portable packages under
+`%LOCALAPPDATA%\Microsoft\WinGet\Packages` by default and creates the command
+alias on the user's `PATH`. See the
+[WinGet scope and portable-package settings](https://learn.microsoft.com/windows/package-manager/winget/settings#scope).
+
+If WinGet is unavailable, as on some Windows Server installations, install
+Scoop and `age` for the current user from a normal PowerShell session:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+scoop bucket add extras
+scoop install age
+```
+
+Scoop installs under the current user's home directory by default and does not
+require administrator privileges. It requires PowerShell `FullLanguage` mode
+and a current-user execution policy that permits its scripts. See the
+[official Scoop installation instructions](https://github.com/ScoopInstaller/Install#readme).
+If organizational policy blocks Scoop, download the signed Windows ZIP from
+the [official age releases](https://github.com/FiloSottile/age/releases),
+extract it into a user-owned directory, and add the directory containing
+`age.exe` to the user's `PATH`.
+
+For native Linux package managers, MacPorts, pre-built binaries, and other
+supported installation methods, see the
+[official age installation instructions](https://github.com/FiloSottile/age#installation).
+Confirm the installed version before continuing:
+
+```powershell
+age --version
+```
+
+### Approve the request
 
 Approve a request file:
 

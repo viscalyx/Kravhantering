@@ -5,7 +5,6 @@ Set-StrictMode -Version Latest
 $script:RequestBegin = '-----BEGIN KRAVHANTERING WORKSTATION REQUEST-----'
 $script:RequestEnd = '-----END KRAVHANTERING WORKSTATION REQUEST-----'
 $script:RequestNamespace = 'kravhantering-workstation-request'
-$script:AgeVersion = '1.3.1'
 $script:PackageSchema = 1
 $script:MaximumPackageBytes = 50MB
 $script:MaximumEntryBytes = 5MB
@@ -648,153 +647,40 @@ function Get-AzureDevSecretNames {
     } | Sort-Object)
 }
 
-function Get-AzureDevAgeInstallRoot {
-  [CmdletBinding()]
-  param()
-
-  if ($IsWindows) {
-    return Join-Path $env:LOCALAPPDATA 'Kravhantering/tools/age'
-  }
-  if ($IsMacOS) {
-    return Join-Path $HOME 'Library/Application Support/Kravhantering/tools/age'
-  }
-  $dataHome = if ([string]::IsNullOrWhiteSpace($env:XDG_DATA_HOME)) {
-    Join-Path $HOME '.local/share'
-  } else {
-    $env:XDG_DATA_HOME
-  }
-  return Join-Path $dataHome 'kravhantering/tools/age'
-}
-
 function Get-AzureDevAgePath {
   [CmdletBinding()]
   param()
 
   $existing = Get-Command age -ErrorAction SilentlyContinue
-  if ($null -ne $existing) {
-    $versionResult = Invoke-AzureDevNativeCommand `
-      -FilePath $existing.Source `
-      -Arguments @('--version')
-    if (
-      $versionResult.ExitCode -eq 0 -and
-      $versionResult.Text -match 'age\s+v?(\d+)\.(\d+)\.(\d+)' -and
+  if ($null -eq $existing) {
+    throw (
+      'age 1.2.1 or later must be installed manually and available on PATH. ' +
+      'See docs/development/azure-vm-remote-ssh-development.md#install-age.'
+    )
+  }
+  $versionResult = Invoke-AzureDevNativeCommand `
+    -FilePath $existing.Source `
+    -Arguments @('--version')
+  if (
+    $versionResult.ExitCode -eq 0 -and
+    $versionResult.Text -match '(?m)^\s*(?:age\s+)?v?(\d+)\.(\d+)\.(\d+)' -and
+    (
+      [int]$Matches[1] -gt 1 -or
       (
-        [int]$Matches[1] -gt 1 -or
-        ([int]$Matches[1] -eq 1 -and [int]$Matches[2] -ge 2)
+        [int]$Matches[1] -eq 1 -and
+        (
+          [int]$Matches[2] -gt 2 -or
+          (
+            [int]$Matches[2] -eq 2 -and
+            [int]$Matches[3] -ge 1
+          )
+        )
       )
-    ) {
-      return $existing.Source
-    }
-    Write-Warning 'The age binary on PATH is older than the required version 1.2.1.'
-  }
-  $fileName = if ($IsWindows) { 'age.exe' } else { 'age' }
-  $portable = Join-Path `
-    (Join-Path (Get-AzureDevAgeInstallRoot) "v$script:AgeVersion") `
-    $fileName
-  if (Test-Path -LiteralPath $portable -PathType Leaf) {
-    return $portable
-  }
-  throw (
-    'age is required for workstation packages. Run ' +
-    './scripts/azure-dev.ps1 install-transfer-tool.'
-  )
-}
-
-function Install-AzureDevTransferTool {
-  [CmdletBinding(SupportsShouldProcess = $true)]
-  param(
-    [Parameter(Mandatory = $true)]
-    [pscustomobject]$Context
-  )
-
-  $architecture = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture
-  $asset = if ($IsMacOS -and $architecture -eq 'Arm64') {
-    @('darwin-arm64.tar.gz', '01120ea2cbf0463d4c6bd767f99f3271bbed1cdc8a9aa718a76ba1fe4f01998b')
-  } elseif ($IsMacOS -and $architecture -eq 'X64') {
-    @('darwin-amd64.tar.gz', '2b233301ad21ab7b1eabd9ae1198a164005fa4928fcdd745d47c39f8593209d7')
-  } elseif (-not $IsWindows -and -not $IsMacOS -and $architecture -eq 'Arm64') {
-    @('linux-arm64.tar.gz', 'c6878a324421b69e3e20b00ba17c04bc5c6dab0030cfe55bf8f68fa8d9e9093a')
-  } elseif (-not $IsWindows -and -not $IsMacOS -and $architecture -eq 'X64') {
-    @('linux-amd64.tar.gz', 'bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377')
-  } elseif ($IsWindows -and $architecture -eq 'X64') {
-    @('windows-amd64.zip', 'c56e8ce22f7e80cb85ad946cc82d198767b056366201d3e1a2b93d865be38154')
-  } else {
-    throw "age has no supported portable asset for this platform and $architecture."
-  }
-  $archiveName = "age-v$script:AgeVersion-$($asset[0])"
-  $url = "https://github.com/FiloSottile/age/releases/download/v$script:AgeVersion/$archiveName"
-  $installDirectory = Join-Path `
-    (Get-AzureDevAgeInstallRoot) `
-    "v$script:AgeVersion"
-  if (
-    -not $PSCmdlet.ShouldProcess(
-      $installDirectory,
-      "Download and install verified age v$script:AgeVersion"
     )
   ) {
-    return
+    return $existing.Source
   }
-  if (
-    -not (
-      Confirm-AzureDevWorkstationAction `
-        -Context $Context `
-        -Prompt "Download verified age v$script:AgeVersion to ${installDirectory}?"
-    )
-  ) {
-    throw 'age installation was cancelled.'
-  }
-
-  $temporaryDirectory = Join-Path `
-    ([IO.Path]::GetTempPath()) `
-    "krav-age-$([guid]::NewGuid().ToString('N'))"
-  try {
-    New-AzureDevPrivateDirectory -Path $temporaryDirectory
-    $archivePath = Join-Path $temporaryDirectory $archiveName
-    Invoke-WebRequest -Uri $url -OutFile $archivePath
-    $actual = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($actual -ne $asset[1]) {
-      throw 'The downloaded age archive checksum does not match the pinned value.'
-    }
-    $extractPath = Join-Path $temporaryDirectory 'extract'
-    New-AzureDevPrivateDirectory -Path $extractPath
-    if ($IsWindows) {
-      Expand-Archive -LiteralPath $archivePath -DestinationPath $extractPath
-    } else {
-      $tarResult = Invoke-AzureDevNativeCommand `
-        -FilePath 'tar' `
-        -Arguments @('-xzf', $archivePath, '-C', $extractPath)
-      if ($tarResult.ExitCode -ne 0) {
-        throw "Could not extract age: $($tarResult.Text.Trim())"
-      }
-    }
-    $binaryName = if ($IsWindows) { 'age.exe' } else { 'age' }
-    $binary = Get-ChildItem `
-      -LiteralPath $extractPath `
-      -Filter $binaryName `
-      -File `
-      -Recurse | Select-Object -First 1
-    $license = Get-ChildItem `
-      -LiteralPath $extractPath `
-      -Filter LICENSE `
-      -File `
-      -Recurse | Select-Object -First 1
-    if ($null -eq $binary -or $null -eq $license) {
-      throw 'The age archive does not contain the expected binary and license.'
-    }
-    New-AzureDevPrivateDirectory -Path $installDirectory
-    Copy-Item -LiteralPath $binary.FullName -Destination $installDirectory
-    Copy-Item -LiteralPath $license.FullName -Destination $installDirectory
-    if (-not $IsWindows) {
-      Invoke-AzureDevNativeCommand `
-        -FilePath 'chmod' `
-        -Arguments @('700', (Join-Path $installDirectory $binaryName)) | Out-Null
-    }
-  } finally {
-    if (Test-Path -LiteralPath $temporaryDirectory) {
-      Remove-Item -LiteralPath $temporaryDirectory -Recurse -Force
-    }
-  }
-  Write-Host "Installed age: $(Get-AzureDevAgePath)"
+  throw 'The age binary on PATH must be version 1.2.1 or later.'
 }
 
 function New-AzureDevWorkstationPackage {
@@ -1764,7 +1650,6 @@ Export-ModuleMember -Function `
   Approve-AzureDevWorkstation, `
   Expand-AzureDevWorkstationPackage, `
   Get-AzureDevWorkstationCidr, `
-  Install-AzureDevTransferTool, `
   Invoke-AzureDevPrepareWorkstationAccess, `
   New-AzureDevWorkstationRequest, `
   Read-AzureDevWorkstationRequest, `

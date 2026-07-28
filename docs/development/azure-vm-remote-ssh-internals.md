@@ -368,15 +368,10 @@ that signature against the embedded public key. This proves possession and
 detects corruption. It does not authenticate a fully replaced request, so the
 human fingerprint and verification-code comparison remains mandatory.
 
-The response package is a ZIP payload encrypted with interactive `age`
-passphrase mode. The tool resolution order is a compatible `age` on `PATH`
-followed by the pinned user-local copy. The portable installer:
-
-- supports macOS AMD64 and ARM64, Linux AMD64 and ARM64, and Windows AMD64;
-- downloads an exact versioned upstream archive;
-- verifies the reviewed SHA-256 digest before extraction;
-- copies only the expected binary and license into the user data directory;
-- does not require administrator access or change `PATH`.
+The response package is a ZIP payload encrypted with `age` to the destination
+workstation's SSH public key. A compatible `age` 1.2.1 or later must be
+installed manually and available on `PATH`. The module validates the installed
+version but never downloads, installs, or manages the tool.
 
 The manifest binds the package to the request ID, workstation, environment,
 destination public-key fingerprint, and 24-hour expiry. Entry names are an

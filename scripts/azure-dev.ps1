@@ -8,7 +8,6 @@ param(
     'cleanup-workstation-package',
     'estimate-cost',
     'extract-workstation-package',
-    'install-transfer-tool',
     'list-cidrs',
     'list-workstations',
     'new-workstation-request',
@@ -1073,9 +1072,6 @@ function Invoke-AzureDevCommand {
         -PackagePath $PackagePath `
         -DestinationPath $DestinationPath
     }
-    'install-transfer-tool' {
-      Install-AzureDevTransferTool -Context $Context
-    }
     'list-cidrs' { Show-AzureDevWorkstationCidrs -Context $Context }
     'list-workstations' { Show-AzureDevWorkstationCidrs -Context $Context }
     'new-workstation-request' {
@@ -1131,7 +1127,6 @@ $allowMissingAzureScope = $Command -in @(
   'cleanup-workstation-package',
   'estimate-cost',
   'extract-workstation-package',
-  'install-transfer-tool',
   'new-workstation-request'
 )
 $config = Get-AzureDevConfig `
