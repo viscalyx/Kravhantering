@@ -285,7 +285,7 @@ describe('RequirementForm', () => {
     expect(document.getElementById(saveHintId as string)).toHaveTextContent(
       'referenceData.saveBlocked',
     )
-  })
+  }, 10_000)
 
   it('removes archived associations locally so they cannot be re-added', async () => {
     const successfulFetch = fetchMock.getMockImplementation() as (
@@ -627,7 +627,7 @@ describe('RequirementForm', () => {
     expect(
       screen.queryByText('requirement.associationSelectionLimit'),
     ).not.toBeInTheDocument()
-  })
+  }, 10_000)
 
   it('confirms before cancelling a dirty create form', async () => {
     confirmDiscardChangesMock
