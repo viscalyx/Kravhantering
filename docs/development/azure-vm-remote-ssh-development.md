@@ -1039,10 +1039,12 @@ workstation prerequisites, and run:
 The command creates a dedicated Ed25519 key under the user's `.ssh` directory,
 saves the signed request under `.azure/workstation-requests`, and prints the
 same request for copy and paste. It also prints the normalized workstation
-name, requested CIDR, public-key fingerprint, and verification code so they can
-be compared during approval. It uses the normalized local machine name as the
-workstation name; pass `-WorkstationName "<name>"` to override it. Transfer only
-the request. The private key never leaves the destination workstation.
+name, requested CIDR, generated private-key path, public-key fingerprint, and
+verification code. The approval values can then be compared, and the generated
+path can be used for `AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH`. It uses the normalized
+local machine name as the workstation name; pass `-WorkstationName "<name>"`
+to override it. Transfer only the request. The private key never leaves the
+destination workstation.
 
 ### Install age
 

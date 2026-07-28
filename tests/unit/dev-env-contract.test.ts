@@ -1112,6 +1112,10 @@ describe('development environment contract', () => {
     expect(workstationModule).toContain(
       'Write-Host "Requested CIDR: $resolvedCidr"',
     )
+    expect(workstationModule).toContain(
+      'Write-Host "SSH private key: $keyPath"',
+    )
+    expect(workstationModule).toContain('"``$destinationPrivateKey``."')
     expect(workstationModule).toContain('[datetimeoffset]$request.expiresAt')
     expect(workstationModule).toContain(
       '$standardOutput = $process.StandardOutput.ReadToEndAsync()',
