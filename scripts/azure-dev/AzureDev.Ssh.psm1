@@ -114,6 +114,14 @@ function New-AzureDevSshKey {
       Write-Verbose "Creating SSH key directory $directory"
       New-Item -ItemType Directory -Path $directory -Force | Out-Null
     }
+    if (-not $IsWindows) {
+      $permissionResult = Invoke-AzureDevNativeCommand `
+        -FilePath 'chmod' `
+        -Arguments @('700', $directory)
+      if ($permissionResult.ExitCode -ne 0) {
+        throw "Could not apply private permissions to SSH key directory $directory."
+      }
+    }
     $result = Invoke-AzureDevNativeCommand `
       -FilePath 'ssh-keygen' `
       -Arguments @(

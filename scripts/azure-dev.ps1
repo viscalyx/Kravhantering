@@ -950,7 +950,9 @@ function Update-AzureDevCidr {
 
     [string]$CidrOverride,
 
-    [string]$WorkstationName
+    [string]$WorkstationName,
+
+    [switch]$AllowNetworkCidr
   )
 
   if ($Context.Config.ConnectivityMode -ne 'public-ssh') {
@@ -967,7 +969,9 @@ function Update-AzureDevCidr {
     $name = Resolve-AzureDevWorkstationName `
       -WorkstationName $WorkstationName
     Write-Warning 'update-cidr is retained for transition; prefer set-cidr.'
-    $allowedCidr = Get-AzureDevWorkstationCidr -Cidr $CidrOverride
+    $allowedCidr = Get-AzureDevWorkstationCidr `
+      -Cidr $CidrOverride `
+      -AllowNetwork:$AllowNetworkCidr
     $rule = Set-AzureDevSshAccessRule `
       -Context $Context `
       -WorkstationName $name `
@@ -992,14 +996,15 @@ function Update-AzureDevCidr {
       } else {
         [ordered]@{}
       }
-      $stateHash.lastKnownAllowedCidrs = @(
-        [ordered]@{
-          workstation = $rule.workstation
-          access = $rule.access
-          cidr = $rule.cidr
-          legacy = $false
-        }
-      )
+      $configuredRules = @(Get-AzureDevSshAccessRules -Config $Context.Config)
+      $stateHash.lastKnownAllowedCidrs = @($configuredRules | ForEach-Object {
+          [ordered]@{
+            workstation = $_.workstation
+            access = $_.access
+            cidr = $_.cidr
+            legacy = [bool]$_.legacy
+          }
+        })
       Set-AzureDevState -Context $Context -State $stateHash
       Write-AzureDevLog `
         -Context $Context `
@@ -1203,7 +1208,8 @@ function Invoke-AzureDevCommand {
       Update-AzureDevCidr `
         -Context $Context `
         -CidrOverride $AllowedSshCidr `
-        -WorkstationName $effectiveWorkstationName
+        -WorkstationName $effectiveWorkstationName `
+        -AllowNetworkCidr:$AllowNetworkCidr
     }
     'ssh-config' { Get-AzureDevSshConfig -Context $Context }
     'remove' { Remove-AzureDevEnvironment -Context $Context }

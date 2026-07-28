@@ -1039,7 +1039,11 @@ describe('development environment contract', () => {
       'scripts/azure-dev/templates/main.bicep',
     )
 
-    expect(bicepTemplate).toContain('param sshAccessRules array')
+    expect(bicepTemplate).toContain('type SshAccessRule = {')
+    expect(bicepTemplate).toContain('param sshAccessRules SshAccessRule[]')
+    expect(bicepTemplate).toContain(
+      'The inline securityRules collection is the authoritative NSG rule state.',
+    )
     expect(bicepTemplate).toContain(
       "for rule in (connectivityMode == 'public-ssh' ? sshAccessRules : [])",
     )
@@ -1052,14 +1056,36 @@ describe('development environment contract', () => {
     expect(azureModule).toContain("'tags.ssh-access-schema=2'")
     expect(azureModule).toContain("'--source-port-ranges=*'")
     expect(azureModule).toContain("'--destination-address-prefixes=*'")
-    expect(entryScript).toContain(
-      '$sshAccessRules = @(\n      Get-AzureDevSetupSshAccessRules',
+    expect(entryScript).toMatch(
+      /\$sshAccessRules\s*=\s*@\([\s`]*Get-AzureDevSetupSshAccessRules[\s`]*-Context\s+\$Context[\s`]*-InitialCidr\s+\$allowedCidr[\s`]*-WorkstationName\s+\$WorkstationName/u,
     )
     expect(entryScript).toContain('-SshAccessRules $sshAccessRules')
     expect(workstationModule).toContain(
       '$value = [System.Environment]::MachineName',
     )
     expect(entryScript).toContain('-WorkstationName $effectiveWorkstationName')
+    expect(entryScript).toMatch(
+      /Get-AzureDevWorkstationCidr[\s`]*-Cidr\s+\$CidrOverride[\s`]*-AllowNetwork:\$AllowNetworkCidr/u,
+    )
+    expect(entryScript).toMatch(
+      /Update-AzureDevCidr[\s`]*-Context\s+\$Context[\s`]*-CidrOverride\s+\$AllowedSshCidr[\s`]*-WorkstationName\s+\$effectiveWorkstationName[\s`]*-AllowNetworkCidr:\$AllowNetworkCidr/u,
+    )
+    expect(entryScript).toContain(
+      '$configuredRules = @(Get-AzureDevSshAccessRules -Config $Context.Config)',
+    )
+    expect(azureModule).toContain(
+      '(?i)(ResourceGroupNotFound|ResourceNotFound|could not be found|was not found)',
+    )
+    expect(azureModule).toContain(
+      'Migrate each CIDR to a named managed rule before continuing.',
+    )
+    expect(azureModule).not.toContain(
+      'function Update-AzureDevNetworkSecurityGroupCidr',
+    )
+    expect(azureModule).toContain('function Get-AzureDevSshAccessRuleName')
+    expect(workstationModule).toContain(
+      '$candidateName = Get-AzureDevSshAccessRuleName',
+    )
   })
 
   it('uses signed text requests and excludes destination private keys', () => {
@@ -1082,6 +1108,14 @@ describe('development environment contract', () => {
     expect(workstationModule).toContain(
       "'The workstation request signature is invalid.'",
     )
+    expect(workstationModule).toContain('[datetimeoffset]$request.expiresAt')
+    expect(workstationModule).toContain(
+      '$standardOutput = $process.StandardOutput.ReadToEndAsync()',
+    )
+    expect(workstationModule).toContain(
+      '$standardError = $process.StandardError.ReadToEndAsync()',
+    )
+    expect(workstationModule).toContain('$process.Dispose()')
   })
 
   it('encrypts response packages with a pinned user-local age binary', () => {
@@ -1098,8 +1132,8 @@ describe('development environment contract', () => {
       'The downloaded age archive checksum does not match the pinned value.',
     )
     expect(workstationModule).toContain('Invoke-WebRequest -Uri $url')
-    expect(workstationModule).toContain(
-      "Invoke-AzureDevNativeCommand `\n      -FilePath $age `\n      -Arguments @('-p'",
+    expect(workstationModule).toMatch(
+      /Invoke-AzureDevNativeCommand[\s`]*-FilePath\s+\$age[\s`]*-Arguments\s+@\('-R',\s*\$recipientPath,\s*'-o',\s*\$OutputPath,\s*\$zipPath\)/u,
     )
     expect(workstationModule).toContain(
       "Join-Path $env:LOCALAPPDATA 'Kravhantering/tools/age'",
@@ -1107,6 +1141,15 @@ describe('development environment contract', () => {
     expect(workstationModule).toContain(
       "Join-Path $HOME 'Library/Application Support/Kravhantering/tools/age'",
     )
+    expect(workstationModule).toContain(
+      "'reference/destination-public-key.pub'",
+    )
+    expect(workstationModule).toContain(
+      'function Get-AzureDevWorkstationPackageIdentityPaths',
+    )
+    expect(workstationModule).toContain("$decryptArguments.Add('-i')")
+    expect(workstationModule).toContain('-Arguments @($decryptArguments)')
+    expect(workstationModule).not.toContain("-Arguments @('-p'")
   })
 
   it('extracts packages defensively without changing workstation files', () => {
@@ -1125,6 +1168,14 @@ describe('development environment contract', () => {
       'The package contains an undeclared entry:',
     )
     expect(workstationModule).toContain('The workstation package has expired.')
+    expect(workstationModule).toContain('[datetimeoffset]$manifest.expiresAt')
+    expect(workstationModule).toContain(
+      '$actualTotal -gt $script:MaximumPackageBytes',
+    )
+    expect(workstationModule).toContain(
+      '$entryBytes -gt $script:MaximumEntryBytes',
+    )
+    expect(workstationModule).not.toContain('$entryInput.CopyTo($output)')
     expect(workstationModule).toContain('Write-AzureDevExtractedReadme')
     expect(workstationModule).toContain(
       "Write-Host 'Open the shared workspace:'",
@@ -1133,6 +1184,35 @@ describe('development environment contract', () => {
     expect(workstationModule).not.toContain(
       'code --remote ssh-remote+$($Context.Config.SshHostAlias) /workspace &',
     )
+  })
+
+  it('hardens workstation package and access-key lifecycle operations', () => {
+    const workstationModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Workstation.psm1',
+    )
+    const sshModule = readWorkspaceFile('scripts/azure-dev/AzureDev.Ssh.psm1')
+
+    expect(workstationModule).toContain('function New-AzureDevPrivateFile')
+    expect(workstationModule).toContain('function Copy-AzureDevPrivateFile')
+    expect(workstationModule).toContain(
+      'function Get-AzureDevRemoteWorkstationKeyComment',
+    )
+    expect(workstationModule).toContain(
+      "'AZURE_DEV_VM_ENVIRONMENT_ID contains unsupported characters.'",
+    )
+    expect(workstationModule).toMatch(
+      /\$packageDirectory\s*=\s*Join-Path[\s`]*\$Context\.StateDirectory[\s`]*'workstation-packages'/u,
+    )
+    expect(workstationModule).toContain(
+      'After transfer, remove the encrypted source package:',
+    )
+    expect(workstationModule).toContain(
+      'Refusing to remove every remaining managed CIDR without',
+    )
+    expect(workstationModule).toContain(
+      'Pass -WorkstationName with a stable name for this workstation.',
+    )
+    expect(sshModule).toContain("-Arguments @('700', $directory)")
   })
 
   it('blocks direct root SSH and validates the effective policy', () => {

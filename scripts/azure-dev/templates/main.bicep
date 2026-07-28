@@ -33,9 +33,16 @@ param sshPublicKey string
 ])
 param connectivityMode string = 'public-ssh'
 
-@description('Named inbound SSH rules preserved across workstations.')
+type SshAccessRule = {
+  name: string
+  description: string
+  priority: int
+  cidr: string
+}
+
+@description('Authoritative named inbound SSH rules. Omitted rules are removed from the NSG.')
 @maxLength(64)
-param sshAccessRules array
+param sshAccessRules SshAccessRule[]
 
 @description('Enable Azure DevTestLab auto-shutdown.')
 param autoStopEnabled bool = true
@@ -91,6 +98,7 @@ var dataDiskProfile = union({
   diskSizeGB: dataDiskGiB
 })
 
+// The inline securityRules collection is the authoritative NSG rule state.
 var sshRules = [
   for rule in (connectivityMode == 'public-ssh' ? sshAccessRules : []): {
     name: rule.name

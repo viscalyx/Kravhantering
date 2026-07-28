@@ -125,7 +125,7 @@ The command flow is intentionally narrow:
 - `new-workstation-request` creates a destination-local key and a signed,
   ASCII-armored request without requiring Azure scope.
 - `approve-workstation` verifies the request, adds its public key and CIDR, and
-  creates a passphrase-encrypted response package.
+  creates a response package encrypted to the destination SSH public key.
 - `extract-workstation-package` validates and extracts a package into one
   explicitly selected directory without applying workstation changes.
 - `prepare-workstation-access` reports readiness and prints manual commands. A

@@ -1828,6 +1828,9 @@ function New-AzureDevSshAccessRuleSpec {
     [int]$Priority = $script:AzureDevSshRulePriorityStart
   )
 
+  $name = Get-AzureDevSshAccessRuleName `
+    -WorkstationName $WorkstationName `
+    -AccessName $AccessName
   $workstation = ConvertTo-AzureDevAccessName `
     -Value $WorkstationName `
     -Label 'Workstation name'
@@ -1835,7 +1838,7 @@ function New-AzureDevSshAccessRuleSpec {
     -Value $AccessName `
     -Label 'Access name'
   return [pscustomobject]@{
-    name = "$script:AzureDevManagedSshRulePrefix$workstation-$access"
+    name = $name
     description = (
       'kravhantering-azure-dev;schema=2;' +
       "workstation=$workstation;access=$access"
@@ -1846,6 +1849,25 @@ function New-AzureDevSshAccessRuleSpec {
     access = $access
     legacy = $false
   }
+}
+
+function Get-AzureDevSshAccessRuleName {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$WorkstationName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$AccessName
+  )
+
+  $workstation = ConvertTo-AzureDevAccessName `
+    -Value $WorkstationName `
+    -Label 'Workstation name'
+  $access = ConvertTo-AzureDevAccessName `
+    -Value $AccessName `
+    -Label 'Access name'
+  return "$script:AzureDevManagedSshRulePrefix$workstation-$access"
 }
 
 function Get-AzureDevSshAccessRules {
@@ -1872,7 +1894,13 @@ function Get-AzureDevSshAccessRules {
       'json'
     ) -Json
   } catch {
-    return @()
+    if (
+      $_.Exception.Message -match
+      '(?i)(ResourceGroupNotFound|ResourceNotFound|could not be found|was not found)'
+    ) {
+      return @()
+    }
+    throw
   }
 
   $result = New-Object System.Collections.Generic.List[object]
@@ -1904,7 +1932,14 @@ function Get-AzureDevSshAccessRules {
       }
     }
     if ([string]::IsNullOrWhiteSpace($cidr)) {
-      throw "Managed SSH rule $($rule.name) must contain exactly one source CIDR."
+      if ($isLegacy -and $prefixes.Count -gt 1) {
+        throw (
+          "Legacy SSH rule $($rule.name) contains multiple source CIDRs. " +
+          'Migrate each CIDR to a named managed rule before continuing.'
+        )
+      }
+      $ruleKind = if ($isLegacy) { 'Legacy' } else { 'Managed' }
+      throw "$ruleKind SSH rule $($rule.name) must contain exactly one source CIDR."
     }
 
     if ($isLegacy) {
@@ -2158,39 +2193,6 @@ function Stop-AzureDevAzureVm {
   }
 }
 
-function Update-AzureDevNetworkSecurityGroupCidr {
-  [CmdletBinding(SupportsShouldProcess = $true)]
-  param(
-    [Parameter(Mandatory = $true)]
-    [pscustomobject]$Context,
-
-    [Parameter(Mandatory = $true)]
-    [string]$AllowedSshCidr
-  )
-
-  $names = Get-AzureDevExpectedResourceNames -Config $Context.Config
-  if ($PSCmdlet.ShouldProcess($names.networkSecurityGroup, "Set SSH CIDR to $AllowedSshCidr")) {
-    Invoke-AzCli -Arguments @(
-      'network',
-      'nsg',
-      'rule',
-      'update',
-      '--subscription',
-      $Context.Config.SubscriptionId,
-      '--resource-group',
-      $Context.Config.ResourceGroup,
-      '--nsg-name',
-      $names.networkSecurityGroup,
-      '--name',
-      'AllowSshFromOperator',
-      '--source-address-prefixes',
-      $AllowedSshCidr,
-      '--output',
-      'json'
-    ) -Json | Out-Null
-  }
-}
-
 function Get-AzureDevManagedResources {
   [CmdletBinding()]
   param(
@@ -2315,6 +2317,7 @@ Export-ModuleMember -Function `
   Get-AzureDevDeploymentParameters, `
   Get-AzureDevDataDisk, `
   Get-AzureDevExpectedResourceNames, `
+  Get-AzureDevSshAccessRuleName, `
   Get-AzureDevNextSshRulePriority, `
   Get-AzureDevManagedResources, `
   Get-AzureDevPublicIpAddress, `
@@ -2348,5 +2351,4 @@ Export-ModuleMember -Function `
   Test-AzureDevPrerequisites, `
   Test-AzureDevRuntime, `
   Test-AzureDevSubscriptionVisible, `
-  Test-AzureDevSkuAvailability, `
-  Update-AzureDevNetworkSecurityGroupCidr
+  Test-AzureDevSkuAvailability

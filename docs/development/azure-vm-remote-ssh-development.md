@@ -999,13 +999,13 @@ sequenceDiagram
 
     User->>Destination: new-workstation-request
     Destination->>Destination: Generate destination SSH key
-    Destination-->>User: Signed text request<br/>Public key and CIDR only
+    Destination-->>User: Signed text request<br/>Public onboarding data
     User->>Source: Paste request or copy request file
     Source->>Source: Verify signature, expiry, and fingerprint
     User->>Source: Confirm verification code
     Source->>Azure: Add named CIDR rule
     Source->>VM: Add destination public key
-    Source-->>User: Passphrase-encrypted age package
+    Source-->>User: Destination-key-encrypted age package
     User->>Destination: Transfer package attachment
     Destination->>Destination: extract-workstation-package
     Destination-->>User: Private README and selected files
@@ -1074,9 +1074,9 @@ never displayed.
 
 Approval temporarily starts a stopped VM when the user confirms, restores its
 original power state, adds and verifies the named CIDR and public key, and
-creates the passphrase-encrypted response package. Send the passphrase through
-a channel separate from the package when the source and destination users are
-different.
+creates a response package encrypted to the destination workstation's SSH
+public key. The package can only be decrypted with the private key that remains
+on that workstation.
 
 ### Extract and configure manually
 
@@ -1088,9 +1088,11 @@ On the destination workstation:
   -DestinationPath "<private-extraction-directory>"
 ```
 
-Extraction validates the package, rejects unsafe archive paths, and writes only
-under the selected destination. It does not copy environment files, update SSH
-configuration, edit shell profiles, install tokens, or launch VS Code.
+Extraction validates the package, rejects unsafe archive paths, and writes every
+validated manifest entry, including permitted environment files, only under the
+selected destination. It does not automatically apply those files to the
+repository, configure the environment, update SSH configuration, edit shell
+profiles, install tokens, or launch VS Code.
 
 Open the generated `README.md`. It identifies each source and destination path,
 explains machine-specific values such as
@@ -1118,6 +1120,10 @@ Remove the plaintext extraction directory after finishing:
 
 Cleanup validates the package manifest and asks before deleting that exact
 directory. It does not claim secure erasure on SSD storage.
+
+After the encrypted response package reaches the destination workstation,
+remove the source copy using the cleanup command printed by
+`approve-workstation`.
 
 ### Remove workstation access
 

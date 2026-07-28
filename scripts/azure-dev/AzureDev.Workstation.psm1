@@ -36,7 +36,8 @@ function Resolve-AzureDevWorkstationName {
   )
 
   $value = $WorkstationName
-  if ([string]::IsNullOrWhiteSpace($value)) {
+  $derivedFromMachineName = [string]::IsNullOrWhiteSpace($value)
+  if ($derivedFromMachineName) {
     $value = [System.Environment]::MachineName
     if ([string]::IsNullOrWhiteSpace($value)) {
       throw (
@@ -45,9 +46,19 @@ function Resolve-AzureDevWorkstationName {
       )
     }
   }
-  return ConvertTo-AzureDevAccessName `
-    -Value $value `
-    -Label 'Workstation name'
+  try {
+    return ConvertTo-AzureDevAccessName `
+      -Value $value `
+      -Label 'Workstation name'
+  } catch {
+    if ($derivedFromMachineName) {
+      throw (
+        "The local machine name '$value' cannot be used as a workstation name. " +
+        'Pass -WorkstationName with a stable name for this workstation.'
+      )
+    }
+    throw
+  }
 }
 
 function Set-AzureDevPrivatePermissions {
@@ -60,6 +71,8 @@ function Set-AzureDevPrivatePermissions {
   )
 
   if ($IsWindows) {
+    # Windows retains the current user's inherited ACL. Explicit ACL hardening
+    # is intentionally not implemented in this cross-platform workflow.
     return
   }
   $mode = if ($Directory) { '700' } else { '600' }
@@ -86,6 +99,70 @@ function New-AzureDevPrivateDirectory {
   }
   New-Item -ItemType Directory -Path $Path -Force | Out-Null
   Set-AzureDevPrivatePermissions -Path $Path -Directory
+}
+
+function New-AzureDevPrivateFile {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  New-Item -ItemType File -Path $Path -Force | Out-Null
+  Set-AzureDevPrivatePermissions -Path $Path
+}
+
+function Set-AzureDevPrivateContent {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path,
+
+    [Parameter(Mandatory = $true)]
+    [AllowEmptyString()]
+    [string]$Value,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Encoding,
+
+    [switch]$NoNewline
+  )
+
+  New-AzureDevPrivateFile -Path $Path
+  Set-Content `
+    -LiteralPath $Path `
+    -Value $Value `
+    -Encoding $Encoding `
+    -NoNewline:$NoNewline
+}
+
+function Copy-AzureDevPrivateFile {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Source,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Destination
+  )
+
+  New-AzureDevPrivateFile -Path $Destination
+  $sourceStream = [IO.File]::OpenRead($Source)
+  try {
+    $destinationStream = [IO.File]::Open(
+      $Destination,
+      [IO.FileMode]::Truncate,
+      [IO.FileAccess]::Write,
+      [IO.FileShare]::None
+    )
+    try {
+      $sourceStream.CopyTo($destinationStream)
+    } finally {
+      $destinationStream.Dispose()
+    }
+  } finally {
+    $sourceStream.Dispose()
+  }
 }
 
 function Get-AzureDevPublicKeyFingerprint {
@@ -228,8 +305,11 @@ function New-AzureDevWorkstationRequest {
   try {
     New-AzureDevPrivateDirectory -Path $temporaryDirectory
     $payloadPath = Join-Path $temporaryDirectory 'request.json'
-    Set-Content -LiteralPath $payloadPath -Value $payload -Encoding UTF8 -NoNewline
-    Set-AzureDevPrivatePermissions -Path $payloadPath
+    Set-AzureDevPrivateContent `
+      -Path $payloadPath `
+      -Value $payload `
+      -Encoding UTF8 `
+      -NoNewline
     $signResult = Invoke-AzureDevNativeCommand `
       -FilePath 'ssh-keygen' `
       -Arguments @(
@@ -270,8 +350,10 @@ function New-AzureDevWorkstationRequest {
     throw "Request output already exists: $OutputPath"
   }
   if ($PSCmdlet.ShouldProcess($OutputPath, 'Write signed workstation request')) {
-    Set-Content -LiteralPath $OutputPath -Value $armored -Encoding ASCII
-    Set-AzureDevPrivatePermissions -Path $OutputPath
+    Set-AzureDevPrivateContent `
+      -Path $OutputPath `
+      -Value $armored `
+      -Encoding ASCII
   }
 
   Write-Host "Workstation request: $OutputPath"
@@ -314,12 +396,12 @@ function Test-AzureDevWorkstationRequestSignature {
     New-AzureDevPrivateDirectory -Path $temporaryDirectory
     $allowedSignersPath = Join-Path $temporaryDirectory 'allowed_signers'
     $signaturePath = Join-Path $temporaryDirectory 'request.sig'
-    Set-Content `
-      -LiteralPath $allowedSignersPath `
+    Set-AzureDevPrivateContent `
+      -Path $allowedSignersPath `
       -Value "workstation $PublicKey" `
       -Encoding ASCII
-    Set-Content `
-      -LiteralPath $signaturePath `
+    Set-AzureDevPrivateContent `
+      -Path $signaturePath `
       -Value $Signature `
       -Encoding ASCII
 
@@ -345,11 +427,22 @@ function Test-AzureDevWorkstationRequestSignature {
     $start.RedirectStandardOutput = $true
     $start.RedirectStandardError = $true
     $start.UseShellExecute = $false
-    $process = [Diagnostics.Process]::Start($start)
-    $process.StandardInput.Write($Payload)
-    $process.StandardInput.Close()
-    $process.WaitForExit()
-    return $process.ExitCode -eq 0
+    $process = $null
+    try {
+      $process = [Diagnostics.Process]::Start($start)
+      $standardOutput = $process.StandardOutput.ReadToEndAsync()
+      $standardError = $process.StandardError.ReadToEndAsync()
+      $process.StandardInput.Write($Payload)
+      $process.StandardInput.Close()
+      $process.WaitForExit()
+      $standardOutput.GetAwaiter().GetResult() | Out-Null
+      $standardError.GetAwaiter().GetResult() | Out-Null
+      return $process.ExitCode -eq 0
+    } finally {
+      if ($null -ne $process) {
+        $process.Dispose()
+      }
+    }
   } finally {
     if (Test-Path -LiteralPath $temporaryDirectory) {
       Remove-Item -LiteralPath $temporaryDirectory -Recurse -Force
@@ -399,7 +492,10 @@ function Read-AzureDevWorkstationRequest {
   ) {
     throw 'The workstation request schema is unsupported.'
   }
-  if ([datetime]$request.expiresAt -lt (Get-Date).ToUniversalTime()) {
+  if (
+    [datetimeoffset]$request.expiresAt -lt
+    [datetimeoffset]::UtcNow
+  ) {
     throw 'The workstation request has expired.'
   }
   $normalizedName = ConvertTo-AzureDevAccessName `
@@ -465,6 +561,24 @@ function Get-AzureDevWorkstationCidr {
   return $resolved
 }
 
+function Get-AzureDevRemoteWorkstationKeyComment {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context,
+
+    [Parameter(Mandatory = $true)]
+    [string]$WorkstationName
+  )
+
+  $environmentId = [string]$Context.Config.EnvironmentId
+  if ($environmentId -notmatch '^[A-Za-z0-9._-]+$') {
+    throw 'AZURE_DEV_VM_ENVIRONMENT_ID contains unsupported characters.'
+  }
+  $name = ConvertTo-AzureDevAccessName $WorkstationName
+  return "kravhantering:$environmentId`:$name"
+}
+
 function Register-AzureDevRemoteWorkstationKey {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
@@ -480,7 +594,9 @@ function Register-AzureDevRemoteWorkstationKey {
 
   $name = ConvertTo-AzureDevAccessName $WorkstationName
   $parts = $PublicKey.Trim() -split '[ \t]+', 3
-  $comment = "kravhantering:$($Context.Config.EnvironmentId):$name"
+  $comment = Get-AzureDevRemoteWorkstationKeyComment `
+    -Context $Context `
+    -WorkstationName $name
   if (
     -not $PSCmdlet.ShouldProcess(
       $name,
@@ -708,8 +824,8 @@ function New-AzureDevWorkstationPackage {
     foreach ($directory in @('files', 'reference')) {
       New-AzureDevPrivateDirectory -Path (Join-Path $payloadPath $directory)
     }
-    Copy-Item `
-      -LiteralPath $Context.Config.EnvironmentFilePath `
+    Copy-AzureDevPrivateFile `
+      -Source $Context.Config.EnvironmentFilePath `
       -Destination (Join-Path $payloadPath 'files/.env.azure.development')
 
     $included = New-Object System.Collections.Generic.List[string]
@@ -731,8 +847,8 @@ function New-AzureDevWorkstationPackage {
           ) `
           -Optional
       ) {
-        Copy-Item `
-          -LiteralPath $localPath `
+        Copy-AzureDevPrivateFile `
+          -Source $localPath `
           -Destination (
             Join-Path $payloadPath 'files/.env.azure.development.local'
           )
@@ -754,12 +870,11 @@ function New-AzureDevWorkstationPackage {
           New-AzureDevPrivateDirectory -Path $secretsDirectory
         }
         $tokenPath = Join-Path $payloadPath "secrets/$tokenName"
-        Set-Content `
-          -LiteralPath $tokenPath `
+        Set-AzureDevPrivateContent `
+          -Path $tokenPath `
           -Value $token.Value `
           -Encoding UTF8 `
           -NoNewline
-        Set-AzureDevPrivatePermissions -Path $tokenPath
         $included.Add("secrets/$tokenName")
       }
     }
@@ -794,11 +909,11 @@ function New-AzureDevWorkstationPackage {
         if (-not (Test-Path -LiteralPath $signingDirectory)) {
           New-AzureDevPrivateDirectory -Path $signingDirectory
         }
-        Copy-Item `
-          -LiteralPath $signingPath `
+        Copy-AzureDevPrivateFile `
+          -Source $signingPath `
           -Destination (Join-Path $signingDirectory 'git-signing-key')
-        Copy-Item `
-          -LiteralPath "$signingPath.pub" `
+        Copy-AzureDevPrivateFile `
+          -Source "$signingPath.pub" `
           -Destination (Join-Path $signingDirectory 'git-signing-key.pub')
         $included.Add('secrets/git-signing-key')
         $included.Add('secrets/git-signing-key.pub')
@@ -816,14 +931,20 @@ function New-AzureDevWorkstationPackage {
           -Optional
       )
     ) {
-      Copy-Item `
-        -LiteralPath $zshTemplate `
+      Copy-AzureDevPrivateFile `
+        -Source $zshTemplate `
         -Destination (Join-Path $payloadPath 'files/zshrc.template')
       $included.Add('files/zshrc.template')
     }
 
-    Set-Content `
-      -LiteralPath (Join-Path $payloadPath 'reference/destination-key-fingerprint.txt') `
+    $recipientPath = Join-Path $payloadPath 'reference/destination-public-key.pub'
+    Set-AzureDevPrivateContent `
+      -Path $recipientPath `
+      -Value $Request.publicKey `
+      -Encoding ASCII
+    $included.Add('reference/destination-public-key.pub')
+    Set-AzureDevPrivateContent `
+      -Path (Join-Path $payloadPath 'reference/destination-key-fingerprint.txt') `
       -Value $Request.publicKeyFingerprint `
       -Encoding ASCII
     $included.Add('reference/destination-key-fingerprint.txt')
@@ -838,8 +959,8 @@ function New-AzureDevWorkstationPackage {
       throw 'Could not capture the VM SSH host keys for the response package.'
     }
     $knownHostsPath = Join-Path $payloadPath 'reference/vm-known-hosts'
-    Set-Content `
-      -LiteralPath $knownHostsPath `
+    Set-AzureDevPrivateContent `
+      -Path $knownHostsPath `
       -Value $hostKeyResult.Text.Trim() `
       -Encoding ASCII
     $included.Add('reference/vm-known-hosts')
@@ -849,8 +970,8 @@ function New-AzureDevWorkstationPackage {
     if ($hostFingerprintResult.ExitCode -ne 0) {
       throw 'Could not fingerprint the captured VM SSH host keys.'
     }
-    Set-Content `
-      -LiteralPath (Join-Path $payloadPath 'reference/vm-host-key-fingerprints.txt') `
+    Set-AzureDevPrivateContent `
+      -Path (Join-Path $payloadPath 'reference/vm-host-key-fingerprints.txt') `
       -Value $hostFingerprintResult.Text.Trim() `
       -Encoding ASCII
     $included.Add('reference/vm-host-key-fingerprints.txt')
@@ -881,8 +1002,8 @@ function New-AzureDevWorkstationPackage {
       expiresAt = $now.AddHours(24).ToString('o')
       entries = @($included)
     }
-    Set-Content `
-      -LiteralPath (Join-Path $payloadPath 'manifest.json') `
+    Set-AzureDevPrivateContent `
+      -Path (Join-Path $payloadPath 'manifest.json') `
       -Value ($manifest | ConvertTo-Json -Depth 8) `
       -Encoding UTF8
     $zipPath = Join-Path $temporaryDirectory 'payload.zip'
@@ -892,7 +1013,7 @@ function New-AzureDevWorkstationPackage {
     }
     $encryptResult = Invoke-AzureDevNativeCommand `
       -FilePath $age `
-      -Arguments @('-p', '-o', $OutputPath, $zipPath)
+      -Arguments @('-R', $recipientPath, '-o', $OutputPath, $zipPath)
     if ($encryptResult.ExitCode -ne 0) {
       throw "Could not encrypt the workstation package: $($encryptResult.Text.Trim())"
     }
@@ -942,8 +1063,12 @@ function Approve-AzureDevWorkstation {
     return
   }
   if ([string]::IsNullOrWhiteSpace($OutputPath)) {
+    $packageDirectory = Join-Path `
+      $Context.StateDirectory `
+      'workstation-packages'
+    New-AzureDevPrivateDirectory -Path $packageDirectory
     $OutputPath = Join-Path `
-      $Context.Config.RepoRoot `
+      $packageDirectory `
       "$($request.workstation)-workstation-package.age"
   }
 
@@ -1025,6 +1150,10 @@ function Approve-AzureDevWorkstation {
     }
   }
   Write-Host "Encrypted response package: $OutputPath"
+  Write-Host (
+    'After transfer, remove the encrypted source package: ' +
+    "Remove-Item -LiteralPath `"$OutputPath`" -Force"
+  )
 }
 
 function Test-AzureDevPackageEntryName {
@@ -1043,6 +1172,40 @@ function Test-AzureDevPackageEntryName {
     return $false
   }
   return $Name -match '^(manifest\.json|(files|secrets|reference)/[A-Za-z0-9._-]+)$'
+}
+
+function Get-AzureDevWorkstationPackageIdentityPaths {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context
+  )
+
+  $identityPaths = New-Object System.Collections.Generic.List[string]
+  $configuredPath = $Context.Config.SshPrivateKeyPath
+  if (Test-Path -LiteralPath $configuredPath -PathType Leaf) {
+    $identityPaths.Add($configuredPath)
+  }
+  $sshDirectory = Join-Path $HOME '.ssh'
+  if (Test-Path -LiteralPath $sshDirectory -PathType Container) {
+    foreach (
+      $candidate in Get-ChildItem `
+        -LiteralPath $sshDirectory `
+        -Filter 'kravhantering_azure_dev_*_ed25519' `
+        -File
+    ) {
+      if ($candidate.FullName -notin $identityPaths) {
+        $identityPaths.Add($candidate.FullName)
+      }
+    }
+  }
+  if ($identityPaths.Count -eq 0) {
+    throw (
+      'No destination SSH private key is available to decrypt the package. ' +
+      'Run new-workstation-request on this workstation first.'
+    )
+  }
+  return @($identityPaths)
 }
 
 function Write-AzureDevExtractedReadme {
@@ -1154,8 +1317,8 @@ function Write-AzureDevExtractedReadme {
     ''
     'Then run the `code --remote ...` command printed by the readiness check.'
   )
-  Set-Content `
-    -LiteralPath (Join-Path $DestinationPath 'README.md') `
+  Set-AzureDevPrivateContent `
+    -Path (Join-Path $DestinationPath 'README.md') `
     -Value ($lines -join [Environment]::NewLine) `
     -Encoding UTF8
 }
@@ -1194,9 +1357,21 @@ function Expand-AzureDevWorkstationPackage {
   try {
     New-AzureDevPrivateDirectory -Path $temporaryDirectory
     $zipPath = Join-Path $temporaryDirectory 'payload.zip'
+    $decryptArguments = New-Object System.Collections.Generic.List[string]
+    $decryptArguments.Add('-d')
+    foreach (
+      $identityPath in Get-AzureDevWorkstationPackageIdentityPaths `
+        -Context $Context
+    ) {
+      $decryptArguments.Add('-i')
+      $decryptArguments.Add($identityPath)
+    }
+    $decryptArguments.Add('-o')
+    $decryptArguments.Add($zipPath)
+    $decryptArguments.Add($PackagePath)
     $decryptResult = Invoke-AzureDevNativeCommand `
       -FilePath $age `
-      -Arguments @('-d', '-o', $zipPath, $PackagePath)
+      -Arguments @($decryptArguments)
     if ($decryptResult.ExitCode -ne 0) {
       throw "Could not decrypt the workstation package: $($decryptResult.Text.Trim())"
     }
@@ -1236,7 +1411,10 @@ function Expand-AzureDevWorkstationPackage {
       ) {
         throw 'The workstation package schema is unsupported.'
       }
-      if ([datetime]$manifest.expiresAt -lt (Get-Date).ToUniversalTime()) {
+      if (
+        [datetimeoffset]$manifest.expiresAt -lt
+        [datetimeoffset]::UtcNow
+      ) {
         throw 'The workstation package has expired.'
       }
       $declared = @($manifest.entries) + @('manifest.json')
@@ -1252,6 +1430,7 @@ function Expand-AzureDevWorkstationPackage {
       }
 
       New-AzureDevPrivateDirectory -Path $DestinationPath
+      $actualTotal = 0L
       foreach ($entry in $archive.Entries) {
         $target = Join-Path $DestinationPath $entry.FullName
         $targetDirectory = Split-Path -Parent $target
@@ -1259,14 +1438,31 @@ function Expand-AzureDevWorkstationPackage {
           New-AzureDevPrivateDirectory -Path $targetDirectory
         }
         $entryInput = $entry.Open()
-        $output = [IO.File]::Create($target)
+        New-AzureDevPrivateFile -Path $target
+        $output = [IO.File]::Open(
+          $target,
+          [IO.FileMode]::Truncate,
+          [IO.FileAccess]::Write,
+          [IO.FileShare]::None
+        )
         try {
-          $entryInput.CopyTo($output)
+          $buffer = [byte[]]::new(64KB)
+          $entryBytes = 0L
+          while (($read = $entryInput.Read($buffer, 0, $buffer.Length)) -gt 0) {
+            $entryBytes += $read
+            $actualTotal += $read
+            if ($entryBytes -gt $script:MaximumEntryBytes) {
+              throw "Package entry exceeds the size limit: $($entry.FullName)"
+            }
+            if ($actualTotal -gt $script:MaximumPackageBytes) {
+              throw 'The decrypted workstation package exceeds the size limit.'
+            }
+            $output.Write($buffer, 0, $read)
+          }
         } finally {
           $output.Dispose()
           $entryInput.Dispose()
         }
-        Set-AzureDevPrivatePermissions -Path $target
       }
       Write-AzureDevExtractedReadme `
         -Context $Context `
@@ -1465,15 +1661,14 @@ function Remove-AzureDevWorkstationCidr {
   )
 
   Test-AzureDevPrerequisites -Context $Context
-  $candidate = New-AzureDevSshAccessRuleSpec `
+  $candidateName = Get-AzureDevSshAccessRuleName `
     -WorkstationName $WorkstationName `
-    -AccessName $AccessName `
-    -Cidr '203.0.113.1/32'
+    -AccessName $AccessName
   $rules = @(
     Get-AzureDevSshAccessRules -Config $Context.Config |
       Where-Object { -not $_.legacy }
   )
-  $target = @($rules | Where-Object { $_.name -eq $candidate.name })
+  $target = @($rules | Where-Object { $_.name -eq $candidateName })
   if ($target.Count -ne 1) {
     throw "Managed SSH CIDR was not found: $WorkstationName/$AccessName"
   }
@@ -1513,7 +1708,9 @@ function Remove-AzureDevRemoteWorkstationKey {
   )
 
   $name = ConvertTo-AzureDevAccessName $WorkstationName
-  $comment = "kravhantering:$($Context.Config.EnvironmentId):$name"
+  $comment = Get-AzureDevRemoteWorkstationKeyComment `
+    -Context $Context `
+    -WorkstationName $name
   $force = if ($ForceRecovery) { '1' } else { '0' }
   if (
     -not $PSCmdlet.ShouldProcess(
@@ -1564,10 +1761,21 @@ function Remove-AzureDevWorkstation {
 
   Test-AzureDevPrerequisites -Context $Context
   $name = ConvertTo-AzureDevAccessName $WorkstationName
-  $rules = @(
+  $managedRules = @(
     Get-AzureDevSshAccessRules -Config $Context.Config |
-      Where-Object { -not $_.legacy -and $_.workstation -eq $name }
+      Where-Object { -not $_.legacy }
   )
+  $rules = @($managedRules | Where-Object { $_.workstation -eq $name })
+  if (
+    $rules.Count -gt 0 -and
+    $rules.Count -eq $managedRules.Count -and
+    -not $ForceRecovery
+  ) {
+    throw (
+      'Refusing to remove every remaining managed CIDR without ' +
+      '-ForceRecovery.'
+    )
+  }
   if (
     -not (
       Confirm-AzureDevWorkstationAction `
