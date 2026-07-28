@@ -31,6 +31,7 @@ type WorkflowDocument = {
 }
 
 type WorkflowJob = {
+  if?: unknown
   name?: unknown
   steps?: WorkflowStep[]
   strategy?: unknown
@@ -267,15 +268,13 @@ describe('GitHub Actions workflow security', () => {
       path.join(WORKFLOWS_DIR, 'ssdlc-gate.yml'),
       'utf8',
     )
+    const workflowDocument = readWorkflowYaml('ssdlc-gate.yml')
 
     expect(workflow).toContain('pull_request_target:')
     expect(workflow).toContain('contents: read')
     expect(workflow).toContain('pull-requests: read')
-    expect(workflow).toContain(
+    expect(workflowDocument.jobs?.['ssdlc-gate']?.if).toBe(
       "github.event.pull_request.user.login != 'dependabot[bot]'",
-    )
-    expect(workflow).toContain(
-      "!startsWith(github.event.pull_request.title, 'build(deps):')",
     )
     expect(workflow).toContain(
       ['ref: $', '{{ github.event.pull_request.base.sha }}'].join(''),
@@ -374,15 +373,13 @@ describe('GitHub Actions workflow security', () => {
       path.join(WORKFLOWS_DIR, 'operator-upgrade-gate.yml'),
       'utf8',
     )
+    const workflowDocument = readWorkflowYaml('operator-upgrade-gate.yml')
 
     expect(workflow).toContain('pull_request_target:')
     expect(workflow).toContain('contents: read')
     expect(workflow).toContain('pull-requests: read')
-    expect(workflow).toContain(
+    expect(workflowDocument.jobs?.['operator-upgrade-gate']?.if).toBe(
       "github.event.pull_request.user.login != 'dependabot[bot]'",
-    )
-    expect(workflow).toContain(
-      "!startsWith(github.event.pull_request.title, 'build(deps):')",
     )
     expect(workflow).toContain(
       ['ref: $', '{{ github.event.pull_request.base.sha }}'].join(''),

@@ -353,7 +353,7 @@ describe('Navigation', () => {
     const navigation = screen.getByRole('navigation', {
       name: 'nav.mainNavigation',
     })
-    expect(navigation).toHaveStyle({ width: '4.5rem' })
+    expect(navigation).toHaveStyle({ width: '72px' })
     const expandRailButton = screen.getByRole('button', {
       name: 'nav.expandRail',
     })
@@ -364,7 +364,7 @@ describe('Navigation', () => {
 
     fireEvent.click(expandRailButton)
 
-    expect(navigation).toHaveStyle({ width: '16.5rem' })
+    expect(navigation).toHaveStyle({ width: '264px' })
     const collapseRailButton = screen.getByRole('button', {
       name: 'nav.collapseRail',
     })
