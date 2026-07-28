@@ -1050,6 +1050,8 @@ describe('development environment contract', () => {
     expect(azureModule).toContain('function Set-AzureDevSshAccessRule')
     expect(azureModule).toContain('$script:AzureDevSshRuleLimit = 64')
     expect(azureModule).toContain("'tags.ssh-access-schema=2'")
+    expect(azureModule).toContain("'--source-port-ranges=*'")
+    expect(azureModule).toContain("'--destination-address-prefixes=*'")
     expect(entryScript).toContain(
       '$sshAccessRules = @(\n      Get-AzureDevSetupSshAccessRules',
     )
