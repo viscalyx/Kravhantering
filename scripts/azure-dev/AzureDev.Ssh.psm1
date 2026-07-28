@@ -44,37 +44,6 @@ function Test-AzureDevCidr {
   return $true
 }
 
-function Get-AzureDevAllowedSshCidr {
-  [CmdletBinding()]
-  param(
-    [Parameter(Mandatory = $true)]
-    [pscustomobject]$Config,
-
-    [string]$OverrideCidr
-  )
-
-  $cidr = if (-not [string]::IsNullOrWhiteSpace($OverrideCidr)) {
-    $OverrideCidr
-  } else {
-    $Config.AllowedSshCidr
-  }
-
-  if ($Config.ConnectivityMode -eq 'tailscale') {
-    # Tailscale mode emits no Azure SSH NSG rule; this nonmatching sentinel only
-    # satisfies the required deployment parameter and local state shape.
-    return '10.0.0.0/32'
-  }
-  if ($cidr -eq 'auto') {
-    $cidr = "$(Get-AzureDevCurrentIpv4)/32"
-  }
-  if ($cidr -match '^(\d{1,3}\.){3}\d{1,3}$') {
-    $cidr = "$cidr/32"
-  }
-
-  Test-AzureDevCidr -Cidr $cidr | Out-Null
-  return $cidr
-}
-
 function Get-AzureDevPlaceholderPublicKey {
   [CmdletBinding()]
   param()
@@ -320,7 +289,7 @@ function Wait-AzureDevSsh {
 
     [string]$HostName,
 
-    [string]$AllowedSshCidr,
+    [string]$CurrentSshCidr,
 
     [int]$TimeoutSeconds = 300
   )
@@ -389,28 +358,32 @@ function Wait-AzureDevSsh {
     }
   }
 
-  $resolvedAllowedCidr = $AllowedSshCidr
-  if ([string]::IsNullOrWhiteSpace($resolvedAllowedCidr)) {
-    if (Get-Command Get-AzureDevState -ErrorAction SilentlyContinue) {
-      $state = Get-AzureDevState -Context $Context
-      $lastKnownAllowedCidr = if ($null -ne $state) {
-        $state.PSObject.Properties['lastKnownAllowedCidr']
-      } else {
-        $null
-      }
-      if (
-        $null -ne $lastKnownAllowedCidr -and
-        -not [string]::IsNullOrWhiteSpace([string]$lastKnownAllowedCidr.Value)
-      ) {
-        $resolvedAllowedCidr = [string]$lastKnownAllowedCidr.Value
-      }
+  $resolvedAllowedCidrs = @()
+  if (-not [string]::IsNullOrWhiteSpace($CurrentSshCidr)) {
+    $resolvedAllowedCidrs = @($CurrentSshCidr)
+  } elseif (Get-Command Get-AzureDevState -ErrorAction SilentlyContinue) {
+    $state = Get-AzureDevState -Context $Context
+    $lastKnownAllowedCidrs = if ($null -ne $state) {
+      $state.PSObject.Properties['lastKnownAllowedCidrs']
+    } else {
+      $null
+    }
+    if ($null -ne $lastKnownAllowedCidrs) {
+      $resolvedAllowedCidrs = @(
+        $lastKnownAllowedCidrs.Value | ForEach-Object {
+          $cidrProperty = $_.PSObject.Properties['cidr']
+          if (
+            $null -ne $cidrProperty -and
+            -not [string]::IsNullOrWhiteSpace([string]$cidrProperty.Value)
+          ) {
+            [string]$cidrProperty.Value
+          }
+        }
+      )
     }
   }
-  if ([string]::IsNullOrWhiteSpace($resolvedAllowedCidr)) {
-    $resolvedAllowedCidr = $Context.Config.AllowedSshCidr
-  }
-  if (-not [string]::IsNullOrWhiteSpace($resolvedAllowedCidr)) {
-    $diagnostics += "Allowed SSH CIDR: $resolvedAllowedCidr"
+  if ($resolvedAllowedCidrs.Count -gt 0) {
+    $diagnostics += "Allowed SSH CIDRs: $($resolvedAllowedCidrs -join ', ')"
   }
 
   $diagnostics += "Last SSH output: $lastOutput"
@@ -432,7 +405,6 @@ function Get-AzureDevCodeCommand {
 
 Export-ModuleMember -Function `
   ConvertTo-AzureDevSshPath, `
-  Get-AzureDevAllowedSshCidr, `
   Get-AzureDevCodeCommand, `
   Get-AzureDevCurrentIpv4, `
   Get-AzureDevPlaceholderPublicKey, `

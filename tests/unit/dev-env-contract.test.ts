@@ -157,7 +157,7 @@ describe('development environment contract', () => {
     )
     const statusStart = entryScript.indexOf('function Get-AzureDevStatus')
     const statusEnd = entryScript.indexOf(
-      '\nfunction Update-AzureDevCidr',
+      '\nfunction Get-AzureDevSshConfig',
       statusStart,
     )
     const statusFunction = entryScript.slice(statusStart, statusEnd)
@@ -1051,7 +1051,6 @@ describe('development environment contract', () => {
     expect(bicepTemplate).toContain('sourceAddressPrefix: rule.cidr')
     expect(bicepTemplate).not.toContain('param allowedSshCidr string')
     expect(azureModule).toContain('function Get-AzureDevSshAccessRules')
-    expect(azureModule).toContain('function Get-AzureDevSshAccessSchema')
     expect(azureModule).toContain('function Set-AzureDevSshAccessRule')
     expect(azureModule).toContain('$script:AzureDevSshRuleLimit = 64')
     expect(azureModule).toContain("'tags.ssh-access-schema=2'")
@@ -1060,42 +1059,26 @@ describe('development environment contract', () => {
     expect(azureModule).toContain(
       "'--force-string',\n      'true',\n      '--set',\n      'tags.ssh-access-schema=2'",
     )
+    expect(entryScript).toContain('Get-AzureDevSetupSshAccessRules')
     expect(entryScript).toMatch(
-      /\$sshAccessRules\s*=\s*@\([\s`]*Get-AzureDevSetupSshAccessRules[\s`]*-Context\s+\$Context[\s`]*-InitialCidr\s+\$allowedCidr[\s`]*-WorkstationName\s+\$WorkstationName/u,
+      /Get-AzureDevWorkstationCidr[\s`]*-Cidr\s+\$CidrOverride[\s`]*-AllowNetwork:\$AllowNetworkCidr/u,
     )
     expect(entryScript).toContain('-SshAccessRules $sshAccessRules')
     expect(workstationModule).toContain(
       '$value = [System.Environment]::MachineName',
     )
     expect(workstationModule).toContain(
-      'Recovered the schema version 2 tag for the named SSH rules.',
+      'GH_TOKEN in current PowerShell process:',
     )
-    const migrationStart = workstationModule.indexOf(
-      'function Invoke-AzureDevPrepareWorkstationAccess',
-    )
-    const migrationEnd = workstationModule.indexOf(
-      '\nfunction Add-AzureDevWorkstationCidr',
-      migrationStart,
-    )
-    const migration = workstationModule.slice(migrationStart, migrationEnd)
-    expect(migration.indexOf('Set-AzureDevSshAccessSchema')).toBeLessThan(
-      migration.indexOf('Remove-AzureDevSshAccessRule'),
+    expect(workstationModule).toContain(
+      'Start the printed code command from a shell, such as Zsh or Bash, where ',
     )
     expect(entryScript).toContain('-WorkstationName $effectiveWorkstationName')
     expect(entryScript).toMatch(
       /Get-AzureDevWorkstationCidr[\s`]*-Cidr\s+\$CidrOverride[\s`]*-AllowNetwork:\$AllowNetworkCidr/u,
     )
-    expect(entryScript).toMatch(
-      /Update-AzureDevCidr[\s`]*-Context\s+\$Context[\s`]*-CidrOverride\s+\$AllowedSshCidr[\s`]*-WorkstationName\s+\$effectiveWorkstationName[\s`]*-AllowNetworkCidr:\$AllowNetworkCidr/u,
-    )
-    expect(entryScript).toContain(
-      '$configuredRules = @(Get-AzureDevSshAccessRules -Config $Context.Config)',
-    )
     expect(azureModule).toContain(
       '(?i)(ResourceGroupNotFound|ResourceNotFound|could not be found|was not found)',
-    )
-    expect(azureModule).toContain(
-      'Migrate each CIDR to a named managed rule before continuing.',
     )
     expect(azureModule).not.toContain(
       'function Update-AzureDevNetworkSecurityGroupCidr',

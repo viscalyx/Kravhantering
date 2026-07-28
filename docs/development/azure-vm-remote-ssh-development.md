@@ -412,7 +412,6 @@ The other non-secret Azure VM values use code defaults and can be left
 unchanged:
 
 ```env
-AZURE_DEV_VM_ALLOWED_SSH_CIDR=auto
 AZURE_DEV_VM_AUTO_STOP_ENABLED=true
 AZURE_DEV_VM_AUTO_STOP_TIME=2200
 AZURE_DEV_VM_AUTO_STOP_TIME_ZONE=UTC
@@ -442,13 +441,13 @@ image state, Hyper-V generation V2, and Trusted Launch support. Existing VMs
 retain their immutable image reference even when these configuration values
 change.
 
-Use `AZURE_DEV_VM_ALLOWED_SSH_CIDR=auto` for the initial workstation. Setup
-detects the current public IPv4 address and creates a named `/32` rule. Set
-the workstation name automatically from the local machine name. Pass the
-optional `-WorkstationName` parameter when a different stable name is needed.
-Additional workstations and networks use the named CIDR commands documented
-below. The tool refuses private IPv4 ranges, ranges broader than `/24`, and
-broad SSH ranges such as `0.0.0.0/0`.
+Setup detects the initial workstation's current public IPv4 address and creates
+a named `/32` rule. It derives the workstation name from the local machine
+name. Pass optional `-WorkstationName` or `-Cidr` parameters when either value
+needs an explicit override. Explicit network CIDRs also require
+`-AllowNetworkCidr`. Additional workstations and networks use the named CIDR
+commands documented below. The tool refuses private IPv4 ranges, ranges broader
+than `/24`, and broad SSH ranges such as `0.0.0.0/0`.
 
 The parser intentionally supports only `KEY=value`, optional quotes, blank
 lines, and full-line comments. It does not evaluate shell expressions,
@@ -1107,9 +1106,13 @@ After manual configuration, validate readiness:
 ./scripts/azure-dev.ps1 prepare-workstation-access
 ```
 
-The command reports missing keys and tokens and prints the commands for
-`ssh-config -Apply` and VS Code. It does not apply destination configuration or
-launch VS Code.
+The command reports whether keys and tokens are available in the current
+PowerShell process and prints the commands for `ssh-config -Apply` and VS Code.
+A missing token is not necessarily a problem when PowerShell will not launch
+the Remote SSH session. Run the printed `code` command from Zsh, Bash, or
+another shell where the required tokens are available. The command does not
+inspect other shell configurations, apply destination configuration, or launch
+VS Code.
 
 Remove the plaintext extraction directory after finishing:
 
@@ -1137,21 +1140,6 @@ From another authorized workstation:
 The command removes the managed guest key and all CIDRs owned by the
 workstation. It refuses to remove the final usable key or CIDR without the
 explicit recovery override.
-
-### Migrate the current environment
-
-The temporary compatibility path migrates the current single-CIDR environment
-when this command first runs on the existing workstation:
-
-```powershell
-./scripts/azure-dev.ps1 prepare-workstation-access
-```
-
-It creates and verifies the named rule and managed key marker before removing
-the legacy rule. It also repairs a missing schema-version tag if an interrupted
-attempt already created the named rule and removed the legacy rule. This
-migration path is removed before the feature merges after the sole existing
-environment reports schema version 2.
 
 ## Step 10: Manage Support Services
 

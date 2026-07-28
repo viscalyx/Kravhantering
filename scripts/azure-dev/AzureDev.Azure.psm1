@@ -1787,7 +1787,6 @@ function Get-AzureDevVmAdminSshPublicKeys {
   return @($keys) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 }
 
-$script:AzureDevLegacySshRuleName = 'AllowSshFromOperator'
 $script:AzureDevManagedSshRulePrefix = 'AllowSshKrav-'
 $script:AzureDevSshRulePriorityStart = 2000
 $script:AzureDevSshRuleLimit = 64
@@ -1847,7 +1846,6 @@ function New-AzureDevSshAccessRuleSpec {
     cidr = $Cidr
     workstation = $workstation
     access = $access
-    legacy = $false
   }
 }
 
@@ -1905,12 +1903,11 @@ function Get-AzureDevSshAccessRules {
 
   $result = New-Object System.Collections.Generic.List[object]
   foreach ($rule in @($rules)) {
-    $isLegacy = $rule.name -eq $script:AzureDevLegacySshRuleName
     $isManaged = $rule.name.StartsWith(
       $script:AzureDevManagedSshRulePrefix,
       [System.StringComparison]::Ordinal
     )
-    if (-not ($isLegacy -or $isManaged)) {
+    if (-not $isManaged) {
       continue
     }
 
@@ -1932,27 +1929,7 @@ function Get-AzureDevSshAccessRules {
       }
     }
     if ([string]::IsNullOrWhiteSpace($cidr)) {
-      if ($isLegacy -and $prefixes.Count -gt 1) {
-        throw (
-          "Legacy SSH rule $($rule.name) contains multiple source CIDRs. " +
-          'Migrate each CIDR to a named managed rule before continuing.'
-        )
-      }
-      $ruleKind = if ($isLegacy) { 'Legacy' } else { 'Managed' }
-      throw "$ruleKind SSH rule $($rule.name) must contain exactly one source CIDR."
-    }
-
-    if ($isLegacy) {
-      $result.Add([pscustomobject]@{
-          name = $script:AzureDevLegacySshRuleName
-          description = 'Legacy single-workstation SSH access rule.'
-          priority = [int]$rule.priority
-          cidr = $cidr
-          workstation = $null
-          access = $null
-          legacy = $true
-        })
-      continue
+      throw "Managed SSH rule $($rule.name) must contain exactly one source CIDR."
     }
 
     $description = [string]$rule.description
@@ -1971,7 +1948,6 @@ function Get-AzureDevSshAccessRules {
         cidr = $cidr
         workstation = $Matches[1]
         access = $Matches[2]
-        legacy = $false
       })
   }
   return @($result | Sort-Object priority, name)
@@ -2040,8 +2016,7 @@ function Set-AzureDevSshAccessRule {
     }
     $candidate.priority = [int]$existing[0].priority
   } else {
-    $managedCount = @($rules | Where-Object { -not $_.legacy }).Count
-    if ($managedCount -ge $script:AzureDevSshRuleLimit) {
+    if ($rules.Count -ge $script:AzureDevSshRuleLimit) {
       throw "An environment supports at most $script:AzureDevSshRuleLimit managed CIDRs."
     }
     $candidate.priority = Get-AzureDevNextSshRulePriority -Rules $rules
@@ -2151,41 +2126,6 @@ function Set-AzureDevSshAccessSchema {
       'json'
     ) -Json | Out-Null
   }
-}
-
-function Get-AzureDevSshAccessSchema {
-  [CmdletBinding()]
-  param(
-    [Parameter(Mandatory = $true)]
-    [pscustomobject]$Config
-  )
-
-  $names = Get-AzureDevExpectedResourceNames -Config $Config
-  $nsg = Invoke-AzCli -Arguments @(
-    'network',
-    'nsg',
-    'show',
-    '--subscription',
-    $Config.SubscriptionId,
-    '--resource-group',
-    $Config.ResourceGroup,
-    '--name',
-    $names.networkSecurityGroup,
-    '--output',
-    'json'
-  ) -Json
-  if ($null -eq $nsg) {
-    return ''
-  }
-  $tags = $nsg.PSObject.Properties['tags']
-  if ($null -eq $tags -or $null -eq $tags.Value) {
-    return ''
-  }
-  $schema = $tags.Value.PSObject.Properties['ssh-access-schema']
-  if ($null -eq $schema) {
-    return ''
-  }
-  return [string]$schema.Value
 }
 
 function Start-AzureDevAzureVm {
@@ -2355,7 +2295,6 @@ Export-ModuleMember -Function `
   Get-AzureDevDataDisk, `
   Get-AzureDevExpectedResourceNames, `
   Get-AzureDevSshAccessRuleName, `
-  Get-AzureDevSshAccessSchema, `
   Get-AzureDevNextSshRulePriority, `
   Get-AzureDevManagedResources, `
   Get-AzureDevPublicIpAddress, `

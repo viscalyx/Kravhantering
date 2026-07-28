@@ -1309,10 +1309,7 @@ function Write-AzureDevExtractedReadme {
     '## Validate and open'
     ''
     '```powershell'
-    (
-      './scripts/azure-dev.ps1 prepare-workstation-access ' +
-      "-WorkstationName `"$($Manifest.workstation)`""
-    )
+    './scripts/azure-dev.ps1 prepare-workstation-access'
     '```'
     ''
     'Then run the `code --remote ...` command printed by the readiness check.'
@@ -1519,101 +1516,37 @@ function Remove-AzureDevExtractedPackage {
 }
 
 function Invoke-AzureDevPrepareWorkstationAccess {
-  [CmdletBinding(SupportsShouldProcess = $true)]
+  [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Context,
-
-    [Parameter(Mandatory = $true)]
-    [string]$WorkstationName
+    [pscustomobject]$Context
   )
 
   Test-AzureDevPrerequisites -Context $Context
-  $workstation = ConvertTo-AzureDevAccessName $WorkstationName
-  $rules = @(Get-AzureDevSshAccessRules -Config $Context.Config)
-  $legacy = @($rules | Where-Object { $_.legacy })
-  if (
-    $legacy.Count -gt 0 -and
-    $PSCmdlet.ShouldProcess(
-      $legacy[0].name,
-      "Migrate legacy SSH access to workstation $workstation"
-    )
-  ) {
-    $publicKey = Get-AzureDevSshPublicKey -Config $Context.Config
-    $newRule = $null
-    try {
-      $newRule = Set-AzureDevSshAccessRule `
-        -Context $Context `
-        -WorkstationName $workstation `
-        -AccessName 'current' `
-        -Cidr $legacy[0].cidr
-      Register-AzureDevRemoteWorkstationKey `
-        -Context $Context `
-        -WorkstationName $workstation `
-        -PublicKey $publicKey
-      $verified = @(
-        Get-AzureDevSshAccessRules -Config $Context.Config |
-          Where-Object { $_.name -eq $newRule.name }
-      )
-      if ($verified.Count -ne 1 -or $verified[0].cidr -ne $legacy[0].cidr) {
-        throw 'The named CIDR rule could not be verified after migration.'
-      }
-      Set-AzureDevSshAccessSchema -Context $Context
-      if (
-        -not $WhatIfPreference -and
-        (Get-AzureDevSshAccessSchema -Config $Context.Config) -ne '2'
-      ) {
-        throw 'The SSH access schema tag could not be verified after migration.'
-      }
-      Remove-AzureDevSshAccessRule `
-        -Context $Context `
-        -RuleName $legacy[0].name
-      Write-Host 'Migrated the legacy single-CIDR rule to schema version 2.'
-    } catch {
-      if ($null -ne $newRule) {
-        $migrationError = $_
-        $legacyStillExists = $true
-        try {
-          $legacyStillExists = @(
-            Get-AzureDevSshAccessRules -Config $Context.Config |
-              Where-Object { $_.name -eq $legacy[0].name }
-          ).Count -gt 0
-        } catch {
-          Write-Warning 'Could not inspect the legacy rule after migration failed.'
-        }
-        $migrationState = if ($legacyStillExists) {
-          'The legacy rule remains'
-        } else {
-          'The named rule remains and the legacy rule was already removed'
-        }
-        Write-Warning "$migrationState. Review named rule $($newRule.name)."
-        throw $migrationError
-      }
-      throw
-    }
-  } elseif (
-    @($rules | Where-Object { -not $_.legacy }).Count -gt 0 -and
-    (Get-AzureDevSshAccessSchema -Config $Context.Config) -ne '2'
-  ) {
-    Set-AzureDevSshAccessSchema -Context $Context
-    if (
-      -not $WhatIfPreference -and
-      (Get-AzureDevSshAccessSchema -Config $Context.Config) -ne '2'
-    ) {
-      throw 'The SSH access schema tag could not be verified during recovery.'
-    }
-    if (-not $WhatIfPreference) {
-      Write-Host 'Recovered the schema version 2 tag for the named SSH rules.'
-    }
-  }
-
   $keyReady = Test-Path -LiteralPath $Context.Config.SshPrivateKeyPath -PathType Leaf
-  Write-Host "SSH private key: $(if ($keyReady) { 'ready' } else { 'missing' })"
-  Write-Host "GH_TOKEN: $(if (Test-Path Env:GH_TOKEN) { 'present' } else { 'missing' })"
-  Write-Host (
-    'COPILOT_GITHUB_TOKEN: ' +
-    "$(if (Test-Path Env:COPILOT_GITHUB_TOKEN) { 'present' } else { 'missing' })"
+  $ghTokenReady = -not [string]::IsNullOrWhiteSpace($env:GH_TOKEN)
+  $copilotTokenReady = -not [string]::IsNullOrWhiteSpace(
+    $env:COPILOT_GITHUB_TOKEN
   )
+  Write-Host "SSH private key: $(if ($keyReady) { 'ready' } else { 'missing' })"
+  Write-Host (
+    'GH_TOKEN in current PowerShell process: ' +
+    "$(if ($ghTokenReady) { 'present' } else { 'missing' })"
+  )
+  Write-Host (
+    'COPILOT_GITHUB_TOKEN in current PowerShell process: ' +
+    "$(if ($copilotTokenReady) { 'present' } else { 'missing' })"
+  )
+  if (-not $ghTokenReady -or -not $copilotTokenReady) {
+    Write-Host (
+      'Missing tokens here are okay when PowerShell will not start the VS Code ' +
+      'Remote SSH session.'
+    )
+    Write-Host (
+      'Start the printed code command from a shell, such as Zsh or Bash, where ' +
+      'the required tokens are available.'
+    )
+  }
   Write-Host 'Apply the managed SSH block when needed:'
   Write-Host '  ./scripts/azure-dev.ps1 ssh-config -Apply'
   Write-Host 'Open the shared workspace:'
@@ -1670,11 +1603,7 @@ function Show-AzureDevWorkstationCidrs {
     return
   }
   foreach ($rule in $rules) {
-    $owner = if ($rule.legacy) {
-      '<legacy migration pending>'
-    } else {
-      "$($rule.workstation)/$($rule.access)"
-    }
+    $owner = "$($rule.workstation)/$($rule.access)"
     Write-Host "$owner $($rule.cidr) priority=$($rule.priority)"
   }
 }
@@ -1698,10 +1627,7 @@ function Remove-AzureDevWorkstationCidr {
   $candidateName = Get-AzureDevSshAccessRuleName `
     -WorkstationName $WorkstationName `
     -AccessName $AccessName
-  $rules = @(
-    Get-AzureDevSshAccessRules -Config $Context.Config |
-      Where-Object { -not $_.legacy }
-  )
+  $rules = @(Get-AzureDevSshAccessRules -Config $Context.Config)
   $target = @($rules | Where-Object { $_.name -eq $candidateName })
   if ($target.Count -ne 1) {
     throw "Managed SSH CIDR was not found: $WorkstationName/$AccessName"
@@ -1795,10 +1721,7 @@ function Remove-AzureDevWorkstation {
 
   Test-AzureDevPrerequisites -Context $Context
   $name = ConvertTo-AzureDevAccessName $WorkstationName
-  $managedRules = @(
-    Get-AzureDevSshAccessRules -Config $Context.Config |
-      Where-Object { -not $_.legacy }
-  )
+  $managedRules = @(Get-AzureDevSshAccessRules -Config $Context.Config)
   $rules = @($managedRules | Where-Object { $_.workstation -eq $name })
   if (
     $rules.Count -gt 0 -and

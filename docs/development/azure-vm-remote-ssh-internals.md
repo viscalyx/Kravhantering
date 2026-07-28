@@ -120,16 +120,14 @@ The command flow is intentionally narrow:
   Boot, and vTPM.
 - `add-cidr`, `set-cidr`, `list-cidrs`, and `remove-cidr` manage named,
   Azure-visible SSH sources without replacing another workstation's rules.
-- `update-cidr` remains a transition alias for a workstation's named `current`
-  source.
 - `new-workstation-request` creates a destination-local key and a signed,
   ASCII-armored request without requiring Azure scope.
 - `approve-workstation` verifies the request, adds its public key and CIDR, and
   creates a response package encrypted to the destination SSH public key.
 - `extract-workstation-package` validates and extracts a package into one
   explicitly selected directory without applying workstation changes.
-- `prepare-workstation-access` reports readiness and prints manual commands. A
-  temporary branch also migrates the sole legacy single-CIDR environment.
+- `prepare-workstation-access` reports current-process readiness and prints
+  manual commands.
 - `ssh-config` prints the managed OpenSSH block or applies it when requested.
 - `remove` deletes only live resources selected by ownership tags, then removes
   owned local state and the managed SSH config block.
@@ -297,27 +295,18 @@ repair from forcing an invalid or unsafe conversion. The desired profile is
 ## SSH And Connectivity
 
 `public-ssh` is the default connectivity mode. The initial workstation detects
-its current public IPv4 address and converts it to a named `/32` rule when
-`AZURE_DEV_VM_ALLOWED_SSH_CIDR=auto`. Each managed NSG rule has one CIDR, a
-reserved priority from `2000` through `2063`, and a description containing the
-schema version, workstation, and access-source names. Azure is the shared
-source of truth. Setup reads the live managed rules and passes the complete
-array to Bicep so local ignored files cannot erase another workstation's
-access.
+its current public IPv4 address and converts it to a named `/32` rule. The
+optional setup `-Cidr` parameter overrides detection. Each managed NSG rule has
+one CIDR, a reserved priority from `2000` through `2063`, and a description
+containing the schema version, workstation, and access-source names. Azure is
+the shared source of truth. Setup reads the live managed rules and passes the
+complete array to Bicep so local ignored files cannot erase another
+workstation's access.
 
 Explicit `/24` through `/31` networks require an approval switch. Private and
 reserved IPv4 ranges, ranges broader than `/24`, `0.0.0.0/0`, and `::/0`
 remain blocked. Duplicate CIDRs are allowed because multiple workstations can
 share one NAT address.
-
-The temporary migration path in `prepare-workstation-access` creates and
-verifies the schema-version-2 rule, marks the current public key in guest
-`authorized_keys`, writes and verifies the NSG `ssh-access-schema=2` tag, and
-only then removes the legacy `AllowSshFromOperator` rule. If a previous attempt
-already removed the legacy rule but failed while writing the tag, the same
-command detects the named rules and repairs the missing tag. The path exists
-only until the sole deployed environment is migrated on the implementation
-branch.
 
 The managed OpenSSH block is bounded by markers and is the only part of
 `~/.ssh/config` the tool may change. The block uses the configured host alias,
@@ -326,6 +315,11 @@ private key, and the local forwards documented in the development guide. It
 also contains `SendEnv` entries for `GH_TOKEN` and
 `COPILOT_GITHUB_TOKEN`; both token values remain in the workstation
 environment and are never written to the managed block.
+
+The readiness command checks token presence only in its current PowerShell
+process. It does not inspect Zsh, Bash, or other shell startup files. Missing
+tokens are acceptable when another shell that contains them starts the VS Code
+Remote SSH session.
 
 The setup and start connection output explains that `GH_TOKEN` and
 `COPILOT_GITHUB_TOKEN` must exist in the workstation environment that launches

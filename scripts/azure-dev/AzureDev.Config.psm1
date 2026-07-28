@@ -27,7 +27,6 @@ function Get-AzureDevDefaultConfig {
     AZURE_DEV_VM_FALLBACK_SIZE = 'Standard_D8as_v5'
     AZURE_DEV_VM_DATA_DISK_GIB = '256'
     AZURE_DEV_VM_CONNECTIVITY_MODE = 'public-ssh'
-    AZURE_DEV_VM_ALLOWED_SSH_CIDR = 'auto'
     AZURE_DEV_VM_SSH_HOST_ALIAS = 'kravhantering-azure-dev'
     AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH = '~/.ssh/kravhantering_azure_dev_ed25519'
     AZURE_DEV_VM_AUTO_STOP_ENABLED = 'true'
@@ -376,7 +375,6 @@ function Get-AzureDevConfig {
     FallbackVmSize = $values.AZURE_DEV_VM_FALLBACK_SIZE
     DataDiskGiB = [int]$values.AZURE_DEV_VM_DATA_DISK_GIB
     ConnectivityMode = $values.AZURE_DEV_VM_CONNECTIVITY_MODE
-    AllowedSshCidr = $values.AZURE_DEV_VM_ALLOWED_SSH_CIDR
     SshHostAlias = $values.AZURE_DEV_VM_SSH_HOST_ALIAS
     SshPrivateKeyPath = $privateKeyPath
     SshPublicKeyPath = $publicKeyPath
