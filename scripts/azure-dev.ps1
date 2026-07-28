@@ -2,7 +2,28 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
   [Parameter(Position = 0)]
-  [ValidateSet('estimate-cost', 'setup', 'start', 'stop', 'status', 'update-cidr', 'ssh-config', 'remove')]
+  [ValidateSet(
+    'add-cidr',
+    'approve-workstation',
+    'cleanup-workstation-package',
+    'estimate-cost',
+    'extract-workstation-package',
+    'install-transfer-tool',
+    'list-cidrs',
+    'list-workstations',
+    'new-workstation-request',
+    'prepare-workstation-access',
+    'remove',
+    'remove-cidr',
+    'remove-workstation',
+    'set-cidr',
+    'setup',
+    'ssh-config',
+    'start',
+    'status',
+    'stop',
+    'update-cidr'
+  )]
   [string]$Command = 'status',
 
   [string]$RepositoryRoot,
@@ -10,6 +31,24 @@ param(
   [string]$EnvironmentFile = '.env.azure.development',
 
   [string]$AllowedSshCidr,
+
+  [string]$WorkstationName,
+
+  [string]$AccessName = 'current',
+
+  [string]$Cidr,
+
+  [string]$RequestPath,
+
+  [string]$OutputPath,
+
+  [string]$PackagePath,
+
+  [string]$DestinationPath,
+
+  [switch]$AllowNetworkCidr,
+
+  [switch]$ForceRecovery,
 
   [switch]$Yes,
 
@@ -43,7 +82,8 @@ foreach ($module in @(
   'AzureDev.Ssh.psm1',
   'AzureDev.Bootstrap.psm1',
   'AzureDev.Validation.psm1',
-  'AzureDev.Podman.psm1'
+  'AzureDev.Podman.psm1',
+  'AzureDev.Workstation.psm1'
 )) {
   Import-Module (Join-Path $moduleRoot $module) -Force -Verbose:$false
 }
@@ -235,38 +275,53 @@ function Write-AzureDevSshInstructions {
   }
 }
 
-function Test-AzureDevVmSshPublicKeyDrift {
+function Get-AzureDevDeploymentSshPublicKey {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
     [pscustomobject]$Context,
 
     [Parameter(Mandatory = $true)]
-    [string]$SshPublicKey
+    [string]$LocalSshPublicKey
   )
 
   $existingKeys = Get-AzureDevVmAdminSshPublicKeys -Config $Context.Config
   if (@($existingKeys).Count -eq 0) {
-    return
+    return $LocalSshPublicKey
   }
 
-  if ($SshPublicKey -in @($existingKeys)) {
-    return
+  # Azure keeps the original osProfile key immutable. Additional workstation
+  # keys live in the guest authorized_keys file, so setup preserves the live
+  # infrastructure key instead of requiring every workstation to possess it.
+  return [string](@($existingKeys) | Select-Object -First 1)
+}
+
+function Get-AzureDevSetupSshAccessRules {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context,
+
+    [Parameter(Mandatory = $true)]
+    [string]$InitialCidr,
+
+    [Parameter(Mandatory = $true)]
+    [string]$WorkstationName
+  )
+
+  if ($Context.Config.ConnectivityMode -ne 'public-ssh') {
+    return @()
+  }
+  $liveRules = @(Get-AzureDevSshAccessRules -Config $Context.Config)
+  if ($liveRules.Count -gt 0) {
+    return $liveRules
   }
 
-  $existingPreview = (@($existingKeys) | Select-Object -First 1).Trim()
-  if ($existingPreview.Length -gt 96) {
-    $existingPreview = $existingPreview.Substring(0, 96) + '...'
-  }
-
-  throw (
-    "Existing VM $($Context.Config.VmName) was created with a different SSH public key, " +
-    "and Azure does not allow changing osProfile.linuxConfiguration.ssh.publicKeys on an existing VM. " +
-    "Existing VM key starts with: $existingPreview. " +
-    "This can happen if an earlier setup -WhatIf run created resources with the placeholder key. " +
-    "Run: pwsh ./scripts/azure-dev.ps1 remove -WhatIf. " +
-    "Then run: pwsh ./scripts/azure-dev.ps1 remove. " +
-    "After removal, rerun setup so the VM is created with the local key at $($Context.Config.SshPublicKeyPath)."
+  return @(
+    New-AzureDevSshAccessRuleSpec `
+      -WorkstationName $WorkstationName `
+      -AccessName 'current' `
+      -Cidr $InitialCidr
   )
 }
 
@@ -384,7 +439,8 @@ function Set-AzureDevSetupState {
     [pscustomobject]$Context,
 
     [Parameter(Mandatory = $true)]
-    [string]$AllowedCidr,
+    [AllowEmptyCollection()]
+    [object[]]$SshAccessRules,
 
     [AllowNull()]
     [object]$DeploymentResult,
@@ -406,7 +462,14 @@ function Set-AzureDevSetupState {
     sshPrivateKeyPath = $Context.Config.SshPrivateKeyPath
     sshPublicKeyPath = $Context.Config.SshPublicKeyPath
     deploymentOutputs = $outputs
-    lastKnownAllowedCidr = $AllowedCidr
+    lastKnownAllowedCidrs = @($SshAccessRules | ForEach-Object {
+        [ordered]@{
+          workstation = $_.workstation
+          access = $_.access
+          cidr = $_.cidr
+          legacy = [bool]$_.legacy
+        }
+      })
     lastValidationStatus = $ValidationStatus
   }
   Set-AzureDevState -Context $Context -State $state
@@ -418,7 +481,10 @@ function Invoke-AzureDevSetup {
     [Parameter(Mandatory = $true)]
     [pscustomobject]$Context,
 
-    [string]$CidrOverride
+    [string]$CidrOverride,
+
+    [Parameter(Mandatory = $true)]
+    [string]$WorkstationName
   )
 
   Assert-AzureDevTerminalFontInstalled
@@ -439,6 +505,12 @@ function Invoke-AzureDevSetup {
     $allowedCidr = Get-AzureDevAllowedSshCidr `
       -Config $Context.Config `
       -OverrideCidr $CidrOverride
+    $sshAccessRules = @(
+      Get-AzureDevSetupSshAccessRules `
+        -Context $Context `
+        -InitialCidr $allowedCidr `
+        -WorkstationName $WorkstationName
+    )
 
     if ($WhatIfPreference) {
       $publicKey = if (Test-Path -LiteralPath $Context.Config.SshPublicKeyPath) {
@@ -450,6 +522,9 @@ function Invoke-AzureDevSetup {
       New-AzureDevSshKey -Config $Context.Config
       $publicKey = Get-AzureDevSshPublicKey -Config $Context.Config
     }
+    $deploymentPublicKey = Get-AzureDevDeploymentSshPublicKey `
+      -Context $Context `
+      -LocalSshPublicKey $publicKey
 
     $image = Get-AzureDevDeploymentImage -Config $Context.Config
     $trustedLaunchPlan = Get-AzureDevTrustedLaunchPlan `
@@ -495,9 +570,6 @@ function Invoke-AzureDevSetup {
       -Context $Context `
       -Image $image `
       -DataDisk $dataDisk
-    Test-AzureDevVmSshPublicKeyDrift `
-      -Context $Context `
-      -SshPublicKey $publicKey
     $approvalAction = if ($trustedLaunchPlan.Action -eq 'UpgradeGen1') {
       (
         "Irreversibly convert $($Context.Config.VmName) from Gen1 to Gen2 " +
@@ -620,8 +692,8 @@ function Invoke-AzureDevSetup {
     if ($WhatIfPreference) {
       New-AzureDevDeployment `
         -Context $Context `
-        -AllowedSshCidr $allowedCidr `
-        -SshPublicKey $publicKey `
+        -SshAccessRules $sshAccessRules `
+        -SshPublicKey $deploymentPublicKey `
         -Image $image `
         -DataDiskExists $dataDiskExists `
         -TrustedLaunchEnabled $trustedLaunchPlan.TemplateEnabled `
@@ -633,12 +705,18 @@ function Invoke-AzureDevSetup {
 
     $deployment = New-AzureDevDeployment `
       -Context $Context `
-      -AllowedSshCidr $allowedCidr `
-      -SshPublicKey $publicKey `
+      -SshAccessRules $sshAccessRules `
+      -SshPublicKey $deploymentPublicKey `
       -Image $image `
       -DataDiskExists $dataDiskExists `
       -TrustedLaunchEnabled $trustedLaunchPlan.TemplateEnabled `
       -WhatIf:$WhatIfPreference
+    if (
+      $Context.Config.ConnectivityMode -eq 'public-ssh' -and
+      @($sshAccessRules | Where-Object { $_.legacy }).Count -eq 0
+    ) {
+      Set-AzureDevSshAccessSchema -Context $Context
+    }
 
     $hostName = Get-AzureDevHostName -Context $Context
     if (-not $Context.SkipSshConfig) {
@@ -669,7 +747,7 @@ function Invoke-AzureDevSetup {
 
       Set-AzureDevSetupState `
         -Context $Context `
-        -AllowedCidr $allowedCidr `
+        -SshAccessRules $sshAccessRules `
         -DeploymentResult $deployment `
         -ValidationStatus $validationStatus
       Write-AzureDevLog `
@@ -804,11 +882,9 @@ function Get-AzureDevStatus {
       -Config $Context.Config `
       -Image $image
   }
-  $allowedCidr = if ($null -ne $state) {
-    $state.lastKnownAllowedCidr
-  } else {
-    $Context.Config.AllowedSshCidr
-  }
+  $sshAccessRules = @(
+    Get-AzureDevSshAccessRules -Config $Context.Config
+  )
   $validation = Get-AzureDevValidationStatus -State $state
   $generationText = if ($null -ne $securityState -and $securityState.Exists) {
     $securityState.HyperVGeneration
@@ -849,7 +925,19 @@ function Get-AzureDevStatus {
   Write-Host "Power state: $powerState"
   Write-Host "Connectivity mode: $($Context.Config.ConnectivityMode)"
   Write-Host "Public IP: $publicIp"
-  Write-Host "Allowed SSH CIDR: $allowedCidr"
+  Write-Host 'Allowed SSH CIDRs:'
+  if ($sshAccessRules.Count -eq 0) {
+    Write-Host '  <none>'
+  } else {
+    foreach ($rule in $sshAccessRules) {
+      $owner = if ($rule.legacy) {
+        '<legacy migration pending>'
+      } else {
+        "$($rule.workstation)/$($rule.access)"
+      }
+      Write-Host "  $owner $($rule.cidr) (priority $($rule.priority))"
+    }
+  }
   Write-Host "SSH alias: $($Context.Config.SshHostAlias)"
   Write-Host "Last validation: $validation"
 }
@@ -860,7 +948,9 @@ function Update-AzureDevCidr {
     [Parameter(Mandatory = $true)]
     [pscustomobject]$Context,
 
-    [string]$CidrOverride
+    [string]$CidrOverride,
+
+    [string]$WorkstationName
   )
 
   if ($Context.Config.ConnectivityMode -ne 'public-ssh') {
@@ -874,12 +964,19 @@ function Update-AzureDevCidr {
     Test-AzureDevPrerequisites `
       -Context $Context `
       -WhatIf:$WhatIfPreference
-    $allowedCidr = Get-AzureDevAllowedSshCidr `
-      -Config $Context.Config `
-      -OverrideCidr $CidrOverride
-    Update-AzureDevNetworkSecurityGroupCidr `
+    $name = Resolve-AzureDevWorkstationName `
+      -WorkstationName $WorkstationName
+    Write-Warning 'update-cidr is retained for transition; prefer set-cidr.'
+    $allowedCidr = Get-AzureDevWorkstationCidr -Cidr $CidrOverride
+    $rule = Set-AzureDevSshAccessRule `
       -Context $Context `
-      -AllowedSshCidr $allowedCidr `
+      -WorkstationName $name `
+      -AccessName 'current' `
+      -Cidr $allowedCidr `
+      -Replace `
+      -WhatIf:$WhatIfPreference
+    Set-AzureDevSshAccessSchema `
+      -Context $Context `
       -WhatIf:$WhatIfPreference
 
     $hostName = Get-AzureDevHostName -Context $Context
@@ -895,7 +992,14 @@ function Update-AzureDevCidr {
       } else {
         [ordered]@{}
       }
-      $stateHash.lastKnownAllowedCidr = $allowedCidr
+      $stateHash.lastKnownAllowedCidrs = @(
+        [ordered]@{
+          workstation = $rule.workstation
+          access = $rule.access
+          cidr = $rule.cidr
+          legacy = $false
+        }
+      )
       Set-AzureDevState -Context $Context -State $stateHash
       Write-AzureDevLog `
         -Context $Context `
@@ -1004,20 +1108,116 @@ function Invoke-AzureDevCommand {
   )
 
   Write-Verbose "Running Azure dev command '$CommandName'"
+  $effectiveWorkstationName = $null
+  if (
+    $CommandName -in @(
+      'add-cidr',
+      'new-workstation-request',
+      'prepare-workstation-access',
+      'remove-cidr',
+      'remove-workstation',
+      'set-cidr',
+      'setup',
+      'update-cidr'
+    )
+  ) {
+    $effectiveWorkstationName = Resolve-AzureDevWorkstationName `
+      -WorkstationName $WorkstationName
+  }
   switch ($CommandName) {
+    'add-cidr' {
+      Add-AzureDevWorkstationCidr `
+        -Context $Context `
+        -WorkstationName $effectiveWorkstationName `
+        -AccessName $AccessName `
+        -Cidr $Cidr `
+        -AllowNetworkCidr:$AllowNetworkCidr
+    }
+    'approve-workstation' {
+      Approve-AzureDevWorkstation `
+        -Context $Context `
+        -RequestPath $RequestPath `
+        -OutputPath $OutputPath
+    }
+    'cleanup-workstation-package' {
+      Remove-AzureDevExtractedPackage `
+        -Context $Context `
+        -DestinationPath $DestinationPath
+    }
     'estimate-cost' { Write-AzureDevCostEstimate -Context $Context }
-    'setup' { Invoke-AzureDevSetup -Context $Context -CidrOverride $AllowedSshCidr }
+    'extract-workstation-package' {
+      Expand-AzureDevWorkstationPackage `
+        -Context $Context `
+        -PackagePath $PackagePath `
+        -DestinationPath $DestinationPath
+    }
+    'install-transfer-tool' {
+      Install-AzureDevTransferTool -Context $Context
+    }
+    'list-cidrs' { Show-AzureDevWorkstationCidrs -Context $Context }
+    'list-workstations' { Show-AzureDevWorkstationCidrs -Context $Context }
+    'new-workstation-request' {
+      New-AzureDevWorkstationRequest `
+        -Context $Context `
+        -WorkstationName $effectiveWorkstationName `
+        -Cidr $Cidr `
+        -OutputPath $OutputPath
+    }
+    'prepare-workstation-access' {
+      Invoke-AzureDevPrepareWorkstationAccess `
+        -Context $Context `
+        -WorkstationName $effectiveWorkstationName
+    }
+    'remove-cidr' {
+      Remove-AzureDevWorkstationCidr `
+        -Context $Context `
+        -WorkstationName $effectiveWorkstationName `
+        -AccessName $AccessName `
+        -ForceRecovery:$ForceRecovery
+    }
+    'remove-workstation' {
+      Remove-AzureDevWorkstation `
+        -Context $Context `
+        -WorkstationName $effectiveWorkstationName `
+        -ForceRecovery:$ForceRecovery
+    }
+    'set-cidr' {
+      Add-AzureDevWorkstationCidr `
+        -Context $Context `
+        -WorkstationName $effectiveWorkstationName `
+        -AccessName $AccessName `
+        -Cidr $Cidr `
+        -Replace `
+        -AllowNetworkCidr:$AllowNetworkCidr
+    }
+    'setup' {
+      Invoke-AzureDevSetup `
+        -Context $Context `
+        -CidrOverride $AllowedSshCidr `
+        -WorkstationName $effectiveWorkstationName
+    }
     'start' { Start-AzureDevEnvironment -Context $Context }
     'stop' { Stop-AzureDevEnvironment -Context $Context }
     'status' { Get-AzureDevStatus -Context $Context }
-    'update-cidr' { Update-AzureDevCidr -Context $Context -CidrOverride $AllowedSshCidr }
+    'update-cidr' {
+      Update-AzureDevCidr `
+        -Context $Context `
+        -CidrOverride $AllowedSshCidr `
+        -WorkstationName $effectiveWorkstationName
+    }
     'ssh-config' { Get-AzureDevSshConfig -Context $Context }
     'remove' { Remove-AzureDevEnvironment -Context $Context }
   }
 }
 
-$requireEnv = $Command -eq 'setup'
-$allowMissingAzureScope = $Command -eq 'estimate-cost'
+$requireEnv = $Command -in @('approve-workstation', 'setup')
+$allowMissingAzureScope = $Command -in @(
+  'cleanup-workstation-package',
+  'estimate-cost',
+  'extract-workstation-package',
+  'install-transfer-tool',
+  'new-workstation-request'
+)
 $config = Get-AzureDevConfig `
   -RepositoryRoot $RepositoryRoot `
   -EnvironmentFile $EnvironmentFile `

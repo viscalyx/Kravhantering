@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $script:AzureDevManagedBy = 'kravhantering-azure-dev'
 $script:AzureDevRepository = 'viscalyx/Kravhantering'
 $script:AzureDevPurpose = 'personal-development'
-$script:AzureDevSetupVersion = 1
+$script:AzureDevSetupVersion = 2
 
 function Get-AzureDevDefaultConfig {
   [CmdletBinding()]

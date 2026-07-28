@@ -285,6 +285,9 @@ Install these tools on the workstation:
 - VS Code with Remote SSH
 - GitHub CLI when GitHub access is required from the remote environment
 - MesloLGS Nerd Font Mono installed on the workstation
+- Optional: `age` for encrypted workstation-transfer packages. The transfer
+  workflow can install a pinned, verified copy in the user data directory
+  without administrator access.
 - Optional: Tailscale CLI for Tailscale cleanup checks
 
 Powerlevel10k is rendered on the workstation even when the shell runs on the
@@ -439,9 +442,13 @@ image state, Hyper-V generation V2, and Trusted Launch support. Existing VMs
 retain their immutable image reference even when these configuration values
 change.
 
-Use `AZURE_DEV_VM_ALLOWED_SSH_CIDR=auto` for the normal path. Setup detects
-your current public IPv4 address and proposes it as a `/32`. Do not use
-`0.0.0.0/0`; the tool refuses broad SSH ranges.
+Use `AZURE_DEV_VM_ALLOWED_SSH_CIDR=auto` for the initial workstation. Setup
+detects the current public IPv4 address and creates a named `/32` rule. Set
+the workstation name automatically from the local machine name. Pass the
+optional `-WorkstationName` parameter when a different stable name is needed.
+Additional workstations and networks use the named CIDR commands documented
+below. The tool refuses private IPv4 ranges, ranges broader than `/24`, and
+broad SSH ranges such as `0.0.0.0/0`.
 
 The parser intentionally supports only `KEY=value`, optional quotes, blank
 lines, and full-line comments. It does not evaluate shell expressions,
@@ -940,10 +947,33 @@ Show current state:
 Refresh only the SSH source CIDR after your public IP changes:
 
 ```powershell
-./scripts/azure-dev.ps1 update-cidr
+./scripts/azure-dev.ps1 set-cidr `
+  -AccessName "current"
 ```
 
-Print or apply the managed SSH block:
+Add another current public IP:
+
+```powershell
+./scripts/azure-dev.ps1 add-cidr `
+  -AccessName "office"
+```
+
+List or remove named CIDRs:
+
+```powershell
+./scripts/azure-dev.ps1 list-cidrs
+./scripts/azure-dev.ps1 remove-cidr `
+  -AccessName "office"
+```
+
+Each CIDR is an Azure-visible NSG rule. Setup reads and preserves the live
+managed list so that one workstation cannot overwrite another workstation's
+access. A `/32` is the default. Explicit `/24` through `/31` ranges require
+`-AllowNetworkCidr`. The tool supports at most 64 managed CIDR rules. These
+commands use the normalized local hostname as the workstation name by default;
+pass `-WorkstationName "<name>"` to override it.
+
+Print or explicitly apply the managed SSH block:
 
 ```powershell
 ./scripts/azure-dev.ps1 ssh-config
@@ -953,7 +983,169 @@ Print or apply the managed SSH block:
 Forwarded ports are `3000`, `3001`, `4443`, `1433`, `8080`, `18000`, `9323`,
 and `51204`.
 
-## Step 9: Manage Support Services
+## Step 9: Add Another Workstation
+
+Each workstation receives a distinct SSH key. The private key is generated and
+stays on the destination workstation. A signed text request moves to an
+authorized workstation, and an encrypted response package moves back.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Destination as Destination workstation
+    participant Source as Authorized workstation
+    participant Azure as Azure NSG
+    participant VM as Existing Azure VM
+
+    User->>Destination: new-workstation-request
+    Destination->>Destination: Generate destination SSH key
+    Destination-->>User: Signed text request<br/>Public key and CIDR only
+    User->>Source: Paste request or copy request file
+    Source->>Source: Verify signature, expiry, and fingerprint
+    User->>Source: Confirm verification code
+    Source->>Azure: Add named CIDR rule
+    Source->>VM: Add destination public key
+    Source-->>User: Passphrase-encrypted age package
+    User->>Destination: Transfer package attachment
+    Destination->>Destination: extract-workstation-package
+    Destination-->>User: Private README and selected files
+    User->>Destination: Copy and configure files manually
+    User->>Destination: prepare-workstation-access
+    Destination-->>User: Readiness report and code command
+```
+
+The request is Base64-encoded text, not encrypted. It contains only public
+onboarding data and can be pasted into email:
+
+```text
+-----BEGIN KRAVHANTERING WORKSTATION REQUEST-----
+Version: 1
+
+<Base64 payload>
+-----END KRAVHANTERING WORKSTATION REQUEST-----
+```
+
+The request is signed by the destination key. The approving user must still
+compare the displayed fingerprint or verification code because an attacker
+could replace the entire request with a separately signed request.
+
+### Create the destination request
+
+On the destination workstation, clone the repository, install the normal
+workstation prerequisites, and run:
+
+```powershell
+./scripts/azure-dev.ps1 new-workstation-request
+```
+
+The command creates a dedicated Ed25519 key under the user's `.ssh` directory,
+saves the signed request under `.azure/workstation-requests`, and prints the
+same request for copy and paste. It uses the normalized local machine name as
+the workstation name; pass `-WorkstationName "<name>"` to override it. Transfer
+only the request. The private key never leaves the destination workstation.
+
+### Approve the request
+
+On an already authorized workstation, install the transfer tool if `age` is
+not already available:
+
+```powershell
+./scripts/azure-dev.ps1 install-transfer-tool
+```
+
+The command offers to download a pinned official binary, verifies its SHA-256
+digest, and installs it in the current user's data directory. It does not
+require administrator access or change `PATH`.
+
+Approve a request file:
+
+```powershell
+./scripts/azure-dev.ps1 approve-workstation `
+  -RequestPath "<request-file>" `
+  -OutputPath "<response-package>.age"
+```
+
+Omit `-RequestPath` to paste the text request interactively. Approval displays
+the requested workstation, CIDR, public-key fingerprint, and verification code.
+It can optionally include the complete
+`.env.azure.development.local` file, GitHub tokens from the current process,
+an exportable Git signing key, and the custom Zsh template. Secret values are
+never displayed.
+
+Approval temporarily starts a stopped VM when the user confirms, restores its
+original power state, adds and verifies the named CIDR and public key, and
+creates the passphrase-encrypted response package. Send the passphrase through
+a channel separate from the package when the source and destination users are
+different.
+
+### Extract and configure manually
+
+On the destination workstation:
+
+```powershell
+./scripts/azure-dev.ps1 extract-workstation-package `
+  -PackagePath "<response-package>.age" `
+  -DestinationPath "<private-extraction-directory>"
+```
+
+Extraction validates the package, rejects unsafe archive paths, and writes only
+under the selected destination. It does not copy environment files, update SSH
+configuration, edit shell profiles, install tokens, or launch VS Code.
+
+Open the generated `README.md`. It identifies each source and destination path,
+explains machine-specific values such as
+`AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH`, and provides the remaining commands. If a
+GitHub token is already present on the destination, keep it and ignore the
+packaged copy. Packaged token files are plaintext after extraction; load them
+only into the required local process or an existing secure credential system.
+
+After manual configuration, validate readiness:
+
+```powershell
+./scripts/azure-dev.ps1 prepare-workstation-access
+```
+
+The command reports missing keys and tokens and prints the commands for
+`ssh-config -Apply` and VS Code. It does not apply destination configuration or
+launch VS Code.
+
+Remove the plaintext extraction directory after finishing:
+
+```powershell
+./scripts/azure-dev.ps1 cleanup-workstation-package `
+  -DestinationPath "<private-extraction-directory>"
+```
+
+Cleanup validates the package manifest and asks before deleting that exact
+directory. It does not claim secure erasure on SSD storage.
+
+### Remove workstation access
+
+From another authorized workstation:
+
+```powershell
+./scripts/azure-dev.ps1 remove-workstation `
+  -WorkstationName "secondary-laptop"
+```
+
+The command removes the managed guest key and all CIDRs owned by the
+workstation. It refuses to remove the final usable key or CIDR without the
+explicit recovery override.
+
+### Migrate the current environment
+
+The temporary compatibility path migrates the current single-CIDR environment
+when this command first runs on the existing workstation:
+
+```powershell
+./scripts/azure-dev.ps1 prepare-workstation-access
+```
+
+It creates and verifies the named rule and managed key marker before removing
+the legacy rule. This migration path is removed before the feature merges after
+the sole existing environment reports schema version 2.
+
+## Step 10: Manage Support Services
 
 On the VM, inspect the support stack as `vscode`:
 
