@@ -369,9 +369,10 @@ detects corruption. It does not authenticate a fully replaced request, so the
 human fingerprint and verification-code comparison remains mandatory.
 
 The response package is a ZIP payload encrypted with `age` to the destination
-workstation's SSH public key. A compatible `age` 1.2.1 or later must be
-installed manually and available on `PATH`. The module validates the installed
-version but never downloads, installs, or manages the tool.
+workstation's SSH public key and emitted in the native ASCII-armored format.
+A compatible `age` 1.2.1 or later must be installed manually and available on
+`PATH`. The module validates the installed version but never downloads,
+installs, or manages the tool. Decryption auto-detects the armored input.
 
 The manifest binds the package to the request ID, workstation, environment,
 destination public-key fingerprint, and 24-hour expiry. Entry names are an

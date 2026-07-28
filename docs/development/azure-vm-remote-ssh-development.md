@@ -1003,8 +1003,8 @@ sequenceDiagram
     User->>Source: Confirm verification code
     Source->>Azure: Add named CIDR rule
     Source->>VM: Add destination public key
-    Source-->>User: Destination-key-encrypted age package
-    User->>Destination: Transfer package attachment
+    Source-->>User: ASCII-armored destination-key-encrypted age package
+    User->>Destination: Transfer attachment or armored text
     Destination->>Destination: extract-workstation-package
     Destination-->>User: Private README and selected files
     User->>Destination: Copy and configure files manually
@@ -1038,9 +1038,11 @@ workstation prerequisites, and run:
 
 The command creates a dedicated Ed25519 key under the user's `.ssh` directory,
 saves the signed request under `.azure/workstation-requests`, and prints the
-same request for copy and paste. It uses the normalized local machine name as
-the workstation name; pass `-WorkstationName "<name>"` to override it. Transfer
-only the request. The private key never leaves the destination workstation.
+same request for copy and paste. It also prints the normalized workstation
+name, requested CIDR, public-key fingerprint, and verification code so they can
+be compared during approval. It uses the normalized local machine name as the
+workstation name; pass `-WorkstationName "<name>"` to override it. Transfer only
+the request. The private key never leaves the destination workstation.
 
 ### Install age
 
@@ -1112,9 +1114,24 @@ never displayed.
 
 Approval temporarily starts a stopped VM when the user confirms, restores its
 original power state, adds and verifies the named CIDR and public key, and
-creates a response package encrypted to the destination workstation's SSH
-public key. The package can only be decrypted with the private key that remains
-on that workstation.
+creates an ASCII-armored response package encrypted to the destination
+workstation's SSH public key. The package can only be decrypted with the
+private key that remains on that workstation.
+
+The `.age` response is plain ASCII text in the native `age` armor format:
+
+```text
+-----BEGIN AGE ENCRYPTED FILE-----
+<armored encrypted payload>
+-----END AGE ENCRYPTED FILE-----
+```
+
+Transfer it as a normal attachment or copy the complete block through a
+text-only channel. When copying text, save the complete block as a plain-text
+`.age` file on the destination workstation without changing the markers. The
+encrypted contents can be copied safely, but the armored representation is
+about one-third larger than the binary form. `age` detects and decrypts the
+armored file automatically.
 
 ### Extract and configure manually
 

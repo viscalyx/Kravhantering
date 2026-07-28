@@ -1109,6 +1109,9 @@ describe('development environment contract', () => {
     expect(workstationModule).toContain(
       "'The workstation request signature is invalid.'",
     )
+    expect(workstationModule).toContain(
+      'Write-Host "Requested CIDR: $resolvedCidr"',
+    )
     expect(workstationModule).toContain('[datetimeoffset]$request.expiresAt')
     expect(workstationModule).toContain(
       '$standardOutput = $process.StandardOutput.ReadToEndAsync()',
@@ -1131,6 +1134,7 @@ describe('development environment contract', () => {
       'docs/development/azure-vm-remote-ssh-internals.md',
     )
     const normalizedDevelopmentGuide = developmentGuide.replaceAll(/\s+/gu, ' ')
+    const normalizedInternalsGuide = internalsGuide.replaceAll(/\s+/gu, ' ')
 
     expect(workstationModule).toContain(
       '$existing = Get-Command age -ErrorAction SilentlyContinue',
@@ -1164,12 +1168,20 @@ describe('development environment contract', () => {
       'The transfer workflow can install a pinned, verified copy',
     )
     expect(developmentGuide).toContain('brew install age')
-    expect(internalsGuide).toContain(
+    expect(normalizedInternalsGuide).toContain(
       'installed manually and available on `PATH`',
     )
     expect(internalsGuide).not.toContain('pinned user-local copy')
     expect(workstationModule).toMatch(
-      /Invoke-AzureDevNativeCommand[\s`]*-FilePath\s+\$age[\s`]*-Arguments\s+@\('-R',\s*\$recipientPath,\s*'-o',\s*\$OutputPath,\s*\$zipPath\)/u,
+      /Invoke-AzureDevNativeCommand[\s`]*-FilePath\s+\$age[\s`]*-Arguments\s+@\('-a',\s*'-R',\s*\$recipientPath,\s*'-o',\s*\$OutputPath,\s*\$zipPath\)/u,
+    )
+    expect(workstationModule).toContain(
+      '$script:MaximumArmoredPackageBytes = 70MB',
+    )
+    expect(developmentGuide).toContain('-----BEGIN AGE ENCRYPTED FILE-----')
+    expect(developmentGuide).toContain('age` detects and decrypts the')
+    expect(internalsGuide).toContain(
+      'emitted in the native ASCII-armored format',
     )
     expect(workstationModule).toContain(
       "'reference/destination-public-key.pub'",

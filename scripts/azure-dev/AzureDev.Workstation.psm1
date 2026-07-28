@@ -7,6 +7,7 @@ $script:RequestEnd = '-----END KRAVHANTERING WORKSTATION REQUEST-----'
 $script:RequestNamespace = 'kravhantering-workstation-request'
 $script:PackageSchema = 1
 $script:MaximumPackageBytes = 50MB
+$script:MaximumArmoredPackageBytes = 70MB
 $script:MaximumEntryBytes = 5MB
 
 function Confirm-AzureDevWorkstationAction {
@@ -356,6 +357,8 @@ function New-AzureDevWorkstationRequest {
   }
 
   Write-Host "Workstation request: $OutputPath"
+  Write-Host "Workstation: $workstation"
+  Write-Host "Requested CIDR: $resolvedCidr"
   Write-Host "Public-key fingerprint: $fingerprint"
   Write-Host "Verification code: $(Get-AzureDevVerificationCode $fingerprint)"
   Write-Host ''
@@ -899,7 +902,7 @@ function New-AzureDevWorkstationPackage {
     }
     $encryptResult = Invoke-AzureDevNativeCommand `
       -FilePath $age `
-      -Arguments @('-R', $recipientPath, '-o', $OutputPath, $zipPath)
+      -Arguments @('-a', '-R', $recipientPath, '-o', $OutputPath, $zipPath)
     if ($encryptResult.ExitCode -ne 0) {
       throw "Could not encrypt the workstation package: $($encryptResult.Text.Trim())"
     }
@@ -1035,7 +1038,11 @@ function Approve-AzureDevWorkstation {
       Stop-AzureDevAzureVm -Context $Context
     }
   }
-  Write-Host "Encrypted response package: $OutputPath"
+  Write-Host "ASCII-armored encrypted response package: $OutputPath"
+  Write-Host (
+    'Transfer the file as an attachment or copy its complete ' +
+    'BEGIN/END AGE ENCRYPTED FILE block through a text-only channel.'
+  )
   Write-Host (
     'After transfer, remove the encrypted source package: ' +
     "Remove-Item -LiteralPath `"$OutputPath`" -Force"
@@ -1219,7 +1226,10 @@ function Expand-AzureDevWorkstationPackage {
     [string]$DestinationPath
   )
 
-  if ((Get-Item -LiteralPath $PackagePath).Length -gt $script:MaximumPackageBytes) {
+  if (
+    (Get-Item -LiteralPath $PackagePath).Length -gt
+    $script:MaximumArmoredPackageBytes
+  ) {
     throw 'The encrypted workstation package exceeds the size limit.'
   }
   if (Test-Path -LiteralPath $DestinationPath) {
