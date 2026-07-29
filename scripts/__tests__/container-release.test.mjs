@@ -1037,7 +1037,7 @@ describe('trusted container release helpers', () => {
       'SQLSERVER_IMAGE_REF=mcr.microsoft.com/mssql/server:2025-CU6-ubuntu-24.04',
     )
     expect(releaseEnv).toContain(
-      'KEYCLOAK_IMAGE_REF=quay.io/keycloak/keycloak:26.7.0-0',
+      'KEYCLOAK_IMAGE_REF=quay.io/keycloak/keycloak:26.7.0-1',
     )
     expect(releaseEnv).toContain(
       'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.15.0.1-20260708-ubuntu',
@@ -1119,7 +1119,7 @@ describe('trusted container release helpers', () => {
             name: 'keycloak',
             role: 'identity-provider',
             source: 'quay',
-            tag: '26.7.0-0',
+            tag: '26.7.0-1',
           },
         ],
       }
