@@ -8,10 +8,7 @@ import {
   accessReviewServiceActor,
   recordAccessReviewAuthorizationDenied,
 } from '@/lib/access-review/route-audit'
-import {
-  accessReviewErrorResponse,
-  addNoStore,
-} from '@/lib/access-review/route-helpers'
+import { accessReviewErrorResponse } from '@/lib/access-review/route-helpers'
 import { buildAccessReviewExport } from '@/lib/access-review/service'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -33,7 +30,6 @@ const exportSchema = z
 
 export const POST = secureMutationRoute({
   bodySchema: exportSchema,
-  decorateErrorResponse: addNoStore,
   paramsSchema: idParamSchema,
   policy: customMutationPolicy('access_review.export', () => {}),
   handler: async ({ body, context, params, request }) => {
@@ -65,9 +61,7 @@ export const POST = secureMutationRoute({
           accessReviewExportFilename(exportPayload, 'pdf', body.locale),
         )
       }
-      return NextResponse.json(exportPayload, {
-        headers: { 'Cache-Control': 'no-store' },
-      })
+      return NextResponse.json(exportPayload)
     } catch (error) {
       await recordAccessReviewAuthorizationDenied(
         context,
@@ -79,13 +73,7 @@ export const POST = secureMutationRoute({
         },
         error,
       )
-      return accessReviewErrorResponse(
-        'Failed to export access review',
-        error,
-        {
-          noStore: true,
-        },
-      )
+      return accessReviewErrorResponse('Failed to export access review', error)
     }
   },
 })

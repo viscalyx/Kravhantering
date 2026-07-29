@@ -32,9 +32,7 @@ export const POST = secureMutationRoute({
         locale: body.locale,
         payload: body.payload,
       })
-      return NextResponse.json(preview, {
-        headers: { 'Cache-Control': 'no-store' },
-      })
+      return NextResponse.json(preview)
     } catch (error) {
       logSanitizedError('[API] Failed to preview requirements import', error)
       const { body: errorBody, status } = toHttpErrorPayload(error)

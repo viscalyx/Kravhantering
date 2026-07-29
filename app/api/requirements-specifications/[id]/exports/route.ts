@@ -6,6 +6,7 @@ import {
   runBoundedCsvOutput,
 } from '@/lib/generated-output/csv-runner'
 import { csvContentDisposition } from '@/lib/http/content-disposition'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import {
   idParamSchema,
   localeSchema,
@@ -40,20 +41,16 @@ const exportQuerySchema = z
 
 function errorResponse(error: unknown) {
   if (error instanceof ReportDataError) {
-    return NextResponse.json(
-      { error: error.message },
-      { headers: { 'Cache-Control': 'no-store' }, status: error.status },
-    )
+    return NextResponse.json({ error: error.message }, { status: error.status })
   }
 
   const { body, status } = toHttpErrorPayload(error)
   return NextResponse.json(body, {
-    headers: { 'Cache-Control': 'no-store' },
     status,
   })
 }
 
-export async function GET(
+async function getHandler(
   request: NextRequest,
   { params }: { params: Params },
 ) {
@@ -74,7 +71,7 @@ export async function GET(
   if (!profile) {
     return NextResponse.json(
       { error: 'Invalid export profile' },
-      { headers: { 'Cache-Control': 'no-store' }, status: 400 },
+      { status: 400 },
     )
   }
 
@@ -149,3 +146,5 @@ export async function GET(
     )
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)

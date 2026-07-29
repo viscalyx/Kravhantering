@@ -84,8 +84,12 @@ function context(roles: string[] = ['Admin']): RequestContext {
   }
 }
 
-function jsonRequest(body: unknown, method = 'POST') {
-  return new Request('http://localhost/api/example', {
+function jsonRequest(
+  body: unknown,
+  method = 'POST',
+  url = 'http://localhost/api/example',
+) {
+  return new Request(url, {
     body: JSON.stringify(body),
     headers: { 'Content-Type': 'application/json' },
     method,
@@ -493,6 +497,44 @@ describe('secureMutationRoute', () => {
     expect(response.status).toBe(500)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
   })
+
+  it('preserves framework-default cache behavior after route decoration', async () => {
+    const route = secureMutationRoute({
+      handler: () =>
+        NextResponse.json(
+          { ok: true },
+          { headers: { 'Cache-Control': 'private, max-age=60' } },
+        ),
+      policy: adminMutationPolicy(),
+    })
+
+    const response = await route(
+      jsonRequest({}, 'POST', 'http://localhost/api/requirements'),
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Cache-Control')).toBe('private, max-age=60')
+  })
+
+  it('applies a registered no-cache policy to unexpected wrapper exits', async () => {
+    const route = secureMutationRoute({
+      handler: () => {
+        throw new Error('Provider failed')
+      },
+      policy: adminMutationPolicy(),
+    })
+
+    const response = await route(
+      jsonRequest(
+        {},
+        'POST',
+        'http://localhost/api/ai/generate-requirement-import',
+      ),
+    )
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get('Cache-Control')).toBe('no-cache')
+  })
 })
 
 describe('secureLogoutMutationRoute', () => {
@@ -508,10 +550,29 @@ describe('secureLogoutMutationRoute', () => {
     const handler = vi.fn(() => NextResponse.json({ ok: true }))
     const route = secureLogoutMutationRoute(handler)
 
-    const response = await route(jsonRequest({}))
+    const response = await route(
+      jsonRequest({}, 'POST', 'http://localhost/api/auth/logout'),
+    )
 
     expect(response.status).toBe(200)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(authState.createRequestContext).toHaveBeenCalled()
     expect(handler).toHaveBeenCalled()
+  })
+
+  it('applies logout response policy when context creation fails', async () => {
+    authState.createRequestContext.mockRejectedValueOnce(
+      new CsrfError('Cross-origin request rejected.'),
+    )
+    const handler = vi.fn(() => NextResponse.json({ ok: true }))
+    const route = secureLogoutMutationRoute(handler)
+
+    const response = await route(
+      jsonRequest({}, 'POST', 'http://localhost/api/auth/logout'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(handler).not.toHaveBeenCalled()
   })
 })

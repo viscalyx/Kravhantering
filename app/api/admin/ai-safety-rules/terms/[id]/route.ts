@@ -7,7 +7,6 @@ import {
   updateAiSafetyRuleTerm,
 } from '@/lib/dal/ai-safety-rules'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { noStore } from '@/lib/http/cache-control'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -32,7 +31,6 @@ const updateTermSchema = z
 
 export const PATCH = secureMutationRoute({
   bodySchema: updateTermSchema,
-  decorateErrorResponse: noStore,
   paramsSchema,
   policy: adminMutationPolicy(),
   handler: async ({ body, context, params }) => {
@@ -44,12 +42,11 @@ export const PATCH = secureMutationRoute({
       resourceId: term.id,
       resourceType: 'ai_safety_rule_term',
     })
-    return noStore(NextResponse.json({ term }))
+    return NextResponse.json({ term })
   },
 })
 
 export const DELETE = secureMutationRoute({
-  decorateErrorResponse: noStore,
   paramsSchema,
   policy: adminMutationPolicy(),
   handler: async ({ context, params }) => {
@@ -60,6 +57,6 @@ export const DELETE = secureMutationRoute({
       resourceId: term.id,
       resourceType: 'ai_safety_rule_term',
     })
-    return noStore(NextResponse.json({ term }))
+    return NextResponse.json({ term })
   },
 })

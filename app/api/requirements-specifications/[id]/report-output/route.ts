@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSpecificationById } from '@/lib/dal/requirements-specifications'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import {
   idParamSchema,
   localeSchema,
@@ -31,20 +32,16 @@ const reportOutputQuerySchema = z
 
 function errorResponse(error: unknown) {
   if (error instanceof ReportDataError) {
-    return NextResponse.json(
-      { error: error.message },
-      { headers: { 'Cache-Control': 'no-store' }, status: error.status },
-    )
+    return NextResponse.json({ error: error.message }, { status: error.status })
   }
 
   const { body, status } = toHttpErrorPayload(error)
   return NextResponse.json(body, {
-    headers: { 'Cache-Control': 'no-store' },
     status,
   })
 }
 
-export async function GET(
+async function getHandler(
   request: NextRequest,
   { params }: { params: Params },
 ) {
@@ -93,7 +90,7 @@ export async function GET(
     )
     const response = NextResponse.json(
       buildSpecificationProfileReport(data, profile, parsedQuery.data.locale),
-      { headers: { 'Cache-Control': 'no-store' } },
+      {},
     )
     return applyResponseCorrelationHeaders(response, runtime.context)
   } catch (error) {
@@ -103,3 +100,5 @@ export async function GET(
     )
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)

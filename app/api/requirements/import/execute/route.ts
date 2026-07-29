@@ -28,7 +28,6 @@ export const POST = secureMutationRoute({
         areaId: body.areaId,
       })
       return NextResponse.json(result, {
-        headers: { 'Cache-Control': 'no-store' },
         status: 201,
       })
     } catch (error) {

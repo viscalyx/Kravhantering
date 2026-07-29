@@ -54,14 +54,8 @@ const deleteArchivingExceptionSchema = z
   })
   .strict()
 
-function noStore<T extends NextResponse>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
-
 export const POST = secureMutationRoute({
   bodySchema: archivingExceptionSchema,
-  decorateErrorResponse: noStore,
   policy: customMutationPolicy(
     'admin.archiving_exception.create',
     ({ context }) => {
@@ -102,18 +96,16 @@ export const POST = secureMutationRoute({
         outcome: 'success',
         request: context.request ?? request,
       })
-      return noStore(NextResponse.json({ exception }, { status: 201 }))
+      return NextResponse.json({ exception }, { status: 201 })
     } catch (error) {
       if (error instanceof CsrfError || isRequirementsServiceError(error)) {
         const { body: errorBody, status } = toHttpErrorPayload(error)
-        return noStore(NextResponse.json(errorBody, { status }))
+        return NextResponse.json(errorBody, { status })
       }
       logSanitizedError('Failed to create archiving exception', error)
-      return noStore(
-        NextResponse.json(
-          unexpectedErrorBody('Failed to create archiving exception', error),
-          { status: 500 },
-        ),
+      return NextResponse.json(
+        unexpectedErrorBody('Failed to create archiving exception', error),
+        { status: 500 },
       )
     }
   },
@@ -121,7 +113,6 @@ export const POST = secureMutationRoute({
 
 export const DELETE = secureMutationRoute({
   bodySchema: deleteArchivingExceptionSchema,
-  decorateErrorResponse: noStore,
   policy: customMutationPolicy(
     'admin.archiving_exception.delete',
     ({ context }) => {
@@ -155,18 +146,16 @@ export const DELETE = secureMutationRoute({
         outcome: 'success',
         request: context.request ?? request,
       })
-      return noStore(NextResponse.json({ deleted }))
+      return NextResponse.json({ deleted })
     } catch (error) {
       if (error instanceof CsrfError || isRequirementsServiceError(error)) {
         const { body: errorBody, status } = toHttpErrorPayload(error)
-        return noStore(NextResponse.json(errorBody, { status }))
+        return NextResponse.json(errorBody, { status })
       }
       logSanitizedError('Failed to delete archiving exception', error)
-      return noStore(
-        NextResponse.json(
-          unexpectedErrorBody('Failed to delete archiving exception', error),
-          { status: 500 },
-        ),
+      return NextResponse.json(
+        unexpectedErrorBody('Failed to delete archiving exception', error),
+        { status: 500 },
       )
     }
   },

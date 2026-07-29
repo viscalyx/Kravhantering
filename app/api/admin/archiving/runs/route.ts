@@ -35,14 +35,8 @@ const archivingRunSchema = z
   })
   .strict()
 
-function noStore<T extends NextResponse>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
-
 export const POST = secureMutationRoute({
   bodySchema: archivingRunSchema,
-  decorateErrorResponse: noStore,
   policy: customMutationPolicy('admin.archiving.execute', ({ context }) => {
     assertPrivacyOfficer(context)
   }),
@@ -95,18 +89,16 @@ export const POST = secureMutationRoute({
         outcome: 'success',
         request: context.request ?? request,
       })
-      return noStore(NextResponse.json(result, { status: 201 }))
+      return NextResponse.json(result, { status: 201 })
     } catch (error) {
       if (error instanceof CsrfError || isRequirementsServiceError(error)) {
         const { body: errorBody, status } = toHttpErrorPayload(error)
-        return noStore(NextResponse.json(errorBody, { status }))
+        return NextResponse.json(errorBody, { status })
       }
       logSanitizedError('Failed to execute archiving retention', error)
-      return noStore(
-        NextResponse.json(
-          unexpectedErrorBody('Failed to execute archiving retention', error),
-          { status: 500 },
-        ),
+      return NextResponse.json(
+        unexpectedErrorBody('Failed to execute archiving retention', error),
+        { status: 500 },
       )
     }
   },

@@ -26,14 +26,8 @@ const archivingPreviewSchema = z
   })
   .strict()
 
-function noStore<T extends NextResponse>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
-
 export const POST = secureMutationRoute({
   bodySchema: archivingPreviewSchema,
-  decorateErrorResponse: noStore,
   policy: customMutationPolicy('admin.archiving.preview', ({ context }) => {
     assertPrivacyOfficer(context)
   }),
@@ -56,18 +50,16 @@ export const POST = secureMutationRoute({
         outcome: 'success',
         request: context.request ?? request,
       })
-      return noStore(NextResponse.json(preview))
+      return NextResponse.json(preview)
     } catch (error) {
       if (error instanceof CsrfError || isRequirementsServiceError(error)) {
         const { body: errorBody, status } = toHttpErrorPayload(error)
-        return noStore(NextResponse.json(errorBody, { status }))
+        return NextResponse.json(errorBody, { status })
       }
       logSanitizedError('Failed to preview archiving retention', error)
-      return noStore(
-        NextResponse.json(
-          unexpectedErrorBody('Failed to preview archiving retention', error),
-          { status: 500 },
-        ),
+      return NextResponse.json(
+        unexpectedErrorBody('Failed to preview archiving retention', error),
+        { status: 500 },
       )
     }
   },

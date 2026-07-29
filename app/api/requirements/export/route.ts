@@ -5,6 +5,7 @@ import {
   createCsvItemLimitError,
   runBoundedCsvOutput,
 } from '@/lib/generated-output/csv-runner'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   optionalQueryArraySchema,
@@ -118,7 +119,7 @@ function getStaticCsvValue(
   }
 }
 
-export async function GET(request: NextRequest): Promise<Response> {
+async function getHandler(request: NextRequest): Promise<Response> {
   const parsedQuery = parseSearchParams(
     new URL(request.url).searchParams,
     exportQuerySchema,
@@ -202,8 +203,9 @@ export async function GET(request: NextRequest): Promise<Response> {
       )
     }
     return Response.json(body, {
-      headers: { 'Cache-Control': 'no-store' },
       status,
     })
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)

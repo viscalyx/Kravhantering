@@ -10,6 +10,8 @@ vi.mock('@/lib/auth/session', () => ({
 
 import { GET } from '@/app/api/auth/me/route'
 
+const request = () => new Request('http://localhost/api/auth/me')
+
 describe('auth me route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -19,7 +21,7 @@ describe('auth me route', () => {
     getSessionMock.mockResolvedValue({})
     isSignedInMock.mockReturnValue(false)
 
-    const response = await GET()
+    const response = await GET(request())
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     await expect(response.json()).resolves.toEqual({ authenticated: false })
   })
@@ -37,7 +39,7 @@ describe('auth me route', () => {
     })
     isSignedInMock.mockReturnValue(false)
 
-    const response = await GET()
+    const response = await GET(request())
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     await expect(response.json()).resolves.toEqual({ authenticated: false })
   })
@@ -55,7 +57,7 @@ describe('auth me route', () => {
     })
     isSignedInMock.mockReturnValue(true)
 
-    const response = await GET()
+    const response = await GET(request())
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     await expect(response.json()).resolves.toEqual({
       authenticated: true,
@@ -91,7 +93,7 @@ describe('auth me route', () => {
     })
     isSignedInMock.mockReturnValue(true)
 
-    const response = await GET()
+    const response = await GET(request())
     const body = (await response.json()) as Record<string, unknown>
 
     expect(body).toEqual({

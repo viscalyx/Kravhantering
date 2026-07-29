@@ -15,10 +15,6 @@ export type AccessReviewItemRouteParams = Promise<{
   itemId: string
 }>
 
-interface AccessReviewErrorResponseOptions {
-  noStore?: boolean
-}
-
 function unexpectedErrorBody(message: string, error: unknown) {
   return {
     ...(process.env.NODE_ENV === 'development'
@@ -28,16 +24,10 @@ function unexpectedErrorBody(message: string, error: unknown) {
   }
 }
 
-export function addNoStore<T extends NextResponse>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
-
 export function accessReviewErrorResponse(
   message: string,
   error: unknown,
-  options: AccessReviewErrorResponseOptions = {},
-) {
+): NextResponse {
   let response: NextResponse
 
   if (error instanceof CsrfError || isRequirementsServiceError(error)) {
@@ -50,5 +40,5 @@ export function accessReviewErrorResponse(
     })
   }
 
-  return options.noStore ? addNoStore(response) : response
+  return response
 }

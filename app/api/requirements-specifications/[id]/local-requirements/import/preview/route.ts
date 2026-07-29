@@ -38,9 +38,7 @@ export const POST = secureMutationRoute({
         payload: body.payload,
         specificationId: params.id,
       })
-      return NextResponse.json(preview, {
-        headers: { 'Cache-Control': 'no-store' },
-      })
+      return NextResponse.json(preview)
     } catch (error) {
       logSanitizedError(
         '[API] Failed to preview specification-local requirements import',

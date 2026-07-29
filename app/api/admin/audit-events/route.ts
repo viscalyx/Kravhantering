@@ -9,6 +9,7 @@ import {
 import { isValidClientIp } from '@/lib/auth/client-ip'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { runBoundedCsvOutput } from '@/lib/generated-output/csv-runner'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import { parseSearchParams } from '@/lib/http/validation'
 import { createRequestContext } from '@/lib/requirements/auth'
@@ -75,18 +76,13 @@ const auditEventsQuerySchema = z
   })
   .strict()
 
-function noStore<T extends Response>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
-
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest) {
   const url = new URL(request.url)
   const parsedQuery = parseSearchParams(
     url.searchParams,
     auditEventsQuerySchema,
   )
-  if (!parsedQuery.ok) return noStore(parsedQuery.response)
+  if (!parsedQuery.ok) return parsedQuery.response
 
   try {
     const context = await createRequestContext(request, 'rest')
@@ -106,28 +102,25 @@ export async function GET(request: NextRequest) {
     if (parsedQuery.data.format === 'csv') {
       const filename =
         parsedQuery.data.locale === 'sv' ? 'atgardslogg.csv' : 'action-log.csv'
-      return noStore(
-        await runBoundedCsvOutput({
-          context,
-          db,
-          generateRows: async ({ maxItems, signal, writeRow }) => {
-            await traverseActionAuditEventsForCsv(db, filters, {
-              locale: parsedQuery.data.locale,
-              maxItems,
-              signal,
-              writeRow,
-            })
-          },
-          headers: actionAuditCsvHeaders(parsedQuery.data.locale),
-          operation: 'admin.action_log_csv_export',
-          requestSignal: request.signal,
-          responseHeaders: {
-            'Cache-Control': 'no-store',
-            'Content-Disposition': `attachment; filename="${filename}"`,
-            'Content-Type': 'text/csv; charset=utf-8',
-          },
-        }),
-      )
+      return await runBoundedCsvOutput({
+        context,
+        db,
+        generateRows: async ({ maxItems, signal, writeRow }) => {
+          await traverseActionAuditEventsForCsv(db, filters, {
+            locale: parsedQuery.data.locale,
+            maxItems,
+            signal,
+            writeRow,
+          })
+        },
+        headers: actionAuditCsvHeaders(parsedQuery.data.locale),
+        operation: 'admin.action_log_csv_export',
+        requestSignal: request.signal,
+        responseHeaders: {
+          'Content-Disposition': `attachment; filename="${filename}"`,
+          'Content-Type': 'text/csv; charset=utf-8',
+        },
+      })
     }
 
     const result = await listActionAuditEvents(db, {
@@ -136,18 +129,18 @@ export async function GET(request: NextRequest) {
       pageSize: parsedQuery.data.pageSize,
     })
 
-    return noStore(NextResponse.json(result))
+    return NextResponse.json(result)
   } catch (error) {
     if (isRequirementsServiceError(error)) {
       const { body, status } = toHttpErrorPayload(error)
-      return noStore(NextResponse.json(body, { status }))
+      return NextResponse.json(body, { status })
     }
     logSanitizedError('Failed to list action log events', error)
-    return noStore(
-      NextResponse.json(
-        { error: 'Failed to list action log events' },
-        { status: 500 },
-      ),
+    return NextResponse.json(
+      { error: 'Failed to list action log events' },
+      { status: 500 },
     )
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)

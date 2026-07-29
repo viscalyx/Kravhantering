@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { unauthorizedError, validationError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import type { McpImportInstructionDestinationRef } from '@/lib/requirements/import-service'
@@ -46,7 +47,7 @@ function destinationFromQuery(
   })
 }
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   try {
     const { context, service } = await createRequirementsRestRuntime(request)
     if (!context.actor.isAuthenticated) {
@@ -60,7 +61,6 @@ export async function GET(request: Request) {
     })
     return new NextResponse(withUtf8Bom(importInstruction), {
       headers: {
-        'Cache-Control': 'no-store',
         'Content-Type': 'text/markdown; charset=utf-8',
       },
     })
@@ -69,3 +69,5 @@ export async function GET(request: Request) {
     return NextResponse.json(body, { status })
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)

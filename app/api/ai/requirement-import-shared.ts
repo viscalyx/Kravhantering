@@ -373,7 +373,6 @@ export function createUnavailableAiStreamResponse(
   return applyResponseCorrelationHeaders(
     new Response(stream, {
       headers: {
-        'Cache-Control': 'no-cache',
         Connection: 'keep-alive',
         'Content-Type': 'text/event-stream',
       },

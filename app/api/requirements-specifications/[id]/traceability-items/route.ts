@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getSpecificationById } from '@/lib/dal/requirements-specifications'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import {
   idParamSchema,
   parseRouteParams,
@@ -21,20 +22,16 @@ const specificationParamSchema = idParamSchema
 
 function errorResponse(error: unknown) {
   if (error instanceof ReportDataError) {
-    return NextResponse.json(
-      { error: error.message },
-      { headers: { 'Cache-Control': 'no-store' }, status: error.status },
-    )
+    return NextResponse.json({ error: error.message }, { status: error.status })
   }
 
   const { body, status } = toHttpErrorPayload(error)
   return NextResponse.json(body, {
-    headers: { 'Cache-Control': 'no-store' },
     status,
   })
 }
 
-export async function GET(
+async function getHandler(
   request: NextRequest,
   { params }: { params: Params },
 ) {
@@ -69,9 +66,7 @@ export async function GET(
       specification,
       parsedQuery.data,
     )
-    const response = NextResponse.json(data, {
-      headers: { 'Cache-Control': 'no-store' },
-    })
+    const response = NextResponse.json(data)
     return applyResponseCorrelationHeaders(response, runtime.context)
   } catch (error) {
     return applyResponseCorrelationHeaders(
@@ -80,3 +75,5 @@ export async function GET(
     )
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)

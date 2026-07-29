@@ -6,16 +6,10 @@ applyTo: "{app/api/**/route.ts,lib/http/secure-mutation-route.ts,tests/unit/secu
 
 ## REST Mutation Standard
 
-- Wrap every app-owned REST `POST`, `PUT`, `PATCH`, and `DELETE` route in
-  `app/api/**/route.ts` with `secureMutationRoute`.
-- Use `secureLogoutMutationRoute` only for `app/api/auth/logout/route.ts`.
-- Keep `app/api/mcp/route.ts` as the only direct mutating export exception.
-  MCP uses bearer-token JSON-RPC handling, not the REST wrapper.
+- Follow `route-security-policy.instructions.md` for registry and response
+  policy rules.
 - Do not add `export async function POST`, `PUT`, `PATCH`, or `DELETE` for a
   REST route.
-- Do not add another exception unless the user explicitly asks for a documented
-  security exception. Update `tests/unit/secure-mutation-route-coverage.test.ts`
-  and `docs/security-privacy/api-security.md` in the same change.
 
 ## Policies
 
@@ -43,20 +37,16 @@ applyTo: "{app/api/**/route.ts,lib/http/secure-mutation-route.ts,tests/unit/secu
 
 ## Special Route Rules
 
-- Preserve `Cache-Control: no-store` and audit redaction on privacy and access
-  review mutation responses.
+- Preserve audit redaction on privacy and access review mutation responses.
 - Build admin privileged audit from the wrapper `context`, not separate session
   reads.
-- Preserve the existing MCP bearer-token contract when editing
-  `app/api/mcp/route.ts`; do not apply `secureMutationRoute` there.
 
 ## Tests
 
 - Keep `tests/unit/secure-mutation-route.test.ts` covering auth, CSRF, param and
   body validation, policy denial, unexpected errors, success, and no work before
   auth or policy.
-- Keep `tests/unit/secure-mutation-route-coverage.test.ts` enforcing wrapper
-  usage for all mutating REST route exports and `/api/mcp` as the only direct
-  export exception.
+- Keep `tests/unit/rest-route-registry-coverage.test.ts` enforcing observable
+  wrapper branding and the documented MCP exception.
 - Add or update focused route tests when changing a mutation policy, validation
   schema, audit behavior, response cache header, or error contract.

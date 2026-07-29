@@ -9,6 +9,7 @@ import {
   updateHsaIdPrefixes,
 } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -43,11 +44,6 @@ const hsaIdPrefixesPayloadSchema = z
   })
   .strict()
 
-function noStore<T extends NextResponse>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
-
 async function assertAdmin(request: Request) {
   const context = await createRequestContext(request, 'rest')
   if (!context.actor.roles.includes('Admin')) {
@@ -59,32 +55,30 @@ async function assertAdmin(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   try {
     await assertAdmin(request)
     const db = await getRequestSqlServerDataSource()
-    return noStore(
-      NextResponse.json({
-        prefixes: await listHsaIdPrefixesForAdmin(db),
-      }),
-    )
+    return NextResponse.json({
+      prefixes: await listHsaIdPrefixesForAdmin(db),
+    })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
       const { body, status } = toHttpErrorPayload(error)
-      return noStore(NextResponse.json(body, { status }))
+      return NextResponse.json(body, { status })
     }
     console.error(
       'Failed to load admin HSA-id prefixes',
       formatUiSettingsLoadError(error),
     )
-    return noStore(
-      NextResponse.json(
-        { error: 'Failed to load HSA-id prefixes.' },
-        { status: 500 },
-      ),
+    return NextResponse.json(
+      { error: 'Failed to load HSA-id prefixes.' },
+      { status: 500 },
     )
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)
 
 export const PUT = secureMutationRoute({
   bodySchema: hsaIdPrefixesPayloadSchema,
@@ -105,7 +99,7 @@ export const PUT = secureMutationRoute({
           ),
       })
 
-      return noStore(NextResponse.json({ prefixes }))
+      return NextResponse.json({ prefixes })
     } catch (error) {
       if (error instanceof HsaIdPrefixSettingsError) {
         const status =
@@ -113,22 +107,18 @@ export const PUT = secureMutationRoute({
           error.code === 'used_prefix_cannot_change'
             ? 409
             : 400
-        return noStore(
-          NextResponse.json(
-            { code: error.code, error: error.message },
-            { status },
-          ),
+        return NextResponse.json(
+          { code: error.code, error: error.message },
+          { status },
         )
       }
       console.error(
         'Failed to save HSA-id prefixes',
         formatUiSettingsLoadError(error),
       )
-      return noStore(
-        NextResponse.json(
-          { error: 'Failed to save HSA-id prefixes.' },
-          { status: 500 },
-        ),
+      return NextResponse.json(
+        { error: 'Failed to save HSA-id prefixes.' },
+        { status: 500 },
       )
     }
   },

@@ -10,6 +10,7 @@ import {
   updateApplicationSetting,
 } from '@/lib/dal/application-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -86,11 +87,6 @@ const applicationSettingsPatchSchema = z
     message: 'Expected exactly one application setting.',
   })
 
-function noStore<T extends NextResponse>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
-
 async function assertAdmin(request: Request): Promise<void> {
   const context = await createRequestContext(request, 'rest')
   if (!context.actor.isAuthenticated) {
@@ -105,29 +101,28 @@ async function assertAdmin(request: Request): Promise<void> {
   }
 }
 
-export async function GET(request: Request): Promise<NextResponse> {
+async function getHandler(request: Request): Promise<NextResponse> {
   try {
     await assertAdmin(request)
     const db = await getRequestSqlServerDataSource()
-    return noStore(NextResponse.json(await getAdminApplicationSettings(db)))
+    return NextResponse.json(await getAdminApplicationSettings(db))
   } catch (error) {
     if (isRequirementsServiceError(error)) {
       const { body, status } = toHttpErrorPayload(error)
-      return noStore(NextResponse.json(body, { status }))
+      return NextResponse.json(body, { status })
     }
     console.error('Failed to load application settings', error)
-    return noStore(
-      NextResponse.json(
-        { error: 'Failed to load application settings.' },
-        { status: 500 },
-      ),
+    return NextResponse.json(
+      { error: 'Failed to load application settings.' },
+      { status: 500 },
     )
   }
 }
 
+export const GET = withRestResponsePolicy(getHandler)
+
 export const PATCH = secureMutationRoute({
   bodySchema: applicationSettingsPatchSchema,
-  decorateErrorResponse: noStore,
   policy: adminMutationPolicy(),
   handler: async ({ body, context }) => {
     try {
@@ -153,18 +148,16 @@ export const PATCH = secureMutationRoute({
             executor,
           ),
       })
-      return noStore(NextResponse.json(update))
+      return NextResponse.json(update)
     } catch (error) {
       if (isRequirementsServiceError(error)) {
         const { body, status } = toHttpErrorPayload(error)
-        return noStore(NextResponse.json(body, { status }))
+        return NextResponse.json(body, { status })
       }
       console.error('Failed to update application settings', error)
-      return noStore(
-        NextResponse.json(
-          { error: 'Failed to save application settings.' },
-          { status: 500 },
-        ),
+      return NextResponse.json(
+        { error: 'Failed to save application settings.' },
+        { status: 500 },
       )
     }
   },
