@@ -68,6 +68,23 @@ describe('development environment contract', () => {
     expect(configModule).not.toContain('$repoRoot = (Get-Location).Path')
   })
 
+  it('keeps the Azure Keycloak Quadlet aligned with the canonical image lock', () => {
+    const keycloakLock = JSON.parse(
+      readWorkspaceFile('containers/keycloak/image.lock.json'),
+    ) as {
+      image: string
+      manifestDigest: string
+      tag: string
+    }
+    const keycloakQuadlet = readWorkspaceFile(
+      'scripts/azure-dev/templates/quadlet/krav-idp.container',
+    )
+
+    expect(keycloakQuadlet).toContain(
+      `Image=${keycloakLock.image}:${keycloakLock.tag}@${keycloakLock.manifestDigest}`,
+    )
+  })
+
   it('preserves the immutable image reference of an existing Azure VM', () => {
     const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
     const azureModule = readWorkspaceFile(
