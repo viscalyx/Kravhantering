@@ -5,7 +5,7 @@ After=krav-support-network.service krav-hsa-person-lookup-adapter.service
 
 [Container]
 ContainerName=kong
-Image=docker.io/kong/kong-gateway:3.15.0.0-20260702-ubuntu@sha256:f0516241dd354e66a9a8b4151c884bf40df8f8d850cec892adb4446cd210491f
+Image=docker.io/kong/kong-gateway:3.15.0.2-20260721-ubuntu@sha256:a4eb1fece17f5289d844c499af41c9e5b24919ddda02a89bcdae63efe6e390b4
 Network=krav-support.network
 PublishPort=127.0.0.1:18000:8000
 Volume=/workspace/containers/kong/kong.yml:/kong/declarative/kong.yml:ro

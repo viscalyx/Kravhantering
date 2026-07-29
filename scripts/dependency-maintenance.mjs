@@ -205,7 +205,7 @@ function isRuntimeImageFile(relativePath) {
   )
 }
 
-export function discoverRuntimeImageInputs(root) {
+function discoverRuntimeImageReferences(root) {
   const candidates = walkFiles(root, name =>
     /\.(?:container|ya?ml)$/u.test(name),
   ).filter(isRuntimeImageFile)
@@ -216,13 +216,16 @@ export function discoverRuntimeImageInputs(root) {
       const match =
         line.match(/^\s*image:\s*(?<reference>\S+)\s*(?:#.*)?$/iu) ??
         line.match(/^Image=(?<reference>\S+)\s*$/u)
-      const image = normalizeImageRepository(match?.groups?.reference)
+      const reference = String(match?.groups?.reference ?? '')
+        .trim()
+        .replace(/^['"]|['"]$/gu, '')
+      const image = normalizeImageRepository(reference)
       if (
         image &&
         !image.includes('example.') &&
         !image.startsWith('localhost/')
       ) {
-        inputs.push({ image, path: relativePath })
+        inputs.push({ image, path: relativePath, reference })
       }
     }
   }
@@ -230,6 +233,13 @@ export function discoverRuntimeImageInputs(root) {
   return inputs.sort((left, right) =>
     `${left.path}:${left.image}`.localeCompare(`${right.path}:${right.image}`),
   )
+}
+
+export function discoverRuntimeImageInputs(root) {
+  return discoverRuntimeImageReferences(root).map(({ image, path }) => ({
+    image,
+    path,
+  }))
 }
 
 function unquoteYaml(value) {
@@ -479,6 +489,15 @@ function validateRegistryShape(registry) {
         )
       }
     }
+    if (
+      unit.runtimeReferencePolicy !== undefined &&
+      (unit.kind !== 'image-lock' ||
+        unit.runtimeReferencePolicy !== 'lock-tag-and-manifest')
+    ) {
+      errors.push(
+        `Maintenance unit "${unit.id}" has unsupported runtime reference policy.`,
+      )
+    }
   }
   return errors
 }
@@ -632,12 +651,26 @@ function validateImageCoverage(root, registry) {
   }
 
   const imageUnits = [...dockerUnits, ...lockUnits]
-  for (const input of discoverRuntimeImageInputs(root)) {
+  for (const input of discoverRuntimeImageReferences(root)) {
     const matches = imageUnits.filter(unit => unit.image === input.image)
     if (matches.length !== 1) {
       errors.push(
         `Runtime image "${input.path}" (${input.image}) routes to ${matches.length} maintenance lanes.`,
       )
+      continue
+    }
+    const [unit] = matches
+    if (
+      unit.kind === 'image-lock' &&
+      unit.runtimeReferencePolicy === 'lock-tag-and-manifest'
+    ) {
+      const lock = readJson(root, unit.lockPath)
+      const expectedReference = `${unit.image}:${lock.tag}@${lock.manifestDigest}`
+      if (input.reference !== expectedReference) {
+        errors.push(
+          `Runtime image "${input.path}" must pin "${expectedReference}".`,
+        )
+      }
     }
   }
 

@@ -104,7 +104,8 @@
       "detector": "kong",
       "skill": "resolve-dependency-drift",
       "image": "docker.io/kong/kong-gateway",
-      "lockPath": "containers/kong/image.lock.json"
+      "lockPath": "containers/kong/image.lock.json",
+      "runtimeReferencePolicy": "lock-tag-and-manifest"
     }
   ]
 }
