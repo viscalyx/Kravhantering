@@ -1192,7 +1192,9 @@
     "unpdf",
     "fokusmarkering",
     "infografik",
-    "mktemp"
+    "mktemp",
+    "UEFI",
+    "vTPM"
   ],
   "flagWords": [],
   "ignorePaths": [
