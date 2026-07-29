@@ -80,7 +80,7 @@ describe('dependency drift selection', () => {
     expect(parseNodeTag('24-bookworm-slim')).toMatchObject({ major: 24 })
     expect(parseNodeTag('25-bookworm-slim')).toBeNull()
     expect(parseNginxTag('1.29.4-alpine')).toMatchObject({ minor: 29 })
-    expect(parseSqlServerTag('2025-CU6-ubuntu-24.04')).toMatchObject({ cu: 6 })
+    expect(parseSqlServerTag('2025-CU7-ubuntu-24.04')).toMatchObject({ cu: 7 })
     expect(parseKeycloakTag('26.7.0-1')).toMatchObject({ revision: 1 })
     expect(parseKongTag('3.15.0.1-20260708-ubuntu')).toMatchObject({
       buildDate: 20260708,
