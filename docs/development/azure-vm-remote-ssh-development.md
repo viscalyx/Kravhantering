@@ -985,7 +985,17 @@ and `51204`.
 
 Each workstation receives a distinct SSH key. The private key is generated and
 stays on the destination workstation. A signed text request moves to an
-authorized workstation, and an encrypted response package moves back.
+authorized workstation, and an encrypted response package moves back. Choose
+one transfer mode:
+
+- **Connect only** configures direct public SSH without Azure sign-in. It
+  cannot start, stop, query status, update CIDR access, run setup, or remove the
+  VM. A management workstation must perform those operations.
+- **Manage environment** transfers the full Azure management configuration.
+  The signed-in Azure identity and Azure RBAC determine effective permissions.
+
+The package transfers configuration, not authorization. Azure RBAC remains
+authoritative.
 
 ```mermaid
 sequenceDiagram
@@ -1012,38 +1022,54 @@ sequenceDiagram
     Destination-->>User: Readiness report and code command
 ```
 
-The request is Base64-encoded text, not encrypted. It contains only public
-onboarding data and can be pasted into email:
+The request is Base64-encoded text, not encrypted. Schema 2 records the selected
+mode with the public onboarding data:
 
 ```text
 -----BEGIN KRAVHANTERING WORKSTATION REQUEST-----
-Version: 1
+Version: 2
 
 <Base64 payload>
 -----END KRAVHANTERING WORKSTATION REQUEST-----
 ```
 
-The request is signed by the destination key. The approving user must still
-compare the displayed fingerprint or verification code because an attacker
-could replace the entire request with a separately signed request.
+The request is signed by the destination key. Its schema binds the absolute
+destination private-key path alongside the intended use and public onboarding
+data. The approving user must still compare the displayed fingerprint or
+verification code because an attacker could replace the entire request with a
+separately signed request.
 
 ### Create the destination request
 
 On the destination workstation, clone the repository, install the normal
-workstation prerequisites, and run:
+workstation prerequisites, and run interactively:
 
 ```powershell
-./scripts/azure-dev.ps1 new-workstation-request
+./scripts/azure-dev.ps1 -Command new-workstation-request
 ```
 
-The command creates a dedicated Ed25519 key under the user's `.ssh` directory,
-saves the signed request under `.azure/workstation-requests`, and prints the
-same request for copy and paste. It also prints the normalized workstation
-name, requested CIDR, generated private-key path, public-key fingerprint, and
-verification code. The approval values can then be compared, and the generated
-path can be used for `AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH`. It uses the normalized
-local machine name as the workstation name; pass `-WorkstationName "<name>"`
-to override it. Transfer only the request. The private key never leaves the
+The mode prompt displays `connect-only` as the default. Non-interactive use
+must state the mode:
+
+```powershell
+./scripts/azure-dev.ps1 -Command new-workstation-request `
+  -IntendedUse connect-only `
+  -Yes
+```
+
+`-IntendedUse` accepts exactly `connect-only` or `manage-environment`. Changing
+the mode after signing requires a new request.
+
+The command creates a dedicated Ed25519 key under the user's `.ssh` directory
+and saves the signed request under `.azure/workstation-requests`. Immediately
+before printing the armored request, it prominently prints the normalized
+workstation name, requested CIDR, private-key path, public-key fingerprint, and
+verification code. Temporarily retain those values or keep the console open.
+
+The fingerprint and code detect replacement of the complete signed request
+through an out-of-band comparison. The workstation, CIDR, and private-key path
+confirm approval and configure the returned package. Transfer only the signed
+request through the package channel. The private key never leaves the
 destination workstation.
 
 ### Install age
@@ -1102,23 +1128,45 @@ age --version
 Approve a request file:
 
 ```powershell
-./scripts/azure-dev.ps1 approve-workstation `
+./scripts/azure-dev.ps1 -Command approve-workstation `
   -RequestPath "<request-file>" `
   -OutputPath "<response-package>.age"
 ```
 
 Omit `-RequestPath` to paste the text request interactively. Approval displays
-the requested workstation, CIDR, public-key fingerprint, and verification code.
-It can optionally include the complete
-`.env.azure.development.local` file, GitHub tokens from the current process,
-an exportable Git signing key, and the custom Zsh template. Secret values are
-never displayed.
+and honors the signed mode, workstation, CIDR, destination private-key path,
+public-key fingerprint, and verification code. A change requires a new request.
+Approval refuses Tailscale environments before changing the package or
+environment because transfer supports public SSH only.
+
+For either mode, the approver may independently include `GH_TOKEN` and
+`COPILOT_GITHUB_TOKEN` from the current process. Both are excluded by default.
+For manage-environment, the approver may also include the complete ignored
+`.env.azure.development.local` and the custom ignored Zsh template.
+
+The approver separately chooses whether the workstation needs Git commit
+signing. If selected, approval reads the VM's actual global SSH
+`user.signingkey`. Approval stops when the value is absent or malformed. The
+package contains only the normalized public signing key and fingerprint. It
+never contains a private Git signing key.
 
 Approval temporarily starts a stopped VM when the user confirms, restores its
 original power state, adds and verifies the named CIDR and public key, and
 creates an ASCII-armored response package encrypted to the destination
 workstation's SSH public key. The package can only be decrypted with the
 private key that remains on that workstation.
+
+The package contents depend on the signed mode:
+
+- Connect-only omits `.env.azure.development`. Its destination-ready
+  `.env.azure.development.local` contains only public SSH connectivity mode,
+  host alias, fixed public host, and destination private-key path. It contains
+  no Azure scope, VM setup values, service secrets, or Azure credentials.
+- Manage-environment contains the complete primary file. The packaged local
+  file always contains the configured subscription and destination private-key
+  path. If the approver includes the complete local file, packaging upserts
+  those destination values without changing the source. Otherwise packaging
+  creates a minimal two-value local file.
 
 The `.age` response is plain ASCII text in the native `age` armor format:
 
@@ -1140,7 +1188,7 @@ armored file automatically.
 On the destination workstation:
 
 ```powershell
-./scripts/azure-dev.ps1 extract-workstation-package `
+./scripts/azure-dev.ps1 -Command extract-workstation-package `
   -PackagePath "<response-package>.age" `
   -DestinationPath "<private-extraction-directory>"
 ```
@@ -1151,31 +1199,62 @@ selected destination. It does not automatically apply those files to the
 repository, configure the environment, update SSH configuration, edit shell
 profiles, install tokens, or launch VS Code.
 
-Open the generated `README.md`. It identifies each source and destination path,
-explains machine-specific values such as
-`AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH`, and provides the remaining commands. If a
-GitHub token is already present on the destination, keep it and ignore the
-packaged copy. Packaged token files are plaintext after extraction; load them
-only into the required local process or an existing secure credential system.
+Open the generated `README.md`. It prominently states the mode and uses
+PowerShell 7 commands with known absolute paths. Extraction never applies
+configuration, edits SSH files, loads secrets, or launches VS Code.
+
+When a destination primary file is absent, the README gives an exact
+`Copy-Item` command. When it exists, the README gives an exact `code --diff`
+command and requires a deliberate merge or replacement. The local file is
+copied only when its destination is absent. Otherwise, the README lists the
+required assignments for manual editing and never recommends an overwrite.
+
+The host-key fingerprint comparison is mandatory. After it succeeds, the
+README provides a rerunnable PowerShell block that creates `.ssh` and
+`known_hosts` as needed, appends only missing source lines, preserves unrelated
+entries, and applies private permissions where supported. Readiness normalizes
+the nonblank installed entries and requires every packaged, verified host-key
+entry for the fixed host to match; another key for the same hostname is not
+sufficient. Direct connect-only SSH uses `StrictHostKeyChecking yes`. If the
+fixed VM address or host keys change, create and approve a new signed request;
+there is no Azure lookup or trust-on-first-use fallback.
+
+Packaged token files are plaintext after extraction. Keep an existing local
+value and load a packaged value only into the required process or an existing
+secure credential system.
+
+When signing is required, restore the corresponding private key through the
+external password-vault or secret-recovery workflow and load it into the
+destination SSH agent. The README states the expected public fingerprint.
+Readiness requires `ssh-add -L` to expose the matching public key. The design
+continues to use the VM's single global signing identity and SSH agent
+forwarding.
 
 After manual configuration, validate readiness:
 
 ```powershell
-./scripts/azure-dev.ps1 prepare-workstation-access
+./scripts/azure-dev.ps1 -Command prepare-workstation-access `
+  -DestinationPath "<private-extraction-directory>"
 ```
 
-The command reports whether keys and tokens are available in the current
-PowerShell process and prints the commands for `ssh-config -Apply` and VS Code.
-A missing token is not necessarily a problem when PowerShell will not launch
-the Remote SSH session. Run the printed `code` command from Zsh, Bash, or
-another shell where the required tokens are available. The command does not
-inspect other shell configurations, apply destination configuration, or launch
-VS Code.
+For connect-only, readiness determines the mode from the extracted schema 2
+manifest before loading configuration. A partially applied local file can
+therefore report the missing fixed host, alias, destination private key,
+verified `known_hosts` entries, exact managed SSH block, and any required
+signing key without entering Azure validation. It reports token presence as a
+warning. It does not call Azure prerequisites, start the VM, attempt SSH,
+launch VS Code, or inspect other shells. Required SSH, host-key, configuration,
+or signing failures produce an unsuccessful exit and an exact remediation.
+
+Manage-environment readiness retains Azure prerequisite checks. Its
+destination-ready local configuration guarantees the required subscription
+and private-key path. Missing GitHub tokens remain warnings because another
+launching shell may provide them.
 
 Remove the plaintext extraction directory after finishing:
 
 ```powershell
-./scripts/azure-dev.ps1 cleanup-workstation-package `
+./scripts/azure-dev.ps1 -Command cleanup-workstation-package `
   -DestinationPath "<private-extraction-directory>"
 ```
 

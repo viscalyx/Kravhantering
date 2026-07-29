@@ -150,6 +150,13 @@ function Get-AzureDevSshConfigBlock {
   )
 
   $identityFile = ConvertTo-AzureDevSshPath -Path $Context.Config.SshPrivateKeyPath
+  $strictHostKeyChecking = if (
+    -not [string]::IsNullOrWhiteSpace($Context.Config.SshHostName)
+  ) {
+    'yes'
+  } else {
+    'accept-new'
+  }
   $lines = @(
     "# >>> $script:AzureDevSshMarkerName managed",
     "Host $($Context.Config.SshHostAlias)",
@@ -158,7 +165,7 @@ function Get-AzureDevSshConfigBlock {
     "    IdentityFile $identityFile",
     '    IdentitiesOnly yes',
     '    ForwardAgent yes',
-    '    StrictHostKeyChecking accept-new',
+    "    StrictHostKeyChecking $strictHostKeyChecking",
     '    SendEnv GH_TOKEN',
     '    SendEnv COPILOT_GITHUB_TOKEN'
   )

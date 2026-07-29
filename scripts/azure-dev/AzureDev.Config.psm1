@@ -28,6 +28,7 @@ function Get-AzureDevDefaultConfig {
     AZURE_DEV_VM_DATA_DISK_GIB = '256'
     AZURE_DEV_VM_CONNECTIVITY_MODE = 'public-ssh'
     AZURE_DEV_VM_SSH_HOST_ALIAS = 'kravhantering-azure-dev'
+    AZURE_DEV_VM_SSH_HOST_NAME = ''
     AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH = '~/.ssh/kravhantering_azure_dev_ed25519'
     AZURE_DEV_VM_AUTO_STOP_ENABLED = 'true'
     AZURE_DEV_VM_AUTO_STOP_TIME = '2200'
@@ -282,23 +283,32 @@ function Get-AzureDevConfig {
 
     [switch]$RequireEnvironmentFile,
 
-    [switch]$AllowMissingAzureScope
+    [switch]$AllowMissingAzureScope,
+
+    [switch]$AllowDirectSsh,
+
+    [switch]$DirectSshReadiness
   )
 
   $primaryPath = Join-Path $RepositoryRoot $EnvironmentFile
   $localPath = Join-Path $RepositoryRoot '.env.azure.development.local'
   $values = Get-AzureDevDefaultConfig
+  $configuredKeys = [Collections.Generic.HashSet[string]]::new(
+    [StringComparer]::OrdinalIgnoreCase
+  )
 
   $primaryValues = Import-AzureDevEnvFile `
     -Path $primaryPath `
     -Optional:(!$RequireEnvironmentFile)
   foreach ($key in $primaryValues.Keys) {
     $values[$key] = $primaryValues[$key]
+    [void]$configuredKeys.Add($key)
   }
 
   $localValues = Import-AzureDevEnvFile -Path $localPath -Optional
   foreach ($key in $localValues.Keys) {
     $values[$key] = $localValues[$key]
+    [void]$configuredKeys.Add($key)
   }
 
   $trackedKeys = @(
@@ -318,22 +328,47 @@ function Get-AzureDevConfig {
     $item = Get-Item -LiteralPath "Env:$key" -ErrorAction SilentlyContinue
     if ($null -ne $item) {
       $values[$key] = $item.Value
+      [void]$configuredKeys.Add($key)
     }
   }
 
-  if ([string]::IsNullOrWhiteSpace($values.AZURE_DEV_GIT_USER_NAME)) {
+  $directSsh = (
+    $AllowDirectSsh -and
+    (
+      $DirectSshReadiness -or (
+        $values.AZURE_DEV_VM_CONNECTIVITY_MODE -eq 'public-ssh' -and
+        -not [string]::IsNullOrWhiteSpace(
+          $values.AZURE_DEV_VM_SSH_HOST_NAME
+        )
+      )
+    )
+  )
+  if (
+    -not $directSsh -and
+    [string]::IsNullOrWhiteSpace($values.AZURE_DEV_GIT_USER_NAME)
+  ) {
     $values.AZURE_DEV_GIT_USER_NAME = Get-AzureDevLocalGitConfigValue `
       -RepositoryRoot $RepositoryRoot `
       -Key 'user.name'
   }
-  if ([string]::IsNullOrWhiteSpace($values.AZURE_DEV_GIT_USER_EMAIL)) {
+  if (
+    -not $directSsh -and
+    [string]::IsNullOrWhiteSpace($values.AZURE_DEV_GIT_USER_EMAIL)
+  ) {
     $values.AZURE_DEV_GIT_USER_EMAIL = Get-AzureDevLocalGitConfigValue `
       -RepositoryRoot $RepositoryRoot `
       -Key 'user.email'
   }
 
-  $gitSshSigningKey = $values.AZURE_DEV_GIT_SSH_SIGNING_KEY
-  if ([string]::IsNullOrWhiteSpace($gitSshSigningKey)) {
+  $gitSshSigningKey = if ($directSsh) {
+    ''
+  } else {
+    $values.AZURE_DEV_GIT_SSH_SIGNING_KEY
+  }
+  if (
+    -not $directSsh -and
+    [string]::IsNullOrWhiteSpace($gitSshSigningKey)
+  ) {
     $localGitSigningFormat = Get-AzureDevLocalGitConfigValue `
       -RepositoryRoot $RepositoryRoot `
       -Key 'gpg.format'
@@ -376,6 +411,7 @@ function Get-AzureDevConfig {
     DataDiskGiB = [int]$values.AZURE_DEV_VM_DATA_DISK_GIB
     ConnectivityMode = $values.AZURE_DEV_VM_CONNECTIVITY_MODE
     SshHostAlias = $values.AZURE_DEV_VM_SSH_HOST_ALIAS
+    SshHostName = $values.AZURE_DEV_VM_SSH_HOST_NAME
     SshPrivateKeyPath = $privateKeyPath
     SshPublicKeyPath = $publicKeyPath
     AutoStopEnabled = ConvertTo-AzureDevBoolean `
@@ -399,11 +435,14 @@ function Get-AzureDevConfig {
     TailscaleAuthKey = $values.AZURE_DEV_TAILSCALE_AUTH_KEY
     TailscaleTailnet = $values.AZURE_DEV_TAILSCALE_TAILNET
     UbuntuProToken = $values.AZURE_DEV_UBUNTU_PRO_TOKEN
+    ConfiguredKeys = @($configuredKeys)
   }
 
   Test-AzureDevConfig `
     -Config $config `
-    -AllowMissingAzureScope:$AllowMissingAzureScope
+    -AllowMissingAzureScope:$AllowMissingAzureScope `
+    -AllowDirectSsh:$AllowDirectSsh `
+    -DirectSshReadiness:$DirectSshReadiness
   return $config
 }
 
@@ -413,10 +452,34 @@ function Test-AzureDevConfig {
     [Parameter(Mandatory = $true)]
     [pscustomobject]$Config,
 
-    [switch]$AllowMissingAzureScope
+    [switch]$AllowMissingAzureScope,
+
+    [switch]$AllowDirectSsh,
+
+    [switch]$DirectSshReadiness
   )
 
-  $required = if ($AllowMissingAzureScope) {
+  if ($DirectSshReadiness) {
+    return
+  }
+
+  if ($Config.ConnectivityMode -notin @('public-ssh', 'tailscale')) {
+    throw 'AZURE_DEV_VM_CONNECTIVITY_MODE must be public-ssh or tailscale.'
+  }
+
+  $directSsh = (
+    $AllowDirectSsh -and
+    $Config.ConnectivityMode -eq 'public-ssh' -and
+    -not [string]::IsNullOrWhiteSpace($Config.SshHostName)
+  )
+  $required = if ($directSsh) {
+    [ordered]@{
+      AZURE_DEV_VM_CONNECTIVITY_MODE = $Config.ConnectivityMode
+      AZURE_DEV_VM_SSH_HOST_ALIAS = $Config.SshHostAlias
+      AZURE_DEV_VM_SSH_HOST_NAME = $Config.SshHostName
+      AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH = $Config.SshPrivateKeyPath
+    }
+  } elseif ($AllowMissingAzureScope) {
     [ordered]@{
       AZURE_DEV_VM_LOCATION = $Config.Location
       AZURE_DEV_VM_IMAGE_PUBLISHER = $Config.ImagePublisher
@@ -439,6 +502,10 @@ function Test-AzureDevConfig {
     }
   }
 
+  if ($directSsh) {
+    return
+  }
+
   $imageCoordinates = [ordered]@{
     AZURE_DEV_VM_IMAGE_PUBLISHER = $Config.ImagePublisher
     AZURE_DEV_VM_IMAGE_OFFER = $Config.ImageOffer
@@ -450,9 +517,6 @@ function Test-AzureDevConfig {
     }
   }
 
-  if ($Config.ConnectivityMode -notin @('public-ssh', 'tailscale')) {
-    throw 'AZURE_DEV_VM_CONNECTIVITY_MODE must be public-ssh or tailscale.'
-  }
   if ($Config.DataDiskGiB -lt 64) {
     throw 'AZURE_DEV_VM_DATA_DISK_GIB must be at least 64.'
   }

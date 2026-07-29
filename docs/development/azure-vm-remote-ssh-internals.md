@@ -121,13 +121,15 @@ The command flow is intentionally narrow:
 - `add-cidr`, `set-cidr`, `list-cidrs`, and `remove-cidr` manage named,
   Azure-visible SSH sources without replacing another workstation's rules.
 - `new-workstation-request` creates a destination-local key and a signed,
-  ASCII-armored request without requiring Azure scope.
+  ASCII-armored request for connect-only or management use without requiring
+  Azure scope.
 - `approve-workstation` verifies the request, adds its public key and CIDR, and
   creates a response package encrypted to the destination SSH public key.
 - `extract-workstation-package` validates and extracts a package into one
   explicitly selected directory without applying workstation changes.
-- `prepare-workstation-access` reports current-process readiness and prints
-  manual commands.
+- `prepare-workstation-access` uses local-only direct-host checks for
+  connect-only configuration and Azure prerequisites for management
+  configuration.
 - `ssh-config` prints the managed OpenSSH block or applies it when requested.
 - `remove` deletes only live resources selected by ownership tags, then removes
   owned local state and the managed SSH config block.
@@ -361,12 +363,29 @@ Workstation-scoped commands derive their default name from
 accept `-WorkstationName` as an optional override. The workstation name is not
 stored in an environment file.
 
-The request schema is canonical JSON wrapped in an ASCII-armored Base64
-envelope. It contains no secret or private key. `ssh-keygen -Y sign` signs the
-payload with namespace `kravhantering-workstation-request`; approval verifies
-that signature against the embedded public key. This proves possession and
-detects corruption. It does not authenticate a fully replaced request, so the
-human fingerprint and verification-code comparison remains mandatory.
+Request and package schemas roll forward together. Schema 2 rejects every
+older request or package with regeneration instructions; there is no
+compatibility parser or legacy default. The request is canonical JSON wrapped
+in an ASCII-armored Base64 envelope. It contains no secret or private key and
+binds `intendedUse` to `connect-only` or `manage-environment`. It also binds the
+absolute destination-generated private-key path, which approval copies into the
+manifest and packaged local configuration without resolving the approver's
+home directory.
+`ssh-keygen -Y sign` signs the payload with namespace
+`kravhantering-workstation-request`; approval verifies that signature against
+the embedded public key. This proves possession and detects corruption. It
+does not authenticate a fully replaced request, so the human fingerprint and
+verification-code comparison remains mandatory.
+
+Immediately before the armor, request output tells the user to retain the
+workstation, CIDR, destination private-key path, public-key fingerprint, and
+verification code. The fingerprint and code support out-of-band request
+replacement detection. The remaining values confirm approval and configure
+the returned package. No receipt or summary artifact is created.
+
+Approval displays and honors the signed intended use. It rejects Tailscale
+before package or environment mutation because transfer supports public SSH
+only. A requested mode change requires a new signed request.
 
 The response package is a ZIP payload encrypted with `age` to the destination
 workstation's SSH public key and emitted in the native ASCII-armored format.
@@ -374,23 +393,75 @@ A compatible `age` 1.2.1 or later must be installed manually and available on
 `PATH`. The module validates the installed version but never downloads,
 installs, or manages the tool. Decryption auto-detects the armored input.
 
-The manifest binds the package to the request ID, workstation, environment,
-destination public-key fingerprint, and 24-hour expiry. Entry names are an
-allowlist. Extraction rejects rooted paths, backslashes, `..`, duplicates,
-undeclared entries, missing declared entries, oversized entries, unsupported
-schemas, and expired packages. It extracts only into a new user-selected
-directory with user-only permissions.
+The manifest binds the package to the request ID, workstation, intended use,
+environment, fixed public host, destination private-key path, destination
+public-key fingerprint, and 24-hour expiry. Entry names are an allowlist.
+Extraction rejects rooted paths, backslashes, `..`, duplicates, undeclared
+entries, missing declared entries, oversized entries, unsupported schemas, and
+expired packages. It extracts only into a new user-selected directory with
+user-only permissions.
+
+A connect-only payload omits `.env.azure.development`. Its minimal local file
+contains only `AZURE_DEV_VM_CONNECTIVITY_MODE`,
+`AZURE_DEV_VM_SSH_HOST_ALIAS`, `AZURE_DEV_VM_SSH_HOST_NAME`, and
+`AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH`. The fixed host bypasses Azure only for
+`ssh-config` and `prepare-workstation-access`. All lifecycle, status, CIDR,
+setup, and removal commands retain their Azure scope and sign-in requirements.
+
+A manage-environment payload retains the complete primary file. Packaging
+offers the complete local file as an explicit opt-in but never edits the
+source. The packaged copy deterministically replaces duplicate subscription
+and private-key assignments with the manifest subscription and destination
+private-key path. When the complete local file is declined or absent, packaging
+generates a minimal file containing those two required values.
+
+`GH_TOKEN` and `COPILOT_GITHUB_TOKEN` are independent approver opt-ins in both
+modes and are excluded by default. The custom ignored Zsh template is offered
+only for manage-environment.
+
+Private Git signing keys never enter workstation packages. If the approver
+selects signing, approval queries the running VM's actual global
+`user.signingkey`, normalizes an inline `key::` public key, and rejects absent
+or malformed values. Only the public key and SHA-256 fingerprint enter
+`reference/`; the manifest records that signing is required. The destination
+must restore the corresponding private key externally and expose the matching
+public key through `ssh-add -L`. This preserves the single VM signing identity
+and forwarded-agent design.
 
 The extractor never applies destination configuration. It creates a
-destination-specific `README.md` that explains source and destination paths,
-machine-specific path changes, Azure login, host-key comparison, SSH config,
-token capability, readiness validation, and plaintext cleanup. Secret values
-remain in separate restricted files and never enter the README, logs, or
-terminal output.
+destination-specific `README.md` with exact absolute source and destination
+paths and PowerShell 7 commands. Existing primary files use `code --diff`;
+existing local files receive exact manual assignments and are never
+overwritten. Management instructions include tenant login and subscription
+selection. Secret values remain in separate restricted files and never enter
+the README, logs, or terminal output.
+
+Host-key comparison remains mandatory. The generated installation block
+creates `.ssh` and `known_hosts`, appends only missing source lines, preserves
+unrelated entries, is safe to rerun, and applies private permissions where
+supported. Readiness normalizes nonblank entries and requires every packaged
+entry for the fixed host to occur with the same host, key type, and key
+material in the user's installed file. A hostname-only match cannot pass. A
+managed block with a fixed direct host uses `StrictHostKeyChecking yes`. Direct
+connection never queries Azure, emits a placeholder, or falls back to
+`accept-new`. Address or host-key changes require a new signed request and
+package.
+
+The entry script reads the extracted manifest before configuration validation.
+A connect-only manifest selects focused partial readiness validation, so
+missing local direct-host fields remain reportable and never trigger Azure
+prerequisites. Direct readiness reports the configured host and alias, private
+key, verified `known_hosts` entries, exact managed block, token warnings, and
+selected signing key. It does not call Azure prerequisites, start or contact
+the VM, launch VS Code, or inspect other shells. Missing required SSH,
+configuration, host-key, or signing state causes an unsuccessful exit.
+Management readiness retains Azure prerequisite checks.
 
 Approval creates the encrypted response before changing access. A failure
 removes the invalid response and a newly created CIDR rule. A stopped VM starts
 only after approval and returns to its original power state in `finally`.
+Package content controls transferred configuration only; Azure RBAC remains
+the authorization boundary.
 
 Guest bootstrap writes
 `/etc/ssh/sshd_config.d/00-kravhantering-root-login.conf` with

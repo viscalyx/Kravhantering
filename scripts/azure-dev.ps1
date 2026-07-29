@@ -30,6 +30,9 @@ param(
 
   [string]$WorkstationName,
 
+  [ValidateSet('connect-only', 'manage-environment')]
+  [string]$IntendedUse,
+
   [string]$AccessName = 'current',
 
   [string]$Cidr,
@@ -187,6 +190,10 @@ function Get-AzureDevHostName {
     [Parameter(Mandatory = $true)]
     [pscustomobject]$Context
   )
+
+  if (-not [string]::IsNullOrWhiteSpace($Context.Config.SshHostName)) {
+    return $Context.Config.SshHostName
+  }
 
   $state = Get-AzureDevState -Context $Context
   if (
@@ -1078,12 +1085,14 @@ function Invoke-AzureDevCommand {
       New-AzureDevWorkstationRequest `
         -Context $Context `
         -WorkstationName $effectiveWorkstationName `
+        -IntendedUse $IntendedUse `
         -Cidr $Cidr `
         -OutputPath $OutputPath
     }
     'prepare-workstation-access' {
       Invoke-AzureDevPrepareWorkstationAccess `
-        -Context $Context
+        -Context $Context `
+        -DestinationPath $DestinationPath
     }
     'remove-cidr' {
       Remove-AzureDevWorkstationCidr `
@@ -1129,11 +1138,26 @@ $allowMissingAzureScope = $Command -in @(
   'extract-workstation-package',
   'new-workstation-request'
 )
+$allowDirectSsh = $Command -in @(
+  'prepare-workstation-access',
+  'ssh-config'
+)
+$directSshReadiness = $false
+if (
+  $Command -eq 'prepare-workstation-access' -and
+  -not [string]::IsNullOrWhiteSpace($DestinationPath)
+) {
+  $readinessManifest = Get-AzureDevExtractedPackageManifest `
+    -DestinationPath $DestinationPath
+  $directSshReadiness = $readinessManifest.intendedUse -eq 'connect-only'
+}
 $config = Get-AzureDevConfig `
   -RepositoryRoot $RepositoryRoot `
   -EnvironmentFile $EnvironmentFile `
   -RequireEnvironmentFile:$requireEnv `
-  -AllowMissingAzureScope:$allowMissingAzureScope
+  -AllowMissingAzureScope:$allowMissingAzureScope `
+  -AllowDirectSsh:$allowDirectSsh `
+  -DirectSshReadiness:$directSshReadiness
 $context = New-AzureDevContext `
   -Config $config `
   -Yes:$Yes `

@@ -5,7 +5,8 @@ Set-StrictMode -Version Latest
 $script:RequestBegin = '-----BEGIN KRAVHANTERING WORKSTATION REQUEST-----'
 $script:RequestEnd = '-----END KRAVHANTERING WORKSTATION REQUEST-----'
 $script:RequestNamespace = 'kravhantering-workstation-request'
-$script:PackageSchema = 1
+$script:RequestSchema = 2
+$script:PackageSchema = 2
 $script:MaximumPackageBytes = 50MB
 $script:MaximumArmoredPackageBytes = 70MB
 $script:MaximumEntryBytes = 5MB
@@ -58,6 +59,73 @@ function Resolve-AzureDevWorkstationName {
       )
     }
     throw
+  }
+}
+
+function Resolve-AzureDevIntendedUse {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context,
+
+    [AllowEmptyString()]
+    [string]$IntendedUse
+  )
+
+  $value = $IntendedUse
+  if ([string]::IsNullOrWhiteSpace($value)) {
+    if ($Context.Yes) {
+      throw (
+        '-IntendedUse is required with -Yes. Use connect-only or ' +
+        'manage-environment.'
+      )
+    }
+    $value = Read-Host 'Intended use [connect-only]'
+    if ([string]::IsNullOrWhiteSpace($value)) {
+      $value = 'connect-only'
+    }
+  }
+  if ($value -notin @('connect-only', 'manage-environment')) {
+    throw 'Intended use must be connect-only or manage-environment.'
+  }
+  return $value
+}
+
+function Assert-AzureDevDestinationPrivateKeyPath {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path,
+
+    [Parameter(Mandatory = $true)]
+    [ValidateSet('windows', 'macos', 'linux')]
+    [string]$Platform,
+
+    [Parameter(Mandatory = $true)]
+    [string]$WorkstationName
+  )
+
+  $isAbsolute = if ($Platform -eq 'windows') {
+    (
+      $Path -match '^[A-Za-z]:[\\/]' -or
+      $Path -match '^\\\\[^\\/]+[\\/][^\\/]+'
+    )
+  } else {
+    $Path.StartsWith('/')
+  }
+  $expectedFileName = "kravhantering_azure_dev_${WorkstationName}_ed25519"
+  $actualFileName = @($Path -split '[\\/]')[-1]
+  if (
+    [string]::IsNullOrWhiteSpace($Path) -or
+    $Path -ne $Path.Trim() -or
+    $Path -match '[\x00-\x1f]' -or
+    -not $isAbsolute -or
+    $actualFileName -cne $expectedFileName
+  ) {
+    throw (
+      'The workstation request destination private-key path is invalid. ' +
+      'Regenerate the request on the destination workstation.'
+    )
   }
 }
 
@@ -217,7 +285,7 @@ function ConvertTo-AzureDevArmoredRequest {
   )
 
   $envelope = [ordered]@{
-    schema = 1
+    schema = $script:RequestSchema
     payload = [Convert]::ToBase64String(
       [Text.Encoding]::UTF8.GetBytes($Payload)
     )
@@ -234,7 +302,7 @@ function ConvertTo-AzureDevArmoredRequest {
   }
   return @(
     $script:RequestBegin
-    'Version: 1'
+    "Version: $script:RequestSchema"
     ''
     $lines
     $script:RequestEnd
@@ -250,6 +318,8 @@ function New-AzureDevWorkstationRequest {
     [Parameter(Mandatory = $true)]
     [string]$WorkstationName,
 
+    [string]$IntendedUse,
+
     [string]$Cidr,
 
     [string]$OutputPath
@@ -258,6 +328,9 @@ function New-AzureDevWorkstationRequest {
   $workstation = ConvertTo-AzureDevAccessName `
     -Value $WorkstationName `
     -Label 'Workstation name'
+  $resolvedIntendedUse = Resolve-AzureDevIntendedUse `
+    -Context $Context `
+    -IntendedUse $IntendedUse
   $resolvedCidr = Get-AzureDevWorkstationCidr -Cidr $Cidr
   if (
     -not $PSCmdlet.ShouldProcess(
@@ -267,9 +340,8 @@ function New-AzureDevWorkstationRequest {
   ) {
     return
   }
-  $keyPath = Join-Path `
-    (Join-Path $HOME '.ssh') `
-    "kravhantering_azure_dev_${workstation}_ed25519"
+  $keyPath = Get-AzureDevDestinationPrivateKeyPath `
+    -WorkstationName $workstation
   $keyConfig = [pscustomobject]@{
     SshPrivateKeyPath = $keyPath
     SshPublicKeyPath = "$keyPath.pub"
@@ -279,13 +351,14 @@ function New-AzureDevWorkstationRequest {
   $fingerprint = Get-AzureDevPublicKeyFingerprint -PublicKey $publicKey
   $now = (Get-Date).ToUniversalTime()
   $request = [ordered]@{
-    schema = 1
+    schema = $script:RequestSchema
     kind = 'kravhantering-azure-dev-workstation-request'
     requestId = [guid]::NewGuid().ToString('N')
     createdAt = $now.ToString('o')
     expiresAt = $now.AddHours(24).ToString('o')
     workstation = $workstation
     access = 'current'
+    intendedUse = $resolvedIntendedUse
     cidr = $resolvedCidr
     platform = if ($IsWindows) {
       'windows'
@@ -295,6 +368,7 @@ function New-AzureDevWorkstationRequest {
       'linux'
     }
     architecture = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
+    destinationPrivateKeyPath = $keyPath
     publicKey = $publicKey
     publicKeyFingerprint = $fingerprint
   }
@@ -356,14 +430,36 @@ function New-AzureDevWorkstationRequest {
       -Encoding ASCII
   }
 
+  $verificationCode = Get-AzureDevVerificationCode $fingerprint
+  Write-Host ''
+  Write-Host 'IMPORTANT: RETAIN THESE APPROVAL DETAILS BEFORE THE SIGNED REQUEST'
   Write-Host "Workstation request: $OutputPath"
   Write-Host "Workstation: $workstation"
+  Write-Host "Intended use: $resolvedIntendedUse"
   Write-Host "Requested CIDR: $resolvedCidr"
   Write-Host "SSH private key: $keyPath"
   Write-Host "Public-key fingerprint: $fingerprint"
-  Write-Host "Verification code: $(Get-AzureDevVerificationCode $fingerprint)"
+  Write-Host "Verification code: $verificationCode"
+  Write-Host (
+    'Keep this shell open or temporarily save these details until approval ' +
+    'and workstation setup are complete.'
+  )
+  Write-Host (
+    'The fingerprint and verification code detect replacement of the complete ' +
+    'signed request through out-of-band comparison.'
+  )
+  Write-Host (
+    'The workstation, CIDR, and key path confirm approval and configure the ' +
+    'returned package.'
+  )
+  Write-Host 'Transfer only the signed request below through the package channel.'
   Write-Host ''
   Write-Host $armored
+  Write-Host ''
+  Write-Host (
+    'Do not close this shell until the approval details are retained or ' +
+    'workstation approval and setup are complete.'
+  )
 }
 
 function Get-AzureDevPastedRequest {
@@ -466,14 +562,24 @@ function Read-AzureDevWorkstationRequest {
   }
   $pattern = (
     '(?s)^' + [regex]::Escape($script:RequestBegin) +
-    '\s+Version:\s*1\s+(.+?)\s+' +
+    '\s+Version:\s*(?<armorVersion>\d+)\s+(?<armorPayload>.+?)\s+' +
     [regex]::Escape($script:RequestEnd) + '\s*$'
   )
-  if ($armored -notmatch $pattern) {
+  $armorMatch = [regex]::Match($armored, $pattern)
+  if (-not $armorMatch.Success) {
     throw 'The workstation request armor is malformed.'
   }
+  if (
+    [int]$armorMatch.Groups['armorVersion'].Value -ne
+    $script:RequestSchema
+  ) {
+    throw (
+      'The workstation request schema is unsupported. Regenerate the request ' +
+      'with the current new-workstation-request command.'
+    )
+  }
   try {
-    $encoded = $Matches[1] -replace '\s', ''
+    $encoded = $armorMatch.Groups['armorPayload'].Value -replace '\s', ''
     $envelopeJson = [Text.Encoding]::UTF8.GetString(
       [Convert]::FromBase64String($encoded)
     )
@@ -489,12 +595,22 @@ function Read-AzureDevWorkstationRequest {
     throw 'The workstation request payload is not valid Base64 JSON.'
   }
   if (
-    $envelope.schema -ne 1 -or
-    $request.schema -ne 1 -or
+    $envelope.schema -ne $script:RequestSchema -or
+    $request.schema -ne $script:RequestSchema -or
     $request.kind -ne 'kravhantering-azure-dev-workstation-request'
   ) {
-    throw 'The workstation request schema is unsupported.'
+    throw (
+      'The workstation request schema is unsupported. Regenerate the request ' +
+      'with the current new-workstation-request command.'
+    )
   }
+  if ($request.intendedUse -notin @('connect-only', 'manage-environment')) {
+    throw 'The workstation request intended use is invalid.'
+  }
+  Assert-AzureDevDestinationPrivateKeyPath `
+    -Path $request.destinationPrivateKeyPath `
+    -Platform $request.platform `
+    -WorkstationName $request.workstation
   if (
     [datetimeoffset]$request.expiresAt -lt
     [datetimeoffset]::UtcNow
@@ -690,6 +806,105 @@ function Get-AzureDevAgePath {
   return $existing.Source
 }
 
+function ConvertTo-AzureDevEnvironmentContent {
+  [CmdletBinding()]
+  param(
+    [AllowEmptyString()]
+    [string]$Content,
+
+    [Parameter(Mandatory = $true)]
+    [System.Collections.IDictionary]$Assignments
+  )
+
+  [string[]]$sourceLines = @()
+  if (-not [string]::IsNullOrEmpty($Content)) {
+    $sourceLines = @($Content -split '\r?\n')
+  }
+  while (
+    $sourceLines.Count -gt 0 -and
+    [string]::IsNullOrEmpty($sourceLines[$sourceLines.Count - 1])
+  ) {
+    $sourceLines = @($sourceLines | Select-Object -First ($sourceLines.Count - 1))
+  }
+
+  $result = New-Object System.Collections.Generic.List[string]
+  $written = @{}
+  foreach ($line in $sourceLines) {
+    $matchingKey = $null
+    foreach ($key in $Assignments.Keys) {
+      if ($line -match "^\s*$([regex]::Escape([string]$key))=") {
+        $matchingKey = [string]$key
+        break
+      }
+    }
+    if ($null -eq $matchingKey) {
+      $result.Add($line)
+      continue
+    }
+    if (-not $written.ContainsKey($matchingKey)) {
+      $result.Add("$matchingKey=$($Assignments[$matchingKey])")
+      $written[$matchingKey] = $true
+    }
+  }
+  foreach ($key in $Assignments.Keys) {
+    if (-not $written.ContainsKey([string]$key)) {
+      $result.Add("$key=$($Assignments[$key])")
+    }
+  }
+  return (@($result) -join [Environment]::NewLine) +
+    [Environment]::NewLine
+}
+
+function Get-AzureDevDestinationPrivateKeyPath {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$WorkstationName
+  )
+
+  return Join-Path `
+    (Join-Path $HOME '.ssh') `
+    "kravhantering_azure_dev_${WorkstationName}_ed25519"
+}
+
+function Get-AzureDevRemoteGitSigningPublicKey {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context
+  )
+
+  $result = Invoke-AzureDevNativeCommand `
+    -FilePath 'ssh' `
+    -Arguments @(
+      '-o',
+      'BatchMode=yes',
+      '-o',
+      'ClearAllForwardings=yes',
+      $Context.Config.SshHostAlias,
+      'git config --global --get user.signingkey'
+    )
+  if ($result.ExitCode -ne 0) {
+    throw (
+      'Git commit signing was selected, but the VM has no usable global SSH ' +
+      'user.signingkey. Correct the VM or rerun approval without signing.'
+    )
+  }
+  $value = $result.Text.Trim()
+  if ($value.StartsWith('key::')) {
+    $value = $value.Substring(5).Trim()
+  }
+  if (-not (Test-AzureDevSshPublicKey -Value $value)) {
+    throw (
+      'Git commit signing was selected, but the VM global user.signingkey is ' +
+      'not a usable SSH public key. Correct the VM or rerun approval without ' +
+      'signing.'
+    )
+  }
+  $parts = $value -split '[ \t]+', 3
+  return "$($parts[0]) $($parts[1])"
+}
+
 function New-AzureDevWorkstationPackage {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
@@ -717,37 +932,71 @@ function New-AzureDevWorkstationPackage {
     foreach ($directory in @('files', 'reference')) {
       New-AzureDevPrivateDirectory -Path (Join-Path $payloadPath $directory)
     }
-    Copy-AzureDevPrivateFile `
-      -Source $Context.Config.EnvironmentFilePath `
-      -Destination (Join-Path $payloadPath 'files/.env.azure.development')
 
     $included = New-Object System.Collections.Generic.List[string]
-    $included.Add('files/.env.azure.development')
+    $destinationPrivateKey = $Request.destinationPrivateKeyPath
+    $hostName = Get-AzureDevPublicIpAddress -Config $Context.Config
+    if ([string]::IsNullOrWhiteSpace($hostName)) {
+      throw 'Could not resolve the VM host for SSH host-key capture.'
+    }
     $localPath = $Context.Config.LocalEnvironmentFilePath
-    if (Test-Path -LiteralPath $localPath -PathType Leaf) {
-      $secretNames = @(Get-AzureDevSecretNames -Path $localPath)
-      $inventory = if ($secretNames.Count -eq 0) {
-        '<none detected>'
-      } else {
-        $secretNames -join ', '
-      }
-      if (
-        Confirm-AzureDevWorkstationAction `
+    $packagedLocalPath = Join-Path `
+      $payloadPath `
+      'files/.env.azure.development.local'
+    if ($Request.intendedUse -eq 'connect-only') {
+      $localContent = ConvertTo-AzureDevEnvironmentContent `
+        -Content '' `
+        -Assignments ([ordered]@{
+          AZURE_DEV_VM_CONNECTIVITY_MODE = 'public-ssh'
+          AZURE_DEV_VM_SSH_HOST_ALIAS = $Context.Config.SshHostAlias
+          AZURE_DEV_VM_SSH_HOST_NAME = $hostName
+          AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH = $destinationPrivateKey
+        })
+      Set-AzureDevPrivateContent `
+        -Path $packagedLocalPath `
+        -Value $localContent `
+        -Encoding UTF8 `
+        -NoNewline
+    } else {
+      Copy-AzureDevPrivateFile `
+        -Source $Context.Config.EnvironmentFilePath `
+        -Destination (Join-Path $payloadPath 'files/.env.azure.development')
+      $included.Add('files/.env.azure.development')
+      $includeCompleteLocal = $false
+      if (Test-Path -LiteralPath $localPath -PathType Leaf) {
+        $secretNames = @(Get-AzureDevSecretNames -Path $localPath)
+        $inventory = if ($secretNames.Count -eq 0) {
+          '<none detected>'
+        } else {
+          $secretNames -join ', '
+        }
+        $includeCompleteLocal = Confirm-AzureDevWorkstationAction `
           -Context $Context `
           -Prompt (
             'Include the entire .env.azure.development.local file? ' +
             "Detected secret names: $inventory"
           ) `
           -Optional
-      ) {
-        Copy-AzureDevPrivateFile `
-          -Source $localPath `
-          -Destination (
-            Join-Path $payloadPath 'files/.env.azure.development.local'
-          )
-        $included.Add('files/.env.azure.development.local')
       }
+      $localSourceContent = if ($includeCompleteLocal) {
+        Get-Content -LiteralPath $localPath -Raw
+      } else {
+        ''
+      }
+      $localContent = ConvertTo-AzureDevEnvironmentContent `
+        -Content $localSourceContent `
+        -Assignments ([ordered]@{
+          AZURE_DEV_VM_SUBSCRIPTION_ID = $Context.Config.SubscriptionId
+          AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH = $destinationPrivateKey
+        })
+      Set-AzureDevPrivateContent `
+        -Path $packagedLocalPath `
+        -Value $localContent `
+        -Encoding UTF8 `
+        -NoNewline
     }
+    $included.Add('files/.env.azure.development.local')
+
     foreach ($tokenName in @('GH_TOKEN', 'COPILOT_GITHUB_TOKEN')) {
       $token = Get-Item "Env:$tokenName" -ErrorAction SilentlyContinue
       if (
@@ -771,51 +1020,39 @@ function New-AzureDevWorkstationPackage {
         $included.Add("secrets/$tokenName")
       }
     }
-    $signingKeyValue = Get-AzureDevLocalGitConfigValue `
-      -RepositoryRoot $Context.Config.RepoRoot `
-      -Key 'user.signingkey'
-    if (
-      -not [string]::IsNullOrWhiteSpace($signingKeyValue) -and
-      -not (Test-AzureDevSshPublicKey -Value $signingKeyValue)
-    ) {
-      $signingPath = Resolve-AzureDevPath -Path $signingKeyValue
-      if (-not [IO.Path]::IsPathRooted($signingPath)) {
-        $signingPath = Join-Path $Context.Config.RepoRoot $signingPath
-      }
-      if ($signingPath.EndsWith('.pub')) {
-        $signingPath = $signingPath.Substring(0, $signingPath.Length - 4)
-      }
-      if (
-        (Test-Path -LiteralPath $signingPath -PathType Leaf) -and
-        (Test-Path -LiteralPath "$signingPath.pub" -PathType Leaf) -and
-        (
-          Confirm-AzureDevWorkstationAction `
-            -Context $Context `
-            -Prompt (
-              'Include the exportable SSH commit-signing key pair? The ' +
-              'private key will be present in the encrypted package.'
-            ) `
-            -Optional
-        )
-      ) {
-        $signingDirectory = Join-Path $payloadPath 'secrets'
-        if (-not (Test-Path -LiteralPath $signingDirectory)) {
-          New-AzureDevPrivateDirectory -Path $signingDirectory
-        }
-        Copy-AzureDevPrivateFile `
-          -Source $signingPath `
-          -Destination (Join-Path $signingDirectory 'git-signing-key')
-        Copy-AzureDevPrivateFile `
-          -Source "$signingPath.pub" `
-          -Destination (Join-Path $signingDirectory 'git-signing-key.pub')
-        $included.Add('secrets/git-signing-key')
-        $included.Add('secrets/git-signing-key.pub')
-      }
+
+    $signingRequired = Confirm-AzureDevWorkstationAction `
+      -Context $Context `
+      -Prompt 'Does this workstation need Git commit signing?' `
+      -Optional
+    $signingPublicKey = ''
+    $signingPublicKeyFingerprint = ''
+    if ($signingRequired) {
+      $signingPublicKey = Get-AzureDevRemoteGitSigningPublicKey `
+        -Context $Context
+      $signingPublicKeyFingerprint = Get-AzureDevPublicKeyFingerprint `
+        -PublicKey $signingPublicKey
+      Set-AzureDevPrivateContent `
+        -Path (
+          Join-Path $payloadPath 'reference/git-signing-public-key.pub'
+        ) `
+        -Value $signingPublicKey `
+        -Encoding ASCII
+      $included.Add('reference/git-signing-public-key.pub')
+      Set-AzureDevPrivateContent `
+        -Path (
+          Join-Path $payloadPath 'reference/git-signing-key-fingerprint.txt'
+        ) `
+        -Value $signingPublicKeyFingerprint `
+        -Encoding ASCII
+      $included.Add('reference/git-signing-key-fingerprint.txt')
     }
+
     $zshTemplate = Join-Path `
       $Context.Config.RepoRoot `
       'scripts/azure-dev/templates/zshrc.template'
     if (
+      $Request.intendedUse -eq 'manage-environment' -and
       (Test-Path -LiteralPath $zshTemplate -PathType Leaf) -and
       (
         Confirm-AzureDevWorkstationAction `
@@ -841,10 +1078,6 @@ function New-AzureDevWorkstationPackage {
       -Value $Request.publicKeyFingerprint `
       -Encoding ASCII
     $included.Add('reference/destination-key-fingerprint.txt')
-    $hostName = Get-AzureDevPublicIpAddress -Config $Context.Config
-    if ([string]::IsNullOrWhiteSpace($hostName)) {
-      throw 'Could not resolve the VM host for SSH host-key capture.'
-    }
     $hostKeyResult = Invoke-AzureDevNativeCommand `
       -FilePath 'ssh-keyscan' `
       -Arguments @('-T', '10', $hostName)
@@ -862,6 +1095,12 @@ function New-AzureDevWorkstationPackage {
       -Arguments @('-lf', $knownHostsPath, '-E', 'sha256')
     if ($hostFingerprintResult.ExitCode -ne 0) {
       throw 'Could not fingerprint the captured VM SSH host keys.'
+    }
+    Write-Host 'VM SSH host-key fingerprints for out-of-band comparison:'
+    foreach ($hostFingerprint in @(
+        $hostFingerprintResult.Text.Trim() -split '\r?\n'
+      )) {
+      Write-Host "  $hostFingerprint"
     }
     Set-AzureDevPrivateContent `
       -Path (Join-Path $payloadPath 'reference/vm-host-key-fingerprints.txt') `
@@ -882,13 +1121,18 @@ function New-AzureDevWorkstationPackage {
       kind = 'kravhantering-azure-dev-workstation-package'
       requestId = $Request.requestId
       workstation = $Request.workstation
+      intendedUse = $Request.intendedUse
       environmentId = $Context.Config.EnvironmentId
       tenantId = $tenantId
       subscriptionId = $Context.Config.SubscriptionId
       resourceGroup = $Context.Config.ResourceGroup
       vmName = $Context.Config.VmName
       sshHostAlias = $Context.Config.SshHostAlias
+      sshHostName = $hostName
+      destinationPrivateKeyPath = $destinationPrivateKey
       publicKeyFingerprint = $Request.publicKeyFingerprint
+      signingRequired = $signingRequired
+      signingPublicKeyFingerprint = $signingPublicKeyFingerprint
       platform = $Request.platform
       architecture = $Request.architecture
       createdAt = $now.ToString('o')
@@ -929,10 +1173,18 @@ function Approve-AzureDevWorkstation {
     [string]$OutputPath
   )
 
-  Test-AzureDevPrerequisites -Context $Context
   $request = Read-AzureDevWorkstationRequest -Path $RequestPath
+  if ($Context.Config.ConnectivityMode -ne 'public-ssh') {
+    throw (
+      'Workstation transfer supports public SSH only. This environment uses ' +
+      'Tailscale; no package or environment changes were made.'
+    )
+  }
+  Test-AzureDevPrerequisites -Context $Context
   Write-Host "Workstation: $($request.workstation)"
+  Write-Host "Intended use: $($request.intendedUse)"
   Write-Host "Requested CIDR: $($request.cidr)"
+  Write-Host "SSH private key: $($request.destinationPrivateKeyPath)"
   Write-Host "Public-key fingerprint: $($request.publicKeyFingerprint)"
   Write-Host (
     'Verification code: ' +
@@ -986,9 +1238,9 @@ function Approve-AzureDevWorkstation {
   try {
     if ($restoreStoppedState) {
       Start-AzureDevAzureVm -Context $Context
-      $hostName = Get-AzureDevPublicIpAddress -Config $Context.Config
-      Wait-AzureDevSsh -Context $Context -HostName $hostName | Out-Null
     }
+    $hostName = Get-AzureDevPublicIpAddress -Config $Context.Config
+    Wait-AzureDevSsh -Context $Context -HostName $hostName | Out-Null
     # Encrypt the response before mutating access. If either access mutation
     # fails, remove the not-yet-valid response and roll back new CIDR access.
     New-AzureDevWorkstationPackage `
@@ -1071,6 +1323,38 @@ function Test-AzureDevPackageEntryName {
   return $Name -match '^(manifest\.json|(files|secrets|reference)/[A-Za-z0-9._-]+)$'
 }
 
+function Assert-AzureDevWorkstationPackageManifest {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Manifest
+  )
+
+  if (
+    $Manifest.schema -ne $script:PackageSchema -or
+    $Manifest.kind -ne 'kravhantering-azure-dev-workstation-package'
+  ) {
+    throw (
+      'The workstation package schema is unsupported. Create and approve ' +
+      'a new request, then extract the regenerated response package.'
+    )
+  }
+  if (
+    $Manifest.intendedUse -notin @(
+      'connect-only',
+      'manage-environment'
+    ) -or
+    [string]::IsNullOrWhiteSpace($Manifest.sshHostName) -or
+    [string]::IsNullOrWhiteSpace($Manifest.sshHostAlias)
+  ) {
+    throw 'The workstation package transfer mode or SSH host is invalid.'
+  }
+  Assert-AzureDevDestinationPrivateKeyPath `
+    -Path $Manifest.destinationPrivateKeyPath `
+    -Platform $Manifest.platform `
+    -WorkstationName $Manifest.workstation
+}
+
 function Get-AzureDevWorkstationPackageIdentityPaths {
   [CmdletBinding()]
   param(
@@ -1105,6 +1389,16 @@ function Get-AzureDevWorkstationPackageIdentityPaths {
   return @($identityPaths)
 }
 
+function ConvertTo-AzureDevPowerShellLiteral {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Value
+  )
+
+  return "'" + $Value.Replace("'", "''") + "'"
+}
+
 function Write-AzureDevExtractedReadme {
   [CmdletBinding()]
   param(
@@ -1121,101 +1415,292 @@ function Write-AzureDevExtractedReadme {
   $primarySource = Join-Path $DestinationPath 'files/.env.azure.development'
   $localSource = Join-Path $DestinationPath 'files/.env.azure.development.local'
   $knownHostsSource = Join-Path $DestinationPath 'reference/vm-known-hosts'
-  $destinationPrivateKey = Join-Path `
-    (Join-Path $HOME '.ssh') `
-    "kravhantering_azure_dev_$($Manifest.workstation)_ed25519"
+  $destinationPrivateKey = $Manifest.destinationPrivateKeyPath
+  $knownHostsDestination = Join-Path (Join-Path $HOME '.ssh') 'known_hosts'
+  $sshDirectory = Split-Path -Parent $knownHostsDestination
   $hostFingerprints = Join-Path `
     $DestinationPath `
     'reference/vm-host-key-fingerprints.txt'
+  $primaryDestination = $Context.Config.EnvironmentFilePath
+  $localDestination = $Context.Config.LocalEnvironmentFilePath
+  $primarySourceLiteral = ConvertTo-AzureDevPowerShellLiteral $primarySource
+  $primaryDestinationLiteral = ConvertTo-AzureDevPowerShellLiteral `
+    $primaryDestination
+  $localSourceLiteral = ConvertTo-AzureDevPowerShellLiteral $localSource
+  $localDestinationLiteral = ConvertTo-AzureDevPowerShellLiteral `
+    $localDestination
+  $knownHostsSourceLiteral = ConvertTo-AzureDevPowerShellLiteral `
+    $knownHostsSource
+  $knownHostsDestinationLiteral = ConvertTo-AzureDevPowerShellLiteral `
+    $knownHostsDestination
+  $sshDirectoryLiteral = ConvertTo-AzureDevPowerShellLiteral $sshDirectory
+  $destinationPathLiteral = ConvertTo-AzureDevPowerShellLiteral `
+    $DestinationPath
+  $modeTitle = if ($Manifest.intendedUse -eq 'connect-only') {
+    'Connect only'
+  } else {
+    'Manage environment'
+  }
+  $modeDescription = if ($Manifest.intendedUse -eq 'connect-only') {
+    (
+      'Direct SSH configuration; no Azure sign-in. This workstation cannot ' +
+      'start, stop, or query VM status, update CIDR access, run setup, or ' +
+      'remove the environment. Use a management workstation for those tasks.'
+    )
+  } else {
+    (
+      'Azure management configuration. Effective permissions come from the ' +
+      'signed-in Azure identity.'
+    )
+  }
+  $localAssignments = if ($Manifest.intendedUse -eq 'connect-only') {
+    [ordered]@{
+      AZURE_DEV_VM_CONNECTIVITY_MODE = 'public-ssh'
+      AZURE_DEV_VM_SSH_HOST_ALIAS = $Manifest.sshHostAlias
+      AZURE_DEV_VM_SSH_HOST_NAME = $Manifest.sshHostName
+      AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH = $destinationPrivateKey
+    }
+  } else {
+    [ordered]@{
+      AZURE_DEV_VM_SUBSCRIPTION_ID = $Manifest.subscriptionId
+      AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH = $destinationPrivateKey
+    }
+  }
   $lines = @(
     '# Azure Development Workstation Setup'
+    ''
+    "## Mode: $modeTitle"
+    ''
+    $modeDescription
+    ''
+    (
+      'The package transfers configuration; it does not grant authorization. ' +
+      'Azure RBAC remains authoritative.'
+    )
     ''
     '> This directory may contain plaintext secrets. Keep it private and remove'
     '> it with `cleanup-workstation-package` after completing the checklist.'
     ''
-    '## Checklist'
+    'Extraction is non-mutating. The commands below are deliberate setup steps.'
+    'Use PowerShell 7 on Windows, macOS, and Linux.'
     ''
-    "1. Copy ``$primarySource`` to ``$($Context.Config.EnvironmentFilePath)``."
+    '## Configure repository files'
+    ''
   )
-  if (Test-Path -LiteralPath $localSource) {
-    $lines += (
-      "2. Review ``$localSource``, then copy it to " +
-      "``$($Context.Config.LocalEnvironmentFilePath)``."
+  if ($Manifest.intendedUse -eq 'manage-environment') {
+    if (Test-Path -LiteralPath $primaryDestination -PathType Leaf) {
+      $lines += @(
+        "The primary destination already exists at ``$primaryDestination``."
+        'Review the exact difference, then deliberately merge or replace it:'
+        ''
+        '```powershell'
+        "code --diff $primarySourceLiteral $primaryDestinationLiteral"
+        '```'
+      )
+    } else {
+      $lines += @(
+        'Copy the primary management configuration:'
+        ''
+        '```powershell'
+        (
+          'Copy-Item -LiteralPath ' + $primarySourceLiteral +
+          ' -Destination ' + $primaryDestinationLiteral
+        )
+        '```'
+      )
+    }
+    $lines += ''
+  }
+  if (Test-Path -LiteralPath $localDestination -PathType Leaf) {
+    $lines += @(
+      "The local destination already exists at ``$localDestination``."
+      'Do not overwrite it. Add or replace these exact assignments manually:'
+      ''
+      '```dotenv'
     )
-    $step = 3
+    foreach ($assignment in $localAssignments.GetEnumerator()) {
+      $lines += "$($assignment.Key)=$($assignment.Value)"
+    }
+    $lines += @(
+      '```'
+    )
+    if ($Manifest.intendedUse -eq 'manage-environment') {
+      $lines += (
+        "Review ``$localSource`` and manually merge any additional selected " +
+        'values that this workstation needs.'
+      )
+    }
   } else {
-    $step = 2
+    $lines += @(
+      'Copy the destination-ready local configuration:'
+      ''
+      '```powershell'
+      (
+        'Copy-Item -LiteralPath ' + $localSourceLiteral +
+        ' -Destination ' + $localDestinationLiteral
+      )
+      '```'
+    )
+  }
+  if ($Manifest.intendedUse -eq 'manage-environment') {
+    $tenantLiteral = ConvertTo-AzureDevPowerShellLiteral $Manifest.tenantId
+    $subscriptionLiteral = ConvertTo-AzureDevPowerShellLiteral `
+      $Manifest.subscriptionId
+    $lines += @(
+      ''
+      '## Sign in to Azure'
+      ''
+      'Sign in to the recorded tenant and select the configured subscription:'
+      ''
+      '```powershell'
+      'az cloud set --name AzureCloud'
+      "az login --tenant $tenantLiteral"
+      "az account set --subscription $subscriptionLiteral"
+      '```'
+      ''
+      (
+        'Azure RBAC for this signed-in identity determines which management ' +
+        'commands succeed.'
+      )
+    )
   }
   $lines += @(
+    ''
+    '## Verify and install VM host keys'
+    ''
     (
-      "$step. Review ``AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH``. It must point to " +
-      "the private key generated by ``new-workstation-request``: " +
-      "``$destinationPrivateKey``."
+      "Compare every fingerprint in ``$hostFingerprints`` with the approving " +
+      'workstation through the required out-of-band channel.'
     )
-    "$($step + 1). Sign in to the Azure tenant recorded in ``manifest.json``:"
+    (
+      'Stop if any fingerprint differs. If the VM address or host keys have ' +
+      'changed, create a new signed request and response package.'
+    )
     ''
-    '   ```sh'
-    '   az cloud set --name AzureCloud'
-    "   az login --tenant `"$($Manifest.tenantId)`""
-    '   ```'
+    'After the comparison succeeds, run this rerunnable PowerShell block:'
     ''
-    "$($step + 2). Compare the VM fingerprints in ``$hostFingerprints`` with"
-    '   the approving workstation. After they match, append only the entries'
-    "   from ``$knownHostsSource`` to your user ``known_hosts`` file."
+    '```powershell'
+    "`$sshDirectory = $sshDirectoryLiteral"
+    "`$knownHostsPath = $knownHostsDestinationLiteral"
+    "`$sourcePath = $knownHostsSourceLiteral"
+    'if (-not (Test-Path -LiteralPath $sshDirectory -PathType Container)) {'
+    '  New-Item -ItemType Directory -Path $sshDirectory -Force | Out-Null'
+    '}'
+    'if (-not (Test-Path -LiteralPath $knownHostsPath -PathType Leaf)) {'
+    '  New-Item -ItemType File -Path $knownHostsPath -Force | Out-Null'
+    '}'
+    '$existing = [Collections.Generic.HashSet[string]]::new('
+    '  [StringComparer]::Ordinal'
+    ')'
+    'foreach ($line in Get-Content -LiteralPath $knownHostsPath) {'
+    '  [void]$existing.Add($line)'
+    '}'
+    'foreach ($line in Get-Content -LiteralPath $sourcePath) {'
+    '  if (-not [string]::IsNullOrWhiteSpace($line) -and $existing.Add($line)) {'
+    (
+      '    Add-Content -LiteralPath $knownHostsPath -Value $line ' +
+      '-Encoding utf8'
+    )
+    '  }'
+    '}'
+    'if (-not $IsWindows) {'
+    '  & chmod 700 -- $sshDirectory'
+    '  & chmod 600 -- $knownHostsPath'
+    '}'
+    '```'
     ''
-    "$($step + 3). Generate the managed SSH block:"
+    'Generate the managed SSH block:'
     ''
-    '   ```powershell'
-    '   ./scripts/azure-dev.ps1 ssh-config -Apply'
-    '   ```'
+    '```powershell'
+    './scripts/azure-dev.ps1 -Command ssh-config -Apply'
+    '```'
   )
   foreach ($tokenName in @('GH_TOKEN', 'COPILOT_GITHUB_TOKEN')) {
     $tokenPath = Join-Path $DestinationPath "secrets/$tokenName"
     if (Test-Path -LiteralPath $tokenPath) {
       $lines += @(
         ''
+        "## Load packaged $tokenName"
+        ''
         "A packaged ``$tokenName`` value is available at ``$tokenPath``."
         "Keep an existing ``$tokenName`` environment value if one is already set."
-        'Otherwise load it process-locally without placing the value in shell history.'
-        $(if ($Manifest.platform -eq 'windows') {
-            (
-              ('PowerShell: $env:' + $tokenName + ' = ') +
-              "[IO.File]::ReadAllText('$tokenPath').Trim()"
-            )
-          } else {
-            (
-              'Bash/Zsh: export ' + $tokenName +
-              '="$(< ' + "'$tokenPath'" + ')"'
-            )
-          })
-        'Remove the extracted secret file when configuration is complete.'
-      )
-    } else {
-      $lines += @(
+        'Otherwise load it process-locally without placing it in shell history:'
         ''
-        "``$tokenName`` was not packaged. Configure it locally before opening"
-        'VS Code or the corresponding remote capability will be unavailable.'
+        '```powershell'
+        (
+          ('$env:' + $tokenName + ' = [IO.File]::ReadAllText(') +
+          (ConvertTo-AzureDevPowerShellLiteral $tokenPath) +
+          ').Trim()'
+        )
+        '```'
+        'Remove the extracted secret file when configuration is complete.'
       )
     }
   }
-  $signingKeySource = Join-Path $DestinationPath 'secrets/git-signing-key'
-  if (Test-Path -LiteralPath $signingKeySource) {
+  if ($Manifest.signingRequired) {
+    $signingPublicKeySource = Join-Path `
+      $DestinationPath `
+      'reference/git-signing-public-key.pub'
+    $signingFingerprintSource = Join-Path `
+      $DestinationPath `
+      'reference/git-signing-key-fingerprint.txt'
     $lines += @(
       ''
-      "An SSH commit-signing key pair is available at ``$signingKeySource``."
-      'Copy it to a user-owned SSH-key location, apply private-key permissions,'
-      'load it into the SSH agent, and remove the extracted copy.'
+      '## Restore Git commit signing'
+      ''
+      'Git commit signing is required for this workstation.'
+      (
+        'The package contains only the VM signing public key at ' +
+        "``$signingPublicKeySource`` and its fingerprint at " +
+        "``$signingFingerprintSource``."
+      )
+      (
+        'Restore the corresponding private key through your external password-' +
+        'vault or secret-recovery workflow. The private key is never packaged.'
+      )
+      (
+        "Expected public-key fingerprint: " +
+        "``$($Manifest.signingPublicKeyFingerprint)``."
+      )
+      'Load the restored private key into the destination SSH agent:'
+      ''
+      '```powershell'
+      "ssh-add '<private-key-path>'"
+      'ssh-add -L'
+      '```'
+      (
+        'Replace the clearly labelled placeholder with the restored private-' +
+        'key path. Readiness fails until `ssh-add -L` exposes the matching ' +
+        'public key.'
+      )
     )
   }
   $lines += @(
     ''
-    '## Validate and open'
+    '## Validate readiness'
     ''
     '```powershell'
-    './scripts/azure-dev.ps1 prepare-workstation-access'
+    (
+      './scripts/azure-dev.ps1 -Command prepare-workstation-access ' +
+      "-DestinationPath $destinationPathLiteral"
+    )
     '```'
     ''
-    'Then run the `code --remote ...` command printed by the readiness check.'
+    (
+      'Resolve every required failure before opening the shared workspace. ' +
+      'Token warnings may be satisfied by the shell that launches VS Code.'
+    )
+    ''
+    '## Clean up plaintext files'
+    ''
+    'After readiness succeeds, remove this extracted package:'
+    ''
+    '```powershell'
+    (
+      './scripts/azure-dev.ps1 -Command cleanup-workstation-package ' +
+      "-DestinationPath $destinationPathLiteral"
+    )
+    '```'
   )
   Set-AzureDevPrivateContent `
     -Path (Join-Path $DestinationPath 'README.md') `
@@ -1236,6 +1721,8 @@ function Expand-AzureDevWorkstationPackage {
     [string]$DestinationPath
   )
 
+  $PackagePath = [IO.Path]::GetFullPath($PackagePath)
+  $DestinationPath = [IO.Path]::GetFullPath($DestinationPath)
   if (
     (Get-Item -LiteralPath $PackagePath).Length -gt
     $script:MaximumArmoredPackageBytes
@@ -1308,12 +1795,7 @@ function Expand-AzureDevWorkstationPackage {
       } finally {
         $reader.Dispose()
       }
-      if (
-        $manifest.schema -ne $script:PackageSchema -or
-        $manifest.kind -ne 'kravhantering-azure-dev-workstation-package'
-      ) {
-        throw 'The workstation package schema is unsupported.'
-      }
+      Assert-AzureDevWorkstationPackageManifest -Manifest $manifest
       if (
         [datetimeoffset]$manifest.expiresAt -lt
         [datetimeoffset]::UtcNow
@@ -1329,6 +1811,34 @@ function Expand-AzureDevWorkstationPackage {
       foreach ($entryName in $declared) {
         if (-not $seen.ContainsKey($entryName)) {
           throw "The package manifest references a missing entry: $entryName"
+        }
+      }
+      if (
+        $manifest.intendedUse -eq 'connect-only' -and
+        'files/.env.azure.development' -in @($manifest.entries)
+      ) {
+        throw 'A connect-only package must not contain the primary environment file.'
+      }
+      if (
+        $manifest.intendedUse -eq 'manage-environment' -and
+        'files/.env.azure.development' -notin @($manifest.entries)
+      ) {
+        throw 'A management package is missing the primary environment file.'
+      }
+      if (
+        'files/.env.azure.development.local' -notin @($manifest.entries)
+      ) {
+        throw 'The package is missing destination-ready local configuration.'
+      }
+      $signingEntries = @(
+        'reference/git-signing-public-key.pub',
+        'reference/git-signing-key-fingerprint.txt'
+      )
+      if ($manifest.signingRequired) {
+        foreach ($signingEntry in $signingEntries) {
+          if ($signingEntry -notin @($manifest.entries)) {
+            throw "The signing-required package is missing $signingEntry."
+          }
         }
       }
 
@@ -1403,8 +1913,14 @@ function Remove-AzureDevExtractedPackage {
     throw 'Cleanup refuses a directory without a workstation package manifest.'
   }
   $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-  if ($manifest.kind -ne 'kravhantering-azure-dev-workstation-package') {
-    throw 'Cleanup refuses a directory with an unexpected manifest.'
+  if (
+    $manifest.schema -ne $script:PackageSchema -or
+    $manifest.kind -ne 'kravhantering-azure-dev-workstation-package'
+  ) {
+    throw (
+      'Cleanup refuses a directory with an unsupported workstation package ' +
+      'manifest.'
+    )
   }
   if (
     -not (
@@ -1421,40 +1937,356 @@ function Remove-AzureDevExtractedPackage {
   Write-Host 'The extracted files were removed. Secure SSD erasure is not guaranteed.'
 }
 
+function Get-AzureDevExtractedPackageManifest {
+  [CmdletBinding()]
+  param(
+    [AllowEmptyString()]
+    [string]$DestinationPath
+  )
+
+  if ([string]::IsNullOrWhiteSpace($DestinationPath)) {
+    return $null
+  }
+  $resolvedPath = [IO.Path]::GetFullPath($DestinationPath)
+  $manifestPath = Join-Path $resolvedPath 'manifest.json'
+  if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+    throw "Extracted workstation package manifest is missing: $manifestPath"
+  }
+  $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+  Assert-AzureDevWorkstationPackageManifest -Manifest $manifest
+  return $manifest
+}
+
+function Test-AzureDevConfigKeyConfigured {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Config,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Key
+  )
+
+  return (
+    $Config.PSObject.Properties.Name -contains 'ConfiguredKeys' -and
+    $Key -in @($Config.ConfiguredKeys)
+  )
+}
+
+function ConvertTo-AzureDevKnownHostEntry {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Line
+  )
+
+  $trimmed = $Line.Trim()
+  if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith('#')) {
+    return ''
+  }
+  $parts = @($trimmed -split '\s+')
+  if ($parts.Count -lt 3) {
+    return ''
+  }
+  return "$($parts[0]) $($parts[1]) $($parts[2])"
+}
+
+function Test-AzureDevKnownHostsMatch {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$InstalledPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedHost
+  )
+
+  if (
+    [string]::IsNullOrWhiteSpace($ExpectedHost) -or
+    -not (Test-Path -LiteralPath $ExpectedPath -PathType Leaf) -or
+    -not (Test-Path -LiteralPath $InstalledPath -PathType Leaf)
+  ) {
+    return $false
+  }
+  $expectedEntries = New-Object System.Collections.Generic.List[string]
+  foreach ($line in Get-Content -LiteralPath $ExpectedPath) {
+    $entry = ConvertTo-AzureDevKnownHostEntry -Line $line
+    if ([string]::IsNullOrWhiteSpace($entry)) {
+      continue
+    }
+    $entryHost = ($entry -split '\s+', 2)[0]
+    if ($ExpectedHost -notin @($entryHost -split ',')) {
+      return $false
+    }
+    $expectedEntries.Add($entry)
+  }
+  if ($expectedEntries.Count -eq 0) {
+    return $false
+  }
+  $installedEntries = [Collections.Generic.HashSet[string]]::new(
+    [StringComparer]::Ordinal
+  )
+  foreach ($line in Get-Content -LiteralPath $InstalledPath) {
+    $entry = ConvertTo-AzureDevKnownHostEntry -Line $line
+    if (-not [string]::IsNullOrWhiteSpace($entry)) {
+      [void]$installedEntries.Add($entry)
+    }
+  }
+  foreach ($expectedEntry in $expectedEntries) {
+    if (-not $installedEntries.Contains($expectedEntry)) {
+      return $false
+    }
+  }
+  return $true
+}
+
+function Test-AzureDevSigningAgent {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedPublicKey
+  )
+
+  if (-not (Test-AzureDevSshPublicKey -Value $ExpectedPublicKey)) {
+    return $false
+  }
+  $agentResult = Invoke-AzureDevNativeCommand `
+    -FilePath 'ssh-add' `
+    -Arguments @('-L')
+  if ($agentResult.ExitCode -ne 0) {
+    return $false
+  }
+  $expectedParts = $ExpectedPublicKey.Trim() -split '[ \t]+', 3
+  $expectedIdentity = "$($expectedParts[0]) $($expectedParts[1])"
+  foreach ($line in @($agentResult.Text -split '\r?\n')) {
+    if (Test-AzureDevSshPublicKey -Value $line) {
+      $parts = $line.Trim() -split '[ \t]+', 3
+      if ("$($parts[0]) $($parts[1])" -eq $expectedIdentity) {
+        return $true
+      }
+    }
+  }
+  return $false
+}
+
 function Invoke-AzureDevPrepareWorkstationAccess {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Context
+    [pscustomobject]$Context,
+
+    [string]$DestinationPath
   )
 
-  Test-AzureDevPrerequisites -Context $Context
-  $keyReady = Test-Path -LiteralPath $Context.Config.SshPrivateKeyPath -PathType Leaf
+  $manifest = Get-AzureDevExtractedPackageManifest `
+    -DestinationPath $DestinationPath
+  $directConnection = (
+    $null -ne $manifest -and
+    $manifest.intendedUse -eq 'connect-only'
+  )
+  if (-not $directConnection) {
+    Test-AzureDevPrerequisites -Context $Context
+  }
+
+  $requiredFailures = New-Object System.Collections.Generic.List[string]
+  if ($null -ne $manifest) {
+    if (
+      $Context.Config.SshPrivateKeyPath -cne
+      $manifest.destinationPrivateKeyPath
+    ) {
+      $requiredFailures.Add(
+        'Installed SSH private-key path does not match the package.'
+      )
+    }
+  }
+  $connectivityReady = (
+    (Test-AzureDevConfigKeyConfigured `
+        -Config $Context.Config `
+        -Key 'AZURE_DEV_VM_CONNECTIVITY_MODE') -and
+    $Context.Config.ConnectivityMode -eq 'public-ssh'
+  )
+  $hostReady = (
+    (Test-AzureDevConfigKeyConfigured `
+        -Config $Context.Config `
+        -Key 'AZURE_DEV_VM_SSH_HOST_NAME') -and
+    -not [string]::IsNullOrWhiteSpace($Context.Config.SshHostName)
+  )
+  $aliasReady = (
+    (Test-AzureDevConfigKeyConfigured `
+        -Config $Context.Config `
+        -Key 'AZURE_DEV_VM_SSH_HOST_ALIAS') -and
+    -not [string]::IsNullOrWhiteSpace($Context.Config.SshHostAlias)
+  )
+  $keyConfigured = Test-AzureDevConfigKeyConfigured `
+    -Config $Context.Config `
+    -Key 'AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH'
+  $keyReady = if ($directConnection) {
+    (
+      $keyConfigured -and
+      (Test-Path `
+          -LiteralPath $Context.Config.SshPrivateKeyPath `
+          -PathType Leaf)
+    )
+  } else {
+    Test-Path `
+      -LiteralPath $Context.Config.SshPrivateKeyPath `
+      -PathType Leaf
+  }
+  if ($directConnection) {
+    Write-Host (
+      'Direct SSH connectivity mode: ' +
+      "$(if ($connectivityReady) { 'configured' } else { 'missing or invalid' })"
+    )
+    Write-Host "Direct SSH host: $(if ($hostReady) { 'configured' } else { 'missing' })"
+    Write-Host "SSH host alias: $(if ($aliasReady) { 'configured' } else { 'missing' })"
+    if (-not $connectivityReady) {
+      $requiredFailures.Add(
+        'AZURE_DEV_VM_CONNECTIVITY_MODE must be configured as public-ssh.'
+      )
+    }
+    if (-not $hostReady) {
+      $requiredFailures.Add('AZURE_DEV_VM_SSH_HOST_NAME is missing.')
+    }
+    if (-not $aliasReady) {
+      $requiredFailures.Add('AZURE_DEV_VM_SSH_HOST_ALIAS is missing.')
+    }
+    if (
+      $hostReady -and
+      $Context.Config.SshHostName -cne $manifest.sshHostName
+    ) {
+      $requiredFailures.Add(
+        'Installed direct SSH host does not match the package.'
+      )
+    }
+    if (
+      $aliasReady -and
+      $Context.Config.SshHostAlias -cne $manifest.sshHostAlias
+    ) {
+      $requiredFailures.Add(
+        'Installed SSH host alias does not match the package.'
+      )
+    }
+  }
+  Write-Host "SSH private key: $(if ($keyReady) { 'ready' } else { 'missing' })"
+  if (-not $keyReady) {
+    $requiredFailures.Add(
+      "SSH private key is missing: $($Context.Config.SshPrivateKeyPath)"
+    )
+  }
+
+  if ($directConnection) {
+    $knownHostsPath = Join-Path (Join-Path $HOME '.ssh') 'known_hosts'
+    $expectedKnownHostsPath = Join-Path `
+      ([IO.Path]::GetFullPath($DestinationPath)) `
+      'reference/vm-known-hosts'
+    $knownHostReady = Test-AzureDevKnownHostsMatch `
+      -ExpectedPath $expectedKnownHostsPath `
+      -InstalledPath $knownHostsPath `
+      -ExpectedHost $manifest.sshHostName
+    Write-Host (
+      'Verified known_hosts entry: ' +
+      "$(if ($knownHostReady) { 'ready' } else { 'missing' })"
+    )
+    if (-not $knownHostReady) {
+      $requiredFailures.Add(
+        (
+          'The installed known_hosts file does not contain every package-' +
+          "verified key for $($manifest.sshHostName). Reinstall the verified " +
+          'reference/vm-known-hosts entries or regenerate the package.'
+        )
+      )
+    }
+
+    $managedBlockReady = $false
+    if ($hostReady -and $aliasReady -and $keyConfigured) {
+      $sshConfigPath = Get-AzureDevSshConfigPath
+      $expectedBlock = Get-AzureDevSshConfigBlock `
+        -Context $Context `
+        -HostName $Context.Config.SshHostName
+      $managedBlockReady = (
+        (Test-Path -LiteralPath $sshConfigPath -PathType Leaf) -and
+        (Get-Content -LiteralPath $sshConfigPath -Raw).Contains($expectedBlock)
+      )
+    }
+    Write-Host (
+      'Managed SSH block: ' +
+      "$(if ($managedBlockReady) { 'ready' } else { 'missing or outdated' })"
+    )
+    if (-not $managedBlockReady) {
+      $remediation = './scripts/azure-dev.ps1 -Command ssh-config -Apply'
+      Write-Host "Remediation: $remediation"
+      $requiredFailures.Add("Run: $remediation")
+    }
+  }
+
   $ghTokenReady = -not [string]::IsNullOrWhiteSpace($env:GH_TOKEN)
   $copilotTokenReady = -not [string]::IsNullOrWhiteSpace(
     $env:COPILOT_GITHUB_TOKEN
   )
-  Write-Host "SSH private key: $(if ($keyReady) { 'ready' } else { 'missing' })"
   Write-Host (
     'GH_TOKEN in current PowerShell process: ' +
-    "$(if ($ghTokenReady) { 'present' } else { 'missing' })"
+    "$(if ($ghTokenReady) { 'present' } else { 'missing (warning)' })"
   )
   Write-Host (
     'COPILOT_GITHUB_TOKEN in current PowerShell process: ' +
-    "$(if ($copilotTokenReady) { 'present' } else { 'missing' })"
+    "$(if ($copilotTokenReady) { 'present' } else { 'missing (warning)' })"
   )
   if (-not $ghTokenReady -or -not $copilotTokenReady) {
     Write-Host (
-      'Missing tokens here are okay when PowerShell will not start the VS Code ' +
-      'Remote SSH session.'
-    )
-    Write-Host (
-      'Start the printed code command from a shell, such as Zsh or Bash, where ' +
-      'the required tokens are available.'
+      'Token warnings are acceptable when another shell with the required ' +
+      'values launches the VS Code Remote SSH session.'
     )
   }
-  Write-Host 'Apply the managed SSH block when needed:'
-  Write-Host '  ./scripts/azure-dev.ps1 ssh-config -Apply'
+
+  $signingRequired = (
+    $null -ne $manifest -and
+    [bool]$manifest.signingRequired
+  )
+  if ($signingRequired) {
+    $signingPublicKeyPath = Join-Path `
+      ([IO.Path]::GetFullPath($DestinationPath)) `
+      'reference/git-signing-public-key.pub'
+    $signingPublicKey = if (
+      Test-Path -LiteralPath $signingPublicKeyPath -PathType Leaf
+    ) {
+      (Get-Content -LiteralPath $signingPublicKeyPath -Raw).Trim()
+    } else {
+      ''
+    }
+    $signingFingerprintReady = $false
+    if (Test-AzureDevSshPublicKey -Value $signingPublicKey) {
+      $signingFingerprintReady = (
+        (Get-AzureDevPublicKeyFingerprint -PublicKey $signingPublicKey) -eq
+        $manifest.signingPublicKeyFingerprint
+      )
+    }
+    $signingAgentReady = (
+      $signingFingerprintReady -and
+      (Test-AzureDevSigningAgent -ExpectedPublicKey $signingPublicKey)
+    )
+    Write-Host (
+      'Required Git signing key in SSH agent: ' +
+      "$(if ($signingAgentReady) { 'ready' } else { 'missing' })"
+    )
+    if (-not $signingAgentReady) {
+      $requiredFailures.Add(
+        'Restore the matching private signing key and load it with ssh-add.'
+      )
+    }
+  } else {
+    Write-Host 'Git commit signing: not required by this package'
+  }
+
+  if ($requiredFailures.Count -gt 0) {
+    foreach ($failure in $requiredFailures) {
+      Write-Host "Required remediation: $failure"
+    }
+    throw 'Workstation access is not ready.'
+  }
+  Write-Host 'Workstation access readiness: ready'
   Write-Host 'Open the shared workspace:'
   Write-Host "  code --remote ssh-remote+$($Context.Config.SshHostAlias) /workspace"
 }
@@ -1669,6 +2501,7 @@ Export-ModuleMember -Function `
   Add-AzureDevWorkstationCidr, `
   Approve-AzureDevWorkstation, `
   Expand-AzureDevWorkstationPackage, `
+  Get-AzureDevExtractedPackageManifest, `
   Get-AzureDevWorkstationCidr, `
   Invoke-AzureDevPrepareWorkstationAccess, `
   New-AzureDevWorkstationRequest, `
