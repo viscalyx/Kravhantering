@@ -191,7 +191,10 @@ function Get-AzureDevHostName {
     [pscustomobject]$Context
   )
 
-  if (-not [string]::IsNullOrWhiteSpace($Context.Config.SshHostName)) {
+  if (
+    $Context.Config.ConnectivityMode -eq 'public-ssh' -and
+    -not [string]::IsNullOrWhiteSpace($Context.Config.SshHostName)
+  ) {
     return $Context.Config.SshHostName
   }
 

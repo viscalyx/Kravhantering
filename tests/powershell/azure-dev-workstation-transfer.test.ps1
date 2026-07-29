@@ -187,7 +187,11 @@ try {
         $archive.Dispose()
       }
       $script:CapturedPackage = $captured
-      $outputIndex = [Array]::IndexOf($Arguments, '-o') + 1
+      $outputOptionIndex = [Array]::IndexOf($Arguments, '-o')
+      if ($outputOptionIndex -lt 0) {
+        throw 'age-test invocation did not include the -o option.'
+      }
+      $outputIndex = $outputOptionIndex + 1
       [IO.File]::WriteAllText([string]$Arguments[$outputIndex], 'encrypted')
       return [pscustomobject]@{ ExitCode = 0; Text = '' }
     }
@@ -443,11 +447,12 @@ try {
       -Message "Partial readiness did not report: $expectedOutput"
   }
   Assert-TransferTest `
-    -Condition ($readinessOutput -notmatch 'AZURE_PREREQUISITES_INVOKED') `
+    -Condition ($readinessError -notmatch 'AZURE_PREREQUISITES_INVOKED') `
     -Message 'Connect-only partial readiness invoked Azure prerequisites.'
 
   $entryScript = Join-Path $workspace 'scripts/azure-dev.ps1'
-  $entryOutput = & (Join-Path $PSHOME 'pwsh') `
+  $powerShellPath = [Environment]::ProcessPath
+  $entryOutput = & $powerShellPath `
     -NoLogo `
     -NoProfile `
     -File $entryScript `

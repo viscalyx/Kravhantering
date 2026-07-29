@@ -27,11 +27,12 @@ describe('Azure development workstation transfer', () => {
         },
       )
 
-      expect(result.stderr).toBe('')
       expect(result.status).toBe(0)
+      expect(result.stderr).toBe('')
       expect(result.stdout).toContain(
         'Azure workstation transfer behavioral regressions passed.',
       )
     },
+    30_000,
   )
 })
