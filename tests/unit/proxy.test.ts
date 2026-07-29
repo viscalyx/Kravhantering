@@ -762,6 +762,31 @@ describe('proxy', () => {
     }
   })
 
+  it.each([
+    '/api/privacy/data-subject-export',
+    '/api/privacy/erasure-preview',
+    '/api/privacy/erasure-requests',
+  ])('prevents caching privacy mutation pass-through from %s', async path => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const cookie = await writeSignedInCookie()
+      const response = await proxy(
+        buildRequest(`http://localhost${path}`, {
+          cookie,
+          method: 'POST',
+          origin: 'http://localhost',
+          xRequestedWith: 'XMLHttpRequest',
+        }),
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('x-middleware-next')).toBe('1')
+      expect(response.headers.get('Cache-Control')).toBe('no-store')
+    } finally {
+      restore()
+    }
+  })
+
   it('normalizes trailing-slash REST mutations after auth and CSRF succeed', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {

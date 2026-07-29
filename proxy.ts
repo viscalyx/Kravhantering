@@ -407,9 +407,11 @@ async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
 }
 
 function finalizeResponse(
+  request: NextRequest,
   response: NextResponse,
   ids: RequestCorrelationIds,
 ): NextResponse {
+  applyPrivacyResponseCachePolicy(request, response)
   applyResponseCorrelationHeaders(response, ids)
   return response
 }
@@ -454,59 +456,55 @@ export default async function proxy(request: NextRequest) {
   if (!deferTrailingSlashUntilAfterSecurity) {
     const trailingSlashResponse = handleTrailingSlash(request)
     if (trailingSlashResponse) {
-      return finalizeResponse(trailingSlashResponse, ids)
+      return finalizeResponse(request, trailingSlashResponse, ids)
     }
   }
 
   const methodResponse = rejectUnsupportedApiMethod(request)
-  if (methodResponse) return finalizeResponse(methodResponse, ids)
+  if (methodResponse) return finalizeResponse(request, methodResponse, ids)
 
   const swedishRequirementRouteResponse =
     redirectSwedishRequirementRouteToRequirements(request)
   if (swedishRequirementRouteResponse) {
-    return finalizeResponse(swedishRequirementRouteResponse, ids)
+    return finalizeResponse(request, swedishRequirementRouteResponse, ids)
   }
 
   const authResponse = await enforceAuth(request)
   if (authResponse) {
-    return finalizeResponse(
-      applyPrivacyResponseCachePolicy(request, authResponse),
-      ids,
-    )
+    return finalizeResponse(request, authResponse, ids)
   }
 
   const csrfResponse = enforceRestCsrf(request)
   if (csrfResponse) {
-    return finalizeResponse(
-      applyPrivacyResponseCachePolicy(request, csrfResponse),
-      ids,
-    )
+    return finalizeResponse(request, csrfResponse, ids)
   }
 
   if (deferTrailingSlashUntilAfterSecurity) {
     const trailingSlashResponse = handleTrailingSlash(request)
     if (trailingSlashResponse) {
-      return finalizeResponse(
-        applyPrivacyResponseCachePolicy(request, trailingSlashResponse),
-        ids,
-      )
+      return finalizeResponse(request, trailingSlashResponse, ids)
     }
   }
 
   if (isLocaleRootPath(request.nextUrl.pathname)) {
-    return finalizeResponse(redirectLocaleRootToRequirements(request), ids)
+    return finalizeResponse(
+      request,
+      redirectLocaleRootToRequirements(request),
+      ids,
+    )
   }
 
   if (isApiPath(request.nextUrl.pathname)) {
     const cleaned = stripUserHeaders(new Headers(request.headers))
     applyRequestCorrelationHeaders(cleaned, ids)
     return finalizeResponse(
+      request,
       NextResponse.next({ request: { headers: cleaned } }),
       ids,
     )
   }
 
-  return finalizeResponse(applyPageHeaders(request, ids), ids)
+  return finalizeResponse(request, applyPageHeaders(request, ids), ids)
 }
 
 export const config = {
