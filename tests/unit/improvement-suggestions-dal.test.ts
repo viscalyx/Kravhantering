@@ -81,7 +81,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
     ])
   })
 
-  it('creates a suggestion after validating requirement and version existence', async () => {
+  it('creates a suggestion with the database UTC clock after validating references', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([{ id: 1 }])
@@ -99,16 +99,10 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
     expect(result).toEqual({ id: 42 })
     expect(query).toHaveBeenNthCalledWith(
       3,
-      expect.stringContaining('INSERT INTO improvement_suggestions'),
-      [
-        1,
-        9,
-        'Improve this',
-        'tester',
-        'SE5560000001-tester1',
-        expect.any(Date),
-        0,
-      ],
+      expect.stringContaining(
+        'VALUES (@0, @1, @2, @3, @4, SYSUTCDATETIME(), 0)',
+      ),
+      [1, 9, 'Improve this', 'tester', 'SE5560000001-tester1'],
     )
   })
 
@@ -403,7 +397,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
     expect(query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('INSERT INTO improvement_suggestions'),
-      [1, null, 'Improve this', 'tester', null, expect.any(Date), 0],
+      [1, null, 'Improve this', 'tester', null],
     )
   })
 

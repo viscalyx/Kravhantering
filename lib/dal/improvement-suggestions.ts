@@ -343,7 +343,6 @@ export async function createSuggestion(
     }
   }
 
-  const now = new Date()
   const createdByHsaId = data.createdByHsaId?.trim() || null
   const insertedRows = (await db.query(
     `
@@ -357,7 +356,7 @@ export async function createSuggestion(
         is_review_requested
       )
       OUTPUT INSERTED.id AS id
-      VALUES (@0, @1, @2, @3, @4, @5, @6)
+      VALUES (@0, @1, @2, @3, @4, SYSUTCDATETIME(), 0)
     `,
     [
       data.requirementId,
@@ -365,8 +364,6 @@ export async function createSuggestion(
       data.content.trim(),
       data.createdBy ?? null,
       createdByHsaId,
-      now,
-      0,
     ],
   )) as Array<{ id: number }>
 
