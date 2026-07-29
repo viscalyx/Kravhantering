@@ -4,6 +4,7 @@ import { createAdminPrivilegedAuditContext } from '@/lib/admin/privileged-audit'
 import { recordDeniedActionAuditEvent } from '@/lib/audit/action-audit'
 import { CsrfError } from '@/lib/auth/csrf'
 import { getRequestSqlServerDataSource, type SqlServerDatabase } from '@/lib/db'
+import { applyPrivacyResponseCachePolicy } from '@/lib/http/privacy-cache-policy'
 import {
   getErrorMessage,
   logSanitizedError,
@@ -74,6 +75,7 @@ type NoInferMutation<T> = [T][T extends unknown ? 0 : never]
 export interface SecureMutationRouteOptions<TBody, TParams> {
   bodySchema?: ZodType<TBody>
   decorateErrorResponse?: (response: NextResponse) => NextResponse
+  decorateResponse?: (response: Response) => Response
   errorMessage?: string
   handler: (
     args: SecureMutationHandlerArgs<TBody, TParams>,
@@ -125,11 +127,22 @@ function errorResponse(message: string, error: unknown): NextResponse {
   })
 }
 
+function decorateResponse<TBody, TParams>(
+  options: SecureMutationRouteOptions<TBody, TParams>,
+  request: Request,
+  response: Response,
+): Response {
+  const decoratedResponse = options.decorateResponse?.(response) ?? response
+  return applyPrivacyResponseCachePolicy(request, decoratedResponse)
+}
+
 function decorateErrorResponse<TBody, TParams>(
   options: SecureMutationRouteOptions<TBody, TParams>,
+  request: Request,
   response: NextResponse,
-): NextResponse {
-  return options.decorateErrorResponse?.(response) ?? response
+): Response {
+  const decoratedError = options.decorateErrorResponse?.(response) ?? response
+  return decorateResponse(options, request, decoratedError)
 }
 
 function requireAuthenticated(context: RequestContext): void {
@@ -242,14 +255,18 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
     try {
       context = await createMutationContext(request, options.policy)
     } catch (error) {
-      return decorateErrorResponse(options, errorResponse(errorMessage, error))
+      return decorateErrorResponse(
+        options,
+        request,
+        errorResponse(errorMessage, error),
+      )
     }
 
     try {
       requireAuthenticated(context)
       const preParseResponse = await options.preParse?.({ context, request })
       if (preParseResponse) {
-        return preParseResponse
+        return decorateResponse(options, request, preParseResponse)
       }
     } catch (error) {
       const response = await authorizationErrorResponse(
@@ -258,7 +275,7 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
         error,
         errorMessage,
       )
-      return decorateErrorResponse(options, response)
+      return decorateErrorResponse(options, request, response)
     }
 
     const parsedParams =
@@ -266,20 +283,14 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
         ? await parseRouteParams(routeContext.params, options.paramsSchema)
         : ({ data: undefined as TParams, ok: true } as const)
     if (!parsedParams.ok) {
-      return (
-        options.decorateErrorResponse?.(parsedParams.response) ??
-        parsedParams.response
-      )
+      return decorateErrorResponse(options, request, parsedParams.response)
     }
 
     const parsedBody = options.bodySchema
       ? await readJsonWithSchema(request, options.bodySchema)
       : ({ data: undefined as TBody, ok: true } as const)
     if (!parsedBody.ok) {
-      return (
-        options.decorateErrorResponse?.(parsedBody.response) ??
-        parsedBody.response
-      )
+      return decorateErrorResponse(options, request, parsedBody.response)
     }
 
     const args: SecureMutationHandlerArgs<TBody, TParams> = {
@@ -299,7 +310,7 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
         errorMessage,
         args.db,
       )
-      return decorateErrorResponse(options, response)
+      return decorateErrorResponse(options, request, response)
     }
 
     try {
@@ -310,9 +321,13 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
           context,
         )
       }
-      return response
+      return decorateResponse(options, request, response)
     } catch (error) {
-      return decorateErrorResponse(options, errorResponse(errorMessage, error))
+      return decorateErrorResponse(
+        options,
+        request,
+        errorResponse(errorMessage, error),
+      )
     }
   }
 }

@@ -8,6 +8,7 @@ import {
   getSessionFromRequestWithDiagnostics,
   isSignedIn,
 } from '@/lib/auth/session'
+import { applyPrivacyResponseCachePolicy } from '@/lib/http/privacy-cache-policy'
 import {
   applyRequestCorrelationHeaders,
   applyResponseCorrelationHeaders,
@@ -467,15 +468,28 @@ export default async function proxy(request: NextRequest) {
   }
 
   const authResponse = await enforceAuth(request)
-  if (authResponse) return finalizeResponse(authResponse, ids)
+  if (authResponse) {
+    return finalizeResponse(
+      applyPrivacyResponseCachePolicy(request, authResponse),
+      ids,
+    )
+  }
 
   const csrfResponse = enforceRestCsrf(request)
-  if (csrfResponse) return finalizeResponse(csrfResponse, ids)
+  if (csrfResponse) {
+    return finalizeResponse(
+      applyPrivacyResponseCachePolicy(request, csrfResponse),
+      ids,
+    )
+  }
 
   if (deferTrailingSlashUntilAfterSecurity) {
     const trailingSlashResponse = handleTrailingSlash(request)
     if (trailingSlashResponse) {
-      return finalizeResponse(trailingSlashResponse, ids)
+      return finalizeResponse(
+        applyPrivacyResponseCachePolicy(request, trailingSlashResponse),
+        ids,
+      )
     }
   }
 

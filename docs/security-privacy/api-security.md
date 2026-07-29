@@ -21,10 +21,10 @@ Covered by this contract:
   (`POST /api/privacy/erasure-preview`,
   `POST /api/privacy/erasure-requests`,
   `POST /api/privacy/data-subject-export`). Contract examples use disposable
-  seeded HSA-ids, the scan session has `PrivacyOfficer`, and the export route
-  documents `Cache-Control: no-store` for success and validation/authorization
-  errors. Erasure execution accepts stale generated preview tokens as a normal
-  `409` response during fuzzing.
+  seeded HSA-ids, the scan session has `PrivacyOfficer`, and all three routes
+  apply `Cache-Control: no-store` to every application response. Erasure
+  execution accepts stale generated preview tokens as a normal `409` response
+  during fuzzing.
 - Requirement list, detail, create, edit, archive, version read,
   delete-draft, restore, reactivate, and transition routes.
 - The requirements-specification item GET route returns only bounded pages of
@@ -220,6 +220,12 @@ then handler work. Every mutating REST route must declare an `admin`,
 `secureLogoutMutationRoute` special case because it is an auth endpoint with
 CSRF and audit but no business authorization policy. A unit coverage test scans
 `app/api/**/route.ts` to keep this invariant in place.
+
+A shared privacy cache-policy registry classifies the three personal-data
+routes. Both the mutation wrapper and the proxy use this registry, so
+`Cache-Control: no-store` overrides any conflicting cache policy after every
+wrapper or handler response and on authentication, CSRF, or canonical redirect
+responses produced before a route handler runs.
 
 Authorization denials from these policies are fail-closed into the database
 action log before the denial response is returned. If required denial evidence

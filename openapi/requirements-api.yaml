@@ -62,13 +62,17 @@ paths:
       responses:
         '200':
           description: Privacy erasure preview.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PrivacyErasurePreviewResponse'
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        '400': { $ref: '#/components/responses/NoStoreBadRequest' }
+        '401': { $ref: '#/components/responses/NoStoreUnauthorized' }
+        '403': { $ref: '#/components/responses/NoStoreForbidden' }
+        '500': { $ref: '#/components/responses/NoStoreInternalServerError' }
 
   /api/privacy/erasure-requests:
     post:
@@ -94,14 +98,18 @@ paths:
       responses:
         '201':
           description: Privacy erasure execution result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PrivacyErasureResult'
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '400': { $ref: '#/components/responses/NoStoreBadRequest' }
+        '401': { $ref: '#/components/responses/NoStoreUnauthorized' }
+        '403': { $ref: '#/components/responses/NoStoreForbidden' }
+        '409': { $ref: '#/components/responses/NoStoreConflict' }
+        '500': { $ref: '#/components/responses/NoStoreInternalServerError' }
 
   /api/privacy/data-subject-export:
     post:
@@ -132,9 +140,7 @@ paths:
           description: Data subject access export.
           headers:
             Cache-Control:
-              schema:
-                type: string
-                enum: [no-store]
+              $ref: '#/components/headers/NoStore'
           content:
             application/json:
               schema:
@@ -146,6 +152,7 @@ paths:
         '400': { $ref: '#/components/responses/NoStoreBadRequest' }
         '401': { $ref: '#/components/responses/NoStoreUnauthorized' }
         '403': { $ref: '#/components/responses/NoStoreForbidden' }
+        '500': { $ref: '#/components/responses/NoStoreInternalServerError' }
 
   /api/requirements:
     get:
@@ -906,6 +913,13 @@ components:
       in: cookie
       name: kravhantering_session
 
+  headers:
+    NoStore:
+      description: Prevent storage by browsers and intermediary caches.
+      schema:
+        type: string
+        enum: [no-store]
+
   parameters:
     RequirementId:
       name: id
@@ -1063,9 +1077,7 @@ components:
       description: Invalid request.
       headers:
         Cache-Control:
-          schema:
-            type: string
-            enum: [no-store]
+          $ref: '#/components/headers/NoStore'
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -1073,9 +1085,7 @@ components:
       description: Authentication required.
       headers:
         Cache-Control:
-          schema:
-            type: string
-            enum: [no-store]
+          $ref: '#/components/headers/NoStore'
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -1083,9 +1093,23 @@ components:
       description: Forbidden.
       headers:
         Cache-Control:
-          schema:
-            type: string
-            enum: [no-store]
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NoStoreConflict:
+      description: Conflict.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NoStoreInternalServerError:
+      description: Internal server error.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }

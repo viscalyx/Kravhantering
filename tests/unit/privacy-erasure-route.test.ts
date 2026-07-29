@@ -119,6 +119,7 @@ describe('privacy erasure routes', () => {
     )
 
     expect(response.status).toBe(200)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(routeState.previewPrivacyErasure).toHaveBeenCalledWith(
       { db: true },
       {
@@ -150,6 +151,7 @@ describe('privacy erasure routes', () => {
     )
 
     expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(routeState.previewPrivacyErasure).not.toHaveBeenCalled()
     expect(routeState.recordDeniedActionAuditEvent).not.toHaveBeenCalled()
   })
@@ -236,6 +238,7 @@ describe('privacy erasure routes', () => {
     }
 
     expect(response.status).toBe(400)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(body.error).toBe('Invalid request')
     expect(body.issues).toEqual(
       expect.arrayContaining([
@@ -260,6 +263,7 @@ describe('privacy erasure routes', () => {
     )
 
     expect(response.status).toBe(409)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
   })
 
@@ -296,6 +300,7 @@ describe('privacy erasure routes', () => {
     )
 
     expect(response.status).toBe(201)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(routeState.executePrivacyErasure).toHaveBeenCalledTimes(1)
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({ event: 'privacy.erasure.executed' }),
@@ -392,6 +397,7 @@ describe('privacy erasure routes', () => {
     const body = await responseJson(response)
 
     expect(response.status).toBe(500)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(body).toEqual({ error: 'Failed to execute privacy erasure' })
     expect(JSON.stringify(body)).not.toContain('SE5560000001-kalle1')
   })

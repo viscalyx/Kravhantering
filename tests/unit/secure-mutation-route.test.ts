@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { CsrfError } from '@/lib/auth/csrf'
+import { noStore } from '@/lib/http/cache-control'
 import {
   adminMutationPolicy,
   authenticatedMutationPolicy,
@@ -122,6 +123,7 @@ describe('secureMutationRoute', () => {
     const handler = vi.fn(() => NextResponse.json({ ok: true }))
     const route = secureMutationRoute({
       bodySchema: z.object({ name: z.string() }).strict(),
+      decorateResponse: noStore,
       handler,
       paramsSchema: z.object({ id: z.string() }).strict(),
       policy: adminMutationPolicy(),
@@ -132,6 +134,7 @@ describe('secureMutationRoute', () => {
     })
 
     expect(response.status).toBe(200)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(handler).toHaveBeenCalledWith(
       expect.objectContaining({
         body: { name: 'Valid' },
@@ -149,6 +152,7 @@ describe('secureMutationRoute', () => {
     const handler = vi.fn(() => NextResponse.json({ ok: true }))
     const route = secureMutationRoute({
       bodySchema: z.object({ name: z.string() }).strict(),
+      decorateResponse: noStore,
       handler,
       policy: adminMutationPolicy(),
     })
@@ -156,6 +160,7 @@ describe('secureMutationRoute', () => {
     const response = await route(jsonRequest({}))
 
     expect(response.status).toBe(401)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(handler).not.toHaveBeenCalled()
     expect(auditState.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO action_audit_events'),
@@ -166,10 +171,14 @@ describe('secureMutationRoute', () => {
   it('runs pre-parse guards before body validation and handler work', async () => {
     const handler = vi.fn(() => NextResponse.json({ ok: true }))
     const preParse = vi.fn(() =>
-      NextResponse.json({ error: 'Too many requests' }, { status: 429 }),
+      NextResponse.json(
+        { error: 'Too many requests' },
+        { headers: { 'Cache-Control': 'public, max-age=60' }, status: 429 },
+      ),
     )
     const route = secureMutationRoute({
       bodySchema: z.object({ name: z.string() }).strict(),
+      decorateResponse: noStore,
       handler,
       policy: adminMutationPolicy(),
       preParse,
@@ -178,6 +187,7 @@ describe('secureMutationRoute', () => {
     const response = await route(jsonRequest({}))
 
     expect(response.status).toBe(429)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(preParse).toHaveBeenCalledWith(
       expect.objectContaining({
         context: expect.objectContaining({ requestId: 'request-1' }),
@@ -189,6 +199,7 @@ describe('secureMutationRoute', () => {
   it('rejects invalid route params before the handler runs', async () => {
     const handler = vi.fn(() => NextResponse.json({ ok: true }))
     const route = secureMutationRoute({
+      decorateResponse: noStore,
       handler,
       paramsSchema: z.object({ id: z.coerce.number().int() }).strict(),
       policy: adminMutationPolicy(),
@@ -199,6 +210,7 @@ describe('secureMutationRoute', () => {
     })
 
     expect(response.status).toBe(400)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(handler).not.toHaveBeenCalled()
   })
 
@@ -206,6 +218,12 @@ describe('secureMutationRoute', () => {
     const handler = vi.fn(() => NextResponse.json({ ok: true }))
     const route = secureMutationRoute({
       bodySchema: z.object({ name: z.string() }).strict(),
+      decorateErrorResponse: response => {
+        response.headers.set('Cache-Control', 'public, max-age=60')
+        response.headers.set('X-Error-Decorated', 'true')
+        return response
+      },
+      decorateResponse: noStore,
       handler,
       policy: requirementsMutationPolicy({ kind: 'generate_requirements' }),
     })
@@ -218,6 +236,8 @@ describe('secureMutationRoute', () => {
     )
 
     expect(response.status).toBe(400)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(response.headers.get('X-Error-Decorated')).toBe('true')
     expect(authState.assertAuthorized).not.toHaveBeenCalled()
     expect(handler).not.toHaveBeenCalled()
   })
@@ -272,7 +292,7 @@ describe('secureMutationRoute', () => {
     )
   })
 
-  it('does not schedule background actor refresh after failed handler responses', async () => {
+  it('decorates handler-returned 404 responses without scheduling background refresh', async () => {
     authState.createRequestContext.mockResolvedValueOnce({
       ...context([]),
       actor: {
@@ -283,13 +303,19 @@ describe('secureMutationRoute', () => {
       },
     })
     const route = secureMutationRoute({
-      handler: () => NextResponse.json({ error: 'Invalid' }, { status: 422 }),
+      decorateResponse: noStore,
+      handler: () =>
+        NextResponse.json(
+          { error: 'Not found' },
+          { headers: { 'Cache-Control': 'public, max-age=60' }, status: 404 },
+        ),
       policy: customMutationPolicy('allow', () => undefined),
     })
 
     const response = await route(jsonRequest({}))
 
-    expect(response.status).toBe(422)
+    expect(response.status).toBe(404)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     await Promise.resolve()
     await Promise.resolve()
     expect(auditState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
@@ -334,6 +360,7 @@ describe('secureMutationRoute', () => {
   it('returns policy denials without running the handler', async () => {
     const handler = vi.fn(() => NextResponse.json({ ok: true }))
     const route = secureMutationRoute({
+      decorateResponse: noStore,
       handler,
       policy: customMutationPolicy('deny', () => {
         throw forbiddenError('Nope')
@@ -343,6 +370,7 @@ describe('secureMutationRoute', () => {
     const response = await route(jsonRequest({}))
 
     expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(handler).not.toHaveBeenCalled()
     expect(auditState.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO action_audit_events'),
@@ -421,6 +449,7 @@ describe('secureMutationRoute', () => {
     )
     const handler = vi.fn(() => NextResponse.json({ ok: true }))
     const route = secureMutationRoute({
+      decorateResponse: noStore,
       handler,
       policy: adminMutationPolicy(),
     })
@@ -428,11 +457,31 @@ describe('secureMutationRoute', () => {
     const response = await route(jsonRequest({}))
 
     expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('decorates unexpected context-creation errors', async () => {
+    adminAuditState.createAdminPrivilegedAuditContext.mockRejectedValueOnce(
+      new Error('Context creation failed'),
+    )
+    const handler = vi.fn(() => NextResponse.json({ ok: true }))
+    const route = secureMutationRoute({
+      decorateResponse: noStore,
+      handler,
+      policy: adminMutationPolicy(),
+    })
+
+    const response = await route(jsonRequest({}))
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(handler).not.toHaveBeenCalled()
   })
 
   it('maps unexpected handler errors to sanitized 500 responses', async () => {
     const route = secureMutationRoute({
+      decorateResponse: noStore,
       handler: () => {
         throw new Error('SELECT token FROM sessions')
       },
@@ -442,6 +491,7 @@ describe('secureMutationRoute', () => {
     const response = await route(jsonRequest({}))
 
     expect(response.status).toBe(500)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
   })
 })
 

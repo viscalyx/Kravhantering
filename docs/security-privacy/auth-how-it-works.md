@@ -236,12 +236,17 @@ sequenceDiagram
   auth. For a mutating REST URL with a trailing slash, authentication runs
   first and returns `401` when required, then CSRF validation returns `403`
   when required, and only a request that passes both checks receives the
-  canonical `308` redirect. Route-level checks remain as defense-in-depth
-  through `lib/http/secure-mutation-route.ts`. App-owned `POST`, `PUT`,
-  `PATCH`, and `DELETE` REST routes build `RequestContext`, require an
-  authenticated actor, validate params and JSON bodies, run a declared
-  `admin`, `requirements`, or `custom` authorization policy, and only then call
-  route-specific handler work. `/api/auth/logout` uses
+  canonical `308` redirect. A shared privacy cache-policy registry makes these
+  proxy-generated `401`, `403`, and `308` responses non-storable for the
+  personal-data export and erasure routes. The mutation wrapper uses the same
+  registry for all route responses, and `Cache-Control: no-store` overrides any
+  conflicting cache policy.
+  Route-level checks remain as defense-in-depth through
+  `lib/http/secure-mutation-route.ts`. App-owned `POST`, `PUT`, `PATCH`, and
+  `DELETE` REST routes build `RequestContext`, require an authenticated actor,
+  validate params and JSON bodies, run a declared `admin`, `requirements`, or
+  `custom` authorization policy, and only then call route-specific handler
+  work. `/api/auth/logout` uses
   `secureLogoutMutationRoute` because logout is an auth endpoint with CSRF and
   audit but no business authorization policy.
   `/api/mcp` remains the documented exception because it is guarded by Bearer

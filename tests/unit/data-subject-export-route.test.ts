@@ -199,6 +199,7 @@ describe('data-subject export route', () => {
     )
 
     expect(response.status).toBe(200)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(response.headers.get('Content-Type')).toBe('application/pdf')
     expect(routeState.collectDataSubjectExport).toHaveBeenCalledWith(
       { db: true },
@@ -249,5 +250,16 @@ describe('data-subject export route', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.collectDataSubjectExport).not.toHaveBeenCalled()
+  })
+
+  it('prevents caching unexpected export failures', async () => {
+    routeState.collectDataSubjectExport.mockRejectedValueOnce(
+      new Error('Export failed'),
+    )
+    const { POST } = await import('@/app/api/privacy/data-subject-export/route')
+    const response = await POST(jsonPost({ delivery: 'json' }) as never)
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
   })
 })

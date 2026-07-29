@@ -94,14 +94,8 @@ function assertDataSubjectExportAllowed(
   }
 }
 
-function addNoStore<T extends NextResponse>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
-
 export const POST = secureMutationRoute({
   bodySchema: dataSubjectExportSchema,
-  decorateErrorResponse: addNoStore,
   policy: customMutationPolicy<
     z.infer<typeof dataSubjectExportSchema>,
     unknown
@@ -166,21 +160,16 @@ export const POST = secureMutationRoute({
         )
       }
 
-      return NextResponse.json(exportPayload, {
-        headers: { 'Cache-Control': 'no-store' },
-      })
+      return NextResponse.json(exportPayload)
     } catch (error) {
       if (error instanceof CsrfError || isRequirementsServiceError(error)) {
         const { body, status } = toHttpErrorPayload(error)
-        return NextResponse.json(body, {
-          headers: { 'Cache-Control': 'no-store' },
-          status,
-        })
+        return NextResponse.json(body, { status })
       }
       logSanitizedError('Failed to generate data-subject export', error)
       return NextResponse.json(
         unexpectedErrorBody('Failed to generate data-subject export', error),
-        { headers: { 'Cache-Control': 'no-store' }, status: 500 },
+        { status: 500 },
       )
     }
   },

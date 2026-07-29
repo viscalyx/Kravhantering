@@ -653,6 +653,47 @@ describe('proxy', () => {
     }
   })
 
+  it.each([
+    '/api/privacy/data-subject-export',
+    '/api/privacy/erasure-preview',
+    '/api/privacy/erasure-requests',
+  ])('prevents caching unauthenticated responses from %s', async path => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await proxy(
+        buildRequest(`http://localhost${path}`, { method: 'POST' }),
+      )
+
+      expect(response.status).toBe(401)
+      expect(response.headers.get('Cache-Control')).toBe('no-store')
+    } finally {
+      restore()
+    }
+  })
+
+  it.each([
+    '/api/privacy/data-subject-export',
+    '/api/privacy/erasure-preview',
+    '/api/privacy/erasure-requests',
+  ])('prevents caching CSRF rejections from %s', async path => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const cookie = await writeSignedInCookie()
+      const response = await proxy(
+        buildRequest(`http://localhost${path}`, {
+          cookie,
+          method: 'POST',
+          origin: 'http://localhost',
+        }),
+      )
+
+      expect(response.status).toBe(403)
+      expect(response.headers.get('Cache-Control')).toBe('no-store')
+    } finally {
+      restore()
+    }
+  })
+
   it('returns 403 before normalizing trailing-slash REST mutations that fail CSRF', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
@@ -741,6 +782,30 @@ describe('proxy', () => {
       expect(response.headers.get('refresh')).toBe(
         '0;url=/api/requirement-areas?view=active',
       )
+    } finally {
+      restore()
+    }
+  })
+
+  it.each([
+    '/api/privacy/data-subject-export/',
+    '/api/privacy/erasure-preview/',
+    '/api/privacy/erasure-requests/',
+  ])('prevents caching privacy mutation redirects from %s', async path => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const cookie = await writeSignedInCookie()
+      const response = await proxy(
+        buildRequest(`http://localhost${path}`, {
+          cookie,
+          method: 'POST',
+          origin: 'http://localhost',
+          xRequestedWith: 'XMLHttpRequest',
+        }),
+      )
+
+      expect(response.status).toBe(308)
+      expect(response.headers.get('Cache-Control')).toBe('no-store')
     } finally {
       restore()
     }
