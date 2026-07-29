@@ -80,7 +80,9 @@ Kong is a vendor-updated HSA integration support image. Its lock under
 `containers/kong/` is copied into
 `container-hsa-integration-support.lock.json` during container releases and is
 used by the test-only `single-node-demo` topology. Kong is not part of the
-required production runtime topology.
+required production runtime topology. Dependency maintenance also requires
+every active devcontainer and Azure VM Kong runtime reference to match the
+lock's exact tag and Linux AMD64 manifest digest.
 
 The HSA person lookup adapter and HSA directory mock are project-owned support
 images. The container release workflow builds and publishes

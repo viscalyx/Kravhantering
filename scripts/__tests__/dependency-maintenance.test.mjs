@@ -19,6 +19,7 @@ import {
 import { packageManagerVersion } from '../install-repository-npm.mjs'
 
 const temporaryDirectories = []
+const digest = character => `sha256:${character.repeat(64)}`
 
 function temporaryDirectory() {
   const directory = fs.mkdtempSync(
@@ -238,6 +239,27 @@ describe('dependency maintenance policy', () => {
     expect(validateDependencyMaintenance(fixture())).toEqual([])
   })
 
+  it('requires synchronized runtime references to match the image lock', () => {
+    const root = fixture()
+    const quadletPath =
+      'scripts/azure-dev/templates/quadlet/krav-kong.container'
+    const lock = JSON.parse(
+      fs.readFileSync(path.join(root, 'containers/kong/image.lock.json')),
+    )
+    const expectedReference = `${lock.image}:${lock.tag}@${lock.manifestDigest}`
+    write(
+      root,
+      quadletPath,
+      fs
+        .readFileSync(path.join(root, quadletPath), 'utf8')
+        .replace(expectedReference, `${lock.image}:stale@${digest('f')}`),
+    )
+
+    expect(validateDependencyMaintenance(root)).toContain(
+      `Runtime image "${quadletPath}" must pin "${expectedReference}".`,
+    )
+  })
+
   it('catches a new npm project without Dependabot coverage', () => {
     const root = fixture()
     write(root, 'containers/new-service/package.json', '{}\n')
@@ -323,6 +345,7 @@ FROM \${BASE_IMAGE}
     )
     const nodeUnit = registry.units.find(unit => unit.id === 'production-node')
     nodeUnit.detector = 'future-node'
+    nodeUnit.runtimeReferencePolicy = 'floating'
     nodeUnit.skill = 'future-skill'
     registry.units.push(
       { ...registry.units[0] },
@@ -358,6 +381,7 @@ FROM \${BASE_IMAGE}
         'Maintenance unit "missing-docker" has unsupported lane.',
         'Issue unit "missing-lock" must name a remediation skill.',
         'Issue unit "production-node" has unsupported detector "future-node".',
+        'Maintenance unit "production-node" has unsupported runtime reference policy.',
         'Issue unit "missing-lock" has unsupported detector "undefined".',
         'Registered npm project "containers/missing" is not active.',
         'Registered Dockerfile "containers/missing/Dockerfile" is not active.',

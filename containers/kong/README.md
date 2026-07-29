@@ -1,16 +1,17 @@
-# Kong Devcontainer Contract
+# Kong Development Contract
 
-This directory owns the local devcontainer contract for the Kong Gateway
-vendor container and the release test support Kong configuration. Kong is used
-for development-time verification of DB-less API-management wiring and for the
-test-only `single-node-demo` release topology. It is not part of the
-production runtime topology.
+This directory owns the local development contract for the Kong Gateway vendor
+container and the release test support Kong configuration. Kong is used for
+development-time verification of DB-less API-management wiring in the
+devcontainer and Azure VM environment, and for the test-only `single-node-demo`
+release topology. It is not part of the production runtime topology.
 
 ## Owned Configuration
 
 - The vendor image lock in `image.lock.json`.
 - The DB-less declarative configuration in `kong.yml`.
 - Documentation for the devcontainer-only lifecycle scripts.
+- The synchronized devcontainer Compose and Azure VM Quadlet image references.
 
 Kong runs the upstream `kong/kong-gateway` image directly. Do not add a
 project-owned wrapper image unless a later design decision requires custom
@@ -74,13 +75,14 @@ npm run devcontainer:kong:recreate
 
 `image.lock.json` pins the upstream image by tag, manifest digest and image ID.
 
-The normal update path is `.github/workflows/dependency-drift.yml`. It runs
+The normal detection path is `.github/workflows/dependency-drift.yml`. It runs
 weekly from `main` and can also be started manually with `workflow_dispatch`.
-The updater opens or refreshes one PR per Kong Gateway major-version lane,
-updates `tag`, `manifestDigest` and `imageId` together, keeps devcontainer
-Compose references digest-pinned, and keeps the public release test-support
-example tag-only. Review the generated PR and let the normal PR workflows,
-including Container PR Smoke, validate the change before merging.
+The detector opens or refreshes a dependency-drift issue for the Kong Gateway
+major-version lane. Resolve that issue with the named maintenance skill, update
+`tag`, `manifestDigest` and `imageId` together, keep runtime references
+digest-pinned, and keep the public release test-support example tag-only. Let
+the normal pull request workflows, including Container PR Smoke, validate the
+change before merging.
 
 Use the manual path when selecting an exceptional LTS tag, recovering a failed
 automation run, or changing devcontainer or release test-support pinning
@@ -92,12 +94,13 @@ policy:
    `docker buildx imagetools inspect kong/kong-gateway:<tag>`.
 3. Resolve the platform image config digest with
    `docker manifest inspect --verbose kong/kong-gateway:<tag>`.
-4. Update `tag`, `manifestDigest` and `imageId` together.
+4. Update `tag`, `manifestDigest` and `imageId` together, including the
+   devcontainer Compose files and Azure VM Quadlet.
 5. Run `npm run devcontainer:kong:pull`, `npm run devcontainer:kong:up` and
    `npm run devcontainer:kong:status`.
-6. Verify that `.github/workflows/dependency-drift.yml` still runs the
-   updater that keeps both devcontainer Compose files digest-pinned and the
-   `release.env.template` public test-support example tag-only.
+6. Run `npm run dependency-maintenance:check` and verify that
+   `.github/workflows/dependency-drift.yml` reports no Kong drift. The check
+   keeps all active Kong runtime references aligned with the canonical lock.
 
 ## Update Rules
 
