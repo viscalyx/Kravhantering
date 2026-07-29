@@ -6,6 +6,10 @@ function readWorkspaceFile(path: string) {
   return readFileSync(path, 'utf8')
 }
 
+function collapseAdjacentPowerShellStringLiterals(content: string) {
+  return content.replace(/(['"])\s*\+\r?\n\s*\1/gu, '')
+}
+
 const hsaPersonLookupEnvVars = [
   'HSA_PERSON_LOOKUP_TIMEOUT_MS',
   'HSA_PERSON_LOOKUP_URL',
