@@ -28,6 +28,9 @@ paths:
       responses:
         '200':
           description: Current session projection.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
           content:
             application/json:
               schema:
@@ -391,14 +394,17 @@ paths:
       responses:
         '200':
           description: Complete requirements library CSV export.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
           content:
             text/csv:
               schema:
                 type: string
                 format: binary
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        '400': { $ref: '#/components/responses/NoStoreBadRequest' }
+        '401': { $ref: '#/components/responses/NoStoreUnauthorized' }
+        '403': { $ref: '#/components/responses/NoStoreForbidden' }
         '431':
           $ref: '#/components/responses/RequestHeaderFieldsTooLarge'
 
