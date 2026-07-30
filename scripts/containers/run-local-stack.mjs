@@ -45,10 +45,13 @@ const ENV_LOCAL_FILES = [
 ]
 
 const USAGE = `Usage:
-  node scripts/containers/run-local-stack.mjs up [--mode <test|release-smoke>] [--run-id <id>] [--skip-build] [--prune-docker-after-load] [--release-images-from-lock]
+  node scripts/containers/run-local-stack.mjs up [--mode <test|release-smoke>] [--run-id <id>] [--skip-build] [--prune-docker-after-load] [--release-images-from-lock] [--candidate-metadata <path>]
   node scripts/containers/run-local-stack.mjs down [--mode <test|release-smoke>]
 
 Options:
+  --candidate-metadata <path>
+                         Load exact OCI candidate archives recorded in release
+                         metadata without rebuilding or pulling project images
   --compose-file <path>  Generated Compose file path
   --lock-file <path>     Stack lock file path
   --hsa-integration-lock-file <path>
@@ -116,8 +119,15 @@ export function parseArgs(args) {
   if (!['test', 'release-smoke'].includes(mode)) {
     throw new Error(`Unsupported local stack mode: ${mode}`)
   }
+  const candidateMetadataFile = readNonEmpty(options['candidate-metadata'])
+  if (candidateMetadataFile && releaseImagesFromLock) {
+    throw new Error(
+      '--candidate-metadata and --release-images-from-lock are mutually exclusive.',
+    )
+  }
 
   return {
+    candidateMetadataFile,
     command,
     composeFile: readNonEmpty(options['compose-file']) ?? DEFAULT_COMPOSE_FILE,
     lockFile: readNonEmpty(options['lock-file']) ?? DEFAULT_LOCK_FILE,
@@ -218,6 +228,7 @@ export function createLocalStackConfig(options = {}) {
   return {
     appRuntimeImage,
     appRuntimeImageReference: imageReference(appRuntimeImage),
+    candidateMetadataFile: options.candidateMetadataFile,
     composeFile: options.composeFile ?? DEFAULT_COMPOSE_FILE,
     dbJobImage,
     dbJobImageReference: imageReference(dbJobImage),
@@ -593,6 +604,89 @@ function withReleaseImagesFromLock(config, options = {}) {
           ),
         }
       : {}),
+  }
+}
+
+function candidateImage(metadata, objectPath, serviceName) {
+  const service = objectPath
+    .split('.')
+    .reduce((current, key) => current?.[key], metadata)
+  const candidate = service?.candidate
+  if (
+    !candidate?.artifactPath ||
+    !candidate.localRef ||
+    !candidate.manifestDigest ||
+    candidate.manifestDigest !== service.manifestDigest ||
+    !service.imageId
+  ) {
+    throw new Error(
+      `Release candidate metadata is incomplete for ${serviceName}.`,
+    )
+  }
+  const separator = candidate.localRef.lastIndexOf(':')
+  if (separator <= candidate.localRef.lastIndexOf('/')) {
+    throw new Error(`Release candidate localRef is invalid for ${serviceName}.`)
+  }
+  return {
+    artifactPath: candidate.artifactPath,
+    image: candidate.localRef.slice(0, separator),
+    imageId: service.imageId,
+    manifestDigest: candidate.manifestDigest,
+    source: 'release-candidate',
+    tag: candidate.localRef.slice(separator + 1),
+  }
+}
+
+function withCandidateArtifacts(config, options = {}) {
+  if (!config.candidateMetadataFile) return config
+  const cwd = options.cwd ?? process.cwd()
+  const fsImpl = options.fsImpl ?? fs
+  const metadata = JSON.parse(
+    fsImpl.readFileSync(
+      path.resolve(cwd, config.candidateMetadataFile),
+      'utf8',
+    ),
+  )
+  const appRuntimeImage = candidateImage(metadata, 'appRuntime', 'app-runtime')
+  const dbJobImage = candidateImage(metadata, 'dbJob', 'db-job')
+  const demoSeedImage = candidateImage(metadata, 'demoSeed', 'demo-seed')
+  const hsaDirectoryMockImage = candidateImage(
+    metadata,
+    'testSupport.hsaDirectoryMock',
+    'hsa-directory-mock',
+  )
+  const hsaPersonLookupAdapterImage = candidateImage(
+    metadata,
+    'hsaIntegrationSupport.hsaPersonLookupAdapter',
+    'hsa-person-lookup-adapter',
+  )
+  return {
+    ...config,
+    appRuntimeImage,
+    appRuntimeImageReference: imageReference(appRuntimeImage),
+    dbJobImage,
+    dbJobImageReference: imageReference(dbJobImage),
+    demoSeedImage,
+    demoSeedImageReference: imageReference(demoSeedImage),
+    hsaDirectoryMockImage,
+    hsaDirectoryMockImageReference: imageReference(hsaDirectoryMockImage),
+    hsaPersonLookupAdapterImage,
+    hsaPersonLookupAdapterImageReference: imageReference(
+      hsaPersonLookupAdapterImage,
+    ),
+  }
+}
+
+function loadCandidateArtifacts(config, options = {}) {
+  for (const image of [
+    config.appRuntimeImage,
+    config.dbJobImage,
+    config.demoSeedImage,
+    config.hsaDirectoryMockImage,
+    config.hsaPersonLookupAdapterImage,
+  ]) {
+    runCommand('podman', ['load', '--input', image.artifactPath], options)
+    runCommand('podman', ['image', 'exists', imageReference(image)], options)
   }
 }
 
@@ -1040,9 +1134,10 @@ function runHsaPersonLookupAdapter(config, options = {}) {
 
 function runKong(config, options = {}) {
   const cwd = options.cwd ?? process.cwd()
-  const kongImageReference = config.releaseImagesFromLock
-    ? lockedHsaIntegrationSupportImageReference(config, 'kong', options)
-    : lockedImageLockReference('containers/kong/image.lock.json', options)
+  const kongImageReference =
+    config.releaseImagesFromLock || config.candidateMetadataFile
+      ? lockedHsaIntegrationSupportImageReference(config, 'kong', options)
+      : lockedImageLockReference('containers/kong/image.lock.json', options)
   runCommand(
     'podman',
     [
@@ -1080,7 +1175,10 @@ function runKong(config, options = {}) {
 }
 
 async function up(config, options = {}) {
-  const runtimeConfig = withReleaseImagesFromLock(config, options)
+  const runtimeConfig = withCandidateArtifacts(
+    withReleaseImagesFromLock(config, options),
+    options,
+  )
   runCommand('podman', ['--version'], options)
   runCommand('podman', ['compose', 'version'], options)
   runCommand('podman', ['info'], options)
@@ -1104,7 +1202,11 @@ async function up(config, options = {}) {
     ['run', 'openapi:hsa-person-lookup:generate:public'],
     options,
   )
-  if (!runtimeConfig.releaseImagesFromLock && !runtimeConfig.skipBuild) {
+  if (
+    !runtimeConfig.releaseImagesFromLock &&
+    !runtimeConfig.candidateMetadataFile &&
+    !runtimeConfig.skipBuild
+  ) {
     runCommand('npm', ['run', 'container:build:app-runtime'], options)
     runCommand('npm', ['run', 'container:build:db-job'], options)
     if (runtimeConfig.mode === 'release-smoke') {
@@ -1117,7 +1219,23 @@ async function up(config, options = {}) {
       )
     }
   }
-  if (runtimeConfig.releaseImagesFromLock) {
+  if (runtimeConfig.candidateMetadataFile) {
+    loadCandidateArtifacts(runtimeConfig, options)
+    if (runtimeConfig.mode === 'release-smoke') {
+      runCommand(
+        'podman',
+        [
+          'pull',
+          lockedHsaIntegrationSupportImageReference(
+            runtimeConfig,
+            'kong',
+            options,
+          ),
+        ],
+        options,
+      )
+    }
+  } else if (runtimeConfig.releaseImagesFromLock) {
     pullReleaseProjectImages(runtimeConfig, options)
     pullReleaseTestSupportImages(runtimeConfig, options)
   } else {
@@ -1230,7 +1348,9 @@ async function up(config, options = {}) {
     [
       'scripts/containers/generate-compose.mjs',
       '--mode',
-      runtimeConfig.releaseImagesFromLock ? 'release' : 'pr',
+      runtimeConfig.releaseImagesFromLock || runtimeConfig.candidateMetadataFile
+        ? 'release'
+        : 'pr',
       '--lock-file',
       runtimeConfig.lockFile,
       '--network-name',
@@ -1313,6 +1433,7 @@ function down(config, options = {}) {
   )
 }
 
+/* v8 ignore start -- CLI dispatch and container orchestration. */
 export async function main(args, dependencies = {}) {
   const consoleObj = dependencies.consoleObj ?? console
   try {
@@ -1352,3 +1473,4 @@ const isDirectRun =
 if (isDirectRun) {
   process.exitCode = await main(process.argv.slice(2))
 }
+/* v8 ignore stop */

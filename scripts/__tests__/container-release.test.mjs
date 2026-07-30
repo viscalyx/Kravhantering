@@ -7,6 +7,8 @@ import buildMetadataTools from '../build-metadata.js'
 import {
   APP_RUNTIME_DESCRIPTION,
   APP_RUNTIME_PACKAGE,
+  changedFilesFromText,
+  createDeploymentBundleManifest,
   createReleaseChangelog,
   createReleaseMetadata,
   createReleasePlan,
@@ -15,18 +17,31 @@ import {
   DEMO_SEED_DESCRIPTION,
   DEMO_SEED_PACKAGE,
   deploymentBundleArchiveName,
+  deploymentBundleBaseName,
   ensureGitTag,
+  extractOciArchiveIdentity,
   extractUnreleasedOperatorUpgradeNotes,
+  githubEnvLines,
   HSA_DIRECTORY_MOCK_DESCRIPTION,
   HSA_DIRECTORY_MOCK_PACKAGE,
   isReleaseRelevantPath,
+  isStableReleaseRef,
   packageVersionUrlFromVersions,
+  parseArgs,
+  productionDeploymentMetadata,
+  readChangedFiles,
+  readGeneratedReleaseNotes,
+  readOciArchiveIdentity,
   readOperatorUpgradeNotes,
+  readPublishedGitHubReleases,
+  releaseMetadataEnv,
   releasePlanEnv,
   renderReleaseNotes,
   resolveBundledMarkdownAssets,
   resolvePackageTagUrls,
+  resolvePackageVersionUrl,
   selectPreviousReleaseTag,
+  stableVersionFromRef,
   stageProductionDeploymentBundle,
   withReleasePackageUrls,
 } from '../release/container-release.mjs'
@@ -64,6 +79,40 @@ function env(overrides = {}) {
     GITHUB_RUN_ID: '99',
     GITHUB_SHA: '1234567890abcdef1234567890abcdef12345678',
     ...overrides,
+  }
+}
+
+function minimalStackLock() {
+  const service = (name, image, role) => ({
+    image,
+    imageId: `sha256:${name}-image`,
+    manifestDigest: `sha256:${name}-manifest`,
+    name,
+    role,
+    source: 'release-test',
+    tag: '1.2.3',
+  })
+  return {
+    commitSha: 'deadbeef',
+    generatedAt: '2026-07-30T00:00:00.000Z',
+    generatedBy: 'scripts/containers/generate-stack-lock.mjs',
+    releaseVersion: '1.2.3',
+    schemaVersion: 2,
+    services: [
+      service(
+        'app-runtime',
+        'ghcr.io/viscalyx/kravhantering-app-runtime',
+        'application',
+      ),
+      service(
+        'db-job',
+        'ghcr.io/viscalyx/kravhantering-db-job',
+        'database-job',
+      ),
+      service('nginx', 'docker.io/library/nginx', 'tls-proxy'),
+      service('sqlserver', 'mcr.microsoft.com/mssql/server', 'database'),
+      service('keycloak', 'quay.io/keycloak/keycloak', 'identity-provider'),
+    ],
   }
 }
 
@@ -109,6 +158,143 @@ function buildxMetadataWithDescriptorAnnotation(manifestDigest, imageId) {
 }
 
 describe('trusted container release helpers', () => {
+  it('parses release CLI and changed-file inputs deterministically', () => {
+    expect(parseArgs(['plan', '--output', 'plan.json'])).toEqual({
+      command: 'plan',
+      options: { output: 'plan.json' },
+    })
+    expect(() => parseArgs(['plan', 'output'])).toThrow(
+      'Unexpected argument: output',
+    )
+    expect(() => parseArgs(['plan', '--output'])).toThrow(
+      'Missing value for --output',
+    )
+    expect(() => parseArgs(['plan', '--output', '--other'])).toThrow(
+      'Missing value for --output',
+    )
+    expect(changedFilesFromText(' app/page.tsx\r\n\n docs/readme.md ')).toEqual(
+      ['app/page.tsx', 'docs/readme.md'],
+    )
+  })
+
+  it('reads changed files for new and existing GitHub revisions', () => {
+    const existingRevision = vi.fn(() => 'app/page.tsx\n')
+    expect(
+      readChangedFiles({
+        cwd: '/workspace',
+        env: {
+          GITHUB_EVENT_BEFORE: 'before-sha',
+          GITHUB_SHA: 'head-sha',
+        },
+        execFileSync: existingRevision,
+      }),
+    ).toEqual(['app/page.tsx'])
+    expect(existingRevision).toHaveBeenCalledWith(
+      'git',
+      ['diff', '--name-only', 'before-sha', 'head-sha'],
+      expect.objectContaining({ cwd: '/workspace' }),
+    )
+
+    const newRevision = vi.fn(() => 'containers/app/Dockerfile\n')
+    expect(
+      readChangedFiles({
+        cwd: '/workspace',
+        env: {
+          GITHUB_EVENT_BEFORE: '0000000000',
+          GITHUB_SHA: 'head-sha',
+        },
+        execFileSync: newRevision,
+      }),
+    ).toEqual(['containers/app/Dockerfile'])
+    expect(newRevision).toHaveBeenCalledWith(
+      'git',
+      ['diff-tree', '--no-commit-id', '--name-only', '-r', 'head-sha'],
+      expect.any(Object),
+    )
+    expect(
+      readChangedFiles({
+        env: {},
+        execFileSync: vi.fn(() => {
+          throw new Error('not a git checkout')
+        }),
+      }),
+    ).toEqual([])
+  })
+
+  it('supports explicit release-plan inputs and environment serialization', () => {
+    const plan = createReleasePlan({
+      changedFiles: [],
+      eventName: 'workflow_dispatch',
+      expectedDatabaseSchemaVersion: 'Migration20260730120000',
+      gitVersion: { SemVer: '2.0.0-preview.1' },
+      ref: 'refs/heads/feature',
+      refName: 'feature',
+      repository: 'Example/Repository',
+      runId: '100',
+      sha: 'abcdef',
+    })
+
+    expect(plan).toMatchObject({
+      owner: 'example',
+      releaseTagName: '',
+      repository: 'Example/Repository',
+      runId: '100',
+      version: '2.0.0-preview.1',
+    })
+    expect(githubEnvLines({ A: 'one', B: 2 })).toEqual(['A=one', 'B=2'])
+    expect(
+      createReleasePlan({
+        env: {},
+        expectedDatabaseSchemaVersion: 'Migration20260730120000',
+        repository: 'Owner/Repository',
+        repositoryOwner: '  OWNER  ',
+      }).owner,
+    ).toBe('owner')
+    expect(() =>
+      createReleasePlan({
+        env: {},
+        expectedDatabaseSchemaVersion: 'Migration20260730120000',
+      }),
+    ).toThrow('Repository owner is required')
+  })
+
+  it('covers defensive release identity and bundle boundaries', () => {
+    expect(isStableReleaseRef('', 'v1.2.3')).toBe(true)
+    expect(isStableReleaseRef(undefined, undefined)).toBe(false)
+    expect(stableVersionFromRef('refs/tags/v3.2.1', undefined)).toBe('3.2.1')
+    expect(stableVersionFromRef('', 'preview')).toBeUndefined()
+    expect(deploymentBundleBaseName(undefined)).toBe(
+      'kravhantering-production-deploy-0.0.0-local',
+    )
+    expect(
+      resolveBundledMarkdownAssets(
+        { source: 'docs/readme.txt', target: 'docs/readme.txt' },
+        '',
+      ),
+    ).toEqual([])
+    expect(
+      resolveBundledMarkdownAssets(
+        { source: 'docs/readme.md', target: 'docs/readme.md' },
+        '![Image](<image.png?raw=1>)',
+      ),
+    ).toEqual([
+      {
+        source: 'docs/image.png',
+        target: 'docs/image.png',
+      },
+    ])
+    expect(() =>
+      resolveBundledMarkdownAssets(
+        { source: 'docs/readme.md', target: 'docs/readme.md' },
+        '![Image](../../outside.png)',
+      ),
+    ).toThrow('escapes the bundle root')
+    expect(() => stageProductionDeploymentBundle()).toThrow(
+      'plan, metadata and stackLock are required',
+    )
+    expect(ensureGitTag({ releaseTagName: '' })).toBe('skipped')
+  })
+
   it('creates semantic-version primary tags for preview releases', () => {
     const plan = createTestReleasePlan({
       changedFiles: ['app/[locale]/page.tsx', 'docs/notes.md'],
@@ -142,6 +328,13 @@ describe('trusted container release helpers', () => {
     expect(plan.demoSeedTags[0]).toBe(
       `ghcr.io/viscalyx/${DEMO_SEED_PACKAGE}:1.2.0-preview.4`,
     )
+    expect(plan.candidates.appRuntime).toEqual({
+      artifactPath:
+        'tmp/container-release-artifacts/candidates/app-runtime.oci.tar',
+      localRef:
+        'localhost/kravhantering-release-candidates/kravhantering-app-runtime:sha-1234567890abcdef1234567890abcdef12345678',
+    })
+    expect(plan.candidates.appRuntime.localRef).not.toContain('ghcr.io')
   })
 
   it('exports package descriptions for GHCR image metadata', () => {
@@ -155,6 +348,7 @@ describe('trusted container release helpers', () => {
 
     expect(values.APP_RUNTIME_DESCRIPTION).toBe(APP_RUNTIME_DESCRIPTION)
     expect(values.DB_JOB_DESCRIPTION).toBe(DB_JOB_DESCRIPTION)
+    expect(values.BUILD_IMAGE_TAG).toBe(values.APP_RUNTIME_PRIMARY_TAG)
     expect(values.BUILD_EXPECTED_DATABASE_SCHEMA_VERSION).toBe(
       getExpectedDatabaseSchemaVersion(),
     )
@@ -334,6 +528,311 @@ describe('trusted container release helpers', () => {
     expect(metadata.database).toEqual({
       expectedSchemaVersion: getExpectedDatabaseSchemaVersion(),
     })
+  })
+
+  it('records the exact OCI index and represented platform manifests', () => {
+    const identity = extractOciArchiveIdentity(
+      {
+        manifests: [
+          {
+            digest: 'sha256:index',
+            mediaType: 'application/vnd.oci.image.index.v1+json',
+            size: 500,
+          },
+        ],
+        schemaVersion: 2,
+      },
+      descriptor => {
+        expect(descriptor.digest).toBe('sha256:index')
+        return {
+          manifests: [
+            {
+              digest: 'sha256:amd64',
+              mediaType: 'application/vnd.oci.image.manifest.v1+json',
+              platform: { architecture: 'amd64', os: 'linux' },
+              size: 250,
+            },
+            {
+              digest: 'sha256:arm64',
+              mediaType: 'application/vnd.oci.image.manifest.v1+json',
+              platform: { architecture: 'arm64', os: 'linux' },
+              size: 251,
+            },
+          ],
+        }
+      },
+    )
+
+    expect(identity).toEqual({
+      manifestDigest: 'sha256:index',
+      mediaType: 'application/vnd.oci.image.index.v1+json',
+      platformManifests: [
+        {
+          digest: 'sha256:amd64',
+          mediaType: 'application/vnd.oci.image.manifest.v1+json',
+          platform: { architecture: 'amd64', os: 'linux' },
+          size: 250,
+        },
+        {
+          digest: 'sha256:arm64',
+          mediaType: 'application/vnd.oci.image.manifest.v1+json',
+          platform: { architecture: 'arm64', os: 'linux' },
+          size: 251,
+        },
+      ],
+      size: 500,
+    })
+  })
+
+  it('validates OCI layout roots and reads archives with optional leading paths', () => {
+    const singleManifest = {
+      digest: 'sha256:single',
+      mediaType: 'application/vnd.oci.image.manifest.v1+json',
+      size: 100,
+    }
+    expect(
+      extractOciArchiveIdentity(
+        {
+          manifests: [singleManifest],
+          schemaVersion: 2,
+        },
+        vi.fn(),
+      ).platformManifests,
+    ).toEqual([singleManifest])
+    for (const invalidIndex of [
+      undefined,
+      { manifests: [], schemaVersion: 2 },
+      { manifests: {}, schemaVersion: 2 },
+      { manifests: [singleManifest], schemaVersion: 1 },
+    ]) {
+      expect(() => extractOciArchiveIdentity(invalidIndex, vi.fn())).toThrow(
+        'exactly one root descriptor',
+      )
+    }
+    expect(() =>
+      extractOciArchiveIdentity(
+        {
+          manifests: [
+            {
+              digest: 'sha256:index',
+              mediaType: 'application/vnd.oci.image.index.v1+json',
+            },
+          ],
+          schemaVersion: 2,
+        },
+        () => ({ manifests: [] }),
+      ),
+    ).toThrow('no platform manifests')
+
+    const digestValue = 'a'.repeat(64)
+    const rootDigest = `sha256:${digestValue}`
+    const execFileSync = vi.fn((_command, args) => {
+      const member = args.at(-1)
+      if (!member.startsWith('./')) throw new Error('leading path required')
+      if (member === './index.json') {
+        return JSON.stringify({
+          manifests: [
+            {
+              digest: rootDigest,
+              mediaType: 'application/vnd.oci.image.index.v1+json',
+              size: 200,
+            },
+          ],
+          schemaVersion: 2,
+        })
+      }
+      if (member === `./blobs/sha256/${digestValue}`) {
+        return JSON.stringify({ manifests: [singleManifest] })
+      }
+      throw new Error(`Unexpected member: ${member}`)
+    })
+    expect(
+      readOciArchiveIdentity('candidate.oci.tar', { execFileSync }),
+    ).toMatchObject({
+      manifestDigest: rootDigest,
+      platformManifests: [singleManifest],
+    })
+    expect(execFileSync).toHaveBeenCalledTimes(4)
+
+    expect(() =>
+      readOciArchiveIdentity('invalid.oci.tar', {
+        execFileSync: vi.fn(() =>
+          JSON.stringify({
+            manifests: [
+              {
+                digest: 'invalid',
+                mediaType: 'application/vnd.oci.image.index.v1+json',
+              },
+            ],
+            schemaVersion: 2,
+          }),
+        ),
+      }),
+    ).toThrow('OCI descriptor has an invalid digest')
+    expect(() =>
+      readOciArchiveIdentity('missing.oci.tar', {
+        execFileSync: vi.fn(() => {
+          throw new Error('missing')
+        }),
+      }),
+    ).toThrow('is missing index.json')
+  })
+
+  it('accepts supported Buildx metadata shapes and rejects incomplete metadata', () => {
+    expect(
+      createReleaseMetadata(
+        createTestReleasePlan({
+          env: env(),
+          expectedDatabaseSchemaVersion: 'Migration20260730120000',
+        }),
+        {
+          containerimage: {
+            config: { digest: 'sha256:app-config' },
+            digest: 'sha256:app',
+          },
+        },
+        {
+          containerimage: {
+            configDigest: 'sha256:db-config',
+            digest: 'sha256:db',
+          },
+        },
+      ),
+    ).toMatchObject({
+      appRuntime: {
+        imageId: 'sha256:app-config',
+        manifestDigest: 'sha256:app',
+      },
+      dbJob: {
+        imageId: 'sha256:db-config',
+        manifestDigest: 'sha256:db',
+      },
+    })
+    const plan = createTestReleasePlan({ env: env(), gitVersion })
+    expect(() =>
+      createReleaseMetadata(
+        plan,
+        { 'containerimage.config.digest': 'sha256:config' },
+        buildxMetadata('sha256:db', 'sha256:db-config'),
+      ),
+    ).toThrow('missing containerimage.digest')
+    expect(() =>
+      createReleaseMetadata(
+        plan,
+        { 'containerimage.digest': 'sha256:app' },
+        buildxMetadata('sha256:db', 'sha256:db-config'),
+      ),
+    ).toThrow('missing containerimage.config.digest')
+  })
+
+  it('exports metadata identities and removes demo-only deployment data', () => {
+    const plan = createTestReleasePlan({ env: env(), gitVersion })
+    const metadata = createReleaseMetadata(
+      plan,
+      buildxMetadata('sha256:app', 'sha256:app-config'),
+      buildxMetadata('sha256:db', 'sha256:db-config'),
+      buildxMetadata('sha256:mock', 'sha256:mock-config'),
+      buildxMetadata('sha256:adapter', 'sha256:adapter-config'),
+      buildxMetadata('sha256:demo', 'sha256:demo-config'),
+    )
+    expect(releaseMetadataEnv(metadata)).toMatchObject({
+      APP_RUNTIME_MANIFEST_DIGEST: 'sha256:app',
+      DB_JOB_MANIFEST_DIGEST: 'sha256:db',
+      DEMO_SEED_MANIFEST_DIGEST: 'sha256:demo',
+      HSA_DIRECTORY_MOCK_MANIFEST_DIGEST: 'sha256:mock',
+      HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST: 'sha256:adapter',
+    })
+    expect(productionDeploymentMetadata(metadata)).not.toHaveProperty(
+      'demoSeed',
+    )
+    expect(productionDeploymentMetadata(undefined)).toEqual({})
+  })
+
+  it('builds a deployment manifest from lock fallbacks without optional support', () => {
+    const plan = createTestReleasePlan({
+      env: env({
+        GITHUB_REF: 'refs/tags/v1.2.3',
+        GITHUB_REF_NAME: 'v1.2.3',
+      }),
+      gitVersion,
+    })
+    const manifest = createDeploymentBundleManifest({
+      files: ['z.txt', 'a.txt'],
+      metadata: {
+        appRuntime: {},
+        database: {},
+        dbJob: {},
+      },
+      plan,
+      stackLock: minimalStackLock(),
+    })
+
+    expect(manifest.files).toEqual(['a.txt', 'z.txt'])
+    expect(manifest.images).toMatchObject({
+      appRuntime:
+        'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app-runtime-manifest',
+      dbJob: 'ghcr.io/viscalyx/kravhantering-db-job@sha256:db-job-manifest',
+    })
+    expect(manifest.imageIds).toMatchObject({
+      appRuntime: 'sha256:app-runtime-image',
+      dbJob: 'sha256:db-job-image',
+    })
+    expect(manifest.supportedTopologies).not.toContain('single-node-demo')
+    expect(manifest.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/u)
+  })
+
+  it('uses matching candidate metadata and omits absent optional identity exports', () => {
+    const plan = createTestReleasePlan({ env: env(), gitVersion })
+    const candidate = {
+      artifactPath: 'candidate.oci.tar',
+      localRef: 'localhost/candidate:sha-test',
+      manifestDigest: 'sha256:app',
+      mediaType: 'application/vnd.oci.image.manifest.v1+json',
+      platformManifests: [],
+      size: 1,
+    }
+    const metadata = createReleaseMetadata(
+      plan,
+      buildxMetadata('sha256:app', 'sha256:app-config'),
+      buildxMetadata('sha256:db', 'sha256:db-config'),
+      undefined,
+      undefined,
+      undefined,
+      { appRuntime: candidate },
+    )
+
+    expect(metadata.appRuntime.candidate).toEqual(candidate)
+    expect(releaseMetadataEnv(metadata)).toEqual(
+      expect.not.objectContaining({
+        DEMO_SEED_MANIFEST_DIGEST: expect.anything(),
+        HSA_DIRECTORY_MOCK_MANIFEST_DIGEST: expect.anything(),
+        HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST: expect.anything(),
+      }),
+    )
+  })
+
+  it('rejects a candidate identity that differs from Buildx metadata', () => {
+    const plan = createTestReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+
+    expect(() =>
+      createReleaseMetadata(
+        plan,
+        buildxMetadata('sha256:buildx', 'sha256:app-image'),
+        buildxMetadata('sha256:dbjob', 'sha256:dbjob-image'),
+        undefined,
+        undefined,
+        undefined,
+        {
+          appRuntime: {
+            manifestDigest: 'sha256:archive',
+          },
+        },
+      ),
+    ).toThrow('does not match Buildx digest')
   })
 
   it('resolves local Markdown images for bundled deployment docs', () => {
@@ -632,6 +1131,46 @@ describe('trusted container release helpers', () => {
         '/users/viscalyx/packages/container/kravhantering-app-runtime/versions?per_page=100',
       ],
     ])
+  })
+
+  it('handles package and release lookups without publishable inputs', () => {
+    expect(resolvePackageTagUrls({}, 'package', ['tag'])).toEqual({})
+    expect(resolvePackageVersionUrl({}, 'package', 'tag')).toBeUndefined()
+    expect(readPublishedGitHubReleases({})).toEqual([])
+    expect(
+      readPublishedGitHubReleases(
+        { repository: 'Owner/Repository' },
+        { execFileSync: vi.fn(() => '{}') },
+      ),
+    ).toEqual([])
+    expect(readGeneratedReleaseNotes({}, 'v1.0.0')).toBeUndefined()
+    expect(
+      readGeneratedReleaseNotes({ releaseTagName: 'v2.0.0' }, undefined),
+    ).toBeUndefined()
+    expect(selectPreviousReleaseTag({}, [])).toBeUndefined()
+    expect(createReleaseChangelog({})).toEqual({
+      commits: [],
+      generatedNotes: undefined,
+      generatedNotesNotice: undefined,
+      previousTagName: undefined,
+    })
+
+    const metadata = {
+      appRuntime: { tags: ['ghcr.io/example/app:tag'] },
+      dbJob: { tags: ['ghcr.io/example/db:tag'] },
+    }
+    expect(
+      withReleasePackageUrls(
+        {
+          owner: '',
+          repository: '',
+        },
+        metadata,
+      ),
+    ).toMatchObject({
+      appRuntime: { tagUrls: { 'ghcr.io/example/app:tag': undefined } },
+      dbJob: { tagUrls: { 'ghcr.io/example/db:tag': undefined } },
+    })
   })
 
   it('adds package version URLs to release metadata when the package API is available', () => {
@@ -968,6 +1507,36 @@ describe('trusted container release helpers', () => {
         readFileSync: vi.fn(),
       }),
     ).toThrow('Operator upgrade notes file is missing')
+  })
+
+  it('reports operator note read failures and accepts a final unreleased section', () => {
+    expect(
+      extractUnreleasedOperatorUpgradeNotes(
+        '# Notes\n\n## Unreleased\n\nCurrent note.\n',
+        'notes.md',
+      ),
+    ).toBe('Current note.')
+    expect(() =>
+      extractUnreleasedOperatorUpgradeNotes(undefined, 'notes.md'),
+    ).toThrow('must contain "## Unreleased"')
+    expect(() =>
+      readOperatorUpgradeNotes('missing.md', {
+        readFileSync: () => {
+          const error = new Error('missing')
+          error.code = 'ENOENT'
+          throw error
+        },
+      }),
+    ).toThrow('Operator upgrade notes file is missing')
+    const denied = new Error('denied')
+    denied.code = 'EACCES'
+    expect(() =>
+      readOperatorUpgradeNotes('denied.md', {
+        readFileSync: () => {
+          throw denied
+        },
+      }),
+    ).toThrow(denied)
   })
 
   it('keeps production TLS CA guidance readable for app-runtime', () => {
@@ -1479,17 +2048,12 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('attestations: write')
     expect(workflow).toContain('fetch-depth: 0')
     expect(workflow).toContain('operator-upgrade-notes.mjs sync-commit-prs')
-    expect(workflow).toContain(
-      "if: env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_PRERELEASE == 'true'",
-    )
     expect(workflow).not.toContain('Install latest npm')
     expect(workflow).not.toContain('npm install -g npm@latest')
     expect(workflow).not.toContain('verify-ghcr-public')
     expect(workflow).not.toContain('sigstore/cosign-installer')
     expect(workflow).not.toContain('cosign sign --yes')
     expect(workflow).not.toContain('cosign verify')
-    expect(workflow).toContain('mkdir -p tmp/container-release-artifacts/sbom')
-    expect(workflow).toContain('Verify artifact attestations')
     expect(workflow).toContain(`gh attestation verify "oci://\${ref}"`)
     expect(workflow).toContain(
       `--signer-workflow "\${GITHUB_REPOSITORY}/.github/workflows/container-release.yml"`,
@@ -1566,7 +2130,6 @@ describe('trusted container release helpers', () => {
       /node scripts\/containers\/write-hashes\.mjs[\s\S]*tmp\/container-release-artifacts\/sbom\/demo-seed\.spdx\.json[\s\S]*tmp\/container-release-artifacts\/sbom\/hsa-person-lookup-adapter\.spdx\.json/u,
     )
     expect(workflow).not.toContain('push-to-registry: true')
-    expect(workflow).toContain('--release-images-from-lock')
     expect(workflow).toContain(
       '--test-lock-file container-test-support.lock.json',
     )
@@ -1607,9 +2170,6 @@ describe('trusted container release helpers', () => {
     )
     expect(workflow).toContain('Archive stable operator upgrade notes')
     expect(workflow).toContain('operator-upgrade-notes.mjs archive-stable')
-    expect(workflow).toContain(
-      "if: env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_IS_STABLE == 'true'",
-    )
     expect(workflow).toContain(
       'archive_branch="automation/operator-upgrade-notes-archive-$' +
         '{RELEASE_TAG_NAME}"',

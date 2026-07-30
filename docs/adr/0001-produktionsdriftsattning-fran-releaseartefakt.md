@@ -14,10 +14,18 @@ fortsatt för överföringsintegritet, medan attesteringen styrker ursprung frå
 förväntat repository, release-workflow, käll-commit, käll-ref och
 releaseidentitet.
 
-Release-låset registrerar varje images registry manifest digest för
-proveniens, signering, attestations och upstream release smoke tests, och
-registrerar varje image-ID för runtime equivalence checks efter spegling till
-internt registry eller frånkopplad transport. Produktionsreferenser i
+Varje projektägd release-image byggs en gång som ett lokalt OCI-kandidatarkiv.
+Samma kandidatidentitet används för SBOM, sårbarhetsbedömning och release smoke
+test innan oförändrat innehåll publiceras. Release-taggar i OCI-registret,
+slutliga attesteringar och GitHub Release skapas först när alla kandidater har
+godkänts. Varje kandidat publiceras först med en innehållsadresserad,
+icke-promoverad staging-tagg. Alla staging-identiteter verifieras mot
+kandidaternas manifest digest innan release-taggar appliceras och verifieras.
+
+Release-låset registrerar varje images verifierade registry manifest digest för
+proveniens, signering och attestering, och registrerar varje image-ID för
+runtime equivalence checks efter spegling till internt registry eller
+frånkopplad transport. Produktionsreferenser i
 `release.env` använder formen `image:tag`, härledd från
 `container-stack.lock.json` eller från platsgodkända interna mirror refs.
 Operatörer hämtar dessa tag refs när registry-åtkomst finns, eller läser in ett

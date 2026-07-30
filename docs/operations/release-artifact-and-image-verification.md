@@ -186,6 +186,13 @@ bundle, and trusted roots. It does not query GitHub or GHCR.
 
 ## Verify Published Image Attestations
 
+Published release assets include the complete per-image Grype JSON reports,
+`grype-db-status.json` and `vulnerability-policy-decision.json`. The decision
+binds each report and SBOM hash to the same candidate manifest digest that the
+workflow verifies first through a non-promoted remote staging identity and then
+after final GHCR tag promotion. A successful release has no unexcepted fixable
+High or Critical finding and no invalid, expired or stale committed exception.
+
 Verify the published app image with the manifest digest reference from the
 release notes:
 

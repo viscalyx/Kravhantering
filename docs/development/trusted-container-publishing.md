@@ -8,24 +8,38 @@ release workflow.
 
 The workflow builds the production `app-runtime` and `db-job` images, the
 optional `kravhantering-demo-seed` image, the HSA person lookup adapter and the
-test-only `hsa-directory-mock` image, then publishes them to GHCR. The
-production image identities are recorded in `container-stack.lock.json`. The
-`manifestDigest` is the registry manifest digest used for GitHub Artifact
-Attestations, SBOM subjects and GHCR release smoke tests. The `imageId` is the
-container image ID used by production operators to verify runtime equivalence
-after tag-based pulls, internal-registry mirroring or disconnected image
-transport.
+test-only `hsa-directory-mock` image once each as local OCI candidate archives.
+Buildx metadata and the OCI layout must agree on the candidate manifest digest.
+Release metadata also records every platform manifest represented by an OCI
+index.
+
+Syft generates an SBOM directly from each candidate archive. Grype scans every
+SBOM with an updated vulnerability database, and the committed exception policy
+evaluates the complete reports. The release-smoke stack loads those same
+archives into Podman without rebuilding. GHCR authentication, release tag
+publication and final attestations occur only after every candidate passes both
+the vulnerability and smoke gates. Promotion first copies every candidate to a
+content-addressed, non-promoted `candidate-sha256-*` GHCR tag and verifies all
+of those remote manifest digests. It then applies the planned release tags from
+the verified remote identities and verifies every published tag against the
+candidate manifest digest.
+
+The production image identities are recorded in
+`container-stack.lock.json`. The `manifestDigest` is the candidate and verified
+registry manifest digest used for GitHub Artifact Attestations and SBOM
+subjects. The `imageId` is the container image ID used by production operators
+to verify runtime equivalence after tag-based pulls, internal-registry
+mirroring or disconnected image transport.
 The test support identities are recorded separately in
 `container-test-support.lock.json`.
 The optional demo seed image is recorded in release metadata and release notes,
 not in the production or test-support lock files.
-The release smoke test starts Podman Compose from verified GHCR manifest digest
-references, but production deployment and upgrade guides use tag-style runtime
-refs by default and verify them against locked image IDs. The production helper
-also accepts tag-and-digest refs when a site explicitly chooses pull-time digest
-pinning.
+The release smoke test starts Podman from the local OCI candidates. Production
+deployment and upgrade guides use tag-style runtime refs by default and verify
+them against locked image IDs. The production helper also accepts tag-and-digest
+refs when a site explicitly chooses pull-time digest pinning.
 
-The Buildx publish steps disable BuildKit's default registry provenance
+The Buildx candidate steps disable BuildKit's default registry provenance
 attestations with `--provenance=false`. The workflow publishes provenance and
 SBOM evidence explicitly through GitHub Artifact Attestations without pushing
 the attestation OCI artifacts back into GHCR. This keeps GitHub Packages from
@@ -63,6 +77,36 @@ names strip SemVer build metadata from the first `+` onward. For example,
 Local and release-smoke stack startup honor `--lock-file`. When the stack builds
 local images, `run-local-stack.mjs` passes that path to
 `generate-stack-lock.mjs` before `generate-compose.mjs` reads it.
+Trusted release smoke runs instead use `--candidate-metadata`; this loads the
+recorded OCI archives and refuses incomplete or digest-inconsistent candidate
+metadata.
+
+## Vulnerability Promotion Policy
+
+`.github/container-vulnerability-exceptions.json` is the reviewed,
+machine-readable exception source. The default document contains no
+exceptions. Every exception must identify one vulnerability, release image,
+package name and installed package version exactly. It also requires:
+
+- a unique exception ID, owner and rationale;
+- creation, next-review and hard-expiry dates;
+- authoritative HTTPS references; and
+- expected-fix status and details, with a tracking reference when a fix or
+  upstream tracking item is known.
+
+Wildcards, broad `all` or `any` scopes, malformed dates, stale reviews, expired
+records and duplicate scopes fail the release. An active record must match one
+current fixable High or Critical finding exactly. An exception that no longer
+matches is stale and also fails the release, so obsolete suppressions cannot
+accumulate unnoticed.
+
+The policy decision suppresses a matching finding only from the blocking
+decision. It does not filter the Grype report. Each decision records hashes of
+the complete report and SBOM plus the candidate manifest digest. A failed gate
+retains Buildx metadata, candidate identities, SBOMs, full Grype reports,
+database status, the policy decision and smoke diagnostics as workflow
+artifacts. It does not authenticate to GHCR, apply an OCI release tag, create a
+final image or SBOM attestation, or publish a GitHub Release.
 
 ## Dependency Drift Detection
 
@@ -231,10 +275,16 @@ Each trusted run also writes runtime evidence:
 - `container-test-support.lock.json` lists the exact image name, tag,
   `manifestDigest`, `imageId`, source and role for the test-only HSA directory
   mock support image.
-- `release-metadata.json` records published project image identities, including
-  the expected database schema migration `name` and the optional
+- `release-metadata.json` records candidate and verified published project
+  image identities, OCI archive paths, platform manifests, the expected
+  database schema migration `name` and the optional
   `kravhantering-demo-seed` image. The production deployment bundle writes a
   filtered copy that excludes that optional demo image.
+- `grype-db-status.json`, the complete per-image reports and
+  `vulnerability-policy-decision.json` record the vulnerability gate inputs
+  and outcome.
+- `promotion-result.json` records each verified non-promoted staging identity
+  and final GHCR tag with its manifest digest after successful validation.
 - `container-stack.compose.yml` is the generated Compose file that the smoke
   test started.
 - `hashes.sha256` contains checksums for saved runtime evidence.
@@ -250,7 +300,8 @@ The workflow uploads these artifact groups:
 - `container-release-runtime-*` for Compose, stack lock, status, build
   metadata and hashes.
 - `container-release-metadata-*` for GitVersion, release metadata, release
-  notes and SBOM files, including optional demonstration image SBOMs.
+  notes, Grype database status, complete vulnerability reports, the policy
+  decision and SBOM files, including optional demonstration image SBOMs.
 - `container-release-playwright-*` for the release-smoke report,
   screenshots, traces and test results.
 - `container-release-deployment-*` for the production deployment bundle and
