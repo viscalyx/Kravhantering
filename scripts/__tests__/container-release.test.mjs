@@ -669,13 +669,34 @@ describe('trusted container release helpers', () => {
         ),
       }),
     ).toThrow('OCI descriptor has an invalid digest')
+    const finalTarError = new Error('truncated archive')
+    let archiveError
+    try {
+      readOciArchiveIdentity('invalid-json.oci.tar', {
+        execFileSync: vi.fn((_command, args) => {
+          if (args.at(-1) === 'index.json') {
+            throw new Error('member path not found')
+          }
+          throw finalTarError
+        }),
+      })
+    } catch (error) {
+      archiveError = error
+    }
+    expect(archiveError).toBeInstanceOf(Error)
+    expect(archiveError).toMatchObject({ cause: finalTarError })
+    expect(archiveError.message).toContain(
+      'Unable to read OCI candidate archive invalid-json.oci.tar member index.json: truncated archive',
+    )
     expect(() =>
-      readOciArchiveIdentity('missing.oci.tar', {
+      readOciArchiveIdentity('missing-tar.oci.tar', {
         execFileSync: vi.fn(() => {
-          throw new Error('missing')
+          throw 'tar unavailable'
         }),
       }),
-    ).toThrow('is missing index.json')
+    ).toThrow(
+      'Unable to read OCI candidate archive missing-tar.oci.tar member index.json: tar unavailable',
+    )
   })
 
   it('accepts supported Buildx metadata shapes and rejects incomplete metadata', () => {

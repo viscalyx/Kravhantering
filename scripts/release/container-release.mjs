@@ -602,6 +602,7 @@ export function extractOciArchiveIdentity(index, readDescriptorJson) {
 }
 
 function readTarJson(archivePath, member, execFileSync) {
+  let lastError
   for (const candidate of [member, `./${member}`]) {
     try {
       return JSON.parse(
@@ -610,11 +611,17 @@ function readTarJson(archivePath, member, execFileSync) {
           stdio: ['ignore', 'pipe', 'pipe'],
         }),
       )
-    } catch {
+    } catch (error) {
+      lastError = error
       // Archives may include or omit a leading "./".
     }
   }
-  throw new Error(`OCI candidate archive ${archivePath} is missing ${member}.`)
+  const detail =
+    lastError instanceof Error ? lastError.message : String(lastError)
+  throw new Error(
+    `Unable to read OCI candidate archive ${archivePath} member ${member}: ${detail}`,
+    { cause: lastError },
+  )
 }
 
 export function readOciArchiveIdentity(archivePath, options = {}) {

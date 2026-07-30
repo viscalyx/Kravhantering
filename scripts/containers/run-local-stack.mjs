@@ -120,6 +120,9 @@ export function parseArgs(args) {
     throw new Error(`Unsupported local stack mode: ${mode}`)
   }
   const candidateMetadataFile = readNonEmpty(options['candidate-metadata'])
+  if (candidateMetadataFile && mode !== 'release-smoke') {
+    throw new Error('--candidate-metadata requires --mode release-smoke.')
+  }
   if (candidateMetadataFile && releaseImagesFromLock) {
     throw new Error(
       '--candidate-metadata and --release-images-from-lock are mutually exclusive.',
@@ -607,7 +610,7 @@ function withReleaseImagesFromLock(config, options = {}) {
   }
 }
 
-function candidateImage(metadata, objectPath, serviceName) {
+export function candidateImage(metadata, objectPath, serviceName) {
   const service = objectPath
     .split('.')
     .reduce((current, key) => current?.[key], metadata)
@@ -677,7 +680,7 @@ function withCandidateArtifacts(config, options = {}) {
   }
 }
 
-function loadCandidateArtifacts(config, options = {}) {
+export function loadCandidateArtifacts(config, options = {}) {
   for (const image of [
     config.appRuntimeImage,
     config.dbJobImage,
@@ -685,8 +688,21 @@ function loadCandidateArtifacts(config, options = {}) {
     config.hsaDirectoryMockImage,
     config.hsaPersonLookupAdapterImage,
   ]) {
+    const reference = imageReference(image)
     runCommand('podman', ['load', '--input', image.artifactPath], options)
-    runCommand('podman', ['image', 'exists', imageReference(image)], options)
+    runCommand('podman', ['image', 'exists', reference], options)
+    const actualImageId = inspectImageId(reference, options)
+    if (actualImageId !== image.imageId) {
+      throw new Error(
+        `Release candidate ${reference} image ID ${actualImageId} does not match recorded ${image.imageId}.`,
+      )
+    }
+    const actualManifestDigest = inspectManifestDigest(reference, options)
+    if (actualManifestDigest !== image.manifestDigest) {
+      throw new Error(
+        `Release candidate ${reference} manifest digest ${actualManifestDigest} does not match recorded ${image.manifestDigest}.`,
+      )
+    }
   }
 }
 

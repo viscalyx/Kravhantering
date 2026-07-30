@@ -18,10 +18,12 @@ import {
   tlsFilePlan,
 } from '../containers/generate-tls.mjs'
 import {
+  candidateImage,
   cleanupConflictingTestStacks,
   createLocalStackConfig,
   DEFAULT_PODMAN_STORAGE_DRIVER,
   DEFAULT_RELEASE_SMOKE_SQLSERVER_HOST_PORT,
+  loadCandidateArtifacts,
   parseEnvFile,
   parseArgs as parseLocalStackArgs,
   parseLocalTestProjectsFromPs,
@@ -303,12 +305,91 @@ describe('container stack helpers', () => {
     expect(() =>
       parseLocalStackArgs([
         'up',
+        '--mode',
+        'test',
+        '--candidate-metadata',
+        'metadata.json',
+      ]),
+    ).toThrow('--candidate-metadata requires --mode release-smoke')
+    expect(() =>
+      parseLocalStackArgs([
+        'up',
+        '--mode',
+        'release-smoke',
         '--candidate-metadata',
         'metadata.json',
         '--release-images-from-lock',
       ]),
     ).toThrow('mutually exclusive')
     expect(parseEnvFile('INVALID\n=bad\n')).toEqual({})
+  })
+
+  it('rejects incomplete and untagged release candidate metadata', () => {
+    for (const mutate of [
+      metadata => {
+        delete metadata.appRuntime.candidate.artifactPath
+      },
+      metadata => {
+        delete metadata.appRuntime.candidate.localRef
+      },
+      metadata => {
+        delete metadata.appRuntime.imageId
+      },
+      metadata => {
+        metadata.appRuntime.manifestDigest = 'sha256:different'
+      },
+    ]) {
+      const metadata = releaseCandidateMetadata()
+      mutate(metadata)
+      expect(() =>
+        candidateImage(metadata, 'appRuntime', 'app-runtime'),
+      ).toThrow('Release candidate metadata is incomplete for app-runtime.')
+    }
+
+    const metadata = releaseCandidateMetadata()
+    metadata.appRuntime.candidate.localRef =
+      'localhost/kravhantering-release-candidates/app-runtime'
+    expect(() => candidateImage(metadata, 'appRuntime', 'app-runtime')).toThrow(
+      'Release candidate localRef is invalid for app-runtime.',
+    )
+  })
+
+  it('rejects loaded release candidates whose recorded identities differ', () => {
+    const appRuntimeImage = candidateImage(
+      releaseCandidateMetadata(),
+      'appRuntime',
+      'app-runtime',
+    )
+    const config = {
+      appRuntimeImage,
+      dbJobImage: appRuntimeImage,
+      demoSeedImage: appRuntimeImage,
+      hsaDirectoryMockImage: appRuntimeImage,
+      hsaPersonLookupAdapterImage: appRuntimeImage,
+    }
+    const spawnSync = vi.fn(() => ({ status: 0 }))
+
+    expect(() =>
+      loadCandidateArtifacts(config, {
+        execFileSync: vi.fn(() => 'sha256:wrong-image\n'),
+        spawnSync,
+      }),
+    ).toThrow(
+      'Release candidate localhost/kravhantering-release-candidates/app-runtime:sha-deadbeef image ID sha256:wrong-image does not match recorded sha256:app-runtime-image.',
+    )
+
+    expect(() =>
+      loadCandidateArtifacts(config, {
+        execFileSync: vi.fn((_command, args) =>
+          args.at(-1) === '{{.Id}}'
+            ? 'sha256:app-runtime-image\n'
+            : 'sha256:wrong-manifest\n',
+        ),
+        spawnSync,
+      }),
+    ).toThrow(
+      'Release candidate localhost/kravhantering-release-candidates/app-runtime:sha-deadbeef manifest digest sha256:wrong-manifest does not match recorded sha256:app-runtime-release.',
+    )
   })
 
   it('reuses prebuilt PR images when --skip-build is set', async () => {
@@ -1020,6 +1101,22 @@ describe('container stack helpers', () => {
         if (joinedArgs.includes('inspect --format {{.State.Running}}')) {
           return 'true\n'
         }
+        if (joinedArgs.startsWith('image inspect ')) {
+          const name = [
+            'app-runtime',
+            'db-job',
+            'demo-seed',
+            'hsa-directory-mock',
+            'hsa-person-lookup-adapter',
+          ].find(candidate => joinedArgs.includes(`/${candidate}:`))
+          if (!name) throw new Error(`Unexpected candidate: ${joinedArgs}`)
+          if (joinedArgs.endsWith('{{.Id}}')) {
+            return `sha256:${name}-image\n`
+          }
+          if (joinedArgs.endsWith('{{.Digest}}')) {
+            return `sha256:${name}-release\n`
+          }
+        }
         throw new Error(`Unexpected podman args: ${joinedArgs}`)
       }),
       fsImpl: {
@@ -1158,6 +1255,21 @@ describe('container stack helpers', () => {
 
   it('loads exact OCI candidates for smoke without rebuilding or pulling project images', async () => {
     const commands = []
+    const candidateIdentities = Object.fromEntries(
+      [
+        'app-runtime',
+        'db-job',
+        'demo-seed',
+        'hsa-directory-mock',
+        'hsa-person-lookup-adapter',
+      ].map(name => [
+        name,
+        {
+          imageId: `sha256:${name}-image`,
+          manifestDigest: `sha256:${name}-release`,
+        },
+      ]),
+    )
     const dependencies = {
       consoleObj: {
         error: vi.fn(),
@@ -1171,6 +1283,12 @@ describe('container stack helpers', () => {
         }
         if (joinedArgs.includes('inspect --format {{.State.Running}}')) {
           return 'true\n'
+        }
+        if (args[0] === 'image' && args[1] === 'inspect') {
+          const name = args[2].split('/').at(-1).split(':')[0]
+          const identity = candidateIdentities[name]
+          if (args.at(-1) === '{{.Id}}') return identity?.imageId
+          if (args.at(-1) === '{{.Digest}}') return identity?.manifestDigest
         }
         throw new Error(`Unexpected podman args: ${joinedArgs}`)
       }),

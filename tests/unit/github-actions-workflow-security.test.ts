@@ -40,6 +40,7 @@ type WorkflowJob = {
 type WorkflowStep = {
   'continue-on-error'?: unknown
   env?: Record<string, unknown>
+  id?: unknown
   if?: unknown
   name?: unknown
   run?: unknown
@@ -581,8 +582,12 @@ describe('GitHub Actions workflow security', () => {
     expect(verifyAttestationIndex).toBeLessThan(releaseIndex)
 
     const policyStep = steps[policyIndex]
-    expect(policyStep?.['continue-on-error']).not.toBe(true)
+    expect(policyStep?.['continue-on-error']).toBeUndefined()
+    expect(steps[loginIndex]?.id).toBe('ghcr-login')
     expect(steps[promotionIndex]?.if).toBe('success()')
+    expect(steps[promotionIndex]?.env?.REGISTRY_AUTH_FILE).toBe(
+      ['${{', 'steps.ghcr-login.outputs.authfile', '}}'].join(' '),
+    )
     expect(steps[attestationIndex]?.if).toBe('success()')
     expect(steps[verifyAttestationIndex]?.if).toBe('success()')
     expect(steps[releaseIndex]?.if).toBe(
