@@ -334,8 +334,8 @@ export function createReleasePlan(input = {}) {
     readNonEmpty(input.repository) ?? readNonEmpty(env.GITHUB_REPOSITORY)
   const repositoryOwner =
     readNonEmpty(input.repositoryOwner) ??
-    readNonEmpty(env.GITHUB_REPOSITORY_OWNER) ??
-    repository?.split('/')[0]
+    repository?.split('/')[0] ??
+    readNonEmpty(env.GITHUB_REPOSITORY_OWNER)
   const owner = normalizeOwner(repositoryOwner)
   const sha =
     readNonEmpty(input.sha) ?? readNonEmpty(env.GITHUB_SHA) ?? 'unknown'

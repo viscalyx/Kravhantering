@@ -224,6 +224,7 @@ describe('trusted container release helpers', () => {
   it('supports explicit release-plan inputs and environment serialization', () => {
     const plan = createReleasePlan({
       changedFiles: [],
+      env: { GITHUB_REPOSITORY_OWNER: 'ambient-owner' },
       eventName: 'workflow_dispatch',
       expectedDatabaseSchemaVersion: 'Migration20260730120000',
       gitVersion: { SemVer: '2.0.0-preview.1' },
