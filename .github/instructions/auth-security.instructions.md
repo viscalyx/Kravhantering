@@ -6,16 +6,13 @@ applyTo: "{app/api/**/*.ts,app/**/*.tsx,components/**/*.tsx,lib/auth/**/*.ts,lib
 
 ## Server Auth And CSRF
 
-- Preserve auth-before-CSRF ordering in `proxy.ts`: unauthenticated REST
-  mutations return `401`; signed-in CSRF failures return `403`.
-- Enforce CSRF for cookie-authenticated REST mutations: `POST`, `PUT`, `PATCH`,
-  `DELETE`.
-- Exclude `/api/mcp/**` from browser CSRF checks; it uses
-  `Authorization: Bearer` JWT validation.
-- Use `assertSameOriginRequest(request)` for CSRF checks. Do not hand-roll
-  `Origin`, `Referer`, or `X-Requested-With` logic.
-- Keep proxy-level CSRF enforcement for REST mutations. Route-level CSRF
-  checks may remain as defense-in-depth.
+- Follow `route-security-policy.instructions.md` for REST registry authority
+  and transport-policy resolution.
+- For cookie-authenticated REST mutations governed by the registry, use
+  `assertSameOriginRequest(request)` for the declared `same-origin` CSRF check.
+  Do not hand-roll `Origin`, `Referer`, or `X-Requested-With` logic.
+- Do not apply browser CSRF checks to Bearer-authenticated `/api/mcp` requests;
+  keep `/api/mcp` outside the REST registry.
 - Preserve inbound stripping of `x-user-id` and `x-user-roles`; never derive
   actor identity from request headers.
 

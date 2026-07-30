@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import { removeAiSafetyRuleTerms } from '@/lib/dal/ai-safety-rules'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { noStore } from '@/lib/http/cache-control'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -18,7 +17,6 @@ const removeTermsSchema = z
 
 export const POST = secureMutationRoute({
   bodySchema: removeTermsSchema,
-  decorateErrorResponse: noStore,
   policy: adminMutationPolicy(),
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
@@ -30,6 +28,6 @@ export const POST = secureMutationRoute({
       resourceId: 'batch',
       resourceType: 'ai_safety_rule_term',
     })
-    return noStore(NextResponse.json(result))
+    return NextResponse.json(result)
   },
 })

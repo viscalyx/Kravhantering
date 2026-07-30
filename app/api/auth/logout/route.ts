@@ -22,7 +22,6 @@ function createPostLogoutResponse(
     return NextResponse.json(
       { redirectTo: url.toString() },
       {
-        headers: { 'Cache-Control': 'no-store' },
         status: 200,
       },
     )

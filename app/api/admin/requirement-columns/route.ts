@@ -7,6 +7,7 @@ import {
   updateRequirementListColumnDefaults,
 } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -59,11 +60,6 @@ const columnDefaultsPayloadSchema = z
     }
   })
 
-function noStore<T extends NextResponse>(response: T): T {
-  response.headers.set('Cache-Control', 'no-store')
-  return response
-}
-
 async function assertAdmin(request: Request) {
   const context = await createRequestContext(request, 'rest')
   if (!context.actor.roles.includes('Admin')) {
@@ -75,33 +71,31 @@ async function assertAdmin(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   try {
     await assertAdmin(request)
     const db = await getRequestSqlServerDataSource()
 
-    return noStore(
-      NextResponse.json({
-        columns: await getRequirementListColumnDefaults(db),
-      }),
-    )
+    return NextResponse.json({
+      columns: await getRequirementListColumnDefaults(db),
+    })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
       const { body, status } = toHttpErrorPayload(error)
-      return noStore(NextResponse.json(body, { status }))
+      return NextResponse.json(body, { status })
     }
     console.error(
       'Failed to load stored requirement column defaults',
       formatUiSettingsLoadError(error),
     )
-    return noStore(
-      NextResponse.json(
-        { error: 'Failed to load requirement column defaults.' },
-        { status: 500 },
-      ),
+    return NextResponse.json(
+      { error: 'Failed to load requirement column defaults.' },
+      { status: 500 },
     )
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)
 
 export const PUT = secureMutationRoute({
   bodySchema: columnDefaultsPayloadSchema,

@@ -26,13 +26,16 @@ It is intentionally not a replacement for the more detailed workflow docs:
   allows public paths, redirects unauthenticated browser page requests to
   `/api/auth/login`, returns `401` for unauthenticated API requests, and
   requires a Bearer header to be present for `/api/mcp`.
-- The public authentication exceptions are limited to authentication endpoints,
-  health and readiness probes, the authentication error page, reviewed
-  Next.js framework resources and metadata routes, and exact repository-owned
-  public asset paths. The proxy matcher itself skips only those framework,
-  metadata, and exact public asset paths. All other paths, including dynamic
-  page and API paths containing dots, enter the authentication boundary. The
-  generated HSA Swagger files remain public assets. The public
+- Public REST operations are declared individually in
+  `lib/http/route-security-policy.ts` and are limited to the implemented
+  authentication operations plus health and readiness probes. An unknown URL
+  under `/api/auth` is not implicitly public. The authentication error page,
+  reviewed Next.js framework resources and metadata routes, and exact
+  repository-owned public asset paths remain separate proxy bypasses. The
+  proxy matcher itself skips only those framework, metadata, and exact public
+  asset paths. All other paths, including dynamic page and API paths containing
+  dots, enter the authentication boundary. The generated HSA Swagger files
+  remain public assets. The public
   `/api-docs/hsa-person-lookup/` route redirects to the generated
   `index.html` without requiring a session.
 - Browser sign-in uses two separate `iron-session` cookies:
@@ -236,11 +239,11 @@ sequenceDiagram
   auth. For a mutating REST URL with a trailing slash, authentication runs
   first and returns `401` when required, then CSRF validation returns `403`
   when required, and only a request that passes both checks receives the
-  canonical `308` redirect. A shared privacy cache-policy registry makes these
-  proxy-generated `401`, `403`, and `308` responses non-storable for the
-  personal-data export and erasure routes. The mutation wrapper uses the same
-  registry for all route responses, and `Cache-Control: no-store` overrides any
-  conflicting cache policy.
+  canonical `308` redirect. The shared REST operation registry applies each
+  operation's response cache policy to proxy-generated `401`, `403`, `405`, and
+  `308` responses and to every approved wrapper exit. Unknown REST operations
+  use the conservative session, mutation-CSRF, sensitive, `no-store` baseline
+  before Next.js resolves the final status.
   Route-level checks remain as defense-in-depth through
   `lib/http/secure-mutation-route.ts`. App-owned `POST`, `PUT`, `PATCH`, and
   `DELETE` REST routes build `RequestContext`, require an authenticated actor,

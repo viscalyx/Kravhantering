@@ -6,7 +6,6 @@ import {
   restoreAiSafetyRuleDefaults,
 } from '@/lib/dal/ai-safety-rules'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { noStore } from '@/lib/http/cache-control'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -22,7 +21,6 @@ const paramsSchema = z
   .strict()
 
 export const POST = secureMutationRoute({
-  decorateErrorResponse: noStore,
   paramsSchema,
   policy: adminMutationPolicy(),
   handler: async ({ context, params }) => {
@@ -35,6 +33,6 @@ export const POST = secureMutationRoute({
       resourceId: params.ruleId,
       resourceType: 'ai_safety_rule',
     })
-    return noStore(NextResponse.json({ restoredCount }))
+    return NextResponse.json({ restoredCount })
   },
 })

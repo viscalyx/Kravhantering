@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSession, isSignedIn } from '@/lib/auth/session'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,14 +14,10 @@ export const dynamic = 'force-dynamic'
  * `email` is omitted when the IdP did not assert `email_verified === true`.
  * Never returns the raw id/access tokens.
  */
-export async function GET() {
-  const headers = {
-    'Cache-Control': 'no-store',
-  }
-
+async function getHandler() {
   const session = await getSession()
   if (!isSignedIn(session)) {
-    return NextResponse.json({ authenticated: false }, { headers, status: 200 })
+    return NextResponse.json({ authenticated: false }, { status: 200 })
   }
 
   return NextResponse.json(
@@ -36,8 +33,9 @@ export async function GET() {
       expiresAt: session.accessTokenExpiresAt,
     },
     {
-      headers,
       status: 200,
     },
   )
 }
+
+export const GET = withRestResponsePolicy(getHandler)

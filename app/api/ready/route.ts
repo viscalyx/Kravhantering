@@ -6,6 +6,7 @@ import {
 } from '@/lib/database-schema-status'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { probeGeneratedOutputTempDirectory } from '@/lib/generated-output/spool'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { getSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
 export const dynamic = 'force-dynamic'
@@ -56,7 +57,6 @@ function jsonResponse(
   return NextResponse.json(
     status === 'ready' ? { status } : { failedChecks, status },
     {
-      headers: { 'Cache-Control': 'no-store' },
       status: httpStatus,
     },
   )
@@ -162,7 +162,7 @@ async function runCheck(
   }
 }
 
-export async function GET() {
+async function getHandler() {
   const checks: ReadinessCheck[] = [
     {
       defaultReason: 'runtime_config_invalid',
@@ -200,3 +200,5 @@ export async function GET() {
 
   return jsonResponse('ready', 200)
 }
+
+export const GET = withRestResponsePolicy(getHandler)

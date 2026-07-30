@@ -4,7 +4,10 @@ import { createAdminPrivilegedAuditContext } from '@/lib/admin/privileged-audit'
 import { recordDeniedActionAuditEvent } from '@/lib/audit/action-audit'
 import { CsrfError } from '@/lib/auth/csrf'
 import { getRequestSqlServerDataSource, type SqlServerDatabase } from '@/lib/db'
-import { applyPrivacyResponseCachePolicy } from '@/lib/http/privacy-cache-policy'
+import {
+  applyRestResponsePolicy,
+  brandRouteHandler,
+} from '@/lib/http/response-policy'
 import {
   getErrorMessage,
   logSanitizedError,
@@ -133,7 +136,7 @@ function decorateResponse<TBody, TParams>(
   response: Response,
 ): Response {
   const decoratedResponse = options.decorateResponse?.(response) ?? response
-  return applyPrivacyResponseCachePolicy(request, decoratedResponse)
+  return applyRestResponsePolicy(request, decoratedResponse)
 }
 
 function decorateErrorResponse<TBody, TParams>(
@@ -248,7 +251,7 @@ async function authorizationErrorResponse<TBody, TParams>(
 export function secureMutationRoute<TBody = undefined, TParams = undefined>(
   options: SecureMutationRouteOptions<TBody, TParams>,
 ): MutationRouteHandler {
-  return async (request, routeContext) => {
+  const route: MutationRouteHandler = async (request, routeContext) => {
     const errorMessage = options.errorMessage ?? 'Failed to process mutation'
     let context: RequestContext
 
@@ -330,19 +333,24 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
       )
     }
   }
+  return brandRouteHandler(route, 'mutation')
 }
 
 export function secureLogoutMutationRoute(
   handler: (request: Request) => Promise<Response> | Response,
 ): MutationRouteHandler {
-  return async request => {
+  const route: MutationRouteHandler = async request => {
     try {
       await createRequestContext(request, 'rest')
-      return await handler(request)
+      return applyRestResponsePolicy(request, await handler(request))
     } catch (error) {
-      return errorResponse('Failed to logout', error)
+      return applyRestResponsePolicy(
+        request,
+        errorResponse('Failed to logout', error),
+      )
     }
   }
+  return brandRouteHandler(route, 'logout-mutation')
 }
 
 export function adminMutationPolicy<TBody = unknown, TParams = unknown>(

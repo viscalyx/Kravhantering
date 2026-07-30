@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -9,12 +10,13 @@ export const runtime = 'nodejs'
  * external dependency so it stays available even when other services
  * have not finished starting.
  */
-export function GET() {
+function getHandler() {
   return NextResponse.json(
     { status: 'ok' },
     {
-      headers: { 'Cache-Control': 'no-store' },
       status: 200,
     },
   )
 }
+
+export const GET = withRestResponsePolicy(getHandler)

@@ -6,6 +6,8 @@ applyTo: "{app/api/**/*.ts,lib/http/validation.ts,openapi/**/*.yaml,docs/securit
 
 ## Scope Decision
 
+- Follow `route-security-policy.instructions.md` for REST registry and OpenAPI
+  policy metadata.
 - When adding, removing, renaming, or changing an app-owned REST API route,
   decide whether the route belongs in the Schemathesis contract before
   finishing.

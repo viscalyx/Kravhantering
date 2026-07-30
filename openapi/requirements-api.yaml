@@ -18,6 +18,9 @@ security:
 paths:
   /api/auth/me:
     get:
+      x-auth: public
+      x-csrf: none
+      x-cache: no-store
       tags: [auth]
       operationId: getCurrentSession
       summary: Return the current session projection.
@@ -25,6 +28,9 @@ paths:
       responses:
         '200':
           description: Current session projection.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
           content:
             application/json:
               schema:
@@ -34,6 +40,9 @@ paths:
 
   /api/privacy/erasure-preview:
     post:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: no-store
       tags: [privacy]
       operationId: previewPrivacyErasure
       summary: Preview HSA-id based privacy erasure.
@@ -76,6 +85,9 @@ paths:
 
   /api/privacy/erasure-requests:
     post:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: no-store
       tags: [privacy]
       operationId: executePrivacyErasure
       summary: Execute HSA-id based privacy erasure from a preview token.
@@ -113,6 +125,9 @@ paths:
 
   /api/privacy/data-subject-export:
     post:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: no-store
       tags: [privacy]
       operationId: createDataSubjectExport
       summary: Generate a data subject access export.
@@ -156,6 +171,9 @@ paths:
 
   /api/requirements:
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [requirements]
       operationId: listRequirements
       summary: List requirements as JSON.
@@ -255,6 +273,9 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: framework-default
       tags: [requirements]
       operationId: createRequirement
       summary: Create a requirement draft.
@@ -280,6 +301,9 @@ paths:
 
   /api/requirements/export:
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: no-store
       tags: [requirements]
       operationId: exportRequirements
       summary: Export the complete filtered requirements library as CSV.
@@ -370,14 +394,17 @@ paths:
       responses:
         '200':
           description: Complete requirements library CSV export.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
           content:
             text/csv:
               schema:
                 type: string
                 format: binary
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        '400': { $ref: '#/components/responses/NoStoreBadRequest' }
+        '401': { $ref: '#/components/responses/NoStoreUnauthorized' }
+        '403': { $ref: '#/components/responses/NoStoreForbidden' }
         '431':
           $ref: '#/components/responses/RequestHeaderFieldsTooLarge'
 
@@ -385,6 +412,9 @@ paths:
     parameters:
       - $ref: '#/components/parameters/RequirementId'
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [requirements]
       operationId: getRequirement
       summary: Get a requirement with version history.
@@ -399,6 +429,9 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
     put:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: framework-default
       tags: [requirements]
       operationId: editRequirement
       summary: Edit a requirement draft.
@@ -423,6 +456,9 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
 
     delete:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: framework-default
       tags: [requirements]
       operationId: archiveRequirement
       summary: Archive a requirement.
@@ -445,6 +481,9 @@ paths:
     parameters:
       - $ref: '#/components/parameters/SpecificationId'
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [requirements]
       operationId: listRequirementsSpecificationItems
       summary: List one bounded page of requirement applications.
@@ -572,6 +611,9 @@ paths:
     parameters:
       - $ref: '#/components/parameters/SpecificationId'
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [requirements]
       operationId: listRequirementsSpecificationRequirementPackages
       summary: List one bounded page of requirement packages represented in a requirements specification.
@@ -622,6 +664,9 @@ paths:
       - $ref: '#/components/parameters/RequirementId'
       - $ref: '#/components/parameters/VersionNumber'
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [requirements]
       operationId: getRequirementVersion
       summary: Get one requirement version.
@@ -640,6 +685,9 @@ paths:
     parameters:
       - $ref: '#/components/parameters/RequirementId'
     post:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: framework-default
       tags: [requirements]
       operationId: deleteRequirementDraft
       summary: Delete the current draft version.
@@ -662,6 +710,9 @@ paths:
     parameters:
       - $ref: '#/components/parameters/RequirementId'
     post:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: framework-default
       tags: [requirements]
       operationId: restoreRequirementVersion
       summary: Restore a historical requirement version.
@@ -694,6 +745,9 @@ paths:
     parameters:
       - $ref: '#/components/parameters/RequirementId'
     post:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: framework-default
       tags: [requirements]
       operationId: reactivateRequirement
       summary: Reactivate an archived requirement.
@@ -712,6 +766,9 @@ paths:
     parameters:
       - $ref: '#/components/parameters/RequirementId'
     post:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: framework-default
       tags: [requirements]
       operationId: transitionRequirement
       summary: Transition a requirement to another status.
@@ -742,6 +799,9 @@ paths:
 
   /api/requirement-areas:
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [catalogs]
       operationId: listRequirementAreas
       responses:
@@ -753,6 +813,9 @@ paths:
     parameters:
       - $ref: '#/components/parameters/RequirementAreaId'
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [catalogs]
       operationId: getRequirementArea
       responses:
@@ -769,6 +832,9 @@ paths:
 
   /api/requirement-categories:
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [catalogs]
       operationId: listRequirementCategories
       responses:
@@ -778,6 +844,9 @@ paths:
 
   /api/requirement-types:
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [catalogs]
       operationId: listRequirementTypes
       responses:
@@ -787,6 +856,9 @@ paths:
 
   /api/requirement-statuses:
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [catalogs]
       operationId: listRequirementStatuses
       responses:
@@ -796,6 +868,9 @@ paths:
 
   /api/requirement-packages:
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [catalogs]
       operationId: listRequirementPackages
       parameters:
@@ -818,6 +893,9 @@ paths:
 
   /api/quality-characteristics:
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [catalogs]
       operationId: listQualityCharacteristics
       parameters:
@@ -832,6 +910,9 @@ paths:
 
   /api/priority-levels:
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [catalogs]
       operationId: listPriorityLevels
       responses:
@@ -841,6 +922,9 @@ paths:
 
   /api/norm-references:
     get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
       tags: [catalogs]
       operationId: listNormReferences
       parameters:
@@ -876,6 +960,9 @@ paths:
     parameters:
       - $ref: '#/components/parameters/NormReferenceId'
     post:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: framework-default
       tags: [catalogs]
       operationId: archiveNormReference
       summary: Archive a norm reference.
@@ -893,6 +980,9 @@ paths:
     parameters:
       - $ref: '#/components/parameters/NormReferenceId'
     post:
+      x-auth: session
+      x-csrf: same-origin
+      x-cache: framework-default
       tags: [catalogs]
       operationId: reactivateNormReference
       summary: Reactivate an archived norm reference.

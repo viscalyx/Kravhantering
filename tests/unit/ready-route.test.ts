@@ -31,6 +31,8 @@ vi.mock('@/lib/generated-output/spool', () => ({
 
 import * as route from '@/app/api/ready/route'
 
+const request = () => new Request('http://localhost/api/ready')
+
 function setReadyDefaults() {
   const query = vi.fn(
     async (sql: string): Promise<Array<Record<string, unknown>>> => {
@@ -82,7 +84,7 @@ describe('GET /api/ready', () => {
   it('returns ready when runtime config, SQL Server, and OIDC discovery pass', async () => {
     const { query } = setReadyDefaults()
 
-    const response = await route.GET()
+    const response = await route.GET(request())
 
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
@@ -103,7 +105,7 @@ describe('GET /api/ready', () => {
     vi.stubEnv('NEXT_PUBLIC_SITE_URL', '')
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const response = await route.GET()
+    const response = await route.GET(request())
     const body = await response.text()
 
     expect(response.status).toBe(503)
@@ -131,7 +133,7 @@ describe('GET /api/ready', () => {
     query.mockRejectedValue(new Error('database unavailable'))
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const response = await route.GET()
+    const response = await route.GET(request())
     const body = await response.text()
 
     expect(response.status).toBe(503)
@@ -162,7 +164,7 @@ describe('GET /api/ready', () => {
     routeState.getRequestSqlServerDataSource.mockRejectedValueOnce(error)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const response = await route.GET()
+    const response = await route.GET(request())
     const body = await response.text()
 
     expect(response.status).toBe(503)
@@ -192,7 +194,7 @@ describe('GET /api/ready', () => {
     )
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const response = await route.GET()
+    const response = await route.GET(request())
     const body = await response.text()
 
     expect(response.status).toBe(503)
@@ -221,7 +223,7 @@ describe('GET /api/ready', () => {
     })
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const response = await route.GET()
+    const response = await route.GET(request())
     const body = await response.text()
 
     expect(response.status).toBe(503)
@@ -254,7 +256,7 @@ describe('GET /api/ready', () => {
     })
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const response = await route.GET()
+    const response = await route.GET(request())
     const body = await response.text()
 
     expect(response.status).toBe(503)
@@ -281,7 +283,7 @@ describe('GET /api/ready', () => {
     )
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const response = await route.GET()
+    const response = await route.GET(request())
 
     expect(response.status).toBe(503)
     expect(await readJson(response)).toEqual({
@@ -308,7 +310,7 @@ describe('GET /api/ready', () => {
     )
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const response = await route.GET()
+    const response = await route.GET(request())
 
     expect(response.status).toBe(503)
     expect(await readJson(response)).toEqual({
@@ -334,7 +336,7 @@ describe('GET /api/ready', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timeout))
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const response = await route.GET()
+    const response = await route.GET(request())
 
     expect(response.status).toBe(503)
     expect(await readJson(response)).toEqual({

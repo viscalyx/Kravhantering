@@ -9,7 +9,7 @@ import {
   listAiSafetyRulesForAdmin,
 } from '@/lib/dal/ai-safety-rules'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { noStore } from '@/lib/http/cache-control'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -44,28 +44,27 @@ async function assertAdmin(request: Request) {
 function errorResponse(error: unknown, fallbackMessage: string): NextResponse {
   if (isRequirementsServiceError(error)) {
     const { body, status } = toHttpErrorPayload(error)
-    return noStore(NextResponse.json(body, { status }))
+    return NextResponse.json(body, { status })
   }
 
   console.error(fallbackMessage, error)
-  return noStore(NextResponse.json({ error: fallbackMessage }, { status: 500 }))
+  return NextResponse.json({ error: fallbackMessage }, { status: 500 })
 }
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   try {
     await assertAdmin(request)
     const db = await getRequestSqlServerDataSource()
-    return noStore(
-      NextResponse.json({ rules: await listAiSafetyRulesForAdmin(db) }),
-    )
+    return NextResponse.json({ rules: await listAiSafetyRulesForAdmin(db) })
   } catch (error) {
     return errorResponse(error, 'Failed to load AI safety rules.')
   }
 }
 
+export const GET = withRestResponsePolicy(getHandler)
+
 export const POST = secureMutationRoute({
   bodySchema: createTermSchema,
-  decorateErrorResponse: noStore,
   policy: adminMutationPolicy(),
   handler: async ({ body, context }) => {
     try {
@@ -83,7 +82,7 @@ export const POST = secureMutationRoute({
         resourceId: term.id,
         resourceType: 'ai_safety_rule_term',
       })
-      return noStore(NextResponse.json({ term }))
+      return NextResponse.json({ term })
     } catch (error) {
       return errorResponse(error, 'Failed to create AI safety term.')
     }

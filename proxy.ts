@@ -8,7 +8,8 @@ import {
   getSessionFromRequestWithDiagnostics,
   isSignedIn,
 } from '@/lib/auth/session'
-import { applyPrivacyResponseCachePolicy } from '@/lib/http/privacy-cache-policy'
+import { applyRestResponsePolicy } from '@/lib/http/response-policy'
+import { resolveRestPolicy } from '@/lib/http/route-security-policy'
 import {
   applyRequestCorrelationHeaders,
   applyResponseCorrelationHeaders,
@@ -226,22 +227,11 @@ function applyRequestHeaderOverrides(response: NextResponse, headers: Headers) {
   }
 }
 
-const ALLOWED_UNAUTH_API_PREFIXES = ['/api/auth/']
-const ALLOWED_UNAUTH_EXACT = new Set([
-  '/api/health',
-  '/api/ready',
-  '/auth/error',
-])
-
-function isAllowedWithoutAuth(pathname: string): boolean {
+function isAllowedWithoutAuth(request: NextRequest): boolean {
+  const pathname = request.nextUrl.pathname
   if (isReviewedProxyBypassPath(pathname)) return true
-  if (ALLOWED_UNAUTH_EXACT.has(pathname)) return true
-  if (pathname.startsWith('/api/')) {
-    return ALLOWED_UNAUTH_API_PREFIXES.some(prefix =>
-      pathname.startsWith(prefix),
-    )
-  }
-  return false
+  if (pathname === '/auth/error') return true
+  return isApiPath(pathname) && resolveRestPolicy(request).auth === 'public'
 }
 
 function wantsJsonResponse(request: NextRequest): boolean {
@@ -302,7 +292,7 @@ function isMutatingMethod(method: string): boolean {
 function enforceRestCsrf(request: NextRequest): NextResponse | null {
   const pathname = request.nextUrl.pathname
   if (!isApiPath(pathname) || isMcpPath(pathname)) return null
-  if (!isMutatingMethod(request.method)) return null
+  if (resolveRestPolicy(request).csrf !== 'same-origin') return null
 
   try {
     assertSameOriginRequest(request)
@@ -348,8 +338,6 @@ function redirectLocaleRootToRequirements(request: NextRequest): NextResponse {
 async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
   const { pathname, search } = request.nextUrl
 
-  if (isAllowedWithoutAuth(pathname)) return null
-
   // /api/mcp/* is a non-browser endpoint; require a bearer token. Token
   // validity is checked inside the MCP route handler.
   if (isMcpPath(pathname)) {
@@ -359,6 +347,8 @@ async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
     }
     return null
   }
+
+  if (isAllowedWithoutAuth(request)) return null
 
   // Cookie-based session check for everything else.
   const probe = new Response()
@@ -411,7 +401,12 @@ function finalizeResponse(
   response: NextResponse,
   ids: RequestCorrelationIds,
 ): NextResponse {
-  applyPrivacyResponseCachePolicy(request, response)
+  if (
+    isApiPath(request.nextUrl.pathname) &&
+    !isMcpPath(request.nextUrl.pathname)
+  ) {
+    applyRestResponsePolicy(request, response)
+  }
   applyResponseCorrelationHeaders(response, ids)
   return response
 }

@@ -6,6 +6,7 @@ import {
 } from '@/app/api/rfi-questions/_schemas'
 import { listRfiQuestionSuggestions } from '@/lib/dal/rfi-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import {
   type MutationPolicy,
   secureMutationRoute,
@@ -26,12 +27,11 @@ type RfiQuestionSuggestionCreateBody = z.infer<
 function errorResponse(error: unknown) {
   const { body, status } = toHttpErrorPayload(error)
   return NextResponse.json(body, {
-    headers: { 'Cache-Control': 'no-store' },
     status,
   })
 }
 
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest) {
   const parsedQuery = parseSearchParams(
     request.nextUrl.searchParams,
     rfiQuestionSuggestionQuerySchema,
@@ -51,10 +51,7 @@ export async function GET(request: NextRequest) {
             specificationId: parsedQuery.data.specificationId,
           })
     return applyResponseCorrelationHeaders(
-      NextResponse.json(
-        { suggestions },
-        { headers: { 'Cache-Control': 'no-store' } },
-      ),
+      NextResponse.json({ suggestions }),
       runtime.context,
     )
   } catch (error) {
@@ -64,6 +61,8 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)
 
 async function listSuggestionsForArea(
   runtime: Awaited<ReturnType<typeof createRequirementsRestRuntime>>,

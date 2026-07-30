@@ -7,6 +7,7 @@ import {
 import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { getSpecificationRfiList } from '@/lib/dal/rfi-questions'
 import { csvContentDisposition } from '@/lib/http/content-disposition'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { parseRouteParams, parseSearchParams } from '@/lib/http/validation'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { renderPdfResponse } from '@/lib/pdf/server-response'
@@ -26,12 +27,11 @@ type Params = Promise<{ id: string }>
 function errorResponse(error: unknown) {
   const { body, status } = toHttpErrorPayload(error)
   return NextResponse.json(body, {
-    headers: { 'Cache-Control': 'no-store' },
     status,
   })
 }
 
-export async function GET(
+async function getHandler(
   request: NextRequest,
   { params }: { params: Params },
 ) {
@@ -56,7 +56,7 @@ export async function GET(
       return applyResponseCorrelationHeaders(
         NextResponse.json(
           { error: 'Specification not found' },
-          { headers: { 'Cache-Control': 'no-store' }, status: 404 },
+          { status: 404 },
         ),
         runtime.context,
       )
@@ -95,7 +95,6 @@ export async function GET(
       ),
       {
         headers: {
-          'Cache-Control': 'no-store',
           'Content-Disposition': csvContentDisposition(`${baseFilename}.csv`),
           'Content-Type': 'text/csv; charset=utf-8',
         },
@@ -109,3 +108,5 @@ export async function GET(
     )
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)

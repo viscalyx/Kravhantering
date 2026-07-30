@@ -211,21 +211,40 @@ integers, booleans must use the documented representation for their transport,
 strings are bounded, arrays are capped, and malformed JSON receives the same
 typed validation envelope.
 
-All app-owned mutating REST route exports (`POST`, `PUT`, `PATCH`, and
-`DELETE`) must go through `lib/http/secure-mutation-route.ts`. The standard
-order is request context and same-origin/CSRF validation, authenticated actor
-check, route param and JSON body validation, declared authorization policy,
-then handler work. Every mutating REST route must declare an `admin`,
-`requirements`, or `custom` policy; logout uses the explicit
-`secureLogoutMutationRoute` special case because it is an auth endpoint with
-CSRF and audit but no business authorization policy. A unit coverage test scans
-`app/api/**/route.ts` to keep this invariant in place.
+Every explicit app-owned REST operation under `app/api` is declared in
+`lib/http/route-security-policy.ts`. The 205-operation registry records auth,
+CSRF, sensitivity, cache, and contract scope without defaults. It uses
+uppercase methods and canonical Next.js templates, derives `HEAD` from `GET`,
+and derives `OPTIONS` from the matched path without CSRF. Literal segments take
+precedence over dynamic segments. Queries and fragments do not participate in
+matching, trailing slashes are normalized, path case is preserved, and encoded
+slashes are not decoded.
 
-A shared privacy cache-policy registry classifies the three personal-data
-routes. Both the mutation wrapper and the proxy use this registry, so
-`Cache-Control: no-store` overrides any conflicting cache policy after every
-wrapper or handler response and on authentication, CSRF, or canonical redirect
-responses produced before a route handler runs.
+The proxy and approved route wrappers resolve policy from each request.
+Unknown REST operations receive the conservative session-authenticated,
+mutation-CSRF, sensitive, `no-store` baseline and then pass to Next.js, so an
+ordinary nonexistent URL still returns `404`. Proxy-generated authentication,
+CSRF, unsupported-method, and canonical-redirect responses receive the same
+cache policy as handler responses. Unsupported methods use the most restrictive
+response policy registered for their path.
+
+All app-owned mutating REST route exports (`POST`, `PUT`, `PATCH`, and
+`DELETE`) go through `lib/http/secure-mutation-route.ts`. The standard order is
+request context and same-origin/CSRF validation, authenticated actor check,
+route param and JSON body validation, declared authorization policy, then
+handler work. Every mutating REST route declares an `admin`, `requirements`, or
+`custom` policy; logout uses the explicit `secureLogoutMutationRoute` special
+case because it is public with CSRF and audit but no business authorization
+policy. Restrictive reads use `withRestResponsePolicy`; route modules do not
+repeat `Cache-Control` declarations. Coverage tests inspect actual route
+exports and observable wrapper branding.
+
+The OpenAPI file keeps its bounded 28-operation scope. Each included operation
+declares `x-auth`, `x-csrf`, and `x-cache`; tests require exact agreement with
+`contract: openapi` registry entries and keep `contract: focused` operations
+outside OpenAPI. See
+[REST Route Authoring](../development/rest-route-authoring.md) for the change
+checklist.
 
 Authorization denials from these policies are fail-closed into the database
 action log before the denial response is returned. If required denial evidence

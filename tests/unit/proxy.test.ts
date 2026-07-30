@@ -193,6 +193,7 @@ describe('proxy', () => {
         }),
       )
       expect(response.status).toBe(302)
+      expect(response.headers.get('Cache-Control')).toBeNull()
       expect(response.headers.get('X-Request-Id')).toBeTruthy()
       expect(response.headers.get('X-Correlation-Id')).toBeTruthy()
       const location = response.headers.get('location') ?? ''
@@ -482,6 +483,7 @@ describe('proxy', () => {
 
     expect(response.status).toBe(405)
     expect(response.headers.get('allow')).toContain('GET')
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     await expect(response.json()).resolves.toMatchObject({
       error: 'Method Not Allowed',
       detail: 'HTTP method PROPFIND is not allowed for API routes.',
@@ -535,6 +537,84 @@ describe('proxy', () => {
       }
     },
   )
+
+  it('derives public HEAD and session OPTIONS policies from registered paths', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const publicHead = await proxy(
+        buildRequest('http://localhost/api/health', { method: 'HEAD' }),
+      )
+      expect(publicHead.status).toBe(200)
+      expect(publicHead.headers.get('Cache-Control')).toBe('no-store')
+
+      const cookie = await writeSignedInCookie()
+      const sessionOptions = await proxy(
+        buildRequest('http://localhost/api/requirement-areas', {
+          cookie,
+          method: 'OPTIONS',
+        }),
+      )
+      expect(sessionOptions.status).toBe(200)
+      expect(sessionOptions.headers.get('x-middleware-next')).toBe('1')
+    } finally {
+      restore()
+    }
+  })
+
+  it('keeps logout public while requiring same-origin CSRF for POST', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const rejected = await proxy(
+        buildRequest('http://localhost/api/auth/logout', { method: 'POST' }),
+      )
+      expect(rejected.status).toBe(403)
+      expect(rejected.headers.get('Cache-Control')).toBe('no-store')
+
+      const accepted = await proxy(
+        buildRequest('http://localhost/api/auth/logout', {
+          method: 'POST',
+          origin: 'http://localhost',
+          xRequestedWith: 'XMLHttpRequest',
+        }),
+      )
+      expect(accepted.status).toBe(200)
+      expect(accepted.headers.get('x-middleware-next')).toBe('1')
+      expect(accepted.headers.get('Cache-Control')).toBe('no-store')
+    } finally {
+      restore()
+    }
+  })
+
+  it('applies the conservative policy to unknown REST operations', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const unknownAuthPath = await proxy(
+        buildRequest('http://localhost/api/auth/does-not-exist'),
+      )
+      expect(unknownAuthPath.status).toBe(401)
+      expect(unknownAuthPath.headers.get('Cache-Control')).toBe('no-store')
+
+      const cookie = await writeSignedInCookie()
+      const csrfRejected = await proxy(
+        buildRequest('http://localhost/api/does-not-exist', {
+          cookie,
+          method: 'POST',
+          origin: 'http://localhost',
+        }),
+      )
+      expect(csrfRejected.status).toBe(403)
+      expect(csrfRejected.headers.get('Cache-Control')).toBe('no-store')
+
+      const passThrough = await proxy(
+        buildRequest('http://localhost/api/does-not-exist', { cookie }),
+      )
+      expect(passThrough.status).toBe(200)
+      expect(passThrough.headers.get('x-middleware-next')).toBe('1')
+      expect(passThrough.headers.get('Cache-Control')).toBe('no-store')
+    } finally {
+      restore()
+    }
+  })
 
   it.each(REVIEWED_PROXY_BYPASS_PATHS)(
     'passes through reviewed public path %s without auth',
@@ -627,6 +707,7 @@ describe('proxy', () => {
         }),
       )
       expect(withBearer.status).toBe(200)
+      expect(withBearer.headers.get('Cache-Control')).toBeNull()
     } finally {
       restore()
     }
@@ -752,6 +833,7 @@ describe('proxy', () => {
         }),
       )
       expect(response.status).toBe(200)
+      expect(response.headers.get('Cache-Control')).toBeNull()
       const overrides = (
         response.headers.get('x-middleware-override-headers') ?? ''
       ).split(',')
