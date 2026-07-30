@@ -139,7 +139,7 @@ export function parseArgs(argv, env) {
 }
 
 export function parseNodeTag(tag) {
-  const match = tag.match(/^(?<major>[1-9]\d*)-bookworm-slim$/u)
+  const match = tag.match(/^(?<major>[1-9]\d*)-trixie-slim$/u)
   if (!match?.groups) return null
   const major = Number(match.groups.major)
   if (major % 2 !== 0) return null
@@ -319,7 +319,7 @@ async function listNodeLtsTags() {
   if (majors.size === 0) {
     throw new Error('Node.js release index returned no even LTS releases.')
   }
-  return [...majors].map(major => `${major}-bookworm-slim`)
+  return [...majors].map(major => `${major}-trixie-slim`)
 }
 
 function normalizeDigest(value, context) {

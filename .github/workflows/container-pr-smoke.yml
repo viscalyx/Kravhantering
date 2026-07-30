@@ -255,6 +255,16 @@ jobs:
             --load \
             containers/hsa-person-lookup-adapter
 
+      - name: Gate PR images against release vulnerability policy
+        uses: ./.github/actions/container-vulnerability-gate
+        with:
+          app-runtime: ${{ env.APP_RUNTIME_IMAGE }}:${{ env.APP_RUNTIME_TAG }}
+          artifact-prefix: tmp/container-pr-artifacts/vulnerability
+          db-job: ${{ env.DB_JOB_IMAGE }}:${{ env.DB_JOB_TAG }}
+          demo-seed: ${{ env.DEMO_SEED_IMAGE }}:${{ env.DEMO_SEED_TAG }}
+          hsa-directory-mock: ${{ env.HSA_DIRECTORY_MOCK_IMAGE }}:${{ env.HSA_DIRECTORY_MOCK_TAG }}
+          hsa-person-lookup-adapter: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_IMAGE }}:${{ env.HSA_PERSON_LOOKUP_ADAPTER_TAG }}
+
       - name: Create per-container local env files
         run: npm run container:env:local
 
@@ -387,6 +397,15 @@ jobs:
         with:
           name: container-pr-playwright-${{ github.run_id }}
           path: tmp/container-pr-artifacts/playwright/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload vulnerability evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: container-pr-vulnerability-${{ github.run_id }}
+          path: tmp/container-pr-artifacts/vulnerability/
           if-no-files-found: ignore
           retention-days: 7
 

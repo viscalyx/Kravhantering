@@ -274,92 +274,16 @@ jobs:
             --hsa-directory-mock-source ghcr-release
           node scripts/containers/generate-test-support-lock.mjs check
 
-      - name: Prepare SBOM artifact directory
-        run: mkdir -p tmp/container-release-artifacts/sbom
-
-      - name: Generate app-runtime SBOM
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+      - name: Gate complete candidate SBOMs against vulnerability policy
+        uses: ./.github/actions/container-vulnerability-gate
         with:
-          image: oci-archive:${{ env.APP_RUNTIME_CANDIDATE_ARTIFACT }}
-          format: spdx-json
-          output-file: tmp/container-release-artifacts/sbom/app-runtime.spdx.json
-          upload-artifact: false
-
-      - name: Generate db-job SBOM
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-        with:
-          image: oci-archive:${{ env.DB_JOB_CANDIDATE_ARTIFACT }}
-          format: spdx-json
-          output-file: tmp/container-release-artifacts/sbom/db-job.spdx.json
-          upload-artifact: false
-
-      - name: Generate demo seed SBOM
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-        with:
-          image: oci-archive:${{ env.DEMO_SEED_CANDIDATE_ARTIFACT }}
-          format: spdx-json
-          output-file: tmp/container-release-artifacts/sbom/demo-seed.spdx.json
-          upload-artifact: false
-
-      - name: Generate HSA directory mock SBOM
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-        with:
-          image: oci-archive:${{ env.HSA_DIRECTORY_MOCK_CANDIDATE_ARTIFACT }}
-          format: spdx-json
-          output-file: tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json
-          upload-artifact: false
-
-      - name: Generate HSA person lookup adapter SBOM
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-        with:
-          image: oci-archive:${{ env.HSA_PERSON_LOOKUP_ADAPTER_CANDIDATE_ARTIFACT }}
-          format: spdx-json
-          output-file: tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json
-          upload-artifact: false
-
-      - name: Install pinned Grype
-        id: grype
-        uses: anchore/scan-action/download-grype@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
-        with:
-          cache-db: true
-
-      - name: Scan complete candidate SBOMs with current Grype database
-        env:
-          GRYPE_CMD: ${{ steps.grype.outputs.cmd }}
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            if "${GRYPE_CMD}" db update; then
-              break
-            fi
-            if [[ "${attempt}" -eq 3 ]]; then
-              echo "Grype database update failed after ${attempt} attempts." >&2
-              exit 1
-            fi
-            sleep "${attempt}"
-          done
-          "${GRYPE_CMD}" db status -o json \
-            > tmp/container-release-artifacts/metadata/grype-db-status.json
-          for name in \
-            app-runtime \
-            db-job \
-            demo-seed \
-            hsa-directory-mock \
-            hsa-person-lookup-adapter; do
-            "${GRYPE_CMD}" \
-              "sbom:tmp/container-release-artifacts/sbom/${name}.spdx.json" \
-              -o json \
-              > "tmp/container-release-artifacts/reports/${name}.json"
-          done
-
-      - name: Evaluate committed vulnerability exceptions
-        run: |
-          node scripts/release/container-vulnerability-policy.mjs evaluate \
-            --metadata tmp/container-release-artifacts/metadata/release-metadata.json \
-            --exceptions .github/container-vulnerability-exceptions.json \
-            --reports-dir tmp/container-release-artifacts/reports \
-            --sbom-dir tmp/container-release-artifacts/sbom \
-            --output tmp/container-release-artifacts/metadata/vulnerability-policy-decision.json
+          app-runtime: oci-archive:${{ env.APP_RUNTIME_CANDIDATE_ARTIFACT }}
+          artifact-prefix: tmp/container-release-artifacts
+          db-job: oci-archive:${{ env.DB_JOB_CANDIDATE_ARTIFACT }}
+          demo-seed: oci-archive:${{ env.DEMO_SEED_CANDIDATE_ARTIFACT }}
+          hsa-directory-mock: oci-archive:${{ env.HSA_DIRECTORY_MOCK_CANDIDATE_ARTIFACT }}
+          hsa-person-lookup-adapter: oci-archive:${{ env.HSA_PERSON_LOOKUP_ADAPTER_CANDIDATE_ARTIFACT }}
+          metadata: tmp/container-release-artifacts/metadata/release-metadata.json
 
       - name: Create per-container local env files
         run: npm run container:env:local

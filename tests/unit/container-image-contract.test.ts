@@ -56,28 +56,46 @@ describe('container image contract', () => {
     const dockerfile = readWorkspaceFile('containers/app/Dockerfile')
     const fromLines = dockerfile
       .split('\n')
-      .filter(line => line.startsWith('FROM node:24-bookworm-slim@sha256:'))
+      .filter(line => line.startsWith('FROM node:24-trixie-slim@sha256:'))
 
     expect(fromLines).toHaveLength(5)
     expect(fromLines).toEqual(
       expect.arrayContaining([
         expect.stringMatching(
-          /^FROM node:24-bookworm-slim@sha256:[a-f0-9]{64} AS dependencies$/,
+          /^FROM node:24-trixie-slim@sha256:[a-f0-9]{64} AS dependencies$/,
         ),
         expect.stringMatching(
-          /^FROM node:24-bookworm-slim@sha256:[a-f0-9]{64} AS db-job-dependencies$/,
+          /^FROM node:24-trixie-slim@sha256:[a-f0-9]{64} AS db-job-dependencies$/,
         ),
         expect.stringMatching(
-          /^FROM node:24-bookworm-slim@sha256:[a-f0-9]{64} AS app-runtime$/,
+          /^FROM node:24-trixie-slim@sha256:[a-f0-9]{64} AS app-runtime$/,
         ),
         expect.stringMatching(
-          /^FROM node:24-bookworm-slim@sha256:[a-f0-9]{64} AS db-job$/,
+          /^FROM node:24-trixie-slim@sha256:[a-f0-9]{64} AS db-job$/,
         ),
         expect.stringMatching(
-          /^FROM node:24-bookworm-slim@sha256:[a-f0-9]{64} AS demo-seed$/,
+          /^FROM node:24-trixie-slim@sha256:[a-f0-9]{64} AS demo-seed$/,
         ),
       ]),
     )
+  })
+
+  it('removes npm from every final runtime image', () => {
+    const npmRemoval =
+      'rm -rf /usr/local/lib/node_modules/npm \\\n  && rm -f /usr/local/bin/npm /usr/local/bin/npx'
+
+    for (const targetName of ['app-runtime', 'db-job', 'demo-seed']) {
+      expect(dockerfileTarget(targetName)).toContain(npmRemoval)
+    }
+    for (const relativePath of [
+      'containers/hsa-directory-mock/Dockerfile',
+      'containers/hsa-person-lookup-adapter/Dockerfile',
+    ]) {
+      const finalStage = readWorkspaceFile(relativePath).split(
+        /^FROM node:24-trixie-slim@sha256:[a-f0-9]{64}$/mu,
+      )[1]
+      expect(finalStage).toContain(npmRemoval)
+    }
   })
 
   it('keeps app-runtime to standalone output and public assets', () => {

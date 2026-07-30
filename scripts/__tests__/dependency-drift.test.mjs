@@ -77,8 +77,8 @@ describe('dependency drift selection', () => {
   })
 
   it('parses supported image lanes', () => {
-    expect(parseNodeTag('24-bookworm-slim')).toMatchObject({ major: 24 })
-    expect(parseNodeTag('25-bookworm-slim')).toBeNull()
+    expect(parseNodeTag('24-trixie-slim')).toMatchObject({ major: 24 })
+    expect(parseNodeTag('25-trixie-slim')).toBeNull()
     expect(parseNginxTag('1.29.4-alpine')).toMatchObject({ minor: 29 })
     expect(parseSqlServerTag('2025-CU7-ubuntu-24.04')).toMatchObject({ cu: 7 })
     expect(parseKeycloakTag('26.7.0-1')).toMatchObject({ revision: 1 })
@@ -123,20 +123,20 @@ describe('drift detection', () => {
       write(
         root,
         dockerfilePath,
-        `FROM node:24-bookworm-slim@${digest('a')} AS runtime\n`,
+        `FROM node:24-trixie-slim@${digest('a')} AS runtime\n`,
       )
     }
 
     expect(readNodeCurrent(IMAGE_CONFIGS.node, root)).toEqual({
       imageId: null,
       manifestDigest: digest('a'),
-      tag: '24-bookworm-slim',
+      tag: '24-trixie-slim',
     })
 
     write(
       root,
       IMAGE_CONFIGS.node.paths[2],
-      `FROM node:24-bookworm-slim@${digest('b')} AS runtime\n`,
+      `FROM node:24-trixie-slim@${digest('b')} AS runtime\n`,
     )
     expect(() => readNodeCurrent(IMAGE_CONFIGS.node, root)).toThrow(
       'not aligned',
@@ -149,7 +149,7 @@ describe('drift detection', () => {
       write(
         root,
         dockerfilePath,
-        `FROM node:24-bookworm-slim@${digest('a')} AS runtime\n`,
+        `FROM node:24-trixie-slim@${digest('a')} AS runtime\n`,
       )
     }
     const result = await detectImageDrift(
@@ -160,7 +160,7 @@ describe('drift detection', () => {
       },
       root,
       {
-        listTags: async () => ['24-bookworm-slim'],
+        listTags: async () => ['24-trixie-slim'],
         resolveImageIdentity: async () => ({
           imageId: digest('c'),
           manifestDigest: digest('b'),

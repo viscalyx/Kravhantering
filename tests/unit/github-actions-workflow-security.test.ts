@@ -533,8 +533,9 @@ describe('GitHub Actions workflow security', () => {
     }
   })
 
-  it('gates container promotion on exact candidate scans and smoke tests', () => {
+  it('gates PR and release candidates with the same vulnerability policy', () => {
     const workflow = readWorkflowYaml('container-release.yml')
+    const prWorkflow = readWorkflowYaml('container-pr-smoke.yml')
     const releaseJob = workflow.jobs?.['trusted-release']
     const steps = releaseJob?.steps ?? []
     const stepNames = steps.map(step => step.name)
@@ -546,26 +547,51 @@ describe('GitHub Actions workflow security', () => {
     const candidateBuilds = steps.filter(step =>
       String(step.name).match(/^Build .+ candidate OCI artifact$/u),
     )
-    const candidateSbomSteps = steps.filter(step =>
+    const gateAction = yaml.load(
+      readFileSync(
+        path.join(ACTIONS_DIR, 'container-vulnerability-gate', 'action.yml'),
+        'utf8',
+      ),
+    ) as { runs?: { steps?: WorkflowStep[] } }
+    const gateSteps = gateAction.runs?.steps ?? []
+    const candidateSbomSteps = gateSteps.filter(step =>
       String(step.name).match(/^Generate .+ SBOM$/u),
     )
 
     expect(candidateBuilds).toHaveLength(5)
     expect(candidateSbomSteps).toHaveLength(5)
     for (const step of candidateSbomSteps) {
-      expect(step.with?.image).toMatch(/^oci-archive:/u)
       expect(step.with?.format).toBe('spdx-json')
       expect(step.with?.['upload-artifact']).toBe(false)
     }
 
     const identityIndex = indexOf('Record exact candidate image identities')
-    const scanIndex = indexOf(
-      'Scan complete candidate SBOMs with current Grype database',
+    const gateIndex = indexOf(
+      'Gate complete candidate SBOMs against vulnerability policy',
     )
-    const scanRun = stepRunText(
-      releaseJob,
-      'Scan complete candidate SBOMs with current Grype database',
+    const releaseGate = steps[gateIndex]
+    expect(releaseGate?.uses).toBe(
+      './.github/actions/container-vulnerability-gate',
     )
+    expect(releaseGate?.with?.metadata).toBe(
+      'tmp/container-release-artifacts/metadata/release-metadata.json',
+    )
+    for (const inputName of [
+      'app-runtime',
+      'db-job',
+      'demo-seed',
+      'hsa-directory-mock',
+      'hsa-person-lookup-adapter',
+    ]) {
+      expect(releaseGate?.with?.[inputName]).toMatch(/^oci-archive:/u)
+    }
+
+    const scanStep = gateSteps.find(
+      step =>
+        step.name ===
+        'Scan complete candidate SBOMs with current Grype database',
+    )
+    const scanRun = String(scanStep?.run)
     expect(scanRun).toContain('for attempt in 1 2 3; do')
     expect(scanRun).toContain(
       ['if "$', '{GRYPE_CMD}" db update; then'].join(''),
@@ -575,7 +601,13 @@ describe('GitHub Actions workflow security', () => {
     )
     expect(scanRun).toContain(['sleep "$', '{attempt}"'].join(''))
     expect(scanRun).toContain('exit 1')
-    const policyIndex = indexOf('Evaluate committed vulnerability exceptions')
+    const policyStep = gateSteps.find(
+      step => step.name === 'Evaluate committed vulnerability exceptions',
+    )
+    expect(policyStep?.['continue-on-error']).toBeUndefined()
+    expect(String(policyStep?.run)).toContain('--images')
+    expect(String(policyStep?.run)).toContain('--metadata')
+
     const smokeIndex = indexOf('Run release smoke tests')
     const loginIndex = indexOf('Log in to GHCR after validation gates')
     const promotionIndex = indexOf(
@@ -585,17 +617,14 @@ describe('GitHub Actions workflow security', () => {
     const verifyAttestationIndex = indexOf('Verify final artifact attestations')
     const releaseIndex = indexOf('Publish GitHub Release')
 
-    expect(identityIndex).toBeLessThan(scanIndex)
-    expect(scanIndex).toBeLessThan(policyIndex)
-    expect(policyIndex).toBeLessThan(smokeIndex)
+    expect(identityIndex).toBeLessThan(gateIndex)
+    expect(gateIndex).toBeLessThan(smokeIndex)
     expect(smokeIndex).toBeLessThan(loginIndex)
     expect(loginIndex).toBeLessThan(promotionIndex)
     expect(promotionIndex).toBeLessThan(attestationIndex)
     expect(attestationIndex).toBeLessThan(verifyAttestationIndex)
     expect(verifyAttestationIndex).toBeLessThan(releaseIndex)
 
-    const policyStep = steps[policyIndex]
-    expect(policyStep?.['continue-on-error']).toBeUndefined()
     expect(steps[loginIndex]?.id).toBe('ghcr-login')
     expect(steps[promotionIndex]?.if).toBe('success()')
     expect(steps[promotionIndex]?.env?.REGISTRY_AUTH_FILE).toBe(
@@ -606,16 +635,22 @@ describe('GitHub Actions workflow security', () => {
     expect(steps[releaseIndex]?.if).toBe(
       "success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'",
     )
-    expect(
-      steps.find(step => step.name === 'Create preview tag when needed')?.if,
-    ).toBe(
-      "success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_PRERELEASE == 'true'",
+
+    const prSteps = prWorkflow.jobs?.['container-smoke']?.steps ?? []
+    const prGateIndex = prSteps.findIndex(
+      step =>
+        step.name === 'Gate PR images against release vulnerability policy',
     )
-    expect(
-      steps.find(step => step.name === 'Archive stable operator upgrade notes')
-        ?.if,
-    ).toBe(
-      "success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_IS_STABLE == 'true'",
+    const prStartIndex = prSteps.findIndex(
+      step => step.name === 'Start container stack',
+    )
+    expect(prGateIndex).toBeGreaterThanOrEqual(0)
+    expect(prGateIndex).toBeLessThan(prStartIndex)
+    const prGate = prSteps[prGateIndex]
+    expect(prGate?.uses).toBe('./.github/actions/container-vulnerability-gate')
+    expect(prGate?.with?.metadata).toBeUndefined()
+    expect(prGate?.with?.['artifact-prefix']).toBe(
+      'tmp/container-pr-artifacts/vulnerability',
     )
 
     const uploadEvidence = steps.find(
