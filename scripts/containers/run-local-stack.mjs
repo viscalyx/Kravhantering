@@ -626,6 +626,9 @@ export function candidateImage(metadata, objectPath, serviceName) {
       `Release candidate metadata is incomplete for ${serviceName}.`,
     )
   }
+  if (candidate.localRef.includes('@')) {
+    throw new Error(`Release candidate localRef is invalid for ${serviceName}.`)
+  }
   const separator = candidate.localRef.lastIndexOf(':')
   if (separator <= candidate.localRef.lastIndexOf('/')) {
     throw new Error(`Release candidate localRef is invalid for ${serviceName}.`)

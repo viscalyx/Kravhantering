@@ -328,7 +328,16 @@ jobs:
           GRYPE_CMD: ${{ steps.grype.outputs.cmd }}
         run: |
           set -euo pipefail
-          "${GRYPE_CMD}" db update
+          for attempt in 1 2 3; do
+            if "${GRYPE_CMD}" db update; then
+              break
+            fi
+            if [[ "${attempt}" -eq 3 ]]; then
+              echo "Grype database update failed after ${attempt} attempts." >&2
+              exit 1
+            fi
+            sleep "${attempt}"
+          done
           "${GRYPE_CMD}" db status -o json \
             > tmp/container-release-artifacts/metadata/grype-db-status.json
           for name in \

@@ -324,7 +324,7 @@ describe('container stack helpers', () => {
     expect(parseEnvFile('INVALID\n=bad\n')).toEqual({})
   })
 
-  it('rejects incomplete and untagged release candidate metadata', () => {
+  it('rejects incomplete, untagged, and digest-style candidate metadata', () => {
     for (const mutate of [
       metadata => {
         delete metadata.appRuntime.candidate.artifactPath
@@ -349,6 +349,12 @@ describe('container stack helpers', () => {
     const metadata = releaseCandidateMetadata()
     metadata.appRuntime.candidate.localRef =
       'localhost/kravhantering-release-candidates/app-runtime'
+    expect(() => candidateImage(metadata, 'appRuntime', 'app-runtime')).toThrow(
+      'Release candidate localRef is invalid for app-runtime.',
+    )
+
+    metadata.appRuntime.candidate.localRef =
+      'localhost/kravhantering-release-candidates/app-runtime@sha256:deadbeef'
     expect(() => candidateImage(metadata, 'appRuntime', 'app-runtime')).toThrow(
       'Release candidate localRef is invalid for app-runtime.',
     )

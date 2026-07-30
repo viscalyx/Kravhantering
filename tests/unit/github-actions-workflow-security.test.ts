@@ -562,6 +562,19 @@ describe('GitHub Actions workflow security', () => {
     const scanIndex = indexOf(
       'Scan complete candidate SBOMs with current Grype database',
     )
+    const scanRun = stepRunText(
+      releaseJob,
+      'Scan complete candidate SBOMs with current Grype database',
+    )
+    expect(scanRun).toContain('for attempt in 1 2 3; do')
+    expect(scanRun).toContain(
+      ['if "$', '{GRYPE_CMD}" db update; then'].join(''),
+    )
+    expect(scanRun).toContain(
+      ['if [[ "$', '{attempt}" -eq 3 ]]; then'].join(''),
+    )
+    expect(scanRun).toContain(['sleep "$', '{attempt}"'].join(''))
+    expect(scanRun).toContain('exit 1')
     const policyIndex = indexOf('Evaluate committed vulnerability exceptions')
     const smokeIndex = indexOf('Run release smoke tests')
     const loginIndex = indexOf('Log in to GHCR after validation gates')
