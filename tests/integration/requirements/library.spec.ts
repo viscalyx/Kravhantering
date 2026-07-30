@@ -832,11 +832,11 @@ test.describe('Requirements library', () => {
             .filter(Boolean),
         )
 
-    await page.mouse.move(0, 200)
+    await descriptionSortButton.hover()
     await descriptionSortButton.click()
     await expect(descriptionHeader).toHaveAttribute('aria-sort', 'ascending')
     const ascendingRows = await getVisibleRows()
-    await page.mouse.move(0, 500)
+    await descriptionSortButton.hover()
     await expect(
       page.getByRole('group', { name: 'Tillgängliga kravpaket' }),
     ).toHaveCount(0)

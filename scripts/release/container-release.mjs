@@ -332,10 +332,20 @@ export function createReleasePlan(input = {}) {
   const gitVersion = input.gitVersion ?? {}
   const repository =
     readNonEmpty(input.repository) ?? readNonEmpty(env.GITHUB_REPOSITORY)
+  const repositoryPathOwner = readNonEmpty(repository?.split('/')[0])
+  const githubRepositoryOwner = readNonEmpty(env.GITHUB_REPOSITORY_OWNER)
+  if (
+    repositoryPathOwner &&
+    githubRepositoryOwner &&
+    normalizeOwner(repositoryPathOwner) !==
+      normalizeOwner(githubRepositoryOwner)
+  ) {
+    throw new Error('GITHUB_REPOSITORY_OWNER does not match GITHUB_REPOSITORY.')
+  }
   const repositoryOwner =
     readNonEmpty(input.repositoryOwner) ??
-    repository?.split('/')[0] ??
-    readNonEmpty(env.GITHUB_REPOSITORY_OWNER)
+    githubRepositoryOwner ??
+    repositoryPathOwner
   const owner = normalizeOwner(repositoryOwner)
   const sha =
     readNonEmpty(input.sha) ?? readNonEmpty(env.GITHUB_SHA) ?? 'unknown'
@@ -588,6 +598,28 @@ export function extractOciArchiveIdentity(index, readDescriptorJson) {
   if (!Array.isArray(platformDescriptors) || platformDescriptors.length === 0) {
     throw new Error('OCI candidate archive has no platform manifests.')
   }
+  platformDescriptors.forEach((descriptor, index) => {
+    if (
+      descriptor === null ||
+      typeof descriptor !== 'object' ||
+      Array.isArray(descriptor)
+    ) {
+      throw new Error(
+        `OCI platform descriptor at index ${index} must be an object.`,
+      )
+    }
+    descriptorBlobPath(descriptor.digest)
+    if (!readNonEmpty(descriptor.mediaType)) {
+      throw new Error(
+        `OCI platform descriptor at index ${index} has an invalid mediaType.`,
+      )
+    }
+    if (!Number.isSafeInteger(descriptor.size) || descriptor.size < 0) {
+      throw new Error(
+        `OCI platform descriptor at index ${index} has an invalid size.`,
+      )
+    }
+  })
   return {
     manifestDigest: root.digest,
     mediaType: root.mediaType,

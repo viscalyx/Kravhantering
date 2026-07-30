@@ -224,7 +224,7 @@ describe('trusted container release helpers', () => {
   it('supports explicit release-plan inputs and environment serialization', () => {
     const plan = createReleasePlan({
       changedFiles: [],
-      env: { GITHUB_REPOSITORY_OWNER: 'ambient-owner' },
+      env: { GITHUB_REPOSITORY_OWNER: ' example ' },
       eventName: 'workflow_dispatch',
       expectedDatabaseSchemaVersion: 'Migration20260730120000',
       gitVersion: { SemVer: '2.0.0-preview.1' },
@@ -257,6 +257,26 @@ describe('trusted container release helpers', () => {
         expectedDatabaseSchemaVersion: 'Migration20260730120000',
       }),
     ).toThrow('Repository owner is required')
+    expect(
+      createReleasePlan({
+        env: { GITHUB_REPOSITORY_OWNER: 'Trusted-Owner' },
+        expectedDatabaseSchemaVersion: 'Migration20260730120000',
+      }).owner,
+    ).toBe('trusted-owner')
+    expect(
+      createReleasePlan({
+        env: {},
+        expectedDatabaseSchemaVersion: 'Migration20260730120000',
+        repository: 'Repository-Owner/Repository',
+      }).owner,
+    ).toBe('repository-owner')
+    expect(() =>
+      createReleasePlan({
+        env: { GITHUB_REPOSITORY_OWNER: 'trusted-owner' },
+        expectedDatabaseSchemaVersion: 'Migration20260730120000',
+        repository: 'different-owner/Repository',
+      }),
+    ).toThrow('GITHUB_REPOSITORY_OWNER does not match GITHUB_REPOSITORY')
   })
 
   it('covers defensive release identity and bundle boundaries', () => {
@@ -532,6 +552,8 @@ describe('trusted container release helpers', () => {
   })
 
   it('records the exact OCI index and represented platform manifests', () => {
+    const amd64Digest = `sha256:${'a'.repeat(64)}`
+    const arm64Digest = `sha256:${'b'.repeat(64)}`
     const identity = extractOciArchiveIdentity(
       {
         manifests: [
@@ -548,13 +570,13 @@ describe('trusted container release helpers', () => {
         return {
           manifests: [
             {
-              digest: 'sha256:amd64',
+              digest: amd64Digest,
               mediaType: 'application/vnd.oci.image.manifest.v1+json',
               platform: { architecture: 'amd64', os: 'linux' },
               size: 250,
             },
             {
-              digest: 'sha256:arm64',
+              digest: arm64Digest,
               mediaType: 'application/vnd.oci.image.manifest.v1+json',
               platform: { architecture: 'arm64', os: 'linux' },
               size: 251,
@@ -569,13 +591,13 @@ describe('trusted container release helpers', () => {
       mediaType: 'application/vnd.oci.image.index.v1+json',
       platformManifests: [
         {
-          digest: 'sha256:amd64',
+          digest: amd64Digest,
           mediaType: 'application/vnd.oci.image.manifest.v1+json',
           platform: { architecture: 'amd64', os: 'linux' },
           size: 250,
         },
         {
-          digest: 'sha256:arm64',
+          digest: arm64Digest,
           mediaType: 'application/vnd.oci.image.manifest.v1+json',
           platform: { architecture: 'arm64', os: 'linux' },
           size: 251,
@@ -587,7 +609,7 @@ describe('trusted container release helpers', () => {
 
   it('validates OCI layout roots and reads archives with optional leading paths', () => {
     const singleManifest = {
-      digest: 'sha256:single',
+      digest: `sha256:${'c'.repeat(64)}`,
       mediaType: 'application/vnd.oci.image.manifest.v1+json',
       size: 100,
     }
@@ -624,6 +646,37 @@ describe('trusted container release helpers', () => {
         () => ({ manifests: [] }),
       ),
     ).toThrow('no platform manifests')
+    const validPlatformDescriptor = {
+      digest: `sha256:${'d'.repeat(64)}`,
+      mediaType: 'application/vnd.oci.image.manifest.v1+json',
+      size: 100,
+    }
+    for (const [field, value] of [
+      ['digest', 'invalid'],
+      ['mediaType', ' '],
+      ['size', -1],
+    ]) {
+      expect(() =>
+        extractOciArchiveIdentity(
+          {
+            manifests: [
+              {
+                digest: 'sha256:index',
+                mediaType: 'application/vnd.oci.image.index.v1+json',
+                size: 200,
+              },
+            ],
+            schemaVersion: 2,
+          },
+          () => ({
+            manifests: [
+              validPlatformDescriptor,
+              { ...validPlatformDescriptor, [field]: value },
+            ],
+          }),
+        ),
+      ).toThrow(`invalid ${field}`)
+    }
 
     const digestValue = 'a'.repeat(64)
     const rootDigest = `sha256:${digestValue}`
